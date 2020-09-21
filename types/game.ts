@@ -6,6 +6,15 @@ export type Variant =
   | 'south-america'
   | 'asia'
 
+export const variants: Variant[] = [
+  'world',
+  'europe',
+  'africa',
+  'north-america',
+  'south-america',
+  'asia',
+]
+
 export interface Game {
   id: string
   players: { [key: string]: Player }

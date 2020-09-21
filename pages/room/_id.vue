@@ -1,5 +1,9 @@
 <template>
-  <div>Game goes here</div>
+  <div>
+    <client-only>
+      <WorldMap />
+    </client-only>
+  </div>
 </template>
 <script lang="ts">
 import { defineComponent } from '@vue/composition-api'
@@ -41,6 +45,5 @@ export default defineComponent({
       name: 'stinky steve',
     })
   },
-  methods: {},
 })
 </script>
