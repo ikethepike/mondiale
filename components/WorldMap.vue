@@ -1542,4 +1542,10 @@
 svg {
   width: 100%;
 }
+path {
+  fill: transparent;
+}
+path:hover {
+  fill: red;
+}
 </style>

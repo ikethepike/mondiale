@@ -15,8 +15,8 @@
   </main>
 </template>
 <script lang="ts">
-import axios from 'axios'
 import { defineComponent, ref } from '@vue/composition-api'
+import { Game } from '~/types/game'
 
 export default defineComponent({
   data: () => ({
@@ -24,21 +24,29 @@ export default defineComponent({
   }),
   methods: {
     startGame() {
-      this.$store.dispatch('game/startGame', this.name)
+      this.$store.dispatch('game/connect', this.name)
+      this.started = true
+
+      const game: Game = this.$store.state.game.game
+
+      if (game) {
+        history.pushState(null, '', `/game/${game.id}`)
+      }
     },
   },
-  setup() {
-    const name = ref('')
-
-    return {
-      name,
-    }
-  },
   mounted() {
-    const source = new EventSource('/api')
-    source.addEventListener('message', (message) => {
-      console.log(message)
-    })
+    // const source = new EventSource('/api')
+    // source.addEventListener('message', (message) => {
+    //   console.log(message)
+    // })
   },
 })
 </script>
+<style>
+@media (prefers-color-scheme: dark) {
+  main {
+    color: orange;
+    background: darkslategrey;
+  }
+}
+</style>

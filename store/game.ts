@@ -15,6 +15,7 @@ export const actions: ActionTree<GameState, any> = {
   startGame({ commit }, name) {
     const player: Player = {
       id: generateHash(),
+      points: 0,
       name,
     }
 

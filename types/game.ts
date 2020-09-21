@@ -8,14 +8,19 @@ export type Variant =
 
 export interface Game {
   id: string
-  players: Player[]
+  players: { [key: string]: Player }
   variant: Variant
 }
 
 export interface Player {
   id: string
-  name: string
+  name?: string
+  points: number
 }
+
+export type Command =
+  | { event: 'connect'; gameId: string }
+  | { event: 'set-name'; playerId: string; gameId: string; name: string }
 
 export interface Turn {
   number: number
