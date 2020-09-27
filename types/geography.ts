@@ -1,3 +1,4 @@
+import { AgeDistribution, RankValue, Value } from './../george/george'
 export type CountryCode =
   | 'AF'
   | 'AO'
@@ -855,4 +856,91 @@ export const countries: Countries = {
   IC: {
     name: 'Canary Islands (Spain)',
   },
+}
+
+export interface Country {
+  name: string
+  statistics: {
+    economics: {
+      gdp?: number
+      gdpPerCapita?: number
+      militarySpending: RankValue
+      populationBelowPovertyLine: number
+    }
+    geography: {
+      landArea: Value
+      waterArea: Value
+      totalArea: Value
+      lowestPoint: Value
+      highestPoint: Value
+      forestedLand: Value
+      arableLand: Value
+    }
+    unemployment: {
+      youthPercentage: number
+      totalPercentage: number
+    }
+    infrastructure: {
+      roadLength: Value
+      railLength: Value
+      electricity: {
+        populationWithoutAccess: number
+      }
+    }
+    religion: {
+      atheism: number
+      believers: number
+      agnosticism: number
+    }
+    population: {
+      total: number
+      minorityPercentage: number
+      refugeesAndStatelessPercentage: number
+    }
+    environment: {
+      emissions: {
+        rank: number
+        megatons: number
+      }
+      crudeOilConsumption: {
+        rank: number
+        barrelsPerDay: number
+      }
+      energySources: {
+        fossilFuels: number
+        nuclearFuels: number
+        renewableSources: number
+      }
+    }
+    education: {
+      literacy: {
+        male: number
+        female: number
+        average: number
+      }
+    }
+    health: {
+      obesity: number
+      medicalAccess: {
+        doctorsPer1000: number
+        hospitalBedsPer1000: number
+      }
+      lifeExpectancy: number
+      childrenPerWoman: number
+      underweightChildren: number
+      contraceptivePrevalence: number
+      meanAgeOfBirth: number
+      ageDistribution: {
+        '0-14': AgeDistribution
+        '15-24': AgeDistribution
+        '25-54': AgeDistribution
+        '55-64': AgeDistribution
+        '65-120': AgeDistribution
+      }
+      sexRatio: {
+        male: number
+        female: number
+      }
+    }
+  }
 }
