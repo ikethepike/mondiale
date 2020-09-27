@@ -1,22 +1,10 @@
 /* eslint-disable no-unreachable */
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
+import { Game, Player, Command, palette } from '../types/game'
 import { generateHash } from '../lib/hashing'
-import { Game, Player } from '../types/game'
-import { Command } from '~/types/game'
 
 const games: { [key: string]: Game } = {}
-
-export const test: Response | null = null
-
-interface GameCreateRequest {
-  player: {
-    name: string
-  }
-}
-export interface GameConnectRequest {
-  id: string
-}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
   return new Promise((resolve) => {
@@ -29,6 +17,9 @@ const fetchBody = (req: IncomingMessage): Promise<any> => {
     })
   })
 }
+
+const randomValue = (array: any) =>
+  array[Math.floor(Math.random() * array.length)]
 
 const api: ServerMiddleware = async (req, res, next) => {
   // const update = (data: any) => {
@@ -48,7 +39,8 @@ const api: ServerMiddleware = async (req, res, next) => {
           const id = command.gameId
           const player: Player = {
             id: generateHash(),
-            points: 0,
+            progress: Math.floor(Math.random() * 100),
+            color: randomValue(Object.values(palette)),
           }
 
           if (!games[id]) {
@@ -66,6 +58,8 @@ const api: ServerMiddleware = async (req, res, next) => {
           const { gameId, playerId, name } = command
           games[gameId].players[playerId].name = name
           res.end(JSON.stringify(games[gameId]))
+          break
+        case 'move':
           break
         default:
           res.statusCode = 400

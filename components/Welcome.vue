@@ -21,9 +21,7 @@
         <div class="variant-display">
           <!-- vector graphics here  -->
         </div>
-
         <input v-model="variants[variant]" name="variant" type="hidden" />
-
         <div class="variant-nav">
           <a role="button" class="arrow left" @click="nextVariant">←</a>
           <span class="variant-title">{{ variants[variant] }}</span>

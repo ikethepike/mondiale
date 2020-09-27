@@ -453,8 +453,8 @@ const output = [
         landArea: country.geography.area.land,
         waterArea: country.geography.area.water,
         totalArea: country.geography.area.total,
-        lowestPoint: country.geography.elevation.highest_point,
-        highestPoint: country.geography.elevation.lowest_point,
+        lowestPoint: country.geography.elevation.lowest_point,
+        highestPoint: country.geography.elevation.highest_point,
         arableLand: country.geography.land_use.by_sector.arable_land,
       },
       unemployment: {

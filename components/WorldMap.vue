@@ -1562,7 +1562,7 @@ export default defineComponent({
     document.querySelectorAll('path').forEach((path) => {
       path.addEventListener('click', (event) => {
         if (event.target) {
-          console.log(event.target.getAttribute('data-name'))
+          this.$emit('countryClick', event.target)
         }
       })
     })
