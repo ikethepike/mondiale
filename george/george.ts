@@ -1,7 +1,6 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-console */
 import * as fs from 'fs'
-import { World } from '../types/imports'
 
 let unparsed
 try {
@@ -448,47 +447,29 @@ const output = [
 
   return {
     name: country.name,
+    statistics: {
+      geography: {
+        landArea: country.geography.area.land,
+        waterArea: country.geography.area.water,
+        totalArea: country.geography.area.total,
+        lowestPoint: country.geography.elevation.highest_point,
+        highestPoint: country.geography.elevation.lowest_point,
+        arableLand: country.geography.land_use.by_sector.arable_land,
+      },
+      unemployment: {
+        youthPercentage: country.people.youth_unemployment?.total,
+        totalPercentage: country.economy.unemployment_rate?.annual_values?.pop(),
+      },
+      infrastructure: {
+        roadLength: country.transportation?.roadways?.total,
+        railLength: country.transportation?.railways?.total,
+        electricity: {
+          populationWithoutAccess:
+            country.energy?.electricity.access?.population_without_electricity,
+        },
+      },
+    },
   }
-
-  // return {
-  //   name: data.name,
-  //   statistics: {
-  //     economics: {
-  //       // gdp: data.economy.gdp.gdp,
-  //       // gdpPerCapita: data.economy.gdp.
-  //       militarySpending: {
-  //         value: data.military_and_securty.expenditures.annual_values.shift(),
-  //         rank: data.military_and_securty.expenditures.global_rank,
-  //       },
-  //       populationBelowPovertyLine:
-  //         data.economy.population_below_poverty_line,
-  //     },
-  //     education: {
-  //       literacy: {
-  //         male: data.people.literacy.male.value,
-  //         female: data.people.literacy.female.value,
-  //         total: data.people.literacy.total.value,
-  //       },
-  //     },
-  //     geography: {
-  //       landArea: data.geography.area.land.value,
-  //       waterArea: data.geography.area.water.value,
-  //       totalArea: data.geography.area.total,
-  //       lowestPoint: data.geography.elevation.lowest_point.elevation,
-  //       highestPoint: data.geography.elevation.highest_point,
-  //     },
-  //     people: {},
-  //     unemployment: {
-  //       youthPercentage: data.people.youth_unemployment.total,
-  //       totalPercentage: data.economy.unemployment_rate.annual_rate.pop()
-  //         .value,
-  //     },
-  //     religion: {},
-  //     infrastructure: {},
-  //     environment: {},
-  //     health: {},
-  //   },
-  // }
 })
 
 console.log(output)
@@ -1316,16 +1297,6 @@ interface BorderCountry {
   border_length: Value
   note?: string
 }
-
-type Ethnicities =
-  | 'white'
-  | 'black'
-  | 'Asian'
-  | 'Amerindian and Alaska native'
-  | 'native Hawaiian and other pacific islander'
-  | 'other'
-  | 'two or more races'
-
 export interface Ethnicity {
   name?: string
   percent?: number
@@ -1347,77 +1318,283 @@ export interface ElevationPoint {
   note?: string
 }
 
-export type GovernmentType =
-  | 'presidential Islamic republic'
-  | 'parliamentary republic'
-  | 'presidential republic'
-  | 'republican form of government with separate executive, legislative, and judicial branches; unincorporated unorganized territory of the US with local self-government'
-  | "parliamentary democracy (since March 1993) that retains its chiefs of state in the form of a co-principality; the two princes are the President of France and Bishop of Seu d'Urgell, Spain"
-  | 'parliamentary democracy (House of Assembly); self-governing overseas territory of the UK'
-  | 'Antarctic Treaty Summary - the Antarctic region is governed by a system known as the Antarctic Treaty system; the system includes: 1. the Antarctic Treaty, signed on 1 December 1959 and entered into force on 23 June 1961, which establishes the legal framework for the management of Antarctica, 2. Measures, Decisions, and Resolutions adopted at Antarctic Treaty Consultative Meetings, 3. The Convention for the Conservation of Antarctic Seals (1972), 4. The Convention for the Conservation of Antarctic Marine Living Resources (1980), and 5. The Protocol on Environmental Protection to the Antarctic Treaty (1991); the Antarctic Treaty Consultative Meetings operate by consensus (not by vote) of all consultative parties at annual Treaty meetings; by January 2016, there were 53 treaty member nations: 29 consultative and 24 non-consultative; consultative (decision-making) members include the seven nations that claim portions of Antarctica as national territory (some claims overlap) and 22 non-claimant nations; the US and Russia have reserved the right to make claims; the US does not recognize the claims of others; Antarctica is administered through meetings of the consultative member nations; measures adopted at these meetings are carried out by these member nations (with respect to their own nationals and operations) in accordance with their own national laws; the years in parentheses indicate when a consultative member-nation acceded to the Treaty and when it was accepted as a consultative member, while no date indicates the country was an original 1959 treaty signatory; claimant nations are - Argentina, Australia, Chile, France, NZ, Norway, and the UK; nonclaimant consultative nations are - Belgium, Brazil (1975/1983), Bulgaria (1978/1998), China (1983/1985), Czech Republic (1962/2014), Ecuador (1987/1990), Finland (1984/1989), Germany (1979/1981), India (1983/1983), Italy (1981/1987), Japan, South Korea (1986/1989), Netherlands (1967/1990), Peru (1981/1989), Poland (1961/1977), Russia, South Africa, Spain (1982/1988), Sweden (1984/1988), Ukraine (1992/2004), Uruguay (1980/1985), and the US; non-consultative members, with year of accession in parentheses, are - Austria (1987), Belarus (2006), Canada (1988), Colombia (1989), Cuba (1984), Denmark (1965), Estonia (2001), Greece (1987), Guatemala (1991), Hungary (1984), Iceland (2015), Kazakhstan (2015), North Korea (1987), Malaysia (2011), Monaco (2008), Mongolia (2015), Pakistan (2012), Papua New Guinea (1981), Portugal (2010), Romania (1971), Slovakia (1962/1993), Switzerland (1990), Turkey (1996), and Venezuela (1999); note - Czechoslovakia acceded to the Treaty in 1962 and separated into the Czech Republic and Slovakia in 1993; Article 1 - area to be used for peaceful purposes only; military activity, such as weapons testing, is prohibited, but military personnel and equipment may be used for scientific research or any other peaceful purpose; Article 2 - freedom of scientific investigation and cooperation shall continue; Article 3 - free exchange of information and personnel, cooperation with the UN and other international agencies; Article 4 - does not recognize, dispute, or establish territorial claims and no new claims shall be asserted while the treaty is in force; Article 5 - prohibits nuclear explosions or disposal of radioactive wastes;Article 6 - includes under the treaty all land and ice shelves south of 60 degrees 00 minutes south and reserves high seas rights; Article 7 - treaty-state observers have free access, including aerial observation, to any area and may inspect all stations, installations, and equipment; advance notice of all expeditions and of the introduction of military personnel must be given; Article 8 - allows for jurisdiction over observers and scientists by their own states; Article 9 - frequent consultative meetings take place among member nations; Article 10 - treaty states will discourage activities by any country in Antarctica that are contrary to the treaty; Article 11 - disputes to be settled peacefully by the parties concerned or, ultimately, by the ICJ; Articles 12, 13, 14 - deal with upholding, interpreting, and amending the treaty among involved nations; other agreements - some 200 measures adopted at treaty consultative meetings and approved by governments; the Protocol on Environmental Protection to the Antarctic Treaty was signed 4 October 1991 and entered into force 14 January 1998; this agreement provides for the protection of the Antarctic environment and includes five annexes that have entered into force: 1) environmental impact assessment, 2) conservation of Antarctic fauna and flora, 3) waste disposal and waste management, 4) prevention of marine pollution, 5) area protection and management; a sixth annex addressing liability arising from environmental emergencies has yet to enter into force; the Protocol prohibits all activities relating to mineral resources except scientific research; a permanent Antarctic Treaty Secretariat was established in 2004 in Buenos Aires, Argentina'
-  | 'parliamentary democracy under a constitutional monarchy; a Commonwealth realm'
-  | 'parliamentary democracy; note - constitutional changes adopted in December 2015 transformed the government to a parliamentary system'
-  | 'parliamentary democracy; part of the Kingdom of the Netherlands'
-  | 'federal parliamentary democracy under a constitutional monarchy; a Commonwealth realm'
-  | 'federal parliamentary republic'
-  | 'constitutional monarchy'
-  | 'presidential republic in name, although in fact a dictatorship'
-  | 'federal parliamentary democracy under a constitutional monarchy'
-  | 'parliamentary democracy (National Assembly) under a constitutional monarchy; a Commonwealth realm'
-  | 'parliamentary democracy; self-governing overseas territory of the UK'
-  | 'federal presidential republic'
-  | 'absolute monarchy or sultanate'
-  | 'parliamentary constitutional monarchy'
-  | 'federal parliamentary democracy (Parliament of Canada) under a constitutional monarchy; a Commonwealth realm; federal and state authorities and responsibilities regulated in constitution'
-  | 'communist party-led state'
-  | 'non-self-governing overseas territory of Australia'
-  | 'semi-presidential republic'
-  | 'parliamentary democracy'
-  | 'communist state'
-  | 'Republic of Cyprus - presidential republic; "Turkish Republic of Northern Cyprus" (self-declared) - parliamentary republic with enhanced presidency\nnote: a separation of the two main ethnic communities inhabiting the island began following the outbreak of communal strife in 1963; this separation was further solidified when a Greek military-junta-supported coup attempt prompted the Turkish military intervention in July 1974 that gave the Turkish Cypriots de facto control in the north; Greek Cypriots control the only internationally recognized government on the island; on 15 November 1983, then Turkish Cypriot "President" Rauf DENKTAS declared independence and the formation of the "TRNC,” which is recognized only by Turkey'
-  | 'absolute monarchy'
-  | 'parliamentary democracy (Legislative Assembly); self-governing overseas territory of the UK'
-  | 'parliamentary democracy (Faroese Parliament); part of the Kingdom of Denmark'
-  | 'parliamentary democracy (Assembly of French Polynesia); an overseas collectivity of France'
-  | 'parliamentary democracy (Parliament); self-governing overseas territory of the UK'
-  | 'parliamentary democracy (Parliament of Greenland or Inatsisartut)'
-  | 'republican form of government with separate executive, legislative, and judicial branches; unincorporated organized territory of the US with local self-government'
-  | 'parliamentary democracy (States of Deliberation)'
-  | 'ecclesiastical elective monarchy; self-described as an "absolute monarchy"'
-  | "presidential limited democracy; a special administrative region of the People's Republic of China"
-  | 'unitary parliamentary republic'
-  | 'theocratic republic'
-  | 'parliamentary democracy (Tynwald)'
-  | 'parliamentary democracy (Parliament) under a constitutional monarchy; a Commonwealth realm'
-  | 'parliamentary democracy (Assembly of the States of Jersey)'
-  | 'dictatorship, single-party state; official state ideology of "Juche" or "national self-reliance"'
-  | 'constitutional monarchy (emirate)'
-  | 'in transition'
-  | "executive-led limited democracy; a special administrative region of the People's Republic of China"
-  | 'federal parliamentary constitutional monarchy\nnote: all Peninsular Malaysian states have hereditary rulers (commonly referred to as sultans) except Melaka (Malacca) and Pulau Pinang (Penang); those two states along with Sabah and Sarawak in East Malaysia have governors appointed by government; powers of state governments are limited by the federal constitution; under terms of federation, Sabah and Sarawak retain certain constitutional prerogatives (e.g., right to maintain their own immigration controls)'
-  | 'mixed presidential-parliamentary system in free association with the US'
-  | 'federal republic in free association with the US'
-  | 'parliamentary constitutional monarchy; part of the Kingdom of the Netherlands'
-  | 'parliamentary democracy (Territorial Congress); an overseas collectivity of France'
-  | 'non-self-governing overseas territory of Australia; note - the Norfolk Island Regional Council, which began operations 1 July 2016, is responsible for planning and managing a variety of public services, including those funded by the Government of Australia'
-  | 'republican form of government with separate executive, legislative, and judicial branches; a commonwealth in political union with and under the sovereignty of the US'
-  | 'presidential republic in free association with the US'
-  | 'republican form of government with separate executive, legislative, and judicial branches; unincorporated organized territory of the US with local self-government\nNote: reference Puerto Rican Federal Relations Act, 2 March 1917, as amended by Public Law 600, 3 July 1950'
-  | 'semi-presidential federation'
-  | 'parliamentary democracy (Territorial Council); overseas collectivity of France'
-  | 'parliamentary democracy (Parliament of Sint Maarten) under a constitutional monarchy'
-  | 'non-self-governing territory of Norway'
-  | 'federal republic (formally a confederation)'
-  | 'presidential republic; highly authoritarian regime'
-  | 'parliamentary democracy under a constitutional monarchy'
-  | 'presidential republic; authoritarian'
-  | 'federation of monarchies'
-  | 'parliamentary constitutional monarchy; a Commonwealth realm'
-  | 'constitutional federal republic'
-  | 'presidential republic; highly authoritarian'
-  | 'parliamentary democracy (Territorial Assembly); overseas collectivity of France'
-  | "legal status of territory and issue of sovereignty unresolved; territory contested by Morocco and Polisario Front (Popular Front for the Liberation of the Saguia el Hamra and Rio de Oro), which in February 1976 formally proclaimed a government-in-exile of the Sahrawi Arab Democratic Republic (SADR), near Tindouf, Algeria, led by President Mohamed ABDELAZIZ until his death in May 2016; current President Brahim GHALI elected in July 2016; territory partitioned between Morocco and Mauritania in April 1976 when Spain withdrew, with Morocco acquiring northern two-thirds; Mauritania, under pressure from Polisario guerrillas, abandoned all claims to its portion in August 1979; Morocco moved to occupy that sector shortly thereafter and has since asserted administrative control; the Polisario's government-in-exile was seated as an Organization of African Unity (OAU) member in 1984; Morocco between 1980 and 1987 built a fortified sand berm delineating the roughly 75% of Western Sahara west of the barrier that currently is controlled by Morocco; guerrilla activities continued sporadically until a UN-monitored cease-fire was implemented on 6 September 1991 (Security Council Resolution 690) by the United Nations Mission for the Referendum in Western Sahara (MINURSO)"
+interface World {
+  countries: {
+    world: CountryObject
+    afghanistan: CountryObject
+    akrotiri: CountryObject
+    albania: CountryObject
+    algeria: CountryObject
+    american_samoa: CountryObject
+    andorra: CountryObject
+    angola: CountryObject
+    anguilla: CountryObject
+    antarctica: CountryObject
+    antigua_and_barbuda: CountryObject
+    arctic_ocean: CountryObject
+    argentina: CountryObject
+    armenia: CountryObject
+    aruba: CountryObject
+    ashmore_and_cartier_islands: CountryObject
+    atlantic_ocean: CountryObject
+    australia: CountryObject
+    austria: CountryObject
+    azerbaijan: CountryObject
+    bahamas_the: CountryObject
+    bahrain: CountryObject
+    bangladesh: CountryObject
+    barbados: CountryObject
+    belarus: CountryObject
+    belgium: CountryObject
+    belize: CountryObject
+    benin: CountryObject
+    bermuda: CountryObject
+    bhutan: CountryObject
+    bolivia: CountryObject
+    bosnia_and_herzegovina: CountryObject
+    botswana: CountryObject
+    bouvet_island: CountryObject
+    brazil: CountryObject
+    british_indian_ocean_territory: CountryObject
+    british_virgin_islands: CountryObject
+    brunei: CountryObject
+    bulgaria: CountryObject
+    burkina_faso: CountryObject
+    burma: CountryObject
+    burundi: CountryObject
+    cabo_verde: CountryObject
+    cambodia: CountryObject
+    cameroon: CountryObject
+    canada: CountryObject
+    cayman_islands: CountryObject
+    central_african_republic: CountryObject
+    chad: CountryObject
+    chile: CountryObject
+    china: CountryObject
+    christmas_island: CountryObject
+    clipperton_island: CountryObject
+    cocos_keeling_islands: CountryObject
+    colombia: CountryObject
+    comoros: CountryObject
+    congo_democratic_republic_of_the: CountryObject
+    congo_republic_of_the: CountryObject
+    cook_islands: CountryObject
+    coral_sea_islands: CountryObject
+    costa_rica: CountryObject
+    "cote_d'_ivoire": CountryObject
+    croatia: CountryObject
+    cuba: CountryObject
+    curacao: CountryObject
+    cyprus: CountryObject
+    czechia: CountryObject
+    denmark: CountryObject
+    dhekelia: CountryObject
+    djibouti: CountryObject
+    dominica: CountryObject
+    dominican_republic: CountryObject
+    ecuador: CountryObject
+    egypt: CountryObject
+    el_salvador: CountryObject
+    equatorial_guinea: CountryObject
+    eritrea: CountryObject
+    estonia: CountryObject
+    eswatini: CountryObject
+    ethiopia: CountryObject
+    falkland_islands_islas_malvinas: CountryObject
+    faroe_islands: CountryObject
+    fiji: CountryObject
+    finland: CountryObject
+    france: CountryObject
+    french_polynesia: CountryObject
+    gabon: CountryObject
+    gambia_the: CountryObject
+    gaza_strip: CountryObject
+    georgia: CountryObject
+    germany: CountryObject
+    ghana: CountryObject
+    gibraltar: CountryObject
+    greece: CountryObject
+    greenland: CountryObject
+    grenada: CountryObject
+    guam: CountryObject
+    guatemala: CountryObject
+    guernsey: CountryObject
+    guinea: CountryObject
+    guinea_bissau: CountryObject
+    guyana: CountryObject
+    haiti: CountryObject
+    heard_island_and_mcdonald_islands: CountryObject
+    holy_see_vatican_city: CountryObject
+    honduras: CountryObject
+    hong_kong: CountryObject
+    hungary: CountryObject
+    iceland: CountryObject
+    india: CountryObject
+    indian_ocean: CountryObject
+    indonesia: CountryObject
+    iran: CountryObject
+    iraq: CountryObject
+    ireland: CountryObject
+    isle_of_man: CountryObject
+    israel: CountryObject
+    italy: CountryObject
+    jamaica: CountryObject
+    jan_mayen: CountryObject
+    japan: CountryObject
+    jersey: CountryObject
+    jordan: CountryObject
+    kazakhstan: CountryObject
+    kenya: CountryObject
+    kiribati: CountryObject
+    korea_north: CountryObject
+    korea_south: CountryObject
+    kosovo: CountryObject
+    kuwait: CountryObject
+    kyrgyzstan: CountryObject
+    laos: CountryObject
+    latvia: CountryObject
+    lebanon: CountryObject
+    lesotho: CountryObject
+    liberia: CountryObject
+    libya: CountryObject
+    liechtenstein: CountryObject
+    lithuania: CountryObject
+    luxembourg: CountryObject
+    macau: CountryObject
+    madagascar: CountryObject
+    malawi: CountryObject
+    malaysia: CountryObject
+    maldives: CountryObject
+    mali: CountryObject
+    malta: CountryObject
+    marshall_islands: CountryObject
+    mauritania: CountryObject
+    mauritius: CountryObject
+    mexico: CountryObject
+    micronesia_federated_states_of: CountryObject
+    moldova: CountryObject
+    monaco: CountryObject
+    mongolia: CountryObject
+    montenegro: CountryObject
+    montserrat: CountryObject
+    morocco: CountryObject
+    mozambique: CountryObject
+    namibia: CountryObject
+    nauru: CountryObject
+    navassa_island: CountryObject
+    nepal: CountryObject
+    netherlands: CountryObject
+    new_caledonia: CountryObject
+    new_zealand: CountryObject
+    nicaragua: CountryObject
+    niger: CountryObject
+    nigeria: CountryObject
+    niue: CountryObject
+    norfolk_island: CountryObject
+    north_macedonia: CountryObject
+    northern_mariana_islands: CountryObject
+    norway: CountryObject
+    oman: CountryObject
+    pacific_ocean: CountryObject
+    pakistan: CountryObject
+    palau: CountryObject
+    panama: CountryObject
+    papua_new_guinea: CountryObject
+    paracel_islands: CountryObject
+    paraguay: CountryObject
+    peru: CountryObject
+    philippines: CountryObject
+    pitcairn_islands: CountryObject
+    poland: CountryObject
+    portugal: CountryObject
+    puerto_rico: CountryObject
+    qatar: CountryObject
+    romania: CountryObject
+    russia: CountryObject
+    rwanda: CountryObject
+    saint_barthelemy: CountryObject
+    saint_helena_ascension_and_tristan_da_cunha: CountryObject
+    saint_kitts_and_nevis: CountryObject
+    saint_lucia: CountryObject
+    saint_martin: CountryObject
+    saint_pierre_and_miquelon: CountryObject
+    saint_vincent_and_the_grenadines: CountryObject
+    samoa: CountryObject
+    san_marino: CountryObject
+    sao_tome_and_principe: CountryObject
+    saudi_arabia: CountryObject
+    senegal: CountryObject
+    serbia: CountryObject
+    seychelles: CountryObject
+    sierra_leone: CountryObject
+    singapore: CountryObject
+    sint_maarten: CountryObject
+    slovakia: CountryObject
+    slovenia: CountryObject
+    solomon_islands: CountryObject
+    somalia: CountryObject
+    south_africa: CountryObject
+    south_georgia_and_south_sandwich_islands: CountryObject
+    south_sudan: CountryObject
+    southern_ocean: CountryObject
+    spain: CountryObject
+    spratly_islands: CountryObject
+    sri_lanka: CountryObject
+    sudan: CountryObject
+    suriname: CountryObject
+    svalbard: CountryObject
+    sweden: CountryObject
+    switzerland: CountryObject
+    syria: CountryObject
+    taiwan: CountryObject
+    tajikistan: CountryObject
+    tanzania: CountryObject
+    thailand: CountryObject
+    timor_leste: CountryObject
+    togo: CountryObject
+    tokelau: CountryObject
+    tonga: CountryObject
+    trinidad_and_tobago: CountryObject
+    tunisia: CountryObject
+    turkey: CountryObject
+    turkmenistan: CountryObject
+    turks_and_caicos_islands: CountryObject
+    tuvalu: CountryObject
+    uganda: CountryObject
+    ukraine: CountryObject
+    united_arab_emirates: CountryObject
+    united_kingdom: CountryObject
+    united_states: CountryObject
+    uruguay: CountryObject
+    uzbekistan: CountryObject
+    vanuatu: CountryObject
+    venezuela: CountryObject
+    vietnam: CountryObject
+    virgin_islands: CountryObject
+    wake_island: CountryObject
+    wallis_and_futuna: CountryObject
+    west_bank: CountryObject
+    western_sahara: CountryObject
+    yemen: CountryObject
+    zambia: CountryObject
+    zimbabwe: CountryObject
+    european_union: CountryObject
+  }
+  metadata: {
+    date: string
+    parser_version: string
+    parsed_time: string
+  }
+}
 
+interface CountryObject {
+  data: GenericCountry
+  metadata: {
+    date: string
+    source: string
+    nearby_dates: string
+  }
+}
 interface OptionalUnitValue {
   value: number
   units?: string
