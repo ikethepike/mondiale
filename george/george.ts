@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-console */
-import * as fs from 'fs'
+const fs = require('fs')
 
 let unparsed
 try {
@@ -447,6 +447,7 @@ const output = [
 
   return {
     name: country.name,
+    countryCode: country.communications.internet.country_code.slice(1),
     statistics: {
       geography: {
         landArea: country.geography.area.land,
@@ -472,7 +473,7 @@ const output = [
   }
 })
 
-console.log(output)
+fs.writeFileSync('./compiled/world.json', JSON.stringify(output), 'utf-8')
 
 export type Direction = 'N' | 'S' | 'W' | 'E'
 

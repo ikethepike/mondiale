@@ -860,6 +860,7 @@ export const countries: Countries = {
 
 export interface Country {
   name: string
+  countryCode: string
   statistics: {
     economics: {
       gdp?: number
