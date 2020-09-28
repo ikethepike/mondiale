@@ -17,7 +17,7 @@ export default Vue.extend({
       required: true,
     },
     color: {
-      type: Object,
+      type: String,
       required: true,
     },
   },

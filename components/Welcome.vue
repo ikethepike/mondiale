@@ -59,12 +59,6 @@ export default defineComponent({
       }
     },
   },
-  mounted() {
-    // const source = new EventSource('/api')
-    // source.addEventListener('message', (message) => {
-    //   console.log(message)
-    // })
-  },
 })
 </script>
 <style>

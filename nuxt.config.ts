@@ -12,10 +12,11 @@ const config: NuxtConfig = {
     link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
   },
 
-  // Global CSS (https://go.nuxtjs.dev/config-css)
+  env: {
+    baseUrl: process.env.BASE_URL || 'http://localhost:3000/',
+  },
   css: [],
 
-  // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
   plugins: ['~/plugins/api'],
   components: true,
   buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api'],

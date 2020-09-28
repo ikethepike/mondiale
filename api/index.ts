@@ -30,6 +30,21 @@ const api: ServerMiddleware = async (req, res, next) => {
     return next()
   }
 
+  if (req.originalUrl?.includes('/api/feed/')) {
+    const gameId = req.originalUrl.split('/').pop()
+    Object.values(games).forEach((game) => {
+      if (game.id === gameId) {
+        console.log(gameId)
+        res.setHeader('Cache-Control', 'no-cache')
+        res.setHeader('Content-Type', 'text/event-stream')
+        res.setHeader('Connection', 'keep-alive')
+        res.flushHeaders()
+
+        res.write(JSON.stringify('hey hey hey'))
+      }
+    })
+  }
+
   if (req.originalUrl === '/api/commands') {
     try {
       const command: Command = JSON.parse(await fetchBody(req))
@@ -52,7 +67,15 @@ const api: ServerMiddleware = async (req, res, next) => {
           }
 
           games[id].players[player.id] = player
-          res.end(JSON.stringify(games[id]))
+          res.setHeader('Set-Cookie', 'wow="comeon"; Max-Age=40000;')
+          res.setHeader('Set-Cookie', `player=${player.id}; Max-Age=3000;`)
+
+          res.end(
+            JSON.stringify({
+              player,
+              game: games[id],
+            })
+          )
           break
         case 'set-name':
           const { gameId, playerId, name } = command
@@ -73,11 +96,6 @@ const api: ServerMiddleware = async (req, res, next) => {
       res.end()
     }
   }
-
-  // res.setHeader('Cache-Control', 'no-cache')
-  // res.setHeader('Content-Type', 'text/event-stream')
-  // res.setHeader('Connection', 'keep-alive')
-  // res.flushHeaders()
 }
 
 export default api
