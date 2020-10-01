@@ -24,6 +24,7 @@ export interface Game {
 export interface Player {
   id: string
   name?: string
+  ready: boolean
   progress: number
   color: PaletteValues
 }

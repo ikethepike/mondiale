@@ -3,8 +3,10 @@ import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
 import { Game, Player, Command, palette } from '../types/game'
 import { generateHash } from '../lib/hashing'
-
+import { SSE } from '../lib/SSE'
+// import { countryCodes } from '../george/compiled/countries.json'
 const games: { [key: string]: Game } = {}
+const feeds: { [key: string]: SSE } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
   return new Promise((resolve) => {
@@ -22,27 +24,16 @@ const randomValue = (array: any) =>
   array[Math.floor(Math.random() * array.length)]
 
 const api: ServerMiddleware = async (req, res, next) => {
-  // const update = (data: any) => {
-  //   res.write(JSON.stringify(data))
-  // }
-
   if (!req.originalUrl?.includes('/api/')) {
     return next()
   }
 
-  if (req.originalUrl?.includes('/api/feed/')) {
+  if (req.originalUrl.includes('/api/feed/')) {
     const gameId = req.originalUrl.split('/').pop()
-    Object.values(games).forEach((game) => {
-      if (game.id === gameId) {
-        console.log(gameId)
-        res.setHeader('Cache-Control', 'no-cache')
-        res.setHeader('Content-Type', 'text/event-stream')
-        res.setHeader('Connection', 'keep-alive')
-        res.flushHeaders()
-
-        res.write(JSON.stringify('hey hey hey'))
-      }
-    })
+    if (!feeds[gameId]) {
+      feeds[gameId] = new SSE(res)
+    }
+    return feeds[gameId].connect()
   }
 
   if (req.originalUrl === '/api/commands') {
@@ -53,6 +44,7 @@ const api: ServerMiddleware = async (req, res, next) => {
         case 'connect':
           const id = command.gameId
           const player: Player = {
+            ready: false,
             id: generateHash(),
             progress: Math.floor(Math.random() * 100),
             color: randomValue(Object.values(palette)),
@@ -80,7 +72,9 @@ const api: ServerMiddleware = async (req, res, next) => {
         case 'set-name':
           const { gameId, playerId, name } = command
           games[gameId].players[playerId].name = name
-          res.end(JSON.stringify(games[gameId]))
+          games[gameId].players[playerId].ready = true
+          feeds[gameId].update(games[gameId])
+          res.end()
           break
         case 'move':
           break

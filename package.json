@@ -20,6 +20,7 @@
     "core-js": "^3.6.5",
     "nuxt": "^2.14.6",
     "random-words": "^1.1.1",
+    "svg-country-flags": "^1.2.8",
     "svg-pan-zoom": "^3.6.1",
     "svg-pan-zoom-container": "^0.2.7"
   },

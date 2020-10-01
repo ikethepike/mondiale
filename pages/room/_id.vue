@@ -38,16 +38,19 @@ import { parseCookie } from '../../lib/cookie'
 import { Command, Game, Player } from '~/types/game'
 
 const update = async (cmd: Command) => {
-  const response = await fetch(process.env.baseUrl + 'api/commands', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(cmd),
-  })
-
-  return await response.json()
+  try {
+    const response = await fetch(process.env.baseUrl + 'api/commands', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(cmd),
+    })
+    return await response.json()
+  } catch (e) {
+    return undefined
+  }
 }
 
 interface GameData {
@@ -87,17 +90,12 @@ export default defineComponent({
     async setName() {
       const { game, player, playerName } = this
 
-      const updated: Game = await update({
+      await update({
         playerId: String(player?.id),
         gameId: String(game?.id),
         event: 'set-name',
         name: playerName,
       })
-
-      this.game = updated
-      if (this.player) {
-        this.player = updated.players[this.player.id]
-      }
     },
   },
   mounted() {
@@ -107,6 +105,15 @@ export default defineComponent({
     const source = new EventSource(`/api/feed/${this.game.id}`)
     source.addEventListener('message', (message) => {
       console.log(message)
+      try {
+        const game: Game = JSON.parse(message.data)
+        this.game = game
+        if (this.player) {
+          this.player = game.players[this.player.id]
+        }
+      } catch (e) {
+        console.log('failed to parse response')
+      }
     })
   },
 })

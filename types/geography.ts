@@ -1,4 +1,9 @@
-import { AgeDistribution, RankValue, Value } from './../george/george'
+import {
+  AgeDistribution,
+  ElevationPoint,
+  RankValue,
+  Value,
+} from './../george/george'
 export type CountryCode =
   | 'AF'
   | 'AO'
@@ -860,88 +865,114 @@ export const countries: Countries = {
 
 export interface Country {
   name: string
-  countryCode: string
-  statistics: {
-    economics: {
-      gdp?: number
-      gdpPerCapita?: number
-      militarySpending: RankValue
-      populationBelowPovertyLine: number
+  flag?: string
+  countryCode?: string
+  economics: {
+    gdpPerCapita?: RankValue
+    militarySpending?: {
+      units: string
+      value: number
+      rank: number
     }
-    geography: {
-      landArea: Value
-      waterArea: Value
-      totalArea: Value
-      lowestPoint: Value
-      highestPoint: Value
-      forestedLand: Value
-      arableLand: Value
+    populationBelowPovertyLine?: number
+  }
+  geography: {
+    area: {
+      land?: Value
+      water?: Value
+      total?: Value
+      arable?: Value
+      forested?: Value
     }
-    unemployment: {
-      youthPercentage: number
-      totalPercentage: number
+    elevation: {
+      lowest?: ElevationPoint
+      highest?: ElevationPoint
     }
-    infrastructure: {
-      roadLength: Value
-      railLength: Value
-      electricity: {
-        populationWithoutAccess: number
+    capital?: {
+      name: string
+      population?: number
+    }
+  }
+  unemployment: {
+    youth?: Value
+    total?: Value
+  }
+  infrastructure: {
+    length: {
+      road?: Value
+      rail?: Value
+    }
+    electricity: {
+      populationWithoutAccess?: Value
+    }
+  }
+  religion: {
+    atheismAgnosticism?: Value
+    believers?: Value
+  }
+  population: {
+    total: number
+    vulnerableGroups: {
+      minority?: Number
+      refugees?: Number
+    }
+  }
+  environment: {
+    emissions?: {
+      rank?: number
+      megatons?: number
+    }
+    crudeOilConsumption?: {
+      rank: number
+      cubicMeters: number
+    }
+    energyBreakdownPercent?: {
+      fossilFuels?: number
+      nuclearFuels?: number
+      renewableSources?: number
+    }
+  }
+  education: {
+    literacy: {
+      male?: Value
+      female?: Value
+      total?: Value
+    }
+    averageEducation: {
+      male?: Value
+      total?: Value
+      female?: Value
+    }
+  }
+  health: {
+    obesity?: {
+      rank: number
+      percentageOfAdults: number
+    }
+    access: {
+      doctors?: {
+        value: number
+        units: string
+      }
+      hospitalBeds?: {
+        value: number
+        units: string
       }
     }
-    religion: {
-      atheism: number
-      believers: number
-      agnosticism: number
+    lifeExpectancy?: number
+    childrenPerWoman?: number
+    contraceptivePrevalence?: Value
+    meanAgeOfBirth?: number
+    ageDistribution?: {
+      '0-14': AgeDistribution
+      '15-24': AgeDistribution
+      '25-54': AgeDistribution
+      '55-64': AgeDistribution
+      '65-120': AgeDistribution
     }
-    population: {
-      total: number
-      minorityPercentage: number
-      refugeesAndStatelessPercentage: number
-    }
-    environment: {
-      emissions: {
-        rank: number
-        megatons: number
-      }
-      crudeOilConsumption: {
-        rank: number
-        barrelsPerDay: number
-      }
-      energySources: {
-        fossilFuels: number
-        nuclearFuels: number
-        renewableSources: number
-      }
-    }
-    education: {
-      literacy: {
-        male: number
-        female: number
-        average: number
-      }
-    }
-    health: {
-      obesity: number
-      medicalAccess: {
-        doctorsPer1000: number
-        hospitalBedsPer1000: number
-      }
-      lifeExpectancy: number
-      childrenPerWoman: number
-      underweightChildren: number
-      contraceptivePrevalence: number
-      meanAgeOfBirth: number
-      ageDistribution: {
-        '0-14': AgeDistribution
-        '15-24': AgeDistribution
-        '25-54': AgeDistribution
-        '55-64': AgeDistribution
-        '65-120': AgeDistribution
-      }
-      sexRatio: {
-        male: number
-        female: number
-      }
-    }
+    // sexRatio?: {
+    //   male: number
+    //   female: number
+    // }
   }
 }

@@ -1,4 +1,7 @@
 /* eslint-disable camelcase */
+
+import { Country } from '../types/geography'
+
 /* eslint-disable no-console */
 const fs = require('fs')
 
@@ -12,9 +15,9 @@ try {
 const world: World = JSON.parse(String(unparsed))
 
 export interface AgeDistribution {
-  male: number
-  total: number
-  female: number
+  males: number
+  females: number
+  percent: number
 }
 
 export interface LifeExpectancy {
@@ -49,6 +52,283 @@ export interface Value {
 export interface RankValue {
   rank: number
   value: number
+}
+
+export const countryCodes: { [key in CountryNames]: string } = {
+  "cote_d'_ivoire": 'CI',
+  // 'british indian Ocean Territory': 'IO',
+  // cape_verde: 'CV',
+  // falkland_islands: 'FK',
+  // french_guiana: 'GF',
+  // french_southern_territories: 'TF',
+  // guadeloupe: 'GP',
+  // martinique: 'MQ',
+  // mayotte: 'YT',
+  // netherlands_antilles: 'AN',
+  // reunion: 'RE',
+  // saint_helena: 'SH',
+  // south_georgia_and_the_south_sandwich_islands: 'GS',
+  // swaziland: 'SZ',
+  afghanistan: 'AF',
+  akrotiri: '',
+  albania: 'AL',
+  algeria: 'DZ',
+  american_samoa: 'AS',
+  andorra: 'AD',
+  angola: 'AO',
+  anguilla: 'AI',
+  antarctica: 'AQ',
+  antigua_and_barbuda: 'AG',
+  arctic_ocean: '',
+  argentina: 'AR',
+  armenia: 'AM',
+  aruba: 'AW',
+  ashmore_and_cartier_islands: 'AT',
+  atlantic_ocean: '',
+  australia: 'AU',
+  austria: 'AT',
+  azerbaijan: 'AZ',
+  bahamas_the: 'BS',
+  bahrain: 'BH',
+  bangladesh: 'BD',
+  barbados: 'BB',
+  belarus: 'BY',
+  belgium: 'BE',
+  belize: 'BZ',
+  benin: 'BJ',
+  bermuda: 'BM',
+  bhutan: 'BT',
+  bolivia: 'BO',
+  bosnia_and_herzegovina: 'BA',
+  botswana: 'BW',
+  bouvet_island: 'BV',
+  brazil: 'BR',
+  british_indian_ocean_territory: 'IO',
+  british_virgin_islands: 'VG',
+  brunei: 'BN',
+  bulgaria: 'BG',
+  burkina_faso: 'BF',
+  burma: 'MM',
+  burundi: 'BI',
+  cabo_verde: 'CV',
+  cambodia: 'KH',
+  cameroon: 'CM',
+  canada: 'CA',
+  cayman_islands: 'KY',
+  central_african_republic: 'CF',
+  chad: 'TD',
+  chile: 'CL',
+  china: 'cn',
+  christmas_island: 'CX',
+  clipperton_island: '',
+  cocos_keeling_islands: 'CC',
+  colombia: 'CO',
+  comoros: 'KM',
+  congo_democratic_republic_of_the: 'CD',
+  congo_republic_of_the: 'CG',
+  cook_islands: 'CK',
+  coral_sea_islands: '',
+  costa_rica: 'CR',
+  croatia: 'HR',
+  cuba: 'CU',
+  curacao: 'CW',
+  cyprus: 'CY',
+  czechia: 'CZ',
+  denmark: 'DK',
+  dhekelia: '',
+  djibouti: 'DJ',
+  dominica: 'DM',
+  dominican_republic: 'DO',
+  ecuador: 'EC',
+  egypt: 'EG',
+  el_salvador: 'SV',
+  equatorial_guinea: 'GQ',
+  eritrea: 'ER',
+  estonia: 'EE',
+  eswatini: 'SZ',
+  ethiopia: 'ET',
+  european_union: 'EU',
+  falkland_islands_islas_malvinas: 'FK',
+  faroe_islands: 'FO',
+  fiji: 'FJ',
+  finland: 'FI',
+  france: 'FR',
+  french_polynesia: 'PF',
+  gabon: 'GA',
+  gambia_the: 'GM',
+  gaza_strip: 'PS',
+  georgia: 'GE',
+  germany: 'DE',
+  ghana: 'GH',
+  gibraltar: 'GI',
+  greece: 'GR',
+  greenland: 'GL',
+  grenada: 'GD',
+  guam: 'GU',
+  guatemala: 'GT',
+  guernsey: 'GG',
+  guinea_bissau: 'GW',
+  guinea: 'GN',
+  guyana: 'GY',
+  haiti: 'HT',
+  heard_island_and_mcdonald_islands: 'HM',
+  holy_see_vatican_city: 'VA',
+  honduras: 'HN',
+  hong_kong: 'HK',
+  hungary: 'HU',
+  iceland: 'IS',
+  india: 'IN',
+  indian_ocean: '',
+  indonesia: 'ID',
+  iran: 'IR',
+  iraq: 'IQ',
+  ireland: 'IE',
+  isle_of_man: 'IM',
+  israel: 'IL',
+  italy: 'IT',
+  jamaica: 'JM',
+  jan_mayen: '',
+  japan: 'JP',
+  jersey: 'JE',
+  jordan: 'JO',
+  kazakhstan: 'KZ',
+  kenya: 'KE',
+  kiribati: 'KI',
+  korea_north: 'KP',
+  korea_south: 'KR',
+  kosovo: 'XK',
+  kuwait: 'KW',
+  kyrgyzstan: 'KG',
+  laos: 'LA',
+  latvia: 'LV',
+  lebanon: 'LB',
+  lesotho: 'LS',
+  liberia: 'LR',
+  libya: 'LY',
+  liechtenstein: 'LI',
+  lithuania: 'LT',
+  luxembourg: 'LU',
+  macau: 'MO',
+  madagascar: 'MG',
+  malawi: 'MW',
+  malaysia: 'MY',
+  maldives: 'MV',
+  mali: 'ML',
+  malta: 'MT',
+  marshall_islands: 'MH',
+  mauritania: 'MR',
+  mauritius: 'MU',
+  mexico: 'MX',
+  micronesia_federated_states_of: 'FM',
+  moldova: 'MD',
+  monaco: 'MC',
+  mongolia: 'MN',
+  montenegro: 'ME',
+  montserrat: 'MS',
+  morocco: 'MA',
+  mozambique: 'MZ',
+  namibia: 'NA',
+  nauru: 'NR',
+  navassa_island: '',
+  nepal: 'NP',
+  netherlands: 'NL',
+  new_caledonia: 'NC',
+  new_zealand: 'NZ',
+  nicaragua: 'NI',
+  niger: 'NE',
+  nigeria: 'NG',
+  niue: 'NU',
+  norfolk_island: 'NF',
+  north_macedonia: 'MK',
+  northern_mariana_islands: 'MP',
+  norway: 'NO',
+  oman: 'OM',
+  pacific_ocean: '',
+  pakistan: 'PK',
+  palau: 'PW',
+  palestine: 'PS',
+  panama: 'PA',
+  papua_new_guinea: 'PG',
+  paracel_islands: '',
+  paraguay: 'PY',
+  peru: 'PE',
+  philippines: 'PH',
+  pitcairn_islands: 'PN',
+  poland: 'PL',
+  portugal: 'PT',
+  puerto_rico: 'PR',
+  qatar: 'QA',
+  romania: 'RO',
+  russia: 'RU',
+  rwanda: 'RW',
+  saint_barthelemy: 'BL',
+  saint_helena_ascension_and_tristan_da_cunha: 'SH',
+  saint_kitts_and_nevis: 'KN',
+  saint_lucia: 'LC',
+  saint_martin: 'MF',
+  saint_pierre_and_miquelon: 'PM',
+  saint_vincent_and_the_grenadines: 'VC',
+  samoa: 'AS',
+  san_marino: 'SM',
+  sao_tome_and_principe: 'ST',
+  saudi_arabia: 'SA',
+  senegal: 'SN',
+  serbia: 'SP',
+  seychelles: 'SC',
+  sierra_leone: 'SL',
+  singapore: 'SG',
+  sint_maarten: 'SX',
+  slovakia: 'SK',
+  slovenia: 'SI',
+  solomon_islands: 'SB',
+  somalia: 'SO',
+  south_africa: 'ZA',
+  south_georgia_and_south_sandwich_islands: 'GS',
+  south_sudan: 'SS',
+  southern_ocean: '',
+  spain: 'ES',
+  spratly_islands: '',
+  sri_lanka: 'LK',
+  sudan: 'SD',
+  suriname: 'SR',
+  svalbard: 'SJ',
+  sweden: 'SE',
+  switzerland: 'CH',
+  syria: 'SY',
+  tadjikistan: 'TJ',
+  taiwan: 'TW',
+  tajikistan: 'TJ',
+  tanzania: 'TZ',
+  thailand: 'TH',
+  timor_leste: 'TL',
+  togo: 'TG',
+  tokelau: 'TK',
+  tonga: 'TO',
+  trinidad_and_tobago: 'TT',
+  tunisia: 'TN',
+  turkey: 'TR',
+  turkmenistan: 'TM',
+  turks_and_caicos_islands: 'TC',
+  tuvalu: 'TV',
+  uganda: 'UG',
+  ukraine: 'UA',
+  united_arab_emirates: 'AE',
+  united_kingdom: 'UK',
+  united_states: 'US',
+  uruguay: 'UY',
+  uzbekistan: 'UZ',
+  vanuatu: 'VU',
+  venezuela: 'VE',
+  vietnam: 'VN',
+  virgin_islands: 'VI',
+  wake_island: '',
+  wallis_and_futuna: 'WF',
+  west_bank: 'PS',
+  western_sahara: 'EH',
+  world: '',
+  yemen: 'YE',
+  zambia: 'ZM',
+  zimbabwe: 'ZW',
 }
 
 const coteDivoire = world.countries["cote_d'_ivoire"]
@@ -248,7 +528,7 @@ const {
   zimbabwe,
 } = world.countries
 
-const output = [
+const countries = {
   afghanistan,
   albania,
   algeria,
@@ -442,38 +722,279 @@ const output = [
   zambia,
   zimbabwe,
   coteDivoire,
-].map((countryObject) => {
-  const country: GenericCountry = countryObject.data
+}
 
-  return {
+const output = []
+
+for (const key in countries) {
+  const country = countries[key as keyof typeof countries].data
+  const {
+    geography,
+    people,
+    transportation,
+    economy,
+    energy,
+    transnational_issues,
+    military_and_security,
+  } = country
+
+  const getReligionBreakdown = (): {
+    atheismAgnosticism?: Value
+    believers?: Value
+  } => {
+    const atheismAgnosticism = people.religions.religion.find((religion) =>
+      religion.name?.includes('atheist')
+    )
+
+    return {
+      atheismAgnosticism: atheismAgnosticism?.percent
+        ? {
+            value: atheismAgnosticism.percent,
+            units: '%',
+          }
+        : undefined,
+      believers: atheismAgnosticism?.percent
+        ? {
+            value: 100 - atheismAgnosticism.percent,
+            units: '%',
+          }
+        : undefined,
+    }
+  }
+
+  const capital = people.major_urban_areas?.places?.find(
+    (place) => place.is_capital
+  )
+
+  const countryCode = countryCodes[key as CountryNames]
+
+  const getFlag = () => {
+    try {
+      const flag: Buffer = fs.readFileSync(
+        `./flags/svg/${countryCode.toLowerCase()}.svg`
+      )
+      return flag.toString()
+    } catch (e) {
+      return undefined
+    }
+  }
+
+  const formatted = {
     name: country.name,
-    countryCode: country.communications.internet.country_code.slice(1),
-    statistics: {
-      geography: {
-        landArea: country.geography.area.land,
-        waterArea: country.geography.area.water,
-        totalArea: country.geography.area.total,
-        lowestPoint: country.geography.elevation.lowest_point,
-        highestPoint: country.geography.elevation.highest_point,
-        arableLand: country.geography.land_use.by_sector.arable_land,
+    countryCode,
+    flag: getFlag(),
+    geography: {
+      area: {
+        land: geography.area.land
+          ? {
+              value: geography.area.land?.value,
+              units: geography.area.land?.units || 'sq km',
+            }
+          : undefined,
+        water: geography.area.water
+          ? {
+              value: geography.area.water?.value,
+              units: geography.area.water?.units || 'sq km',
+            }
+          : undefined,
+        total: geography.area.total
+          ? {
+              value: geography.area.total?.value,
+              units: geography.area.total?.units || 'sq km',
+            }
+          : undefined,
+        arable: geography.land_use.by_sector.arable_land
+          ? {
+              value: geography.land_use.by_sector.arable_land.value,
+              units: geography.land_use.by_sector.arable_land.units || 'sq km',
+            }
+          : undefined,
       },
-      unemployment: {
-        youthPercentage: country.people.youth_unemployment?.total,
-        totalPercentage: country.economy.unemployment_rate?.annual_values?.pop(),
+      elevation: {
+        lowest: geography.elevation.lowest_point,
+        highest:
+          typeof geography.elevation.highest_point !== 'string'
+            ? geography.elevation.highest_point
+            : undefined,
       },
-      infrastructure: {
-        roadLength: country.transportation?.roadways?.total,
-        railLength: country.transportation?.railways?.total,
-        electricity: {
-          populationWithoutAccess:
-            country.energy?.electricity.access?.population_without_electricity,
-        },
+      capital: capital
+        ? {
+            name: capital.place,
+            population: capital.population,
+          }
+        : undefined,
+    },
+    economics: {
+      gdpPerCapita: economy.gdp.per_capita_purchasing_power_parity
+        ? {
+            value: economy.gdp.per_capita_purchasing_power_parity.annual_values.pop()
+              ?.value,
+            rank: economy.gdp.per_capita_purchasing_power_parity.global_rank,
+          }
+        : undefined,
+      populationBelowPovertyLine: undefined,
+      militarySpending: military_and_security?.expenditures
+        ? {
+            value: military_and_security.expenditures.annual_values.pop()
+              ?.value,
+            units: '$',
+            rank: military_and_security.expenditures.global_rank,
+          }
+        : undefined,
+    },
+    unemployment: {
+      youth: people.youth_unemployment?.total,
+      total: economy.unemployment_rate?.annual_values?.pop(),
+    },
+    infrastructure: {
+      length: {
+        road: transportation?.roadways?.total
+          ? {
+              units: 'km',
+              ...transportation.roadways.total,
+            }
+          : undefined,
+        rail: transportation?.railways?.total
+          ? {
+              value: transportation.railways.total.length,
+              units: 'km',
+            }
+          : undefined,
+      },
+      electricity: {
+        populationWithoutAccess: energy?.electricity.access
+          ?.total_electrification
+          ? {
+              value:
+                100 - energy.electricity.access.total_electrification.value,
+              units: '%',
+            }
+          : undefined,
       },
     },
-  }
-})
+    religion: getReligionBreakdown(),
+    population: {
+      total: people.population.total,
+      minority: people.ethnic_groups.ethnicity
+        .map((ethnicity) => {
+          if (ethnicity.percent && ethnicity.percent >= 50) {
+            return 0
+          }
 
-fs.writeFileSync('./compiled/world.json', JSON.stringify(output), 'utf-8')
+          return ethnicity.percent
+        })
+        .reduce((a, b) => {
+          if (!a || !b) {
+            return 0
+          }
+
+          return a + b
+        }),
+      vulnerableGroups: {
+        refugees: transnational_issues.refugees_and_iternally_displaced_persons?.refugees?.by_country
+          .map((v) => {
+            if (typeof v.people === 'string') {
+              return 0
+            }
+
+            return v.people
+          })
+          .reduce((a, b) => a + b),
+      },
+    },
+    environment: {
+      emissions: {
+        rank:
+          energy?.carbon_dioxide_emissions_from_consumption_of_energy
+            ?.global_rank,
+        megatons:
+          energy?.carbon_dioxide_emissions_from_consumption_of_energy
+            ?.megatonnes,
+      },
+      crudeOilConsumption: energy?.natural_gas?.consumption
+        ? {
+            rank: energy.natural_gas.consumption.global_rank,
+            cubicMeters: energy.natural_gas.consumption.cubic_metres,
+          }
+        : undefined,
+      energyBreakdownPercent: {
+        fossilFuels: undefined,
+        nuclearFuels: undefined,
+        renewableSources: undefined,
+      }, // expand
+    },
+    education: {
+      literacy: {
+        male: people.literacy?.male,
+        female: people.literacy?.female,
+        total: people.literacy?.total_population,
+      },
+      averageEducation: {
+        male: people.school_life_expectancy?.male,
+        female: people.school_life_expectancy?.female,
+        total: people.school_life_expectancy?.total,
+      },
+      educationExpenditure: people.education_expenditures
+        ? {
+            value: people.education_expenditures?.percent_of_gdp,
+            units: 'percent of GDP',
+          }
+        : undefined,
+    },
+    health: {
+      obesity: people.adult_obesity
+        ? {
+            percentageOfAdults: people.adult_obesity.percent_of_adults,
+            rank: people.adult_obesity.global_rank,
+          }
+        : undefined,
+      access: {
+        doctors: people.physicians_density
+          ? {
+              value: people.physicians_density.physicians_per_1000_population,
+              units: 'per thousand people',
+            }
+          : undefined,
+        hospitalBeds: people.hospital_bed_density
+          ? {
+              value: people.hospital_bed_density.beds_per_1000_population,
+              units: 'per thousand people',
+            }
+          : undefined,
+      },
+      LifeExpectancy: people.life_expectancy_at_birth?.total_population?.value,
+      childrenPerWoman: people.total_fertility_rate?.children_born_per_woman,
+      contraceptivePrevalence: people.contraceptive_prevalence_rate
+        ? {
+            units: people.contraceptive_prevalence_rate.units,
+            value: people.contraceptive_prevalence_rate.value,
+          }
+        : undefined,
+      meanAgeOfBirth: people.mothers_mean_age_at_first_birth?.age,
+      ageDistribution: people.age_structure
+        ? {
+            '0-14': people.age_structure['0_to_14'],
+            '15-24': people.age_structure['15_to_24'],
+            '25-54': people.age_structure['25_to_54'],
+            '55-64': people.age_structure['55_to_64'],
+            '65-120': people.age_structure['65_and_over'],
+          }
+        : undefined,
+    },
+  } as Country
+
+  output.push(formatted)
+}
+
+fs.writeFileSync(
+  './compiled/countries.json',
+  JSON.stringify({
+    countries: output,
+    createdAt: Date.now(),
+    countryCodes: output.map(({ countryCode }) => countryCode).filter(Boolean),
+  }),
+  'utf-8'
+)
 
 export type Direction = 'N' | 'S' | 'W' | 'E'
 
@@ -731,6 +1252,13 @@ export interface GenericCountry {
     education_expenditures?: {
       percent_of_gdp: number
       global_rank: number
+      date?: string
+    }
+    literacy?: {
+      definition: string
+      total_population?: Value
+      male?: Value
+      female?: Value
       date?: string
     }
     school_life_expectancy?: {
@@ -1587,6 +2115,8 @@ interface World {
     parsed_time: string
   }
 }
+
+type CountryNames = keyof typeof world.countries | 'palestine' | 'tadjikistan'
 
 interface CountryObject {
   data: GenericCountry

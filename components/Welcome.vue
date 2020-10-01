@@ -1,7 +1,7 @@
 <template>
-  <main>
+  <main class="theme-gradient">
     <form class="start-game" :action="`/room/${roomName}`">
-      <section class="intro">
+      <section class="intro theme-background theme-color">
         <article>
           <h1>Welcome to Globalissimo</h1>
           <p>
@@ -35,6 +35,8 @@
 import randomWords from 'random-words'
 import { defineComponent } from '@vue/composition-api'
 import { variants } from '~/types/game'
+import { Country } from '~/types/geography'
+import { RootState } from '~/store/index'
 
 export default defineComponent({
   data: () => ({
@@ -59,28 +61,24 @@ export default defineComponent({
       }
     },
   },
+  computed: {
+    countries(): Country[] {
+      return (this.$store.state as RootState).countries
+    },
+  },
 })
 </script>
 <style>
 main {
   display: flex;
   min-height: 100vh;
-  color: var(--text-color-light);
-  background: linear-gradient(
-      180deg,
-      var(--soft-mint) 0%,
-      var(--warm-sand) 100%
-    ),
-    var(--soft-blue);
 }
-
 .start-game {
   width: 100%;
   margin: auto;
   display: flex;
   max-width: 70rem;
   min-height: 30rem;
-  background: #fff;
   align-items: stretch;
 }
 
@@ -95,17 +93,5 @@ main {
 }
 .variant-picker {
   background: var(--soft-mint);
-}
-
-@media (prefers-color-scheme: dark) {
-  main {
-    color: var(--text-color-dark);
-    background: linear-gradient(
-        180deg,
-        var(--dark-blue) 0%,
-        var(--soft-mint) 100%
-      ),
-      var(--soft-blue);
-  }
 }
 </style>
