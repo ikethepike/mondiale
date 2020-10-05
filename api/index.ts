@@ -3,9 +3,9 @@ import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
 import { Game, Player, Command, palette } from '../types/game'
 import { GameFeed } from '../lib/SSE'
-// import { countryCodes } from '../george/compiled/countries.json'
-import { getRandomValue } from '../lib/retrieval'
-// import { countryCodes } from '../george/compiled/countries.json'
+import { countryCodes } from '../george/compiled/countries.json'
+import { getRandomValue, getRandomValues } from '../lib/retrieval'
+import { CountryCode } from '../types/geography'
 
 const games: { [key: string]: Game } = {}
 const feeds: { [key: string]: GameFeed } = {}
@@ -88,35 +88,26 @@ const api: ServerMiddleware = async (req, res, next) => {
         case 'wave-at-player':
           feeds[gameId].update({ event: 'player-waved' }, playerId)
           break
-        // case 'round-finish':
-        //   const ids = Object.keys(games[gameId].players)
-        //   const lists = {}
-        //   const points = {}
+        case "start-game":
+          const lists: {[playerId: string] : CountryCode[]} = {}
+          
+          const ids = Object.keys(games[gameId].players)          
+          ids.forEach( (id) => {
+            lists[id] = getRandomValues(countryCodes, 5)
+          })
 
-        //   ids.forEach((id) => {
-        //     lists[id] = getRandomValues(Object.keys(countryCodes), 5)
-        //     points[id] = undefined
-        //   })
-
-        //   const stat = 'obesity'
-
-        //   feeds[gameId].update({
-        //     event: 'new-round',
-        //     stat,
-        //     lists,
-        //   })
-
-        //   rounds[gameId].push({
-        //     number: 0,
-        //     points,
-        //   })
-
-        //   break
+          feeds[gameId].update({
+            event: 'new-round',
+            stat: 'obesity',
+            lists,
+          })
+          break          
         default:
           res.statusCode = 400
           res.statusMessage = 'Unrecognized command sent'
           res.end()
           break
+        
       }
     } catch (e) {
       res.statusCode = 500

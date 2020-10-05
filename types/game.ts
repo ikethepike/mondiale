@@ -47,6 +47,20 @@ export type Command =
   | { event: 'join-game'; playerId: string; gameId: string }
   | { event: 'wave-at-player'; playerId: string; gameId: string }
 
+export type Update =
+  | { event: 'name-set'; game: Game }
+  | {
+      event: 'new-round'
+      stat: Stat
+      lists: {
+        [playerId: string]: CountryCode[]
+      }
+    }
+  | { event: 'player-joined'; game: Game }
+  | { event: 'player-waved' }
+
+  
+
 export type Stat =
   | keyof Country['health']
   | Country['economics']
@@ -79,14 +93,3 @@ export const palette: {
 
 export const stats: Stat[] = ['obesity']
 
-export type Update =
-  | { event: 'name-set'; game: Game }
-  | {
-      event: 'new-round'
-      stat: Stat
-      lists: {
-        [key: string]: CountryCode[]
-      }
-    }
-  | { event: 'player-joined'; game: Game }
-  | { event: 'player-waved' }

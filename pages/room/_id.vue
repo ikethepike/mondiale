@@ -83,14 +83,14 @@ export default defineComponent({
         case 'name-set':
           this.game = update.game
           break
-        case 'new-round':
-          // console.log(update.lists)
-          break
         case 'player-joined':
           this.game = update.game
           break
         case 'player-waved':
           this.waving = true
+        case 'new-round': 
+          console.log(update)
+          break
         default:
           break
       }
