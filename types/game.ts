@@ -45,6 +45,7 @@ export type Command =
   | { event: 'start-game'; playerId: string; gameId: string }
   | { event: 'submit-order'; playerId: string; gameId: string }
   | { event: 'join-game'; playerId: string; gameId: string }
+  | { event: 'wave-at-player'; playerId: string; gameId: string }
 
 export type Stat =
   | keyof Country['health']
@@ -88,3 +89,4 @@ export type Update =
       }
     }
   | { event: 'player-joined'; game: Game }
+  | { event: 'player-waved' }

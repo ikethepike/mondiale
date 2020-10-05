@@ -16,9 +16,16 @@ h2,
 h3,
 h4,
 h5,
-h6 {
+h6,
+ul,
+ol,
+li {
   margin: 0;
   padding: 0;
+}
+
+ul {
+  list-style: none;
 }
 
 /* Palette */
@@ -52,10 +59,25 @@ body {
   border: none;
   display: block;
   color: inherit;
+  cursor: pointer;
   padding: 1.625rem 0;
-  background: transparent;
   font-family: inherit;
+  background: transparent;
   border-top: 1px solid currentColor;
+}
+.line-button:disabled {
+  cursor: not-allowed;
+  background-image: linear-gradient(
+    45deg,
+    #252525 2.38%,
+    transparent 2.38%,
+    transparent 50%,
+    #252525 50%,
+    #252525 52.38%,
+    transparent 52.38%,
+    transparent 100%
+  );
+  background-size: 30px;
 }
 
 label {

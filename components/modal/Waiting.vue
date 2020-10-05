@@ -15,9 +15,14 @@
             <li
               v-for="p in game.players"
               :key="p.id"
-              :class="{ ready: p.name }"
+              :class="{ ready: p.name, self: p.id === player.id }"
+              @click="wave(p.id)"
             >
-              {{ p.name || p.id }}
+              <a v-if="isPlayerHost" title="Kick player" role="button">✕</a>
+              <span class="name">
+                {{ p.name || p.id }}
+                <span v-if="p.id === game.host" class="host">( host )</span>
+              </span>
             </li>
           </ul>
         </div>
@@ -31,7 +36,7 @@
           </button>
         </template>
         <template v-else>
-          <div class="status">
+          <div class="status form-content">
             <span v-if="playerCounts.ready !== playerCounts.total"
               >Waiting for other players...</span
             >
@@ -68,6 +73,14 @@ export default defineComponent({
         playerId: this.player.id,
       })
     },
+    wave(playerId: string) {
+      if (playerId === this.player.id) return
+      update({
+        event: 'wave-at-player',
+        gameId: this.game.id,
+        playerId,
+      })
+    },
   },
   computed: {
     playerCounts(): {
@@ -92,5 +105,20 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+ul {
+  margin: 1rem 0;
+}
+li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+li a {
+  cursor: pointer;
+  margin-right: 1rem;
+}
+li.self .name {
+  text-decoration: underline;
 }
 </style>

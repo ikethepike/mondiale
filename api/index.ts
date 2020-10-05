@@ -29,12 +29,13 @@ const api: ServerMiddleware = async (req, res, next) => {
   }
 
   if (req.originalUrl.includes('/api/feed/')) {
-    const gameId = req.originalUrl.split('/').pop()
+    const path = req.originalUrl.split('/')
+    const playerId = path.pop()
+    const gameId = path.pop()
     if (!feeds[gameId]) {
       feeds[gameId] = new GameFeed(gameId)
     }
-    feeds[gameId].addConnection(res)
-    console.log('connection', feeds[gameId])
+    feeds[gameId].addConnection(res, playerId)
     return
   }
 
@@ -83,6 +84,9 @@ const api: ServerMiddleware = async (req, res, next) => {
             event: 'player-joined',
             game: games[gameId],
           })
+          break
+        case 'wave-at-player':
+          feeds[gameId].update({ event: 'player-waved' }, playerId)
           break
         // case 'round-finish':
         //   const ids = Object.keys(games[gameId].players)

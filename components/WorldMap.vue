@@ -1573,6 +1573,7 @@ export default defineComponent({
 <style scoped>
 .map-wrapper {
   height: 100vh;
+  /* background: var(--warm-sand); */
 }
 svg {
   width: 100%;
@@ -1580,7 +1581,10 @@ svg {
 path {
   fill: transparent;
 }
+path[data-name] {
+  fill: #ccc;
+}
 path:hover {
-  fill: red;
+  fill: var(--soft-mint);
 }
 </style>

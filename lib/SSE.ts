@@ -3,19 +3,23 @@ import { Update } from '../types/game'
 
 export class GameFeed {
   gameId: string
-  feeds: SSE[]
+  feeds: { [playerId: string]: SSE }
 
   constructor(gameId: string) {
     this.gameId = gameId
-    this.feeds = []
+    this.feeds = {}
   }
 
-  addConnection(res: ServerResponse) {
-    this.feeds.push(new SSE(res))
+  addConnection(res: ServerResponse, playerId: string) {
+    this.feeds[playerId] = new SSE(res)
   }
 
-  update(data: Update): void {
-    this.feeds.forEach((feed) => feed.update(data))
+  update(data: Update, playerId: string | undefined = undefined): void {
+    if (!playerId) {
+      Object.values(this.feeds).forEach((feed) => feed.update(data))
+      return
+    }
+    this.feeds[playerId].update(data)
   }
 }
 

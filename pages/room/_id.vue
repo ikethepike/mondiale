@@ -8,6 +8,7 @@
         :color="player.color"
       />
     </div>
+    <span v-if="waving" style="font-size: 20rem">WAVING</span>
     <ModalSetName v-if="!player.name" :player="player" :game="game" />
     <ModalWaiting v-if="player.name" :game="game" :player="player" />
     <WorldMap />
@@ -22,6 +23,7 @@ import { Game, Player, Update } from '~/types/game'
 
 interface GameData {
   game?: Game
+  waving: boolean
   playerId: string
   roomName: string
   playerName: string
@@ -31,6 +33,7 @@ export default defineComponent({
   data: (): GameData => ({
     playerId: '',
     roomName: '',
+    waving: false,
     playerName: '',
     game: undefined,
   }),
@@ -70,11 +73,9 @@ export default defineComponent({
       throw new Error('Game not instantiated')
     }
 
-    const { game } = this
+    const { game, playerId } = this
 
-    // Let's notify other players that we've joined
-
-    const source = new EventSource(`/api/feed/${game.id}`)
+    const source = new EventSource(`/api/feed/${game.id}/${playerId}`)
     source.addEventListener('message', (message) => {
       const update: Update = JSON.parse(message.data)
 
@@ -88,11 +89,14 @@ export default defineComponent({
         case 'player-joined':
           this.game = update.game
           break
+        case 'player-waved':
+          this.waving = true
         default:
           break
       }
     })
 
+    // Notify other players that we have joined
     source.addEventListener('open', () => {
       update({
         event: 'join-game',
