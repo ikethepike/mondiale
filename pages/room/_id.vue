@@ -8,67 +8,35 @@
         :color="player.color"
       />
     </div>
-
-    <div v-if="!player.name" class="modal-wrapper">
-      <a role="button" class="modal-background"></a>
-
-      <article class="modal theme-highlight-background theme-color slide-block">
-        <form class="modal" @submit.prevent="setName">
-          <div class="form-content">
-            <h1>Welcome!</h1>
-            <p>Add copy...</p>
-
-            <div class="input-wrapper slide-block">
-              <label for="name">Name</label>
-              <input id="name" v-model="playerName" type="text" />
-            </div>
-          </div>
-
-          <button class="line-button">Save</button>
-        </form>
-      </article>
-    </div>
-
+    <ModalSetName v-if="!player.name" :player="player" :game="game" />
+    <ModalWaiting v-if="player.name" :game="game" :player="player" />
     <WorldMap />
   </div>
 </template>
 <script lang="ts">
 import { defineComponent } from '@vue/composition-api'
 import { parseCookie } from '../../lib/cookie'
-import { Command, Game, Player } from '~/types/game'
-
-const update = async (cmd: Command) => {
-  try {
-    const response = await fetch(process.env.baseUrl + 'api/commands', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(cmd),
-    })
-    return await response.json()
-  } catch (e) {
-    return undefined
-  }
-}
+import { update } from '../../lib/CSE'
+import { generateHash } from '../../lib/hashing'
+import { Game, Player, Update } from '~/types/game'
 
 interface GameData {
   game?: Game
-  player?: Player
+  playerId: string
   roomName: string
   playerName: string
 }
 
 export default defineComponent({
   data: (): GameData => ({
+    playerId: '',
     roomName: '',
     playerName: '',
     game: undefined,
-    player: undefined,
   }),
-  async asyncData({ params, req }) {
-    const cookies = parseCookie(String(req.headers.cookie))
+  async asyncData({ params, res, req }) {
+    const cookies = parseCookie(String(req?.headers?.cookie))
+    const playerId = cookies.player || generateHash()
 
     const response: {
       game: Game
@@ -76,44 +44,61 @@ export default defineComponent({
     } = await update({
       gameId: params.id,
       event: 'connect',
-      playerId: cookies.player,
+      playerId,
     })
 
     const { game, player } = response
 
+    res.setHeader(
+      'set-cookie',
+      `player=${playerId}; httpOnly; Max-Age=${60 * 60 * 24 * 7}`
+    )
+
     return {
       game,
-      player,
+      playerId: player.id,
     }
   },
-  methods: {
-    async setName() {
-      const { game, player, playerName } = this
-
-      await update({
-        playerId: String(player?.id),
-        gameId: String(game?.id),
-        event: 'set-name',
-        name: playerName,
-      })
+  computed: {
+    player(): Player | undefined {
+      if (!this.game) return undefined
+      return this.game.players[this.playerId]
     },
   },
   mounted() {
     if (!this.game) {
       throw new Error('Game not instantiated')
     }
-    const source = new EventSource(`/api/feed/${this.game.id}`)
+
+    const { game } = this
+
+    // Let's notify other players that we've joined
+
+    const source = new EventSource(`/api/feed/${game.id}`)
     source.addEventListener('message', (message) => {
-      console.log(message)
-      try {
-        const game: Game = JSON.parse(message.data)
-        this.game = game
-        if (this.player) {
-          this.player = game.players[this.player.id]
-        }
-      } catch (e) {
-        console.log('failed to parse response')
+      const update: Update = JSON.parse(message.data)
+
+      switch (update.event) {
+        case 'name-set':
+          this.game = update.game
+          break
+        case 'new-round':
+          // console.log(update.lists)
+          break
+        case 'player-joined':
+          this.game = update.game
+          break
+        default:
+          break
       }
+    })
+
+    source.addEventListener('open', () => {
+      update({
+        event: 'join-game',
+        playerId: this.playerId,
+        gameId: game.id,
+      })
     })
   },
 })
@@ -137,29 +122,5 @@ export default defineComponent({
 .player-progress {
   width: 100%;
   position: absolute;
-}
-
-.modal-wrapper {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  position: fixed;
-}
-.modal-background {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  background: rgba(#fff, 0.3);
-}
-.modal {
-  width: 95%;
-  margin: auto;
-  max-width: 43rem;
-  position: relative;
-}
-.form-content {
-  padding: 1rem;
 }
 </style>

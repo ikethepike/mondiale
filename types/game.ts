@@ -1,3 +1,5 @@
+import { CountryCode, Country } from './geography'
+
 export type Variant =
   | 'world'
   | 'europe'
@@ -15,25 +17,39 @@ export const variants: Variant[] = [
   'asia',
 ]
 
+export interface Round {
+  number: number
+  points: {
+    [playerId: string]: number | undefined
+  }
+}
+
 export interface Game {
   id: string
-  players: { [key: string]: Player }
+  host: string
+  players: { [playerId: string]: Player }
   variant: Variant
+  rounds: Round[]
 }
 
 export interface Player {
   id: string
   name?: string
-  ready: boolean
   progress: number
   color: PaletteValues
 }
 
 export type Command =
-  | { event: 'connect'; gameId: string; playerId?: string }
+  | { event: 'connect'; gameId: string; playerId: string }
   | { event: 'set-name'; playerId: string; gameId: string; name: string }
-  | { event: 'move'; playerId: string; steps: number }
+  | { event: 'start-game'; playerId: string; gameId: string }
+  | { event: 'submit-order'; playerId: string; gameId: string }
+  | { event: 'join-game'; playerId: string; gameId: string }
 
+export type Stat =
+  | keyof Country['health']
+  | Country['economics']
+  | Country['geography']
 export interface Turn {
   number: number
   player: Player
@@ -59,3 +75,16 @@ export const palette: {
   warmSand: '#f1b982',
   hiorAnge: '#ec6247',
 }
+
+export const stats: Stat[] = ['obesity']
+
+export type Update =
+  | { event: 'name-set'; game: Game }
+  | {
+      event: 'new-round'
+      stat: Stat
+      lists: {
+        [key: string]: CountryCode[]
+      }
+    }
+  | { event: 'player-joined'; game: Game }

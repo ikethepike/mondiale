@@ -2,11 +2,14 @@
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
 import { Game, Player, Command, palette } from '../types/game'
-import { generateHash } from '../lib/hashing'
-import { SSE } from '../lib/SSE'
+import { GameFeed } from '../lib/SSE'
 // import { countryCodes } from '../george/compiled/countries.json'
+import { getRandomValue } from '../lib/retrieval'
+// import { countryCodes } from '../george/compiled/countries.json'
+
 const games: { [key: string]: Game } = {}
-const feeds: { [key: string]: SSE } = {}
+const feeds: { [key: string]: GameFeed } = {}
+// const rounds: { [gameId: string]: Round[] } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
   return new Promise((resolve) => {
@@ -20,9 +23,6 @@ const fetchBody = (req: IncomingMessage): Promise<any> => {
   })
 }
 
-const randomValue = (array: any) =>
-  array[Math.floor(Math.random() * array.length)]
-
 const api: ServerMiddleware = async (req, res, next) => {
   if (!req.originalUrl?.includes('/api/')) {
     return next()
@@ -31,53 +31,83 @@ const api: ServerMiddleware = async (req, res, next) => {
   if (req.originalUrl.includes('/api/feed/')) {
     const gameId = req.originalUrl.split('/').pop()
     if (!feeds[gameId]) {
-      feeds[gameId] = new SSE(res)
+      feeds[gameId] = new GameFeed(gameId)
     }
-    return feeds[gameId].connect()
+    feeds[gameId].addConnection(res)
+    console.log('connection', feeds[gameId])
+    return
   }
 
   if (req.originalUrl === '/api/commands') {
     try {
       const command: Command = JSON.parse(await fetchBody(req))
-
+      const { gameId, playerId } = command
       switch (command.event) {
         case 'connect':
-          const id = command.gameId
-          const player: Player = {
-            ready: false,
-            id: generateHash(),
-            progress: Math.floor(Math.random() * 100),
-            color: randomValue(Object.values(palette)),
-          }
-
-          if (!games[id]) {
-            games[id] = {
-              id,
-              variant: 'world',
+          if (!games[gameId]) {
+            games[gameId] = {
+              id: gameId,
+              rounds: [],
               players: {},
+              host: command.playerId,
+              variant: 'world',
             }
           }
 
-          games[id].players[player.id] = player
-          res.setHeader('Set-Cookie', 'wow="comeon"; Max-Age=40000;')
-          res.setHeader('Set-Cookie', `player=${player.id}; Max-Age=3000;`)
+          const player: Player = games[gameId].players[playerId] || {
+            id: playerId,
+            progress: Math.floor(Math.random() * 100),
+            color: getRandomValue(Object.values(palette)),
+          }
+
+          games[gameId].players[playerId] = player
 
           res.end(
             JSON.stringify({
               player,
-              game: games[id],
+              game: games[gameId],
             })
           )
           break
         case 'set-name':
-          const { gameId, playerId, name } = command
+          const { name } = command
           games[gameId].players[playerId].name = name
-          games[gameId].players[playerId].ready = true
-          feeds[gameId].update(games[gameId])
+          feeds[gameId].update({
+            event: 'name-set',
+            game: games[gameId],
+          })
           res.end()
           break
-        case 'move':
+        case 'join-game':
+          feeds[gameId].update({
+            event: 'player-joined',
+            game: games[gameId],
+          })
           break
+        // case 'round-finish':
+        //   const ids = Object.keys(games[gameId].players)
+        //   const lists = {}
+        //   const points = {}
+
+        //   ids.forEach((id) => {
+        //     lists[id] = getRandomValues(Object.keys(countryCodes), 5)
+        //     points[id] = undefined
+        //   })
+
+        //   const stat = 'obesity'
+
+        //   feeds[gameId].update({
+        //     event: 'new-round',
+        //     stat,
+        //     lists,
+        //   })
+
+        //   rounds[gameId].push({
+        //     number: 0,
+        //     points,
+        //   })
+
+        //   break
         default:
           res.statusCode = 400
           res.statusMessage = 'Unrecognized command sent'

@@ -62,6 +62,30 @@ label {
   display: block;
 }
 
+.modal-wrapper {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: fixed;
+}
+.modal-background {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: rgba(#fff, 0.3);
+}
+.modal {
+  width: 95%;
+  margin: auto;
+  max-width: 43rem;
+  position: relative;
+}
+.form-content {
+  padding: 1rem;
+}
+
 // theme adaptive backgrounds
 .theme-gradient {
   background: linear-gradient(

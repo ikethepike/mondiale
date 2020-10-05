@@ -18,7 +18,15 @@ const config: NuxtConfig = {
   css: [],
 
   plugins: ['~/plugins/api'],
-  components: true,
+  components: {
+    dirs: [
+      '~/components',
+      {
+        path: '~/components/modal/',
+        prefix: 'Modal',
+      },
+    ],
+  },
   buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api'],
 
   // Modules (https://go.nuxtjs.dev/config-modules)
