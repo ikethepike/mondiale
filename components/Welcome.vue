@@ -33,7 +33,7 @@
 </template>
 <script lang="ts">
 import randomWords from 'random-words'
-import { defineComponent } from '@vue/composition-api'
+import { defineComponent } from '@nuxtjs/composition-api'
 import { variants } from '~/types/game'
 import { Country } from '~/types/geography'
 import { RootState } from '~/store/index'

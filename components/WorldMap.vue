@@ -1552,7 +1552,7 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent } from '@vue/composition-api'
+import { defineComponent } from '@nuxtjs/composition-api'
 if (process.client) {
   require('svg-pan-zoom-container')
 }

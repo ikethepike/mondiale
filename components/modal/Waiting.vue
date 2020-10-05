@@ -48,18 +48,18 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from '@vue/composition-api'
-import { Game, Player } from '../../types/game'
+import { defineComponent } from '@nuxtjs/composition-api'
+import { Player } from '../../types/game'
 import { update } from '~/lib/CSE'
 
 export default defineComponent({
   props: {
     player: {
-      type: Object as PropType<Player>,
+      type: Object,
       required: true,
     },
     game: {
-      type: Object as PropType<Game>,
+      type: Object,
       required: true,
     },
   },
@@ -87,7 +87,7 @@ export default defineComponent({
       total: number
       ready: number
     } {
-      const players = Object.values(this.game.players)
+      const players: Player[] = Object.values(this.game.players)
 
       return {
         total: players.length,

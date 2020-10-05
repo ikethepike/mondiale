@@ -20,18 +20,17 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from '@vue/composition-api'
+import { defineComponent } from '@nuxtjs/composition-api'
 import { update } from '~/lib/CSE'
-import { Game, Player } from '~/types/game'
 
 export default defineComponent({
   props: {
     player: {
-      type: Object as PropType<Player>,
+      type: Object,
       required: true,
     },
     game: {
-      type: Object as PropType<Game>,
+      type: Object,
       required: true,
     },
   },
