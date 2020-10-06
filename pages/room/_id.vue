@@ -10,7 +10,12 @@
     </div>
     <span v-if="waving" style="font-size: 20rem">WAVING</span>
     <ModalSetName v-if="!player.name" :player="player" :game="game" />
-    <ModalWaiting v-if="player.name" :game="game" :player="player" />
+    <ModalWaiting
+      v-if="player.name && rounds.length === 0"
+      :game="game"
+      :player="player"
+    />
+    <!-- <CardView v-if="countryCodes.length" :country-codes="countryCodes" /> -->
     <WorldMap />
   </div>
 </template>
@@ -19,10 +24,12 @@ import { defineComponent } from '@nuxtjs/composition-api'
 import { parseCookie } from '../../lib/cookie'
 import { update } from '../../lib/CSE'
 import { generateHash } from '../../lib/hashing'
-import { Game, Player, Update } from '~/types/game'
+import { Game, Player, Round, Update } from '~/types/game'
+import { CountryCode } from '~/types/geography'
 
 interface GameData {
   game?: Game
+  rounds: Round[]
   waving: boolean
   playerId: string
   roomName: string
@@ -31,6 +38,7 @@ interface GameData {
 
 export default defineComponent({
   data: (): GameData => ({
+    rounds: [],
     playerId: '',
     roomName: '',
     waving: false,
@@ -67,6 +75,11 @@ export default defineComponent({
       if (!this.game) return undefined
       return this.game.players[this.playerId]
     },
+    countryCodes(): CountryCode[] {
+      const latest = [...this.rounds].pop()
+      if (!latest) return []
+      return latest.lists[this.playerId]
+    },
   },
   mounted() {
     if (!this.game) {
@@ -88,8 +101,13 @@ export default defineComponent({
           break
         case 'player-waved':
           this.waving = true
-        case 'new-round': 
-          console.log(update)
+          break
+        case 'new-round':
+          this.rounds.push({
+            number: this.rounds.length,
+            points: {},
+            lists: update.lists,
+          })
           break
         default:
           break

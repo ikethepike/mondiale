@@ -5,7 +5,8 @@
       :key="country.countryCode"
       class="country-card"
     >
-      {{ country.name }}
+      <div class="flag" v-html="country.flag" />
+      <span class="name">{{ country.name }}</span>
     </div>
   </div>
 </template>
@@ -15,10 +16,6 @@ import { Country } from '~/types/geography'
 
 export default Vue.extend({
   props: {
-    cardsInView: {
-      type: Number,
-      default: 5,
-    },
     countryCodes: {
       type: Array,
       required: true,
@@ -26,8 +23,10 @@ export default Vue.extend({
   },
   computed: {
     selectedCountries(): Country[] {
-      const countries = this.$store.state.countries
-      return countries.slice(0, this.cardsInView)
+      const countries: Country[] = this.$store.state.countries
+      return countries.filter((country) =>
+        this.countryCodes.includes(country.countryCode)
+      )
     },
   },
 })

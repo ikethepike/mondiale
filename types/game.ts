@@ -22,6 +22,9 @@ export interface Round {
   points: {
     [playerId: string]: number | undefined
   }
+  lists: {
+    [playerId: string]: CountryCode[]
+  }
 }
 
 export interface Game {
@@ -59,8 +62,6 @@ export type Update =
   | { event: 'player-joined'; game: Game }
   | { event: 'player-waved' }
 
-  
-
 export type Stat =
   | keyof Country['health']
   | Country['economics']
@@ -92,4 +93,3 @@ export const palette: {
 }
 
 export const stats: Stat[] = ['obesity']
-
