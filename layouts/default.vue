@@ -66,6 +66,7 @@ body {
   display: block;
   color: inherit;
   cursor: pointer;
+  font-size: 100%;
   font-family: inherit;
   background: transparent;
   padding: var(--button-padding);
