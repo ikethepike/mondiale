@@ -74,17 +74,7 @@ body {
 }
 .line-button:disabled {
   cursor: not-allowed;
-  background-image: linear-gradient(
-    45deg,
-    #252525 2.38%,
-    transparent 2.38%,
-    transparent 50%,
-    #252525 50%,
-    #252525 52.38%,
-    transparent 52.38%,
-    transparent 100%
-  );
-  background-size: 30px;
+  text-decoration: line-through;
 }
 
 label {
