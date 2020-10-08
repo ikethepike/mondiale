@@ -33,7 +33,9 @@
         <input v-model="variants[variant]" name="variant" type="hidden" />
         <footer class="variant-nav">
           <a role="button" class="arrow left" @click="nextVariant">←</a>
-          <span class="variant-title">{{ variants[variant] }}</span>
+          <span class="variant-title">{{
+            variants[variant].replace('-', ' ')
+          }}</span>
           <a role="button" class="arrow right" @click="prevVariant">→</a>
         </footer>
       </section>
@@ -92,11 +94,13 @@ main {
   min-height: 100vh;
 }
 .start-game {
+  z-index: 2;
   width: 100%;
   margin: auto;
   display: flex;
   max-width: 70rem;
   min-height: 30rem;
+  position: relative;
   align-items: stretch;
 }
 
@@ -113,6 +117,7 @@ main {
   display: flex;
   position: relative;
   flex-flow: column nowrap;
+  text-transform: capitalize;
   background: var(--soft-mint);
   justify-content: space-between;
 }

@@ -114,12 +114,14 @@ const api: ServerMiddleware = async (req, res, next) => {
           delete games[gameId].players[command.targetPlayer]
 
           // Kick the player
-          feeds[gameId].update(
-            {
-              event: 'player-kicked',
-            },
-            command.targetPlayer
-          )
+          if (feeds[gameId].feeds[command.targetPlayer]) {
+            feeds[gameId].update(
+              {
+                event: 'player-kicked',
+              },
+              command.targetPlayer
+            )
+          }
 
           feeds[gameId].removeConnection(command.targetPlayer)
 
