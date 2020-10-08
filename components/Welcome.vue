@@ -131,8 +131,8 @@ main {
   bottom: 0;
   user-select: none;
   line-height: 100%;
-  vertical-align: middle;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
 }
 .arrow {
   font-size: 2rem;
