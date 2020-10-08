@@ -24,7 +24,7 @@ import { defineComponent } from '@nuxtjs/composition-api'
 import { parseCookie } from '../../lib/cookie'
 import { update } from '../../lib/CSE'
 import { generateHash } from '../../lib/hashing'
-import { Game, Player, Round, Update } from '~/types/game'
+import { Game, GameLength, Player, Round, Update, Variant } from '~/types/game'
 import { CountryCode } from '~/types/geography'
 
 interface GameData {
@@ -45,7 +45,7 @@ export default defineComponent({
     playerName: '',
     game: undefined,
   }),
-  async asyncData({ params, res, req }) {
+  async asyncData({ params, res, req, query }) {
     const cookies = parseCookie(String(req?.headers?.cookie))
     const playerId = cookies.player || generateHash()
 
@@ -56,6 +56,16 @@ export default defineComponent({
       gameId: params.id,
       event: 'connect',
       playerId,
+      variant: query.variant as Variant,
+      options: query.variant
+        ? {
+            treaties: query.treaties === 'on',
+            gender: query.gender === 'on',
+            leaders: query.leaders === 'on',
+            easyMode: query.easy === 'on',
+            length: (query.length as GameLength) || 'medium',
+          }
+        : undefined,
     })
 
     const { game, player } = response
@@ -83,25 +93,14 @@ export default defineComponent({
       return latest.lists[this.playerId]
     },
   },
-  // watch: {
-  //   game() {
-  //     if (!this.game) return
-
-  //     Object.keys(this.game.players).forEach((playerId) => {
-  //       this.waving[playerId] = false
-  //     })
-  //   },
-  // },
   mounted() {
     if (!this.game) {
       throw new Error('Game not instantiated')
     }
 
-    const url = `${location.protocol}//${location.host}/room/${this.game.id}`
-
-    history.replaceState(null, this.game.id, url)
-
     const { game, playerId } = this
+    const url = `${location.protocol}//${location.host}/room/${game.id}`
+    history.replaceState(null, game.id, url)
 
     const source = new EventSource(`/api/feed/${game.id}/${playerId}`)
     source.addEventListener('message', (message) => {

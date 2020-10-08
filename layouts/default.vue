@@ -133,10 +133,14 @@ p {
   background: #fff;
 }
 .theme-highlight-background {
+  transition: fill 0.3s;
   background: var(--hior-ange);
 }
 .theme-color {
   color: var(--text-color-light);
+}
+html body .theme-highlight-fill[class] {
+  fill: var(--hior-ange);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -156,6 +160,9 @@ p {
   }
   .theme-highlight-background {
     background: var(--dark-blue);
+  }
+  html body .theme-highlight-fill[class] {
+    fill: var(--dark-blue);
   }
 }
 

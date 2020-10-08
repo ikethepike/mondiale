@@ -51,7 +51,8 @@ const api: ServerMiddleware = async (req, res, next) => {
               rounds: [],
               players: {},
               host: command.playerId,
-              variant: 'world',
+              options: command.options,
+              variant: command.variant || 'world',
             }
           }
 

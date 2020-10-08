@@ -20,7 +20,7 @@
       <section class="variant-picker">
         <section
           v-show="view.settings"
-          class="settings theme-background theme-color"
+          class="settings theme-highlight-background theme-color"
         >
           <h2>Game settings</h2>
           <p>These are the game settings</p>
@@ -41,6 +41,21 @@
               <input type="checkbox" name="leaders" />
               Political Leaders
             </label>
+          </div>
+          <div class="settings-wrapper">
+            <label>
+              <input type="checkbox" name="easy" />
+              Easy difficulty
+            </label>
+          </div>
+
+          <div class="settings-wrapper">
+            <label for="length">Game Length</label>
+            <select name="length">
+              <option value="short">Short</option>
+              <option value="medium" selected>Medium</option>
+              <option value="long">Long</option>
+            </select>
           </div>
         </section>
 

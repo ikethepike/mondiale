@@ -23,6 +23,7 @@ export interface Game {
   players: { [playerId: string]: Player }
   variant: Variant
   rounds: Round[]
+  options: GameOptions
 }
 
 export interface Player {
@@ -33,7 +34,13 @@ export interface Player {
 }
 
 export type Command =
-  | { event: 'connect'; gameId: string; playerId: string }
+  | {
+      event: 'connect'
+      gameId: string
+      playerId: string
+      variant?: Variant
+      options?: GameOptions
+    }
   | { event: 'set-name'; playerId: string; gameId: string; name: string }
   | { event: 'start-game'; playerId: string; gameId: string }
   | { event: 'submit-order'; playerId: string; gameId: string }
@@ -73,6 +80,16 @@ export interface Turn {
   number: number
   player: Player
 }
+
+export interface GameOptions {
+  treaties: boolean
+  gender: boolean
+  leaders: boolean
+  easyMode: boolean
+  length: GameLength
+}
+
+export type GameLength = 'short' | 'medium' | 'long'
 
 export type PaletteValues =
   | '#0d2f61'
