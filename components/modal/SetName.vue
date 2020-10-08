@@ -8,7 +8,12 @@
           <header>
             <h1>Welcome!</h1>
           </header>
-          <p>Add copy...</p>
+          <p>
+            Drückeberger und Trinkhalle stagnieren verhärmt Zeche. Die dufte
+            Schenkelbürste katzbuckeln. Das einfältig Schindluder abkupfern.
+            Fressalien und Kerbholz katzbuckeln bräsig Weltschmerz. Das
+            blindwütig Lausbub meucheln!
+          </p>
 
           <div class="input-wrapper slide-block">
             <label for="name">Name</label>
@@ -53,3 +58,13 @@ export default defineComponent({
   },
 })
 </script>
+<style scoped>
+.input-wrapper {
+  display: flex;
+  padding: 1.125rem 0;
+  align-items: center;
+}
+.input-wrapper label {
+  padding-right: 1rem;
+}
+</style>

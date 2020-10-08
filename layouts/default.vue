@@ -78,7 +78,21 @@ body {
 }
 
 label {
-  display: block;
+  display: inline-block;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  width: 100%;
+  border: none;
+  height: 2rem;
+  background: #fff;
+}
+
+p {
+  letter-spacing: 0.5px;
+  line-height: 140%;
 }
 
 .modal-wrapper {
