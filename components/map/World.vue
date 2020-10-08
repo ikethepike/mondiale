@@ -80,8 +80,9 @@ export default defineComponent({
 </script>
 <style scoped>
 svg {
-  width: 80%;
+  width: 100%;
   margin: auto;
+  height: auto;
   display: block;
 }
 svg > * {
