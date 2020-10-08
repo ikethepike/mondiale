@@ -86,13 +86,16 @@ const api: ServerMiddleware = async (req, res, next) => {
           })
           break
         case 'wave-at-player':
-          feeds[gameId].update({ event: 'player-waved' }, playerId)
+          feeds[gameId].update(
+            { event: 'player-waved', playerId },
+            command.targetPlayer
+          )
           break
-        case "start-game":
-          const lists: {[playerId: string] : CountryCode[]} = {}
-          
-          const ids = Object.keys(games[gameId].players)          
-          ids.forEach( (id) => {
+        case 'start-game':
+          const lists: { [playerId: string]: CountryCode[] } = {}
+
+          const ids = Object.keys(games[gameId].players)
+          ids.forEach((id) => {
             lists[id] = getRandomValues(countryCodes, 5)
           })
 
@@ -101,13 +104,36 @@ const api: ServerMiddleware = async (req, res, next) => {
             stat: 'obesity',
             lists,
           })
-          break          
+          break
+        case 'kick-player':
+          if (playerId !== games[gameId].host) {
+            res.statusCode = 401
+            return res.end()
+          }
+
+          delete games[gameId].players[command.targetPlayer]
+
+          // Kick the player
+          feeds[gameId].update(
+            {
+              event: 'player-kicked',
+            },
+            command.targetPlayer
+          )
+
+          feeds[gameId].removeConnection(command.targetPlayer)
+
+          // Update the game for the rest of the players
+          feeds[gameId].update({
+            event: 'game-updated',
+            game: games[gameId],
+          })
+          break
         default:
           res.statusCode = 400
           res.statusMessage = 'Unrecognized command sent'
           res.end()
           break
-        
       }
     } catch (e) {
       res.statusCode = 500

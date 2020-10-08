@@ -8,12 +8,12 @@
         :color="player.color"
       />
     </div>
-    <span v-if="waving" style="font-size: 20rem">WAVING</span>
     <ModalSetName v-if="!player.name" :player="player" :game="game" />
     <ModalWaiting
       v-if="player.name && rounds.length === 0"
       :game="game"
       :player="player"
+      :waving="waving"
     />
     <!-- <CardView v-if="countryCodes.length" :country-codes="countryCodes" /> -->
     <WorldMap />
@@ -30,10 +30,10 @@ import { CountryCode } from '~/types/geography'
 interface GameData {
   game?: Game
   rounds: Round[]
-  waving: boolean
   playerId: string
   roomName: string
   playerName: string
+  waving: { [playerId: string]: boolean }
 }
 
 export default defineComponent({
@@ -41,7 +41,7 @@ export default defineComponent({
     rounds: [],
     playerId: '',
     roomName: '',
-    waving: false,
+    waving: {},
     playerName: '',
     game: undefined,
   }),
@@ -60,10 +60,12 @@ export default defineComponent({
 
     const { game, player } = response
 
-    res.setHeader(
-      'set-cookie',
-      `player=${playerId}; httpOnly; Max-Age=${60 * 60 * 24 * 7}`
-    )
+    if (res) {
+      res.setHeader(
+        'set-cookie',
+        `player=${playerId}; httpOnly; Max-Age=${60 * 60 * 24 * 7}`
+      )
+    }
 
     return {
       game,
@@ -81,6 +83,15 @@ export default defineComponent({
       return latest.lists[this.playerId]
     },
   },
+  // watch: {
+  //   game() {
+  //     if (!this.game) return
+
+  //     Object.keys(this.game.players).forEach((playerId) => {
+  //       this.waving[playerId] = false
+  //     })
+  //   },
+  // },
   mounted() {
     if (!this.game) {
       throw new Error('Game not instantiated')
@@ -94,13 +105,12 @@ export default defineComponent({
 
       switch (update.event) {
         case 'name-set':
-          this.game = update.game
-          break
         case 'player-joined':
+        case 'game-updated':
           this.game = update.game
           break
         case 'player-waved':
-          this.waving = true
+          this.waving[update.playerId] = true
           break
         case 'new-round':
           this.rounds.push({
@@ -108,6 +118,9 @@ export default defineComponent({
             points: {},
             lists: update.lists,
           })
+          break
+        case 'player-kicked':
+          this.$router.push('/?kicked=1')
           break
         default:
           break

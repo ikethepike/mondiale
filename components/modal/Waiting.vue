@@ -15,11 +15,20 @@
             <li
               v-for="p in game.players"
               :key="p.id"
-              :class="{ ready: p.name, self: p.id === player.id }"
-              @click="wave(p.id)"
+              :class="{
+                ready: p.name,
+                self: p.id === player.id,
+                waving: waving[p.id],
+              }"
             >
-              <a v-if="isPlayerHost" title="Kick player" role="button">✕</a>
-              <span class="name">
+              <a
+                v-if="isPlayerHost"
+                title="Kick player"
+                role="button"
+                @click="kick(p.id)"
+                >✕</a
+              >
+              <span class="name" @click="wave(p.id)">
                 {{ p.name || p.id }}
                 <span v-if="p.id === game.host" class="host">( host )</span>
               </span>
@@ -62,6 +71,10 @@ export default defineComponent({
       type: Object,
       required: true,
     },
+    waving: {
+      type: Object,
+      required: true,
+    },
   },
   methods: {
     startGame(): void {
@@ -73,12 +86,22 @@ export default defineComponent({
         playerId: this.player.id,
       })
     },
-    wave(playerId: string) {
-      if (playerId === this.player.id) return
+    wave(targetPlayer: string) {
+      if (targetPlayer === this.player.id) return
       update({
         event: 'wave-at-player',
         gameId: this.game.id,
-        playerId,
+        playerId: this.player.id,
+        targetPlayer,
+      })
+    },
+    kick(targetPlayer: string) {
+      if (this.game.host !== this.player.id) return
+      update({
+        event: 'kick-player',
+        gameId: this.game.id,
+        playerId: this.player.id,
+        targetPlayer,
       })
     },
   },
@@ -120,5 +143,9 @@ li a {
 }
 li.self .name {
   text-decoration: underline;
+}
+li.waving::after {
+  margin-left: 0.5em;
+  content: 'Waving!';
 }
 </style>

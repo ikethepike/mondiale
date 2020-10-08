@@ -17,16 +17,6 @@ export const variants: Variant[] = [
   'asia',
 ]
 
-export interface Round {
-  number: number
-  points: {
-    [playerId: string]: number | undefined
-  }
-  lists: {
-    [playerId: string]: CountryCode[]
-  }
-}
-
 export interface Game {
   id: string
   host: string
@@ -48,7 +38,18 @@ export type Command =
   | { event: 'start-game'; playerId: string; gameId: string }
   | { event: 'submit-order'; playerId: string; gameId: string }
   | { event: 'join-game'; playerId: string; gameId: string }
-  | { event: 'wave-at-player'; playerId: string; gameId: string }
+  | {
+      event: 'wave-at-player'
+      playerId: string
+      gameId: string
+      targetPlayer: string
+    }
+  | {
+      event: 'kick-player'
+      playerId: string
+      gameId: string
+      targetPlayer: string
+    }
 
 export type Update =
   | { event: 'name-set'; game: Game }
@@ -60,7 +61,9 @@ export type Update =
       }
     }
   | { event: 'player-joined'; game: Game }
-  | { event: 'player-waved' }
+  | { event: 'player-waved'; playerId: string }
+  | { event: 'player-kicked' }
+  | { event: 'game-updated'; game: Game }
 
 export type Stat =
   | keyof Country['health']
@@ -93,3 +96,13 @@ export const palette: {
 }
 
 export const stats: Stat[] = ['obesity']
+
+export interface Round {
+  number: number
+  points: {
+    [playerId: string]: number | undefined
+  }
+  lists: {
+    [playerId: string]: CountryCode[]
+  }
+}

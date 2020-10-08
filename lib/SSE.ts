@@ -14,6 +14,10 @@ export class GameFeed {
     this.feeds[playerId] = new SSE(res)
   }
 
+  removeConnection(playerId) {
+    delete this.feeds[playerId]
+  }
+
   update(data: Update, playerId: string | undefined = undefined): void {
     if (!playerId) {
       Object.values(this.feeds).forEach((feed) => feed.update(data))

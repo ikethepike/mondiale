@@ -986,11 +986,24 @@ for (const key in countries) {
   output.push(formatted)
 }
 
+let merged = {}
+Object.values(countries).forEach(
+  (country) => (merged = { ...merged, ...country })
+)
+
+const generateFlatMap = (generic: GenericCountry) => {
+  const keys = Object.keys(generic)
+  const skeleton = {}
+
+  while (mapping) {}
+}
+
 fs.writeFileSync(
   './compiled/countries.json',
   JSON.stringify({
     countries: output,
     createdAt: Date.now(),
+    flatMap: generateFlatMap(merged as GenericCountry),
     countryCodes: output.map(({ countryCode }) => countryCode).filter(Boolean),
   }),
   'utf-8'

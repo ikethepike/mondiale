@@ -17,7 +17,7 @@ const config: NuxtConfig = {
   },
   css: [],
 
-  plugins: ['~/plugins/api'],
+  plugins: [],
   components: {
     dirs: [
       '~/components',
