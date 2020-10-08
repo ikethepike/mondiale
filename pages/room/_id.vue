@@ -97,6 +97,10 @@ export default defineComponent({
       throw new Error('Game not instantiated')
     }
 
+    const url = `${location.protocol}//${location.host}/room/${this.game.id}`
+
+    history.replaceState(null, this.game.id, url)
+
     const { game, playerId } = this
 
     const source = new EventSource(`/api/feed/${game.id}/${playerId}`)

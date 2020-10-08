@@ -18,12 +18,38 @@
         <button class="line-button">Start Game</button>
       </section>
       <section class="variant-picker">
+        <section
+          v-show="view.settings"
+          class="settings theme-background theme-color"
+        >
+          <h2>Game settings</h2>
+          <p>These are the game settings</p>
+          <div class="settings-wrapper">
+            <label>
+              <input type="checkbox" name="treaties" />
+              Treaties
+            </label>
+          </div>
+          <div class="settings-wrapper">
+            <label>
+              <input type="checkbox" name="gender" />
+              Gender Comparisons
+            </label>
+          </div>
+          <div class="settings-wrapper">
+            <label>
+              <input type="checkbox" name="leaders" />
+              Political Leaders
+            </label>
+          </div>
+        </section>
+
         <div class="variant-display">
           <header>
             <a
               class="settings-button"
               role="button"
-              @click="view.settings = true"
+              @click="view.settings = !view.settings"
               >⚙</a
             >
           </header>
@@ -98,6 +124,7 @@ main {
   width: 100%;
   margin: auto;
   display: flex;
+  overflow: hidden;
   max-width: 70rem;
   min-height: 30rem;
   position: relative;
@@ -148,6 +175,15 @@ main {
   padding: 0 1rem;
   pointer-events: auto;
 }
+.settings {
+  top: 10%;
+  left: 10%;
+  width: 80%;
+  height: 80%;
+  padding: 1.5rem;
+  position: absolute;
+  animation: settings-slide 0.5s 1;
+}
 
 #copyright {
   left: 0;
@@ -155,5 +191,14 @@ main {
   bottom: 1rem;
   text-align: center;
   position: absolute;
+}
+
+@keyframes settings-slide {
+  0% {
+    transform: scale(0.8) translateY(-100%) rotateX(90deg);
+  }
+  50% {
+    transform: scale(0.9) translateY(-50%) rotateX(90deg);
+  }
 }
 </style>
