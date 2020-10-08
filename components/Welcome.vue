@@ -38,6 +38,8 @@
         </footer>
       </section>
     </form>
+
+    <small id="copyright" class="theme-color">© Nicholas, Lovisa, Isaac</small>
   </main>
 </template>
 <script lang="ts">
@@ -137,5 +139,13 @@ main {
 .arrow {
   font-size: 2rem;
   padding: 0 1rem;
+}
+
+#copyright {
+  left: 0;
+  width: 100%;
+  bottom: 1rem;
+  text-align: center;
+  position: absolute;
 }
 </style>
