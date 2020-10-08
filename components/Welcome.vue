@@ -122,11 +122,13 @@ main {
   display: flex;
   position: absolute;
   align-items: center;
+  pointer-events: none;
   justify-content: flex-end;
   padding: var(--button-padding);
 }
 .settings-button {
   font-size: 1.75rem;
+  pointer-events: auto;
 }
 .variant-picker footer {
   left: 0;
@@ -139,6 +141,7 @@ main {
 .arrow {
   font-size: 2rem;
   padding: 0 1rem;
+  pointer-events: auto;
 }
 
 #copyright {
