@@ -25,6 +25,10 @@ const config: NuxtConfig = {
         path: '~/components/modal/',
         prefix: 'Modal',
       },
+      {
+        path: '~/components/map/',
+        prefix: 'Map',
+      },
     ],
   },
   buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api'],

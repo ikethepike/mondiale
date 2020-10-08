@@ -27,6 +27,10 @@ li {
 ul {
   list-style: none;
 }
+a[role='button'] {
+  cursor: pointer;
+  user-select: none;
+}
 
 /* Palette */
 :root {
@@ -38,6 +42,8 @@ ul {
   --soft-mint: #90bcb5;
   --warm-sand: #f1b982;
   --hior-ange: #ec6247;
+
+  --button-padding: 1.625rem;
 }
 
 // Typography
@@ -60,9 +66,9 @@ body {
   display: block;
   color: inherit;
   cursor: pointer;
-  padding: 1.625rem 0;
   font-family: inherit;
   background: transparent;
+  padding: var(--button-padding);
   border-top: 1px solid currentColor;
 }
 .line-button:disabled {

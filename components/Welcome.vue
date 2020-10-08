@@ -19,32 +19,48 @@
       </section>
       <section class="variant-picker">
         <div class="variant-display">
-          <!-- vector graphics here  -->
+          <header>
+            <a
+              class="settings-button"
+              role="button"
+              @click="view.settings = true"
+              >⚙</a
+            >
+          </header>
+
+          <MapWorld />
         </div>
         <input v-model="variants[variant]" name="variant" type="hidden" />
-        <div class="variant-nav">
+        <footer class="variant-nav">
           <a role="button" class="arrow left" @click="nextVariant">←</a>
           <span class="variant-title">{{ variants[variant] }}</span>
           <a role="button" class="arrow right" @click="prevVariant">→</a>
-        </div>
+        </footer>
       </section>
     </form>
   </main>
 </template>
 <script lang="ts">
 import randomWords from 'random-words'
-import { defineComponent } from '@nuxtjs/composition-api'
+import { defineComponent, reactive } from '@nuxtjs/composition-api'
 import { variants } from '~/types/game'
 import { Country } from '~/types/geography'
 import { RootState } from '~/store/index'
 
 export default defineComponent({
-  data: () => ({
-    variants,
-    variant: 0,
-    started: false,
-    roomName: randomWords({ exactly: 3, join: '-' }),
-  }),
+  setup() {
+    const state = reactive({
+      variants,
+      variant: 0,
+      started: false,
+      roomName: randomWords({ exactly: 3, join: '-' }),
+      view: {
+        settings: false,
+      },
+    })
+
+    return state
+  },
   methods: {
     nextVariant() {
       if (this.variants[this.variant + 1]) {
@@ -92,6 +108,34 @@ main {
   justify-content: space-between;
 }
 .variant-picker {
+  display: flex;
+  position: relative;
+  flex-flow: column nowrap;
   background: var(--soft-mint);
+  justify-content: space-between;
+}
+.variant-picker header,
+.variant-picker footer {
+  width: 100%;
+  display: flex;
+  position: absolute;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--button-padding);
+}
+.settings-button {
+  font-size: 1.75rem;
+}
+.variant-picker footer {
+  left: 0;
+  bottom: 0;
+  user-select: none;
+  line-height: 100%;
+  vertical-align: middle;
+  justify-content: center;
+}
+.arrow {
+  font-size: 2rem;
+  padding: 0 1rem;
 }
 </style>

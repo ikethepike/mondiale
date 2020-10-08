@@ -16,7 +16,7 @@
       :waving="waving"
     />
     <!-- <CardView v-if="countryCodes.length" :country-codes="countryCodes" /> -->
-    <WorldMap />
+    <GameMap />
   </div>
 </template>
 <script lang="ts">
