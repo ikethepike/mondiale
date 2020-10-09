@@ -1719,7 +1719,7 @@ export default defineComponent({
   props: {
     highlighted: {
       type: Array,
-      default: [],
+      default: () => [],
     },
   },
   mounted() {
@@ -1747,13 +1747,6 @@ path {
 }
 path[data-name] {
   fill: #ccc;
-}
-path[data-name]::after {
-  content: '';
-  display: block;
-  background: red;
-  width: 2rem;
-  height: 2rem;
 }
 path:hover {
   fill: var(--soft-mint);
