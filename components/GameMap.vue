@@ -1,6 +1,6 @@
 <template>
   <div
-    class="map-wrapper"
+    class="game-map"
     data-zoom-on-wheel="zoom-amount: 0.01; max-scale: 20;"
     data-pan-on-drag="button: left;"
   >
@@ -1735,7 +1735,7 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.map-wrapper {
+.game-map {
   height: 100vh;
   /* background: var(--warm-sand); */
 }
@@ -1746,9 +1746,9 @@ path {
   fill: transparent;
 }
 path[data-name] {
-  fill: #ccc;
+  fill: var(--soft-mint);
 }
 path:hover {
-  fill: var(--soft-mint);
+  /* fill: var(--soft-mint); */
 }
 </style>

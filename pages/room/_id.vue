@@ -1,5 +1,5 @@
 <template>
-  <div class="main-board">
+  <div class="main-board theme-background">
     <div v-if="game" class="player-progress">
       <PlayerProgress
         v-for="player in game.players"
@@ -8,15 +8,17 @@
         :color="player.color"
       />
     </div>
-    <ModalSetName v-if="!player.name" :player="player" :game="game" />
+    <ModalSetName v-if="phase.naming" :player="player" :game="game" />
     <ModalWaiting
-      v-if="player.name && rounds.length === 0"
+      v-if="phase.waiting"
       :game="game"
       :player="player"
       :waving="waving"
     />
     <!-- <CardView v-if="countryCodes.length" :country-codes="countryCodes" /> -->
-    <GameMap />
+    <div :class="{ playing: phase.playing }" class="map-wrapper">
+      <GameMap />
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -83,6 +85,26 @@ export default defineComponent({
     }
   },
   computed: {
+    phase(): {
+      naming: boolean
+      waiting: boolean
+      playing: boolean
+    } {
+      const { player } = this
+      if (!player) {
+        return {
+          naming: false,
+          waiting: false,
+          playing: false,
+        }
+      }
+
+      return {
+        naming: !player.name,
+        playing: this.rounds.length !== 0,
+        waiting: Boolean(player.name) && this.rounds.length === 0,
+      }
+    },
     player(): Player | undefined {
       if (!this.game) return undefined
       return this.game.players[this.playerId]
@@ -160,5 +182,14 @@ export default defineComponent({
 .player-progress {
   width: 100%;
   position: absolute;
+}
+.map-wrapper {
+  transition: 0.5s;
+  filter: grayscale(1);
+  transform: scale(0.9);
+}
+.map-wrapper.playing {
+  transform: scale(1);
+  filter: grayscale(0);
 }
 </style>
