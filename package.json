@@ -21,7 +21,8 @@
     "random-words": "^1.1.1",
     "svg-country-flags": "^1.2.8",
     "svg-pan-zoom": "^3.6.1",
-    "svg-pan-zoom-container": "^0.2.7"
+    "svg-pan-zoom-container": "^0.2.7",
+    "vuedraggable": "^2.24.1"
   },
   "devDependencies": {
     "@nuxt/types": "^2.14.6",

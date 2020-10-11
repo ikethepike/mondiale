@@ -15,10 +15,11 @@
       :player="player"
       :waving="waving"
     />
-    <!-- <CardView v-if="countryCodes.length" :country-codes="countryCodes" /> -->
     <div :class="{ playing: phase.playing }" class="map-wrapper">
       <GameMap />
     </div>
+
+    <Deck :codes="['SE', 'DK', 'US', 'FR', 'JP']" />
   </div>
 </template>
 <script lang="ts">

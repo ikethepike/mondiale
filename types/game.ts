@@ -57,6 +57,10 @@ export type Command =
       gameId: string
       targetPlayer: string
     }
+  | {
+      event: 'submit-country-order'
+      order: CountryCode[]
+    }
 
 export type Update =
   | { event: 'name-set'; game: Game }

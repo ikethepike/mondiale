@@ -153,7 +153,6 @@ html body .theme-highlight-fill[class] {
       var(--soft-blue);
   }
   .theme-background {
-    // background: #020202;
     background: #252525;
   }
   .theme-color {
