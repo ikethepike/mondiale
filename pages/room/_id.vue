@@ -16,7 +16,7 @@
       :waving="waving"
     />
     <div :class="{ playing: phase.playing }" class="map-wrapper">
-      <GameMap />
+      <GameMap :highlighted="['SE', 'DK', 'US', 'FR', 'JP']" />
     </div>
 
     <Deck :codes="['SE', 'DK', 'US', 'FR', 'JP']" />

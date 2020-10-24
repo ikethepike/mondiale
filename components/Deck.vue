@@ -53,7 +53,7 @@ export default defineComponent({
   },
 })
 </script>
-<style scoped>
+<style scoped lang="scss">
 #player-drawer {
   left: 0;
   bottom: 0;
@@ -72,6 +72,7 @@ export default defineComponent({
   width: 20%;
   overflow: hidden;
   position: relative;
+  animation: country-card 1s 1;
 }
 .flag {
   top: 0;
@@ -79,5 +80,17 @@ export default defineComponent({
   width: 100%;
   height: 100%;
   position: absolute;
+}
+
+@for $i from 1 through 10 {
+  .country:nth-child(#{$i}) {
+    animation-duration: #{($i * 0.3) + 0.8 + s};
+  }
+}
+
+@keyframes country-card {
+  0% {
+    transform: translateY(100%);
+  }
 }
 </style>
