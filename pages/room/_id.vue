@@ -16,10 +16,12 @@
       :waving="waving"
     />
     <div :class="{ playing: phase.playing }" class="map-wrapper">
-      <GameMap :highlighted="['SE', 'DK', 'US', 'FR', 'JP']" />
+      <GameMap :highlighted="countryCodes" />
     </div>
 
-    <Deck :codes="['SE', 'DK', 'US', 'FR', 'JP']" />
+    <footer v-if="countryCodes.length" id="answers">
+      <Deck :codes="countryCodes" />
+    </footer>
   </div>
 </template>
 <script lang="ts">

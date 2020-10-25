@@ -1,5 +1,5 @@
 <template>
-  <footer v-if="codes.length" id="player-drawer">
+  <footer id="player-drawer" :class="{ 'has-animated': hasAnimated }">
     <button @click="submit">Submit</button>
     <draggable v-model="countries" group="people" class="list">
       <div
@@ -30,15 +30,13 @@ export default defineComponent({
   components: {
     draggable,
   },
-  data: (): { countries: Country[] } => ({
+  data: (): { countries: Country[]; hasAnimated: boolean } => ({
     countries: [],
+    hasAnimated: false,
   }),
   watch: {
     codes() {
-      const countries: Country[] = this.$store.state.countries
-      this.countries = countries.filter((country) =>
-        this.codes.includes(country.countryCode)
-      )
+      this.updateCountries()
     },
   },
   methods: {
@@ -50,6 +48,26 @@ export default defineComponent({
           .filter((Boolean as any) as ExcludesUndefined),
       })
     },
+    updateCountries() {
+      const countries: Country[] = this.$store.state.countries
+      this.countries = countries.filter((country) =>
+        this.codes.includes(country.countryCode)
+      )
+    },
+  },
+  mounted() {
+    this.updateCountries()
+    this.$nextTick(() => {
+      const flags = this.$el.querySelectorAll('.country')
+      const flag = flags[flags.length - 1]
+
+      if (!flag) return
+      console.log('yeah')
+
+      flag.addEventListener('animationend', () => {
+        this.hasAnimated = true
+      })
+    })
   },
 })
 </script>
@@ -72,6 +90,8 @@ export default defineComponent({
   width: 20%;
   overflow: hidden;
   position: relative;
+}
+#player-drawer:not(.has-animated) .country {
   animation: country-card 1s 1;
 }
 .flag {
