@@ -16,25 +16,32 @@
       :waving="waving"
     />
     <div :class="{ playing: phase.playing }" class="map-wrapper">
-      <GameMap :highlighted="countryCodes" />
+      <GameMap />
     </div>
 
-    <footer v-if="countryCodes.length" id="answers">
-      <Deck :codes="countryCodes" />
+    <footer v-if="currentChallenge && !hasAnswered" id="answers">
+      <Deck :codes="currentChallenge.countries" />
     </footer>
   </div>
 </template>
 <script lang="ts">
+import Vue from 'vue'
 import { defineComponent } from '@nuxtjs/composition-api'
 import { parseCookie } from '../../lib/cookie'
 import { update } from '../../lib/CSE'
 import { generateHash } from '../../lib/hashing'
-import { Game, GameLength, Player, Round, Update, Variant } from '~/types/game'
-import { CountryCode } from '~/types/geography'
+import {
+  Challenge,
+  Game,
+  GameLength,
+  Player,
+  Round,
+  Update,
+  Variant,
+} from '~/types/game'
 
 interface GameData {
   game?: Game
-  rounds: Round[]
   playerId: string
   roomName: string
   playerName: string
@@ -43,7 +50,6 @@ interface GameData {
 
 export default defineComponent({
   data: (): GameData => ({
-    rounds: [],
     playerId: '',
     roomName: '',
     waving: {},
@@ -93,8 +99,8 @@ export default defineComponent({
       waiting: boolean
       playing: boolean
     } {
-      const { player } = this
-      if (!player) {
+      const { player, game } = this
+      if (!player || !game) {
         return {
           naming: false,
           waiting: false,
@@ -104,18 +110,26 @@ export default defineComponent({
 
       return {
         naming: !player.name,
-        playing: this.rounds.length !== 0,
-        waiting: Boolean(player.name) && this.rounds.length === 0,
+        playing: Boolean(game.rounds.length),
+        waiting: Boolean(player.name) && game.rounds.length === 0,
       }
     },
     player(): Player | undefined {
       if (!this.game) return undefined
       return this.game.players[this.playerId]
     },
-    countryCodes(): CountryCode[] {
-      const latest = [...this.rounds].pop()
-      if (!latest) return []
-      return latest.lists[this.playerId]
+    hasAnswered(): boolean {
+      if (!this.currentChallenge) return false
+      return Boolean(this.currentChallenge.answers?.length)
+    },
+    currentRound(): Round | undefined {
+      const latest = this.game?.rounds.pop()
+      if (!latest) return undefined
+      return latest
+    },
+    currentChallenge(): Challenge | undefined {
+      if (!this.currentRound) return undefined
+      return this.currentRound.challenges[this.playerId]
     },
   },
   mounted() {
@@ -135,17 +149,12 @@ export default defineComponent({
         case 'name-set':
         case 'player-joined':
         case 'game-updated':
-          this.game = update.game
+        case 'new-round':
+          console.log('updated', update.game)
+          Vue.set(this, 'game', update.game)
           break
         case 'player-waved':
           this.waving[update.playerId] = true
-          break
-        case 'new-round':
-          this.rounds.push({
-            number: this.rounds.length,
-            points: {},
-            lists: update.lists,
-          })
           break
         case 'player-kicked':
           this.$router.push('/?kicked=1')

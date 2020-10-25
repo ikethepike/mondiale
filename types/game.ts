@@ -58,18 +58,17 @@ export type Command =
       targetPlayer: string
     }
   | {
-      event: 'submit-country-order'
+      gameId: string
+      playerId: string
       order: CountryCode[]
+      event: 'submit-country-order'
     }
 
 export type Update =
   | { event: 'name-set'; game: Game }
   | {
       event: 'new-round'
-      stat: Stat
-      lists: {
-        [playerId: string]: CountryCode[]
-      }
+      game: Game
     }
   | { event: 'player-joined'; game: Game }
   | { event: 'player-waved'; playerId: string }
@@ -118,12 +117,14 @@ export const palette: {
 
 export const stats: Stat[] = ['obesity']
 
+export interface Challenge {
+  points?: number
+  answers?: CountryCode[]
+  countries: CountryCode[]
+}
 export interface Round {
-  number: number
-  points: {
-    [playerId: string]: number | undefined
-  }
-  lists: {
-    [playerId: string]: CountryCode[]
+  statistic: Stat
+  challenges: {
+    [playerId: string]: Challenge
   }
 }

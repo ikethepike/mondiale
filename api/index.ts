@@ -1,15 +1,13 @@
 /* eslint-disable no-unreachable */
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
-import { Game, Player, Command, palette } from '../types/game'
+import { Game, Player, Command, palette, Round } from '../types/game'
 import { GameFeed } from '../lib/SSE'
 import { countryCodes } from '../george/compiled/countries.json'
 import { getRandomValue, getRandomValues } from '../lib/retrieval'
-import { CountryCode } from '../types/geography'
 
 const games: { [key: string]: Game } = {}
 const feeds: { [key: string]: GameFeed } = {}
-// const rounds: { [gameId: string]: Round[] } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
   return new Promise((resolve) => {
@@ -93,17 +91,24 @@ const api: ServerMiddleware = async (req, res, next) => {
           )
           break
         case 'start-game':
-          const lists: { [playerId: string]: CountryCode[] } = {}
-
+          const challenges = {}
           const ids = Object.keys(games[gameId].players)
           ids.forEach((id) => {
-            lists[id] = getRandomValues(countryCodes, 5)
+            challenges[id] = {
+              points: undefined,
+              answers: undefined,
+              countries: getRandomValues(countryCodes, 5),
+            }
           })
-
+          const round: Round = {
+            statistic: 'obesity',
+            challenges,
+          }
+          games[gameId].rounds.push(round)
+          console.log('added round', games[gameId])
           feeds[gameId].update({
             event: 'new-round',
-            stat: 'obesity',
-            lists,
+            game: games[gameId],
           })
           break
         case 'kick-player':
