@@ -99,8 +99,7 @@ export default defineComponent({
       waiting: boolean
       playing: boolean
     } {
-      const { player, game } = this
-      if (!player || !game) {
+      if (!this.player || !this.game) {
         return {
           naming: false,
           waiting: false,
@@ -109,9 +108,9 @@ export default defineComponent({
       }
 
       return {
-        naming: !player.name,
-        playing: Boolean(game.rounds.length),
-        waiting: Boolean(player.name) && game.rounds.length === 0,
+        naming: !this.player.name,
+        playing: Boolean(this.game.rounds.length),
+        waiting: Boolean(this.player.name) && this.game.rounds.length === 0,
       }
     },
     player(): Player | undefined {
@@ -123,7 +122,9 @@ export default defineComponent({
       return Boolean(this.currentChallenge.answers?.length)
     },
     currentRound(): Round | undefined {
-      const latest = this.game?.rounds.pop()
+      if (!this.game) return undefined
+      const latest = [...this.game?.rounds].pop()
+
       if (!latest) return undefined
       return latest
     },
@@ -150,7 +151,6 @@ export default defineComponent({
         case 'player-joined':
         case 'game-updated':
         case 'new-round':
-          console.log('updated', update.game)
           Vue.set(this, 'game', update.game)
           break
         case 'player-waved':

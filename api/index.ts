@@ -6,8 +6,8 @@ import { GameFeed } from '../lib/SSE'
 import { countryCodes } from '../george/compiled/countries.json'
 import { getRandomValue, getRandomValues } from '../lib/retrieval'
 
-const games: { [key: string]: Game } = {}
-const feeds: { [key: string]: GameFeed } = {}
+const games: { [gameId: string]: Game } = {}
+const feeds: { [gameId: string]: GameFeed } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
   return new Promise((resolve) => {
@@ -105,7 +105,6 @@ const api: ServerMiddleware = async (req, res, next) => {
             challenges,
           }
           games[gameId].rounds.push(round)
-          console.log('added round', games[gameId])
           feeds[gameId].update({
             event: 'new-round',
             game: games[gameId],
