@@ -7,9 +7,12 @@
         :key="country.countryCode"
         :data-country="country.name"
         class="country"
-      >
-        <div class="flag" v-html="country.flag"></div>
-      </div>
+        :style="{
+          backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(
+            country.flag
+          )}')`,
+        }"
+      ></div>
     </draggable>
   </footer>
 </template>
@@ -18,7 +21,6 @@ import draggable from 'vuedraggable'
 import { defineComponent } from '@nuxtjs/composition-api'
 import { Country, CountryCode } from '~/types/geography'
 import { update } from '~/lib/CSE'
-import { ExcludesUndefined } from '~/types/generics'
 
 export default defineComponent({
   props: {
@@ -41,12 +43,15 @@ export default defineComponent({
   },
   methods: {
     submit() {
-      update({
-        event: 'submit-country-order',
-        order: this.countries
-          .map((country) => country.countryCode as CountryCode)
-          .filter((Boolean as any) as ExcludesUndefined),
-      })
+      // update({
+      //   event: 'submit-country-order',
+      //   order: this.countries
+      //     .map((country) => country.countryCode as CountryCode)
+      //     .filter((Boolean as any) as ExcludesUndefined),
+      // })
+    },
+    baseEncode(data: string) {
+      return btoa(data)
     },
     updateCountries() {
       const countries: Country[] = this.$store.state.countries
@@ -76,34 +81,32 @@ export default defineComponent({
   left: 0;
   bottom: 0;
   width: 100%;
-  height: 20vh;
   position: fixed;
   max-height: 20rem;
 }
 .list {
   width: 100%;
-  height: 20rem;
+  height: 14vw;
   display: flex;
   align-items: stretch;
 }
 .country {
-  width: 20%;
+  width: 20vw;
+  height: 100%;
+  cursor: pointer;
   overflow: hidden;
   position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 #player-drawer:not(.has-animated) .country {
-  animation: country-card 1s 1;
-}
-.flag {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  position: absolute;
+  animation-name: country-card;
+  animation-iteration-count: 1;
 }
 
 @for $i from 1 through 10 {
-  .country:nth-child(#{$i}) {
+  .country:nth-of-type(#{$i}) {
     animation-duration: #{($i * 0.3) + 0.8 + s};
   }
 }

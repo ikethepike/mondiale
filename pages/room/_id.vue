@@ -19,9 +19,12 @@
       <GameMap />
     </div>
 
-    <footer v-if="currentChallenge && !hasAnswered" id="answers">
-      <Deck :codes="currentChallenge.countries" />
-    </footer>
+    <PlayerDrawer
+      v-if="currentChallenge && !hasAnswered"
+      :codes="currentChallenge.countries"
+      :answers="currentChallenge.answers"
+      :statistic="currentChallenge.statistic"
+    />
   </div>
 </template>
 <script lang="ts">
