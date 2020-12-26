@@ -1730,7 +1730,7 @@ export default defineComponent({
             root.$emit('countryClick', event.target)
           }
         })
-      })  
+      })
     })
   },
 })

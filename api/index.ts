@@ -1,7 +1,7 @@
 /* eslint-disable no-unreachable */
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
-import { generateComparisons } from '../types/comparisons' 
+import { generateComparisons } from '../types/comparisons'
 import { Game, Player, Command, palette, Round } from '../types/game'
 
 import { GameFeed } from '../lib/SSE'
@@ -96,13 +96,14 @@ const api: ServerMiddleware = async (req, res, next) => {
           const ids = Object.keys(games[gameId].players)
           const { comparison, countries } = generateComparisons('neutral')
 
-          console.log("hey", countries)
-
           ids.forEach((id) => {
             challenges[id] = {
               points: undefined,
               answers: undefined,
-              countries: getRandomValues(countries.map(country => country.countryCode), 5),
+              countries: getRandomValues(
+                countries.map(({ countryCode }) => countryCode),
+                5
+              ),
             }
           })
           const round: Round = {

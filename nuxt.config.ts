@@ -17,9 +17,7 @@ const config: NuxtConfig = {
   },
   css: [],
 
-  plugins: [
-    "~/plugins/composition",
-  ],
+  plugins: ['~/plugins/composition'],
   components: {
     dirs: [
       '~/components',
@@ -35,10 +33,7 @@ const config: NuxtConfig = {
   },
   buildModules: ['@nuxt/typescript-build'],
 
-  modules: [
-    '@nuxtjs/axios',
-    '@nuxtjs/pwa',
-  ],
+  modules: ['@nuxtjs/axios', '@nuxtjs/pwa'],
 
   axios: {},
 

@@ -1,4 +1,6 @@
 import { Country, CountryCode } from './geography'
+import { ExcludesUndefined } from './generics'
+
 import { countries } from '../george/compiled/countries.json'
 
 const neutral = [
@@ -62,44 +64,62 @@ export const comparisons: { [key in ComparisonType]: string[] } = {
   gendered,
 }
 
-export const generateComparisons = (type: ComparisonType): {
-  countries: { countryCode: CountryCode, value: Number },
-  unit: string, 
-  comparison: string, 
-
+export const generateComparisons = (
+  type: ComparisonType
+): {
+  countries: { countryCode: CountryCode; value: number }[]
+  unit: string
+  comparison: string
 } => {
   const available = comparisons[type]
   const comparison = available[Math.floor(Math.random() * available.length)]
   const dimensions = comparison.split('.')
 
-  const filtered = countries.map(country => {
-    let branch: { [key: string]: any }  = country
-    if( !dimensions.every(dimension => {
-      if (!Object.hasOwnProperty.call(branch, dimension)) {
-        return false
-      } 
-      branch = branch[dimension]
-      return true
-    })) {
-      return undefined 
-    }
+  let unit = '%'
 
-    const output = { countryCode: country.countryCode, value: undefined }
+  const filtered = countries
+    .map((country) => {
+      let branch: { [key: string]: any } | number = country
+      if (
+        !dimensions.every((dimension) => {
+          if (!Object.hasOwnProperty.call(branch, dimension)) {
+            return false
+          }
+          if (typeof branch !== 'number') {
+            branch = branch[dimension]
+          }
+          return true
+        })
+      ) {
+        return undefined
+      }
 
-    if(Number(branch)) {
-      output.value = branch 
-    }
-    
-    if(branch.value) {
-      output.value = branch.value
-    }
-    
-    return output 
-  })
-  
-  
+      if (!country.countryCode) return undefined
+
+      const output = {
+        countryCode: country.countryCode as CountryCode,
+        value: 0,
+      }
+
+      if (typeof branch === 'number') {
+        output.value = branch
+      }
+
+      if (branch.value) {
+        output.value = branch.value
+      }
+
+      if (branch.unit) {
+        unit = branch.unit
+      }
+
+      return output
+    })
+    .filter((Boolean as any) as ExcludesUndefined)
+
   return {
-    countries: filtered,
+    unit,
     comparison,
+    countries: filtered,
   }
 }

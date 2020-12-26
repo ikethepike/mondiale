@@ -22,6 +22,8 @@
     <PlayerDrawer
       v-if="currentChallenge && !hasAnswered"
       :codes="currentChallenge.countries"
+      :game-id="game.id"
+      :player-id="playerId"
       :answers="currentChallenge.answers"
       :statistic="currentChallenge.statistic"
     />
