@@ -18,7 +18,7 @@
 </template>
 <script lang="ts">
 import draggable from 'vuedraggable'
-import { defineComponent } from '@nuxtjs/composition-api'
+import { defineComponent } from '@vue/composition-api'
 import { Country, CountryCode } from '~/types/geography'
 import { update } from '~/lib/CSE'
 

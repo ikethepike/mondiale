@@ -1,4 +1,4 @@
-import { Country } from './geography'
+import { Country, CountryCode } from './geography'
 import { countries } from '../george/compiled/countries.json'
 
 const neutral = [
@@ -62,23 +62,44 @@ export const comparisons: { [key in ComparisonType]: string[] } = {
   gendered,
 }
 
-export const generateComparisons = (type: ComparisonType) => {
+export const generateComparisons = (type: ComparisonType): {
+  countries: { countryCode: CountryCode, value: Number },
+  unit: string, 
+  comparison: string, 
+
+} => {
   const available = comparisons[type]
   const comparison = available[Math.floor(Math.random() * available.length)]
   const dimensions = comparison.split('.')
 
-  const countries = countries.filter(country => {
-    let branch = country
-    return dimensions.every((dimension) => {
-      if (!Object.hasOwnProperty.call(country, dimension)) {
+  const filtered = countries.map(country => {
+    let branch: { [key: string]: any }  = country
+    if( !dimensions.every(dimension => {
+      if (!Object.hasOwnProperty.call(branch, dimension)) {
         return false
-      }
+      } 
       branch = branch[dimension]
-    })
-  })
+      return true
+    })) {
+      return undefined 
+    }
 
+    const output = { countryCode: country.countryCode, value: undefined }
+
+    if(Number(branch)) {
+      output.value = branch 
+    }
+    
+    if(branch.value) {
+      output.value = branch.value
+    }
+    
+    return output 
+  })
+  
+  
   return {
-    countries,
+    countries: filtered,
     comparison,
   }
 }

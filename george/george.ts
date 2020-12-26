@@ -994,8 +994,6 @@ Object.values(countries).forEach(
 const generateFlatMap = (generic: GenericCountry) => {
   const keys = Object.keys(generic)
   const skeleton = {}
-
-  while (mapping) {}
 }
 
 fs.writeFileSync(

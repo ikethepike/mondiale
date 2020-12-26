@@ -29,7 +29,7 @@
 </template>
 <script lang="ts">
 import Vue from 'vue'
-import { defineComponent } from '@nuxtjs/composition-api'
+import { defineComponent } from '@vue/composition-api'
 import { parseCookie } from '../../lib/cookie'
 import { update } from '../../lib/CSE'
 import { generateHash } from '../../lib/hashing'

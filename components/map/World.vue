@@ -40,7 +40,7 @@
   </svg>
 </template>
 <script lang="ts">
-import { defineComponent, onMounted } from '@nuxtjs/composition-api'
+import { defineComponent, onMounted } from '@vue/composition-api'
 
 export default defineComponent({
   setup() {

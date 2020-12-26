@@ -6,19 +6,13 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, ref, useContext } from '@nuxtjs/composition-api'
+import { defineComponent, ref } from '@vue/composition-api'
 
 export default defineComponent({
-  setup() {
-    const context = useContext()
-    const kicked = ref(Boolean(Number(context.route.value.query.kicked)))
-
-    const test = () => {
-      alert('wow')
-    }
+  setup(_, { root } ) {
+    const kicked = ref(Boolean(Number(root.$route.query.kicked)))
 
     return {
-      test,
       kicked,
     }
   },

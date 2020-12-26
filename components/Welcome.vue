@@ -87,7 +87,7 @@
 </template>
 <script lang="ts">
 import randomWords from 'random-words'
-import { defineComponent, reactive } from '@nuxtjs/composition-api'
+import { defineComponent, reactive } from '@vue/composition-api'
 import { variants } from '~/types/game'
 import { Country } from '~/types/geography'
 import { RootState } from '~/store/index'

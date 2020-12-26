@@ -973,7 +973,7 @@
     "signal-exit" "^3.0.3"
     "ua-parser-js" "^0.7.22"
 
-"@nuxt/vue-app@^2.14.5", "@nuxt/vue-app@2.14.12":
+"@nuxt/vue-app@2.14.12":
   "version" "2.14.12"
   dependencies:
     "@nuxt/ufo" "^0.5.0"
@@ -1056,13 +1056,6 @@
     "axios-retry" "^3.1.8"
     "consola" "^2.15.0"
     "defu" "^3.1.0"
-
-"@nuxtjs/composition-api@^0.12.5":
-  "version" "0.12.5"
-  dependencies:
-    "@vue/composition-api" "1.0.0-beta.14"
-    "defu" "^3.1.0"
-    "normalize-path" "^3.0.0"
 
 "@nuxtjs/eslint-config-typescript@^3.0.0":
   "integrity" "sha512-tjkXuY/R67TQAq6h566zl9nScUEeurvJkeYM59z28MLj8EfE4UO/rlgjQk9J4m++LrAkiKAH8jg3yLc6G4LIkQ=="
@@ -1578,11 +1571,6 @@
   "integrity" "sha512-KkTeHVWgsJbtoA5t6pUien/ARw7JhVM7QZh05ko/UdgzALYMGwJsBf4WlcvbpMKE5eAu4ONYJypQ+r8LwBIOhA=="
   "resolved" "https://registry.npmjs.org/@vue/composition-api/-/composition-api-1.0.0-beta.22.tgz"
   "version" "1.0.0-beta.22"
-  dependencies:
-    "tslib" "^2.0.1"
-
-"@vue/composition-api@1.0.0-beta.14":
-  "version" "1.0.0-beta.14"
   dependencies:
     "tslib" "^2.0.1"
 
@@ -6515,7 +6503,7 @@
   "resolved" "https://registry.yarnpkg.com/number-is-nan/-/number-is-nan-1.0.1.tgz"
   "version" "1.0.1"
 
-"nuxt@^2.14.5", "nuxt@^2.14.6":
+"nuxt@^2.14.6":
   "version" "2.14.12"
   dependencies:
     "@nuxt/builder" "2.14.12"
@@ -9273,7 +9261,9 @@
   "version" "1.13.0"
 
 "tslib@^2.0.1":
-  "version" "2.0.1"
+  "integrity" "sha512-uZtkfKblCEQtZKBF6EBXVZeQNl82yqtDQdv+eck8u7tdPxjLu2/lp5/uPW+um2tpuxINHWy3GhiccY7QgEaVHQ=="
+  "resolved" "https://registry.npmjs.org/tslib/-/tslib-2.0.3.tgz"
+  "version" "2.0.3"
 
 "tslib@^2.0.3":
   "version" "2.0.3"
@@ -9643,7 +9633,7 @@
   "resolved" "https://registry.yarnpkg.com/vue-template-es2015-compiler/-/vue-template-es2015-compiler-1.9.1.tgz"
   "version" "1.9.1"
 
-"vue@^2", "vue@^2.0.0", "vue@^2.6.12", "vue@>= 2.5 < 3":
+"vue@^2.0.0", "vue@^2.6.12", "vue@>= 2.5 < 3":
   "integrity" "sha512-uhmLFETqPPNyuLLbsKz6ioJ4q7AZHzD8ZVFNATNyICSZouqP2Sz0rotWQC8UNBF6VGSCs5abnKJoStA6JbCbfg=="
   "resolved" "https://registry.yarnpkg.com/vue/-/vue-2.6.12.tgz"
   "version" "2.6.12"

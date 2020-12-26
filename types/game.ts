@@ -79,6 +79,7 @@ export type Stat =
   | keyof Country['health']
   | Country['economics']
   | Country['geography']
+
 export interface Turn {
   number: number
   player: Player
@@ -123,7 +124,7 @@ export interface Challenge {
   countries: CountryCode[]
 }
 export interface Round {
-  statistic: Stat
+  statistic: string
   challenges: {
     [playerId: string]: Challenge
   }

@@ -1709,7 +1709,7 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent } from '@nuxtjs/composition-api'
+import { defineComponent, onMounted } from '@vue/composition-api'
 
 if (process.client) {
   require('svg-pan-zoom-container')
@@ -1722,13 +1722,15 @@ export default defineComponent({
       default: () => [],
     },
   },
-  mounted() {
-    document.querySelectorAll('path').forEach((path) => {
-      path.addEventListener('click', (event) => {
-        if (event.target) {
-          this.$emit('countryClick', event.target)
-        }
-      })
+  setup(_, { root }) {
+    onMounted(() => {
+      document.querySelectorAll('path').forEach((path) => {
+        path.addEventListener('click', (event) => {
+          if (event.target) {
+            root.$emit('countryClick', event.target)
+          }
+        })
+      })  
     })
   },
 })
@@ -1747,8 +1749,5 @@ path {
 }
 path[data-name] {
   fill: var(--soft-mint);
-}
-path:hover {
-  /* fill: var(--soft-mint); */
 }
 </style>

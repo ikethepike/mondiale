@@ -33,7 +33,7 @@ const config: NuxtConfig = {
       },
     ],
   },
-  buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api'],
+  buildModules: ['@nuxt/typescript-build'],
 
   modules: [
     '@nuxtjs/axios',
