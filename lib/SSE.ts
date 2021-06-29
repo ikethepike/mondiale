@@ -20,7 +20,7 @@ export class GameFeed {
 
   update(data: Update, playerId: string | undefined = undefined): void {
     if (!playerId) {
-      Object.values(this.feeds).forEach((feed) => feed.update(data))
+      Object.values(this.feeds).forEach(feed => feed.update(data))
       return
     }
     this.feeds[playerId].update(data)

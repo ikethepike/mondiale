@@ -1,9 +1,6 @@
 <template>
   <div class="progress-wrapper">
-    <div
-      class="progress-bar"
-      :style="{ transform: `scaleX(${progress}%)`, background: color }"
-    >
+    <div class="progress-bar" :style="{ transform: `scaleX(${progress}%)`, background: color }">
       <figure :class="figure"></figure>
     </div>
   </div>

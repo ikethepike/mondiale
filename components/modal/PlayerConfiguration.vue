@@ -9,10 +9,9 @@
             <h1>Welcome!</h1>
           </header>
           <p>
-            Drückeberger und Trinkhalle stagnieren verhärmt Zeche. Die dufte
-            Schenkelbürste katzbuckeln. Das einfältig Schindluder abkupfern.
-            Fressalien und Kerbholz katzbuckeln bräsig Weltschmerz. Das
-            blindwütig Lausbub meucheln!
+            Drückeberger und Trinkhalle stagnieren verhärmt Zeche. Die dufte Schenkelbürste
+            katzbuckeln. Das einfältig Schindluder abkupfern. Fressalien und Kerbholz katzbuckeln
+            bräsig Weltschmerz. Das blindwütig Lausbub meucheln!
           </p>
 
           <div class="input-wrapper slide-block">
@@ -28,11 +27,7 @@
                 :key="backgroundColor"
                 :style="{ backgroundColor }"
               >
-                <input
-                  :checked="backgroundColor === state.color"
-                  type="radio"
-                  name="color"
-                />
+                <input :checked="backgroundColor === state.color" type="radio" name="color" />
               </label>
             </div>
           </div>
@@ -91,6 +86,7 @@ export default defineComponent({
     return {
       state,
       setName,
+      setColor,
       colors: gameColors,
     }
   },

@@ -41,11 +41,7 @@ const neutral = [
   'health.lifeExpectancy',
   'health.contraceptivePrevalence',
 ]
-const men = [
-  'education.literacy.male',
-  'education.averageEducation.male',
-  'health.ageDistribution',
-]
+const men = ['education.literacy.male', 'education.averageEducation.male', 'health.ageDistribution']
 const women = [
   'education.literacy.female',
   'education.averageEducation.female',
@@ -77,10 +73,10 @@ export const generateComparisons = (
   let unit = '%'
 
   const filtered = countries
-    .map((country) => {
+    .map(country => {
       let branch: { [key: string]: any } | number = country
       if (
-        !dimensions.every((dimension) => {
+        !dimensions.every(dimension => {
           if (!Object.hasOwnProperty.call(branch, dimension)) {
             return false
           }
@@ -114,7 +110,7 @@ export const generateComparisons = (
 
       return output
     })
-    .filter(Boolean as any as ExcludesUndefined)
+    .filter((Boolean as any) as ExcludesUndefined)
 
   return {
     unit,

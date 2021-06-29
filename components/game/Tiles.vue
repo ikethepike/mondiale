@@ -67,14 +67,7 @@ export default defineComponent({
         #000 75%,
         #000
       ),
-      repeating-linear-gradient(
-        45deg,
-        #000 25%,
-        transparent 25%,
-        transparent 75%,
-        #000 75%,
-        #000
-      );
+      repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000);
     background-position: 0 0, 20px 20px;
     background-size: 40px 40px;
   }

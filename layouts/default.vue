@@ -122,12 +122,7 @@ p {
 
 // theme adaptive backgrounds
 .theme-gradient {
-  background: linear-gradient(
-      180deg,
-      var(--soft-mint) 0%,
-      var(--warm-sand) 100%
-    ),
-    var(--soft-blue);
+  background: linear-gradient(180deg, var(--soft-mint) 0%, var(--warm-sand) 100%), var(--soft-blue);
 }
 .theme-background {
   background: #fff;
@@ -145,11 +140,7 @@ html body .theme-highlight-fill[class] {
 
 @media (prefers-color-scheme: dark) {
   .theme-gradient {
-    background: linear-gradient(
-        180deg,
-        var(--dark-blue) 0%,
-        var(--soft-mint) 100%
-      ),
+    background: linear-gradient(180deg, var(--dark-blue) 0%, var(--soft-mint) 100%),
       var(--soft-blue);
   }
   .theme-background {

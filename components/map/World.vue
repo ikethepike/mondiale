@@ -25,10 +25,7 @@
       d="M406 248L430 223.5V181.5L448.5 180L466.5 190.5L502.5 181.5L548 171L534.5 153L502.5 130V153L487.5 171L478.5 153V118L487.5 83.5L513 100L548 139L573.5 199.5L584 248L593 328L584 314L573.5 328L563 314L573.5 291.5L548 242H519.5L502.5 248L478.5 266L456 291.5L416.5 284L406 248Z"
       stroke="currentColor"
     />
-    <path
-      d="M281 91L311 73H355L367 140.5L342.5 183L296 140.5L281 91Z"
-      stroke="currentColor"
-    />
+    <path d="M281 91L311 73H355L367 140.5L342.5 183L296 140.5L281 91Z" stroke="currentColor" />
     <path
       d="M416.5 113.5L430 104.5L442 119.5L437.5 128.5L440.5 143.5L448 154L442 168.5L437.5 164H427L409 168.5V158.5L416.5 145V131.5V113.5Z"
       stroke="currentColor"
@@ -53,9 +50,8 @@ export default defineComponent({
         movement: number
         element: Element
       }[] = []
-      paths.forEach((path) => {
-        const movement =
-          Math.random() < 0.5 ? Math.random() * 0.1 : Math.random() * -0.1
+      paths.forEach(path => {
+        const movement = Math.random() < 0.5 ? Math.random() * 0.1 : Math.random() * -0.1
 
         countries.push({
           movement,
@@ -63,8 +59,8 @@ export default defineComponent({
         })
       })
 
-      map.addEventListener('mousemove', (event) => {
-        countries.forEach((country) => {
+      map.addEventListener('mousemove', event => {
+        countries.forEach(country => {
           ;(country.element as HTMLElement).style.transform = `translate(${
             (event as MouseEvent).offsetX * country.movement
           }px, 

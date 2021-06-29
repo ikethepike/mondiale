@@ -6,8 +6,7 @@
       <div class="form-content">
         <h1>Sorry bud</h1>
         <p>
-          Looks like you were kicked from that game. Try hosting your own or
-          joining another game.
+          Looks like you were kicked from that game. Try hosting your own or joining another game.
         </p>
       </div>
 

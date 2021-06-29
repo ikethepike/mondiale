@@ -1724,8 +1724,8 @@ export default defineComponent({
   },
   setup(_, { root }) {
     onMounted(() => {
-      document.querySelectorAll('path').forEach((path) => {
-        path.addEventListener('click', (event) => {
+      document.querySelectorAll('path').forEach(path => {
+        path.addEventListener('click', event => {
           if (event.target) {
             root.$emit('countryClick', event.target)
           }

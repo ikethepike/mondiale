@@ -5,11 +5,7 @@
         <header>
           <h1>Ready to go?</h1>
           <div class="player-count">
-            <span
-              >Players Ready: {{ playerCounts.ready }}/{{
-                playerCounts.total
-              }}</span
-            >
+            <span>Players Ready: {{ playerCounts.ready }}/{{ playerCounts.total }}</span>
           </div>
         </header>
         <ul class="player-listing">
@@ -40,14 +36,8 @@
       </div>
 
       <template v-if="isPlayerHost">
-        <button
-          v-if="playerCounts.total === 1"
-          class="line-button"
-          @click="invite"
-        >
-          <span id="invite-player-text"
-            >{{ invited ? 'Link Copied' : 'Invite Players' }}
-          </span>
+        <button v-if="playerCounts.total === 1" class="line-button" @click="invite">
+          <span id="invite-player-text">{{ invited ? 'Link Copied' : 'Invite Players' }} </span>
         </button>
 
         <button
@@ -61,9 +51,7 @@
       </template>
       <template v-else>
         <div class="status form-content">
-          <span v-if="playerCounts.ready !== playerCounts.total"
-            >Waiting for other players...</span
-          >
+          <span v-if="playerCounts.ready !== playerCounts.total">Waiting for other players...</span>
           <span v-else>Waiting for host...</span>
         </div>
       </template>
@@ -144,7 +132,7 @@ export default defineComponent({
 
       return {
         total: players.length,
-        ready: players.filter((player) => player.name).length,
+        ready: players.filter(player => player.name).length,
       }
     },
     isPlayerHost(): boolean {

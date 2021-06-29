@@ -1,12 +1,6 @@
 import { CountryCode, Country } from './geography'
 
-export type Variant =
-  | 'world'
-  | 'europe'
-  | 'africa'
-  | 'north-america'
-  | 'south-america'
-  | 'asia'
+export type Variant = 'world' | 'europe' | 'africa' | 'north-america' | 'south-america' | 'asia'
 
 export const variants: Variant[] = [
   'world',
@@ -17,10 +11,7 @@ export const variants: Variant[] = [
   'asia',
 ]
 
-export const challengeTiles = [
-  'challenge-country',
-  'challenge-capital',
-] as const
+export const challengeTiles = ['challenge-country', 'challenge-capital'] as const
 
 export interface Tile {
   type: 'normal' | 'final' | 'start' | typeof challengeTiles[number]
@@ -95,10 +86,7 @@ export type Update =
   | { event: 'player-kicked' }
   | { event: 'game-updated'; game: Game }
 
-export type Stat =
-  | keyof Country['health']
-  | Country['economics']
-  | Country['geography']
+export type Stat = keyof Country['health'] | Country['economics'] | Country['geography']
 
 export interface Turn {
   number: number
@@ -138,12 +126,7 @@ export const gameColors = [
 
 export type GameColor = typeof gameColors[number]
 
-export type PaletteValue =
-  | '#0d2f61'
-  | '#3481a1'
-  | '#90bcb5'
-  | '#f1b982'
-  | '#ec6247'
+export type PaletteValue = '#0d2f61' | '#3481a1' | '#90bcb5' | '#f1b982' | '#ec6247'
 
 export const palette: {
   darkBlue: PaletteValue

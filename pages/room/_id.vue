@@ -9,17 +9,8 @@
         :color="player.color"
       /> -->
     </div>
-    <ModalPlayerConfiguration
-      v-if="phase.naming"
-      :player="player"
-      :game="game"
-    />
-    <ModalWaiting
-      v-if="phase.waiting"
-      :game="game"
-      :player="player"
-      :waving="waving"
-    />
+    <ModalPlayerConfiguration v-if="phase.naming" :player="player" :game="game" />
+    <ModalWaiting v-if="phase.waiting" :game="game" :player="player" :waving="waving" />
     <div :class="{ playing: phase.playing }" class="map-wrapper">
       <GameMap />
     </div>
@@ -40,15 +31,7 @@ import { defineComponent } from '@vue/composition-api'
 import { parseCookie } from '../../lib/cookie'
 import { update } from '../../lib/CSE'
 import { generateHash } from '../../lib/hashing'
-import {
-  Challenge,
-  Game,
-  GameLength,
-  Player,
-  Round,
-  Update,
-  Variant,
-} from '~/types/game'
+import { Challenge, Game, GameLength, Player, Round, Update, Variant } from '~/types/game'
 
 interface GameData {
   game?: Game
@@ -92,10 +75,7 @@ export default defineComponent({
     const { game, player } = response
 
     if (res) {
-      res.setHeader(
-        'set-cookie',
-        `player=${playerId}; httpOnly; Max-Age=${60 * 60 * 24 * 7}`
-      )
+      res.setHeader('set-cookie', `player=${playerId}; httpOnly; Max-Age=${60 * 60 * 24 * 7}`)
     }
 
     return {
@@ -153,7 +133,7 @@ export default defineComponent({
     history.replaceState(null, game.id, url)
 
     const source = new EventSource(`/api/feed/${game.id}/${playerId}`)
-    source.addEventListener('message', (message) => {
+    source.addEventListener('message', message => {
       const update: Update = JSON.parse(message.data)
 
       switch (update.event) {

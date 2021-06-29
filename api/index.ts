@@ -12,7 +12,7 @@ const games: { [gameId: string]: Game } = {}
 const feeds: { [gameId: string]: GameFeed } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let body = ''
     req.on('data', (chunk: string) => {
       body += chunk
@@ -98,17 +98,14 @@ const api: ServerMiddleware = async (req, res, next) => {
           })
           break
         case 'wave-at-player':
-          feeds[gameId].update(
-            { event: 'player-waved', playerId },
-            command.targetPlayer
-          )
+          feeds[gameId].update({ event: 'player-waved', playerId }, command.targetPlayer)
           break
         case 'start-game':
           const challenges = {}
           const ids = Object.keys(games[gameId].players)
           const { comparison, countries } = generateComparisons('neutral')
 
-          ids.forEach((id) => {
+          ids.forEach(id => {
             challenges[id] = {
               points: undefined,
               answers: undefined,

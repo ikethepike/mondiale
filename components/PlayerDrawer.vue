@@ -13,9 +13,7 @@
         :data-country="country.name"
         class="country"
         :style="{
-          backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(
-            country.flag
-          )}')`,
+          backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country.flag)}')`,
         }"
       ></div>
     </draggable>
@@ -54,9 +52,7 @@ export default defineComponent({
     const drawer = ref<HTMLDivElement>()
     const countries: Country[] = root.$store.state.countries
     const state = reactive<{ countries: Country[]; hasAnimated: boolean }>({
-      countries: countries.filter(({ countryCode }) =>
-        codes.includes(countryCode)
-      ),
+      countries: countries.filter(({ countryCode }) => codes.includes(countryCode)),
       hasAnimated: false,
     })
 
@@ -67,7 +63,7 @@ export default defineComponent({
         playerId,
         order: state.countries
           .map(({ countryCode }) => countryCode as CountryCode)
-          .filter(Boolean as any as ExcludesUndefined),
+          .filter((Boolean as any) as ExcludesUndefined),
       })
     }
 
