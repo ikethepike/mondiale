@@ -5,9 +5,7 @@
       :key="index"
       :class="['game-tile', 'slide-block', 'bottom', tile.type]"
       role="button"
-    >
-      {{ tile.type }}
-    </a>
+    />
   </section>
 </template>
 <script lang="ts">
@@ -25,10 +23,14 @@ export default defineComponent({
 </script>
 <style lang="scss" scoped>
 #game-tiles {
+  z-index: 100;
   display: flex;
-  z-index: 540000;
-  overflow-x: auto;
+  overflow-x: hidden;
   position: relative;
+}
+
+#game-tiles:hover {
+  overflow-x: auto;
 }
 
 #game-tiles:hover .game-tile {

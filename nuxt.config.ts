@@ -18,24 +18,23 @@ const config: NuxtConfig = {
   css: [],
 
   plugins: ['~/plugins/composition'],
-  components: {
-    dirs: [
-      '~/components',
-      {
-        path: '~/components/modal/',
-        prefix: 'Modal',
-      },
-      {
-        path: '~/components/map/',
-        prefix: 'Map',
-      },
-      {
-        path: '~/components/game/',
-        prefix: 'Game',
-      },
-    ],
-  },
-  buildModules: ['@nuxt/typescript-build'],
+  components: [
+    '~/components',
+    {
+      path: '~/components/modal/',
+      prefix: 'Modal',
+    },
+    {
+      path: '~/components/map/',
+      prefix: 'Map',
+    },
+    {
+      path: '~/components/game/',
+      prefix: 'Game',
+    },
+  ],
+
+  buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api/module', 'pinia/nuxt'],
 
   modules: ['@nuxtjs/axios', '@nuxtjs/pwa'],
 

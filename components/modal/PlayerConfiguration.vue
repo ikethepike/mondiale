@@ -19,7 +19,6 @@
             <input id="name" v-model="state.name" type="text" />
           </div>
 
-          <pre>{{ disabledColors }}</pre>
           <div class="input-wrapper slide-block">
             <label for="color">Player color</label>
             <div class="player-colors">
@@ -31,6 +30,7 @@
               >
                 <input
                   :checked="color === state.color"
+                  :disabled="disabledColors.includes(color)"
                   type="radio"
                   name="color"
                   @change="setColor(color)"
@@ -69,7 +69,6 @@ export default defineComponent({
 
     const disabledColors = computed<GameColor[]>(() => {
       const colors = Object.values(props.game.players).map(player => player.color)
-      console.log(state.color)
       return colors.filter(color => state.color !== color)
     })
 

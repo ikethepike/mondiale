@@ -110,7 +110,7 @@ export const generateComparisons = (
 
       return output
     })
-    .filter((Boolean as any) as ExcludesUndefined)
+    .filter(Boolean as any as ExcludesUndefined)
 
   return {
     unit,

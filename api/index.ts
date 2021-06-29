@@ -117,6 +117,7 @@ const api: ServerMiddleware = async (req, res, next) => {
           })
           const round: Round = {
             statistic: comparison,
+            question: 'Does this look good?',
             challenges,
           }
           games[gameId].rounds.push(round)

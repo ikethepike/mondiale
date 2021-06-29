@@ -150,6 +150,7 @@ export interface Challenge {
   countries: CountryCode[]
 }
 export interface Round {
+  question: string
   statistic: string
   challenges: {
     [playerId: string]: Challenge

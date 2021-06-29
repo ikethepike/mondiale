@@ -63,7 +63,7 @@ export default defineComponent({
         playerId,
         order: state.countries
           .map(({ countryCode }) => countryCode as CountryCode)
-          .filter((Boolean as any) as ExcludesUndefined),
+          .filter(Boolean as any as ExcludesUndefined),
       })
     }
 
@@ -104,37 +104,5 @@ export default defineComponent({
   width: 100%;
   position: fixed;
   max-height: 20rem;
-}
-.list {
-  width: 100%;
-  height: 14vw;
-  display: flex;
-  align-items: stretch;
-}
-.country {
-  width: 20vw;
-  height: 100%;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-#player-drawer:not(.has-animated) .country {
-  animation-name: country-card;
-  animation-iteration-count: 1;
-}
-
-@for $i from 1 through 10 {
-  .country:nth-of-type(#{$i}) {
-    animation-duration: #{($i * 0.3) + 0.8 + s};
-  }
-}
-
-@keyframes country-card {
-  0% {
-    transform: translateY(100%);
-  }
 }
 </style>
