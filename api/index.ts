@@ -89,7 +89,7 @@ const api: ServerMiddleware = async (req, res, next) => {
             event: 'color-set',
             game: games[gameId],
           })
-
+          res.end()
           break
         case 'join-game':
           feeds[gameId].update({

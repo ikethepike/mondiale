@@ -19,15 +19,22 @@
             <input id="name" v-model="state.name" type="text" />
           </div>
 
+          <pre>{{ disabledColors }}</pre>
           <div class="input-wrapper slide-block">
             <label for="color">Player color</label>
             <div class="player-colors">
               <label
-                v-for="backgroundColor in state.colors"
-                :key="backgroundColor"
-                :style="{ backgroundColor }"
+                v-for="color in colors"
+                :key="color"
+                :style="{ backgroundColor: color }"
+                :class="{ disabled: disabledColors.includes(color) }"
               >
-                <input :checked="backgroundColor === state.color" type="radio" name="color" />
+                <input
+                  :checked="color === state.color"
+                  type="radio"
+                  name="color"
+                  @change="setColor(color)"
+                />
               </label>
             </div>
           </div>
@@ -39,7 +46,7 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType, reactive } from '@vue/composition-api'
+import { computed, defineComponent, PropType, reactive } from '@vue/composition-api'
 import { update } from '~/lib/CSE'
 import { Game, GameColor, gameColors, Player } from '~/types/game'
 
@@ -60,6 +67,12 @@ export default defineComponent({
       color: props.player.color,
     })
 
+    const disabledColors = computed<GameColor[]>(() => {
+      const colors = Object.values(props.game.players).map(player => player.color)
+      console.log(state.color)
+      return colors.filter(color => state.color !== color)
+    })
+
     const setName = async () => {
       const { game, player } = props
 
@@ -71,12 +84,15 @@ export default defineComponent({
       })
     }
 
-    const setColor = async () => {
+    const setColor = async (color: GameColor) => {
+      if (disabledColors.value.includes(color)) return
+
+      state.color = color
+
       const { game, player } = props
-      const { color } = state
 
       await update({
-        color,
+        color: state.color,
         event: 'set-color',
         gameId: String(game?.id),
         playerId: String(player?.id),
@@ -87,6 +103,7 @@ export default defineComponent({
       state,
       setName,
       setColor,
+      disabledColors,
       colors: gameColors,
     }
   },
@@ -101,9 +118,52 @@ export default defineComponent({
 .input-wrapper label {
   padding-right: 1rem;
 }
+.player-colors {
+  display: flex;
+  flex-flow: row wrap;
+}
 .player-colors label {
   width: 3rem;
   height: 3rem;
+  overflow: hidden;
+  position: relative;
   display: inline-block;
+}
+/* .player-colors .disabled::before {
+  content: '';
+  display: block;
+  position: absolute;
+  cursor: not-allowed;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  border: 2px solid #fff;
+}
+.player-colors .disabled::after {
+  width: 20px;
+  height: 10px;
+  top: 0;
+  right: 0;
+  content: '';
+  transform: rotate(45deg) translate(20%, -25%);
+  background: #fff;
+  position: absolute;
+} */
+
+.player-colors .disabled::before {
+  width: 100%;
+  height: 100%;
+  display: block;
+  content: '';
+  background-color: #fff;
+  opacity: 0.8;
+  background-size: 10px 10px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #444cf7 0,
+    #444cf7 1px,
+    transparent 0,
+    transparent 50%
+  );
+  position: absolute;
 }
 </style>

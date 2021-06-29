@@ -138,9 +138,10 @@ export default defineComponent({
 
       switch (update.event) {
         case 'name-set':
-        case 'player-joined':
-        case 'game-updated':
+        case 'color-set':
         case 'new-round':
+        case 'game-updated':
+        case 'player-joined':
           Vue.set(this, 'game', update.game)
           break
         case 'player-waved':
