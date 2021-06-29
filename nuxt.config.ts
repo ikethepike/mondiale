@@ -29,6 +29,10 @@ const config: NuxtConfig = {
         path: '~/components/map/',
         prefix: 'Map',
       },
+      {
+        path: '~/components/game/',
+        prefix: 'Game',
+      },
     ],
   },
   buildModules: ['@nuxt/typescript-build'],

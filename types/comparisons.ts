@@ -1,7 +1,6 @@
-import { Country, CountryCode } from './geography'
-import { ExcludesUndefined } from './generics'
-
 import { countries } from '../george/compiled/countries.json'
+import { CountryCode } from './geography'
+import { ExcludesUndefined } from './generics'
 
 const neutral = [
   'economics.militarySpending',

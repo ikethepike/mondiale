@@ -6,6 +6,7 @@ import { Game, Player, Command, palette, Round } from '../types/game'
 
 import { GameFeed } from '../lib/SSE'
 import { getRandomValue, getRandomValues } from '../lib/retrieval'
+import { generateGameBoard } from '../lib/game'
 
 const games: { [gameId: string]: Game } = {}
 const feeds: { [gameId: string]: GameFeed } = {}
@@ -51,6 +52,7 @@ const api: ServerMiddleware = async (req, res, next) => {
               players: {},
               host: command.playerId,
               options: command.options,
+              tiles: generateGameBoard('medium'),
               variant: command.variant || 'world',
             }
           }
@@ -70,7 +72,7 @@ const api: ServerMiddleware = async (req, res, next) => {
             })
           )
           break
-        case 'set-name':
+        case 'set-player':
           const { name } = command
           games[gameId].players[playerId].name = name
           feeds[gameId].update({

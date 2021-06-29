@@ -17,13 +17,24 @@ export const variants: Variant[] = [
   'asia',
 ]
 
+export const challengeTiles = [
+  'challenge-country',
+  'challenge-capital',
+] as const
+
+export interface Tile {
+  type: 'normal' | 'final' | 'start' | typeof challengeTiles[number]
+  players: string[]
+}
+
 export interface Game {
   id: string
   host: string
-  players: { [playerId: string]: Player }
-  variant: Variant
+  tiles: Tile[]
   rounds: Round[]
+  variant: Variant
   options: GameOptions
+  players: { [playerId: string]: Player }
 }
 
 export interface Player {
@@ -41,7 +52,13 @@ export type Command =
       variant?: Variant
       options?: GameOptions
     }
-  | { event: 'set-name'; playerId: string; gameId: string; name: string }
+  | {
+      event: 'set-player'
+      playerId: string
+      gameId: string
+      name: string
+      color: string
+    }
   | { event: 'start-game'; playerId: string; gameId: string }
   | { event: 'submit-order'; playerId: string; gameId: string }
   | { event: 'join-game'; playerId: string; gameId: string }

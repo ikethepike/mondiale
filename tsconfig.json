@@ -9,6 +9,7 @@
     "sourceMap": true,
     "strict": true,
     "noEmit": true,
+    "downlevelIteration": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "baseUrl": ".",

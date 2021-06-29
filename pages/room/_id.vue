@@ -1,12 +1,13 @@
 <template>
   <div class="main-board theme-background">
     <div v-if="game" class="player-progress">
-      <PlayerProgress
+      <GameTiles :tiles="game.tiles" />
+      <!-- <PlayerProgress
         v-for="player in game.players"
         :key="player.id"
         :progress="player.progress"
         :color="player.color"
-      />
+      /> -->
     </div>
     <ModalSetName v-if="phase.naming" :player="player" :game="game" />
     <ModalWaiting

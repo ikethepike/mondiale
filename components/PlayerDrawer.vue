@@ -1,24 +1,24 @@
 <template>
   <footer
     id="player-drawer"
+    ref="drawer"
     :data-statistic="statistic"
     :class="{ 'has-animated': state.hasAnimated }"
-    ref="drawer"
   >
     <button @click="submitOrder">Submit</button>
-      <draggable v-model="state.countries" group="people" class="list">
-        <div
-          v-for="country in state.countries"
-          :key="country.countryCode"
-          :data-country="country.name"
-          class="country"
-          :style="{
-            backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(
-              country.flag
-            )}')`,
-          }"
-        ></div>
-      </draggable>
+    <draggable v-model="state.countries" group="people" class="list">
+      <div
+        v-for="country in state.countries"
+        :key="country.countryCode"
+        :data-country="country.name"
+        class="country"
+        :style="{
+          backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(
+            country.flag
+          )}')`,
+        }"
+      ></div>
+    </draggable>
   </footer>
 </template>
 <script lang="ts">
@@ -43,9 +43,9 @@ export default defineComponent({
       required: true,
     },
     statistic: {
-      type: String, 
+      type: String,
       required: true,
-    }
+    },
   },
   components: {
     draggable,
@@ -85,12 +85,12 @@ export default defineComponent({
     })
 
     const baseEncode = (data: string) => {
-        try {
-            return btoa(data);
-        } catch(err) {
-            return Buffer.from(data).toString('base64')
-        }
-    };
+      try {
+        return btoa(data)
+      } catch (err) {
+        return Buffer.from(data).toString('base64')
+      }
+    }
 
     return {
       state,
