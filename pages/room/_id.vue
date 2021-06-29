@@ -9,7 +9,11 @@
         :color="player.color"
       /> -->
     </div>
-    <ModalSetName v-if="phase.naming" :player="player" :game="game" />
+    <ModalPlayerConfiguration
+      v-if="phase.naming"
+      :player="player"
+      :game="game"
+    />
     <ModalWaiting
       v-if="phase.waiting"
       :game="game"

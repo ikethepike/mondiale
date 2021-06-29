@@ -67,7 +67,7 @@ export default defineComponent({
         playerId,
         order: state.countries
           .map(({ countryCode }) => countryCode as CountryCode)
-          .filter((Boolean as any) as ExcludesUndefined),
+          .filter(Boolean as any as ExcludesUndefined),
       })
     }
 

@@ -17,22 +17,21 @@
 
           <div class="input-wrapper slide-block">
             <label for="name">Name</label>
-            <input id="name" v-model="name" type="text" />
+            <input id="name" v-model="state.name" type="text" />
           </div>
 
           <div class="input-wrapper slide-block">
             <label for="color">Player color</label>
             <div class="player-colors">
               <label
-                v-for="backgroundColor in colors"
+                v-for="backgroundColor in state.colors"
                 :key="backgroundColor"
                 :style="{ backgroundColor }"
               >
                 <input
-                  v-model="color"
+                  :checked="backgroundColor === state.color"
                   type="radio"
                   name="color"
-                  :checked="backgroundColor === color"
                 />
               </label>
             </div>
@@ -47,7 +46,7 @@
 <script lang="ts">
 import { defineComponent, PropType, reactive } from '@vue/composition-api'
 import { update } from '~/lib/CSE'
-import { Game, Player } from '~/types/game'
+import { Game, GameColor, gameColors, Player } from '~/types/game'
 
 export default defineComponent({
   props: {
@@ -60,49 +59,39 @@ export default defineComponent({
       required: true,
     },
   },
-  methods: {
-    async setName() {
-      const { game, player, name } = this
+  setup(props) {
+    const state = reactive<{ name: string; color: GameColor }>({
+      name: '',
+      color: props.player.color,
+    })
+
+    const setName = async () => {
+      const { game, player } = props
 
       await update({
         event: 'set-player',
-        name,
-        color: '',
+        name: state.name,
         gameId: String(game?.id),
         playerId: String(player?.id),
       })
-    },
-  },
-  setup() {
-    const colors = [
-      '#1C3144',
-      '#D00000',
-      '#FFBA08',
-      '#A2AEBB',
-      '#3F88C5',
-      '#6FD08C',
-      '#7B9EA8',
-      '#E09891',
-      '#CB769E',
-      '#EFBDEB',
-      '#2A9D8F',
-      '#06D6A0',
-      '#FCFCFC',
-      '#98D2EB',
-      '#75B9BE',
-      '#87BCDE',
-      '#63A088',
-      '#FFC4D1',
-    ]
+    }
 
-    const state = reactive({
-      name: '',
-      color: colors[Math.floor(Math.random() * colors.length)],
-    })
+    const setColor = async () => {
+      const { game, player } = props
+      const { color } = state
+
+      await update({
+        color,
+        event: 'set-color',
+        gameId: String(game?.id),
+        playerId: String(player?.id),
+      })
+    }
 
     return {
-      colors,
-      ...state,
+      state,
+      setName,
+      colors: gameColors,
     }
   },
 })

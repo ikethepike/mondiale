@@ -827,16 +827,17 @@ for (const key in countries) {
     economics: {
       gdpPerCapita: economy.gdp.per_capita_purchasing_power_parity
         ? {
-            value: economy.gdp.per_capita_purchasing_power_parity.annual_values.pop()
-              ?.value,
+            value:
+              economy.gdp.per_capita_purchasing_power_parity.annual_values.pop()
+                ?.value,
             rank: economy.gdp.per_capita_purchasing_power_parity.global_rank,
           }
         : undefined,
       populationBelowPovertyLine: undefined,
       militarySpending: military_and_security?.expenditures
         ? {
-            value: military_and_security.expenditures.annual_values.pop()
-              ?.value,
+            value:
+              military_and_security.expenditures.annual_values.pop()?.value,
             units: '$',
             rank: military_and_security.expenditures.global_rank,
           }
@@ -891,22 +892,22 @@ for (const key in countries) {
           return a + b
         }),
       vulnerableGroups: {
-        refugees: transnational_issues.refugees_and_iternally_displaced_persons?.refugees?.by_country
-          .map((v) => {
-            if (typeof v.people === 'string') {
-              return 0
-            }
+        refugees:
+          transnational_issues.refugees_and_iternally_displaced_persons?.refugees?.by_country
+            .map((v) => {
+              if (typeof v.people === 'string') {
+                return 0
+              }
 
-            return v.people
-          })
-          .reduce((a, b) => a + b),
+              return v.people
+            })
+            .reduce((a, b) => a + b),
       },
     },
     environment: {
       emissions: {
-        rank:
-          energy?.carbon_dioxide_emissions_from_consumption_of_energy
-            ?.global_rank,
+        rank: energy?.carbon_dioxide_emissions_from_consumption_of_energy
+          ?.global_rank,
         megatons:
           energy?.carbon_dioxide_emissions_from_consumption_of_energy
             ?.megatonnes,

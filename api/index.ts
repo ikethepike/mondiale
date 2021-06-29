@@ -2,7 +2,7 @@
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
 import { generateComparisons } from '../types/comparisons'
-import { Game, Player, Command, palette, Round } from '../types/game'
+import { Game, Player, Command, Round, gameColors } from '../types/game'
 
 import { GameFeed } from '../lib/SSE'
 import { getRandomValue, getRandomValues } from '../lib/retrieval'
@@ -60,7 +60,7 @@ const api: ServerMiddleware = async (req, res, next) => {
           const player: Player = games[gameId].players[playerId] || {
             id: playerId,
             progress: Math.floor(Math.random() * 100),
-            color: getRandomValue(Object.values(palette)),
+            color: getRandomValue(Object.values(gameColors)),
           }
 
           games[gameId].players[playerId] = player
@@ -80,6 +80,16 @@ const api: ServerMiddleware = async (req, res, next) => {
             game: games[gameId],
           })
           res.end()
+          break
+        case 'set-color':
+          const { color } = command
+
+          games[gameId].players[playerId].color = color
+          feeds[gameId].update({
+            event: 'color-set',
+            game: games[gameId],
+          })
+
           break
         case 'join-game':
           feeds[gameId].update({

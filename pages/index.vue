@@ -1,7 +1,6 @@
 <template>
   <div>
     <ModalKicked v-if="kicked" @close="kicked = false" />
-
     <Welcome />
   </div>
 </template>

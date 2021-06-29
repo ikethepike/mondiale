@@ -41,7 +41,7 @@ export interface Player {
   id: string
   name?: string
   progress: number
-  color: PaletteValues
+  color: GameColor
 }
 
 export type Command =
@@ -57,7 +57,12 @@ export type Command =
       playerId: string
       gameId: string
       name: string
-      color: string
+    }
+  | {
+      event: 'set-color'
+      color: GameColor
+      playerId: string
+      gameId: string
     }
   | { event: 'start-game'; playerId: string; gameId: string }
   | { event: 'submit-order'; playerId: string; gameId: string }
@@ -83,10 +88,8 @@ export type Command =
 
 export type Update =
   | { event: 'name-set'; game: Game }
-  | {
-      event: 'new-round'
-      game: Game
-    }
+  | { event: 'color-set'; game: Game }
+  | { event: 'new-round'; game: Game }
   | { event: 'player-joined'; game: Game }
   | { event: 'player-waved'; playerId: string }
   | { event: 'player-kicked' }
@@ -112,7 +115,30 @@ export interface GameOptions {
 
 export type GameLength = 'short' | 'medium' | 'long'
 
-export type PaletteValues =
+export const gameColors = [
+  '#1C3144',
+  '#D00000',
+  '#FFBA08',
+  '#A2AEBB',
+  '#3F88C5',
+  '#6FD08C',
+  '#7B9EA8',
+  '#E09891',
+  '#CB769E',
+  '#EFBDEB',
+  '#2A9D8F',
+  '#06D6A0',
+  '#FCFCFC',
+  '#98D2EB',
+  '#75B9BE',
+  '#87BCDE',
+  '#63A088',
+  '#FFC4D1',
+] as const
+
+export type GameColor = typeof gameColors[number]
+
+export type PaletteValue =
   | '#0d2f61'
   | '#3481a1'
   | '#90bcb5'
@@ -120,11 +146,11 @@ export type PaletteValues =
   | '#ec6247'
 
 export const palette: {
-  darkBlue: PaletteValues
-  softBlue: PaletteValues
-  softMint: PaletteValues
-  warmSand: PaletteValues
-  hiorAnge: PaletteValues
+  darkBlue: PaletteValue
+  softBlue: PaletteValue
+  softMint: PaletteValue
+  warmSand: PaletteValue
+  hiorAnge: PaletteValue
 } = {
   darkBlue: '#0d2f61',
   softBlue: '#3481a1',
