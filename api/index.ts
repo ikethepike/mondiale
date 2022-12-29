@@ -1,15 +1,18 @@
 /* eslint-disable no-unreachable */
 import { IncomingMessage } from 'http'
 import { ServerMiddleware } from '@nuxt/types'
-import { Game, Player, Command, palette } from '../types/game'
-import { generateHash } from '../lib/hashing'
-import { SSE } from '../lib/SSE'
-// import { countryCodes } from '../george/compiled/countries.json'
-const games: { [key: string]: Game } = {}
-const feeds: { [key: string]: SSE } = {}
+import { generateComparisons } from '../types/comparisons'
+import { Game, Player, Command, Round, gameColors } from '../types/game'
+
+import { GameFeed } from '../lib/SSE'
+import { getRandomValue, getRandomValues } from '../lib/retrieval'
+import { generateGameBoard } from '../lib/game'
+
+const games: { [gameId: string]: Game } = {}
+const feeds: { [gameId: string]: GameFeed } = {}
 
 const fetchBody = (req: IncomingMessage): Promise<any> => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let body = ''
     req.on('data', (chunk: string) => {
       body += chunk
@@ -20,63 +23,134 @@ const fetchBody = (req: IncomingMessage): Promise<any> => {
   })
 }
 
-const randomValue = (array: any) =>
-  array[Math.floor(Math.random() * array.length)]
-
 const api: ServerMiddleware = async (req, res, next) => {
   if (!req.originalUrl?.includes('/api/')) {
     return next()
   }
 
   if (req.originalUrl.includes('/api/feed/')) {
-    const gameId = req.originalUrl.split('/').pop()
+    const path = req.originalUrl.split('/')
+    const playerId = path.pop()
+    const gameId = path.pop()
     if (!feeds[gameId]) {
-      feeds[gameId] = new SSE(res)
+      feeds[gameId] = new GameFeed(gameId)
     }
-    return feeds[gameId].connect()
+    feeds[gameId].addConnection(res, playerId)
+    return
   }
 
   if (req.originalUrl === '/api/commands') {
     try {
       const command: Command = JSON.parse(await fetchBody(req))
-
+      const { gameId, playerId } = command
       switch (command.event) {
         case 'connect':
-          const id = command.gameId
-          const player: Player = {
-            ready: false,
-            id: generateHash(),
-            progress: Math.floor(Math.random() * 100),
-            color: randomValue(Object.values(palette)),
-          }
-
-          if (!games[id]) {
-            games[id] = {
-              id,
-              variant: 'world',
+          if (!games[gameId]) {
+            games[gameId] = {
+              id: gameId,
+              rounds: [],
               players: {},
+              host: command.playerId,
+              options: command.options,
+              tiles: generateGameBoard('medium'),
+              variant: command.variant || 'world',
             }
           }
 
-          games[id].players[player.id] = player
-          res.setHeader('Set-Cookie', 'wow="comeon"; Max-Age=40000;')
-          res.setHeader('Set-Cookie', `player=${player.id}; Max-Age=3000;`)
+          const player: Player = games[gameId].players[playerId] || {
+            id: playerId,
+            progress: Math.floor(Math.random() * 100),
+            color: getRandomValue(Object.values(gameColors)),
+          }
+
+          games[gameId].players[playerId] = player
 
           res.end(
             JSON.stringify({
               player,
-              game: games[id],
+              game: games[gameId],
             })
           )
           break
-        case 'set-name':
-          const { gameId, playerId, name } = command
+        case 'set-player':
+          const { name } = command
           games[gameId].players[playerId].name = name
-          games[gameId].players[playerId].ready = true
-          feeds[gameId].update(games[gameId])
+          feeds[gameId].update({
+            event: 'name-set',
+            game: games[gameId],
+          })
           res.end()
           break
-        case 'move':
+        case 'set-color':
+          const { color } = command
+
+          games[gameId].players[playerId].color = color
+          feeds[gameId].update({
+            event: 'color-set',
+            game: games[gameId],
+          })
+          res.end()
+          break
+        case 'join-game':
+          feeds[gameId].update({
+            event: 'player-joined',
+            game: games[gameId],
+          })
+          break
+        case 'wave-at-player':
+          feeds[gameId].update({ event: 'player-waved', playerId }, command.targetPlayer)
+          break
+        case 'start-game':
+          const challenges = {}
+          const ids = Object.keys(games[gameId].players)
+          const { comparison, countries } = generateComparisons('neutral')
+
+          ids.forEach(id => {
+            challenges[id] = {
+              points: undefined,
+              answers: undefined,
+              countries: getRandomValues(
+                countries.map(({ countryCode }) => countryCode),
+                5
+              ),
+            }
+          })
+          const round: Round = {
+            statistic: comparison,
+            question: 'Does this look good?',
+            challenges,
+          }
+          games[gameId].rounds.push(round)
+          feeds[gameId].update({
+            event: 'new-round',
+            game: games[gameId],
+          })
+          break
+        case 'kick-player':
+          if (playerId !== games[gameId].host) {
+            res.statusCode = 401
+            return res.end()
+          }
+
+          delete games[gameId].players[command.targetPlayer]
+
+          // Kick the player
+          if (feeds[gameId].feeds[command.targetPlayer]) {
+            feeds[gameId].update(
+              {
+                event: 'player-kicked',
+              },
+              command.targetPlayer
+            )
+          }
+
+          feeds[gameId].removeConnection(command.targetPlayer)
+
+          // Update the game for the rest of the players
+          feeds[gameId].update({
+            event: 'game-updated',
+            game: games[gameId],
+          })
           break
         default:
           res.statusCode = 400

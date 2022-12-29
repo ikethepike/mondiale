@@ -1,9 +1,4 @@
-import {
-  AgeDistribution,
-  ElevationPoint,
-  RankValue,
-  Value,
-} from './../george/george'
+import { AgeDistribution, ElevationPoint, RankValue, Value } from './../george/george'
 export type CountryCode =
   | 'AF'
   | 'AO'

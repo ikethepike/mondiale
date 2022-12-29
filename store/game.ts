@@ -1,39 +1,84 @@
-import randomWords from 'random-words'
-import { ActionTree, MutationTree, GetterTree } from 'vuex'
-import { generateHash } from '~/lib/hashing'
-import { Game, Player } from '~/types/game'
+import { defineStore } from 'pinia'
+import { update } from '../lib/CSE'
+import { Game, GameOptions, Player, Round, Variant } from '../types/game'
 
-export interface GameState {
-  game?: Game
+interface GameState {
+  game: Game
+  playerId?: string
 }
 
-export const state = (): GameState => ({
-  game: undefined,
+export interface ActiveRound extends Round {
+  answered: boolean
+}
+
+export const useGameStore = defineStore({
+  id: 'gameStore',
+  state: (): GameState => ({
+    game: undefined,
+    playerId: undefined,
+  }),
+  getters: {
+    getCurrentPlayer: state => {
+      const { game, playerId } = state
+      if (!game || !playerId) return undefined
+
+      return game.players[playerId]
+    },
+    getCurrentPhase: state => {
+      if (!state.playerId || !state.game) {
+        return {
+          naming: false,
+          waiting: false,
+          playing: false,
+        }
+      }
+
+      const player = state.game.players[state.playerId]
+
+      return {
+        naming: !player.name,
+        playing: Boolean(state.game.rounds.length),
+        waiting: Boolean(player.name) && state.game.rounds.length === 0,
+      }
+    },
+    getCurrentRound: (state): ActiveRound => {
+      const { game, playerId } = state
+      if (!game || !playerId) return undefined
+
+      const round = game.rounds[game.rounds.length - 1]
+      if (!round) return undefined
+
+      return { ...round, answered: Boolean(round.challenges[playerId].answers?.length > 0) }
+    },
+  },
+  actions: {
+    async connect({
+      gameId,
+      playerId,
+      variant,
+      options,
+    }: {
+      gameId: string
+      playerId: string
+      variant: Variant
+      options?: GameOptions
+    }): Promise<void> {
+      try {
+        const { game } = await update<{ game: Game; player: Player }>({
+          event: 'connect',
+          gameId,
+          playerId,
+          options,
+          variant,
+        })
+
+        this.game = game
+        this.playerId = playerId
+
+        return Promise.resolve()
+      } catch (e) {
+        return Promise.reject(e)
+      }
+    },
+  },
 })
-
-export const actions: ActionTree<GameState, any> = {
-  startGame({ commit }, name) {
-    const player: Player = {
-      id: generateHash(),
-      points: 0,
-      name,
-    }
-
-    // generate game id
-    // set state
-    const game: Game = {
-      id: randomWords({ exactly: 3, join: '-' }),
-      variant: 'world',
-      players: [player],
-    }
-    commit('game', game)
-  },
-}
-
-export const mutations: MutationTree<GameState> = {
-  game(state, game: Game) {
-    state.game = game
-  },
-}
-
-export const getters: GetterTree<GameState, any> = {}

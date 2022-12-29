@@ -9,13 +9,19 @@
     "sourceMap": true,
     "strict": true,
     "noEmit": true,
+    "downlevelIteration": true,
     "experimentalDecorators": true,
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "~/*": ["./*"],
       "@/*": ["./*"]
     },
-    "types": ["@types/node", "@nuxt/types"]
+    "types": [
+      "@types/node", 
+      "@nuxt/types",
+      "pinia/nuxt/types"
+    ]
   },
   "include": ["types", "declarations.d.ts"],
   "exclude": ["node_modules", ".nuxt", "dist"]

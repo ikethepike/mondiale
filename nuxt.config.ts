@@ -17,24 +17,31 @@ const config: NuxtConfig = {
   },
   css: [],
 
-  plugins: ['~/plugins/api'],
-  components: true,
-  buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api'],
-
-  // Modules (https://go.nuxtjs.dev/config-modules)
-  modules: [
-    // https://go.nuxtjs.dev/axios
-    '@nuxtjs/axios',
-    // https://go.nuxtjs.dev/pwa
-    '@nuxtjs/pwa',
+  plugins: ['~/plugins/composition'],
+  components: [
+    '~/components',
+    {
+      path: '~/components/modal/',
+      prefix: 'Modal',
+    },
+    {
+      path: '~/components/map/',
+      prefix: 'Map',
+    },
+    {
+      path: '~/components/game/',
+      prefix: 'Game',
+    },
   ],
 
-  // Axios module configuration (https://go.nuxtjs.dev/config-axios)
+  buildModules: ['@nuxt/typescript-build', '@nuxtjs/composition-api/module', 'pinia/nuxt'],
+
+  modules: ['@nuxtjs/axios', '@nuxtjs/pwa'],
+
   axios: {},
 
   serverMiddleware: [{ path: '/api', handler: '~/api/index.ts' }],
 
-  // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {},
   typescript: {
     typeCheck: {

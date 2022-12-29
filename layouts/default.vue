@@ -1,7 +1,5 @@
 <template>
-  <div>
-    <Nuxt />
-  </div>
+  <Nuxt />
 </template>
 
 <style lang="scss">
@@ -16,9 +14,20 @@ h2,
 h3,
 h4,
 h5,
-h6 {
+h6,
+ul,
+ol,
+li {
   margin: 0;
   padding: 0;
+}
+
+ul {
+  list-style: none;
+}
+a[role='button'] {
+  cursor: pointer;
+  user-select: none;
 }
 
 /* Palette */
@@ -31,6 +40,8 @@ h6 {
   --soft-mint: #90bcb5;
   --warm-sand: #f1b982;
   --hior-ange: #ec6247;
+
+  --button-padding: 1.625rem;
 }
 
 // Typography
@@ -52,52 +63,95 @@ body {
   border: none;
   display: block;
   color: inherit;
-  padding: 1.625rem 0;
-  background: transparent;
+  cursor: pointer;
+  font-size: 100%;
   font-family: inherit;
+  background: transparent;
+  padding: var(--button-padding);
   border-top: 1px solid currentColor;
+}
+.line-button:disabled {
+  cursor: not-allowed;
+  text-decoration: line-through;
 }
 
 label {
-  display: block;
+  display: inline-block;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  width: 100%;
+  border: none;
+  height: 2rem;
+  background: #fff;
+}
+
+p {
+  letter-spacing: 0.5px;
+  line-height: 140%;
+}
+
+.modal-wrapper {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  display: flex;
+  position: fixed;
+}
+.modal-background {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: rgba(#fff, 0.3);
+}
+.modal {
+  width: 95%;
+  margin: auto;
+  max-width: 43rem;
+  position: relative;
+}
+.form-content {
+  padding: 1rem;
 }
 
 // theme adaptive backgrounds
 .theme-gradient {
-  background: linear-gradient(
-      180deg,
-      var(--soft-mint) 0%,
-      var(--warm-sand) 100%
-    ),
-    var(--soft-blue);
+  background: linear-gradient(180deg, var(--soft-mint) 0%, var(--warm-sand) 100%), var(--soft-blue);
 }
 .theme-background {
   background: #fff;
 }
 .theme-highlight-background {
+  transition: fill 0.3s;
   background: var(--hior-ange);
 }
 .theme-color {
   color: var(--text-color-light);
 }
+html body .theme-highlight-fill[class] {
+  fill: var(--hior-ange);
+}
 
 @media (prefers-color-scheme: dark) {
   .theme-gradient {
-    background: linear-gradient(
-        180deg,
-        var(--dark-blue) 0%,
-        var(--soft-mint) 100%
-      ),
+    background: linear-gradient(180deg, var(--dark-blue) 0%, var(--soft-mint) 100%),
       var(--soft-blue);
   }
   .theme-background {
-    background: #020202;
+    background: #252525;
   }
   .theme-color {
     color: var(--text-color-dark);
   }
   .theme-highlight-background {
     background: var(--dark-blue);
+  }
+  html body .theme-highlight-fill[class] {
+    fill: var(--dark-blue);
   }
 }
 
