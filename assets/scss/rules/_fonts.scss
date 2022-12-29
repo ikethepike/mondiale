@@ -1,0 +1,13 @@
+// Typography
+@font-face {
+  font-family: 'Sweden Sans';
+  src: url('~/assets/fonts/sweden/SwedenSans.woff2') format('woff2'),
+    url('~/assets/fonts/sweden/SwedenSans.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'Sweden Sans', monospace;
+}

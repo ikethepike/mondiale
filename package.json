@@ -1,0 +1,33 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --host=0.0.0.0",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "generate:countries": "bun run ./generators/create-countries-file.ts",
+    "generate:linking": "bun run ./generators/create-link-mapping.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.17",
+    "@types/sortablejs": "^1.15.0",
+    "@types/uuid": "^9.0.0",
+    "nuxt": "3.0.0"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.4.6",
+    "axios": "^1.2.1",
+    "ioredis": "^5.2.4",
+    "pinia": "^2.0.28",
+    "random-words": "^1.2.0",
+    "sass": "^1.57.1",
+    "socket.io": "4.5.1",
+    "socket.io-client": "4.5.1",
+    "sortablejs": "^1.15.0",
+    "sortablejs-vue3": "^1.2.4",
+    "svg-pan-zoom-container": "^0.6.1",
+    "uuid": "^9.0.0",
+    "vuedraggable": "^4.1.0"
+  }
+}
