@@ -68,6 +68,9 @@ const normalizeCountry = ({
     url,
     flag: flag.toString(),
     name: names,
+    identity: {
+      colors: getNationalColors(data, isoCode, flag.toString()),
+    },
     economics: {
       gdpPerCapita: getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
       populationBelowPovertyLine: getTextNode<'%'>(
@@ -426,4 +429,15 @@ export const getNames = ({
     local: removeAfterCharacter(removeParentheticals(output.local), ';'),
     english: removeAfterCharacter(removeParentheticals(output.english), ';'),
   }
+}
+
+const getNationalColors = (data: FactbookResponse, isoCode: string, flag: string): string[] => {
+  const colors: Set<string> = new Set([])
+  if (!flag.includes('fill')) {
+    return []
+  }
+
+  const matches = new Set(flag.match(/#(?:[0-9a-fA-F]{3}){1,2}/g))
+
+  return [...matches]
 }

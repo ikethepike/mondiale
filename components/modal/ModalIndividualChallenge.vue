@@ -27,15 +27,6 @@ const { currentMove, update } = useClientEvents()
 
 const challenge = ref(currentMove.value?.challenge)
 
-// watch(
-//   () => currentMove,
-//   () => {
-//     if (currentMove.value?.challenge) {
-//       challenge.value = currentMove.value.challenge
-//     }
-//   }
-// )
-
 const status = ref<'unanswered' | 'correct' | 'incorrect'>('unanswered')
 const reveal = computed<ISOCountryCode[]>(() => {
   if (status.value === 'unanswered') return []

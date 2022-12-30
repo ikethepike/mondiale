@@ -14,6 +14,9 @@ export interface Country {
     local: string
     english: string
   }
+  identity: {
+    colors: string[]
+  }
   economics: {
     gdpPerCapita?: Amount<'$'>
     militarySpending?: Amount<'%'>

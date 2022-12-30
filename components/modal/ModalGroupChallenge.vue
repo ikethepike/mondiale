@@ -16,20 +16,25 @@
           :options="options"
           item-key="isoCode"
           class="countries"
-          @change="updateRanking"
+          @sort="updateRanking"
         >
           <template #item="{ element }">
-            <div
-              class="draggable country"
-              :key="element.isoCode"
-              :data-iso="element.isoCode"
-              :data-country="element.name.english"
-              :style="{
-                backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(element.flag)}')`,
-              }"
-            >
-              {{ element.name.english }}
-            </div>
+            <article class="country-tile draggable" :key="element.isoCode">
+              <header>
+                <h3>{{ element.name.english }}</h3>
+                <span class="local-name">{{ element.name.local }}</span>
+              </header>
+
+              <div
+                class="flag"
+                :data-iso="element.isoCode"
+                :style="{
+                  backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(element.flag)}')`,
+                }"
+              />
+
+              <span class="rank" />
+            </article>
           </template>
         </Sortable>
       </footer>

@@ -17,7 +17,7 @@
       </main>
 
       <template v-if="currentRound?.round">
-        <ModalActiveRound v-if="player.phase === 'group-challenge'" />
+        <ModalGroupChallenge v-if="player.phase === 'group-challenge'" />
         <ModalScores v-if="player.phase === 'group-scores'" />
         <ModalMoving v-if="['moving', 'movement-summary'].includes(player.phase)" />
         <ModalIndividualChallenge v-if="player.phase === 'individual-challenge'" />
