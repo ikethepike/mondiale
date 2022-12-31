@@ -6,3 +6,10 @@
 // Text 
 @import "text/heading-text";
 @import "text/body-text";
+
+// Templates 
+@import "templates/pane";
+
+body {
+  background-color: aliceblue;
+}

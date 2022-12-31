@@ -84,7 +84,7 @@ header {
 }
 
 .flag-pinwheel {
-  opacity: 0;
+  // opacity: 1;
   top: -50%;
   left: -50%;
   width: 200%;
@@ -98,8 +98,8 @@ header {
   // background-position: 0 0, 100% 0, 100% 100%, 0 100%;
 
   display: grid;
-  animation: rotate 5s linear infinite;
   grid-template-rows: repeat(2, 1fr);
+  animation: rotate 5s linear infinite;
   grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
 }
 

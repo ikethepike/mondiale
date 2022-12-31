@@ -1,0 +1,16 @@
+$paneBorderRadius: 1.9rem;
+
+.pane {
+  padding: 3rem;
+  background: #FFFBF5; 
+  border: .1rem solid var(--black);
+  &.tr {
+    border-top-right-radius: $paneBorderRadius;
+  }
+  &.tl {
+    border-top-left-radius: $paneBorderRadius;
+  }
+  &.decorator-bottom {
+    border-bottom: .6rem solid var(--black);
+  }
+}
