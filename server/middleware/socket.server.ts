@@ -10,7 +10,7 @@ import { setNameHandler } from '~~/lib/events/server/set-name.handler'
 import { startGameHandler } from '~~/lib/events/server/start-game.handler'
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
-import { testHandler } from '~~/lib/events/server/test.handler'
+import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
 
 import { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
 
@@ -55,6 +55,10 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   'enter-movement-phase': {
     handler: enterMovementPhaseHandler,
   },
+  // Does not write to permanent game state
+  'update-by-index': {
+    handler: updateByIndexHandler,
+  },
 }
 
 export default defineEventHandler(({ node }) => {
@@ -67,7 +71,6 @@ export default defineEventHandler(({ node }) => {
 
     const io = new Server((node.res.socket as any).server)
     io.on('connection', async socket => {
-      console.log('connection!', await (await io.fetchSockets()).length)
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
         socket.on(eventKey, (eventData, eventTarget) => {
           console.log(`Received client event: ${eventKey} for ${eventTarget.gameId}`)

@@ -1,5 +1,4 @@
 import fs from 'fs'
-import { ISOCountryCode } from '~~/types/geography.types'
 import { FactbookResponse } from '~~/types/response.type'
 
 const LINK_MAPPING_FILE = `./generators/link-mapping.gen.ts`
@@ -16,7 +15,7 @@ enum FactbookBindings {
   AR = 'AR',
   AM = 'AM',
   // AW = 'AA', // dutch
-  // AU = 'AS',
+  AU = 'AS',
   AT = 'AU',
   AZ = 'AJ',
   BS = 'BF',
@@ -285,7 +284,7 @@ export const createLinkMapping = async () => {
   let amount = 1
   for (const [isoCode, fipsCode] of countryCodeBinding) {
     let found = false
-    console.info(`Processing country: ${fipsCode} - ${amount++} of ${countryCodeBinding.length}`)
+    console.info(`Processing country: ${isoCode} - ${amount++} of ${countryCodeBinding.length}`)
     for (const folder of folders) {
       if (found) continue
 
@@ -300,7 +299,7 @@ export const createLinkMapping = async () => {
         }
         found = true
         successfulCombinations.push({ fipsCode, folder, isoCode, url })
-        console.log(`☀️ Found successful combination for: ${fipsCode}`)
+        console.log(`☀️ Found successful combination for: ${isoCode}`)
       } catch (e) {}
     }
 

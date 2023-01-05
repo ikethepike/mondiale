@@ -28,9 +28,10 @@ export const joinEventHandler: EventHandler = async ({
       id: gameId,
       rounds: [],
       players: {},
+      position: {},
       host: playerId,
       started: false,
-      position: {},
+      difficulty: 'hard',
       tiles: generateTiles('medium'),
     }
 

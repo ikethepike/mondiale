@@ -1,26 +1,23 @@
 <template>
-  <div class="main-board theme-background">
+  <div class="main-board">
     <template v-if="game && player">
       <!-- First phase, player set-up -->
-      <ModalPlayerConfiguration v-if="!game.started && player.phase === 'naming'" />
-
-      <!-- Second phase, lobby -->
-      <ModalWaiting v-if="!game.started && player.phase === 'waiting-for-game'" />
+      <ViewPlayerConfiguration v-if="!game.started" />
 
       <!-- GAME HAS STARTED AFTER THIS POINT -->
       <!-- Third phase, tutorial  -->
-      <ModalTutorial v-if="player.phase === 'tutorial'" />
+      <ViewTutorial v-if="player.phase === 'tutorial'" />
 
       <!-- Fourth phase, playing -->
-      <main :class="{ playing: game.started && player.phase !== 'tutorial' }" class="map-wrapper">
+      <!-- <main :class="{ playing: game.started && player.phase !== 'tutorial' }" class="map-wrapper">
         <GameMap v-if="player.phase === 'group-challenge'" :visible="true" />
-      </main>
+      </main> -->
 
       <template v-if="currentRound?.round">
-        <ModalGroupChallenge v-if="player.phase === 'group-challenge'" />
-        <ModalScores v-if="player.phase === 'group-scores'" />
+        <ViewGroupChallenge v-if="player.phase === 'group-challenge'" />
+        <ViewGroupScores v-if="player.phase === 'group-scores'" />
         <ModalMoving v-if="['moving', 'movement-summary'].includes(player.phase)" />
-        <ModalIndividualChallenge v-if="player.phase === 'individual-challenge'" />
+        <ViewIndividualChallenge v-if="player.phase === 'individual-challenge'" />
       </template>
     </template>
     <template v-else>
@@ -49,8 +46,9 @@ onMounted(() => {
   max-width: 100%;
   overflow: hidden;
   position: relative;
+  pointer-events: none;
 }
-
+/* 
 .grid-overlay {
   top: 0;
   left: 0;
@@ -82,5 +80,5 @@ onMounted(() => {
 .map-wrapper.playing {
   transform: scale(1);
   filter: grayscale(0);
-}
+} */
 </style>

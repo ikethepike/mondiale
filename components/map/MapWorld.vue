@@ -75,9 +75,8 @@ onMounted(() => {
 <style scoped>
 svg {
   width: 100%;
-  margin: auto;
-  height: auto;
   display: block;
+  max-height: 100%;
 }
 svg > * {
   pointer-events: none;

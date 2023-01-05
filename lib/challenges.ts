@@ -8,7 +8,7 @@ import {
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
-import { Game } from '~~/types/game.types'
+import { Game, GameDifficulty } from '~~/types/game.types'
 import { Amount, ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { getRandomISOCountryCode } from './country'
@@ -18,6 +18,22 @@ const MAXIMUM_SCORE_PER_COUNTRY = 3
 const DEFAULT_CHALLENGE_MARKERS: ChallengeMarkers = {
   most: 'Most',
   least: 'Least',
+}
+
+export const DIFFICULTY_CONFIGURATION: {
+  [difficulty in GameDifficulty]: {
+    rankingChallengeCountries: number
+  }
+} = {
+  easy: {
+    rankingChallengeCountries: 4,
+  },
+  normal: {
+    rankingChallengeCountries: 5,
+  },
+  hard: {
+    rankingChallengeCountries: 7,
+  },
 }
 
 export const getGroupChallenge = ({ game }: { game: Game }) => {
@@ -31,7 +47,10 @@ export const getGroupChallenge = ({ game }: { game: Game }) => {
   })
 
   for (const playerId of Object.keys(game.players)) {
-    challenge.countriesPerPlayer[playerId] = isoCodes.splice(0, 5)
+    challenge.countriesPerPlayer[playerId] = isoCodes.splice(
+      0,
+      DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
+    )
   }
 
   return challenge

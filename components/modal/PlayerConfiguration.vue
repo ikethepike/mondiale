@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <ModalWrapper>
     <form @submit.prevent="completeConfiguration">
       <div class="form-content">
@@ -136,4 +136,4 @@ const disabledColors = computed(() => {
   );
   position: absolute;
 }
-</style>
+</style> -->

@@ -236,19 +236,13 @@ const getRefugees = (
   if (!unparsed) return undefined
 
   const withoutDate = removeParentheticals(removeAfterCharacter(unparsed.text, '(as of'))
-  if (isoCode === 'SE') console.log({ withoutDate })
   const years = extractYears(withoutDate)
-  if (isoCode === 'SE') console.log({ years })
   let withoutYears = withoutDate.replaceAll(',', '')
   for (const year of years) {
     withoutYears = withoutYears.replace(year.toString(), '')
   }
 
-  if (isoCode === 'SE') console.log({ withoutYears })
-
   const numbers = extractNumbers(withoutYears)
-  if (isoCode === 'SE') console.log({ numbers })
-
   if (!numbers.length) return undefined
 
   return {
@@ -422,6 +416,12 @@ export const getNames = ({
     case 'PS':
       output.english = 'Palestine'
       output.local = 'فلسطين'
+      break
+    case 'DO':
+      output.english = 'The Dominican Republic'
+      break
+    case 'CD':
+      output.english = 'Democratic Republic of the Congo'
       break
   }
 

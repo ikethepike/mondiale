@@ -12,7 +12,6 @@ export type ClientEventData =
     }
   | {
       event: 'set-color'
-      color: PlayerColor
     }
   | {
       event: 'start-game'
@@ -36,6 +35,11 @@ export type ClientEventData =
     }
   | {
       event: 'ready-for-round'
+    }
+  | {
+      event: 'update-by-index'
+      value: string | number | boolean
+      accessorPattern: string
     }
 
 export type ClientEvent = ClientEventData['event']
@@ -63,5 +67,14 @@ export type ServerEventData =
   | { event: 'update'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
   | { event: 'player-ready-for-round'; game: Game }
+  | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
 
 export type ServerEvent = ServerEventData['event']
+
+export type MapClickEvent = CustomEvent<{
+  isoCode: ISOCountryCode | string
+}>
+
+export const isMapClickEvent = (event: Event): event is MapClickEvent => {
+  return event && Reflect.has(event, 'detail')
+}

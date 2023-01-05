@@ -1,0 +1,18 @@
+@font-face {
+    font-family: 'Lusitana';
+    src: url('Lusitana-Bold.woff2') format('woff2'),
+        url('Lusitana-Bold.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lusitana';
+    src: url('Lusitana.woff2') format('woff2'),
+        url('Lusitana.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+

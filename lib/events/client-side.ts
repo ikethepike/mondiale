@@ -29,6 +29,11 @@ export const useClientEvents = () => {
     return gameStore.game.players[playerId.value]
   })
 
+  const hostPlayer = computed(() => {
+    if (!gameStore.game) return undefined
+    return Object.values(gameStore.game.players).find(player => player.id === game.value?.host)
+  })
+
   const isPlayerHost = computed<boolean>(() => {
     if (!player.value) return false
     return player.value.id === game.value?.host
@@ -41,6 +46,7 @@ export const useClientEvents = () => {
     player,
     playerId,
     gameStore,
+    hostPlayer,
     currentMove,
     currentMoves,
     isPlayerHost,
@@ -65,8 +71,25 @@ export const useClientEvents = () => {
         playerId: playerId.value,
       }
 
-      if (!isValidClientEventTarget) {
+      if (!isValidClientEventTarget(eventTarget)) {
         throw new EvalError('Invalid client event target')
+      }
+
+      // Verify that key exists for index updates
+      if (eventData.event === 'update-by-index') {
+        let value: any = game.value
+        for (const accessor of eventData.accessorPattern.split('.')) {
+          if (!Reflect.has(value, accessor)) {
+            console.warn(
+              'Unable to send, invalid accessor',
+              accessor,
+              `from ${eventData.accessorPattern}`
+            )
+            return
+          }
+
+          value = value[accessor]
+        }
       }
 
       socket.value.emit(eventData.event, eventData, eventTarget)

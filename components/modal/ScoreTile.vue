@@ -5,11 +5,11 @@
       :style="{
         backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country.flag)}')`,
       }"
-    ></div>
-    <p class="country-name">{{ country.name.english }}</p>
+    />
+    <strong class="country-name">{{ country.name.english }}</strong>
     <p v-if="showAmount">
-      <span>{{ amount.amount }}</span>
-      <span>{{ amount.unit }}</span>
+      <span>{{ formatNumber(amount.amount) }}</span>
+      <span>{{ ` ${amount.unit}` }}</span>
     </p>
   </div>
 </template>
@@ -17,6 +17,7 @@
 import { PropType } from 'vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { formatNumber } from '~~/lib/number'
 import { baseEncode } from '~~/lib/strings'
 import { getValueByAccessorID } from '~~/lib/values'
 import { ISOCountryCode } from '~~/types/geography.types'
@@ -45,3 +46,18 @@ const country = computed(() => {
   return COUNTRIES[props.isoCode]
 })
 </script>
+<style lang="scss" scoped>
+.score-tile {
+  display: grid;
+  justify-content: stretch;
+  grid-template-rows: repeat(2, max-content);
+  .flag {
+    width: 100%;
+    height: 8rem;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 0.1rem solid var(--text-color);
+  }
+}
+</style>

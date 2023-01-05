@@ -14,9 +14,13 @@ export interface Game {
   rounds: Round[]
   started: boolean
   variant: GameVariant
+  difficulty: GameDifficulty
   players: { [playerId: string]: Player }
   position: { [playerID: string]: PlayerPosition }
 }
+
+export const gameDifficulties = ['easy', 'normal', 'hard'] as const
+export type GameDifficulty = typeof gameDifficulties[number]
 
 export interface PlayerPosition {
   currentPosition: number

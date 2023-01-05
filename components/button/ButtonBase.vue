@@ -1,8 +1,6 @@
 <template>
   <component :is="element" class="button">
-    <div class="content">
-      <slot />
-    </div>
+    <slot />
   </component>
 </template>
 <script lang="ts" setup>
@@ -13,16 +11,26 @@ defineProps({
     type: String as PropType<'a' | 'button' | 'nuxt-link'>,
     default: 'button',
   },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 </script>
 <style lang="scss" scoped>
 .button {
   height: 5rem;
+
+  cursor: pointer;
   appearance: none;
+  padding: 0 1.4rem;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
   text-align: center;
   border-style: none;
   font-family: inherit;
   border-radius: 0.6rem;
-  padding: 1.6rem 1.4rem;
+  justify-content: center;
 }
 </style>

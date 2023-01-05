@@ -10,9 +10,9 @@
         v-if="challenge.id === 'flag'"
       ></div>
     </header>
-    <div class="map-wrapper">
+    <!-- <div class="map-wrapper">
       <GameMap @country-click="submitAnswer" :highlighted="reveal" :status="status" />
-    </div>
+    </div> -->
   </div>
 </template>
 <script lang="ts" setup>
@@ -21,6 +21,7 @@ import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { baseEncode } from '~~/lib/strings'
 import { processReplacements } from '~~/lib/values'
+import { isMapClickEvent } from '~~/types/events.types'
 import { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentMove, update } = useClientEvents()
@@ -53,6 +54,20 @@ const country = computed(() => {
   if (!challenge.value) return undefined
   return COUNTRIES[challenge.value.country]
 })
+
+const onMapClick = (event: Event) => {
+  if (!isMapClickEvent(event)) return
+
+  const { isoCode } = event.detail
+  console.log('click', isoCode)
+}
+
+onBeforeMount(() => {
+  document.addEventListener('mapClick', onMapClick)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('mapClick', onMapClick)
+})
 </script>
 <style lang="scss" scoped>
 .individual-challenge {
@@ -61,7 +76,6 @@ const country = computed(() => {
   width: 100%;
   height: 100vh;
   position: absolute;
-  background: #252525;
 }
 
 header {
@@ -72,7 +86,7 @@ header {
   position: absolute;
   justify-content: center;
   h1 {
-    color: #fff;
+    color: var(---text-color);
     display: block;
   }
   .flag {
@@ -80,8 +94,9 @@ header {
     height: 4rem;
     transition: 0.6s;
     display: inline-block;
-    background-size: cover;
-    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: top center;
   }
   .flag:hover {
     transform: scale(2);

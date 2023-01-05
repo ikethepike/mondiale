@@ -1,15 +1,23 @@
 /* Palette */
+
 :root {
-  --text-color-dark: #f1b982;
-  --text-color-light: #0d2f61;
+  --text-color: var(--black);
+  --background-color: var(--sour-milk);
 
-  --dark-blue: #0d2f61;
-  --soft-blue: #3481a1;
-  --soft-mint: #90bcb5;
-  --warm-sand: #f1b982;
-  --hior-ange: #ec6247;
+  // Map colors 
+  --map-highlight: var(--soft-mint); 
+  --map-filled-error: var(--hior-ange);
+  --map-filled-normal: var(--soft-blue);
+  --map-not-highlight: hsla(197.6, 51.2%, 41.8%, .1);
+  
+  --sour-milk: hsl(36, 100%, 98%); 
 
-  --button-padding: 1.625rem;
+  --dark-blue: hsla(215.7, 76.4%, 21.6%, 1);
+  --soft-blue: hsla(197.6, 51.2%, 41.8%, 1);
+  --soft-mint: hsl(170.5, 24.7%, 65.1%);
+  --warm-sand: hsl(29.7, 79.9%, 72.7%);
+  --hior-ange: hsl(9.8, 81.3%, 60.2%);
 
-  --black: #000;
+  --black: hsl(0, 0%, 7.5%);
+  --white: hsl(0, 0%, 94.9%);
 }

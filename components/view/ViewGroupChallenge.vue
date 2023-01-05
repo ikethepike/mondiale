@@ -1,14 +1,19 @@
 <template>
-  <div>
-    <form id="active-round">
-      <div id="question">
+  <div class="group-challenge-wrapper" :class="{ peeking }">
+    <form id="active-round" @submit.prevent="submitRanking">
+      <ButtonFilled class="peek-button" element="a" @click="peeking = !peeking">
+        <span>Peek</span>
+        <div class="peek-icon" />
+      </ButtonFilled>
+
+      <section id="question">
         <h1>{{ details?.phrasing || currentRound?.round.groupChallenge.id || '' }}</h1>
-      </div>
+      </section>
 
       <footer>
         <div class="indicators">
           <span>{{ details?.markers?.most }}</span>
-          <button class="submit" @click.prevent="submitRanking">Submit</button>
+          <ButtonFilled>Submit Ranking</ButtonFilled>
           <span>{{ details?.markers?.least }}</span>
         </div>
         <Sortable
@@ -16,24 +21,12 @@
           :options="options"
           item-key="isoCode"
           class="countries"
+          :style="{ gridTemplateColumns: `repeat(${countries.length}, 1fr)` }"
           @sort="updateRanking"
         >
           <template #item="{ element }">
-            <article class="country-tile draggable" :key="element.isoCode">
-              <header>
-                <h3>{{ element.name.english }}</h3>
-                <span class="local-name">{{ element.name.local }}</span>
-              </header>
-
-              <div
-                class="flag"
-                :data-iso="element.isoCode"
-                :style="{
-                  backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(element.flag)}')`,
-                }"
-              />
-
-              <span class="rank" />
+            <article class="country draggable" :key="element.isoCode" :data-iso="element.isoCode">
+              <CountryTile :country="element" />
             </article>
           </template>
         </Sortable>
@@ -46,14 +39,13 @@ import { Sortable } from 'sortablejs-vue3'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { baseEncode } from '~~/lib/strings'
-import { ExcludesUndefined } from '~~/types/generics.type'
 import { Country, ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const { gameStore, update, currentRound } = useClientEvents()
 const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
+const peeking = ref(false)
 
 const ranking = ref<ISOCountryCode[]>(gameStore.currentGroupChallengeForPlayer || [])
 watch(
@@ -98,11 +90,6 @@ const submitRanking = () => {
     event: 'submit-group-challenge-answers',
     ranking: ranking.value,
   })
-
-  // update({
-  //   event: 'submit-individual-challenge-answer',
-  //   isoCode: 'SE',
-  // })
 }
 
 const options = ref({
@@ -122,30 +109,65 @@ const options = ref({
   height: 100%;
   display: flex;
   position: absolute;
-  // pointer-events: none;
-  flex-direction: column;
+  pointer-events: auto;
+  flex-flow: column nowrap;
+  backdrop-filter: blur(0.3rem);
+  transition: backdrop-filter 0.3s;
   > * {
     position: relative;
   }
 }
-#active-round::before {
-  content: '';
-  opacity: 0.5;
-  width: 100%;
-  height: 100%;
-  display: block;
+
+.peeking {
+  #active-round {
+    pointer-events: none;
+    backdrop-filter: blur(0);
+  }
+  footer {
+    transform: translateY(calc(100% - 9rem));
+  }
+
+  #question {
+    opacity: 0;
+  }
+}
+
+h1 {
+  font-size: 3.5rem;
+}
+
+.peek-button {
+  top: 5vh;
+  z-index: 10;
+  flex-shrink: 0;
   position: absolute;
-  background-color: var(--soft-blue);
+  width: max-content;
+  pointer-events: auto;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  .peek-icon {
+    width: 4rem;
+    height: 2rem;
+    background: #fff;
+    mask: url('~/assets/icons/eye.svg') no-repeat center/contain;
+  }
 }
 
 footer {
-  transition: 1s;
+  gap: 2rem;
+  display: grid;
+  padding: 0 2rem;
+  transition: 0.6s;
+  grid-template-rows: max-content 1fr;
+  // transition: 1s;
 }
 
 .indicators {
-  display: flex;
-  padding: 0 2rem;
+  width: 100%;
+  display: grid;
+  align-items: flex-end;
   justify-content: space-between;
+  grid-template-columns: repeat(3, max-content);
   span:nth-of-type(1)::before {
     content: '⟵';
     padding: 0 1rem;
@@ -164,25 +186,12 @@ footer {
 }
 
 .countries {
-  gap: 2rem;
+  gap: 1rem;
   width: 100%;
-  height: 16vw;
-  display: flex;
-  padding: 2rem;
+  display: grid;
   pointer-events: all;
-  align-items: stretch;
-}
-
-.country {
-  width: 20vw;
-  height: 100%;
-  cursor: move;
-  overflow: hidden;
-  position: relative;
-  background-size: cover;
-  transition: opacity 0.2s;
-  background-position: center;
-  background-repeat: no-repeat;
+  justify-content: center;
+  grid-template-columns: repeat(5, 18vw);
 }
 
 .ghost {

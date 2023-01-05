@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
-import { genericUpdateHandler } from '~~/lib/events/client/generic-update.event'
+import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
+import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { useGameStore } from '~~/store/game.store'
 import { ClientEventTarget, ServerEventData } from '~~/types/events.types'
 
@@ -18,42 +19,43 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   }
 } = {
   'player-joined': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'name-set': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'color-set': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'game-started': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'new-round': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'game-already-started': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   update: {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'group-challenge-scored': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'individual-challenge-checked': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
   },
   'player-ready-for-round': {
-    handler: genericUpdateHandler,
+    handler: genericUpdateEvent,
+  },
+  'index-update': {
+    handler: indexUpdateEvent,
   },
 }
 
 const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`
 
 export default defineNuxtPlugin(() => {
-  console.log('Initialized!')
-
   const socket = io()
   const gameStore = useGameStore()
   gameStore.socket = socket

@@ -1,5 +1,5 @@
 // This is a generated file, don't touch it.
-// Generated at: 2022-12-28T06:36:45.161Z
+// Generated at: 2023-01-05T13:56:32.008Z
 import { ISOFipsMapping, LinkMapping } from './create-link-mapping'
 
 export const successfulCombinations: LinkMapping[] = [
@@ -44,6 +44,12 @@ export const successfulCombinations: LinkMapping[] = [
     folder: 'middle-east',
     isoCode: 'AM',
     url: 'https://github.com/factbook/factbook.json/raw/master/middle-east/am.json',
+  },
+  {
+    fipsCode: 'AS',
+    folder: 'australia-oceania',
+    isoCode: 'AU',
+    url: 'https://github.com/factbook/factbook.json/raw/master/australia-oceania/as.json',
   },
   {
     fipsCode: 'AU',

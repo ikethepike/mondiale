@@ -1,30 +1,27 @@
 <template>
-  <div class="country-tile">
+  <div class="country-tile" :data-iso="country.isoCode">
     <div
       class="flag-pinwheel"
-      :style="{ gridTemplateColumns: `repeat(${(pinwheelColors.length || 2) / 2}, 1fr)` }"
-    >
-      <div
-        class="color"
-        v-for="(color, index) in pinwheelColors"
-        :key="`${country.isoCode}-${color}-${index}`"
-        :style="{ backgroundColor: color }"
-      />
-    </div>
+      :style="{
+        background: conicGradient,
+      }"
+    />
     <article>
       <header>
         <h3>{{ country.name.english }}</h3>
+        <p class="subtitle">{{ country.geography.capital.name }}</p>
       </header>
 
       <div class="flag-wrapper">
         <div class="flag" v-html="country.flag" />
       </div>
     </article>
+
+    <div class="drag-zone" />
   </div>
 </template>
 <script lang="ts" setup>
 import { PropType } from 'vue'
-import { baseEncode } from '~~/lib/strings'
 import { Country } from '~~/types/geography.types'
 
 const props = defineProps({
@@ -35,76 +32,138 @@ const props = defineProps({
 })
 
 const pinwheelColors = computed<string[]>(() => {
-  const filtered = props.country.identity.colors.filter(
-    color => !['#ffffff', '#fff'].includes(color.toLowerCase())
-  )
+  let filtered = props.country.identity.colors
+  if (false) {
+    filtered = filtered.filter(color => !['#ffffff', '#fff'].includes(color.toLowerCase()))
+  }
 
   if (!filtered.length) return []
 
   // Odd number of colors... damn
-  if (filtered.length % 2 !== 0) {
-    filtered.push(filtered[0])
+
+  if (filtered.length === 2) {
+    filtered = filtered.concat([...filtered])
+  } else {
+    filtered = [...new Set(filtered)]
   }
 
-  return [...filtered, ...filtered.reverse()]
+  return filtered
+})
+
+const conicGradient = computed(() => {
+  const degreesPer = 360 / pinwheelColors.value.length
+
+  let offset = 0
+  return `conic-gradient(${pinwheelColors.value
+    .map(color => `${color} ${offset}deg ${(offset += degreesPer)}deg`)
+    .join(',')})`
 })
 </script>
 <style lang="scss" scoped>
+@import '~/assets/scss/rules/breakpoints';
+$countryTilePadding: 0.4rem;
 .country-tile {
+  width: 100%;
+  height: 100%;
   cursor: move;
   overflow: hidden;
   position: relative;
   display: inline-block;
-  font-family: 'Lusitana', serif;
-  padding: 0.5rem 0.5rem 0 0.5rem;
-  border-radius: 1.9rem 1.9rem 0 0;
 }
 
 article {
   z-index: 2;
-  width: 20vw;
+  width: 100%;
+  height: 100%;
   padding: 2rem;
-  min-width: 20rem;
   position: relative;
   background: #fffbf5;
   border: 0.1rem solid #000;
-  border-radius: 1.9rem 1.9rem 0 0;
-  border-bottom: 0.6rem solid #000;
 }
-header {
-  text-align: center;
-  margin-bottom: 1rem;
+
+.subtitle {
+  opacity: 0.5;
 }
 .flag-wrapper {
   border: 0.1rem solid #000;
 }
-.flag svg {
+.flag:deep(svg) {
   width: 100%;
   display: block;
 }
 
 .flag-pinwheel {
-  // opacity: 1;
   top: -50%;
   left: -50%;
+  opacity: 0;
   width: 200%;
   height: 200%;
-  // display: none;
-  // z-index: 5;
   position: absolute;
   pointer-events: none;
-  transition: opacity 1s;
-  // background-repeat: no-repeat;
-  // background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-
-  display: grid;
-  grid-template-rows: repeat(2, 1fr);
-  animation: rotate 5s linear infinite;
-  grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+  transition: opacity 0.6s;
+  animation: rotate 3s linear infinite;
 }
 
-.country-tile:hover .flag-pinwheel {
-  opacity: 0.8;
+@media screen and (max-width: $tablet) {
+  .country-tile {
+    width: 100%;
+  }
+  .country-tile article {
+    width: 100%;
+    display: grid;
+    align-items: center;
+    grid-template-columns: 60% 40%;
+    border-radius: 0.6rem 0 0 0.6rem;
+    border-right: 0.4rem solid var(--black);
+  }
+  .subtitle {
+    display: none;
+  }
+  .flag-wrapper {
+    border: none;
+  }
+  .flag :deep(svg) {
+    max-height: 4rem;
+    border: 0.1rem solid var(--black);
+  }
+}
+
+@media screen and (min-width: $tablet) {
+  .country-tile {
+    padding: $countryTilePadding $countryTilePadding 0 $countryTilePadding;
+    border-radius: 1.9rem 1.9rem 0 0;
+    &:hover {
+      outline: 0.1rem solid #ccc;
+      .flag-pinwheel {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  article {
+    text-align: center;
+    border-radius: 1.9rem 1.9rem 0 0;
+    border-bottom: 0.6rem solid #000;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  // country exceptions
+  .country-tile {
+    &[data-iso='NP'] :deep(svg) {
+      margin: auto;
+      max-height: 14rem;
+    }
+    &[data-iso='CH'] .flag {
+      background: #d52b1e;
+      :deep(svg) {
+        margin: auto;
+        max-height: 14rem;
+      }
+    }
+  }
 }
 
 @keyframes rotate {
@@ -113,3 +172,4 @@ header {
   }
 }
 </style>
+<style lang="scss"></style>

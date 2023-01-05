@@ -1,18 +1,18 @@
-import { getEnvironmentData } from 'worker_threads'
-import { wait } from '~~/lib/time'
 import { ClientSideEventHandler } from '~~/plugins/socket.client'
-import { useClientEvents } from '../client-side'
 
-export const genericUpdateHandler: ClientSideEventHandler = async ({
+export const genericUpdateEvent: ClientSideEventHandler = async ({
   gameStore,
   payload,
   playerId,
   eventTarget,
 }) => {
+  if (payload.event === 'index-update') return
+
   const { game, event } = payload
+
   gameStore.game = game
 
-  const { update } = useClientEvents()
+  // const { update } = useClientEvents()
 
   console.log('Handling server event:', event)
 
