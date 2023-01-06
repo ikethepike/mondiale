@@ -177,11 +177,11 @@ const startGame = () => {
 }
 
 .player-configuration {
-  width: 73%;
+  width: 100%;
   margin: auto;
   display: flex;
   min-height: 60vh;
-  max-width: 120rem;
+  max-width: 110rem;
   align-items: stretch;
   animation: slide-in 0.5s 1;
 }
@@ -211,6 +211,7 @@ const startGame = () => {
 
 .player-lobby {
   width: 32%;
+  min-width: 20rem;
   border-left: 0.1rem solid var(--black);
   > header {
     opacity: 0.5;

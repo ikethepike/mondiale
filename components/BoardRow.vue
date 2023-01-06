@@ -10,10 +10,15 @@
       :key="tile.position"
     >
       <span class="position" v-show="tile.type === 'normal'">{{ tile.position }}</span>
-      <div class="orb special-tile" v-if="tile.type !== 'normal'" />
+      <div
+        class="orb special-tile"
+        :class="[tile.type.replace('.', '-')]"
+        v-if="tile.type !== 'normal'"
+      />
       <div class="players">
         <template v-for="player in Object.values(game.players)" :key="player.id">
           <PlayerPawn
+            class="pawn"
             :player="player"
             v-if="game.position[player.id].currentPosition === tile.position"
           />
@@ -88,6 +93,9 @@ const modifierClasses = computed<ModifierClasses>(() => {
     align-items: center;
     justify-content: center;
   }
+  .pawn {
+    max-height: 5rem;
+  }
 }
 
 .tile:not(.start):not(.final) {
@@ -99,9 +107,28 @@ const modifierClasses = computed<ModifierClasses>(() => {
     width: calc(100% + 1.5rem);
     height: calc(100% + 1.5rem);
     border-radius: 50%;
-    background: currentColor;
     transform-origin: center;
-    border: 0.1rem solid currentColor;
+    background: var(--soft-mint);
+    border: 0.2rem solid currentColor;
+  }
+  .special-tile::before {
+    content: '';
+    display: block;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+  }
+  .special-tile.flag::before {
+    mask: url('~/assets/icons/flag.svg') no-repeat center/5rem;
+  }
+
+  .special-tile.capital-name::before {
+    mask: url('~/assets/icons/capital.svg') no-repeat center/5rem;
+  }
+  .special-tile.isoCode::before {
+    mask: url('~/assets/icons/isoCode.svg') no-repeat center/5rem;
   }
 }
 

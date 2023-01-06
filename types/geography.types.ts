@@ -1,4 +1,5 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { Organization } from './organization.type'
 
 export interface Amount<Unit> {
   amount: number
@@ -6,10 +7,26 @@ export interface Amount<Unit> {
   year?: number
 }
 
+export const worldRegions = [
+  'asia',
+  'europe',
+  'south-america',
+  'north-america',
+  'oceania',
+  'africa',
+  'middle-east',
+] as const
+export type Region = typeof worldRegions[number]
+export const isValidContinent = (continent: any): continent is Region => {
+  return continent && worldRegions.includes(continent)
+}
+
 export interface Country {
   flag: string
   isoCode: string
   url: string
+  coordinates: string
+  region: Region
   name: {
     local: string
     english: string
@@ -17,6 +34,7 @@ export interface Country {
   identity: {
     colors: string[]
   }
+  membership: Organization[]
   economics: {
     gdpPerCapita?: Amount<'$'>
     militarySpending?: Amount<'%'>

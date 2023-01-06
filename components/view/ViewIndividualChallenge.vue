@@ -1,18 +1,24 @@
 <template>
   <div class="individual-challenge" v-if="challenge">
     <header>
-      <h1>{{ processReplacements(details?.phrasing || '', challenge.country) }}</h1>
-      <div
-        class="flag"
-        :style="{
-          backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country?.flag || '')}')`,
-        }"
-        v-if="challenge.id === 'flag'"
-      ></div>
+      <template v-if="!status">
+        <h1>{{ processReplacements(details?.phrasing || '', challenge.country) }}</h1>
+        <span class="hint" v-if="showDoubleTapHint">Press again to confirm</span>
+        <div
+          class="flag"
+          :style="{
+            backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country?.flag || '')}')`,
+          }"
+          v-if="challenge.id === 'flag'"
+        />
+      </template>
+      <template v-else-if="submittedCountry">
+        <h1 v-if="status === 'incorrect'">
+          Sorry, you pressed: {{ submittedCountry.name.english }}
+        </h1>
+        <h1 v-else>Correct!</h1>
+      </template>
     </header>
-    <!-- <div class="map-wrapper">
-      <GameMap @country-click="submitAnswer" :highlighted="reveal" :status="status" />
-    </div> -->
   </div>
 </template>
 <script lang="ts" setup>
@@ -24,24 +30,32 @@ import { processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import { ISOCountryCode } from '~~/types/geography.types'
 
-const { currentMove, update } = useClientEvents()
+const { currentMove, update, gameStore } = useClientEvents()
 
 const challenge = ref(currentMove.value?.challenge)
 
-const status = ref<'unanswered' | 'correct' | 'incorrect'>('unanswered')
-const reveal = computed<ISOCountryCode[]>(() => {
-  if (status.value === 'unanswered') return []
-  if (!challenge.value) return []
-  return [challenge.value.country]
+const status = toRef(gameStore.map, 'status')
+// const reveal = computed<ISOCountryCode[]>(() => {
+//   if (status.value === 'unanswered') return []
+//   if (!challenge.value) return []
+//   return [challenge.value.country]
+// })
+const submittedISOCode = ref<ISOCountryCode>()
+const submittedCountry = computed(() => {
+  if (!submittedISOCode.value) return undefined
+  return COUNTRIES[submittedISOCode.value]
 })
-
 const submitAnswer = (isoCode: ISOCountryCode) => {
-  if (status.value !== 'unanswered') return
+  if (status.value) return
+  submittedISOCode.value = isoCode
+  gameStore.map.highlighted.clear()
   update({ event: 'submit-individual-challenge-answer', isoCode })
+
   const challenge = currentMove.value?.challenge
   if (challenge) {
     const correct = isoCode === challenge.country
-    status.value = correct ? 'correct' : 'incorrect'
+    gameStore.map.reveal = challenge.country
+    gameStore.map.status = correct ? 'correct' : 'incorrect'
   }
 }
 
@@ -55,17 +69,35 @@ const country = computed(() => {
   return COUNTRIES[challenge.value.country]
 })
 
+const showDoubleTapHint = ref(false)
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
 
-  const { isoCode } = event.detail
-  console.log('click', isoCode)
+  const isoCode = event.detail.isoCode as ISOCountryCode
+  if (gameStore.map.highlighted.has(isoCode)) {
+    // Double click, submit
+    // Show hint
+    submitAnswer(isoCode)
+  } else {
+    showDoubleTapHint.value = true
+    gameStore.map.highlighted.clear()
+    gameStore.map.highlighted.add(isoCode)
+  }
+}
+
+const clearBoard = () => {
+  gameStore.map.highlighted.clear()
+  gameStore.map.reveal = undefined
+  gameStore.map.status = undefined
 }
 
 onBeforeMount(() => {
+  // Clear out our global state
+  clearBoard()
   document.addEventListener('mapClick', onMapClick)
 })
 onBeforeUnmount(() => {
+  clearBoard()
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>

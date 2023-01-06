@@ -1,11 +1,6 @@
 <template>
   <div class="country-tile" :data-iso="country.isoCode">
-    <div
-      class="flag-pinwheel"
-      :style="{
-        background: conicGradient,
-      }"
-    />
+    <CountryPinwheel class="flag-pinwheel" :country="country" />
     <article>
       <header>
         <h3>{{ country.name.english }}</h3>
@@ -24,39 +19,11 @@
 import { PropType } from 'vue'
 import { Country } from '~~/types/geography.types'
 
-const props = defineProps({
+defineProps({
   country: {
     type: Object as PropType<Country>,
     required: true,
   },
-})
-
-const pinwheelColors = computed<string[]>(() => {
-  let filtered = props.country.identity.colors
-  if (false) {
-    filtered = filtered.filter(color => !['#ffffff', '#fff'].includes(color.toLowerCase()))
-  }
-
-  if (!filtered.length) return []
-
-  // Odd number of colors... damn
-
-  if (filtered.length === 2) {
-    filtered = filtered.concat([...filtered])
-  } else {
-    filtered = [...new Set(filtered)]
-  }
-
-  return filtered
-})
-
-const conicGradient = computed(() => {
-  const degreesPer = 360 / pinwheelColors.value.length
-
-  let offset = 0
-  return `conic-gradient(${pinwheelColors.value
-    .map(color => `${color} ${offset}deg ${(offset += degreesPer)}deg`)
-    .join(',')})`
 })
 </script>
 <style lang="scss" scoped>

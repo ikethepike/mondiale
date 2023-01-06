@@ -1,6 +1,6 @@
 <template>
   <div class="modal-wrapper board-wrapper">
-    <a class="background" @click="closeModal" />
+    <a class="background" />
     <GameBoard />
   </div>
 </template>
@@ -29,10 +29,6 @@ const playerPositions = computed<{ player: Player; position: number }[]>(() => {
 
   return Object.values(positionVector)
 })
-
-const closeModal = () => {
-  gameStore.phase = 'waiting'
-}
 </script>
 <style lang="scss" scoped>
 .background {
@@ -40,12 +36,6 @@ const closeModal = () => {
   height: 100%;
   display: block;
   position: absolute;
-  background: rgb(2, 0, 36);
-  background: radial-gradient(
-    circle,
-    rgba(2, 0, 36, 1) 0%,
-    rgba(2, 0, 36, 0.9814814814814815) 93%,
-    rgba(2, 0, 36, 1) 100%
-  );
+  background: var(--soft-mint);
 }
 </style>

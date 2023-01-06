@@ -131,9 +131,10 @@ const closeScores = () => {
 </script>
 <style lang="scss" scoped>
 .group-scores {
-  width: 75%;
+  width: 100%;
   margin: auto;
   display: grid;
+  max-width: 110rem;
   grid-template-columns: 73% 27%;
   .ranking {
     padding-right: 0;

@@ -1,22 +1,36 @@
 import { readFileSync, writeFileSync } from 'fs'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
+import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import { extractNumbers, extractYears, getPercentages, removeAfterCharacter } from '~~/lib/strings'
-import { Amount, Country } from '~~/types/geography.types'
+import { Amount, Region, Country, isValidContinent } from '~~/types/geography.types'
+import { isOrganizationKey, Organization, OrganizationVector } from '~~/types/organization.type'
 import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '~~/types/response.type'
+import { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
+const REGIONS_FILE = `types/vendor/factbook/factbook-types.gen.ts`
 
 export const createCountriesFile = async (): Promise<{
   [isoCode: string]: Country
 }> => {
+  // Fetch additional information
+  let briMembership: string[] = []
+  try {
+    briMembership = await fetchBeltAndRoadIniativeParticipants()
+  } catch (e) {
+    console.warn(`Failed to fetch BRI membership`, e)
+  }
+
   const countryVector: { [isoCode: string]: Country } = {}
+  const factbookContinents = new Set<string>([])
   for (const { url, isoCode } of successfulCombinations) {
     try {
       const response = await fetch(url)
       const data: FactbookResponse = await response.json()
-      countryVector[isoCode] = normalizeCountry({ data, isoCode, url })
+      countryVector[isoCode] = normalizeCountry({ data, isoCode, url, briMembership })
+      factbookContinents.add(data.Geography['Map references']?.text)
     } catch (e) {
       console.warn(`Failed to fetch: ${isoCode} - ${url}`, e)
     }
@@ -39,8 +53,17 @@ export const createCountriesFile = async (): Promise<{
     export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${JSON.stringify(countryVector)}
   `
   )
-
   console.log(`Finished creating file: ${COUNTRIES_FILE}`)
+
+  writeFileSync(
+    REGIONS_FILE,
+    `
+
+  export const factbookRegions = ${JSON.stringify([...factbookContinents])} as const 
+  export type FactbookRegion = typeof factbookRegions[number]
+  `
+  )
+  console.log(`Finished creating file: ${REGIONS_FILE}`)
 
   return Promise.resolve({})
 }
@@ -49,10 +72,12 @@ const normalizeCountry = ({
   data,
   isoCode,
   url,
+  briMembership,
 }: {
   data: FactbookResponse
   isoCode: string
   url: string
+  briMembership: string[]
 }): Country => {
   if (!data) {
     throw new ReferenceError('Undefined data passed')
@@ -64,10 +89,13 @@ const normalizeCountry = ({
   const flag = readFileSync(`data/static/flags/${isoCode.toLowerCase()}.svg`)
 
   return {
-    isoCode,
     url,
-    flag: flag.toString(),
+    isoCode,
     name: names,
+    flag: flag.toString(),
+    coordinates: data.Geography['Geographic coordinates']?.text || '',
+    region: getRegion({ data, isoCode }),
+    membership: getMembership({ briMembership, data, names, isoCode }),
     identity: {
       colors: getNationalColors(data, isoCode, flag.toString()),
     },
@@ -440,4 +468,69 @@ const getNationalColors = (data: FactbookResponse, isoCode: string, flag: string
   const matches = new Set(flag.match(/#(?:[0-9a-fA-F]{3}){1,2}/g))
 
   return [...matches]
+}
+
+const getMembership = ({
+  names,
+  data,
+  isoCode,
+  briMembership,
+}: {
+  isoCode: string
+  briMembership: string[]
+  data: FactbookResponse
+  names: Country['name']
+}): Organization[] => {
+  const output: Organization[] = []
+  if (briMembership.includes(names.english.toLowerCase()) || ['CN'].includes(isoCode)) {
+    output.push({
+      _type: 'organization',
+      id: 'bri',
+      name: OrganizationVector['bri'],
+      continent: ['asia', 'europe', 'south-america', 'africa'],
+    })
+  }
+
+  const participation = data.Government['International organization participation']
+  if (!participation) return output
+
+  for (const organization of participation.text.split(',').map(org => org.toLowerCase().trim())) {
+    if (isOrganizationKey(organization)) {
+      output.push({
+        continent: [],
+        _type: 'organization',
+        id: organization,
+        name: OrganizationVector[organization],
+      })
+    }
+  }
+
+  return output
+}
+
+const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Region => {
+  let continent = data['Geography']['Map references'].text as FactbookRegion
+
+  switch (continent) {
+    case 'AsiaEurope':
+      return 'asia'
+    case 'Central America and the Caribbean':
+      return 'north-america'
+    case 'Southeast Asia':
+      return 'asia'
+    case 'Arctic Region':
+      return 'europe'
+    case '<p><strong>metropolitan France:</strong> Europe; </p><p><strong>French Guiana:</strong> South America; </p><p><strong>Guadeloupe:</strong> Central America and the Caribbean; </p><p><strong>Martinique:</strong> Central America and the Caribbean; </p><p><strong>Mayotte:</strong> Africa; </p><p><strong>Reunion:</strong> World</p>':
+      return 'europe'
+    default: {
+      const parsed = continent.toLowerCase().replaceAll(' ', '-')
+      if (isValidContinent(parsed)) {
+        return parsed
+      } else {
+        console.error(`Invalid continent found: ${parsed}`)
+      }
+    }
+  }
+
+  return continent as Region
 }

@@ -14,8 +14,6 @@
 </template>
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
-import { playerJoinedEventHandler } from '~~/lib/events/client/player-joined.event'
-import { wait } from '~~/lib/time'
 import { Tile } from '~~/types/game.types'
 
 const { game, playerId, currentMove, gameStore, update } = useClientEvents()
@@ -75,6 +73,9 @@ const boardRows = computed<BoardRows>(() => {
 <style lang="scss" scoped>
 .game-board {
   width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  pointer-events: auto;
   z-index: 2;
   color: #fff;
   display: grid;

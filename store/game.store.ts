@@ -1,13 +1,17 @@
 import { defineStore } from 'pinia'
 import { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import { ISOCountryCode } from '~~/types/geography.types'
-import { PlayerPhase } from '~~/types/player.type'
-import { io, Socket } from 'socket.io-client'
+import { Socket } from 'socket.io-client'
 import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 
 interface GameStoreState {
   game?: Game
   playerId: string
+  map: {
+    reveal?: ISOCountryCode
+    status?: 'incorrect' | 'correct'
+    highlighted: Set<ISOCountryCode>
+  }
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -16,6 +20,11 @@ export const useGameStore = defineStore('game', {
     game: undefined,
     playerId: '',
     socket: undefined,
+    map: {
+      status: undefined,
+      reveal: undefined,
+      highlighted: new Set([]),
+    },
   }),
   actions: {},
   getters: {

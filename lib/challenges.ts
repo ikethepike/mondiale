@@ -64,7 +64,7 @@ export const getIndividualChallenge = ({
   const individualChallenge: IndividualChallenge = {
     _type: 'individual-challenge',
     id: accessorId,
-    country: getRandomISOCountryCode(),
+    country: getRandomISOCountryCode('large'),
   }
 
   return individualChallenge

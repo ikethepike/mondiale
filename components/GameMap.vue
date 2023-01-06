@@ -1283,6 +1283,7 @@
 </template>
 <script lang="ts" setup>
 import { PropType } from 'vue'
+import { useGameStore } from '~~/store/game.store'
 import { MapClickEvent } from '~~/types/events.types'
 import { ISOCountryCode } from '~~/types/geography.types'
 
@@ -1292,7 +1293,7 @@ const props = defineProps({
     default: () => [],
   },
   status: {
-    type: String as PropType<'correct' | 'incorrect' | 'unanswered'>,
+    type: String as PropType<'correct' | 'incorrect'>,
     required: false,
   },
   highlightCountry: {
@@ -1356,7 +1357,6 @@ const moveToCountry = async () => {
   }
 
   if (pastMove.value) {
-    console.log('moving back', pastMove.value)
     $pan(wrapper.value, pastMove.value.x * -1, pastMove.value.y * -1)
   }
   $resetScale(wrapper.value)
@@ -1407,9 +1407,11 @@ const moveToCountry = async () => {
   })
 }
 
+const gameStore = useGameStore()
+
 watch(() => props.highlightCountry, moveToCountry)
 watch(
-  () => props.highlighted,
+  () => gameStore.map.reveal,
   () => {
     if (!wrapper.value) return
     $resetScale(wrapper.value)
@@ -1427,8 +1429,14 @@ svg {
   width: 100%;
 }
 
-path {
-  fill: transparent;
+path[id] {
+  cursor: pointer;
+  fill: var(--map-not-highlight);
+  transition: fill 0.5s, filter 0.3s;
+}
+
+path[id]:hover {
+  fill: rgba(lemonchiffon, 0.3);
 }
 
 .has-highlights {
@@ -1437,6 +1445,19 @@ path {
   }
   path.highlighted-country {
     fill: lemonchiffon;
+    filter: drop-shadow(0px 0px 2px #000);
+  }
+}
+
+.game-map.correct {
+  path[data-id]:not(.highlighted-country) {
+    fill: var(--soft-mint);
+  }
+}
+
+.game-map.incorrect {
+  path[data-id]:not(.highlighted-country) {
+    fill: var(--hior-ange);
   }
 }
 </style>
