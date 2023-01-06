@@ -22,8 +22,8 @@ jobs:
         with:
           node-version: 18
 
-      # - name: Install Dependencies
-      #   run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
       - name: Setup Bun Runtime
         uses: antongolub/action-setup-bun@v1 # or @v1.x.x
