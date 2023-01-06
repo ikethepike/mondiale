@@ -4,7 +4,6 @@ export enum OrganizationVector {
   eu = 'European Union',
   au = 'African Union',
   bri = 'Belt and Road Initiative',
-  who = 'World Health Organization',
   nato = 'North American Trade Organization',
   csto = ' Collective Security Treaty Organization',
   opec = 'Organization of the Petroleum Exporting Countries',
@@ -17,9 +16,6 @@ export const isOrganizationKey = (
   return organization && Object.keys(OrganizationVector).includes(organization)
 }
 
-type BaseOrganization<Id = OrganizationVector> = {
-  _type: 'organization'
-}
 export type Organization = {
   _type: 'organization'
   id: keyof typeof OrganizationVector
