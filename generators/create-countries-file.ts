@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from 'fs'
+import { getEnabledCategories } from 'trace_events'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import { extractNumbers, extractYears, getPercentages, removeAfterCharacter } from '~~/lib/strings'
-import { Amount, Region, Country, isValidContinent } from '~~/types/geography.types'
+import { Amount, Region, Country, isValidContinent, ISOCountryCode } from '~~/types/geography.types'
 import { isOrganizationKey, Organization, OrganizationVector } from '~~/types/organization.type'
 import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '~~/types/response.type'
 import { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
@@ -98,6 +99,9 @@ const normalizeCountry = ({
     membership: getMembership({ briMembership, data, names, isoCode }),
     identity: {
       colors: getNationalColors(data, isoCode, flag.toString()),
+    },
+    government: {
+      leader: getLeader({ data, isoCode }),
     },
     economics: {
       gdpPerCapita: getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
@@ -533,4 +537,150 @@ const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Regio
   }
 
   return continent as Region
+}
+
+const getLeader = ({
+  data,
+  isoCode,
+}: {
+  data: FactbookResponse
+  isoCode: string
+}): string | undefined => {
+  if (!data.Government['Executive branch']) return undefined
+
+  const chiefOfState =
+    removeParentheticals(data.Government['Executive branch']['chief of state']?.text || '')
+      .toLowerCase()
+      .split(';')
+      .shift() || ''
+
+  const headOfGovernment =
+    removeParentheticals(data.Government['Executive branch']['head of government']?.text || '')
+      .toLowerCase()
+      .split(';')
+      .shift() || ''
+
+  const parties = data.Government['Political parties and leaders']?.text || ''
+  const election = data.Government['Executive branch']['election results']?.text || ''
+  const cabinet = data.Government['Executive branch']['cabinet']?.text || ''
+
+  if (!chiefOfState && !headOfGovernment) return undefined
+
+  let leader = chiefOfState || headOfGovernment
+
+  const removeTitles = (name: string) => {
+    const titles = ['president', 'chancellor', 'king', 'queen', 'prime minister']
+    for (const title of titles) {
+      name = name.toLowerCase().replace(title, '')
+    }
+
+    return name.trim()
+  }
+
+  const headOfGovernmentLed: Array<ISOCountryCode | string> = [
+    'AL',
+    'AD',
+    'AG',
+    'AM',
+    'AU',
+    'AT',
+    'BS',
+    'BD',
+    'BB',
+    'BE',
+    'BZ',
+    'BT',
+    'BG',
+    'KH',
+    'CA',
+    'HR',
+    'CZ',
+    'DK',
+    'DM',
+    'TL',
+    'EE',
+    'ET',
+    'FJ',
+    'FI',
+    'GE',
+    'DE',
+    'GR',
+    'GD',
+    'HU',
+    'IS',
+    'IN',
+    'IQ',
+    'IE',
+    'IL',
+    'IT',
+    'JM',
+    'JP',
+    'LV',
+    'LB',
+    'LS',
+    'LY',
+    'LU',
+    'LI',
+    'MY',
+    'MT',
+    'MU',
+    'MD',
+    'MN',
+    'ME',
+    'NP',
+    'NL',
+    'NZ',
+    'MK',
+    'NO',
+    'PK',
+    'PG',
+    'PL',
+    'RO',
+    'KN',
+    'LC',
+    'RS',
+    'SG',
+    'SI',
+    'SL',
+    'SB',
+    'ES',
+    'SE',
+    'TH',
+    'TV',
+    'GB',
+    'VU',
+  ]
+
+  switch (true) {
+    case headOfGovernmentLed.includes(isoCode):
+      leader = headOfGovernment
+      break
+    case chiefOfState.includes('king'):
+    case chiefOfState.includes('queen'):
+      leader = headOfGovernment
+      break
+    case headOfGovernment.includes('chancellor'):
+      leader = headOfGovernment
+      break
+    case parties.toLowerCase().includes(removeTitles(chiefOfState)):
+      leader = chiefOfState
+      break
+    case parties.toLowerCase().includes(removeTitles(headOfGovernment)):
+      leader = headOfGovernment
+      break
+    case election.toLowerCase().includes(removeTitles(chiefOfState)):
+      leader = chiefOfState
+      break
+    case election.toLowerCase().includes(removeTitles(headOfGovernment)):
+      leader = headOfGovernment
+      break
+    case (cabinet.toLowerCase().split(',').shift() || '').includes('prime minister'):
+      leader = headOfGovernment
+      break
+    case (cabinet.toLowerCase().split(',').shift() || '').includes('president'):
+      leader = chiefOfState
+      break
+  }
+
+  return leader.trim()
 }

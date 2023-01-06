@@ -35,6 +35,9 @@ export interface Country {
     colors: string[]
   }
   membership: Organization[]
+  government: {
+    leader?: string
+  }
   economics: {
     gdpPerCapita?: Amount<'$'>
     militarySpending?: Amount<'%'>
@@ -103,120 +106,6 @@ export interface Country {
     refugees?: Amount<'people'>
   }
 }
-
-// export interface Country {
-//   name: string;
-//   flag?: string;
-//   countryCode?: string;
-//   economics: {
-//     gdpPerCapita?: RankValue;
-//     militarySpending?: {
-//       units: string;
-//       value: number;
-//       rank: number;
-//     };
-//     populationBelowPovertyLine?: number;
-//   };
-//   geography: {
-//     area: {
-//       land?: Value;
-//       water?: Value;
-//       total?: Value;
-//       arable?: Value;
-//       forested?: Value;
-//     };
-//     elevation: {
-//       lowest?: ElevationPoint;
-//       highest?: ElevationPoint;
-//     };
-//     capital?: {
-//       name: string;
-//       population?: number;
-//     };
-//   };
-//   unemployment: {
-//     youth?: Value;
-//     total?: Value;
-//   };
-//   infrastructure: {
-//     length: {
-//       road?: Value;
-//       rail?: Value;
-//     };
-//     electricity: {
-//       populationWithoutAccess?: Value;
-//     };
-//   };
-//   religion: {
-//     atheismAgnosticism?: Value;
-//     believers?: Value;
-//   };
-//   population: {
-//     total: number;
-//     vulnerableGroups: {
-//       minority?: Number;
-//       refugees?: Number;
-//     };
-//   };
-//   environment: {
-//     emissions?: {
-//       rank?: number;
-//       megatons?: number;
-//     };
-//     crudeOilConsumption?: {
-//       rank: number;
-//       cubicMeters: number;
-//     };
-//     energyBreakdownPercent?: {
-//       fossilFuels?: number;
-//       nuclearFuels?: number;
-//       renewableSources?: number;
-//     };
-//   };
-//   education: {
-//     literacy: {
-//       male?: Value;
-//       female?: Value;
-//       total?: Value;
-//     };
-//     averageEducation: {
-//       male?: Value;
-//       total?: Value;
-//       female?: Value;
-//     };
-//   };
-//   health: {
-//     obesity?: {
-//       rank: number;
-//       percentageOfAdults: number;
-//     };
-//     access: {
-//       doctors?: {
-//         value: number;
-//         units: string;
-//       };
-//       hospitalBeds?: {
-//         value: number;
-//         units: string;
-//       };
-//     };
-//     lifeExpectancy?: number;
-//     childrenPerWoman?: number;
-//     contraceptivePrevalence?: Value;
-//     meanAgeOfBirth?: number;
-//     ageDistribution?: {
-//       "0-14": AgeDistribution;
-//       "15-24": AgeDistribution;
-//       "25-54": AgeDistribution;
-//       "55-64": AgeDistribution;
-//       "65-120": AgeDistribution;
-//     };
-//     // sexRatio?: {
-//     //   male: number
-//     //   female: number
-//     // }
-//   };
-// }
 
 export const PotentialISOCountryCodes = [
   'AD',

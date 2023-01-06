@@ -28,11 +28,26 @@ export type MinMaxAccessorKeys = Extract<
 export interface MaxChallenge {
   _type: 'max-challenge'
   id: MinMaxAccessorKeys
+  country: ISOCountryCode
+  difficulty: 'medium'
+}
+
+export interface MinChallenge {
+  _type: 'min-challenge'
+  id: MinMaxAccessorKeys
+  country: ISOCountryCode
+  difficulty: 'medium'
 }
 
 export interface MembershipChallenge {
   _type: 'membership-challenge'
   id: keyof typeof OrganizationVector
   exception: ISOCountryCode
+  difficulty: 'hard'
+}
+
+export interface LeadershipChallenge {
+  _type: 'leadership-challenge'
+  country: ISOCountryCode
   difficulty: 'hard'
 }
