@@ -646,6 +646,8 @@ const getLeader = ({
     'ES',
     'SE',
     'TH',
+    'TO',
+    'TT',
     'TV',
     'GB',
     'VU',
