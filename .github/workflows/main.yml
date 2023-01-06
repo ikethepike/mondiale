@@ -1,0 +1,35 @@
+name: DataUpdate
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+
+  # Enable running workflow from actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # - name: Install Dependencies
+      #   run: npm ci
+
+      - name: Setup Bun Runtime
+        uses: antongolub/action-setup-bun@v1 # or @v1.x.x
+
+      - name: Update data
+        run: npm run generate:countries
+
+      - name: Git Commit
+        uses: stefanzweifel/git-auto-commit-action@v4.16.0
+        with:
+          commit_message: Update countries.gen.json
