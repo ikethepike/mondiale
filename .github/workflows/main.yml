@@ -25,6 +25,8 @@ jobs:
 
       - name: Setup Bun Runtime
         uses: antongolub/action-setup-bun@v1 # or @v1.x.x
+      - name: Log files
+        run: ls -lh
 
       - name: Update data
         run: npm run generate:countries
