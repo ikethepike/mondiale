@@ -1,4 +1,5 @@
 {
+  "name": "mondiale",
   "private": true,
   "scripts": {
     "build": "nuxt build",
