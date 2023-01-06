@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from 'fs'
-import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
-import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
-import { extractNumbers, extractYears, getPercentages, removeAfterCharacter } from '~~/lib/strings'
-import { Amount, Region, Country, isValidContinent } from '~~/types/geography.types'
-import { isOrganizationKey, Organization, OrganizationVector } from '~~/types/organization.type'
-import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '~~/types/response.type'
-import { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
+import { MARRIAGE_RIGHTS } from '../data/static/marriage-rights'
+import { fetchBeltAndRoadIniativeParticipants } from '../lib/generators/vendors/wikipedia'
+import { extractNumbers, extractYears, getPercentages, removeAfterCharacter } from '../lib/strings'
+import { Amount, Region, Country, isValidContinent } from '../types/geography.types'
+import { isOrganizationKey, Organization, OrganizationVector } from '../types/organization.type'
+import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '../types/response.type'
+import { FactbookRegion } from '../types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
