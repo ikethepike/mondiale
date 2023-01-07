@@ -23,6 +23,7 @@
         :key="`dot-${variant}`"
         :class="['dot', { chosen: variant === selectedVariant }]"
         role="navigation"
+        @click="jumpTo(variant)"
       />
     </nav>
 
@@ -68,6 +69,12 @@ const onScroll = () => {
 
   atStart.value = variantIndex === 0
   atEnd.value = variantIndex === gameVariants.length - 1
+}
+
+const jumpTo = (variant: GameVariant) => {
+  if (!slider.value) return
+  const target = slider.value.querySelector(`[data-variant='${variant}']`)
+  target?.scrollIntoView({ behavior: 'smooth' })
 }
 </script>
 <style lang="scss" scoped>
@@ -142,6 +149,7 @@ const onScroll = () => {
   .dot {
     width: 1em;
     height: 1em;
+    cursor: pointer;
     transition: 0.3s;
     border-radius: 50%;
     background-color: rgba(0, 0, 0, 0.2);
