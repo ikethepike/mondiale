@@ -41,13 +41,19 @@ export interface MinChallenge {
 
 export interface MembershipChallenge {
   _type: 'membership-challenge'
-  id: keyof typeof OrganizationVector
   exception: ISOCountryCode
   difficulty: 'hard'
+  organization: keyof typeof OrganizationVector
 }
 
 export interface LeadershipChallenge {
   _type: 'leadership-challenge'
   country: ISOCountryCode
   difficulty: 'hard'
+}
+
+export interface LanguageChallenge {
+  _type: 'language-challenge'
+  language: string
+  difficulty: 'medium'
 }

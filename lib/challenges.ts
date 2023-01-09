@@ -422,3 +422,5 @@ export const scoreChallengeSubmission = ({
     maximum: submittedRanking.length * MAXIMUM_SCORE_PER_COUNTRY,
   }
 }
+
+const getFinalChallenge = ({}: { game: Game }) => {}

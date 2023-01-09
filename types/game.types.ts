@@ -61,9 +61,9 @@ export const gameVariants = [
   'south-america',
   'asia',
 ] as const
+export type GameVariant = typeof gameVariants[number]
 
 export type GameLength = 'short' | 'medium' | 'long'
-export type GameVariant = typeof gameVariants[number]
 
 export interface Tile {
   position: number

@@ -1,9 +1,9 @@
 export const MARRIAGE_RIGHTS: {
   [isoCode: string]: {
-    sameSexMarriage: boolean;
-    civilUnions: boolean;
-    yearAllowed: number;
-  };
+    sameSexMarriage: boolean
+    civilUnions: boolean
+    yearAllowed: number
+  }
 } = {
   SE: {
     sameSexMarriage: true,
@@ -15,7 +15,7 @@ export const MARRIAGE_RIGHTS: {
     civilUnions: true,
     yearAllowed: 2017,
   },
-  IR: {
+  IE: {
     sameSexMarriage: true,
     civilUnions: true,
     yearAllowed: 2015,
@@ -165,4 +165,4 @@ export const MARRIAGE_RIGHTS: {
     civilUnions: true,
     yearAllowed: 2023,
   },
-};
+}
