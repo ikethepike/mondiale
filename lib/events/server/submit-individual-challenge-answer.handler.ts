@@ -28,6 +28,10 @@ export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
     return console.warn(`Unable to retrieve current challenge`)
   }
 
+  if (currentMove.challenge?._type === 'final-challenge') {
+    return console.error(`Final challenge submitted as individual challenge`)
+  }
+
   // Answer was correct
   if (eventData.isoCode === currentMove.challenge?.country) {
     game.position[playerId].currentPosition += currentMove.steps

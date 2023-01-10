@@ -1,17 +1,25 @@
+import { GameDifficulty } from '../game.types'
 import { ISOCountryCode } from '../geography.types'
 import { OrganizationVector } from '../organization.type'
 import { GroupChallengeAccessorId } from './group-challenge.type'
 
-export interface FinalChallenge {
-  _type: 'individual-challenge'
-  id: 'final'
-  challenges: []
+interface BaseFinalChallenge<Challenges, Difficulty extends GameDifficulty> {
+  _type: 'final-challenge'
+  difficulty: Difficulty
+  challenges: Challenges
 }
+
+export type FinalChallenge =
+  | BaseFinalChallenge<[RegionChallenge, LanguageChallenge], 'easy'>
+  | BaseFinalChallenge<[RegionChallenge, MaxChallenge | MinChallenge, LanguageChallenge], 'normal'>
+  | BaseFinalChallenge<
+      [LanguageChallenge, MaxChallenge, MinChallenge, MembershipChallenge, LeadershipChallenge],
+      'hard'
+    >
 
 export interface RegionChallenge {
   _type: 'region-challenge'
   country: ISOCountryCode
-  difficulty: 'easy'
 }
 
 export type MinMaxAccessorKeys = Extract<
@@ -27,33 +35,28 @@ export type MinMaxAccessorKeys = Extract<
 
 export interface MaxChallenge {
   _type: 'max-challenge'
-  id: MinMaxAccessorKeys
+  accessorId: MinMaxAccessorKeys
   country: ISOCountryCode
-  difficulty: 'medium'
 }
 
 export interface MinChallenge {
   _type: 'min-challenge'
-  id: MinMaxAccessorKeys
+  accessorId: MinMaxAccessorKeys
   country: ISOCountryCode
-  difficulty: 'medium'
 }
 
 export interface MembershipChallenge {
   _type: 'membership-challenge'
   exception: ISOCountryCode
-  difficulty: 'hard'
   organization: keyof typeof OrganizationVector
 }
 
 export interface LeadershipChallenge {
   _type: 'leadership-challenge'
   country: ISOCountryCode
-  difficulty: 'hard'
 }
 
 export interface LanguageChallenge {
   _type: 'language-challenge'
   language: string
-  difficulty: 'medium'
 }

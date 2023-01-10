@@ -32,3 +32,15 @@ export const baseEncode = (data: string) => {
     return Buffer.from(data).toString('base64')
   }
 }
+
+export const removeAllNumbers = (string: string): string => {
+  return string.replaceAll(/[+-]?\d+(\.\d+)?/g, '')
+}
+
+export const removeAllPercentages = (string: string): string => {
+  return removeAllNumbers(string).replaceAll('%', '')
+}
+
+export const getAllCapitalizedWords = (string: string): string[] => {
+  return string.match(/([A-Z][^\s]*)/g) || []
+}

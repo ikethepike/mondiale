@@ -63,7 +63,7 @@ export type FactbookResponse = {
       note?: string
     }
     Languages?: {
-      Languages: TextNode
+      Languages?: TextNode
       'major-language sample(s)'?: TextNode
     }
     Religions?: TextNode // interesting

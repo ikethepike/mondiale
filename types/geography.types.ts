@@ -23,10 +23,11 @@ export const isValidContinent = (continent: any): continent is Region => {
 
 export interface Country {
   flag: string
-  isoCode: string
+  isoCode: ISOCountryCode
   url: string
-  coordinates: string
   region: Region
+  languages: string[]
+  coordinates: string
   name: {
     local: string
     english: string

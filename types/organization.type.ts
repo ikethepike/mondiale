@@ -20,9 +20,20 @@ export type Organization = {
   _type: 'organization'
   id: keyof typeof OrganizationVector
   name: string
-  continent: Region[]
+  regions: Region[]
 }
 
 export interface OrganizationMembership {
   organization: Organization
 }
+
+export const organizationRegions: { [organization in keyof typeof OrganizationVector]: Region[] } =
+  {
+    au: ['africa'],
+    eu: ['europe'],
+    bri: ['europe', 'asia', 'middle-east', 'south-america', 'africa'],
+    nato: ['europe', 'oceania', 'north-america'],
+    csto: ['asia', 'europe'],
+    opec: ['middle-east', 'south-america', 'africa'],
+    oecd: ['europe', 'north-america', 'south-america', 'asia'],
+  }

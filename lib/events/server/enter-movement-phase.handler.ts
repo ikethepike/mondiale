@@ -34,7 +34,7 @@ export const enterMovementPhaseHandler: EventHandler = async ({
 
       await wait(500)
       if (isLastStep && move.challenge) {
-        game.players[playerId].phase = 'individual-challenge'
+        game.players[playerId].phase = move.challenge._type
       } else if (isLastStep) {
         // player has no additional steps and the turn has not ended
         game.players[playerId].phase = 'movement-summary'

@@ -1,4 +1,5 @@
 import { PLAYER_COLORS } from '~~/data/palette'
+import { FinalChallenge } from './challenges/final-challenge.type'
 import { GroupChallenge } from './challenges/group-challenge.type'
 import {
   IndividualChallenge,
@@ -30,7 +31,7 @@ export interface PlayerPosition {
 
 export interface PlayerMove {
   steps: number
-  challenge?: IndividualChallenge
+  challenge?: IndividualChallenge | FinalChallenge
 }
 
 export interface PlayerTurn {

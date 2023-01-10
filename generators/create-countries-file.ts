@@ -1,10 +1,21 @@
 import { readFileSync, writeFileSync } from 'fs'
-import { getEnabledCategories } from 'trace_events'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
-import { extractNumbers, extractYears, getPercentages, removeAfterCharacter } from '~~/lib/strings'
+import {
+  extractNumbers,
+  extractYears,
+  getAllCapitalizedWords,
+  getPercentages,
+  removeAfterCharacter,
+  removeAllPercentages,
+} from '~~/lib/strings'
 import { Amount, Region, Country, isValidContinent, ISOCountryCode } from '~~/types/geography.types'
-import { isOrganizationKey, Organization, OrganizationVector } from '~~/types/organization.type'
+import {
+  isOrganizationKey,
+  Organization,
+  organizationRegions,
+  OrganizationVector,
+} from '~~/types/organization.type'
 import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '~~/types/response.type'
 import { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
@@ -91,12 +102,13 @@ const normalizeCountry = ({
 
   return {
     url,
-    isoCode,
     name: names,
     flag: flag.toString(),
+    isoCode: isoCode as ISOCountryCode,
     coordinates: data.Geography['Geographic coordinates']?.text || '',
     region: getRegion({ data, isoCode }),
     membership: getMembership({ briMembership, data, names, isoCode }),
+    languages: getLanguages({ data, isoCode }),
     identity: {
       colors: getNationalColors(data, isoCode, flag.toString()),
     },
@@ -491,7 +503,7 @@ const getMembership = ({
       _type: 'organization',
       id: 'bri',
       name: OrganizationVector['bri'],
-      continent: ['asia', 'europe', 'south-america', 'africa'],
+      regions: ['asia', 'europe', 'south-america', 'africa'],
     })
   }
 
@@ -501,10 +513,10 @@ const getMembership = ({
   for (const organization of participation.text.split(',').map(org => org.toLowerCase().trim())) {
     if (isOrganizationKey(organization)) {
       output.push({
-        continent: [],
         _type: 'organization',
         id: organization,
         name: OrganizationVector[organization],
+        regions: organizationRegions[organization],
       })
     }
   }
@@ -685,4 +697,23 @@ const getLeader = ({
   }
 
   return leader.trim()
+}
+
+const getLanguages = ({ data }: { data: FactbookResponse; isoCode: string }): string[] => {
+  const languages = data['People and Society'].Languages?.Languages?.text || ''
+
+  return languages
+    .replaceAll(';', ',')
+    .split(',')
+    .filter(language => language.includes('(official'))
+    .map(language => {
+      const stripped = removeAfterCharacter(language, '(official')
+      const trimmed = removeParentheticals(removeAllPercentages(stripped).trim()).replaceAll(
+        /([()][^\s]*)/g,
+        ''
+      )
+
+      return getAllCapitalizedWords(trimmed).join(' ') || ''
+    })
+    .filter(Boolean)
 }

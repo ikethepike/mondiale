@@ -3,6 +3,7 @@ import {
   getIndividualChallenge,
   scoreChallengeSubmission,
 } from '~~/lib/challenges'
+import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { EventHandler } from '~~/server/middleware/socket.server'
 import { isValidIndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import { PlayerMove } from '~~/types/game.types'
@@ -51,7 +52,7 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
   // Take current position + scoring, split on each challenge
   const position = game.position[playerId]
   if (!position) {
-    console.error('Oh shit, could not find player position value')
+    console.error('Could not find player position value')
     throw new ReferenceError(`Unable to find position value for player: ${playerId}`)
   }
 
@@ -64,8 +65,6 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
       .slice(1) // In case, you landed on a challenge tile
       .findIndex(tile => !['normal', 'start', 'finish'].includes(tile.type))
 
-    console.log({ stepIndex: index })
-
     if (index === -1) {
       index = potentialTiles.length
       moves.push({
@@ -74,14 +73,21 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
     } else {
       index++ // to account for the slice offset
       const { type } = potentialTiles[index]
-      if (!isValidIndividualChallengeAccessorId(type)) {
-        throw new EvalError(`Invalid accessor id for challenge: ${type}`)
-      }
+      if (type === 'final') {
+        moves.push({
+          steps: index,
+          challenge: getFinalChallenges({ game }),
+        })
+      } else {
+        if (!isValidIndividualChallengeAccessorId(type)) {
+          throw new EvalError(`Invalid accessor id for challenge: ${type}`)
+        }
 
-      moves.push({
-        steps: index,
-        challenge: getIndividualChallenge({ accessorId: type }),
-      })
+        moves.push({
+          steps: index,
+          challenge: getIndividualChallenge({ accessorId: type }),
+        })
+      }
     }
 
     potentialTiles.splice(0, index + 1)
