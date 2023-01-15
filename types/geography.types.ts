@@ -38,8 +38,10 @@ export interface Country {
   membership: Organization[]
   government: {
     leader?: string
+    amountOfMilitaryConflicts?: number
   }
   economics: {
+    inflation?: Amount<'%'>
     gdpPerCapita?: Amount<'$'>
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
@@ -67,7 +69,6 @@ export interface Country {
   infrastructure: {
     roads?: Amount<'km'>
     rail?: Amount<'km'>
-    electricityAccess?: Amount<'%'>
     internetAccess?: Amount<'%'>
   }
   gender: {
@@ -75,7 +76,6 @@ export interface Country {
     motherMeanAgeAtBirth?: Amount<'years'>
   }
   people: {
-    obesity?: Amount<'%'>
     population?: Amount<'people'>
     lifeExpectancy?: Amount<'years'>
     medianAge?: Amount<'years'>
@@ -87,6 +87,7 @@ export interface Country {
     averageYearsOfStudy?: Amount<'years'>
   }
   health: {
+    obesity?: Amount<'%'>
     doctors?: Amount<'per 1000 people'>
     hospitalBeds?: Amount<'per 1000 people'>
     accessToContraceptives?: Amount<'%'>

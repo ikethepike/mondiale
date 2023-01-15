@@ -79,7 +79,7 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
   'people.population',
   'health.alcoholConsumption',
   'humanRights.refugees',
-  'people.obesity',
+  'health.obesity',
 ]
 
 /**

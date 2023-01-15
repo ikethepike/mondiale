@@ -1,8 +1,10 @@
 import { readFileSync, writeFileSync } from 'fs'
+import { conflictMapping } from '~~/data/conflicts.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import {
   extractNumbers,
+  extractParentheticals,
   extractYears,
   getAllCapitalizedWords,
   getPercentages,
@@ -114,8 +116,10 @@ const normalizeCountry = ({
     },
     government: {
       leader: getLeader({ data, isoCode }),
+      amountOfMilitaryConflicts: conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts,
     },
     economics: {
+      inflation: getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
       gdpPerCapita: getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
       populationBelowPovertyLine: getTextNode<'%'>(
         data['Economy']['Population below poverty line'],
@@ -152,11 +156,7 @@ const normalizeCountry = ({
     },
     infrastructure: {
       roads: getTextNode<'km'>(data.Transportation.Roadways?.total, 'km'), // could be interesting to swap to paved?
-      rail: getTextNode<'km'>(data.Transportation.Railways?.total, 'km'), // could be interesting to swap to paved?
-      electricityAccess: getTextNode<'%'>(
-        data.Energy?.['Electricity access']?.['electrification - total population'],
-        '%'
-      ),
+      rail: getTextNode<'km'>(data.Transportation.Railways?.total, 'km'),
       internetAccess: getTextNode<'%'>(
         data.Communications?.['Internet users']?.['percent of population'],
         '%'
@@ -170,7 +170,6 @@ const normalizeCountry = ({
       ),
     },
     people: {
-      obesity: getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
       lifeExpectancy: getTextNode<'years'>(
         data['People and Society']['Life expectancy at birth']?.['total population'],
         'years'
@@ -194,6 +193,7 @@ const normalizeCountry = ({
       ),
     },
     health: {
+      obesity: getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
       doctors: getTextNode<'per 1000 people'>(
         data['People and Society']['Physicians density'],
         'per 1000 people'
@@ -251,10 +251,12 @@ const getYearlyIndex = <Unit>(
   if (!mostRecent) return undefined
   const numbers = extractNumbers(mostRecent?.text.replaceAll(',', '') || '')
   if (!numbers.length) return undefined
+
   const indices = Object.keys(data)
   let year: number | undefined
   if (indices && indices.length) {
-    year = extractYears(indices.shift() || '').shift()
+    const mostRecentKey = indices.shift() || ''
+    year = extractYears(mostRecentKey).shift()
   }
 
   return {
@@ -296,12 +298,18 @@ const getRefugees = (
 }
 
 const getTextNode = <Unit>(data: TextNode | undefined, unit: Unit): Amount<Unit> | undefined => {
-  if (!data) return undefined
-  const numbers = extractNumbers(data.text?.replaceAll(',', '') || '')
+  if (!data || !data.text) return undefined
+  const numbers = extractNumbers(data.text.replaceAll(',', '') || '')
   if (!numbers.length) return undefined
+  let year: number | undefined = undefined
+  const parentheticalValues = extractParentheticals(data.text)
+  if (parentheticalValues.length) {
+    year = extractYears(parentheticalValues.join()).shift()
+  }
 
   return {
     unit,
+    year,
     amount: numbers[0],
   }
 }

@@ -33,7 +33,10 @@ jobs:
       - name: Log files
         run: ls -lh
 
-      - name: Update data
+      - name: Update conflicts
+        run: npm run generate:conflicts
+
+      - name: Update countries
         run: npm run generate:countries
 
       - name: Git Commit

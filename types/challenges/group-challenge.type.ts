@@ -103,9 +103,9 @@ export const GROUP_CHALLENGES: {
     id: 'gender.motherMeanAgeAtBirth',
     countriesPerPlayer: {},
   },
-  'people.obesity': {
+  'health.obesity': {
     _type: 'group-challenge',
-    id: 'people.obesity',
+    id: 'health.obesity',
     countriesPerPlayer: {},
   },
   'people.lifeExpectancy': {
@@ -224,7 +224,7 @@ export type GroupChallengeAccessorId =
   | 'infrastructure.internetAccess'
   | 'gender.womenInParliament'
   | 'gender.motherMeanAgeAtBirth'
-  | 'people.obesity'
+  | 'health.obesity'
   | 'people.lifeExpectancy'
   | 'people.medianAge'
   | 'people.childrenPerWoman'

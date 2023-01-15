@@ -30,7 +30,7 @@ export type MinMaxAccessorKeys = Extract<
   | 'people.population'
   | 'health.alcoholConsumption'
   | 'humanRights.refugees'
-  | 'people.obesity'
+  | 'health.obesity'
 >
 
 export interface MaxChallenge {

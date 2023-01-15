@@ -203,8 +203,8 @@ export const getChallengeDetails = (
         least: 'youngest',
       },
     },
-    'people.obesity': {
-      topic: 'people',
+    'health.obesity': {
+      topic: 'health',
       phrasing: 'Rank these countries by obesity',
       markers: {
         most: 'highest percent',

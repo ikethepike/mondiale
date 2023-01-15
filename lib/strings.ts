@@ -7,7 +7,7 @@ export const extractNumbers = (string: string): number[] => {
 }
 
 export const extractYears = (string: string): number[] => {
-  const YEARS_REGEXP = /^(19[5-9]\d|20[0-4]\d|2050)$/
+  const YEARS_REGEXP = /(?:(?:18|19|20|21)[0-9]{2})/g
   const matches = string.match(YEARS_REGEXP)
   if (!matches) return []
 
@@ -16,6 +16,13 @@ export const extractYears = (string: string): number[] => {
 
 export const removeAfterCharacter = (string: string, character: string) => {
   return string.split(character).shift() || ''
+}
+
+export const extractParentheticals = (string: string): string[] => {
+  const matches = string.match(/\(([^\)]+)\)/g)
+  if (!matches) return []
+
+  return matches.map(match => match)
 }
 
 export const getPercentages = (string: string): number[] => {

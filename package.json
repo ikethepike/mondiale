@@ -8,7 +8,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "generate:countries": "bun run ./generators/create-countries-file.ts",
-    "generate:linking": "bun run ./generators/create-link-mapping.ts"
+    "generate:linking": "bun run ./generators/create-link-mapping.ts",
+    "generate:conflicts": " bun run generators/vendors/ucdp/create-conflicts.ts"
   },
   "devDependencies": {
     "@types/node": "^18.11.17",
