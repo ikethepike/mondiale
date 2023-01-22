@@ -34,7 +34,7 @@ export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
 
   // Answer was correct
   if (eventData.isoCode === currentMove.challenge?.country) {
-    game.position[playerId].currentPosition += currentMove.steps
+    game.position[playerId].currentPosition += 2
     game.position[playerId].moves.shift()
   } else {
     game.position[playerId].moves = []
@@ -42,7 +42,7 @@ export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
 
   await server.updateGameState(game)
   server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
-  await wait(8000)
+  await wait(5000)
 
   enterMovementPhaseHandler({
     io,

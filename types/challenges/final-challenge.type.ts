@@ -10,10 +10,15 @@ interface BaseFinalChallenge<Challenges, Difficulty extends GameDifficulty> {
 }
 
 export type FinalChallenge =
-  | BaseFinalChallenge<[RegionChallenge, LanguageChallenge], 'easy'>
-  | BaseFinalChallenge<[RegionChallenge, MaxChallenge | MinChallenge, LanguageChallenge], 'normal'>
+  | BaseFinalChallenge<Array<RegionChallenge | LanguageChallenge>, 'easy'>
   | BaseFinalChallenge<
-      [LanguageChallenge, MaxChallenge, MinChallenge, MembershipChallenge, LeadershipChallenge],
+      Array<RegionChallenge | MaxChallenge | MinChallenge | LanguageChallenge>,
+      'normal'
+    >
+  | BaseFinalChallenge<
+      Array<
+        LanguageChallenge | MaxChallenge | MinChallenge | MembershipChallenge | LeadershipChallenge
+      >,
       'hard'
     >
 
@@ -37,12 +42,19 @@ export interface MaxChallenge {
   _type: 'max-challenge'
   accessorId: MinMaxAccessorKeys
   country: ISOCountryCode
+  hints: ISOCountryCode[]
+}
+
+export interface ConflictChallenge {
+  _type: 'conflict-challenge'
+  countries: ISOCountryCode[]
 }
 
 export interface MinChallenge {
   _type: 'min-challenge'
   accessorId: MinMaxAccessorKeys
   country: ISOCountryCode
+  hints: ISOCountryCode[]
 }
 
 export interface MembershipChallenge {

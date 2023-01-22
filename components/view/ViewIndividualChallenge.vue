@@ -30,9 +30,13 @@ import { processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import { ISOCountryCode } from '~~/types/geography.types'
 
-const { currentMove, update, gameStore } = useClientEvents()
+const { currentMove, update, gameStore, clearBoard } = useClientEvents()
 
-const challenge = ref(currentMove.value?.challenge)
+const challenge = ref(
+  currentMove.value?.challenge?._type === 'individual-challenge'
+    ? currentMove.value?.challenge
+    : undefined
+)
 
 const status = toRef(gameStore.map, 'status')
 // const reveal = computed<ISOCountryCode[]>(() => {
@@ -47,6 +51,8 @@ const submittedCountry = computed(() => {
 })
 const submitAnswer = (isoCode: ISOCountryCode) => {
   if (status.value) return
+  if (currentMove.value?.challenge?._type === 'final-challenge') return
+
   submittedISOCode.value = isoCode
   gameStore.map.highlighted.clear()
   update({ event: 'submit-individual-challenge-answer', isoCode })
@@ -85,12 +91,6 @@ const onMapClick = (event: Event) => {
   }
 }
 
-const clearBoard = () => {
-  gameStore.map.highlighted.clear()
-  gameStore.map.reveal = undefined
-  gameStore.map.status = undefined
-}
-
 onBeforeMount(() => {
   // Clear out our global state
   clearBoard()
@@ -125,6 +125,7 @@ header {
     width: 6rem;
     height: 4rem;
     transition: 0.6s;
+    pointer-events: auto;
     display: inline-block;
     background-size: contain;
     background-repeat: no-repeat;

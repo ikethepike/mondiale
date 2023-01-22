@@ -64,6 +64,7 @@ enum FactbookBindings {
   DJ = 'DJ',
   DM = 'DO',
   DO = 'DR',
+  DZ = 'AG',
   EC = 'EC',
   EG = 'EG',
   SV = 'ES',
@@ -249,6 +250,7 @@ enum FactbookBindings {
   YE = 'YM',
   ZM = 'ZA',
   ZW = 'ZI',
+  XK = 'KV',
 }
 
 const folders = [

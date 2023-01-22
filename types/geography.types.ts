@@ -26,6 +26,7 @@ export interface Country {
   isoCode: ISOCountryCode
   url: string
   region: Region
+  currency?: string
   languages: string[]
   coordinates: string
   name: {

@@ -29,6 +29,7 @@ export const enterMovementPhaseHandler: EventHandler = async ({
   const move = playerPosition.moves[0]
   if (move) {
     game.players[playerId].phase = 'moving'
+
     for (const index of [...Array(move.steps).keys()]) {
       const isLastStep = index + 1 === move.steps
 
@@ -65,7 +66,6 @@ export const enterMovementPhaseHandler: EventHandler = async ({
     for (const playerId of Object.keys(game.players)) {
       game.players[playerId].phase = 'group-challenge'
     }
-    console.log('Ready for next turn!', game.rounds)
 
     await server.updateGameState(game)
     server.emit({ event: 'new-round', game }, eventTarget)

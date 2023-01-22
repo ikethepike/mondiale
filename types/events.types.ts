@@ -1,5 +1,5 @@
 import { Game, GameVariant, PlayerColor } from './game.types'
-import { ISOCountryCode } from './geography.types'
+import { ISOCountryCode, Region } from './geography.types'
 
 export type ClientEventData =
   | {
@@ -41,6 +41,16 @@ export type ClientEventData =
       value: string | number | boolean
       accessorPattern: string
     }
+  | {
+      event: 'submit-final-challenge-answer'
+      submittedAnswer:
+        | { _type: 'region-challenge'; region: Region }
+        | { _type: 'min-challenge'; isoCode: ISOCountryCode }
+        | { _type: 'max-challenge'; isoCode: ISOCountryCode }
+        | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
+        | { _type: 'language-challenge'; isoCode: ISOCountryCode }
+        | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
+    }
 
 export type ClientEvent = ClientEventData['event']
 
@@ -68,6 +78,7 @@ export type ServerEventData =
   | { event: 'individual-challenge-checked'; game: Game }
   | { event: 'player-ready-for-round'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
+  | { event: 'final-challenge-checked'; game: Game }
 
 export type ServerEvent = ServerEventData['event']
 

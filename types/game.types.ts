@@ -26,10 +26,17 @@ export type GameDifficulty = typeof gameDifficulties[number]
 export interface PlayerPosition {
   currentPosition: number
   moves: PlayerMove[]
+  progress: PlayerProgress[]
   // In the future, let's track failed moves
 }
 
+export interface PlayerProgress {
+  round: number
+  endTilePosition: number
+}
+
 export interface PlayerMove {
+  endTile: Tile
   steps: number
   challenge?: IndividualChallenge | FinalChallenge
 }

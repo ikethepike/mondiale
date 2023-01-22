@@ -1,10 +1,12 @@
 <template>
   <div class="group-challenge-wrapper" :class="{ peeking }">
     <form id="active-round" @submit.prevent="submitRanking">
-      <ButtonFilled class="peek-button" element="a" @click="peeking = !peeking">
-        <span>Peek</span>
-        <div class="peek-icon" />
-      </ButtonFilled>
+      <header>
+        <ButtonFilled class="peek-button" element="a" @click="peeking = !peeking">
+          <span>Peek</span>
+          <div class="peek-icon" />
+        </ButtonFilled>
+      </header>
 
       <section id="question">
         <h1>{{ details?.phrasing || currentRound?.round.groupChallenge.id || '' }}</h1>

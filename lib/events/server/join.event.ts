@@ -31,14 +31,15 @@ export const joinEventHandler: EventHandler = async ({
       position: {},
       host: playerId,
       started: false,
-      difficulty: 'normal',
-      tiles: generateTiles('medium'),
+      difficulty: 'hard',
+      tiles: generateTiles('short'),
     }
 
     game.players[playerId] = createPlayer(playerId)
     game.position[playerId] = {
       currentPosition: 0,
       moves: [],
+      progress: [],
     }
 
     await server.updateGameState(game)
@@ -50,6 +51,7 @@ export const joinEventHandler: EventHandler = async ({
     game.position[playerId] = {
       currentPosition: 0,
       moves: [],
+      progress: [],
     }
   }
 

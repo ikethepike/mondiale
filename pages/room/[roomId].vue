@@ -18,6 +18,7 @@
         <ViewGroupScores v-if="player.phase === 'group-scores'" />
         <ModalMoving v-if="['moving', 'movement-summary'].includes(player.phase)" />
         <ViewIndividualChallenge v-if="player.phase === 'individual-challenge'" />
+        <ViewFinalChallenge v-if="player.phase === 'final-challenge'" />
       </template>
     </template>
     <template v-else>

@@ -10,7 +10,7 @@
         <VariantPicker />
 
         <nav class="pane-content">
-          <ButtonLine class="configure-button">Configure</ButtonLine>
+          <ButtonLine class="about-button">About</ButtonLine>
           <ButtonFilled class="start-button">
             <div class="button-content">
               <span>Create Game</span>

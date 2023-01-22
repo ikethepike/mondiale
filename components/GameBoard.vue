@@ -1,5 +1,6 @@
 <template>
-  <div class="game-board">
+  <div class="game-board" ref="board">
+    <pre>Position: {{ playerPosition }}</pre>
     <div class="desktop-board">
       <template v-for="(row, index) in boardRows.desktop" :key="`desktop-row-${index}`">
         <BoardRow :row="row" :reverse="Boolean(index % 2)" :columns="5" />
@@ -16,7 +17,7 @@
 import { useClientEvents } from '~~/lib/events/client-side'
 import { Tile } from '~~/types/game.types'
 
-const { game, playerId, currentMove, gameStore, update } = useClientEvents()
+const { game, playerId } = useClientEvents()
 
 type MobileRow = [Tile, Tile, Tile]
 type DesktopRow = [Tile, Tile, Tile, Tile, Tile]
@@ -25,6 +26,22 @@ interface BoardRows {
   mobile: MobileRow[]
   desktop: DesktopRow[]
 }
+
+const board = ref<HTMLDivElement>()
+
+// Watch current position
+const playerPosition = computed(() => game.value?.position[playerId.value]?.currentPosition)
+
+watch(
+  () => game.value?.position,
+  () => {
+    if (!process.client) return
+    if (!board.value) throw new ReferenceError('Board not initalized')
+
+    const pawn = document.querySelector(`.player-pawn-${playerId.value}`)
+    pawn?.scrollIntoView({ behavior: 'smooth' })
+  }
+)
 
 // const move = async () => {
 //   if (!currentMove.value) return

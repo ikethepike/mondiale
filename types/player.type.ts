@@ -19,3 +19,4 @@ export type PlayerPhase =
   | 'movement-summary'
   | 'kicked'
   | 'final-challenge'
+  | 'victory'

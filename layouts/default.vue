@@ -6,6 +6,11 @@
       :highlighted="highlighted"
       :highlight-country="reveal"
       :status="status"
+      :country-groupings="
+        currentFinalChallenge?._type === 'region-challenge' && !reveal
+          ? Object.values(COLOR_CODED_REGIONS)
+          : undefined
+      "
     />
     <slot />
 
@@ -24,9 +29,10 @@
 </template>
 <script lang="ts" setup>
 import { COUNTRIES } from '~~/data/countries.gen'
+import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { ISOCountryCode } from '~~/types/geography.types'
-const { player, game, currentRound, gameStore } = useClientEvents()
+const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
 
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
@@ -91,7 +97,8 @@ const highlighted = computed<ISOCountryCode[]>(() => {
 
 .phase-group-scores .game-map,
 .phase-group-challenge .game-map,
-.phase-individual-challenge .game-map {
+.phase-individual-challenge .game-map,
+.phase-final-challenge .game-map {
   transform: scale(1);
 }
 

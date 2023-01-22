@@ -3,9 +3,9 @@ import { GameLength, Tile } from '~~/types/game.types'
 
 export const generateTiles = (length: GameLength) => {
   const lengths: { [length in GameLength]: number } = {
-    long: 90,
-    short: 60,
+    short: 10,
     medium: 80,
+    long: 90,
   }
 
   const count = lengths[length]

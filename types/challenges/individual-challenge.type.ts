@@ -11,5 +11,5 @@ export type IndividualChallengeAccessorId = typeof individualChallengeAccessors[
 export const isValidIndividualChallengeAccessorId = (
   accessorId: any
 ): accessorId is IndividualChallengeAccessorId => {
-  return accessorId && individualChallengeAccessors.includes(accessorId)
+  return !!accessorId && individualChallengeAccessors.includes(accessorId)
 }

@@ -10,13 +10,15 @@ import {
   RegionChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { Game } from '~~/types/game.types'
-import { Amount, ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
+import { Amount, ISOCountryCode, isValidISOCode, Region } from '~~/types/geography.types'
+import { CountryColorGrouping } from '~~/types/map.type'
 import {
   isOrganizationKey,
   organizationRegions,
   OrganizationVector,
 } from '~~/types/organization.type'
 import { shuffleArray } from '../arrays'
+import { getChallengeDetails } from '../challenges'
 import { getRandomISOCountryCode } from '../country'
 import { getValueByAccessorID } from '../values'
 
@@ -85,8 +87,9 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
 /**
  * Returns a sorted array (max -> min) of a given value key
  */
-const getSortedRanking = () => {
-  const accessorId = minMaxAccessors[Math.floor(minMaxAccessors.length * Math.random())]
+const getSortedRanking = (accessorId?: MinMaxAccessorKeys) => {
+  accessorId = accessorId || minMaxAccessors[Math.floor(minMaxAccessors.length * Math.random())]
+
   const sortedCountries: { amount: Amount<any>; isoCode: ISOCountryCode }[] = []
 
   for (const isoCode of Object.keys(COUNTRIES)) {
@@ -115,6 +118,7 @@ const getMaxChallenge = (): MaxChallenge => {
     _type: 'max-challenge',
     accessorId,
     country: country.isoCode,
+    hints: shuffleArray(sortedcountries.slice(0, 5).flatMap(country => country.isoCode)),
   }
 }
 
@@ -127,6 +131,7 @@ const getMinChallenge = (): MinChallenge => {
     _type: 'min-challenge',
     accessorId,
     country: country.isoCode,
+    hints: shuffleArray(sortedcountries.slice(-5).flatMap(country => country.isoCode)),
   }
 }
 
@@ -161,4 +166,315 @@ const getLeadershipChallenge = (): LeadershipChallenge => {
     _type: 'leadership-challenge',
     country: country.isoCode,
   }
+}
+
+export const getFinalChallengeDetails = ({
+  challenge,
+}: {
+  challenge:
+    | RegionChallenge
+    | MinChallenge
+    | MaxChallenge
+    | LanguageChallenge
+    | MembershipChallenge
+    | LeadershipChallenge
+}): { question: string } => {
+  switch (challenge._type) {
+    case 'language-challenge':
+      return {
+        question: `Select a country that speaks ${challenge.language}`,
+      }
+    case 'leadership-challenge': {
+      const countries = Object.values(COUNTRIES)
+      const countryWithLeader = countries.find(country => {
+        // Skip exceptions where no leader is set
+        if (['president', 'prime minister'].some(title => title === country.government.leader)) {
+          return false
+        }
+
+        return !!country.government.leader
+      })
+
+      if (!countryWithLeader) {
+        throw new ReferenceError(`Unable to find any country with a leader set`)
+      }
+
+      const { leader } = countryWithLeader.government
+
+      return {
+        question: `Which country is led by ${leader}?`,
+      }
+    }
+    case 'min-challenge':
+    case 'max-challenge': {
+      const { accessorId, _type } = challenge
+
+      const { max, min } = finalChallengeMinMaxQuestion[accessorId]
+
+      return {
+        question: _type === 'max-challenge' ? max : min,
+      }
+    }
+    case 'membership-challenge': {
+      const organization = OrganizationVector[challenge.organization]
+
+      return {
+        question: `Which of the following countries is not a part of the ${organization}?`,
+      }
+    }
+    case 'region-challenge': {
+      const country = COUNTRIES[challenge.country]
+      return {
+        question: `Which region is ${country.name.english} a part of?`,
+      }
+    }
+    default:
+      return {
+        question: `Lazy, lazy get this implemented`,
+      }
+  }
+}
+
+const finalChallengeMinMaxQuestion: {
+  [accessor in MinMaxAccessorKeys]: { min: string; max: string }
+} = {
+  'economics.gdpPerCapita': {
+    min: 'Select the country with the lowest GDP per capita in the world',
+    max: 'Select the country with the highest GDP per capita in the world',
+  },
+  'economics.militarySpending': {
+    min: 'Select the country with the lowest proportion of military spending in the world',
+    max: 'Select the country with the highest proportion of military spending in the world',
+  },
+  'gender.womenInParliament': {
+    max: 'Select the country with the highest proportion of women in parliament',
+    min: 'Select the country with the lowest proportion of women in parliament',
+  },
+  'health.alcoholConsumption': {
+    max: 'Select the country with the highest alcohol consumption in the world',
+    min: 'Select the country with the lowest alcohol consumption in the world',
+  },
+  'health.obesity': {
+    max: 'Select the country with the highest incidence of obesity',
+    min: 'Select the country with the lowest incidence of obesity.',
+  },
+  'humanRights.refugees': {
+    max: 'Select the country with the largest refugee population in the world',
+    min: 'Select the country with the lowest refugee population in the world',
+  },
+  'people.population': {
+    max: 'Select the most populuous country in the world',
+    min: 'Select the least populuous country in the world',
+  },
+}
+
+export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } = {
+  asia: {
+    color: 'teal',
+    countries: [
+      'AF',
+      'AM',
+      'AZ',
+      'BD',
+      'BT',
+      'BN',
+      'KH',
+      'CN',
+      'GE',
+      'HK',
+      'IN',
+      'ID',
+      'JP',
+      'KZ',
+      'KR',
+      'KP',
+      'KG',
+      'LA',
+      'MY',
+      'MV',
+      'MN',
+      'MM',
+      'NP',
+      'PK',
+      'PH',
+      'RU',
+      'SG',
+      'LK',
+      'TW',
+      'TJ',
+      'TH',
+      'TL',
+      'TM',
+      'UA',
+      'UZ',
+      'VN',
+    ],
+  },
+  europe: {
+    color: 'red',
+    countries: [
+      'AD',
+      'AL',
+      'AT',
+      'BA',
+      'BE',
+      'BG',
+      'BY',
+      'CH',
+      'CZ',
+      'DE',
+      'DK',
+      'EE',
+      'ES',
+      'FI',
+      'FR',
+      'GB',
+      'GR',
+      'HR',
+      'HU',
+      'IE',
+      'IS',
+      'IT',
+      'LI',
+      'LT',
+      'LU',
+      'LV',
+      'MC',
+      'MD',
+      'ME',
+      'MK',
+      'MT',
+      'NL',
+      'NO',
+      'PL',
+      'PT',
+      'RO',
+      'RS',
+      'SE',
+      'SI',
+      'SK',
+      'SM',
+      'VA',
+      'XK',
+    ],
+  },
+  africa: {
+    color: 'tomato',
+    countries: [
+      'EC',
+      'AO',
+      'BF',
+      'BI',
+      'BJ',
+      'BW',
+      'CD',
+      'CF',
+      'CG',
+      'CI',
+      'CM',
+      'CV',
+      'DJ',
+      'DZ',
+      'EG',
+      'EH',
+      'ER',
+      'ET',
+      'GA',
+      'GH',
+      'GM',
+      'GN',
+      'GQ',
+      'GW',
+      'IC',
+      'KE',
+      'KM',
+      'LR',
+      'LS',
+      'LY',
+      'MA',
+      'MG',
+      'ML',
+      'MR',
+      'MU',
+      'MW',
+      'MZ',
+      'NA',
+      'NE',
+      'NG',
+      'RW',
+      'SC',
+      'SD',
+      'SL',
+      'SN',
+      'SO',
+      'SS',
+      'ST',
+      'SZ',
+      'TD',
+      'TG',
+      'TN',
+      'TZ',
+      'UG',
+      'ZA',
+      'ZM',
+      'ZW',
+    ],
+  },
+  'north-america': {
+    color: 'magenta',
+    countries: [
+      'AG',
+      'BS',
+      'BB',
+      'BZ',
+      'CA',
+      'CR',
+      'CU',
+      'DM',
+      'DO',
+      'SV',
+      'GL',
+      'GD',
+      'GT',
+      'HT',
+      'HN',
+      'JM',
+      'MX',
+      'NI',
+      'PA',
+      'KN',
+      'LC',
+      'TT',
+      'US',
+    ],
+  },
+  oceania: {
+    color: 'yellow',
+    countries: ['AU', 'FJ', 'KI', 'FM', 'NR', 'NZ', 'PW', 'PG', 'SB', 'TO', 'TV', 'VU'],
+  },
+  'middle-east': {
+    color: '#252525',
+    countries: [
+      'BH',
+      'CY',
+      'IR',
+      'IQ',
+      'IL',
+      'JO',
+      'KW',
+      'LB',
+      'OM',
+      'PS',
+      'QA',
+      'SA',
+      'SY',
+      'TR',
+      'AE',
+      'YE',
+    ],
+  },
+  'south-america': {
+    color: 'crimson',
+    countries: ['AR', 'GF', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PY', 'PE', 'SR', 'UY', 'VE'],
+  },
 }

@@ -5,7 +5,10 @@ import {
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { EventHandler } from '~~/server/middleware/socket.server'
-import { isValidIndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
+import {
+  individualChallengeAccessors,
+  isValidIndividualChallengeAccessorId,
+} from '~~/types/challenges/individual-challenge.type'
 import { PlayerMove } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 
@@ -32,6 +35,7 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
   if (!originalRanking)
     throw new ReferenceError(`Unable to retrieve original order for player: ${playerId}`)
 
+  // ! Todo, fix to allow identical values
   const correctRanking = getCorrectRanking({
     groupChallengeAccessorId: currentRound.groupChallenge.id,
     isoCodes: originalRanking,
@@ -59,39 +63,69 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
   const potentialProgress = position.currentPosition + scoring.scored
   const potentialTiles = [...game.tiles.slice(position.currentPosition, potentialProgress)]
 
+  // Here, we add player moves. Each of these will be executed sequentially and players
+  // will move an according amount of steps
   const moves: PlayerMove[] = []
   while (potentialTiles.length) {
-    let index: number | undefined = potentialTiles
-      .slice(1) // In case, you landed on a challenge tile
-      .findIndex(tile => !['normal', 'start', 'finish'].includes(tile.type))
+    console.log(`Moveset: ${moves.length + 1}`)
+    // Identify any special tiles in the moveset
+    const specialTileIndex = potentialTiles.findIndex(tile =>
+      [...individualChallengeAccessors, 'final'].includes(tile.type)
+    )
+    const specialTile = potentialTiles[specialTileIndex]
 
-    if (index === -1) {
-      index = potentialTiles.length
-      moves.push({
-        steps: potentialTiles.length,
-      })
-    } else {
-      index++ // to account for the slice offset
-      const { type } = potentialTiles[index]
-      if (type === 'final') {
-        moves.push({
-          steps: index,
-          challenge: getFinalChallenges({ game }),
-        })
-      } else {
-        if (!isValidIndividualChallengeAccessorId(type)) {
-          throw new EvalError(`Invalid accessor id for challenge: ${type}`)
-        }
-
-        moves.push({
-          steps: index,
-          challenge: getIndividualChallenge({ accessorId: type }),
-        })
-      }
+    const spliceCount = specialTileIndex === -1 ? potentialTiles.length : specialTileIndex
+    const moveset = potentialTiles.splice(0, spliceCount + 1)
+    console.log({ spliceCount, moveset, potentialTiles })
+    let move: PlayerMove = {
+      endTile: moveset[moveset.length - 1],
+      steps: moveset.length,
     }
 
-    potentialTiles.splice(0, index + 1)
+    switch (true) {
+      // If player has reached final challenge
+      case moveset.some(tile => tile.type === 'final'):
+        console.log('> Final challenge', { specialTile, specialTileIndex })
+
+        move = {
+          endTile: specialTile,
+          steps: moveset.length, // Stop one tile before
+          challenge: getFinalChallenges({ game }),
+        }
+        break
+      // If we have an individual challenge in our moveset
+      case isValidIndividualChallengeAccessorId(specialTile?.type):
+        {
+          console.log('> Individual challenge', {
+            specialTile,
+            specialTileIndex,
+          })
+          const { type: accessorId } = specialTile
+          if (!isValidIndividualChallengeAccessorId(accessorId)) {
+            throw new EvalError(`Invalid accessor id for challenge: ${accessorId}`)
+          }
+
+          move = {
+            endTile: specialTile,
+            steps: specialTileIndex,
+            challenge: getIndividualChallenge({ accessorId }),
+          }
+        }
+        break
+    }
+
+    console.log({ move })
+    moves.push(move)
+
+    if (moves.length === 1) {
+      game.position[playerId].progress.push({
+        round: game.rounds.length,
+        endTilePosition: move.endTile.position,
+      })
+    }
   }
+
+  console.log('resolved')
 
   game.players[playerId].phase = 'group-scores'
   game.position[playerId].moves = moves

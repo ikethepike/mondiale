@@ -8,6 +8,7 @@ import { readyForRoundHandler } from '~~/lib/events/server/ready-for-round.handl
 import { setColorHandler } from '~~/lib/events/server/set-color.handler'
 import { setNameHandler } from '~~/lib/events/server/set-name.handler'
 import { startGameHandler } from '~~/lib/events/server/start-game.handler'
+import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-final-challenge-answer.handler'
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
@@ -58,6 +59,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   // Does not write to permanent game state
   'update-by-index': {
     handler: updateByIndexHandler,
+  },
+  'submit-final-challenge-answer': {
+    handler: submitFinalChallengeAnswerHandler,
   },
 }
 

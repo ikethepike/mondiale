@@ -39,6 +39,17 @@ export const useClientEvents = () => {
     return player.value.id === game.value?.host
   })
 
+  const currentFinalChallenge = computed(() => {
+    if (currentMove.value?.challenge?._type !== 'final-challenge') return undefined
+    return [...currentMove.value.challenge.challenges].shift()
+  })
+
+  const clearBoard = () => {
+    gameStore.map.highlighted.clear()
+    gameStore.map.reveal = undefined
+    gameStore.map.status = undefined
+  }
+
   return {
     _instance: socket,
     game,
@@ -46,11 +57,13 @@ export const useClientEvents = () => {
     player,
     playerId,
     gameStore,
+    clearBoard,
     hostPlayer,
     currentMove,
     currentMoves,
     isPlayerHost,
     currentRound,
+    currentFinalChallenge,
     update(eventData: ClientEventData) {
       console.log('Sending event', eventData)
       if (!socket.value) {

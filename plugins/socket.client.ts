@@ -51,6 +51,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'index-update': {
     handler: indexUpdateEvent,
   },
+  'final-challenge-checked': {
+    handler: genericUpdateEvent,
+  },
 }
 
 const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`

@@ -182,11 +182,6 @@ export const getChallengeDetails = (
         least: 'fewest kilometers',
       },
     },
-    'infrastructure.electricityAccess': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by access to electricity', // ! TO DO: think about how to do with countries at 100%
-      markers: DEFAULT_CHALLENGE_MARKERS, // Add arrows here
-    },
     'gender.womenInParliament': {
       topic: 'gender',
       phrasing: 'Rank these countries by women in parliament',
@@ -422,5 +417,3 @@ export const scoreChallengeSubmission = ({
     maximum: submittedRanking.length * MAXIMUM_SCORE_PER_COUNTRY,
   }
 }
-
-const getFinalChallenge = ({}: { game: Game }) => {}

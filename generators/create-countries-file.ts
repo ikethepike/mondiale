@@ -1,3 +1,4 @@
+import { countries, languages } from 'countries-list'
 import { readFileSync, writeFileSync } from 'fs'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
@@ -6,10 +7,8 @@ import {
   extractNumbers,
   extractParentheticals,
   extractYears,
-  getAllCapitalizedWords,
   getPercentages,
   removeAfterCharacter,
-  removeAllPercentages,
 } from '~~/lib/strings'
 import { Amount, Region, Country, isValidContinent, ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -111,6 +110,7 @@ const normalizeCountry = ({
     region: getRegion({ data, isoCode }),
     membership: getMembership({ briMembership, data, names, isoCode }),
     languages: getLanguages({ data, isoCode }),
+    currency: getCurrency({ isoCode }),
     identity: {
       colors: getNationalColors(data, isoCode, flag.toString()),
     },
@@ -704,24 +704,28 @@ const getLeader = ({
       break
   }
 
-  return leader.trim()
+  return leader
+    .split(' ')
+    .map(name => name.charAt(0).toUpperCase() + name.slice(1))
+    .join(' ')
+    .trim()
 }
 
-const getLanguages = ({ data }: { data: FactbookResponse; isoCode: string }): string[] => {
-  const languages = data['People and Society'].Languages?.Languages?.text || ''
+const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {
+  if (Reflect.has(countries, isoCode)) {
+    const country = countries[isoCode as keyof typeof countries]
 
-  return languages
-    .replaceAll(';', ',')
-    .split(',')
-    .filter(language => language.includes('(official'))
-    .map(language => {
-      const stripped = removeAfterCharacter(language, '(official')
-      const trimmed = removeParentheticals(removeAllPercentages(stripped).trim()).replaceAll(
-        /([()][^\s]*)/g,
-        ''
-      )
-
-      return getAllCapitalizedWords(trimmed).join(' ') || ''
+    return country.languages.map(languageCode => {
+      return Reflect.get(languages, languageCode).name
     })
-    .filter(Boolean)
+  }
+
+  return []
+}
+
+const getCurrency = ({ isoCode }: { isoCode: string }): string | undefined => {
+  if (Reflect.has(countries, isoCode)) {
+    const country = countries[isoCode as keyof typeof countries]
+    return country.currency
+  }
 }

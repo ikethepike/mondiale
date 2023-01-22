@@ -83,11 +83,6 @@ export const GROUP_CHALLENGES: {
     id: 'infrastructure.rail',
     countriesPerPlayer: {},
   },
-  'infrastructure.electricityAccess': {
-    _type: 'group-challenge',
-    id: 'infrastructure.electricityAccess',
-    countriesPerPlayer: {}, // Add arrows here
-  },
   'infrastructure.internetAccess': {
     _type: 'group-challenge',
     id: 'infrastructure.internetAccess',
@@ -220,7 +215,6 @@ export type GroupChallengeAccessorId =
   | 'unemployment.total'
   | 'infrastructure.roads'
   | 'infrastructure.rail'
-  | 'infrastructure.electricityAccess'
   | 'infrastructure.internetAccess'
   | 'gender.womenInParliament'
   | 'gender.motherMeanAgeAtBirth'
