@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  generate:
     runs-on: ubuntu-latest
 
     permissions:
