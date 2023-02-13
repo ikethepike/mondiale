@@ -1,7 +1,7 @@
 <template>
   <div class="view-final-challenge">
     <header>
-      <span>1/4</span>
+      <span>{{ currentChallengeCount }}/{{ totalChallengeCount }}</span>
       <h2>{{ details?.question }}</h2>
     </header>
     <!-- Leadership challenge -->
@@ -15,11 +15,21 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { isMapClickEvent } from '~~/types/events.types'
 import { ISOCountryCode, isValidISOCode, Region } from '~~/types/geography.types'
 
-const { currentFinalChallenge, clearBoard, update, gameStore } = useClientEvents()
+const { currentFinalChallenge, clearBoard, update, gameStore, currentMove } = useClientEvents()
 
 const details = computed(() => {
   if (!currentFinalChallenge.value) return undefined
   return getFinalChallengeDetails({ challenge: currentFinalChallenge.value })
+})
+const totalChallengeCount = ref(
+  (() => {
+    if (!currentMove.value || currentMove.value.challenge?._type !== 'final-challenge') return 0
+    return currentMove.value.challenge.challenges.length
+  })()
+)
+const currentChallengeCount = computed(() => {
+  if (!currentMove.value || currentMove.value.challenge?._type !== 'final-challenge') return 0
+  return totalChallengeCount.value + 1 - currentMove.value.challenge.challenges.length
 })
 
 const triggerMembershipChallenge = () => {
@@ -151,3 +161,16 @@ onBeforeUnmount(() => {
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>
+<style lang="scss" scoped>
+.view-final-challenge {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+
+header {
+  text-align: center;
+}
+</style>
