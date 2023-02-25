@@ -1,5 +1,5 @@
 <template>
-  <ButtonBase class="filled" :element="element">
+  <ButtonBase class="filled" :element="element" :to="to">
     <slot />
   </ButtonBase>
 </template>
@@ -8,8 +8,11 @@ import { PropType } from 'vue'
 
 defineProps({
   element: {
-    type: String as PropType<'a' | 'button' | 'nuxt-link'>,
+    type: String as PropType<'a' | 'button' | 'NuxtLink'>,
     default: 'button',
+  },
+  to: {
+    type: String,
   },
 })
 </script>

@@ -30,14 +30,20 @@
 </template>
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
-import { gameVariants } from '~~/types/game.types'
+import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
 const { update, game, player, currentRound } = useClientEvents()
 
+const route = useRoute()
+
 onMounted(() => {
+  const { variant } = route.query
+
+  console.log({ variant, valid: isValidGameVariant(variant) })
+
   update({
     event: 'join',
-    variant: gameVariants[0],
+    variant: isValidGameVariant(variant) ? variant : gameVariants[0],
   })
 })
 </script>

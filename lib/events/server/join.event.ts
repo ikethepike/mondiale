@@ -22,17 +22,18 @@ export const joinEventHandler: EventHandler = async ({
   // Game does not exist, we have to create it
   if (!game) {
     const { variant } = eventData
-    console.log(`Creating room: ${gameId}`)
+    console.log(`Creating room: ${gameId} - ${variant}`)
     game = {
       variant,
       id: gameId,
       rounds: [],
       players: {},
       position: {},
-      host: playerId,
       started: false,
-      difficulty: 'hard',
-      tiles: generateTiles('short'),
+      host: playerId,
+      length: 'medium',
+      difficulty: 'normal',
+      tiles: generateTiles('medium'),
     }
 
     game.players[playerId] = createPlayer(playerId)

@@ -1,6 +1,5 @@
 <template>
   <div class="test-page">
-    <!-- <pre>{{ groupings }}</pre> -->
     <GameMap :country-groupings="Object.values(COLOR_CODED_REGIONS)" />
   </div>
 </template>

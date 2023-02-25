@@ -3,7 +3,7 @@ import { GameLength, Tile } from '~~/types/game.types'
 
 export const generateTiles = (length: GameLength) => {
   const lengths: { [length in GameLength]: number } = {
-    short: 10,
+    short: 40,
     medium: 80,
     long: 90,
   }

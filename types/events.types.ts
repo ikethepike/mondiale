@@ -1,4 +1,4 @@
-import { Game, GameVariant, PlayerColor } from './game.types'
+import { GameConfiguration, Game, GameVariant, PlayerColor } from './game.types'
 import { ISOCountryCode, Region } from './geography.types'
 
 export type ClientEventData =
@@ -50,6 +50,10 @@ export type ClientEventData =
         | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
         | { _type: 'language-challenge'; isoCode: ISOCountryCode }
         | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
+    }
+  | {
+      event: 'update-configuration'
+      configuration: GameConfiguration
     }
 
 export type ClientEvent = ClientEventData['event']

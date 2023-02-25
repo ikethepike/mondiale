@@ -12,6 +12,7 @@ import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-f
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
+import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
 import { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
 
@@ -62,6 +63,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-final-challenge-answer': {
     handler: submitFinalChallengeAnswerHandler,
+  },
+  'update-configuration': {
+    handler: updateConfigurationHandler,
   },
 }
 

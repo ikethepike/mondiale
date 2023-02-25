@@ -1,6 +1,5 @@
 <template>
   <div class="game-board" ref="board">
-    <pre>Position: {{ playerPosition }}</pre>
     <div class="desktop-board">
       <template v-for="(row, index) in boardRows.desktop" :key="`desktop-row-${index}`">
         <BoardRow :row="row" :reverse="Boolean(index % 2)" :columns="5" />

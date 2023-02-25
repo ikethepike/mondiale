@@ -1,6 +1,5 @@
 <template>
   <div class="layout" :class="[`phase-${player?.phase}`]">
-    <pre class="phase-indicator">{{ player?.phase }}</pre>
     <LazyGameMap
       class="game-map"
       :highlighted="highlighted"

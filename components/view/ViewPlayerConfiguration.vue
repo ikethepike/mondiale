@@ -28,11 +28,7 @@
               <div class="name-wrapper">
                 <label>
                   <strong>What's your name?</strong>
-                  <InputText
-                    inline-button="Save"
-                    @change="value => (name = value)"
-                    @input="onNameInput"
-                  />
+                  <InputText inline-button="Save" @change="value => (name = value)" />
                 </label>
               </div>
             </form>
@@ -67,13 +63,55 @@
               the world.
             </p>
             <p>This time, you'll be competing in:</p>
-            <div class="breakdown">
-              <p class="game-region">
-                Region: <span>{{ game?.variant.replace('-', ' ') }}</span>
-              </p>
-              <p class="game-length">Length: <span>Medium</span></p>
-              <p class="game-difficulty">Difficulty: <span>Medium</span></p>
-            </div>
+
+            <code>
+              <pre>difficulty: {{ game?.difficulty }}</pre>
+              <pre>length: {{ game?.length }}</pre>
+              <pre>variant: {{ game?.variant }}</pre>
+            </code>
+
+            <form class="breakdown" v-if="game" ref="breakdown" @change="updateConfiguration">
+              <!-- Region -->
+              <div class="configuration-block">
+                <label for="game-variant">Region:</label>
+                <select name="game-variant" id="game-variant" :disabled="!isPlayerHost">
+                  <option
+                    v-for="region of gameVariants"
+                    :key="region"
+                    :value="region"
+                    :selected="game.variant === region"
+                  >
+                    {{ region.replace('-', ' ') }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="configuration-block">
+                <label for="game-length">Length</label>
+                <select name="game-length" id="game-length" :disabled="!isPlayerHost">
+                  <option
+                    v-for="length in gameLengths"
+                    :selected="game.length === length"
+                    :key="length"
+                  >
+                    {{ length }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="configuration-block">
+                <label for="game-difficulty">Difficulty</label
+                ><select name="game-difficulty" id="game-difficulty" :disabled="!isPlayerHost">
+                  <option
+                    v-for="difficulty in gameDifficulties"
+                    :selected="game.difficulty === difficulty"
+                    :key="difficulty"
+                  >
+                    {{ difficulty }}
+                  </option>
+                </select>
+              </div>
+            </form>
           </div>
 
           <nav class="game-controls">
@@ -111,6 +149,12 @@
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
 import { wait } from '~~/lib/time'
+import {
+  gameVariants,
+  gameLengths,
+  gameDifficulties,
+  isValidGameConfiguration,
+} from '~~/types/game.types'
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
@@ -121,7 +165,7 @@ const isEveryoneReady = computed(() => {
 })
 
 const name = ref('')
-
+const breakdown = ref<HTMLFormElement>()
 const changeColor = () => {
   update({
     event: 'set-color',
@@ -134,15 +178,26 @@ const setName = () => {
   })
 }
 
-const onNameInput = (name: string) => {
-  if (!player.value) return
-  console.log({ name })
+const updateConfiguration = () => {
+  if (!breakdown.value) return
+
+  const data = new FormData(breakdown.value)
+  const configuration: { [key: string]: FormDataEntryValue } = {}
+  for (const [key, value] of data.entries()) {
+    // Bind up to object
+    configuration[key.replace('game-', '')] = value
+  }
+
+  if (!isValidGameConfiguration(configuration)) {
+    throw new TypeError(`Invalid configuration passed`)
+  }
 
   update({
-    event: 'update-by-index',
-    accessorPattern: `players.${player.value.id}.name`,
-    value: name,
+    event: `update-configuration`,
+    configuration,
   })
+
+  console.log(configuration)
 }
 
 const hasCopied = ref(false)
@@ -220,11 +275,25 @@ const startGame = () => {
   }
 }
 
-.breakdown span {
-  font-weight: 700;
-}
-.game-region span {
-  text-transform: capitalize;
+// Configuration
+.configuration-block {
+  margin-bottom: 0.5rem;
+  label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  select,
+  option {
+    text-transform: capitalize;
+  }
+  select {
+    cursor: pointer;
+    background: none;
+    border-radius: 0.25rem;
+    padding: 0.5rem 1.5rem;
+    border: 0.1rem solid var(--black);
+  }
 }
 
 // Navigation

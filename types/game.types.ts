@@ -14,6 +14,7 @@ export interface Game {
   tiles: Tile[]
   rounds: Round[]
   started: boolean
+  length: GameLength
   variant: GameVariant
   difficulty: GameDifficulty
   players: { [playerId: string]: Player }
@@ -27,7 +28,6 @@ export interface PlayerPosition {
   currentPosition: number
   moves: PlayerMove[]
   progress: PlayerProgress[]
-  // In the future, let's track failed moves
 }
 
 export interface PlayerProgress {
@@ -70,8 +70,27 @@ export const gameVariants = [
   'asia',
 ] as const
 export type GameVariant = typeof gameVariants[number]
+export const isValidGameVariant = (variant: any): variant is GameVariant => {
+  return variant && gameVariants.includes(variant)
+}
 
-export type GameLength = 'short' | 'medium' | 'long'
+export interface GameConfiguration {
+  difficulty: GameDifficulty
+  variant: GameVariant
+  length: GameLength
+}
+
+export const isValidGameConfiguration = (data: any): data is GameConfiguration => {
+  if (!data) return false
+  if (typeof data !== 'object') return false
+  if (![`difficulty`, 'length', 'variant'].every(key => Reflect.has(data, key))) return false
+  if (!isValidGameVariant(data.variant)) return false
+
+  return true
+}
+
+export const gameLengths = ['short', 'medium', 'long'] as const
+export type GameLength = typeof gameLengths[number]
 
 export interface Tile {
   position: number

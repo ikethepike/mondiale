@@ -10,7 +10,7 @@
         <VariantPicker />
 
         <nav class="pane-content">
-          <ButtonLine class="about-button">About</ButtonLine>
+          <ButtonLine element="NuxtLink" :to="`/about`" class="about-button">About</ButtonLine>
           <ButtonFilled class="start-button">
             <div class="button-content">
               <span>Create Game</span>
