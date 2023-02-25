@@ -64,12 +64,6 @@
             </p>
             <p>This time, you'll be competing in:</p>
 
-            <code>
-              <pre>difficulty: {{ game?.difficulty }}</pre>
-              <pre>length: {{ game?.length }}</pre>
-              <pre>variant: {{ game?.variant }}</pre>
-            </code>
-
             <form class="breakdown" v-if="game" ref="breakdown" @change="updateConfiguration">
               <!-- Region -->
               <div class="configuration-block">
