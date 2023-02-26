@@ -19,6 +19,7 @@
         <ModalMoving v-if="['moving', 'movement-summary'].includes(player.phase)" />
         <ViewIndividualChallenge v-if="player.phase === 'individual-challenge'" />
         <ViewFinalChallenge v-if="player.phase === 'final-challenge'" />
+        <ViewVictory v-if="player?.phase === 'victory'"></ViewVictory>
       </template>
     </template>
     <template v-else>

@@ -68,8 +68,6 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
         break
       }
 
-      console.log('YEAH', submittedAnswer)
-
       const { isoCode } = submittedAnswer
       correct = currentChallenge.country === isoCode
       break
@@ -119,9 +117,9 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
   }
 
   // Let the player bask in glory
-
   if (currentMove.challenge.challenges.length === 0) {
     game.players[playerId].phase = 'victory'
+    game.leaderboard.push({ playerId, round: game.rounds.length })
   }
 
   await server.updateGameState(game)

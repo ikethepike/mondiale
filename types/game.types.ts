@@ -17,6 +17,7 @@ export interface Game {
   length: GameLength
   variant: GameVariant
   difficulty: GameDifficulty
+  leaderboard: { playerId: string; round: number }[]
   players: { [playerId: string]: Player }
   position: { [playerID: string]: PlayerPosition }
 }

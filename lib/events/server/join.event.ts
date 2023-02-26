@@ -31,6 +31,7 @@ export const joinEventHandler: EventHandler = async ({
       position: {},
       started: false,
       host: playerId,
+      leaderboard: [],
       length: 'medium',
       difficulty: 'normal',
       tiles: generateTiles('medium'),
