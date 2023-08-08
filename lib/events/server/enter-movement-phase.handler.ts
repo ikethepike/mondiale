@@ -21,12 +21,12 @@ export const enterMovementPhaseHandler: EventHandler = async ({
 
   // Defer movement logic to the server
   // Find all moves that we currently can do, move up player to the point and check tile
-  const playerPosition = game.position[playerId]
-  if (!playerPosition) throw new ReferenceError('Unable to find player position')
+  const player = game.players[playerId]
+  if (!player) throw new ReferenceError('Unable to find player position')
 
   // Player has completed their moves and is ready to see their result from the individual challenge
 
-  const move = playerPosition.moves[0]
+  const move = player.moves[0]
   if (move) {
     game.players[playerId].phase = 'moving'
 
@@ -40,7 +40,7 @@ export const enterMovementPhaseHandler: EventHandler = async ({
         // player has no additional steps and the turn has not ended
         game.players[playerId].phase = 'movement-summary'
       } else {
-        game.position[playerId].currentPosition++
+        game.players[playerId].currentPosition++
       }
       server.emit({ event: 'update', game }, eventTarget)
     }

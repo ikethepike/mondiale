@@ -17,13 +17,11 @@ export interface Game {
   length: GameLength
   variant: GameVariant
   difficulty: GameDifficulty
-  leaderboard: { playerId: string; round: number }[]
   players: { [playerId: string]: Player }
-  position: { [playerID: string]: PlayerPosition }
 }
 
 export const gameDifficulties = ['easy', 'normal', 'hard'] as const
-export type GameDifficulty = typeof gameDifficulties[number]
+export type GameDifficulty = (typeof gameDifficulties)[number]
 
 export interface PlayerPosition {
   currentPosition: number
@@ -70,7 +68,7 @@ export const gameVariants = [
   'south-america',
   'asia',
 ] as const
-export type GameVariant = typeof gameVariants[number]
+export type GameVariant = (typeof gameVariants)[number]
 export const isValidGameVariant = (variant: any): variant is GameVariant => {
   return variant && gameVariants.includes(variant)
 }
@@ -91,7 +89,7 @@ export const isValidGameConfiguration = (data: any): data is GameConfiguration =
 }
 
 export const gameLengths = ['short', 'medium', 'long'] as const
-export type GameLength = typeof gameLengths[number]
+export type GameLength = (typeof gameLengths)[number]
 
 export interface Tile {
   position: number
@@ -114,7 +112,7 @@ export const palette: {
   hiorAnge: '#ec6247',
 }
 
-export type PlayerColor = typeof PLAYER_COLORS[number]
+export type PlayerColor = (typeof PLAYER_COLORS)[number]
 
 export const isValidGame = (data: any): data is Game => {
   if (!data) return false

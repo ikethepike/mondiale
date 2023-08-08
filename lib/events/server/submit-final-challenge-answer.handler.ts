@@ -20,12 +20,12 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
   const game = await server.fetchGame(gameId)
   if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
 
-  const playerPosition = game.position[playerId]
-  if (!playerPosition) {
+  const player = game.players[playerId]
+  if (!player) {
     return console.warn(`Unable to find player position: ${playerId}`)
   }
 
-  const currentMove = playerPosition.moves[0]
+  const currentMove = player.moves[0]
   if (!currentMove) {
     return console.warn(`Unable to retrieve current challenge`)
   }
@@ -104,7 +104,7 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
 
   // Unset player turns if incorrect
   if (!correct) {
-    game.position[playerId].moves = []
+    game.players[playerId].moves = []
     await server.updateGameState(game)
     return enterMovementPhaseHandler({
       io,
@@ -119,7 +119,7 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
   // Let the player bask in glory
   if (currentMove.challenge.challenges.length === 0) {
     game.players[playerId].phase = 'victory'
-    game.leaderboard.push({ playerId, round: game.rounds.length })
+    game.players[playerId].comletedAtRound = game.rounds.length
   }
 
   await server.updateGameState(game)

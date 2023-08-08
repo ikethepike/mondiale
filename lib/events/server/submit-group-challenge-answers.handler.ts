@@ -54,14 +54,14 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
   game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
 
   // Take current position + scoring, split on each challenge
-  const position = game.position[playerId]
-  if (!position) {
+  const player = game.players[playerId]
+  if (!player) {
     console.error('Could not find player position value')
     throw new ReferenceError(`Unable to find position value for player: ${playerId}`)
   }
 
-  const potentialProgress = position.currentPosition + scoring.scored
-  const potentialTiles = [...game.tiles.slice(position.currentPosition, potentialProgress)]
+  const potentialProgress = player.currentPosition + scoring.scored
+  const potentialTiles = [...game.tiles.slice(player.currentPosition, potentialProgress)]
 
   // Here, we add player moves. Each of these will be executed sequentially and players
   // will move an according amount of steps
@@ -114,21 +114,11 @@ export const submitGroupChallengeAnswersHandler: EventHandler = async ({
         break
     }
 
-    console.log({ move })
     moves.push(move)
-
-    if (moves.length === 1) {
-      game.position[playerId].progress.push({
-        round: game.rounds.length,
-        endTilePosition: move.endTile.position,
-      })
-    }
   }
 
-  console.log('resolved')
-
   game.players[playerId].phase = 'group-scores'
-  game.position[playerId].moves = moves
+  game.players[playerId].moves = moves
 
   await server.updateGameState(game)
   server.emit({ event: 'group-challenge-scored', game }, eventTarget)

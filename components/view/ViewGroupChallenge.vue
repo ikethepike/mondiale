@@ -104,6 +104,8 @@ const options = ref({
 })
 </script>
 <style lang="scss" scoped>
+@import '~/assets/scss/rules/breakpoints';
+
 #active-round {
   top: 0;
   left: 0;
@@ -215,6 +217,12 @@ footer {
 @keyframes country-card {
   0% {
     transform: translateY(100%);
+  }
+}
+
+@media screen and (min-width: $tablet) {
+  #active-round {
+    padding: 0;
   }
 }
 </style>

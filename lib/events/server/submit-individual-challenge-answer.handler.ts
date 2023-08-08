@@ -18,12 +18,12 @@ export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
   const game = await server.fetchGame(gameId)
   if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
 
-  const playerPosition = game.position[playerId]
-  if (!playerPosition) {
+  const player = game.players[playerId]
+  if (!player) {
     return console.warn(`Unable to find player position: ${playerId}`)
   }
 
-  const currentMove = playerPosition.moves[0]
+  const currentMove = player.moves[0]
   if (!currentMove) {
     return console.warn(`Unable to retrieve current challenge`)
   }
@@ -34,10 +34,10 @@ export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
 
   // Answer was correct
   if (eventData.isoCode === currentMove.challenge?.country) {
-    game.position[playerId].currentPosition += 2
-    game.position[playerId].moves.shift()
+    game.players[playerId].currentPosition += 2
+    game.players[playerId].moves.shift()
   } else {
-    game.position[playerId].moves = []
+    game.players[playerId].moves = []
   }
 
   await server.updateGameState(game)

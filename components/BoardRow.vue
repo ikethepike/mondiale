@@ -20,7 +20,7 @@
           <PlayerPawn
             class="pawn"
             :player="player"
-            v-if="game.position[player.id].currentPosition === tile.position"
+            v-if="game.players[player.id].currentPosition === tile.position"
           />
         </template>
       </div>

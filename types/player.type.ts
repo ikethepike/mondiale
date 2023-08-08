@@ -1,4 +1,4 @@
-import { PlayerColor } from './game.types'
+import { PlayerColor, PlayerMove } from './game.types'
 
 export interface Player {
   id: string
@@ -6,6 +6,9 @@ export interface Player {
   ready: boolean
   color: PlayerColor
   phase: PlayerPhase
+  moves: PlayerMove[]
+  currentPosition: number
+  comletedAtRound?: number
 }
 
 export type PlayerPhase =

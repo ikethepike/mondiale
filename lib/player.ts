@@ -7,4 +7,7 @@ export const createPlayer = (playerId: string): Player => ({
   ready: false,
   phase: 'naming',
   color: getRandomPlayerColor(),
+  currentPosition: 0,
+  moves: [],
+  comletedAtRound: undefined,
 })

@@ -1,5 +1,15 @@
 <template>
   <div class="layout" :class="[`phase-${player?.phase}`]">
+    <header id="diagnostic-bar" v-if="diagnostics">
+      <div>
+        <h3>Player</h3>
+        <p>{{ player?.phase }}</p>
+      </div>
+      <div class="round">
+        <h3>Round</h3>
+        <p>{{ currentRound?.round }}</p>
+      </div>
+    </header>
     <LazyGameMap
       class="game-map"
       :highlighted="highlighted"
@@ -50,10 +60,30 @@ const highlighted = computed<ISOCountryCode[]>(() => {
   if (!countries) return output
   return [...countries, ...output]
 })
+
+const router = useRouter()
+
+const diagnostics = ref(false)
+
+onMounted(() => {
+  diagnostics.value = !!router.currentRoute.value.query.diagnostics
+})
 </script>
 
 <style lang="scss" scoped>
 @import '~/assets/scss/rules/breakpoints';
+
+#diagnostic-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 1rem;
+  border-bottom: 1px solid #000;
+  background: #fff;
+  width: 100%;
+  z-index: 2000;
+}
+
 .layout {
   max-width: 100%;
   overflow: hidden;

@@ -29,10 +29,10 @@ interface BoardRows {
 const board = ref<HTMLDivElement>()
 
 // Watch current position
-const playerPosition = computed(() => game.value?.position[playerId.value]?.currentPosition)
+const playerPosition = computed(() => game.value?.players[playerId.value]?.currentPosition)
 
 watch(
-  () => game.value?.position,
+  () => game.value?.players,
   () => {
     if (!process.client) return
     if (!board.value) throw new ReferenceError('Board not initalized')

@@ -17,17 +17,17 @@ export const readyForRoundHandler: EventHandler = async ({
   const game = await server.fetchGame(gameId)
   if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
 
-  const playerPosition = game.position[playerId]
-  if (!playerPosition) throw new ReferenceError(`Unable to find player position: ${playerId}`)
-  const lastMove = playerPosition.moves.shift()
+  const player = game.players[playerId]
+  if (!player) throw new ReferenceError(`Unable to find player position: ${playerId}`)
+  const lastMove = player.moves.shift()
   if (lastMove) {
-    game.position[playerId].currentPosition += lastMove.steps
+    game.players[playerId].currentPosition += lastMove.steps
   }
 
-  game.position[playerId].moves = []
+  game.players[playerId].moves = []
 
   // Create a new round if there are no turns remaining
-  if (Object.values(game.position).every(({ moves }) => moves.length === 0)) {
+  if (Object.values(game.players).every(({ moves }) => moves.length === 0)) {
     game.rounds.push({
       groupChallenge: getGroupChallenge({ game }),
       groupAnswers: {},

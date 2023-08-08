@@ -14,10 +14,7 @@ export const useClientEvents = () => {
   const currentMoves = computed<PlayerMove[]>(() => {
     if (!game.value) return []
     if (!playerId.value) return []
-    const playerPosition = game.value.position[playerId.value]
-    if (!playerPosition) return []
-
-    return playerPosition.moves
+    return game.value.players[playerId.value].moves
   })
 
   const currentMove = computed<PlayerMove | undefined>(() => {

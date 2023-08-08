@@ -1,7 +1,9 @@
 import { io } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
+import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
+import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
 import { useGameStore } from '~~/store/game.store'
 import { ClientEventTarget, ServerEventData } from '~~/types/events.types'
 
@@ -22,10 +24,10 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
     handler: genericUpdateEvent,
   },
   'name-set': {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
   'color-set': {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
   'game-started': {
     handler: genericUpdateEvent,
@@ -37,22 +39,22 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
     handler: genericUpdateEvent,
   },
   update: {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
   'group-challenge-scored': {
-    handler: genericUpdateEvent,
+    handler: groupChallengeScoredEvent,
   },
   'individual-challenge-checked': {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
   'player-ready-for-round': {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
   'index-update': {
     handler: indexUpdateEvent,
   },
   'final-challenge-checked': {
-    handler: genericUpdateEvent,
+    handler: playerUpdateEvent,
   },
 }
 

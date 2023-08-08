@@ -28,21 +28,14 @@ export const joinEventHandler: EventHandler = async ({
       id: gameId,
       rounds: [],
       players: {},
-      position: {},
       started: false,
       host: playerId,
-      leaderboard: [],
       length: 'medium',
       difficulty: 'normal',
       tiles: generateTiles('medium'),
     }
 
     game.players[playerId] = createPlayer(playerId)
-    game.position[playerId] = {
-      currentPosition: 0,
-      moves: [],
-      progress: [],
-    }
 
     await server.updateGameState(game)
   }
@@ -50,11 +43,6 @@ export const joinEventHandler: EventHandler = async ({
   // Player connecting to existing game
   if (!game.players[playerId] && !game.started) {
     game.players[playerId] = createPlayer(playerId)
-    game.position[playerId] = {
-      currentPosition: 0,
-      moves: [],
-      progress: [],
-    }
   }
 
   // Game already started
