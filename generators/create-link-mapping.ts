@@ -250,7 +250,7 @@ enum FactbookBindings {
   YE = 'YM',
   ZM = 'ZA',
   ZW = 'ZI',
-  XK = 'KV',
+  // XK = 'KV',
 }
 
 const folders = [
