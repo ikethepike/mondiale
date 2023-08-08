@@ -28,7 +28,7 @@
               <div class="name-wrapper">
                 <label>
                   <strong>What's your name?</strong>
-                  <InputText inline-button="Save" @change="value => (name = value)" />
+                  <InputText inline-button="Save" @change="(value: string) => (name = value)" />
                 </label>
               </div>
             </form>
@@ -133,9 +133,11 @@
           <p>{{ playersByPhase.all.length }}/8</p>
         </header>
 
-        <PlayerTile v-for="player in playersByPhase.all" :player="player" :key="player.id">
-          <div :class="['player-status', { ready: player.ready }]" />
-        </PlayerTile>
+        <ul>
+          <PlayerTile v-for="player in playersByPhase.all" :player="player" :key="player.id">
+            <div :class="['player-status', { ready: player.ready }]" />
+          </PlayerTile>
+        </ul>
       </section>
     </article>
   </div>
@@ -219,23 +221,44 @@ const startGame = () => {
 }
 </script>
 <style lang="scss" scoped>
-.player-configuration-wrapper {
-  display: flex;
-  height: 100vh;
-  overflow-y: auto;
-}
+@import '~/assets/scss/rules/breakpoints';
 
 .player-configuration {
   width: 100%;
   margin: auto;
+  height: 100vh;
   display: flex;
-  min-height: 60vh;
+  border-radius: 0;
   max-width: 110rem;
-  align-items: stretch;
   animation: slide-in 0.5s 1;
+  justify-content: flex-end;
+  flex-flow: column-reverse nowrap;
+}
+
+@media screen and (max-width: $tablet) {
+  .player-configuration .player-lobby ul {
+    display: flex;
+    justify-content: flex-end;
+    :deep(.player-tile) {
+      width: auto;
+      margin: none;
+      height: 5rem;
+      border: none;
+      gap: none;
+      padding: 0;
+
+      .player-name,
+      .player-status {
+        display: none;
+      }
+      &::before {
+        content: none;
+      }
+    }
+  }
 }
 .information {
-  width: 68%;
+  height: 100%;
   display: flex;
   flex-flow: column nowrap;
   justify-content: space-between;
@@ -246,8 +269,7 @@ const startGame = () => {
 }
 
 .player-details {
-  width: 50%;
-  margin: 10vh auto;
+  width: 100%;
   text-align: center;
   .pawn {
     width: 5rem;
@@ -259,9 +281,6 @@ const startGame = () => {
 }
 
 .player-lobby {
-  width: 32%;
-  min-width: 20rem;
-  border-left: 0.1rem solid var(--black);
   > header {
     opacity: 0.5;
     text-align: right;
@@ -295,7 +314,7 @@ const startGame = () => {
   gap: 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
 }
 .invite-button-content,
 .start-button-content {
@@ -333,6 +352,39 @@ const startGame = () => {
   0% {
     opacity: 0.3;
     transform: translateY(5rem);
+  }
+}
+
+@media screen and (min-width: $tablet) {
+  .player-configuration-wrapper {
+    height: 100vh;
+    display: flex;
+    overflow-y: auto;
+  }
+  .player-configuration {
+    height: auto;
+    display: flex;
+    min-height: 60vh;
+    align-items: stretch;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
+
+    .information {
+      height: auto;
+      width: 68%;
+    }
+    .player-details {
+      width: 50%;
+      margin: 10vh auto;
+    }
+    .player-lobby {
+      width: 32%;
+      min-width: 20rem;
+      border-left: 0.1rem solid var(--black);
+    }
+  }
+  .game-controls {
+    justify-content: flex-end;
   }
 }
 </style>

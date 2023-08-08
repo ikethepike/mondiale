@@ -46,6 +46,8 @@ const onSubmit = (event: Event) => {
 }
 </script>
 <style lang="scss" scoped>
+@import '~/assets/scss/rules/breakpoints';
+
 main {
   width: 100%;
   display: flex;
@@ -66,7 +68,6 @@ header {
 }
 .intro {
   width: 40rem;
-  margin: auto;
   max-width: 100%;
 }
 .logo {
@@ -92,5 +93,11 @@ nav {
 }
 .start-button img {
   filter: invert(1);
+}
+
+@media screen and (min-width: $laptop) {
+  .intro {
+    margin: auto;
+  }
 }
 </style>

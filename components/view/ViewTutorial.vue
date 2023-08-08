@@ -54,8 +54,10 @@ const closeTutorial = () => {
 }
 </script>
 <style lang="scss" scoped>
+@import '~/assets/scss/rules/breakpoints';
+
 .tutorial-card {
-  margin: auto;
+  margin: auto auto 0 auto;
   max-width: 50rem;
   animation: slide-up 0.5s 1;
 }
@@ -97,6 +99,12 @@ nav {
   0% {
     opacity: 0.3;
     transform: translateY(10%);
+  }
+}
+
+@media screen and (min-width: $tablet) {
+  .tutorial-card {
+    margin: auto;
   }
 }
 </style>

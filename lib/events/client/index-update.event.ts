@@ -1,18 +1,11 @@
 import { ClientSideEventHandler } from '~~/plugins/socket.client'
 
-export const indexUpdateEvent: ClientSideEventHandler = async ({
-  gameStore,
-  payload,
-  playerId,
-  eventTarget,
-}) => {
+export const indexUpdateEvent: ClientSideEventHandler = async ({ gameStore, payload }) => {
   if (payload.event !== 'index-update') return
   const { game } = gameStore
   if (!game) {
     throw new ReferenceError('Game is not defined in index update event')
   }
-
-  console.log(payload.value)
 
   let value: any = game
   const { accessorPattern } = payload
