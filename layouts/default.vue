@@ -10,6 +10,9 @@
         <p>{{ currentRound?.round }}</p>
       </div>
     </header>
+
+    <Board />
+
     <LazyGameMap
       class="game-map"
       :highlighted="highlighted"
