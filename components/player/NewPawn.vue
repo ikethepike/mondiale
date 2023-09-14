@@ -51,7 +51,7 @@
 
 @keyframes step {
   50% {
-    transform: rotate(5deg) perspective(16.7rem) translate3D(4rem, 4rem, 2rem);
+    transform: rotate(5deg) translate3D(4rem, 4rem, 2rem);
   }
 }
 </style>

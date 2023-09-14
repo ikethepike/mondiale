@@ -11,7 +11,7 @@
       </div>
     </header>
 
-    <Board />
+    <!-- <Board /> -->
 
     <LazyGameMap
       class="game-map"

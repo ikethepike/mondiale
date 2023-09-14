@@ -1,6 +1,6 @@
 <template>
   <div class="test-page">
-    <PlayerNewPawn />
+    <!-- <PlayerNewPawn /> -->
 
     <Board />
   </div>
