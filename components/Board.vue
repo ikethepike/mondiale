@@ -1,6 +1,7 @@
 <template>
   <div class="board" :style="{ '--tileSize': tileSize }" ref="board">
     <header class="progress-header" ref="progressHeader">
+      <div class="logo" />
       <ol>
         <li>Doug 55%</li>
         <li>Macy 35%</li>
@@ -9,11 +10,19 @@
       </ol>
     </header>
 
-    <!-- <PlayerNewPawn /> -->
     <section class="board-wrapper">
-      <div class="board-tile-wrapper" v-for="i in 100">
-        <div class="board-tile pane backboard" :class="{ challenge: i % 5 === 0 }" />
-        <div class="plinth" />
+      <div
+        class="board-tile"
+        :data-mod="Number(i % 5 > 0)"
+        :id="`tile-${i}`"
+        v-for="i in 100"
+        :class="{
+          wide: i % 5 === 0 && ![25, 50, 70].includes(i),
+          challenge: i % 5 === 0,
+          'final-tile': i === 100,
+        }"
+      >
+        <span class="tile-number">{{ i }}</span>
       </div>
     </section>
   </div>
@@ -58,120 +67,107 @@ const { game } = useClientEvents()
 @import '~/assets/scss/templates/pane';
 @import '~/assets/scss/rules/breakpoints';
 
-.board {
+.logo {
+  top: 0;
   width: 100%;
-  position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  height: min(100vh, 100dvh);
-  scroll-snap-type: y proximity;
-
-  --tile-size: 50vw;
-}
-
-.board-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  z-index: 2;
-  animation: slide-up 0.6s;
-}
-
-@keyframes slide-up {
-  0% {
-    transform: translateY(100vh) scale(0.8);
-  }
+  height: 4rem;
+  display: block;
+  position: sticky;
+  background: black;
+  margin-bottom: 1rem;
+  mask: url(~/assets/logos/mondiale.svg) no-repeat center/contain;
 }
 
 .progress-header {
-  top: 0;
-  left: 0;
-  position: sticky;
-  padding: 2rem 4rem;
-}
+  width: 100%;
+  display: flex;
+  min-height: 30vh;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
 
+  ol {
+    width: 100%;
+    display: flex;
+    padding: 2.5rem 0;
+    justify-content: space-around;
+  }
+}
+.board-wrapper {
+  gap: 0.1rem;
+  display: flex;
+  margin: 0 2.5vw;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 5rem;
+  flex-flow: row wrap;
+  // grid-auto-rows: 20vw;
+  // grid-template-columns: repeat(5, 1fr);
+  border-top-left-radius: 3.5rem;
+  border-top-right-radius: 3.5rem;
+  border: 0.1rem solid var(--text-color);
+  &::before {
+    content: '';
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    background: var(--text-color);
+    border: 10rem solid transparent;
+    // border-top-left-radius: 3.5rem;
+    // border-top-right-radius: 3.5rem;
+  }
+}
 .board-tile {
-  width: var(--tile-size);
-  height: var(--tile-size);
-  margin-bottom: 1px;
+  z-index: 2;
+  width: calc(20% - 0.1rem);
+  height: 20vw;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--background-color);
+
+  .tile-number {
+    right: 1rem;
+    bottom: 1rem;
+    position: absolute;
+  }
+  &.wide {
+    width: 40%;
+  }
+  &#tile-1 {
+    width: 40%;
+    // grid-area: 1 / 1 / 2 / 3;
+    border-top-left-radius: 3.5rem;
+    &::before {
+      content: 'Start';
+    }
+  }
 
   &.challenge::before {
-    content: 'Challenge';
+    content: '';
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 130, 0, 0.1);
   }
-  &:first-of-type {
-    margin-top: 20vmin;
-    border: 0.1rem solid var(--text-color);
-    // border-top-right-radius: $paneBorderRadius;
-    // border-top-left-radius: $paneBorderRadius;
 
-    &::before {
-      content: ' ';
+  &.final-tile {
+    &::after {
+      content: 'Final Challenge';
     }
   }
 }
 
-@media screen and (min-width: $laptop) {
-  .board {
-    overflow-x: auto;
-    overflow-y: hidden;
-    --tile-size: 15vw;
-    display: grid;
-    grid-template-rows: repeat(3, 1fr);
-  }
-
-  .board-wrapper {
-    flex-direction: row;
-  }
-  .board-tile-wrapper {
-    display: flex;
-    perspective: 30rem;
-    flex-direction: column;
-    .backboard {
-      width: 100%;
-      position: relative;
-      z-index: 2;
-    }
-    .backboard.challenge {
-      background: tomato;
-    }
-    &:first-child {
-      margin-left: 20vw;
-      .backboard {
-        border-left: 0.1rem solid var(--text-color);
-        border-top-left-radius: $paneBorderRadius;
-      }
-      .plinth {
-        // transform: rotateX(45deg) skewX(-15deg);
-        // border-left: none;
-      }
-    }
-    .backboard {
-      flex-shrink: 0;
-      border-left: none;
-      border-right: 0.1rem solid var(--text-color);
-      height: calc(var(--tile-size) / 1.5);
-      &:first-child {
-        margin-top: 0;
-        // border-radius: 0;
-        // margin-left: 20vmin;
-        // border-bottom-left-radius: $paneBorderRadius;
-      }
-    }
-    .plinth {
-      display: block;
-      position: relative;
-      transform: rotateX(45deg) scaleX(1.22) translateY(7.5%);
-      top: calc(var(--tile-size) / 4 * -1);
-      width: calc(var(--tile-size) * 1.25);
-      height: var(--tile-size);
-      transform-origin: center;
-      border: 0.1rem solid var(--text-color);
-      background: var(--background-color);
-    }
-  }
+.board-tile.challenge::before {
+  top: 0;
+  content: '';
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
 }
 </style>

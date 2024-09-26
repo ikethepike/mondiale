@@ -74,7 +74,7 @@ export default defineEventHandler(({ node }) => {
   if (!REDIS_PASSWORD) throw new ReferenceError('No redis password supplied')
 
   if (!global.io) {
-    const redisURL = `rediss://default:${REDIS_PASSWORD}@eu2-neat-seasnail-30560.upstash.io:30560`
+    const redisURL = `rediss://default:${REDIS_PASSWORD}@great-cowbird-60193.upstash.io:6379`
     const redis = new Redis(redisURL)
 
     const io = new Server((node.res.socket as any).server)

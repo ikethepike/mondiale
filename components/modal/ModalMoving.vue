@@ -8,7 +8,7 @@
 import { useClientEvents } from '~~/lib/events/client-side'
 import { Player } from '~~/types/player.type'
 
-const { game, gameStore } = useClientEvents()
+const { game } = useClientEvents()
 
 const playerPositions = computed<{ player: Player; position: number }[]>(() => {
   let positionVector: Record<string, { player: Player; position: number }> = {}

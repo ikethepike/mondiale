@@ -9,10 +9,7 @@ on:
 jobs:
   generate:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+    permissions: write-all
 
     steps:
       - uses: actions/checkout@v2

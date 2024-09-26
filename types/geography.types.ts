@@ -16,7 +16,7 @@ export const worldRegions = [
   'africa',
   'middle-east',
 ] as const
-export type Region = typeof worldRegions[number]
+export type Region = (typeof worldRegions)[number]
 export const isValidContinent = (continent: any): continent is Region => {
   return continent && worldRegions.includes(continent)
 }
@@ -334,7 +334,7 @@ export const PotentialISOCountryCodes = [
   'TV',
 ] as const
 
-export type ISOCountryCode = typeof ISOCountryCodes[number]
+export type ISOCountryCode = (typeof ISOCountryCodes)[number]
 
 export const isValidISOCode = (code: any): code is ISOCountryCode => {
   return code && ISOCountryCodes.includes(code)
