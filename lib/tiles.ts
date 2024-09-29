@@ -1,5 +1,5 @@
 import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
-import { GameLength, Tile } from '~~/types/game.types'
+import type { GameLength, Tile } from '~~/types/game.types'
 
 export const generateTiles = (length: GameLength) => {
   const lengths: { [length in GameLength]: number } = {

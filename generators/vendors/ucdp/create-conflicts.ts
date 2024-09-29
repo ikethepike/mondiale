@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs'
-import { ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
-import { UCDPResponse } from '~~/types/vendor/ucdp/ucdp.responses'
+import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
+import type { UCDPResponse } from '~~/types/vendor/ucdp/ucdp.responses'
 import { GWToISOCode } from './gwcodes'
 
 const OUTPUT_FILE = `data/conflicts.gen.ts`
@@ -70,7 +70,7 @@ export const createConflictsMapping = async () => {
     writeFileSync(
       OUTPUT_FILE,
       `
-      import { ConflictMapping } from 'generators/vendors/ucdp/create-conflicts'
+      import type { ConflictMapping } from '../generators/vendors/ucdp/create-conflicts'
       export const conflictMapping: ConflictMapping = ${JSON.stringify(conflictMapping)}
     `
     )

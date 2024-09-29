@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
-import { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
-import { ISOCountryCode } from '~~/types/geography.types'
+import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import { Socket } from 'socket.io-client'
-import { DefaultEventsMap } from 'socket.io/dist/typed-events'
+import type { DefaultEventsMap } from 'socket.io'
 
 interface GameStoreState {
   game?: Game

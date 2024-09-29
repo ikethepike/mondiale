@@ -41,7 +41,7 @@ import { Sortable } from 'sortablejs-vue3'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { Country, ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
+import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const { gameStore, update, currentRound } = useClientEvents()
 const countries = ref<Country[]>(

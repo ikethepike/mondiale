@@ -6,7 +6,7 @@
 </template>
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
-import { Player } from '~~/types/player.type'
+import type { Player } from '~~/types/player.type'
 
 const { game } = useClientEvents()
 

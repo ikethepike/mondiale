@@ -1,15 +1,15 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { ChallengeConfiguration, ChallengeMarkers } from '~~/types/challenge.type'
+import type { ChallengeConfiguration, ChallengeMarkers } from '~~/types/challenge.type'
 import {
-  GroupChallengeAccessorId,
+  type GroupChallengeAccessorId,
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
-import {
+import type {
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
-import { Game, GameDifficulty } from '~~/types/game.types'
-import { Amount, ISOCountryCode } from '~~/types/geography.types'
+import type * as gameTypes from '~~/types/game.types'
+import type { Amount, ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { getRandomISOCountryCode } from './country'
 import { getValueByAccessorID } from './values'
@@ -21,7 +21,7 @@ const DEFAULT_CHALLENGE_MARKERS: ChallengeMarkers = {
 }
 
 export const DIFFICULTY_CONFIGURATION: {
-  [difficulty in GameDifficulty]: {
+  [difficulty in gameTypes.GameDifficulty]: {
     rankingChallengeCountries: number
   }
 } = {
@@ -36,7 +36,7 @@ export const DIFFICULTY_CONFIGURATION: {
   },
 }
 
-export const getGroupChallenge = ({ game }: { game: Game }) => {
+export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const challenges = Object.values(GROUP_CHALLENGES)
   const challenge = challenges[Math.floor(Math.random() * challenges.length)]
 

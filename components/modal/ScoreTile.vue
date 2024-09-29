@@ -14,13 +14,12 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
 import { baseEncode } from '~~/lib/strings'
 import { getValueByAccessorID } from '~~/lib/values'
-import { ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentRound } = useClientEvents()
 

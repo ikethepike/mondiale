@@ -10,8 +10,7 @@
   </ul>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
-import { ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 defineProps({
   isoCodes: {

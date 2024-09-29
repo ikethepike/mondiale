@@ -1,4 +1,4 @@
-import { ISOCountryCode } from '../geography.types'
+import type { ISOCountryCode } from '../geography.types'
 
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -7,7 +7,7 @@ export interface IndividualChallenge {
 }
 
 export const individualChallengeAccessors = ['flag', 'isoCode', 'capital.name'] as const
-export type IndividualChallengeAccessorId = typeof individualChallengeAccessors[number]
+export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (
   accessorId: any
 ): accessorId is IndividualChallengeAccessorId => {

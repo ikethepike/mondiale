@@ -2,7 +2,7 @@
  * countries according to a given metric
  */
 
-import { ISOCountryCode } from '../geography.types'
+import type { ISOCountryCode } from '../geography.types'
 
 export interface GroupChallenge {
   _type: 'group-challenge'

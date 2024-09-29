@@ -1,4 +1,4 @@
-import { EventHandler } from '~~/server/middleware/socket.server'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import { useServerSideEvents } from '../server-side'
 
 export const setNameHandler: EventHandler = async ({

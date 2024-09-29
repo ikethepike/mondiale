@@ -9,4 +9,14 @@ export default defineNuxtConfig({
       title: 'Mondiale',
     },
   },
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler', // or 'modern'
+        },
+      },
+    },
+  },
+  compatibilityDate: '2024-09-26',
 })

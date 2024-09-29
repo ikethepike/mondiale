@@ -16,8 +16,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
-import { Country } from '~~/types/geography.types'
+/// <reference types=".vue-global-types/vue_3.5_false.d.ts" />
+import type { Country } from '~~/types/geography.types'
 
 defineProps({
   country: {

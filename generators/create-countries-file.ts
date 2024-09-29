@@ -10,15 +10,26 @@ import {
   getPercentages,
   removeAfterCharacter,
 } from '~~/lib/strings'
-import { Amount, Region, Country, isValidContinent, ISOCountryCode } from '~~/types/geography.types'
+import {
+  type Amount,
+  type Region,
+  type Country,
+  isValidContinent,
+  type ISOCountryCode,
+} from '~~/types/geography.types'
 import {
   isOrganizationKey,
-  Organization,
+  type Organization,
   organizationRegions,
   OrganizationVector,
 } from '~~/types/organization.type'
-import { FactbookResponse, isYearlyIndex, TextNode, YearlyIndex } from '~~/types/response.type'
-import { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
+import {
+  type FactbookResponse,
+  isYearlyIndex,
+  type TextNode,
+  type YearlyIndex,
+} from '~~/types/response.type'
+import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
@@ -61,7 +72,7 @@ export const createCountriesFile = async (): Promise<{
   writeFileSync(
     COUNTRIES_FILE,
     `
-    import { ISOCountryCode, Country } from '~~/types/geography.types'
+    import type { ISOCountryCode, Country } from '~~/types/geography.types'
     
     export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${JSON.stringify(countryVector)}
   `
@@ -724,8 +735,10 @@ const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }):
 }
 
 const getCurrency = ({ isoCode }: { isoCode: string }): string | undefined => {
-  if (Reflect.has(countries, isoCode)) {
-    const country = countries[isoCode as keyof typeof countries]
-    return country.currency
-  }
+  if (!Reflect.has(countries, isoCode)) return undefined
+
+  const country = countries[isoCode as keyof typeof countries]
+  if (Array.isArray(country.currency)) return country.currency[0]
+
+  return country.currency
 }

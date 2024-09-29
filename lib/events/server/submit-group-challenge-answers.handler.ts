@@ -4,12 +4,12 @@ import {
   scoreChallengeSubmission,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
-import { EventHandler } from '~~/server/middleware/socket.server'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
-import { PlayerMove } from '~~/types/game.types'
+import type { PlayerMove } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 
 export const submitGroupChallengeAnswersHandler: EventHandler = async ({

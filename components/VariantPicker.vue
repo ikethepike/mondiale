@@ -31,7 +31,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { GameVariant, gameVariants } from '~~/types/game.types'
+import { type GameVariant, gameVariants } from '~~/types/game.types'
 
 const slider = ref<HTMLUListElement>()
 const selectedVariant = ref<GameVariant>(gameVariants[0])

@@ -1,6 +1,6 @@
 import { useGameStore } from '~~/store/game.store'
-import { ClientEventData, isValidClientEventTarget } from '~~/types/events.types'
-import { PlayerMove } from '~~/types/game.types'
+import { type ClientEventData, isValidClientEventTarget } from '~~/types/events.types'
+import type { PlayerMove } from '~~/types/game.types'
 
 export const useClientEvents = () => {
   const router = useRouter()

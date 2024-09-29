@@ -1,12 +1,12 @@
 import { PLAYER_COLORS } from '~~/data/palette'
-import { FinalChallenge } from './challenges/final-challenge.type'
-import { GroupChallenge } from './challenges/group-challenge.type'
-import {
+import type { FinalChallenge } from './challenges/final-challenge.type'
+import type { GroupChallenge } from './challenges/group-challenge.type'
+import type {
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from './challenges/individual-challenge.type'
-import { ISOCountryCode } from './geography.types'
-import { Player } from './player.type'
+import type { ISOCountryCode } from './geography.types'
+import type { Player } from './player.type'
 
 export interface Game {
   id: string

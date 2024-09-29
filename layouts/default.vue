@@ -43,7 +43,7 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
 
 const reveal = toRef(gameStore.map, 'reveal')

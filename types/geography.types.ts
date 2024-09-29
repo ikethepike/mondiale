@@ -1,5 +1,5 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { Organization } from './organization.type'
+import type { Organization } from './organization.type'
 
 export interface Amount<Unit> {
   amount: number

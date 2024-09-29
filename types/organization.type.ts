@@ -1,4 +1,4 @@
-import { Region } from './geography.types'
+import type { Region } from './geography.types'
 
 export enum OrganizationVector {
   eu = 'European Union',

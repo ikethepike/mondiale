@@ -1,9 +1,9 @@
-import { Redis } from 'ioredis'
 import { Server, Socket } from 'socket.io'
-import { DefaultEventsMap } from 'socket.io/dist/typed-events'
-import { EventHandler } from '~~/server/middleware/socket.server'
-import { ClientEventTarget, ServerEventData } from '../../types/events.types'
-import { Game, isValidGame } from '../../types/game.types'
+
+import type { DefaultEventsMap } from 'socket.io'
+import type { ClientEventTarget, ServerEventData } from '../../types/events.types'
+import { type Game, isValidGame } from '../../types/game.types'
+import type { Redis } from '@upstash/redis'
 
 const TWO_DAYS_IN_SECONDS = 172800
 
@@ -25,7 +25,7 @@ export const useServerSideEvents = ({
     },
     async fetchGame(gameId: string): Promise<Game | undefined> {
       if (!gameId) throw new EvalError('Blank string passed')
-      const response = await redis.get(gameId)
+      const response = await redis.get<string>(gameId)
       if (!response) return undefined
       const game = JSON.parse(response)
       if (!isValidGame(game)) {

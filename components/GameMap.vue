@@ -1493,11 +1493,10 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
 import { useGameStore } from '~~/store/game.store'
-import { MapClickEvent } from '~~/types/events.types'
-import { ISOCountryCode } from '~~/types/geography.types'
-import { CountryColorGrouping } from '~~/types/map.type'
+import type { MapClickEvent } from '~~/types/events.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
+import type { CountryColorGrouping } from '~~/types/map.type'
 
 const props = defineProps({
   highlighted: {

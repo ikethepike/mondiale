@@ -5,7 +5,7 @@ import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
 import { useGameStore } from '~~/store/game.store'
-import { ClientEventTarget, ServerEventData } from '~~/types/events.types'
+import type { ClientEventTarget, ServerEventData } from '~~/types/events.types'
 
 export type ClientSideEventHandler = (data: {
   eventKey: ServerEventData['event']

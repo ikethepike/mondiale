@@ -23,8 +23,8 @@
   </main>
 </template>
 <script lang="ts" setup>
-import randomWords from 'random-words'
-const roomName = ref(randomWords({ exactly: 3, join: '-' }))
+import { generate } from 'random-words'
+const roomName = ref(generate({ exactly: 3, join: '-' }))
 const router = useRouter()
 
 definePageMeta({

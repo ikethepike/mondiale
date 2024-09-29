@@ -4,8 +4,6 @@
   </component>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
-
 defineProps({
   element: {
     type: String as PropType<'a' | 'button' | 'NuxtLink'>,

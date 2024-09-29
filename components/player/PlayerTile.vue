@@ -6,8 +6,8 @@
   </li>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
-import { Player } from '~~/types/player.type'
+/// <reference types=".vue-global-types/vue_3.5_false.d.ts" />
+import type { Player } from '~~/types/player.type'
 
 defineProps({
   player: {

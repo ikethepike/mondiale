@@ -1,6 +1,6 @@
 import { PLAYER_COLORS } from '~~/data/palette'
 import { shuffleArray } from '~~/lib/arrays'
-import { EventHandler } from '~~/server/middleware/socket.server'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import { useServerSideEvents } from '../server-side'
 
 export const setColorHandler: EventHandler = async ({

@@ -1,5 +1,5 @@
 import { generateTiles } from '~~/lib/tiles'
-import { EventHandler } from '~~/server/middleware/socket.server'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer } from '../../../lib/player'
 
 import { useServerSideEvents } from '../server-side'
@@ -62,7 +62,7 @@ export const joinEventHandler: EventHandler = async ({
       game.players[playerId].phase === 'movement-summary' &&
       !latestRound.groupAnswers[playerId]
     ) {
-      game.players[playerId].phase === 'group-challenge'
+      game.players[playerId].phase = 'group-challenge'
     }
   }
 

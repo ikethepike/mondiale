@@ -1,5 +1,5 @@
 import { COUNTRIES } from '~~/data/countries.gen'
-import {
+import type {
   FinalChallenge,
   LanguageChallenge,
   LeadershipChallenge,
@@ -9,16 +9,20 @@ import {
   MinMaxAccessorKeys,
   RegionChallenge,
 } from '~~/types/challenges/final-challenge.type'
-import { Game } from '~~/types/game.types'
-import { Amount, ISOCountryCode, isValidISOCode, Region } from '~~/types/geography.types'
-import { CountryColorGrouping } from '~~/types/map.type'
+import type { Game } from '~~/types/game.types'
+import {
+  type Amount,
+  type ISOCountryCode,
+  isValidISOCode,
+  type Region,
+} from '~~/types/geography.types'
+import type { CountryColorGrouping } from '~~/types/map.type'
 import {
   isOrganizationKey,
   organizationRegions,
   OrganizationVector,
 } from '~~/types/organization.type'
 import { shuffleArray } from '../arrays'
-import { getChallengeDetails } from '../challenges'
 import { getRandomISOCountryCode } from '../country'
 import { getValueByAccessorID } from '../values'
 

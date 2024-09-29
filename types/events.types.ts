@@ -1,5 +1,5 @@
-import { GameConfiguration, Game, GameVariant, PlayerColor } from './game.types'
-import { ISOCountryCode, Region } from './geography.types'
+import type { GameConfiguration, Game, GameVariant, PlayerColor } from './game.types'
+import type { ISOCountryCode, Region } from './geography.types'
 
 export type ClientEventData =
   | {

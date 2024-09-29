@@ -28,9 +28,8 @@
   </ul>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { Tile } from '~~/types/game.types'
+import type { Tile } from '~~/types/game.types'
 
 const { game } = useClientEvents()
 

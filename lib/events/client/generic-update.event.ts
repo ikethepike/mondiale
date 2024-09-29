@@ -1,4 +1,4 @@
-import { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/plugins/socket.client'
 
 export const genericUpdateEvent: ClientSideEventHandler = async ({ gameStore, payload }) => {
   if (payload.event === 'index-update') return

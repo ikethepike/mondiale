@@ -71,8 +71,8 @@
 <script lang="ts" setup>
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { Round } from '~~/types/game.types'
-import { Player } from '~~/types/player.type'
+import type { Round } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 
 type ScoreVector = {
   [playerId: string]: {

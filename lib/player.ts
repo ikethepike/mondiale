@@ -1,4 +1,4 @@
-import { Player } from '../types/player.type'
+import type { Player } from '../types/player.type'
 import { getRandomPlayerColor } from './color'
 
 export const createPlayer = (playerId: string): Player => ({

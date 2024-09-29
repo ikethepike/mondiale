@@ -1,6 +1,6 @@
-import Redis from 'ioredis'
+import { Redis } from '@upstash/redis'
 import { Server, Socket } from 'socket.io'
-import { DefaultEventsMap } from 'socket.io/dist/typed-events'
+import type { DefaultEventsMap } from 'socket.io'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
 import { joinEventHandler } from '~~/lib/events/server/join.event'
@@ -14,7 +14,7 @@ import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/su
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
-import { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
+import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
 
 export type EventHandler = (configuration: {
   redis: Redis
@@ -70,13 +70,20 @@ const SERVER_SIDE_EVENT_HANDLERS: {
 }
 
 export default defineEventHandler(({ node }) => {
+  console.info('>>>>> called!')
+
   const { REDIS_PASSWORD } = process.env
   if (!REDIS_PASSWORD) throw new ReferenceError('No redis password supplied')
 
-  if (!global.io) {
-    const redisURL = `rediss://default:${REDIS_PASSWORD}@great-cowbird-60193.upstash.io:6379`
-    const redis = new Redis(redisURL)
+  // Use globalThis for better cross-environment compatibility
+  if (!globalThis.io) {
+    // const redisURL = `redis://default:${REDIS_PASSWORD}@pure-ghost-24372.upstash.io:6379`
+    const redis = new Redis({
+      url: 'https://pure-ghost-24372.upstash.io',
+      token: REDIS_PASSWORD,
+    })
 
+    // Create a new Socket.IO server only if it doesn't already exist
     const io = new Server((node.res.socket as any).server)
     io.on('connection', async socket => {
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
@@ -94,7 +101,15 @@ export default defineEventHandler(({ node }) => {
       }
     })
 
-    global.io = io
+    io.on('error', error => {
+      console.error('Error in socket server', error)
+    })
+
+    io.on('connect_error', err => {
+      console.error(`connect_error due to ${err.message}`)
+    })
+
+    globalThis.io = io // Persist the instance globally
   }
 })
 

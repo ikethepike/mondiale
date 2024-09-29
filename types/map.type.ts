@@ -1,4 +1,4 @@
-import { ISOCountryCode } from './geography.types'
+import type { ISOCountryCode } from './geography.types'
 
 export interface CountryColorGrouping {
   color: string

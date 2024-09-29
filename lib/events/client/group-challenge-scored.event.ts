@@ -1,4 +1,4 @@
-import { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/plugins/socket.client'
 
 export const groupChallengeScoredEvent: ClientSideEventHandler = async ({
   gameStore,

@@ -13,7 +13,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { COLOR_CODED_REGIONS, getFinalChallengeDetails } from '~~/lib/challenges/final-challenge'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { isMapClickEvent } from '~~/types/events.types'
-import { ISOCountryCode, isValidISOCode, Region } from '~~/types/geography.types'
+import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
 const { currentFinalChallenge, clearBoard, update, gameStore, currentMove } = useClientEvents()
 

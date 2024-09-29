@@ -2,8 +2,7 @@
   <div v-if="conicGradient" class="flag-pinwheel" :style="{ background: conicGradient }" />
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
-import { Country } from '~~/types/geography.types'
+import type { Country } from '~~/types/geography.types'
 
 const props = defineProps({
   country: {

@@ -1,6 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { wait } from '~~/lib/time'
-import { EventHandler } from '~~/server/middleware/socket.server'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import { isValidISOCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'

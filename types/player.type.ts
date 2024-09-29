@@ -1,4 +1,4 @@
-import { PlayerColor, PlayerMove } from './game.types'
+import type { PlayerColor, PlayerMove } from './game.types'
 
 export interface Player {
   id: string

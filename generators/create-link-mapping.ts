@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { FactbookResponse } from '~~/types/response.type'
+import type { FactbookResponse } from '~~/types/response.type'
 
 const LINK_MAPPING_FILE = `./generators/link-mapping.gen.ts`
 
@@ -320,7 +320,7 @@ export const createLinkMapping = async () => {
     `
       // This is a generated file, don't touch it. 
       // Generated at: ${date.toISOString()}
-      import { ISOFipsMapping, LinkMapping } from './create-link-mapping'
+      import type { ISOFipsMapping, LinkMapping } from './create-link-mapping'
 
       export const successfulCombinations: LinkMapping[] = ${JSON.stringify(successfulCombinations)}
       export const failedCombinations: ISOFipsMapping[] = ${JSON.stringify(failedCombinations)}

@@ -28,7 +28,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { baseEncode } from '~~/lib/strings'
 import { processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
-import { ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentMove, update, gameStore, clearBoard } = useClientEvents()
 

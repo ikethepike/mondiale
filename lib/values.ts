@@ -1,6 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
-import { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
-import { Amount, ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
+import { type Amount, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 export const getValueByAccessorID = (
   isoCode: ISOCountryCode | string,
