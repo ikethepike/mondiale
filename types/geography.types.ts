@@ -1,58 +1,170 @@
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import type { Organization } from './organization.type'
+import type { Amount } from '../generators/country/types/amounts'
+import type { Organization } from '../generators/country/types/organization'
 
-export interface Amount<Unit> {
-  amount: number
-  unit: Unit
-  year?: number
-}
+export type Region =
+  | 'asia'
+  | 'europe'
+  | 'south-america'
+  | 'north-america'
+  | 'oceania'
+  | 'africa'
+  | 'middle-east'
 
-export const worldRegions = [
-  'asia',
-  'europe',
-  'south-america',
-  'north-america',
-  'oceania',
-  'africa',
-  'middle-east',
-] as const
-export type Region = (typeof worldRegions)[number]
-export const isValidContinent = (continent: any): continent is Region => {
-  return continent && worldRegions.includes(continent)
+export type ISOCountryCode =
+  | 'US'
+  | 'GB'
+  | 'FR'
+  | 'DE'
+  | 'IT'
+  | 'ES'
+  | 'PT'
+  | 'GR'
+  | 'IE'
+  | 'NL'
+  | 'BE'
+  | 'LU'
+  | 'CH'
+  | 'AT'
+  | 'SE'
+  | 'NO'
+  | 'DK'
+  | 'FI'
+  | 'IS'
+  | 'RU'
+  | 'AF'
+  | 'AO'
+  | 'AL'
+  | 'AE'
+  | 'AR'
+  | 'AM'
+  | 'AU'
+  | 'BR'
+  | 'CA'
+  | 'CN'
+  | 'HK'
+  | 'TV'
+  | 'AZ'
+  | 'BA'
+  | 'BG'
+  | 'BY'
+  | 'CY'
+  | 'CZ'
+  | 'EE'
+  | 'HR'
+  | 'HU'
+  | 'KZ'
+  | 'LT'
+  | 'LV'
+  | 'MD'
+  | 'ME'
+  | 'MK'
+  | 'PL'
+  | 'RO'
+  | 'RS'
+  | 'SI'
+  | 'SK'
+  | 'UA'
+  | 'VA'
+  | 'AD'
+  | 'SM'
+
+export type { Organization }
+export type { Amount }
+
+export function isValidISOCode(code: string): code is ISOCountryCode {
+  const validCodes: Set<string> = new Set([
+    'US',
+    'GB',
+    'FR',
+    'DE',
+    'IT',
+    'ES',
+    'PT',
+    'GR',
+    'IE',
+    'NL',
+    'BE',
+    'LU',
+    'CH',
+    'AT',
+    'SE',
+    'NO',
+    'DK',
+    'FI',
+    'IS',
+    'RU',
+    'AF',
+    'AO',
+    'AL',
+    'AE',
+    'AR',
+    'AM',
+    'AU',
+    'BR',
+    'CA',
+    'CN',
+    'HK',
+    'TV',
+    'AZ',
+    'BA',
+    'BG',
+    'BY',
+    'CY',
+    'CZ',
+    'EE',
+    'HR',
+    'HU',
+    'KZ',
+    'LT',
+    'LV',
+    'MD',
+    'ME',
+    'MK',
+    'PL',
+    'RO',
+    'RS',
+    'SI',
+    'SK',
+    'UA',
+    'VA',
+    'AD',
+    'SM',
+  ])
+  return validCodes.has(code)
 }
 
 export interface Country {
-  flag: string
-  isoCode: ISOCountryCode
   url: string
-  region: Region
-  currency?: string
-  languages: string[]
-  coordinates: string
   name: {
-    local: string
     english: string
+    local: string
   }
+  isoCode: ISOCountryCode
+  flag: string
+  coordinates: string
+  region: Region
+  membership: Organization[]
+  languages: string[]
+  currency: string
   identity: {
     colors: string[]
   }
-  membership: Organization[]
   government: {
-    leader?: string
-    amountOfMilitaryConflicts?: number
+    leader: string
+    amountOfMilitaryConflicts: number
   }
   economics: {
-    inflation?: Amount<'%'>
     gdpPerCapita?: Amount<'$'>
+    inflation?: Amount<'%'>
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
     equality?: Amount<'Gini Coefficient'>
   }
   geography: {
     area: {
+      total?: Amount<'km²'>
       land?: Amount<'km²'>
       water?: Amount<'km²'>
-      total?: Amount<'km²'>
       arable?: Amount<'%'>
       forested?: Amount<'%'>
     }
@@ -61,6 +173,7 @@ export interface Country {
     }
     capital: {
       name: string
+      coordinates?: string
     }
   }
   unemployment: {
@@ -68,274 +181,42 @@ export interface Country {
     total?: Amount<'%'>
   }
   infrastructure: {
-    roads?: Amount<'km'>
-    rail?: Amount<'km'>
     internetAccess?: Amount<'%'>
+    mobilePhones?: Amount<'per 100'>
+    roads?: Amount<'km'>
+    railways?: Amount<'km'>
   }
   gender: {
-    womenInParliament?: Amount<'%'>
-    motherMeanAgeAtBirth?: Amount<'years'>
+    motherMeanAgeAtFirstBirth?: Amount<'year'>
+    femaleParliamentRepresentation?: Amount<'%'>
   }
   people: {
     population?: Amount<'people'>
-    lifeExpectancy?: Amount<'years'>
-    medianAge?: Amount<'years'>
-    childrenPerWoman?: Amount<'children'>
-    populationGrowthRate?: Amount<'%'>
+    populationGrowth?: Amount<'%'>
+    medianAge?: Amount<'year'>
+    lifeExpectancy?: Amount<'year'>
   }
   education: {
     literacy?: Amount<'%'>
-    averageYearsOfStudy?: Amount<'years'>
+    schoolLifeExpectancy?: Amount<'year'>
   }
   health: {
+    physicianDensity?: Amount<'per 1000'>
+    hospitalBedDensity?: Amount<'per 1000'>
     obesity?: Amount<'%'>
-    doctors?: Amount<'per 1000 people'>
-    hospitalBeds?: Amount<'per 1000 people'>
-    accessToContraceptives?: Amount<'%'>
-    lifeExpectancy?: Amount<'years'>
-    alcoholConsumption?: Amount<'liters of pure alcohol'>
+    alcoholConsumption?: Amount<'liters per year'>
     tobaccoUse?: Amount<'%'>
   }
   religion: {
-    atheism?: Amount<'%'>
-    believers?: Amount<'%'>
+    mainReligions?: string[]
   }
   environment: {
-    CO2Emissions?: Amount<'megatons'>
-    renewables?: Amount<'%'>
+    co2Emissions?: Amount<'Mt'>
+    renewableEnergy?: Amount<'%'>
+    forestArea?: Amount<'%'>
   }
   humanRights: {
     gayMarriageLegalized?: Amount<'year'>
     refugees?: Amount<'people'>
   }
-}
-
-export const PotentialISOCountryCodes = [
-  'AD',
-  'AE',
-  'AF',
-  'AG',
-  'AI',
-  'AL',
-  'AM',
-  'AO',
-  'AR',
-  'AT',
-  'AU',
-  'AW',
-  'AZ',
-  'BA',
-  'BB',
-  'BD',
-  'BE',
-  'BF',
-  'BG',
-  'BH',
-  'BI',
-  'BJ',
-  'BM',
-  'BN',
-  'BO',
-  'BR',
-  'BS',
-  'BT',
-  'BW',
-  'BY',
-  'BZ',
-  'CA',
-  'CD',
-  'CF',
-  'CG',
-  'CH',
-  'CI',
-  'CL',
-  'CM',
-  'CN',
-  'CO',
-  'CR',
-  'CU',
-  'CV',
-  'CW',
-  'CY',
-  'CZ',
-  'DE',
-  'DJ',
-  'DK',
-  'DM',
-  'DO',
-  'DZ',
-  'EC',
-  'EE',
-  'EG',
-  'EH',
-  'ER',
-  'ES',
-  'ET',
-  'FI',
-  'FJ',
-  'FK',
-  'FM',
-  'FO',
-  'FR',
-  'GA',
-  'GB',
-  'GD',
-  'GE',
-  'GF',
-  'GH',
-  'GL',
-  'GM',
-  'GN',
-  'GP',
-  'GQ',
-  'GR',
-  'GT',
-  'GW',
-  'GY',
-  'HK',
-  'HN',
-  'HR',
-  'HT',
-  'HU',
-  'IC',
-  'ID',
-  'IE',
-  'IL',
-  'IN',
-  'IQ',
-  'IR',
-  'IS',
-  'IT',
-  'JM',
-  'JO',
-  'JP',
-  'KE',
-  'KG',
-  'KH',
-  'KI',
-  'KM',
-  'KN',
-  'KP',
-  'KR',
-  'KW',
-  'KY',
-  'KZ',
-  'LA',
-  'LB',
-  'LC',
-  'LI',
-  'LK',
-  'LR',
-  'LS',
-  'LT',
-  'LU',
-  'LV',
-  'LY',
-  'MA',
-  'MC',
-  'MD',
-  'ME',
-  'MF',
-  'MG',
-  'MK',
-  'ML',
-  'MM',
-  'MN',
-  'MQ',
-  'MR',
-  'MS',
-  'MT',
-  'MU',
-  'MV',
-  'MW',
-  'MX',
-  'MY',
-  'MZ',
-  'NA',
-  'NC',
-  'NE',
-  'NG',
-  'NI',
-  'NL',
-  'NO',
-  'NP',
-  'NR',
-  'NZ',
-  'OM',
-  'PA',
-  'PE',
-  'PF',
-  'PG',
-  'PH',
-  'PK',
-  'PL',
-  'PN',
-  'PR',
-  'PS',
-  'PT',
-  'PY',
-  'QA',
-  'RE',
-  'RO',
-  'RS',
-  'RU',
-  'RW',
-  'SA',
-  'SB',
-  'SC',
-  'SD',
-  'SE',
-  'SG',
-  'SI',
-  'SK',
-  'SL',
-  'SN',
-  'SO',
-  'SR',
-  'SS',
-  'ST',
-  'SV',
-  'SX',
-  'SY',
-  'SZ',
-  'TC',
-  'TD',
-  'TG',
-  'TH',
-  'TJ',
-  'TL',
-  'TM',
-  'TN',
-  'TO',
-  'TR',
-  'TT',
-  'TW',
-  'TZ',
-  'UA',
-  'UG',
-  'PW',
-  'US',
-  'UY',
-  'UZ',
-  'VA',
-  'VC',
-  'VE',
-  'VG',
-  'VI',
-  'VN',
-  'VU',
-  'XK',
-  'YE',
-  'YT',
-  'ZA',
-  'ZM',
-  'ZW',
-  'SM',
-  'TV',
-] as const
-
-export type ISOCountryCode = (typeof ISOCountryCodes)[number]
-
-export const isValidISOCode = (code: any): code is ISOCountryCode => {
-  return code && ISOCountryCodes.includes(code)
 }
