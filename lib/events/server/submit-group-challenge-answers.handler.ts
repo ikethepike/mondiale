@@ -177,7 +177,11 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
             move = {
               endTile: specialTile,
               steps: specialTileIndex,
-              challenge: getIndividualChallenge({ accessorId, difficulty: game.difficulty }),
+              challenge: getIndividualChallenge({
+                accessorId,
+                difficulty: game.difficulty,
+                variant: game.variant,
+              }),
             }
           }
           break

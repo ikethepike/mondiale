@@ -72,10 +72,10 @@
             </div>
           </template>
 
-          <!-- Higher or lower: best of three -->
+          <!-- Higher or lower: win every duel in the streak -->
           <template v-else-if="variant === 'higher-lower' && currentDuel">
             <h1 class="map-caption">Which ranks higher — {{ duelTopic }}?</h1>
-            <span class="map-caption sub">Duel {{ duelIndex + 1 }} of 3 — win them all</span>
+            <span class="map-caption sub">Duel {{ duelIndex + 1 }} of {{ totalDuels }} — win them all</span>
             <div class="options card-options">
               <button
                 v-for="option in [currentDuel.a, currentDuel.b]"
@@ -148,7 +148,7 @@ const interstitialTitle = computed(() => {
     case 'leader-pick':
       return `Who leads ${countryName(active.country)}?`
     case 'higher-lower':
-      return 'Best of three: which country ranks higher?'
+      return `Win ${totalDuels.value === 2 ? 'both duels' : `all ${totalDuels.value} duels`}: which country ranks higher?`
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
@@ -156,6 +156,7 @@ const interstitialTitle = computed(() => {
 
 // --- Higher-lower duels ------------------------------------------------------
 const duelIndex = ref(0)
+const totalDuels = computed(() => challenge.value?.higherLower?.pairs.length ?? 0)
 const currentDuel = computed(() => challenge.value?.higherLower?.pairs[duelIndex.value])
 const duelTopic = computed(() => {
   const accessorId = challenge.value?.higherLower?.accessorId
@@ -176,8 +177,8 @@ const answerDuel = (picked: ISOCountryCode) => {
   const otherValue = getValueByAccessorID(other, active.higherLower.accessorId)?.amount ?? 0
 
   if (pickedValue > otherValue) {
-    if (duelIndex.value >= 2) {
-      // Swept all three — submit the winning token
+    if (duelIndex.value >= totalDuels.value - 1) {
+      // Swept the whole streak — submit the winning token
       return submitAnswer(active.country, { reveal: false })
     }
     duelIndex.value++
@@ -254,6 +255,14 @@ onBeforeMount(() => {
   // Clear out our global state
   clearBoard()
   document.addEventListener('mapClick', onMapClick)
+
+  // Recovery: in this phase with no challenge to show (a reload landed in
+  // the pause between answering and moving on, or the server lost its
+  // pacing timer) the view would render a bare map forever. Asking to
+  // re-enter the movement flow is idempotent, so nudge the server.
+  if (!challenge.value) {
+    update({ event: 'enter-movement-phase' })
+  }
 })
 onBeforeUnmount(() => {
   clearBoard()

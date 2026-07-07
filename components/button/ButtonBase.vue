@@ -15,6 +15,7 @@ defineProps({
   },
   to: {
     type: String,
+    default: undefined,
   },
 })
 </script>

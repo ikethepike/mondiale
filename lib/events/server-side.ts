@@ -37,8 +37,8 @@ export const useServerSideEvents = ({
   redis,
 }: {
   redis: Redis
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
 }) => {
   return {
     emit(eventData: ServerEventData, eventTarget: ClientEventTarget) {
@@ -70,8 +70,8 @@ export interface GameHandlerContext<E extends ClientEvent> {
   eventData: Extract<ClientEventData, { event: E }>
   eventTarget: ClientEventTarget
   redis: Redis
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
 }
 
 /**

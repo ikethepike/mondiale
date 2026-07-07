@@ -1,5 +1,5 @@
 <template>
-  <div v-if="mode === 'inline'" class="country-flag" v-html="namespacedMarkup" />
+  <div v-if="mode === 'inline'" ref="inlineHost" class="country-flag" />
   <div
     v-else
     class="country-flag"
@@ -48,6 +48,29 @@ const namespacedMarkup = computed(() => {
     .replaceAll(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
     .replaceAll(/(xlink:href|href)="#([^"]+)"/g, (_, attribute, id) => `${attribute}="#${prefix}${id}"`)
     .replaceAll(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`)
+})
+
+// Inline flags are parsed and sanitized (no scripts, no foreignObject, no
+// on* handlers) before entering the DOM — stricter than v-html, and it
+// keeps working even if a hostile flag ever sneaks into the dataset.
+const inlineHost = ref<HTMLElement>()
+watchEffect(() => {
+  if (!inlineHost.value || props.mode !== 'inline') return
+
+  const parsed = new DOMParser().parseFromString(namespacedMarkup.value, 'image/svg+xml')
+  const svg = parsed.documentElement
+  if (svg.nodeName.toLowerCase() !== 'svg') return
+
+  svg.querySelectorAll('script, foreignObject').forEach(node => node.remove())
+  for (const element of [svg, ...svg.querySelectorAll('*')]) {
+    for (const attribute of [...element.attributes]) {
+      if (attribute.name.toLowerCase().startsWith('on')) {
+        element.removeAttribute(attribute.name)
+      }
+    }
+  }
+
+  inlineHost.value.replaceChildren(svg)
 })
 </script>
 <style scoped>

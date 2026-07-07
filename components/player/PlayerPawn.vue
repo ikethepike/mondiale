@@ -19,6 +19,7 @@ import type { Player } from '~~/types/player.type'
 defineProps({
   player: {
     type: Object as PropType<Player>,
+    default: undefined,
   },
 })
 </script>

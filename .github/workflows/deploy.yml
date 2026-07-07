@@ -7,6 +7,11 @@ on:
   # Enable running workflow from actions tab
   workflow_dispatch:
 
+# Don't let two pushes to main deploy at once; cancel the older run.
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: true
+
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -15,6 +20,9 @@ jobs:
     name: Deploy app
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      # --ha=false keeps Mondiale on a single machine: the Socket.IO server
+      # holds its io instance in per-machine memory, so a second machine
+      # without sticky sessions + a Redis adapter breaks live game sessions.
+      - run: flyctl deploy --remote-only --ha=false

@@ -14,12 +14,12 @@ const emit = defineEmits<{
 
 defineProps({
   placeholder: {
-    required: false,
     type: String,
+    default: undefined,
   },
   inlineButton: {
-    required: false,
     type: String,
+    default: undefined,
   },
 })
 

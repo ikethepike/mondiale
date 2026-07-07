@@ -1,17 +1,35 @@
+# syntax=docker/dockerfile:1
+
+# ---- Build stage ----
+# node:24-alpine + bun matches the toolchain that produces a correct Nitro
+# bundle. (The oven/bun image resolves deps in a layout that drops engine.io's
+# `ws` transitive dep from the traced output, crashing the socket server at
+# startup — so we stay on node + a pinned bun here.)
 FROM node:24-alpine AS build
-RUN npm install -g bun
+RUN npm install -g bun@1.3.10
 WORKDIR /app
+
+# Install deps first for layer caching — only re-runs when the lockfile changes.
 COPY package.json bun.lockb ./
 RUN bun install --frozen-lockfile
+
+# Build the Nitro server bundle.
 COPY . .
-# Bundling the generated country data needs more heap than the container default
+# Bundling the generated country data needs more heap than the container default.
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN bun run build
 
-FROM node:24-alpine
+# ---- Runtime stage ----
+# Nitro bundles all deps into .output/server, so the runtime needs only Node —
+# no bun, no node_modules install.
+FROM node:24-alpine AS runtime
 WORKDIR /app
-COPY --from=build /app/.output ./.output
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Run as the built-in unprivileged node user.
+COPY --from=build --chown=node:node /app/.output ./.output
+USER node
+
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]

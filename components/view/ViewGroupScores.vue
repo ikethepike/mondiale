@@ -52,8 +52,10 @@
             </section>
           </template>
         </template>
-        <template>
-          <p>{{ selectedScorecard.player.name }} hasn't answered yet.</p>
+        <!-- A bare <template> is a native, non-rendering element — this
+             fallback never showed until it became a real v-else -->
+        <template v-else>
+          <p class="pane-content">{{ selectedScorecard.player.name }} hasn't answered yet.</p>
         </template>
         <nav class="pane-content card-nav">
           <ButtonFilled @click="closeScores">

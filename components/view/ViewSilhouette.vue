@@ -11,21 +11,27 @@
 
     <header>
       <div class="prompt">
-        <h1 class="map-caption">Whose outline is this?</h1>
-        <span class="map-caption sub">{{ secondsLeft }}s — earlier answers score higher</span>
+        <template v-if="!resolved">
+          <h1 class="map-caption">Whose outline is this?</h1>
+          <span class="map-caption sub">{{ secondsLeft }}s — earlier answers score higher</span>
+        </template>
+        <template v-else>
+          <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
+          <span class="map-caption sub">Here it is among its neighbours</span>
+        </template>
         <Transition name="caption">
           <span v-if="hint" class="map-caption hint">{{ hint }}</span>
         </Transition>
       </div>
     </header>
 
-    <section class="outline-stage">
+    <section v-show="!resolved" class="outline-stage">
       <svg v-if="outline" class="outline" :viewBox="outline.viewBox" aria-hidden="true">
         <path ref="outlinePath" :d="outline.d" pathLength="1" />
       </svg>
     </section>
 
-    <section class="guess-box">
+    <section v-if="!resolved" class="guess-box">
       <CountryGuessInput
         ref="guessInput"
         :disabled="submitted || !started || lockedOut"
@@ -35,7 +41,7 @@
       />
     </section>
 
-    <footer>
+    <footer v-if="!resolved">
       <div class="timer-track" aria-hidden="true">
         <div
           class="timer-fill"
@@ -49,6 +55,7 @@
 import { gsap } from 'gsap'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { prefersReducedMotion } from '~~/lib/motion'
@@ -66,6 +73,7 @@ const challenge = computed(() => {
 
 const submitted = ref(false)
 const started = ref(false)
+const resolved = ref(false)
 const lockedOut = ref(false)
 const showInterstitial = ref(true)
 const secondsLeft = ref(challenge.value?.durationSeconds ?? 30)
@@ -103,16 +111,41 @@ const flashHint = (text: string) => {
 
 let countdown: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
+let revealTimer: ReturnType<typeof setTimeout> | undefined
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
   if (submitted.value) return
   submitted.value = true
-  if (countdown) clearInterval(countdown)
   update({
     event: 'submit-group-challenge-answers',
     ranking: guess ? [guess] : [],
     clientScore,
   })
+}
+
+/**
+ * Resolution beat: whether buzzed right or timed out, drop the shapes-only
+ * veil and frame the country among its neighbours — the answer lands as a
+ * place on the map, not just a name. The scorecard follows after the hold.
+ */
+const REVEAL_HOLD_MS = 4000
+const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
+  const active = challenge.value
+  if (!active || resolved.value) return
+  resolved.value = true
+  if (countdown) clearInterval(countdown)
+
+  gameStore.map.solo = false
+  gameStore.map.labels = true
+  gameStore.map.reveal = active.country
+  gameStore.map.status = guess ? 'correct' : 'incorrect'
+  const neighbours = BORDERS[active.country] ?? []
+  gameStore.map.focus = [active.country, ...neighbours]
+  for (const neighbour of neighbours) {
+    gameStore.map.tints[neighbour] = 'inefficient'
+  }
+
+  revealTimer = setTimeout(() => submitRound(guess, clientScore), REVEAL_HOLD_MS)
 }
 
 const begin = () => {
@@ -122,11 +155,20 @@ const begin = () => {
 
   const active = challenge.value
   if (outlinePath.value && active && !prefersReducedMotion()) {
-    gsap.fromTo(
-      outlinePath.value,
-      { strokeDasharray: 1, strokeDashoffset: 1 },
-      { strokeDashoffset: 0, duration: active.durationSeconds, ease: 'none' }
-    )
+    // The outline arrives in visible pieces: every few seconds another
+    // stretch of border pipes in quickly, then holds — unmistakable
+    // progress instead of one imperceptibly slow crawl
+    const segments = 10
+    const interval = active.durationSeconds / segments
+    const timeline = gsap.timeline()
+    gsap.set(outlinePath.value, { strokeDasharray: 1, strokeDashoffset: 1 })
+    for (let segment = 1; segment <= segments; segment++) {
+      timeline.to(
+        outlinePath.value,
+        { strokeDashoffset: 1 - segment / segments, duration: 0.8, ease: 'power2.inOut' },
+        (segment - 1) * interval
+      )
+    }
   } else if (outlinePath.value) {
     gsap.set(outlinePath.value, { strokeDasharray: 1, strokeDashoffset: 0 })
   }
@@ -134,23 +176,20 @@ const begin = () => {
   countdown = setInterval(() => {
     secondsLeft.value--
     if (secondsLeft.value <= 0) {
-      gameStore.map.status = 'incorrect'
-      submitRound(undefined, 0)
+      resolve(undefined, 0)
     }
   }, 1000)
 }
 
 const onGuess = (country: Country) => {
   const active = challenge.value
-  if (!active || submitted.value || lockedOut.value || !started.value) return
+  if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
 
   if (country.isoCode === active.country) {
     // Earlier buzz, bigger score
     const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
     const clientScore = Math.round(active.maximumPoints * (0.35 + 0.65 * remainingFraction))
-    gameStore.map.status = 'correct'
-    gameStore.map.reveal = active.country
-    submitRound(country.isoCode, clientScore)
+    resolve(country.isoCode, clientScore)
     return
   }
 
@@ -168,6 +207,7 @@ onBeforeUnmount(() => {
   if (countdown) clearInterval(countdown)
   if (hintTimer) clearTimeout(hintTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
+  if (revealTimer) clearTimeout(revealTimer)
   if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
 })
 </script>

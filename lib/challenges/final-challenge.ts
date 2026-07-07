@@ -23,24 +23,26 @@ import {
   OrganizationVector,
 } from '~~/types/organization.type'
 import { shuffleArray } from '../arrays'
-import { getRandomISOCountryCode } from '../country'
 import { getValueByAccessorID } from '../values'
+import { variantCountries } from '../variant'
 
 export const getFinalChallenges = ({ game }: { game: Game }): FinalChallenge => {
+  const pool = variantCountries(game.variant)
+
   switch (game.difficulty) {
     case 'easy':
       return {
         _type: 'final-challenge',
         difficulty: 'easy',
-        challenges: [getRegionChallenge(), getLanguageChallenge()],
+        challenges: [getRegionChallenge(pool), getLanguageChallenge(pool)],
       }
     case 'normal': {
-      const middleChallenge = Math.random() < 0.5 ? getMinChallenge() : getMaxChallenge()
+      const middleChallenge = Math.random() < 0.5 ? getMinChallenge(pool) : getMaxChallenge(pool)
 
       return {
         _type: 'final-challenge',
         difficulty: 'normal',
-        challenges: [getRegionChallenge(), middleChallenge, getLanguageChallenge()],
+        challenges: [getRegionChallenge(pool), middleChallenge, getLanguageChallenge(pool)],
       }
     }
 
@@ -49,26 +51,33 @@ export const getFinalChallenges = ({ game }: { game: Game }): FinalChallenge => 
         _type: 'final-challenge',
         difficulty: 'hard',
         challenges: [
-          getLanguageChallenge(),
-          getMaxChallenge(),
-          getMinChallenge(),
-          getMembershipChallenge(),
-          getLeadershipChallenge(),
+          getLanguageChallenge(pool),
+          getMaxChallenge(pool),
+          getMinChallenge(pool),
+          getMembershipChallenge(pool),
+          getLeadershipChallenge(pool),
         ],
       }
     }
   }
 }
 
-const getRegionChallenge = (): RegionChallenge => {
+const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge => {
+  const shuffled = shuffleArray([...pool])
+  const country =
+    shuffled.find(isoCode => {
+      const area = COUNTRIES[isoCode].geography.area.total
+      return !!area && area.amount > 400
+    }) ?? shuffled[0]
+
   return {
     _type: 'region-challenge',
-    country: getRandomISOCountryCode('large'),
+    country,
   }
 }
 
-const getLanguageChallenge = (): LanguageChallenge => {
-  const languages = Object.values(COUNTRIES).flatMap(country => country.languages)
+const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge => {
+  const languages = pool.flatMap(isoCode => COUNTRIES[isoCode].languages)
   const language = shuffleArray(languages).shift()
   if (!language) throw new ReferenceError(`No language found in language challenge`)
 
@@ -91,10 +100,10 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
 /**
  * Returns a sorted array (max -> min) of a given value key
  */
-const buildSortedRanking = (accessorId: MinMaxAccessorKeys) => {
+const buildSortedRanking = (accessorId: MinMaxAccessorKeys, pool: ISOCountryCode[]) => {
   const sortedCountries: { amount: Amount<any>; isoCode: ISOCountryCode }[] = []
 
-  for (const isoCode of Object.keys(COUNTRIES)) {
+  for (const isoCode of pool) {
     if (!isValidISOCode(isoCode)) continue
     const amount = getValueByAccessorID(isoCode, accessorId)
     if (!amount) continue
@@ -108,23 +117,19 @@ const buildSortedRanking = (accessorId: MinMaxAccessorKeys) => {
   return sortedCountries.sort((a, b) => b.amount.amount - a.amount.amount)
 }
 
-const getSortedRanking = (accessorId?: MinMaxAccessorKeys) => {
-  if (accessorId) {
-    return { accessorId, sortedcountries: buildSortedRanking(accessorId) }
-  }
-
+const getSortedRanking = (pool: ISOCountryCode[]) => {
   // Source data drifts between regenerations and some accessors end up
   // empty — dealing one of those would crash the final challenge mid-game
   for (const candidate of shuffleArray([...minMaxAccessors])) {
-    const sortedcountries = buildSortedRanking(candidate)
+    const sortedcountries = buildSortedRanking(candidate, pool)
     if (sortedcountries.length >= 6) return { accessorId: candidate, sortedcountries }
   }
 
   throw new ReferenceError('No min/max accessor has enough country data')
 }
 
-const getMaxChallenge = (): MaxChallenge => {
-  const { accessorId, sortedcountries } = getSortedRanking()
+const getMaxChallenge = (pool: ISOCountryCode[]): MaxChallenge => {
+  const { accessorId, sortedcountries } = getSortedRanking(pool)
   const country = sortedcountries.shift()
   if (!country) throw new ReferenceError('Unable to find any country for max challenge')
 
@@ -136,8 +141,8 @@ const getMaxChallenge = (): MaxChallenge => {
   }
 }
 
-const getMinChallenge = (): MinChallenge => {
-  const { accessorId, sortedcountries } = getSortedRanking()
+const getMinChallenge = (pool: ISOCountryCode[]): MinChallenge => {
+  const { accessorId, sortedcountries } = getSortedRanking(pool)
   const country = sortedcountries.pop()
   if (!country) throw new ReferenceError('Unable to find any country for min challenge')
 
@@ -149,15 +154,21 @@ const getMinChallenge = (): MinChallenge => {
   }
 }
 
-const getMembershipChallenge = (): MembershipChallenge => {
+const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge => {
   const organization = shuffleArray(Object.keys(OrganizationVector)).shift()
   if (!isOrganizationKey(organization))
     throw new ReferenceError(`Organization is undefined in Membership challenge`)
   const relevantRegions = organizationRegions[organization]
 
-  const possibleExceptions = Object.values(COUNTRIES).filter(country => {
-    return relevantRegions.includes(country.region)
+  const poolSet = new Set(pool)
+  const regionalExceptions = Object.values(COUNTRIES).filter(country => {
+    return poolSet.has(country.isoCode) && relevantRegions.includes(country.region)
   })
+  // Some organizations have no footprint on a continental board — fall back
+  // to the organization's own regions rather than dealing nothing
+  const possibleExceptions = regionalExceptions.length
+    ? regionalExceptions
+    : Object.values(COUNTRIES).filter(country => relevantRegions.includes(country.region))
 
   const exception = shuffleArray(possibleExceptions).shift()
   if (!exception) throw new ReferenceError(`Failed to get exception for membership challenge`)
@@ -169,8 +180,8 @@ const getMembershipChallenge = (): MembershipChallenge => {
   }
 }
 
-const getLeadershipChallenge = (): LeadershipChallenge => {
-  const country = shuffleArray(Object.values(COUNTRIES)).find(country => {
+const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
+  const country = shuffleArray(pool.map(isoCode => COUNTRIES[isoCode])).find(country => {
     return !!country.government.leader
   })
 

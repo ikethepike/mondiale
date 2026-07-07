@@ -1507,15 +1507,15 @@ const props = defineProps({
   },
   status: {
     type: String as PropType<'correct' | 'incorrect'>,
-    required: false,
+    default: undefined,
   },
   highlightCountry: {
     type: String as PropType<ISOCountryCode>,
-    required: false,
+    default: undefined,
   },
   countryGroupings: {
     type: Array as PropType<CountryColorGrouping[]>,
-    required: false,
+    default: undefined,
   },
   /** Shapes-only: countries without an inline fill disappear entirely. */
   solo: {
@@ -1670,6 +1670,18 @@ onMounted(async () => {
     console.warn('Unable to instantiate map ref')
     return
   }
+
+  // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
+  // 1-unit stroke itself at world zoom, so they render as solid ink blobs.
+  // Scaling their outline to their own footprint keeps them a discreet dot
+  // of land until the camera zooms in close enough to reveal the shape.
+  svg.value.querySelectorAll('path[data-id]').forEach(path => {
+    const box = (path as SVGGraphicsElement).getBBox()
+    const footprint = Math.max(box.width, box.height)
+    if (footprint > 0 && footprint < 8) {
+      ;(path as SVGPathElement).style.strokeWidth = String(Math.max(0.2, footprint / 8))
+    }
+  })
 
   svg.value.querySelectorAll('path').forEach(path => {
     path.addEventListener('click', event => {

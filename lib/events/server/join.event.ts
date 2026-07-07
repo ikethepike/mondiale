@@ -2,7 +2,8 @@ import { generateTiles } from '~~/lib/tiles'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer } from '../../../lib/player'
 
-import { useServerSideEvents } from '../server-side'
+import { enqueueGameTask, useServerSideEvents } from '../server-side'
+import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
 export const joinEventHandler: EventHandler = async ({
   io,
@@ -64,6 +65,35 @@ export const joinEventHandler: EventHandler = async ({
     ) {
       game.players[playerId].phase = 'group-challenge'
     }
+  }
+
+  // Movement pacing runs on in-memory timers — a server restart mid-pause
+  // orphans the player: a challenge phase with no move to show (blank
+  // screen), or a saved 'moving' phase nobody is walking. Rejoining is the
+  // recovery moment: re-enter the movement flow, which is safe to repeat.
+  const rejoining = game.players[playerId]
+  const orphanedInChallenge =
+    ['individual-challenge', 'final-challenge'].includes(rejoining.phase) &&
+    rejoining.moves.length === 0
+  const wedgedMoving = rejoining.phase === 'moving'
+
+  if (game.started && (orphanedInChallenge || wedgedMoving)) {
+    console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)
+    // The walk guard rejects 'moving' re-entry; hand the phase back first
+    if (wedgedMoving) rejoining.phase = 'group-scores'
+
+    setTimeout(() => {
+      enqueueGameTask(gameId, () =>
+        enterMovementPhaseHandler({
+          io,
+          redis,
+          socket,
+          eventTarget,
+          eventKey: 'enter-movement-phase',
+          eventData: { event: 'enter-movement-phase' },
+        })
+      )
+    }, 1500)
   }
 
   await socket.join(gameId)

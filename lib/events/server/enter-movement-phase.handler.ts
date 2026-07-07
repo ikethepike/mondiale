@@ -17,23 +17,27 @@ export const enterMovementPhaseHandler = defineGameHandler(
     if (move) {
       player.phase = 'moving'
 
-      for (const index of [...Array(move.steps).keys()]) {
-        const isLastStep = index + 1 === move.steps
-
+      // Walk by position, not by a step count: a pre-counted loop deals a
+      // permanent 'moving' wedge when there is nothing left to walk (gate
+      // directly ahead), and can't resume if a walk is interrupted mid-way.
+      // Challenge moves stop on the tile before their gate.
+      const stopAt = move.challenge ? move.endTile.position - 1 : move.endTile.position
+      while (player.currentPosition < stopAt) {
         await wait(500)
-        if (isLastStep && move.challenge) {
-          player.phase = move.challenge._type
-        } else if (isLastStep) {
-          // player has no additional steps and the turn has not ended
-          player.phase = 'movement-summary'
-          // The move is fully walked — clearing it keeps clients from
-          // reading a stale currentMove between rounds
-          player.moves = []
-        } else {
-          player.currentPosition++
-        }
+        player.currentPosition++
         server.emit({ event: 'update', game }, eventTarget)
       }
+
+      await wait(500)
+      if (move.challenge) {
+        player.phase = move.challenge._type
+      } else {
+        player.phase = 'movement-summary'
+        // The move is fully walked — clearing it keeps clients from
+        // reading a stale currentMove between rounds
+        player.moves = []
+      }
+      server.emit({ event: 'update', game }, eventTarget)
     } else {
       player.phase = 'movement-summary'
       await server.updateGameState(game)

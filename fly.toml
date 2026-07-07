@@ -1,9 +1,15 @@
-# fly.toml file generated for mondiale on 2023-02-13T19:55:58+01:00
+# fly.toml — Mondiale (Nuxt + Socket.IO)
+#
+# Single-machine by design: the Socket.IO server holds its `io` instance in
+# per-machine memory (see server/middleware/socket.server.ts) and uses the
+# default polling->websocket upgrade. Running >1 machine without sticky
+# sessions + a Redis pub/sub adapter causes "Session ID unknown" errors, so
+# auto-scaling is intentionally disabled below.
 
 app = "mondiale"
+primary_region = "arn"
 kill_signal = "SIGINT"
 kill_timeout = 5
-processes = []
 
 [build]
   dockerfile = "Dockerfile"
@@ -11,32 +17,27 @@ processes = []
 [env]
   PORT = "3000"
 
-[experimental]
-  auto_rollback = true
-
-[[services]]
-  http_checks = []
+[http_service]
   internal_port = 3000
-  processes = ["app"]
-  protocol = "tcp"
-  script_checks = []
-  [services.concurrency]
-    hard_limit = 25
-    soft_limit = 20
+  force_https = true
+  # Never spin down: keeps game sessions and in-memory Socket.IO state alive.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
     type = "connections"
+    soft_limit = 20
+    hard_limit = 25
 
-  [[services.ports]]
-    force_https = true
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-
-  [[services.tcp_checks]]
-    grace_period = "1s"
+  [[http_service.checks]]
+    grace_period = "10s"
     interval = "15s"
-    restart_limit = 0
-    timeout = "2s"
+    method = "GET"
+    path = "/"
+    protocol = "http"
+    timeout = "5s"
 
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

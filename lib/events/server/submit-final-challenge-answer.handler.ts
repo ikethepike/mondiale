@@ -1,7 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
-import { wait } from '~~/lib/time'
 import { isValidISOCode } from '~~/types/geography.types'
-import { defineGameHandler } from '../server-side'
+import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
@@ -16,9 +15,11 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       throw new TypeError(`Individual challenge found in final challenge handler`)
     }
 
-    const currentChallenge = currentMove.challenge.challenges.shift()
+    // Verify against the head question without consuming it — a thrown type
+    // mismatch must not eat a question the player never really answered
+    const currentChallenge = currentMove.challenge.challenges[0]
     if (!currentChallenge) {
-      return // Handle me!
+      return console.warn(`Final challenge submitted with no questions left`)
     }
 
     const { submittedAnswer } = eventData
@@ -84,21 +85,30 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
 
     console.log({ currentChallenge, correct })
 
-    await wait(5000)
-
-    // Unset player turns if incorrect
+    // Wrong answer knocks the player out of the gauntlet. The result pause
+    // runs OUTSIDE the per-game queue — holding the lock for five seconds
+    // would stall every other player — and the follow-up re-enters through
+    // the queue with a fresh game fetch.
     if (!correct) {
       player.moves = []
       await server.updateGameState(game)
-      return enterMovementPhaseHandler({
-        io,
-        redis,
-        socket,
-        eventTarget,
-        eventKey: 'enter-movement-phase',
-        eventData: { event: 'enter-movement-phase' },
-      })
+      setTimeout(() => {
+        enqueueGameTask(eventTarget.gameId, () =>
+          enterMovementPhaseHandler({
+            io,
+            redis,
+            socket,
+            eventTarget,
+            eventKey: 'enter-movement-phase',
+            eventData: { event: 'enter-movement-phase' },
+          })
+        )
+      }, 5000)
+      return
     }
+
+    // Correct: the question is now consumed
+    currentMove.challenge.challenges.shift()
 
     // Let the player bask in glory
     if (currentMove.challenge.challenges.length === 0) {
@@ -107,7 +117,12 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
 
     await server.updateGameState(game)
-    server.emit({ event: 'final-challenge-checked', game }, eventTarget)
+
+    // Pace the reveal: the client shows its own result beat first; the next
+    // question (or victory) lands after it, again without holding the queue
+    setTimeout(() => {
+      server.emit({ event: 'final-challenge-checked', game }, eventTarget)
+    }, 5000)
   },
   { player: 'warn' }
 )

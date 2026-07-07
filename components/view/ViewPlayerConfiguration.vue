@@ -135,8 +135,8 @@
         </header>
 
         <TransitionGroup tag="ul" name="lobby-tile">
-          <PlayerTile v-for="player in playersByPhase.all" :key="player.id" :player="player">
-            <div :class="['player-status', { ready: player.ready }]" />
+          <PlayerTile v-for="lobbyPlayer in playersByPhase.all" :key="lobbyPlayer.id" :player="lobbyPlayer">
+            <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
         </TransitionGroup>
       </section>

@@ -21,8 +21,8 @@ export type EventHandler = (configuration: {
   eventKey: ClientEvent
   eventData: ClientEventData
   eventTarget: ClientEventTarget
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
 }) => void
 
 const SERVER_SIDE_EVENT_HANDLERS: {
