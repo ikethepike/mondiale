@@ -1,7 +1,10 @@
 import {
+  clampClientScore,
   getCorrectRanking,
   getIndividualChallenge,
   scoreChallengeSubmission,
+  scoreHotCold,
+  scoreNeighbourBlitz,
   scoreTraversalSubmission,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
@@ -9,8 +12,8 @@ import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { PlayerMove } from '~~/types/game.types'
+import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+import type { GroupChallengeAnswer, PlayerMove } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
 
 export const submitGroupChallengeAnswersHandler = defineGameHandler(
@@ -21,38 +24,106 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     const currentRound = game.rounds[length - 1]
     if (!currentRound) throw new ReferenceError(`Unable to find round by index: ${length - 1}`)
 
-    // The submitted ISO list is either a ranking or a traversal route,
-    // depending on the round's challenge type
+    // A repeat submission (double-click, reconnect replay) would re-score the
+    // round and rebuild the player's moves — possibly mid-walk
+    if (currentRound.groupAnswers[playerId]) {
+      return console.warn(`Duplicate round submission ignored for player: ${playerId}`)
+    }
+
+    // The submitted ISO list means different things per round kind: a
+    // ranking, a traversal guess set, named neighbours, a probe trail…
+    const roundChallenge = currentRound.groupChallenge
+    const kind = roundChallengeKind(roundChallenge)
     let scoring: { scored: number; maximum: number }
-    if (isTraversalChallenge(currentRound.groupChallenge)) {
-      const challenge = currentRound.groupChallenge
+    let answer: GroupChallengeAnswer
 
-      game.rounds[length - 1].groupAnswers[playerId] = {
-        submitted: eventData.ranking,
-        correct: challenge.optimalPath,
+    switch (kind) {
+      case 'traversal': {
+        if (roundChallenge._type !== 'traversal-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: roundChallenge.optimalPath }
+        scoring = scoreTraversalSubmission({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
       }
-
-      scoring = scoreTraversalSubmission({ challenge, submittedGuesses: eventData.ranking })
-    } else {
-      const originalRanking = currentRound.groupChallenge.countriesPerPlayer[playerId]
-      if (!originalRanking)
-        throw new ReferenceError(`Unable to retrieve original order for player: ${playerId}`)
-
-      // ! Todo, fix to allow identical values
-      const correctRanking = getCorrectRanking({
-        groupChallengeAccessorId: currentRound.groupChallenge.id,
-        isoCodes: originalRanking,
-      })
-
-      game.rounds[length - 1].groupAnswers[playerId] = {
-        submitted: eventData.ranking,
-        correct: correctRanking,
+      case 'neighbour-blitz': {
+        if (roundChallenge._type !== 'neighbour-blitz-challenge') {
+          throw new TypeError('kind mismatch')
+        }
+        answer = { submitted: eventData.ranking, correct: roundChallenge.neighbours }
+        scoring = scoreNeighbourBlitz({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
       }
+      case 'hot-cold': {
+        if (roundChallenge._type !== 'hot-cold-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = scoreHotCold({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'silhouette': {
+        if (roundChallenge._type !== 'silhouette-challenge') throw new TypeError('kind mismatch')
+        const correct = eventData.ranking[0] === roundChallenge.country
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
+      case 'sketch': {
+        if (roundChallenge._type !== 'sketch-challenge') throw new TypeError('kind mismatch')
+        answer = {
+          submitted: [roundChallenge.country],
+          correct: [roundChallenge.country],
+          sketch: eventData.sketch,
+        }
+        // Sketches always "count" — the client-computed similarity IS the score
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, true)
+        break
+      }
+      default: {
+        if (!('countriesPerPlayer' in roundChallenge)) throw new TypeError('kind mismatch')
+        const originalRanking = roundChallenge.countriesPerPlayer[playerId]
+        if (!originalRanking)
+          throw new ReferenceError(`Unable to retrieve original order for player: ${playerId}`)
 
-      scoring = scoreChallengeSubmission({
-        groupChallengeAccessorId: currentRound.groupChallenge.id,
-        submittedRanking: eventData.ranking,
-      })
+        // ! Todo, fix to allow identical values
+        const correctRanking = getCorrectRanking({
+          groupChallengeAccessorId: roundChallenge.id,
+          isoCodes: originalRanking,
+        })
+
+        answer = { submitted: eventData.ranking, correct: correctRanking }
+        scoring = scoreChallengeSubmission({
+          groupChallengeAccessorId: roundChallenge.id,
+          submittedRanking: eventData.ranking,
+        })
+      }
+    }
+
+    game.rounds[length - 1].groupAnswers[playerId] = answer
+
+    // Test hook: FORCE_FINAL_CHALLENGE=1 teleports every player next to the
+    // final tile after this round, so its gauntlet starts within seconds
+    if (typeof process !== 'undefined' && process.env?.FORCE_FINAL_CHALLENGE === '1') {
+      const finalTile = game.tiles[game.tiles.length - 1]
+      game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
+      player.phase = 'group-scores'
+      player.currentPosition = finalTile.position - 1
+      player.moves = [
+        {
+          endTile: finalTile,
+          steps: 2,
+          challenge: getFinalChallenges({ game }),
+        },
+      ]
+      await server.updateGameState(game)
+      server.emit({ event: 'group-challenge-scored', game }, eventTarget)
+      return
     }
 
     game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
@@ -106,7 +177,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
             move = {
               endTile: specialTile,
               steps: specialTileIndex,
-              challenge: getIndividualChallenge({ accessorId }),
+              challenge: getIndividualChallenge({ accessorId, difficulty: game.difficulty }),
             }
           }
           break

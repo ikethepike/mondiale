@@ -1,10 +1,11 @@
 import type { ISOCountryCode } from '../geography.types'
 import type { GroupChallenge } from './group-challenge.type'
+import type { GroupModeChallenge } from './group-modes.type'
 
 /**
  * Travle-style group round: every player gets the same start/target pair and
- * builds a land route by clicking bordering countries. Difficulty is graded
- * by the shortest-route length dealt (see lib/traversal.ts).
+ * names the countries that bridge them by land. Difficulty is graded by the
+ * shortest-route length dealt (see lib/traversal.ts).
  */
 export interface TraversalChallenge {
   _type: 'traversal-challenge'
@@ -14,17 +15,55 @@ export interface TraversalChallenge {
   optimalHops: number
   /** One shortest route, endpoints included — shown as the correct answer. */
   optimalPath: ISOCountryCode[]
-  /** Crossings a player may use before the attempt auto-submits. */
+  /** Guesses a player may spend before the attempt auto-submits. */
   maximumClicks: number
   /** Points for matching the optimal route, scaled like the ranking rounds. */
   maximumPoints: number
+  /**
+   * Hard-mode twist: the route may only pass through members of this
+   * alliance/bloc. Guesses outside it can never bridge the endpoints.
+   */
+  corridor?: {
+    id: string
+    name: string
+    members: ISOCountryCode[]
+  }
 }
 
-export type RoundChallenge = GroupChallenge | TraversalChallenge
+export type RoundChallenge = GroupChallenge | TraversalChallenge | GroupModeChallenge
 
 /** Older persisted games have ranking challenges without a `_type`. */
 export const isTraversalChallenge = (
   challenge: RoundChallenge | undefined
 ): challenge is TraversalChallenge => {
   return !!challenge && '_type' in challenge && challenge._type === 'traversal-challenge'
+}
+
+export type RoundChallengeKind =
+  | 'ranking'
+  | 'traversal'
+  | 'neighbour-blitz'
+  | 'silhouette'
+  | 'hot-cold'
+  | 'sketch'
+
+/** Single place that maps a round's challenge onto its gameplay kind. */
+export const roundChallengeKind = (
+  challenge: RoundChallenge | undefined
+): RoundChallengeKind => {
+  if (!challenge || !('_type' in challenge)) return 'ranking'
+  switch (challenge._type) {
+    case 'traversal-challenge':
+      return 'traversal'
+    case 'neighbour-blitz-challenge':
+      return 'neighbour-blitz'
+    case 'silhouette-challenge':
+      return 'silhouette'
+    case 'hot-cold-challenge':
+      return 'hot-cold'
+    case 'sketch-challenge':
+      return 'sketch'
+    default:
+      return 'ranking'
+  }
 }

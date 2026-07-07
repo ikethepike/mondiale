@@ -1,5 +1,4 @@
-import { wait } from '~~/lib/time'
-import { defineGameHandler } from '../server-side'
+import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
@@ -24,16 +23,23 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
 
     await server.updateGameState(game)
     server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
-    await wait(5000)
 
-    enterMovementPhaseHandler({
-      io,
-      redis,
-      socket,
-      eventTarget,
-      eventKey: 'enter-movement-phase',
-      eventData: { event: 'enter-movement-phase' },
-    })
+    // Let the player bask in the result, then continue their movement.
+    // The pause runs OUTSIDE the per-game queue — holding the lock for five
+    // seconds would stall every other player's events — and the follow-up
+    // re-enters through the queue with a fresh game fetch.
+    setTimeout(() => {
+      enqueueGameTask(eventTarget.gameId, () =>
+        enterMovementPhaseHandler({
+          io,
+          redis,
+          socket,
+          eventTarget,
+          eventKey: 'enter-movement-phase',
+          eventData: { event: 'enter-movement-phase' },
+        })
+      )
+    }, 5000)
   },
   { player: 'warn' }
 )

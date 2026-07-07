@@ -18,23 +18,26 @@ export type ClientEventData =
     }
   | {
       event: 'submit-group-challenge-answers'
+      /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
+      /**
+       * Client-computed points for modes the server can't reproduce (sketch
+       * similarity, silhouette buzz timing). The server clamps it; correctness
+       * itself is still validated server-side where possible.
+       */
+      clientScore?: number
+      /** Sketch rounds: the normalized drawn outline, for the reveal overlay. */
+      sketch?: [number, number][]
     }
   | {
       event: 'submit-individual-challenge-answer'
       isoCode: ISOCountryCode
     }
   | {
-      event: 'ready-for-round'
-    }
-  | {
       event: 'close-tutorial'
     }
   | {
       event: 'enter-movement-phase'
-    }
-  | {
-      event: 'ready-for-round'
     }
   | {
       event: 'update-by-index'
@@ -80,7 +83,6 @@ export type ServerEventData =
   | { event: 'game-already-started'; game: Game }
   | { event: 'update'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
-  | { event: 'player-ready-for-round'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
 

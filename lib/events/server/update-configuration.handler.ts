@@ -7,6 +7,9 @@ export const updateConfigurationHandler = defineGameHandler(
     const { playerId } = eventTarget
     if (game.host !== playerId)
       return console.warn(`Non-host player tried to update configuration: ${playerId}`)
+    // Regenerating tiles mid-game would invalidate every player's position
+    if (game.started)
+      return console.warn(`Configuration change rejected — game already started: ${game.id}`)
 
     const { configuration } = eventData
 

@@ -2,9 +2,15 @@ import { getRoundChallenge } from '~~/lib/challenges'
 import { wait } from '~~/lib/time'
 import { defineGameHandler } from '../server-side'
 
+/** Phases that no longer take part in a round's movement. */
+const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
+
 export const enterMovementPhaseHandler = defineGameHandler(
   'enter-movement-phase',
   async ({ game, player, server, eventTarget }) => {
+    // Duplicate events would start a second stepping loop and double-advance
+    if (player.phase === 'moving') return
+
     // Defer movement logic to the server
     // Find all moves that we currently can do, move up player to the point and check tile
     const move = player.moves[0]
@@ -20,6 +26,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
         } else if (isLastStep) {
           // player has no additional steps and the turn has not ended
           player.phase = 'movement-summary'
+          // The move is fully walked — clearing it keeps clients from
+          // reading a stale currentMove between rounds
+          player.moves = []
         } else {
           player.currentPosition++
         }
@@ -31,11 +40,13 @@ export const enterMovementPhaseHandler = defineGameHandler(
       server.emit({ event: 'update', game }, eventTarget)
     }
 
-    const readyForNextTurn = Object.values(game.players).every(
-      player => player.phase === 'movement-summary'
-    )
+    // Players who already won (or were kicked) can't reach movement-summary —
+    // counting them as settled keeps the game moving for everyone else
+    const players = Object.values(game.players)
+    const readyForNextTurn = players.every(entry => SETTLED_PHASES.includes(entry.phase))
+    const stillCompeting = players.some(entry => entry.phase === 'movement-summary')
 
-    if (readyForNextTurn) {
+    if (readyForNextTurn && stillCompeting) {
       game.rounds.push({
         groupChallenge: getRoundChallenge({ game }),
         groupAnswers: {},
@@ -44,8 +55,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
 
       await wait(2000)
 
-      for (const playerId of Object.keys(game.players)) {
-        game.players[playerId].phase = 'group-challenge'
+      for (const entry of Object.values(game.players)) {
+        // Winners stay on their victory screen
+        if (entry.phase === 'movement-summary') entry.phase = 'group-challenge'
       }
 
       await server.updateGameState(game)

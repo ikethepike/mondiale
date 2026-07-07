@@ -58,6 +58,8 @@ export interface Round {
 export interface GroupChallengeAnswer {
   submitted: ISOCountryCode[]
   correct: ISOCountryCode[]
+  /** Sketch rounds: the player's normalized drawing, for the reveal overlay. */
+  sketch?: [number, number][]
 }
 
 export const gameVariants = [

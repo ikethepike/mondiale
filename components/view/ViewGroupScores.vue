@@ -2,8 +2,8 @@
   <ModalWrapper>
     <article ref="card" class="pane group-scores tl decorator-bottom">
       <section ref="scoreCard" class="score-card">
-        <header class="pane-content">
-          <span>
+        <header class="pane-content card-header">
+          <span class="eyebrow">
             {{
               isPersonalScorecard
                 ? 'Your Scorecard'
@@ -13,43 +13,49 @@
           <h2>{{ challengeHeading }}</h2>
         </header>
         <template v-if="selectedScorecard.answers">
-          <div class="pane-content horizontal bottom score-summary">
+          <div class="pane-content score-summary">
             <ContourRipple v-if="isPersonalScorecard" class="score-ripple" :delay="0.9" />
-            <p v-if="isPersonalScorecard">
-              Well done, {{ selectedScorecard.player.name }}. You get
-              <strong>{{ animatedPoints }}</strong> of
-              {{ selectedScorecard.score?.points.maximum }} possible points.
-            </p>
-            <p v-else>
-              Here is {{ selectedScorecard.player.name }}'s scorecard. They scored
-              <strong>{{ animatedPoints }}</strong> of
-              {{ selectedScorecard.score?.points.maximum }} possible points.
-            </p>
-            <p v-if="isTraversal">
-              The shortest link needs
-              {{ Math.max(0, (traversalChallenge?.optimalHops ?? 1) - 1) }}
-              {{ (traversalChallenge?.optimalHops ?? 1) - 1 === 1 ? 'country' : 'countries' }}
-              in between — every extra or stray guess costs points.
-            </p>
-            <p v-else>
-              You get 3 points for a fully correct answer, 2 points a country being one off, and 1
-              point for a country being two places off.
-            </p>
+            <div class="score-stat">
+              <strong class="points">{{ animatedPoints }}</strong>
+              <span class="of">/ {{ selectedScorecard.score?.points.maximum }} points</span>
+            </div>
+            <div class="score-copy">
+              <p class="lead">
+                {{
+                  isPersonalScorecard
+                    ? `Well done, ${selectedScorecard.player.name}.`
+                    : `${selectedScorecard.player.name}'s round.`
+                }}
+              </p>
+              <p class="explainer">{{ explainer }}</p>
+            </div>
           </div>
-          <section class="pane-content horizontal ranking">
-            <h4>{{ isTraversal ? 'Your Guesses' : 'Submitted Ranking' }}</h4>
-            <ViewRanking :iso-codes="selectedScorecard.answers.submitted" />
-          </section>
 
-          <section class="pane-content horizontal bottom ranking">
-            <h4>{{ isTraversal ? 'A Shortest Route' : 'Correct Ranking' }}</h4>
-            <ViewRanking :iso-codes="selectedScorecard.answers.correct" />
-          </section>
+          <template v-if="kind === 'sketch' && sketchChallenge">
+            <section class="pane-content ranking">
+              <span class="eyebrow">The Reveal</span>
+              <SketchOverlay
+                :country="sketchChallenge.country"
+                :sketch="selectedScorecard.answers.sketch"
+              />
+            </section>
+          </template>
+          <template v-else>
+            <section class="pane-content ranking">
+              <span class="eyebrow">{{ sectionLabels.submitted }}</span>
+              <ViewRanking :iso-codes="selectedScorecard.answers.submitted" />
+            </section>
+
+            <section class="pane-content ranking">
+              <span class="eyebrow">{{ sectionLabels.correct }}</span>
+              <ViewRanking :iso-codes="selectedScorecard.answers.correct" />
+            </section>
+          </template>
         </template>
         <template>
           <p>{{ selectedScorecard.player.name }} hasn't answered yet.</p>
         </template>
-        <nav class="pane-content horizontal bottom">
+        <nav class="pane-content card-nav">
           <ButtonFilled @click="closeScores">
             <span>Close Scores</span>
           </ButtonFilled>
@@ -57,48 +63,123 @@
       </section>
 
       <section class="player-listing pane-content">
-        <PlayerTile
-          v-for="{ player, score } in gameStore.rankedScores"
+        <header class="listing-header">
+          <span class="eyebrow">Round Standings</span>
+        </header>
+        <div
+          v-for="({ player, score }, index) in gameStore.rankedScores"
           :key="player.id"
-          :player="player"
           class="score-row"
-          :class="{ 'own-player': player.id === playerId }"
+          :class="{ 'own-player': player.id === playerId, selected: player.id === selectedPlayer }"
           @click="selectedPlayer = player.id"
         >
-          <div class="score-status">
-            <span v-if="score?.points"> {{ score.points.scored }}/{{ score.points.maximum }}</span>
-            <span v-else>...</span>
-          </div>
-        </PlayerTile>
+          <span class="rank">{{ index + 1 }}</span>
+          <PlayerTile :player="player">
+            <div class="score-status">
+              <strong v-if="score?.points">
+                {{ score.points.scored }}<span class="muted">/{{ score.points.maximum }}</span>
+              </strong>
+              <span v-else class="muted">…</span>
+            </div>
+          </PlayerTile>
+        </div>
       </section>
     </article>
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
+import {
+  isTraversalChallenge,
+  roundChallengeKind,
+} from '~~/types/challenges/traversal-challenge.type'
 
 const { currentRound, playerId, gameStore } = useClientEvents()
 
+const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
+const kind = computed(() => roundChallengeKind(roundChallenge.value))
+
 const traversalChallenge = computed(() => {
-  const challenge = currentRound.value?.round.groupChallenge
+  const challenge = roundChallenge.value
   return isTraversalChallenge(challenge) ? challenge : undefined
 })
-const isTraversal = computed(() => !!traversalChallenge.value)
+
+const sketchChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'sketch-challenge'
+    ? challenge
+    : undefined
+})
 
 const challengeHeading = computed(() => {
-  const challenge = currentRound.value?.round.groupChallenge
+  const challenge = roundChallenge.value
   if (!challenge) return ''
-  if (isTraversalChallenge(challenge)) {
-    return `Travel from ${countryName(challenge.start)} to ${countryName(challenge.target)}`
+  switch (kind.value) {
+    case 'traversal': {
+      const active = traversalChallenge.value
+      if (!active) return ''
+      return active.corridor
+        ? `Link ${countryName(active.start)} to ${countryName(active.target)} — ${active.corridor.name} only`
+        : `Link ${countryName(active.start)} to ${countryName(active.target)}`
+    }
+    case 'neighbour-blitz':
+      return '_type' in challenge && challenge._type === 'neighbour-blitz-challenge'
+        ? `Name ${countryName(challenge.country)}'s neighbours`
+        : ''
+    case 'silhouette':
+      return '_type' in challenge && challenge._type === 'silhouette-challenge'
+        ? `Whose outline is this? It was ${countryName(challenge.country)}`
+        : ''
+    case 'hot-cold':
+      return '_type' in challenge && challenge._type === 'hot-cold-challenge'
+        ? `The mystery country was ${countryName(challenge.country)}`
+        : ''
+    case 'sketch':
+      return sketchChallenge.value ? `Draw ${countryName(sketchChallenge.value.country)}` : ''
+    default:
+      return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
   }
-  return getChallengeDetails(challenge.id)?.phrasing ?? ''
+})
+
+const explainer = computed(() => {
+  switch (kind.value) {
+    case 'traversal': {
+      const between = Math.max(0, (traversalChallenge.value?.optimalHops ?? 1) - 1)
+      return `The shortest link needs ${between} ${between === 1 ? 'country' : 'countries'} in between — every extra or stray guess costs points.`
+    }
+    case 'neighbour-blitz':
+      return 'Points scale with neighbours found — wrong names each cost one.'
+    case 'silhouette':
+      return 'The earlier the buzz, the bigger the score.'
+    case 'hot-cold':
+      return 'Finding it is everything — every extra probe costs points.'
+    case 'sketch':
+      return 'Scored by how closely the drawing matches the real outline.'
+    default:
+      return '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
+  }
+})
+
+const sectionLabels = computed(() => {
+  switch (kind.value) {
+    case 'traversal':
+      return { submitted: 'Your Guesses', correct: 'A Shortest Route' }
+    case 'neighbour-blitz':
+      return { submitted: 'Your Answers', correct: 'All the Neighbours' }
+    case 'silhouette':
+      return { submitted: 'Your Answer', correct: 'The Country' }
+    case 'hot-cold':
+      return { submitted: 'Your Probe Trail', correct: 'The Country' }
+    default:
+      return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
+  }
 })
 
 const selectedPlayer = ref(playerId)
@@ -156,28 +237,77 @@ const closeScores = () => {
 }
 </script>
 <style lang="scss" scoped>
+$hairline: hsla(0, 0%, 7.5%, 0.12);
+
 .group-scores {
   width: 100%;
   margin: auto;
   display: grid;
   max-width: 110rem;
   grid-template-columns: 73% 27%;
-  .ranking {
-    padding-right: 0;
+}
+
+// Small-caps section labels carry the hierarchy
+.eyebrow {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft-blue);
+  margin-bottom: 0.8rem;
+}
+
+.card-header {
+  padding-bottom: 2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  h2 {
+    margin: 0;
+    font-size: 2.8rem;
+    color: var(--dark-blue);
   }
 }
 
-.player-listing {
-  border-left: 0.1rem solid var(--text-color);
-}
-
-.score-row.own-player {
-  border-left: 0.5rem solid var(--warm-sand);
-  padding-left: 0.8rem;
-}
-
+// The score is the headline fact — a big stat, copy beside it
 .score-summary {
+  gap: 2.4rem;
+  display: flex;
   position: relative;
+  align-items: center;
+  padding-top: 2.4rem;
+  padding-bottom: 2.4rem;
+
+  .score-stat {
+    display: flex;
+    flex-shrink: 0;
+    align-items: baseline;
+    gap: 0.6rem;
+
+    .points {
+      font-size: 6rem;
+      line-height: 1;
+      color: var(--dark-blue);
+    }
+    .of {
+      opacity: 0.6;
+      font-size: 1.6rem;
+      white-space: nowrap;
+    }
+  }
+
+  .score-copy {
+    .lead {
+      margin: 0 0 0.4rem;
+      font-size: 1.9rem;
+      font-weight: bold;
+    }
+    .explainer {
+      margin: 0;
+      opacity: 0.6;
+      font-size: 1.4rem;
+    }
+  }
 
   .score-ripple {
     top: 50%;
@@ -186,6 +316,81 @@ const closeScores = () => {
     height: 16rem;
     position: absolute;
     transform: translate(-50%, -50%);
+  }
+}
+
+.ranking {
+  padding-top: 2rem;
+  padding-right: 0;
+  padding-bottom: 2rem;
+  border-top: 0.1rem solid $hairline;
+}
+
+.card-nav {
+  display: flex;
+  padding-top: 2rem;
+  padding-bottom: 2.4rem;
+  justify-content: flex-end;
+  border-top: 0.1rem solid $hairline;
+}
+
+// Sidebar: ranked standings
+.player-listing {
+  border-left: 0.1rem solid var(--text-color);
+}
+
+.listing-header {
+  margin-bottom: 1.6rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  .eyebrow {
+    margin-bottom: 0;
+  }
+}
+
+.score-row {
+  gap: 1rem;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+
+  .rank {
+    width: 2rem;
+    opacity: 0.45;
+    flex-shrink: 0;
+    font-size: 1.4rem;
+    text-align: right;
+    font-weight: bold;
+  }
+
+  :deep(.player-tile) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &.selected :deep(.player-tile) {
+    border-right-width: 0.6rem;
+  }
+
+  &.own-player .rank {
+    opacity: 1;
+    color: var(--dark-blue);
+  }
+  &.own-player :deep(.player-tile) {
+    outline: 0.2rem solid var(--warm-sand);
+    outline-offset: 0.2rem;
+  }
+}
+
+.score-status {
+  margin-left: auto;
+  font-size: 1.7rem;
+
+  .muted {
+    opacity: 0.55;
+    font-weight: normal;
+    font-size: 1.3rem;
   }
 }
 </style>

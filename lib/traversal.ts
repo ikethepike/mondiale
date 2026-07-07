@@ -34,9 +34,11 @@ export const distancesFrom = (origin: ISOCountryCode): Map<ISOCountryCode, numbe
 export const isRouteComplete = (
   start: ISOCountryCode,
   target: ISOCountryCode,
-  guesses: ISOCountryCode[]
+  guesses: ISOCountryCode[],
+  within?: Set<ISOCountryCode>
 ): boolean => {
-  const allowed = new Set<ISOCountryCode>([start, target, ...guesses])
+  const usable = within ? guesses.filter(isoCode => within.has(isoCode)) : guesses
+  const allowed = new Set<ISOCountryCode>([start, target, ...usable])
   const visited = new Set<ISOCountryCode>([start])
   const queue: ISOCountryCode[] = [start]
 
@@ -56,10 +58,12 @@ export const isRouteComplete = (
 /**
  * Shortest land route between two countries (BFS), including both endpoints.
  * Undefined when no land route exists (islands, separate landmasses).
+ * `within` restricts the route to a subset of countries (alliance corridors).
  */
 export const shortestPath = (
   from: ISOCountryCode,
-  to: ISOCountryCode
+  to: ISOCountryCode,
+  within?: Set<ISOCountryCode>
 ): ISOCountryCode[] | undefined => {
   if (from === to) return [from]
 
@@ -71,6 +75,7 @@ export const shortestPath = (
     const current = queue.shift() as ISOCountryCode
     for (const next of BORDERS[current] ?? []) {
       if (visited.has(next)) continue
+      if (within && next !== to && !within.has(next)) continue
       visited.add(next)
       cameFrom.set(next, current)
 
@@ -120,13 +125,15 @@ export interface TraversalPick {
  */
 export const pickTraversal = (
   difficulty: GameDifficulty,
-  variant: GameVariant = 'world'
+  variant: GameVariant = 'world',
+  within?: Set<ISOCountryCode>
 ): TraversalPick | undefined => {
   const { minHops, maxHops } = TRAVERSAL_DIFFICULTY[difficulty]
 
   const candidates = shuffleArray(
     ISOCountryCodes.filter(isoCode => {
       if (!BORDERS[isoCode]?.length) return false
+      if (within && !within.has(isoCode)) return false
       if (variant === 'world') return true
       return COUNTRIES[isoCode].region === variant
     })
@@ -144,6 +151,7 @@ export const pickTraversal = (
       if (distance >= maxHops) continue
       for (const next of BORDERS[current] ?? []) {
         if (distances.has(next)) continue
+        if (within && !within.has(next)) continue
         distances.set(next, distance + 1)
         queue.push(next)
       }
@@ -156,7 +164,7 @@ export const pickTraversal = (
     if (!inBand.length) continue
 
     const [target, optimalHops] = inBand[Math.floor(Math.random() * inBand.length)]
-    const optimalPath = shortestPath(start, target)
+    const optimalPath = shortestPath(start, target, within)
     if (!optimalPath) continue
 
     return { start, target, optimalHops, optimalPath }

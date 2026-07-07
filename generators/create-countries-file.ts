@@ -343,16 +343,28 @@ const getTextNode = <Unit>(data: TextNode | undefined, unit: Unit): Amount<Unit>
 }
 
 const getHighestPeak = (data: FactbookResponse): (Amount<'m'> & { name: string }) | undefined => {
-  const highestPeak = getTextNode<'m'>(data['Geography'].Elevation?.['highest point'], 'm')
-  if (!highestPeak) return undefined
-  const name = (data.Geography.Elevation?.['highest point']?.text || '')
-    .match(/^(\D*)/g)
-    ?.filter(Boolean)
-    ?.shift()
+  const text = data.Geography.Elevation?.['highest point']?.text
+  if (!text) return undefined
+
+  // Factbook highest-point strings are "<name> <elevation> m", where the name
+  // can itself contain digits ("K2", "8th tee, golf course, ...") and an
+  // explanatory parenthetical may trail the measurement ("... 6,190 m (highest
+  // point in North America)"). Parsing the first number as the elevation (and
+  // the leading non-digit run as the name) mangled both cases — K2 became "K"
+  // at 2 m; the Maldives became "" at 8 m. So strip parentheticals first, then
+  // take the *trailing* "<number> m" as the elevation and everything before it
+  // as the name.
+  const cleaned = removeParentheticals(text)
+  const match = cleaned.match(/^(.*?)\s*([\d,.]+)\s*m$/)
+  if (!match) return undefined
+
+  const amount = Number(match[2].replaceAll(',', ''))
+  if (Number.isNaN(amount)) return undefined
 
   return {
-    ...highestPeak,
-    name: name ? removeParentheticals(name).trim() : '',
+    unit: 'm',
+    amount,
+    name: match[1].trim(),
   }
 }
 

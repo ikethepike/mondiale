@@ -13,6 +13,25 @@ import type { Redis } from '@upstash/redis'
 
 const TWO_DAYS_IN_SECONDS = 172800
 
+/**
+ * Handlers read-modify-write the whole game to Redis, so two of them running
+ * concurrently for the same game clobber each other's saves. One process
+ * serves all games — a per-game promise chain fully serializes them. Pacing
+ * delays (e.g. "bask in the result for 5s") must NOT hold the chain: run the
+ * timer outside and enqueue the follow-up as a fresh task.
+ */
+const gameQueues = new Map<string, Promise<unknown>>()
+
+export const enqueueGameTask = <T>(gameId: string, task: () => T | Promise<T>): Promise<T> => {
+  const tail = gameQueues.get(gameId) ?? Promise.resolve()
+  const next = tail.then(task)
+  gameQueues.set(
+    gameId,
+    next.catch(error => console.error(`Game task failed for ${gameId}`, error))
+  )
+  return next
+}
+
 export const useServerSideEvents = ({
   io,
   redis,

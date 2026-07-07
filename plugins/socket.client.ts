@@ -47,9 +47,6 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'individual-challenge-checked': {
     handler: playerUpdateEvent,
   },
-  'player-ready-for-round': {
-    handler: playerUpdateEvent,
-  },
   'index-update': {
     handler: indexUpdateEvent,
   },

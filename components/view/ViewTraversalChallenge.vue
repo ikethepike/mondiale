@@ -2,10 +2,18 @@
   <div v-if="challenge" class="traversal-challenge">
     <Interstitial
       v-if="showInterstitial"
-      tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Border Run`"
+      :tone="challenge.corridor ? 'alert' : 'info'"
+      :kicker="
+        challenge.corridor
+          ? `Round ${currentRound?.number ?? 1} — ${challenge.corridor.name} Corridor`
+          : `Round ${currentRound?.number ?? 1} — Border Run`
+      "
       :title="`Link ${countryName(challenge.start)} to ${countryName(challenge.target)}`"
-      :stakes="`Name the countries that connect them by land — every guess counts, and you have ${challenge.maximumClicks}.`"
+      :stakes="
+        challenge.corridor
+          ? `Only ${challenge.corridor.name} members can bridge the route — every guess counts, and you have ${challenge.maximumClicks}.`
+          : `Name the countries that connect them by land — every guess counts, and you have ${challenge.maximumClicks}.`
+      "
       @done="onInterstitialDone"
     />
 
@@ -14,6 +22,9 @@
         <h1 class="map-caption">
           Link {{ countryName(challenge.start) }} to {{ countryName(challenge.target) }}
         </h1>
+        <span v-if="challenge.corridor" class="map-caption corridor">
+          Corridor rule: only {{ challenge.corridor.name }} members can bridge the route
+        </span>
         <span class="map-caption sub">
           {{ guessesLeft }} {{ guessesLeft === 1 ? 'guess' : 'guesses' }} left
         </span>
@@ -149,11 +160,17 @@ const distanceMaps = computed(() => {
   }
 })
 
+const corridorSet = computed(() =>
+  challenge.value?.corridor ? new Set(challenge.value.corridor.members) : undefined
+)
+
 /** optimal = lies on a shortest route; inefficient = connected detour; stray = neither. */
 const tintFor = (isoCode: ISOCountryCode): MapTint => {
   const active = challenge.value
   const maps = distanceMaps.value
   if (!active || !maps) return 'stray'
+  // Outside the corridor a guess can never help
+  if (corridorSet.value && !corridorSet.value.has(isoCode)) return 'stray'
 
   const toStart = maps.fromStart.get(isoCode)
   const toTarget = maps.fromTarget.get(isoCode)
@@ -227,7 +244,7 @@ const submitGuess = (country: Country) => {
   query.value = ''
 
   // Resolve the moment the guessed countries bridge the endpoints
-  if (isRouteComplete(active.start, active.target, guesses.value)) {
+  if (isRouteComplete(active.start, active.target, guesses.value, corridorSet.value)) {
     gameStore.map.status = 'correct'
     return submitRound()
   }
@@ -282,12 +299,19 @@ header {
   }
 
   .sub,
-  .hint {
+  .hint,
+  .corridor {
     padding: 0.4rem 1.4rem;
   }
 
-  .hint {
+  .hint,
+  .corridor {
     color: var(--hior-ange);
+  }
+
+  .corridor {
+    font-weight: bold;
+    border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
   }
 
   .prompt {

@@ -91,9 +91,7 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
 /**
  * Returns a sorted array (max -> min) of a given value key
  */
-const getSortedRanking = (accessorId?: MinMaxAccessorKeys) => {
-  accessorId = accessorId || minMaxAccessors[Math.floor(minMaxAccessors.length * Math.random())]
-
+const buildSortedRanking = (accessorId: MinMaxAccessorKeys) => {
   const sortedCountries: { amount: Amount<any>; isoCode: ISOCountryCode }[] = []
 
   for (const isoCode of Object.keys(COUNTRIES)) {
@@ -107,10 +105,22 @@ const getSortedRanking = (accessorId?: MinMaxAccessorKeys) => {
     })
   }
 
-  return {
-    accessorId,
-    sortedcountries: sortedCountries.sort((a, b) => b.amount.amount - a.amount.amount),
+  return sortedCountries.sort((a, b) => b.amount.amount - a.amount.amount)
+}
+
+const getSortedRanking = (accessorId?: MinMaxAccessorKeys) => {
+  if (accessorId) {
+    return { accessorId, sortedcountries: buildSortedRanking(accessorId) }
   }
+
+  // Source data drifts between regenerations and some accessors end up
+  // empty — dealing one of those would crash the final challenge mid-game
+  for (const candidate of shuffleArray([...minMaxAccessors])) {
+    const sortedcountries = buildSortedRanking(candidate)
+    if (sortedcountries.length >= 6) return { accessorId: candidate, sortedcountries }
+  }
+
+  throw new ReferenceError('No min/max accessor has enough country data')
 }
 
 const getMaxChallenge = (): MaxChallenge => {

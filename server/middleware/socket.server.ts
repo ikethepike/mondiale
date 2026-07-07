@@ -1,10 +1,10 @@
 import { Redis } from '@upstash/redis'
 import { Server } from 'socket.io'
 import type { DefaultEventsMap, Socket } from 'socket.io'
+import { enqueueGameTask } from '~~/lib/events/server-side'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
 import { joinEventHandler } from '~~/lib/events/server/join.event'
-import { readyForRoundHandler } from '~~/lib/events/server/ready-for-round.handler'
 import { setColorHandler } from '~~/lib/events/server/set-color.handler'
 import { setNameHandler } from '~~/lib/events/server/set-name.handler'
 import { startGameHandler } from '~~/lib/events/server/start-game.handler'
@@ -48,9 +48,6 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   'submit-group-challenge-answers': {
     handler: submitGroupChallengeAnswersHandler,
   },
-  'ready-for-round': {
-    handler: readyForRoundHandler,
-  },
   'close-tutorial': {
     handler: closeTutorialHandler,
   },
@@ -90,15 +87,19 @@ export default defineEventHandler(({ node }) => {
     io.on('connection', async socket => {
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
         socket.on(eventKey, (eventData, eventTarget) => {
-          console.log(`Received client event: ${eventKey} for ${eventTarget.gameId}`)
-          return configuration.handler({
-            io,
-            redis,
-            socket,
-            eventData,
-            eventTarget,
-            eventKey: eventKey as ClientEvent,
-          })
+          console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
+          if (!eventTarget?.gameId) return
+
+          return enqueueGameTask(eventTarget.gameId, () =>
+            configuration.handler({
+              io,
+              redis,
+              socket,
+              eventData,
+              eventTarget,
+              eventKey: eventKey as ClientEvent,
+            })
+          )
         })
       }
     })

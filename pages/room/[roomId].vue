@@ -23,13 +23,17 @@ import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
+import ViewHotCold from '~/components/view/ViewHotCold.vue'
+import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
+import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
+import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
+import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
 const { update, game, player, currentRound } = useClientEvents()
@@ -58,11 +62,23 @@ const activeView = computed<ActiveView | undefined>(() => {
   if (!currentRound.value?.round) return undefined
 
   switch (player.value.phase) {
-    case 'group-challenge':
-      // The shared round is either a ranking or a Travle-style traversal
-      return isTraversalChallenge(currentRound.value.round.groupChallenge)
-        ? { component: ViewTraversalChallenge, kind: 'challenge', key: 'traversal-challenge' }
-        : { component: ViewGroupChallenge, kind: 'challenge', key: 'group-challenge' }
+    case 'group-challenge': {
+      // The shared round comes in several formats — one view per kind
+      const groupViews: { [kind: string]: Component } = {
+        ranking: ViewGroupChallenge,
+        traversal: ViewTraversalChallenge,
+        'neighbour-blitz': ViewNeighbourBlitz,
+        silhouette: ViewSilhouette,
+        'hot-cold': ViewHotCold,
+        sketch: ViewSketch,
+      }
+      const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
+      return {
+        component: groupViews[roundKind] ?? ViewGroupChallenge,
+        kind: 'challenge',
+        key: `group-${roundKind}`,
+      }
+    }
     case 'group-scores':
       return { component: ViewGroupScores, kind: 'score', key: 'group-scores' }
     case 'moving':

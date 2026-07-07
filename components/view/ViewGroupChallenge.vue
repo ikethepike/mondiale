@@ -24,9 +24,33 @@
 
       <footer>
         <div class="indicators">
-          <span>{{ details?.markers?.most }}</span>
+          <span class="pole pole-most">
+            <svg class="pole-arrow" viewBox="0 0 40 16" aria-hidden="true">
+              <path
+                d="M39 8H2M2 8l6-5M2 8l6 5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="pole-label">{{ details?.markers?.most }}</span>
+          </span>
           <ButtonFilled>Submit Ranking</ButtonFilled>
-          <span>{{ details?.markers?.least }}</span>
+          <span class="pole pole-least">
+            <span class="pole-label">{{ details?.markers?.least }}</span>
+            <svg class="pole-arrow" viewBox="0 0 40 16" aria-hidden="true">
+              <path
+                d="M1 8h37M38 8l-6-5M38 8l-6 5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
         </div>
         <Sortable
           :list="countries"
@@ -193,16 +217,107 @@ footer {
 .indicators {
   width: 100%;
   display: grid;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  grid-template-columns: repeat(3, max-content);
-  span:nth-of-type(1)::before {
-    content: '⟵';
-    padding: 0 1rem;
+  grid-template-columns: 1fr max-content 1fr;
+}
+
+// The two poles frame the ranking: they tell the player which direction is
+// "more" and which is "less". They earn real prominence — an eyebrow-scale
+// small-caps label sitting beside a large arrow that drifts toward its extreme,
+// nudging the drag intent. Purely decorative and non-interactive, so the
+// ambient loop is safe here (see mondiale-dev-quirks: never on the button).
+.pole {
+  gap: 1rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--soft-blue);
+}
+
+.pole-most {
+  justify-self: start;
+}
+.pole-least {
+  justify-self: end;
+}
+
+.pole-label {
+  font-weight: bold;
+  font-size: 1.6rem;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dark-blue);
+}
+
+// An inline SVG rather than a ⟵/⟶ glyph: the math-arrow characters sit on the
+// font's math axis, not the text baseline, so they rendered low and unevenly
+// across fonts. The SVG's ink is centred in its viewBox, so flex centring lands
+// it true against the label with no magic offset. Shares the label's accent
+// (currentColor) so the pole reads as one unit.
+.pole-arrow {
+  display: block;
+  width: 3rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  overflow: visible;
+  color: var(--soft-blue);
+}
+
+// Entrance: the poles ease in from their own edge as the round settles.
+.pole-most {
+  animation: pole-in-left var(--motion-slow) var(--ease-out-expressive) both;
+}
+.pole-least {
+  animation: pole-in-right var(--motion-slow) var(--ease-out-expressive) both;
+}
+
+// Continuous, restrained drift on the arrow only — echoes the "drifting
+// backdrop" ambient language without pulling the eye off the tiles.
+.pole-most .pole-arrow {
+  animation: nudge-left var(--motion-ambient) var(--ease-smooth) infinite;
+}
+.pole-least .pole-arrow {
+  animation: nudge-right var(--motion-ambient) var(--ease-smooth) infinite;
+}
+
+@keyframes pole-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(1.6rem);
   }
-  span:nth-of-type(2)::after {
-    content: '⟶';
-    padding: 0 1rem;
+}
+@keyframes pole-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-1.6rem);
+  }
+}
+@keyframes nudge-left {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-0.6rem);
+  }
+}
+@keyframes nudge-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(0.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pole-most,
+  .pole-least,
+  .pole-most .pole-arrow,
+  .pole-least .pole-arrow {
+    animation: none;
   }
 }
 
