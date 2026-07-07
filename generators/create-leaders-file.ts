@@ -9,10 +9,10 @@ import type { ISOCountryCode } from '../types/geography.types'
  *
  * Deliberately avoids the SPARQL query service (Blazegraph — flaky, 60s hard
  * timeouts under load) in favour of the plain Action/REST APIs:
- *   1. haswbstatement:P297=<ISO> search  → country Q-id (sequential — 429s)
- *   2. wbgetentities props=claims        → current P35/P6 statements
- *   3. wbgetentities props=labels|claims → leader names + portrait filenames
- *   4. Commons Special:FilePath          → the images themselves (sequential)
+ *   1. haswbstatement:P297 search (paginated) → every ISO-carrying entity
+ *   2. wbgetentities props=claims (small batches) → ISO + current P35/P6
+ *   3. wbgetentities labels (languagefallback!) + pageprops page_image_free
+ *   4. Commons Special:FilePath → the images themselves (sequential — 429s)
  *
  * Portraits are saved as one dedicated file per country and role under
  * public/leaders/ — nothing is inlined into the data bundle. Existing files
@@ -162,19 +162,40 @@ console.log(`\n${holders.length} officeholder statements found`)
 const leaderIds = [...new Set(holders.map(holder => holder.leaderId))]
 const leaderDetails = new Map<string, { name?: string; portraitFile?: string }>()
 
-console.log(`Fetching ${leaderIds.length} leader entities…`)
-for (let index = 0; index < leaderIds.length; index += 10) {
-  const batch = leaderIds.slice(index, index + 10)
-  const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|claims&languages=en&format=json`
-  )
-  for (const [id, entity] of Object.entries(data?.entities ?? {})) {
-    leaderDetails.set(id, {
-      name: entity.labels?.en?.value,
-      portraitFile: entity.claims?.P18?.[0]?.mainsnak?.datavalue?.value as string | undefined,
-    })
+interface PagePropsResponse {
+  query?: {
+    pages?: { [pageId: string]: { title?: string; pageprops?: { page_image_free?: string } } }
   }
-  process.stdout.write(`\r  ${Math.min(index + 10, leaderIds.length)}/${leaderIds.length}`)
+}
+
+console.log(`Fetching ${leaderIds.length} leader entities…`)
+for (let index = 0; index < leaderIds.length; index += 50) {
+  const batch = leaderIds.slice(index, index + 50)
+
+  // Names: labels only (a statement-heavy politician's full claims run to
+  // tens of MB). languagefallback matters — some items keep their label
+  // under the multilingual 'mul' language with no plain 'en' entry at all
+  // (this is how the United States went missing: no en label on its
+  // president's item).
+  const labelData = await getJson<EntityResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
+  )
+  for (const [id, entity] of Object.entries(labelData?.entities ?? {})) {
+    leaderDetails.set(id, { name: entity.labels?.en?.value })
+  }
+
+  // Portraits: the PageImages prop is derived from P18 and costs bytes, not
+  // megabytes
+  const imageData = await getJson<PagePropsResponse>(
+    `https://www.wikidata.org/w/api.php?action=query&prop=pageprops&ppprop=page_image_free&titles=${batch.join('|')}&format=json`
+  )
+  for (const page of Object.values(imageData?.query?.pages ?? {})) {
+    if (!page.title || !page.pageprops?.page_image_free) continue
+    const details = leaderDetails.get(page.title)
+    if (details) details.portraitFile = page.pageprops.page_image_free
+  }
+
+  process.stdout.write(`\r  ${Math.min(index + 50, leaderIds.length)}/${leaderIds.length}`)
   await wait(200)
 }
 console.log('')
