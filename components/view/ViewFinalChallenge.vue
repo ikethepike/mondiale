@@ -74,6 +74,9 @@ const showInterstitial = ref(true)
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
   if (showInterstitial.value) return
+  // Answer revealed — ignore clicks so the result can't be re-submitted or
+  // the zoomed-in highlight repainted while the server settles the outcome
+  if (status.value) return
   if (!currentFinalChallenge.value) return
   const { isoCode } = event.detail
 

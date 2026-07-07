@@ -46,6 +46,10 @@ export const useClientEvents = () => {
     gameStore.map.highlighted.clear()
     gameStore.map.reveal = undefined
     gameStore.map.status = undefined
+    gameStore.map.solo = false
+    gameStore.map.labels = false
+    gameStore.map.focus = []
+    gameStore.map.tints = {}
   }
 
   return {

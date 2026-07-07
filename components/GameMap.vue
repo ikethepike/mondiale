@@ -1,14 +1,14 @@
 <template>
   <div
     ref="wrapper"
-    :class="[`game-map`, status]"
+    :class="[`game-map`, status, { solo, 'show-labels': labels }]"
     data-zoom-on-wheel="zoom-amount: 0.01; max-scale: 16;"
     data-pan-on-drag="button: left;"
   >
     <svg
       ref="svg"
       version="1.1"
-      viewBox="0 0 2000 1001"
+      :viewBox="viewBox"
       style="stroke-linejoin: round; stroke: currentColor; fill: none"
       :class="{ 'has-highlights': highlights.length > 0 }"
     >
@@ -1493,7 +1493,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useGameStore } from '~~/store/game.store'
+import { gsap } from 'gsap'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping } from '~~/types/map.type'
@@ -1515,17 +1517,49 @@ const props = defineProps({
     type: Array as PropType<CountryColorGrouping[]>,
     required: false,
   },
+  /** Shapes-only: countries without an inline fill disappear entirely. */
+  solo: {
+    type: Boolean,
+    default: false,
+  },
+  /** Show ISO acronym labels over countries. */
+  labels: {
+    type: Boolean,
+    default: false,
+  },
+  /** Animate the viewBox to frame these countries together. */
+  focusCountries: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Soft verdict fills for traversal guesses. */
+  tints: {
+    type: Object as PropType<{ [isoCode in ISOCountryCode]?: MapTint }>,
+    default: () => ({}),
+  },
 })
+
+// Deliberately soft washes — feedback, not verdict-shouting
+const TINT_COLORS: { [tint in MapTint]: string } = {
+  optimal: 'hsla(170.5, 34.7%, 55.1%, 0.65)',
+  inefficient: 'hsla(29.7, 79.9%, 66.7%, 0.6)',
+  stray: 'hsla(9.8, 81.3%, 60.2%, 0.42)',
+  endpoint: 'hsla(215.7, 76.4%, 31.6%, 0.45)',
+}
 
 const countryColors = computed(() => {
   const outputVector: { [isoCode in ISOCountryCode | string]: string } = {}
-  const { countryGroupings } = props
-  if (!countryGroupings) return outputVector
 
-  for (const { countries, color } of countryGroupings) {
-    for (const country of countries) {
-      outputVector[country] = color
+  if (props.countryGroupings) {
+    for (const { countries, color } of props.countryGroupings) {
+      for (const country of countries) {
+        outputVector[country] = color
+      }
     }
+  }
+
+  for (const [isoCode, tint] of Object.entries(props.tints)) {
+    if (tint) outputVector[isoCode] = TINT_COLORS[tint]
   }
 
   return outputVector
@@ -1534,6 +1568,96 @@ const countryColors = computed(() => {
 const clicked = ref<ISOCountryCode | undefined>(undefined)
 const highlights = computed(() =>
   [...props.highlighted, props.highlightCountry, clicked.value].filter(Boolean)
+)
+
+// --- Camera: animate the viewBox to frame the focus countries together -----
+const WORLD_VIEW = { x: 0, y: 0, width: 2000, height: 1001 }
+const viewState = reactive({ ...WORLD_VIEW })
+const viewBox = computed(
+  () => `${viewState.x} ${viewState.y} ${viewState.width} ${viewState.height}`
+)
+
+const frameFocus = () => {
+  if (!svg.value) return
+
+  const target = { ...WORLD_VIEW }
+  if (props.focusCountries.length) {
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const isoCode of props.focusCountries) {
+      const path = svg.value.querySelector(`#${isoCode}`) as SVGGraphicsElement | null
+      if (!path) continue
+      const box = path.getBBox()
+      minX = Math.min(minX, box.x)
+      minY = Math.min(minY, box.y)
+      maxX = Math.max(maxX, box.x + box.width)
+      maxY = Math.max(maxY, box.y + box.height)
+    }
+
+    if (minX !== Infinity) {
+      const pad = Math.max((maxX - minX) * 0.35, (maxY - minY) * 0.35, 60)
+      let x = minX - pad
+      let y = minY - pad
+      let width = maxX - minX + pad * 2
+      let height = maxY - minY + pad * 2
+
+      // Keep the world's aspect ratio so shapes never distort
+      const aspect = WORLD_VIEW.width / WORLD_VIEW.height
+      if (width / height > aspect) {
+        const grow = width / aspect - height
+        y -= grow / 2
+        height += grow
+      } else {
+        const grow = height * aspect - width
+        x -= grow / 2
+        width += grow
+      }
+
+      Object.assign(target, { x, y, width, height })
+    }
+  }
+
+  gsap.to(viewState, {
+    ...target,
+    duration: prefersReducedMotion() ? 0 : 1.1,
+    ease: 'power2.inOut',
+    overwrite: 'auto',
+  })
+}
+
+watch(
+  () => props.focusCountries,
+  () => nextTick(frameFocus)
+)
+
+// --- ISO acronym labels (easy-mode traversal aid), built once on demand ----
+let labelsBuilt = false
+const ensureLabels = () => {
+  if (labelsBuilt || !svg.value) return
+
+  const namespace = 'http://www.w3.org/2000/svg'
+  svg.value.querySelectorAll('path[data-id]').forEach(path => {
+    const box = (path as SVGGraphicsElement).getBBox()
+    // Microstates can't fit a readable label — skip the clutter
+    if (box.width < 14 && box.height < 14) return
+
+    const label = document.createElementNS(namespace, 'text')
+    label.textContent = (path as SVGPathElement).dataset.id ?? ''
+    label.setAttribute('x', String(box.x + box.width / 2))
+    label.setAttribute('y', String(box.y + box.height / 2))
+    label.classList.add('country-label')
+    svg.value?.appendChild(label)
+  })
+  labelsBuilt = true
+}
+
+watch(
+  () => props.labels,
+  value => {
+    if (value) nextTick(ensureLabels)
+  }
 )
 
 const emit = defineEmits(['countryClick'])
@@ -1566,6 +1690,9 @@ onMounted(async () => {
 
   // Pan to any country if set
   moveToCountry()
+
+  if (props.labels) ensureLabels()
+  if (props.focusCountries.length) frameFocus()
 })
 
 const { $pan, $zoom, $resetScale } = useNuxtApp()
@@ -1690,5 +1817,31 @@ path[id]:hover {
   path[data-id]:not(.highlighted-country) {
     fill: var(--hior-ange);
   }
+}
+
+// Shapes-only mode (traversal): countries without an inline tint fill vanish
+// entirely; guessed/endpoint shapes keep a soft ink stroke so they read as land
+.solo path[data-id] {
+  fill: transparent;
+  stroke: transparent;
+}
+.solo path.highlighted-country {
+  stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
+}
+
+// ISO acronym labels (easy-mode traversal aid)
+.country-label {
+  display: none;
+  stroke: none;
+  opacity: 0.65;
+  font-size: 11px;
+  text-anchor: middle;
+  font-family: inherit;
+  pointer-events: none;
+  fill: var(--dark-blue);
+  dominant-baseline: middle;
+}
+.show-labels .country-label {
+  display: block;
 }
 </style>

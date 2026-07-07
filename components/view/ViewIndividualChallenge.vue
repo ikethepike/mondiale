@@ -12,7 +12,6 @@
           <h1 class="map-caption">
             {{ processReplacements(details?.phrasing || '', challenge.country) }}
           </h1>
-          <span v-if="showDoubleTapHint" class="hint map-caption">Press again to confirm</span>
           <div v-if="challenge.id === 'flag' && country" class="flag-frame">
             <CountryFlag
               class="flag ambient-loop"
@@ -21,6 +20,10 @@
               fit="contain"
             />
           </div>
+          <!-- Always in the layout; fades in beneath the flag so nothing shifts -->
+          <span class="hint map-caption" :class="{ visible: showDoubleTapHint }">
+            Press again to confirm
+          </span>
         </div>
         <ChallengeResult
           v-else-if="submittedCountry && status"
@@ -93,6 +96,8 @@ const showDoubleTapHint = ref(false)
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
   if (showInterstitial.value) return
+  // Answer revealed — the zoomed result view is locked, no more highlighting
+  if (status.value) return
 
   const isoCode = event.detail.isoCode as ISOCountryCode
   if (gameStore.map.highlighted.has(isoCode)) {
@@ -137,9 +142,18 @@ header {
     font-size: 3.2rem;
   }
   .hint {
+    opacity: 0;
     display: inline-block;
-    margin-top: 1rem;
     padding: 0.4rem 1.4rem;
+    transform: translateY(-0.4rem);
+    transition:
+      opacity var(--motion-base) var(--ease-out-expressive),
+      transform var(--motion-base) var(--ease-out-expressive);
+
+    &.visible {
+      opacity: 1;
+      transform: none;
+    }
   }
   .question {
     gap: 1rem;

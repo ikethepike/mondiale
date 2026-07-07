@@ -51,7 +51,10 @@
 
     <footer>
       <ol class="route">
-        <li class="stop endpoint map-caption">{{ countryName(challenge.start) }}</li>
+        <li class="stop endpoint map-caption">
+          <CountryFlag class="stop-flag" :country="getCountry(challenge.start)" mode="background" />
+          <span>{{ countryName(challenge.start) }}</span>
+        </li>
         <TransitionGroup name="chain">
           <li
             v-for="isoCode in guesses"
@@ -63,7 +66,10 @@
             <span>{{ countryName(isoCode) }}</span>
           </li>
         </TransitionGroup>
-        <li class="stop endpoint map-caption">{{ countryName(challenge.target) }}</li>
+        <li class="stop endpoint target map-caption">
+          <CountryFlag class="stop-flag" :country="getCountry(challenge.target)" mode="background" />
+          <span>{{ countryName(challenge.target) }}</span>
+        </li>
       </ol>
     </footer>
   </div>
@@ -78,7 +84,8 @@ import {
   searchCountriesByName,
 } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import type { MapTint } from '~~/store/game.store'
 import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -132,18 +139,60 @@ const linkedSet = computed(() => {
   return linked
 })
 
-// On easy difficulty the outline map stays visible as an aid; otherwise the
-// map IS the answer key, so it hides for the whole round.
-const mapAllowed = computed(() => game.value?.difficulty === 'easy')
+// BFS distance fields from both endpoints, for classifying guesses
+const distanceMaps = computed(() => {
+  const active = challenge.value
+  if (!active) return undefined
+  return {
+    fromStart: distancesFrom(active.start),
+    fromTarget: distancesFrom(active.target),
+  }
+})
 
+/** optimal = lies on a shortest route; inefficient = connected detour; stray = neither. */
+const tintFor = (isoCode: ISOCountryCode): MapTint => {
+  const active = challenge.value
+  const maps = distanceMaps.value
+  if (!active || !maps) return 'stray'
+
+  const toStart = maps.fromStart.get(isoCode)
+  const toTarget = maps.fromTarget.get(isoCode)
+  if (toStart !== undefined && toTarget !== undefined && toStart + toTarget === active.optimalHops) {
+    return 'optimal'
+  }
+
+  return linkedSet.value.has(isoCode) ? 'inefficient' : 'stray'
+}
+
+// Reset lingering map state from the previous phase, then configure the
+// traversal presentation BEFORE the immediate watcher below paints onto it
+clearBoard()
+gameStore.map.solo = game.value?.difficulty !== 'easy'
+gameStore.map.labels = game.value?.difficulty === 'easy'
+
+// Guesses materialize on the map as softly tinted shapes. On easy the full
+// outline map (with ISO labels) stays as an aid; otherwise shapes-only.
 watch(
   [guesses, challenge],
   () => {
+    const active = challenge.value
     gameStore.map.highlighted.clear()
-    if (!mapAllowed.value || !challenge.value) return
-    gameStore.map.highlighted.add(challenge.value.start)
-    gameStore.map.highlighted.add(challenge.value.target)
-    for (const isoCode of guesses.value) gameStore.map.highlighted.add(isoCode)
+
+    const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
+    if (active) {
+      gameStore.map.highlighted.add(active.start)
+      gameStore.map.highlighted.add(active.target)
+      tints[active.start] = 'endpoint'
+      tints[active.target] = 'endpoint'
+      for (const isoCode of guesses.value) {
+        gameStore.map.highlighted.add(isoCode)
+        tints[isoCode] = tintFor(isoCode)
+      }
+    }
+    gameStore.map.tints = tints
+    // The camera reframes to keep every guess in view — a far-flung stray
+    // visibly zooms the world out, which is feedback in itself
+    gameStore.map.focus = active ? [active.start, active.target, ...guesses.value] : []
   },
   { deep: true, immediate: true }
 )
@@ -204,13 +253,8 @@ const onInterstitialDone = () => {
   nextTick(() => guessInput.value?.focus())
 }
 
-onBeforeMount(() => {
-  clearBoard()
-  if (!mapAllowed.value) gameStore.map.hidden = true
-})
 onBeforeUnmount(() => {
   clearBoard()
-  gameStore.map.hidden = false
   if (hintTimer) clearTimeout(hintTimer)
 })
 </script>
@@ -344,6 +388,14 @@ footer {
   &.endpoint {
     font-weight: bold;
     border-color: var(--dark-blue);
+    border-width: 0.15rem;
+  }
+
+  // The destination reads as "still to reach"
+  &.target::before {
+    content: '⟶';
+    opacity: 0.5;
+    font-weight: normal;
   }
 
   &.stray {

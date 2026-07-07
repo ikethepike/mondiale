@@ -13,10 +13,13 @@
 
     <LazyGameMap
       class="game-map"
-      :class="{ 'map-hidden': gameStore.map.hidden }"
       :highlighted="highlighted"
       :highlight-country="reveal"
       :status="status"
+      :solo="gameStore.map.solo"
+      :labels="gameStore.map.labels"
+      :focus-countries="gameStore.map.focus"
+      :tints="gameStore.map.tints"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)
@@ -109,11 +112,6 @@ onMounted(() => {
   transition:
     transform var(--motion-base) var(--ease-smooth) 0.25s,
     opacity var(--motion-slow) var(--ease-smooth);
-
-  &.map-hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
 
   position: absolute;
   transform: scale(0.8);

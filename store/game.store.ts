@@ -13,8 +13,14 @@ interface GameStoreState {
     reveal?: ISOCountryCode
     status?: 'incorrect' | 'correct'
     highlighted: Set<ISOCountryCode>
-    /** Hide the world map entirely (traversal rounds: the map is the answer key). */
-    hidden: boolean
+    /** Shapes-only mode: only highlighted/tinted countries render (traversal). */
+    solo: boolean
+    /** Show ISO acronym labels on countries (easy traversal aid). */
+    labels: boolean
+    /** Countries the map camera should frame together. */
+    focus: ISOCountryCode[]
+    /** Soft per-country verdict fills for traversal guesses. */
+    tints: { [isoCode in ISOCountryCode]?: MapTint }
   }
   /**
    * Set when the player closes the group scores; the 3D board clears it and
@@ -36,7 +42,10 @@ export const useGameStore = defineStore('game', {
       status: undefined,
       reveal: undefined,
       highlighted: new Set([]),
-      hidden: false,
+      solo: false,
+      labels: false,
+      focus: [],
+      tints: {},
     },
   }),
   actions: {},
@@ -117,6 +126,9 @@ export interface Scorecard {
   score?: PlayerTurn
   answers?: GroupChallengeAnswer
 }
+
+/** Traversal guess verdicts painted onto the map. */
+export type MapTint = 'optimal' | 'inefficient' | 'stray' | 'endpoint'
 
 export type PlayerScore =
   | {
