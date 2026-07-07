@@ -1,0 +1,25 @@
+// Motion tokens — the CSS side of lib/motion.ts. Keep the two in sync by hand.
+:root {
+  // Durations
+  --motion-quick: 0.18s; // micro feedback: ticks, pulses
+  --motion-base: 0.36s; // cross-fades, view swaps
+  --motion-slow: 0.6s; // entrances, reveal card
+  --motion-ambient: 6s; // ambient loops (breathing panes, drifting backdrops)
+
+  // Easings
+  --ease-out-expressive: cubic-bezier(0.16, 1, 0.3, 1); // entrances (≈ expo.out)
+  --ease-smooth: cubic-bezier(0.45, 0, 0.55, 1); // cross-fades (≈ power2.inOut)
+  --ease-in-soft: cubic-bezier(0.55, 0, 1, 0.45); // exits (≈ power2.in)
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-quick: 0.01s;
+    --motion-base: 0.01s;
+    --motion-slow: 0.01s;
+  }
+
+  .ambient-loop {
+    animation: none !important;
+  }
+}

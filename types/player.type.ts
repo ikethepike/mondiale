@@ -8,7 +8,7 @@ export interface Player {
   phase: PlayerPhase
   moves: PlayerMove[]
   currentPosition: number
-  comletedAtRound?: number
+  completedAtRound?: number
 }
 
 export type PlayerPhase =

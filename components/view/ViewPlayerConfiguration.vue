@@ -1,5 +1,6 @@
 <template>
   <div class="player-configuration-wrapper">
+    <MapContour class="contour-backdrop ambient-loop" aria-hidden="true" :animated="false" />
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
@@ -130,20 +131,22 @@
       </section>
       <section class="player-lobby pane-content">
         <header>
-          <p>{{ playersByPhase.all.length }}/8</p>
+          <p ref="playerCounter">{{ playersByPhase.all.length }}/8</p>
         </header>
 
-        <ul>
+        <TransitionGroup tag="ul" name="lobby-tile">
           <PlayerTile v-for="player in playersByPhase.all" :key="player.id" :player="player">
             <div :class="['player-status', { ready: player.ready }]" />
           </PlayerTile>
-        </ul>
+        </TransitionGroup>
       </section>
     </article>
   </div>
 </template>
 <script lang="ts" setup>
+import { gsap } from 'gsap'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { wait } from '~~/lib/time'
 import {
   gameVariants,
@@ -154,6 +157,20 @@ import {
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
+
+// Pulse the n/8 counter when the lobby size changes
+const playerCounter = ref<HTMLElement>()
+watch(
+  () => playersByPhase.value.all.length,
+  () => {
+    if (!playerCounter.value || prefersReducedMotion()) return
+    gsap.fromTo(
+      playerCounter.value,
+      { scale: 1.25 },
+      { scale: 1, duration: MOTION.quick, ease: 'power2.out', transformOrigin: 'right center' }
+    )
+  }
+)
 
 const isEveryoneReady = computed(() => {
   if (!game.value) return false
@@ -230,9 +247,31 @@ const startGame = () => {
   display: flex;
   border-radius: 0;
   max-width: 110rem;
-  animation: slide-in 0.5s 1;
   justify-content: flex-end;
   flex-flow: column-reverse nowrap;
+  position: relative;
+}
+
+// Ambient life lives on the non-interactive backdrop only — animating the
+// card itself would keep its buttons permanently "moving" for users
+// mid-click and for test automation alike.
+.contour-backdrop {
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  opacity: 0.06;
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: backdrop-drift calc(var(--motion-ambient) * 6) ease-in-out infinite alternate;
+}
+
+// Translate-only: animating scale would force the browser to keep
+// re-rasterizing this very large SVG layer
+@keyframes backdrop-drift {
+  100% {
+    transform: translate(-52.5%, -48%);
+  }
 }
 
 @media screen and (max-width: $tablet) {
@@ -345,14 +384,30 @@ const startGame = () => {
   }
   &.ready {
     mask: url('~/assets/icons/tick.svg') no-repeat center/contain;
+    animation: tick-pop var(--motion-quick) var(--ease-out-expressive) 1;
   }
 }
 
-@keyframes slide-in {
+@keyframes tick-pop {
   0% {
-    opacity: 0.3;
-    transform: translateY(5rem);
+    transform: scale(0.5);
   }
+}
+
+// Players joining/leaving the lobby list
+.lobby-tile-enter-from {
+  opacity: 0;
+  transform: translateX(1.8rem);
+}
+.lobby-tile-leave-to {
+  opacity: 0;
+}
+.lobby-tile-enter-active,
+.lobby-tile-leave-active,
+.lobby-tile-move {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
 }
 
 @media screen and (min-width: $tablet) {

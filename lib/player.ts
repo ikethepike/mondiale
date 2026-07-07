@@ -9,5 +9,5 @@ export const createPlayer = (playerId: string): Player => ({
   color: getRandomPlayerColor(),
   currentPosition: 0,
   moves: [],
-  comletedAtRound: undefined,
+  completedAtRound: undefined,
 })

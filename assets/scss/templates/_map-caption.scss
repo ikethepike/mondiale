@@ -1,0 +1,29 @@
+// Text that floats directly over the world map needs guaranteed contrast
+// against any country fill (correct/incorrect washes, highlights, region
+// colors): dark-blue type on a translucent cream scrim with backdrop blur.
+.map-caption {
+  color: var(--dark-blue);
+  display: inline-block;
+  padding: 1rem 2.2rem;
+  border-radius: 1.2rem;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.85);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  box-decoration-break: clone;
+}
+
+// Question/result swaps over the map (Vue <Transition name="caption">)
+.caption-enter-from {
+  opacity: 0;
+  transform: translateY(1rem);
+}
+.caption-leave-to {
+  opacity: 0;
+  transform: translateY(-0.8rem);
+}
+.caption-enter-active,
+.caption-leave-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+}

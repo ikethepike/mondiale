@@ -1,7 +1,11 @@
+import { prefersReducedMotion } from './motion'
+
 export const useAnimatedGameMap = (maximumMovement = 0.1) => {
   const map = ref<SVGElement>()
 
   onMounted(() => {
+    if (prefersReducedMotion()) return
+
     if (!map.value) {
       console.error('Could not find map')
       return
@@ -30,7 +34,7 @@ export const useAnimatedGameMap = (maximumMovement = 0.1) => {
       countries.forEach(country => {
         ;(country.element as HTMLElement).style.transform = `translate(${
           (event as MouseEvent).offsetX * country.movement
-        }px, 
+        }px,
           ${(event as MouseEvent).offsetY * country.movement}px
           )`
       })

@@ -220,18 +220,32 @@
   </svg>
 </template>
 <script lang="ts" setup>
+import { prefersReducedMotion } from '~~/lib/motion'
+
+const props = defineProps({
+  /**
+   * The stroke draw-in rewrites dash offsets on very large paths every frame
+   * for ~20s — expensive. Leave it off when the map is a dim backdrop where
+   * the effect is invisible anyway.
+   */
+  animated: {
+    type: Boolean,
+    default: true,
+  },
+})
+
 const map = ref<SVGElement>()
+let handle = 0
 
 onMounted(() => {
+  if (!props.animated || prefersReducedMotion()) return
+
   if (!map.value) {
     console.warn('Unable to instantiate map element in contour map')
     return
   }
 
   const paths = [...map.value.querySelectorAll('path')]
-
-  console.log({ paths })
-
   const lengths: number[] = []
   for (const path of paths) {
     const length = path.getTotalLength()
@@ -240,18 +254,12 @@ onMounted(() => {
     lengths.push(length)
   }
 
-  let handle = 0
   let currentFrame = 0
   const totalFrames = 1200
 
-  console.log({ paths, lengths })
-
   const draw = () => {
     const progress = currentFrame / totalFrames
-    if (progress > 1) {
-      return window.cancelAnimationFrame(handle)
-    }
-    console.log('running')
+    if (progress > 1) return
 
     currentFrame++
     for (const [index, path] of paths.entries()) {
@@ -261,6 +269,8 @@ onMounted(() => {
   }
   draw()
 })
+
+onUnmounted(() => window.cancelAnimationFrame(handle))
 </script>
 <style scoped>
 svg {

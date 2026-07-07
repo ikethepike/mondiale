@@ -1,28 +1,14 @@
-import type { EventHandler } from '~~/server/middleware/socket.server'
-import { useServerSideEvents } from '../server-side'
+import { defineGameHandler } from '../server-side'
 
-export const setNameHandler: EventHandler = async ({
-  io,
-  eventData,
-  eventTarget,
-  redis,
-  socket,
-}) => {
-  if (eventData.event !== 'set-name') return
+export const setNameHandler = defineGameHandler(
+  'set-name',
+  async ({ game, player, server, eventData, eventTarget }) => {
+    player.ready = true
+    player.name = eventData.name
+    player.phase = 'waiting-for-game'
 
-  const server = useServerSideEvents({ socket, redis, io })
+    await server.updateGameState(game)
 
-  const { gameId, playerId } = eventTarget
-  const game = await server.fetchGame(gameId)
-  if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
-
-  if (!game.players[playerId]) throw new ReferenceError(`Unable to find with id: ${playerId}`)
-
-  game.players[playerId].ready = true
-  game.players[playerId].name = eventData.name
-  game.players[playerId].phase = 'waiting-for-game'
-
-  await server.updateGameState(game)
-
-  server.emit({ event: 'name-set', game }, eventTarget)
-}
+    server.emit({ event: 'name-set', game }, eventTarget)
+  }
+)

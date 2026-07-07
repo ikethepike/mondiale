@@ -1,14 +1,27 @@
 <template>
   <div class="view-final-challenge">
-    <header>
-      <span>{{ currentChallengeCount }}/{{ totalChallengeCount }}</span>
-      <h2>{{ details?.question }}</h2>
+    <Interstitial
+      v-if="showInterstitial"
+      kicker="Final Challenge!"
+      :title="`${totalChallengeCount} questions stand between you and victory`"
+      stakes="Answer them all to win the game — a single miss sends you back."
+      :hold-for="3.6"
+      @done="showInterstitial = false"
+    />
+    <header :class="{ dimmed: status }">
+      <Transition name="caption" mode="out-in">
+        <div :key="currentChallengeCount" class="prompt">
+          <span class="counter map-caption">{{ currentChallengeCount }}/{{ totalChallengeCount }}</span>
+          <h2 class="map-caption">{{ details?.question }}</h2>
+        </div>
+      </Transition>
     </header>
-    <!-- Leadership challenge -->
-    <template v-if="currentFinalChallenge?._type === 'leadership-challenge'"> </template>
+    <ChallengeResult v-if="status" :key="currentChallengeCount" :status="status" class="result" />
   </div>
 </template>
 <script lang="ts" setup>
+import Interstitial from '~/components/feedback/Interstitial.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { COLOR_CODED_REGIONS, getFinalChallengeDetails } from '~~/lib/challenges/final-challenge'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -16,6 +29,8 @@ import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
 const { currentFinalChallenge, clearBoard, update, gameStore, currentMove } = useClientEvents()
+
+const status = toRef(gameStore.map, 'status')
 
 const details = computed(() => {
   if (!currentFinalChallenge.value) return undefined
@@ -54,8 +69,11 @@ watch(currentFinalChallenge, () => {
   triggerMembershipChallenge()
 })
 
+const showInterstitial = ref(true)
+
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
+  if (showInterstitial.value) return
   if (!currentFinalChallenge.value) return
   const { isoCode } = event.detail
 
@@ -172,5 +190,31 @@ onBeforeUnmount(() => {
 
 header {
   text-align: center;
+  padding: 2rem 4rem;
+  transition: opacity var(--motion-base) var(--ease-smooth);
+
+  &.dimmed {
+    opacity: 0.4;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 3rem;
+  }
+
+  .counter {
+    padding: 0.4rem 1.4rem;
+  }
+
+  .prompt {
+    gap: 1rem;
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+  }
+}
+
+.result {
+  margin-top: 4rem;
 }
 </style>

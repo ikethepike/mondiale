@@ -1662,8 +1662,8 @@ path[id] {
   cursor: pointer;
   fill: var(--map-not-highlight);
   transition:
-    fill 0.5s,
-    filter 0.3s;
+    fill var(--motion-slow),
+    filter var(--motion-base);
 }
 
 path[id]:hover {

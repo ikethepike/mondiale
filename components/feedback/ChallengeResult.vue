@@ -1,0 +1,79 @@
+<template>
+  <header class="challenge-result" :class="status">
+    <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
+    <h1 ref="heading" class="map-caption">{{ message }}</h1>
+  </header>
+</template>
+<script lang="ts" setup>
+import { gsap } from 'gsap'
+import { EASE, prefersReducedMotion } from '~~/lib/motion'
+import ContourRipple from './ContourRipple.vue'
+
+/**
+ * Shared correct/incorrect result moment. The choreography around it:
+ * t=0 the map wash starts (the parent sets gameStore.map.status just before
+ * mounting this), t≈0.15s this heading rises in, t≈0.3s the reveal card in
+ * layouts/default.vue slides up (CSS delay), t≈0.45s the ripple plays.
+ */
+const props = defineProps({
+  status: {
+    type: String as PropType<'correct' | 'incorrect'>,
+    required: true,
+  },
+  incorrectMessage: {
+    type: String,
+    default: 'Not quite.',
+  },
+})
+
+const message = computed(() => (props.status === 'correct' ? 'Correct!' : props.incorrectMessage))
+
+const heading = ref<HTMLElement>()
+
+onMounted(() => {
+  if (!heading.value || prefersReducedMotion()) return
+
+  gsap.fromTo(
+    heading.value,
+    { opacity: 0, y: 16, letterSpacing: '0.06em' },
+    {
+      opacity: 1,
+      y: 0,
+      letterSpacing: '0em',
+      delay: 0.15,
+      duration: 0.4,
+      ease: props.status === 'correct' ? EASE.enter : EASE.cross,
+      clearProps: 'letterSpacing',
+    }
+  )
+})
+
+onUnmounted(() => {
+  if (heading.value) gsap.killTweensOf(heading.value)
+})
+</script>
+<style lang="scss" scoped>
+.challenge-result {
+  position: relative;
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    position: relative;
+    font-size: 3.2rem;
+  }
+
+  &.incorrect h1 {
+    color: var(--hior-ange);
+  }
+
+  .ripple {
+    top: 50%;
+    left: 50%;
+    width: 22rem;
+    height: 22rem;
+    position: absolute;
+    transform: translate(-50%, -50%);
+  }
+}
+</style>

@@ -21,6 +21,46 @@ export const getValueByAccessorID = (
   return value
 }
 
+/** Walk a dotted accessor pattern (e.g. 'players.abc.name') through an object. */
+export const resolveAccessorPath = (
+  target: object,
+  accessorPattern: string
+): { found: boolean; value?: unknown } => {
+  let value: any = target
+  for (const accessor of accessorPattern.split('.')) {
+    if (!value || !Reflect.has(value, accessor)) {
+      return { found: false }
+    }
+
+    value = value[accessor]
+  }
+
+  return { found: true, value }
+}
+
+/** Set a value at a dotted accessor pattern. Returns false if the path does not exist. */
+export const setByAccessorPath = (
+  target: object,
+  accessorPattern: string,
+  newValue: unknown
+): boolean => {
+  const split = accessorPattern.split('.')
+  let value: any = target
+  for (const [index, accessor] of split.entries()) {
+    if (!value || !Reflect.has(value, accessor)) {
+      return false
+    }
+
+    if (index === split.length - 1) {
+      value[accessor] = newValue
+    } else {
+      value = value[accessor]
+    }
+  }
+
+  return true
+}
+
 export const processReplacements = (text: string, isoCode: ISOCountryCode) => {
   const replacements = ['{countryName}', '{capital}'] as const
 

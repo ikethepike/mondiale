@@ -1,5 +1,13 @@
 <template>
   <div class="group-challenge-wrapper" :class="{ peeking }">
+    <Interstitial
+      v-if="showInterstitial"
+      tone="info"
+      :kicker="`Round ${currentRound?.number ?? 1}`"
+      :title="details?.phrasing || 'Group Challenge'"
+      stakes="The better your ranking, the more steps you take."
+      @done="showInterstitial = false"
+    />
     <form id="active-round" @submit.prevent="submitRanking">
       <header>
         <ButtonFilled class="peek-button" element="a" @click="peeking = !peeking">
@@ -9,7 +17,9 @@
       </header>
 
       <section id="question">
-        <h1>{{ details?.phrasing || currentRound?.round.groupChallenge.id || '' }}</h1>
+        <h1 class="map-caption">
+          {{ details?.phrasing || 'Group Challenge' }}
+        </h1>
       </section>
 
       <footer>
@@ -38,9 +48,11 @@
 </template>
 <script lang="ts" setup>
 import { Sortable } from 'sortablejs-vue3'
+import Interstitial from '~/components/feedback/Interstitial.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const { gameStore, update, currentRound } = useClientEvents()
@@ -48,6 +60,7 @@ const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
 const peeking = ref(false)
+const showInterstitial = ref(true)
 
 const ranking = ref<ISOCountryCode[]>(gameStore.currentGroupChallengeForPlayer || [])
 watch(
@@ -65,12 +78,12 @@ watch(
 )
 
 const details = computed(() => {
-  const id = currentRound.value?.round.groupChallenge.id
-  if (id) {
-    return getChallengeDetails(id)
-  }
+  const challenge = currentRound.value?.round.groupChallenge
+  // This view only mounts for ranking rounds — traversal rounds render
+  // ViewTraversalChallenge — but the round data itself is a union.
+  if (!challenge || isTraversalChallenge(challenge)) return undefined
 
-  return undefined
+  return getChallengeDetails(challenge.id)
 })
 
 const updateRanking = (event: Event) => {
@@ -105,6 +118,16 @@ const options = ref({
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
+
+// Full-size and positioned: the phase transition animates a transform on this
+// wrapper, which makes it the containing block for the absolutely-positioned
+// form below. Without explicit dimensions the form's height:100% would
+// collapse to zero mid-animation and jump back after — a hard layout shift.
+.group-challenge-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
 
 #active-round {
   top: 0;
@@ -203,22 +226,8 @@ footer {
   opacity: 0.5;
 }
 
-#player-drawer:not(.has-animated) .country {
-  animation-name: country-card;
-  animation-iteration-count: 1;
-}
-
-@for $i from 1 through 10 {
-  .country:nth-of-type(#{$i}) {
-    animation-duration: #{($i * 0.3) + 0.8 + s};
-  }
-}
-
-@keyframes country-card {
-  0% {
-    transform: translateY(100%);
-  }
-}
+// Card entrance staggering is handled by the 'challenge' phase-transition
+// recipe in lib/phase-transitions.ts, which targets these .country elements.
 
 @media screen and (min-width: $tablet) {
   #active-round {

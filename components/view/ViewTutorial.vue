@@ -1,10 +1,6 @@
 <template>
   <ModalWrapper>
-    <article
-      ref="card"
-      class="pane tutorial-card tr tl decorator-bottom"
-      :class="{ 'has-animated': hasCardAnimated }"
-    >
+    <article class="pane tutorial-card tr tl decorator-bottom">
       <form class="pane-content" @submit.prevent="closeTutorial">
         <h1>Let's start!</h1>
         <p>Let's see who is the best at geography. There are three separate phases to the game:</p>
@@ -19,14 +15,14 @@
           might come across.
         </p>
         <nav>
-          <div class="players-playing">
+          <TransitionGroup tag="div" name="pawn-arrive" class="players-playing" appear>
             <PlayerPawn
               v-for="player in playersPlaying"
               :key="player.id"
               class="pawn"
               :player="player"
             />
-          </div>
+          </TransitionGroup>
           <ButtonFilled>Close tutorial</ButtonFilled>
         </nav>
       </form>
@@ -35,15 +31,6 @@
 </template>
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
-
-const card = ref<HTMLElement>()
-const hasCardAnimated = ref(false)
-
-onMounted(() => {
-  console.log(card.value)
-  card.value?.addEventListener('animationend', () => (hasCardAnimated.value = true))
-  card.value?.addEventListener('animationcancel', () => (hasCardAnimated.value = true))
-})
 
 const { gameStore, update, playerId } = useClientEvents()
 const playersPlaying = computed(() =>
@@ -64,7 +51,6 @@ const closeTutorial = () => {
 .tutorial-card {
   margin: auto auto 0 auto;
   max-width: 50rem;
-  animation: slide-up 0.5s 1;
 }
 
 ol {
@@ -86,25 +72,16 @@ nav {
   align-items: stretch;
 }
 
-.tutorial-card .players-playing .pawn {
+// Pawns pop in as other players finish reading the tutorial
+.pawn-arrive-enter-from {
   opacity: 0;
   transform: translateY(100%);
-  @for $i from 1 through 10 {
-    &:nth-child(#{$i}) {
-      transition: #{$i * 0.2s};
-    }
-  }
 }
-.tutorial-card.has-animated .players-playing .pawn {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@keyframes slide-up {
-  0% {
-    opacity: 0.3;
-    transform: translateY(10%);
-  }
+.pawn-arrive-enter-active,
+.pawn-arrive-move {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
 }
 
 @media screen and (min-width: $tablet) {

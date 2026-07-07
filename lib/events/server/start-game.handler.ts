@@ -1,37 +1,27 @@
-import { getGroupChallenge } from '~~/lib/challenges'
-import type { EventHandler } from '~~/server/middleware/socket.server'
-import { useServerSideEvents } from '../server-side'
+import { getRoundChallenge } from '~~/lib/challenges'
+import { defineGameHandler } from '../server-side'
 
-export const startGameHandler: EventHandler = async ({
-  io,
-  eventData,
-  eventTarget,
-  redis,
-  socket,
-}) => {
-  if (eventData.event !== 'start-game') return
+export const startGameHandler = defineGameHandler(
+  'start-game',
+  async ({ game, server, eventTarget }) => {
+    if (game.started) return server.emit({ event: 'update', game }, eventTarget)
 
-  const server = useServerSideEvents({ socket, redis, io })
+    // Start the game
+    game.started = true
 
-  const { gameId } = eventTarget
-  const game = await server.fetchGame(gameId)
-  if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
-  if (game.started) return server.emit({ event: 'update', game }, eventTarget)
+    for (const playerId of Object.keys(game.players)) {
+      game.players[playerId].phase = 'tutorial'
+    }
 
-  // Start the game
-  game.started = true
+    // Generate a new round
+    game.rounds.push({
+      groupChallenge: getRoundChallenge({ game }),
+      groupAnswers: {},
+      playerTurns: {},
+    })
 
-  for (const playerId of Object.keys(game.players)) {
-    game.players[playerId].phase = 'tutorial'
-  }
-
-  // Generate a new round
-  game.rounds.push({
-    groupChallenge: getGroupChallenge({ game }),
-    groupAnswers: {},
-    playerTurns: {},
-  })
-
-  await server.updateGameState(game)
-  server.emit({ event: 'game-started', game }, eventTarget)
-}
+    await server.updateGameState(game)
+    server.emit({ event: 'game-started', game }, eventTarget)
+  },
+  { player: 'optional' }
+)

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
+import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Player } from '~~/types/player.type'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
 
@@ -11,7 +13,16 @@ interface GameStoreState {
     reveal?: ISOCountryCode
     status?: 'incorrect' | 'correct'
     highlighted: Set<ISOCountryCode>
+    /** Hide the world map entirely (traversal rounds: the map is the answer key). */
+    hidden: boolean
   }
+  /**
+   * Set when the player closes the group scores; the 3D board clears it and
+   * emits 'enter-movement-phase' once the scene is actually ready, so every
+   * server step tick lands as a visible pawn hop instead of being swallowed
+   * while the board is still loading.
+   */
+  pendingMovementRequest: boolean
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -20,10 +31,12 @@ export const useGameStore = defineStore('game', {
     game: undefined,
     playerId: '',
     socket: undefined,
+    pendingMovementRequest: false,
     map: {
       status: undefined,
       reveal: undefined,
       highlighted: new Set([]),
+      hidden: false,
     },
   }),
   actions: {},
@@ -43,6 +56,7 @@ export const useGameStore = defineStore('game', {
       const round = this.currentRound?.round
       if (!round) return undefined
       if (!state.playerId) return undefined
+      if (isTraversalChallenge(round.groupChallenge)) return undefined
 
       return round.groupChallenge.countriesPerPlayer[state.playerId]
     },
@@ -65,8 +79,44 @@ export const useGameStore = defineStore('game', {
         points: playerTurns[state.playerId]?.points || 0,
       }
     },
+    /**
+     * Every player's scorecard for the current round, sorted by points scored (desc).
+     * Players who haven't answered yet have no `score`/`answers` and sort last.
+     */
+    rankedScores(state): Scorecard[] {
+      if (!state.game || !this.currentRound) return []
+      const { groupAnswers, playerTurns } = this.currentRound.round
+
+      return Object.values(state.game.players)
+        .map(player => ({
+          player,
+          score: playerTurns[player.id],
+          answers: groupAnswers[player.id],
+        }))
+        .sort((a, b) => (b.score?.points.scored ?? -1) - (a.score?.points.scored ?? -1))
+    },
+    /**
+     * Overall game standings: finished players first (earliest completion round wins),
+     * everyone else by how far along the board they are.
+     */
+    standings(state): Player[] {
+      if (!state.game) return []
+
+      return Object.values(state.game.players).sort((a, b) => {
+        const aFinished = a.completedAtRound ?? Infinity
+        const bFinished = b.completedAtRound ?? Infinity
+        if (aFinished !== bFinished) return aFinished - bFinished
+        return b.currentPosition - a.currentPosition
+      })
+    },
   },
 })
+
+export interface Scorecard {
+  player: Player
+  score?: PlayerTurn
+  answers?: GroupChallengeAnswer
+}
 
 export type PlayerScore =
   | {

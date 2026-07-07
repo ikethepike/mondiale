@@ -1,10 +1,10 @@
 import type { PLAYER_COLORS } from '~~/data/palette'
 import type { FinalChallenge } from './challenges/final-challenge.type'
-import type { GroupChallenge } from './challenges/group-challenge.type'
 import type {
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from './challenges/individual-challenge.type'
+import type { RoundChallenge } from './challenges/traversal-challenge.type'
 import type { ISOCountryCode } from './geography.types'
 import type { Player } from './player.type'
 
@@ -48,7 +48,7 @@ export interface PlayerTurn {
 }
 
 export interface Round {
-  groupChallenge: GroupChallenge
+  groupChallenge: RoundChallenge
   groupAnswers: { [playerId: string]: GroupChallengeAnswer } // Answers to the group challenge
   playerTurns: {
     [playerId: string]: PlayerTurn
@@ -94,22 +94,6 @@ export type GameLength = (typeof gameLengths)[number]
 export interface Tile {
   position: number
   type: 'normal' | 'final' | 'start' | IndividualChallengeAccessorId
-}
-
-export type PaletteValues = '#0d2f61' | '#3481a1' | '#90bcb5' | '#f1b982' | '#ec6247'
-
-export const palette: {
-  darkBlue: PaletteValues
-  softBlue: PaletteValues
-  softMint: PaletteValues
-  warmSand: PaletteValues
-  hiorAnge: PaletteValues
-} = {
-  darkBlue: '#0d2f61',
-  softBlue: '#3481a1',
-  softMint: '#90bcb5',
-  warmSand: '#f1b982',
-  hiorAnge: '#ec6247',
 }
 
 export type PlayerColor = (typeof PLAYER_COLORS)[number]

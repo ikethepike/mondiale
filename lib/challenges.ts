@@ -8,10 +8,15 @@ import type {
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
+import type {
+  RoundChallenge,
+  TraversalChallenge,
+} from '~~/types/challenges/traversal-challenge.type'
 import type * as gameTypes from '~~/types/game.types'
 import type { Amount, ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { getRandomISOCountryCode } from './country'
+import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
 
 const MAXIMUM_SCORE_PER_COUNTRY = 3
@@ -36,21 +41,98 @@ export const DIFFICULTY_CONFIGURATION: {
   },
 }
 
-export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
-  const challenges = Object.values(GROUP_CHALLENGES)
-  const challenge = challenges[Math.floor(Math.random() * challenges.length)]
+const TRAVERSAL_ROUND_CHANCE = 0.35
 
-  const codesArray = [...ISOCountryCodes]
-  const isoCodes = shuffleArray<ISOCountryCode>(codesArray).filter(ISOCountryCode => {
-    const value = getValueByAccessorID(ISOCountryCode, challenge.id)
-    return !!value
+/** Test hook: FORCE_TRAVERSAL_ROUNDS=1 makes every round a traversal round. */
+const traversalForced = () =>
+  typeof process !== 'undefined' && process.env?.FORCE_TRAVERSAL_ROUNDS === '1'
+
+/**
+ * Deal the shared challenge for a round: always a ranking challenge for the
+ * opening round (it doubles as the tutorial round), then a mix of ranking
+ * and Travle-style traversal rounds.
+ */
+export const getRoundChallenge = ({ game }: { game: gameTypes.Game }): RoundChallenge => {
+  const isFirstRound = game.rounds.length === 0
+
+  if ((!isFirstRound || traversalForced()) && Math.random() < (traversalForced() ? 1 : TRAVERSAL_ROUND_CHANCE)) {
+    const pick = pickTraversal(game.difficulty, game.variant)
+    if (pick) {
+      const challenge: TraversalChallenge = {
+        _type: 'traversal-challenge',
+        ...pick,
+        maximumClicks: pick.optimalHops + 4,
+        maximumPoints:
+          MAXIMUM_SCORE_PER_COUNTRY *
+          DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries,
+      }
+      return challenge
+    }
+  }
+
+  return getGroupChallenge({ game })
+}
+
+/**
+ * Score a traversal round from the player's full guess list (Travle rules):
+ * the round is complete when the guessed countries bridge start → target,
+ * and every guess beyond the minimum needed — mistakes and inefficient
+ * choices alike — costs points. An unbridged guess set scores nothing.
+ */
+export const scoreTraversalSubmission = ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: TraversalChallenge
+  submittedGuesses: ISOCountryCode[]
+}): { scored: number; maximum: number } => {
+  const maximum = challenge.maximumPoints
+
+  if (!isRouteComplete(challenge.start, challenge.target, submittedGuesses)) {
+    return { scored: 0, maximum }
+  }
+
+  const minimumGuesses = Math.max(0, challenge.optimalHops - 1)
+  const wastedGuesses = Math.max(0, submittedGuesses.length - minimumGuesses)
+  return { scored: Math.max(2, maximum - wastedGuesses * 2), maximum }
+}
+
+export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
+  const perPlayer = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
+  const playerIds = Object.keys(game.players)
+  const required = perPlayer * playerIds.length
+
+  // Source data drifts between regenerations and some accessors end up with
+  // little or no data — only ever deal a challenge that can fill the round,
+  // otherwise players get a question with zero countries to rank.
+  const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
+    let available = 0
+    for (const isoCode of ISOCountryCodes) {
+      if (getValueByAccessorID(isoCode, challenge.id)) available++
+      if (available >= required) return true
+    }
+    return false
   })
 
-  for (const playerId of Object.keys(game.players)) {
-    challenge.countriesPerPlayer[playerId] = isoCodes.splice(
-      0,
-      DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
-    )
+  if (!viable.length) {
+    throw new EvalError('No group challenge has enough country data to fill a round')
+  }
+
+  const base = viable[Math.floor(Math.random() * viable.length)]
+
+  const isoCodes = shuffleArray<ISOCountryCode>([...ISOCountryCodes]).filter(
+    isoCode => !!getValueByAccessorID(isoCode, base.id)
+  )
+
+  // Clone — GROUP_CHALLENGES entries are module singletons shared across
+  // every game and round on this server; mutating them bleeds state.
+  const challenge: (typeof GROUP_CHALLENGES)[keyof typeof GROUP_CHALLENGES] = {
+    ...base,
+    countriesPerPlayer: {},
+  }
+
+  for (const playerId of playerIds) {
+    challenge.countriesPerPlayer[playerId] = isoCodes.splice(0, perPlayer)
   }
 
   return challenge

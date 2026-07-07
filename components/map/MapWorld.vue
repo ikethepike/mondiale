@@ -38,39 +38,9 @@
   </svg>
 </template>
 <script lang="ts" setup>
-const map = ref<SVGElement>()
+import { useAnimatedGameMap } from '~~/lib/animations'
 
-onMounted(() => {
-  if (!map.value) {
-    console.error('Could not find map')
-    return
-  }
-
-  const paths = map.value.querySelectorAll('*')
-
-  const countries: {
-    movement: number
-    element: Element
-  }[] = []
-  paths.forEach(path => {
-    const movement = Math.random() < 0.5 ? Math.random() * 0.1 : Math.random() * -0.1
-
-    countries.push({
-      movement,
-      element: path,
-    })
-  })
-
-  map.value.addEventListener('mousemove', event => {
-    countries.forEach(country => {
-      ;(country.element as HTMLElement).style.transform = `translate(${
-        (event as MouseEvent).offsetX * country.movement
-      }px, 
-          ${(event as MouseEvent).offsetY * country.movement}px
-          )`
-    })
-  })
-})
+const { map } = useAnimatedGameMap()
 </script>
 <style scoped>
 svg {

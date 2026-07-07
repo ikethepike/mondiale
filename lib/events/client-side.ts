@@ -1,3 +1,4 @@
+import { resolveAccessorPath } from '~~/lib/values'
 import { useGameStore } from '~~/store/game.store'
 import { type ClientEventData, isValidClientEventTarget } from '~~/types/events.types'
 import type { PlayerMove } from '~~/types/game.types'
@@ -86,19 +87,11 @@ export const useClientEvents = () => {
       }
 
       // Verify that key exists for index updates
-      if (eventData.event === 'update-by-index') {
-        let value: any = game.value
-        for (const accessor of eventData.accessorPattern.split('.')) {
-          if (!Reflect.has(value, accessor)) {
-            console.warn(
-              'Unable to send, invalid accessor',
-              accessor,
-              `from ${eventData.accessorPattern}`
-            )
-            return
-          }
-
-          value = value[accessor]
+      if (eventData.event === 'update-by-index' && game.value) {
+        const { found } = resolveAccessorPath(game.value, eventData.accessorPattern)
+        if (!found) {
+          console.warn('Unable to send, invalid accessor pattern', eventData.accessorPattern)
+          return
         }
       }
 

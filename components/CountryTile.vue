@@ -3,12 +3,12 @@
     <CountryPinwheel class="flag-pinwheel" :country="country" />
     <article>
       <header>
-        <h3>{{ country.name.english }}</h3>
+        <h3>{{ countryName(country) }}</h3>
         <p class="subtitle">{{ country.geography.capital.name }}</p>
       </header>
 
       <div class="flag-wrapper">
-        <div class="flag" v-html="country.flag" />
+        <CountryFlag class="flag" :country="country" />
       </div>
     </article>
 
@@ -16,6 +16,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { countryName } from '~~/lib/country'
 import type { Country } from '~~/types/geography.types'
 
 defineProps({
@@ -52,10 +53,6 @@ article {
 }
 .flag-wrapper {
   border: 0.1rem solid #000;
-}
-.flag:deep(svg) {
-  width: 100%;
-  display: block;
 }
 
 .flag-pinwheel {
@@ -132,10 +129,5 @@ article {
   }
 }
 
-@keyframes rotate {
-  100% {
-    transform: rotate(1turn);
-  }
-}
 </style>
 <style lang="scss"></style>

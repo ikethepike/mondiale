@@ -1,55 +1,39 @@
 import { wait } from '~~/lib/time'
-import type { EventHandler } from '~~/server/middleware/socket.server'
-import { useServerSideEvents } from '../server-side'
+import { defineGameHandler } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
-export const submitIndividualChallengeAnswersHandler: EventHandler = async ({
-  io,
-  eventData,
-  eventTarget,
-  redis,
-  socket,
-}) => {
-  if (eventData.event !== 'submit-individual-challenge-answer') return
+export const submitIndividualChallengeAnswersHandler = defineGameHandler(
+  'submit-individual-challenge-answer',
+  async ({ game, player, server, eventData, eventTarget, io, redis, socket }) => {
+    const currentMove = player.moves[0]
+    if (!currentMove) {
+      return console.warn(`Unable to retrieve current challenge`)
+    }
 
-  const server = useServerSideEvents({ socket, redis, io })
+    if (currentMove.challenge?._type === 'final-challenge') {
+      return console.error(`Final challenge submitted as individual challenge`)
+    }
 
-  const { gameId, playerId } = eventTarget
-  const game = await server.fetchGame(gameId)
-  if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
+    // Answer was correct
+    if (eventData.isoCode === currentMove.challenge?.country) {
+      player.currentPosition += 2
+      player.moves.shift()
+    } else {
+      player.moves = []
+    }
 
-  const player = game.players[playerId]
-  if (!player) {
-    return console.warn(`Unable to find player position: ${playerId}`)
-  }
+    await server.updateGameState(game)
+    server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
+    await wait(5000)
 
-  const currentMove = player.moves[0]
-  if (!currentMove) {
-    return console.warn(`Unable to retrieve current challenge`)
-  }
-
-  if (currentMove.challenge?._type === 'final-challenge') {
-    return console.error(`Final challenge submitted as individual challenge`)
-  }
-
-  // Answer was correct
-  if (eventData.isoCode === currentMove.challenge?.country) {
-    game.players[playerId].currentPosition += 2
-    game.players[playerId].moves.shift()
-  } else {
-    game.players[playerId].moves = []
-  }
-
-  await server.updateGameState(game)
-  server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
-  await wait(5000)
-
-  enterMovementPhaseHandler({
-    io,
-    redis,
-    socket,
-    eventTarget,
-    eventKey: 'enter-movement-phase',
-    eventData: { event: 'enter-movement-phase' },
-  })
-}
+    enterMovementPhaseHandler({
+      io,
+      redis,
+      socket,
+      eventTarget,
+      eventKey: 'enter-movement-phase',
+      eventData: { event: 'enter-movement-phase' },
+    })
+  },
+  { player: 'warn' }
+)

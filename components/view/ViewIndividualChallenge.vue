@@ -1,31 +1,43 @@
 <template>
   <div v-if="challenge" class="individual-challenge">
-    <header>
-      <template v-if="!status">
-        <h1>{{ processReplacements(details?.phrasing || '', challenge.country) }}</h1>
-        <span v-if="showDoubleTapHint" class="hint">Press again to confirm</span>
-        <div
-          v-if="challenge.id === 'flag'"
-          class="flag"
-          :style="{
-            backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country?.flag || '')}')`,
-          }"
+    <Interstitial
+      v-if="showInterstitial"
+      :title="processReplacements(details?.phrasing || '', challenge.country)"
+      stakes="Answer correctly to leap ahead — get it wrong and you're knocked back."
+      @done="showInterstitial = false"
+    />
+    <header v-else>
+      <Transition name="caption" mode="out-in">
+        <div v-if="!status" key="question" class="question">
+          <h1 class="map-caption">
+            {{ processReplacements(details?.phrasing || '', challenge.country) }}
+          </h1>
+          <span v-if="showDoubleTapHint" class="hint map-caption">Press again to confirm</span>
+          <div v-if="challenge.id === 'flag' && country" class="flag-frame">
+            <CountryFlag
+              class="flag ambient-loop"
+              :country="country"
+              mode="background"
+              fit="contain"
+            />
+          </div>
+        </div>
+        <ChallengeResult
+          v-else-if="submittedCountry && status"
+          key="result"
+          :status="status"
+          :incorrect-message="`Sorry, you pressed: ${countryName(submittedCountry)}`"
         />
-      </template>
-      <template v-else-if="submittedCountry">
-        <h1 v-if="status === 'incorrect'">
-          Sorry, you pressed: {{ submittedCountry.name.english }}
-        </h1>
-        <h1 v-else>Correct!</h1>
-      </template>
+      </Transition>
     </header>
   </div>
 </template>
 <script lang="ts" setup>
-import { COUNTRIES } from '~~/data/countries.gen'
+import Interstitial from '~/components/feedback/Interstitial.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import { getChallengeDetails } from '~~/lib/challenges'
+import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { baseEncode } from '~~/lib/strings'
 import { processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -47,7 +59,7 @@ const status = toRef(gameStore.map, 'status')
 const submittedISOCode = ref<ISOCountryCode>()
 const submittedCountry = computed(() => {
   if (!submittedISOCode.value) return undefined
-  return COUNTRIES[submittedISOCode.value]
+  return getCountry(submittedISOCode.value)
 })
 const submitAnswer = (isoCode: ISOCountryCode) => {
   if (status.value) return
@@ -72,12 +84,15 @@ const details = computed(() => {
 
 const country = computed(() => {
   if (!challenge.value) return undefined
-  return COUNTRIES[challenge.value.country]
+  return getCountry(challenge.value.country)
 })
+
+const showInterstitial = ref(true)
 
 const showDoubleTapHint = ref(false)
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
+  if (showInterstitial.value) return
 
   const isoCode = event.detail.isoCode as ISOCountryCode
   if (gameStore.map.highlighted.has(isoCode)) {
@@ -118,21 +133,51 @@ header {
   position: absolute;
   justify-content: center;
   h1 {
-    color: var(---text-color);
-    display: block;
+    margin: 0;
+    font-size: 3.2rem;
+  }
+  .hint {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.4rem 1.4rem;
+  }
+  .question {
+    gap: 1rem;
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+  }
+  // The flag is the question — present it as the hero, framed like the
+  // caption scrim, arriving with a settle and idling on a gentle float
+  .flag-frame {
+    padding: 1.2rem;
+    margin-top: 0.6rem;
+    border-radius: 1.2rem;
+    backdrop-filter: blur(0.5rem);
+    background: hsla(36, 100%, 98%, 0.85);
+    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+    animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
   }
   .flag {
-    width: 6rem;
-    height: 4rem;
-    transition: 0.6s;
-    pointer-events: auto;
-    display: inline-block;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: top center;
+    width: 26rem;
+    height: 15rem;
+    display: block;
+    max-width: 70vw;
+    filter: drop-shadow(0 0.4rem 0.8rem hsla(215.7, 76.4%, 21.6%, 0.18));
+    animation: flag-float calc(var(--motion-ambient) * 0.7) ease-in-out infinite;
   }
-  .flag:hover {
-    transform: scale(2);
+}
+
+@keyframes flag-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(1.6rem) scale(0.88);
+  }
+}
+
+@keyframes flag-float {
+  50% {
+    transform: translateY(-0.5rem) rotate(0.6deg);
   }
 }
 </style>

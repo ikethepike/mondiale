@@ -1,7 +1,14 @@
 import type { Server, Socket, DefaultEventsMap } from 'socket.io'
 
-import type { ClientEventTarget, ServerEventData } from '../../types/events.types'
+import type {
+  ClientEvent,
+  ClientEventData,
+  ClientEventTarget,
+  ServerEventData,
+} from '../../types/events.types'
 import { type Game, isValidGame } from '../../types/game.types'
+import type { Player } from '../../types/player.type'
+import type { EventHandler } from '~~/server/middleware/socket.server'
 import type { Redis } from '@upstash/redis'
 
 const TWO_DAYS_IN_SECONDS = 172800
@@ -34,5 +41,66 @@ export const useServerSideEvents = ({
 
       return game
     },
+  }
+}
+
+export interface GameHandlerContext<E extends ClientEvent> {
+  game: Game
+  player: Player
+  server: ReturnType<typeof useServerSideEvents>
+  eventData: Extract<ClientEventData, { event: E }>
+  eventTarget: ClientEventTarget
+  redis: Redis
+  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+}
+
+/**
+ * Shared guard block for handlers that operate on an existing game:
+ * event match → fetch game (throw if missing) → resolve player.
+ *
+ * `options.player` controls what happens when the player is not in the game:
+ * 'require' (default) throws, 'warn' logs and returns, 'optional' proceeds —
+ * with 'optional' the handler must not touch `context.player`.
+ *
+ * Handlers that create games (join) or never fetch one (update-by-index)
+ * stay plain EventHandlers.
+ */
+export const defineGameHandler = <E extends ClientEvent>(
+  event: E,
+  handle: (context: GameHandlerContext<E>) => void | Promise<void>,
+  options: { player?: 'require' | 'warn' | 'optional' } = {}
+): EventHandler => {
+  return async ({ io, redis, socket, eventData, eventTarget }) => {
+    if (eventData.event !== event) return
+
+    const server = useServerSideEvents({ socket, redis, io })
+
+    const { gameId, playerId } = eventTarget
+    const game = await server.fetchGame(gameId)
+    if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
+
+    const player = game.players[playerId]
+    if (!player) {
+      switch (options.player ?? 'require') {
+        case 'require':
+          throw new ReferenceError(`Unable to find player with id: ${playerId}`)
+        case 'warn':
+          return console.warn(`Unable to find player with id: ${playerId}`)
+        case 'optional':
+          break
+      }
+    }
+
+    await handle({
+      game,
+      player: player as Player,
+      server,
+      eventData: eventData as Extract<ClientEventData, { event: E }>,
+      eventTarget,
+      redis,
+      socket,
+      io,
+    })
   }
 }

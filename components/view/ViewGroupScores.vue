@@ -1,7 +1,7 @@
 <template>
   <ModalWrapper>
-    <article class="pane group-scores tl decorator-bottom">
-      <section class="score-card">
+    <article ref="card" class="pane group-scores tl decorator-bottom">
+      <section ref="scoreCard" class="score-card">
         <header class="pane-content">
           <span>
             {{
@@ -10,32 +10,39 @@
                 : `${selectedScorecard.player.name}'s Scorecard`
             }}
           </span>
-          <h2>{{ details?.phrasing }}</h2>
+          <h2>{{ challengeHeading }}</h2>
         </header>
         <template v-if="selectedScorecard.answers">
-          <div class="pane-content horizontal bottom">
+          <div class="pane-content horizontal bottom score-summary">
+            <ContourRipple v-if="isPersonalScorecard" class="score-ripple" :delay="0.9" />
             <p v-if="isPersonalScorecard">
               Well done, {{ selectedScorecard.player.name }}. You get
-              {{ selectedScorecard.score?.points.scored }} of
+              <strong>{{ animatedPoints }}</strong> of
               {{ selectedScorecard.score?.points.maximum }} possible points.
             </p>
             <p v-else>
               Here is {{ selectedScorecard.player.name }}'s scorecard. They scored
-              {{ selectedScorecard.score?.points.scored }} of
+              <strong>{{ animatedPoints }}</strong> of
               {{ selectedScorecard.score?.points.maximum }} possible points.
             </p>
-            <p>
+            <p v-if="isTraversal">
+              The shortest link needs
+              {{ Math.max(0, (traversalChallenge?.optimalHops ?? 1) - 1) }}
+              {{ (traversalChallenge?.optimalHops ?? 1) - 1 === 1 ? 'country' : 'countries' }}
+              in between — every extra or stray guess costs points.
+            </p>
+            <p v-else>
               You get 3 points for a fully correct answer, 2 points a country being one off, and 1
               point for a country being two places off.
             </p>
           </div>
           <section class="pane-content horizontal ranking">
-            <h4>Submitted Ranking</h4>
+            <h4>{{ isTraversal ? 'Your Guesses' : 'Submitted Ranking' }}</h4>
             <ViewRanking :iso-codes="selectedScorecard.answers.submitted" />
           </section>
 
           <section class="pane-content horizontal bottom ranking">
-            <h4>Correct Ranking</h4>
+            <h4>{{ isTraversal ? 'A Shortest Route' : 'Correct Ranking' }}</h4>
             <ViewRanking :iso-codes="selectedScorecard.answers.correct" />
           </section>
         </template>
@@ -51,12 +58,11 @@
 
       <section class="player-listing pane-content">
         <PlayerTile
-          v-for="{ player, score } in Object.values(scoreVector).sort((a, b) => {
-            if (!a.score?.points || !b.score?.points) return 0
-            return b.score.points.scored - a.score.points.scored
-          })"
+          v-for="{ player, score } in gameStore.rankedScores"
           :key="player.id"
           :player="player"
+          class="score-row"
+          :class="{ 'own-player': player.id === playerId }"
           @click="selectedPlayer = player.id"
         >
           <div class="score-status">
@@ -69,52 +75,69 @@
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
+import { gsap } from 'gsap'
+import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { getChallengeDetails } from '~~/lib/challenges'
+import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import type { Round } from '~~/types/game.types'
-import type { Player } from '~~/types/player.type'
+import { EASE, prefersReducedMotion } from '~~/lib/motion'
+import { useCountUp } from '~~/lib/use-count-up'
+import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 
-type ScoreVector = {
-  [playerId: string]: {
-    player: Player
-    score?: Round['playerTurns'][string]
-    answers?: Round['groupAnswers'][string]
+const { currentRound, playerId, gameStore } = useClientEvents()
+
+const traversalChallenge = computed(() => {
+  const challenge = currentRound.value?.round.groupChallenge
+  return isTraversalChallenge(challenge) ? challenge : undefined
+})
+const isTraversal = computed(() => !!traversalChallenge.value)
+
+const challengeHeading = computed(() => {
+  const challenge = currentRound.value?.round.groupChallenge
+  if (!challenge) return ''
+  if (isTraversalChallenge(challenge)) {
+    return `Travel from ${countryName(challenge.start)} to ${countryName(challenge.target)}`
   }
-}
-
-const { currentRound, game, playerId, gameStore, update } = useClientEvents()
-
-const details = computed(() => {
-  const accessorId = currentRound.value?.round.groupChallenge.id
-  if (!accessorId) return undefined
-  return getChallengeDetails(accessorId)
+  return getChallengeDetails(challenge.id)?.phrasing ?? ''
 })
 
 const selectedPlayer = ref(playerId)
-const scoreVector = computed<ScoreVector>(() => {
-  if (!currentRound.value || !game.value) return {}
-
-  const output: ScoreVector = {}
-
-  for (const player of Object.values(game.value.players)) {
-    output[player.id] = {
-      player,
-    }
-
-    if (Reflect.has(currentRound.value.round.groupAnswers, player.id)) {
-      output[player.id].answers = currentRound.value.round.groupAnswers[player.id]
-    }
-
-    if (Reflect.has(currentRound.value.round.playerTurns, player.id)) {
-      output[player.id].score = currentRound.value.round.playerTurns[player.id]
-    }
-  }
-
-  return output
-})
 
 const selectedScorecard = computed(() => {
-  return scoreVector.value[selectedPlayer.value]
+  return (
+    gameStore.rankedScores.find(({ player }) => player.id === selectedPlayer.value) ??
+    gameStore.rankedScores[0]
+  )
+})
+
+const card = ref<HTMLElement>()
+const scoreCard = ref<HTMLElement>()
+
+const { display: animatedPoints } = useCountUp(
+  () => selectedScorecard.value?.score?.points.scored ?? 0,
+  { delay: 0.3 }
+)
+
+// Staggered section + leaderboard-row entrance
+onMounted(() => {
+  if (!card.value || prefersReducedMotion()) return
+
+  gsap.fromTo(
+    card.value.querySelectorAll('.score-card > *'),
+    { opacity: 0, y: 14 },
+    { opacity: 1, y: 0, duration: 0.4, ease: EASE.enter, stagger: 0.07, clearProps: 'all' }
+  )
+  gsap.fromTo(
+    card.value.querySelectorAll('.score-row'),
+    { opacity: 0, x: 18 },
+    { opacity: 1, x: 0, duration: 0.4, ease: EASE.enter, stagger: 0.1, clearProps: 'opacity,transform' }
+  )
+})
+
+// Mini cross-fade when flipping between players' scorecards
+watch(selectedPlayer, () => {
+  if (!scoreCard.value || prefersReducedMotion()) return
+  gsap.fromTo(scoreCard.value, { opacity: 0.2 }, { opacity: 1, duration: 0.25, ease: EASE.cross })
 })
 
 const isPersonalScorecard = computed(() => {
@@ -126,7 +149,10 @@ const closeScores = () => {
     gameStore.game.players[playerId.value].phase = 'moving'
   }
 
-  update({ event: 'enter-movement-phase' })
+  // The board emits 'enter-movement-phase' once its scene is ready — asking
+  // the server to start stepping now would race the board load and swallow
+  // the first hops.
+  gameStore.pendingMovementRequest = true
 }
 </script>
 <style lang="scss" scoped>
@@ -143,5 +169,23 @@ const closeScores = () => {
 
 .player-listing {
   border-left: 0.1rem solid var(--text-color);
+}
+
+.score-row.own-player {
+  border-left: 0.5rem solid var(--warm-sand);
+  padding-left: 0.8rem;
+}
+
+.score-summary {
+  position: relative;
+
+  .score-ripple {
+    top: 50%;
+    left: 8rem;
+    width: 16rem;
+    height: 16rem;
+    position: absolute;
+    transform: translate(-50%, -50%);
+  }
 }
 </style>

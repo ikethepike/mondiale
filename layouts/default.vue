@@ -11,10 +11,9 @@
       </div>
     </header>
 
-    <!-- <Board /> -->
-
     <LazyGameMap
       class="game-map"
+      :class="{ 'map-hidden': gameStore.map.hidden }"
       :highlighted="highlighted"
       :highlight-country="reveal"
       :status="status"
@@ -30,9 +29,9 @@
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
         <div class="pane-content">
-          <div class="flag" v-html="revealCountry.flag" />
+          <CountryFlag class="flag" :country="revealCountry" />
           <small>{{ revealCountry.coordinates }}</small>
-          <h3>{{ revealCountry.name.english }}</h3>
+          <h3>{{ countryName(revealCountry) }}</h3>
           <p>{{ revealCountry.geography.capital.name }}</p>
         </div>
       </article>
@@ -40,8 +39,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { COUNTRIES } from '~~/data/countries.gen'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
+import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import type { ISOCountryCode } from '~~/types/geography.types'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
@@ -49,7 +48,7 @@ const { player, game, currentRound, gameStore, currentFinalChallenge } = useClie
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
 
-const revealCountry = computed(() => reveal.value && COUNTRIES[reveal.value])
+const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
 
 const highlighted = computed<ISOCountryCode[]>(() => {
   const output = [...gameStore.map.highlighted]
@@ -59,7 +58,7 @@ const highlighted = computed<ISOCountryCode[]>(() => {
   if (game.value.difficulty !== 'easy') return output
   if (player.value.phase !== 'group-challenge') return output
 
-  const countries = currentRound.value?.round.groupChallenge.countriesPerPlayer[player.value.id]
+  const countries = gameStore.currentGroupChallengeForPlayer
   if (!countries) return output
   return [...countries, ...output]
 })
@@ -105,7 +104,16 @@ onMounted(() => {
   top: 0;
   left: 0;
   width: 100%;
-  transition: 0.3s;
+  // The 0.25s delay matches the phase-transition leave duration, so the map
+  // rescales while the incoming view enters instead of fighting the outgoing one.
+  transition:
+    transform var(--motion-base) var(--ease-smooth) 0.25s,
+    opacity var(--motion-slow) var(--ease-smooth);
+
+  &.map-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
 
   position: absolute;
   transform: scale(0.8);
@@ -172,7 +180,7 @@ onMounted(() => {
     max-width: 34rem;
     position: absolute;
     padding: 0.3rem 0.3rem 0 0;
-    animation: slide-up 0.6s 1;
+    animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1;
     border-top: 0.1rem solid #ccc;
     border-left: 0.1rem solid #ccc;
     border-top-right-radius: 1.9rem;
@@ -187,18 +195,6 @@ onMounted(() => {
     pointer-events: none;
     transition: opacity 0.6s;
     animation: rotate 3s linear infinite;
-  }
-
-  @keyframes rotate {
-    100% {
-      transform: rotate(1turn);
-    }
-  }
-}
-
-@keyframes slide-up {
-  0% {
-    transform: translateY(100%);
   }
 }
 </style>

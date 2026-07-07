@@ -1,31 +1,22 @@
 import { generateTiles } from '~~/lib/tiles'
-import type { EventHandler } from '~~/server/middleware/socket.server'
-import { useServerSideEvents } from '../server-side'
+import { defineGameHandler } from '../server-side'
 
-export const updateConfigurationHandler: EventHandler = async ({
-  io,
-  eventData,
-  eventTarget,
-  redis,
-  socket,
-}) => {
-  if (eventData.event !== 'update-configuration') return
+export const updateConfigurationHandler = defineGameHandler(
+  'update-configuration',
+  async ({ game, server, eventData, eventTarget }) => {
+    const { playerId } = eventTarget
+    if (game.host !== playerId)
+      return console.warn(`Non-host player tried to update configuration: ${playerId}`)
 
-  const server = useServerSideEvents({ socket, redis, io })
+    const { configuration } = eventData
 
-  const { gameId, playerId } = eventTarget
-  const game = await server.fetchGame(gameId)
-  if (!game) throw new ReferenceError(`Unable to find game: ${gameId}`)
-  if (game.host !== playerId)
-    return console.warn(`Non-host player tried to update configuration: ${playerId}`)
+    game.difficulty = configuration.difficulty
+    game.length = configuration.length
+    game.variant = configuration.variant
+    game.tiles = generateTiles(game.length)
 
-  const { configuration } = eventData
-
-  game.difficulty = configuration.difficulty
-  game.length = configuration.length
-  game.variant = configuration.variant
-  game.tiles = generateTiles(game.length)
-
-  await server.updateGameState(game)
-  server.emit({ event: 'update', game }, eventTarget)
-}
+    await server.updateGameState(game)
+    server.emit({ event: 'update', game }, eventTarget)
+  },
+  { player: 'optional' }
+)

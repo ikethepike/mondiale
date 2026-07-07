@@ -2,14 +2,16 @@
 @use 'rules/reset';
 @use 'rules/fonts';
 @use 'rules/palette';
+@use 'rules/motion';
+@use 'rules/animations';
 
 // Text
 @use 'text/heading-text';
-@use 'text/body-text';
 
 // Templates
 @use 'templates/pane';
+@use 'templates/map-caption';
 
 body {
-  background-color: aliceblue;
+  background-color: var(--background-color);
 }

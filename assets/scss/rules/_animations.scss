@@ -1,0 +1,16 @@
+// Shared keyframes. Component <style scoped> blocks can reference these by
+// name — Vue only rewrites animation names that are defined inside the same
+// scoped block, so undeclared names resolve to these global definitions.
+
+@keyframes rotate {
+  100% {
+    transform: rotate(1turn);
+  }
+}
+
+// Enter from fully below the container (reveal card)
+@keyframes slide-up-full {
+  0% {
+    transform: translateY(100%);
+  }
+}
