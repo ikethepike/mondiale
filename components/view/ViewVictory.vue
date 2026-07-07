@@ -1,52 +1,109 @@
 <template>
-  <ModalWrapper>
-    <article
-      v-if="game"
-      ref="card"
-      class="view-victory pane tl decorator-bottom"
-      @click="skipToEnd"
-    >
-      <div class="pane-content">
-        <h1 data-victory="heading">Congratulations{{ ownName ? `, ${ownName}` : '' }}!</h1>
-        <p v-if="placement" data-victory="heading">You placed {{ ordinal(placement) }}.</p>
+  <div v-if="game" class="victory-stage">
+    <!-- Act one: the takeover — a full-screen beat before any numbers -->
+    <div v-if="showHero" class="hero" @click="endHero">
+      <ContourRipple class="hero-ripple" :delay="0.3" />
+      <span data-hero="eyebrow" class="eyebrow">{{
+        isChampion ? 'Victory' : 'The finish line'
+      }}</span>
+      <h1 data-hero="name">{{ heroHeading }}</h1>
+      <p data-hero="sub" class="hero-sub">{{ heroSub }}</p>
+    </div>
 
-        <hr data-victory="rule" />
-        <h3 data-victory="heading">Leaderboard</h3>
-        <ol class="leaderboard">
-          <li
+    <!-- Act two: the report — a living end-screen over the game's atlas -->
+    <ModalWrapper v-else>
+      <article ref="card" class="pane victory-report tl decorator-bottom">
+        <section class="report-main">
+          <header class="pane-content report-header">
+            <span class="eyebrow">Final Standings</span>
+            <h2>{{ isChampion ? `Champion: ${ownName}` : `You placed ${ordinal(placement ?? 0)}` }}</h2>
+          </header>
+
+          <div class="pane-content stat-banner">
+            <div class="stat">
+              <strong class="stat-value">{{ animatedPoints }}</strong>
+              <span class="stat-label">points scored</span>
+            </div>
+            <div class="stat">
+              <strong class="stat-value">{{ ownStats?.roundWins ?? 0 }}</strong>
+              <span class="stat-label">rounds won</span>
+            </div>
+            <div class="stat badge">
+              <strong class="stat-value">{{ ownStats?.superlative.title }}</strong>
+              <span class="stat-label">{{ ownStats?.superlative.detail }}</span>
+            </div>
+          </div>
+
+          <section v-if="ownStats?.timeline.length" class="pane-content timeline">
+            <span class="eyebrow">Your Game, Round by Round</span>
+            <div class="timeline-bars">
+              <div
+                v-for="result in ownStats.timeline"
+                :key="result.number"
+                class="timeline-bar"
+                :title="`Round ${result.number} — ${result.scored}/${result.maximum}`"
+              >
+                <div
+                  class="bar-fill"
+                  :style="{ height: `${Math.max(6, (result.scored / result.maximum) * 100)}%` }"
+                />
+                <span class="bar-label">{{ result.number }}</span>
+              </div>
+            </div>
+            <p v-if="ownStats.sharpestRound" class="sharpest">
+              Sharpest moment: {{ ownStats.sharpestRound.scored }}/{{
+                ownStats.sharpestRound.maximum
+              }}
+              on the round {{ ownStats.sharpestRound.number }} {{ kindLabel(ownStats.sharpestRound.kind) }}.
+            </p>
+          </section>
+
+          <footer class="pane-content atlas-line">
+            <p>
+              This game visited <strong>{{ atlas.length }}</strong> countries — they're glowing on
+              the map behind you.
+            </p>
+          </footer>
+        </section>
+
+        <section class="player-listing pane-content">
+          <header class="listing-header">
+            <span class="eyebrow">{{ raceOver ? 'Final Order' : 'The Race Continues' }}</span>
+          </header>
+          <div
             v-for="(standing, index) in gameStore.standings"
             :key="standing.id"
-            data-victory="row"
-            class="row"
-            :class="{ winner: index === 0, 'own-player': standing.id === playerId }"
+            class="standing-row"
+            :class="{ 'own-player': standing.id === playerId, champion: index === 0 }"
           >
-            <ContourRipple
-              v-if="index === 0"
-              ref="winnerRipple"
-              class="winner-ripple"
-              :autoplay="false"
-            />
-            <PlayerPawn :player="standing" class="pawn" :data-victory="index === 0 ? 'winner-pawn' : undefined" />
-            <span class="name">{{ standing.name }}</span>
-            <span class="detail">
-              <template v-if="standing.completedAtRound">
-                Finished in round {{ standing.completedAtRound }}
-              </template>
-              <template v-else>Reached tile {{ standing.currentPosition + 1 }}</template>
-            </span>
-          </li>
-        </ol>
-      </div>
-    </article>
-  </ModalWrapper>
+            <span class="rank">{{ index + 1 }}</span>
+            <PlayerTile :player="standing">
+              <div class="standing-status">
+                <template v-if="standing.completedAtRound">
+                  <span class="finished">Round {{ standing.completedAtRound }}</span>
+                </template>
+                <template v-else>
+                  <span class="racing">tile {{ standing.currentPosition + 1 }}…</span>
+                </template>
+              </div>
+            </PlayerTile>
+            <span class="badge-line">{{ statsByPlayer[standing.id]?.superlative.title }}</span>
+          </div>
+        </section>
+      </article>
+    </ModalWrapper>
+  </div>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
+import { useCountUp } from '~~/lib/use-count-up'
+import { gameStats, visitedCountries } from '~~/lib/victory-stats'
+import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
-const { game, player, playerId, gameStore } = useClientEvents()
+const { game, player, playerId, gameStore, clearBoard } = useClientEvents()
 
 const ownName = computed(() => player.value?.name)
 
@@ -55,113 +112,356 @@ const placement = computed(() => {
   return index === -1 ? undefined : index + 1
 })
 
+const isChampion = computed(() => placement.value === 1)
+const raceOver = computed(() =>
+  gameStore.standings.every(standing => !!standing.completedAtRound)
+)
+
+const heroHeading = computed(() =>
+  isChampion.value ? `${ownName.value ?? 'You'} takes the crown` : `${ownName.value ?? 'You'} crosses the line`
+)
+const heroSub = computed(() => {
+  if (isChampion.value) return 'First through the final gauntlet — the world is yours.'
+  return `${ordinal(placement.value ?? 0)} across the finish — the report awaits.`
+})
+
 const ordinal = (value: number) => {
   const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' }
   const tens = value % 100
   return `${value}${tens >= 11 && tens <= 13 ? 'th' : (suffixes[value % 10] ?? 'th')}`
 }
 
-const card = ref<HTMLElement>()
-const winnerRipple = ref<InstanceType<typeof ContourRipple>[]>()
-let timeline: gsap.core.Timeline | undefined
+const kindLabel = (kind: RoundChallengeKind) => kind.replace(/-/g, ' ')
 
-// Celebration sequence: headings rise → rule draws → rows stagger in →
-// winner row washes warm-sand, their pawn pops, one ripple plays.
-onMounted(() => {
-  if (!card.value || prefersReducedMotion()) return
+// --- The report data --------------------------------------------------------
+const statsByPlayer = computed(() => (game.value ? gameStats(game.value) : {}))
+const ownStats = computed(() => statsByPlayer.value[playerId.value])
+const atlas = computed(() => (game.value ? visitedCountries(game.value) : []))
 
-  timeline = gsap.timeline()
-  timeline.fromTo(
-    card.value.querySelectorAll('[data-victory="heading"]'),
-    { opacity: 0, y: 16 },
-    { opacity: 1, y: 0, duration: 0.45, ease: EASE.enter, stagger: 0.12 }
-  )
-  timeline.fromTo(
-    card.value.querySelectorAll('[data-victory="rule"]'),
-    { scaleX: 0, transformOrigin: 'left center' },
-    { scaleX: 1, duration: 0.5, ease: EASE.cross },
-    '<0.3'
-  )
-  timeline.fromTo(
-    card.value.querySelectorAll('[data-victory="row"]'),
-    { opacity: 0, y: 16 },
-    { opacity: 1, y: 0, duration: 0.4, ease: EASE.enter, stagger: 0.12 },
-    '<0.2'
-  )
-  timeline.fromTo(
-    card.value.querySelector('.row.winner'),
-    { backgroundColor: 'transparent' },
-    { backgroundColor: 'rgba(241, 185, 130, 0.35)', duration: 0.4, ease: EASE.cross }
-  )
-  timeline.fromTo(
-    card.value.querySelectorAll('[data-victory="winner-pawn"]'),
-    { scale: 1 },
-    { scale: 1.25, duration: 0.18, ease: 'power2.out', yoyo: true, repeat: 1 },
-    '<'
-  )
-  timeline.call(() => winnerRipple.value?.[0]?.play(), undefined, '<0.1')
+const { display: animatedPoints } = useCountUp(() => ownStats.value?.totalScored ?? 0, {
+  delay: 0.4,
 })
 
-const skipToEnd = () => {
-  timeline?.progress(1)
+// --- Act one: hero beat ------------------------------------------------------
+const HERO_HOLD_MS = 3400
+const showHero = ref(true)
+let heroTimer: ReturnType<typeof setTimeout> | undefined
+
+const endHero = () => {
+  if (heroTimer) clearTimeout(heroTimer)
+  showHero.value = false
 }
 
-onUnmounted(() => {
-  timeline?.kill()
+onMounted(() => {
+  // The game's atlas glows behind the report — every country the rounds touched
+  clearBoard()
+  for (const isoCode of atlas.value) {
+    gameStore.map.tints[isoCode] = isChampion.value ? 'optimal' : 'inefficient'
+  }
+
+  heroTimer = setTimeout(endHero, prefersReducedMotion() ? 600 : HERO_HOLD_MS)
+
+  if (prefersReducedMotion()) return
+  nextTick(() => {
+    gsap.fromTo(
+      '[data-hero="eyebrow"]',
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.4, ease: EASE.enter }
+    )
+    gsap.fromTo(
+      '[data-hero="name"]',
+      { opacity: 0, scale: 0.85, y: 24 },
+      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: EASE.enter, delay: 0.25 }
+    )
+    gsap.fromTo(
+      '[data-hero="sub"]',
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, ease: EASE.enter, delay: 0.7 }
+    )
+  })
+})
+
+// --- Act two: report entrance -------------------------------------------------
+const card = ref<HTMLElement>()
+watch(showHero, value => {
+  if (value || prefersReducedMotion()) return
+  nextTick(() => {
+    if (!card.value) return
+    gsap.fromTo(
+      card.value.querySelectorAll('.report-main > *'),
+      { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 0.45, ease: EASE.enter, stagger: 0.1, clearProps: 'all' }
+    )
+    gsap.fromTo(
+      card.value.querySelectorAll('.standing-row'),
+      { opacity: 0, x: 18 },
+      { opacity: 1, x: 0, duration: 0.4, ease: EASE.enter, stagger: 0.09, clearProps: 'opacity,transform' }
+    )
+    gsap.fromTo(
+      card.value.querySelectorAll('.bar-fill'),
+      { scaleY: 0, transformOrigin: 'bottom center' },
+      { scaleY: 1, duration: 0.5, ease: EASE.enter, stagger: 0.06, delay: 0.4 }
+    )
+  })
+})
+
+onBeforeUnmount(() => {
+  if (heroTimer) clearTimeout(heroTimer)
+  clearBoard()
 })
 </script>
 <style lang="scss" scoped>
-.view-victory {
-  margin: auto;
-  width: 90%;
-  max-width: 52rem;
+$hairline: hsla(0, 0%, 7.5%, 0.12);
+
+.victory-stage {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  position: absolute;
 }
 
-hr {
-  border: none;
-  margin: 2rem 0;
-  border-top: 0.1rem solid var(--text-color);
-}
-
-.leaderboard {
-  padding: 0;
-  list-style: none;
-}
-
-.row {
-  gap: 1.4rem;
+// --- Act one -----------------------------------------------------------------
+.hero {
+  gap: 1.2rem;
+  width: 100%;
+  height: 100%;
   display: flex;
+  cursor: pointer;
   position: relative;
+  text-align: center;
   align-items: center;
-  padding: 0.8rem 1rem;
-  border-radius: 0.6rem;
+  pointer-events: auto;
+  flex-flow: column nowrap;
+  justify-content: center;
 
-  &.own-player {
-    border-left: 0.5rem solid var(--warm-sand);
+  // A soft glow lifts the headline off the atlas linework behind it
+  &::before {
+    content: '';
+    inset: 0;
+    position: absolute;
+    background: radial-gradient(
+      ellipse 62% 48% at center,
+      hsla(36, 100%, 98%, 0.96) 0%,
+      hsla(36, 100%, 98%, 0.82) 55%,
+      transparent 78%
+    );
+  }
+
+  > * {
+    z-index: 1;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(4.2rem, 9vw, 9rem);
+    line-height: 1.05;
+    color: var(--dark-blue);
+    max-width: 90vw;
   }
 }
 
-.pawn {
-  width: 2.4rem;
-  flex-shrink: 0;
+.hero-sub {
+  margin: 0;
+  opacity: 0.75;
+  font-size: 1.9rem;
 }
 
-.name {
-  font-weight: bold;
-}
-
-.detail {
-  opacity: 0.7;
-  margin-left: auto;
-}
-
-.winner-ripple {
+.hero-ripple {
   top: 50%;
-  left: 2rem;
-  width: 12rem;
-  height: 12rem;
+  left: 50%;
+  width: 56rem;
+  height: 56rem;
   position: absolute;
   pointer-events: none;
   transform: translate(-50%, -50%);
+}
+
+// --- Act two -----------------------------------------------------------------
+.victory-report {
+  width: 100%;
+  margin: auto;
+  display: grid;
+  max-width: 110rem;
+  grid-template-columns: 68% 32%;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft-blue);
+  margin-bottom: 0.8rem;
+}
+
+.report-header {
+  padding-bottom: 2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  h2 {
+    margin: 0;
+    font-size: 2.8rem;
+    color: var(--dark-blue);
+  }
+}
+
+.stat-banner {
+  gap: 2.8rem;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2.2rem;
+  padding-bottom: 2.2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  .stat {
+    display: flex;
+    flex-flow: column nowrap;
+  }
+  .stat-value {
+    font-size: 4.2rem;
+    line-height: 1.1;
+    color: var(--dark-blue);
+  }
+  .badge .stat-value {
+    font-size: 2.4rem;
+    padding-top: 0.9rem;
+  }
+  .stat-label {
+    opacity: 0.6;
+    font-size: 1.3rem;
+  }
+}
+
+.timeline {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 0.1rem solid $hairline;
+}
+
+.timeline-bars {
+  gap: 0.8rem;
+  display: flex;
+  height: 9rem;
+  align-items: flex-end;
+}
+
+.timeline-bar {
+  gap: 0.4rem;
+  height: 100%;
+  display: flex;
+  flex: 0 1 3.2rem;
+  align-items: center;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
+
+  .bar-fill {
+    width: 100%;
+    border-radius: 0.3rem 0.3rem 0 0;
+    background: var(--soft-blue);
+  }
+  .bar-label {
+    opacity: 0.5;
+    font-size: 1.1rem;
+  }
+}
+
+.sharpest {
+  margin: 1.4rem 0 0;
+  opacity: 0.7;
+  font-size: 1.4rem;
+}
+
+.atlas-line {
+  padding-top: 1.8rem;
+  padding-bottom: 2.2rem;
+
+  p {
+    margin: 0;
+    opacity: 0.75;
+    font-size: 1.5rem;
+  }
+}
+
+// Sidebar: the live standings
+.player-listing {
+  border-left: 0.1rem solid var(--text-color);
+}
+
+.listing-header {
+  margin-bottom: 1.6rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  .eyebrow {
+    margin-bottom: 0;
+  }
+}
+
+.standing-row {
+  gap: 1rem;
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  .rank {
+    width: 2rem;
+    opacity: 0.45;
+    flex-shrink: 0;
+    font-size: 1.4rem;
+    text-align: right;
+    font-weight: bold;
+  }
+
+  :deep(.player-tile) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &.champion .rank {
+    opacity: 1;
+    color: var(--dark-blue);
+  }
+  &.champion :deep(.player-tile) {
+    outline: 0.2rem solid var(--warm-sand);
+    outline-offset: 0.2rem;
+  }
+  &.own-player .rank {
+    opacity: 1;
+  }
+
+  .badge-line {
+    width: 100%;
+    opacity: 0.55;
+    font-size: 1.2rem;
+    padding-left: 3rem;
+  }
+}
+
+.standing-status {
+  margin-left: auto;
+  font-size: 1.4rem;
+
+  .finished {
+    font-weight: bold;
+  }
+  .racing {
+    opacity: 0.6;
+    animation: racing-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes racing-pulse {
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .racing {
+    animation: none;
+  }
 }
 </style>

@@ -23,7 +23,9 @@
               <p class="lead">
                 {{
                   isPersonalScorecard
-                    ? `Well done, ${selectedScorecard.player.name}.`
+                    ? (selectedScorecard.score?.points.scored ?? 0) > 0
+                      ? `Well done, ${selectedScorecard.player.name}.`
+                      : `Rough round, ${selectedScorecard.player.name}.`
                     : `${selectedScorecard.player.name}'s round.`
                 }}
               </p>

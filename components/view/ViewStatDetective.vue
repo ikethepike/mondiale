@@ -60,7 +60,7 @@
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
@@ -91,13 +91,7 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 clearBoard()
 gameStore.map.solo = true
 
-/** "Rank the following countries by GDP per capita" → "GDP per capita". */
-const clueLabel = (accessorId: GroupChallengeAccessorId) => {
-  const phrasing = getChallengeDetails(accessorId)?.phrasing ?? accessorId
-  return phrasing
-    .replace(/^rank (the following|these)( countries)? by (the )?/i, '')
-    .replace(/^(the )?(proportion of|level of|amount of)\s*/i, '')
-}
+const clueLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 
 const revealedClues = computed(() => {
   const active = challenge.value

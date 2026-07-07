@@ -72,6 +72,26 @@
             </div>
           </template>
 
+          <!-- Whose leader is this? Portrait up, four countries down -->
+          <template v-else-if="variant === 'leader-portrait' && challenge.portrait">
+            <h1 class="map-caption">Which country does this leader govern?</h1>
+            <div class="portrait-frame">
+              <img class="portrait" :src="challenge.portrait.image" alt="A national leader" />
+            </div>
+            <div class="options card-options">
+              <button
+                v-for="option in challenge.options"
+                :key="option"
+                class="option card-option"
+                type="button"
+                @click="submitAnswer(option)"
+              >
+                <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+                <span>{{ countryName(option) }}</span>
+              </button>
+            </div>
+          </template>
+
           <!-- Outline reveal race (hard): name it before the border completes -->
           <template v-else-if="variant === 'outline-reveal'">
             <h1 class="map-caption">Whose border is drawing itself?</h1>
@@ -127,7 +147,7 @@
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
-import { getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { prefersReducedMotion } from '~~/lib/motion'
@@ -177,6 +197,8 @@ const interstitialTitle = computed(() => {
       return `Win ${totalDuels.value === 2 ? 'both duels' : `all ${totalDuels.value} duels`}: which country ranks higher?`
     case 'outline-reveal':
       return 'Name the country before its border finishes drawing itself'
+    case 'leader-portrait':
+      return 'Whose leader is this?'
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
@@ -246,8 +268,7 @@ const currentDuel = computed(() => challenge.value?.higherLower?.pairs[duelIndex
 const duelTopic = computed(() => {
   const accessorId = challenge.value?.higherLower?.accessorId
   if (!accessorId) return ''
-  const phrasing = getChallengeDetails(accessorId)?.phrasing ?? accessorId
-  return phrasing.replace(/^rank (the following|these)( countries)? by /i, '')
+  return accessorTopicLabel(accessorId)
 })
 
 const failedDuelAnswer = ref<ISOCountryCode>()
@@ -295,6 +316,10 @@ const incorrectMessage = computed(() => {
         : 'Not quite.'
     case 'outline-reveal':
       return active ? `That border belongs to ${countryName(active.country)}` : 'Time ran out.'
+    case 'leader-portrait':
+      return active?.portrait
+        ? `That's ${active.portrait.name} — ${countryName(active.country)}'s leader`
+        : 'Not quite.'
     default:
       return picked ? `Sorry, you pressed: ${countryName(picked)}` : 'Not quite.'
   }
@@ -504,6 +529,25 @@ header {
 
 .text-options {
   grid-template-columns: minmax(28rem, 44rem);
+}
+
+// The face on the card — framed like the flag hero
+.portrait-frame {
+  padding: 0.8rem;
+  margin-top: 0.6rem;
+  border-radius: 1.2rem;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.85);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+
+  .portrait {
+    width: 18rem;
+    height: 22rem;
+    display: block;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 0.8rem;
+  }
 }
 
 // The self-drawing border race

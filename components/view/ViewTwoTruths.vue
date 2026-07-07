@@ -12,7 +12,9 @@
     <header>
       <div class="prompt">
         <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-        <span v-if="!picked" class="map-caption sub">Tap the claim that doesn't belong</span>
+        <span v-if="picked === undefined" class="map-caption sub">
+          Tap the claim that doesn't belong
+        </span>
         <span v-else-if="foundLie" class="map-caption sub verdict correct">
           Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
           {{ truthDisplay }}
@@ -50,7 +52,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
@@ -79,13 +81,7 @@ const begin = () => {
   showInterstitial.value = false
 }
 
-/** "Rank the following countries by GDP per capita" → "GDP per capita". */
-const statementLabel = (accessorId: GroupChallengeAccessorId) => {
-  const phrasing = getChallengeDetails(accessorId)?.phrasing ?? accessorId
-  return phrasing
-    .replace(/^rank (the following|these)( countries)? by (the )?/i, '')
-    .replace(/^(the )?(proportion of|level of|amount of)\s*/i, '')
-}
+const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 
 const foundLie = computed(
   () => picked.value !== undefined && picked.value === challenge.value?.lieIndex

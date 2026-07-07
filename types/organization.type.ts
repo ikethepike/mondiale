@@ -4,8 +4,8 @@ export enum OrganizationVector {
   eu = 'European Union',
   au = 'African Union',
   bri = 'Belt and Road Initiative',
-  nato = 'North American Trade Organization',
-  csto = ' Collective Security Treaty Organization',
+  nato = 'North Atlantic Treaty Organization',
+  csto = 'Collective Security Treaty Organization',
   opec = 'Organization of the Petroleum Exporting Countries',
   oecd = 'Organisation for Economic Co-operation and Development',
 }

@@ -5,6 +5,7 @@ import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
+import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import {
   extractNumbers,
@@ -614,17 +615,35 @@ const getMembership = ({
   }
 
   const participation = data.Government['International organization participation']
-  if (!participation) return output
-
-  for (const organization of participation.text.split(',').map(org => org.toLowerCase().trim())) {
-    if (isOrganizationKey(organization)) {
-      output.push({
-        _type: 'organization',
-        id: organization,
-        name: OrganizationVector[organization],
-        regions: organizationRegions[organization],
-      })
+  if (participation) {
+    for (const organization of participation.text.split(',').map(org => org.toLowerCase().trim())) {
+      if (isOrganizationKey(organization)) {
+        output.push({
+          _type: 'organization',
+          id: organization,
+          name: OrganizationVector[organization],
+          regions: organizationRegions[organization],
+        })
+      }
     }
+  }
+
+  // Apply hand-maintained corrections for stale/loose Factbook memberships.
+  const correction = MEMBERSHIP_CORRECTIONS[isoCode]
+  if (correction) {
+    const removed = new Set(correction.remove ?? [])
+    const corrected = output.filter(org => !removed.has(org.id))
+    for (const id of correction.add ?? []) {
+      if (!corrected.some(org => org.id === id)) {
+        corrected.push({
+          _type: 'organization',
+          id,
+          name: OrganizationVector[id],
+          regions: organizationRegions[id],
+        })
+      }
+    }
+    return corrected
   }
 
   return output

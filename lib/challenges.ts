@@ -1,6 +1,7 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { LEADERS } from '~~/data/leaders.gen'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
   type GroupChallengeAccessorId,
@@ -737,6 +738,33 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
+/** A portrait-carrying leader entry, head of state preferred. */
+const portraitFor = (isoCode: ISOCountryCode) => {
+  const entry = LEADERS[isoCode]
+  const leader = [entry?.headOfState, entry?.headOfGovernment].find(role => role?.image)
+  return leader?.image ? { image: leader.image, name: leader.name } : undefined
+}
+
+/** Leader-portrait: whose face is this? Decoys prefer the same region. */
+const dealLeaderPortrait = (
+  countryPool: ISOCountryCode[]
+): Pick<IndividualChallenge, 'country' | 'options' | 'portrait'> | undefined => {
+  const withPortraits = shuffleArray(countryPool.filter(isoCode => !!portraitFor(isoCode)))
+  const country = withPortraits[0]
+  if (!country) return undefined
+  const portrait = portraitFor(country)
+  if (!portrait) return undefined
+
+  const region = COUNTRIES[country].region
+  const others = countryPool.filter(isoCode => isoCode !== country)
+  const regional = shuffleArray(others.filter(isoCode => COUNTRIES[isoCode].region === region))
+  const filler = shuffleArray(others.filter(isoCode => !regional.includes(isoCode)))
+  const decoys = [...regional, ...filler].slice(0, 3)
+  if (decoys.length < 3) return undefined
+
+  return { country, options: shuffleArray([country, ...decoys]), portrait }
+}
+
 /**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
@@ -747,9 +775,15 @@ const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined =
   if (typeof process === 'undefined') return undefined
   const forced = process.env?.FORCE_INDIVIDUAL_VARIANT
   return forced &&
-    ['find', 'flag-pick', 'odd-one-out', 'higher-lower', 'leader-pick', 'outline-reveal'].includes(
-      forced
-    )
+    [
+      'find',
+      'flag-pick',
+      'odd-one-out',
+      'higher-lower',
+      'leader-pick',
+      'outline-reveal',
+      'leader-portrait',
+    ].includes(forced)
     ? (forced as IndividualChallenge['variant'])
     : undefined
 }
@@ -793,6 +827,11 @@ export const getIndividualChallenge = ({
       }
       case 'outline-reveal':
         return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
+      case 'leader-portrait': {
+        const dealt = dealLeaderPortrait(pool)
+        if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -815,18 +854,41 @@ export const getIndividualChallenge = ({
       break
     }
     case 'capital.name': {
-      if (roll < 0.34) {
+      if (roll < 0.25) {
         const dealt = dealHigherLower(difficulty, pool)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
-      } else if (roll < 0.67) {
+      } else if (roll < 0.5) {
         const dealt = dealLeaderPick(pool)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
+      } else if (roll < 0.75) {
+        const dealt = dealLeaderPortrait(pool)
+        if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       }
       break
     }
   }
 
   return base
+}
+
+/**
+ * A short topic label for an accessor, derived from its ranking phrasing:
+ * "Rank the following countries by their GDP per capita" → "GDP per capita".
+ * Used wherever a stat needs naming outside a ranking question (clue cards,
+ * claim cards, duel topics).
+ */
+export const accessorTopicLabel = (
+  accessorId: GroupChallengeAccessorId | IndividualChallengeAccessorId
+): string => {
+  const phrasing = getChallengeDetails(accessorId)?.phrasing ?? accessorId
+  return phrasing
+    .replace(/^rank (the following|these)( countries)? by /i, '')
+    .replace(/^which of these countries (have|has) the /i, '')
+    .replace(/^(the |their )/i, '')
+    .replace(/^(proportion of|level of|amount of)\s*/i, '')
+    .replace(/^(largest|smallest|highest|lowest)\s*/i, '')
+    .replace(/\?$/, '')
+    .trim()
 }
 
 /**

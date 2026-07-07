@@ -15,6 +15,8 @@ import type { ISOCountryCode } from '../geography.types'
  *   countries, their leaders shown as the answers
  * - 'outline-reveal' (hard mode): `country`'s border draws itself in; name
  *   it by typing before the clock runs out — one wrong guess fails the gate
+ * - 'leader-portrait': a leader's photo (from the Wikidata-generated leader
+ *   data) — pick which of the `options` countries they govern
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -33,6 +35,11 @@ export interface IndividualChallenge {
     accessorId: GroupChallengeAccessorId
     pairs: { a: ISOCountryCode; b: ISOCountryCode }[]
   }
+  /** leader-portrait: the face on the card (name shown only in the result). */
+  portrait?: {
+    image: string
+    name: string
+  }
 }
 
 export const individualChallengeVariants = [
@@ -42,6 +49,7 @@ export const individualChallengeVariants = [
   'higher-lower',
   'leader-pick',
   'outline-reveal',
+  'leader-portrait',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
