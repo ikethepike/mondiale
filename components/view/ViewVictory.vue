@@ -12,7 +12,12 @@
 
     <!-- Act two: the report — a living end-screen over the game's atlas -->
     <ModalWrapper v-else>
-      <article ref="card" class="pane victory-report tl decorator-bottom">
+      <!-- Atlas peek: the report steps aside so the glowing map can be seen -->
+      <button v-if="showAtlas" type="button" class="atlas-return" @click="showAtlas = false">
+        {{ atlas.length }} countries visited — back to the report
+      </button>
+
+      <article v-show="!showAtlas" ref="card" class="pane victory-report tl decorator-bottom">
         <section class="report-main">
           <header class="pane-content report-header">
             <span class="eyebrow">Final Standings</span>
@@ -61,7 +66,19 @@
           <footer class="pane-content atlas-line">
             <p>
               This game visited <strong>{{ atlas.length }}</strong> countries — they're glowing on
-              the map behind you.
+              the map behind this card.
+            </p>
+            <nav class="report-nav">
+              <ButtonLine @click="showAtlas = true">
+                <span>View the atlas</span>
+              </ButtonLine>
+              <ButtonLine element="NuxtLink" to="/">
+                <span>Back to the home screen</span>
+              </ButtonLine>
+            </nav>
+            <p v-if="!raceOver" class="leave-note">
+              You're free to leave — the race carries on without you, and this room remembers your
+              crown if you return.
             </p>
           </footer>
         </section>
@@ -182,6 +199,7 @@ onMounted(() => {
 })
 
 // --- Act two: report entrance -------------------------------------------------
+const showAtlas = ref(false)
 const card = ref<HTMLElement>()
 watch(showHero, value => {
   if (value || prefersReducedMotion()) return
@@ -381,6 +399,46 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
     margin: 0;
     opacity: 0.75;
     font-size: 1.5rem;
+  }
+
+  .report-nav {
+    gap: 1.2rem;
+    display: flex;
+    flex-flow: row wrap;
+    margin-top: 1.4rem;
+    pointer-events: auto;
+  }
+
+  .leave-note {
+    opacity: 0.55;
+    font-size: 1.3rem;
+    margin-top: 1.2rem;
+  }
+}
+
+// Floating return pill while the report steps aside for the atlas
+.atlas-return {
+  left: 50%;
+  bottom: 4rem;
+  position: fixed;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-family: inherit;
+  padding: 1rem 2.2rem;
+  border-radius: 3rem;
+  pointer-events: auto;
+  color: var(--dark-blue);
+  transform: translateX(-50%);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.92);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.35);
+  transition:
+    transform var(--motion-quick) var(--ease-out-expressive),
+    border-color var(--motion-quick) var(--ease-out-expressive);
+
+  &:hover {
+    border-color: var(--dark-blue);
+    transform: translateX(-50%) translateY(-0.2rem);
   }
 }
 

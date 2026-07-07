@@ -14,7 +14,8 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
   "AL": [
     "GR",
     "ME",
-    "MK"
+    "MK",
+    "XK"
   ],
   "AD": [
     "ES",
@@ -594,7 +595,8 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
     "AL",
     "BA",
     "HR",
-    "RS"
+    "RS",
+    "XK"
   ],
   "MA": [
     "DZ",
@@ -712,7 +714,8 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
     "AL",
     "BG",
     "GR",
-    "RS"
+    "RS",
+    "XK"
   ],
   "RO": [
     "BG",
@@ -772,7 +775,8 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
     "HU",
     "ME",
     "MK",
-    "RO"
+    "RO",
+    "XK"
   ],
   "SC": [],
   "SL": [
@@ -979,5 +983,11 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
     "MZ",
     "ZA",
     "ZM"
+  ],
+  "XK": [
+    "AL",
+    "ME",
+    "MK",
+    "RS"
   ]
 }

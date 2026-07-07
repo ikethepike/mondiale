@@ -1,10 +1,10 @@
 <template>
-  <component :is="element" :to="to" class="button">
+  <component :is="tag" :to="to" class="button">
     <slot />
   </component>
 </template>
 <script lang="ts" setup>
-defineProps({
+const props = defineProps({
   element: {
     type: String as PropType<'a' | 'button' | 'NuxtLink'>,
     default: 'button',
@@ -18,6 +18,12 @@ defineProps({
     default: undefined,
   },
 })
+
+// NuxtLink is auto-imported, NOT globally registered — handing the bare
+// string to <component :is> renders an inert <nuxtlink> element that looks
+// like a link and navigates nowhere. It must be resolved to the component.
+const NuxtLink = resolveComponent('NuxtLink')
+const tag = computed(() => (props.element === 'NuxtLink' ? NuxtLink : props.element))
 </script>
 <style lang="scss" scoped>
 .button {
@@ -34,5 +40,10 @@ defineProps({
   font-family: inherit;
   border-radius: 0.6rem;
   justify-content: center;
+
+  // Rendering as a real <a> (NuxtLink) brings the user agent's link look
+  // with it — a button is a button regardless of the element underneath
+  color: inherit;
+  text-decoration: none;
 }
 </style>

@@ -11,7 +11,8 @@ import type { ISOCountryCode } from '../types/geography.types'
  * - France is continental France only (no Brazil/Suriname via French Guiana).
  * - Spain–Morocco counts (Ceuta & Melilla are real land borders).
  * - Morocco–Mauritania counts (Western Sahara is not in the ISO set).
- * - Serbia–Albania does NOT count (only adjacent via Kosovo, not in the set).
+ * - Serbia–Albania does NOT count (they are only adjacent via Kosovo, which
+ *   is in the set and carries the RS/AL routes itself).
  * - Bridges/causeways/tunnels do not count (no SG–MY, BH–SA, GB–FR).
  */
 const BORDER_PAIRS: [ISOCountryCode, ISOCountryCode][] = [
@@ -63,6 +64,10 @@ const BORDER_PAIRS: [ISOCountryCode, ISOCountryCode][] = [
   ['RS', 'RO'],
   ['RS', 'BG'],
   ['RS', 'MK'],
+  ['XK', 'RS'],
+  ['XK', 'AL'],
+  ['XK', 'MK'],
+  ['XK', 'ME'],
   ['AL', 'MK'],
   ['AL', 'GR'],
   ['MK', 'BG'],
