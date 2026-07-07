@@ -1,6 +1,5 @@
-import { Server, Socket } from 'socket.io'
+import type { Server, Socket, DefaultEventsMap } from 'socket.io'
 
-import type { DefaultEventsMap } from 'socket.io'
 import type { ClientEventTarget, ServerEventData } from '../../types/events.types'
 import { type Game, isValidGame } from '../../types/game.types'
 import type { Redis } from '@upstash/redis'

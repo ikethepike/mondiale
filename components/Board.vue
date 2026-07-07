@@ -1,6 +1,6 @@
 <template>
-  <div class="board" :style="{ '--tileSize': tileSize }" ref="board">
-    <header class="progress-header" ref="progressHeader">
+  <div ref="board" class="board" :style="{ '--tileSize': tileSize }">
+    <header ref="progressHeader" class="progress-header">
       <div class="logo" />
       <ol>
         <li>Doug 55%</li>
@@ -12,10 +12,11 @@
 
     <section class="board-wrapper">
       <div
+        v-for="i in 100"
+        :key="i"
+        :id="`tile-${i}`"
         class="board-tile"
         :data-mod="Number(i % 5 > 0)"
-        :id="`tile-${i}`"
-        v-for="i in 100"
         :class="{
           wide: i % 5 === 0 && ![25, 50, 70].includes(i),
           challenge: i % 5 === 0,
@@ -28,8 +29,6 @@
   </div>
 </template>
 <script setup lang="ts">
-import { useClientEvents } from '~~/lib/events/client-side'
-
 const progressHeader = ref<HTMLHeadElement>()
 const board = ref<HTMLDivElement>()
 const onScroll = (event: Event) => {
@@ -60,8 +59,6 @@ onUnmounted(() => {
 })
 
 const tileSize = `10vw`
-
-const { game } = useClientEvents()
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/templates/pane' as *;

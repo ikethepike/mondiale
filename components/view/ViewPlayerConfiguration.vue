@@ -1,6 +1,6 @@
 <template>
   <div class="player-configuration-wrapper">
-    <article class="player-configuration pane tl decorator-bottom" v-if="player">
+    <article v-if="player" class="player-configuration pane tl decorator-bottom">
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
           <div class="content">
@@ -64,11 +64,11 @@
             </p>
             <p>This time, you'll be competing in:</p>
 
-            <form class="breakdown" v-if="game" ref="breakdown" @change="updateConfiguration">
+            <form v-if="game" ref="breakdown" class="breakdown" @change="updateConfiguration">
               <!-- Region -->
               <div class="configuration-block">
                 <label for="game-variant">Region:</label>
-                <select name="game-variant" id="game-variant" :disabled="!isPlayerHost">
+                <select id="game-variant" name="game-variant" :disabled="!isPlayerHost">
                   <option
                     v-for="region of gameVariants"
                     :key="region"
@@ -82,11 +82,11 @@
 
               <div class="configuration-block">
                 <label for="game-length">Length</label>
-                <select name="game-length" id="game-length" :disabled="!isPlayerHost">
+                <select id="game-length" name="game-length" :disabled="!isPlayerHost">
                   <option
                     v-for="length in gameLengths"
-                    :selected="game.length === length"
                     :key="length"
+                    :selected="game.length === length"
                   >
                     {{ length }}
                   </option>
@@ -95,11 +95,11 @@
 
               <div class="configuration-block">
                 <label for="game-difficulty">Difficulty</label
-                ><select name="game-difficulty" id="game-difficulty" :disabled="!isPlayerHost">
+                ><select id="game-difficulty" name="game-difficulty" :disabled="!isPlayerHost">
                   <option
                     v-for="difficulty in gameDifficulties"
-                    :selected="game.difficulty === difficulty"
                     :key="difficulty"
+                    :selected="game.difficulty === difficulty"
                   >
                     {{ difficulty }}
                   </option>
@@ -134,7 +134,7 @@
         </header>
 
         <ul>
-          <PlayerTile v-for="player in playersByPhase.all" :player="player" :key="player.id">
+          <PlayerTile v-for="player in playersByPhase.all" :key="player.id" :player="player">
             <div :class="['player-status', { ready: player.ready }]" />
           </PlayerTile>
         </ul>

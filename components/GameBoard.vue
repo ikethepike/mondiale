@@ -1,5 +1,5 @@
 <template>
-  <div class="game-board" ref="board">
+  <div ref="board" class="game-board">
     <div class="desktop-board">
       <template v-for="(row, index) in boardRows.desktop" :key="`desktop-row-${index}`">
         <BoardRow :row="row" :reverse="Boolean(index % 2)" :columns="5" />
@@ -28,13 +28,10 @@ interface BoardRows {
 
 const board = ref<HTMLDivElement>()
 
-// Watch current position
-const playerPosition = computed(() => game.value?.players[playerId.value]?.currentPosition)
-
 watch(
   () => game.value?.players,
   () => {
-    if (!process.client) return
+    if (!import.meta.client) return
     if (!board.value) throw new ReferenceError('Board not initalized')
 
     const pawn = document.querySelector(`.player-pawn-${playerId.value}`)

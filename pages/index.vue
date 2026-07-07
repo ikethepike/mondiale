@@ -1,7 +1,7 @@
 <template>
   <main>
     <article class="intro pane tr tl decorator-bottom">
-      <form @submit.prevent="onSubmit" :action="`/room/${roomName}`">
+      <form :action="`/room/${roomName}`" @submit.prevent="onSubmit">
         <header class="pane-content">
           <a class="logo" />
           <p>A world of facts and figures.</p>
@@ -36,7 +36,7 @@ definePageMeta({
 const onSubmit = (event: Event) => {
   const target = event.target as HTMLFormElement
 
-  let url = new URL(target.action)
+  const url = new URL(target.action)
   const data = new FormData(target)
   for (const [key, value] of data.entries()) {
     url.searchParams.append(key, value.toString())

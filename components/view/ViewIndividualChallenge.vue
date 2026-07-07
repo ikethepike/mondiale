@@ -1,15 +1,15 @@
 <template>
-  <div class="individual-challenge" v-if="challenge">
+  <div v-if="challenge" class="individual-challenge">
     <header>
       <template v-if="!status">
         <h1>{{ processReplacements(details?.phrasing || '', challenge.country) }}</h1>
-        <span class="hint" v-if="showDoubleTapHint">Press again to confirm</span>
+        <span v-if="showDoubleTapHint" class="hint">Press again to confirm</span>
         <div
+          v-if="challenge.id === 'flag'"
           class="flag"
           :style="{
             backgroundImage: `url('data:image/svg+xml;base64, ${baseEncode(country?.flag || '')}')`,
           }"
-          v-if="challenge.id === 'flag'"
         />
       </template>
       <template v-else-if="submittedCountry">

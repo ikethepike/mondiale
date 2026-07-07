@@ -1,6 +1,6 @@
 import type { GameDifficulty } from '../game.types'
 import type { ISOCountryCode } from '../geography.types'
-import { OrganizationVector } from '../organization.type'
+import type { OrganizationVector } from '../organization.type'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 
 interface BaseFinalChallenge<Challenges, Difficulty extends GameDifficulty> {

@@ -1,8 +1,8 @@
 <template>
   <div class="variant-picker">
     <div class="variants-wrapper">
-      <a class="variant-button prev" @click="scroll('left')" :class="{ disabled: atStart }">→</a>
-      <a class="variant-button next" @click="scroll('right')" :class="{ disabled: atEnd }">←</a>
+      <a class="variant-button prev" :class="{ disabled: atStart }" @click="scroll('left')">→</a>
+      <a class="variant-button next" :class="{ disabled: atEnd }" @click="scroll('right')">←</a>
 
       <ul ref="slider" @scroll="onScroll">
         <li

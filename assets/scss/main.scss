@@ -1,14 +1,14 @@
 // Rules
-@use "rules/reset";
-@use "rules/fonts";
-@use "rules/palette";
+@use 'rules/reset';
+@use 'rules/fonts';
+@use 'rules/palette';
 
 // Text
-@use "text/heading-text";
-@use "text/body-text";
+@use 'text/heading-text';
+@use 'text/body-text';
 
 // Templates
-@use "templates/pane";
+@use 'templates/pane';
 
 body {
   background-color: aliceblue;

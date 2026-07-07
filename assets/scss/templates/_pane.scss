@@ -3,8 +3,8 @@ $paneBorderRadius: 1.9rem;
 .pane {
   position: relative;
   pointer-events: auto;
-  background: var(--background-color); 
-  border: .1rem solid var(--text-color);
+  background: var(--background-color);
+  border: 0.1rem solid var(--text-color);
   &.tr {
     border-top-right-radius: $paneBorderRadius;
   }
@@ -12,7 +12,7 @@ $paneBorderRadius: 1.9rem;
     border-top-left-radius: $paneBorderRadius;
   }
   &.decorator-bottom {
-    border-bottom: .6rem solid var(--text-color);
+    border-bottom: 0.6rem solid var(--text-color);
   }
   .pane-content {
     padding: 3rem;
@@ -31,7 +31,7 @@ $paneBorderRadius: 1.9rem;
     &.left {
       padding-left: 3rem;
     }
-    &.right{ 
+    &.right {
       padding-right: 3rem;
     }
   }

@@ -1,9 +1,9 @@
 <template>
   <div
+    ref="wrapper"
     :class="[`game-map`, status]"
     data-zoom-on-wheel="zoom-amount: 0.01; max-scale: 16;"
     data-pan-on-drag="button: left;"
-    ref="wrapper"
   >
     <svg
       ref="svg"
@@ -1568,7 +1568,7 @@ onMounted(async () => {
   moveToCountry()
 })
 
-const { $pan, $zoom, $resetScale, $setScale } = useNuxtApp()
+const { $pan, $zoom, $resetScale } = useNuxtApp()
 const pastMove = ref<{ x: number; y: number } | undefined>()
 const moveToCountry = async () => {
   if (!wrapper.value || !svg.value) {
@@ -1661,7 +1661,9 @@ svg {
 path[id] {
   cursor: pointer;
   fill: var(--map-not-highlight);
-  transition: fill 0.5s, filter 0.3s;
+  transition:
+    fill 0.5s,
+    filter 0.3s;
 }
 
 path[id]:hover {

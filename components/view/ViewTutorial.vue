@@ -1,9 +1,9 @@
 <template>
   <ModalWrapper>
     <article
+      ref="card"
       class="pane tutorial-card tr tl decorator-bottom"
       :class="{ 'has-animated': hasCardAnimated }"
-      ref="card"
     >
       <form class="pane-content" @submit.prevent="closeTutorial">
         <h1>Let's start!</h1>
@@ -20,7 +20,12 @@
         </p>
         <nav>
           <div class="players-playing">
-            <PlayerPawn class="pawn" v-for="player in playersPlaying" :player="player" />
+            <PlayerPawn
+              v-for="player in playersPlaying"
+              :key="player.id"
+              class="pawn"
+              :player="player"
+            />
           </div>
           <ButtonFilled>Close tutorial</ButtonFilled>
         </nav>

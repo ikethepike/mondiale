@@ -5,7 +5,11 @@
         <header>
           <h1>Ready to go?</h1>
           <div class="player-count">
-            <span>Players Ready: {{ playersByPhase.ready.length }}/{{ playersByPhase.all.length }}</span>
+            <span
+              >Players Ready: {{ playersByPhase.ready.length }}/{{
+                playersByPhase.all.length
+              }}</span
+            >
           </div>
         </header>
         <ul class="player-listing">
@@ -16,7 +20,9 @@
               ready: p.name,
               self: p.id === player?.id,
             }"
-          >{{ p.name }}</li>
+          >
+            {{ p.name }}
+          </li>
         </ul>
       </div>
 
@@ -69,15 +75,14 @@ const copyInviteLink = async () => {
 }
 
 const startGame = () => {
-  if(!isPlayerHost) {
-    return  // For those real dumb hackers
+  if (!isPlayerHost) {
+    return // For those real dumb hackers
   }
 
   update({
-    event: "start-game"
+    event: 'start-game',
   })
 }
-
 </script>
 <style scoped>
 header {

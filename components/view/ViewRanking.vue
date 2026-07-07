@@ -4,7 +4,7 @@
       gridTemplateColumns: `repeat(${isoCodes.length}, minmax(${minWidth}, 1fr)) 1fr`,
     }"
   >
-    <li v-for="isoCode in isoCodes" class="tile">
+    <li v-for="isoCode in isoCodes" :key="isoCode" class="tile">
       <ModalScoreTile :iso-code="isoCode" />
     </li>
   </ul>

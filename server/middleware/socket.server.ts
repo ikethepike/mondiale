@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis'
-import { Server, Socket } from 'socket.io'
-import type { DefaultEventsMap } from 'socket.io'
+import { Server } from 'socket.io'
+import type { DefaultEventsMap, Socket } from 'socket.io'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
 import { joinEventHandler } from '~~/lib/events/server/join.event'

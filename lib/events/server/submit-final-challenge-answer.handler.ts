@@ -62,14 +62,16 @@ export const submitFinalChallengeAnswerHandler: EventHandler = async ({
     case 'max-challenge':
     case 'min-challenge':
     case 'leadership-challenge':
-      if (submittedAnswer._type === 'region-challenge') return throwTypeMismatch()
-      if (!isValidISOCode(submittedAnswer.isoCode)) {
-        correct = false
-        break
-      }
+      {
+        if (submittedAnswer._type === 'region-challenge') return throwTypeMismatch()
+        if (!isValidISOCode(submittedAnswer.isoCode)) {
+          correct = false
+          break
+        }
 
-      const { isoCode } = submittedAnswer
-      correct = currentChallenge.country === isoCode
+        const { isoCode } = submittedAnswer
+        correct = currentChallenge.country === isoCode
+      }
       break
     case 'language-challenge':
       {

@@ -19,7 +19,7 @@ export const removeAfterCharacter = (string: string, character: string) => {
 }
 
 export const extractParentheticals = (string: string): string[] => {
-  const matches = string.match(/\(([^\)]+)\)/g)
+  const matches = string.match(/\(([^)]+)\)/g)
   if (!matches) return []
 
   return matches.map(match => match)
@@ -35,7 +35,7 @@ export const getPercentages = (string: string): number[] => {
 export const baseEncode = (data: string) => {
   try {
     return btoa(data)
-  } catch (err) {
+  } catch {
     return Buffer.from(data).toString('base64')
   }
 }

@@ -1,4 +1,4 @@
-import { PLAYER_COLORS } from '~~/data/palette'
+import type { PLAYER_COLORS } from '~~/data/palette'
 import type { FinalChallenge } from './challenges/final-challenge.type'
 import type { GroupChallenge } from './challenges/group-challenge.type'
 import type {

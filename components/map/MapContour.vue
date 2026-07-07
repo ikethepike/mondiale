@@ -1,8 +1,8 @@
 <template>
   <svg
+    ref="map"
     xmlns="http://www.w3.org/2000/svg"
     xml:space="preserve"
-    ref="map"
     style="
       fill-rule: evenodd;
       clip-rule: evenodd;
@@ -247,7 +247,7 @@ onMounted(() => {
   console.log({ paths, lengths })
 
   const draw = () => {
-    let progress = currentFrame / totalFrames
+    const progress = currentFrame / totalFrames
     if (progress > 1) {
       return window.cancelAnimationFrame(handle)
     }

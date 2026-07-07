@@ -302,7 +302,9 @@ export const createLinkMapping = async () => {
         found = true
         successfulCombinations.push({ fipsCode, folder, isoCode, url })
         console.log(`☀️ Found successful combination for: ${isoCode}`)
-      } catch (e) {}
+      } catch {
+        // Not in this folder, try the next one
+      }
     }
 
     if (!found) {

@@ -1,7 +1,7 @@
 <template>
   <ModalWrapper>
     <div>
-      <section class="form-content" v-if="score && currentRound">
+      <section v-if="score && currentRound" class="form-content">
         <header>
           <span>Score: {{ score.points.scored }}/{{ score.points.maximum }}</span>
           <h1>{{ details?.phrasing || currentRound.round.groupChallenge.id }}</h1>

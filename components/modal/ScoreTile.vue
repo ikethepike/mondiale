@@ -1,5 +1,5 @@
 <template>
-  <div class="score-tile" v-if="country && amount">
+  <div v-if="country && amount" class="score-tile">
     <div
       class="flag"
       :style="{

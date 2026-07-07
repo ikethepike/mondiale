@@ -1,0 +1,9 @@
+# Generated files
+*.gen.ts
+.nuxt
+.output
+node_modules
+bun.lockb
+dump.rdb
+test-results
+playwright-report

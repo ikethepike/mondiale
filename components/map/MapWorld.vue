@@ -1,9 +1,9 @@
 <template>
   <svg
     id="world-map"
+    ref="map"
     width="600"
     height="600"
-    ref="map"
     viewBox="0 0 600 600"
     fill="transparent"
     xmlns="http://www.w3.org/2000/svg"

@@ -1,5 +1,6 @@
 import { countries, languages } from 'countries-list'
 import { readFileSync, writeFileSync } from 'fs'
+import { decode } from 'he'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
@@ -36,6 +37,22 @@ const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
 const REGIONS_FILE = `types/vendor/factbook/factbook-types.gen.ts`
 
+/**
+ * Factbook text contains HTML entities (e.g. C&ocirc;te d'Ivoire) which break
+ * downstream parsing such as truncating on semicolons. Decode every string in
+ * the response before any processing.
+ */
+const decodeHtmlEntitiesDeep = <T>(value: T): T => {
+  if (typeof value === 'string') return decode(value) as T
+  if (Array.isArray(value)) return value.map(decodeHtmlEntitiesDeep) as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, decodeHtmlEntitiesDeep(entry)])
+    ) as T
+  }
+  return value
+}
+
 export const createCountriesFile = async (): Promise<{
   [isoCode: string]: Country
 }> => {
@@ -52,7 +69,7 @@ export const createCountriesFile = async (): Promise<{
   for (const { url, isoCode } of successfulCombinations) {
     try {
       const response = await fetch(url)
-      const data: FactbookResponse = await response.json()
+      const data: FactbookResponse = decodeHtmlEntitiesDeep(await response.json())
       countryVector[isoCode] = normalizeCountry({ data, isoCode, url, briMembership })
       factbookContinents.add(data.Geography['Map references']?.text)
     } catch (e) {
@@ -279,7 +296,7 @@ const getYearlyIndex = <Unit>(
 
 const getRefugees = (
   data: FactbookResponse,
-  isoCode: string
+  _isoCode: string
 ):
   | {
       amount: number
@@ -408,7 +425,12 @@ const getReligion = (
 
 createCountriesFile()
 
-const removeParentheticals = (string: string): string => string.replaceAll(/\([^()]*\)/g, '')
+const removeParentheticals = (string: string): string =>
+  string
+    .replaceAll(/\([^()]*\)/g, '')
+    .replace(/\s+([,;])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 
 const getRenewablesProduction = (data: FactbookResponse): Amount<'%'> | undefined => {
   const sources = data['Energy']?.['Electricity generation sources']
@@ -495,7 +517,6 @@ export const getNames = ({
 }
 
 const getNationalColors = (data: FactbookResponse, isoCode: string, flag: string): string[] => {
-  const colors: Set<string> = new Set([])
   if (!flag.includes('fill')) {
     return []
   }
@@ -544,7 +565,7 @@ const getMembership = ({
 }
 
 const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Region => {
-  let continent = data['Geography']['Map references'].text as FactbookRegion
+  const continent = data['Geography']['Map references'].text as FactbookRegion
 
   // France lists every overseas territory; its metropolitan region is Europe.
   // Match on content rather than the exact markup, which changes between releases.

@@ -1,6 +1,6 @@
 <template>
   <ModalWrapper>
-    <article class="view-victory pane decorator-bottom" v-if="game">
+    <article v-if="game" class="view-victory pane decorator-bottom">
       <div class="pane-content">
         <h1>Congratulations!</h1>
         <!-- <p>Nicely done, {{ player?.name }}! You placed {{ placement }}</p> -->
@@ -20,7 +20,7 @@
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
 
-const { player, game } = useClientEvents()
+const { game } = useClientEvents()
 
 // const placement = computed(() => {
 //   if (!game.value) return 0

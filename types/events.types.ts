@@ -1,4 +1,4 @@
-import type { GameConfiguration, Game, GameVariant, PlayerColor } from './game.types'
+import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode, Region } from './geography.types'
 
 export type ClientEventData =

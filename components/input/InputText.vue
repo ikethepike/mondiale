@@ -1,7 +1,7 @@
 <template>
   <div class="input-text">
-    <input type="text" ref="input" :placeholder="placeholder" @change="onChange" @input="onInput" />
-    <ButtonFilled class="inline-button" v-if="inlineButton" @click="onClick">
+    <input ref="input" type="text" :placeholder="placeholder" @change="onChange" @input="onInput" />
+    <ButtonFilled v-if="inlineButton" class="inline-button" @click="onClick">
       <span class="button-text">{{ inlineButton }}</span>
     </ButtonFilled>
   </div>
@@ -9,9 +9,7 @@
 <script lang="ts" setup>
 const input = ref<HTMLInputElement>()
 const emit = defineEmits<{
-  (eventName: 'change', value: string): void
-  (eventName: 'save', value: string): void
-  (eventName: 'input', value: string): void
+  (eventName: 'change' | 'save' | 'input', value: string): void
 }>()
 
 defineProps({

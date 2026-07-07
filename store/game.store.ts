@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
 
 interface GameStoreState {
@@ -58,7 +58,7 @@ export const useGameStore = defineStore('game', {
     playerScore(state): PlayerScore {
       if (!state.playerId) return undefined
       if (!this?.currentRound) return undefined
-      const { groupAnswers, playerTurns } = this.currentRound?.round
+      const { groupAnswers, playerTurns } = this.currentRound.round
 
       return {
         ordering: groupAnswers[state.playerId] || [],

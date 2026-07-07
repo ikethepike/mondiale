@@ -1,6 +1,6 @@
 <template>
   <div class="layout" :class="[`phase-${player?.phase}`]">
-    <header id="diagnostic-bar" v-if="diagnostics">
+    <header v-if="diagnostics" id="diagnostic-bar">
       <div>
         <h3>Player</h3>
         <p>{{ player?.phase }}</p>
@@ -26,7 +26,7 @@
     />
     <slot />
 
-    <div class="reveal-wrapper" v-if="revealCountry">
+    <div v-if="revealCountry" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
         <div class="pane-content">

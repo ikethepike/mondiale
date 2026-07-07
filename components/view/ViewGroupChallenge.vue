@@ -27,7 +27,7 @@
           @sort="updateRanking"
         >
           <template #item="{ element }">
-            <article class="country draggable" :key="element.isoCode" :data-iso="element.isoCode">
+            <article :key="element.isoCode" class="country draggable" :data-iso="element.isoCode">
               <CountryTile :country="element" />
             </article>
           </template>

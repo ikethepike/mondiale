@@ -1,26 +1,26 @@
 <template>
   <ul
+    v-if="game"
     :class="['board-row', ...modifierClasses, { reverse }]"
     :style="{ gridTemplateColumns: `repeat(${columns}, 15vw)` }"
-    v-if="game"
   >
     <li
-      :class="['tile', tile.type, `position-${tile.position}`]"
       v-for="tile in tiles"
       :key="tile.position"
+      :class="['tile', tile.type, `position-${tile.position}`]"
     >
-      <span class="position" v-show="tile.type === 'normal'">{{ tile.position }}</span>
+      <span v-show="tile.type === 'normal'" class="position">{{ tile.position }}</span>
       <div
+        v-if="tile.type !== 'normal'"
         class="orb special-tile"
         :class="[tile.type.replace('.', '-')]"
-        v-if="tile.type !== 'normal'"
       />
       <div class="players">
         <template v-for="player in Object.values(game.players)" :key="player.id">
           <PlayerPawn
+            v-if="game.players[player.id].currentPosition === tile.position"
             class="pawn"
             :player="player"
-            v-if="game.players[player.id].currentPosition === tile.position"
           />
         </template>
       </div>
@@ -49,7 +49,7 @@ const props = defineProps({
 })
 
 const tiles = computed<Tile[]>(() => {
-  return props.reverse ? props.row.reverse() : props.row
+  return props.reverse ? [...props.row].reverse() : props.row
 })
 
 type ModifierClasses = Array<'with-start' | 'with-end'>
