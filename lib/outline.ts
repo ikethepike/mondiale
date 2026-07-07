@@ -229,14 +229,39 @@ export const outlineDistance = (a: OutlinePoint[], b: OutlinePoint[]): number =>
   return (meanNearest(a, b) + meanNearest(b, a)) / 2
 }
 
+/**
+ * Centroid + RMS-radius normalization ($1-recognizer style). Bounding-box
+ * scaling lets one bulge rescale the whole drawing; RMS radius is stable, so
+ * a sketch that's simply drawn a little large lines up with the target.
+ */
+const rmsNormalize = (points: OutlinePoint[]): OutlinePoint[] => {
+  if (!points.length) return points
+  let sumX = 0
+  let sumY = 0
+  for (const [x, y] of points) {
+    sumX += x
+    sumY += y
+  }
+  const centerX = sumX / points.length
+  const centerY = sumY / points.length
+
+  let radius = 0
+  for (const [x, y] of points) {
+    radius += (x - centerX) ** 2 + (y - centerY) ** 2
+  }
+  const scale = Math.sqrt(radius / points.length) || 1
+
+  return points.map(([x, y]) => [(x - centerX) / scale, (y - centerY) / scale])
+}
+
 /** Map a sketch's outline distance onto the round's point scale. */
 export const scoreSketch = (
   drawn: OutlinePoint[],
   target: OutlinePoint[],
   maximumPoints: number
 ): number => {
-  const a = normalizeOutline(resampleClosed(drawn))
-  const b = normalizeOutline(resampleClosed(target))
+  const a = rmsNormalize(resampleClosed(drawn))
+  const b = rmsNormalize(resampleClosed(target))
   if (!a.length || !b.length) return 0
 
   const nearestDistances = (from: OutlinePoint[], to: OutlinePoint[]) =>
@@ -248,19 +273,30 @@ export const scoreSketch = (
       return nearest
     })
 
-  const misses = [...nearestDistances(a, b), ...nearestDistances(b, a)]
-  const mean = misses.reduce((sum, miss) => sum + miss, 0) / misses.length
-  const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.9)]
+  const blend = (candidate: OutlinePoint[]) => {
+    const misses = [...nearestDistances(candidate, b), ...nearestDistances(b, candidate)]
+    const mean = misses.reduce((sum, miss) => sum + miss, 0) / misses.length
+    // Mean distance alone flatters featureless blobs — every point of an
+    // oval is "near" a compact country's border. Blending in the 90th-
+    // percentile miss demands the distinctive features actually show up.
+    const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.9)]
+    return mean * 0.6 + worst * 0.4
+  }
 
-  // Mean distance alone flatters featureless blobs — every point of an oval
-  // is "near" a compact country's border. Blending in the 90th-percentile
-  // miss demands the distinctive features (notches, panhandles) show up.
-  const distance = mean * 0.6 + worst * 0.4
+  // Small scale search: drawing size is placement, not shape — a sketch 10%
+  // too large should not bleed points. Shape mismatch survives every scale.
+  let distance = Infinity
+  for (const scale of [0.88, 0.94, 1, 1.06, 1.12]) {
+    distance = Math.min(
+      distance,
+      blend(a.map(([x, y]) => [x * scale, y * scale]))
+    )
+  }
 
-  // Calibrated against real tracings vs lazy ellipses: honest traces (even
-  // wobbly ones) land ≤0.03, the closest blob-fits-a-round-country case
-  // sits ~0.07. Full marks ≤0.03, nothing ≥0.10; the power curve squeezes
-  // the middle so near-misses stay rewarding while potato shapes fall away.
-  const band = Math.max(0, Math.min(1, 1 - (distance - 0.03) / 0.07))
-  return Math.round(maximumPoints * Math.pow(band, 1.6))
+  // Calibrated clusters (RMS units): honest human drawings — bulging,
+  // oversized, offset — land 0.04–0.09; the best ellipse-on-a-round-country
+  // manages 0.14; wrong-country tracings sit ≥0.18. Full marks ≤0.07,
+  // nothing from 0.16 up.
+  const band = Math.max(0, Math.min(1, 1 - (distance - 0.07) / 0.09))
+  return Math.round(maximumPoints * Math.pow(band, 1.4))
 }

@@ -146,7 +146,7 @@ const normalizeCountry = ({
       colors: getNationalColors(data, isoCode, flag.toString()),
     },
     government: {
-      leader: getLeader({ data, isoCode }),
+      leader: getLeader({ data, isoCode, names }),
       amountOfMilitaryConflicts: (() => {
         const conflicts = conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts
         return conflicts == null ? undefined : { amount: conflicts, unit: 'conflicts' }
@@ -681,23 +681,26 @@ const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Regio
 const getLeader = ({
   data,
   isoCode,
+  names,
 }: {
   data: FactbookResponse
   isoCode: string
+  names: Country['name']
 }): string | undefined => {
   if (!data.Government['Executive branch']) return undefined
 
-  const chiefOfState =
+  // Keep the source casing (accents, hyphenated surnames) — the matching logic
+  // below lowercases as needed, but the returned name is built from these.
+  const chiefOfStateRaw =
     removeParentheticals(data.Government['Executive branch']['chief of state']?.text || '')
-      .toLowerCase()
       .split(';')
       .shift() || ''
-
-  const headOfGovernment =
+  const headOfGovernmentRaw =
     removeParentheticals(data.Government['Executive branch']['head of government']?.text || '')
-      .toLowerCase()
       .split(';')
       .shift() || ''
+  const chiefOfState = chiefOfStateRaw.toLowerCase()
+  const headOfGovernment = headOfGovernmentRaw.toLowerCase()
 
   const parties = data.Government['Political parties and leaders']?.text || ''
   const election = data.Government['Executive branch']['election results']?.text || ''
@@ -823,11 +826,115 @@ const getLeader = ({
       break
   }
 
-  return leader
+  // The Factbook string is "<title phrase> <Person Name>". Titles vary far
+  // beyond the five words removeTitles() knows (Spain: "President of the
+  // Government of Spain ...", Luxembourg: "Grand Duke ...", Oman: "Sultan
+  // ..."), and the phrase often embeds the COUNTRY NAME — which would give the
+  // answer away in the "Who leads X?" round. Strip any leading run of
+  // title/connective words plus the country name, keeping only the person.
+  const stripLeadingTitle = (raw: string): string => {
+    const countryWords = new Set(
+      names.english
+        .toLowerCase()
+        .split(/[\s-]+/)
+        .filter(Boolean)
+    )
+    const titleWords = new Set([
+      'president',
+      'premier',
+      'vice',
+      'prime',
+      'minister',
+      'chief',
+      'chancellor',
+      'chair',
+      'chairman',
+      'chairperson',
+      'confederation',
+      'king',
+      'queen',
+      'emperor',
+      'emir',
+      'sultan',
+      'grand',
+      'duke',
+      'duchess',
+      'crown',
+      'prince',
+      'princess',
+      'supreme',
+      'leader',
+      'head',
+      'state',
+      'government',
+      'council',
+      'sovereign',
+      'federal',
+      'captain',
+      'captains',
+      'regent',
+      'co-prince',
+      'commander',
+      'commander-in-chief',
+      'general',
+      'armed',
+      'forces',
+      'of',
+      'the',
+      'and',
+    ])
+    // Also strip the country's demonym adjective ("Sudanese" for Sudan) by
+    // matching any word that shares the country name's first four letters, plus
+    // a few irregular demonyms that don't share a stem with the country name.
+    const IRREGULAR_DEMONYMS = new Set(['swiss'])
+    const stem = (names.english.toLowerCase().match(/[a-z]{4,}/) ?? [''])[0]
+    const isCountryish = (word: string) => {
+      const w = word.toLowerCase()
+      if (countryWords.has(w) || IRREGULAR_DEMONYMS.has(w)) return true
+      return stem.length >= 4 && w.startsWith(stem)
+    }
+    const words = raw.split(/\s+/).filter(Boolean)
+    let start = 0
+    while (
+      start < words.length &&
+      (titleWords.has(words[start].toLowerCase()) || isCountryish(words[start]))
+    ) {
+      start++
+    }
+    // Everything was a title (e.g. Haiti's collective "Transitional Presidential
+    // Council") — no nameable person, so signal "no leader" with empty string.
+    return start >= words.length ? '' : words.slice(start).join(' ')
+  }
+
+  // The Factbook writes surnames in ALL CAPS ("Pedro SÁNCHEZ PÉREZ-CASTEJÓN").
+  // Normalize each word to Title Case, but leave already-mixed-case tokens
+  // ("J.", "McDonald"), roman numerals ("III"), and short particles alone.
+  const ROMAN = /^[IVXLCDM]+\.?$/i
+  const titleCaseWord = (word: string): string => {
+    if (!word) return word
+    if (ROMAN.test(word)) return word.toUpperCase()
+    const isUniformCase = word === word.toLowerCase() || word === word.toUpperCase()
+    if (!isUniformCase) return word // preserve intentional casing like "J." or "McX"
+    // Title-case across hyphens so "pérez-castejón" -> "Pérez-Castejón".
+    return word
+      .toLowerCase()
+      .split('-')
+      .map(part => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+      .join('-')
+  }
+
+  // Map the (lowercased) selected leader back to its original-case source.
+  const original = leader === chiefOfState ? chiefOfStateRaw : headOfGovernmentRaw
+
+  const person = stripLeadingTitle(original)
     .split(' ')
-    .map(name => name.charAt(0).toUpperCase() + name.slice(1))
+    .map(titleCaseWord)
     .join(' ')
     .trim()
+
+  // No nameable individual (collective leadership) — omit rather than show a
+  // bare title, which would make the leader-pick round unanswerable.
+  return person || undefined
 }
 
 const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {

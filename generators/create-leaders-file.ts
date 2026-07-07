@@ -9,10 +9,10 @@ import type { ISOCountryCode } from '../types/geography.types'
  *
  * Deliberately avoids the SPARQL query service (Blazegraph — flaky, 60s hard
  * timeouts under load) in favour of the plain Action/REST APIs:
- *   1. haswbstatement:P297=<ISO> search → country Q-id
- *   2. Special:EntityData/<Q>.json     → current P35/P6 statements
- *   3. wbgetentities (50 ids a call)   → leader names + portrait filenames
- *   4. Commons Special:FilePath        → the images themselves
+ *   1. haswbstatement:P297=<ISO> search  → country Q-id (sequential — 429s)
+ *   2. wbgetentities props=claims        → current P35/P6 statements
+ *   3. wbgetentities props=labels|claims → leader names + portrait filenames
+ *   4. Commons Special:FilePath          → the images themselves (sequential)
  *
  * Portraits are saved as one dedicated file per country and role under
  * public/leaders/ — nothing is inlined into the data bundle. Existing files
@@ -24,7 +24,6 @@ import type { ISOCountryCode } from '../types/geography.types'
 const USER_AGENT = 'mondiale-game-generator/1.0 (https://github.com/ikethepike/mondiale)'
 const OUTPUT_DIRECTORY = 'public/leaders'
 const PORTRAIT_WIDTH = 512
-const CONCURRENCY = 6
 
 type LeaderRole = 'headOfState' | 'headOfGovernment'
 const LEADER_PROPERTIES: { [property in 'P35' | 'P6']: LeaderRole } = {
@@ -43,7 +42,17 @@ export type LeaderMapping = {
 }
 
 const force = process.argv.includes('--force')
+const validCodes = new Set<string>(ISOCountryCodes)
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Transient fetch failures must never ERASE a country an earlier run got —
+// each run only ever adds or refreshes entries on top of the previous file
+let previousMapping: LeaderMapping = {}
+try {
+  previousMapping = (await import('../data/leaders.gen')).LEADERS ?? {}
+} catch {
+  // First run — nothing to merge
+}
 
 const getJson = async <T>(url: string, attempt = 1): Promise<T | undefined> => {
   const response = await fetch(url, {
@@ -51,52 +60,43 @@ const getJson = async <T>(url: string, attempt = 1): Promise<T | undefined> => {
   }).catch(() => undefined)
 
   if (!response?.ok) {
-    if (attempt >= 4) {
+    if (attempt >= 6) {
       console.warn(`  request failed after ${attempt} tries (${response?.status ?? 'network'}): ${url.slice(0, 120)}`)
       return undefined
     }
-    await wait(1500 * attempt)
+    // Throttle windows can outlast short backoffs — wait them out properly
+    const retryAfter = Number(response?.headers.get('retry-after'))
+    await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
     return getJson(url, attempt + 1)
   }
   return (await response.json()) as T
 }
 
-/** Run tasks over a list with bounded parallelism. */
-const inParallel = async <T, R>(items: T[], task: (item: T) => Promise<R>): Promise<R[]> => {
-  const queue = [...items]
-  const output: R[] = []
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      while (queue.length) {
-        const item = queue.shift()
-        if (item === undefined) break
-        output.push(await task(item))
-      }
-    })
-  )
-  return output
-}
-
-// --- 1. ISO → country entity id --------------------------------------------
+// --- 1. Every entity carrying an ISO code, in a handful of requests --------
+// Per-country searches (194 requests) reliably tripped the API's request
+// budget mid-run and whichever countries landed in the throttle window were
+// silently lost. One paginated search for ALL items with P297 needs ~6
+// requests; the claims fetch below carries the ISO codes to match them up.
 interface SearchResponse {
   query?: { search?: { title: string }[] }
+  continue?: { sroffset: number }
 }
 
-console.log('Resolving country entity ids (P297 search)…')
-let resolvedCount = 0
-const countryEntities = (
-  await inParallel([...ISOCountryCodes], async isoCode => {
-    const result = await getJson<SearchResponse>(
-      `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-        `haswbstatement:P297=${isoCode}`
-      )}&srnamespace=0&srlimit=1&format=json`
-    )
-    const entityId = result?.query?.search?.[0]?.title
-    process.stdout.write(`\r  ${++resolvedCount}/${ISOCountryCodes.length}`)
-    return entityId ? { isoCode, entityId } : undefined
-  })
-).filter((entry): entry is { isoCode: ISOCountryCode; entityId: string } => !!entry)
-console.log(`\n${countryEntities.length}/${ISOCountryCodes.length} countries resolved`)
+console.log('Listing every entity with an ISO 3166-1 alpha-2 code…')
+const entityIds: string[] = []
+let offset: number | undefined = 0
+while (offset !== undefined) {
+  const page: SearchResponse | undefined = await getJson<SearchResponse>(
+    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      'haswbstatement:P297'
+    )}&srnamespace=0&srlimit=50&sroffset=${offset}&format=json`
+  )
+  entityIds.push(...(page?.query?.search ?? []).map(hit => hit.title))
+  offset = page?.continue?.sroffset
+  process.stdout.write(`\r  ${entityIds.length} entities`)
+  await wait(200)
+}
+console.log(`\n${entityIds.length} P297 carriers found`)
 
 // --- 2. Country entities → current leader statements ------------------------
 interface Statement {
@@ -113,6 +113,13 @@ interface EntityResponse {
   }
 }
 
+/** P297's value is the ISO string itself. */
+const isoCodeOf = (claims?: { [property: string]: Statement[] }): string | undefined => {
+  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
+    ?.datavalue?.value
+  return typeof value === 'string' ? value : undefined
+}
+
 /** The incumbent: preferred rank wins; otherwise a normal-rank statement with no end date. */
 const currentHolder = (statements: Statement[] = []): string | undefined => {
   const usable = statements.filter(
@@ -124,19 +131,31 @@ const currentHolder = (statements: Statement[] = []): string | undefined => {
 }
 
 console.log('Reading current officeholders…')
-let readCount = 0
 const holders: { isoCode: ISOCountryCode; role: LeaderRole; leaderId: string }[] = []
-await inParallel(countryEntities, async ({ isoCode, entityId }) => {
+const seenCodes = new Set<string>()
+
+// Batched claims-only fetches: Special:EntityData dumps EVERY language and
+// sitelink — for items like the United States that's tens of megabytes and
+// it times out reliably. wbgetentities with props=claims is ~1% the size,
+// and P297 in the same payload tells us which country each entity is.
+for (let index = 0; index < entityIds.length; index += 10) {
+  const batch = entityIds.slice(index, index + 10)
   const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/wiki/Special:EntityData/${entityId}.json`
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
   )
-  const claims = data?.entities?.[entityId]?.claims
-  for (const [property, role] of Object.entries(LEADER_PROPERTIES)) {
-    const leaderId = currentHolder(claims?.[property])
-    if (leaderId) holders.push({ isoCode, role, leaderId })
+  for (const entity of Object.values(data?.entities ?? {})) {
+    const isoCode = isoCodeOf(entity.claims)
+    // Former countries and duplicates: first live claim per code wins
+    if (!isoCode || !validCodes.has(isoCode) || seenCodes.has(isoCode)) continue
+    seenCodes.add(isoCode)
+    for (const [property, role] of Object.entries(LEADER_PROPERTIES)) {
+      const leaderId = currentHolder(entity.claims?.[property])
+      if (leaderId) holders.push({ isoCode: isoCode as ISOCountryCode, role, leaderId })
+    }
   }
-  process.stdout.write(`\r  ${++readCount}/${countryEntities.length}`)
-})
+  process.stdout.write(`\r  ${Math.min(index + 10, entityIds.length)}/${entityIds.length}`)
+  await wait(200)
+}
 console.log(`\n${holders.length} officeholder statements found`)
 
 // --- 3. Leader entities → names + portrait filenames ------------------------
@@ -144,8 +163,8 @@ const leaderIds = [...new Set(holders.map(holder => holder.leaderId))]
 const leaderDetails = new Map<string, { name?: string; portraitFile?: string }>()
 
 console.log(`Fetching ${leaderIds.length} leader entities…`)
-for (let index = 0; index < leaderIds.length; index += 50) {
-  const batch = leaderIds.slice(index, index + 50)
+for (let index = 0; index < leaderIds.length; index += 10) {
+  const batch = leaderIds.slice(index, index + 10)
   const data = await getJson<EntityResponse>(
     `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|claims&languages=en&format=json`
   )
@@ -155,7 +174,7 @@ for (let index = 0; index < leaderIds.length; index += 50) {
       portraitFile: entity.claims?.P18?.[0]?.mainsnak?.datavalue?.value as string | undefined,
     })
   }
-  process.stdout.write(`\r  ${Math.min(index + 50, leaderIds.length)}/${leaderIds.length}`)
+  process.stdout.write(`\r  ${Math.min(index + 10, leaderIds.length)}/${leaderIds.length}`)
   await wait(200)
 }
 console.log('')
@@ -237,6 +256,12 @@ console.log('')
 
 console.log(`Portraits: ${downloaded} downloaded, ${skipped} kept, ${failed} failed`)
 
+// Merge with the previous run: fresh data wins per role, gaps keep old data
+for (const isoCode of ISOCountryCodes) {
+  const merged = { ...previousMapping[isoCode], ...mapping[isoCode] }
+  if (Object.keys(merged).length) mapping[isoCode] = merged
+}
+
 writeFileSync(
   'data/leaders.gen.ts',
   `
@@ -245,3 +270,10 @@ writeFileSync(
     `
 )
 console.log(`Wrote data/leaders.gen.ts (${Object.keys(mapping).length} countries)`)
+
+// Silence is how gaps sneak through — name every country that got nothing
+const missing = ISOCountryCodes.filter(isoCode => !mapping[isoCode])
+if (missing.length) {
+  console.warn(`NO LEADER DATA for ${missing.length} countries: ${missing.join(' ')}`)
+  console.warn('(transient fetch failures are the usual cause — rerun to fill the gaps)')
+}

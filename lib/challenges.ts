@@ -738,11 +738,46 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
-/** A portrait-carrying leader entry, head of state preferred. */
+const LEADER_TITLE_NOISE = new Set([
+  'the',
+  'king',
+  'queen',
+  'president',
+  'prime',
+  'minister',
+  'chancellor',
+  'taoiseach',
+])
+
+/** Name tokens robust to titles, diacritics and spelling drift. */
+const leaderNameTokens = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z]+/)
+    .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
+
+/**
+ * The face to quiz on. Wikidata gives both a head of state and a head of
+ * government; the factbook's `government.leader` string is the editorial
+ * pick of who "the leader" is (Frederiksen over Frederik X, but Macron over
+ * his PM) — prefer whichever role matches it, then fall back sensibly.
+ */
 const portraitFor = (isoCode: ISOCountryCode) => {
   const entry = LEADERS[isoCode]
-  const leader = [entry?.headOfState, entry?.headOfGovernment].find(role => role?.image)
-  return leader?.image ? { image: leader.image, name: leader.name } : undefined
+  const candidates = [entry?.headOfState, entry?.headOfGovernment].filter(
+    (role): role is NonNullable<typeof role> => !!role?.image
+  )
+  if (!candidates.length) return undefined
+
+  const factbookTokens = new Set(leaderNameTokens(COUNTRIES[isoCode].government?.leader ?? ''))
+  const named = candidates.find(role =>
+    leaderNameTokens(role.name).some(token => factbookTokens.has(token))
+  )
+
+  const leader = named ?? candidates[0]
+  return leader.image ? { image: leader.image, name: leader.name } : undefined
 }
 
 /** Leader-portrait: whose face is this? Decoys prefer the same region. */
