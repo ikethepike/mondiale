@@ -74,6 +74,24 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
         break
       }
+      case 'stat-detective': {
+        if (roundChallenge._type !== 'stat-detective-challenge') {
+          throw new TypeError('kind mismatch')
+        }
+        const correct = eventData.ranking[0] === roundChallenge.country
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
+      case 'two-truths': {
+        if (roundChallenge._type !== 'two-truths-challenge') throw new TypeError('kind mismatch')
+        // Spotting the lie is all-or-nothing; the client reports the pick as
+        // the mystery country when the lie was found
+        const correct = eventData.ranking[0] === roundChallenge.country
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
       case 'sketch': {
         if (roundChallenge._type !== 'sketch-challenge') throw new TypeError('kind mismatch')
         answer = {

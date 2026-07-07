@@ -2,6 +2,8 @@ import { countries, languages } from 'countries-list'
 import { readFileSync, writeFileSync } from 'fs'
 import { decode } from 'he'
 import { conflictMapping } from '~~/data/conflicts.gen'
+import { worldBankMapping } from '~~/data/worldbank.gen'
+import { owidMapping } from '~~/data/owid.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import {
@@ -144,7 +146,13 @@ const normalizeCountry = ({
     },
     government: {
       leader: getLeader({ data, isoCode }),
-      amountOfMilitaryConflicts: conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts,
+      amountOfMilitaryConflicts: (() => {
+        const conflicts = conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts
+        return conflicts == null ? undefined : { amount: conflicts, unit: 'conflicts' }
+      })(),
+      // Governance indices from Our World in Data (V-Dem, Transparency Intl).
+      democracyIndex: owidAmount(isoCode, 'democracyIndex', 'index'),
+      corruptionIndex: owidAmount(isoCode, 'corruptionIndex', 'score'),
     },
     economics: {
       inflation: getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
@@ -166,7 +174,12 @@ const normalizeCountry = ({
       area: {
         land: getTextNode<'km²'>(data['Geography']['Area']['land'], 'km²'),
         water: getTextNode<'km²'>(data['Geography']['Area']['water'], 'km²'),
-        total: getTextNode<'km²'>(data['Geography']['Area']['total'], 'km²'),
+        // Factbook ships this key with a trailing space ("total "); the clean
+        // key no longer exists, so read the drifted one and fall back.
+        total: getTextNode<'km²'>(
+          data['Geography']['Area']['total '] ?? data['Geography']['Area']['total'],
+          'km²'
+        ),
         forested: getTextNode<'%'>(data['Geography']['Land use']?.forest, '%'),
         arable: getTextNode<'%'>(
           data['Geography']['Land use']?.['agricultural land: arable land'],
@@ -183,7 +196,7 @@ const normalizeCountry = ({
       total: getYearlyIndex<'%'>(data.Economy['Unemployment rate'], '%'),
     },
     infrastructure: {
-      roads: getTextNode<'km'>(data.Transportation.Roadways?.total, 'km'), // could be interesting to swap to paved?
+      // Factbook dropped Roadways entirely; only Railways survives.
       rail: getTextNode<'km'>(data.Transportation.Railways?.total, 'km'),
       internetAccess: getTextNode<'%'>(
         data.Communications?.['Internet users']?.['percent of population'],
@@ -191,7 +204,9 @@ const normalizeCountry = ({
       ),
     },
     gender: {
-      womenInParliament: getFemaleParliamentarians(data),
+      // Factbook dropped its women-in-parliament data; sourced from the World
+      // Bank (SG.GEN.PARL.ZS) instead — fresher and broader coverage.
+      womenInParliament: worldBankAmount(isoCode, 'womenInParliament', '%'),
       motherMeanAgeAtBirth: getTextNode<'years'>(
         data['People and Society']["Mother's mean age at first birth"],
         'years'
@@ -207,7 +222,9 @@ const normalizeCountry = ({
         data['People and Society']['Total fertility rate'],
         'children'
       ),
-      population: getTextNode<'people'>(data['People and Society'].Population, 'people'),
+      // Factbook nests the headline figure under Population.total; the bare
+      // Population node has no .text of its own (it drifted from a flat node).
+      population: getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
       populationGrowthRate: getTextNode<'%'>(
         data['People and Society']['Population growth rate'],
         '%'
@@ -222,18 +239,21 @@ const normalizeCountry = ({
     },
     health: {
       obesity: getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
+      // Factbook renamed 'Physicians density' to 'Physician density'.
       doctors: getTextNode<'per 1000 people'>(
-        data['People and Society']['Physicians density'],
+        data['People and Society']['Physician density'] ??
+          data['People and Society']['Physicians density'],
         'per 1000 people'
       ),
       hospitalBeds: getTextNode<'per 1000 people'>(
         data['People and Society']['Hospital bed density'],
         'per 1000 people'
       ),
-      accessToContraceptives: getTextNode<'%'>(
-        data['People and Society']['Contraceptive prevalence rate'],
-        '%'
-      ),
+      // Factbook dropped contraceptive prevalence; sourced from the World Bank
+      // (SP.DYN.CONU.ZS). Recency varies by country but coverage is broad.
+      accessToContraceptives:
+        worldBankAmount(isoCode, 'contraceptivePrevalence', '%') ??
+        getTextNode<'%'>(data['People and Society']['Contraceptive prevalence rate'], '%'),
       lifeExpectancy: getTextNode<'years'>(
         data['People and Society']['Life expectancy at birth']?.['total population'],
         'years'
@@ -249,11 +269,16 @@ const normalizeCountry = ({
       believers: getReligion(data).believers,
     },
     environment: {
-      CO2Emissions: getTextNode<'megatons'>(
-        data.Environment['Air pollutants']?.['carbon dioxide emissions'],
-        'megatons'
-      ),
+      // Factbook moved CO2 from 'Air pollutants' to its own section and now
+      // reports "<n> billion|million metric tonnes"; normalize to megatons.
+      CO2Emissions:
+        getCarbonDioxideEmissions(data) ??
+        getTextNode<'megatons'>(
+          data.Environment['Air pollutants']?.['carbon dioxide emissions'],
+          'megatons'
+        ),
       renewables: getRenewablesProduction(data),
+      parisAgreement: isParisAgreementParty(data),
     },
     humanRights: {
       refugees: getRefugees(data, isoCode),
@@ -303,10 +328,11 @@ const getRefugees = (
       unit: 'people'
     }
   | undefined => {
+  // Factbook renamed 'refugees (country of origin)' to 'refugees' AND flipped
+  // its meaning to refugees *hosted* (country of asylum): Syria now reads 16k,
+  // not its ~6M origin figure. The challenge copy reflects the hosted sense.
   const unparsed =
-    data['Transnational Issues']?.['Refugees and internally displaced persons']?.[
-      'refugees (country of origin)'
-    ]
+    data['Transnational Issues']?.['Refugees and internally displaced persons']?.refugees
   if (!unparsed) return undefined
 
   const withoutDate = removeParentheticals(removeAfterCharacter(unparsed.text, '(as of'))
@@ -368,29 +394,39 @@ const getHighestPeak = (data: FactbookResponse): (Amount<'m'> & { name: string }
   }
 }
 
-const getFemaleParliamentarians = (data: FactbookResponse): Amount<'%'> | undefined => {
-  const results = data.Government['Legislative branch']?.['election results']
-  if (!results) return undefined
-
-  let relevantSubstring = ''
-  if (results.text.includes('percent of women')) {
-    relevantSubstring = results.text.split('percent of women').pop() || ''
-  }
-
-  if (results.text.includes('Parliament percent of women')) {
-    relevantSubstring = results.text.split('Parliament percent of women').pop() || ''
-  }
-
-  const percentages = getPercentages(relevantSubstring)
-  if (!percentages.length) return undefined
-
-  const amount = percentages.shift()
-  if (!amount) return undefined
-
+/** Pull a World Bank metric for a country and wrap it as an Amount. */
+const worldBankAmount = <Unit>(
+  isoCode: string,
+  metric: 'womenInParliament' | 'contraceptivePrevalence',
+  unit: Unit
+): Amount<Unit> | undefined => {
+  const value = worldBankMapping[isoCode as ISOCountryCode]?.[metric]
+  if (!value) return undefined
   return {
-    amount,
-    unit: '%',
+    unit,
+    year: value.year,
+    amount: Math.round(value.amount * 10) / 10,
   }
+}
+
+/** Pull a governance index for a country and wrap it as an Amount. */
+const owidAmount = <Unit>(
+  isoCode: string,
+  metric: 'democracyIndex' | 'corruptionIndex',
+  unit: Unit
+): Amount<Unit> | undefined => {
+  const value = owidMapping[isoCode as ISOCountryCode]?.[metric]
+  if (!value) return undefined
+  return { unit, year: value.year, amount: value.amount }
+}
+
+/** Whether a country is party to the Paris Agreement (Factbook treaty list). */
+const isParisAgreementParty = (data: FactbookResponse): boolean => {
+  const agreements =
+    data.Environment['International environmental agreements']?.['party to']?.text ??
+    data.Environment['Environment - international agreements']?.['party to']?.text ??
+    ''
+  return /Climate Change-Paris Agreement/i.test(agreements)
 }
 
 const getCapital = (data: FactbookResponse, isoCode: string) => {
@@ -443,6 +479,24 @@ const removeParentheticals = (string: string): string =>
     .replace(/\s+([,;])/g, '$1')
     .replace(/\s{2,}/g, ' ')
     .trim()
+
+const getCarbonDioxideEmissions = (data: FactbookResponse): Amount<'megatons'> | undefined => {
+  const text = data.Environment['Carbon dioxide emissions']?.['total emissions']?.text
+  if (!text) return undefined
+
+  const numbers = extractNumbers(text.replaceAll(',', ''))
+  if (!numbers.length) return undefined
+
+  // "4.795 billion metric tonnes" -> 4795 Mt; "1.645 million metric tonnes" -> 1.645 Mt
+  const scale = /billion/i.test(text) ? 1000 : /million/i.test(text) ? 1 : 1
+  const year = extractYears(text).pop()
+
+  return {
+    unit: 'megatons',
+    year,
+    amount: Math.round(numbers[0] * scale * 1000) / 1000,
+  }
+}
 
 const getRenewablesProduction = (data: FactbookResponse): Amount<'%'> | undefined => {
   const sources = data['Energy']?.['Electricity generation sources']

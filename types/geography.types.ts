@@ -39,7 +39,11 @@ export interface Country {
   membership: Organization[]
   government: {
     leader?: string
-    amountOfMilitaryConflicts?: number
+    amountOfMilitaryConflicts?: Amount<'conflicts'>
+    /** V-Dem Electoral Democracy Index, 0–1 (higher = more democratic). */
+    democracyIndex?: Amount<'index'>
+    /** Transparency International CPI, 0–100 (higher = less corrupt). */
+    corruptionIndex?: Amount<'score'>
   }
   economics: {
     inflation?: Amount<'%'>
@@ -68,7 +72,6 @@ export interface Country {
     total?: Amount<'%'>
   }
   infrastructure: {
-    roads?: Amount<'km'>
     rail?: Amount<'km'>
     internetAccess?: Amount<'%'>
   }
@@ -103,6 +106,7 @@ export interface Country {
   environment: {
     CO2Emissions?: Amount<'megatons'>
     renewables?: Amount<'%'>
+    parisAgreement?: boolean
   }
   humanRights: {
     gayMarriageLegalized?: Amount<'year'>

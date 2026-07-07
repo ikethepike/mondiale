@@ -155,7 +155,9 @@ const syncPawns = () => {
     const pawn = buildPawn(player.color, build.spacing * 0.85)
     pawns.set(player.id, pawn)
     build.group.add(pawn)
-    mover.place(player.id, displayPositionFor(player))
+    // restore() replays any steps taken while the board was unmounted
+    // (challenge-win leaps, walks begun before the scene finished loading)
+    mover.restore(player.id, displayPositionFor(player))
   }
 }
 
@@ -170,6 +172,7 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
+    memoryKey: props.game.id,
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {

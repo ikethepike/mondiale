@@ -18,8 +18,21 @@ export interface PawnMover {
   place(playerId: string, tileIndex: number): void
   /** Queue animated hops toward a new tile index. */
   moveTo(playerId: string, tileIndex: number): void
+  /**
+   * Mount-time placement that replays movement missed while the board was
+   * unmounted (challenge win leaps, walks started before the scene loaded):
+   * the pawn appears where it was last SEEN and hops to where it IS.
+   */
+  restore(playerId: string, tileIndex: number): void
   dispose(): void
 }
+
+/**
+ * Where each pawn was last shown, per game — module state so it survives the
+ * board unmounting for challenge views. Without it a remounted board places
+ * pawns at their latest position and any steps in between are never seen.
+ */
+const displayedMemory = new Map<string, Map<string, number>>()
 
 const PAWN_REST_Y = 0.6
 const SHARED_TILE_SCALE = 0.72
@@ -49,8 +62,20 @@ export const createPawnMover = (options: {
   hopHeight: number
   /** Fired when a pawn settles at the end of a run of hops. */
   onLand?: (playerId: string, tile: TileTransform) => void
+  /** Key for cross-mount position memory (the game id). */
+  memoryKey?: string
 }): PawnMover => {
   const states = new Map<string, PawnState>()
+
+  const memory = (() => {
+    if (!options.memoryKey) return undefined
+    if (!displayedMemory.has(options.memoryKey)) {
+      // One game per client — starting a new game drops stale memories
+      displayedMemory.clear()
+      displayedMemory.set(options.memoryKey, new Map())
+    }
+    return displayedMemory.get(options.memoryKey)
+  })()
   // Held for dispose(); killing an already-finished tween is a no-op.
   // NOTE: never use tween.eventCallback('onComplete', ...) for cleanup here —
   // it REPLACES a tween's own onComplete (the hop chain lives in there).
@@ -182,6 +207,7 @@ export const createPawnMover = (options: {
     }
 
     states.set(playerId, { displayed: tileIndex, queue: [], hopping: false })
+    memory?.set(playerId, tileIndex)
 
     const pawn = options.pawnFor(playerId)
     const resting = restingPosition(playerId, tileIndex)
@@ -233,6 +259,7 @@ export const createPawnMover = (options: {
         },
         onComplete() {
           state.displayed = next
+          memory?.set(playerId, next)
           state.hopping = false
           state.hopTarget = undefined
           state.activeTween = undefined
@@ -283,9 +310,22 @@ export const createPawnMover = (options: {
     hopNext(playerId)
   }
 
+  const restore = (playerId: string, tileIndex: number) => {
+    const remembered = memory?.get(playerId)
+    if (remembered === undefined || remembered === tileIndex) {
+      return place(playerId, tileIndex)
+    }
+
+    // Reappear where the pawn was last seen, then walk the missed stretch
+    // (moveTo fast-forwards long backlogs and plays short retreats)
+    place(playerId, remembered)
+    moveTo(playerId, tileIndex)
+  }
+
   return {
     place,
     moveTo,
+    restore,
     dispose() {
       for (const state of states.values()) {
         cancelLanding(state)

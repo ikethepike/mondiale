@@ -145,6 +145,14 @@ const challengeHeading = computed(() => {
         : ''
     case 'sketch':
       return sketchChallenge.value ? `Draw ${countryName(sketchChallenge.value.country)}` : ''
+    case 'stat-detective':
+      return '_type' in challenge && challenge._type === 'stat-detective-challenge'
+        ? `The numbers belonged to ${countryName(challenge.country)}`
+        : ''
+    case 'two-truths':
+      return '_type' in challenge && challenge._type === 'two-truths-challenge'
+        ? `The lie about ${countryName(challenge.country)} came from ${countryName(challenge.lieSource)}`
+        : ''
     default:
       return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
   }
@@ -164,6 +172,10 @@ const explainer = computed(() => {
       return 'Finding it is everything — every extra probe costs points.'
     case 'sketch':
       return 'Scored by how closely the drawing matches the real outline.'
+    case 'stat-detective':
+      return 'The fewer clues you needed, the bigger the score.'
+    case 'two-truths':
+      return 'Spotting the lie is all or nothing.'
     default:
       return '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
   }
@@ -179,6 +191,10 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answer', correct: 'The Country' }
     case 'hot-cold':
       return { submitted: 'Your Probe Trail', correct: 'The Country' }
+    case 'stat-detective':
+      return { submitted: 'Your Answer', correct: 'The Country' }
+    case 'two-truths':
+      return { submitted: 'Your Verdict', correct: 'The Country' }
     default:
       return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
   }

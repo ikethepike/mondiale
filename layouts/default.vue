@@ -19,6 +19,7 @@
       :solo="gameStore.map.solo"
       :labels="gameStore.map.labels"
       :focus-countries="gameStore.map.focus"
+      :focus-context="gameStore.map.focusContext"
       :tints="gameStore.map.tints"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal

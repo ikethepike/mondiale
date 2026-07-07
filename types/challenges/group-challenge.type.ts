@@ -73,11 +73,6 @@ export const GROUP_CHALLENGES: {
     id: 'unemployment.total',
     countriesPerPlayer: {},
   },
-  'infrastructure.roads': {
-    _type: 'group-challenge',
-    id: 'infrastructure.roads',
-    countriesPerPlayer: {},
-  },
   'infrastructure.rail': {
     _type: 'group-challenge',
     id: 'infrastructure.rail',
@@ -145,7 +140,7 @@ export const GROUP_CHALLENGES: {
   },
   'health.lifeExpectancy': {
     _type: 'group-challenge',
-    id: 'health.hospitalBeds',
+    id: 'health.lifeExpectancy',
     countriesPerPlayer: {},
   },
   'health.alcoholConsumption': {
@@ -198,6 +193,26 @@ export const GROUP_CHALLENGES: {
     id: 'humanRights.refugees',
     countriesPerPlayer: {},
   },
+  'economics.inflation': {
+    _type: 'group-challenge',
+    id: 'economics.inflation',
+    countriesPerPlayer: {},
+  },
+  'government.amountOfMilitaryConflicts': {
+    _type: 'group-challenge',
+    id: 'government.amountOfMilitaryConflicts',
+    countriesPerPlayer: {},
+  },
+  'government.democracyIndex': {
+    _type: 'group-challenge',
+    id: 'government.democracyIndex',
+    countriesPerPlayer: {},
+  },
+  'government.corruptionIndex': {
+    _type: 'group-challenge',
+    id: 'government.corruptionIndex',
+    countriesPerPlayer: {},
+  },
 } as const
 
 export type GroupChallengeAccessorId =
@@ -213,7 +228,6 @@ export type GroupChallengeAccessorId =
   | 'geography.highestPeak'
   | 'unemployment.youth'
   | 'unemployment.total'
-  | 'infrastructure.roads'
   | 'infrastructure.rail'
   | 'infrastructure.internetAccess'
   | 'gender.womenInParliament'
@@ -238,3 +252,7 @@ export type GroupChallengeAccessorId =
   | 'environment.renewables'
   | 'humanRights.gayMarriageLegalized'
   | 'humanRights.refugees'
+  | 'economics.inflation'
+  | 'government.amountOfMilitaryConflicts'
+  | 'government.democracyIndex'
+  | 'government.corruptionIndex'

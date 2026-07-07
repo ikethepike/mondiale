@@ -28,7 +28,9 @@ import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
+import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
+import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -71,6 +73,8 @@ const activeView = computed<ActiveView | undefined>(() => {
         silhouette: ViewSilhouette,
         'hot-cold': ViewHotCold,
         sketch: ViewSketch,
+        'stat-detective': ViewStatDetective,
+        'two-truths': ViewTwoTruths,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

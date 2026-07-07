@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
@@ -19,6 +18,8 @@ interface GameStoreState {
     labels: boolean
     /** Countries the map camera should frame together. */
     focus: ISOCountryCode[]
+    /** Context countries whose centers stay in frame (soft inclusion). */
+    focusContext: ISOCountryCode[]
     /** Soft per-country verdict fills for traversal guesses. */
     tints: { [isoCode in ISOCountryCode]?: MapTint }
   }
@@ -45,6 +46,7 @@ export const useGameStore = defineStore('game', {
       solo: false,
       labels: false,
       focus: [],
+      focusContext: [],
       tints: {},
     },
   }),
@@ -65,7 +67,8 @@ export const useGameStore = defineStore('game', {
       const round = this.currentRound?.round
       if (!round) return undefined
       if (!state.playerId) return undefined
-      if (isTraversalChallenge(round.groupChallenge)) return undefined
+      // Only ranking rounds deal per-player hands
+      if (!('countriesPerPlayer' in round.groupChallenge)) return undefined
 
       return round.groupChallenge.countriesPerPlayer[state.playerId]
     },

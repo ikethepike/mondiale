@@ -1532,6 +1532,15 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /**
+   * Countries whose CENTERS the frame should include — context around the
+   * focus without letting a giant neighbour (Russia…) blow the shot out to
+   * half the planet the way a full bbox would.
+   */
+  focusContext: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Soft verdict fills for traversal guesses. */
   tints: {
     type: Object as PropType<{ [isoCode in ISOCountryCode]?: MapTint }>,
@@ -1596,6 +1605,16 @@ const frameFocus = () => {
       maxY = Math.max(maxY, box.y + box.height)
     }
 
+    for (const isoCode of props.focusContext) {
+      const path = svg.value.querySelector(`#${isoCode}`) as SVGGraphicsElement | null
+      if (!path) continue
+      const box = path.getBBox()
+      minX = Math.min(minX, box.x + box.width / 2)
+      minY = Math.min(minY, box.y + box.height / 2)
+      maxX = Math.max(maxX, box.x + box.width / 2)
+      maxY = Math.max(maxY, box.y + box.height / 2)
+    }
+
     if (minX !== Infinity) {
       const pad = Math.max((maxX - minX) * 0.35, (maxY - minY) * 0.35, 60)
       let x = minX - pad
@@ -1628,7 +1647,7 @@ const frameFocus = () => {
 }
 
 watch(
-  () => props.focusCountries,
+  () => [props.focusCountries, props.focusContext],
   () => nextTick(frameFocus)
 )
 
@@ -1715,6 +1734,11 @@ const moveToCountry = async () => {
   }
 
   svg.value.style.transition = `none`
+
+  // When a focus frame is active (silhouette/traversal reveals) the viewBox
+  // camera owns the shot — the pan/zoom fly-in would fight it and shove the
+  // map out of view.
+  if (props.focusCountries.length) return
 
   const { highlightCountry } = props
   if (!highlightCountry) return
@@ -1841,8 +1865,11 @@ path[id]:hover {
   stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
 }
 
-// ISO acronym labels (easy-mode traversal aid)
-.country-label {
+// ISO acronym labels (easy-mode traversal aid). The <text> nodes are created
+// at runtime, so they never receive the scoped-style attribute — the rules
+// must go through :deep() or they simply don't apply (which left raw stroked
+// labels permanently visible once built).
+:deep(.country-label) {
   display: none;
   stroke: none;
   opacity: 0.65;
@@ -1853,7 +1880,7 @@ path[id]:hover {
   fill: var(--dark-blue);
   dominant-baseline: middle;
 }
-.show-labels .country-label {
+.show-labels :deep(.country-label) {
   display: block;
 }
 </style>

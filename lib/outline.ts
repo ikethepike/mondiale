@@ -10,6 +10,37 @@ export const countryPathData = (isoCode: ISOCountryCode): string | undefined =>
   document.querySelector(`.game-map path#${isoCode}`)?.getAttribute('d') ?? undefined
 
 /**
+ * A country's MAINLAND ring as standalone path data, framed in its own
+ * padded viewBox. Dash-reveals need one closed ring — the raw map path often
+ * carries island subpaths that would smear the reveal into scattered slivers.
+ */
+export const mainlandOutline = (
+  isoCode: ISOCountryCode
+): { d: string; viewBox: string } | undefined => {
+  const pathData = countryPathData(isoCode)
+  if (!pathData) return undefined
+  const ring = largestRing(pathData)
+  if (!ring || ring.length < 3) return undefined
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const [x, y] of ring) {
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+
+  const pad = Math.max(maxX - minX, maxY - minY) * 0.12
+  return {
+    d: `M ${ring.map(([x, y]) => `${x},${y}`).join(' L ')} Z`,
+    viewBox: `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`,
+  }
+}
+
+/**
  * Parse polygonal SVG path data (the map paths are pure move/line/close
  * commands) into rings of points.
  */
@@ -204,12 +235,32 @@ export const scoreSketch = (
   target: OutlinePoint[],
   maximumPoints: number
 ): number => {
-  const distance = outlineDistance(
-    normalizeOutline(resampleClosed(drawn)),
-    normalizeOutline(resampleClosed(target))
-  )
+  const a = normalizeOutline(resampleClosed(drawn))
+  const b = normalizeOutline(resampleClosed(target))
+  if (!a.length || !b.length) return 0
 
-  // ≤0.045 is a genuinely good sketch; ≥0.2 doesn't read as the country
-  const quality = Math.max(0, Math.min(1, 1 - (distance - 0.045) / 0.155))
-  return Math.round(maximumPoints * quality)
+  const nearestDistances = (from: OutlinePoint[], to: OutlinePoint[]) =>
+    from.map(([x1, y1]) => {
+      let nearest = Infinity
+      for (const [x2, y2] of to) {
+        nearest = Math.min(nearest, Math.hypot(x2 - x1, y2 - y1))
+      }
+      return nearest
+    })
+
+  const misses = [...nearestDistances(a, b), ...nearestDistances(b, a)]
+  const mean = misses.reduce((sum, miss) => sum + miss, 0) / misses.length
+  const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.9)]
+
+  // Mean distance alone flatters featureless blobs — every point of an oval
+  // is "near" a compact country's border. Blending in the 90th-percentile
+  // miss demands the distinctive features (notches, panhandles) show up.
+  const distance = mean * 0.6 + worst * 0.4
+
+  // Calibrated against real tracings vs lazy ellipses: honest traces (even
+  // wobbly ones) land ≤0.03, the closest blob-fits-a-round-country case
+  // sits ~0.07. Full marks ≤0.03, nothing ≥0.10; the power curve squeezes
+  // the middle so near-misses stay rewarding while potato shapes fall away.
+  const band = Math.max(0, Math.min(1, 1 - (distance - 0.03) / 0.07))
+  return Math.round(maximumPoints * Math.pow(band, 1.6))
 }

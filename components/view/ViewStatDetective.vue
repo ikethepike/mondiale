@@ -1,19 +1,21 @@
 <template>
-  <div v-if="challenge" class="silhouette-challenge">
+  <div v-if="challenge" class="stat-detective">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Silhouette`"
-      title="Whose outline is this?"
-      :stakes="`The outline draws itself over ${challenge.durationSeconds} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
+      :kicker="`Round ${currentRound?.number ?? 1} — Stat Detective`"
+      title="Guess the country from its numbers"
+      :stakes="`A clue lands every ${challenge.secondsPerClue} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
       @done="begin"
     />
 
     <header>
       <div class="prompt">
         <template v-if="!resolved">
-          <h1 class="map-caption">Whose outline is this?</h1>
-          <span class="map-caption sub">{{ secondsLeft }}s — earlier answers score higher</span>
+          <h1 class="map-caption">Which country is this?</h1>
+          <span class="map-caption sub">
+            Clue {{ revealedClues.length }} of {{ challenge.clues.length }} — earlier answers score higher
+          </span>
         </template>
         <template v-else>
           <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
@@ -25,10 +27,13 @@
       </div>
     </header>
 
-    <section v-show="!resolved" class="outline-stage">
-      <svg v-if="outline" class="outline" :viewBox="outline.viewBox" aria-hidden="true">
-        <path ref="outlinePath" :d="outline.d" />
-      </svg>
+    <section v-if="!resolved" class="clue-stage">
+      <TransitionGroup name="clue" tag="ul" class="clue-list">
+        <li v-for="clue in revealedClues" :key="clue.accessorId" class="clue-card">
+          <span class="clue-label">{{ clue.label }}</span>
+          <strong class="clue-value">{{ clue.value }}</strong>
+        </li>
+      </TransitionGroup>
     </section>
 
     <section v-if="!resolved" class="guess-box">
@@ -45,28 +50,31 @@
       <div class="timer-track" aria-hidden="true">
         <div
           class="timer-fill"
-          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
+          :style="{ width: `${(revealedClues.length / challenge.clues.length) * 100}%` }"
         />
       </div>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import { gsap } from 'gsap'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
+import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { prefersReducedMotion } from '~~/lib/motion'
-import { mainlandOutline } from '~~/lib/outline'
+import { formatNumber } from '~~/lib/number'
+import { getValueByAccessorID } from '~~/lib/values'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
 const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
 const challenge = computed(() => {
   const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'silhouette-challenge'
+  return roundChallenge &&
+    '_type' in roundChallenge &&
+    roundChallenge._type === 'stat-detective-challenge'
     ? roundChallenge
     : undefined
 })
@@ -76,20 +84,32 @@ const started = ref(false)
 const resolved = ref(false)
 const lockedOut = ref(false)
 const showInterstitial = ref(true)
-const secondsLeft = ref(challenge.value?.durationSeconds ?? 30)
+const revealedCount = ref(0)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-const outlinePath = ref<SVGPathElement>()
 
-// Blank the world map — the silhouette IS the whole question
+// Blank the world map — the numbers are the whole question
 clearBoard()
 gameStore.map.solo = true
 
-/** The country's mainland ring, framed in its own viewBox. */
-const outline = ref<{ d: string; viewBox: string }>()
-onMounted(() => {
+/** "Rank the following countries by GDP per capita" → "GDP per capita". */
+const clueLabel = (accessorId: GroupChallengeAccessorId) => {
+  const phrasing = getChallengeDetails(accessorId)?.phrasing ?? accessorId
+  return phrasing
+    .replace(/^rank (the following|these)( countries)? by (the )?/i, '')
+    .replace(/^(the )?(proportion of|level of|amount of)\s*/i, '')
+}
+
+const revealedClues = computed(() => {
   const active = challenge.value
-  if (!active) return
-  outline.value = mainlandOutline(active.country)
+  if (!active) return []
+  return active.clues.slice(0, revealedCount.value).map(accessorId => {
+    const value = getValueByAccessorID(active.country, accessorId)
+    return {
+      accessorId,
+      label: clueLabel(accessorId),
+      value: value ? `${formatNumber(value.amount)}${value.unit ? ` ${value.unit}` : ''}` : '—',
+    }
+  })
 })
 
 const hint = ref('')
@@ -100,7 +120,7 @@ const flashHint = (text: string) => {
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
 
-let countdown: ReturnType<typeof setInterval> | undefined
+let clueTimer: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -114,25 +134,17 @@ const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => 
   })
 }
 
-/**
- * Resolution beat: whether buzzed right or timed out, drop the shapes-only
- * veil and frame the country among its neighbours — the answer lands as a
- * place on the map, not just a name. The scorecard follows after the hold.
- */
+/** Same resolution beat as the silhouette: land the answer as a PLACE. */
 const REVEAL_HOLD_MS = 4000
 const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
   const active = challenge.value
   if (!active || resolved.value) return
   resolved.value = true
-  if (countdown) clearInterval(countdown)
+  if (clueTimer) clearInterval(clueTimer)
 
   gameStore.map.solo = false
   gameStore.map.labels = true
   gameStore.map.reveal = active.country
-  // No full-map status wash here — the reveal is about locating the country,
-  // so the tints carry the verdict: the answer in mint or coral, its
-  // neighbours in soft sand. Neighbour centers keep the frame tight even
-  // next to a giant (Russia would otherwise stretch the shot to the Pacific).
   const neighbours = BORDERS[active.country] ?? []
   gameStore.map.focus = [active.country]
   gameStore.map.focusContext = neighbours
@@ -147,39 +159,23 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 const begin = () => {
   showInterstitial.value = false
   started.value = true
+  revealedCount.value = 1
   nextTick(() => guessInput.value?.focus())
 
   const active = challenge.value
+  if (!active) return
 
-  // Dash-reveal in the path's REAL length units. The pathLength="1" trick is
-  // a trap here: values written with px units (as animation libraries do)
-  // bypass pathLength normalization in Chrome, leaving a frozen confetti of
-  // 1px dashes. getTotalLength + a CSS transition is boringly reliable.
-  const path = outlinePath.value
-  const outlineLength = path?.getTotalLength() ?? 0
-  if (path && outlineLength) {
-    path.style.strokeDasharray = `${outlineLength}`
-    path.style.strokeDashoffset = prefersReducedMotion() ? '0' : `${outlineLength}`
-    // Updated once per countdown tick with a linear 1s transition — the line
-    // creeps around the border in one continuous, ever-growing stroke
-    path.style.transition = 'stroke-dashoffset 1s linear'
-  }
-
-  countdown = setInterval(() => {
-    secondsLeft.value--
-
-    const total = active?.durationSeconds ?? 30
-    if (path && outlineLength && !prefersReducedMotion()) {
-      // The full border lands at ~85% of the clock, leaving a beat to study
-      // the complete shape before time runs out
-      const revealed = Math.min(1, (total - secondsLeft.value) / (total * 0.85))
-      path.style.strokeDashoffset = `${outlineLength * (1 - revealed)}`
+  clueTimer = setInterval(() => {
+    if (revealedCount.value < active.clues.length) {
+      revealedCount.value++
+      return
     }
 
-    if (secondsLeft.value <= 0) {
-      resolve(undefined, 0)
-    }
-  }, 1000)
+    // All clues shown — one final grace interval, then it resolves unsolved
+    if (clueTimer) clearInterval(clueTimer)
+    clueTimer = undefined
+    revealTimer = setTimeout(() => resolve(undefined, 0), active.secondsPerClue * 1000)
+  }, active.secondsPerClue * 1000)
 }
 
 const onGuess = (country: Country) => {
@@ -187,8 +183,11 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
 
   if (country.isoCode === active.country) {
-    // Earlier buzz, bigger score
-    const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
+    // Fewer clues seen, bigger score
+    const remainingFraction = Math.max(
+      0,
+      (active.clues.length - revealedCount.value) / active.clues.length
+    )
     const clientScore = Math.round(active.maximumPoints * (0.35 + 0.65 * remainingFraction))
     resolve(country.isoCode, clientScore)
     return
@@ -205,15 +204,14 @@ const onGuess = (country: Country) => {
 
 onBeforeUnmount(() => {
   clearBoard()
-  if (countdown) clearInterval(countdown)
+  if (clueTimer) clearInterval(clueTimer)
   if (hintTimer) clearTimeout(hintTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
   if (revealTimer) clearTimeout(revealTimer)
-  if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
 })
 </script>
 <style lang="scss" scoped>
-.silhouette-challenge {
+.stat-detective {
   top: 0;
   left: 0;
   width: 100%;
@@ -249,28 +247,59 @@ header {
   }
 }
 
-.outline-stage {
+.clue-stage {
   flex: 1;
   display: flex;
   min-height: 0;
-  padding: 1rem 0;
+  overflow-y: auto;
   align-items: center;
   justify-content: center;
 }
 
-.outline {
-  height: 100%;
-  max-height: 44vh;
-  max-width: 70vw;
+.clue-list {
+  gap: 1.2rem;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  list-style: none;
+  max-width: 88rem;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 26rem));
+  justify-content: center;
+}
 
-  path {
-    fill: none;
-    stroke: var(--dark-blue);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
-    stroke-linejoin: round;
-    stroke-linecap: round;
+.clue-card {
+  gap: 0.5rem;
+  display: flex;
+  padding: 1.6rem;
+  text-align: center;
+  align-items: center;
+  border-radius: 1.2rem;
+  flex-flow: column nowrap;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+
+  .clue-label {
+    opacity: 0.65;
+    font-size: 1.3rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
+  .clue-value {
+    font-size: 2.4rem;
+  }
+}
+
+// New clues arrive with a settle
+.clue-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+}
+.clue-enter-from {
+  opacity: 0;
+  transform: translateY(1.4rem) scale(0.94);
 }
 
 .guess-box {

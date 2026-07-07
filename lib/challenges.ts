@@ -1,7 +1,7 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import type { ChallengeConfiguration, ChallengeMarkers } from '~~/types/challenge.type'
+import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
   type GroupChallengeAccessorId,
   GROUP_CHALLENGES,
@@ -11,6 +11,8 @@ import type {
   NeighbourBlitzChallenge,
   SilhouetteChallenge,
   SketchChallenge,
+  StatDetectiveChallenge,
+  TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type {
   IndividualChallenge,
@@ -29,10 +31,6 @@ import { getValueByAccessorID } from './values'
 import { variantCountries } from './variant'
 
 const MAXIMUM_SCORE_PER_COUNTRY = 3
-const DEFAULT_CHALLENGE_MARKERS: ChallengeMarkers = {
-  most: 'Most',
-  least: 'Least',
-}
 
 export const DIFFICULTY_CONFIGURATION: {
   [difficulty in gameTypes.GameDifficulty]: {
@@ -56,12 +54,14 @@ const maximumRoundPoints = (game: gameTypes.Game) =>
 
 /** Relative weights for the round mix (after the tutorial-friendly round 1). */
 const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
-  ['ranking', 0.3],
-  ['traversal', 0.2],
-  ['neighbour-blitz', 0.15],
-  ['silhouette', 0.12],
-  ['hot-cold', 0.13],
-  ['sketch', 0.1],
+  ['ranking', 0.24],
+  ['traversal', 0.16],
+  ['neighbour-blitz', 0.12],
+  ['silhouette', 0.1],
+  ['hot-cold', 0.11],
+  ['sketch', 0.08],
+  ['stat-detective', 0.11],
+  ['two-truths', 0.08],
 ]
 
 /**
@@ -212,6 +212,103 @@ const getSketchChallenge = ({ game }: { game: gameTypes.Game }): SketchChallenge
   maximumPoints: maximumRoundPoints(game),
 })
 
+/** How alike two values may be before a claim stops being decidable. */
+const LIE_MINIMUM_GAP = 0.4
+const LIE_MINIMUM_YEAR_GAP = 8
+
+/**
+ * Stat detective: a mystery country's stats reveal one by one. Only the
+ * accessor ids travel — clients read the values from the shared dataset.
+ */
+const getStatDetectiveChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): StatDetectiveChallenge | undefined => {
+  const CLUE_COUNT = 6
+  const pool = shuffleArray(variantCountries(game.variant))
+
+  for (const country of pool.slice(0, 40)) {
+    const viable = shuffleArray(
+      Object.values(GROUP_CHALLENGES)
+        .map(challenge => challenge.id)
+        .filter(accessorId => !!getValueByAccessorID(country, accessorId))
+    )
+    if (viable.length < CLUE_COUNT) continue
+
+    return {
+      _type: 'stat-detective-challenge',
+      country,
+      clues: viable.slice(0, CLUE_COUNT),
+      secondsPerClue: 8,
+      maximumPoints: maximumRoundPoints(game),
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Two truths and a lie: three stat claims about one country, one of them
+ * carrying another country's value. The lie is honest — a real value from a
+ * real country, just the wrong one — and must differ enough to be decidable.
+ */
+const getTwoTruthsChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): TwoTruthsChallenge | undefined => {
+  const pool = variantCountries(game.variant)
+
+  for (const country of shuffleArray([...pool]).slice(0, 40)) {
+    const accessors = shuffleArray(
+      Object.values(GROUP_CHALLENGES)
+        .map(challenge => challenge.id)
+        .filter(accessorId => !!getValueByAccessorID(country, accessorId))
+    )
+    if (accessors.length < 3) continue
+
+    const chosen = accessors.slice(0, 3)
+    const lieIndex = Math.floor(Math.random() * chosen.length)
+    const lieAccessor = chosen[lieIndex]
+    const truth = getValueByAccessorID(country, lieAccessor)
+    if (!truth) continue
+
+    // Decoys prefer the variant pool but a lie may come from anywhere
+    const lieSource = shuffleArray([...pool, ...ISOCountryCodes]).find(isoCode => {
+      if (isoCode === country) return false
+      const candidate = getValueByAccessorID(isoCode, lieAccessor)
+      if (!candidate) return false
+      if (candidate.unit === 'year') {
+        return Math.abs(candidate.amount - truth.amount) >= LIE_MINIMUM_YEAR_GAP
+      }
+      const scale = Math.max(Math.abs(candidate.amount), Math.abs(truth.amount))
+      return scale > 0 && Math.abs(candidate.amount - truth.amount) / scale >= LIE_MINIMUM_GAP
+    })
+    if (!lieSource) continue
+
+    const statements = chosen.map((accessorId, index) => {
+      const source = getValueByAccessorID(index === lieIndex ? lieSource : country, accessorId)
+      return {
+        accessorId,
+        amount: source?.amount ?? 0,
+        unit: source?.unit ?? '',
+      }
+    })
+
+    return {
+      _type: 'two-truths-challenge',
+      country,
+      statements,
+      lieIndex,
+      lieSource,
+      maximumPoints: maximumRoundPoints(game),
+    }
+  }
+
+  return undefined
+}
+
 /** Alliances big enough to host a hard-mode corridor run. */
 const CORRIDOR_ORGANIZATIONS = ['nato', 'eu', 'au', 'oecd', 'bri']
 const CORRIDOR_CHANCE_ON_HARD = 0.4
@@ -292,6 +389,16 @@ export const getRoundChallenge = ({ game }: { game: gameTypes.Game }): RoundChal
       return getHotColdChallenge({ game })
     case 'sketch':
       return getSketchChallenge({ game })
+    case 'stat-detective': {
+      const challenge = getStatDetectiveChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'two-truths': {
+      const challenge = getTwoTruthsChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
   }
 
   return getGroupChallenge({ game })
@@ -452,7 +559,8 @@ const dealFlagPick = (
   const palette = COUNTRIES[country].identity?.colors ?? []
   // Prefer on-board decoys; a tiny pool still needs four flags on the table
   const candidates = pool.length >= 8 ? pool : [...ISOCountryCodes]
-  const decoys = candidates.filter(isoCode => isoCode !== country)
+  const decoys = candidates
+    .filter(isoCode => isoCode !== country)
     .map(isoCode => ({
       isoCode,
       distance: flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
@@ -639,7 +747,9 @@ const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined =
   if (typeof process === 'undefined') return undefined
   const forced = process.env?.FORCE_INDIVIDUAL_VARIANT
   return forced &&
-    ['find', 'flag-pick', 'odd-one-out', 'higher-lower', 'leader-pick'].includes(forced)
+    ['find', 'flag-pick', 'odd-one-out', 'higher-lower', 'leader-pick', 'outline-reveal'].includes(
+      forced
+    )
     ? (forced as IndividualChallenge['variant'])
     : undefined
 }
@@ -681,6 +791,8 @@ export const getIndividualChallenge = ({
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
         break
       }
+      case 'outline-reveal':
+        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
     }
     return base
   }
@@ -692,6 +804,10 @@ export const getIndividualChallenge = ({
       break
     }
     case 'isoCode': {
+      // Hard games race the self-drawing border: name it before it completes
+      if (difficulty === 'hard' && roll < 0.4) {
+        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
+      }
       if (roll < 0.5) {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
@@ -725,17 +841,26 @@ export const getChallengeDetails = (
     'economics.gdpPerCapita': {
       topic: 'economics',
       phrasing: 'Rank the following countries by GDP per capita',
-      markers: DEFAULT_CHALLENGE_MARKERS,
+      markers: {
+        most: 'highest GDP',
+        least: 'lowest GDP',
+      },
     },
     'economics.militarySpending': {
       topic: 'economics',
-      phrasing: 'Rank these countries by military spending',
-      markers: DEFAULT_CHALLENGE_MARKERS,
+      phrasing: 'Rank these countries by military spending as a percentage of their economy',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
     },
     'economics.populationBelowPovertyLine': {
       topic: 'economics',
-      phrasing: 'Rank the following countries by the proportion of people under the poverty line',
-      markers: DEFAULT_CHALLENGE_MARKERS,
+      phrasing: 'Rank the following countries by the percentage of people under the poverty line',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
     },
     'economics.equality': {
       topic: 'economics',
@@ -763,7 +888,7 @@ export const getChallengeDetails = (
     },
     'geography.area.total': {
       topic: 'geography',
-      phrasing: 'Rank these countries by land area',
+      phrasing: 'Rank these countries by total area',
       markers: {
         most: 'largest area',
         least: 'smallest area',
@@ -771,18 +896,18 @@ export const getChallengeDetails = (
     },
     'geography.area.arable': {
       topic: 'geography',
-      phrasing: 'Rank these countries by percentage of arable land',
+      phrasing: 'Rank these countries by the percentage of their land that is arable',
       markers: {
-        most: 'largest area',
-        least: 'smallest area',
+        most: 'highest percent',
+        least: 'lowest percent',
       },
     },
     'geography.area.forested': {
       topic: 'geography',
-      phrasing: 'Rank these countries by area of forested land',
+      phrasing: 'Rank these countries by the percentage of their land that is forested',
       markers: {
-        most: 'largest area',
-        least: 'smallest area',
+        most: 'highest percent',
+        least: 'lowest percent',
       },
     },
     'geography.highestPeak': {
@@ -809,17 +934,9 @@ export const getChallengeDetails = (
         least: 'lowest percent',
       },
     },
-    'infrastructure.roads': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by roadways (paved and unpaved)',
-      markers: {
-        most: 'most kilometers',
-        least: 'fewest kilometers',
-      },
-    },
     'infrastructure.rail': {
       topic: 'infrastructure',
-      phrasing: 'Rank these countries by railways',
+      phrasing: 'Rank these countries by length of railway network',
       markers: {
         most: 'most kilometers',
         least: 'fewest kilometers',
@@ -827,7 +944,7 @@ export const getChallengeDetails = (
     },
     'gender.womenInParliament': {
       topic: 'gender',
-      phrasing: 'Rank these countries by women in parliament',
+      phrasing: 'Rank these countries by the percentage of parliament seats held by women',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -843,7 +960,7 @@ export const getChallengeDetails = (
     },
     'health.obesity': {
       topic: 'health',
-      phrasing: 'Rank these countries by obesity',
+      phrasing: 'Rank these countries by the percentage of adults who are obese',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -875,7 +992,7 @@ export const getChallengeDetails = (
     },
     'education.literacy': {
       topic: 'education',
-      phrasing: 'Rank these countries by literacy',
+      phrasing: 'Rank these countries by the percentage of people who are literate',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -883,10 +1000,10 @@ export const getChallengeDetails = (
     },
     'education.averageYearsOfStudy': {
       topic: 'education',
-      phrasing: 'Rank these countries by average years of study',
+      phrasing: 'Rank these countries by the average number of years spent in school',
       markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
+        most: 'most years',
+        least: 'fewest years',
       },
     },
     'health.doctors': {
@@ -907,7 +1024,7 @@ export const getChallengeDetails = (
     },
     'health.accessToContraceptives': {
       topic: 'health',
-      phrasing: 'Rank these countries by access to contraceptives',
+      phrasing: 'Rank these countries by the percentage of people with access to contraceptives',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -915,7 +1032,7 @@ export const getChallengeDetails = (
     },
     'religion.atheism': {
       topic: 'religion',
-      phrasing: 'Rank these countries by atheism',
+      phrasing: 'Rank these countries by the percentage of people who are atheist',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -923,7 +1040,7 @@ export const getChallengeDetails = (
     },
     'religion.believers': {
       topic: 'religion',
-      phrasing: 'Rank these countries by believers (of any religion)',
+      phrasing: 'Rank these countries by the percentage of people who follow a religion',
       markers: {
         most: 'highest percent',
         least: 'lowest percent',
@@ -968,31 +1085,93 @@ export const getChallengeDetails = (
     },
     'infrastructure.internetAccess': {
       topic: 'infrastructure',
-      phrasing: 'Rank these countries by internet access',
+      phrasing: 'Rank these countries by the percentage of people with internet access',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
     },
     'people.population': {
       topic: 'people',
       phrasing: 'Which of these countries have the largest populations?',
+      markers: {
+        most: 'largest population',
+        least: 'smallest population',
+      },
     },
     'people.populationGrowthRate': {
       topic: 'people',
       phrasing: 'Rank the following by population growth rate',
+      markers: {
+        most: 'fastest growing',
+        least: 'slowest growing',
+      },
     },
     'health.lifeExpectancy': {
       topic: 'health',
       phrasing: 'Rank the following by life expectancy.',
+      markers: {
+        most: 'oldest',
+        least: 'youngest',
+      },
     },
     'health.tobaccoUse': {
       topic: 'health',
-      phrasing: 'Rank the following by tobacco use',
+      phrasing: 'Rank the following by the percentage of adults who use tobacco',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
     },
     'health.alcoholConsumption': {
       topic: 'health',
-      phrasing: 'Rank the following by alcohol consumption',
+      phrasing: 'Rank the following by litres of pure alcohol consumed per adult each year',
+      markers: {
+        most: 'most litres',
+        least: 'fewest litres',
+      },
     },
     'humanRights.refugees': {
       topic: 'human rights',
-      phrasing: 'Rank the following countries by their refugee populations',
+      phrasing: 'Rank these countries by the number of refugees they host',
+      markers: {
+        most: 'most refugees',
+        least: 'fewest refugees',
+      },
+    },
+    'economics.inflation': {
+      topic: 'economics',
+      phrasing: 'Rank these countries by their annual inflation rate',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
+    },
+    'government.amountOfMilitaryConflicts': {
+      topic: 'general knowledge',
+      phrasing: 'Rank these countries by the number of armed conflicts they are involved in',
+      markers: {
+        most: 'most conflicts',
+        least: 'fewest conflicts',
+      },
+    },
+    'government.democracyIndex': {
+      topic: 'general knowledge',
+      phrasing: 'Rank these countries by their democracy index (V-Dem electoral democracy)',
+      markers: {
+        most: 'most democratic',
+        least: 'least democratic',
+      },
+    },
+    'government.corruptionIndex': {
+      topic: 'general knowledge',
+      // CPI is scored 0–100 where higher = cleaner; the ranking sorts on the
+      // raw score, so the top pole is the least corrupt.
+      phrasing: 'Rank these countries by their Corruption Perceptions Index score',
+      markers: {
+        most: 'least corrupt',
+        least: 'most corrupt',
+      },
     },
   }
 

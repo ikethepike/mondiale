@@ -72,6 +72,29 @@
             </div>
           </template>
 
+          <!-- Outline reveal race (hard): name it before the border completes -->
+          <template v-else-if="variant === 'outline-reveal'">
+            <h1 class="map-caption">Whose border is drawing itself?</h1>
+            <span class="map-caption sub">
+              {{ outlineSecondsLeft }}s — name it before the line closes
+            </span>
+            <svg
+              v-if="outlineReveal"
+              class="reveal-outline"
+              :viewBox="outlineReveal.viewBox"
+              aria-hidden="true"
+            >
+              <path ref="outlineRevealPath" :d="outlineReveal.d" />
+            </svg>
+            <div class="guess-box">
+              <CountryGuessInput
+                :disabled="!!status"
+                placeholder="Type the country — one shot"
+                @guess="onOutlineGuess"
+              />
+            </div>
+          </template>
+
           <!-- Higher or lower: win every duel in the streak -->
           <template v-else-if="variant === 'higher-lower' && currentDuel">
             <h1 class="map-caption">Which ranks higher — {{ duelTopic }}?</h1>
@@ -103,12 +126,15 @@
 <script lang="ts" setup>
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { mainlandOutline } from '~~/lib/outline'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const { currentMove, update, gameStore, clearBoard } = useClientEvents()
 
@@ -149,10 +175,69 @@ const interstitialTitle = computed(() => {
       return `Who leads ${countryName(active.country)}?`
     case 'higher-lower':
       return `Win ${totalDuels.value === 2 ? 'both duels' : `all ${totalDuels.value} duels`}: which country ranks higher?`
+    case 'outline-reveal':
+      return 'Name the country before its border finishes drawing itself'
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
 })
+
+// --- Outline reveal race (hard) ------------------------------------------------
+const OUTLINE_REVEAL_SECONDS = 25
+const outlineReveal = ref<{ d: string; viewBox: string }>()
+const outlineRevealPath = ref<SVGPathElement>()
+const outlineSecondsLeft = ref(OUTLINE_REVEAL_SECONDS)
+let outlineTimer: ReturnType<typeof setInterval> | undefined
+
+/** Any ISO that isn't the answer — a failed gate submits a can't-match token. */
+const wrongTokenFor = (correct: ISOCountryCode): ISOCountryCode => (correct === 'CH' ? 'AT' : 'CH')
+
+const beginOutlineReveal = () => {
+  const active = challenge.value
+  if (!active || variant.value !== 'outline-reveal' || outlineTimer) return
+  outlineReveal.value = mainlandOutline(active.country)
+
+  nextTick(() => {
+    const path = outlineRevealPath.value
+    const length = path?.getTotalLength() ?? 0
+    if (!path || !length) return
+
+    // Continuous dash-reveal in the path's real length units (px-valued dash
+    // properties bypass pathLength normalization — see ViewSilhouette)
+    path.style.strokeDasharray = `${length}`
+    path.style.strokeDashoffset = prefersReducedMotion() ? '0' : `${length}`
+    path.style.transition = 'stroke-dashoffset 1s linear'
+
+    outlineTimer = setInterval(() => {
+      outlineSecondsLeft.value--
+
+      if (!prefersReducedMotion()) {
+        const revealed = Math.min(
+          1,
+          (OUTLINE_REVEAL_SECONDS - outlineSecondsLeft.value) / (OUTLINE_REVEAL_SECONDS * 0.85)
+        )
+        path.style.strokeDashoffset = `${length * (1 - revealed)}`
+      }
+
+      if (outlineSecondsLeft.value <= 0) {
+        if (outlineTimer) clearInterval(outlineTimer)
+        if (!status.value) {
+          gameStore.map.solo = false
+          submitAnswer(wrongTokenFor(active.country))
+        }
+      }
+    }, 1000)
+  })
+}
+
+const onOutlineGuess = (country: Country) => {
+  if (status.value) return
+  if (outlineTimer) clearInterval(outlineTimer)
+  // One shot: right or wrong, this is the answer — the server validates.
+  // Bring the world back so the result zoom has a map to land on.
+  gameStore.map.solo = false
+  submitAnswer(country.isoCode)
+}
 
 // --- Higher-lower duels ------------------------------------------------------
 const duelIndex = ref(0)
@@ -208,6 +293,8 @@ const incorrectMessage = computed(() => {
       return failedDuelAnswer.value
         ? `${countryName(failedDuelAnswer.value)} ranks higher`
         : 'Not quite.'
+    case 'outline-reveal':
+      return active ? `That border belongs to ${countryName(active.country)}` : 'Time ran out.'
     default:
       return picked ? `Sorry, you pressed: ${countryName(picked)}` : 'Not quite.'
   }
@@ -230,6 +317,37 @@ const submitAnswer = (isoCode: ISOCountryCode, options: { reveal?: boolean } = {
 }
 
 const showInterstitial = ref(true)
+
+// The reveal race starts the moment the interstitial clears
+watch(showInterstitial, value => {
+  if (!value) beginOutlineReveal()
+})
+
+// Back-to-back gates can reach a still-mounted view (the walk between them
+// is quick). Latch the new challenge and reset every bit of per-gate state
+// exactly as a fresh mount would — stale outlines, duel counters and map
+// zoom from the previous gate must not leak into the next question.
+watch(currentMove, move => {
+  const next = move?.challenge?._type === 'individual-challenge' ? move.challenge : undefined
+  if (!next || next === challenge.value) return
+  // Never tear down a result beat in progress — the view unmounts after it
+  if (status.value) return
+
+  challenge.value = next
+  clearBoard()
+  submittedISOCode.value = undefined
+  failedDuelAnswer.value = undefined
+  duelIndex.value = 0
+  showDoubleTapHint.value = false
+  if (outlineTimer) {
+    clearInterval(outlineTimer)
+    outlineTimer = undefined
+  }
+  outlineReveal.value = undefined
+  outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
+  if (next.variant === 'outline-reveal') gameStore.map.solo = true
+  showInterstitial.value = true
+})
 
 const showDoubleTapHint = ref(false)
 const onMapClick = (event: Event) => {
@@ -254,6 +372,8 @@ const onMapClick = (event: Event) => {
 onBeforeMount(() => {
   // Clear out our global state
   clearBoard()
+  // The world map is a giveaway while a mystery border draws itself
+  if (variant.value === 'outline-reveal') gameStore.map.solo = true
   document.addEventListener('mapClick', onMapClick)
 
   // Recovery: in this phase with no challenge to show (a reload landed in
@@ -266,6 +386,7 @@ onBeforeMount(() => {
 })
 onBeforeUnmount(() => {
   clearBoard()
+  if (outlineTimer) clearInterval(outlineTimer)
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>
@@ -383,6 +504,27 @@ header {
 
 .text-options {
   grid-template-columns: minmax(28rem, 44rem);
+}
+
+// The self-drawing border race
+.reveal-outline {
+  height: 38vh;
+  max-width: 62vw;
+  margin-top: 0.6rem;
+
+  path {
+    fill: none;
+    stroke: var(--dark-blue);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+}
+
+.guess-box {
+  margin-top: 1rem;
+  pointer-events: auto;
 }
 
 .text-option {

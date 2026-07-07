@@ -46,6 +46,8 @@ export type RoundChallengeKind =
   | 'silhouette'
   | 'hot-cold'
   | 'sketch'
+  | 'stat-detective'
+  | 'two-truths'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (
@@ -63,6 +65,10 @@ export const roundChallengeKind = (
       return 'hot-cold'
     case 'sketch-challenge':
       return 'sketch'
+    case 'stat-detective-challenge':
+      return 'stat-detective'
+    case 'two-truths-challenge':
+      return 'two-truths'
     default:
       return 'ranking'
   }

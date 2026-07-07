@@ -13,7 +13,6 @@ import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentRound } = useClientEvents()
@@ -31,8 +30,9 @@ const props = defineProps({
 
 const amount = computed(() => {
   const challenge = currentRound.value?.round.groupChallenge
-  // Traversal rounds have no ranking accessor — tiles render without a value
-  if (!challenge || isTraversalChallenge(challenge)) return undefined
+  // Only ranking rounds carry a value accessor — every other round kind
+  // (traversal, blitz, silhouette, hot-cold, sketch) renders a bare tile
+  if (!challenge || !('id' in challenge)) return undefined
 
   return getValueByAccessorID(props.isoCode, challenge.id)
 })

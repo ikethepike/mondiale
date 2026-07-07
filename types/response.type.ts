@@ -11,7 +11,10 @@ export type FactbookResponse = {
     'Geographic coordinates': TextNode
     'Map references': TextNode
     Area: {
-      total: TextNode
+      // Factbook ships the total-area key with a trailing space; keep both so
+      // the generator can read the drifted key and fall back to the clean one.
+      'total '?: TextNode
+      total?: TextNode
       land: TextNode
       water: TextNode
     }
@@ -54,7 +57,11 @@ export type FactbookResponse = {
     'Geography - note'?: TextNode
   }
   'People and Society': {
-    Population?: TextNode
+    Population?: {
+      total?: TextNode
+      male?: TextNode
+      female?: TextNode
+    }
     Nationality?: {
       noun: TextNode
       adjective: TextNode
@@ -126,6 +133,9 @@ export type FactbookResponse = {
       'unimproved: total'?: TextNode
     }
     'Current health expenditure'?: TextNode
+    'Health expenditure'?: TextNode
+    // Factbook renamed this from 'Physicians density'.
+    'Physician density'?: TextNode
     'Physicians density'?: TextNode
     'Hospital bed density'?: TextNode
     'Sanitation facility access'?: {
@@ -170,6 +180,11 @@ export type FactbookResponse = {
   }
   Environment: {
     'Environment - current issues'?: TextNode
+    // Factbook renamed this from 'Environment - international agreements'.
+    'International environmental agreements'?: {
+      'party to'?: TextNode
+      'signed, but not ratified'?: TextNode
+    }
     'Environment - international agreements'?: {
       'party to'?: TextNode
       'signed, but not ratified'?: TextNode
@@ -178,6 +193,13 @@ export type FactbookResponse = {
       'particulate matter emissions'?: TextNode
       'carbon dioxide emissions'?: TextNode
       'methane emissions'?: TextNode
+    }
+    // Factbook moved CO2 out of 'Air pollutants' into its own section.
+    'Carbon dioxide emissions'?: {
+      'total emissions'?: TextNode
+      'from coal and metallurgical coke'?: TextNode
+      'from petroleum and other liquids'?: TextNode
+      'from consumed natural gas'?: TextNode
     }
     Climate?: TextNode
     'Land use'?: {
@@ -487,7 +509,8 @@ export type FactbookResponse = {
   'Transnational Issues'?: {
     'Disputes - international'?: TextNode
     'Refugees and internally displaced persons'?: {
-      'refugees (country of origin)'?: TextNode
+      refugees?: TextNode
+      IDPs?: TextNode
       'stateless persons'?: TextNode
     }
     'Illicit drugs'?: TextNode

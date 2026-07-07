@@ -13,6 +13,8 @@ import type { ISOCountryCode } from '../geography.types'
  *   every duel was answered correctly (same client-trust model as the map)
  * - 'leader-pick': whose leader is named — `options` are the candidate
  *   countries, their leaders shown as the answers
+ * - 'outline-reveal' (hard mode): `country`'s border draws itself in; name
+ *   it by typing before the clock runs out — one wrong guess fails the gate
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -39,6 +41,7 @@ export const individualChallengeVariants = [
   'odd-one-out',
   'higher-lower',
   'leader-pick',
+  'outline-reveal',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
