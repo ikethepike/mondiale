@@ -104,7 +104,7 @@ const options = ref({
 })
 </script>
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 
 #active-round {
   top: 0;

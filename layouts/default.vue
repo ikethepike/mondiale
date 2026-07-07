@@ -74,7 +74,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 
 #diagnostic-bar {
   position: fixed;

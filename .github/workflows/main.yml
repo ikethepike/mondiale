@@ -35,4 +35,4 @@ jobs:
       - name: Git Commit
         uses: stefanzweifel/git-auto-commit-action@v4.16.0
         with:
-          commit_message: Update countries.gen.json
+          commit_message: Update generated data files

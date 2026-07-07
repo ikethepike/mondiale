@@ -221,7 +221,7 @@ const startGame = () => {
 }
 </script>
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 
 .player-configuration {
   width: 100%;

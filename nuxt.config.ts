@@ -3,20 +3,16 @@ export default defineNuxtConfig({
   pages: true,
   css: ['~/assets/scss/main.scss'],
   modules: ['@pinia/nuxt'],
+  // Keep the Nuxt 3 root-level directory layout (pages/, components/, ...)
+  srcDir: '.',
+  dir: {
+    app: 'app',
+  },
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       title: 'Mondiale',
     },
   },
-  vite: {
-    css: {
-      preprocessorOptions: {
-        scss: {
-          api: 'modern-compiler', // or 'modern'
-        },
-      },
-    },
-  },
-  compatibilityDate: '2024-09-26',
+  compatibilityDate: '2026-07-07',
 })

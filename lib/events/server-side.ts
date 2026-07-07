@@ -20,14 +20,14 @@ export const useServerSideEvents = ({
       io.in(eventTarget.gameId).emit(eventData.event, eventData, eventTarget)
     },
     async updateGameState(game: Game) {
-      await redis.set(game.id, JSON.stringify(game))
+      // The upstash client (de)serializes JSON itself — store the object as-is
+      await redis.set(game.id, game)
       await redis.expire(game.id, TWO_DAYS_IN_SECONDS)
     },
     async fetchGame(gameId: string): Promise<Game | undefined> {
       if (!gameId) throw new EvalError('Blank string passed')
-      const response = await redis.get<string>(gameId)
-      if (!response) return undefined
-      const game = JSON.parse(response)
+      const game = await redis.get<Game>(gameId)
+      if (!game) return undefined
       if (!isValidGame(game)) {
         console.warn('Invalid game', game)
         return undefined

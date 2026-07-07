@@ -6,7 +6,6 @@
   </li>
 </template>
 <script lang="ts" setup>
-/// <reference types=".vue-global-types/vue_3.5_false.d.ts" />
 import type { Player } from '~~/types/player.type'
 
 defineProps({

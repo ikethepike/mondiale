@@ -2,6 +2,7 @@
   // https://nuxt.com/docs/guide/concepts/typescript
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "typeRoots": ["types/*.d.ts"]
+    // Nuxt 4 enables this by default; the codebase predates it
+    "noUncheckedIndexedAccess": false
   }
 }

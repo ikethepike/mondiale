@@ -36,7 +36,7 @@ export const useGameStore = defineStore('game', {
 
       return {
         round,
-        number: length,
+        number: state.game.rounds.length,
       }
     },
     currentGroupChallengeForPlayer(state): ISOCountryCode[] | undefined {

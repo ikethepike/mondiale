@@ -6,14 +6,13 @@ kill_timeout = 5
 processes = []
 
 [build]
-  builder = "heroku/buildpacks:20"
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "3000"
 
 [experimental]
   auto_rollback = true
-  cmd = "npm start"
 
 [[services]]
   http_checks = []

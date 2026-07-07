@@ -16,7 +16,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-/// <reference types=".vue-global-types/vue_3.5_false.d.ts" />
 import type { Country } from '~~/types/geography.types'
 
 defineProps({
@@ -27,7 +26,7 @@ defineProps({
 })
 </script>
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 $countryTilePadding: 0.4rem;
 .country-tile {
   width: 100%;

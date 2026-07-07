@@ -54,7 +54,7 @@ const closeTutorial = () => {
 }
 </script>
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 
 .tutorial-card {
   margin: auto auto 0 auto;

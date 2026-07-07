@@ -72,15 +72,17 @@ const SERVER_SIDE_EVENT_HANDLERS: {
 export default defineEventHandler(({ node }) => {
   console.info('>>>>> called!')
 
-  const { REDIS_PASSWORD } = process.env
-  if (!REDIS_PASSWORD) throw new ReferenceError('No redis password supplied')
+  const { REDIS_PASSWORD, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
+  const redisToken = UPSTASH_REDIS_REST_TOKEN ?? REDIS_PASSWORD
+  if (!redisToken) {
+    throw new ReferenceError('No redis token supplied (UPSTASH_REDIS_REST_TOKEN or REDIS_PASSWORD)')
+  }
 
   // Use globalThis for better cross-environment compatibility
   if (!globalThis.io) {
-    // const redisURL = `redis://default:${REDIS_PASSWORD}@pure-ghost-24372.upstash.io:6379`
     const redis = new Redis({
-      url: 'https://pure-ghost-24372.upstash.io',
-      token: REDIS_PASSWORD,
+      url: UPSTASH_REDIS_REST_URL ?? 'https://pure-ghost-24372.upstash.io',
+      token: redisToken,
     })
 
     // Create a new Socket.IO server only if it doesn't already exist

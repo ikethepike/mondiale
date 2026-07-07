@@ -6,7 +6,7 @@
   </div>
 </template>
 <style lang="scss" scoped>
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/rules/breakpoints' as *;
 
 .test-page {
   z-index: 3000;

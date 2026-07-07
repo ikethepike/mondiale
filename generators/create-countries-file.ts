@@ -546,6 +546,10 @@ const getMembership = ({
 const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Region => {
   let continent = data['Geography']['Map references'].text as FactbookRegion
 
+  // France lists every overseas territory; its metropolitan region is Europe.
+  // Match on content rather than the exact markup, which changes between releases.
+  if (continent.includes('metropolitan France:')) return 'europe'
+
   switch (continent) {
     case 'AsiaEurope':
       return 'asia'
@@ -554,8 +558,6 @@ const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Regio
     case 'Southeast Asia':
       return 'asia'
     case 'Arctic Region':
-      return 'europe'
-    case '<p><strong>metropolitan France:</strong> Europe; </p><p><strong>French Guiana:</strong> South America; </p><p><strong>Guadeloupe:</strong> Central America and the Caribbean; </p><p><strong>Martinique:</strong> Central America and the Caribbean; </p><p><strong>Mayotte:</strong> Africa; </p><p><strong>Reunion:</strong> World</p>':
       return 'europe'
     default: {
       const parsed = continent.toLowerCase().replaceAll(' ', '-')

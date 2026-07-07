@@ -64,8 +64,8 @@ const tileSize = `10vw`
 const { game } = useClientEvents()
 </script>
 <style lang="scss" scoped>
-@import '~/assets/scss/templates/pane';
-@import '~/assets/scss/rules/breakpoints';
+@use '~/assets/scss/templates/pane' as *;
+@use '~/assets/scss/rules/breakpoints' as *;
 
 .logo {
   top: 0;
