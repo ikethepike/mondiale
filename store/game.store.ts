@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { MapFeatureOverlay } from '~~/types/map.type'
+import type { CountryColorGrouping, MapFeatureOverlay } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
@@ -25,6 +25,8 @@ interface GameStoreState {
     focusContext: ISOCountryCode[]
     /** Soft per-country verdict fills for traversal guesses. */
     tints: { [isoCode in ISOCountryCode]?: MapTint }
+    /** Distinct per-group country fills (region final challenge, duel pairs). */
+    countryGroupings?: CountryColorGrouping[]
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
   }
@@ -54,6 +56,7 @@ export const useGameStore = defineStore('game', {
       focus: [],
       focusContext: [],
       tints: {},
+      countryGroupings: undefined,
       feature: undefined,
     },
   }),

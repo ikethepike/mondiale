@@ -138,7 +138,15 @@
           key="result"
           :status="status"
           :incorrect-message="incorrectMessage"
-        />
+        >
+          <DuelReveal
+            v-if="variant === 'higher-lower' && duelOutcomes.length && duelAccessorId"
+            :outcomes="duelOutcomes"
+            :accessor-id="duelAccessorId"
+            :topic="duelTopic"
+            :colors="PAIR_COLORS"
+          />
+        </ChallengeResult>
       </Transition>
     </header>
   </div>
@@ -146,6 +154,7 @@
 <script lang="ts" setup>
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
@@ -265,13 +274,39 @@ const onOutlineGuess = (country: Country) => {
 const duelIndex = ref(0)
 const totalDuels = computed(() => challenge.value?.higherLower?.pairs.length ?? 0)
 const currentDuel = computed(() => challenge.value?.higherLower?.pairs[duelIndex.value])
+const duelAccessorId = computed(() => challenge.value?.higherLower?.accessorId)
 const duelTopic = computed(() => {
-  const accessorId = challenge.value?.higherLower?.accessorId
+  const accessorId = duelAccessorId.value
   if (!accessorId) return ''
   return accessorTopicLabel(accessorId)
 })
 
 const failedDuelAnswer = ref<ISOCountryCode>()
+
+/** Each duel the player actually faced, kept for the educational reveal. */
+export interface DuelOutcome {
+  picked: ISOCountryCode
+  higher: ISOCountryCode
+  lower: ISOCountryCode
+  correct: boolean
+}
+const duelOutcomes = ref<DuelOutcome[]>([])
+
+// Distinct wash per pair, so the reveal's map highlight matches its cards.
+const PAIR_COLORS = [
+  'hsla(197.6, 51.2%, 41.8%, 0.55)', // soft-blue
+  'hsla(29.7, 79.9%, 62%, 0.55)', // warm-sand
+  'hsla(170.5, 24.7%, 55%, 0.6)', // soft-mint
+]
+
+// Paint the faced pairs onto the map in matching colours (win or loss).
+const revealDuelsOnMap = () => {
+  gameStore.map.countryGroupings = duelOutcomes.value.map((outcome, index) => ({
+    color: PAIR_COLORS[index % PAIR_COLORS.length],
+    countries: [outcome.higher, outcome.lower],
+  }))
+  gameStore.map.focus = duelOutcomes.value.flatMap(outcome => [outcome.higher, outcome.lower])
+}
 
 const answerDuel = (picked: ISOCountryCode) => {
   const active = challenge.value
@@ -281,10 +316,19 @@ const answerDuel = (picked: ISOCountryCode) => {
   const other = picked === duel.a ? duel.b : duel.a
   const pickedValue = getValueByAccessorID(picked, active.higherLower.accessorId)?.amount ?? 0
   const otherValue = getValueByAccessorID(other, active.higherLower.accessorId)?.amount ?? 0
+  const won = pickedValue > otherValue
 
-  if (pickedValue > otherValue) {
+  duelOutcomes.value.push({
+    picked,
+    higher: won ? picked : other,
+    lower: won ? other : picked,
+    correct: won,
+  })
+
+  if (won) {
     if (duelIndex.value >= totalDuels.value - 1) {
       // Swept the whole streak — submit the winning token
+      revealDuelsOnMap()
       return submitAnswer(active.country, { reveal: false })
     }
     duelIndex.value++
@@ -294,6 +338,7 @@ const answerDuel = (picked: ISOCountryCode) => {
   // Any lost duel fails the challenge: submit a token that can't match
   failedDuelAnswer.value = other
   const wrongToken = active.country === picked ? other : picked
+  revealDuelsOnMap()
   submitAnswer(wrongToken, { reveal: false })
 }
 

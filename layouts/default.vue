@@ -25,7 +25,7 @@
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)
-          : undefined
+          : gameStore.map.countryGroupings
       "
     />
     <slot />
