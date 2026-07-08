@@ -1,15 +1,10 @@
 <template>
   <div class="photo-option-challenge">
     <h1 class="map-caption">{{ caption }}</h1>
-    <!-- A fixed-size stage that fits ANY photo aspect ratio: the image is
-         `contain`ed (never cropped), and a blurred copy of the same photo
-         fills the letterbox gaps so the frame never looks empty. -->
+    <!-- A fixed-size stage that fits ANY photo aspect ratio, with click/scroll
+         and pinch to zoom + pan so players can inspect the detail. -->
     <div class="photo-stage">
-      <template v-if="!broken">
-        <div class="photo-backdrop" :style="{ backgroundImage: `url('${image}')` }" aria-hidden="true" />
-        <img class="photo" :src="image" :alt="alt" @error="broken = true" />
-      </template>
-      <div v-else class="photo-missing" aria-hidden="true">?</div>
+      <ZoomableImage :src="image" :alt="alt" />
     </div>
     <div class="options card-options">
       <button
@@ -27,6 +22,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -41,7 +37,6 @@ withDefaults(
 )
 
 const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
-const broken = ref(false)
 </script>
 <style lang="scss" scoped>
 .photo-option-challenge {
@@ -50,46 +45,12 @@ const broken = ref(false)
   align-items: center;
 }
 
-// A consistent stage that any photo aspect ratio sits inside cleanly.
+// A consistent stage that any photo aspect ratio sits inside cleanly;
+// ZoomableImage renders the framed, zoom/pan-able photo within.
 .photo-stage {
-  position: relative;
-  overflow: hidden;
   margin-top: 0.6rem;
   width: min(38rem, 86vw);
   height: min(26rem, 42vh);
-  border-radius: 1.2rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-  background: hsla(215.7, 76.4%, 21.6%, 0.06);
-}
-
-// Blurred, darkened copy fills the letterbox gaps around an off-ratio photo.
-.photo-backdrop {
-  position: absolute;
-  inset: -2rem;
-  background-size: cover;
-  background-position: center;
-  filter: blur(1.6rem) brightness(0.7);
-  transform: scale(1.1);
-}
-
-.photo {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain; // the WHOLE photo, never cropped
-  object-position: center;
-}
-
-.photo-missing {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 5rem;
-  color: hsla(215.7, 76.4%, 21.6%, 0.3);
 }
 
 @media (max-width: 640px) {

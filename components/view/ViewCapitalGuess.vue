@@ -20,13 +20,9 @@
     </header>
 
     <section class="stage">
-      <!-- Adaptive photo stage — any aspect ratio, never cropped -->
+      <!-- Adaptive photo stage — any aspect ratio, never cropped; zoom + pan. -->
       <div class="photo-stage">
-        <template v-if="!broken">
-          <div class="photo-backdrop" :style="{ backgroundImage: `url('${challenge.image}')` }" aria-hidden="true" />
-          <img class="photo" :src="challenge.image" alt="A capital city" @error="broken = true" />
-        </template>
-        <div v-else class="photo-missing" aria-hidden="true">?</div>
+        <ZoomableImage :src="challenge.image" alt="A capital city" />
       </div>
 
       <TransitionGroup tag="ul" name="guess" class="live-guesses">
@@ -73,6 +69,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName, getCountry } from '~~/lib/country'
@@ -94,7 +91,6 @@ const {
 } = useGroupChallenge('capital-guess-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-const broken = ref(false)
 
 const opponentGuesses = computed(() => Object.entries(gameStore.map.liveGuesses))
 const playerFor = (playerId: string) => gameStore.game?.players[playerId]
@@ -176,39 +172,8 @@ header {
 }
 
 .photo-stage {
-  position: relative;
-  overflow: hidden;
   width: min(44rem, 88vw);
   height: min(28rem, 44vh);
-  border-radius: 1.2rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-  background: hsla(215.7, 76.4%, 21.6%, 0.06);
-}
-.photo-backdrop {
-  position: absolute;
-  inset: -2rem;
-  background-size: cover;
-  background-position: center;
-  filter: blur(1.6rem) brightness(0.7);
-  transform: scale(1.1);
-}
-.photo {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  object-position: center;
-}
-.photo-missing {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 5rem;
-  color: hsla(215.7, 76.4%, 21.6%, 0.3);
 }
 
 .live-guesses {
