@@ -55,6 +55,30 @@
             </div>
           </template>
 
+          <!-- Border detective: name the country these neighbours surround -->
+          <template v-else-if="variant === 'border-detective' && challenge.neighbours">
+            <h1 class="map-caption">Who sits in the middle?</h1>
+            <span class="map-caption sub">Name the country these neighbours all border.</span>
+            <div class="border-ring" :style="{ '--ring-count': challenge.neighbours.length }">
+              <div class="ring-center" aria-hidden="true">?</div>
+              <div
+                v-for="(neighbour, index) in challenge.neighbours"
+                :key="neighbour"
+                class="ring-flag"
+                :style="ringSlot(index, challenge.neighbours.length)"
+              >
+                <CountryFlag :country="getCountry(neighbour)" mode="inline" />
+              </div>
+            </div>
+            <div class="guess-box">
+              <CountryGuessInput
+                :disabled="!!status"
+                placeholder="Type the country in the middle"
+                @guess="onBorderGuess"
+              />
+            </div>
+          </template>
+
           <!-- Odd one out -->
           <template v-else-if="variant === 'odd-one-out' && challenge.oddOneOut">
             <h1 class="map-caption">{{ challenge.oddOneOut.propertyLabel }}</h1>
@@ -230,6 +254,8 @@ const interstitialTitle = computed(() => {
       return `Which flag belongs to ${countryName(active.country)}?`
     case 'flag-twins':
       return `Spot ${countryName(active.country)} among its palette twins`
+    case 'border-detective':
+      return 'Name the country these neighbours surround'
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -300,6 +326,23 @@ const onOutlineGuess = (country: Country) => {
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
   submitAnswer(country.isoCode)
+}
+
+// --- Border detective --------------------------------------------------------
+const onBorderGuess = (country: Country) => {
+  if (status.value) return
+  // Bring the world back so the result zoom has a map to land on.
+  gameStore.map.solo = false
+  submitAnswer(country.isoCode)
+}
+
+/** Position a neighbour flag evenly around the ring (start at top, clockwise). */
+const ringSlot = (index: number, total: number) => {
+  const angle = (index / total) * 2 * Math.PI - Math.PI / 2
+  return {
+    left: `${50 + Math.cos(angle) * 42}%`,
+    top: `${50 + Math.sin(angle) * 42}%`,
+  }
 }
 
 // --- Higher-lower duels ------------------------------------------------------
@@ -386,6 +429,8 @@ const incorrectMessage = computed(() => {
       return picked ? `That flag belongs to ${countryName(picked)}` : 'Not that flag.'
     case 'flag-twins':
       return picked ? `That's ${countryName(picked)} — a close twin` : 'Not that one.'
+    case 'border-detective':
+      return active ? `It was ${countryName(active.country)}` : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -452,7 +497,9 @@ watch(currentMove, move => {
   }
   outlineReveal.value = undefined
   outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
-  if (next.variant === 'outline-reveal') gameStore.map.solo = true
+  if (next.variant === 'outline-reveal' || next.variant === 'border-detective') {
+    gameStore.map.solo = true
+  }
   showInterstitial.value = true
 })
 
@@ -479,8 +526,10 @@ const onMapClick = (event: Event) => {
 onBeforeMount(() => {
   // Clear out our global state
   clearBoard()
-  // The world map is a giveaway while a mystery border draws itself
-  if (variant.value === 'outline-reveal') gameStore.map.solo = true
+  // The world map is a giveaway for shape/neighbour mystery gates
+  if (variant.value === 'outline-reveal' || variant.value === 'border-detective') {
+    gameStore.map.solo = true
+  }
   document.addEventListener('mapClick', onMapClick)
 
   // Recovery: in this phase with no challenge to show (a reload landed in
@@ -616,6 +665,55 @@ header {
 @media (max-width: 640px) {
   .twin-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// Border detective: neighbour flags in a ring around an empty "?" centre.
+.border-ring {
+  position: relative;
+  width: min(38rem, 78vw);
+  aspect-ratio: 1;
+  margin: 1.6rem auto 0;
+  pointer-events: none;
+}
+
+.ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 4rem;
+  font-weight: 700;
+  color: hsla(215.7, 76.4%, 21.6%, 0.35);
+  border: 0.2rem dashed hsla(215.7, 76.4%, 21.6%, 0.3);
+  background: hsla(36, 100%, 98%, 0.6);
+}
+
+.ring-flag {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22%;
+
+  :deep(svg) {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border-radius: 0.3rem;
+    box-shadow: 0 1px 4px hsla(215.7, 76.4%, 21.6%, 0.25);
+  }
+}
+
+@media (max-width: 640px) {
+  .border-ring {
+    width: min(30rem, 88vw);
+  }
+  .ring-center {
+    font-size: 3rem;
   }
 }
 

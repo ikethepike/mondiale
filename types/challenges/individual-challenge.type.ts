@@ -40,12 +40,16 @@ export interface IndividualChallenge {
     image: string
     name: string
   }
+  /** border-detective: the mystery country's neighbours, shown as a flag ring
+   *  (the answer `country` is NOT among them — it sits in the empty centre). */
+  neighbours?: ISOCountryCode[]
 }
 
 export const individualChallengeVariants = [
   'find',
   'flag-pick',
   'flag-twins',
+  'border-detective',
   'odd-one-out',
   'higher-lower',
   'leader-pick',

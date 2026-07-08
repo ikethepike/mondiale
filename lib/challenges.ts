@@ -771,6 +771,37 @@ const dealFlagTwins = (
   return { variant: 'flag-twins', country: subject, options: shuffleArray([subject, ...decoys]) }
 }
 
+/**
+ * Border-detective: name the mystery country from its neighbours' flags, shown
+ * as a ring around an empty centre. Picks a country with 3–6 neighbours (a
+ * solvable ring — too few is ambiguous, too many is a wall of flags), all of
+ * which must be on the board so their flags render. `country` is the hidden
+ * answer; `neighbours` is the ring.
+ */
+const BORDER_DETECTIVE_MIN = 3
+const BORDER_DETECTIVE_MAX = 6
+const dealBorderDetective = (
+  pool: ISOCountryCode[]
+): { country: ISOCountryCode; neighbours: ISOCountryCode[] } | undefined => {
+  const onBoard = new Set(pool)
+  const eligible = (candidatePool: ISOCountryCode[]) =>
+    shuffleArray(candidatePool).find(isoCode => {
+      const neighbours = (BORDERS[isoCode] ?? []).filter(
+        (border): border is ISOCountryCode => onBoard.has(border as ISOCountryCode)
+      )
+      return neighbours.length >= BORDER_DETECTIVE_MIN && neighbours.length <= BORDER_DETECTIVE_MAX
+    })
+
+  // Prefer an on-board subject; widen to the world if the continent is too sparse.
+  const country = eligible(pool) ?? eligible([...ISOCountryCodes])
+  if (!country) return undefined
+
+  const neighbours = (BORDERS[country] ?? []).filter(
+    (border): border is ISOCountryCode => onBoard.has(border as ISOCountryCode)
+  )
+  return { country, neighbours: shuffleArray(neighbours) }
+}
+
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
@@ -1078,6 +1109,10 @@ export const getIndividualChallenge = ({
         const dealt = dealFlagTwins(base.country, pool)
         return dealt ? { ...base, ...dealt } : base
       }
+      case 'border-detective': {
+        const dealt = dealBorderDetective(pool)
+        return dealt ? { ...base, variant: 'border-detective', ...dealt } : base
+      }
       case 'odd-one-out': {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
@@ -1122,10 +1157,14 @@ export const getIndividualChallenge = ({
     }
     case 'isoCode': {
       // Hard games race the self-drawing border: name it before it completes
-      if (difficulty === 'hard' && roll < 0.4) {
+      if (difficulty === 'hard' && roll < 0.3) {
         return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
       }
-      if (roll < 0.5) {
+      if (roll < 0.55) {
+        const dealt = dealBorderDetective(pool)
+        if (dealt) return { ...base, variant: 'border-detective', ...dealt }
+      }
+      if (roll < 0.75) {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
