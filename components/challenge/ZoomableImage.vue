@@ -3,12 +3,12 @@
     ref="viewport"
     class="zoomable"
     :class="{ zoomed: scale > 1, grabbing }"
-    @wheel.prevent="onWheel"
+    @wheel="onWheel"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
-    @dblclick.prevent="reset"
+    @dblclick="onDoubleClick"
   >
     <!-- Blurred copy fills the letterbox gaps behind an off-ratio photo. -->
     <div
@@ -17,22 +17,21 @@
       :style="{ backgroundImage: `url('${src}')` }"
       aria-hidden="true"
     />
-    <img
-      v-if="!broken"
-      class="photo"
-      :src="src"
-      :alt="alt"
-      draggable="false"
-      :style="transformStyle"
-      @error="broken = true"
-    />
+    <!-- The transform lives on a wrapper so the image's object-fit is untouched. -->
+    <div v-if="!broken" class="photo-wrap" :style="transformStyle">
+      <img class="photo" :src="src" :alt="alt" draggable="false" @error="broken = true" />
+    </div>
     <div v-else class="missing" aria-hidden="true">?</div>
 
-    <!-- Zoom controls (visible on desktop; touch users pinch). -->
-    <div v-if="!broken" class="controls" aria-hidden="true">
-      <button type="button" class="zoom-btn" title="Zoom out" @click.stop="zoomBy(-STEP)">−</button>
-      <button type="button" class="zoom-btn" title="Reset" @click.stop="reset">⤢</button>
-      <button type="button" class="zoom-btn" title="Zoom in" @click.stop="zoomBy(STEP)">＋</button>
+    <!-- Zoom controls: clickable, and marked so pointer-panning ignores them. -->
+    <div v-if="!broken" class="controls">
+      <button type="button" class="zoom-btn" data-control title="Zoom out" @click="zoomBy(-STEP)">
+        −
+      </button>
+      <button type="button" class="zoom-btn" data-control title="Reset" @click="reset">⤢</button>
+      <button type="button" class="zoom-btn" data-control title="Zoom in" @click="zoomBy(STEP)">
+        ＋
+      </button>
     </div>
     <span v-if="!broken && scale === 1" class="hint" aria-hidden="true">Scroll or pinch to zoom</span>
   </div>
@@ -72,11 +71,13 @@ const reset = () => {
   ty.value = 0
 }
 
-const zoomBy = (delta: number) => {
-  scale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale.value + delta))
+const setScale = (next: number) => {
+  scale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next))
   if (scale.value === 1) reset()
   else clampPan()
 }
+
+const zoomBy = (delta: number) => setScale(scale.value + delta)
 
 /**
  * Zoom toward a focal point (cursor / pinch centre) so the pixel under it
@@ -86,8 +87,8 @@ const zoomToward = (nextScale: number, fx: number, fy: number) => {
   const element = viewport.value
   if (!element) return
   const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  if (clamped === scale.value) return
   const rect = element.getBoundingClientRect()
-  // Position of the focal point relative to the image centre, pre-zoom.
   const originX = fx - rect.width / 2 - tx.value
   const originY = fy - rect.height / 2 - ty.value
   const ratio = clamped / scale.value
@@ -98,19 +99,36 @@ const zoomToward = (nextScale: number, fx: number, fy: number) => {
   else clampPan()
 }
 
-const onWheel = (event: WheelEvent) => {
+const localPoint = (event: { clientX: number; clientY: number }) => {
   const rect = viewport.value?.getBoundingClientRect()
-  if (!rect) return
-  const delta = -event.deltaY * 0.0025 * scale.value
-  zoomToward(scale.value + delta, event.clientX - rect.left, event.clientY - rect.top)
+  return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 }
+}
+
+const onWheel = (event: WheelEvent) => {
+  event.preventDefault()
+  const { x, y } = localPoint(event)
+  const delta = -event.deltaY * 0.0025 * Math.max(scale.value, 1)
+  zoomToward(scale.value + delta, x, y)
+}
+
+const onDoubleClick = (event: MouseEvent) => {
+  event.preventDefault()
+  // Double-tap toggles: zoom in toward the point, or reset if already zoomed.
+  if (scale.value > 1) return reset()
+  const { x, y } = localPoint(event)
+  zoomToward(2.4, x, y)
 }
 
 // --- Pointer tracking (drag to pan; two pointers to pinch) ------------------
 const pointers = new Map<number, { x: number; y: number }>()
 let lastPinchDistance = 0
 
+const isControl = (event: PointerEvent) =>
+  (event.target as HTMLElement)?.closest?.('[data-control]') != null
+
 const onPointerDown = (event: PointerEvent) => {
-  ;(event.target as HTMLElement).setPointerCapture?.(event.pointerId)
+  if (isControl(event)) return // let the button receive its click
+  viewport.value?.setPointerCapture?.(event.pointerId)
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   if (pointers.size === 1 && scale.value > 1) grabbing.value = true
   if (pointers.size === 2) lastPinchDistance = pinchDistance()
@@ -122,14 +140,13 @@ const onPointerMove = (event: PointerEvent) => {
   const current = { x: event.clientX, y: event.clientY }
 
   if (pointers.size === 1) {
-    // One finger / mouse: pan (only meaningful when zoomed in).
     if (scale.value > 1) {
       tx.value += current.x - previous.x
       ty.value += current.y - previous.y
       clampPan()
     }
+    pointers.set(event.pointerId, current)
   } else if (pointers.size === 2) {
-    // Two fingers: pinch-zoom toward the midpoint.
     pointers.set(event.pointerId, current)
     const distance = pinchDistance()
     const rect = viewport.value?.getBoundingClientRect()
@@ -140,9 +157,7 @@ const onPointerMove = (event: PointerEvent) => {
       zoomToward(scale.value * (distance / lastPinchDistance), midX, midY)
     }
     lastPinchDistance = distance
-    return
   }
-  pointers.set(event.pointerId, current)
 }
 
 const onPointerUp = (event: PointerEvent) => {
@@ -184,17 +199,23 @@ const pinchDistance = (): number => {
   background-position: center;
   filter: blur(1.6rem) brightness(0.7);
   transform: scale(1.1);
+  pointer-events: none;
+}
+
+.photo-wrap {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+  pointer-events: none;
 }
 
 .photo {
-  position: relative;
   width: 100%;
   height: 100%;
   display: block;
   object-fit: contain; // whole photo, never cropped
   object-position: center;
-  transform-origin: center center;
-  will-change: transform;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -216,7 +237,7 @@ const pinchDistance = (): number => {
   bottom: 0.8rem;
   display: flex;
   gap: 0.4rem;
-  z-index: 2;
+  z-index: 3;
 }
 .zoom-btn {
   width: 2.8rem;
@@ -253,7 +274,6 @@ const pinchDistance = (): number => {
 }
 
 @media (hover: none) {
-  // Touch: hide the scroll hint wording nuance is fine, keep controls smaller.
   .zoom-btn {
     width: 3.4rem;
     height: 3.4rem;

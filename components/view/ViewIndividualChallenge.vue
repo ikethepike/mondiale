@@ -65,9 +65,11 @@
                 v-for="(neighbour, index) in challenge.neighbours"
                 :key="neighbour"
                 class="ring-flag"
+                :class="{ named: !isHard }"
                 :style="ringSlot(index, challenge.neighbours.length)"
               >
                 <CountryFlag :country="getCountry(neighbour)" mode="inline" />
+                <span v-if="!isHard" class="ring-name">{{ countryName(neighbour) }}</span>
               </div>
             </div>
             <div class="guess-box">
@@ -275,6 +277,8 @@ const challenge = ref(
 
 const variant = computed(() => challenge.value?.variant ?? 'find')
 const status = toRef(gameStore.map, 'status')
+/** Hard mode hides the helper labels (e.g. neighbour names in Border Detective). */
+const isHard = computed(() => gameStore.game?.difficulty === 'hard')
 
 const submittedISOCode = ref<ISOCountryCode>()
 const submittedCountry = computed(() => {
@@ -804,13 +808,27 @@ header {
   position: absolute;
   transform: translate(-50%, -50%);
   width: 22%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
 
+  // Let each flag keep its intrinsic aspect ratio — Nepal's pennant is not
+  // 3:2, so forcing a rectangle distorted it and spilled the box-shadow.
   :deep(svg) {
     width: 100%;
-    aspect-ratio: 3 / 2;
+    height: auto;
     border-radius: 0.3rem;
-    box-shadow: 0 1px 4px hsla(215.7, 76.4%, 21.6%, 0.25);
+    filter: drop-shadow(0 1px 3px hsla(215.7, 76.4%, 21.6%, 0.25));
   }
+}
+
+.ring-name {
+  font-size: 1.1rem;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--dark-blue);
+  max-width: 12ch;
 }
 
 @media (max-width: 640px) {
