@@ -43,6 +43,9 @@ export interface IndividualChallenge {
   /** border-detective: the mystery country's neighbours, shown as a flag ring
    *  (the answer `country` is NOT among them — it sits in the empty centre). */
   neighbours?: ISOCountryCode[]
+  /** capital-match / photo gates: a photo (capital skyline, landmark) whose
+   *  country the player names from `options`. */
+  image?: string
 }
 
 export const individualChallengeVariants = [
@@ -52,6 +55,7 @@ export const individualChallengeVariants = [
   'border-detective',
   'money-match',
   'zoom-out',
+  'capital-match',
   'odd-one-out',
   'higher-lower',
   'leader-pick',

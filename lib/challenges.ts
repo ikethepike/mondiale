@@ -1,4 +1,5 @@
 import { BORDERS } from '~~/data/borders.gen'
+import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
@@ -885,6 +886,25 @@ const dealMoneyMatch = (
   return { country: subject, options: shuffleArray([subject, ...decoys]) }
 }
 
+/**
+ * Capital-match (photo): "Which country's capital is this?" — a skyline photo
+ * with four flag options. Deals only where a capital photo exists; decoys
+ * prefer the same region.
+ */
+const dealCapitalMatch = (
+  pool: ISOCountryCode[]
+): { country: ISOCountryCode; image: string; options: ISOCountryCode[] } | undefined => {
+  const hasPhoto = (isoCode: ISOCountryCode) => !!CAPITALS[isoCode]?.image
+  const subject = shuffleArray(pool).find(hasPhoto) ?? shuffleArray([...ISOCountryCodes]).find(hasPhoto)
+  if (!subject) return undefined
+  const image = CAPITALS[subject]!.image!
+
+  const decoys = pickDecoys(subject, pool, 3, { preferRegion: true })
+  if (!decoys) return undefined
+
+  return { country: subject, image, options: shuffleArray([subject, ...decoys]) }
+}
+
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
@@ -1224,6 +1244,11 @@ export const getIndividualChallenge = ({
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
         break
       }
+      case 'capital-match': {
+        const dealt = dealCapitalMatch(pool)
+        if (dealt) return { ...base, variant: 'capital-match', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -1265,17 +1290,20 @@ export const getIndividualChallenge = ({
     }
     case 'capital.name': {
       // Money-match is a hard-only twist on this "knowledge" tile.
-      if (difficulty === 'hard' && roll < 0.2) {
+      if (difficulty === 'hard' && roll < 0.18) {
         const dealt = dealMoneyMatch(pool)
         if (dealt) return { ...base, variant: 'money-match', ...dealt }
       }
-      if (roll < 0.25) {
+      if (roll < 0.2) {
+        const dealt = dealCapitalMatch(pool)
+        if (dealt) return { ...base, variant: 'capital-match', ...dealt }
+      } else if (roll < 0.4) {
         const dealt = dealHigherLower(difficulty, pool)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
-      } else if (roll < 0.5) {
+      } else if (roll < 0.6) {
         const dealt = dealLeaderPick(pool)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
-      } else if (roll < 0.75) {
+      } else if (roll < 0.8) {
         const dealt = dealLeaderPortrait(pool)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       }

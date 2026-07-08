@@ -155,24 +155,24 @@
           </template>
 
           <!-- Whose leader is this? Portrait up, four countries down -->
-          <template v-else-if="variant === 'leader-portrait' && challenge.portrait">
-            <h1 class="map-caption">Which country does this leader govern?</h1>
-            <div class="portrait-frame">
-              <img class="portrait" :src="challenge.portrait.image" alt="A national leader" />
-            </div>
-            <div class="options card-options">
-              <button
-                v-for="option in challenge.options"
-                :key="option"
-                class="option card-option"
-                type="button"
-                @click="submitAnswer(option)"
-              >
-                <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
-                <span>{{ countryName(option) }}</span>
-              </button>
-            </div>
-          </template>
+          <PhotoOptionChallenge
+            v-else-if="variant === 'leader-portrait' && challenge.portrait && challenge.options"
+            :image="challenge.portrait.image"
+            caption="Which country does this leader govern?"
+            :options="challenge.options"
+            alt="A national leader"
+            @pick="submitAnswer"
+          />
+
+          <!-- Which country's capital is this? (photo) -->
+          <PhotoOptionChallenge
+            v-else-if="variant === 'capital-match' && challenge.image && challenge.options"
+            :image="challenge.image"
+            caption="Which country's capital is this?"
+            :options="challenge.options"
+            alt="A capital city"
+            @pick="submitAnswer"
+          />
 
           <!-- Outline reveal race (hard): name it before the border completes -->
           <template v-else-if="variant === 'outline-reveal'">
@@ -242,6 +242,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
+import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
@@ -295,6 +296,8 @@ const interstitialTitle = computed(() => {
       return 'Which country spends this currency?'
     case 'zoom-out':
       return 'Name the country before the map zooms out'
+    case 'capital-match':
+      return "Which country's capital is this?"
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -498,6 +501,10 @@ const incorrectMessage = computed(() => {
       return active ? `That's the ${getCountry(active.country).currency}` : 'Not quite.'
     case 'zoom-out':
       return active ? `It was ${countryName(active.country)}` : 'Not quite.'
+    case 'capital-match':
+      return active
+        ? `That's ${getCountry(active.country).geography.capital.name}, ${countryName(active.country)}`
+        : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -835,25 +842,6 @@ header {
 
 .text-options {
   grid-template-columns: minmax(28rem, 44rem);
-}
-
-// The face on the card — framed like the flag hero
-.portrait-frame {
-  padding: 0.8rem;
-  margin-top: 0.6rem;
-  border-radius: 1.2rem;
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-
-  .portrait {
-    width: 18rem;
-    height: 22rem;
-    display: block;
-    object-fit: cover;
-    object-position: top;
-    border-radius: 0.8rem;
-  }
 }
 
 // The self-drawing border race

@@ -19,6 +19,8 @@
     "generate:worldbank": "bun run generators/vendors/worldbank/create-worldbank.ts",
     "generate:owid": "bun run generators/vendors/owid/create-owid.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
+    "generate:capitals": "bun run generators/create-capitals-file.ts",
+    "generate:landmarks": "bun run generators/create-landmarks-file.ts",
     "generate:map": "bun run generators/vendors/naturalearth/create-map.ts",
     "generate:water": "bun run generators/vendors/naturalearth/create-water.ts"
   },
