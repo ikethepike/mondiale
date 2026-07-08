@@ -54,32 +54,17 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { accessorTopicLabel } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
+const { challenge, currentRound, showInterstitial, begin, submitOnce, registerCleanup } =
+  useGroupChallenge('two-truths-challenge')
 
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'two-truths-challenge'
-    ? roundChallenge
-    : undefined
-})
-
-const showInterstitial = ref(true)
 const picked = ref<number>()
-const submitted = ref(false)
 let submitTimer: ReturnType<typeof setTimeout> | undefined
-
-// Blank the world map — the claims are the whole question
-clearBoard()
-gameStore.map.solo = true
-
-const begin = () => {
-  showInterstitial.value = false
-}
+registerCleanup(() => submitTimer && clearTimeout(submitTimer))
 
 const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 
@@ -117,20 +102,9 @@ const pick = (index: number) => {
 
   const correct = index === active.lieIndex
   submitTimer = setTimeout(() => {
-    if (submitted.value) return
-    submitted.value = true
-    update({
-      event: 'submit-group-challenge-answers',
-      ranking: correct ? [active.country] : [],
-      clientScore: correct ? active.maximumPoints : 0,
-    })
+    submitOnce(correct ? [active.country] : [], correct ? active.maximumPoints : 0)
   }, REVEAL_HOLD_MS)
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (submitTimer) clearTimeout(submitTimer)
-})
 </script>
 <style lang="scss" scoped>
 .two-truths {
