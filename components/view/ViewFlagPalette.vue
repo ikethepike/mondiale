@@ -13,6 +13,9 @@
       <div class="prompt">
         <h1 class="map-caption">Whose flag has these colours?</h1>
         <span class="map-caption sub">{{ secondsLeft }}s left</span>
+        <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
+          Region: {{ challenge.region }}
+        </span>
         <Transition name="caption">
           <span v-if="hint" class="map-caption hint">{{ hint }}</span>
         </Transition>
@@ -78,6 +81,13 @@ const {
 } = useGroupChallenge('flag-palette-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The region hint (non-hard mode) surfaces only in the final third of the
+// clock — a late nudge as time runs out, not a giveaway from the start.
+const regionRevealed = computed(() => {
+  const total = challenge.value?.durationSeconds ?? 0
+  return started.value && total > 0 && secondsLeft.value / total <= 1 / 3
+})
 
 // Opponents' live picks (from the ephemeral player-guessing broadcast).
 const opponentGuesses = computed(() => Object.entries(gameStore.map.liveGuesses))
@@ -149,6 +159,11 @@ header {
   .hint {
     color: var(--hior-ange);
   }
+  .region-hint {
+    padding: 0.4rem 1.4rem;
+    color: var(--soft-blue);
+    font-weight: 600;
+  }
   .prompt {
     gap: 1rem;
     display: flex;
@@ -211,6 +226,11 @@ header {
 footer {
   z-index: 2;
   padding: 2rem;
+  // Lift clear of the viewport edge so the guess input's suggestion list
+  // (which opens downward) isn't clipped off the bottom of the screen.
+  // Scales with viewport height so it never steals too much room on short
+  // screens, but always reserves enough on tall ones.
+  padding-bottom: clamp(8rem, 24vh, 20rem);
   display: flex;
   flex-direction: column;
   align-items: center;

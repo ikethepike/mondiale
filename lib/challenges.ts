@@ -555,6 +555,10 @@ const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | u
     swatches: COUNTRIES[country].identity.colors.slice(0, 6),
     durationSeconds: 25,
     maximumPoints: maximumRoundPoints(game),
+    // Non-hard mode gets a region hint in the final third of the countdown.
+    ...(game.difficulty !== 'hard'
+      ? { region: REGION_LABELS[COUNTRIES[country].region] }
+      : {}),
   }
 }
 

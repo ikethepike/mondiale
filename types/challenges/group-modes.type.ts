@@ -119,6 +119,9 @@ export interface FlagPaletteChallenge {
   swatches: string[]
   durationSeconds: number
   maximumPoints: number
+  /** Non-hard mode helper: the country's region, revealed in the final third
+   *  of the countdown. Absent in hard mode. */
+  region?: string
 }
 
 /** A language is named — tap every country that speaks it (all-that-apply). */

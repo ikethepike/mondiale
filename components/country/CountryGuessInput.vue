@@ -87,6 +87,9 @@ defineExpose({ focus: () => input.value?.focus() })
   width: 34rem;
   max-width: 84vw;
   position: relative;
+  // Own stacking context above sibling chrome (timer tracks, footers) so the
+  // downward-opening suggestions always paint on top rather than behind them.
+  z-index: 10;
   pointer-events: auto;
   padding: 0.6rem;
 
@@ -115,6 +118,10 @@ defineExpose({ focus: () => input.value?.focus() })
   padding: 0.4rem;
   list-style: none;
   position: absolute;
+  // On short screens the full list can still exceed the space below the input;
+  // cap it and let it scroll rather than run off the bottom of the viewport.
+  max-height: 40vh;
+  overflow-y: auto;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.94);

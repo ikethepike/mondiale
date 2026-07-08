@@ -221,7 +221,7 @@
                 type="button"
                 @click="answerDuel(option)"
               >
-                <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+                <CountryTileFlag class="option-flag" :country="getCountry(option)" />
                 <span>{{ countryName(option) }}</span>
               </button>
             </div>

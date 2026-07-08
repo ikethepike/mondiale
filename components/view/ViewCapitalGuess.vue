@@ -51,7 +51,7 @@
           :disabled="submitted || !started"
           @click="onGuess(getCountry(option))"
         >
-          <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+          <CountryTileFlag class="option-flag" :country="getCountry(option)" />
           <span>{{ countryName(option) }}</span>
         </button>
       </div>
@@ -67,7 +67,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'

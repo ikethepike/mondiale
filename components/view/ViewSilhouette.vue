@@ -34,21 +34,22 @@
       </svg>
     </section>
 
-    <section v-if="!resolved" class="guess-box">
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started || lockedOut"
-        :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
-        @guess="onGuess"
-        @miss="flashHint('No country by that name')"
-      />
-    </section>
-
     <footer v-if="!resolved">
+      <!-- Ticker sits above the input so the input's suggestion list can open
+           downward into clear space without the timer cutting across it. -->
       <div class="timer-track" aria-hidden="true">
         <div
           class="timer-fill"
           :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
+        />
+      </div>
+      <div class="guess-box">
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted || !started || lockedOut"
+          :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
+          @guess="onGuess"
+          @miss="flashHint('No country by that name')"
         />
       </div>
     </footer>
@@ -296,9 +297,19 @@ header {
 footer {
   z-index: 2;
   padding: 2rem;
+  // Reserve room below the guess input so its suggestion list (which opens
+  // downward) isn't clipped off the bottom of the screen. Scales with viewport
+  // height so it never steals too much room on short screens.
+  padding-bottom: clamp(8rem, 24vh, 20rem);
+  // Ticker stacked above the input, both centred.
+  gap: 1.4rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 .timer-track {
+  width: 100%;
   height: 0.5rem;
   margin: 0 auto;
   max-width: 46rem;

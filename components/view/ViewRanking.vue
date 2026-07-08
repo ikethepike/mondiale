@@ -1,7 +1,7 @@
 <template>
   <ul
     :style="{
-      gridTemplateColumns: `repeat(${isoCodes.length}, minmax(${minWidth}, 1fr)) 1fr`,
+      gridTemplateColumns: `repeat(${isoCodes.length}, minmax(${minWidth}, ${maxWidth})) 1fr`,
     }"
   >
     <li v-for="isoCode in isoCodes" :key="isoCode" class="tile">
@@ -20,6 +20,12 @@ defineProps({
   minWidth: {
     type: String,
     default: '14rem',
+  },
+  // Cap each tile so a lone reveal flag (e.g. "THE COUNTRY") renders at a nice
+  // ~3:1 proportion instead of stretching to fill the whole row.
+  maxWidth: {
+    type: String,
+    default: '22rem',
   },
 })
 </script>
