@@ -32,6 +32,17 @@
         <li v-for="clue in revealedClues" :key="clue.accessorId" class="clue-card">
           <span class="clue-label">{{ clue.label }}</span>
           <strong class="clue-value">{{ clue.value }}</strong>
+          <!-- The big value above already shows the number; the plot adds the
+               scale context, so suppress the marker's own value label. -->
+          <ScalePlot
+            v-if="clue.scale"
+            :amount="clue.scale.amount"
+            :min="clue.scale.min"
+            :max="clue.scale.max"
+            :invert="clue.scale.invert"
+            :least-label="clue.scale.leastLabel"
+            :most-label="clue.scale.mostLabel"
+          />
         </li>
       </TransitionGroup>
     </section>
@@ -59,8 +70,9 @@
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { accessorTopicLabel } from '~~/lib/challenges'
+import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
@@ -98,10 +110,25 @@ const revealedClues = computed(() => {
   if (!active) return []
   return active.clues.slice(0, revealedCount.value).map(accessorId => {
     const value = getValueByAccessorID(active.country, accessorId)
+    const details = getChallengeDetails(accessorId)
+    // Bounded indices (democracy, corruption, gini) carry a fixed scale + pole
+    // labels — plot the value so "0.3 index" reads as "low on a 0–1 scale".
+    const scale =
+      value && details?.scale && details.markers
+        ? {
+            amount: value.amount,
+            min: details.scale.min,
+            max: details.scale.max,
+            invert: details.scale.invert,
+            leastLabel: details.markers.least,
+            mostLabel: details.markers.most,
+          }
+        : undefined
     return {
       accessorId,
       label: clueLabel(accessorId),
       value: value ? `${formatNumber(value.amount)}${value.unit ? ` ${value.unit}` : ''}` : '—',
+      scale,
     }
   })
 })

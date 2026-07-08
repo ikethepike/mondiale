@@ -17,9 +17,23 @@ export interface ChallengeConfiguration {
     | 'human rights'
   phrasing: string
   markers?: ChallengeMarkers
+  /**
+   * Fixed bounds for indices whose bare number is meaningless without its scale
+   * (V-Dem 0–1, CPI 0–100, Gini). When present the value can be plotted on a
+   * track with the `markers` as its poles. `invert` flips the plotted position
+   * without touching the number — for CPI, where a HIGH score means LESS
+   * corrupt, so the marker sits toward the "least corrupt" (right) pole.
+   */
+  scale?: ChallengeScale
 }
 
 export interface ChallengeMarkers {
   least: string
   most: string
+}
+
+export interface ChallengeScale {
+  min: number
+  max: number
+  invert?: boolean
 }

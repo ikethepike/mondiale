@@ -1129,6 +1129,9 @@ export const getChallengeDetails = (
         most: 'unequal',
         least: 'equal',
       },
+      // Gini is theoretically 0–100 but real countries cluster ~24–59; a
+      // 20–70 band keeps the plotted marker legible instead of bunched mid-track.
+      scale: { min: 20, max: 70 },
     },
     'geography.area.land': {
       topic: 'geography',
@@ -1422,6 +1425,7 @@ export const getChallengeDetails = (
         most: 'most democratic',
         least: 'least democratic',
       },
+      scale: { min: 0, max: 1 },
     },
     'government.corruptionIndex': {
       topic: 'general knowledge',
@@ -1432,6 +1436,10 @@ export const getChallengeDetails = (
         most: 'least corrupt',
         least: 'most corrupt',
       },
+      // The markers already run in score order (left = low score = most
+      // corrupt, right = high score = least corrupt), so a plain 0–100 plot
+      // of the raw CPI lands correctly — no inversion needed.
+      scale: { min: 0, max: 100 },
     },
   }
 
