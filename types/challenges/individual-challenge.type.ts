@@ -45,6 +45,7 @@ export interface IndividualChallenge {
 export const individualChallengeVariants = [
   'find',
   'flag-pick',
+  'flag-twins',
   'odd-one-out',
   'higher-lower',
   'leader-pick',

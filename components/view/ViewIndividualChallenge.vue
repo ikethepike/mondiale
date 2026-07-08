@@ -38,6 +38,23 @@
             </div>
           </template>
 
+          <!-- Palette twins: these flags share the same colours — spot the one -->
+          <template v-else-if="variant === 'flag-twins'">
+            <h1 class="map-caption">Which of these is {{ countryName(challenge.country) }}?</h1>
+            <span class="map-caption sub">They all share the same colours — look closely.</span>
+            <div class="options twin-options">
+              <button
+                v-for="option in challenge.options"
+                :key="option"
+                class="option twin-option"
+                type="button"
+                @click="submitAnswer(option)"
+              >
+                <CountryFlag class="twin-flag" :country="getCountry(option)" mode="inline" />
+              </button>
+            </div>
+          </template>
+
           <!-- Odd one out -->
           <template v-else-if="variant === 'odd-one-out' && challenge.oddOneOut">
             <h1 class="map-caption">{{ challenge.oddOneOut.propertyLabel }}</h1>
@@ -211,6 +228,8 @@ const interstitialTitle = computed(() => {
   switch (variant.value) {
     case 'flag-pick':
       return `Which flag belongs to ${countryName(active.country)}?`
+    case 'flag-twins':
+      return `Spot ${countryName(active.country)} among its palette twins`
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -365,6 +384,8 @@ const incorrectMessage = computed(() => {
   switch (variant.value) {
     case 'flag-pick':
       return picked ? `That flag belongs to ${countryName(picked)}` : 'Not that flag.'
+    case 'flag-twins':
+      return picked ? `That's ${countryName(picked)} — a close twin` : 'Not that one.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -573,6 +594,29 @@ header {
 .flag-option .option-flag {
   height: 11rem;
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+}
+
+// Palette twins: large inline flags so the subtle differences (stripe order, a
+// crescent, an emblem) are what the eye resolves.
+.twin-options {
+  grid-template-columns: repeat(2, minmax(18rem, 26rem));
+}
+
+.twin-option {
+  padding: 0.8rem;
+
+  .twin-flag {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border-radius: 0.4rem;
+    box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.2);
+  }
+}
+
+@media (max-width: 640px) {
+  .twin-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .card-option {

@@ -2,7 +2,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
-import { hexToRgb } from '~~/lib/palette'
+import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
   type GroupChallengeAccessorId,
@@ -728,6 +728,49 @@ const dealFlagPick = (
   return { variant: 'flag-pick', options: shuffleArray([country, ...decoys]) }
 }
 
+/**
+ * Flag-twins: the real flag among decoys that share its EXACT simplified
+ * palette — Poland vs Indonesia/Monaco/Singapore (all red+white), or the
+ * Gran-Colombia tricolours. Harder than flag-pick (which uses fuzzy RGB
+ * distance) because the confusables are genuine palette-identical siblings.
+ * Only deals from flags with a usable palette; needs ≥3 same-palette twins
+ * (pickDecoys widens to the world pool if the board hasn't enough).
+ */
+const dealFlagTwins = (
+  country: ISOCountryCode,
+  pool: ISOCountryCode[]
+): { country: ISOCountryCode; options: ISOCountryCode[]; variant: 'flag-twins' } | undefined => {
+  // The subject needs a usable palette AND ≥3 palette-twins. If the passed
+  // country is an emblem flag (empty palette), pick one that qualifies rather
+  // than bailing — keeps the variant dealable and FORCE testing reliable.
+  const hasPaletteTwins = (isoCode: ISOCountryCode): boolean => {
+    const palette = COUNTRIES[isoCode].identity.simplifiedColors
+    if (!palette.length) return false
+    let twins = 0
+    for (const other of ISOCountryCodes) {
+      if (other === isoCode) continue
+      if (sameSimplifiedPalette(palette, COUNTRIES[other].identity.simplifiedColors)) twins++
+      if (twins >= 3) return true
+    }
+    return false
+  }
+
+  const subject = hasPaletteTwins(country)
+    ? country
+    : shuffleArray(pool).find(hasPaletteTwins) ??
+      shuffleArray([...ISOCountryCodes]).find(hasPaletteTwins)
+  if (!subject) return undefined
+
+  const palette = COUNTRIES[subject].identity.simplifiedColors
+  const decoys = pickDecoys(subject, pool, 3, {
+    eligible: isoCode =>
+      sameSimplifiedPalette(palette, COUNTRIES[isoCode].identity.simplifiedColors),
+  })
+  if (!decoys) return undefined
+
+  return { variant: 'flag-twins', country: subject, options: shuffleArray([subject, ...decoys]) }
+}
+
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
@@ -1031,6 +1074,10 @@ export const getIndividualChallenge = ({
         const dealt = dealFlagPick(base.country, pool)
         return dealt ? { ...base, ...dealt } : base
       }
+      case 'flag-twins': {
+        const dealt = dealFlagTwins(base.country, pool)
+        return dealt ? { ...base, ...dealt } : base
+      }
       case 'odd-one-out': {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
@@ -1060,7 +1107,14 @@ export const getIndividualChallenge = ({
   const roll = Math.random()
   switch (accessorId) {
     case 'flag': {
-      if (roll < 0.5) {
+      // Flag-twins is the harder sibling (palette-identical decoys) — offer it
+      // more on hard boards; both fall back to `find` if they can't deal.
+      const twinsChance = difficulty === 'hard' ? 0.5 : 0.3
+      if (roll < twinsChance) {
+        const dealt = dealFlagTwins(base.country, pool)
+        if (dealt) return { ...base, ...dealt }
+      }
+      if (roll < 0.75) {
         const dealt = dealFlagPick(base.country, pool)
         if (dealt) return { ...base, ...dealt }
       }
