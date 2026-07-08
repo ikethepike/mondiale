@@ -22,7 +22,8 @@
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:landmarks": "bun run generators/create-landmarks-file.ts",
     "generate:map": "bun run generators/vendors/naturalearth/create-map.ts",
-    "generate:water": "bun run generators/vendors/naturalearth/create-water.ts"
+    "generate:water": "bun run generators/vendors/naturalearth/create-water.ts",
+    "generate:flags-wide": "bun run generators/flags/create-flags-wide-file.ts"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.16.0",
@@ -43,9 +44,11 @@
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "fflate": "^0.8.3",
+    "flag-icons": "7.5.0",
     "he": "^1.2.0",
     "nuxt": "4.4.8",
     "prettier": "^3.9.4",
+    "svgo": "^4.0.1",
     "topojson-client": "^3.1.0",
     "topojson-server": "^3.0.1",
     "topojson-simplify": "^3.0.3",

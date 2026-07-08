@@ -4,15 +4,15 @@
     v-else
     class="country-flag"
     :style="{
-      backgroundImage: `url('${flagDataUri(country)}')`,
-      backgroundSize: fit,
+      backgroundImage: `url('${backgroundUri}')`,
+      backgroundSize: effectiveFit,
       backgroundPosition: position,
       backgroundRepeat: 'no-repeat',
     }"
   />
 </template>
 <script lang="ts" setup>
-import { flagDataUri } from '~~/lib/country'
+import { flagDataUri, flagWideDataUri, loadFlagsWide } from '~~/lib/country'
 import type { Country } from '~~/types/geography.types'
 
 const props = defineProps({
@@ -33,7 +33,36 @@ const props = defineProps({
     type: String,
     default: 'center',
   },
+  // 'wide' uses the recomposed 3:1 tile variant (background+cover only); flags
+  // with no wide variant transparently fall back to the contained original.
+  variant: {
+    type: String as PropType<'original' | 'wide'>,
+    default: 'original',
+  },
 })
+
+// The wide artifact is lazy; this ref flips once it's loaded so the background
+// URI recomputes. Only fetch it when a wide variant is actually requested.
+const wideReady = ref(false)
+watchEffect(() => {
+  if (props.variant === 'wide' && props.mode === 'background') {
+    loadFlagsWide().then(() => {
+      wideReady.value = true
+    })
+  }
+})
+
+const wideUri = computed(() =>
+  props.variant === 'wide' && wideReady.value ? flagWideDataUri(props.country) : null
+)
+
+// Use the wide flag when available; otherwise the original. When we fall back
+// for an excluded flag, force `contain` so it letterboxes cleanly instead of
+// cropping the untailored original.
+const backgroundUri = computed(() => wideUri.value ?? flagDataUri(props.country))
+const effectiveFit = computed(() =>
+  props.variant === 'wide' && !wideUri.value ? 'contain' : props.fit
+)
 
 /**
  * Flag SVGs share generic element ids (`star`, `t`, `a`, ...) and reference
