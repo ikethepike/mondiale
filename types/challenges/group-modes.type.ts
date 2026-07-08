@@ -91,6 +91,16 @@ export interface WaterBlitzChallenge {
   maximumPoints: number
 }
 
+/** Only a flag's colour swatches are shown — name the country (live guesses). */
+export interface FlagPaletteChallenge {
+  _type: 'flag-palette-challenge'
+  country: ISOCountryCode
+  /** The flag's colours as hex swatches, shown WITHOUT the flag. */
+  swatches: string[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** A language is named — tap every country that speaks it (all-that-apply). */
 export interface MotherTongueChallenge {
   _type: 'mother-tongue-challenge'
@@ -122,3 +132,4 @@ export type GroupModeChallenge =
   | WaterBlitzChallenge
   | NameWaterChallenge
   | MotherTongueChallenge
+  | FlagPaletteChallenge

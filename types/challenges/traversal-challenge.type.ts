@@ -53,6 +53,7 @@ export type RoundChallengeKind =
   | 'highlands'
   | 'name-that-water'
   | 'mother-tongue'
+  | 'flag-palette'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (
@@ -88,6 +89,8 @@ export const roundChallengeKind = (
       return 'name-that-water'
     case 'mother-tongue-challenge':
       return 'mother-tongue'
+    case 'flag-palette-challenge':
+      return 'flag-palette'
     default:
       return 'ranking'
   }

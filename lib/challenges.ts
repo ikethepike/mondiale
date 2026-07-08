@@ -10,6 +10,7 @@ import {
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
 import type {
+  FlagPaletteChallenge,
   HotColdChallenge,
   MotherTongueChallenge,
   NameWaterChallenge,
@@ -75,6 +76,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['name-that-water', 0.04],
   ['highlands', 0.08],
   ['mother-tongue', 0.09],
+  ['flag-palette', 0.08],
 ]
 
 /** Round kinds reserved for hard games. */
@@ -475,6 +477,34 @@ const getMotherTongueChallenge = (
   }
 }
 
+/**
+ * Flag-palette: show a flag's raw colour swatches (no flag) and name the
+ * country. Picks a country with a distinctive palette — enough colours that the
+ * swatches aren't hopelessly ambiguous (a bare red+white could be dozens of
+ * flags). Client-scored all-or-nothing like silhouette.
+ */
+const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | undefined => {
+  const pool = variantCountries(game.variant)
+  const candidates = shuffleArray(
+    pool.filter(isoCode => {
+      const colors = COUNTRIES[isoCode].identity.colors
+      const simplified = COUNTRIES[isoCode].identity.simplifiedColors
+      // 3+ distinctive named colours keeps it guessable-but-fair.
+      return colors.length >= 3 && colors.length <= 6 && simplified.length >= 3
+    })
+  )
+  const country = candidates[0]
+  if (!country) return undefined
+
+  return {
+    _type: 'flag-palette-challenge',
+    country,
+    swatches: COUNTRIES[country].identity.colors.slice(0, 6),
+    durationSeconds: 25,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
 /** Mother-tongue scoring: same blitz shape as water — found ratio, wrong bites. */
 export const scoreMotherTongue = ({
   challenge,
@@ -578,6 +608,11 @@ export const getRoundChallenge = async ({
     }
     case 'mother-tongue': {
       const challenge = getMotherTongueChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'flag-palette': {
+      const challenge = getFlagPaletteChallenge(game)
       if (challenge) return challenge
       break
     }
