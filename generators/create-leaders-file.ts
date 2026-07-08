@@ -1,6 +1,7 @@
-import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
+import { fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
 
 /**
  * Pulls every country's CURRENT head of state (P35) and head of government
@@ -21,7 +22,6 @@ import type { ISOCountryCode } from '../types/geography.types'
  *   bun run generate:leaders [--force]
  */
 
-const USER_AGENT = 'mondiale-game-generator/1.0 (https://github.com/ikethepike/mondiale)'
 const OUTPUT_DIRECTORY = 'public/leaders'
 const PORTRAIT_WIDTH = 512
 
@@ -53,7 +53,10 @@ export type LeaderMapping = {
 
 const force = process.argv.includes('--force')
 const validCodes = new Set<string>(ISOCountryCodes)
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// `fetchJson`, `wait`, `fetchPageImages`, `saveCommonsImage` come from the
+// shared wikidata/commons module.
+const getJson = fetchJson
 
 // Transient fetch failures must never ERASE a country an earlier run got —
 // each run only ever adds or refreshes entries on top of the previous file
@@ -62,24 +65,6 @@ try {
   previousMapping = (await import('../data/leaders.gen')).LEADERS ?? {}
 } catch {
   // First run — nothing to merge
-}
-
-const getJson = async <T>(url: string, attempt = 1): Promise<T | undefined> => {
-  const response = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-  }).catch(() => undefined)
-
-  if (!response?.ok) {
-    if (attempt >= 6) {
-      console.warn(`  request failed after ${attempt} tries (${response?.status ?? 'network'}): ${url.slice(0, 120)}`)
-      return undefined
-    }
-    // Throttle windows can outlast short backoffs — wait them out properly
-    const retryAfter = Number(response?.headers.get('retry-after'))
-    await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
-    return getJson(url, attempt + 1)
-  }
-  return (await response.json()) as T
 }
 
 // --- 1. Every entity carrying an ISO code, in a handful of requests --------
@@ -331,13 +316,6 @@ for (let index = 0; index < idsToResolve.length; index += 50) {
 console.log('')
 
 // --- 4. Assemble the mapping + download portraits ---------------------------
-const EXTENSION_BY_CONTENT_TYPE: { [contentType: string]: string } = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-}
-
 const mapping: LeaderMapping = {}
 const portraitQueue: { isoCode: ISOCountryCode; role: LeaderRole; file: string }[] = []
 
@@ -368,57 +346,33 @@ for (const { isoCode, role, leaderId } of holders) {
 console.log(`Leaders for ${Object.keys(mapping).length} countries; downloading portraits…`)
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 
-let downloaded = 0
-let skipped = 0
+let done = 0
 let failed = 0
 
-/** Commons throttles thumbnail rendering hard — honour 429s with backoff. */
-const fetchPortrait = async (file: string, attempt = 1): Promise<Response | undefined> => {
-  const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${PORTRAIT_WIDTH}`
-  const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } }).catch(
-    () => undefined
-  )
-  if (response?.ok) return response
-  if (attempt >= 6) return undefined
-
-  const retryAfter = Number(response?.headers.get('retry-after'))
-  await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
-  return fetchPortrait(file, attempt + 1)
-}
-
 // One at a time with a breather between requests — the thumbnail service
-// 429s anything resembling parallel load
+// 429s anything resembling parallel load. saveCommonsImage handles the
+// keep-existing-unless-force, backoff, and content-type→extension logic.
 for (const { isoCode, role, file } of portraitQueue) {
   const roleSlug = role === 'headOfState' ? 'state' : 'government'
-  const baseName = `${OUTPUT_DIRECTORY}/${isoCode}-${roleSlug}`
-
-  const already = Object.values(EXTENSION_BY_CONTENT_TYPE).find(extension =>
-    existsSync(`${baseName}.${extension}`)
+  const publicPath = await saveCommonsImage(
+    file,
+    `${OUTPUT_DIRECTORY}/${isoCode}-${roleSlug}`,
+    `/leaders/${isoCode}-${roleSlug}`,
+    { width: PORTRAIT_WIDTH, force }
   )
-  if (already && !force) {
-    mapping[isoCode]![role]!.image = `/leaders/${isoCode}-${roleSlug}.${already}`
-    skipped++
-    continue
-  }
-
-  const portrait = await fetchPortrait(file)
-  if (!portrait) {
+  if (!publicPath) {
     console.warn(`  portrait failed for ${isoCode} ${role}`)
     failed++
     continue
   }
-
-  const contentType = portrait.headers.get('content-type')?.split(';')[0] ?? ''
-  const extension = EXTENSION_BY_CONTENT_TYPE[contentType] ?? 'jpg'
-  writeFileSync(`${baseName}.${extension}`, Buffer.from(await portrait.arrayBuffer()))
-  mapping[isoCode]![role]!.image = `/leaders/${isoCode}-${roleSlug}.${extension}`
-  downloaded++
-  process.stdout.write(`\r  ${downloaded + skipped + failed}/${portraitQueue.length} portraits`)
+  mapping[isoCode]![role]!.image = publicPath
+  done++
+  process.stdout.write(`\r  ${done + failed}/${portraitQueue.length} portraits`)
   await wait(250)
 }
 console.log('')
 
-console.log(`Portraits: ${downloaded} downloaded, ${skipped} kept, ${failed} failed`)
+console.log(`Portraits: ${done} saved, ${failed} failed`)
 
 // Merge with the previous run: fresh data wins per role, gaps keep old data
 for (const isoCode of ISOCountryCodes) {
