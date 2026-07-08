@@ -70,12 +70,31 @@ watchEffect(() => {
     }
   }
 
+  // Flags carry all aspect ratios (2:1, 3:2, 1:1, Nepal's pennon, Switzerland's
+  // square). Drop any hardcoded width/height and let the SVG scale to the
+  // container while preserving its own ratio — the host box uses `fit` (contain
+  // = whole flag with letterboxing, cover = fill+crop) to decide how.
+  svg.removeAttribute('width')
+  svg.removeAttribute('height')
+  svg.setAttribute('preserveAspectRatio', props.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet')
+
   inlineHost.value.replaceChildren(svg)
 })
 </script>
 <style scoped>
+/* The inline flag fills its host box in BOTH dimensions; preserveAspectRatio
+   (set on the svg) keeps the flag undistorted — 'meet' letterboxes, 'slice'
+   crops. A host that only sets a width should give the flag a matching height
+   (e.g. aspect-ratio) so it isn't collapsed; the reveal/atlas cards do. */
+.country-flag {
+  overflow: hidden;
+  /* Fallback height when a host sets only a width — most flags are ~3:2. Hosts
+     that pin their own height (atlas/score/tile) override this harmlessly. */
+  aspect-ratio: 3 / 2;
+}
 .country-flag :deep(svg) {
-  width: 100%;
   display: block;
+  width: 100%;
+  height: 100%;
 }
 </style>

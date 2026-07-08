@@ -226,9 +226,21 @@ const clampView = (view: typeof WORLD_VIEW) => {
   view.width = Math.min(WORLD_VIEW.width, Math.max(WORLD_VIEW.width / MAX_ZOOM, view.width))
   view.height = view.width / viewAspect
   view.x = Math.min(WORLD_VIEW.width - view.width, Math.max(0, view.x))
-  // Tall views can be taller than the world itself — center it then
-  if (view.height >= WORLD_VIEW.height) view.y = WORLD_VIEW.height / 2 - view.height / 2
-  else view.y = Math.min(WORLD_VIEW.height - view.height, Math.max(0, view.y))
+
+  // Vertical headroom: at a world-fit (wide-screen) zoom the strict [0, world-
+  // height] clamp leaves almost no room to pan, pinning the far north (Belarus,
+  // Scandinavia) and far south to the screen edges — right under the overlay
+  // cards, so they can't be reached or clicked. Allow panning ~40% of the
+  // view's height past the world edges so the whole map can slide down (north
+  // into the clear centre) or up. The overshoot only ever reveals the parchment
+  // background, never a hard clip line, so usability is unharmed.
+  if (view.height >= WORLD_VIEW.height) {
+    // View taller than the world — centre it, plus the same slack either way.
+    view.y = WORLD_VIEW.height / 2 - view.height / 2
+  } else {
+    const margin = view.height * 0.4
+    view.y = Math.min(WORLD_VIEW.height - view.height + margin, Math.max(-margin, view.y))
+  }
 }
 
 const tweenToView = (target: typeof WORLD_VIEW) => {

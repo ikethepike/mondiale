@@ -152,11 +152,30 @@ const yearOf = (time?: string): number | undefined => {
   return Number.isFinite(year) && year > 0 ? year : undefined
 }
 
-/** Single-value claim: the first live statement's referenced Q-id. */
-const firstClaimId = (statements: Statement[] = []): string | undefined =>
-  statements.find(
+/**
+ * A single CURRENT value for a multi-value claim (e.g. party membership P102).
+ * Leaders keep historical memberships that lack an end-date in the data too, so
+ * "first live statement" grabs a defunct party (Putin/Lukashenka both surface
+ * the Communist Party of the Soviet Union). Prefer a preferred-rank statement,
+ * else the OPEN (no end-date P582) statement with the most recent start (P580),
+ * else fall back to the newest-started of anything live.
+ */
+const currentClaimId = (statements: Statement[] = []): string | undefined => {
+  const live = statements.filter(
     statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
-  )?.mainsnak?.datavalue?.value?.id
+  )
+  if (!live.length) return undefined
+  const startYear = (statement: Statement) =>
+    yearOf(statement.qualifiers?.P580?.[0]?.datavalue?.value?.time) ?? 0
+
+  const preferred = live.find(statement => statement.rank === 'preferred')
+  const open = live
+    .filter(statement => !statement.qualifiers?.P582)
+    .sort((a, b) => startYear(b) - startYear(a))[0]
+  const newest = [...live].sort((a, b) => startYear(b) - startYear(a))[0]
+
+  return (preferred ?? open ?? newest)?.mainsnak?.datavalue?.value?.id
+}
 
 /**
  * The person's CURRENT top office (P39). Politicians hold many positions and
@@ -257,7 +276,7 @@ for (let index = 0; index < leaderIds.length; index += 40) {
   )
   for (const [id, entity] of Object.entries(data?.entities ?? {})) {
     const position = currentPosition(entity.claims?.P39)
-    const partyId = firstClaimId(entity.claims?.P102)
+    const partyId = currentClaimId(entity.claims?.P102)
     if (position.officeId) referencedIds.add(position.officeId)
     if (partyId) referencedIds.add(partyId)
     leaderDetails.set(id, {
@@ -287,15 +306,22 @@ for (let index = 0; index < leaderIds.length; index += 40) {
 console.log('')
 
 // --- 3b. Resolve office + party Q-ids to labels -----------------------------
+// Also read each entity's dissolution date (P576): a DEFUNCT party must never
+// be shown as a current leader's party (Putin/Lukashenka otherwise surface the
+// Communist Party of the Soviet Union, dissolved 1991).
 const labelById = new Map<string, string>()
+const dissolvedIds = new Set<string>()
 const idsToResolve = [...referencedIds]
 console.log(`Resolving ${idsToResolve.length} office/party labels…`)
 for (let index = 0; index < idsToResolve.length; index += 50) {
   const batch = idsToResolve.slice(index, index + 50)
   const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|claims&languages=en&languagefallback=1&format=json`
   )
   for (const [id, entity] of Object.entries(data?.entities ?? {})) {
+    if (entity.claims?.P576?.some(statement => statement.rank !== 'deprecated')) {
+      dissolvedIds.add(id)
+    }
     const label = entity.labels?.en?.value
     if (label && !/^Q\d+$/.test(label)) labelById.set(id, label)
   }
@@ -326,7 +352,11 @@ for (const { isoCode, role, leaderId } of holders) {
   if (details.sinceYear) entry.sinceYear = details.sinceYear
   const office = details.officeId ? labelById.get(details.officeId) : undefined
   if (office) entry.office = office
-  const party = details.partyId ? labelById.get(details.partyId) : undefined
+  // Skip a dissolved party (CPSU etc.) — better no party than a defunct one.
+  const party =
+    details.partyId && !dissolvedIds.has(details.partyId)
+      ? labelById.get(details.partyId)
+      : undefined
   if (party) entry.party = party
 
   mapping[isoCode] = { ...mapping[isoCode], [role]: entry }

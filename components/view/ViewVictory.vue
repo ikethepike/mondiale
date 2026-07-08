@@ -14,8 +14,15 @@
     <ModalWrapper v-else>
       <!-- Atlas peek: the report steps aside so the glowing map can be seen -->
       <button v-if="showAtlas" type="button" class="atlas-return" @click="showAtlas = false">
-        {{ atlas.length }} countries visited — back to the report
+        {{ atlasSelection ? 'Tap another country' : 'Tap any country to explore' }} — back to the report
       </button>
+
+      <AtlasCard
+        v-if="showAtlas && atlasSelection"
+        :country="atlasSelection"
+        @close="clearAtlasSelection"
+        @select="selectAtlasCountry"
+      />
 
       <article v-show="!showAtlas" ref="card" class="pane victory-report tl decorator-bottom">
         <section class="report-main">
@@ -113,8 +120,12 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import AtlasCard from '~/components/atlas/AtlasCard.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
+import { getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { isMapClickEvent } from '~~/types/events.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
 import { gameStats, visitedCountries } from '~~/lib/victory-stats'
@@ -182,6 +193,7 @@ onMounted(() => {
   }
 
   heroTimer = setTimeout(endHero, prefersReducedMotion() ? 600 : HERO_HOLD_MS)
+  document.addEventListener('mapClick', onAtlasMapClick)
 
   if (prefersReducedMotion()) return
   nextTick(() => {
@@ -206,6 +218,35 @@ onMounted(() => {
 // --- Act two: report entrance -------------------------------------------------
 const showAtlas = ref(false)
 const card = ref<HTMLElement>()
+
+// --- Atlas explore: click any country for an enriched fact sheet -------------
+const atlasReveal = ref<ISOCountryCode>()
+const atlasSelection = computed(() =>
+  atlasReveal.value ? getCountry(atlasReveal.value) : undefined
+)
+
+const selectAtlasCountry = (iso: ISOCountryCode) => {
+  atlasReveal.value = iso
+  // Reuse the map's reveal watcher: setting reveal flies the camera to it.
+  gameStore.map.reveal = iso
+}
+const clearAtlasSelection = () => {
+  atlasReveal.value = undefined
+  gameStore.map.reveal = undefined
+}
+
+const onAtlasMapClick = (event: Event) => {
+  if (!showAtlas.value || !isMapClickEvent(event)) return
+  const iso = event.detail.isoCode
+  if (isValidISOCode(iso)) selectAtlasCountry(iso)
+}
+
+// Entering the atlas suppresses the terse reveal card and enables click-explore;
+// leaving it restores normal state and drops any selection.
+watch(showAtlas, open => {
+  gameStore.map.atlasMode = open
+  if (!open) clearAtlasSelection()
+})
 watch(showHero, value => {
   if (value || prefersReducedMotion()) return
   nextTick(() => {
@@ -230,6 +271,7 @@ watch(showHero, value => {
 
 onBeforeUnmount(() => {
   if (heroTimer) clearTimeout(heroTimer)
+  document.removeEventListener('mapClick', onAtlasMapClick)
   clearBoard()
 })
 </script>

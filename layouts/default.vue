@@ -36,7 +36,7 @@
       :current-player-id="gameStore.playerId"
     />
 
-    <div v-if="revealCountry" class="reveal-wrapper">
+    <div v-if="revealCountry && !gameStore.map.atlasMode" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
         <div class="pane-content">

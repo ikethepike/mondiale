@@ -27,6 +27,8 @@ interface GameStoreState {
     tints: { [isoCode in ISOCountryCode]?: MapTint }
     /** Distinct per-group country fills (region final challenge, duel pairs). */
     countryGroupings?: CountryColorGrouping[]
+    /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
+    atlasMode: boolean
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
   }
@@ -57,6 +59,7 @@ export const useGameStore = defineStore('game', {
       focusContext: [],
       tints: {},
       countryGroupings: undefined,
+      atlasMode: false,
       feature: undefined,
     },
   }),

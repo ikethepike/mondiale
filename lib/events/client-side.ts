@@ -53,6 +53,7 @@ export const useClientEvents = () => {
     gameStore.map.focusContext = []
     gameStore.map.tints = {}
     gameStore.map.countryGroupings = undefined
+    gameStore.map.atlasMode = false
     gameStore.map.feature = undefined
   }
 
