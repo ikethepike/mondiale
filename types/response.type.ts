@@ -517,7 +517,7 @@ export type FactbookResponse = {
   }
 }
 
-export const isYearlyIndex = (data: any): data is YearlyIndex => {
+export const isYearlyIndex = (data: unknown): data is YearlyIndex => {
   if (!data) return false
   if (typeof data !== 'object') return false
   if (Reflect.has(data, 'text')) return false

@@ -56,7 +56,10 @@ export type IndividualChallengeVariant = (typeof individualChallengeVariants)[nu
 export const individualChallengeAccessors = ['flag', 'isoCode', 'capital.name'] as const
 export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (
-  accessorId: any
+  accessorId: unknown
 ): accessorId is IndividualChallengeAccessorId => {
-  return !!accessorId && individualChallengeAccessors.includes(accessorId)
+  return (
+    typeof accessorId === 'string' &&
+    individualChallengeAccessors.includes(accessorId as IndividualChallengeAccessorId)
+  )
 }

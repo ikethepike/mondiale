@@ -21,7 +21,16 @@ export type WorldBankMapping = {
 
 const API = 'https://api.worldbank.org/v2'
 
-const fetchJson = async (url: string): Promise<any> => {
+interface WorldBankRow {
+  id?: string
+  iso2Code?: string
+  countryiso3code?: string
+  value?: number | null
+  date?: string
+}
+
+// The WB API always answers with a [metadata, rows] pair.
+const fetchJson = async (url: string): Promise<[unknown, WorldBankRow[]?]> => {
   // The World Bank API rate-limits bursts with an XML error body; retry.
   for (let attempt = 0; attempt < 4; attempt++) {
     const response = await fetch(url, { headers: { 'User-Agent': 'mondiale-generator' } })
@@ -38,7 +47,7 @@ const fetchIso3ToIso2 = async (): Promise<Map<string, ISOCountryCode>> => {
   const [, rows] = await fetchJson(`${API}/country?format=json&per_page=400`)
   for (const row of rows ?? []) {
     const iso2 = (row.iso2Code ?? '').toUpperCase()
-    if (isValidISOCode(iso2)) map.set(row.id, iso2)
+    if (row.id && isValidISOCode(iso2)) map.set(row.id, iso2)
   }
   return map
 }

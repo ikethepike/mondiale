@@ -5,20 +5,20 @@ import { type Amount, type ISOCountryCode, isValidISOCode } from '~~/types/geogr
 export const getValueByAccessorID = (
   isoCode: ISOCountryCode | string,
   accessorId: GroupChallengeAccessorId
-): Amount<any> | undefined => {
+): Amount<string> | undefined => {
   if (!isValidISOCode(isoCode)) throw new EvalError(`Invalid ISO code: ${isoCode}`)
 
   const split = accessorId.split('.')
-  let value: any = COUNTRIES[isoCode]
+  let value: unknown = COUNTRIES[isoCode]
   for (const key of split) {
-    if (!value || !value[key]) {
+    if (!value || typeof value !== 'object' || !(value as Record<string, unknown>)[key]) {
       return undefined
     }
 
-    value = value[key]
+    value = (value as Record<string, unknown>)[key]
   }
 
-  return value
+  return value as Amount<string>
 }
 
 /** Walk a dotted accessor pattern (e.g. 'players.abc.name') through an object. */
@@ -26,13 +26,13 @@ export const resolveAccessorPath = (
   target: object,
   accessorPattern: string
 ): { found: boolean; value?: unknown } => {
-  let value: any = target
+  let value: unknown = target
   for (const accessor of accessorPattern.split('.')) {
-    if (!value || !Reflect.has(value, accessor)) {
+    if (!value || typeof value !== 'object' || !Reflect.has(value, accessor)) {
       return { found: false }
     }
 
-    value = value[accessor]
+    value = (value as Record<string, unknown>)[accessor]
   }
 
   return { found: true, value }
@@ -45,16 +45,16 @@ export const setByAccessorPath = (
   newValue: unknown
 ): boolean => {
   const split = accessorPattern.split('.')
-  let value: any = target
+  let value: unknown = target
   for (const [index, accessor] of split.entries()) {
-    if (!value || !Reflect.has(value, accessor)) {
+    if (!value || typeof value !== 'object' || !Reflect.has(value, accessor)) {
       return false
     }
 
     if (index === split.length - 1) {
-      value[accessor] = newValue
+      ;(value as Record<string, unknown>)[accessor] = newValue
     } else {
-      value = value[accessor]
+      value = (value as Record<string, unknown>)[accessor]
     }
   }
 

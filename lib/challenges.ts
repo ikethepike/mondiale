@@ -1453,7 +1453,7 @@ export const getCorrectRanking = ({
   groupChallengeAccessorId: GroupChallengeAccessorId
   isoCodes: ISOCountryCode[]
 }) => {
-  const amounts: { value: Amount<any>; isoCode: ISOCountryCode }[] = []
+  const amounts: { value: Amount<string>; isoCode: ISOCountryCode }[] = []
   for (const isoCode of isoCodes) {
     const amount = getValueByAccessorID(isoCode, groupChallengeAccessorId)
     if (!amount) {

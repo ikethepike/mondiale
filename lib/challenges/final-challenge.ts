@@ -106,7 +106,7 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
  * Returns a sorted array (max -> min) of a given value key
  */
 const buildSortedRanking = (accessorId: MinMaxAccessorKeys, pool: ISOCountryCode[]) => {
-  const sortedCountries: { amount: Amount<any>; isoCode: ISOCountryCode }[] = []
+  const sortedCountries: { amount: Amount<string>; isoCode: ISOCountryCode }[] = []
 
   for (const isoCode of pool) {
     if (!isValidISOCode(isoCode)) continue

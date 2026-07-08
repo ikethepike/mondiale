@@ -80,7 +80,9 @@ export default defineEventHandler(({ node }) => {
     })
 
     // Create a new Socket.IO server only if it doesn't already exist
-    const io: GameServer = new Server((node.res.socket as any).server)
+    const io: GameServer = new Server(
+      (node.res.socket as { server?: import('node:http').Server })?.server
+    )
     io.on('connection', async socket => {
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
         socket.on(eventKey, (eventData: ClientEventData, eventTarget: ClientEventTarget) => {

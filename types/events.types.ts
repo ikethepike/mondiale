@@ -72,11 +72,12 @@ export interface ClientEventTarget {
   playerId: string
 }
 
-export const isValidClientEventTarget = (data: any): data is ClientEventTarget =>
+export const isValidClientEventTarget = (data: unknown): data is ClientEventTarget =>
   typeof data === 'object' &&
+  data !== null &&
   ['gameId', 'playerId'].every(key => {
     if (!Reflect.has(data, key)) return false
-    return !!data[key]
+    return !!(data as Record<string, unknown>)[key]
   })
 
 export type ServerEventData =

@@ -11,9 +11,11 @@ export enum OrganizationVector {
 }
 
 export const isOrganizationKey = (
-  organization: any
+  organization: unknown
 ): organization is keyof typeof OrganizationVector => {
-  return organization && Object.keys(OrganizationVector).includes(organization)
+  return (
+    typeof organization === 'string' && Object.keys(OrganizationVector).includes(organization)
+  )
 }
 
 export type Organization = {

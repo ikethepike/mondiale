@@ -75,8 +75,8 @@ export const gameVariants = [
   'asia',
 ] as const
 export type GameVariant = (typeof gameVariants)[number]
-export const isValidGameVariant = (variant: any): variant is GameVariant => {
-  return variant && gameVariants.includes(variant)
+export const isValidGameVariant = (variant: unknown): variant is GameVariant => {
+  return typeof variant === 'string' && gameVariants.includes(variant as GameVariant)
 }
 
 export interface GameConfiguration {
@@ -85,11 +85,11 @@ export interface GameConfiguration {
   length: GameLength
 }
 
-export const isValidGameConfiguration = (data: any): data is GameConfiguration => {
+export const isValidGameConfiguration = (data: unknown): data is GameConfiguration => {
   if (!data) return false
   if (typeof data !== 'object') return false
   if (![`difficulty`, 'length', 'variant'].every(key => Reflect.has(data, key))) return false
-  if (!isValidGameVariant(data.variant)) return false
+  if (!isValidGameVariant((data as GameConfiguration).variant)) return false
 
   return true
 }
@@ -104,7 +104,7 @@ export interface Tile {
 
 export type PlayerColor = (typeof PLAYER_COLORS)[number]
 
-export const isValidGame = (data: any): data is Game => {
+export const isValidGame = (data: unknown): data is Game => {
   if (!data) return false
   if (typeof data !== 'object') return false
 

@@ -17,8 +17,8 @@ export const worldRegions = [
   'middle-east',
 ] as const
 export type Region = (typeof worldRegions)[number]
-export const isValidContinent = (continent: any): continent is Region => {
-  return continent && worldRegions.includes(continent)
+export const isValidContinent = (continent: unknown): continent is Region => {
+  return typeof continent === 'string' && worldRegions.includes(continent as Region)
 }
 
 export interface Country {
@@ -340,6 +340,6 @@ export const PotentialISOCountryCodes = [
 
 export type ISOCountryCode = (typeof ISOCountryCodes)[number]
 
-export const isValidISOCode = (code: any): code is ISOCountryCode => {
-  return code && ISOCountryCodes.includes(code)
+export const isValidISOCode = (code: unknown): code is ISOCountryCode => {
+  return typeof code === 'string' && ISOCountryCodes.includes(code as ISOCountryCode)
 }
