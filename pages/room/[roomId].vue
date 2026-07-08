@@ -38,6 +38,7 @@ import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
 const { update, game, player, currentRound, gameStore } = useClientEvents()
@@ -67,8 +68,10 @@ const activeView = computed<ActiveView | undefined>(() => {
 
   switch (player.value.phase) {
     case 'group-challenge': {
-      // The shared round comes in several formats — one view per kind
-      const groupViews: { [kind: string]: Component } = {
+      // The shared round comes in several formats — one view per kind. Typed
+      // exhaustively over RoundChallengeKind so a new kind that forgets its
+      // dispatch entry is a COMPILE error, not a silent runtime fallback.
+      const groupViews: Record<RoundChallengeKind, Component> = {
         ranking: ViewGroupChallenge,
         traversal: ViewTraversalChallenge,
         'neighbour-blitz': ViewNeighbourBlitz,

@@ -18,6 +18,7 @@ import type {
   WaterBlitzChallenge,
   WaterFeatureKind,
 } from '~~/types/challenges/group-modes.type'
+import { individualChallengeVariants } from '~~/types/challenges/individual-challenge.type'
 import type {
   IndividualChallenge,
   IndividualChallengeAccessorId,
@@ -669,28 +670,70 @@ const flagPaletteDistance = (a: string[], b: string[]): number => {
   return total / a.length
 }
 
-/** Flag-pick: the real flag among the three most color-confusable decoys. */
+/**
+ * Pick `count` distractor countries for a pick-the-country challenge. One
+ * helper for every gate that needs plausible decoys, so the "prefer same
+ * region, then filler, widen when the board is too small" logic lives once.
+ *
+ *  - `eligible`   — a country may be a decoy (e.g. has a leader / a portrait /
+ *                   shares a flag palette). Applied to `pool` AND the widen set.
+ *  - `similarity` — lower = more confusable; when given, the shortlist is the
+ *                   most-similar candidates (flag-pick's colour distance), then
+ *                   randomised. Takes precedence over `preferRegion`.
+ *  - `preferRegion` — put same-region candidates first, then the rest.
+ *
+ * Returns `undefined` when even the world pool can't supply `count` — callers
+ * fall back (skip the variant) rather than deal an unanswerable board.
+ */
+const pickDecoys = (
+  country: ISOCountryCode,
+  pool: ISOCountryCode[],
+  count: number,
+  opts: {
+    preferRegion?: boolean
+    similarity?: (candidate: ISOCountryCode) => number
+    eligible?: (isoCode: ISOCountryCode) => boolean
+    /** How many nearest-by-similarity to shuffle among (flag-pick used 8). */
+    similarityShortlist?: number
+  } = {}
+): ISOCountryCode[] | undefined => {
+  const eligible = (list: ISOCountryCode[]) =>
+    list.filter(isoCode => isoCode !== country && (opts.eligible?.(isoCode) ?? true))
+
+  // Widen to the whole world when the board pool can't fill the table.
+  let candidates = eligible(pool)
+  if (candidates.length < count) candidates = eligible([...ISOCountryCodes])
+  if (candidates.length < count) return undefined
+
+  if (opts.similarity) {
+    const shortlist = [...candidates]
+      .sort((a, b) => opts.similarity!(a) - opts.similarity!(b))
+      .slice(0, Math.max(count, opts.similarityShortlist ?? 8))
+    return shuffleArray(shortlist).slice(0, count)
+  }
+
+  if (opts.preferRegion) {
+    const region = COUNTRIES[country].region
+    const regional = shuffleArray(candidates.filter(isoCode => COUNTRIES[isoCode].region === region))
+    const filler = shuffleArray(candidates.filter(isoCode => !regional.includes(isoCode)))
+    return [...regional, ...filler].slice(0, count)
+  }
+
+  return shuffleArray(candidates).slice(0, count)
+}
+
+/** Flag-pick: the real flag among the three most colour-confusable decoys. */
 const dealFlagPick = (
   country: ISOCountryCode,
   pool: ISOCountryCode[]
-): Partial<IndividualChallenge> => {
+): Partial<IndividualChallenge> | undefined => {
   const palette = COUNTRIES[country].identity?.colors ?? []
-  // Prefer on-board decoys; a tiny pool still needs four flags on the table
-  const candidates = pool.length >= 8 ? pool : [...ISOCountryCodes]
-  const decoys = candidates
-    .filter(isoCode => isoCode !== country)
-    .map(isoCode => ({
-      isoCode,
-      distance: flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
-    }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 8)
+  const decoys = pickDecoys(country, pool, 3, {
+    similarity: isoCode => flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
+  })
+  if (!decoys) return undefined
 
-  const picked = shuffleArray(decoys)
-    .slice(0, 3)
-    .map(({ isoCode }) => isoCode)
-
-  return { variant: 'flag-pick', options: shuffleArray([country, ...picked]) }
+  return { variant: 'flag-pick', options: shuffleArray([country, ...decoys]) }
 }
 
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
@@ -842,15 +885,11 @@ const dealLeaderPick = (
   if (withLeaders.length < 4) return undefined
 
   const country = withLeaders[Math.floor(Math.random() * withLeaders.length)]
-  const region = COUNTRIES[country].region
-  const regional = shuffleArray(
-    withLeaders.filter(isoCode => isoCode !== country && COUNTRIES[isoCode].region === region)
-  )
-  const filler = shuffleArray(
-    withLeaders.filter(isoCode => isoCode !== country && !regional.includes(isoCode))
-  )
-  const decoys = [...regional, ...filler].slice(0, 3)
-  if (decoys.length < 3) return undefined
+  const decoys = pickDecoys(country, withLeaders, 3, {
+    preferRegion: true,
+    eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
+  })
+  if (!decoys) return undefined
 
   return { country, options: shuffleArray([country, ...decoys]) }
 }
@@ -953,12 +992,8 @@ const dealLeaderPortrait = (
   const portrait = portraitFor(country)
   if (!portrait) return undefined
 
-  const region = COUNTRIES[country].region
-  const others = countryPool.filter(isoCode => isoCode !== country)
-  const regional = shuffleArray(others.filter(isoCode => COUNTRIES[isoCode].region === region))
-  const filler = shuffleArray(others.filter(isoCode => !regional.includes(isoCode)))
-  const decoys = [...regional, ...filler].slice(0, 3)
-  if (decoys.length < 3) return undefined
+  const decoys = pickDecoys(country, countryPool, 3, { preferRegion: true })
+  if (!decoys) return undefined
 
   return { country, options: shuffleArray([country, ...decoys]), portrait }
 }
@@ -972,16 +1007,10 @@ const dealLeaderPortrait = (
 const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined => {
   if (typeof process === 'undefined') return undefined
   const forced = process.env?.FORCE_INDIVIDUAL_VARIANT
-  return forced &&
-    [
-      'find',
-      'flag-pick',
-      'odd-one-out',
-      'higher-lower',
-      'leader-pick',
-      'outline-reveal',
-      'leader-portrait',
-    ].includes(forced)
+  // Derive the valid set from the single source of truth so adding a variant
+  // to `individualChallengeVariants` also makes FORCE_INDIVIDUAL_VARIANT accept
+  // it — no second list to keep in sync.
+  return forced && (individualChallengeVariants as readonly string[]).includes(forced)
     ? (forced as IndividualChallenge['variant'])
     : undefined
 }
@@ -1006,8 +1035,10 @@ export const getIndividualChallenge = ({
   const forced = forcedIndividualVariant()
   if (forced) {
     switch (forced) {
-      case 'flag-pick':
-        return { ...base, ...dealFlagPick(base.country, pool) }
+      case 'flag-pick': {
+        const dealt = dealFlagPick(base.country, pool)
+        return dealt ? { ...base, ...dealt } : base
+      }
       case 'odd-one-out': {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
@@ -1037,7 +1068,10 @@ export const getIndividualChallenge = ({
   const roll = Math.random()
   switch (accessorId) {
     case 'flag': {
-      if (roll < 0.5) return { ...base, ...dealFlagPick(base.country, pool) }
+      if (roll < 0.5) {
+        const dealt = dealFlagPick(base.country, pool)
+        if (dealt) return { ...base, ...dealt }
+      }
       break
     }
     case 'isoCode': {
