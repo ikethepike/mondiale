@@ -139,12 +139,34 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
 
     // Gauntlet cleared — victory. The phase flip alone now blocks further
     // submits, so the `resolving` latch can stay set.
-    if (currentMove.challenge.challenges.length === 0) {
+    const won = currentMove.challenge.challenges.length === 0
+    if (won) {
       player.phase = 'victory'
       player.completedAtRound = game.rounds.length
     }
 
     await server.updateGameState(game)
+
+    // Reaching victory here happens OUTSIDE enter-movement-phase, so nobody
+    // re-checks round advancement. If this winner was the LAST player to
+    // settle, everyone else is parked in movement-summary waiting for a
+    // `new-round` that would never fire. Re-enter the movement phase (which now
+    // skips settled players and only runs the advancement check) so it stages
+    // and reveals the next round for the remaining players.
+    if (won) {
+      setTimeout(() => {
+        enqueueGameTask(eventTarget.gameId, () =>
+          enterMovementPhaseHandler({
+            io,
+            redis,
+            socket,
+            eventTarget,
+            eventKey: 'enter-movement-phase',
+            eventData: { event: 'enter-movement-phase' },
+          })
+        )
+      }, 0)
+    }
 
     // Pace the reveal: the client shows its own result beat first, then the
     // next question (or victory) lands. The pause runs OUTSIDE the queue. The

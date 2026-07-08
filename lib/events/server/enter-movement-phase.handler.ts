@@ -53,13 +53,23 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // reveal follow-up — the final challenge clears its own.)
     player.resolving = false
 
+    // A player who has already settled (won, was kicked, or finished their
+    // turn) must NOT be re-walked or re-settled on re-entry — treat this as a
+    // pure round-advancement re-check. The victory path re-enters here to make
+    // someone recompute readyForNextTurn after a win (the winner reaches
+    // victory outside this handler), which would otherwise strand everyone
+    // else in movement-summary with no `new-round` ever fired.
+    const alreadySettled = SETTLED_PHASES.includes(player.phase)
+
     const move = player.moves[0]
 
     // Walk by position, not a pre-counted loop: a pre-counted loop deals a
     // permanent 'moving' wedge when there is nothing left to walk (gate
     // directly ahead), and can't resume if a walk is interrupted mid-way.
     // Challenge moves stop on the tile before their gate.
-    if (move) {
+    if (alreadySettled) {
+      // Skip the walk/settle block — go straight to the round-advancement check.
+    } else if (move) {
       const stopAt = move.challenge ? move.endTile.position - 1 : move.endTile.position
 
       // Still tiles to walk: advance ONE step and hand the queue back. The

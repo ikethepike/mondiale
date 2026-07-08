@@ -72,7 +72,7 @@
               <ButtonLine @click="showAtlas = true">
                 <span>View the atlas</span>
               </ButtonLine>
-              <ButtonLine element="NuxtLink" to="/">
+              <ButtonLine @click="goHome">
                 <span>Back to the home screen</span>
               </ButtonLine>
             </nav>
@@ -121,6 +121,11 @@ import { gameStats, visitedCountries } from '~~/lib/victory-stats'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
 const { game, player, playerId, gameStore, clearBoard } = useClientEvents()
+
+const router = useRouter()
+// Replace, not push: leaving a finished game shouldn't leave the room URL in
+// history, or the browser back button drops the player into a stale lobby.
+const goHome = () => router.replace('/')
 
 const ownName = computed(() => player.value?.name)
 
