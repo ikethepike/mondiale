@@ -19,7 +19,10 @@ export const updateConfigurationHandler = defineGameHandler(
     game.tiles = generateTiles(game.length)
 
     await server.updateGameState(game)
-    server.emit({ event: 'update', game }, eventTarget)
+    // A dedicated event so clients replace the WHOLE game (config is
+    // game-level) — the shared 'update' path only merges a single player and
+    // would drop the config change for everyone but the host.
+    server.emit({ event: 'configuration-updated', game }, eventTarget)
   },
   { player: 'optional' }
 )

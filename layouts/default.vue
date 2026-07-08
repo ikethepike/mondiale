@@ -142,14 +142,23 @@ onMounted(() => {
   }
 }
 
-.phase-undefined .game-map,
-.phase-naming .game-map {
+// Naming + lobby own their OWN backdrop (the procedural topo contours in
+// ViewPlayerConfiguration). The world map still mounts and resolves its
+// geometry here so it's ready the instant the game starts — but it stays
+// hidden so the two backdrops don't fight. phase-undefined keeps the old
+// scale-in for the brief pre-join moment.
+.phase-undefined .game-map {
   animation: scale 10s;
   &:deep(svg path) {
     fill: none;
     stroke-width: 0.01rem;
     color: rgb(91, 91, 91);
   }
+}
+
+.phase-naming .game-map,
+.phase-waiting-for-game .game-map {
+  opacity: 0;
 }
 
 .phase-group-scores .game-map,

@@ -1,6 +1,8 @@
 <template>
   <div class="player-configuration-wrapper">
-    <MapContour class="contour-backdrop ambient-loop" aria-hidden="true" :animated="false" />
+    <!-- WebGL contour draw-in: the reveal is a single GPU uniform, so it
+         costs one draw call/frame instead of repainting ~40 huge SVG paths -->
+    <ContourBackdropGl class="contour-backdrop" @drawn="backdropSettled = true" />
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
@@ -25,7 +27,21 @@
             </header>
 
             <form class="player-details" @submit.prevent="setName">
-              <PlayerPawn class="pawn" :player="player" @click="changeColor" />
+              <div class="pawn-picker">
+                <button
+                  type="button"
+                  class="color-arrow prev"
+                  aria-label="Previous colour"
+                  @click="changeColor('previous')"
+                />
+                <PlayerPawn class="pawn" :player="player" @click="changeColor()" />
+                <button
+                  type="button"
+                  class="color-arrow next"
+                  aria-label="Next colour"
+                  @click="changeColor('next')"
+                />
+              </div>
               <div class="name-wrapper">
                 <label>
                   <strong>What's your name?</strong>
@@ -66,45 +82,39 @@
             <p>This time, you'll be competing in:</p>
 
             <form v-if="game" ref="breakdown" class="breakdown" @change="updateConfiguration">
-              <!-- Region -->
-              <div class="configuration-block">
-                <label for="game-variant">Region:</label>
-                <select id="game-variant" name="game-variant" :disabled="!isPlayerHost">
-                  <option
-                    v-for="region of gameVariants"
-                    :key="region"
-                    :value="region"
-                    :selected="game.variant === region"
-                  >
-                    {{ region.replace('-', ' ') }}
-                  </option>
-                </select>
+              <div class="configuration-block region-block">
+                <span class="config-label">Region</span>
+                <RegionOrbs
+                  :model-value="game.variant"
+                  :disabled="!isPlayerHost"
+                  @change="updateConfiguration"
+                />
               </div>
 
-              <div class="configuration-block">
-                <label for="game-length">Length</label>
-                <select id="game-length" name="game-length" :disabled="!isPlayerHost">
-                  <option
-                    v-for="length in gameLengths"
-                    :key="length"
-                    :selected="game.length === length"
-                  >
-                    {{ length }}
-                  </option>
-                </select>
-              </div>
+              <div class="config-row">
+                <div class="configuration-block">
+                  <span class="config-label">Length</span>
+                  <SegmentedControl
+                    name="game-length"
+                    label="Length"
+                    :options="[...gameLengths]"
+                    :model-value="game.length"
+                    :disabled="!isPlayerHost"
+                    @change="updateConfiguration"
+                  />
+                </div>
 
-              <div class="configuration-block">
-                <label for="game-difficulty">Difficulty</label
-                ><select id="game-difficulty" name="game-difficulty" :disabled="!isPlayerHost">
-                  <option
-                    v-for="difficulty in gameDifficulties"
-                    :key="difficulty"
-                    :selected="game.difficulty === difficulty"
-                  >
-                    {{ difficulty }}
-                  </option>
-                </select>
+                <div class="configuration-block">
+                  <span class="config-label">Difficulty</span>
+                  <SegmentedControl
+                    name="game-difficulty"
+                    label="Difficulty"
+                    :options="[...gameDifficulties]"
+                    :model-value="game.difficulty"
+                    :disabled="!isPlayerHost"
+                    @change="updateConfiguration"
+                  />
+                </div>
               </div>
             </form>
           </div>
@@ -145,11 +155,13 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
+import RegionOrbs from '~/components/input/RegionOrbs.vue'
+import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { wait } from '~~/lib/time'
 import {
-  gameVariants,
   gameLengths,
   gameDifficulties,
   isValidGameConfiguration,
@@ -157,6 +169,9 @@ import {
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
+
+// The contour backdrop sweeps in bright, then fades to a dim ambient drift
+const backdropSettled = ref(false)
 
 // Pulse the n/8 counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
@@ -179,9 +194,12 @@ const isEveryoneReady = computed(() => {
 
 const name = ref('')
 const breakdown = ref<HTMLFormElement>()
-const changeColor = () => {
+// Arrows step deterministically through free colours; a pawn tap (no
+// direction) jumps to a random one — the server enforces uniqueness either way
+const changeColor = (direction?: 'next' | 'previous') => {
   update({
     event: 'set-color',
+    direction,
   })
 }
 const setName = () => {
@@ -191,7 +209,13 @@ const setName = () => {
   })
 }
 
-const updateConfiguration = () => {
+const updateConfiguration = async () => {
+  if (!breakdown.value) return
+
+  // The custom controls drive their hidden inputs through Vue's :value
+  // binding, which flushes on the next tick — read FormData AFTER it lands,
+  // or we'd send the value from before the click.
+  await nextTick()
   if (!breakdown.value) return
 
   const data = new FormData(breakdown.value)
@@ -252,26 +276,25 @@ const startGame = () => {
   position: relative;
 }
 
-// Ambient life lives on the non-interactive backdrop only — animating the
-// card itself would keep its buttons permanently "moving" for users
-// mid-click and for test automation alike.
-.contour-backdrop {
-  top: 50%;
-  left: 50%;
-  width: 120%;
-  opacity: 0.06;
-  position: absolute;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  animation: backdrop-drift calc(var(--motion-ambient) * 6) ease-in-out infinite alternate;
+.player-configuration-wrapper {
+  position: relative;
 }
 
-// Translate-only: animating scale would force the browser to keep
-// re-rasterizing this very large SVG layer
-@keyframes backdrop-drift {
-  100% {
-    transform: translate(-52.5%, -48%);
-  }
+// The WebGL contour canvas is a full-cover backdrop behind the card. Its
+// draw-in sweep and dim-to-ambient fade are driven inside the component
+// (a shader uniform), so there's no per-frame DOM cost here.
+.contour-backdrop {
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  pointer-events: none;
+}
+
+.player-configuration {
+  z-index: 1;
 }
 
 @media screen and (max-width: $tablet) {
@@ -312,10 +335,59 @@ const startGame = () => {
   text-align: center;
   .pawn {
     width: 5rem;
+    cursor: pointer;
   }
   strong {
     display: block;
     margin: 1rem 0;
+  }
+}
+
+// Pawn flanked by prev/next colour arrows
+.pawn-picker {
+  gap: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// The original arrow icons — larger so the fine lines read clearly (the
+// masked SVG can't be stroke-thickened, so size carries the weight). A round
+// touch-area fades in on hover to signal the tap target.
+.color-arrow {
+  width: 4.4rem;
+  height: 4.4rem;
+  border: none;
+  padding: 0;
+  display: grid;
+  flex-shrink: 0;
+  cursor: pointer;
+  place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  transition: background-color var(--motion-quick) var(--ease-out-expressive);
+
+  &::before {
+    content: '';
+    display: block;
+    width: 2.6rem;
+    height: 2.6rem;
+    background: var(--dark-blue);
+    mask: url('~/assets/icons/arrow-left.svg') no-repeat center / contain;
+    transition: transform var(--motion-quick) var(--ease-out-expressive);
+  }
+  &.next::before {
+    transform: scaleX(-1);
+  }
+
+  &:hover {
+    background: hsla(215.7, 76.4%, 21.6%, 0.09);
+  }
+  &:hover::before {
+    transform: scale(1.12);
+  }
+  &.next:hover::before {
+    transform: scaleX(-1) scale(1.12);
   }
 }
 
@@ -328,32 +400,46 @@ const startGame = () => {
 }
 
 // Configuration
+.breakdown {
+  gap: 2.4rem;
+  display: flex;
+  margin-top: 1.6rem;
+  flex-flow: column nowrap;
+}
+
 .configuration-block {
-  margin-bottom: 0.5rem;
-  label {
-    display: block;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-  }
-  select,
-  option {
-    text-transform: capitalize;
-  }
-  select {
-    cursor: pointer;
-    background: none;
-    border-radius: 0.25rem;
-    padding: 0.5rem 1.5rem;
-    border: 0.1rem solid var(--black);
-  }
+  gap: 0.9rem;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+// Small-caps section labels carry the hierarchy, matching the scorecards
+.config-label {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft-blue);
+}
+
+// Length + difficulty sit side by side on wide screens, stack on narrow
+.config-row {
+  gap: 2.4rem 3.2rem;
+  display: flex;
+  flex-flow: row wrap;
 }
 
 // Navigation
 .game-controls {
   gap: 1rem;
   display: flex;
+  flex-wrap: wrap;
+  margin-top: 2.4rem;
+  padding-top: 2rem;
   align-items: center;
   justify-content: space-between;
+  border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
 }
 .invite-button-content,
 .start-button-content {

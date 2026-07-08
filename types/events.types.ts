@@ -12,6 +12,8 @@ export type ClientEventData =
     }
   | {
       event: 'set-color'
+      /** Step to the next/previous free colour; omit for a random one. */
+      direction?: 'next' | 'previous'
     }
   | {
       event: 'start-game'
@@ -82,6 +84,7 @@ export type ServerEventData =
   | { event: 'game-started'; game: Game }
   | { event: 'game-already-started'; game: Game }
   | { event: 'update'; game: Game }
+  | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }

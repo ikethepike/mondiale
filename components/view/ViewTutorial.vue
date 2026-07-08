@@ -2,28 +2,96 @@
   <ModalWrapper>
     <article class="pane tutorial-card tr tl decorator-bottom">
       <form class="pane-content" @submit.prevent="closeTutorial">
-        <h1>Let's start!</h1>
-        <p>Let's see who is the best at geography. There are three separate phases to the game:</p>
-        <ol>
-          <li>The Group Challenge</li>
-          <li>The Movement Phase</li>
-          <li>Individual Challenges</li>
+        <header class="tutorial-header">
+          <span class="eyebrow">How to play</span>
+          <h1>Three phases, one race</h1>
+          <p class="lead">Each round loops through the same three phases — master all three to win.</p>
+        </header>
+
+        <!-- The journey: three phase cards linked by drawing-in connectors -->
+        <ol class="journey">
+          <li
+            v-for="(phase, index) in phases"
+            :key="phase.key"
+            class="phase"
+            :class="phase.key"
+            :style="{ '--stagger': `${index * 0.12}s` }"
+          >
+            <span class="phase-index">{{ index + 1 }}</span>
+            <span class="phase-icon">
+              <!-- Group challenge: a ranking of descending bars -->
+              <svg v-if="phase.key === 'group'" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="4" rx="1.2" fill="currentColor" opacity="0.35" />
+                <rect x="3" y="10.5" width="14" height="4" rx="1.2" fill="currentColor" opacity="0.65" />
+                <rect x="3" y="16" width="9" height="4" rx="1.2" fill="currentColor" />
+              </svg>
+              <!-- Movement: a pawn on a tile track -->
+              <svg
+                v-else-if="phase.key === 'movement'"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M3 20h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.4" />
+                <circle cx="7" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
+                <circle cx="12" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
+                <circle cx="17" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
+                <path
+                  d="M12 4c2 0 3.4 1.5 3.4 3.4 0 1.4-.8 2.4-1.7 3.1.9.5 1.5 1.3 1.5 2.6V15H8.8v-1.9c0-1.3.6-2.1 1.5-2.6-.9-.7-1.7-1.7-1.7-3.1C8.6 5.5 10 4 12 4Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <!-- Gauntlet: a locked gate -->
+              <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="5" y="10" width="14" height="10" rx="1.6" fill="currentColor" opacity="0.35" />
+                <path d="M8 10V7.5a4 4 0 0 1 8 0V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <circle cx="12" cy="15" r="1.6" fill="currentColor" />
+              </svg>
+            </span>
+            <strong class="phase-title">{{ phase.title }}</strong>
+            <span class="phase-hook">{{ phase.hook }}</span>
+          </li>
         </ol>
-        <p>
-          Do well in the group challenge and you get to take more steps during the movement phase.
-          But to be able to progress fully, you have to beat any individual challenges that you
-          might come across.
+
+        <p class="tie-in">
+          Score big in the group challenge to <strong>hop further</strong> — but a gate blocks your
+          path until you beat it.
         </p>
-        <nav>
-          <TransitionGroup tag="div" name="pawn-arrive" class="players-playing" appear>
-            <PlayerPawn
-              v-for="player in playersPlaying"
+
+        <nav class="tutorial-nav">
+          <!-- The roster: every player standing together, you flagged with an
+               arced "this is you!" pointer. Hovering any pawn reveals its
+               name and (via :has) hides the you-label so they don't overlap. -->
+          <TransitionGroup tag="div" name="pawn-arrive" class="roster" appear>
+            <div
+              v-for="player in allPlayers"
               :key="player.id"
-              class="pawn"
-              :player="player"
-            />
+              class="roster-pawn"
+              :class="{ 'is-you': player.id === playerId }"
+            >
+              <PlayerPawn class="pawn" :player="player" />
+              <span class="pawn-name">{{ player.name || 'Joining…' }}</span>
+
+              <template v-if="player.id === playerId">
+                <svg class="you-arrow" viewBox="0 0 60 70" fill="none" aria-hidden="true">
+                  <path
+                    d="M8 6C30 2 54 14 46 40c-2 7-8 12-14 15"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <path
+                    d="M32 61l1-11 9 7z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <span class="you-label">This is you!</span>
+              </template>
+            </div>
           </TransitionGroup>
-          <ButtonFilled>Close tutorial</ButtonFilled>
+
+          <ButtonFilled class="start-button">Let's go</ButtonFilled>
         </nav>
       </form>
     </article>
@@ -33,9 +101,22 @@
 import { useClientEvents } from '~~/lib/events/client-side'
 
 const { gameStore, update, playerId } = useClientEvents()
-const playersPlaying = computed(() =>
-  Object.values(gameStore.game?.players || {}).filter(player => player.phase !== 'tutorial')
-)
+
+// Every player in the game, you first so your pawn (with the pointer) leads
+const allPlayers = computed(() => {
+  const players = Object.values(gameStore.game?.players || {})
+  return [...players].sort((a, b) =>
+    a.id === playerId.value ? -1 : b.id === playerId.value ? 1 : 0
+  )
+})
+
+// The three game phases. Glyphs are inline SVG in the template (keyed by
+// `key`), recoloured per phase via currentColor.
+const phases = [
+  { key: 'group', title: 'Group Challenge', hook: 'Rank, sort, out-guess everyone' },
+  { key: 'movement', title: 'Movement', hook: 'Score points, hop further' },
+  { key: 'gate', title: 'The Gauntlet', hook: 'Beat the gates to break through' },
+] as const
 
 const closeTutorial = () => {
   if (gameStore.game?.players[playerId.value]) {
@@ -50,26 +131,246 @@ const closeTutorial = () => {
 
 .tutorial-card {
   margin: auto auto 0 auto;
-  max-width: 50rem;
+  max-width: 58rem;
 }
 
-ol {
-  padding: 1em;
+.tutorial-header {
+  margin-bottom: 2rem;
 }
 
-nav {
+.eyebrow {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft-blue);
+  margin-bottom: 0.6rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 3rem;
+  color: var(--dark-blue);
+}
+
+.lead {
+  margin: 0.8rem 0 0;
+  opacity: 0.75;
+  font-size: 1.6rem;
+}
+
+// --- The three-phase journey ------------------------------------------------
+.journey {
+  // Wide gap gives the chevron connectors room to breathe between cards
+  gap: 2.6rem;
+  margin: 0;
+  padding: 0;
   display: grid;
-  padding-top: 2rem;
-  align-items: center;
-  grid-template-columns: 2fr 1fr;
+  list-style: none;
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.players-playing {
-  gap: 1rem;
-  width: 100%;
-  height: 3.5rem;
+.phase {
+  gap: 0.7rem;
   display: flex;
-  align-items: stretch;
+  padding: 1.8rem 1.2rem 1.6rem;
+  position: relative;
+  text-align: center;
+  align-items: center;
+  border-radius: 1.4rem;
+  flex-flow: column nowrap;
+  border: 0.15rem solid var(--phase-tint);
+  background: var(--phase-wash);
+
+  // Each phase owns a distinct colour from the in-game language — the washes
+  // are kept saturated enough to read as mint / sand / coral, not grey.
+  &.group {
+    --phase-ink: var(--soft-blue);
+    --phase-disc: hsla(197.6, 51.2%, 41.8%, 0.16);
+    --phase-tint: hsla(197.6, 51.2%, 41.8%, 0.45);
+    --phase-wash: hsla(197.6, 55%, 55%, 0.12);
+  }
+  &.movement {
+    --phase-ink: hsl(170.5, 40%, 38%);
+    --phase-disc: hsla(170.5, 34.7%, 55.1%, 0.24);
+    --phase-tint: hsla(170.5, 34.7%, 50%, 0.55);
+    --phase-wash: hsla(170.5, 40%, 60%, 0.16);
+  }
+  &.gate {
+    --phase-ink: hsl(9.8, 68%, 50%);
+    --phase-disc: hsla(9.8, 81.3%, 60.2%, 0.18);
+    --phase-tint: hsla(9.8, 81.3%, 60.2%, 0.45);
+    --phase-wash: hsla(20, 82%, 66%, 0.16);
+  }
+
+  // Chunky chevron connectors, centered in the gap between cards, in the
+  // leading card's colour. Gap is 2.6rem, chevron ~1.3rem, so -1.95rem sits
+  // it centered with clear air on both sides.
+  &:not(:last-child)::after {
+    content: '';
+    top: 50%;
+    right: -1.95rem;
+    z-index: 2;
+    width: 1.3rem;
+    height: 1.3rem;
+    position: absolute;
+    border-top: 0.28rem solid var(--phase-ink);
+    border-right: 0.28rem solid var(--phase-ink);
+    opacity: 0.55;
+    transform: translateY(-50%) rotate(45deg);
+  }
+
+  // Staggered entrance, phase by phase
+  opacity: 0;
+  animation: phase-in var(--motion-base) var(--ease-out-expressive) forwards;
+  animation-delay: var(--stagger, 0s);
+}
+
+.phase-index {
+  top: 1rem;
+  left: 1.2rem;
+  opacity: 0.55;
+  font-size: 1.4rem;
+  font-weight: bold;
+  position: absolute;
+  color: var(--phase-ink);
+}
+
+// The glyph sits in a soft colour disc so it reads as an emblem, not a stray
+.phase-icon {
+  display: grid;
+  width: 5rem;
+  height: 5rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--phase-ink);
+  background: var(--phase-disc);
+  :deep(svg) {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+}
+
+.phase-title {
+  font-size: 1.7rem;
+  color: var(--dark-blue);
+}
+
+.phase-hook {
+  opacity: 0.72;
+  font-size: 1.3rem;
+  line-height: 1.35;
+}
+
+@keyframes phase-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tie-in {
+  margin: 1.8rem 0 0;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  strong {
+    color: var(--dark-blue);
+  }
+}
+
+// Roster bottom-left, Start button bottom-right. Both children align their
+// bottoms to the nav baseline, so the pawns' feet sit level with the button.
+.tutorial-nav {
+  gap: 1.5rem;
+  display: flex;
+  padding-top: 3rem;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+// The pawns stand shoulder to shoulder; extra top room holds the you-pointer.
+// Its bottom is the nav baseline (= the button's bottom).
+.roster {
+  gap: 0.6rem;
+  display: flex;
+  padding-top: 4.5rem;
+  position: relative;
+  align-items: flex-end;
+}
+
+.roster-pawn {
+  display: flex;
+  position: relative;
+  align-items: center;
+  flex-flow: column nowrap;
+
+  .pawn {
+    width: 3.2rem;
+    height: auto;
+    display: block;
+  }
+
+  // Name hidden by default; appears on hover of THIS pawn
+  .pawn-name {
+    left: 50%;
+    bottom: -1.9rem;
+    opacity: 0;
+    position: absolute;
+    font-size: 1.2rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--dark-blue);
+    pointer-events: none;
+    transform: translateX(-50%) translateY(0.3rem);
+    transition:
+      opacity var(--motion-quick) var(--ease-out-expressive),
+      transform var(--motion-quick) var(--ease-out-expressive);
+  }
+
+  &:hover .pawn-name {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+// The arced "this is you!" pointer over your pawn
+.you-arrow {
+  top: -3.9rem;
+  left: 0.4rem;
+  width: 3.4rem;
+  height: 4rem;
+  position: absolute;
+  pointer-events: none;
+  color: var(--soft-blue);
+}
+
+.you-label {
+  top: -5.6rem;
+  left: 50%;
+  font-size: 1.3rem;
+  font-weight: bold;
+  position: absolute;
+  white-space: nowrap;
+  color: var(--soft-blue);
+  pointer-events: none;
+  transform: translateX(-42%) rotate(-4deg);
+  transition: opacity var(--motion-quick) var(--ease-out-expressive);
+}
+
+// Hovering ANY pawn in the roster retires the you-pointer so the hovered
+// name has the stage (and the two never overlap)
+.roster:hover .you-arrow,
+.roster:hover .you-label {
+  opacity: 0;
+}
+
+.start-button {
+  margin-left: auto;
 }
 
 // Pawns pop in as other players finish reading the tutorial
@@ -82,6 +383,26 @@ nav {
   transition:
     opacity var(--motion-base) var(--ease-out-expressive),
     transform var(--motion-base) var(--ease-out-expressive);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+@media screen and (max-width: $tablet) {
+  .journey {
+    grid-template-columns: 1fr;
+  }
+  // Vertical layout: connectors point down instead of right
+  .phase:not(:last-child)::after {
+    top: auto;
+    right: 50%;
+    bottom: -1.95rem;
+    transform: translateX(50%) rotate(135deg);
+  }
 }
 
 @media screen and (min-width: $tablet) {

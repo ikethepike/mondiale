@@ -41,6 +41,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   update: {
     handler: playerUpdateEvent,
   },
+  'configuration-updated': {
+    handler: genericUpdateEvent,
+  },
   'group-challenge-scored': {
     handler: groupChallengeScoredEvent,
   },

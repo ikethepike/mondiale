@@ -67,8 +67,6 @@ const SERVER_SIDE_EVENT_HANDLERS: {
 }
 
 export default defineEventHandler(({ node }) => {
-  console.info('>>>>> called!')
-
   const { REDIS_PASSWORD, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
   const redisToken = UPSTASH_REDIS_REST_TOKEN ?? REDIS_PASSWORD
   if (!redisToken) {

@@ -41,9 +41,10 @@ export const joinEventHandler: EventHandler = async ({
     await server.updateGameState(game)
   }
 
-  // Player connecting to existing game
+  // Player connecting to existing game — hand them a colour nobody else has
   if (!game.players[playerId] && !game.started) {
-    game.players[playerId] = createPlayer(playerId)
+    const takenColors = Object.values(game.players).map(existing => existing.color)
+    game.players[playerId] = createPlayer(playerId, takenColors)
   }
 
   // Game already started
