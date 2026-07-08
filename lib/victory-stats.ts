@@ -29,16 +29,23 @@ export interface PlayerGameStats {
   sharpestRound?: RoundResult
 }
 
-/** One badge per round kind — everyone gets to be best at something. */
-const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string } = {
-  ranking: 'List Maestro',
-  traversal: 'Pathfinder',
-  'neighbour-blitz': 'Human Atlas',
-  silhouette: 'Shape Spotter',
-  'hot-cold': 'Heat Seeker',
-  sketch: 'Cartographer',
-  'stat-detective': 'Stat Detective',
-  'two-truths': 'Lie Whisperer',
+/** Epithets per round kind — everyone gets to be best at something. */
+const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
+  ranking: ['List Maestro', 'Order of Merit', 'The Rank Whisperer', 'Podium Prophet'],
+  traversal: ['Pathfinder', 'The Crow Flies', 'Border Hopper', 'Route Oracle'],
+  'neighbour-blitz': ['Human Atlas', 'Good Neighbour', 'The Border Lord', 'Fence-Line Fanatic'],
+  silhouette: ['Shape Spotter', 'Outline Oracle', 'Silhouette Sniper', 'Shadow Reader'],
+  'hot-cold': ['Heat Seeker', 'Warm-Warmer-Hot', 'The Divining Rod', 'Compass Point'],
+  sketch: ['Cartographer', 'Steady Hand', 'The Map Maker', 'Freehand Fabulist'],
+  'stat-detective': ['Stat Detective', 'Number Sleuth', 'The Data Diviner', 'Percentile Poirot'],
+  'two-truths': ['Lie Whisperer', 'Fib Finder', 'The Human Polygraph', 'Bluff Caller'],
+  'river-run': ['River Runner', 'Watershed Wizard', 'The Current Affair', 'Delta Force'],
+  'shared-shores': ['Coast Guard', 'Shoreline Scholar', 'The Tide Reader', 'Basin Boss'],
+  highlands: ['Peak Bagger', 'Highland Chief', 'The Ridge Runner', 'Summit Seeker'],
+  'name-that-water': ['Hydronymist', 'Sea Namer', 'The Blue Cartographer', 'Aqua Nomad'],
+  'mother-tongue': ['Polyglot', 'Tongue Twister', 'The Babel Fish', 'Lingua Franca'],
+  'flag-palette': ['Colour Sommelier', 'Palette Pro', 'The Swatch Sleuth', 'Hue Hunter'],
+  'capital-guess': ['Capital Idea', 'Skyline Seer', 'The City Slicker', 'Metropole Maven'],
 }
 
 const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -50,6 +57,22 @@ const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   sketch: 'sketch',
   'stat-detective': 'stat detective',
   'two-truths': 'two truths',
+  'river-run': 'river run',
+  'shared-shores': 'shared shores',
+  highlands: 'highlands',
+  'name-that-water': 'name that water',
+  'mother-tongue': 'mother tongue',
+  'flag-palette': 'flag palette',
+  'capital-guess': 'capital guess',
+}
+
+const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {
+  const options = SUPERLATIVE_TITLES[kind]
+  let hash = 0
+  for (let index = 0; index < seed.length; index++) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0
+  }
+  return options[Math.abs(hash) % options.length]
 }
 
 /** Every country the game touched — subjects, hands, routes, decoys. */
@@ -143,7 +166,7 @@ export const gameStats = (game: Game): { [playerId: string]: PlayerGameStats } =
 
     if (bestKind && bestRatio > 0) {
       playerStats.superlative = {
-        title: SUPERLATIVE_TITLES[bestKind],
+        title: pickEpithet(bestKind, playerStats.playerId + bestKind),
         detail: `${Math.round(bestRatio * 100)}% on ${KIND_LABELS[bestKind]} rounds`,
       }
     }

@@ -185,7 +185,8 @@ onMounted(() => {
 .phase-group-scores .game-map,
 .phase-group-challenge .game-map,
 .phase-individual-challenge .game-map,
-.phase-final-challenge .game-map {
+.phase-final-challenge .game-map,
+.phase-victory .game-map {
   transform: scale(1);
 }
 
