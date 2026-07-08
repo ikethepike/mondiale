@@ -12,6 +12,32 @@ export const countryName = (country: ISOCountryCode | Country): string =>
 export const flagDataUri = (country: Country): string =>
   `data:image/svg+xml;base64,${baseEncode(country.flag)}`
 
+// The recomposed 3:1 wide-tile flags are a ~2.8MB generated artifact, loaded
+// lazily (like data/map-hd.gen) so they don't bloat the eager bundle for pages
+// that never render a flag tile.
+let flagsWide: Partial<Record<ISOCountryCode, string>> | null = null
+let flagsWidePromise: Promise<void> | null = null
+
+export const loadFlagsWide = (): Promise<void> => {
+  if (flagsWide) return Promise.resolve()
+  if (!flagsWidePromise) {
+    flagsWidePromise = import('~~/data/flags-wide.gen').then(m => {
+      flagsWide = m.FLAGS_WIDE
+    })
+  }
+  return flagsWidePromise
+}
+
+/**
+ * Data-URI for the wide-tile variant, or null when the flag has no recomposed
+ * variant (excluded → caller should fall back to the contained original) or the
+ * artifact hasn't loaded yet. Call `loadFlagsWide()` first and re-read reactively.
+ */
+export const flagWideDataUri = (country: Country): string | null => {
+  const svg = flagsWide?.[country.isoCode]
+  return svg ? `data:image/svg+xml;base64,${baseEncode(svg)}` : null
+}
+
 /**
  * Normalize free-typed country names for matching: case, diacritics
  * ("Côte d'Ivoire" → "cote divoire"), punctuation and a leading "the".

@@ -1,9 +1,9 @@
 <template>
   <div v-if="country" class="score-tile">
-    <!-- A fixed-height stage that fits ANY flag ratio (Finland's 18:11, Nepal's
-         pennon, Switzerland's square): the flag is `contain`ed so it's never
-         cropped, and a blurred, dimmed copy fills the letterbox gaps so the
-         wide frame never looks empty. Mirrors the photo-stage pattern. -->
+    <!-- A fixed-height stage for the flag. Recomposed flags are already 3:1, so
+         the wide variant fills the wide frame edge to edge; the blurred backdrop
+         remains as a graceful fill for the handful of excluded flags (ensigns,
+         Nepal) that fall back to a contained original. -->
     <div class="flag-stage">
       <CountryFlag
         class="flag-backdrop"
@@ -12,7 +12,7 @@
         fit="cover"
         aria-hidden="true"
       />
-      <CountryFlag class="flag" :country="country" mode="background" fit="contain" />
+      <CountryTileFlag class="flag" :country="country" />
     </div>
     <strong class="country-name">{{ countryName(country) }}</strong>
     <p v-if="showAmount && amount">
