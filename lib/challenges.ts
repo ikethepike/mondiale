@@ -10,6 +10,7 @@ import {
 } from '~~/types/challenges/group-challenge.type'
 import type {
   HotColdChallenge,
+  MotherTongueChallenge,
   NameWaterChallenge,
   NeighbourBlitzChallenge,
   SilhouetteChallenge,
@@ -72,6 +73,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['shared-shores', 0.05],
   ['name-that-water', 0.04],
   ['highlands', 0.08],
+  ['mother-tongue', 0.09],
 ]
 
 /** Round kinds reserved for hard games. */
@@ -437,6 +439,60 @@ const getNameWaterChallenge = async (
   }
 }
 
+/** How many countries on the board have this as an official language. */
+const MOTHER_TONGUE_MIN_SPEAKERS = 3
+const MOTHER_TONGUE_MAX_SPEAKERS = 12
+const getMotherTongueChallenge = (
+  game: gameTypes.Game
+): MotherTongueChallenge | undefined => {
+  const pool = variantCountries(game.variant)
+
+  // Count on-board speakers per language, keep the answerable band (a language
+  // spoken by 3–12 board countries — fewer is guessable, more is a slog).
+  const speakers = new Map<string, ISOCountryCode[]>()
+  for (const isoCode of pool) {
+    for (const language of COUNTRIES[isoCode].languages ?? []) {
+      const list = speakers.get(language) ?? []
+      list.push(isoCode)
+      speakers.set(language, list)
+    }
+  }
+  const viable = [...speakers.entries()].filter(
+    ([, countries]) =>
+      countries.length >= MOTHER_TONGUE_MIN_SPEAKERS &&
+      countries.length <= MOTHER_TONGUE_MAX_SPEAKERS
+  )
+  if (!viable.length) return undefined
+
+  const [language, countries] = viable[Math.floor(Math.random() * viable.length)]
+  return {
+    _type: 'mother-tongue-challenge',
+    language,
+    countries,
+    durationSeconds: Math.min(60, 20 + countries.length * 5),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/** Mother-tongue scoring: same blitz shape as water — found ratio, wrong bites. */
+export const scoreMotherTongue = ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: MotherTongueChallenge
+  submittedGuesses: ISOCountryCode[]
+}): { scored: number; maximum: number } => {
+  const answers = new Set(challenge.countries)
+  const unique = [...new Set(submittedGuesses)]
+  const correct = unique.filter(isoCode => answers.has(isoCode)).length
+  const wrong = unique.length - correct
+  const scored = Math.max(
+    0,
+    Math.round((challenge.maximumPoints * correct) / challenge.countries.length) - wrong
+  )
+  return { scored, maximum: challenge.maximumPoints }
+}
+
 /** Blitz-family scoring: found ratio scales the pot, wrong guesses bite it. */
 export const scoreWaterBlitz = ({
   challenge,
@@ -516,6 +572,11 @@ export const getRoundChallenge = async ({
     }
     case 'name-that-water': {
       const challenge = await getNameWaterChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'mother-tongue': {
+      const challenge = getMotherTongueChallenge(game)
       if (challenge) return challenge
       break
     }

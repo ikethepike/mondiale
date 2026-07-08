@@ -33,6 +33,7 @@ import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
+import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -84,6 +85,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'shared-shores': ViewWaterBlitz,
         highlands: ViewWaterBlitz,
         'name-that-water': ViewNameThatWater,
+        'mother-tongue': ViewMotherTongue,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

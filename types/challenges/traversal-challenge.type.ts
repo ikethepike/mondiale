@@ -52,6 +52,7 @@ export type RoundChallengeKind =
   | 'shared-shores'
   | 'highlands'
   | 'name-that-water'
+  | 'mother-tongue'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (
@@ -85,6 +86,8 @@ export const roundChallengeKind = (
       }
     case 'name-water-challenge':
       return 'name-that-water'
+    case 'mother-tongue-challenge':
+      return 'mother-tongue'
     default:
       return 'ranking'
   }

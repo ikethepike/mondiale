@@ -91,6 +91,16 @@ export interface WaterBlitzChallenge {
   maximumPoints: number
 }
 
+/** A language is named — tap every country that speaks it (all-that-apply). */
+export interface MotherTongueChallenge {
+  _type: 'mother-tongue-challenge'
+  language: string
+  /** The answers: playable countries with this as an official language. */
+  countries: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** A body of water lights up — name it (typed, with suggestions). */
 export interface NameWaterChallenge {
   _type: 'name-water-challenge'
@@ -111,3 +121,4 @@ export type GroupModeChallenge =
   | TwoTruthsChallenge
   | WaterBlitzChallenge
   | NameWaterChallenge
+  | MotherTongueChallenge

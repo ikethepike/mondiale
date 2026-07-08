@@ -4,6 +4,7 @@ import {
   getIndividualChallenge,
   scoreChallengeSubmission,
   scoreHotCold,
+  scoreMotherTongue,
   scoreNeighbourBlitz,
   scoreTraversalSubmission,
   scoreWaterBlitz,
@@ -99,6 +100,15 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         if (roundChallenge._type !== 'water-blitz-challenge') throw new TypeError('kind mismatch')
         answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
         scoring = scoreWaterBlitz({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'mother-tongue': {
+        if (roundChallenge._type !== 'mother-tongue-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
+        scoring = scoreMotherTongue({
           challenge: roundChallenge,
           submittedGuesses: eventData.ranking,
         })
