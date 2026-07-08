@@ -14,7 +14,10 @@
         <template v-if="!resolved">
           <h1 class="map-caption">Which country is this?</h1>
           <span class="map-caption sub">
-            Clue {{ revealedClues.length }} of {{ challenge.clues.length }} — earlier answers score higher
+            Clue {{ revealedCount }} of {{ totalClues }} — earlier answers score higher
+          </span>
+          <span v-if="challenge.region" class="map-caption region-hint">
+            Region: {{ challenge.region }}
           </span>
         </template>
         <template v-else>
@@ -44,6 +47,14 @@
             :most-label="clue.scale.mostLabel"
           />
         </li>
+        <!-- Non-hard mode's final clue: a photo from the country (capital or
+             landmark), revealed once every stat has been shown. -->
+        <li v-if="photoRevealed && challenge.photo" key="photo-clue" class="clue-card photo-clue">
+          <span class="clue-label">A glimpse of the place</span>
+          <div class="photo-clue-stage">
+            <ZoomableImage :src="challenge.photo" alt="A place in the mystery country" />
+          </div>
+        </li>
       </TransitionGroup>
     </section>
 
@@ -71,6 +82,7 @@
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
+import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
@@ -133,6 +145,14 @@ const revealedClues = computed(() => {
   })
 })
 
+// Non-hard mode adds a photo as one extra clue after every stat has shown.
+const hasPhotoClue = computed(() => !!challenge.value?.photo)
+const statClueCount = computed(() => challenge.value?.clues.length ?? 0)
+const totalClues = computed(() => statClueCount.value + (hasPhotoClue.value ? 1 : 0))
+const photoRevealed = computed(
+  () => hasPhotoClue.value && revealedCount.value > statClueCount.value
+)
+
 const hint = ref('')
 let hintTimer: ReturnType<typeof setTimeout> | undefined
 const flashHint = (text: string) => {
@@ -187,12 +207,12 @@ const begin = () => {
   if (!active) return
 
   clueTimer = setInterval(() => {
-    if (revealedCount.value < active.clues.length) {
+    if (revealedCount.value < totalClues.value) {
       revealedCount.value++
       return
     }
 
-    // All clues shown — one final grace interval, then it resolves unsolved
+    // Everything shown — one final grace interval, then it resolves unsolved
     if (clueTimer) clearInterval(clueTimer)
     clueTimer = undefined
     revealTimer = setTimeout(() => resolve(undefined, 0), active.secondsPerClue * 1000)
@@ -260,6 +280,11 @@ header {
   .hint {
     color: var(--hior-ange);
   }
+  .region-hint {
+    padding: 0.4rem 1.4rem;
+    color: var(--soft-blue);
+    font-weight: 600;
+  }
   .prompt {
     gap: 1rem;
     display: flex;
@@ -309,6 +334,17 @@ header {
   }
   .clue-value {
     font-size: 2.4rem;
+  }
+}
+
+// The photo clue spans the grid and gives the image real room.
+.photo-clue {
+  grid-column: 1 / -1;
+
+  .photo-clue-stage {
+    width: min(40rem, 84vw);
+    height: min(24rem, 32vh);
+    margin-top: 0.4rem;
   }
 }
 

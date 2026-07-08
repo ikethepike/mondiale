@@ -21,6 +21,9 @@ export interface SilhouetteChallenge {
   country: ISOCountryCode
   durationSeconds: number
   maximumPoints: number
+  /** Non-hard mode helper: the country's region, revealed in the final stretch
+   *  of the countdown. Absent in hard mode. */
+  region?: string
 }
 
 /** A mystery country: every map click answers with distance and direction. */
@@ -50,6 +53,10 @@ export interface StatDetectiveChallenge {
   clues: GroupChallengeAccessorId[]
   secondsPerClue: number
   maximumPoints: number
+  /** Non-hard mode helpers. `region` is shown from the start; `photo` (a capital
+   *  skyline or landmark) reveals as the final visual clue. Absent in hard mode. */
+  region?: string
+  photo?: string
 }
 
 /**

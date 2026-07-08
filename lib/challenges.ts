@@ -39,7 +39,7 @@ import type { Amount, ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
-import { variantCountries } from './variant'
+import { REGION_LABELS, variantCountries } from './variant'
 
 const MAXIMUM_SCORE_PER_COUNTRY = 3
 
@@ -199,12 +199,19 @@ const getNeighbourBlitzChallenge = ({
   }
 }
 
-const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteChallenge => ({
-  _type: 'silhouette-challenge',
-  country: pickShapeFriendlyCountry(variantCountries(game.variant)),
-  durationSeconds: 30,
-  maximumPoints: maximumRoundPoints(game),
-})
+const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteChallenge => {
+  const country = pickShapeFriendlyCountry(variantCountries(game.variant))
+  return {
+    _type: 'silhouette-challenge',
+    country,
+    durationSeconds: 30,
+    maximumPoints: maximumRoundPoints(game),
+    // Non-hard mode gets a region hint in the final stretch of the countdown.
+    ...(game.difficulty !== 'hard'
+      ? { region: REGION_LABELS[COUNTRIES[country].region] }
+      : {}),
+  }
+}
 
 /**
  * Micro-island states are near-invisible click targets at world zoom, and a
@@ -244,6 +251,14 @@ const LIE_MINIMUM_YEAR_GAP = 8
  * Stat detective: a mystery country's stats reveal one by one. Only the
  * accessor ids travel — clients read the values from the shared dataset.
  */
+/** A recognisable photo for a country: capital skyline first (broad coverage),
+ *  then any curated landmark. Used as Stat Detective's final visual clue. */
+const photoClueFor = (country: ISOCountryCode): string | undefined => {
+  if (CAPITALS[country]?.image) return CAPITALS[country]!.image
+  const landmark = Object.values(LANDMARKS).find(entry => entry.country === country)
+  return landmark?.image
+}
+
 const getStatDetectiveChallenge = ({
   game,
 }: {
@@ -251,6 +266,7 @@ const getStatDetectiveChallenge = ({
 }): StatDetectiveChallenge | undefined => {
   const CLUE_COUNT = 6
   const pool = shuffleArray(variantCountries(game.variant))
+  const assisted = game.difficulty !== 'hard'
 
   for (const country of pool.slice(0, 40)) {
     const viable = shuffleArray(
@@ -266,6 +282,13 @@ const getStatDetectiveChallenge = ({
       clues: viable.slice(0, CLUE_COUNT),
       secondsPerClue: 8,
       maximumPoints: maximumRoundPoints(game),
+      // Non-hard mode gets a region hint from the start and a photo last.
+      ...(assisted
+        ? {
+            region: REGION_LABELS[COUNTRIES[country].region],
+            photo: photoClueFor(country),
+          }
+        : {}),
     }
   }
 

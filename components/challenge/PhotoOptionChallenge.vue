@@ -14,14 +14,13 @@
         type="button"
         @click="emit('pick', option)"
       >
-        <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+        <CountryTileFlag class="option-flag" :country="getCountry(option)" />
         <span>{{ countryName(option) }}</span>
       </button>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'

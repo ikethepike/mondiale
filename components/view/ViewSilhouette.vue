@@ -14,6 +14,9 @@
         <template v-if="!resolved">
           <h1 class="map-caption">Whose outline is this?</h1>
           <span class="map-caption sub">{{ secondsLeft }}s — earlier answers score higher</span>
+          <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
+            Region: {{ challenge.region }}
+          </span>
         </template>
         <template v-else>
           <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
@@ -78,6 +81,13 @@ const lockedOut = ref(false)
 const showInterstitial = ref(true)
 const secondsLeft = ref(challenge.value?.durationSeconds ?? 30)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The region hint (non-hard mode) surfaces only in the final 30% of the clock —
+// a late nudge once the outline is nearly whole, not a giveaway from the start.
+const regionRevealed = computed(() => {
+  const total = challenge.value?.durationSeconds ?? 30
+  return started.value && secondsLeft.value / total <= 0.3
+})
 const outlinePath = ref<SVGPathElement>()
 
 // Blank the world map — the silhouette IS the whole question
@@ -240,6 +250,11 @@ header {
   }
   .hint {
     color: var(--hior-ange);
+  }
+  .region-hint {
+    padding: 0.4rem 1.4rem;
+    color: var(--soft-blue);
+    font-weight: 600;
   }
   .prompt {
     gap: 1rem;

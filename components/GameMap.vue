@@ -650,6 +650,7 @@ const zoomAround = (clientX: number, clientY: number, factor: number) => {
 
 const onWheel = (event: WheelEvent) => {
   event.preventDefault()
+  if (revealLocked) return // the zoom-out reveal owns the camera
   beginGesture()
   zoomAround(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.0035))
   startLoop()
@@ -670,6 +671,7 @@ let pinchStart: { distance: number; width: number } | undefined
 
 const onPointerDown = (event: PointerEvent) => {
   if (event.pointerType === 'mouse' && event.button !== 0) return
+  if (revealLocked) return // the zoom-out reveal owns the camera
   momentum.x = 0
   momentum.y = 0
   pointers.set(event.pointerId, {
@@ -807,22 +809,31 @@ onMounted(async () => {
  * shape is obvious. Reduced motion snaps straight to the recognisable frame.
  */
 let zoomOutTween: gsap.core.Tween | undefined
+// While a reveal is animating it owns the camera — manual wheel/pinch zoom is
+// locked out so the player can't cheat the reveal by zooming out early.
+let revealLocked = false
 const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   if (!wrapper.value || !svg.value) return
   const mainland = MAP_REGIONS[isoCode]?.[0] ?? MAP_BOUNDS[isoCode]
   if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
 
   // The country's full (recognisable) frame is the END; the START is a tight
-  // crop centred on it (~18% of that frame — a sliver of coastline).
+  // crop centred on it. A fixed fraction of the frame alone breaks for huge
+  // countries — 18% of Russia's bbox is still half the planet — so the start is
+  // also capped to an absolute deep zoom, giving every country a comparably
+  // tight sliver regardless of its size.
   const wide = frameForBoxes([mainland], [])
   const cx = wide.x + wide.width / 2
   const cy = wide.y + wide.height / 2
-  const tight = 0.18
+  const TIGHT_FRACTION = 0.18
+  const TIGHT_MAX_WIDTH = WORLD_VIEW.width / 14 // absolute deep-zoom ceiling
+  const startWidth = Math.min(wide.width * TIGHT_FRACTION, TIGHT_MAX_WIDTH)
+  const startHeight = startWidth * (wide.height / wide.width)
   const tightView = {
-    x: cx - (wide.width * tight) / 2,
-    y: cy - (wide.height * tight) / 2,
-    width: wide.width * tight,
-    height: wide.height * tight,
+    x: cx - startWidth / 2,
+    y: cy - startHeight / 2,
+    width: startWidth,
+    height: startHeight,
   }
 
   loopRunning = false
@@ -842,9 +853,15 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   }
 
   const startView = { ...tightView }
-  clampView(startView) // clampView mutates in place (returns void)
+  clampView(startView)
   Object.assign(viewState, startView)
   writeViewBox()
+  revealLocked = true
+  // The reveal starts deeply zoomed, so run the LOD pass now (and periodically
+  // through the tween) to load + swap in the HD geometry — otherwise the whole
+  // reveal renders the blocky low-detail tier and only sharpens at the very end.
+  updateEffectiveZoom()
+  let sinceLod = 0
   zoomOutTween = gsap.to(viewState, {
     ...wide,
     duration: durationSeconds,
@@ -854,9 +871,16 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
     overwrite: 'auto',
     onUpdate: () => {
       writeViewBox()
-      cullPass()
+      // Refresh LOD a few times a second (not every frame — the swap is cheap
+      // but the full scan isn't) so neighbours entering the crop arrive HD and
+      // the tier steps back down as it eases past the threshold.
+      if ((sinceLod += 1) >= 8) {
+        sinceLod = 0
+        updateEffectiveZoom()
+      }
     },
     onComplete: () => {
+      revealLocked = false
       Object.assign(targetView, viewState)
       wrapper.value?.classList.remove('is-interacting')
       updateEffectiveZoom()
@@ -899,7 +923,10 @@ watch(
   () => gameStore.map.zoomOut,
   zoomOut => {
     if (zoomOut) startZoomOut(zoomOut.isoCode as MapCode, zoomOut.durationSeconds)
-    else zoomOutTween?.kill()
+    else {
+      zoomOutTween?.kill()
+      revealLocked = false
+    }
   },
   { immediate: true }
 )
@@ -909,7 +936,6 @@ watch(
 .game-map {
   height: 100vh;
   overflow: hidden;
-  // The map owns its touch gestures (drag pan, pinch zoom) entirely.
   touch-action: none;
   overscroll-behavior: none;
 }
