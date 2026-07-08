@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { MapFeatureOverlay } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
@@ -24,6 +25,8 @@ interface GameStoreState {
     focusContext: ISOCountryCode[]
     /** Soft per-country verdict fills for traversal guesses. */
     tints: { [isoCode in ISOCountryCode]?: MapTint }
+    /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
+    feature?: MapFeatureOverlay
   }
   /**
    * Set when the player closes the group scores; the 3D board clears it and
@@ -51,6 +54,7 @@ export const useGameStore = defineStore('game', {
       focus: [],
       focusContext: [],
       tints: {},
+      feature: undefined,
     },
   }),
   actions: {},

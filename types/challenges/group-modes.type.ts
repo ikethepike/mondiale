@@ -72,6 +72,36 @@ export interface TwoTruthsChallenge {
   maximumPoints: number
 }
 
+/** Physical-geography flavours (mirror of data/water.gen's WaterKind). */
+export type WaterFeatureKind = 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+
+/**
+ * Name the countries a physical feature touches: rivers (river run), seas
+ * and lakes (shared shores), ranges/deserts/plateaus (highlands, hard mode).
+ * Geometry stays client-side in data/water.gen — only the id travels.
+ */
+export interface WaterBlitzChallenge {
+  _type: 'water-blitz-challenge'
+  featureId: string
+  featureName: string
+  kind: WaterFeatureKind
+  /** The answers: playable countries the feature touches or crosses. */
+  countries: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
+/** A body of water lights up — name it (typed, with suggestions). */
+export interface NameWaterChallenge {
+  _type: 'name-water-challenge'
+  featureId: string
+  featureName: string
+  kind: WaterFeatureKind
+  /** Shore countries, shown in the reveal/scorecard. */
+  countries: ISOCountryCode[]
+  maximumPoints: number
+}
+
 export type GroupModeChallenge =
   | NeighbourBlitzChallenge
   | SilhouetteChallenge
@@ -79,3 +109,5 @@ export type GroupModeChallenge =
   | SketchChallenge
   | StatDetectiveChallenge
   | TwoTruthsChallenge
+  | WaterBlitzChallenge
+  | NameWaterChallenge

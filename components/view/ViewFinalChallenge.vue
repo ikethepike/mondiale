@@ -38,7 +38,8 @@ import { REGION_LABELS } from '~~/lib/variant'
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
-const { currentFinalChallenge, clearBoard, update, gameStore, currentMove } = useClientEvents()
+const { currentFinalChallenge, clearBoard, update, gameStore, currentMove, game } =
+  useClientEvents()
 
 const status = toRef(gameStore.map, 'status')
 
@@ -92,7 +93,10 @@ const lesson = computed(() => {
 
 const details = computed(() => {
   if (!currentFinalChallenge.value) return undefined
-  return getFinalChallengeDetails({ challenge: currentFinalChallenge.value })
+  return getFinalChallengeDetails({
+    challenge: currentFinalChallenge.value,
+    variant: game.value?.variant,
+  })
 })
 const totalChallengeCount = ref(
   (() => {

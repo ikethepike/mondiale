@@ -1,0 +1,21 @@
+{
+  // The data generators run standalone via `bun run generators/…`, NOT through
+  // Nuxt — they use Bun globals (Bun.gzipSync, import.meta.dirname) that the
+  // app's tsconfig doesn't type. This scoped config gives the IDE the Bun
+  // types for these files only, and re-declares the `~~` project-root alias
+  // the generators use to import app data/lib.
+  "compilerOptions": {
+    "types": ["bun"],
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "strict": true,
+    "paths": {
+      "~~": [".."],
+      "~~/*": ["../*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

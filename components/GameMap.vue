@@ -61,6 +61,16 @@
         r="3.5"
         @click="handleClick(code)"
       />
+      <!-- Physical-geography overlay: rivers draw themselves in as lines,
+           seas/lakes/ranges wash in as soft areas (water game modes) -->
+      <path
+        v-if="feature"
+        ref="featureEl"
+        :key="feature.d.slice(0, 40)"
+        class="map-feature"
+        :class="feature.kind"
+        :d="feature.d"
+      />
       </template>
     </svg>
   </div>
@@ -72,7 +82,7 @@ import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { CountryColorGrouping } from '~~/types/map.type'
+import type { CountryColorGrouping, MapFeatureOverlay } from '~~/types/map.type'
 
 // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
 // 1-unit stroke itself at world zoom, so they'd render as solid ink blobs.
@@ -130,6 +140,11 @@ const props = defineProps({
   tints: {
     type: Object as PropType<{ [isoCode in ISOCountryCode]?: MapTint }>,
     default: () => ({}),
+  },
+  /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
+  feature: {
+    type: Object as PropType<MapFeatureOverlay>,
+    default: undefined,
   },
 })
 
@@ -288,9 +303,13 @@ const frameFocus = () => {
   // The camera may fly anywhere — everything must be drawable on arrival.
   uncullAll()
 
-  const target = props.focusCountries.length
+  const boxes = [
+    ...props.focusCountries.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean),
+    ...(props.feature?.bounds ? [props.feature.bounds] : []),
+  ]
+  const target = boxes.length
     ? frameForBoxes(
-        props.focusCountries.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean),
+        boxes,
         props.focusContext.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean)
       )
     : worldFitView()
@@ -298,8 +317,35 @@ const frameFocus = () => {
 }
 
 watch(
-  () => [props.focusCountries, props.focusContext],
+  () => [props.focusCountries, props.focusContext, props.feature],
   () => nextTick(frameFocus)
+)
+
+// --- Feature overlay draw-in ------------------------------------------------
+const featureEl = ref<SVGPathElement>()
+
+// A stray tap mid-round would leave a country glowing under the feature —
+// the tap-to-highlight state belongs to find mode, not the water modes
+watch(
+  () => props.feature,
+  () => (clicked.value = undefined)
+)
+watch(
+  () => [props.feature, featureEl.value] as const,
+  ([feature, element]) => {
+    if (!feature || !element || feature.kind !== 'line') return
+    // Rivers pipe in over a couple of seconds — real-length dash units, the
+    // pathLength trick breaks under px-valued writes (see ViewSilhouette)
+    const length = element.getTotalLength()
+    element.style.strokeDasharray = `${length}`
+    element.style.strokeDashoffset = prefersReducedMotion() ? '0' : `${length}`
+    element.style.transition = 'none'
+    requestAnimationFrame(() => {
+      element.style.transition = 'stroke-dashoffset 2.6s ease-out'
+      element.style.strokeDashoffset = '0'
+    })
+  },
+  { flush: 'post' }
 )
 
 // --- ISO acronym labels (easy-mode traversal aid), built once on demand ----
@@ -820,6 +866,35 @@ path[id],
     filter var(--motion-base);
 }
 
+// Physical-geography overlay (water modes). Widths ride the same zoom
+// compensation as country borders so rivers stay readable, never ink floods.
+.map-feature {
+  pointer-events: none;
+
+  &.line {
+    fill: none;
+    stroke: hsl(215.7, 76.4%, 41%);
+    stroke-width: calc(2.4px * var(--stroke-zoom, 1));
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 calc(1.5px * var(--stroke-zoom, 1)) hsla(215.7, 76.4%, 60%, 0.5));
+  }
+
+  &.area {
+    stroke: hsl(215.7, 76.4%, 35%);
+    stroke-width: calc(1.2px * var(--stroke-zoom, 1));
+    fill: hsla(199, 68%, 62%, 0.38);
+    animation: feature-wash var(--motion-slow) var(--ease-out-expressive) 1;
+  }
+}
+
+@keyframes feature-wash {
+  0% {
+    fill-opacity: 0;
+    stroke-opacity: 0;
+  }
+}
+
 // Stroke width = 1 map unit at world zoom, capped to a micro-territory's own
 // footprint (--stroke-base, inline) so tiny countries never drown in their own
 // outline, and scaled down with zoom (--stroke-zoom, set from script) so
@@ -884,6 +959,14 @@ path[id]:hover,
 }
 .solo path.highlighted-country {
   stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
+}
+// Solo hides non-participating countries entirely — their tap halos must
+// not linger as ghost rings (linking challenges are solo AND deep-zoomed,
+// which is precisely when .deep-zoom .micro-hit would draw them). Note the
+// descendant chain: 'solo' sits on the wrapper, 'deep-zoom' on the svg.
+.solo .deep-zoom .micro-hit {
+  opacity: 0;
+  stroke: none;
 }
 
 // ISO acronym labels (easy-mode traversal aid). The <text> nodes are created

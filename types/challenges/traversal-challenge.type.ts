@@ -48,6 +48,10 @@ export type RoundChallengeKind =
   | 'sketch'
   | 'stat-detective'
   | 'two-truths'
+  | 'river-run'
+  | 'shared-shores'
+  | 'highlands'
+  | 'name-that-water'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (
@@ -69,6 +73,18 @@ export const roundChallengeKind = (
       return 'stat-detective'
     case 'two-truths-challenge':
       return 'two-truths'
+    case 'water-blitz-challenge':
+      switch (challenge.kind) {
+        case 'river':
+          return 'river-run'
+        case 'sea':
+        case 'lake':
+          return 'shared-shores'
+        default:
+          return 'highlands'
+      }
+    case 'name-water-challenge':
+      return 'name-that-water'
     default:
       return 'ranking'
   }

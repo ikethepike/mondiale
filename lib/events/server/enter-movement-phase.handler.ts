@@ -52,7 +52,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
 
     if (readyForNextTurn && stillCompeting) {
       game.rounds.push({
-        groupChallenge: getRoundChallenge({ game }),
+        groupChallenge: await getRoundChallenge({ game }),
         groupAnswers: {},
         playerTurns: {},
       })

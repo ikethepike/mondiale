@@ -390,5 +390,5 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = ${JSON
 )}
 `
 
-writeFileSync(join(import.meta.dir, '../data/borders.gen.ts'), output)
+writeFileSync(join(import.meta.dirname, '../data/borders.gen.ts'), output)
 console.log('Wrote data/borders.gen.ts')

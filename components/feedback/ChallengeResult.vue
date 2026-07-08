@@ -72,6 +72,9 @@ onUnmounted(() => {
   }
 
   .lesson {
+    // .map-caption is inline-block — without this the lesson pill lands on
+    // the SAME line as the "Correct!" pill whenever the two fit side by side
+    display: block;
     position: relative;
     margin: 1.2rem auto 0;
     width: max-content;

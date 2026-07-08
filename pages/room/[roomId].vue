@@ -28,9 +28,11 @@ import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
+import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
+import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -75,6 +77,10 @@ const activeView = computed<ActiveView | undefined>(() => {
         sketch: ViewSketch,
         'stat-detective': ViewStatDetective,
         'two-truths': ViewTwoTruths,
+        'river-run': ViewWaterBlitz,
+        'shared-shores': ViewWaterBlitz,
+        highlands: ViewWaterBlitz,
+        'name-that-water': ViewNameThatWater,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

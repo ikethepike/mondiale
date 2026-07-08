@@ -1,9 +1,9 @@
 import { BORDERS } from '~~/data/borders.gen'
-import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GameDifficulty, GameVariant } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
+import { countryInVariant } from './variant'
 
 export const isNeighbour = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
   BORDERS[a]?.includes(b) ?? false
@@ -134,8 +134,7 @@ export const pickTraversal = (
     ISOCountryCodes.filter(isoCode => {
       if (!BORDERS[isoCode]?.length) return false
       if (within && !within.has(isoCode)) return false
-      if (variant === 'world') return true
-      return COUNTRIES[isoCode].region === variant
+      return countryInVariant(isoCode, variant)
     })
   )
 

@@ -155,6 +155,16 @@ const challengeHeading = computed(() => {
       return '_type' in challenge && challenge._type === 'two-truths-challenge'
         ? `The lie about ${countryName(challenge.country)} came from ${countryName(challenge.lieSource)}`
         : ''
+    case 'river-run':
+    case 'shared-shores':
+    case 'highlands':
+      return '_type' in challenge && challenge._type === 'water-blitz-challenge'
+        ? `The ${challenge.featureName} touches ${challenge.countries.length} countries`
+        : ''
+    case 'name-that-water':
+      return '_type' in challenge && challenge._type === 'name-water-challenge'
+        ? `It was the ${challenge.featureName}`
+        : ''
     default:
       return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
   }
@@ -178,6 +188,12 @@ const explainer = computed(() => {
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
       return 'Spotting the lie is all or nothing.'
+    case 'river-run':
+    case 'shared-shores':
+    case 'highlands':
+      return 'Points scale with countries found — wrong names each cost one.'
+    case 'name-that-water':
+      return 'Fewer guesses, bigger score.'
     default:
       return '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
   }
@@ -197,6 +213,14 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answer', correct: 'The Country' }
     case 'two-truths':
       return { submitted: 'Your Verdict', correct: 'The Country' }
+    case 'river-run':
+      return { submitted: 'Your Answers', correct: 'Every Country It Crosses' }
+    case 'shared-shores':
+      return { submitted: 'Your Answers', correct: 'All the Shores' }
+    case 'highlands':
+      return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
+    case 'name-that-water':
+      return { submitted: 'Your Answer', correct: 'Its Shores' }
     default:
       return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
   }

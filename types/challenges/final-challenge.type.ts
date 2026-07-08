@@ -10,9 +10,11 @@ interface BaseFinalChallenge<Challenges, Difficulty extends GameDifficulty> {
 }
 
 export type FinalChallenge =
-  | BaseFinalChallenge<Array<RegionChallenge | LanguageChallenge>, 'easy'>
+  // The opener is a region question on the world board, a leadership
+  // question on continental boards (where the region answers itself)
+  | BaseFinalChallenge<Array<RegionChallenge | LeadershipChallenge | LanguageChallenge>, 'easy'>
   | BaseFinalChallenge<
-      Array<RegionChallenge | MaxChallenge | MinChallenge | LanguageChallenge>,
+      Array<RegionChallenge | LeadershipChallenge | MaxChallenge | MinChallenge | LanguageChallenge>,
       'normal'
     >
   | BaseFinalChallenge<

@@ -23,7 +23,7 @@ import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 const NE_TAG = 'v5.1.2'
 const NE_FILE = 'ne_10m_admin_0_map_units'
 const NE_URL = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${NE_TAG}/geojson/${NE_FILE}.geojson`
-const CACHE_DIR = `${import.meta.dir}/.cache`
+const CACHE_DIR = `${import.meta.dirname}/.cache`
 const CACHE_FILE = `${CACHE_DIR}/${NE_FILE}.geojson`
 const OUT_FILE = 'data/map.gen.ts'
 const OUT_HD_FILE = 'data/map-hd.gen.ts'

@@ -15,7 +15,7 @@ export const startGameHandler = defineGameHandler(
 
     // Generate a new round
     game.rounds.push({
-      groupChallenge: getRoundChallenge({ game }),
+      groupChallenge: await getRoundChallenge({ game }),
       groupAnswers: {},
       playerTurns: {},
     })

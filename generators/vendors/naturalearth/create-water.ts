@@ -24,7 +24,9 @@ import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
 const NE_TAG = 'v5.1.2'
-const CACHE_DIR = `${import.meta.dir}/.cache`
+// import.meta.dirname (Node 20.11+/Bun): typed on ImportMeta, unlike Bun's
+// import.meta.dir which the IDE's TS config doesn't know about
+const CACHE_DIR = `${import.meta.dirname}/.cache`
 const OUT_FILE = 'data/water.gen.ts'
 
 const LAYERS = {
@@ -225,6 +227,12 @@ const sampleAlong = (lines: Point[][], step: number): Point[] => {
   return samples
 }
 
+/** NE geojson exports are inconsistent about property-key casing per layer. */
+const property = (properties: Record<string, unknown>, key: string): string => {
+  const value = properties[key] ?? properties[key.toUpperCase()] ?? properties[key.toLowerCase()]
+  return value === null || value === undefined ? '' : String(value).trim()
+}
+
 const slugify = (name: string) =>
   name
     .toLowerCase()
@@ -258,8 +266,8 @@ const main = async () => {
   const marine = await fetchLayer(LAYERS.marine)
   for (const feature of marine.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const kind = MARINE_KINDS[String(properties.featurecla).toLowerCase()]
-    const name = String(properties.name ?? '').trim()
+    const kind = MARINE_KINDS[property(properties, 'featurecla').toLowerCase()]
+    const name = property(properties, 'name_en') || property(properties, 'name')
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -285,8 +293,8 @@ const main = async () => {
   const lakes = await fetchLayer(LAYERS.lakes)
   for (const feature of lakes.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = String(properties.name ?? '').trim()
-    const scalerank = Number(properties.scalerank ?? 99)
+    const name = property(properties, 'name_en') || property(properties, 'name')
+    const scalerank = Number(property(properties, 'scalerank') || 99)
     if (!name || scalerank > 3) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -313,8 +321,8 @@ const main = async () => {
   const riverSegments = new Map<string, Point[][]>()
   for (const feature of rivers.features as Feature<LineString | MultiLineString>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = String(properties.name ?? '').trim()
-    if (!name || String(properties.featurecla).includes('Lake')) continue
+    const name = property(properties, 'name_en') || property(properties, 'name')
+    if (!name || property(properties, 'featurecla').includes('Lake')) continue
     const projected = asLines(feature.geometry).map(line => decimate(line.map(project), 0.5))
     const bucket = riverSegments.get(name) ?? []
     bucket.push(...projected.filter(line => line.length >= 2))
@@ -323,21 +331,57 @@ const main = async () => {
 
   for (const [name, lines] of riverSegments) {
     if (!lines.length) continue
-    let length = 0
-    for (const line of lines)
-      for (let i = 1; i < line.length; i++)
-        length += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])
-    if (length < MIN_RIVER_LENGTH) continue
 
-    const crossed = countriesContaining(sampleAlong(lines, RIVER_SAMPLE_STEP))
+    // River names collide globally (two Moravas, two Colorados, several
+    // Negros) — segments sharing a name are only the same river if they're
+    // geographically connected. Cluster by proximity and keep the longest
+    // cluster; a question naming two rivers at once is unanswerable.
+    const CLUSTER_GAP = 12
+    const clusters: Point[][][] = []
+    for (const line of lines) {
+      const [lx, ly, lw, lh] = boundsOf([line])
+      const near = clusters.filter(cluster =>
+        cluster.some(member => {
+          const [mx, my, mw, mh] = boundsOf([member])
+          return (
+            lx - CLUSTER_GAP < mx + mw &&
+            mx - CLUSTER_GAP < lx + lw &&
+            ly - CLUSTER_GAP < my + mh &&
+            my - CLUSTER_GAP < ly + lh
+          )
+        })
+      )
+      if (!near.length) {
+        clusters.push([line])
+        continue
+      }
+      // The new segment may bridge several clusters — merge them all
+      near[0].push(line)
+      for (const other of near.slice(1)) {
+        near[0].push(...other)
+        clusters.splice(clusters.indexOf(other), 1)
+      }
+    }
+
+    const lengthOf = (cluster: Point[][]) => {
+      let total = 0
+      for (const line of cluster)
+        for (let i = 1; i < line.length; i++)
+          total += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])
+      return total
+    }
+    const main = clusters.reduce((a, b) => (lengthOf(a) >= lengthOf(b) ? a : b))
+    if (lengthOf(main) < MIN_RIVER_LENGTH) continue
+
+    const crossed = countriesContaining(sampleAlong(main, RIVER_SAMPLE_STEP))
     if (!crossed.length) continue
 
     add({
       id: `river-${slugify(name)}`,
       name,
       kind: 'river',
-      d: pathFromLines(lines),
-      bounds: boundsOf(lines),
+      d: pathFromLines(main),
+      bounds: boundsOf(main),
       countries: crossed,
     })
   }
@@ -346,8 +390,8 @@ const main = async () => {
   const regions = await fetchLayer(LAYERS.regions)
   for (const feature of regions.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const kind = REGION_KINDS[String(properties.featurecla)]
-    const name = String(properties.name ?? properties.name_en ?? '').trim()
+    const kind = REGION_KINDS[property(properties, 'featurecla')]
+    const name = property(properties, 'name_en') || property(properties, 'name')
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)

@@ -24,6 +24,31 @@ const VARIANT_EXTRA_REGIONS: { [variant in GameVariant]?: string[] } = {
 }
 
 /**
+ * Countries that play on more than one continental board despite the single
+ * `region` the dataset stores. Transcontinental states are the honest case:
+ * Russia sits mostly in Asia by our taxonomy but is unmistakably a European
+ * power too, so it appears on both boards.
+ *
+ * This only widens the continental POOLS. The stored `region` is left alone,
+ * so world mode, the "which region is X in?" question, and its validation
+ * (which compare the single stored value) are untouched.
+ */
+const COUNTRY_EXTRA_VARIANTS: { [isoCode in ISOCountryCode]?: GameVariant[] } = {
+  RU: ['europe'], // stored as asia; a European power too
+  TR: ['europe'], // stored as middle-east (→ asia board); straddles the Bosphorus
+  EG: ['asia'], // stored as africa; the Sinai is in Asia, borders IL/PS
+}
+
+/** Does a country belong to a variant's board — by region or by extra membership? */
+export const countryInVariant = (isoCode: ISOCountryCode, variant: GameVariant): boolean => {
+  if (variant === 'world') return true
+  const region = COUNTRIES[isoCode].region
+  if (region === variant) return true
+  if (VARIANT_EXTRA_REGIONS[variant]?.includes(region)) return true
+  return COUNTRY_EXTRA_VARIANTS[isoCode]?.includes(variant) ?? false
+}
+
+/**
  * The countries a game variant plays with. Every dealer draws its subjects
  * from this pool so a Europe game asks about Europe — decoys and neighbour
  * answers may still reach outside it where the question demands (a border
@@ -31,6 +56,5 @@ const VARIANT_EXTRA_REGIONS: { [variant in GameVariant]?: string[] } = {
  */
 export const variantCountries = (variant: GameVariant = 'world'): ISOCountryCode[] => {
   if (variant === 'world') return [...ISOCountryCodes]
-  const regions = new Set<string>([variant, ...(VARIANT_EXTRA_REGIONS[variant] ?? [])])
-  return ISOCountryCodes.filter(isoCode => regions.has(COUNTRIES[isoCode].region))
+  return ISOCountryCodes.filter(isoCode => countryInVariant(isoCode, variant))
 }

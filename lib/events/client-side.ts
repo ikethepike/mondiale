@@ -52,6 +52,7 @@ export const useClientEvents = () => {
     gameStore.map.focus = []
     gameStore.map.focusContext = []
     gameStore.map.tints = {}
+    gameStore.map.feature = undefined
   }
 
   return {

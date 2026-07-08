@@ -6,6 +6,7 @@ import {
   scoreHotCold,
   scoreNeighbourBlitz,
   scoreTraversalSubmission,
+  scoreWaterBlitz,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import {
@@ -90,6 +91,29 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         const correct = eventData.ranking[0] === roundChallenge.country
         answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
+      case 'river-run':
+      case 'shared-shores':
+      case 'highlands': {
+        if (roundChallenge._type !== 'water-blitz-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
+        scoring = scoreWaterBlitz({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'name-that-water': {
+        if (roundChallenge._type !== 'name-water-challenge') throw new TypeError('kind mismatch')
+        // The guessed NAME is validated client-side (it isn't an ISO code);
+        // the scorecard shows the feature's shore countries as the answer
+        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
+        scoring = clampClientScore(
+          eventData.clientScore,
+          roundChallenge.maximumPoints,
+          (eventData.clientScore ?? 0) > 0
+        )
         break
       }
       case 'sketch': {

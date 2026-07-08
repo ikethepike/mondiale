@@ -9,11 +9,14 @@ import {
 } from '~~/types/challenges/group-challenge.type'
 import type {
   HotColdChallenge,
+  NameWaterChallenge,
   NeighbourBlitzChallenge,
   SilhouetteChallenge,
   SketchChallenge,
   StatDetectiveChallenge,
   TwoTruthsChallenge,
+  WaterBlitzChallenge,
+  WaterFeatureKind,
 } from '~~/types/challenges/group-modes.type'
 import type {
   IndividualChallenge,
@@ -55,15 +58,22 @@ const maximumRoundPoints = (game: gameTypes.Game) =>
 
 /** Relative weights for the round mix (after the tutorial-friendly round 1). */
 const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
-  ['ranking', 0.24],
-  ['traversal', 0.16],
-  ['neighbour-blitz', 0.12],
-  ['silhouette', 0.1],
-  ['hot-cold', 0.11],
-  ['sketch', 0.08],
-  ['stat-detective', 0.11],
-  ['two-truths', 0.08],
+  ['ranking', 0.2],
+  ['traversal', 0.13],
+  ['neighbour-blitz', 0.1],
+  ['silhouette', 0.09],
+  ['hot-cold', 0.09],
+  ['sketch', 0.07],
+  ['stat-detective', 0.1],
+  ['two-truths', 0.07],
+  ['river-run', 0.06],
+  ['shared-shores', 0.05],
+  ['name-that-water', 0.04],
+  ['highlands', 0.08],
 ]
+
+/** Round kinds reserved for hard games. */
+const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>(['highlands', 'name-that-water'])
 
 /**
  * Test hook: FORCE_ROUND_TYPE=<kind> makes every round that kind
@@ -78,10 +88,13 @@ const forcedRoundKind = (): RoundChallengeKind | undefined => {
     : undefined
 }
 
-const pickRoundKind = (): RoundChallengeKind => {
-  const total = ROUND_WEIGHTS.reduce((sum, [, weight]) => sum + weight, 0)
+const pickRoundKind = (game: gameTypes.Game): RoundChallengeKind => {
+  const weights = ROUND_WEIGHTS.filter(
+    ([kind]) => game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
+  )
+  const total = weights.reduce((sum, [, weight]) => sum + weight, 0)
   let roll = Math.random() * total
-  for (const [kind, weight] of ROUND_WEIGHTS) {
+  for (const [kind, weight] of weights) {
     roll -= weight
     if (roll <= 0) return kind
   }
@@ -363,15 +376,99 @@ const getTraversalChallenge = ({
 }
 
 /**
+ * Water modes deal from the generated physical-geography dataset. It's a
+ * dynamic import on purpose: only nitro ever runs the dealers, and the
+ * dataset (~½ MB gzipped) must not ride along into client bundles through
+ * this module's other exports. Clients that need geometry lazy-load it too.
+ */
+const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
+  const { WATER_FEATURES } = await import('~~/data/water.gen')
+  const pool = new Set(variantCountries(game.variant))
+
+  return Object.values(WATER_FEATURES).filter(feature => {
+    if (!kinds.includes(feature.kind)) return false
+    // The feature must belong to the board being played: at least two
+    // playable countries on the variant, and not mostly off-map
+    const onBoard = feature.countries.filter(isoCode => pool.has(isoCode))
+    return onBoard.length >= 2 && onBoard.length >= feature.countries.length / 3
+  })
+}
+
+/** More touching countries = a longer clock. */
+const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 6)
+
+const getWaterBlitzChallenge = async (
+  game: gameTypes.Game,
+  kinds: WaterFeatureKind[]
+): Promise<WaterBlitzChallenge | undefined> => {
+  const candidates = (await waterFeaturePool(game, kinds)).filter(
+    feature => feature.countries.length >= (kinds.includes('river') ? 3 : 3)
+  )
+  const feature = candidates[Math.floor(Math.random() * candidates.length)]
+  if (!feature) return undefined
+
+  return {
+    _type: 'water-blitz-challenge',
+    featureId: feature.id,
+    featureName: feature.name,
+    kind: feature.kind,
+    countries: feature.countries,
+    durationSeconds: waterBlitzDuration(feature.countries.length),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+const getNameWaterChallenge = async (
+  game: gameTypes.Game
+): Promise<NameWaterChallenge | undefined> => {
+  const candidates = await waterFeaturePool(game, ['sea', 'lake'])
+  const feature = candidates[Math.floor(Math.random() * candidates.length)]
+  if (!feature) return undefined
+
+  return {
+    _type: 'name-water-challenge',
+    featureId: feature.id,
+    featureName: feature.name,
+    kind: feature.kind,
+    countries: feature.countries,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/** Blitz-family scoring: found ratio scales the pot, wrong guesses bite it. */
+export const scoreWaterBlitz = ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: WaterBlitzChallenge
+  submittedGuesses: ISOCountryCode[]
+}): { scored: number; maximum: number } => {
+  const answers = new Set(challenge.countries)
+  const unique = [...new Set(submittedGuesses)]
+  const correct = unique.filter(isoCode => answers.has(isoCode)).length
+  const wrong = unique.length - correct
+
+  const scored = Math.max(
+    0,
+    Math.round((challenge.maximumPoints * correct) / challenge.countries.length) - wrong
+  )
+  return { scored, maximum: challenge.maximumPoints }
+}
+
+/**
  * Deal the shared challenge for a round: always a ranking challenge for the
  * opening round (it doubles as the tutorial round), then a weighted mix of
  * every group mode. Modes that can't produce a viable prompt fall back to
  * a ranking round.
  */
-export const getRoundChallenge = ({ game }: { game: gameTypes.Game }): RoundChallenge => {
+export const getRoundChallenge = async ({
+  game,
+}: {
+  game: gameTypes.Game
+}): Promise<RoundChallenge> => {
   const forced = forcedRoundKind()
   const isFirstRound = game.rounds.length === 0
-  const kind = forced ?? (isFirstRound ? 'ranking' : pickRoundKind())
+  const kind = forced ?? (isFirstRound ? 'ranking' : pickRoundKind(game))
 
   switch (kind) {
     case 'traversal': {
@@ -397,6 +494,26 @@ export const getRoundChallenge = ({ game }: { game: gameTypes.Game }): RoundChal
     }
     case 'two-truths': {
       const challenge = getTwoTruthsChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'river-run': {
+      const challenge = await getWaterBlitzChallenge(game, ['river'])
+      if (challenge) return challenge
+      break
+    }
+    case 'shared-shores': {
+      const challenge = await getWaterBlitzChallenge(game, ['sea', 'lake'])
+      if (challenge) return challenge
+      break
+    }
+    case 'highlands': {
+      const challenge = await getWaterBlitzChallenge(game, ['range', 'desert', 'plateau'])
+      if (challenge) return challenge
+      break
+    }
+    case 'name-that-water': {
+      const challenge = await getNameWaterChallenge(game)
       if (challenge) return challenge
       break
     }
@@ -747,9 +864,15 @@ const LEADER_TITLE_NOISE = new Set([
   'minister',
   'chancellor',
   'taoiseach',
+  'interim',
+  'caretaker',
+  'transition',
+  'transitional',
+  'general',
+  'leader',
 ])
 
-/** Name tokens robust to titles, diacritics and spelling drift. */
+/** Name tokens robust to titles, diacritics and punctuation. */
 const leaderNameTokens = (name: string) =>
   name
     .toLowerCase()
@@ -758,26 +881,66 @@ const leaderNameTokens = (name: string) =>
     .split(/[^a-z]+/)
     .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
 
+/** Small-budget edit distance — enough to catch transliteration drift. */
+const editDistance = (a: string, b: string, budget: number): number => {
+  if (Math.abs(a.length - b.length) > budget) return budget + 1
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i]
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      )
+    }
+    previous = current
+  }
+  return previous[b.length]
+}
+
+/** Same name? Tokens match fuzzily: Christodoulidis≈Christodoulides, Tiani≈Tchiani. */
+const namesOverlap = (a: string, b: string): boolean => {
+  const aTokens = leaderNameTokens(a)
+  const bTokens = leaderNameTokens(b)
+  return aTokens.some(tokenA =>
+    bTokens.some(tokenB => {
+      const budget = Math.min(tokenA.length, tokenB.length) >= 6 ? 2 : 1
+      return editDistance(tokenA, tokenB, budget) <= budget
+    })
+  )
+}
+
 /**
- * The face to quiz on. Wikidata gives both a head of state and a head of
- * government; the factbook's `government.leader` string is the editorial
- * pick of who "the leader" is (Frederiksen over Frederik X, but Macron over
- * his PM) — prefer whichever role matches it, then fall back sensibly.
+ * The face to quiz on — always the POLITICAL leader, never a ceremonial
+ * figurehead by accident. Selection order:
+ *  1. The role whose name matches the factbook's `government.leader`
+ *     (fuzzy — transliterations drift between sources).
+ *  2. The role the factbook's TITLE names ("Prime Minister…" → government,
+ *     "President/King…" → state) — covers elections the factbook snapshot
+ *     already reflects but Wikidata phrases differently.
+ *  3. Head of government. When the sources disagree entirely (a fresh
+ *     election one of them missed), the head of government is the political
+ *     office by construction; defaulting to head of state was how Thailand
+ *     dealt its king and Tuvalu dealt Charles III.
  */
 const portraitFor = (isoCode: ISOCountryCode) => {
   const entry = LEADERS[isoCode]
-  const candidates = [entry?.headOfState, entry?.headOfGovernment].filter(
-    (role): role is NonNullable<typeof role> => !!role?.image
-  )
-  if (!candidates.length) return undefined
+  const state = entry?.headOfState?.image ? entry.headOfState : undefined
+  const government = entry?.headOfGovernment?.image ? entry.headOfGovernment : undefined
+  if (!state && !government) return undefined
 
-  const factbookTokens = new Set(leaderNameTokens(COUNTRIES[isoCode].government?.leader ?? ''))
-  const named = candidates.find(role =>
-    leaderNameTokens(role.name).some(token => factbookTokens.has(token))
-  )
+  const factbookLeader = COUNTRIES[isoCode].government?.leader ?? ''
 
-  const leader = named ?? candidates[0]
-  return leader.image ? { image: leader.image, name: leader.name } : undefined
+  const named = [state, government].find(role => role && namesOverlap(role.name, factbookLeader))
+  const byTitle = /prime minister|chancellor|taoiseach|premier/i.test(factbookLeader)
+    ? government
+    : /president|king|queen|emir|sultan|emperor|pope/i.test(factbookLeader)
+      ? state
+      : undefined
+
+  const leader = named ?? byTitle ?? government ?? state
+  return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
 /** Leader-portrait: whose face is this? Decoys prefer the same region. */
