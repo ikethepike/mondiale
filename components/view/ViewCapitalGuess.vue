@@ -171,9 +171,18 @@ header {
   gap: 1.6rem;
 }
 
+// The photo is the hero of this round, so it can breathe more than the gate's
+// stage. Scales fluidly with the viewport between a floor and a larger ceiling.
 .photo-stage {
-  width: min(44rem, 88vw);
-  height: min(28rem, 44vh);
+  width: clamp(30rem, 70vw, 54rem);
+  height: clamp(22rem, 40vh, 38rem);
+}
+
+@media (max-width: 640px) {
+  .photo-stage {
+    width: min(94vw, 54rem);
+    height: min(42vh, 38rem);
+  }
 }
 
 .live-guesses {

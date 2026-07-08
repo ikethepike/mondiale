@@ -47,16 +47,20 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 
 // A consistent stage that any photo aspect ratio sits inside cleanly;
 // ZoomableImage renders the framed, zoom/pan-able photo within.
+// Fluidly sized hero: grows with the viewport between a comfortable floor and a
+// slightly larger ceiling, so it scales smoothly instead of snapping at a
+// breakpoint. Shares the screen with the option cards below, so height is
+// capped against the viewport.
 .photo-stage {
   margin-top: 0.6rem;
-  width: min(38rem, 86vw);
-  height: min(26rem, 42vh);
+  width: clamp(28rem, 62vw, 46rem);
+  height: clamp(20rem, 34vh, 32rem);
 }
 
 @media (max-width: 640px) {
   .photo-stage {
-    width: 92vw;
-    height: 34vh;
+    width: min(94vw, 46rem);
+    height: min(38vh, 32rem);
   }
 }
 
