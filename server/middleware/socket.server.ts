@@ -1,7 +1,6 @@
 import { Redis } from '@upstash/redis'
 import { Server } from 'socket.io'
-import type { DefaultEventsMap, Socket } from 'socket.io'
-import { enqueueGameTask } from '~~/lib/events/server-side'
+import { enqueueGameTask, type GameServer, type GameSocket } from '~~/lib/events/server-side'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
 import { joinEventHandler } from '~~/lib/events/server/join.event'
@@ -21,8 +20,8 @@ export type EventHandler = (configuration: {
   eventKey: ClientEvent
   eventData: ClientEventData
   eventTarget: ClientEventTarget
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  socket: GameSocket
+  io: GameServer
 }) => void
 
 const SERVER_SIDE_EVENT_HANDLERS: {
@@ -81,18 +80,30 @@ export default defineEventHandler(({ node }) => {
     })
 
     // Create a new Socket.IO server only if it doesn't already exist
-    const io = new Server((node.res.socket as any).server)
+    const io: GameServer = new Server((node.res.socket as any).server)
     io.on('connection', async socket => {
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
-        socket.on(eventKey, (eventData, eventTarget) => {
+        socket.on(eventKey, (eventData: ClientEventData, eventTarget: ClientEventTarget) => {
           console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
           if (!eventTarget?.gameId) return
+
+          // Authorization: `join` establishes the socket→player binding; every
+          // other event must target the SAME player this socket claimed on
+          // join. This is the one chokepoint that stops a client forging
+          // another player's actions (server-originated re-entries call the
+          // handler functions directly and never pass through here).
+          if (eventKey !== 'join' && eventTarget.playerId !== socket.data.playerId) {
+            console.warn(
+              `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
+            )
+            return
+          }
 
           return enqueueGameTask(eventTarget.gameId, () =>
             configuration.handler({
               io,
-              redis,
               socket,
+              redis,
               eventData,
               eventTarget,
               eventKey: eventKey as ClientEvent,

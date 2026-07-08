@@ -14,6 +14,19 @@ import type { Redis } from '@upstash/redis'
 const TWO_DAYS_IN_SECONDS = 172800
 
 /**
+ * Per-socket data set on join. `playerId` binds the socket to the player it
+ * may act as — the dispatch layer rejects events whose eventTarget claims a
+ * different id, closing the forge-any-player hole.
+ */
+export interface SocketData {
+  playerId?: string
+  gameId?: string
+}
+
+export type GameSocket = Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>
+export type GameServer = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>
+
+/**
  * Handlers read-modify-write the whole game to Redis, so two of them running
  * concurrently for the same game clobber each other's saves. One process
  * serves all games — a per-game promise chain fully serializes them. Pacing
@@ -37,8 +50,8 @@ export const useServerSideEvents = ({
   redis,
 }: {
   redis: Redis
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  socket: GameSocket
+  io: GameServer
 }) => {
   return {
     emit(eventData: ServerEventData, eventTarget: ClientEventTarget) {
@@ -70,8 +83,8 @@ export interface GameHandlerContext<E extends ClientEvent> {
   eventData: Extract<ClientEventData, { event: E }>
   eventTarget: ClientEventTarget
   redis: Redis
-  socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, unknown>
+  socket: GameSocket
+  io: GameServer
 }
 
 /**

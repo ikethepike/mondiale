@@ -18,6 +18,10 @@ export interface Game {
   variant: GameVariant
   difficulty: GameDifficulty
   players: { [playerId: string]: Player }
+  /** Set while a new round has been staged (pushed to `rounds`) but its settle
+   *  pause hasn't elapsed yet. Guards the staging + reveal so each fires once
+   *  even though the movement handler re-enters itself across the pause. */
+  pendingRoundStart?: boolean
 }
 
 export const gameDifficulties = ['easy', 'normal', 'hard'] as const

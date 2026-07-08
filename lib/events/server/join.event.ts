@@ -98,6 +98,14 @@ export const joinEventHandler: EventHandler = async ({
   }
 
   await socket.join(gameId)
+
+  // Bind this socket to the player id it just claimed. The dispatch layer
+  // rejects any later event whose eventTarget.playerId doesn't match, so one
+  // client can't forge another player's actions (rename, recolor, score,
+  // move, knock out). `join` is the only handler allowed to establish this.
+  socket.data.playerId = eventTarget.playerId
+  socket.data.gameId = gameId
+
   await server.updateGameState(game)
 
   server.emit({ event: 'player-joined', game }, eventTarget)

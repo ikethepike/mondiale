@@ -9,6 +9,11 @@ export interface Player {
   moves: PlayerMove[]
   currentPosition: number
   completedAtRound?: number
+  /** Idempotency latch for challenge answers: set when an answer is accepted,
+   *  cleared once the player leaves the result beat (walk resumes / next gate).
+   *  Rejects a duplicate submitted during the 5s reveal pause so it can't be
+   *  applied against a shifted move. See submit-*-challenge-answer handlers. */
+  resolving?: boolean
 }
 
 export type PlayerPhase =

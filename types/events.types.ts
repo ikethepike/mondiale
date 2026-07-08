@@ -40,6 +40,10 @@ export type ClientEventData =
     }
   | {
       event: 'enter-movement-phase'
+      /** Server-only: marks a walk's own rescheduled step so the duplicate
+       *  guard lets it through. Never sent by clients (they bypass no guard by
+       *  setting it — Fix #1 binds the socket to its own playerId). */
+      continuation?: boolean
     }
   | {
       event: 'update-by-index'
