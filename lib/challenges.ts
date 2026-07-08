@@ -802,6 +802,28 @@ const dealBorderDetective = (
   return { country, neighbours: shuffleArray(neighbours) }
 }
 
+/**
+ * Money-match (hard only): "Which country uses the ¥?" — pick the country whose
+ * currency the hero shows. Decoys must use a DIFFERENT currency so there's
+ * exactly one right answer (the Euro-zone shares EUR across 27 countries, so a
+ * naive pick could have several correct options).
+ */
+const dealMoneyMatch = (
+  pool: ISOCountryCode[]
+): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
+  const subject = shuffleArray(pool).find(isoCode => !!COUNTRIES[isoCode].currency)
+  if (!subject) return undefined
+  const currency = COUNTRIES[subject].currency
+
+  const decoys = pickDecoys(subject, pool, 3, {
+    preferRegion: true,
+    eligible: isoCode => !!COUNTRIES[isoCode].currency && COUNTRIES[isoCode].currency !== currency,
+  })
+  if (!decoys) return undefined
+
+  return { country: subject, options: shuffleArray([subject, ...decoys]) }
+}
+
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
@@ -1113,6 +1135,10 @@ export const getIndividualChallenge = ({
         const dealt = dealBorderDetective(pool)
         return dealt ? { ...base, variant: 'border-detective', ...dealt } : base
       }
+      case 'money-match': {
+        const dealt = dealMoneyMatch(pool)
+        return dealt ? { ...base, variant: 'money-match', ...dealt } : base
+      }
       case 'odd-one-out': {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
@@ -1171,6 +1197,11 @@ export const getIndividualChallenge = ({
       break
     }
     case 'capital.name': {
+      // Money-match is a hard-only twist on this "knowledge" tile.
+      if (difficulty === 'hard' && roll < 0.2) {
+        const dealt = dealMoneyMatch(pool)
+        if (dealt) return { ...base, variant: 'money-match', ...dealt }
+      }
       if (roll < 0.25) {
         const dealt = dealHigherLower(difficulty, pool)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }

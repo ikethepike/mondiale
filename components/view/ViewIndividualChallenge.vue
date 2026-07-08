@@ -79,6 +79,27 @@
             </div>
           </template>
 
+          <!-- Money match (hard): which country spends this currency? -->
+          <template v-else-if="variant === 'money-match'">
+            <h1 class="map-caption">Which country uses this currency?</h1>
+            <div class="money-hero" aria-hidden="true">
+              <span class="money-symbol">{{ currencySymbol(getCountry(challenge.country).currency) }}</span>
+              <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
+            </div>
+            <div class="options card-options">
+              <button
+                v-for="option in challenge.options"
+                :key="option"
+                class="option card-option"
+                type="button"
+                @click="submitAnswer(option)"
+              >
+                <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+                <span>{{ countryName(option) }}</span>
+              </button>
+            </div>
+          </template>
+
           <!-- Odd one out -->
           <template v-else-if="variant === 'odd-one-out' && challenge.oddOneOut">
             <h1 class="map-caption">{{ challenge.oddOneOut.propertyLabel }}</h1>
@@ -211,6 +232,7 @@ import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { currencySymbol } from '~~/lib/currency'
 import { politicalLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { prefersReducedMotion } from '~~/lib/motion'
@@ -256,6 +278,8 @@ const interstitialTitle = computed(() => {
       return `Spot ${countryName(active.country)} among its palette twins`
     case 'border-detective':
       return 'Name the country these neighbours surround'
+    case 'money-match':
+      return 'Which country spends this currency?'
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -431,6 +455,8 @@ const incorrectMessage = computed(() => {
       return picked ? `That's ${countryName(picked)} — a close twin` : 'Not that one.'
     case 'border-detective':
       return active ? `It was ${countryName(active.country)}` : 'Not quite.'
+    case 'money-match':
+      return active ? `That's the ${getCountry(active.country).currency}` : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -714,6 +740,35 @@ header {
   }
   .ring-center {
     font-size: 3rem;
+  }
+}
+
+// Money match: the currency glyph IS the question — big and editorial.
+.money-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.6rem 0 0.4rem;
+
+  .money-symbol {
+    font-size: 8rem;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--dark-blue);
+    font-family: 'Lusitana', serif;
+  }
+  .money-code {
+    font-size: 1.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--soft-blue);
+  }
+}
+
+@media (max-width: 640px) {
+  .money-hero .money-symbol {
+    font-size: 6rem;
   }
 }
 
