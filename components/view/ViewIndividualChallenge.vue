@@ -174,6 +174,16 @@
             @pick="submitAnswer"
           />
 
+          <!-- Which country is this landmark in? (photo) -->
+          <PhotoOptionChallenge
+            v-else-if="variant === 'landmark-quiz' && challenge.image && challenge.options"
+            :image="challenge.image"
+            caption="Which country is this landmark in?"
+            :options="challenge.options"
+            alt="A famous landmark"
+            @pick="submitAnswer"
+          />
+
           <!-- Outline reveal race (hard): name it before the border completes -->
           <template v-else-if="variant === 'outline-reveal'">
             <h1 class="map-caption">Whose border is drawing itself?</h1>
@@ -298,6 +308,8 @@ const interstitialTitle = computed(() => {
       return 'Name the country before the map zooms out'
     case 'capital-match':
       return "Which country's capital is this?"
+    case 'landmark-quiz':
+      return 'Which country is this landmark in?'
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -504,6 +516,10 @@ const incorrectMessage = computed(() => {
     case 'capital-match':
       return active
         ? `That's ${getCountry(active.country).geography.capital.name}, ${countryName(active.country)}`
+        : 'Not quite.'
+    case 'landmark-quiz':
+      return active?.landmark
+        ? `That's the ${active.landmark.name}${active.landmark.city ? `, ${active.landmark.city}` : ''} — ${countryName(active.country)}`
         : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
@@ -719,6 +735,14 @@ header {
     transform: translateY(-0.3rem);
     border-color: var(--dark-blue);
   }
+}
+
+// The flag box derives its width from its 3:2 aspect-ratio + fixed height, so
+// it's narrower than the card — center it rather than letting it sit left.
+.flag-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .flag-option .option-flag {

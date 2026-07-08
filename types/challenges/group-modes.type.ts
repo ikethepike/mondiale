@@ -97,6 +97,9 @@ export interface CapitalGuessChallenge {
   country: ISOCountryCode
   /** The capital skyline photo (public path). */
   image: string
+  /** Multiple-choice options (includes `country`) — offered outside hard mode,
+   *  where players free-type instead. */
+  options?: ISOCountryCode[]
   durationSeconds: number
   maximumPoints: number
 }

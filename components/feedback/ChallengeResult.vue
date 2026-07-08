@@ -2,13 +2,17 @@
   <header class="challenge-result" :class="status">
     <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
     <h1 ref="heading" class="map-caption">{{ message }}</h1>
-    <!-- The teachable moment: the actual facts behind the verdict -->
-    <p v-if="$slots.default" class="lesson map-caption">
+    <!-- The teachable moment: the actual facts behind the verdict. Gate on
+         rendered content, not just slot presence — the slotted reveals are
+         themselves v-if'd, so $slots.default is truthy even when it renders
+         nothing, which would leave an empty pill behind. -->
+    <p v-if="hasLesson" class="lesson map-caption">
       <slot />
     </p>
   </header>
 </template>
 <script lang="ts" setup>
+import { Comment, Text } from 'vue'
 import { gsap } from 'gsap'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import ContourRipple from './ContourRipple.vue'
@@ -31,6 +35,20 @@ const props = defineProps({
 })
 
 const message = computed(() => (props.status === 'correct' ? 'Correct!' : props.incorrectMessage))
+
+// Whether the slot renders any real content. $slots.default is always truthy
+// when the parent supplies slot markup, but the slotted reveals are v-if'd —
+// so we inspect the produced VNodes and ignore comment placeholders (from
+// v-if) and whitespace-only text, which otherwise leave an empty lesson pill.
+const slots = useSlots()
+const hasLesson = computed(() => {
+  const nodes = slots.default?.() ?? []
+  return nodes.some((node) => {
+    if (node.type === Comment) return false
+    if (node.type === Text) return String(node.children).trim() !== ''
+    return true
+  })
+})
 
 const heading = ref<HTMLElement>()
 

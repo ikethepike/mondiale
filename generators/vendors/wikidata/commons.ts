@@ -100,6 +100,30 @@ export const resolveQidBySearch = async (
   return hits[0]
 }
 
+interface ImageInfoResponse {
+  query?: {
+    pages?: { [pageId: string]: { imageinfo?: { width?: number; height?: number }[] } }
+  }
+}
+
+/**
+ * The SOURCE pixel dimensions of a Commons file. Lets a generator reject
+ * low-resolution images (a tiny original scaled up looks bad in a photo quiz).
+ * Returns undefined if unknown.
+ */
+export const fetchImageDimensions = async (
+  file: string
+): Promise<{ width: number; height: number } | undefined> => {
+  const data = await fetchJson<ImageInfoResponse>(
+    `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
+      `File:${file}`
+    )}&prop=imageinfo&iiprop=size&format=json`
+  )
+  const info = Object.values(data?.query?.pages ?? {})[0]?.imageinfo?.[0]
+  if (info?.width && info?.height) return { width: info.width, height: info.height }
+  return undefined
+}
+
 export const EXTENSION_BY_CONTENT_TYPE: { [contentType: string]: string } = {
   'image/jpeg': 'jpg',
   'image/png': 'png',

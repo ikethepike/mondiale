@@ -46,6 +46,8 @@ export interface IndividualChallenge {
   /** capital-match / photo gates: a photo (capital skyline, landmark) whose
    *  country the player names from `options`. */
   image?: string
+  /** landmark-quiz: the landmark's name + city, revealed after answering. */
+  landmark?: { name: string; city?: string }
 }
 
 export const individualChallengeVariants = [
@@ -56,6 +58,7 @@ export const individualChallengeVariants = [
   'money-match',
   'zoom-out',
   'capital-match',
+  'landmark-quiz',
   'odd-one-out',
   'higher-lower',
   'leader-pick',

@@ -74,18 +74,19 @@
 
               <template v-if="player.id === playerId">
                 <svg class="you-arrow" viewBox="0 0 60 70" fill="none" aria-hidden="true">
-                  <!-- Arced shaft sweeping from the label down onto the pawn -->
+                  <!-- Arced shaft sweeping from the label down onto the pawn,
+                       ending on a vertical tangent so it arrives straight down -->
                   <path
-                    d="M8 8C34 2 56 18 44 44c-2.5 5.5-7 10-13 14"
+                    d="M6 9C36 0 54 22 36 44 32.5 48.2 30.5 51.5 30 57"
                     stroke="currentColor"
                     stroke-width="3.4"
                     stroke-linecap="round"
                     fill="none"
                   />
-                  <!-- Arrowhead: a clean open V aligned to the curve's tangent
-                       (arriving down-and-left), both strokes meeting at the tip -->
+                  <!-- Arrowhead: an open V pointing straight down, tip meeting
+                       the shaft's end, barbs splayed evenly up-and-out -->
                   <path
-                    d="M22 56l9 2 1.5-9.5"
+                    d="M23.5 50.5 30 58.5 36.5 50.5"
                     stroke="currentColor"
                     stroke-width="3.4"
                     stroke-linecap="round"
@@ -345,14 +346,17 @@ h1 {
   }
 }
 
-// The arced "this is you!" pointer over your pawn
+// The arced "this is you!" pointer over your pawn. The SVG's horizontal
+// centre (viewBox x=30 of 60, where the arrowhead tip sits) is aligned to the
+// pawn's centre so the tip lands squarely on the head.
 .you-arrow {
-  top: -3.9rem;
-  left: 0.4rem;
+  top: -3.6rem;
+  left: 50%;
   width: 3.4rem;
   height: 4rem;
   position: absolute;
   pointer-events: none;
+  transform: translateX(-50%);
   color: var(--soft-blue);
 }
 

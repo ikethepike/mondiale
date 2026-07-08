@@ -1,6 +1,7 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
@@ -488,10 +489,19 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   const pool = variantCountries(game.variant)
   const country = shuffleArray(pool).find(isoCode => !!CAPITALS[isoCode]?.image)
   if (!country) return undefined
+
+  // Outside hard mode, offer multiple-choice flag options; hard mode free-types.
+  let options: ISOCountryCode[] | undefined
+  if (game.difficulty !== 'hard') {
+    const decoys = pickDecoys(country, pool, 3, { preferRegion: true })
+    if (decoys) options = shuffleArray([country, ...decoys])
+  }
+
   return {
     _type: 'capital-guess-challenge',
     country,
     image: CAPITALS[country]!.image!,
+    options,
     durationSeconds: 30,
     maximumPoints: maximumRoundPoints(game),
   }
@@ -965,6 +975,41 @@ const dealCapitalMatch = (
   return { country: subject, image, options: shuffleArray([subject, ...decoys]) }
 }
 
+/**
+ * Landmark-quiz (photo): "Which country is this landmark in?" — an iconic
+ * landmark photo with four flag options. Picks a random curated landmark;
+ * decoys prefer the same region. The name + city are carried for the reveal.
+ */
+const dealLandmarkQuiz = (
+  pool: ISOCountryCode[]
+):
+  | {
+      country: ISOCountryCode
+      image: string
+      options: ISOCountryCode[]
+      landmark: { name: string; city?: string }
+    }
+  | undefined => {
+  const entries = Object.values(LANDMARKS)
+  if (!entries.length) return undefined
+
+  // Prefer a landmark whose country is on the board; else any (widen to world).
+  const onBoard = new Set(pool)
+  const preferred = shuffleArray(entries.filter(entry => onBoard.has(entry.country)))
+  const landmark = preferred[0] ?? shuffleArray(entries)[0]
+  if (!landmark) return undefined
+
+  const decoys = pickDecoys(landmark.country, pool, 3, { preferRegion: true })
+  if (!decoys) return undefined
+
+  return {
+    country: landmark.country,
+    image: landmark.image,
+    options: shuffleArray([landmark.country, ...decoys]),
+    landmark: { name: landmark.name, ...(landmark.city ? { city: landmark.city } : {}) },
+  }
+}
+
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
@@ -1309,6 +1354,11 @@ export const getIndividualChallenge = ({
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
         break
       }
+      case 'landmark-quiz': {
+        const dealt = dealLandmarkQuiz(pool)
+        if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -1335,14 +1385,18 @@ export const getIndividualChallenge = ({
       if (difficulty === 'hard' && roll < 0.25) {
         return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
       }
-      if (roll < 0.4) {
+      if (roll < 0.35) {
         return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool) }
       }
-      if (roll < 0.65) {
+      if (roll < 0.55) {
+        const dealt = dealLandmarkQuiz(pool)
+        if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
+      }
+      if (roll < 0.75) {
         const dealt = dealBorderDetective(pool)
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
-      if (roll < 0.8) {
+      if (roll < 0.9) {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }

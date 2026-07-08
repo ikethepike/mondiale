@@ -44,7 +44,23 @@
           :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
         />
       </div>
+
+      <!-- Non-hard mode: pick from four flag options. Hard mode: free-type. -->
+      <div v-if="challenge.options" class="options card-options">
+        <button
+          v-for="option in challenge.options"
+          :key="option"
+          class="option card-option"
+          type="button"
+          :disabled="submitted || !started"
+          @click="onGuess(getCountry(option))"
+        >
+          <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+          <span>{{ countryName(option) }}</span>
+        </button>
+      </div>
       <CountryGuessInput
+        v-else
         ref="guessInput"
         :disabled="submitted || !started"
         placeholder="Name the country…"
@@ -55,10 +71,11 @@
   </div>
 </template>
 <script lang="ts" setup>
+import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
-import { countryName } from '~~/lib/country'
+import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
 
@@ -241,6 +258,49 @@ footer {
   height: 100%;
   background: var(--soft-blue);
   transition: width 1s linear;
+}
+
+.card-options {
+  gap: 1.4rem;
+  display: grid;
+  pointer-events: auto;
+  grid-template-columns: repeat(2, minmax(14rem, 20rem));
+}
+.card-option {
+  cursor: pointer;
+  padding: 1rem;
+  gap: 0.8rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+  border-radius: 1.2rem;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  transition:
+    transform var(--motion-quick) var(--ease-out-expressive),
+    border-color var(--motion-quick) var(--ease-out-expressive);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-0.3rem);
+    border-color: var(--dark-blue);
+  }
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .option-flag {
+    width: 100%;
+    height: 6rem;
+    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  }
+}
+@media (max-width: 640px) {
+  .card-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .guess-enter-from {
