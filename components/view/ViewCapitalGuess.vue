@@ -1,0 +1,256 @@
+<template>
+  <div v-if="challenge" class="capital-guess">
+    <Interstitial
+      v-if="showInterstitial"
+      tone="info"
+      :kicker="`Round ${currentRound?.number ?? 1} — Capital Guess`"
+      title="What capital is this?"
+      stakes="Name the country from its capital's skyline before the clock runs out. First correct guess wins the points."
+      @done="start"
+    />
+
+    <header>
+      <div class="prompt">
+        <h1 class="map-caption">Which country's capital is this?</h1>
+        <span class="map-caption sub">{{ secondsLeft }}s left</span>
+        <Transition name="caption">
+          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
+        </Transition>
+      </div>
+    </header>
+
+    <section class="stage">
+      <!-- Adaptive photo stage — any aspect ratio, never cropped -->
+      <div class="photo-stage">
+        <template v-if="!broken">
+          <div class="photo-backdrop" :style="{ backgroundImage: `url('${challenge.image}')` }" aria-hidden="true" />
+          <img class="photo" :src="challenge.image" alt="A capital city" @error="broken = true" />
+        </template>
+        <div v-else class="photo-missing" aria-hidden="true">?</div>
+      </div>
+
+      <TransitionGroup tag="ul" name="guess" class="live-guesses">
+        <li v-for="[playerId, iso] in opponentGuesses" :key="playerId" class="live-guess">
+          <PlayerPawn v-if="playerFor(playerId)" class="guess-pawn" :player="playerFor(playerId)!" />
+          <span class="guess-name">{{ countryName(iso) }}</span>
+        </li>
+      </TransitionGroup>
+    </section>
+
+    <footer>
+      <div class="timer-track" aria-hidden="true">
+        <div
+          class="timer-fill"
+          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
+        />
+      </div>
+      <CountryGuessInput
+        ref="guessInput"
+        :disabled="submitted || !started"
+        placeholder="Name the country…"
+        @guess="onGuess"
+        @miss="flashHint('No country by that name')"
+      />
+    </footer>
+  </div>
+</template>
+<script lang="ts" setup>
+import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import Interstitial from '~/components/feedback/Interstitial.vue'
+import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import { countryName } from '~~/lib/country'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { Country } from '~~/types/geography.types'
+
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  begin,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+  update,
+} = useGroupChallenge('capital-guess-challenge')
+
+const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+const broken = ref(false)
+
+const opponentGuesses = computed(() => Object.entries(gameStore.map.liveGuesses))
+const playerFor = (playerId: string) => gameStore.game?.players[playerId]
+
+const submitRound = (correct: boolean) => {
+  if (submitted.value) return
+  gameStore.map.status = correct ? 'correct' : undefined
+  submitOnce(
+    correct && challenge.value ? [challenge.value.country] : [],
+    correct ? challenge.value?.maximumPoints ?? 0 : 0
+  )
+}
+
+const start = () => {
+  begin({ onTimeout: () => submitRound(false) })
+  nextTick(() => guessInput.value?.focus())
+}
+
+const hint = ref('')
+let hintTimer: ReturnType<typeof setTimeout> | undefined
+const flashHint = (text: string) => {
+  hint.value = text
+  if (hintTimer) clearTimeout(hintTimer)
+  hintTimer = setTimeout(() => (hint.value = ''), 2000)
+}
+registerCleanup(() => hintTimer && clearTimeout(hintTimer))
+
+const onGuess = (country: Country) => {
+  const active = challenge.value
+  if (!active || submitted.value || !started.value) return
+  update({ event: 'player-guessing', isoCode: country.isoCode })
+  if (country.isoCode === active.country) submitRound(true)
+  else flashHint(`${countryName(country)} — not it`)
+}
+</script>
+<style lang="scss" scoped>
+.capital-guess {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  position: absolute;
+  flex-flow: column nowrap;
+  justify-content: space-between;
+}
+
+header {
+  z-index: 2;
+  width: 100%;
+  text-align: center;
+  padding: 2rem 4rem;
+
+  h1 {
+    margin: 0;
+    font-size: 3.2rem;
+  }
+  .sub,
+  .hint {
+    padding: 0.4rem 1.4rem;
+  }
+  .hint {
+    color: var(--hior-ange);
+  }
+  .prompt {
+    gap: 1rem;
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+  }
+}
+
+.stage {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.photo-stage {
+  position: relative;
+  overflow: hidden;
+  width: min(44rem, 88vw);
+  height: min(28rem, 44vh);
+  border-radius: 1.2rem;
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  background: hsla(215.7, 76.4%, 21.6%, 0.06);
+}
+.photo-backdrop {
+  position: absolute;
+  inset: -2rem;
+  background-size: cover;
+  background-position: center;
+  filter: blur(1.6rem) brightness(0.7);
+  transform: scale(1.1);
+}
+.photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+}
+.photo-missing {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  color: hsla(215.7, 76.4%, 21.6%, 0.3);
+}
+
+.live-guesses {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+  min-height: 3rem;
+}
+.live-guess {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  font-size: 1.3rem;
+  background: hsla(0, 0%, 100%, 0.55);
+  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.15);
+
+  .guess-pawn {
+    width: 1.4rem;
+    height: 1.8rem;
+  }
+}
+
+footer {
+  z-index: 2;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+}
+
+.timer-track {
+  width: 100%;
+  max-width: 46rem;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: hsla(215.7, 76.4%, 21.6%, 0.12);
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  background: var(--soft-blue);
+  transition: width 1s linear;
+}
+
+.guess-enter-from {
+  opacity: 0;
+  transform: translateY(0.6rem) scale(0.9);
+}
+.guess-enter-active,
+.guess-move {
+  transition:
+    opacity var(--motion-quick) var(--ease-out-expressive),
+    transform var(--motion-quick) var(--ease-out-expressive);
+}
+</style>

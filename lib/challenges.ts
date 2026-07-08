@@ -10,6 +10,7 @@ import {
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
 import type {
+  CapitalGuessChallenge,
   FlagPaletteChallenge,
   HotColdChallenge,
   MotherTongueChallenge,
@@ -77,6 +78,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['highlands', 0.08],
   ['mother-tongue', 0.09],
   ['flag-palette', 0.08],
+  ['capital-guess', 0.08],
 ]
 
 /** Round kinds reserved for hard games. */
@@ -478,6 +480,24 @@ const getMotherTongueChallenge = (
 }
 
 /**
+ * Capital-guess: show a capital-city skyline photo and name the country (live
+ * guesses shown). Deals only where a capital photo exists. Client-scored
+ * all-or-nothing like flag-palette/silhouette.
+ */
+const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge | undefined => {
+  const pool = variantCountries(game.variant)
+  const country = shuffleArray(pool).find(isoCode => !!CAPITALS[isoCode]?.image)
+  if (!country) return undefined
+  return {
+    _type: 'capital-guess-challenge',
+    country,
+    image: CAPITALS[country]!.image!,
+    durationSeconds: 30,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/**
  * Flag-palette: show a flag's raw colour swatches (no flag) and name the
  * country. Picks a country with a distinctive palette — enough colours that the
  * swatches aren't hopelessly ambiguous (a bare red+white could be dozens of
@@ -613,6 +633,11 @@ export const getRoundChallenge = async ({
     }
     case 'flag-palette': {
       const challenge = getFlagPaletteChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'capital-guess': {
+      const challenge = getCapitalGuessChallenge(game)
       if (challenge) return challenge
       break
     }

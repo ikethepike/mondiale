@@ -91,6 +91,16 @@ export interface WaterBlitzChallenge {
   maximumPoints: number
 }
 
+/** A capital-city photo is shown — name the country (live guesses). */
+export interface CapitalGuessChallenge {
+  _type: 'capital-guess-challenge'
+  country: ISOCountryCode
+  /** The capital skyline photo (public path). */
+  image: string
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** Only a flag's colour swatches are shown — name the country (live guesses). */
 export interface FlagPaletteChallenge {
   _type: 'flag-palette-challenge'
@@ -133,3 +143,4 @@ export type GroupModeChallenge =
   | NameWaterChallenge
   | MotherTongueChallenge
   | FlagPaletteChallenge
+  | CapitalGuessChallenge

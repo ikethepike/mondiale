@@ -121,6 +121,13 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
         break
       }
+      case 'capital-guess': {
+        if (roundChallenge._type !== 'capital-guess-challenge') throw new TypeError('kind mismatch')
+        const correct = eventData.ranking[0] === roundChallenge.country
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
       case 'name-that-water': {
         if (roundChallenge._type !== 'name-water-challenge') throw new TypeError('kind mismatch')
         // The guessed NAME is validated client-side (it isn't an ISO code);

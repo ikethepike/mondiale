@@ -54,6 +54,7 @@ export type RoundChallengeKind =
   | 'name-that-water'
   | 'mother-tongue'
   | 'flag-palette'
+  | 'capital-guess'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (
@@ -91,6 +92,8 @@ export const roundChallengeKind = (
       return 'mother-tongue'
     case 'flag-palette-challenge':
       return 'flag-palette'
+    case 'capital-guess-challenge':
+      return 'capital-guess'
     default:
       return 'ranking'
   }
