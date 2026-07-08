@@ -74,7 +74,7 @@ const country = computed(() => {
   background: hsla(36, 30%, 90%, 1);
 }
 
-// Blurred cover copy that washes the letterbox gaps in the flag's own colours.
+// Blurred cover copy that washes the letterbox gaps in the flag colours.
 // Crucially NOT brightness-dimmed — dimming turned white flag fields into a
 // dirty grey haze; a low opacity over the neutral base keeps the wash soft
 // without muddying light flags.
