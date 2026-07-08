@@ -37,11 +37,11 @@ test('host can create a game and start a round with a second player', async ({ b
   await startButton.click()
 
   // The round begins: both players see the tutorial
-  await expect(host.getByRole('heading', { name: "Let's start!" })).toBeVisible()
-  await expect(guest.getByRole('heading', { name: "Let's start!" })).toBeVisible()
+  await expect(host.getByRole('heading', { name: 'Three phases, one race' })).toBeVisible()
+  await expect(guest.getByRole('heading', { name: 'Three phases, one race' })).toBeVisible()
 
   // Closing the tutorial reveals the group challenge built from country data
-  await host.getByRole('button', { name: 'Close tutorial' }).click()
+  await host.getByRole('button', { name: "Let's go" }).click()
   await expect(host.locator('#active-round')).toBeVisible()
   await expect(host.locator('#question h1')).not.toBeEmpty()
   expect(await host.locator('#active-round .country').count()).toBeGreaterThan(0)

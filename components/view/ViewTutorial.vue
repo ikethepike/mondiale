@@ -74,16 +74,23 @@
 
               <template v-if="player.id === playerId">
                 <svg class="you-arrow" viewBox="0 0 60 70" fill="none" aria-hidden="true">
+                  <!-- Arced shaft sweeping from the label down onto the pawn -->
                   <path
-                    d="M8 6C30 2 54 14 46 40c-2 7-8 12-14 15"
+                    d="M8 8C34 2 56 18 44 44c-2.5 5.5-7 10-13 14"
                     stroke="currentColor"
-                    stroke-width="3"
+                    stroke-width="3.4"
                     stroke-linecap="round"
                     fill="none"
                   />
+                  <!-- Arrowhead: a clean open V aligned to the curve's tangent
+                       (arriving down-and-left), both strokes meeting at the tip -->
                   <path
-                    d="M32 61l1-11 9 7z"
-                    fill="currentColor"
+                    d="M22 56l9 2 1.5-9.5"
+                    stroke="currentColor"
+                    stroke-width="3.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    fill="none"
                   />
                 </svg>
                 <span class="you-label">This is you!</span>

@@ -40,7 +40,7 @@ import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
-const { update, game, player, currentRound } = useClientEvents()
+const { update, game, player, currentRound, gameStore } = useClientEvents()
 
 interface ActiveView {
   component: Component
@@ -143,13 +143,27 @@ const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition
 
 const route = useRoute()
 
-onMounted(() => {
+const joinRoom = () => {
   const { variant } = route.query
-
   update({
     event: 'join',
     variant: isValidGameVariant(variant) ? variant : gameVariants[0],
   })
+}
+
+onMounted(() => {
+  joinRoom()
+
+  // Socket.IO drops a socket's room membership when it reconnects (a server
+  // restart, network blip, laptop sleep). Without re-joining, the socket is
+  // silently out of the game room and misses every broadcast — the classic
+  // "one client stuck while the other advances" desync. `join` is idempotent
+  // server-side, so re-firing it on every (re)connect is safe and re-adds us
+  // to the room. `.io.on('reconnect')` fires only on RE-connects, not the
+  // first — the initial join is handled by onMounted above.
+  const socket = gameStore.socket
+  socket?.io.on('reconnect', joinRoom)
+  onUnmounted(() => socket?.io.off('reconnect', joinRoom))
 })
 </script>
 <style scoped>
