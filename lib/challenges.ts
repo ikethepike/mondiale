@@ -1156,6 +1156,8 @@ export const getIndividualChallenge = ({
       }
       case 'outline-reveal':
         return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
+      case 'zoom-out':
+        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool) }
       case 'leader-portrait': {
         const dealt = dealLeaderPortrait(pool)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
@@ -1182,15 +1184,19 @@ export const getIndividualChallenge = ({
       break
     }
     case 'isoCode': {
-      // Hard games race the self-drawing border: name it before it completes
-      if (difficulty === 'hard' && roll < 0.3) {
+      // Two kinetic "name the country" gates on this tile: outline-reveal (the
+      // border draws itself) and zoom-out (the map zooms out from a coastline).
+      if (difficulty === 'hard' && roll < 0.25) {
         return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
       }
-      if (roll < 0.55) {
+      if (roll < 0.4) {
+        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool) }
+      }
+      if (roll < 0.65) {
         const dealt = dealBorderDetective(pool)
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
-      if (roll < 0.75) {
+      if (roll < 0.8) {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }

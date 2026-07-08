@@ -801,6 +801,69 @@ onMounted(async () => {
   if (props.focusCountries.length) frameFocus()
 })
 
+/**
+ * Zoom-Out gate: open extreme-tight on a country's coastline, then ease out to
+ * its normal frame over `durationSeconds` so players race to name it before the
+ * shape is obvious. Reduced motion snaps straight to the recognisable frame.
+ */
+let zoomOutTween: gsap.core.Tween | undefined
+const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
+  if (!wrapper.value || !svg.value) return
+  const mainland = MAP_REGIONS[isoCode]?.[0] ?? MAP_BOUNDS[isoCode]
+  if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
+
+  // The country's full (recognisable) frame is the END; the START is a tight
+  // crop centred on it (~18% of that frame — a sliver of coastline).
+  const wide = frameForBoxes([mainland], [])
+  const cx = wide.x + wide.width / 2
+  const cy = wide.y + wide.height / 2
+  const tight = 0.18
+  const tightView = {
+    x: cx - (wide.width * tight) / 2,
+    y: cy - (wide.height * tight) / 2,
+    width: wide.width * tight,
+    height: wide.height * tight,
+  }
+
+  loopRunning = false
+  momentum.x = 0
+  momentum.y = 0
+  wrapper.value.classList.add('is-interacting')
+
+  zoomOutTween?.kill()
+  if (prefersReducedMotion()) {
+    Object.assign(viewState, wide)
+    writeViewBox()
+    cullPass()
+    Object.assign(targetView, viewState)
+    wrapper.value.classList.remove('is-interacting')
+    updateEffectiveZoom()
+    return
+  }
+
+  const startView = { ...tightView }
+  clampView(startView) // clampView mutates in place (returns void)
+  Object.assign(viewState, startView)
+  writeViewBox()
+  zoomOutTween = gsap.to(viewState, {
+    ...wide,
+    duration: durationSeconds,
+    // Linger on the tight crop, then accelerate the reveal — the country stays
+    // hard to place for most of the clock, rewarding an early guess.
+    ease: 'power2.in',
+    overwrite: 'auto',
+    onUpdate: () => {
+      writeViewBox()
+      cullPass()
+    },
+    onComplete: () => {
+      Object.assign(targetView, viewState)
+      wrapper.value?.classList.remove('is-interacting')
+      updateEffectiveZoom()
+    },
+  })
+}
+
 const moveToCountry = () => {
   if (!wrapper.value || !svg.value) {
     return console.warn('Map not initialized yet')
@@ -831,6 +894,14 @@ watch(
     // Reveal cleared between rounds: return the camera to the world view.
     if (!reveal) tweenToView(worldFitView())
   }
+)
+watch(
+  () => gameStore.map.zoomOut,
+  zoomOut => {
+    if (zoomOut) startZoomOut(zoomOut.isoCode as MapCode, zoomOut.durationSeconds)
+    else zoomOutTween?.kill()
+  },
+  { immediate: true }
 )
 </script>
 

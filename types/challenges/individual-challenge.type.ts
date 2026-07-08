@@ -51,6 +51,7 @@ export const individualChallengeVariants = [
   'flag-twins',
   'border-detective',
   'money-match',
+  'zoom-out',
   'odd-one-out',
   'higher-lower',
   'leader-pick',

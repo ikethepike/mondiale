@@ -79,6 +79,19 @@
             </div>
           </template>
 
+          <!-- Zoom-out: the map eases out from a coastline — name it early -->
+          <template v-else-if="variant === 'zoom-out'">
+            <h1 class="map-caption">Name it before the map zooms out</h1>
+            <span class="map-caption sub">The longer you wait, the more you'll see.</span>
+            <div class="guess-box">
+              <CountryGuessInput
+                :disabled="!!status"
+                placeholder="Type the country you recognise"
+                @guess="onZoomOutGuess"
+              />
+            </div>
+          </template>
+
           <!-- Money match (hard): which country spends this currency? -->
           <template v-else-if="variant === 'money-match'">
             <h1 class="map-caption">Which country uses this currency?</h1>
@@ -280,6 +293,8 @@ const interstitialTitle = computed(() => {
       return 'Name the country these neighbours surround'
     case 'money-match':
       return 'Which country spends this currency?'
+    case 'zoom-out':
+      return 'Name the country before the map zooms out'
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
@@ -357,6 +372,30 @@ const onBorderGuess = (country: Country) => {
   if (status.value) return
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
+  submitAnswer(country.isoCode)
+}
+
+// --- Zoom-out ----------------------------------------------------------------
+const ZOOM_OUT_SECONDS = 20
+let zoomOutTimer: ReturnType<typeof setTimeout> | undefined
+const beginZoomOut = () => {
+  const active = challenge.value
+  if (!active) return
+  gameStore.map.zoomOut = { isoCode: active.country, durationSeconds: ZOOM_OUT_SECONDS }
+  // Safety: if they never guess, resolve as a miss a beat after full zoom-out
+  // so the pawn doesn't stall.
+  if (zoomOutTimer) clearTimeout(zoomOutTimer)
+  zoomOutTimer = setTimeout(
+    () => {
+      if (!status.value) submitAnswer(wrongTokenFor(active.country))
+    },
+    (ZOOM_OUT_SECONDS + 6) * 1000
+  )
+}
+const onZoomOutGuess = (country: Country) => {
+  if (status.value) return
+  if (zoomOutTimer) clearTimeout(zoomOutTimer)
+  gameStore.map.zoomOut = undefined // stop the reveal; the result zoom takes over
   submitAnswer(country.isoCode)
 }
 
@@ -457,6 +496,8 @@ const incorrectMessage = computed(() => {
       return active ? `It was ${countryName(active.country)}` : 'Not quite.'
     case 'money-match':
       return active ? `That's the ${getCountry(active.country).currency}` : 'Not quite.'
+    case 'zoom-out':
+      return active ? `It was ${countryName(active.country)}` : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -498,7 +539,9 @@ const showInterstitial = ref(true)
 
 // The reveal race starts the moment the interstitial clears
 watch(showInterstitial, value => {
-  if (!value) beginOutlineReveal()
+  if (value) return
+  if (variant.value === 'outline-reveal') beginOutlineReveal()
+  if (variant.value === 'zoom-out') beginZoomOut()
 })
 
 // Back-to-back gates can reach a still-mounted view (the walk between them
@@ -523,6 +566,10 @@ watch(currentMove, move => {
   }
   outlineReveal.value = undefined
   outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
+  if (zoomOutTimer) {
+    clearTimeout(zoomOutTimer)
+    zoomOutTimer = undefined
+  }
   if (next.variant === 'outline-reveal' || next.variant === 'border-detective') {
     gameStore.map.solo = true
   }
@@ -569,6 +616,7 @@ onBeforeMount(() => {
 onBeforeUnmount(() => {
   clearBoard()
   if (outlineTimer) clearInterval(outlineTimer)
+  if (zoomOutTimer) clearTimeout(zoomOutTimer)
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>

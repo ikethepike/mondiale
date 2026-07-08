@@ -54,6 +54,7 @@ export const useClientEvents = () => {
     gameStore.map.tints = {}
     gameStore.map.countryGroupings = undefined
     gameStore.map.atlasMode = false
+    gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined
   }
 

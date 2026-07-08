@@ -29,6 +29,9 @@ interface GameStoreState {
     countryGroupings?: CountryColorGrouping[]
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
     atlasMode: boolean
+    /** Zoom-Out gate: start extreme-tight on a country, ease out over N seconds
+     *  so players name it before it's obvious. Cleared to stop the reveal. */
+    zoomOut?: { isoCode: ISOCountryCode; durationSeconds: number }
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
   }
@@ -60,6 +63,7 @@ export const useGameStore = defineStore('game', {
       tints: {},
       countryGroupings: undefined,
       atlasMode: false,
+      zoomOut: undefined,
       feature: undefined,
     },
   }),
