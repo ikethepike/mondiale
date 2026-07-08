@@ -26,16 +26,21 @@ const NE_URL = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/$
 const CACHE_DIR = `${import.meta.dir}/.cache`
 const CACHE_FILE = `${CACHE_DIR}/${NE_FILE}.geojson`
 const OUT_FILE = 'data/map.gen.ts'
+const OUT_HD_FILE = 'data/map-hd.gen.ts'
 
 /** Fraction of topology points to retain after Visvalingam simplification. */
-const RETAIN = 0.06
+/**
+ * Two detail tiers: the base tier is what ships in the main map chunk and is
+ * everything a world-zoom view needs; the HD tier lives in its own lazy chunk
+ * and is swapped into countries inside the camera frame once zoomed in.
+ */
+const RETAIN_BASE = 0.06
+const RETAIN_HD = 0.25
 /** Projected-area floor (viewBox units²) below which islet rings are dropped. */
 const MIN_RING_AREA_LARGE = 0.05
 const MIN_RING_AREA_SMALL = 0.002
 /** Countries with a projected footprint below this get dot markers in the UI. */
 const MICRO_FOOTPRINT = 1.5
-/** Footprint below which simplification is skipped entirely. */
-const PROTECT_FOOTPRINT = 2
 
 /**
  * Territories drawn on the map that are not (yet) playable countries.
@@ -183,7 +188,8 @@ const main = async () => {
   ) as UnitTopology
   const weighted = presimplify(topo)
   // quantile is retention-oriented: simplify(t, quantile(t, p)) keeps ~p·n points
-  const simplified = simplify(weighted, quantile(weighted, RETAIN)) as UnitTopology
+  const simplifiedBase = simplify(weighted, quantile(weighted, RETAIN_BASE)) as UnitTopology
+  const simplifiedHd = simplify(weighted, quantile(weighted, RETAIN_HD)) as UnitTopology
 
   const geometriesFor = (from: UnitTopology, code: string) =>
     from.objects.units.geometries.filter(
@@ -288,61 +294,80 @@ const main = async () => {
     return parts.join(' ')
   }
 
-  const mapPaths: Record<string, string> = {}
-  const missing: string[] = []
-  for (const code of [...keepCodes].sort()) {
-    if (code === 'IC') continue // synthesized from ES below
-    const hasUnits = (geometriesFor(topo, code) as unknown[]).length > 0
-    if (!hasUnits) {
-      missing.push(code)
-      continue
-    }
-    const footprint = footprints.get(code) ?? 0
-    const protectMicro = footprint < PROTECT_FOOTPRINT
-    const sourceTopo = protectMicro ? topo : simplified
-    let polygons = asPolygons(mergeCode(sourceTopo, code)).map(polygon => polygon.map(project))
-
-    // Canary Islands carve-out: NE has no IC unit; split it off Spain.
-    if (code === 'ES') {
-      const geographic = asPolygons(mergeCode(sourceTopo, 'ES'))
-      const isCanary = (polygon: Ring[]) => {
-        const [minLon, minLat, width, height] = geoBounds([polygon])
-        const lon = minLon + width / 2
-        const lat = minLat + height / 2
-        return lon >= -18.6 && lon <= -13.3 && lat >= 27.3 && lat <= 29.6
+  const buildPaths = (tier: UnitTopology, tierName: string): Record<string, string> => {
+    const paths: Record<string, string> = {}
+    const missing: string[] = []
+    for (const code of [...keepCodes].sort()) {
+      if (code === 'IC') continue // synthesized from ES below
+      const hasUnits = (geometriesFor(topo, code) as unknown[]).length > 0
+      if (!hasUnits) {
+        missing.push(code)
+        continue
       }
-      const canaries = geographic.filter(isCanary)
-      if (!canaries.length) throw new Error('Canary Islands carve-out found nothing')
-      polygons = geographic.filter(p => !isCanary(p)).map(polygon => polygon.map(project))
-      const canaryProjected = canaries.map(polygon => polygon.map(project))
-      const canaryFootprint = Math.max(...geoBounds(canaryProjected).slice(2))
-      footprints.set('IC', canaryFootprint)
-      const canaryRings = canaryProjected.flat()
-      const canaryLargest = canaryRings.reduce((a, b) => (Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b))
-      mapPaths.IC = emitPath(canaryProjected, 3, MIN_RING_AREA_SMALL, canaryLargest)
-    }
+      // No blanket micro-protection: a country simplified differently from
+      // its neighbours gets seams — parallel "double borders" along shared
+      // edges (Liechtenstein vs CH/AT). Everyone shares the tier's arcs; the
+      // degenerate-collapse fallback below still rescues the truly tiny, and
+      // those are islands or sub-pixel enclaves where no seam can show.
+      const footprint = footprints.get(code) ?? 0
+      const sourceTopo = tier
+      let polygons = asPolygons(mergeCode(sourceTopo, code)).map(polygon => polygon.map(project))
 
-    const decimals = footprint >= 5 ? 1 : footprint >= 0.5 ? 3 : 4
-    const minRingArea = footprint >= 5 ? MIN_RING_AREA_LARGE : MIN_RING_AREA_SMALL
-    const emitFrom = (source: Ring[][]) => {
-      const largest = source
-        .flat()
-        .reduce((a, b) => (Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b))
-      return emitPath(source, decimals, minRingArea, largest)
+      // Canary Islands carve-out: NE has no IC unit; split it off Spain.
+      if (code === 'ES') {
+        const geographic = asPolygons(mergeCode(sourceTopo, 'ES'))
+        const isCanary = (polygon: Ring[]) => {
+          const [minLon, minLat, width, height] = geoBounds([polygon])
+          const lon = minLon + width / 2
+          const lat = minLat + height / 2
+          return lon >= -18.6 && lon <= -13.3 && lat >= 27.3 && lat <= 29.6
+        }
+        const canaries = geographic.filter(isCanary)
+        if (!canaries.length) throw new Error('Canary Islands carve-out found nothing')
+        polygons = geographic.filter(p => !isCanary(p)).map(polygon => polygon.map(project))
+        const canaryProjected = canaries.map(polygon => polygon.map(project))
+        const canaryFootprint = Math.max(...geoBounds(canaryProjected).slice(2))
+        footprints.set('IC', canaryFootprint)
+        const canaryRings = canaryProjected.flat()
+        const canaryLargest = canaryRings.reduce((a, b) => (Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b))
+        paths.IC = emitPath(canaryProjected, 3, MIN_RING_AREA_SMALL, canaryLargest)
+      }
+
+      // UNIFORM precision: neighbours sharing an arc must round it onto the
+      // same grid or hairline slivers open along their border. Only rings
+      // that degenerate at 2 decimals (sub-pixel enclaves like VA) escalate.
+      const minRingArea = footprint >= 5 ? MIN_RING_AREA_LARGE : MIN_RING_AREA_SMALL
+      const emitFrom = (source: Ring[][], decimals: number) => {
+        const largest = source
+          .flat()
+          .reduce((a, b) => (Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b))
+        return emitPath(source, decimals, minRingArea, largest)
+      }
+      const attempts: [Ring[][], number][] = [
+        [polygons, 2],
+        [polygons, 4],
+        [asPolygons(mergeCode(topo, code)).map(polygon => polygon.map(project)), 4],
+      ]
+      for (const [source, decimals] of attempts) {
+        try {
+          paths[code] = emitFrom(source, decimals)
+          break
+        } catch {
+          console.info(`${code} (${tierName}): degenerate at ${decimals} decimals, escalating`)
+        }
+      }
+      if (!paths[code]) throw new Error(`${code} (${tierName}): all emission attempts degenerated`)
     }
-    try {
-      mapPaths[code] = emitFrom(polygons)
-    } catch {
-      // Simplification collapsed the mainland ring — fall back to full geometry.
-      console.info(`${code}: simplified ring degenerated, using unsimplified geometry`)
-      mapPaths[code] = emitFrom(asPolygons(mergeCode(topo, code)).map(polygon => polygon.map(project)))
-    }
+    if (missing.length) throw new Error(`No NE geometry for: ${missing.join(', ')}`)
+    return paths
   }
 
-  if (missing.length) throw new Error(`No NE geometry for: ${missing.join(', ')}`)
+  const mapPaths = buildPaths(simplifiedBase, 'base')
+  const mapPathsHd = buildPaths(simplifiedHd, 'hd')
 
   // --- Validate against the outline parser the game actually uses -----------
   const bounds: Record<string, [number, number, number, number]> = {}
+  const regions: Record<string, [number, number, number, number][]> = {}
   const micro: Record<string, { x: number; y: number; footprint: number }> = {}
   let vertexTotal = 0
   const vertexCounts: [string, number][] = []
@@ -351,6 +376,22 @@ const main = async () => {
     if (!rings.length) throw new Error(`Emitted path for ${code} does not parse to any ring`)
     const [x, y, width, height] = geoBounds([rings])
     bounds[code] = [roundTo(x, 2), roundTo(y, 2), roundTo(width, 2), roundTo(height, 2)]
+
+    // Per-ring boxes for visibility tests: a whole-country bbox lies for
+    // RU/US-class countries (antimeridian fragments stretch it across the
+    // map), which would drag their huge HD geometry into every view.
+    const ringBoxes = rings
+      .map(ring => ({ box: geoBounds([[ring]]), area: Math.abs(ringArea(ring)) }))
+      .sort((a, b) => b.area - a.area)
+      .slice(0, 8)
+      .map(({ box: [bx, by, bw, bh] }): [number, number, number, number] => [
+        Math.floor(bx),
+        Math.floor(by),
+        Math.ceil(bw) + 1,
+        Math.ceil(bh) + 1,
+      ])
+    regions[code] = ringBoxes
+
     const vertices = rings.reduce((total, ring) => total + ring.length, 0)
     vertexTotal += vertices
     vertexCounts.push([code, vertices])
@@ -361,6 +402,15 @@ const main = async () => {
 
   for (const code of gameCodes)
     if (!mapPaths[code]) throw new Error(`Game country ${code} missing from emitted map`)
+
+  let hdVertexTotal = 0
+  for (const [code, d] of Object.entries(mapPathsHd)) {
+    const rings = parsePolygons(d)
+    if (!rings.length) throw new Error(`HD path for ${code} does not parse to any ring`)
+    hdVertexTotal += rings.reduce((total, ring) => total + ring.length, 0)
+  }
+  if (Object.keys(mapPathsHd).length !== Object.keys(mapPaths).length)
+    throw new Error('Base and HD tiers cover different country sets')
 
   // --- Emit ------------------------------------------------------------------
   const sortedEntries = <T>(record: Record<string, T>) =>
@@ -382,19 +432,37 @@ export const MAP_PATHS = ${JSON.stringify(sortedEntries(mapPaths))} as Record<Ma
 /** Projected bounding box per country: [x, y, width, height]. */
 export const MAP_BOUNDS = ${JSON.stringify(sortedEntries(bounds))} as Record<MapCode, [number, number, number, number]>
 
+/**
+ * Boxes of a country's largest rings (up to 8), for visibility testing.
+ * The whole-country bbox overstates RU/US-class countries whose islands wrap
+ * the antimeridian — use these to decide what is actually in view.
+ */
+export const MAP_REGIONS = ${JSON.stringify(sortedEntries(regions))} as Record<MapCode, [number, number, number, number][]>
+
 /** Game countries too small to see or click at world zoom — rendered as dot markers. */
 export const MICRO_COUNTRIES = ${JSON.stringify(sortedEntries(micro))} as Partial<Record<MapCode, { x: number; y: number; footprint: number }>>
 `
   writeFileSync(OUT_FILE, output)
 
+  const hdOutput = `// Generated by generators/vendors/naturalearth/create-map.ts — do not edit by hand.
+// High-detail tier (retention ${RETAIN_HD}): lazy-loaded by GameMap and swapped
+// into the countries inside the camera frame once zoomed past the LOD threshold.
+import type { MapCode } from './map.gen'
+
+export const MAP_PATHS_HD = ${JSON.stringify(sortedEntries(mapPathsHd))} as Record<MapCode, string>
+`
+  writeFileSync(OUT_HD_FILE, hdOutput)
+
   // --- Stats -------------------------------------------------------------------
   vertexCounts.sort((a, b) => b[1] - a[1])
   console.info(`\nTop vertex counts: ${vertexCounts.slice(0, 20).map(([c, n]) => `${c}:${n}`).join(' ')}`)
-  console.info(`Total vertices: ${vertexTotal}`)
+  console.info(`Total vertices: base ${vertexTotal}, hd ${hdVertexTotal}`)
   console.info(`Micro countries (${Object.keys(micro).length}): ${Object.keys(micro).sort().join(' ')}`)
-  const bytes = Buffer.byteLength(output)
-  const gzipped = Bun.gzipSync(Buffer.from(output)).byteLength
-  console.info(`Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(gzipped / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`)
+  for (const [file, content] of [[OUT_FILE, output], [OUT_HD_FILE, hdOutput]] as const) {
+    const bytes = Buffer.byteLength(content)
+    const gzipped = Bun.gzipSync(Buffer.from(content)).byteLength
+    console.info(`Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(gzipped / 1024).toFixed(0)} KB gzip → ${file}`)
+  }
 }
 
 await main()
