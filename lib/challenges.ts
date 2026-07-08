@@ -2,6 +2,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { hexToRgb } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
   type GroupChallengeAccessorId,
@@ -644,15 +645,6 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
 }
 
 // --- Individual challenge variants -----------------------------------------
-
-const hexToRgb = (hex: string): [number, number, number] => {
-  const value = hex.replace('#', '')
-  return [
-    parseInt(value.slice(0, 2), 16),
-    parseInt(value.slice(2, 4), 16),
-    parseInt(value.slice(4, 6), 16),
-  ]
-}
 
 /** How alike two flags' identity palettes are (lower = more confusable). */
 const flagPaletteDistance = (a: string[], b: string[]): number => {

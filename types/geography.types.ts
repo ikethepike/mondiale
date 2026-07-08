@@ -34,7 +34,11 @@ export interface Country {
     english: string
   }
   identity: {
+    /** Raw hex colours extracted from the flag SVG. */
     colors: string[]
+    /** Colours snapped to named buckets (e.g. ["red","white"]), deduped +
+     *  sorted; `[]` for emblem-heavy flags. Powers flag-palette challenges. */
+    simplifiedColors: string[]
   }
   membership: Organization[]
   government: {

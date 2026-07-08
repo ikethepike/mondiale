@@ -7,6 +7,7 @@ import { owidMapping } from '~~/data/owid.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
+import { simplifiedPalette } from '~~/lib/palette'
 import {
   extractNumbers,
   extractParentheticals,
@@ -142,9 +143,10 @@ const normalizeCountry = ({
     membership: getMembership({ briMembership, data, names, isoCode }),
     languages: getLanguages({ data, isoCode }),
     currency: getCurrency({ isoCode }),
-    identity: {
-      colors: getNationalColors(data, isoCode, flag.toString()),
-    },
+    identity: (() => {
+      const colors = getNationalColors(data, isoCode, flag.toString())
+      return { colors, simplifiedColors: simplifiedPalette(colors) }
+    })(),
     government: {
       leader: getLeader({ data, isoCode, names }),
       amountOfMilitaryConflicts: (() => {
