@@ -226,7 +226,7 @@ const sectionLabels = computed(() => {
   }
 })
 
-const selectedPlayer = ref(playerId)
+const selectedPlayer = ref(playerId.value)
 
 const selectedScorecard = computed(() => {
   return (

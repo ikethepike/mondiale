@@ -33,7 +33,9 @@
       </TransitionGroup>
     </section>
 
-    <footer>
+    <!-- The free-type input opens a suggestion list downward, so that variant
+         reserves extra room below; the flag-options grid needs none. -->
+    <footer :class="{ 'has-input': !challenge.options }">
       <div class="timer-track" aria-hidden="true">
         <div
           class="timer-fill"
@@ -217,6 +219,13 @@ footer {
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
+
+  // Free-type variant: lift clear of the viewport edge so the guess input's
+  // suggestion list (which opens downward) isn't clipped off the bottom. Scales
+  // with viewport height so it never steals too much room on short screens.
+  &.has-input {
+    padding-bottom: clamp(8rem, 24vh, 20rem);
+  }
 }
 
 .timer-track {
