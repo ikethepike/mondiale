@@ -15,8 +15,9 @@ RUN bun install --frozen-lockfile
 
 # Build the Nitro server bundle.
 COPY . .
-# Bundling the generated country data needs more heap than the container default.
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+# Bundling the generated country/water data needs more heap than the container
+# default; 1536 started OOMing as the data grew, so give the Nitro build room.
+ENV NODE_OPTIONS="--max-old-space-size=3584"
 RUN bun run build
 
 # ---- Runtime stage ----
