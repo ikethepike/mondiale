@@ -1,5 +1,5 @@
 <template>
-  <div v-if="game" class="victory-stage">
+  <div v-if="game" class="victory-stage" :class="{ 'show-atlas': showAtlas }">
     <!-- Act one: the takeover — a full-screen beat before any numbers -->
     <div v-if="showHero" class="hero" @click="endHero">
       <ContourRipple class="hero-ripple" :delay="0.3" />
@@ -284,6 +284,20 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   width: 100%;
   height: 100vh;
   position: absolute;
+}
+
+// Atlas peek: the full-screen modal wrapper otherwise swallows every click, so
+// the glowing GameMap behind it never receives them. Make the wrapper (and its
+// scroll layer) click-through while the atlas is open, but keep the return
+// button + AtlasCard interactive so the map underneath is explorable.
+.victory-stage.show-atlas {
+  :deep(.modal-wrapper) {
+    pointer-events: none;
+  }
+  .atlas-return,
+  :deep(.atlas-card) {
+    pointer-events: auto;
+  }
 }
 
 // --- Act one -----------------------------------------------------------------

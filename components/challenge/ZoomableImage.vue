@@ -182,6 +182,9 @@ const pinchDistance = (): number => {
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
   background: hsla(215.7, 76.4%, 21.6%, 0.06);
   touch-action: none; // we handle pinch/pan ourselves
+  // Host views (e.g. .main-board) are pointer-events:none by default; the
+  // interactive photo must re-assert its own so zoom/pan gestures land.
+  pointer-events: auto;
   cursor: zoom-in;
 
   &.zoomed {
