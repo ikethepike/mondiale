@@ -35,6 +35,16 @@ interface LeaderEntry {
   name: string
   /** Public path of the portrait file, when one exists on Commons. */
   image?: string
+  /** Wikidata one-line description, e.g. "President of France". */
+  description?: string
+  /** Birth year (from P569), for an age line. */
+  bornYear?: number
+  /** Current office/position label (from P39), e.g. "President of Ghana". */
+  office?: string
+  /** Political party label (from P102). */
+  party?: string
+  /** Year they took the current office (P39's P580 start-time qualifier). */
+  sinceYear?: number
 }
 
 export type LeaderMapping = {
@@ -101,14 +111,18 @@ console.log(`\n${entityIds.length} P297 carriers found`)
 // --- 2. Country entities → current leader statements ------------------------
 interface Statement {
   rank: 'preferred' | 'normal' | 'deprecated'
-  mainsnak?: { datavalue?: { value?: { id?: string } } }
-  qualifiers?: { P582?: unknown[] }
+  mainsnak?: { datavalue?: { value?: { id?: string; time?: string } } }
+  qualifiers?: { P582?: unknown[]; P580?: TimeSnak[] }
+}
+interface TimeSnak {
+  datavalue?: { value?: { time?: string } }
 }
 interface EntityResponse {
   entities?: {
     [id: string]: {
       claims?: { [property: string]: Statement[] }
       labels?: { en?: { value: string } }
+      descriptions?: { en?: { value: string } }
     }
   }
 }
@@ -128,6 +142,49 @@ const currentHolder = (statements: Statement[] = []): string | undefined => {
   const preferred = usable.find(statement => statement.rank === 'preferred')
   const open = usable.find(statement => !statement.qualifiers?.P582)
   return (preferred ?? open)?.mainsnak?.datavalue?.value?.id
+}
+
+/** Wikidata times look like "+1955-11-11T00:00:00Z"; pull the leading year. */
+const yearOf = (time?: string): number | undefined => {
+  if (!time) return undefined
+  const match = /^[+-]?(\d{1,4})-/.exec(time)
+  const year = match ? Number(match[1]) : NaN
+  return Number.isFinite(year) && year > 0 ? year : undefined
+}
+
+/** Single-value claim: the first live statement's referenced Q-id. */
+const firstClaimId = (statements: Statement[] = []): string | undefined =>
+  statements.find(
+    statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
+  )?.mainsnak?.datavalue?.value?.id
+
+/**
+ * The person's CURRENT top office (P39). Politicians hold many positions and
+ * several often lack an end-date (P582), so "first open statement" grabs junk
+ * like a decades-old council seat. Prefer a preferred-rank statement; otherwise
+ * the open position with the MOST RECENT start date (P580) — a sitting
+ * president took office more recently than an old local role. Returns the
+ * office Q-id + start year, so we can show "President of Ghana · since 2019".
+ */
+const currentPosition = (
+  statements: Statement[] = []
+): { officeId?: string; sinceYear?: number } => {
+  const live = statements.filter(
+    statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
+  )
+  const startYear = (statement: Statement) =>
+    yearOf(statement.qualifiers?.P580?.[0]?.datavalue?.value?.time) ?? 0
+
+  const preferred = live.find(statement => statement.rank === 'preferred')
+  const open = live
+    .filter(statement => !statement.qualifiers?.P582)
+    .sort((a, b) => startYear(b) - startYear(a))[0]
+
+  const chosen = preferred ?? open
+  return {
+    officeId: chosen?.mainsnak?.datavalue?.value?.id,
+    sinceYear: yearOf(chosen?.qualifiers?.P580?.[0]?.datavalue?.value?.time),
+  }
 }
 
 console.log('Reading current officeholders…')
@@ -158,9 +215,21 @@ for (let index = 0; index < entityIds.length; index += 10) {
 }
 console.log(`\n${holders.length} officeholder statements found`)
 
-// --- 3. Leader entities → names + portrait filenames ------------------------
+// --- 3. Leader entities → names, portraits, profile facts -------------------
 const leaderIds = [...new Set(holders.map(holder => holder.leaderId))]
-const leaderDetails = new Map<string, { name?: string; portraitFile?: string }>()
+interface LeaderDetail {
+  name?: string
+  portraitFile?: string
+  description?: string
+  bornYear?: number
+  officeId?: string
+  partyId?: string
+  sinceYear?: number
+}
+const leaderDetails = new Map<string, LeaderDetail>()
+// Office (P39) and party (P102) resolve to Q-ids — collect them, then look up
+// their labels in one follow-up batch pass.
+const referencedIds = new Set<string>()
 
 interface PagePropsResponse {
   query?: {
@@ -169,19 +238,31 @@ interface PagePropsResponse {
 }
 
 console.log(`Fetching ${leaderIds.length} leader entities…`)
-for (let index = 0; index < leaderIds.length; index += 50) {
-  const batch = leaderIds.slice(index, index + 50)
+for (let index = 0; index < leaderIds.length; index += 40) {
+  const batch = leaderIds.slice(index, index + 40)
 
-  // Names: labels only (a statement-heavy politician's full claims run to
-  // tens of MB). languagefallback matters — some items keep their label
-  // under the multilingual 'mul' language with no plain 'en' entry at all
-  // (this is how the United States went missing: no en label on its
-  // president's item).
-  const labelData = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
+  // labels + descriptions + the handful of profile claims (birth, office,
+  // party). languagefallback matters — some items keep their label under the
+  // multilingual 'mul' language with no plain 'en' entry at all (this is how
+  // the United States went missing: no en label on its president's item).
+  // We request only these props, not the full entity — a politician's whole
+  // claim set can run to megabytes, but this subset is small.
+  const data = await getJson<EntityResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|descriptions|claims&languages=en&languagefallback=1&format=json`
   )
-  for (const [id, entity] of Object.entries(labelData?.entities ?? {})) {
-    leaderDetails.set(id, { name: entity.labels?.en?.value })
+  for (const [id, entity] of Object.entries(data?.entities ?? {})) {
+    const position = currentPosition(entity.claims?.P39)
+    const partyId = firstClaimId(entity.claims?.P102)
+    if (position.officeId) referencedIds.add(position.officeId)
+    if (partyId) referencedIds.add(partyId)
+    leaderDetails.set(id, {
+      name: entity.labels?.en?.value,
+      description: entity.descriptions?.en?.value,
+      bornYear: yearOf(entity.claims?.P569?.[0]?.mainsnak?.datavalue?.value?.time),
+      officeId: position.officeId,
+      partyId,
+      sinceYear: position.sinceYear,
+    })
   }
 
   // Portraits: the PageImages prop is derived from P18 and costs bytes, not
@@ -195,7 +276,25 @@ for (let index = 0; index < leaderIds.length; index += 50) {
     if (details) details.portraitFile = page.pageprops.page_image_free
   }
 
-  process.stdout.write(`\r  ${Math.min(index + 50, leaderIds.length)}/${leaderIds.length}`)
+  process.stdout.write(`\r  ${Math.min(index + 40, leaderIds.length)}/${leaderIds.length}`)
+  await wait(200)
+}
+console.log('')
+
+// --- 3b. Resolve office + party Q-ids to labels -----------------------------
+const labelById = new Map<string, string>()
+const idsToResolve = [...referencedIds]
+console.log(`Resolving ${idsToResolve.length} office/party labels…`)
+for (let index = 0; index < idsToResolve.length; index += 50) {
+  const batch = idsToResolve.slice(index, index + 50)
+  const data = await getJson<EntityResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
+  )
+  for (const [id, entity] of Object.entries(data?.entities ?? {})) {
+    const label = entity.labels?.en?.value
+    if (label && !/^Q\d+$/.test(label)) labelById.set(id, label)
+  }
+  process.stdout.write(`\r  ${Math.min(index + 50, idsToResolve.length)}/${idsToResolve.length}`)
   await wait(200)
 }
 console.log('')
@@ -216,7 +315,16 @@ for (const { isoCode, role, leaderId } of holders) {
   // A bare Q-id is worse than nothing in a quiz
   if (!details?.name || /^Q\d+$/.test(details.name)) continue
 
-  mapping[isoCode] = { ...mapping[isoCode], [role]: { name: details.name } }
+  const entry: LeaderEntry = { name: details.name }
+  if (details.description) entry.description = details.description
+  if (details.bornYear) entry.bornYear = details.bornYear
+  if (details.sinceYear) entry.sinceYear = details.sinceYear
+  const office = details.officeId ? labelById.get(details.officeId) : undefined
+  if (office) entry.office = office
+  const party = details.partyId ? labelById.get(details.partyId) : undefined
+  if (party) entry.party = party
+
+  mapping[isoCode] = { ...mapping[isoCode], [role]: entry }
   if (details.portraitFile) {
     portraitQueue.push({ isoCode, role, file: details.portraitFile })
   }
