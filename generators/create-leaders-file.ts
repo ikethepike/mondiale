@@ -175,6 +175,11 @@ const currentPosition = (
   const startYear = (statement: Statement) =>
     yearOf(statement.qualifiers?.P580?.[0]?.datavalue?.value?.time) ?? 0
 
+  // Most-recent open position. This can be a legislative SEAT (MP, Bundestag
+  // member) whose start date outranks the actual executive office — the office
+  // label can't be read here (it's a Q-id resolved later), so the CLIENT
+  // prefers the authoritative `description` line ("Prime Minister of X") over
+  // this office when they disagree (see lib/leaders.ts `leaderTitle`).
   const preferred = live.find(statement => statement.rank === 'preferred')
   const open = live
     .filter(statement => !statement.qualifiers?.P582)

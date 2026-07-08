@@ -59,15 +59,22 @@
           <!-- Who leads X? -->
           <template v-else-if="variant === 'leader-pick'">
             <h1 class="map-caption">Who leads {{ countryName(challenge.country) }}?</h1>
-            <div class="options text-options">
+            <div class="options leader-options">
               <button
                 v-for="option in challenge.options"
                 :key="option"
-                class="option text-option map-caption"
+                class="option leader-option map-caption"
                 type="button"
                 @click="submitAnswer(option)"
               >
-                {{ getCountry(option).government?.leader }}
+                <span
+                  v-if="leaderPortrait(option)"
+                  class="leader-thumb"
+                  :style="{ backgroundImage: `url(${leaderPortrait(option)})` }"
+                  aria-hidden="true"
+                />
+                <span v-else class="leader-thumb placeholder" aria-hidden="true" />
+                <span class="leader-name">{{ getCountry(option).government?.leader }}</span>
               </button>
             </div>
           </template>
@@ -146,6 +153,10 @@
             :topic="duelTopic"
             :colors="PAIR_COLORS"
           />
+          <LeaderReveal
+            v-else-if="(variant === 'leader-pick' || variant === 'leader-portrait') && challenge"
+            :country="challenge.country"
+          />
         </ChallengeResult>
       </Transition>
     </header>
@@ -155,9 +166,11 @@
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
+import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { politicalLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { mainlandOutline } from '~~/lib/outline'
@@ -274,6 +287,9 @@ const onOutlineGuess = (country: Country) => {
 const duelIndex = ref(0)
 const totalDuels = computed(() => challenge.value?.higherLower?.pairs.length ?? 0)
 const currentDuel = computed(() => challenge.value?.higherLower?.pairs[duelIndex.value])
+// Small portrait for a leader-pick option, when Wikidata has one.
+const leaderPortrait = (isoCode: ISOCountryCode) => politicalLeader(isoCode)?.image
+
 const duelAccessorId = computed(() => challenge.value?.higherLower?.accessorId)
 const duelTopic = computed(() => {
   const accessorId = duelAccessorId.value
@@ -618,6 +634,43 @@ header {
 
 .text-option {
   text-align: center;
+}
+
+.leader-options {
+  grid-template-columns: minmax(28rem, 44rem);
+}
+
+.leader-option {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  text-align: left;
+  padding: 0.8rem 1.2rem;
+
+  .leader-thumb {
+    flex: 0 0 auto;
+    width: 4.4rem;
+    height: 4.4rem;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center top;
+    background-color: hsla(215.7, 76.4%, 21.6%, 0.08);
+    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+
+    &.placeholder {
+      // A subtle silhouette stand-in when no portrait exists.
+      background-image: radial-gradient(
+        circle at 50% 38%,
+        hsla(215.7, 76.4%, 21.6%, 0.25) 0 1.1rem,
+        transparent 1.2rem
+      );
+    }
+  }
+
+  .leader-name {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 @keyframes flag-arrive {
