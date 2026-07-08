@@ -161,6 +161,45 @@ const asPolygons = (geometry: Polygon | MultiPolygon): Ring[][] =>
     ? [geometry.coordinates as Ring[]]
     : (geometry.coordinates as Ring[][])
 
+/**
+ * This Natural Earth vintage bakes Crimea into RUSSIA's polygon (NE's
+ * controversial call). Ukraine and most of the world recognise it as Ukrainian
+ * territory under occupation, so reassign the Crimean peninsula ring from RU to
+ * UA. Identify it geometrically (a polygon whose lon/lat bbox sits inside the
+ * peninsula box) rather than by index, so it survives NE data refreshes.
+ */
+const CRIMEA_BBOX = { minX: 32.0, minY: 43.9, maxX: 37.0, maxY: 46.5 }
+const withinCrimea = (ring: Ring): boolean => {
+  for (const [x, y] of ring) {
+    if (x < CRIMEA_BBOX.minX || x > CRIMEA_BBOX.maxX) return false
+    if (y < CRIMEA_BBOX.minY || y > CRIMEA_BBOX.maxY) return false
+  }
+  return true
+}
+
+const reassignCrimea = (units: Feature<Polygon | MultiPolygon, UnitProps>[]) => {
+  const russia = units.find(unit => unit.properties.code === 'RU')
+  const ukraine = units.find(unit => unit.properties.code === 'UA')
+  if (!russia || !ukraine) return
+
+  const russiaPolys = asPolygons(russia.geometry)
+  const crimea = russiaPolys.filter(poly => withinCrimea(poly[0]))
+  if (!crimea.length) {
+    console.warn('Crimea reassignment: no RU polygon found inside the peninsula bbox')
+    return
+  }
+
+  russia.geometry = {
+    type: 'MultiPolygon',
+    coordinates: russiaPolys.filter(poly => !withinCrimea(poly[0])),
+  }
+  ukraine.geometry = {
+    type: 'MultiPolygon',
+    coordinates: [...asPolygons(ukraine.geometry), ...crimea],
+  }
+  console.info(`Reassigned ${crimea.length} Crimea polygon(s) from RU to UA`)
+}
+
 const main = async () => {
   const source = await fetchSource()
 
@@ -179,6 +218,10 @@ const main = async () => {
       geometry: feature.geometry as Polygon | MultiPolygon,
     })
   }
+
+  // Move the Crimean peninsula from Russia (where NE draws it) to Ukraine,
+  // before topology so shared borders still stitch cleanly.
+  reassignCrimea(units)
 
   // --- Shared-arc topology, then topology-preserving simplification ---------
   type UnitTopology = Topology<{ units: GeometryCollection<UnitProps> }>
