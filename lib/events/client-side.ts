@@ -56,6 +56,7 @@ export const useClientEvents = () => {
     gameStore.map.atlasMode = false
     gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined
+    gameStore.map.liveGuesses = {}
   }
 
   return {

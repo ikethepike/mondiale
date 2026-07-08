@@ -11,6 +11,7 @@ import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-f
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
+import { playerGuessingHandler } from '~~/lib/events/server/player-guessing.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
 import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
@@ -56,6 +57,10 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   // Does not write to permanent game state
   'update-by-index': {
     handler: updateByIndexHandler,
+  },
+  // Ephemeral live guess relay (group rounds) — no permanent state written
+  'player-guessing': {
+    handler: playerGuessingHandler,
   },
   'submit-final-challenge-answer': {
     handler: submitFinalChallengeAnswerHandler,

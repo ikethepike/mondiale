@@ -64,6 +64,13 @@ export type ClientEventData =
       event: 'update-configuration'
       configuration: GameConfiguration
     }
+  | {
+      /** Ephemeral live guess during a group round — broadcast to the room so
+       *  everyone sees opponents' picks land in real time. Writes no permanent
+       *  state (like update-by-index). */
+      event: 'player-guessing'
+      isoCode: ISOCountryCode
+    }
 
 export type ClientEvent = ClientEventData['event']
 
@@ -93,6 +100,7 @@ export type ServerEventData =
   | { event: 'individual-challenge-checked'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
+  | { event: 'player-guessing'; playerId: string; isoCode: ISOCountryCode }
 
 export type ServerEvent = ServerEventData['event']
 

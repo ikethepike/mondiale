@@ -34,6 +34,9 @@ interface GameStoreState {
     zoomOut?: { isoCode: ISOCountryCode; durationSeconds: number }
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
+    /** Opponents' live guesses during a group round (playerId → their pick),
+     *  fed by the ephemeral `player-guessing` broadcast. */
+    liveGuesses: { [playerId: string]: ISOCountryCode }
   }
   /**
    * Set when the player closes the group scores; the 3D board clears it and
@@ -65,6 +68,7 @@ export const useGameStore = defineStore('game', {
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,
+      liveGuesses: {},
     },
   }),
   actions: {},

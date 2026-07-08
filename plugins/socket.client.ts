@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
+import { playerGuessingEvent } from '~~/lib/events/client/player-guessing.event'
 import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
 import { useGameStore } from '~~/store/game.store'
 import type { ClientEventTarget, ServerEventData } from '~~/types/events.types'
@@ -55,6 +56,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   },
   'final-challenge-checked': {
     handler: playerUpdateEvent,
+  },
+  'player-guessing': {
+    handler: playerGuessingEvent,
   },
 }
 
