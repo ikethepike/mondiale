@@ -137,6 +137,59 @@ const pathFromLines = (lines: Point[][]): string =>
     .map(line => `M ${line.map(([x, y]) => `${x},${y}`).join(' L ')}`)
     .join(' ')
 
+/**
+ * Natural Earth stores a long river as many named centerline segments that are
+ * neither ordered along the flow nor touching (small breaks of a few units at
+ * confluences and data seams). Emitted as-is, each becomes its own `M`-subpath
+ * and SVG lifts the pen between them — the river renders as disconnected stubs,
+ * and `getTotalLength()`-based draw-in animations (which assume one continuous
+ * stroke) break too.
+ *
+ * Greedily chain the bag of segments into as few polylines as possible: from a
+ * seed segment, repeatedly attach whichever remaining segment has an endpoint
+ * nearest the current chain's tail (flipping that segment if its far end is
+ * closer). Breaks up to `bridgeGap` are absorbed into the same subpath — the
+ * straight join spans the small NE gap, which reads as continuous — and a new
+ * subpath only starts when the nearest remaining endpoint is farther than that.
+ */
+const stitchLines = (lines: Point[][], bridgeGap: number): Point[][] => {
+  const remaining = lines.filter(line => line.length >= 2).map(line => [...line])
+  const chains: Point[][] = []
+
+  while (remaining.length) {
+    const chain = remaining.shift()!
+    // Extend the chain forward from its tail until nothing is close enough.
+    for (;;) {
+      const tail = chain[chain.length - 1]
+      let bestIndex = -1
+      let bestDistance = Infinity
+      let flip = false
+      for (let i = 0; i < remaining.length; i++) {
+        const seg = remaining[i]
+        const dStart = Math.hypot(seg[0][0] - tail[0], seg[0][1] - tail[1])
+        const dEnd = Math.hypot(
+          seg[seg.length - 1][0] - tail[0],
+          seg[seg.length - 1][1] - tail[1]
+        )
+        const [d, flipped] = dStart <= dEnd ? [dStart, false] : [dEnd, true]
+        if (d < bestDistance) {
+          bestDistance = d
+          bestIndex = i
+          flip = flipped
+        }
+      }
+      if (bestIndex === -1 || bestDistance > bridgeGap) break
+      const [next] = remaining.splice(bestIndex, 1)
+      const oriented = flip ? next.reverse() : next
+      // Drop the duplicated joint vertex when the endpoints coincide.
+      chain.push(...(bestDistance === 0 ? oriented.slice(1) : oriented))
+    }
+    chains.push(chain)
+  }
+
+  return chains
+}
+
 // --- Country geometry for adjacency tests -----------------------------------
 interface CountryShape {
   code: ISOCountryCode
@@ -373,15 +426,21 @@ const main = async () => {
     const main = clusters.reduce((a, b) => (lengthOf(a) >= lengthOf(b) ? a : b))
     if (lengthOf(main) < MIN_RIVER_LENGTH) continue
 
-    const crossed = countriesContaining(sampleAlong(main, RIVER_SAMPLE_STEP))
+    // Chain the cluster's segments into flow order and bridge the small NE
+    // breaks, so the river draws as one continuous stroke (and `sampleAlong`
+    // walks it in order). Segments the clustering already tied together sit
+    // within CLUSTER_GAP, so reuse it as the bridge threshold.
+    const stitched = stitchLines(main, CLUSTER_GAP)
+
+    const crossed = countriesContaining(sampleAlong(stitched, RIVER_SAMPLE_STEP))
     if (!crossed.length) continue
 
     add({
       id: `river-${slugify(name)}`,
       name,
       kind: 'river',
-      d: pathFromLines(main),
-      bounds: boundsOf(main),
+      d: pathFromLines(stitched),
+      bounds: boundsOf(stitched),
       countries: crossed,
     })
   }
