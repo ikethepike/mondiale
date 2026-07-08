@@ -30,6 +30,12 @@
     />
     <slot />
 
+    <PlayerStatusPanel
+      v-if="showStatusPanel"
+      :players="allPlayers"
+      :current-player-id="gameStore.playerId"
+    />
+
     <div v-if="revealCountry" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
@@ -84,6 +90,21 @@ const highlighted = computed<ISOCountryCode[]>(() => {
   if (!countries) return output
   return [...countries, ...output]
 })
+
+const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
+
+// Show the "what's everyone doing" panel only while parked on the board
+// (walking / turn done), where a player would otherwise wonder if the game
+// froze while others are still busy. The scores and victory screens carry
+// their own player lists, so the panel stays out of their way. Only with
+// company (2+ players).
+const BOARD_PHASES = ['moving', 'movement-summary']
+const showStatusPanel = computed(
+  () =>
+    allPlayers.value.length > 1 &&
+    !!player.value &&
+    BOARD_PHASES.includes(player.value.phase)
+)
 
 const router = useRouter()
 
