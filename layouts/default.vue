@@ -37,6 +37,15 @@
           <small>{{ revealCountry.coordinates }}</small>
           <h3>{{ countryName(revealCountry) }}</h3>
           <p>{{ revealCountry.geography.capital.name }}</p>
+          <small class="reveal-facts">
+            {{ REGION_LABELS[revealCountry.region] }}
+            <template v-if="revealPopulation"> · {{ revealPopulation }}</template>
+          </small>
+          <!-- The stat the question was actually about — the number is the lesson -->
+          <p v-if="gameStore.map.revealStat" class="reveal-stat">
+            <span class="stat-label">{{ gameStore.map.revealStat.label }}</span>
+            <strong>{{ gameStore.map.revealStat.value }}</strong>
+          </p>
         </div>
       </article>
     </div>
@@ -46,6 +55,8 @@
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { formatNumber } from '~~/lib/number'
+import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
 
@@ -53,6 +64,12 @@ const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
 
 const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
+
+const revealPopulation = computed(() => {
+  const population = revealCountry.value?.people?.population
+  if (!population) return undefined
+  return `${formatNumber(population.amount)} people`
+})
 
 const highlighted = computed<ISOCountryCode[]>(() => {
   const output = [...gameStore.map.highlighted]
@@ -161,6 +178,24 @@ onMounted(() => {
     opacity: 0.7;
     display: block;
     text-align: center;
+  }
+  .reveal-facts {
+    margin-top: 0.4rem;
+  }
+  .reveal-stat {
+    gap: 1rem;
+    display: flex;
+    margin: 1.2rem 0 0;
+    padding-top: 0.8rem;
+    align-items: baseline;
+    justify-content: space-between;
+    border-top: 0.1rem dashed var(--text-color);
+    .stat-label {
+      opacity: 0.7;
+      font-size: 1.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
   }
   .flag {
     margin-bottom: 2rem;

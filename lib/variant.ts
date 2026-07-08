@@ -1,7 +1,18 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GameVariant } from '~~/types/game.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode, Region } from '~~/types/geography.types'
+
+/** Player-facing region names (regions are stored as kebab-case slugs). */
+export const REGION_LABELS: { [region in Region]: string } = {
+  africa: 'Africa',
+  asia: 'Asia',
+  europe: 'Europe',
+  'middle-east': 'the Middle East',
+  'north-america': 'North America',
+  oceania: 'Oceania',
+  'south-america': 'South America',
+}
 
 /**
  * Regions folded into a broader playable variant — the dataset splits the

@@ -260,6 +260,17 @@ export const getFinalChallengeDetails = ({
   }
 }
 
+/** Short stat nouns for lesson lines and the reveal card. */
+export const FINAL_STAT_LABELS: { [accessor in MinMaxAccessorKeys]: string } = {
+  'economics.gdpPerCapita': 'GDP per capita',
+  'economics.militarySpending': 'Military spending',
+  'gender.womenInParliament': 'Women in parliament',
+  'people.population': 'Population',
+  'health.alcoholConsumption': 'Alcohol consumption',
+  'humanRights.refugees': 'Refugees hosted',
+  'health.obesity': 'Obesity rate',
+}
+
 const finalChallengeMinMaxQuestion: {
   [accessor in MinMaxAccessorKeys]: { min: string; max: string }
 } = {
@@ -293,9 +304,13 @@ const finalChallengeMinMaxQuestion: {
   },
 }
 
+// Soft parchment-friendly washes, one hue family apart per region, so the
+// region board reads as one harmonious map instead of a shouting match:
+// asia teal · europe cornflower · africa amber · n-america lavender ·
+// oceania sage · middle-east dusty rose · s-america terracotta.
 export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } = {
   asia: {
-    color: 'teal',
+    color: 'hsla(178, 36%, 50%, 0.6)',
     countries: [
       'AF',
       'AM',
@@ -336,7 +351,7 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
     ],
   },
   europe: {
-    color: 'red',
+    color: 'hsla(217, 52%, 62%, 0.6)',
     countries: [
       'AD',
       'AL',
@@ -384,7 +399,7 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
     ],
   },
   africa: {
-    color: 'tomato',
+    color: 'hsla(35, 70%, 60%, 0.65)',
     countries: [
       'EC',
       'AO',
@@ -446,7 +461,7 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
     ],
   },
   'north-america': {
-    color: 'magenta',
+    color: 'hsla(262, 32%, 62%, 0.55)',
     countries: [
       'AG',
       'BS',
@@ -474,11 +489,11 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
     ],
   },
   oceania: {
-    color: 'yellow',
+    color: 'hsla(135, 32%, 52%, 0.6)',
     countries: ['AU', 'FJ', 'KI', 'FM', 'NR', 'NZ', 'PW', 'PG', 'SB', 'TO', 'TV', 'VU'],
   },
   'middle-east': {
-    color: '#252525',
+    color: 'hsla(345, 42%, 62%, 0.6)',
     countries: [
       'BH',
       'CY',
@@ -499,7 +514,7 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
     ],
   },
   'south-america': {
-    color: 'crimson',
+    color: 'hsla(12, 62%, 60%, 0.62)',
     countries: ['AR', 'GF', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PY', 'PE', 'SR', 'UY', 'VE'],
   },
 }

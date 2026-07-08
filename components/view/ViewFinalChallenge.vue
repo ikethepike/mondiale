@@ -16,21 +16,79 @@
         </div>
       </Transition>
     </header>
-    <ChallengeResult v-if="status" :key="currentChallengeCount" :status="status" class="result" />
+    <ChallengeResult v-if="status" :key="currentChallengeCount" :status="status" class="result">
+      <template v-if="lesson">{{ lesson }}</template>
+    </ChallengeResult>
   </div>
 </template>
 <script lang="ts" setup>
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { COLOR_CODED_REGIONS, getFinalChallengeDetails } from '~~/lib/challenges/final-challenge'
+import {
+  COLOR_CODED_REGIONS,
+  FINAL_STAT_LABELS,
+  getFinalChallengeDetails,
+} from '~~/lib/challenges/final-challenge'
+import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { formatAmount } from '~~/lib/number'
+import { getValueByAccessorID } from '~~/lib/values'
+import { REGION_LABELS } from '~~/lib/variant'
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
 const { currentFinalChallenge, clearBoard, update, gameStore, currentMove } = useClientEvents()
 
 const status = toRef(gameStore.map, 'status')
+
+/**
+ * The teachable moment. Wrong answers get the fact they missed AND the fact
+ * they picked (so the mistake itself teaches); correct answers get the fact
+ * restated with its number to reinforce it.
+ */
+const lastGuess = ref<ISOCountryCode | undefined>(undefined)
+const lesson = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (!challenge || !status.value) return undefined
+
+  switch (challenge._type) {
+    case 'min-challenge':
+    case 'max-challenge': {
+      const label = FINAL_STAT_LABELS[challenge.accessorId]
+      const answer = getValueByAccessorID(challenge.country, challenge.accessorId)
+      if (!answer) return undefined
+      const answerLine = `${countryName(COUNTRIES[challenge.country])}: ${formatAmount(answer)} ${label.toLowerCase()}`
+      if (status.value === 'correct' || !lastGuess.value || lastGuess.value === challenge.country)
+        return answerLine
+      const guessed = getValueByAccessorID(lastGuess.value, challenge.accessorId)
+      if (!guessed) return answerLine
+      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}`
+    }
+    case 'region-challenge': {
+      const country = COUNTRIES[challenge.country]
+      return `${country.name.english} is part of ${REGION_LABELS[country.region]}.`
+    }
+    case 'leadership-challenge': {
+      const country = COUNTRIES[challenge.country]
+      const { leader } = country.government
+      return leader ? `${leader} leads ${countryName(country)}.` : undefined
+    }
+    case 'language-challenge': {
+      const speakers = Object.values(COUNTRIES).filter(country =>
+        country.languages.includes(challenge.language)
+      ).length
+      return `${challenge.language} is spoken in ${speakers} ${speakers === 1 ? 'country' : 'countries'} — they stay lit on the map.`
+    }
+    case 'membership-challenge': {
+      return status.value === 'correct'
+        ? `${countryName(COUNTRIES[challenge.exception])} is the odd one out.`
+        : `The odd one out was ${countryName(COUNTRIES[challenge.exception])}.`
+    }
+    default:
+      return undefined
+  }
+})
 
 const details = computed(() => {
   if (!currentFinalChallenge.value) return undefined
@@ -61,10 +119,11 @@ const triggerMembershipChallenge = () => {
 }
 
 watch(currentFinalChallenge, () => {
-  console.log('update')
   gameStore.map.reveal = undefined
+  gameStore.map.revealStat = undefined
   gameStore.map.status = undefined
   gameStore.map.highlighted.clear()
+  lastGuess.value = undefined
 
   triggerMembershipChallenge()
 })
@@ -79,6 +138,7 @@ const onMapClick = (event: Event) => {
   if (status.value) return
   if (!currentFinalChallenge.value) return
   const { isoCode } = event.detail
+  if (isValidISOCode(isoCode)) lastGuess.value = isoCode
 
   switch (currentFinalChallenge.value._type) {
     case 'region-challenge':
@@ -115,6 +175,18 @@ const onMapClick = (event: Event) => {
       gameStore.map.reveal = currentFinalChallenge.value.country
       gameStore.map.status =
         isoCode === currentFinalChallenge.value.country ? 'correct' : 'incorrect'
+
+      // Surface the stat on the reveal card — the number is the lesson
+      if (currentFinalChallenge.value._type !== 'leadership-challenge') {
+        const { accessorId, country } = currentFinalChallenge.value
+        const amount = getValueByAccessorID(country, accessorId)
+        if (amount) {
+          gameStore.map.revealStat = {
+            label: FINAL_STAT_LABELS[accessorId],
+            value: formatAmount(amount),
+          }
+        }
+      }
 
       update({
         event: 'submit-final-challenge-answer',

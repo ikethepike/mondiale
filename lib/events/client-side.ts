@@ -45,6 +45,7 @@ export const useClientEvents = () => {
   const clearBoard = () => {
     gameStore.map.highlighted.clear()
     gameStore.map.reveal = undefined
+    gameStore.map.revealStat = undefined
     gameStore.map.status = undefined
     gameStore.map.solo = false
     gameStore.map.labels = false

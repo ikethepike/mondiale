@@ -10,6 +10,8 @@ interface GameStoreState {
   playerId: string
   map: {
     reveal?: ISOCountryCode
+    /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */
+    revealStat?: { label: string; value: string }
     status?: 'incorrect' | 'correct'
     highlighted: Set<ISOCountryCode>
     /** Shapes-only mode: only highlighted/tinted countries render (traversal). */
@@ -42,6 +44,7 @@ export const useGameStore = defineStore('game', {
     map: {
       status: undefined,
       reveal: undefined,
+      revealStat: undefined,
       highlighted: new Set([]),
       solo: false,
       labels: false,

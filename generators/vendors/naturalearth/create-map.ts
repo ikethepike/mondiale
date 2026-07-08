@@ -427,6 +427,13 @@ export type MapCode = ISOCountryCode | (typeof EXTRA_MAP_CODES)[number]
 
 export const MAP_VIEWBOX = '0 0 2000 1001'
 
+/**
+ * The fitted Robinson parameters — other generators (water features, any
+ * future Natural Earth layer) project into the same coordinate space with
+ * geoRobinson().scale(scale).translate(translate).
+ */
+export const MAP_PROJECTION = { scale: ${roundTo(scale, 6)}, translate: [${roundTo(translate[0], 4)}, ${roundTo(translate[1], 4)}] as [number, number] }
+
 export const MAP_PATHS = ${JSON.stringify(sortedEntries(mapPaths))} as Record<MapCode, string>
 
 /** Projected bounding box per country: [x, y, width, height]. */

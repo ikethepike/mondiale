@@ -2,6 +2,10 @@
   <header class="challenge-result" :class="status">
     <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
     <h1 ref="heading" class="map-caption">{{ message }}</h1>
+    <!-- The teachable moment: the actual facts behind the verdict -->
+    <p v-if="$slots.default" class="lesson map-caption">
+      <slot />
+    </p>
   </header>
 </template>
 <script lang="ts" setup>
@@ -65,6 +69,16 @@ onUnmounted(() => {
 
   &.incorrect h1 {
     color: var(--hior-ange);
+  }
+
+  .lesson {
+    position: relative;
+    margin: 1.2rem auto 0;
+    width: max-content;
+    max-width: 60rem;
+    font-size: 1.7rem;
+    line-height: 1.5;
+    padding: 0.6rem 1.6rem;
   }
 
   .ripple {
