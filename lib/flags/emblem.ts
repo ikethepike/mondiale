@@ -105,7 +105,56 @@ export const splitField = (svgEl: XNode, vb: ViewBox): FieldSplit => {
   // refs into <defs> resolve.
   const idMap = buildIdMap(svgEl)
   const emblemBBox = boundsOf(emblem, idMap)
-  return { field, emblem, defs, emblemBBox }
+  // Some flags define the shapes a <use> instances INLINE in the body (not in
+  // <defs>) — flattening dissolves those id-bearing wrappers, so the surviving
+  // <use> refs would resolve to nothing (Serbia's crown gems). Re-emit each
+  // referenced definition into defs so <use> still renders.
+  const referencedDefs = referencedDefinitions(emblem, idMap)
+  return { field, emblem, defs: [...defs, ...referencedDefs], emblemBBox }
+}
+
+/** The `#id` a `<use>` points at, from either `xlink:href` or `href`. */
+const useTargetId = (el: XNode): string | undefined => {
+  if (el.name !== 'use') return undefined
+  const href = el.attributes?.['xlink:href'] ?? el.attributes?.href
+  return href?.startsWith('#') ? href.slice(1) : undefined
+}
+
+/**
+ * For every id a `<use>` in `nodes` references, return the source definition
+ * subtree wrapped as `<defs>` so the reference resolves in the recomposed
+ * output. Recurses into nested `<use>` (a definition may itself instance another)
+ * and skips ids that already live under a `<defs>` in the doc.
+ */
+const referencedDefinitions = (nodes: XNode[], idMap: Map<string, XNode>): XNode[] => {
+  const wanted = new Set<string>()
+  const visit = (el: XNode) => {
+    const id = useTargetId(el)
+    if (id) wanted.add(id)
+    for (const child of el.children || []) visit(child)
+  }
+  nodes.forEach(visit)
+
+  const collected: XNode[] = []
+  const seen = new Set<string>()
+  const pull = (id: string) => {
+    if (seen.has(id)) return
+    seen.add(id)
+    const def = idMap.get(id)
+    if (!def) return
+    collected.push(def)
+    // A definition may <use> another definition — pull those too.
+    const nested = (el: XNode) => {
+      const nestedId = useTargetId(el)
+      if (nestedId) pull(nestedId)
+      for (const child of el.children || []) nested(child)
+    }
+    nested(def)
+  }
+  wanted.forEach(pull)
+
+  if (!collected.length) return []
+  return [{ type: 'element', name: 'defs', attributes: {}, children: collected }]
 }
 
 const boundsOf = (nodes: XNode[], idMap: Map<string, XNode>): BBox | null => {

@@ -97,7 +97,11 @@
           <!-- Money match (hard): which country spends this currency? -->
           <template v-else-if="variant === 'money-match'">
             <h1 class="map-caption">Which country uses this currency?</h1>
-            <div class="money-hero" aria-hidden="true">
+            <div v-if="challenge.image" class="money-hero money-hero-photo">
+              <img class="money-note" :src="challenge.image" alt="A banknote" />
+              <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
+            </div>
+            <div v-else class="money-hero" aria-hidden="true">
               <span class="money-symbol">{{ currencySymbol(getCountry(challenge.country).currency) }}</span>
               <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
             </div>
@@ -109,7 +113,7 @@
                 type="button"
                 @click="submitAnswer(option)"
               >
-                <CountryFlag class="option-flag" :country="getCountry(option)" mode="background" />
+                <CountryTileFlag class="option-flag" :country="getCountry(option)" />
                 <span>{{ countryName(option) }}</span>
               </button>
             </div>
@@ -689,6 +693,9 @@ header {
     display: flex;
     align-items: center;
     flex-flow: column nowrap;
+    // Fallback: scroll to the options if a tall hero + cards overflow.
+    max-height: 100vh;
+    overflow-y: auto;
   }
 
   // The flag is the question — present it as the hero, framed like the
@@ -860,6 +867,28 @@ header {
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--soft-blue);
+  }
+}
+
+// Banknote hero: bound by both width and height so portrait notes still leave
+// room for the option cards below (no scroll).
+.money-hero-photo {
+  gap: 0.8rem;
+
+  .money-note {
+    width: auto;
+    height: auto;
+    max-width: min(40rem, 90vw);
+    max-height: 42vh;
+    object-fit: contain;
+    border-radius: 0.6rem;
+    box-shadow: 0 0.6rem 1.8rem hsla(215.7, 76.4%, 21.6%, 0.28);
+  }
+}
+
+@media (max-width: 640px) {
+  .money-hero-photo .money-note {
+    max-height: 34vh;
   }
 }
 

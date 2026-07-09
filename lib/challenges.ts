@@ -1,6 +1,7 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { CURRENCIES } from '~~/data/currencies.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
@@ -969,7 +970,7 @@ const dealBorderDetective = (
  */
 const dealMoneyMatch = (
   pool: ISOCountryCode[]
-): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
+): { country: ISOCountryCode; options: ISOCountryCode[]; image?: string } | undefined => {
   const subject = shuffleArray(pool).find(isoCode => !!COUNTRIES[isoCode].currency)
   if (!subject) return undefined
   const currency = COUNTRIES[subject].currency
@@ -980,7 +981,11 @@ const dealMoneyMatch = (
   })
   if (!decoys) return undefined
 
-  return { country: subject, options: shuffleArray([subject, ...decoys]) }
+  // A banknote image when one exists — the UI falls back to the glyph hero when
+  // it doesn't, so the deal is NOT gated on the image (unlike capital-match).
+  const image = currency ? CURRENCIES[currency]?.image : undefined
+
+  return { country: subject, options: shuffleArray([subject, ...decoys]), image }
 }
 
 /**
