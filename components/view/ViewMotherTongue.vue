@@ -120,10 +120,16 @@ const onGuess = (country: Country) => {
 
   guesses.value.push(country.isoCode)
   const correct = answerSet.value.has(country.isoCode)
+  // Everyone races the same list, so a right name would be a free answer. Only
+  // the misses are named; a hit says just that somebody found one.
   announce({
     kind: correct ? 'correct' : 'wrong',
-    isoCode: country.isoCode,
-    hint: correct ? undefined : `${countryName(country)} doesn't speak ${active.language}`,
+    ...(correct
+      ? {}
+      : {
+          isoCode: country.isoCode,
+          hint: `${countryName(country)} doesn't speak ${active.language}`,
+        }),
   })
 
   if (found.value.length === active.countries.length) {

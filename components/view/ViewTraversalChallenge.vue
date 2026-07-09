@@ -243,10 +243,13 @@ const submitGuess = (country: Country) => {
 
   guesses.value.push(country.isoCode)
   query.value = ''
-  // Each player walks their own route, so naming the step leaks nothing.
+  // A wrong step is named — it cost its guesser and helps nobody. A right one
+  // is a stepping stone on a route the others are still hunting, so the room
+  // sees only that somebody found one.
+  const linked = linkedSet.value.has(country.isoCode)
   announce({
-    kind: linkedSet.value.has(country.isoCode) ? 'correct' : 'wrong',
-    isoCode: country.isoCode,
+    kind: linked ? 'correct' : 'wrong',
+    ...(linked ? {} : { isoCode: country.isoCode }),
   })
 
   // Resolve the moment the guessed countries bridge the endpoints

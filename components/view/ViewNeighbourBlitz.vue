@@ -131,12 +131,16 @@ const onGuess = (country: Country) => {
 
   guesses.value.push(country.isoCode)
   const correct = neighbourSet.value.has(country.isoCode)
+  // Everyone races the same list, so a right name would be a free answer. Only
+  // the misses are named; a hit says just that somebody found one.
   announce({
     kind: correct ? 'correct' : 'wrong',
-    isoCode: country.isoCode,
-    hint: correct
-      ? undefined
-      : `${countryName(country)} doesn't border ${countryName(active.country)}`,
+    ...(correct
+      ? {}
+      : {
+          isoCode: country.isoCode,
+          hint: `${countryName(country)} doesn't border ${countryName(active.country)}`,
+        }),
   })
 
   // Every neighbour found — no reason to run out the clock
