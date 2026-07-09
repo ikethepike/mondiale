@@ -31,12 +31,7 @@
     <!-- The free-type input opens a suggestion list downward, so that variant
          reserves extra room below; the flag-options grid needs none. -->
     <footer :class="{ 'has-input': !challenge.options }">
-      <div class="timer-track" aria-hidden="true">
-        <div
-          class="timer-fill"
-          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
-        />
-      </div>
+      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
 
       <!-- Non-hard mode: pick from four flag options. Hard mode: free-type. -->
       <div v-if="challenge.options" class="options card-options">
@@ -65,6 +60,7 @@
 </template>
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -191,20 +187,6 @@ footer {
   &.has-input {
     padding-bottom: clamp(8rem, 24vh, 20rem);
   }
-}
-
-.timer-track {
-  width: 100%;
-  max-width: 46rem;
-  height: 0.5rem;
-  border-radius: 0.25rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.12);
-  overflow: hidden;
-}
-.timer-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 1s linear;
 }
 
 .card-options {

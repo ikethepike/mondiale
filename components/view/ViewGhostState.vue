@@ -17,7 +17,13 @@
                round over. A population says what kind of place it is. -->
           <template v-if="!submitted">
             <h1 class="map-caption">Where on Earth is this?</h1>
-            <span class="map-caption sub">{{ teaser }} — {{ secondsLeft }}s</span>
+            <span class="map-caption sub">{{ teaser }}</span>
+            <ChallengeTimer
+              v-if="challenge"
+              class="timer"
+              :value="secondsLeft"
+              :total="challenge.durationSeconds"
+            />
           </template>
           <template v-else-if="territory">
             <h1 class="map-caption">{{ verdictHeadline }} — {{ territory.name }}</h1>
@@ -40,6 +46,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -293,6 +300,11 @@ header {
 
   .sub {
     padding: 0.4rem 1.4rem;
+    max-width: min(80vw, 40rem);
+  }
+
+  // Match the teaser's measure so the bar reads as part of the prompt.
+  .timer {
     max-width: min(80vw, 40rem);
   }
 
