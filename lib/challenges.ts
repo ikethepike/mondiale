@@ -41,7 +41,7 @@ import type {
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
-import { haversineKm, type LatLng } from './geo'
+import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction } from './scoring'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
@@ -456,7 +456,7 @@ const getWaterBlitzChallenge = async (
   kinds: WaterFeatureKind[]
 ): Promise<WaterBlitzChallenge | undefined> => {
   const candidates = (await waterFeaturePool(game, kinds)).filter(
-    feature => feature.countries.length >= (kinds.includes('river') ? 3 : 3)
+    feature => feature.countries.length >= 3
   )
   const feature = candidates[Math.floor(Math.random() * candidates.length)]
   if (!feature) return undefined
@@ -645,45 +645,6 @@ const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | u
   }
 }
 
-/** Mother-tongue scoring: same blitz shape as water — found ratio, wrong bites. */
-export const scoreMotherTongue = ({
-  challenge,
-  submittedGuesses,
-}: {
-  challenge: MotherTongueChallenge
-  submittedGuesses: ISOCountryCode[]
-}): { scored: number; maximum: number } => {
-  const answers = new Set(challenge.countries)
-  const unique = [...new Set(submittedGuesses)]
-  const correct = unique.filter(isoCode => answers.has(isoCode)).length
-  const wrong = unique.length - correct
-  const scored = Math.max(
-    0,
-    Math.round((challenge.maximumPoints * correct) / challenge.countries.length) - wrong
-  )
-  return { scored, maximum: challenge.maximumPoints }
-}
-
-/** Blitz-family scoring: found ratio scales the pot, wrong guesses bite it. */
-export const scoreWaterBlitz = ({
-  challenge,
-  submittedGuesses,
-}: {
-  challenge: WaterBlitzChallenge
-  submittedGuesses: ISOCountryCode[]
-}): { scored: number; maximum: number } => {
-  const answers = new Set(challenge.countries)
-  const unique = [...new Set(submittedGuesses)]
-  const correct = unique.filter(isoCode => answers.has(isoCode)).length
-  const wrong = unique.length - correct
-
-  const scored = Math.max(
-    0,
-    Math.round((challenge.maximumPoints * correct) / challenge.countries.length) - wrong
-  )
-  return { scored, maximum: challenge.maximumPoints }
-}
-
 /**
  * Recognition modes deal from the generated disputed-territories dataset.
  * Dynamic import for the same reason as the water dealer: only nitro runs
@@ -773,19 +734,6 @@ const boxDistance = (
   b: readonly [number, number, number, number]
 ) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
 
-/**
- * A country's mainland: its largest ring. The whole-country bbox is useless for
- * distance — the US box spans the Pacific to reach Guam, putting its centre
- * closer to Russia than to Canada.
- */
-const mainlandBox = (
-  rings: readonly (readonly [number, number, number, number])[] | undefined,
-  fallback: readonly [number, number, number, number]
-) =>
-  rings?.length
-    ? rings.reduce((largest, ring) => (ring[2] * ring[3] > largest[2] * largest[3] ? ring : largest))
-    : fallback
-
 /** Beyond this projected distance a guess is worth nothing. Tuned so a
  *  neighbouring country still scores well and another continent scores zero. */
 const GHOST_STATE_FALLOFF = 260
@@ -843,9 +791,9 @@ export const scoreNoMansLand = ({
 
   if (truth.size === 0 && guess.size === 0) return { scored: maximum, maximum }
 
+  // Union is never zero past the both-empty case above.
   const intersection = [...guess].filter(isoCode => truth.has(isoCode)).length
   const union = new Set([...guess, ...truth]).size
-  if (union === 0) return { scored: 0, maximum }
   return { scored: Math.max(0, Math.round(maximum * (intersection / union))), maximum }
 }
 
@@ -969,24 +917,6 @@ export const scoreTraversalSubmission = ({
   const minimumGuesses = Math.max(0, challenge.optimalHops - 1)
   const wastedGuesses = submittedGuesses.length - minimumGuesses
   return { scored: attemptDecayScore(wastedGuesses, maximum), maximum }
-}
-
-/** Blitz: points scale with neighbours found; wrong names each cost one. */
-export const scoreNeighbourBlitz = ({
-  challenge,
-  submittedGuesses,
-}: {
-  challenge: NeighbourBlitzChallenge
-  submittedGuesses: ISOCountryCode[]
-}): { scored: number; maximum: number } => {
-  const maximum = challenge.maximumPoints
-  const neighbourSet = new Set(challenge.neighbours)
-  const unique = [...new Set(submittedGuesses)]
-  const correct = unique.filter(isoCode => neighbourSet.has(isoCode)).length
-  const wrong = unique.length - correct
-
-  const raw = Math.round(maximum * (correct / challenge.neighbours.length)) - wrong
-  return { scored: Math.max(0, Math.min(raw, maximum)), maximum }
 }
 
 /**
@@ -2276,41 +2206,39 @@ export const getCorrectRanking = ({
   return sorted.map(value => value.isoCode)
 }
 
+/**
+ * Score a ranking round: full marks per country in its exact slot, one point
+ * less per slot of displacement in either direction, nothing beyond that.
+ *
+ * Server-authoritative: only the player's dealt hand counts, each country
+ * once — a padded or foreign submission can't inflate the score (which feeds
+ * board movement 1:1) or the pot.
+ */
 export const scoreChallengeSubmission = ({
   groupChallengeAccessorId,
   submittedRanking,
+  dealtCountries,
 }: {
   groupChallengeAccessorId: GroupChallengeAccessorId
   submittedRanking: ISOCountryCode[]
+  dealtCountries: ISOCountryCode[]
 }): {
   scored: number
   maximum: number
 } => {
+  const dealt = new Set(dealtCountries)
+  const submitted = [...new Set(submittedRanking)].filter(isoCode => dealt.has(isoCode))
+  const correctRanking = getCorrectRanking({ groupChallengeAccessorId, isoCodes: dealtCountries })
+
   let accruedPoints = 0
-  const correctRanking = getCorrectRanking({ groupChallengeAccessorId, isoCodes: submittedRanking })
   for (const [index, isoCode] of correctRanking.entries()) {
-    for (let offset = 0; offset < MAXIMUM_SCORE_PER_COUNTRY; offset++) {
-      const points = MAXIMUM_SCORE_PER_COUNTRY - offset
-      const earlier = submittedRanking[index - offset]
-      if (earlier === isoCode) {
-        accruedPoints += points
-        break
-      }
-
-      if (index === 0) {
-        continue
-      }
-
-      const later = submittedRanking[index + offset]
-      if (later === isoCode) {
-        accruedPoints += points
-        break
-      }
-    }
+    const submittedIndex = submitted.indexOf(isoCode)
+    if (submittedIndex === -1) continue
+    accruedPoints += Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - Math.abs(submittedIndex - index))
   }
 
   return {
     scored: accruedPoints,
-    maximum: submittedRanking.length * MAXIMUM_SCORE_PER_COUNTRY,
+    maximum: dealtCountries.length * MAXIMUM_SCORE_PER_COUNTRY,
   }
 }

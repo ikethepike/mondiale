@@ -53,7 +53,6 @@ const mockGame = reactive<Game>({
 mockGame.players['mock-player-1'].moves = [
   {
     endTile: tiles[5],
-    steps: 2,
     challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' },
   },
 ]

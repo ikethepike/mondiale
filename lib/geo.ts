@@ -58,6 +58,23 @@ const COMPASS_POINTS = [
 export const compassLabel = (bearing: number): string =>
   COMPASS_POINTS[Math.round(bearing / 45) % 8]
 
+// --- Projected map-space boxes -------------------------------------------------
+
+/** An axis-aligned box in the map's projected SVG space: [x, y, width, height]. */
+export type MapBox = [number, number, number, number]
+
+/**
+ * A country's mainland box. The whole-country bbox lies for RU/US-class
+ * countries — antimeridian fragments stretch it across the map, putting the
+ * US centre closer to Russia than to Canada. MAP_REGIONS emits per-ring boxes
+ * sorted largest-first, so the mainland is ring 0; `fallback` (usually
+ * MAP_BOUNDS) covers countries with no ring data.
+ */
+export const mainlandBox = <T extends MapBox | undefined>(
+  rings: MapBox[] | undefined,
+  fallback: T
+): MapBox | T => rings?.[0] ?? fallback
+
 // --- Robinson projection ------------------------------------------------------
 //
 // data/map.gen.ts stores SVG paths already projected through d3's geoRobinson

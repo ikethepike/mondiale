@@ -67,7 +67,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { buzzFraction } from '~~/lib/scoring'
+import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -121,7 +121,7 @@ const start = () => {
 const scoreFor = (active: NonNullable<typeof challenge.value>) =>
   active.maximumGuesses
     ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
-    : Math.round(active.maximumPoints * buzzFraction(secondsLeft.value / active.durationSeconds))
+    : buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
 
 const onGuess = (country: Country) => {
   const active = challenge.value

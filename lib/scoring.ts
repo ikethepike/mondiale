@@ -10,6 +10,29 @@ export const BUZZ_FLOOR = 0.35
 export const buzzFraction = (remainingFraction: number): number =>
   BUZZ_FLOOR + (1 - BUZZ_FLOOR) * Math.max(0, Math.min(1, remainingFraction))
 
+/** Points for buzzing in with `remainingFraction` of the clock left. */
+export const buzzScore = (maximumPoints: number, remainingFraction: number): number =>
+  Math.round(maximumPoints * buzzFraction(remainingFraction))
+
+/**
+ * Blitz-family scoring (water modes, mother-tongue, neighbour-blitz): the
+ * found ratio scales the pot, every wrong guess bites one point. Duplicate
+ * guesses count once.
+ */
+export const blitzScore = (
+  answers: readonly string[],
+  submittedGuesses: readonly string[],
+  maximumPoints: number
+): { scored: number; maximum: number } => {
+  const answerSet = new Set(answers)
+  const unique = [...new Set(submittedGuesses)]
+  const correct = unique.filter(guess => answerSet.has(guess)).length
+  const wrong = unique.length - correct
+
+  const raw = answerSet.size ? Math.round((maximumPoints * correct) / answerSet.size) - wrong : 0
+  return { scored: Math.max(0, Math.min(raw, maximumPoints)), maximum: maximumPoints }
+}
+
 /** A found answer worth `maximum`, docked per wasted attempt, never below `floor`. */
 export const attemptDecayScore = (wasted: number, maximum: number, step = 2, floor = 2): number =>
   Math.max(floor, maximum - Math.max(0, wasted) * step)

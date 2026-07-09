@@ -5,14 +5,12 @@ import {
   scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
-  scoreMotherTongue,
-  scoreNeighbourBlitz,
   scoreNoMansLand,
   scorePinLandmark,
   scoreTraversalSubmission,
-  scoreWaterBlitz,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
+import { blitzScore } from '~~/lib/scoring'
 import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
@@ -57,10 +55,11 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
           throw new TypeError('kind mismatch')
         }
         answer = { submitted: eventData.ranking, correct: roundChallenge.neighbours }
-        scoring = scoreNeighbourBlitz({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        scoring = blitzScore(
+          roundChallenge.neighbours,
+          eventData.ranking,
+          roundChallenge.maximumPoints
+        )
         break
       }
       case 'hot-cold': {
@@ -102,19 +101,21 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       case 'highlands': {
         if (roundChallenge._type !== 'water-blitz-challenge') throw new TypeError('kind mismatch')
         answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
-        scoring = scoreWaterBlitz({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        scoring = blitzScore(
+          roundChallenge.countries,
+          eventData.ranking,
+          roundChallenge.maximumPoints
+        )
         break
       }
       case 'mother-tongue': {
         if (roundChallenge._type !== 'mother-tongue-challenge') throw new TypeError('kind mismatch')
         answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
-        scoring = scoreMotherTongue({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        scoring = blitzScore(
+          roundChallenge.countries,
+          eventData.ranking,
+          roundChallenge.maximumPoints
+        )
         break
       }
       case 'flag-palette': {
@@ -205,6 +206,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         scoring = scoreChallengeSubmission({
           groupChallengeAccessorId: roundChallenge.id,
           submittedRanking: eventData.ranking,
+          dealtCountries: originalRanking,
         })
       }
     }
@@ -221,7 +223,6 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       player.moves = [
         {
           endTile: finalTile,
-          steps: 2,
           challenge: getFinalChallenges({ game }),
         },
       ]
@@ -232,15 +233,16 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
 
     game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
 
-    // Take current position + scoring, split on each challenge
+    // The scored points ARE the tiles to walk: the slice starts one past the
+    // tile the player stands on and runs `scored` tiles forward. Split into
+    // one move per challenge gate along the way.
     const potentialProgress = player.currentPosition + scoring.scored
-    const potentialTiles = [...game.tiles.slice(player.currentPosition, potentialProgress)]
+    const potentialTiles = game.tiles.slice(player.currentPosition + 1, potentialProgress + 1)
 
-    // Here, we add player moves. Each of these will be executed sequentially and players
-    // will move an according amount of steps
+    // Each move is executed sequentially; challenge moves stop one tile
+    // before their gate (see enterMovementPhaseHandler).
     const moves: PlayerMove[] = []
     while (potentialTiles.length) {
-      console.log(`Moveset: ${moves.length + 1}`)
       // Identify any special tiles in the moveset
       const specialTileIndex = potentialTiles.findIndex(tile =>
         [...individualChallengeAccessors, 'final'].includes(tile.type)
@@ -249,30 +251,21 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
 
       const spliceCount = specialTileIndex === -1 ? potentialTiles.length : specialTileIndex
       const moveset = potentialTiles.splice(0, spliceCount + 1)
-      console.log({ spliceCount, moveset, potentialTiles })
       let move: PlayerMove = {
         endTile: moveset[moveset.length - 1],
-        steps: moveset.length,
       }
 
       switch (true) {
         // If player has reached final challenge
         case moveset.some(tile => tile.type === 'final'):
-          console.log('> Final challenge', { specialTile, specialTileIndex })
-
           move = {
             endTile: specialTile,
-            steps: moveset.length, // Stop one tile before
             challenge: getFinalChallenges({ game }),
           }
           break
         // If we have an individual challenge in our moveset
         case isValidIndividualChallengeAccessorId(specialTile?.type):
           {
-            console.log('> Individual challenge', {
-              specialTile,
-              specialTileIndex,
-            })
             const { type: accessorId } = specialTile
             if (!isValidIndividualChallengeAccessorId(accessorId)) {
               throw new EvalError(`Invalid accessor id for challenge: ${accessorId}`)
@@ -280,7 +273,6 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
 
             move = {
               endTile: specialTile,
-              steps: specialTileIndex,
               challenge: getIndividualChallenge({
                 accessorId,
                 difficulty: game.difficulty,
