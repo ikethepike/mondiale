@@ -374,6 +374,11 @@ const clampView = (view: typeof WORLD_VIEW) => {
 }
 
 const tweenToView = (target: typeof WORLD_VIEW) => {
+  // A reveal in flight owns the camera outright. Clearing `reveal` between
+  // rounds queues a world-fit tween on the same frame the next gate's reveal
+  // starts — it would drag the camera off the tight crop and the reveal, being
+  // a .to() toward a fixed frame, would then run inward from the world.
+  if (revealLocked) return
   // The reveal camera owns the shot: halt any gesture glide first.
   loopRunning = false
   momentum.x = 0
@@ -1027,7 +1032,14 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   momentum.y = 0
   wrapper.value.classList.add('is-interacting')
 
-  zoomOutTween?.kill()
+  // Not just `zoomOutTween`: clearing `reveal` between rounds starts an
+  // anonymous world-fit tween on `viewState` that would otherwise keep writing
+  // the camera every frame and drag it back off the crop we are about to set.
+  gsap.killTweensOf(viewState)
+  // Claim the camera before touching it, so a watcher flushed later in this
+  // same tick can't start a competing tween through `tweenToView`.
+  revealLocked = true
+
   if (prefersReducedMotion()) {
     Object.assign(viewState, wide)
     writeViewBox()
@@ -1035,6 +1047,9 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
     Object.assign(targetView, viewState)
     wrapper.value.classList.remove('is-interacting')
     updateEffectiveZoom()
+    // Nothing is animating: hand the camera back, or the next round's
+    // world-fit tween would be silently dropped.
+    revealLocked = false
     return
   }
 
@@ -1042,7 +1057,6 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   clampView(startView)
   Object.assign(viewState, startView)
   writeViewBox()
-  revealLocked = true
   // The reveal starts deeply zoomed, so run the LOD pass now (and periodically
   // through the tween) to load + swap in the HD geometry — otherwise the whole
   // reveal renders the blocky low-detail tier and only sharpens at the very end.
@@ -1097,14 +1111,11 @@ const moveToCountry = () => {
 
 const gameStore = useGameStore()
 
-watch(() => props.highlightCountry, moveToCountry)
-watch(
-  () => gameStore.map.reveal,
-  reveal => {
-    // Reveal cleared between rounds: return the camera to the world view.
-    if (!reveal) tweenToView(worldFitView())
-  }
-)
+// Registered before the two reveal-driven watchers below: Vue flushes watchers
+// in creation order, and answering a zoom-out gate clears `map.zoomOut` and
+// sets `map.reveal` in the same tick. Releasing the camera first lets the
+// result fly-to through; the reverse order would see `revealLocked` still set
+// and silently drop it.
 watch(
   () => gameStore.map.zoomOut,
   zoomOut => {
@@ -1115,6 +1126,14 @@ watch(
     }
   },
   { immediate: true }
+)
+watch(() => props.highlightCountry, moveToCountry)
+watch(
+  () => gameStore.map.reveal,
+  reveal => {
+    // Reveal cleared between rounds: return the camera to the world view.
+    if (!reveal) tweenToView(worldFitView())
+  }
 )
 </script>
 
