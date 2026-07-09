@@ -58,20 +58,24 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
-
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'water-blitz-challenge'
-    ? roundChallenge
-    : undefined
-})
+// Full world map with the feature drawn on top; guesses tint as they land — so
+// this mode opts out of the composable's shapes-only default.
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  begin: beginRound,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('water-blitz-challenge', { solo: false })
 
 /** One view, three moods — the feature kind decides the copy. */
 const copy = computed(() => {
@@ -101,17 +105,10 @@ const copy = computed(() => {
 })
 
 const guesses = ref<ISOCountryCode[]>([])
-const submitted = ref(false)
-const started = ref(false)
-const showInterstitial = ref(true)
-const secondsLeft = ref(challenge.value?.durationSeconds ?? 45)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const answerSet = computed(() => new Set(challenge.value?.countries ?? []))
 const found = computed(() => guesses.value.filter(isoCode => answerSet.value.has(isoCode)))
-
-// Full world map with the feature drawn on top; guesses tint as they land
-clearBoard()
 
 onMounted(async () => {
   const active = challenge.value
@@ -146,27 +143,18 @@ const flashHint = (text: string) => {
   if (hintTimer) clearTimeout(hintTimer)
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
-
-let countdown: ReturnType<typeof setInterval> | undefined
+registerCleanup(() => hintTimer && clearTimeout(hintTimer))
 
 const submitRound = () => {
   if (submitted.value) return
-  submitted.value = true
-  if (countdown) clearInterval(countdown)
   gameStore.map.status =
     found.value.length >= (challenge.value?.countries.length ?? Infinity) ? 'correct' : undefined
-  update({ event: 'submit-group-challenge-answers', ranking: [...guesses.value] })
+  submitOnce([...guesses.value])
 }
 
 const begin = () => {
-  showInterstitial.value = false
-  started.value = true
+  beginRound({ onTimeout: submitRound })
   nextTick(() => guessInput.value?.focus())
-
-  countdown = setInterval(() => {
-    secondsLeft.value--
-    if (secondsLeft.value <= 0) submitRound()
-  }, 1000)
 }
 
 const onGuess = (country: Country) => {
@@ -188,12 +176,6 @@ const onGuess = (country: Country) => {
     submitRound()
   }
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (countdown) clearInterval(countdown)
-  if (hintTimer) clearTimeout(hintTimer)
-})
 </script>
 <style lang="scss" scoped>
 .water-blitz {

@@ -69,35 +69,32 @@
 <script lang="ts" setup>
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { ISOCountryCode } from '~~/types/geography.types'
-
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
 const DURATION_SECONDS = 45
 const MAX_ATTEMPTS = 3
 
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'name-water-challenge'
-    ? roundChallenge
-    : undefined
-})
+// The glowing feature IS the question — countries stay for context, so this
+// mode opts out of the composable's shapes-only default.
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('name-water-challenge', { solo: false })
 
-const showInterstitial = ref(true)
-const started = ref(false)
+// `NameWaterChallenge` carries no `durationSeconds`, so the composable's
+// countdown never arms — this mode paces itself off the constant above.
+const secondsLeft = ref(DURATION_SECONDS)
 const resolved = ref(false)
 const resolvedCorrectly = ref(false)
-const submitted = ref(false)
-const secondsLeft = ref(DURATION_SECONDS)
 const attempts = ref(0)
 const attemptsLeft = computed(() => MAX_ATTEMPTS - attempts.value)
-
-// The glowing feature IS the question — countries stay for context
-clearBoard()
 
 /** Candidate names for suggestions, loaded with the geometry chunk. */
 interface WaterOption {
@@ -158,6 +155,11 @@ const shoreLine = computed(() => {
 
 let countdown: ReturnType<typeof setInterval> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => {
+  if (countdown) clearInterval(countdown)
+  if (revealTimer) clearTimeout(revealTimer)
+  if (hintTimer) clearTimeout(hintTimer)
+})
 
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
 const REVEAL_HOLD_MS = 4200
@@ -177,11 +179,7 @@ const resolve = (correct: boolean) => {
     ? Math.round(active.maximumPoints * (1 - (attempts.value - 1) * 0.3))
     : 0
 
-  revealTimer = setTimeout(() => {
-    if (submitted.value) return
-    submitted.value = true
-    update({ event: 'submit-group-challenge-answers', ranking: [], clientScore })
-  }, REVEAL_HOLD_MS)
+  revealTimer = setTimeout(() => submitOnce([], clientScore), REVEAL_HOLD_MS)
 }
 
 const begin = () => {
@@ -220,13 +218,6 @@ const submitTyped = () => {
   if (!choice) return flashHint('No water by that name')
   pick(choice)
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (countdown) clearInterval(countdown)
-  if (hintTimer) clearTimeout(hintTimer)
-  if (revealTimer) clearTimeout(revealTimer)
-})
 </script>
 <style lang="scss" scoped>
 .name-that-water {

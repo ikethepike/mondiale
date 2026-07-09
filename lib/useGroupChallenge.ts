@@ -1,7 +1,11 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useClientEvents } from '~~/lib/events/client-side'
-import type { GroupModeChallenge } from '~~/types/challenges/group-modes.type'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
+
+/** Every round challenge that carries a `_type` discriminant. The legacy
+ *  ranking `GroupChallenge` has none, so `Extract` drops it automatically. */
+type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
 
 /**
  * Shared scaffolding every group-mode View repeats: narrow the round's
@@ -13,13 +17,13 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  *   const { challenge, showInterstitial, begin, secondsLeft, submitOnce } =
  *     useGroupChallenge('two-truths-challenge')
  */
-export const useGroupChallenge = <T extends GroupModeChallenge['_type']>(
+export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: { solo?: boolean } = {}
 ) => {
   const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
-  type Challenge = Extract<GroupModeChallenge, { _type: T }>
+  type Challenge = Extract<TypedRoundChallenge, { _type: T }>
   const challenge = computed<Challenge | undefined>(() => {
     const roundChallenge = currentRound.value?.round.groupChallenge
     return roundChallenge && '_type' in roundChallenge && roundChallenge._type === typeName
@@ -76,6 +80,16 @@ export const useGroupChallenge = <T extends GroupModeChallenge['_type']>(
     }
   }
 
+  /**
+   * Stop the clock early. Buzz-in modes (silhouette, stat-detective) resolve
+   * before zero and must not keep ticking through their reveal hold — the
+   * countdown drives on-screen reveals, not just the timeout.
+   */
+  const stopCountdown = () => {
+    if (countdown) clearInterval(countdown)
+    countdown = undefined
+  }
+
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
@@ -94,6 +108,7 @@ export const useGroupChallenge = <T extends GroupModeChallenge['_type']>(
     secondsLeft,
     begin,
     submitOnce,
+    stopCountdown,
     registerCleanup,
     gameStore,
     update,

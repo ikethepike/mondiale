@@ -61,28 +61,28 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { mainlandOutline } from '~~/lib/outline'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
+// Blank the world map — the silhouette IS the whole question
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  begin: beginRound,
+  submitOnce,
+  stopCountdown,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('silhouette-challenge')
 
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'silhouette-challenge'
-    ? roundChallenge
-    : undefined
-})
-
-const submitted = ref(false)
-const started = ref(false)
 const resolved = ref(false)
 const lockedOut = ref(false)
-const showInterstitial = ref(true)
-const secondsLeft = ref(challenge.value?.durationSeconds ?? 30)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 // The region hint (non-hard mode) surfaces only in the final 30% of the clock —
@@ -92,10 +92,6 @@ const regionRevealed = computed(() => {
   return started.value && secondsLeft.value / total <= 0.3
 })
 const outlinePath = ref<SVGPathElement>()
-
-// Blank the world map — the silhouette IS the whole question
-clearBoard()
-gameStore.map.solo = true
 
 /** The country's mainland ring, framed in its own viewBox. */
 const outline = ref<{ d: string; viewBox: string }>()
@@ -113,18 +109,17 @@ const flashHint = (text: string) => {
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
 
-let countdown: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => {
+  if (hintTimer) clearTimeout(hintTimer)
+  if (lockoutTimer) clearTimeout(lockoutTimer)
+  if (revealTimer) clearTimeout(revealTimer)
+  if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
+})
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
-  if (submitted.value) return
-  submitted.value = true
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: guess ? [guess] : [],
-    clientScore,
-  })
+  submitOnce(guess ? [guess] : [], clientScore)
 }
 
 /**
@@ -137,7 +132,7 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
   const active = challenge.value
   if (!active || resolved.value) return
   resolved.value = true
-  if (countdown) clearInterval(countdown)
+  stopCountdown()
 
   gameStore.map.solo = false
   gameStore.map.labels = true
@@ -158,10 +153,6 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 }
 
 const begin = () => {
-  showInterstitial.value = false
-  started.value = true
-  nextTick(() => guessInput.value?.focus())
-
   const active = challenge.value
 
   // Dash-reveal in the path's REAL length units. The pathLength="1" trick is
@@ -178,21 +169,19 @@ const begin = () => {
     path.style.transition = 'stroke-dashoffset 1s linear'
   }
 
-  countdown = setInterval(() => {
-    secondsLeft.value--
-
-    const total = active?.durationSeconds ?? 30
-    if (path && outlineLength && !prefersReducedMotion()) {
-      // The full border lands at ~85% of the clock, leaving a beat to study
-      // the complete shape before time runs out
-      const revealed = Math.min(1, (total - secondsLeft.value) / (total * 0.85))
-      path.style.strokeDashoffset = `${outlineLength * (1 - revealed)}`
-    }
-
-    if (secondsLeft.value <= 0) {
-      resolve(undefined, 0)
-    }
-  }, 1000)
+  beginRound({
+    onTick: remaining => {
+      const total = active?.durationSeconds ?? 30
+      if (path && outlineLength && !prefersReducedMotion()) {
+        // The full border lands at ~85% of the clock, leaving a beat to study
+        // the complete shape before time runs out
+        const revealed = Math.min(1, (total - remaining) / (total * 0.85))
+        path.style.strokeDashoffset = `${outlineLength * (1 - revealed)}`
+      }
+    },
+    onTimeout: () => resolve(undefined, 0),
+  })
+  nextTick(() => guessInput.value?.focus())
 }
 
 const onGuess = (country: Country) => {
@@ -215,15 +204,6 @@ const onGuess = (country: Country) => {
     nextTick(() => guessInput.value?.focus())
   }, 3000)
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (countdown) clearInterval(countdown)
-  if (hintTimer) clearTimeout(hintTimer)
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  if (revealTimer) clearTimeout(revealTimer)
-  if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
-})
 </script>
 <style lang="scss" scoped>
 .silhouette-challenge {

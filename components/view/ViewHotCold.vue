@@ -6,7 +6,7 @@
       :kicker="`Round ${currentRound?.number ?? 1} — Hot & Cold`"
       title="Find the mystery country"
       :stakes="`Click the map — every probe tells you how far and which way. You have ${challenge.maximumGuesses} probes.`"
-      @done="showInterstitial = false"
+      @done="begin()"
     />
 
     <header>
@@ -43,22 +43,24 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { bearingDegrees, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
 import type { MapTint } from '~~/store/game.store'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
-
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'hot-cold-challenge'
-    ? roundChallenge
-    : undefined
-})
+// Full outline map, fully clickable — never reveal the target through
+// highlights, tints or camera focus, so this mode opts out of shapes-only.
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('hot-cold-challenge', { solo: false })
 
 interface Probe {
   isoCode: ISOCountryCode
@@ -67,16 +69,10 @@ interface Probe {
 }
 
 const probes = ref<Probe[]>([])
-const submitted = ref(false)
-const showInterstitial = ref(true)
 const feedback = ref('')
 const warmthClass = ref<'hot' | 'warm' | 'cold' | ''>('')
 
 const probesLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - probes.value.length)
-
-// Full outline map, fully clickable — never reveal the target through
-// highlights, tints or camera focus
-clearBoard()
 
 const warmthFor = (distanceKm: number): Probe['warmth'] => {
   if (distanceKm < 800) return 'hot'
@@ -101,14 +97,12 @@ const paintProbes = () => {
 }
 
 const submitRound = () => {
-  if (submitted.value) return
-  submitted.value = true
   // The trail ends with the found country when the hunt succeeded
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: probes.value.map(probe => probe.isoCode),
-  })
+  submitOnce(probes.value.map(probe => probe.isoCode))
 }
+
+let outOfProbesTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => outOfProbesTimer && clearTimeout(outOfProbesTimer))
 
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
@@ -150,17 +144,14 @@ const onMapClick = (event: Event) => {
   if (probes.value.length >= active.maximumGuesses) {
     gameStore.map.status = 'incorrect'
     feedback.value = 'Out of probes!'
-    setTimeout(submitRound, 1200)
+    outOfProbesTimer = setTimeout(submitRound, 1200)
   }
 }
 
 onBeforeMount(() => {
   document.addEventListener('mapClick', onMapClick)
 })
-onBeforeUnmount(() => {
-  clearBoard()
-  document.removeEventListener('mapClick', onMapClick)
-})
+registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
 .hot-cold {

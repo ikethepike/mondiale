@@ -58,34 +58,29 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
-
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'neighbour-blitz-challenge'
-    ? roundChallenge
-    : undefined
-})
+// Shapes-only map: the centre country plus guesses materializing around it
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  begin: beginRound,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('neighbour-blitz-challenge')
 
 const guesses = ref<ISOCountryCode[]>([])
-const submitted = ref(false)
-const started = ref(false)
-const showInterstitial = ref(true)
-const secondsLeft = ref(challenge.value?.durationSeconds ?? 45)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const neighbourSet = computed(() => new Set(challenge.value?.neighbours ?? []))
 const found = computed(() => guesses.value.filter(isoCode => neighbourSet.value.has(isoCode)))
-
-// Shapes-only map: the centre country plus guesses materializing around it
-clearBoard()
-gameStore.map.solo = true
 
 watch(
   [guesses, challenge],
@@ -114,27 +109,18 @@ const flashHint = (text: string) => {
   if (hintTimer) clearTimeout(hintTimer)
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
-
-let countdown: ReturnType<typeof setInterval> | undefined
+registerCleanup(() => hintTimer && clearTimeout(hintTimer))
 
 const submitRound = () => {
   if (submitted.value) return
-  submitted.value = true
-  if (countdown) clearInterval(countdown)
   gameStore.map.status =
     found.value.length >= (challenge.value?.neighbours.length ?? Infinity) ? 'correct' : undefined
-  update({ event: 'submit-group-challenge-answers', ranking: [...guesses.value] })
+  submitOnce([...guesses.value])
 }
 
 const begin = () => {
-  showInterstitial.value = false
-  started.value = true
+  beginRound({ onTimeout: submitRound })
   nextTick(() => guessInput.value?.focus())
-
-  countdown = setInterval(() => {
-    secondsLeft.value--
-    if (secondsLeft.value <= 0) submitRound()
-  }, 1000)
 }
 
 const onGuess = (country: Country) => {
@@ -159,12 +145,6 @@ const onGuess = (country: Country) => {
     submitRound()
   }
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (countdown) clearInterval(countdown)
-  if (hintTimer) clearTimeout(hintTimer)
-})
 </script>
 <style lang="scss" scoped>
 .neighbour-blitz {

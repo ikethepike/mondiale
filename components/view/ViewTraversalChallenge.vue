@@ -95,22 +95,25 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, findCountryByName, getCountry, searchCountriesByName } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound, game, clearBoard } = useClientEvents()
-
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return isTraversalChallenge(roundChallenge) ? roundChallenge : undefined
-})
+// This mode configures its own map presentation from the difficulty below, so
+// it opts out of the composable's shapes-only default.
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('traversal-challenge', { solo: false })
 
 const guesses = ref<ISOCountryCode[]>([])
-const submitted = ref(false)
-const showInterstitial = ref(true)
 const query = ref('')
 const highlightedIndex = ref(0)
 const guessInput = ref<HTMLInputElement>()
@@ -186,11 +189,9 @@ const tintFor = (isoCode: ISOCountryCode): MapTint => {
   return linkedSet.value.has(isoCode) ? 'inefficient' : 'stray'
 }
 
-// Reset lingering map state from the previous phase, then configure the
-// traversal presentation BEFORE the immediate watcher below paints onto it
-clearBoard()
-gameStore.map.solo = game.value?.difficulty !== 'easy'
-gameStore.map.labels = game.value?.difficulty === 'easy'
+// Configure the presentation BEFORE the immediate watcher below paints onto it
+gameStore.map.solo = gameStore.game?.difficulty !== 'easy'
+gameStore.map.labels = gameStore.game?.difficulty === 'easy'
 
 // Guesses materialize on the map as softly tinted shapes. On easy the full
 // outline map (with ISO labels) stays as an aid; otherwise shapes-only.
@@ -226,11 +227,10 @@ const flashHint = (text: string) => {
   if (hintTimer) clearTimeout(hintTimer)
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
+registerCleanup(() => hintTimer && clearTimeout(hintTimer))
 
 const submitRound = () => {
-  if (submitted.value) return
-  submitted.value = true
-  update({ event: 'submit-group-challenge-answers', ranking: [...guesses.value] })
+  submitOnce([...guesses.value])
 }
 
 const submitGuess = (country: Country) => {
@@ -271,14 +271,9 @@ const submitTypedGuess = () => {
 }
 
 const onInterstitialDone = () => {
-  showInterstitial.value = false
+  begin()
   nextTick(() => guessInput.value?.focus())
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (hintTimer) clearTimeout(hintTimer)
-})
 </script>
 <style lang="scss" scoped>
 .traversal-challenge {

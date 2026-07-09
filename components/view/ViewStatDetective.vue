@@ -86,34 +86,29 @@ import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
+// Blank the world map — the numbers are the whole question
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  begin: beginRound,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('stat-detective-challenge')
 
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge &&
-    '_type' in roundChallenge &&
-    roundChallenge._type === 'stat-detective-challenge'
-    ? roundChallenge
-    : undefined
-})
-
-const submitted = ref(false)
-const started = ref(false)
 const resolved = ref(false)
 const lockedOut = ref(false)
-const showInterstitial = ref(true)
 const revealedCount = ref(0)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-
-// Blank the world map — the numbers are the whole question
-clearBoard()
-gameStore.map.solo = true
 
 const clueLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 
@@ -161,18 +156,19 @@ const flashHint = (text: string) => {
   hintTimer = setTimeout(() => (hint.value = ''), 2200)
 }
 
+// Paced by `secondsPerClue`, not a round countdown — the clue interval is local
 let clueTimer: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => {
+  if (clueTimer) clearInterval(clueTimer)
+  if (hintTimer) clearTimeout(hintTimer)
+  if (lockoutTimer) clearTimeout(lockoutTimer)
+  if (revealTimer) clearTimeout(revealTimer)
+})
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
-  if (submitted.value) return
-  submitted.value = true
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: guess ? [guess] : [],
-    clientScore,
-  })
+  submitOnce(guess ? [guess] : [], clientScore)
 }
 
 /** Same resolution beat as the silhouette: land the answer as a PLACE. */
@@ -198,8 +194,7 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 }
 
 const begin = () => {
-  showInterstitial.value = false
-  started.value = true
+  beginRound()
   revealedCount.value = 1
   nextTick(() => guessInput.value?.focus())
 
@@ -242,14 +237,6 @@ const onGuess = (country: Country) => {
     nextTick(() => guessInput.value?.focus())
   }, 3000)
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-  if (clueTimer) clearInterval(clueTimer)
-  if (hintTimer) clearTimeout(hintTimer)
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  if (revealTimer) clearTimeout(revealTimer)
-})
 </script>
 <style lang="scss" scoped>
 .stat-detective {
