@@ -1,10 +1,23 @@
 import { defineStore } from 'pinia'
+import type { GuessKind } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping, MapFeatureOverlay } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
+
+/** One opponent guess, as it lands in the ticker. */
+export interface GuessTickerEntry {
+  entryId: string
+  playerId: string
+  kind: GuessKind
+  /** Absent under a presence-only policy — the room sees that someone guessed,
+   *  not what they guessed. */
+  isoCode?: ISOCountryCode
+  label?: string
+  at: number
+}
 
 interface GameStoreState {
   game?: Game
@@ -34,9 +47,11 @@ interface GameStoreState {
     zoomOut?: { isoCode: ISOCountryCode; durationSeconds: number }
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
-    /** Opponents' live guesses during a group round (playerId → their pick),
-     *  fed by the ephemeral `player-guessing` broadcast. */
-    liveGuesses: { [playerId: string]: ISOCountryCode }
+    /** Opponents' live guesses during a group round, fed by the ephemeral
+     *  `player-guessing` broadcast. Append-only and self-expiring: a player's
+     *  second guess is a new entry, not an overwrite, so each one can pop in
+     *  and fade out on its own. */
+    liveGuesses: GuessTickerEntry[]
   }
   /**
    * Set when the player closes the group scores; the 3D board clears it and
@@ -68,7 +83,7 @@ export const useGameStore = defineStore('game', {
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,
-      liveGuesses: {},
+      liveGuesses: [],
     },
   }),
   actions: {},

@@ -20,6 +20,7 @@
             {{ feedback }}
           </span>
         </Transition>
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </div>
     </header>
 
@@ -41,6 +42,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -57,6 +59,8 @@ const {
   showInterstitial,
   submitted,
   begin,
+  announce,
+  entries,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -132,6 +136,10 @@ const onMapClick = (event: Event) => {
   const warmth = warmthFor(distanceKm)
   probes.value.push({ isoCode, distanceKm, warmth })
   paintProbes()
+
+  // Never the isoCode: a probe's country and warmth together are a bearing fix
+  // on the hidden country. The room sees only that someone probed.
+  announce({ kind: 'probe' })
 
   const direction = compassLabel(bearingDegrees(from, target))
   const temperature = warmth === 'hot' ? 'Scalding' : warmth === 'warm' ? 'Warm' : 'Cold'

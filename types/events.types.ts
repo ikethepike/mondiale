@@ -1,6 +1,10 @@
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode, Region } from './geography.types'
 
+/** What a live guess was, so the room can colour it. `presence` carries no
+ *  verdict — only that the player answered. */
+export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence'
+
 export type ClientEventData =
   | {
       event: 'join'
@@ -67,9 +71,12 @@ export type ClientEventData =
   | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
-       *  state (like update-by-index). */
+       *  state (like update-by-index). `isoCode`/`label` are omitted under a
+       *  presence-only policy, and stripped again server-side regardless. */
       event: 'player-guessing'
-      isoCode: ISOCountryCode
+      kind: GuessKind
+      isoCode?: ISOCountryCode
+      label?: string
     }
 
 export type ClientEvent = ClientEventData['event']
@@ -100,7 +107,17 @@ export type ServerEventData =
   | { event: 'individual-challenge-checked'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
-  | { event: 'player-guessing'; playerId: string; isoCode: ISOCountryCode }
+  | {
+      event: 'player-guessing'
+      /** The socket's authenticated id — never taken from the payload body. */
+      playerId: string
+      kind: GuessKind
+      isoCode?: ISOCountryCode
+      label?: string
+      /** Stamped server-side; keys the ticker so each guess is its own entry. */
+      entryId: string
+      at: number
+    }
 
 export type ServerEvent = ServerEventData['event']
 

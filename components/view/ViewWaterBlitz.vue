@@ -22,6 +22,7 @@
     </header>
 
     <section class="guess-box">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <CountryGuessInput
         ref="guessInput"
         :disabled="submitted || !started"
@@ -56,6 +57,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -74,6 +76,7 @@ const {
   begin: beginRound,
   hint,
   announce,
+  entries,
   submitOnce,
   gameStore,
 } = useGroupChallenge('water-blitz-challenge', { solo: false })
@@ -158,9 +161,12 @@ const onGuess = (country: Country) => {
   }
 
   guesses.value.push(country.isoCode)
-  if (!answerSet.value.has(country.isoCode)) {
-    announce({ hint: `${countryName(country)} isn't one of them` })
-  }
+  const correct = answerSet.value.has(country.isoCode)
+  announce({
+    kind: correct ? 'correct' : 'wrong',
+    isoCode: country.isoCode,
+    hint: correct ? undefined : `${countryName(country)} isn't one of them`,
+  })
 
   // Everything found — no reason to run out the clock
   if (found.value.length === active.countries.length) {
@@ -207,8 +213,10 @@ header {
 }
 
 .guess-box {
+  gap: 1.2rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 footer {

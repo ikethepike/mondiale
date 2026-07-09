@@ -35,6 +35,7 @@
     </section>
 
     <footer v-if="!resolved">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <!-- Ticker sits above the input so the input's suggestion list can open
            downward into clear space without the timer cutting across it. -->
       <div class="timer-track" aria-hidden="true">
@@ -58,6 +59,7 @@
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
@@ -77,6 +79,7 @@ const {
   begin: beginRound,
   hint,
   announce,
+  entries,
   submitOnce,
   stopCountdown,
   registerCleanup,
@@ -189,7 +192,8 @@ const onGuess = (country: Country) => {
     return
   }
 
-  announce({ hint: `Not ${countryName(country)} — locked out for 3 seconds` })
+  // No isoCode: a wrong buzz would name a candidate for the shared answer.
+  announce({ kind: 'locked', hint: `Not ${countryName(country)} — locked out for 3 seconds` })
   lockedOut.value = true
   if (lockoutTimer) clearTimeout(lockoutTimer)
   lockoutTimer = setTimeout(() => {

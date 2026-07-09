@@ -33,6 +33,7 @@
     </header>
 
     <section v-if="!resolved" class="guess-box">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <form class="guess-form map-caption" @submit.prevent="submitTyped">
         <input
           ref="input"
@@ -67,6 +68,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -85,6 +87,7 @@ const {
   started,
   hint,
   announce,
+  entries,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -200,7 +203,8 @@ const pick = (option: WaterOption) => {
   }
 
   if (attempts.value >= MAX_ATTEMPTS) return resolve(false)
-  announce({ hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
+  // No label: the guessed feature narrows the single shared target.
+  announce({ kind: 'wrong', hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
 }
 
 const submitTyped = () => {
@@ -250,8 +254,10 @@ header {
 }
 
 .guess-box {
+  gap: 1.2rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 // Mirrors CountryGuessInput's look for a consistent typing surface

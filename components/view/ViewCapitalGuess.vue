@@ -25,16 +25,7 @@
         <ZoomableImage :src="challenge.image" alt="A capital city" />
       </div>
 
-      <TransitionGroup tag="ul" name="guess" class="live-guesses">
-        <li v-for="[playerId, iso] in opponentGuesses" :key="playerId" class="live-guess">
-          <PlayerPawn
-            v-if="playerFor(playerId)"
-            class="guess-pawn"
-            :player="playerFor(playerId)!"
-          />
-          <span class="guess-name">{{ countryName(iso) }}</span>
-        </li>
-      </TransitionGroup>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </section>
 
     <!-- The free-type input opens a suggestion list downward, so that variant
@@ -75,8 +66,8 @@
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
@@ -91,15 +82,12 @@ const {
   begin,
   hint,
   announce,
+  entries,
   submitOnce,
   gameStore,
-  update,
 } = useGroupChallenge('capital-guess-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-
-const opponentGuesses = computed(() => Object.entries(gameStore.map.liveGuesses))
-const playerFor = (playerId: string) => gameStore.game?.players[playerId]
 
 const submitRound = (correct: boolean) => {
   if (submitted.value) return
@@ -118,9 +106,16 @@ const start = () => {
 const onGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value || !started.value) return
-  update({ event: 'player-guessing', isoCode: country.isoCode })
+  // The winning guess is never broadcast — it would hand opponents the answer.
+  // Outside hard mode the four options make even a wrong name too strong a
+  // clue, so the policy drops that variant to presence.
   if (country.isoCode === active.country) submitRound(true)
-  else announce({ hint: `${countryName(country)} — not it` })
+  else
+    announce({
+      kind: 'wrong',
+      isoCode: country.isoCode,
+      hint: `${countryName(country)} — not it`,
+    })
 }
 </script>
 <style lang="scss" scoped>
@@ -179,32 +174,6 @@ header {
   .photo-stage {
     width: min(94vw, 54rem);
     height: min(42vh, 38rem);
-  }
-}
-
-.live-guesses {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  justify-content: center;
-  min-height: 3rem;
-}
-.live-guess {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.9rem;
-  border-radius: 999px;
-  font-size: 1.3rem;
-  background: hsla(0, 0%, 100%, 0.55);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.15);
-
-  .guess-pawn {
-    width: 1.4rem;
-    height: 1.8rem;
   }
 }
 
@@ -279,16 +248,5 @@ footer {
   .card-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-.guess-enter-from {
-  opacity: 0;
-  transform: translateY(0.6rem) scale(0.9);
-}
-.guess-enter-active,
-.guess-move {
-  transition:
-    opacity var(--motion-quick) var(--ease-out-expressive),
-    transform var(--motion-quick) var(--ease-out-expressive);
 }
 </style>

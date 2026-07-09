@@ -1,0 +1,13 @@
+// A small translucent pill — a pawn, a word, an accent edge. Used by the live
+// guess ticker; kept here because two views had grown their own copy.
+.chip {
+  gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  font-size: 1.3rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  color: var(--dark-blue);
+  background: hsla(0, 0%, 100%, 0.55);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.15);
+}

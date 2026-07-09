@@ -23,6 +23,7 @@
           That one was true — the lie was {{ lieLabel }}, which belongs to
           {{ countryName(challenge.lieSource) }}
         </span>
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </div>
     </header>
 
@@ -56,6 +57,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { accessorTopicLabel } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
@@ -64,8 +66,17 @@ import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
-const { challenge, currentRound, showInterstitial, begin, submitOnce, registerCleanup } =
-  useGroupChallenge('two-truths-challenge')
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  begin,
+  announce,
+  entries,
+  submitOnce,
+  registerCleanup,
+  gameStore,
+} = useGroupChallenge('two-truths-challenge')
 
 const picked = ref<number>()
 let submitTimer: ReturnType<typeof setTimeout> | undefined
@@ -104,6 +115,8 @@ const pick = (index: number) => {
   const active = challenge.value
   if (!active || picked.value !== undefined || showInterstitial.value) return
   picked.value = index
+  // Only three statements, all on screen — naming the pick would name the lie.
+  announce({ kind: 'presence' })
 
   const correct = index === active.lieIndex
   submitTimer = setTimeout(() => {

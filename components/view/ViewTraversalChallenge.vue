@@ -35,6 +35,7 @@
     </header>
 
     <section class="guess-box">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <form class="guess-form map-caption" @submit.prevent="submitTypedGuess">
         <input
           ref="guessInput"
@@ -93,6 +94,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, findCountryByName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
@@ -110,6 +112,7 @@ const {
   begin,
   hint,
   announce,
+  entries,
   submitOnce,
   gameStore,
 } = useGroupChallenge('traversal-challenge', { solo: false })
@@ -240,6 +243,11 @@ const submitGuess = (country: Country) => {
 
   guesses.value.push(country.isoCode)
   query.value = ''
+  // Each player walks their own route, so naming the step leaks nothing.
+  announce({
+    kind: linkedSet.value.has(country.isoCode) ? 'correct' : 'wrong',
+    isoCode: country.isoCode,
+  })
 
   // Resolve the moment the guessed countries bridge the endpoints
   if (isRouteComplete(active.start, active.target, guesses.value, corridorSet.value)) {
@@ -316,8 +324,10 @@ header {
 }
 
 .guess-box {
+  gap: 1.2rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 .guess-form {

@@ -59,6 +59,7 @@
     </section>
 
     <section v-if="!resolved" class="guess-box">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <CountryGuessInput
         ref="guessInput"
         :disabled="submitted || !started || lockedOut"
@@ -80,6 +81,7 @@
 </template>
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
@@ -102,6 +104,7 @@ const {
   begin: beginRound,
   hint,
   announce,
+  entries,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -222,7 +225,8 @@ const onGuess = (country: Country) => {
     return
   }
 
-  announce({ hint: `Not ${countryName(country)} — locked out for 3 seconds` })
+  // No isoCode: a wrong buzz would name a candidate for the shared answer.
+  announce({ kind: 'locked', hint: `Not ${countryName(country)} — locked out for 3 seconds` })
   lockedOut.value = true
   if (lockoutTimer) clearTimeout(lockoutTimer)
   lockoutTimer = setTimeout(() => {
@@ -340,8 +344,10 @@ header {
 }
 
 .guess-box {
+  gap: 1.2rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 footer {

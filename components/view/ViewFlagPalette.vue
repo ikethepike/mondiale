@@ -32,17 +32,7 @@
         />
       </div>
 
-      <!-- Opponents' live guesses land here as pawns on their pick -->
-      <TransitionGroup tag="ul" name="guess" class="live-guesses">
-        <li v-for="[playerId, iso] in opponentGuesses" :key="playerId" class="live-guess">
-          <PlayerPawn
-            v-if="playerFor(playerId)"
-            class="guess-pawn"
-            :player="playerFor(playerId)!"
-          />
-          <span class="guess-name">{{ countryName(iso) }}</span>
-        </li>
-      </TransitionGroup>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </section>
 
     <footer>
@@ -64,8 +54,8 @@
 </template>
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
@@ -80,9 +70,9 @@ const {
   begin,
   hint,
   announce,
+  entries,
   submitOnce,
   gameStore,
-  update,
 } = useGroupChallenge('flag-palette-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -93,10 +83,6 @@ const regionRevealed = computed(() => {
   const total = challenge.value?.durationSeconds ?? 0
   return started.value && total > 0 && secondsLeft.value / total <= 1 / 3
 })
-
-// Opponents' live picks (from the ephemeral player-guessing broadcast).
-const opponentGuesses = computed(() => Object.entries(gameStore.map.liveGuesses))
-const playerFor = (playerId: string) => gameStore.game?.players[playerId]
 
 const submitRound = (correct: boolean) => {
   if (submitted.value) return
@@ -116,13 +102,15 @@ const onGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value || !started.value) return
 
-  // Broadcast this pick so opponents see it land live.
-  update({ event: 'player-guessing', isoCode: country.isoCode })
-
+  // The winning guess is never broadcast — it would hand opponents the answer.
   if (country.isoCode === active.country) {
     submitRound(true)
   } else {
-    announce({ hint: `${countryName(country)} — not it` })
+    announce({
+      kind: 'wrong',
+      isoCode: country.isoCode,
+      hint: `${countryName(country)} — not it`,
+    })
   }
 }
 
@@ -195,33 +183,6 @@ header {
   box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
 }
 
-.live-guesses {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  justify-content: center;
-  min-height: 3rem;
-}
-
-.live-guess {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.9rem;
-  border-radius: 999px;
-  font-size: 1.3rem;
-  background: hsla(0, 0%, 100%, 0.55);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.15);
-
-  .guess-pawn {
-    width: 1.4rem;
-    height: 1.8rem;
-  }
-}
-
 footer {
   z-index: 2;
   padding: 2rem;
@@ -248,16 +209,5 @@ footer {
   height: 100%;
   background: var(--soft-blue);
   transition: width 1s linear;
-}
-
-.guess-enter-from {
-  opacity: 0;
-  transform: translateY(0.6rem) scale(0.9);
-}
-.guess-enter-active,
-.guess-move {
-  transition:
-    opacity var(--motion-quick) var(--ease-out-expressive),
-    transform var(--motion-quick) var(--ease-out-expressive);
 }
 </style>

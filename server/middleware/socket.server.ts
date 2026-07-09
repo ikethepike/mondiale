@@ -11,7 +11,10 @@ import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-f
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
-import { playerGuessingHandler } from '~~/lib/events/server/player-guessing.handler'
+import {
+  forgetGuessBucket,
+  playerGuessingHandler,
+} from '~~/lib/events/server/player-guessing.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
 import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
@@ -118,6 +121,8 @@ export default defineEventHandler(({ node }) => {
           )
         })
       }
+
+      socket.on('disconnect', () => forgetGuessBucket(socket.id))
     })
 
     io.on('error', error => {
