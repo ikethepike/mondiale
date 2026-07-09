@@ -52,10 +52,13 @@ export const useClientEvents = () => {
     gameStore.map.focus = []
     gameStore.map.focusContext = []
     gameStore.map.tints = {}
+    gameStore.map.pin = undefined
+    gameStore.map.pinAnswer = undefined
     gameStore.map.countryGroupings = undefined
     gameStore.map.atlasMode = false
     gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined
+    gameStore.map.inset = undefined
     gameStore.map.liveGuesses = []
   }
 

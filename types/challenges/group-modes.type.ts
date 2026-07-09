@@ -145,6 +145,62 @@ export interface NameWaterChallenge {
   maximumPoints: number
 }
 
+/**
+ * A de facto state: a flag nobody at the table has seen, a government almost
+ * nobody recognizes. Place it on the map.
+ *
+ * Geometry, the flag SVG, and the 33-government recognition matrix all stay
+ * client-side in data/recognition.gen.ts — only the id travels the wire.
+ */
+export interface GhostStateChallenge {
+  _type: 'ghost-state-challenge'
+  /** Key into RECOGNITION_TERRITORIES. */
+  territoryId: string
+  /** The state that claims it, per NE's "Claimed by X". This is the answer. */
+  parent: ISOCountryCode
+  durationSeconds: number
+  maximumPoints: number
+}
+
+/**
+ * A rock, a reef, a sandbank. Tap every country that claims it.
+ *
+ * For Bir Tawil, which no country on Earth claims, the correct play is to tap
+ * nothing at all — so `claimants` is empty and an empty answer scores full.
+ */
+export interface NoMansLandChallenge {
+  _type: 'no-mans-land-challenge'
+  /** Key into RECOGNITION_TERRITORIES. */
+  territoryId: string
+  /** Administrator ∪ claimants. Empty only for Bir Tawil. */
+  claimants: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
+/**
+ * A photo of a landmark. Drop a pin on the world map where you think it is —
+ * scored on how close you land, not on naming the country.
+ *
+ * The challenge carries the slug, not the coordinates, and scoring happens
+ * server-side from the slug. That isn't a secret (LANDMARKS is bundled into the
+ * client anyway, so a determined player can always read the answer out of it —
+ * as they could for every other mode's country). It's so the *score* is the
+ * server's to decide, like hot-cold's, rather than a number the client reports.
+ */
+export interface PinLandmarkChallenge {
+  _type: 'pin-landmark-challenge'
+  /** Key into LANDMARKS — the *photo* is the prompt, so no name is sent. */
+  slug: string
+  /** Public path of the landmark photo. */
+  image: string
+  /** Full marks inside this radius; zero beyond `zeroDistanceKm`. */
+  perfectDistanceKm: number
+  zeroDistanceKm: number
+  durationSeconds: number
+  maximumPoints: number
+}
+
 export type GroupModeChallenge =
   | NeighbourBlitzChallenge
   | SilhouetteChallenge
@@ -157,3 +213,6 @@ export type GroupModeChallenge =
   | MotherTongueChallenge
   | FlagPaletteChallenge
   | CapitalGuessChallenge
+  | GhostStateChallenge
+  | NoMansLandChallenge
+  | PinLandmarkChallenge

@@ -46,6 +46,9 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'mother-tongue': ['Polyglot', 'Tongue Twister', 'The Babel Fish', 'Lingua Franca'],
   'flag-palette': ['Colour Sommelier', 'Palette Pro', 'The Swatch Sleuth', 'Hue Hunter'],
   'capital-guess': ['Capital Idea', 'Skyline Seer', 'The City Slicker', 'Metropole Maven'],
+  'ghost-state': ['Ghost Hunter', 'Border Skeptic', 'The Unrecognized', 'Recognition Wonk'],
+  'no-mans-land': ['Rock Collector', 'Terra Nullius', 'The Claim Jumper', 'Sandbank Solicitor'],
+  'pin-landmark': ['Pin Dropper', 'Dead Reckoner', 'The Long Shot', 'Coordinate Cowboy'],
 }
 
 const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -64,6 +67,9 @@ const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   'mother-tongue': 'mother tongue',
   'flag-palette': 'flag palette',
   'capital-guess': 'capital guess',
+  'ghost-state': 'ghost states',
+  'no-mans-land': "no man's land",
+  'pin-landmark': 'drop a pin',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

@@ -32,8 +32,11 @@ import type { Component } from 'vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ModalMoving from '~/components/modal/ModalMoving.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
+import ViewGhostState from '~/components/view/ViewGhostState.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
+import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
+import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
 import ViewHotCold from '~/components/view/ViewHotCold.vue'
 import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
@@ -107,6 +110,9 @@ const activeView = computed<ActiveView | undefined>(() => {
         'mother-tongue': ViewMotherTongue,
         'flag-palette': ViewFlagPalette,
         'capital-guess': ViewCapitalGuess,
+        'ghost-state': ViewGhostState,
+        'no-mans-land': ViewNoMansLand,
+        'pin-landmark': ViewPinLandmark,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

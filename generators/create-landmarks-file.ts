@@ -1,6 +1,7 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import type { ISOCountryCode } from '../types/geography.types'
 import { LANDMARK_SEEDS, type LandmarkKind } from './data/landmark-seeds'
+import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
   existingImagePath,
   fetchImageDimensions,
@@ -31,6 +32,12 @@ const OUTPUT_DIRECTORY = 'public/landmarks'
  *  A source smaller than this is used as-is, never upscaled. */
 const LANDMARK_WIDTH = 2000
 
+/** Where a landmark actually is, in degrees (Wikidata P625). */
+export interface LandmarkCoordinates {
+  lat: number
+  lng: number
+}
+
 export interface LandmarkEntry {
   name: string
   country: ISOCountryCode
@@ -39,6 +46,9 @@ export interface LandmarkEntry {
   /** City / region the landmark is in (from Wikidata P131) — a hard-mode
    *  follow-up or an educational reveal after the answer. */
   city?: string
+  /** Point location (P625), validated to fall in `country`. Powers the
+   *  pin-the-landmark round: the distance between a map click and this. */
+  coordinates?: LandmarkCoordinates
 }
 
 /** Reject images whose SOURCE is smaller than this — they look bad upscaled. */
@@ -63,13 +73,29 @@ try {
   // First run — nothing to merge
 }
 
+/** Wikidata's `globecoordinate` datavalue (P625). */
+interface GlobeCoordinate {
+  latitude: number
+  longitude: number
+  precision?: number
+}
+
 interface Statement {
   rank: 'preferred' | 'normal' | 'deprecated'
-  mainsnak?: { datavalue?: { value?: string | { id?: string } } }
+  mainsnak?: { datavalue?: { value?: string | { id?: string } | GlobeCoordinate } }
 }
 interface EntityResponse {
   entities?: { [id: string]: { claims?: { [property: string]: Statement[] } } }
 }
+
+type StatementValue = string | { id?: string } | GlobeCoordinate | undefined
+
+const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
+  typeof value === 'object' && value !== null && 'latitude' in value
+
+/** An `wikibase-entityid` datavalue — a reference to another Q-item. */
+const entityId = (value: StatementValue): string | undefined =>
+  typeof value === 'object' && value !== null && 'id' in value ? value.id : undefined
 
 const isoValue = (claims?: { [property: string]: Statement[] }): string | undefined => {
   const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
@@ -127,10 +153,11 @@ for (const seed of LANDMARK_SEEDS) {
   await wait(150)
 }
 
-// --- 3. City / location (P131) → label --------------------------------------
-console.log('Reading landmark locations (P131)…')
+// --- 3. City (P131) + coordinates (P625), from one claims fetch --------------
+console.log('Reading landmark locations (P131) and coordinates (P625)…')
 const locationQidOf = new Map<string, string>() // landmark qid → location qid
 const locationLabelQids = new Set<string>()
+const coordinateOf = new Map<string, LandmarkCoordinates>()
 // Overridden seeds may carry an empty qid — never send those to the API.
 const landmarkQids = resolved.map(entry => entry.qid).filter(Boolean)
 for (let index = 0; index < landmarkQids.length; index += 30) {
@@ -143,10 +170,17 @@ for (let index = 0; index < landmarkQids.length; index += 30) {
       statement =>
         statement.rank !== 'deprecated' && typeof statement.mainsnak?.datavalue?.value === 'object'
     )?.mainsnak?.datavalue?.value
-    const locationQid = typeof value === 'object' ? value.id : undefined
+    const locationQid = entityId(value)
     if (locationQid) {
       locationQidOf.set(qid, locationQid)
       locationLabelQids.add(locationQid)
+    }
+
+    // P625 rides along in this same response — free.
+    const point = entity.claims?.P625?.find(statement => statement.rank !== 'deprecated')?.mainsnak
+      ?.datavalue?.value
+    if (isGlobeCoordinate(point)) {
+      coordinateOf.set(qid, { lat: point.latitude, lng: point.longitude })
     }
   }
   await wait(200)
@@ -168,8 +202,69 @@ for (let index = 0; index < locationQidList.length; index += 50) {
   await wait(200)
 }
 
-// --- 4. Photos (viability-checked) + assemble --------------------------------
-const photoFiles = await fetchPageImages(landmarkQids)
+// --- 4. Validate coordinates against the seed's country ----------------------
+/**
+ * How far outside its country a landmark's point may sit before we disown it.
+ *
+ * `resolveQidBySearch` falls back to the first search hit when nothing matches
+ * the seed's country (P17), so a name that doesn't exist on Wikidata resolves
+ * to something else entirely — "Persepolis" lands on Persepolis F.C., the
+ * football club. Coordinates catch that: the wrong entity is almost always in
+ * the wrong hemisphere.
+ *
+ * The threshold is set from the real distribution. Genuine landmarks sit at
+ * most ~36km outside their country's 10m polygon (islands, coastlines, and
+ * points like the Statue of Liberty or Everest on a shared border). The
+ * confirmed wrong-entity hits were 4,300km and 13,600km out. Nothing real
+ * falls between, so 100km is a wide, unambiguous line.
+ */
+const MAX_KM_OUTSIDE_COUNTRY = 100
+
+console.log('Validating coordinates against country polygons…')
+const shapes = await loadCountryShapes()
+let misplaced = 0
+
+for (const entry of resolved) {
+  const { seed, qid } = entry
+  const point = coordinateOf.get(qid)
+  if (!point || !shapes.has(seed.country)) continue
+  if (shapes.contains(seed.country, point.lat, point.lng)) continue
+
+  const km = shapes.distanceToBorderKm(seed.country, point.lat, point.lng)
+  if (km <= MAX_KM_OUTSIDE_COUNTRY) continue
+
+  // Too far out to be coastline slop: resolveQidBySearch matched the wrong
+  // item. That Q-id also supplies the photo and the city, so disown it whole
+  // rather than keep a landmark illustrated with another country's picture.
+  // Blanking the qid leaves the seed alive only if it has an image override —
+  // otherwise it's dropped, which is the right outcome for a bad match.
+  console.warn(
+    `  ✗ "${seed.name}" (${seed.country}) sits ${Math.round(km)}km outside its country — wrong Wikidata item (${qid})`
+  )
+  coordinateOf.delete(qid)
+  locationQidOf.delete(qid)
+  entry.qid = ''
+  misplaced++
+
+  // An image already downloaded from the bad Q-id is another country's photo
+  // (Ecuador was shipping Shibam, Yemen). Existing files short-circuit the
+  // download, so it would survive forever — delete it. A seed with an explicit
+  // override owns its image and is left alone.
+  const overridden = !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
+  if (overridden) continue
+  const stalePath = `${OUTPUT_DIRECTORY}/${slugify(seed.name)}.webp`
+  if (existsSync(stalePath)) {
+    rmSync(stalePath, { force: true })
+    console.warn(`    removed its cached image — add an image override to keep this landmark`)
+  }
+}
+console.log(`  ${coordinateOf.size} coordinates kept, ${misplaced} wrong-item matches disowned`)
+
+// --- 5. Photos (viability-checked) + assemble --------------------------------
+// Recomputed: the validation pass above blanks the qid of any wrong-item match,
+// so those must not have a photo fetched for them.
+const photoQids = resolved.map(entry => entry.qid).filter(Boolean)
+const photoFiles = await fetchPageImages(photoQids)
 
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 const mapping: LandmarkMapping = {}
@@ -256,12 +351,14 @@ for (const { seed, qid } of resolved) {
 
   const locationQid = locationQidOf.get(qid)
   const city = locationQid ? locationLabels.get(locationQid) : undefined
+  const coordinates = coordinateOf.get(qid)
   mapping[slug] = {
     name: seed.name,
     country: seed.country,
     kind: seed.kind,
     image: publicPath,
     ...(city ? { city } : {}),
+    ...(coordinates ? { coordinates } : {}),
   }
   done++
   process.stdout.write(`\r  ${done + failed + rejected}/${resolved.length} photos`)
@@ -269,12 +366,19 @@ for (const { seed, qid } of resolved) {
 }
 console.log(`\nPhotos: ${done} saved, ${rejected} rejected (low-res), ${failed} failed`)
 
-// Merge with the previous run — but only for slugs that are STILL current
-// seeds, so a renamed/removed landmark (Big Ben → Elizabeth Tower) doesn't
-// linger with its stale image.
+// Merge with the previous run so a transient network failure doesn't erase a
+// captured landmark. Two guards: the slug must still be a seed (a renamed
+// landmark shouldn't linger), and its image must still be on disk — the
+// coordinate check above deletes the photo of a wrong-item match, and
+// resurrecting that entry would point the game at a file we just removed.
 const currentSlugs = new Set(LANDMARK_SEEDS.map(seed => slugify(seed.name)))
 for (const [slug, entry] of Object.entries(previousMapping)) {
-  if (!mapping[slug] && currentSlugs.has(slug)) mapping[slug] = entry
+  if (mapping[slug] || !currentSlugs.has(slug)) continue
+  if (!existsSync(`public${entry.image}`)) {
+    console.warn(`  dropping "${entry.name}" — its image is gone`)
+    continue
+  }
+  mapping[slug] = entry
 }
 
 writeFileSync(

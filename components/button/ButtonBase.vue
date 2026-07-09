@@ -1,5 +1,10 @@
 <template>
-  <component :is="tag" :to="to" class="button">
+  <component
+    :is="tag"
+    :to="to"
+    :disabled="element === 'button' && disabled ? true : undefined"
+    class="button"
+  >
     <slot />
   </component>
 </template>

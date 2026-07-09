@@ -14,10 +14,13 @@ import {
 import type {
   CapitalGuessChallenge,
   FlagPaletteChallenge,
+  GhostStateChallenge,
   HotColdChallenge,
   MotherTongueChallenge,
   NameWaterChallenge,
   NeighbourBlitzChallenge,
+  NoMansLandChallenge,
+  PinLandmarkChallenge,
   SilhouetteChallenge,
   SketchChallenge,
   StatDetectiveChallenge,
@@ -36,8 +39,9 @@ import type {
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
 import type * as gameTypes from '~~/types/game.types'
-import type { Amount, ISOCountryCode } from '~~/types/geography.types'
+import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
+import { haversineKm, type LatLng } from './geo'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS, variantCountries } from './variant'
@@ -81,10 +85,27 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['mother-tongue', 0.09],
   ['flag-palette', 0.08],
   ['capital-guess', 0.08],
+  // Rare on purpose. The cast is tiny — eight ghost states, and only six of
+  // them obscure — so dealing these at a staple's rate burns through the whole
+  // roster in a session or two. They should land like finding something odd on
+  // the map, not like a rotation slot. At these weights a hard game sees one
+  // roughly one time in five, and two almost never.
+  ['ghost-state', 0.018],
+  ['no-mans-land', 0.012],
+  ['pin-landmark', 0.06],
 ]
 
 /** Round kinds reserved for hard games. */
-const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>(['highlands', 'name-that-water'])
+const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
+  'highlands',
+  'name-that-water',
+  // Nobody meets Transnistria on their first game.
+  'ghost-state',
+  'no-mans-land',
+  // Naming the country is one thing; placing it to within a few hundred km is
+  // a different game entirely.
+  'pin-landmark',
+])
 
 /**
  * Test hook: FORCE_ROUND_TYPE=<kind> makes every round that kind
@@ -528,6 +549,40 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
 }
 
 /**
+ * Pin-landmark: a photo, and the whole world to drop a pin on.
+ *
+ * Radii are chosen to mean something rather than to be round numbers. 150km is
+ * roughly "you found the right city or its region" — the pin doesn't have to
+ * land on the roof. 3,000km is about the width of Europe or the continental
+ * US: past that you haven't misjudged the spot, you've misjudged the continent,
+ * and there is nothing left to credit.
+ */
+const PIN_PERFECT_KM = 150
+const PIN_ZERO_KM = 3000
+
+const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
+  // Only landmarks whose coordinates survived the generator's country check;
+  // and only countries this variant actually deals.
+  const playable = new Set(variantCountries(game.variant))
+  const pool = Object.entries(LANDMARKS).filter(
+    ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
+  )
+  const picked = shuffleArray(pool)[0]
+  if (!picked) return undefined
+
+  const [slug, landmark] = picked
+  return {
+    _type: 'pin-landmark-challenge',
+    slug,
+    image: landmark.image,
+    perfectDistanceKm: PIN_PERFECT_KM,
+    zeroDistanceKm: PIN_ZERO_KM,
+    durationSeconds: 40,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/**
  * Flag-palette: show a flag's raw colour swatches (no flag) and name the
  * country. Picks a country with a distinctive palette — enough colours that the
  * swatches aren't hopelessly ambiguous (a bare red+white could be dozens of
@@ -594,6 +649,155 @@ export const scoreWaterBlitz = ({
     Math.round((challenge.maximumPoints * correct) / challenge.countries.length) - wrong
   )
   return { scored, maximum: challenge.maximumPoints }
+}
+
+/**
+ * Recognition modes deal from the generated disputed-territories dataset.
+ * Dynamic import for the same reason as the water dealer: only nitro runs
+ * the dealers, and the geometry must not ride into client bundles through
+ * this module's other exports. The Views lazy-load it separately.
+ */
+const recognitionPool = async (cast: 'ghost-state' | 'no-mans-land') => {
+  const { RECOGNITION_TERRITORIES } = await import('~~/data/recognition.gen')
+  return Object.values(RECOGNITION_TERRITORIES).filter(territory => territory.cast === cast)
+}
+
+/**
+ * A flag nobody recognizes, a status line, and the whole world to point at.
+ * The parent — the state that claims it — is the answer.
+ *
+ * The round is rare (see ROUND_WEIGHTS), so each one should land on something
+ * genuinely strange. Weight the pick by obscurity: a place most of the world
+ * draws as its own shape isn't a ghost state to anyone. That demotes Taiwan,
+ * which 23 of 31 governments draw apart, and Western Sahara at 22 — leaving
+ * the six frozen oddities as the common draw.
+ */
+const ghostStateOddity = (drawnApart: number, povs: number) => 1 - drawnApart / povs
+
+const getGhostStateChallenge = async (
+  game: gameTypes.Game
+): Promise<GhostStateChallenge | undefined> => {
+  const pool = (await recognitionPool('ghost-state')).filter(
+    territory => territory.parent && isValidISOCode(territory.parent)
+  )
+  if (!pool.length) return undefined
+
+  const weights = pool.map(territory => {
+    const povs = Object.values(territory.povs)
+    const drawnApart = povs.filter(pov => pov.assignment === 'SELF').length
+    // Floor at a small value so Taiwan still turns up now and then.
+    return Math.max(0.05, ghostStateOddity(drawnApart, povs.length || 1))
+  })
+
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  let roll = Math.random() * total
+  let territory = pool[pool.length - 1]
+  for (let index = 0; index < pool.length; index++) {
+    roll -= weights[index]
+    if (roll <= 0) {
+      territory = pool[index]
+      break
+    }
+  }
+  if (!territory?.parent) return undefined
+
+  return {
+    _type: 'ghost-state-challenge',
+    territoryId: territory.id,
+    parent: territory.parent,
+    durationSeconds: 25,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/** A rock. Name everyone who wants it — or, for Bir Tawil, nobody. */
+const getNoMansLandChallenge = async (
+  game: gameTypes.Game
+): Promise<NoMansLandChallenge | undefined> => {
+  const pool = await recognitionPool('no-mans-land')
+  const territory = pool[Math.floor(Math.random() * pool.length)]
+  if (!territory) return undefined
+
+  return {
+    _type: 'no-mans-land-challenge',
+    territoryId: territory.id,
+    claimants: territory.claimants,
+    durationSeconds: 30,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/**
+ * Distance between two projected map-space boxes, centre to centre. The
+ * recognition dataset and MAP_BOUNDS share the map's fitted Robinson space,
+ * so this is a subtraction rather than a reprojection.
+ *
+ * Deliberately NOT border-hops: Cyprus has no land borders at all, so a
+ * hop-count would score Turkey (10km away) exactly the same as Peru.
+ */
+const boxDistance = (
+  a: readonly [number, number, number, number],
+  b: readonly [number, number, number, number]
+) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
+
+/** Beyond this projected distance a guess is worth nothing. Tuned so a
+ *  neighbouring country still scores well and another continent scores zero. */
+const GHOST_STATE_FALLOFF = 260
+
+/**
+ * Full marks for naming the claimant state; a graded fraction for landing
+ * near it; nothing for the far side of the world. Server-authoritative — the
+ * client's only input is which country it tapped.
+ */
+export const scoreGhostState = async ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: GhostStateChallenge
+  submittedGuesses: ISOCountryCode[]
+}): Promise<{ scored: number; maximum: number }> => {
+  const maximum = challenge.maximumPoints
+  const tapped = submittedGuesses[0]
+  if (!tapped) return { scored: 0, maximum }
+  if (tapped === challenge.parent) return { scored: maximum, maximum }
+
+  // Dynamic, like the water dealer: MAP_BOUNDS must not ride into client
+  // bundles through this module.
+  const { MAP_BOUNDS } = await import('~~/data/map.gen')
+  const tappedBounds = MAP_BOUNDS[tapped]
+  const parentBounds = MAP_BOUNDS[challenge.parent]
+  if (!tappedBounds || !parentBounds) return { scored: 0, maximum }
+
+  const fraction = 1 - boxDistance(tappedBounds, parentBounds) / GHOST_STATE_FALLOFF
+  // `scored` feeds board movement 1:1 — never emit NaN or a negative.
+  const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
+  return { scored: Math.min(scored, maximum), maximum }
+}
+
+/**
+ * Jaccard overlap against the true claimant set.
+ *
+ * Bir Tawil is the point of the mode: nobody claims it, so the true set is
+ * empty and the correct play is to submit nothing. An empty guess against an
+ * empty truth is a perfect answer, not a division by zero.
+ */
+export const scoreNoMansLand = ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: NoMansLandChallenge
+  submittedGuesses: ISOCountryCode[]
+}): { scored: number; maximum: number } => {
+  const maximum = challenge.maximumPoints
+  const truth = new Set(challenge.claimants)
+  const guess = new Set(submittedGuesses)
+
+  if (truth.size === 0 && guess.size === 0) return { scored: maximum, maximum }
+
+  const intersection = [...guess].filter(isoCode => truth.has(isoCode)).length
+  const union = new Set([...guess, ...truth]).size
+  if (union === 0) return { scored: 0, maximum }
+  return { scored: Math.max(0, Math.round(maximum * (intersection / union))), maximum }
 }
 
 /**
@@ -673,6 +877,21 @@ export const getRoundChallenge = async ({
       if (challenge) return challenge
       break
     }
+    case 'ghost-state': {
+      const challenge = await getGhostStateChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'no-mans-land': {
+      const challenge = await getNoMansLandChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'pin-landmark': {
+      const challenge = getPinLandmarkChallenge(game)
+      if (challenge) return challenge
+      break
+    }
   }
 
   return getGroupChallenge({ game })
@@ -719,6 +938,37 @@ export const scoreNeighbourBlitz = ({
 
   const raw = Math.round(maximum * (correct / challenge.neighbours.length)) - wrong
   return { scored: Math.max(0, Math.min(raw, maximum)), maximum }
+}
+
+/**
+ * Pin-landmark: points fall off linearly with how far the pin missed.
+ *
+ * Full marks anywhere inside `perfectDistanceKm` (a city-sized bullseye — you
+ * shouldn't need to hit the exact rooftop), tapering to nothing at
+ * `zeroDistanceKm`. Never partially credits a wrong hemisphere.
+ *
+ * Server-authoritative: the pin is the whole answer, and the landmark's real
+ * point is looked up here from the slug rather than trusted from the client.
+ */
+export const scorePinLandmark = ({
+  challenge,
+  pin,
+}: {
+  challenge: PinLandmarkChallenge
+  pin: LatLng | undefined
+}): { scored: number; maximum: number; distanceKm?: number } => {
+  const maximum = challenge.maximumPoints
+  const landmark = LANDMARKS[challenge.slug]
+  if (!pin || !landmark?.coordinates) return { scored: 0, maximum }
+
+  const distanceKm = haversineKm(pin, landmark.coordinates)
+  if (distanceKm <= challenge.perfectDistanceKm) return { scored: maximum, maximum, distanceKm }
+  if (distanceKm >= challenge.zeroDistanceKm) return { scored: 0, maximum, distanceKm }
+
+  const span = challenge.zeroDistanceKm - challenge.perfectDistanceKm
+  const missed = distanceKm - challenge.perfectDistanceKm
+  const scored = Math.round(maximum * (1 - missed / span))
+  return { scored: Math.max(0, Math.min(scored, maximum)), maximum, distanceKm }
 }
 
 /** Hot/cold: finding the country matters; every extra probe costs points. */

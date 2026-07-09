@@ -38,6 +38,15 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   'stat-detective': 'presence',
   'two-truths': 'presence',
   'name-that-water': 'presence',
+  // Both recognition modes hunt one shared answer: the state that claims
+  // Transnistria, or the countries that want Hans Island. Naming one IS the
+  // answer, so the room sees only that somebody guessed.
+  'ghost-state': 'presence',
+  'no-mans-land': 'presence',
+
+  // One hidden point, shared by the room: a pin's position IS the answer, so
+  // the room learns only that somebody has committed one.
+  'pin-landmark': 'presence',
 
   // No guess stream to speak of.
   sketch: 'none',

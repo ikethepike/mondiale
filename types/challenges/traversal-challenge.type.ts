@@ -66,6 +66,9 @@ export type RoundChallengeKind =
   | 'mother-tongue'
   | 'flag-palette'
   | 'capital-guess'
+  | 'ghost-state'
+  | 'no-mans-land'
+  | 'pin-landmark'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -103,6 +106,12 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'flag-palette'
     case 'capital-guess-challenge':
       return 'capital-guess'
+    case 'ghost-state-challenge':
+      return 'ghost-state'
+    case 'no-mans-land-challenge':
+      return 'no-mans-land'
+    case 'pin-landmark-challenge':
+      return 'pin-landmark'
     default:
       return 'ranking'
   }

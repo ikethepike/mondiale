@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
+import type { LatLng } from '~~/lib/geo'
 import type { GuessKind } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { CountryColorGrouping, MapFeatureOverlay } from '~~/types/map.type'
+import type { CountryColorGrouping, MapFeatureOverlay, MapInset } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
@@ -38,6 +39,11 @@ interface GameStoreState {
     focusContext: ISOCountryCode[]
     /** Soft per-country verdict fills for traversal guesses. */
     tints: { [isoCode in ISOCountryCode]?: MapTint }
+    /** Pin-landmark: the point the player dropped, drawn as a marker. */
+    pin?: LatLng
+    /** Pin-landmark reveal: the landmark's true point. Drawn as a second marker
+     *  with a dashed line back to `pin`, so the miss reads at a glance. */
+    pinAnswer?: LatLng
     /** Distinct per-group country fills (region final challenge, duel pairs). */
     countryGroupings?: CountryColorGrouping[]
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
@@ -47,6 +53,8 @@ interface GameStoreState {
     zoomOut?: { isoCode: ISOCountryCode; durationSeconds: number }
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
+    /** Magnifying inset for a subject too small to see at world zoom. */
+    inset?: MapInset
     /** Opponents' live guesses during a group round, fed by the ephemeral
      *  `player-guessing` broadcast. Append-only and self-expiring: a player's
      *  second guess is a new entry, not an overwrite, so each one can pop in
@@ -79,10 +87,13 @@ export const useGameStore = defineStore('game', {
       focus: [],
       focusContext: [],
       tints: {},
+      pin: undefined,
+      pinAnswer: undefined,
       countryGroupings: undefined,
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,
+      inset: undefined,
       liveGuesses: [],
     },
   }),

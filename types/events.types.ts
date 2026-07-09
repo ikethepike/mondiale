@@ -1,3 +1,4 @@
+import type { LatLng } from '~~/lib/geo'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode, Region } from './geography.types'
 
@@ -34,6 +35,9 @@ export type ClientEventData =
       clientScore?: number
       /** Sketch rounds: the normalized drawn outline, for the reveal overlay. */
       sketch?: [number, number][]
+      /** Pin-landmark rounds: where on the globe the player dropped their pin.
+       *  The server scores the distance itself, so this is the whole answer. */
+      pin?: LatLng
     }
   | {
       event: 'submit-individual-challenge-answer'
@@ -135,6 +139,12 @@ export const hasGame = (payload: ServerEventData): payload is GameServerEvent =>
 
 export type MapClickEvent = CustomEvent<{
   isoCode: ISOCountryCode | string
+  /**
+   * Where on the globe the click landed, from inverting the map's Robinson
+   * projection. Absent when the point lies outside the projection's silhouette.
+   * Powers pin-the-landmark's distance scoring.
+   */
+  latLng?: LatLng
 }>
 
 export const isMapClickEvent = (event: Event): event is MapClickEvent => {

@@ -1,4 +1,5 @@
 import type { PLAYER_COLORS } from '~~/data/palette'
+import type { LatLng } from '~~/lib/geo'
 import type { FinalChallenge } from './challenges/final-challenge.type'
 import type {
   IndividualChallenge,
@@ -67,6 +68,10 @@ export interface GroupChallengeAnswer {
   correct: ISOCountryCode[]
   /** Sketch rounds: the player's normalized drawing, for the reveal overlay. */
   sketch?: [number, number][]
+  /** Pin-landmark rounds: where the player pinned, and by how far they missed.
+   *  Both exist for the reveal — the score is already settled by then. */
+  pin?: LatLng
+  distanceKm?: number
 }
 
 export const gameVariants = [

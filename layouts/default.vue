@@ -22,6 +22,7 @@
       :focus-context="gameStore.map.focusContext"
       :tints="gameStore.map.tints"
       :feature="gameStore.map.feature"
+      :inset="gameStore.map.inset"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)

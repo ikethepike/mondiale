@@ -3,9 +3,12 @@ import {
   getCorrectRanking,
   getIndividualChallenge,
   scoreChallengeSubmission,
+  scoreGhostState,
   scoreHotCold,
   scoreMotherTongue,
   scoreNeighbourBlitz,
+  scoreNoMansLand,
+  scorePinLandmark,
   scoreTraversalSubmission,
   scoreWaterBlitz,
 } from '~~/lib/challenges'
@@ -126,6 +129,41 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         const correct = eventData.ranking[0] === roundChallenge.country
         answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
+      case 'ghost-state': {
+        if (roundChallenge._type !== 'ghost-state-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.parent] }
+        scoring = await scoreGhostState({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'no-mans-land': {
+        if (roundChallenge._type !== 'no-mans-land-challenge') throw new TypeError('kind mismatch')
+        // An empty submission is a real answer here, not a non-answer: for
+        // Bir Tawil, which nobody claims, naming nobody is the correct play.
+        answer = { submitted: eventData.ranking, correct: roundChallenge.claimants }
+        scoring = scoreNoMansLand({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'pin-landmark': {
+        if (roundChallenge._type !== 'pin-landmark-challenge') throw new TypeError('kind mismatch')
+        // The pin IS the answer — there's no country to submit, and the server
+        // resolves the landmark's real point from the slug rather than trusting
+        // any distance the client claims.
+        const result = scorePinLandmark({ challenge: roundChallenge, pin: eventData.pin })
+        answer = {
+          submitted: [],
+          correct: [],
+          ...(eventData.pin ? { pin: eventData.pin } : {}),
+          ...(result.distanceKm !== undefined ? { distanceKm: result.distanceKm } : {}),
+        }
+        scoring = { scored: result.scored, maximum: result.maximum }
         break
       }
       case 'name-that-water': {

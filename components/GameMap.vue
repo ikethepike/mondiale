@@ -20,69 +20,141 @@
         tick after mount (it sits behind the lobby on first paint anyway).
       -->
       <template v-if="mountedMap">
-        <path
-          v-for="(d, code) in MAP_PATHS"
-          :id="code"
-          :key="code"
-          :style="{ fill: countryColors[code], '--stroke-base': strokeWidths[code] }"
-          :class="{ 'highlighted-country': highlights.includes(code) }"
-          :data-id="code"
-          :d="d"
-          @click="handleClick(code)"
-        />
         <!--
+          Everything geographic lives in one id'd group so the magnifier inset
+          can mirror it with a single <use>. The clone lands in a shadow tree,
+          so querySelectorAll('path[data-id]') — and therefore pathEls and the
+          LOD swap — never sees the duplicates.
+
+          It does, however, mirror `display: none`, so `cullPass` suspends
+          itself whenever an inset is on screen (see the note there).
+
+          Markers and pins stay OUTSIDE: they are indicators, not terrain, and
+          magnifying them would blow the ring up to fill the inset.
+        -->
+        <g id="map-world-layer">
+          <path
+            v-for="(d, code) in MAP_PATHS"
+            :id="code"
+            :key="code"
+            :style="{ fill: countryColors[code], '--stroke-base': strokeWidths[code] }"
+            :class="{ 'highlighted-country': highlights.includes(code) }"
+            :data-id="code"
+            :d="d"
+            @click="handleClick(code, $event)"
+          />
+          <!--
         Micro-states (Vatican, Monaco…) are sub-pixel at world zoom; the dot is
         their click target and disappears once the real shape becomes legible.
         No id attribute — path#ISO must keep resolving to the true geometry.
         Visibility is toggled with direct DOM writes (not reactive state) so
         wheel/camera zoom never forces a re-render of the 220 country paths.
       -->
-        <!-- Invisible tap halos: micro-states get ~14px of click slop at any zoom -->
-        <circle
-          v-for="(spot, code) in MICRO_COUNTRIES"
-          :key="`hit-${code}`"
-          class="micro-hit"
-          :data-id="code"
-          :cx="spot?.x"
-          :cy="spot?.y"
-          r="12"
-          @click="handleClick(code)"
-        />
-        <circle
-          v-for="(spot, code) in MICRO_COUNTRIES"
-          :key="`dot-${code}`"
-          class="micro-marker"
-          :style="{ fill: countryColors[code] }"
-          :class="{ 'highlighted-country': highlights.includes(code) }"
-          :data-id="code"
-          :data-footprint="spot?.footprint"
-          :cx="spot?.x"
-          :cy="spot?.y"
-          r="3.5"
-          @click="handleClick(code)"
-        />
-        <!-- Physical-geography overlay: rivers draw themselves in as lines,
+          <!-- Invisible tap halos: micro-states get ~14px of click slop at any zoom -->
+          <circle
+            v-for="(spot, code) in MICRO_COUNTRIES"
+            :key="`hit-${code}`"
+            class="micro-hit"
+            :data-id="code"
+            :cx="spot?.x"
+            :cy="spot?.y"
+            r="12"
+            @click="handleClick(code, $event)"
+          />
+          <circle
+            v-for="(spot, code) in MICRO_COUNTRIES"
+            :key="`dot-${code}`"
+            class="micro-marker"
+            :style="{ fill: countryColors[code] }"
+            :class="{ 'highlighted-country': highlights.includes(code) }"
+            :data-id="code"
+            :data-footprint="spot?.footprint"
+            :cx="spot?.x"
+            :cy="spot?.y"
+            r="3.5"
+            @click="handleClick(code, $event)"
+          />
+          <!-- Physical-geography overlay: rivers draw themselves in as lines,
            seas/lakes/ranges wash in as soft areas (water game modes) -->
-        <path
-          v-if="feature"
-          ref="featureEl"
-          :key="feature.d.slice(0, 40)"
-          class="map-feature"
-          :class="feature.kind"
-          :d="feature.d"
+          <path
+            v-if="feature"
+            ref="featureEl"
+            :key="feature.d.slice(0, 40)"
+            class="map-feature"
+            :class="feature.kind"
+            :d="feature.d"
+          />
+        </g>
+
+        <!-- The magnifier: a nested viewport onto the world layer above, with a
+             leader line back to the region it shows. Hidden once the player has
+             zoomed in far enough to see the thing unaided. -->
+        <MapInset v-if="inset" :inset="inset" :view="viewBoxState" @zoom="flyToRegion" />
+
+        <!-- A ringed marker for features too small to see. Rockall spans about
+             300 metres, so its outline renders as nothing at world zoom; the
+             marker carries the location instead. -->
+        <g
+          v-if="feature?.marker"
+          class="feature-marker"
+          :transform="`translate(${feature.marker.x} ${feature.marker.y})`"
+        >
+          <g class="feature-marker-scale">
+            <circle class="feature-marker-pulse" r="6" />
+            <circle class="feature-marker-ring" r="6" />
+            <circle class="feature-marker-dot" r="2" />
+          </g>
+        </g>
+        <!-- Pin-landmark: the guess, then on reveal the truth and a line between. -->
+        <line
+          v-if="pinPoint && pinAnswerPoint"
+          class="map-pin-link"
+          :x1="pinPoint.x"
+          :y1="pinPoint.y"
+          :x2="pinAnswerPoint.x"
+          :y2="pinAnswerPoint.y"
         />
+        <g v-if="pinPoint" class="map-pin" :transform="`translate(${pinPoint.x} ${pinPoint.y})`">
+          <g class="map-pin-scale">
+            <circle class="map-pin-halo" r="9" />
+            <circle class="map-pin-dot" r="3" />
+          </g>
+        </g>
+        <g
+          v-if="pinAnswerPoint"
+          class="map-pin answer"
+          :transform="`translate(${pinAnswerPoint.x} ${pinAnswerPoint.y})`"
+        >
+          <g class="map-pin-scale">
+            <circle class="map-pin-halo" r="9" />
+            <circle class="map-pin-dot" r="3" />
+          </g>
+        </g>
       </template>
     </svg>
   </div>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
-import { MAP_PATHS, MAP_BOUNDS, MAP_REGIONS, MICRO_COUNTRIES, type MapCode } from '~~/data/map.gen'
+import {
+  MAP_PATHS,
+  MAP_BOUNDS,
+  MAP_PROJECTION,
+  MAP_REGIONS,
+  MICRO_COUNTRIES,
+  type MapCode,
+} from '~~/data/map.gen'
+import { invertRobinson, projectRobinson } from '~~/lib/geo'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { CountryColorGrouping, MapFeatureOverlay } from '~~/types/map.type'
+import MapInset from '~/components/map/MapInset.vue'
+import type {
+  CountryColorGrouping,
+  MapFeatureOverlay,
+  MapInset as MapInsetType,
+} from '~~/types/map.type'
 
 // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
 // 1-unit stroke itself at world zoom, so they'd render as solid ink blobs.
@@ -146,6 +218,11 @@ const props = defineProps({
     type: Object as PropType<MapFeatureOverlay>,
     default: undefined,
   },
+  /** Magnifying inset for a subject too small to see at world zoom. */
+  inset: {
+    type: Object as PropType<MapInsetType>,
+    default: undefined,
+  },
 })
 
 // Deliberately soft washes — feedback, not verdict-shouting
@@ -179,6 +256,14 @@ const highlights = computed(() =>
   [...props.highlighted, props.highlightCountry, clicked.value].filter(Boolean)
 )
 
+// Evaluated lazily, so reading `gameStore` (declared further down) is safe.
+const pinPoint = computed(() =>
+  gameStore.map.pin ? projectRobinson(gameStore.map.pin, MAP_PROJECTION) : undefined
+)
+const pinAnswerPoint = computed(() =>
+  gameStore.map.pinAnswer ? projectRobinson(gameStore.map.pinAnswer, MAP_PROJECTION) : undefined
+)
+
 // --- Camera: one viewBox drives everything ----------------------------------
 // Gestures and reveal tweens all write the viewBox directly, repainting one
 // viewport's worth of culled base-tier geometry per frame — measured well
@@ -188,6 +273,12 @@ const highlights = computed(() =>
 // stutter. Nothing here is reactive — Vue must never diff 220 paths a frame.
 const WORLD_VIEW = { x: 0, y: 0, width: 2000, height: 1001 }
 const MAX_ZOOM = 40
+/**
+ * How far past a world edge the camera may be dragged, as a fraction of the
+ * world's height (≈150 units). Enough to slide the high Arctic — Hans Island
+ * sits at y≈87 of 1001 — out from under the overlay caption, and no further.
+ */
+const VERTICAL_OVERSCROLL = 0.15
 /**
  * The viewBox is kept at the SCREEN's aspect ratio, not the world's, and the
  * svg fills the viewport — so the map is edge-to-edge on any window and
@@ -215,11 +306,40 @@ const worldFitView = () => {
   }
 }
 
+/**
+ * A reactive echo of the camera, for the few overlays that must lay themselves
+ * out in map space (the inset and its leader line). `viewState` itself is
+ * deliberately non-reactive — it is written every frame by gsap and by every
+ * wheel tick — so this snapshot is only refreshed when the box has actually
+ * moved enough to matter, keeping camera work free of Vue re-renders.
+ */
+const viewBoxState = shallowRef<[number, number, number, number]>([
+  viewState.x,
+  viewState.y,
+  viewState.width,
+  viewState.height,
+])
+/** Below this, a re-layout would be invisible. In map units. */
+const VIEW_ECHO_EPSILON = 0.5
+
+const echoViewBox = () => {
+  const [x, y, width] = viewBoxState.value
+  if (
+    Math.abs(x - viewState.x) < VIEW_ECHO_EPSILON &&
+    Math.abs(y - viewState.y) < VIEW_ECHO_EPSILON &&
+    Math.abs(width - viewState.width) < VIEW_ECHO_EPSILON
+  ) {
+    return
+  }
+  viewBoxState.value = [viewState.x, viewState.y, viewState.width, viewState.height]
+}
+
 const writeViewBox = () => {
   svg.value?.setAttribute(
     'viewBox',
     `${viewState.x} ${viewState.y} ${viewState.width} ${viewState.height}`
   )
+  if (props.inset) echoViewBox()
 }
 
 const clampView = (view: typeof WORLD_VIEW) => {
@@ -227,18 +347,28 @@ const clampView = (view: typeof WORLD_VIEW) => {
   view.height = view.width / viewAspect
   view.x = Math.min(WORLD_VIEW.width - view.width, Math.max(0, view.x))
 
-  // Vertical headroom: at a world-fit (wide-screen) zoom the strict [0, world-
-  // height] clamp leaves almost no room to pan, pinning the far north (Belarus,
-  // Scandinavia) and far south to the screen edges — right under the overlay
-  // cards, so they can't be reached or clicked. Allow panning ~40% of the
-  // view's height past the world edges so the whole map can slide down (north
-  // into the clear centre) or up. The overshoot only ever reveals the parchment
-  // background, never a hard clip line, so usability is unharmed.
+  // Vertical headroom: a strict [0, world-height] clamp pins the far north
+  // (Svalbard, Hans Island at y≈87 of 1001) and the far south to the screen
+  // edges — right under the overlay captions, where they can't be read or
+  // clicked. Allow a little overscroll so the poles can be slid into the clear
+  // centre. The overshoot only ever reveals the parchment background.
+  //
+  // Sized against the WORLD, not the view. A fraction of view height sounds
+  // equivalent but is not: a wide screen makes the view taller than the world
+  // (1280x800 → a 2000x1250 viewBox), and 40% of that is 500 units — a full
+  // half-world of slack in each direction, enough to drag the planet entirely
+  // off screen.
+  // …but at a deep zoom the view is only a few dozen units tall, and 15% of the
+  // world would let it drift far off the map. Take whichever bound is tighter.
+  const margin = Math.min(WORLD_VIEW.height * VERTICAL_OVERSCROLL, view.height * 0.4)
+
   if (view.height >= WORLD_VIEW.height) {
-    // View taller than the world — centre it, plus the same slack either way.
-    view.y = WORLD_VIEW.height / 2 - view.height / 2
+    // View taller than the world. Hard-centring here (the old behaviour) killed
+    // vertical panning outright on any wide screen, which is precisely where
+    // the caption overlaps the Arctic.
+    const centred = WORLD_VIEW.height / 2 - view.height / 2
+    view.y = Math.min(centred + margin, Math.max(centred - margin, view.y))
   } else {
-    const margin = view.height * 0.4
     view.y = Math.min(WORLD_VIEW.height - view.height + margin, Math.max(-margin, view.y))
   }
 }
@@ -330,6 +460,42 @@ watch(
   () => nextTick(frameFocus)
 )
 
+/**
+ * Fly to the region the magnifier was showing, so clicking the box reads as it
+ * expanding to fill the screen.
+ *
+ * The region is deliberately tiny — Hans Island's is under a map unit — and
+ * `clampView` floors the view at `WORLD_VIEW.width / MAX_ZOOM`, so a rock lands
+ * at a sane 50-unit shot rather than a pixel. A little context around it keeps
+ * the subject from bleeding off every edge.
+ */
+const INSET_ZOOM_CONTEXT = 1.6
+
+const flyToRegion = ([x, y, width, height]: [number, number, number, number]) => {
+  if (!svg.value) return
+  uncullAll()
+
+  const centerX = x + width / 2
+  const centerY = y + height / 2
+
+  // Resolve the final size FIRST, then centre on it. `clampView` widens a view
+  // that is tighter than MAX_ZOOM but leaves x/y where they were, so centring
+  // beforehand would strand a sub-unit subject — Hans Island's region is 0.8
+  // units wide — in the top-left corner of a 50-unit shot.
+  let targetWidth = Math.max(width, height * viewAspect) * INSET_ZOOM_CONTEXT
+  targetWidth = Math.min(WORLD_VIEW.width, Math.max(WORLD_VIEW.width / MAX_ZOOM, targetWidth))
+  const targetHeight = targetWidth / viewAspect
+
+  const target = {
+    x: centerX - targetWidth / 2,
+    y: centerY - targetHeight / 2,
+    width: targetWidth,
+    height: targetHeight,
+  }
+  clampView(target)
+  tweenToView(target)
+}
+
 // --- Feature overlay draw-in ------------------------------------------------
 const featureEl = ref<SVGPathElement>()
 
@@ -389,10 +555,32 @@ const emit = defineEmits(['countryClick'])
 const svg = ref<SVGElement>()
 const wrapper = ref<HTMLElement>()
 
-const handleClick = (isoCode: string) => {
+/**
+ * The pointer's position in the SVG's own viewBox coordinates. Routed through
+ * getScreenCTM so it survives viewBox scaling, letterboxing, and any CSS
+ * transform — a getBoundingClientRect ratio would be wrong on all three.
+ */
+const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined => {
+  const element = svg.value as SVGSVGElement | undefined
+  const matrix = element?.getScreenCTM?.()
+  if (!element || !matrix) return undefined
+  const point = element.createSVGPoint()
+  point.x = event.clientX
+  point.y = event.clientY
+  const { x, y } = point.matrixTransform(matrix.inverse())
+  return { x, y }
+}
+
+const handleClick = (isoCode: string, event?: MouseEvent) => {
   emit('countryClick', isoCode)
+
+  // Pin-the-landmark scores the exact point, not the country, so carry the
+  // click's lat/lng alongside the code. Existing listeners simply ignore it.
+  const point = event ? viewBoxPoint(event) : undefined
+  const latLng = point ? invertRobinson(point.x, point.y, MAP_PROJECTION) : undefined
+
   const mapClickEvent: MapClickEvent = new CustomEvent('mapClick', {
-    detail: { isoCode },
+    detail: { isoCode, ...(latLng ? { latLng } : {}) },
   })
   document.dispatchEvent(mapClickEvent)
 }
@@ -488,7 +676,13 @@ const uncullAll = () => {
  * only changes how much the next frame has to paint.
  */
 const cullPass = () => {
-  if (WORLD_VIEW.width / viewState.width < CULL_ZOOM) {
+  // The magnifier mirrors this layer with <use>, which reflects the live DOM —
+  // including `display: none`. Culling a country out of the main viewport also
+  // erases it from the inset, and since the two zoom windows overlap (culling
+  // from 2x, the inset hides at 6x) the inset's context blinks in and out as
+  // the camera moves. Keep everything drawn while it is on screen; the inset
+  // only exists at low zoom, where almost nothing is culled anyway.
+  if (props.inset || WORLD_VIEW.width / viewState.width < CULL_ZOOM) {
     uncullAll()
     return
   }
@@ -965,6 +1159,84 @@ path[id],
   transition:
     fill var(--motion-slow),
     filter var(--motion-base);
+}
+
+// The guess wears the accent orange; the revealed answer takes the map's own
+// blue, the hue the feature markers already use.
+.map-pin {
+  pointer-events: none;
+  color: var(--hior-ange);
+
+  &.answer {
+    color: hsl(215.7, 76.4%, 41%);
+  }
+}
+
+.map-pin-scale {
+  transform: scale(var(--stroke-zoom, 1));
+}
+
+.map-pin-halo {
+  fill: var(--background-color);
+  stroke: currentColor;
+  stroke-width: 2px;
+}
+
+.map-pin-dot {
+  fill: currentColor;
+}
+
+.map-pin-link {
+  fill: none;
+  pointer-events: none;
+  stroke: hsl(215.7, 76.4%, 41%);
+  stroke-width: calc(1.5px * var(--stroke-zoom, 1));
+  stroke-dasharray: calc(6px * var(--stroke-zoom, 1)) calc(5px * var(--stroke-zoom, 1));
+}
+
+// Marks a contested territory that is too small to draw. Sized in screen
+// pixels via --stroke-zoom, so it stays legible from world view down to a
+// deep zoom on a nine-metre rock.
+.feature-marker {
+  pointer-events: none;
+  color: hsl(215.7, 76.4%, 41%);
+}
+
+.feature-marker-scale {
+  transform: scale(var(--stroke-zoom, 1));
+}
+
+.feature-marker-ring {
+  fill: hsla(199, 68%, 62%, 0.45);
+  stroke: currentColor;
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 3px hsla(215.7, 76.4%, 60%, 0.6));
+}
+
+.feature-marker-dot {
+  fill: currentColor;
+}
+
+// A single outward pulse on arrival, so the eye finds it.
+.feature-marker-pulse {
+  fill: none;
+  stroke: currentColor;
+  transform-origin: center;
+  animation: feature-marker-pulse 1.4s var(--ease-out-expressive) 2;
+}
+
+@keyframes feature-marker-pulse {
+  0% {
+    opacity: 0.8;
+    stroke-width: 2px;
+    transform: scale(0.6);
+  }
+
+  100% {
+    opacity: 0;
+    stroke-width: 0.5px;
+    transform: scale(3.2);
+  }
 }
 
 // Physical-geography overlay (water modes). Widths ride the same zoom
