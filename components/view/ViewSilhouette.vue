@@ -61,6 +61,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { mainlandOutline } from '~~/lib/outline'
+import { buzzFraction } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -181,9 +182,8 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
 
   if (country.isoCode === active.country) {
-    // Earlier buzz, bigger score
     const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
-    const clientScore = Math.round(active.maximumPoints * (0.35 + 0.65 * remainingFraction))
+    const clientScore = Math.round(active.maximumPoints * buzzFraction(remainingFraction))
     resolve(country.isoCode, clientScore)
     return
   }

@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Capital Guess`"
       title="What capital is this?"
-      stakes="Name the country from its capital's skyline before the clock runs out. First correct guess wins the points."
+      :stakes="stakes"
       @done="start"
     />
 
@@ -33,14 +33,15 @@
     <footer :class="{ 'has-input': !challenge.options }">
       <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
 
-      <!-- Non-hard mode: pick from four flag options. Hard mode: free-type. -->
+      <!-- Non-hard mode: pick from flag options. Hard mode: free-type. -->
       <div v-if="challenge.options" class="options card-options">
         <button
           v-for="option in challenge.options"
           :key="option"
           class="option card-option"
+          :class="{ 'is-spent': spent.includes(option) }"
           type="button"
-          :disabled="submitted || !started"
+          :disabled="submitted || !started || spent.includes(option)"
           @click="onGuess(getCountry(option))"
         >
           <CountryTileFlag class="option-flag" :country="getCountry(option)" />
@@ -64,9 +65,11 @@ import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { buzzFraction } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { Country } from '~~/types/geography.types'
+import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -85,33 +88,67 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-const submitRound = (correct: boolean) => {
+const stakes = computed(() =>
+  challenge.value?.maximumGuesses
+    ? `Name the country from its capital's skyline. You get ${challenge.value.maximumGuesses} guesses — each one you spend is worth less.`
+    : "Name the country from its capital's skyline before the clock runs out. The sooner you name it, the more it's worth."
+)
+
+/** Options already picked and wrong — greyed out, and counted against the cap. */
+const spent = ref<ISOCountryCode[]>([])
+const attemptsUsed = computed(() => spent.value.length)
+const attemptsLeft = computed(() =>
+  challenge.value?.maximumGuesses
+    ? challenge.value.maximumGuesses - attemptsUsed.value
+    : Number.POSITIVE_INFINITY
+)
+
+const submitRound = (score: number) => {
   if (submitted.value) return
-  gameStore.map.status = correct ? 'correct' : undefined
-  submitOnce(
-    correct && challenge.value ? [challenge.value.country] : [],
-    correct ? (challenge.value?.maximumPoints ?? 0) : 0
-  )
+  gameStore.map.status = score > 0 ? 'correct' : undefined
+  submitOnce(score > 0 && challenge.value ? [challenge.value.country] : [], score)
 }
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(false) })
+  begin({ onTimeout: () => submitRound(0) })
   nextTick(() => guessInput.value?.focus())
 }
+
+/**
+ * The option variants pay by which attempt landed it; hard mode free-types
+ * against the clock, so an early answer is worth more than a late one.
+ */
+const scoreFor = (active: NonNullable<typeof challenge.value>) =>
+  active.maximumGuesses
+    ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
+    : Math.round(active.maximumPoints * buzzFraction(secondsLeft.value / active.durationSeconds))
 
 const onGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value || !started.value) return
+
   // The winning guess is never broadcast — it would hand opponents the answer.
-  // Outside hard mode the four options make even a wrong name too strong a
-  // clue, so the policy drops that variant to presence.
-  if (country.isoCode === active.country) submitRound(true)
-  else
-    announce({
-      kind: 'wrong',
-      isoCode: country.isoCode,
-      hint: `${countryName(country)} — not it`,
-    })
+  // Outside hard mode the options make even a wrong name too strong a clue, so
+  // the policy drops that variant to presence.
+  if (country.isoCode === active.country) return submitRound(scoreFor(active))
+
+  if (active.maximumGuesses) {
+    if (spent.value.includes(country.isoCode)) return
+    spent.value = [...spent.value, country.isoCode]
+    if (attemptsLeft.value <= 0) {
+      announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses' })
+      return submitRound(0)
+    }
+  }
+
+  const left = attemptsLeft.value
+  announce({
+    kind: 'wrong',
+    isoCode: country.isoCode,
+    hint: Number.isFinite(left)
+      ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
+      : `${countryName(country)} — not it`,
+  })
 }
 </script>
 <style lang="scss" scoped>
@@ -218,6 +255,10 @@ footer {
   &:disabled {
     cursor: default;
     opacity: 0.6;
+  }
+  &.is-spent {
+    opacity: 0.35;
+    border-color: var(--hior-ange);
   }
 
   .option-flag {
