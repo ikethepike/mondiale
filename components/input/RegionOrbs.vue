@@ -33,7 +33,10 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{ 'update:modelValue': [value: GameVariant]; change: [value: GameVariant] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: GameVariant]
+  change: [value: GameVariant]
+}>()
 
 // Optimistic local selection: the picked value shows instantly rather than
 // waiting for the server to round-trip game.variant back (which reads the

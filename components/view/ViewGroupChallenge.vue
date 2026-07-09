@@ -76,7 +76,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { isTraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
+import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const { gameStore, update, currentRound } = useClientEvents()
@@ -103,9 +103,9 @@ watch(
 
 const details = computed(() => {
   const challenge = currentRound.value?.round.groupChallenge
-  // This view only mounts for ranking rounds — traversal rounds render
-  // ViewTraversalChallenge — but the round data itself is a union.
-  if (!challenge || isTraversalChallenge(challenge)) return undefined
+  // This view only mounts for ranking rounds — traversal and group-mode rounds
+  // render their own views — but the round data itself is a union.
+  if (!isGroupChallenge(challenge)) return undefined
 
   return getChallengeDetails(challenge.id)
 })

@@ -63,6 +63,7 @@ const fetchIndicator = async (
   const out = new Map<ISOCountryCode, WorldBankMetric>()
   for (const row of rows ?? []) {
     if (row.value == null) continue
+    if (!row.countryiso3code) continue
     const iso2 = iso3ToIso2.get(row.countryiso3code)
     if (!iso2) continue
     out.set(iso2, { amount: row.value, year: row.date ? Number(row.date) : undefined })

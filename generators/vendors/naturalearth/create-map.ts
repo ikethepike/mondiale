@@ -48,9 +48,32 @@ const MICRO_FOOTPRINT = 1.5
  * joins ISOCountryCodes, at which point it moves over automatically.
  */
 const TERRITORY_CODES = [
-  'AI', 'AW', 'BM', 'CW', 'EH', 'FK', 'FO', 'GF', 'GL', 'GP', 'IC', 'KY',
-  'MQ', 'MS', 'NC', 'PF', 'PN', 'PR', 'RE', 'SX', 'TC', 'VC', 'VG', 'VI',
-  'YT', 'XK',
+  'AI',
+  'AW',
+  'BM',
+  'CW',
+  'EH',
+  'FK',
+  'FO',
+  'GF',
+  'GL',
+  'GP',
+  'IC',
+  'KY',
+  'MQ',
+  'MS',
+  'NC',
+  'PF',
+  'PN',
+  'PR',
+  'RE',
+  'SX',
+  'TC',
+  'VC',
+  'VG',
+  'VI',
+  'YT',
+  'XK',
 ]
 
 /** NE units with ISO_A2 = -99 that belong to a host country's shape. */
@@ -76,12 +99,25 @@ const UNIT_OVERRIDES: Record<string, string> = {
  */
 const DROP_UNITS = new Set([
   'CLP', // Clipperton I. (FR)
-  'CSI', 'ATC', // Coral Sea Is., Ashmore & Cartier (AU)
+  'CSI',
+  'ATC', // Coral Sea Is., Ashmore & Cartier (AU)
   'BRI', // Brazilian I. (disputed BR/UY islet)
   'KAB', // Baikonur (KZ lease)
   'NJM', // Jan Mayen (NO)
-  'JQI', 'DQI', 'FQI', 'HQI', 'WQI', 'MQI', 'BQI', 'LQI', 'KQI', // US minor outlying
-  'PFA', 'PGA', 'BJN', 'SER', 'SCR', // Paracel/Spratly/Caribbean banks/Scarborough
+  'JQI',
+  'DQI',
+  'FQI',
+  'HQI',
+  'WQI',
+  'MQI',
+  'BQI',
+  'LQI',
+  'KQI', // US minor outlying
+  'PFA',
+  'PGA',
+  'BJN',
+  'SER',
+  'SCR', // Paracel/Spratly/Caribbean banks/Scarborough
 ])
 
 /**
@@ -264,9 +300,15 @@ const main = async () => {
       unitNorm += du[0] * du[0] + du[1] * du[1]
     }
     const scale = dotProduct / unitNorm
-    const translate: [number, number] = [legacyMeanX - scale * unitMeanX, legacyMeanY - scale * unitMeanY]
+    const translate: [number, number] = [
+      legacyMeanX - scale * unitMeanX,
+      legacyMeanY - scale * unitMeanY,
+    ]
     const residuals = pairs.map(({ unit, legacy }) =>
-      Math.hypot(scale * unit[0] + translate[0] - legacy[0], scale * unit[1] + translate[1] - legacy[1])
+      Math.hypot(
+        scale * unit[0] + translate[0] - legacy[0],
+        scale * unit[1] + translate[1] - legacy[1]
+      )
     )
     return { scale, translate, residuals }
   }
@@ -274,19 +316,26 @@ const main = async () => {
   // Legacy anchors are hand-drawn; one pass of outlier rejection guards
   // against archipelagos whose NE extent differs from the drawn main island.
   const firstPass = fit(anchorPairs)
-  const medianResidual = [...firstPass.residuals].sort((a, b) => a - b)[Math.floor(anchorPairs.length / 2)]
-  const inliers = anchorPairs.filter((_, i) => firstPass.residuals[i] <= Math.max(2.5 * medianResidual, 3))
+  const medianResidual = [...firstPass.residuals].sort((a, b) => a - b)[
+    Math.floor(anchorPairs.length / 2)
+  ]
+  const inliers = anchorPairs.filter(
+    (_, i) => firstPass.residuals[i] <= Math.max(2.5 * medianResidual, 3)
+  )
   for (const pair of anchorPairs)
     if (!inliers.includes(pair)) console.info(`anchor ${pair.code}: rejected as outlier`)
   const { scale, translate, residuals } = fit(inliers)
   const projection = geoRobinson().scale(scale).translate(translate)
 
-  inliers.forEach(({ code }, i) => console.info(`anchor ${code}: residual ${residuals[i].toFixed(2)}`))
+  inliers.forEach(({ code }, i) =>
+    console.info(`anchor ${code}: residual ${residuals[i].toFixed(2)}`)
+  )
   const rms = Math.sqrt(mean(residuals.map(r => r ** 2)))
   console.info(
     `Robinson fit: scale ${scale.toFixed(2)}, translate [${translate[0].toFixed(1)}, ${translate[1].toFixed(1)}], RMS ${rms.toFixed(2)}`
   )
-  if (rms > 3) throw new Error(`Projection fit RMS ${rms.toFixed(2)} exceeds tolerance — anchors disagree`)
+  if (rms > 3)
+    throw new Error(`Projection fit RMS ${rms.toFixed(2)} exceeds tolerance — anchors disagree`)
 
   // --- Project, filter rings, emit paths ------------------------------------
   const project = (ring: Ring): Ring =>
@@ -306,7 +355,12 @@ const main = async () => {
 
   const roundTo = (value: number, decimals: number) => Number(value.toFixed(decimals))
 
-  const emitPath = (polygons: Ring[][], decimals: number, minRingArea: number, keepLargestOf: Ring): string => {
+  const emitPath = (
+    polygons: Ring[][],
+    decimals: number,
+    minRingArea: number,
+    keepLargestOf: Ring
+  ): string => {
     const parts: string[] = []
     for (const polygon of polygons) {
       for (const ring of polygon) {
@@ -372,7 +426,9 @@ const main = async () => {
         const canaryFootprint = Math.max(...geoBounds(canaryProjected).slice(2))
         footprints.set('IC', canaryFootprint)
         const canaryRings = canaryProjected.flat()
-        const canaryLargest = canaryRings.reduce((a, b) => (Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b))
+        const canaryLargest = canaryRings.reduce((a, b) =>
+          Math.abs(ringArea(a)) >= Math.abs(ringArea(b)) ? a : b
+        )
         paths.IC = emitPath(canaryProjected, 3, MIN_RING_AREA_SMALL, canaryLargest)
       }
 
@@ -440,7 +496,11 @@ const main = async () => {
     vertexCounts.push([code, vertices])
     const footprint = Math.max(width, height)
     if (footprint < MICRO_FOOTPRINT && gameCodes.has(code))
-      micro[code] = { x: roundTo(x + width / 2, 2), y: roundTo(y + height / 2, 2), footprint: roundTo(footprint, 3) }
+      micro[code] = {
+        x: roundTo(x + width / 2, 2),
+        y: roundTo(y + height / 2, 2),
+        footprint: roundTo(footprint, 3),
+      }
   }
 
   for (const code of gameCodes)
@@ -505,13 +565,25 @@ export const MAP_PATHS_HD = ${JSON.stringify(sortedEntries(mapPathsHd))} as Reco
 
   // --- Stats -------------------------------------------------------------------
   vertexCounts.sort((a, b) => b[1] - a[1])
-  console.info(`\nTop vertex counts: ${vertexCounts.slice(0, 20).map(([c, n]) => `${c}:${n}`).join(' ')}`)
+  console.info(
+    `\nTop vertex counts: ${vertexCounts
+      .slice(0, 20)
+      .map(([c, n]) => `${c}:${n}`)
+      .join(' ')}`
+  )
   console.info(`Total vertices: base ${vertexTotal}, hd ${hdVertexTotal}`)
-  console.info(`Micro countries (${Object.keys(micro).length}): ${Object.keys(micro).sort().join(' ')}`)
-  for (const [file, content] of [[OUT_FILE, output], [OUT_HD_FILE, hdOutput]] as const) {
+  console.info(
+    `Micro countries (${Object.keys(micro).length}): ${Object.keys(micro).sort().join(' ')}`
+  )
+  for (const [file, content] of [
+    [OUT_FILE, output],
+    [OUT_HD_FILE, hdOutput],
+  ] as const) {
     const bytes = Buffer.byteLength(content)
     const gzipped = Bun.gzipSync(Buffer.from(content)).byteLength
-    console.info(`Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(gzipped / 1024).toFixed(0)} KB gzip → ${file}`)
+    console.info(
+      `Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(gzipped / 1024).toFixed(0)} KB gzip → ${file}`
+    )
   }
 }
 

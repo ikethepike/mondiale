@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { writeWebp } from '../wikidata/commons'
 
 /**
  * Minimal Unsplash image fetcher for landmark overrides where Wikidata's
@@ -58,13 +59,13 @@ const downloadSized = async (
   const imageUrl = `${raw}${raw.includes('?') ? '&' : '?'}w=${width}&fm=jpg&q=80&fit=max`
   const response = await fetch(imageUrl).catch(() => undefined)
   if (!response?.ok) return undefined
-  writeFileSync(`${baseName}.jpg`, Buffer.from(await response.arrayBuffer()))
-  return `${publicBase}.jpg`
+  // Re-encoded to WebP like every other generated image (see vendors/wikidata/commons).
+  return writeWebp(Buffer.from(await response.arrayBuffer()), baseName, publicBase, width)
 }
 
-/** An already-downloaded file means we can skip the API entirely (rate limit). */
+/** An already-encoded file means we can skip the API entirely (rate limit). */
 const existingImage = (baseName: string, publicBase: string): string | undefined =>
-  existsSync(`${baseName}.jpg`) ? `${publicBase}.jpg` : undefined
+  existsSync(`${baseName}.webp`) ? `${publicBase}.webp` : undefined
 
 /**
  * Fetch one EXACT Unsplash photo by its id (the code at the end of an Unsplash

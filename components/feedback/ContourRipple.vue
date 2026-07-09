@@ -1,12 +1,6 @@
 <template>
   <svg class="contour-ripple" :class="tone" viewBox="0 0 200 200" aria-hidden="true">
-    <path
-      v-for="(ring, index) in RINGS"
-      :key="index"
-      ref="rings"
-      :d="ring"
-      pathLength="1"
-    />
+    <path v-for="(ring, index) in RINGS" :key="index" ref="rings" :d="ring" pathLength="1" />
   </svg>
 </template>
 <script lang="ts" setup>

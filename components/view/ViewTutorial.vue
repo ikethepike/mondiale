@@ -5,7 +5,9 @@
         <header class="tutorial-header">
           <span class="eyebrow">How to play</span>
           <h1>Three phases, one race</h1>
-          <p class="lead">Each round loops through the same three phases — master all three to win.</p>
+          <p class="lead">
+            Each round loops through the same three phases — master all three to win.
+          </p>
         </header>
 
         <!-- The journey: three phase cards linked by drawing-in connectors -->
@@ -21,8 +23,24 @@
             <span class="phase-icon">
               <!-- Group challenge: a ranking of descending bars -->
               <svg v-if="phase.key === 'group'" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="3" y="5" width="18" height="4" rx="1.2" fill="currentColor" opacity="0.35" />
-                <rect x="3" y="10.5" width="14" height="4" rx="1.2" fill="currentColor" opacity="0.65" />
+                <rect
+                  x="3"
+                  y="5"
+                  width="18"
+                  height="4"
+                  rx="1.2"
+                  fill="currentColor"
+                  opacity="0.35"
+                />
+                <rect
+                  x="3"
+                  y="10.5"
+                  width="14"
+                  height="4"
+                  rx="1.2"
+                  fill="currentColor"
+                  opacity="0.65"
+                />
                 <rect x="3" y="16" width="9" height="4" rx="1.2" fill="currentColor" />
               </svg>
               <!-- Movement: a pawn on a tile track -->
@@ -32,7 +50,13 @@
                 fill="none"
                 aria-hidden="true"
               >
-                <path d="M3 20h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.4" />
+                <path
+                  d="M3 20h18"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  opacity="0.4"
+                />
                 <circle cx="7" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
                 <circle cx="12" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
                 <circle cx="17" cy="20" r="1.6" fill="currentColor" opacity="0.4" />
@@ -43,8 +67,21 @@
               </svg>
               <!-- Gauntlet: a locked gate -->
               <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="5" y="10" width="14" height="10" rx="1.6" fill="currentColor" opacity="0.35" />
-                <path d="M8 10V7.5a4 4 0 0 1 8 0V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <rect
+                  x="5"
+                  y="10"
+                  width="14"
+                  height="10"
+                  rx="1.6"
+                  fill="currentColor"
+                  opacity="0.35"
+                />
+                <path
+                  d="M8 10V7.5a4 4 0 0 1 8 0V10"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
                 <circle cx="12" cy="15" r="1.6" fill="currentColor" />
               </svg>
             </span>

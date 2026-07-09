@@ -34,7 +34,12 @@ export const getPlayerStatus = (player: Player): PlayerStatus => {
     case 'final-challenge':
       return { label: 'In the final challenge', busy: true, done: false, gone: false }
     case 'moving':
-      return { label: `Walking · tile ${player.currentPosition}`, busy: true, done: false, gone: false }
+      return {
+        label: `Walking · tile ${player.currentPosition}`,
+        busy: true,
+        done: false,
+        gone: false,
+      }
     case 'group-scores':
       return { label: 'Reviewing scores', ...idle }
     case 'movement-summary':

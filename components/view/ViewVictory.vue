@@ -14,7 +14,8 @@
     <ModalWrapper v-else>
       <!-- Atlas peek: the report steps aside so the glowing map can be seen -->
       <button v-if="showAtlas" type="button" class="atlas-return" @click="showAtlas = false">
-        {{ atlasSelection ? 'Tap another country' : 'Tap any country to explore' }} — back to the report
+        {{ atlasSelection ? 'Tap another country' : 'Tap any country to explore' }} — back to the
+        report
       </button>
 
       <AtlasCard
@@ -28,7 +29,9 @@
         <section class="report-main">
           <header class="pane-content report-header">
             <span class="eyebrow">Final Standings</span>
-            <h2>{{ isChampion ? `Champion: ${ownName}` : `You placed ${ordinal(placement ?? 0)}` }}</h2>
+            <h2>
+              {{ isChampion ? `Champion: ${ownName}` : `You placed ${ordinal(placement ?? 0)}` }}
+            </h2>
           </header>
 
           <div class="pane-content stat-banner">
@@ -66,7 +69,8 @@
               Sharpest moment: {{ ownStats.sharpestRound.scored }}/{{
                 ownStats.sharpestRound.maximum
               }}
-              on the round {{ ownStats.sharpestRound.number }} {{ kindLabel(ownStats.sharpestRound.kind) }}.
+              on the round {{ ownStats.sharpestRound.number }}
+              {{ kindLabel(ownStats.sharpestRound.kind) }}.
             </p>
           </section>
 
@@ -146,12 +150,12 @@ const placement = computed(() => {
 })
 
 const isChampion = computed(() => placement.value === 1)
-const raceOver = computed(() =>
-  gameStore.standings.every(standing => !!standing.completedAtRound)
-)
+const raceOver = computed(() => gameStore.standings.every(standing => !!standing.completedAtRound))
 
 const heroHeading = computed(() =>
-  isChampion.value ? `${ownName.value ?? 'You'} takes the crown` : `${ownName.value ?? 'You'} crosses the line`
+  isChampion.value
+    ? `${ownName.value ?? 'You'} takes the crown`
+    : `${ownName.value ?? 'You'} crosses the line`
 )
 const heroSub = computed(() => {
   if (isChampion.value) return 'First through the final gauntlet — the world is yours.'
@@ -259,7 +263,14 @@ watch(showHero, value => {
     gsap.fromTo(
       card.value.querySelectorAll('.standing-row'),
       { opacity: 0, x: 18 },
-      { opacity: 1, x: 0, duration: 0.4, ease: EASE.enter, stagger: 0.09, clearProps: 'opacity,transform' }
+      {
+        opacity: 1,
+        x: 0,
+        duration: 0.4,
+        ease: EASE.enter,
+        stagger: 0.09,
+        clearProps: 'opacity,transform',
+      }
     )
     gsap.fromTo(
       card.value.querySelectorAll('.bar-fill'),

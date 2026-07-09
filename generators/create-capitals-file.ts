@@ -18,7 +18,8 @@ import { fetchJson, fetchPageImages, saveCommonsImage, wait } from './vendors/wi
  */
 
 const OUTPUT_DIRECTORY = 'public/capitals'
-const CAPITAL_WIDTH = 640
+/** Capital photos are zoomable too (ViewCapitalGuess → ZoomableImage). */
+const CAPITAL_WIDTH = 1280
 
 export interface CapitalEntry {
   /** Capital city name (from Wikidata labels). */
@@ -55,8 +56,8 @@ interface EntityResponse {
 }
 
 const isoCodeOf = (claims?: { [property: string]: Statement[] }): string | undefined => {
-  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak?.datavalue
-    ?.value
+  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
+    ?.datavalue?.value
   return typeof value === 'string' ? value : undefined
 }
 
@@ -177,7 +178,9 @@ console.log(`\nPhotos: ${done} saved, ${failed} failed`)
 // Merge with the previous run: fresh data wins, gaps keep old data
 for (const isoCode of ISOCountryCodes) {
   const merged = { ...previousMapping[isoCode], ...mapping[isoCode] }
-  if (Object.keys(merged).length) mapping[isoCode] = merged
+  // An entry without a capital name is unusable, so it doubles as the guard
+  // that `merged` really is a complete CapitalEntry.
+  if (merged.name) mapping[isoCode] = { ...merged, name: merged.name }
 }
 
 writeFileSync(

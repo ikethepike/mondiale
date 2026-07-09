@@ -24,9 +24,11 @@
     "generate:landmarks": "bun run generators/create-landmarks-file.ts",
     "generate:map": "bun run generators/vendors/naturalearth/create-map.ts",
     "generate:water": "bun run generators/vendors/naturalearth/create-water.ts",
-    "generate:flags-wide": "bun run generators/flags/create-flags-wide-file.ts"
+    "generate:flags-wide": "bun run generators/flags/create-flags-wide-file.ts",
+    "upscale": "bun --env-file=./.env run generators/upscale-image.ts"
   },
   "devDependencies": {
+    "@google/genai": "^2.10.0",
     "@nuxt/eslint": "^1.16.0",
     "@playwright/test": "^1.61.1",
     "@types/bun": "^1.3.14",
@@ -49,6 +51,7 @@
     "he": "^1.2.0",
     "nuxt": "4.4.8",
     "prettier": "^3.9.4",
+    "sharp": "^0.35.3",
     "svgo": "^4.0.1",
     "topojson-client": "^3.1.0",
     "topojson-server": "^3.0.1",

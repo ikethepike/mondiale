@@ -2,11 +2,13 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import type { ISOCountryCode } from '../types/geography.types'
 import { LANDMARK_SEEDS, type LandmarkKind } from './data/landmark-seeds'
 import {
+  existingImagePath,
   fetchImageDimensions,
   fetchJson,
   fetchPageImages,
   resolveQidBySearch,
   saveCommonsImage,
+  saveImageUrl,
   wait,
 } from './vendors/wikidata/commons'
 import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/unsplash/unsplash'
@@ -25,7 +27,9 @@ import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/
  */
 
 const OUTPUT_DIRECTORY = 'public/landmarks'
-const LANDMARK_WIDTH = 800
+/** Landmarks render in ZoomableImage (MAX_SCALE 5), so they need real pixels.
+ *  A source smaller than this is used as-is, never upscaled. */
+const LANDMARK_WIDTH = 2000
 
 export interface LandmarkEntry {
   name: string
@@ -68,8 +72,8 @@ interface EntityResponse {
 }
 
 const isoValue = (claims?: { [property: string]: Statement[] }): string | undefined => {
-  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak?.datavalue
-    ?.value
+  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
+    ?.datavalue?.value
   return typeof value === 'string' ? value : undefined
 }
 
@@ -110,10 +114,15 @@ console.log(`  ${isoToQid.size} countries mapped`)
 console.log(`Resolving ${LANDMARK_SEEDS.length} landmark Q-ids…`)
 const resolved: { seed: (typeof LANDMARK_SEEDS)[number]; qid: string }[] = []
 for (const seed of LANDMARK_SEEDS) {
+  const hasOverride = !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
   const qid = await resolveQidBySearch(seed.name, {
     contextCountryQid: isoToQid.get(seed.country),
   })
+  // The Q-id only supplies the fallback photo and the P131 city label, so an
+  // overridden seed still belongs in the run even when its name doesn't
+  // resolve — it just loses the `city` field.
   if (qid) resolved.push({ seed, qid })
+  else if (hasOverride) resolved.push({ seed, qid: '' })
   else console.warn(`  no Q-id for "${seed.name}" (${seed.country})`)
   await wait(150)
 }
@@ -122,7 +131,8 @@ for (const seed of LANDMARK_SEEDS) {
 console.log('Reading landmark locations (P131)…')
 const locationQidOf = new Map<string, string>() // landmark qid → location qid
 const locationLabelQids = new Set<string>()
-const landmarkQids = resolved.map(entry => entry.qid)
+// Overridden seeds may carry an empty qid — never send those to the API.
+const landmarkQids = resolved.map(entry => entry.qid).filter(Boolean)
 for (let index = 0; index < landmarkQids.length; index += 30) {
   const batch = landmarkQids.slice(index, index + 30)
   const data = await fetchJson<EntityResponse>(
@@ -130,7 +140,8 @@ for (let index = 0; index < landmarkQids.length; index += 30) {
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const value = entity.claims?.P131?.find(
-      statement => statement.rank !== 'deprecated' && typeof statement.mainsnak?.datavalue?.value === 'object'
+      statement =>
+        statement.rank !== 'deprecated' && typeof statement.mainsnak?.datavalue?.value === 'object'
     )?.mainsnak?.datavalue?.value
     const locationQid = typeof value === 'object' ? value.id : undefined
     if (locationQid) {
@@ -158,7 +169,7 @@ for (let index = 0; index < locationQidList.length; index += 50) {
 }
 
 // --- 4. Photos (viability-checked) + assemble --------------------------------
-const photoFiles = await fetchPageImages(resolved.map(entry => entry.qid))
+const photoFiles = await fetchPageImages(landmarkQids)
 
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 const mapping: LandmarkMapping = {}
@@ -170,10 +181,19 @@ for (const { seed, qid } of resolved) {
   const slug = slugify(seed.name)
   let publicPath: string | undefined
 
-  // 1) Override: Unsplash (preferred, when keyed) → explicit Commons filename.
-  //    Overrides bypass the viability pass — they were hand-picked as good.
+  // 1) Override: direct URL → Unsplash (preferred, when keyed) → explicit
+  //    Commons filename. Overrides bypass the viability pass — they were
+  //    hand-picked as good.
   //    (saveUnsplash* skips the API when the file already exists — rate limit.)
-  if (seed.unsplashPhotoId && hasUnsplashKey()) {
+  if (seed.imageUrl) {
+    publicPath = await saveImageUrl(
+      seed.imageUrl,
+      `${OUTPUT_DIRECTORY}/${slug}`,
+      `/landmarks/${slug}`,
+      { width: LANDMARK_WIDTH, force }
+    )
+  }
+  if (!publicPath && seed.unsplashPhotoId && hasUnsplashKey()) {
     publicPath = await saveUnsplashPhoto(
       seed.unsplashPhotoId,
       `${OUTPUT_DIRECTORY}/${slug}`,
@@ -202,6 +222,13 @@ for (const { seed, qid } of resolved) {
 
   // 2) Otherwise the Wikidata default photo, viability-checked.
   if (!publicPath) {
+    // Already on disk? Then skip the width lookup — it costs a Commons API call
+    // per landmark and only gates a download we're not going to make.
+    publicPath = force
+      ? undefined
+      : existingImagePath(`${OUTPUT_DIRECTORY}/${slug}`, `/landmarks/${slug}`)
+  }
+  if (!publicPath) {
     const file = photoFiles.get(qid)
     if (!file) {
       console.warn(`  no photo for "${seed.name}"`)
@@ -216,12 +243,10 @@ for (const { seed, qid } of resolved) {
       await wait(120)
       continue
     }
-    publicPath = await saveCommonsImage(
-      file,
-      `${OUTPUT_DIRECTORY}/${slug}`,
-      `/landmarks/${slug}`,
-      { width: LANDMARK_WIDTH, force }
-    )
+    publicPath = await saveCommonsImage(file, `${OUTPUT_DIRECTORY}/${slug}`, `/landmarks/${slug}`, {
+      width: LANDMARK_WIDTH,
+      force,
+    })
   }
 
   if (!publicPath) {

@@ -7,7 +7,9 @@
       :placeholder="placeholder"
       autocomplete="off"
       :disabled="disabled"
-      @keydown.down.prevent="highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)"
+      @keydown.down.prevent="
+        highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
+      "
       @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
     />
     <ul v-if="suggestions.length" class="suggestions">

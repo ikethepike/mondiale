@@ -36,7 +36,9 @@ const tenure = computed(() => {
   const since = leader.value?.sinceYear
   if (!since) return undefined
   const years = new Date().getFullYear() - since
-  return years >= 1 ? `in office since ${since} · ${years} yr${years === 1 ? '' : 's'}` : `in office since ${since}`
+  return years >= 1
+    ? `in office since ${since} · ${years} yr${years === 1 ? '' : 's'}`
+    : `in office since ${since}`
 })
 
 const age = computed(() => {

@@ -44,7 +44,13 @@ const props = defineProps({
   },
 })
 
-const { game: storeGame, playerId: storePlayerId, gameStore, update, currentRound } = useClientEvents()
+const {
+  game: storeGame,
+  playerId: storePlayerId,
+  gameStore,
+  update,
+  currentRound,
+} = useClientEvents()
 
 const resolvedGame = computed(() => props.game ?? storeGame.value)
 const resolvedPlayerId = computed(() => props.playerId ?? storePlayerId.value)

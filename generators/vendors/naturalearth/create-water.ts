@@ -17,7 +17,14 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { geoRobinson } from 'd3-geo-projection'
-import type { Feature, FeatureCollection, LineString, MultiLineString, MultiPolygon, Polygon } from 'geojson'
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  MultiLineString,
+  MultiPolygon,
+  Polygon,
+} from 'geojson'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
 import { parsePolygons } from '../../../lib/outline'
@@ -85,7 +92,8 @@ const fetchLayer = async (file: string): Promise<FeatureCollection> => {
     const url = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${NE_TAG}/geojson/${file}.geojson`
     console.info(`Downloading ${url}`)
     const response = await fetch(url)
-    if (!response.ok) throw new Error(`Natural Earth download failed: ${response.status} for ${file}`)
+    if (!response.ok)
+      throw new Error(`Natural Earth download failed: ${response.status} for ${file}`)
     mkdirSync(CACHE_DIR, { recursive: true })
     writeFileSync(cachePath, await response.text())
   }
@@ -167,10 +175,7 @@ const stitchLines = (lines: Point[][], bridgeGap: number): Point[][] => {
       for (let i = 0; i < remaining.length; i++) {
         const seg = remaining[i]
         const dStart = Math.hypot(seg[0][0] - tail[0], seg[0][1] - tail[1])
-        const dEnd = Math.hypot(
-          seg[seg.length - 1][0] - tail[0],
-          seg[seg.length - 1][1] - tail[1]
-        )
+        const dEnd = Math.hypot(seg[seg.length - 1][0] - tail[0], seg[seg.length - 1][1] - tail[1])
         const [d, flipped] = dStart <= dEnd ? [dStart, false] : [dEnd, true]
         if (d < bestDistance) {
           bestDistance = d
@@ -211,7 +216,10 @@ const pointInRings = (point: Point, rings: Point[][]): boolean => {
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
       const [xi, yi] = ring[i]
       const [xj, yj] = ring[j]
-      if (yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi) {
+      if (
+        yi > point[1] !== yj > point[1] &&
+        point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi
+      ) {
         inside = !inside
       }
     }
@@ -306,7 +314,7 @@ const add = (feature: WaterFeature) => {
 
 const asPolygonGroups = (geometry: Polygon | MultiPolygon): Point[][][] =>
   geometry.type === 'Polygon'
-    ? [(geometry.coordinates as Point[][])]
+    ? [geometry.coordinates as Point[][]]
     : (geometry.coordinates as Point[][][])
 
 const asLines = (geometry: LineString | MultiLineString): Point[][] =>
@@ -506,14 +514,22 @@ export const WATER_FEATURES: Record<string, WaterFeature> = ${JSON.stringify(sor
   for (const feature of Object.values(features)) {
     byKind.set(feature.kind, (byKind.get(feature.kind) ?? 0) + 1)
   }
-  console.info(`Features: ${[...byKind.entries()].map(([kind, count]) => `${kind}:${count}`).join(' ')}`)
+  console.info(
+    `Features: ${[...byKind.entries()].map(([kind, count]) => `${kind}:${count}`).join(' ')}`
+  )
   const bytes = Buffer.byteLength(output)
-  console.info(`Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(Bun.gzipSync(Buffer.from(output)).byteLength / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`)
+  console.info(
+    `Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(Bun.gzipSync(Buffer.from(output)).byteLength / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`
+  )
 
   // Sanity spot-checks against well-known geography
   for (const id of ['river-danube', 'black-sea', 'lake-lake-victoria', 'range-alps']) {
-    const feature = Object.values(features).find(f => f.id === id || f.id.includes(id.replace(/^(river|lake|range)-/, '')))
-    console.info(`${id}: ${feature ? `${feature.name} → ${feature.countries.join(' ')}` : 'NOT FOUND'}`)
+    const feature = Object.values(features).find(
+      f => f.id === id || f.id.includes(id.replace(/^(river|lake|range)-/, ''))
+    )
+    console.info(
+      `${id}: ${feature ? `${feature.name} → ${feature.countries.join(' ')}` : 'NOT FOUND'}`
+    )
   }
 }
 

@@ -24,7 +24,8 @@ const isCantonRect = (el: XNode, vb: ViewBox): boolean => {
   const b = primitiveBBox(el)
   if (!b) return false
   // Hoist-upper, roughly a third-to-half of each dimension, touching origin.
-  const nearOrigin = Math.abs(b.x - vb.minX) < vb.width * 0.02 && Math.abs(b.y - vb.minY) < vb.height * 0.02
+  const nearOrigin =
+    Math.abs(b.x - vb.minX) < vb.width * 0.02 && Math.abs(b.y - vb.minY) < vb.height * 0.02
   const partial = b.width < vb.width * 0.9 && b.height < vb.height * 0.9
   return nearOrigin && partial
 }

@@ -1,4 +1,5 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import type { NamedColor } from '~~/lib/palette'
 import type { Organization } from './organization.type'
 
 export interface Amount<Unit> {
@@ -38,7 +39,7 @@ export interface Country {
     colors: string[]
     /** Colours snapped to named buckets (e.g. ["red","white"]), deduped +
      *  sorted; `[]` for emblem-heavy flags. Powers flag-palette challenges. */
-    simplifiedColors: string[]
+    simplifiedColors: NamedColor[]
   }
   membership: Organization[]
   government: {

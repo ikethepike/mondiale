@@ -1,6 +1,12 @@
 import { TARGET_HEIGHT, TARGET_WIDTH, type ViewBox } from '../types'
 import { parseViewBox } from '../viewbox'
-import { flattenDrawables, primitiveBBox, splitPathSubpaths, transformSvg, type XNode } from '../xast'
+import {
+  flattenDrawables,
+  primitiveBBox,
+  splitPathSubpaths,
+  transformSvg,
+  type XNode,
+} from '../xast'
 
 /**
  * A Nordic cross: a background plus one or more "layers", each an off-hoist

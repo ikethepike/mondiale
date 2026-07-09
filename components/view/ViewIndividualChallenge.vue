@@ -15,7 +15,12 @@
               {{ processReplacements(details?.phrasing || '', challenge.country) }}
             </h1>
             <div v-if="challenge.id === 'flag' && country" class="flag-frame">
-              <CountryFlag class="flag ambient-loop" :country="country" mode="background" fit="contain" />
+              <CountryFlag
+                class="flag ambient-loop"
+                :country="country"
+                mode="background"
+                fit="contain"
+              />
             </div>
             <span class="hint map-caption" :class="{ visible: showDoubleTapHint }">
               Press again to confirm
@@ -102,7 +107,9 @@
               <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
             </div>
             <div v-else class="money-hero" aria-hidden="true">
-              <span class="money-symbol">{{ currencySymbol(getCountry(challenge.country).currency) }}</span>
+              <span class="money-symbol">{{
+                currencySymbol(getCountry(challenge.country).currency)
+              }}</span>
               <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
             </div>
             <div class="options card-options">
@@ -216,7 +223,9 @@
           <!-- Higher or lower: win every duel in the streak -->
           <template v-else-if="variant === 'higher-lower' && currentDuel">
             <h1 class="map-caption">Which ranks higher — {{ duelTopic }}?</h1>
-            <span class="map-caption sub">Duel {{ duelIndex + 1 }} of {{ totalDuels }} — win them all</span>
+            <span class="map-caption sub"
+              >Duel {{ duelIndex + 1 }} of {{ totalDuels }} — win them all</span
+            >
             <div class="options card-options">
               <button
                 v-for="option in [currentDuel.a, currentDuel.b]"
@@ -532,9 +541,7 @@ const incorrectMessage = computed(() => {
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
-      return picked
-        ? `That's ${countryName(picked)}'s leader`
-        : 'Not that one.'
+      return picked ? `That's ${countryName(picked)}'s leader` : 'Not that one.'
     case 'higher-lower':
       return failedDuelAnswer.value
         ? `${countryName(failedDuelAnswer.value)} ranks higher`

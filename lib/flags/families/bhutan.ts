@@ -1,4 +1,12 @@
-import { bboxCenter, multiply, rotate, scale, toMatrixString, translate, type Matrix } from '../geometry'
+import {
+  bboxCenter,
+  multiply,
+  rotate,
+  scale,
+  toMatrixString,
+  translate,
+  type Matrix,
+} from '../geometry'
 import { TARGET_HEIGHT, TARGET_WIDTH } from '../types'
 import { parseViewBox } from '../viewbox'
 import { buildIdMap, elementChildren, subtreeBBox, transformSvg, type XNode } from '../xast'
@@ -79,7 +87,10 @@ export const recomposeBhutan = (sourceSvg: string): string | null => {
   return ok ? out : null
 }
 
-const union = (a: NonNullable<ReturnType<typeof subtreeBBox>>, b: NonNullable<ReturnType<typeof subtreeBBox>>) => {
+const union = (
+  a: NonNullable<ReturnType<typeof subtreeBBox>>,
+  b: NonNullable<ReturnType<typeof subtreeBBox>>
+) => {
   const x = Math.min(a.x, b.x)
   const y = Math.min(a.y, b.y)
   return {

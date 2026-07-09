@@ -208,9 +208,7 @@ const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteC
     durationSeconds: 30,
     maximumPoints: maximumRoundPoints(game),
     // Non-hard mode gets a region hint in the final stretch of the countdown.
-    ...(game.difficulty !== 'hard'
-      ? { region: REGION_LABELS[COUNTRIES[country].region] }
-      : {}),
+    ...(game.difficulty !== 'hard' ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
   }
 }
 
@@ -472,9 +470,7 @@ const getNameWaterChallenge = async (
 /** How many countries on the board have this as an official language. */
 const MOTHER_TONGUE_MIN_SPEAKERS = 3
 const MOTHER_TONGUE_MAX_SPEAKERS = 12
-const getMotherTongueChallenge = (
-  game: gameTypes.Game
-): MotherTongueChallenge | undefined => {
+const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge | undefined => {
   const pool = variantCountries(game.variant)
 
   // Count on-board speakers per language, keep the answerable band (a language
@@ -557,9 +553,7 @@ const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | u
     durationSeconds: 25,
     maximumPoints: maximumRoundPoints(game),
     // Non-hard mode gets a region hint in the final third of the countdown.
-    ...(game.difficulty !== 'hard'
-      ? { region: REGION_LABELS[COUNTRIES[country].region] }
-      : {}),
+    ...(game.difficulty !== 'hard' ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
   }
 }
 
@@ -866,7 +860,9 @@ const pickDecoys = (
 
   if (opts.preferRegion) {
     const region = COUNTRIES[country].region
-    const regional = shuffleArray(candidates.filter(isoCode => COUNTRIES[isoCode].region === region))
+    const regional = shuffleArray(
+      candidates.filter(isoCode => COUNTRIES[isoCode].region === region)
+    )
     const filler = shuffleArray(candidates.filter(isoCode => !regional.includes(isoCode)))
     return [...regional, ...filler].slice(0, count)
   }
@@ -917,8 +913,8 @@ const dealFlagTwins = (
 
   const subject = hasPaletteTwins(country)
     ? country
-    : shuffleArray(pool).find(hasPaletteTwins) ??
-      shuffleArray([...ISOCountryCodes]).find(hasPaletteTwins)
+    : (shuffleArray(pool).find(hasPaletteTwins) ??
+      shuffleArray([...ISOCountryCodes]).find(hasPaletteTwins))
   if (!subject) return undefined
 
   const palette = COUNTRIES[subject].identity.simplifiedColors
@@ -946,8 +942,8 @@ const dealBorderDetective = (
   const onBoard = new Set(pool)
   const eligible = (candidatePool: ISOCountryCode[]) =>
     shuffleArray(candidatePool).find(isoCode => {
-      const neighbours = (BORDERS[isoCode] ?? []).filter(
-        (border): border is ISOCountryCode => onBoard.has(border as ISOCountryCode)
+      const neighbours = (BORDERS[isoCode] ?? []).filter((border): border is ISOCountryCode =>
+        onBoard.has(border as ISOCountryCode)
       )
       return neighbours.length >= BORDER_DETECTIVE_MIN && neighbours.length <= BORDER_DETECTIVE_MAX
     })
@@ -956,8 +952,8 @@ const dealBorderDetective = (
   const country = eligible(pool) ?? eligible([...ISOCountryCodes])
   if (!country) return undefined
 
-  const neighbours = (BORDERS[country] ?? []).filter(
-    (border): border is ISOCountryCode => onBoard.has(border as ISOCountryCode)
+  const neighbours = (BORDERS[country] ?? []).filter((border): border is ISOCountryCode =>
+    onBoard.has(border as ISOCountryCode)
   )
   return { country, neighbours: shuffleArray(neighbours) }
 }
@@ -997,7 +993,8 @@ const dealCapitalMatch = (
   pool: ISOCountryCode[]
 ): { country: ISOCountryCode; image: string; options: ISOCountryCode[] } | undefined => {
   const hasPhoto = (isoCode: ISOCountryCode) => !!CAPITALS[isoCode]?.image
-  const subject = shuffleArray(pool).find(hasPhoto) ?? shuffleArray([...ISOCountryCodes]).find(hasPhoto)
+  const subject =
+    shuffleArray(pool).find(hasPhoto) ?? shuffleArray([...ISOCountryCodes]).find(hasPhoto)
   if (!subject) return undefined
   const image = CAPITALS[subject]!.image!
 

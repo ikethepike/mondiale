@@ -69,7 +69,11 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
     const trimmed = leader.description.replace(/\s+since\s+\d{4}.*$/i, '').trim()
     // Skip bare biographical descriptions ("French politician") — only use the
     // description as a title when it actually names an office.
-    if (/president|minister|chancellor|monarch|king|queen|emir|premier|leader|governor|sultan|pope|chief/i.test(trimmed)) {
+    if (
+      /president|minister|chancellor|monarch|king|queen|emir|premier|leader|governor|sultan|pope|chief/i.test(
+        trimmed
+      )
+    ) {
       return trimmed
     }
   }

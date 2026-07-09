@@ -75,7 +75,10 @@ const namespacedMarkup = computed(() => {
   const prefix = `flag-${props.country.isoCode}-`
   return props.country.flag
     .replaceAll(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
-    .replaceAll(/(xlink:href|href)="#([^"]+)"/g, (_, attribute, id) => `${attribute}="#${prefix}${id}"`)
+    .replaceAll(
+      /(xlink:href|href)="#([^"]+)"/g,
+      (_, attribute, id) => `${attribute}="#${prefix}${id}"`
+    )
     .replaceAll(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`)
 })
 
@@ -105,7 +108,10 @@ watchEffect(() => {
   // = whole flag with letterboxing, cover = fill+crop) to decide how.
   svg.removeAttribute('width')
   svg.removeAttribute('height')
-  svg.setAttribute('preserveAspectRatio', props.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet')
+  svg.setAttribute(
+    'preserveAspectRatio',
+    props.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'
+  )
 
   inlineHost.value.replaceChildren(svg)
 })

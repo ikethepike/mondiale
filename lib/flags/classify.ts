@@ -18,8 +18,24 @@ const NORDIC = new Set(['dk', 'fi', 'is', 'no', 'se', 'fo', 'ax'])
 
 /** UK ensigns / Union-Jack canton + fly badge (excluded in v1). */
 const ENSIGNS = new Set([
-  'au', 'nz', 'fj', 'tv', 'ck', 'nu', 'pn', 'sh', 'gs', 'io',
-  'ky', 'vg', 'tc', 'ms', 'ai', 'fk', 'hm', 'bm',
+  'au',
+  'nz',
+  'fj',
+  'tv',
+  'ck',
+  'nu',
+  'pn',
+  'sh',
+  'gs',
+  'io',
+  'ky',
+  'vg',
+  'tc',
+  'ms',
+  'ai',
+  'fk',
+  'hm',
+  'bm',
 ])
 
 /** Canton flags (a hoist block/canton carrying a device on a striped field). */
@@ -99,7 +115,10 @@ const isDeepHoistTriangle = (el: XNode, vb: ReturnType<typeof parseViewBox>): bo
  * full-height, partial-width rect is a vertical bar; a full-width,
  * partial-height rect is a horizontal band.
  */
-const fieldOrientation = (field: XNode[], vb: ReturnType<typeof parseViewBox>): 'horizontal' | 'vertical' => {
+const fieldOrientation = (
+  field: XNode[],
+  vb: ReturnType<typeof parseViewBox>
+): 'horizontal' | 'vertical' => {
   let vertical = 0
   let horizontal = 0
   for (const el of field) {

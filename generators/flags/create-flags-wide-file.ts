@@ -13,7 +13,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { recompose } from '~~/lib/flags/recompose'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import { isValidISOCode } from '~~/types/geography.types'
 
 const FLAGS_DIR = 'data/static/flags'
 const OUT_FILE = 'data/flags-wide.gen.ts'
@@ -29,7 +29,10 @@ const createFlagsWideFile = () => {
     // lowercase. Use the uppercase iso for BOTH the recompose call (so its
     // OVERRIDES/exclude lookup, which is keyed uppercase, matches) and the
     // emitted map key (so runtime lookups by isoCode hit).
-    const iso = file.replace(/\.svg$/, '').toUpperCase() as ISOCountryCode
+    const iso = file.replace(/\.svg$/, '').toUpperCase()
+    // The flags directory also ships territories and retired codes (AN, …)
+    // that the game never deals. Skip anything outside the ISO country list.
+    if (!isValidISOCode(iso)) continue
     const source = readFileSync(`${FLAGS_DIR}/${file}`, 'utf8')
     const result = recompose(iso, source)
 
@@ -56,7 +59,9 @@ const createFlagsWideFile = () => {
   const total = files.length
   const emitted = Object.keys(wide).length
   console.log(`Finished creating file: ${OUT_FILE}`)
-  console.log(`  recomposed ${emitted}/${total} flags (${total - emitted} excluded → contain-fallback)`)
+  console.log(
+    `  recomposed ${emitted}/${total} flags (${total - emitted} excluded → contain-fallback)`
+  )
   console.log('  by family/resolution:')
   for (const [key, count] of Object.entries(summary).sort((a, b) => b[1] - a[1])) {
     console.log(`    ${String(count).padStart(4)}  ${key}`)

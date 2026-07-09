@@ -1,0 +1,140 @@
+# Landmark image overrides
+#
+# Format:  <slug> = <direct image URL>
+#
+# One per line. Blank lines and #-comments are ignored.
+# Leave a line blank (or delete it) to keep the current image.
+#
+# Prefer a direct link to the IMAGE FILE itself (ending .jpg/.jpeg/.png/.webp),
+# not the page it sits on. Landscape orientation, ≥900px wide — anything
+# narrower looks bad upscaled in the photo quiz.
+#
+# Once filled in, these are consumed by `bun run generate:landmarks`, which
+# downloads each URL to public/landmarks/<slug>.<ext> and takes precedence over
+# the Unsplash / Commons / Wikidata lookups.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── 1. ALREADY SUPPLIED ──────────────────────────────────────────────────────
+
+male-friday-mosque = https://www.islamicarchitecturalheritage.com/wp-content/uploads/2020/07/hukuru-miskiyy-mosque.jpg
+
+
+# ── 2. NO LANDMARK AT ALL ────────────────────────────────────────────────────
+# These countries are currently unrepresented: every free-licensed candidate
+# was a satellite photo, a parliament interior, or anonymous scenery. A good
+# image here would let each country back into the quiz. The slug is a
+# suggestion — rename it to whatever landmark you actually pick, and tell me
+# the landmark name + kind (natural/religious/ancient/monument/urban).
+
+# Guinea
+mount-nimba = https://upload.wikimedia.org/wikipedia/commons/4/45/Mount_Nimba_Strict_Nature_Reserve-108445.jpg
+# Guinea-Bissau
+bubaque = https://images.trvl-media.com/place/669/aca92fb2-b4b2-49b0-aeb1-b0a44e52068b.jpg
+# Kiribati
+kiritimati = https://www.kiwi.com/_next/image/?url=https%3A%2F%2Fimages.kiwi.com%2Fphotos%2Foriginals%2Fkiritimati_ki.jpg&w=2560&q=10
+# Nauru
+buada-lagoon = https://upload.wikimedia.org/wikipedia/commons/6/64/Buada_Lagoon%2C_Nauru_2007.jpg
+# Suriname
+central-suriname-nature-reserve = https://venture-out.s3.us-east-2.amazonaws.com/guide-images/1739314735792-media%3Fkey%3DAIzaSyCkpNVocP1IwgtIz1s4aaTb1GgwMdUtzBw%26maxHeightPx%3D800%26maxWidthPx%3D800
+# Tuvalu
+funafuti = https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/153000/153047/funafuti_oli_20230928_lrg.jpg
+
+
+# ── 3. POOR IMAGE — currently unguessable in a "which country?" quiz ─────────
+# ** HIGHEST PRIORITY ** — every one of these is its country's ONLY landmark,
+# so a bad photo here is that country's only quiz question. They resolve to the
+# right place; the photo is just a hazy hill, an anonymous townscape, or
+# indistinct ruins.
+#
+# If you'd rather swap the landmark than fix the photo, say so and I'll
+# re-resolve a better one for that country.
+
+# Central African Republic — generic red-dirt townscape
+bangui = https://i.redd.it/some-photos-from-bangui-the-capita-of-caf-v0-y4c1751gm1lg1.jpg?width=1600&format=pjpg&auto=webp&s=e4a628f18a98015d5e7a36a5ff89e20c3ce9a363
+# South Sudan — generic townscape
+juba = https://i.guim.co.uk/img/media/cd43fc1f69f51b522ebac1865dcb26b911818c21/0_580_4980_2988/master/4980.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=c52ddf723265159af5cb3a72b5e0416c
+# North Korea — hazy distant hill, unidentifiable
+mount-kumgang = https://res.cloudinary.com/korea-konsult-ab/image/upload/c_limit,f_auto,q_auto,w_800,dpr_auto/kumgang/JipsonPeakInKumgang.jpg
+# Bahrain — muddy, indistinct ruins
+qal-at-al-bahrain = https://upload.wikimedia.org/wikipedia/commons/8/83/Bahrain_Fort_March_2015.JPG
+# Equatorial Guinea — distant hill behind trees
+pico-basile = https://img.atlasobscura.com/BS71nOyHxoGAX-jfYFAMkBhTi-JujomflISg29BlkmQ/rt:fit/w:1200/q:80/sm:1/scp:1/ar:1/aHR0cHM6Ly9hdGxh/cy1kZXYuczMuYW1h/em9uYXdzLmNvbS91/cGxvYWRzL3BsYWNl/X2ltYWdlcy9iZmY0/YzZlZS04OWFhLTRh/YTItYThlOC04OGJk/MWUwNjRmYjQzZmZh/MDBjZGUyMWI1MWQw/MTJfUGljbyBCYXNp/bGUuanBn.jpg
+# Comoros — grey monochrome crater
+mount-karthala = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYvwG3_VNFUk43UeEKXWPjv_n0OIRjR7D4hYHlBBtOW4WZ6fJCwcQA8cA&s=10
+# Solomon Islands — generic beach hut
+kennedy-island = https://dynamic-media-cdn.tripadvisor.com/media/photo-o/08/16/d9/c2/kennedy-island.jpg?w=1200&h=1200&s=1
+
+
+# ── 4. NO FREE PHOTO — Wikidata has no free-licensed photo for these ─────────
+# OPTIONAL. Every one of these countries is ALREADY covered by another seed, so
+# nothing is missing from the quiz — these are just extra landmarks that would
+# be nice to have. Fill in only the ones you care about.
+#
+# Four are outright duplicates of a seed that already works, and I'll delete
+# them rather than source an image (say the word if you'd rather keep them):
+#   tiger-s-nest-monastery      ≡ paro-taktsang            (BT)
+#   cappadocia-hot-air-balloons ≡ cappadocia               (TR)
+#   halong-karst                ≡ ha-long-bay              (VN)
+#   cliffs-of-bandiagara        ≡ bandiagara-escarpment    (ML)
+
+# Turkey — also has Blue Mosque, Hagia Sophia, Cappadocia
+pamukkale = https://upload.wikimedia.org/wikipedia/commons/d/de/Pamukkale_30.jpg
+# Romania — also has Bran Castle
+palace-of-the-parliament = https://upload.wikimedia.org/wikipedia/en/1/18/Bucharest_-_Palace_of_the_Parliament_%282024%29_%282%29.jpg
+# Iceland — also has Gullfoss, Vatnajökull, Skógafoss, Dettifoss
+blue-lagoon-iceland = https://res.cloudinary.com/icelandtours/g_auto,f_auto,c_auto,w_3840,q_auto:good/1200px_Blue_Lagoon_Iceland_22360145156_c606d14597.jpg
+# Spain — also has Sagrada Família, Alhambra, and four more
+gate-of-the-sun-toledo = https://upload.wikimedia.org/wikipedia/commons/8/83/Puerta_del_Sol_%28Toledo%29.jpg
+# China — also has Great Wall, Forbidden City, and seven more
+potala-palace = https://whc.unesco.org/uploads/thumbs/site_0707_0001-1200-630-20110920202629.jpg
+# Indonesia — also has Borobudur, Mount Bromo
+prambanan = https://upload.wikimedia.org/wikipedia/commons/0/0b/Prambanan_Temple_Yogyakarta_Indonesia.jpg
+# United Arab Emirates — also has Burj Khalifa, Burj Al Arab, Palm Jumeirah
+sheikh-zayed-grand-mosque = https://upload.wikimedia.org/wikipedia/en/7/7d/Sheikh_Zayed_Mosque_view.jpg
+# Iran — also has Naghsh-e Jahan Square, Sheikh Lotfollah Mosque
+persepolis = https://cdn.britannica.com/94/94894-050-C40775EF/Apadana-Darius-I-Persepolis-Iran.jpg
+# Cuba — El Castillo de San Salvador de la Punta, Havana; also has Old Havana
+el-castillo-san-salvador = https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Castillo_de_San_Salvador_de_la_Punta%2C_Havana%2C_Cuba_LCCN2010638714.tiff/lossy-page1-1280px-Castillo_de_San_Salvador_de_la_Punta%2C_Havana%2C_Cuba_LCCN2010638714.tiff.jpg
+
+
+# ── 5. SOURCE TOO SMALL — rejected for being under 900px wide ────────────────
+# LOWEST PRIORITY: these all still have a working image, kept from an earlier
+# run. The current Wikidata source is just too small to re-download, so the
+# image will go stale if its seed is ever renamed. Nice-to-have, not broken.
+
+# SOLE landmark for its country — worth fixing:
+# Sudan — 591px
+pyramids-of-meroe = https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh99OfmW2N2IkDffpiZBWPTWHDZ0Gbr3ACRqUv3b63Mcbgbk6HWXANvoSh1BkEhone5xmYoK3_jektk1XxyyCnBrjB1fAvlvRf6vnx7pcZWdq9ls_ZXXByf4tYM4xKi7ltXPj1YYyUC0bLs/s1600/IMG_0040.JPG
+# Taiwan — 415px
+taipei-101 = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTI9-ofy7gZrhecf_a3QEPAiC3I-Lh8XiuqiemXY_xZl2BhxN5cwlkXqm5V&s=10
+# Brunei — 800px
+sultan-omar-ali-saifuddin-mosque = https://upload.wikimedia.org/wikipedia/commons/7/7d/Sultan_Omar_Ali_Saifuddin_Mosque_03.jpg
+
+# Country already covered by other seeds — optional:
+# Sri Lanka — 700px (also has Temple of the Tooth)
+sigiriya = https://www.attractionsinsrilanka.com/wp-content/uploads/2019/09/sigiriya-rock-1.jpg
+# New Zealand — 768px (also has Hobbiton, Milford Sound, Waitomo)
+sky-tower-auckland = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTps4XCCiEBBXlHJoSqpLsAv_Km1qeQ9JZy7PHULA3h1A&s=10
+# Lebanon — 800px (also has Baalbek)
+jeita-grotto = https://upload.wikimedia.org/wikipedia/commons/0/09/Upper_Jeita_Grotto.jpg
+# Vatican City — 782px (also has St Peter's Square)
+sistine-chapel = https://www.christinascucina.com/wp-content/uploads/2018/10/fullsizeoutput_8e1d-1024x768.jpeg
+# New Zealand — 558px
+franz-josef-glacier = https://upload.wikimedia.org/wikipedia/commons/3/3a/Franz_josef_Glacier_LC0250.jpg
+
+
+# ── 6. NAME DOESN'T RESOLVE ON WIKIDATA ──────────────────────────────────────
+# LOWEST PRIORITY: all three countries are already covered, so these seeds add
+# nothing. Easiest fix is a better name, not a URL — e.g. "Kravica" for the
+# waterfall, "Lake Hillier" for the pink lake. "Aurora over Lapland" isn't a
+# landmark at all and is probably worth deleting.
+
+# Bosnia and Herzegovina (also has Stari Most)
+kravice-falls = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQd2EjZI6q_PayIvaSyYD5f-30LmhyITWfQXzzqpmeYRWKp6KGE9zX_1vM&s=10
+# Australia (also has Sydney Opera House, Uluru, Harbour Bridge)
+pink-lake-hillier = https://i.guim.co.uk/img/media/2a343fd41492212672d4c4e9323e44653a3824ad/0_0_4176_5315/master/4176.jpg?width=1140&dpr=2&s=none&crop=none
+# Finland (also has Suomenlinna)
+aurora-over-lapland = // SKIP 
+

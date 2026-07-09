@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { COUNTRIES } from '../data/countries.gen'
 import {
   fetchImageDimensions,
@@ -21,14 +21,17 @@ import {
  * which are then hand-pinned via MANUAL_IMAGE. Curated picks survive re-runs
  * because the mapping merges with the previous run.
  *
- * Images are saved one per code under public/currencies/ and converted to WebP
- * (cwebp) at the end. Existing files are kept unless --force is passed.
+ * Images are saved one per code under public/currencies/, re-encoded to WebP by
+ * the shared save helpers. Existing images are NEVER overwritten unless
+ * --redownload-images is passed: many were hand-placed from non-Commons
+ * sources and cannot be re-fetched (see redownloadImages below).
  *
- *   bun run generate:currencies [--force]
+ *   bun run generate:currencies [--redownload-images]
  */
 
 const OUTPUT_DIRECTORY = 'public/currencies'
-const CURRENCY_WIDTH = 640
+/** Banknote scans; many Commons sources are small, so this is a ceiling. */
+const CURRENCY_WIDTH = 1280
 const REVIEW_PATH = 'generators/data/currency-coin-review.txt'
 
 export interface CurrencyEntry {
@@ -53,9 +56,36 @@ const MANUAL_QID: Record<string, string> = {
  * (P18) is a coin/symbol. Populate this from the coin-review report, then re-run.
  * Filenames are Commons File: names WITHOUT the "File:" prefix.
  */
+/** Hand-pinned COMMONS filenames, for codes whose auto-pick is a coin/logo. */
 const MANUAL_IMAGE: Record<string, string> = {}
 
-const force = process.argv.includes('--force')
+/**
+ * Codes whose Wikidata auto-pick was reviewed and rejected — a coin, a symbol,
+ * or a photo of notes strewn on the ground rather than a clean banknote. The
+ * `looksLikeCoin` heuristic only writes a review report; it doesn't stop the
+ * download, so without this the next run silently reinstates them.
+ *
+ * Remove a code from here once a real banknote is hand-placed for it.
+ */
+const REJECTED_AUTO_IMAGE = new Set([
+  'BOB', // coin strip
+  'IDR', // banknote sheet, but low-res
+  'TOP', // single Tongan coin
+  'UGX', // notes scattered on a log
+])
+
+/**
+ * Many banknote images in public/currencies/ were placed by hand, from sources
+ * that aren't on Commons — so there is nothing to re-fetch them from. `--force`
+ * (which every other generator reads as "re-download everything") would
+ * silently replace those with Wikidata's auto-pick, which for currencies is
+ * frequently a coin or a logo rather than a note.
+ *
+ * Hence the deliberately awkward flag name: a re-run always refreshes names and
+ * the review report, but only ever touches existing image bytes when you ask
+ * for it by name — e.g. after raising CURRENCY_WIDTH.
+ */
+const redownloadImages = process.argv.includes('--redownload-images')
 
 // The work list is the set of DISTINCT currency codes actually in use.
 const codes = [
@@ -156,14 +186,21 @@ for (const code of codes) {
   const name = qid ? names.get(qid) : undefined
   if (name && !/^Q\d+$/.test(name)) mapping[code] = { name }
 
-  const file = MANUAL_IMAGE[code] ?? (qid ? photoFiles.get(qid) : undefined)
+  // A hand-pinned Commons file always wins; otherwise honour the rejection list.
+  const file =
+    MANUAL_IMAGE[code] ?? (qid && !REJECTED_AUTO_IMAGE.has(code) ? photoFiles.get(qid) : undefined)
   if (!file) continue
 
   const dimensions = await fetchImageDimensions(file)
-  const publicPath = await saveCommonsImage(file, `${OUTPUT_DIRECTORY}/${code}`, `/currencies/${code}`, {
-    width: CURRENCY_WIDTH,
-    force,
-  })
+  const publicPath = await saveCommonsImage(
+    file,
+    `${OUTPUT_DIRECTORY}/${code}`,
+    `/currencies/${code}`,
+    {
+      width: CURRENCY_WIDTH,
+      force: redownloadImages,
+    }
+  )
   if (!publicPath) {
     failed++
     continue
@@ -186,29 +223,12 @@ for (const code of codes) {
 }
 console.log(`\nImages: ${done} saved, ${failed} failed`)
 
-// --- 4. Convert every saved image to WebP (cwebp) ---------------------------
-console.log('Converting to WebP…')
-let converted = 0
-for (const code of Object.keys(mapping)) {
-  const image = mapping[code].image
-  if (!image || image.endsWith('.webp')) continue
-  const source = `public${image}` // e.g. public/currencies/USD.jpg
-  const target = `${OUTPUT_DIRECTORY}/${code}.webp`
-  // cwebp can't read GIF — route animated/GIF sources through gif2webp.
-  const result = source.endsWith('.gif')
-    ? Bun.spawnSync(['gif2webp', '-q', '80', source, '-o', target])
-    : Bun.spawnSync(['cwebp', '-q', '80', source, '-o', target])
-  if (result.exitCode !== 0) {
-    console.warn(`  cwebp failed for ${code}: ${result.stderr.toString().trim().slice(0, 120)}`)
-    continue
-  }
-  rmSync(source, { force: true })
-  mapping[code].image = `/currencies/${code}.webp`
-  converted++
-}
-console.log(`Converted ${converted} images to WebP`)
+// WebP conversion used to live here, shelling out to cwebp/gif2webp. Every save
+// path now re-encodes through sharp (see vendors/wikidata/commons), so images
+// arrive as WebP already — and this generator no longer needs those two
+// Homebrew binaries on PATH.
 
-// --- 5. Merge with previous run (fresh data wins, gaps keep old data) --------
+// --- 4. Merge with previous run (fresh data wins, gaps keep old data) --------
 for (const code of codes) {
   const merged = { ...previousMapping[code], ...mapping[code] }
   if (Object.keys(merged).length) mapping[code] = merged

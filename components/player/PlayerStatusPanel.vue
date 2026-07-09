@@ -11,7 +11,9 @@
       >
         <PlayerPawn class="pawn" :player="entry.player" />
         <span class="who">
-          <span class="name">{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span></span>
+          <span class="name"
+            >{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span></span
+          >
           <span class="status">
             <span v-if="entry.status.busy" class="pulse" aria-hidden="true" />
             {{ entry.status.label }}
@@ -168,7 +170,9 @@ const entries = computed(() =>
 }
 .row-enter-active,
 .row-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 .row-enter-from,
 .row-leave-to {

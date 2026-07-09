@@ -11,7 +11,9 @@
     <header :class="{ dimmed: status }">
       <Transition name="caption" mode="out-in">
         <div :key="currentChallengeCount" class="prompt">
-          <span class="counter map-caption">{{ currentChallengeCount }}/{{ totalChallengeCount }}</span>
+          <span class="counter map-caption"
+            >{{ currentChallengeCount }}/{{ totalChallengeCount }}</span
+          >
           <h2 class="map-caption">{{ details?.question }}</h2>
         </div>
       </Transition>

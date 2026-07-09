@@ -13,8 +13,7 @@
       <div class="prompt">
         <h1 class="map-caption">Name {{ countryName(challenge.country) }}'s neighbours</h1>
         <span class="map-caption sub">
-          {{ found.length }} of {{ challenge.neighbours.length }} found —
-          {{ secondsLeft }}s left
+          {{ found.length }} of {{ challenge.neighbours.length }} found — {{ secondsLeft }}s left
         </span>
         <Transition name="caption">
           <span v-if="hint" class="map-caption hint">{{ hint }}</span>
@@ -35,7 +34,10 @@
 
     <footer>
       <div class="timer-track" aria-hidden="true">
-        <div class="timer-fill" :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }" />
+        <div
+          class="timer-fill"
+          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
+        />
       </div>
       <TransitionGroup tag="ol" name="chain" class="found-list">
         <li
@@ -64,7 +66,9 @@ const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
 const challenge = computed(() => {
   const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'neighbour-blitz-challenge'
+  return roundChallenge &&
+    '_type' in roundChallenge &&
+    roundChallenge._type === 'neighbour-blitz-challenge'
     ? roundChallenge
     : undefined
 })

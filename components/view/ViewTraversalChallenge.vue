@@ -43,7 +43,9 @@
           placeholder="Type a country…"
           autocomplete="off"
           :disabled="submitted"
-          @keydown.down.prevent="highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)"
+          @keydown.down.prevent="
+            highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
+          "
           @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
         />
         <ul v-if="suggestions.length" class="suggestions">
@@ -78,7 +80,11 @@
           </li>
         </TransitionGroup>
         <li class="stop endpoint target map-caption">
-          <CountryFlag class="stop-flag" :country="getCountry(challenge.target)" mode="background" />
+          <CountryFlag
+            class="stop-flag"
+            :country="getCountry(challenge.target)"
+            mode="background"
+          />
           <span>{{ countryName(challenge.target) }}</span>
         </li>
       </ol>
@@ -88,12 +94,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import {
-  countryName,
-  findCountryByName,
-  getCountry,
-  searchCountriesByName,
-} from '~~/lib/country'
+import { countryName, findCountryByName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
 import type { MapTint } from '~~/store/game.store'
@@ -174,7 +175,11 @@ const tintFor = (isoCode: ISOCountryCode): MapTint => {
 
   const toStart = maps.fromStart.get(isoCode)
   const toTarget = maps.fromTarget.get(isoCode)
-  if (toStart !== undefined && toTarget !== undefined && toStart + toTarget === active.optimalHops) {
+  if (
+    toStart !== undefined &&
+    toTarget !== undefined &&
+    toStart + toTarget === active.optimalHops
+  ) {
     return 'optimal'
   }
 

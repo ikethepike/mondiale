@@ -212,7 +212,9 @@ const normalizeCountry = ({
         '%'
       ),
       mobileSubscriptions: getTextNode<'per 100 people'>(
-        data.Communications?.['Telephones - mobile cellular']?.['subscriptions per 100 inhabitants'],
+        data.Communications?.['Telephones - mobile cellular']?.[
+          'subscriptions per 100 inhabitants'
+        ],
         'per 100 people'
       ),
       // Factbook flattened Airports to a bare text node; fall back to the old
@@ -1038,11 +1040,7 @@ const getLeader = ({
   // Map the (lowercased) selected leader back to its original-case source.
   const original = leader === chiefOfState ? chiefOfStateRaw : headOfGovernmentRaw
 
-  const person = stripLeadingTitle(original)
-    .split(' ')
-    .map(titleCaseWord)
-    .join(' ')
-    .trim()
+  const person = stripLeadingTitle(original).split(' ').map(titleCaseWord).join(' ').trim()
 
   // No nameable individual (collective leadership) — omit rather than show a
   // bare title, which would make the leader-pick round unanswerable.

@@ -8,15 +8,28 @@
         <CountryFlag class="flag" :country="country" />
         <div class="titles">
           <h2>{{ countryName(country) }}</h2>
-          <p v-if="country.name.local !== country.name.english" class="local">{{ country.name.local }}</p>
-          <p class="sub">{{ REGION_LABELS[country.region] }} · {{ country.geography.capital.name }}</p>
+          <p v-if="country.name.local !== country.name.english" class="local">
+            {{ country.name.local }}
+          </p>
+          <p class="sub">
+            {{ REGION_LABELS[country.region] }} · {{ country.geography.capital.name }}
+          </p>
         </div>
       </header>
 
       <dl class="quick">
-        <div v-if="languages"><dt>Languages</dt><dd>{{ languages }}</dd></div>
-        <div v-if="country.currency"><dt>Currency</dt><dd>{{ country.currency }}</dd></div>
-        <div v-if="coordinates"><dt>Coordinates</dt><dd>{{ coordinates }}</dd></div>
+        <div v-if="languages">
+          <dt>Languages</dt>
+          <dd>{{ languages }}</dd>
+        </div>
+        <div v-if="country.currency">
+          <dt>Currency</dt>
+          <dd>{{ country.currency }}</dd>
+        </div>
+        <div v-if="coordinates">
+          <dt>Coordinates</dt>
+          <dd>{{ coordinates }}</dd>
+        </div>
       </dl>
 
       <!-- Leader -->
@@ -79,7 +92,7 @@
 <script lang="ts" setup>
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { ATLAS_SECTIONS, atlasFact } from '~~/lib/atlas'
+import { ATLAS_SECTIONS, atlasFact, type AtlasFact } from '~~/lib/atlas'
 import { countryName } from '~~/lib/country'
 import { leaderTitle, politicalLeader } from '~~/lib/leaders'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -95,7 +108,10 @@ const languages = computed(() => props.country.languages?.slice(0, 4).join(', ')
 const coordinates = computed(() => {
   const raw = props.country.coordinates
   if (!raw) return undefined
-  const plain = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const plain = raw
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   // First "NN NN N/S, NN NN E/W" pair.
   const match = /\d[\d\s]*[NS],\s*\d[\d\s]*[EW]/.exec(plain)
   return match ? match[0].replace(/\s+/g, ' ') : plain.split(/\s{2,}|·/)[0]
@@ -114,7 +130,9 @@ const leaderTenure = computed(() => {
 const sections = computed(() =>
   ATLAS_SECTIONS.map(section => ({
     heading: section.heading,
-    facts: section.accessors.map(id => atlasFact(props.country.isoCode, id)).filter(Boolean),
+    facts: section.accessors
+      .map(id => atlasFact(props.country.isoCode, id))
+      .filter((fact): fact is AtlasFact => Boolean(fact)),
   })).filter(section => section.facts.length)
 )
 

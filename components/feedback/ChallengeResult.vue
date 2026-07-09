@@ -43,7 +43,7 @@ const message = computed(() => (props.status === 'correct' ? 'Correct!' : props.
 const slots = useSlots()
 const hasLesson = computed(() => {
   const nodes = slots.default?.() ?? []
-  return nodes.some((node) => {
+  return nodes.some(node => {
     if (node.type === Comment) return false
     if (node.type === Text) return String(node.children).trim() !== ''
     return true

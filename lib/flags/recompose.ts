@@ -51,9 +51,7 @@ const placementMatrix = (
 ): Matrix => {
   const [cx, cy] = bboxCenter(emblemBBox)
   const [ax, ay] =
-    'preserve' in placement.anchor
-      ? preservedAnchor(src, cx, cy)
-      : anchorPoint(placement.anchor)
+    'preserve' in placement.anchor ? preservedAnchor(src, cx, cy) : anchorPoint(placement.anchor)
 
   // Scale. The default (k = 0) PRESERVES the emblem's real size: recomposition
   // only widens the field, so the flag's height is unchanged and an emblem
@@ -80,10 +78,7 @@ const placementMatrix = (
   const dy = placement.dy ?? 0
 
   return multiply(
-    multiply(
-      multiply(translate(ax + dx, ay + dy), rotate(placement.rotationDeg ?? 0)),
-      scale(s)
-    ),
+    multiply(multiply(translate(ax + dx, ay + dy), rotate(placement.rotationDeg ?? 0)), scale(s)),
     translate(-cx, -cy)
   )
 }
@@ -167,7 +162,13 @@ export const recompose = (
     // <defs> stay at the top level (un-transformed) so <use> references resolve.
     const newChildren: XNode[] = [...defs, fieldGroup]
 
-    if (!override?.stretch && emblem.length && emblemBBox && emblemBBox.width > 0 && emblemBBox.height > 0) {
+    if (
+      !override?.stretch &&
+      emblem.length &&
+      emblemBBox &&
+      emblemBBox.width > 0 &&
+      emblemBBox.height > 0
+    ) {
       const placement = resolvePlacement(family, override)
       const m = placementMatrix(placement, emblemBBox, vb)
       newChildren.push(groupWith(emblem, m))

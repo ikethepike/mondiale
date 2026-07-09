@@ -70,7 +70,10 @@ export const buildIdMap = (root: XNode): Map<string, XNode> => {
 export const elementChildren = (node: XNode): XNode[] =>
   (node.children || []).filter(c => c.type === 'element')
 
-const composeTransform = (parent: string | undefined, own: string | undefined): string | undefined => {
+const composeTransform = (
+  parent: string | undefined,
+  own: string | undefined
+): string | undefined => {
   if (!parent) return own
   if (!own) return parent
   return `${parent} ${own}`
@@ -118,7 +121,11 @@ export const flattenDrawables = (svgEl: XNode): Flattened => {
   const defs: XNode[] = []
   const LEAF = new Set(['rect', 'path', 'circle', 'ellipse', 'polygon', 'polyline', 'line', 'use'])
 
-  const recurse = (node: XNode, transform: string | undefined, inherited: Record<string, string>) => {
+  const recurse = (
+    node: XNode,
+    transform: string | undefined,
+    inherited: Record<string, string>
+  ) => {
     for (const child of elementChildren(node)) {
       if (child.name === 'defs') {
         defs.push(child)
@@ -207,7 +214,10 @@ const boundsOfPoints = (pts: [number, number][]): BBox | null => {
 }
 
 const parsePairs = (s: string | undefined): [number, number][] => {
-  const nums = (s || '').split(/[\s,]+/).map(Number).filter(Number.isFinite)
+  const nums = (s || '')
+    .split(/[\s,]+/)
+    .map(Number)
+    .filter(Number.isFinite)
   const out: [number, number][] = []
   for (let i = 0; i + 1 < nums.length; i += 2) out.push([nums[i], nums[i + 1]])
   return out
@@ -394,9 +404,7 @@ export const subtreeBBox = (
   const seen = new Set<XNode>()
 
   const recurse = (n: XNode, m: Matrix) => {
-    const local = n.attributes?.transform
-      ? multiply(m, parseTransform(n.attributes.transform))
-      : m
+    const local = n.attributes?.transform ? multiply(m, parseTransform(n.attributes.transform)) : m
 
     if (n.type === 'element') {
       if (n.name === 'use' && idMap) {
@@ -407,7 +415,8 @@ export const subtreeBBox = (
           // <use x y> offsets the referenced content before its own transform.
           const ux = num(n.attributes?.x)
           const uy = num(n.attributes?.y)
-          const useMatrix = ux || uy ? multiply(local, parseTransform(`translate(${ux} ${uy})`)) : local
+          const useMatrix =
+            ux || uy ? multiply(local, parseTransform(`translate(${ux} ${uy})`)) : local
           recurse(target, useMatrix)
           seen.delete(target)
         }

@@ -30,47 +30,47 @@
           :d="d"
           @click="handleClick(code)"
         />
-      <!--
+        <!--
         Micro-states (Vatican, Monaco…) are sub-pixel at world zoom; the dot is
         their click target and disappears once the real shape becomes legible.
         No id attribute — path#ISO must keep resolving to the true geometry.
         Visibility is toggled with direct DOM writes (not reactive state) so
         wheel/camera zoom never forces a re-render of the 220 country paths.
       -->
-      <!-- Invisible tap halos: micro-states get ~14px of click slop at any zoom -->
-      <circle
-        v-for="(spot, code) in MICRO_COUNTRIES"
-        :key="`hit-${code}`"
-        class="micro-hit"
-        :data-id="code"
-        :cx="spot?.x"
-        :cy="spot?.y"
-        r="12"
-        @click="handleClick(code)"
-      />
-      <circle
-        v-for="(spot, code) in MICRO_COUNTRIES"
-        :key="`dot-${code}`"
-        class="micro-marker"
-        :style="{ fill: countryColors[code] }"
-        :class="{ 'highlighted-country': highlights.includes(code) }"
-        :data-id="code"
-        :data-footprint="spot?.footprint"
-        :cx="spot?.x"
-        :cy="spot?.y"
-        r="3.5"
-        @click="handleClick(code)"
-      />
-      <!-- Physical-geography overlay: rivers draw themselves in as lines,
+        <!-- Invisible tap halos: micro-states get ~14px of click slop at any zoom -->
+        <circle
+          v-for="(spot, code) in MICRO_COUNTRIES"
+          :key="`hit-${code}`"
+          class="micro-hit"
+          :data-id="code"
+          :cx="spot?.x"
+          :cy="spot?.y"
+          r="12"
+          @click="handleClick(code)"
+        />
+        <circle
+          v-for="(spot, code) in MICRO_COUNTRIES"
+          :key="`dot-${code}`"
+          class="micro-marker"
+          :style="{ fill: countryColors[code] }"
+          :class="{ 'highlighted-country': highlights.includes(code) }"
+          :data-id="code"
+          :data-footprint="spot?.footprint"
+          :cx="spot?.x"
+          :cy="spot?.y"
+          r="3.5"
+          @click="handleClick(code)"
+        />
+        <!-- Physical-geography overlay: rivers draw themselves in as lines,
            seas/lakes/ranges wash in as soft areas (water game modes) -->
-      <path
-        v-if="feature"
-        ref="featureEl"
-        :key="feature.d.slice(0, 40)"
-        class="map-feature"
-        :class="feature.kind"
-        :d="feature.d"
-      />
+        <path
+          v-if="feature"
+          ref="featureEl"
+          :key="feature.d.slice(0, 40)"
+          class="map-feature"
+          :class="feature.kind"
+          :d="feature.d"
+        />
       </template>
     </svg>
   </div>
@@ -320,10 +320,7 @@ const frameFocus = () => {
     ...(props.feature?.bounds ? [props.feature.bounds] : []),
   ]
   const target = boxes.length
-    ? frameForBoxes(
-        boxes,
-        props.focusContext.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean)
-      )
+    ? frameForBoxes(boxes, props.focusContext.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean))
     : worldFitView()
   tweenToView(target)
 }
@@ -468,13 +465,7 @@ const cachePathEls = () => {
   })
 }
 
-const intersectsAnyRegion = (
-  code: string,
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) => {
+const intersectsAnyRegion = (code: string, x: number, y: number, width: number, height: number) => {
   for (const [rx, ry, rw, rh] of MAP_REGIONS[code as MapCode] ?? []) {
     if (rx < x + width && rx + rw > x && ry < y + height && ry + rh > y) return true
   }
@@ -526,8 +517,7 @@ const applyLod = (effectiveZoom: number) => {
   if (effectiveZoom >= LOD_ZOOM_IN) loadHdTier()
 
   if (effectiveZoom < LOD_ZOOM_OUT) {
-    for (const code of hdApplied)
-      pathEls.get(code)?.setAttribute('d', MAP_PATHS[code as MapCode])
+    for (const code of hdApplied) pathEls.get(code)?.setAttribute('d', MAP_PATHS[code as MapCode])
     hdApplied.clear()
     return
   }
@@ -729,8 +719,10 @@ const onPointerMove = (event: PointerEvent) => {
     targetView.y -= (pointer.y - previous.y) * unitsPerPx
     const dt = Math.max(1, pointer.movedAt - previous.at)
     // Blend for a stable read of the release velocity (in units/ms)
-    pointer.velocityX = 0.8 * (-(pointer.x - previous.x) * unitsPerPx) / dt + 0.2 * pointer.velocityX
-    pointer.velocityY = 0.8 * (-(pointer.y - previous.y) * unitsPerPx) / dt + 0.2 * pointer.velocityY
+    pointer.velocityX =
+      (0.8 * (-(pointer.x - previous.x) * unitsPerPx)) / dt + 0.2 * pointer.velocityX
+    pointer.velocityY =
+      (0.8 * (-(pointer.y - previous.y) * unitsPerPx)) / dt + 0.2 * pointer.velocityY
   }
   startLoop()
 }

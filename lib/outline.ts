@@ -287,10 +287,7 @@ export const scoreSketch = (
   // too large should not bleed points. Shape mismatch survives every scale.
   let distance = Infinity
   for (const scale of [0.88, 0.94, 1, 1.06, 1.12]) {
-    distance = Math.min(
-      distance,
-      blend(a.map(([x, y]) => [x * scale, y * scale]))
-    )
+    distance = Math.min(distance, blend(a.map(([x, y]) => [x * scale, y * scale])))
   }
 
   // Calibrated clusters (RMS units): honest human drawings — bulging,

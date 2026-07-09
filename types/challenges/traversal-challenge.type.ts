@@ -39,6 +39,17 @@ export const isTraversalChallenge = (
   return !!challenge && '_type' in challenge && challenge._type === 'traversal-challenge'
 }
 
+/**
+ * Ranking rounds are the only challenges carrying an accessor `id`; the
+ * traversal and group-mode formats key off `_type` instead. Older persisted
+ * ranking challenges have no `_type`, so test for `id` rather than its absence.
+ */
+export const isGroupChallenge = (
+  challenge: RoundChallenge | undefined
+): challenge is GroupChallenge => {
+  return !!challenge && 'id' in challenge
+}
+
 export type RoundChallengeKind =
   | 'ranking'
   | 'traversal'
@@ -57,9 +68,7 @@ export type RoundChallengeKind =
   | 'capital-guess'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
-export const roundChallengeKind = (
-  challenge: RoundChallenge | undefined
-): RoundChallengeKind => {
+export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
   if (!challenge || !('_type' in challenge)) return 'ranking'
   switch (challenge._type) {
     case 'traversal-challenge':

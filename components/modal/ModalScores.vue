@@ -4,7 +4,7 @@
       <section v-if="score && currentRound" class="form-content">
         <header>
           <span>Score: {{ score.points.scored }}/{{ score.points.maximum }}</span>
-          <h1>{{ details?.phrasing || currentRound.round.groupChallenge.id }}</h1>
+          <h1>{{ heading }}</h1>
         </header>
         <div>
           <section class="ordering">
@@ -35,14 +35,22 @@
 <script lang="ts" setup>
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { isGroupChallenge, roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
 const { gameStore, currentRound, playerId, update } = useClientEvents()
 const score = toRef(gameStore, 'playerScore')
 const details = computed(() => {
-  const accessorId = currentRound.value?.round.groupChallenge.id
-  if (!accessorId) return undefined
-  return getChallengeDetails(accessorId)
+  const challenge = currentRound.value?.round.groupChallenge
+  // Only ranking rounds carry an accessor id; the other formats key off `_type`.
+  if (!isGroupChallenge(challenge)) return undefined
+  return getChallengeDetails(challenge.id)
 })
+
+// Ranking rounds get their accessor phrasing; every other format falls back to
+// its gameplay kind, so the header never renders a bare `undefined`.
+const heading = computed(
+  () => details.value?.phrasing ?? roundChallengeKind(currentRound.value?.round.groupChallenge)
+)
 
 const closeScores = () => {
   if (gameStore.game?.players[playerId.value]) {

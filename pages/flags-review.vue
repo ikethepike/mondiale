@@ -53,9 +53,39 @@
 
         <div class="tune">
           <span v-if="row.iso === 'AG'" class="ag-hint">sun: k=scale, dx/dy=offset</span>
-          <label>k <input v-model.number="knobs[row.iso].k" type="range" min="0.2" max="1.5" step="0.02" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].k.toFixed(2) }}</span></label>
-          <label>dx <input v-model.number="knobs[row.iso].dx" type="range" min="-300" max="300" step="5" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].dx }}</span></label>
-          <label>dy <input v-model.number="knobs[row.iso].dy" type="range" min="-150" max="150" step="5" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].dy }}</span></label>
+          <label
+            >k
+            <input
+              v-model.number="knobs[row.iso].k"
+              type="range"
+              min="0.2"
+              max="1.5"
+              step="0.02"
+              @input="markTuned(row.iso)"
+            /><span>{{ knobs[row.iso].k.toFixed(2) }}</span></label
+          >
+          <label
+            >dx
+            <input
+              v-model.number="knobs[row.iso].dx"
+              type="range"
+              min="-300"
+              max="300"
+              step="5"
+              @input="markTuned(row.iso)"
+            /><span>{{ knobs[row.iso].dx }}</span></label
+          >
+          <label
+            >dy
+            <input
+              v-model.number="knobs[row.iso].dy"
+              type="range"
+              min="-150"
+              max="150"
+              step="5"
+              @input="markTuned(row.iso)"
+            /><span>{{ knobs[row.iso].dy }}</span></label
+          >
           <button class="exclude" @click="toggleExclude(row.iso)">
             {{ knobs[row.iso].exclude ? 'un-exclude' : 'exclude' }}
           </button>
@@ -135,7 +165,10 @@ const wrapWide = (svg: string) =>
 const naiveStretch = (svg: string) =>
   svg
     .replace(/preserveAspectRatio="[^"]*"/g, '')
-    .replace('<svg ', '<svg preserveAspectRatio="none" style="width:100%;height:100%;display:block" ')
+    .replace(
+      '<svg ',
+      '<svg preserveAspectRatio="none" style="width:100%;height:100%;display:block" '
+    )
 
 // --- Antigua & Barbuda live sun tuner -------------------------------------
 // AG's field (red + inverted-V bands) is hand-built, so the engine's placement

@@ -57,7 +57,10 @@ export const parseTransform = (transform: string | undefined): Matrix => {
   let match: RegExpExecArray | null
   while ((match = re.exec(transform))) {
     const op = match[1]
-    const args = match[2].split(/[\s,]+/).filter(Boolean).map(Number)
+    const args = match[2]
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number)
     let t: Matrix = IDENTITY
     switch (op) {
       case 'matrix':

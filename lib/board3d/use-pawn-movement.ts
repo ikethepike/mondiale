@@ -185,7 +185,11 @@ export const createPawnMover = (options: {
 
       const scale = pawn.scale.x
       track(
-        gsap.fromTo(pawn.scale, { y: scale * 0.82 }, { y: scale, duration: 0.14, ease: 'power2.out' })
+        gsap.fromTo(
+          pawn.scale,
+          { y: scale * 0.82 },
+          { y: scale, duration: 0.14, ease: 'power2.out' }
+        )
       )
       relayout(playerId)
       options.onLand?.(playerId, tile)
@@ -252,8 +256,7 @@ export const createPawnMover = (options: {
           const t = proxy.t
           pawn.position.x = from.x + (to.x - from.x) * t
           pawn.position.z = from.z + (to.z - from.z) * t
-          pawn.position.y =
-            from.y + (to.y - from.y) * t + Math.sin(t * Math.PI) * options.hopHeight
+          pawn.position.y = from.y + (to.y - from.y) * t + Math.sin(t * Math.PI) * options.hopHeight
           const scale = from.scale + (to.scale - from.scale) * t
           pawn.scale.set(scale, scale, scale)
         },

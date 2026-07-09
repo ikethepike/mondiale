@@ -1,5 +1,11 @@
 <template>
-  <CountryFlag :country="country" mode="background" fit="cover" variant="wide" :position="position" />
+  <CountryFlag
+    :country="country"
+    mode="background"
+    fit="cover"
+    variant="wide"
+    :position="position"
+  />
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

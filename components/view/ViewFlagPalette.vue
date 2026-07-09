@@ -35,7 +35,11 @@
       <!-- Opponents' live guesses land here as pawns on their pick -->
       <TransitionGroup tag="ul" name="guess" class="live-guesses">
         <li v-for="[playerId, iso] in opponentGuesses" :key="playerId" class="live-guess">
-          <PlayerPawn v-if="playerFor(playerId)" class="guess-pawn" :player="playerFor(playerId)!" />
+          <PlayerPawn
+            v-if="playerFor(playerId)"
+            class="guess-pawn"
+            :player="playerFor(playerId)!"
+          />
           <span class="guess-name">{{ countryName(iso) }}</span>
         </li>
       </TransitionGroup>
@@ -96,7 +100,10 @@ const playerFor = (playerId: string) => gameStore.game?.players[playerId]
 const submitRound = (correct: boolean) => {
   if (submitted.value) return
   gameStore.map.status = correct ? 'correct' : undefined
-  submitOnce(correct && challenge.value ? [challenge.value.country] : [], correct ? challenge.value?.maximumPoints ?? 0 : 0)
+  submitOnce(
+    correct && challenge.value ? [challenge.value.country] : [],
+    correct ? (challenge.value?.maximumPoints ?? 0) : 0
+  )
 }
 
 const start = () => {

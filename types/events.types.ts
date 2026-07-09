@@ -104,6 +104,18 @@ export type ServerEventData =
 
 export type ServerEvent = ServerEventData['event']
 
+/** The server events that carry a full game snapshot. */
+export type GameServerEvent = Extract<ServerEventData, { game: Game }>
+
+/**
+ * Narrows away the events with no `game` payload (`index-update`,
+ * `player-guessing`). Testing for the field rather than listing the event
+ * names keeps later game-less events handled automatically.
+ */
+export const hasGame = (payload: ServerEventData): payload is GameServerEvent => {
+  return 'game' in payload
+}
+
 export type MapClickEvent = CustomEvent<{
   isoCode: ISOCountryCode | string
 }>

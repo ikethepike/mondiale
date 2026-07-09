@@ -1,3 +1,4 @@
+import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/plugins/socket.client'
 
 export const groupChallengeScoredEvent: ClientSideEventHandler = async ({
@@ -5,7 +6,7 @@ export const groupChallengeScoredEvent: ClientSideEventHandler = async ({
   payload,
   eventTarget,
 }) => {
-  if (payload.event === 'index-update') return
+  if (!hasGame(payload)) return
 
   console.info(`Processing: ${payload.event}`)
 

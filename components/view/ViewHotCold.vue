@@ -53,7 +53,9 @@ const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
 const challenge = computed(() => {
   const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'hot-cold-challenge'
+  return roundChallenge &&
+    '_type' in roundChallenge &&
+    roundChallenge._type === 'hot-cold-challenge'
     ? roundChallenge
     : undefined
 })
@@ -70,9 +72,7 @@ const showInterstitial = ref(true)
 const feedback = ref('')
 const warmthClass = ref<'hot' | 'warm' | 'cold' | ''>('')
 
-const probesLeft = computed(
-  () => (challenge.value?.maximumGuesses ?? 0) - probes.value.length
-)
+const probesLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - probes.value.length)
 
 // Full outline map, fully clickable — never reveal the target through
 // highlights, tints or camera focus

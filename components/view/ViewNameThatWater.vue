@@ -21,7 +21,9 @@
           </span>
         </template>
         <template v-else>
-          <h1 class="map-caption">{{ resolvedCorrectly ? 'Well spotted' : 'It was' }} — the {{ challenge.featureName }}</h1>
+          <h1 class="map-caption">
+            {{ resolvedCorrectly ? 'Well spotted' : 'It was' }} — the {{ challenge.featureName }}
+          </h1>
           <span class="map-caption sub">{{ shoreLine }}</span>
         </template>
         <Transition name="caption">
@@ -39,7 +41,9 @@
           placeholder="Type its name…"
           autocomplete="off"
           :disabled="!started"
-          @keydown.down.prevent="highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)"
+          @keydown.down.prevent="
+            highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
+          "
           @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
         />
         <ul v-if="suggestions.length" class="suggestions">
@@ -76,7 +80,9 @@ const MAX_ATTEMPTS = 3
 
 const challenge = computed(() => {
   const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'name-water-challenge'
+  return roundChallenge &&
+    '_type' in roundChallenge &&
+    roundChallenge._type === 'name-water-challenge'
     ? roundChallenge
     : undefined
 })
@@ -130,9 +136,7 @@ const input = ref<HTMLInputElement>()
 const suggestions = computed(() => {
   const needle = normalizeName(query.value)
   if (!needle) return []
-  return options.value
-    .filter(option => normalizeName(option.name).includes(needle))
-    .slice(0, 6)
+  return options.value.filter(option => normalizeName(option.name).includes(needle)).slice(0, 6)
 })
 
 watch(suggestions, () => (highlightedIndex.value = 0))
@@ -197,7 +201,10 @@ const pick = (option: WaterOption) => {
   query.value = ''
   attempts.value++
 
-  if (option.id === active.featureId || normalizeName(option.name) === normalizeName(active.featureName)) {
+  if (
+    option.id === active.featureId ||
+    normalizeName(option.name) === normalizeName(active.featureName)
+  ) {
     return resolve(true)
   }
 

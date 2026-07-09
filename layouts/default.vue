@@ -100,10 +100,7 @@ const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
 // company (2+ players).
 const BOARD_PHASES = ['moving', 'movement-summary']
 const showStatusPanel = computed(
-  () =>
-    allPlayers.value.length > 1 &&
-    !!player.value &&
-    BOARD_PHASES.includes(player.value.phase)
+  () => allPlayers.value.length > 1 && !!player.value && BOARD_PHASES.includes(player.value.phase)
 )
 
 const router = useRouter()

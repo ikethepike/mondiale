@@ -1,4 +1,5 @@
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import sharp from 'sharp'
 
 /**
  * Shared Wikidata / Wikimedia Commons fetch helpers — one implementation of the
@@ -131,6 +132,43 @@ export const EXTENSION_BY_CONTENT_TYPE: { [contentType: string]: string } = {
   'image/gif': 'gif',
 }
 
+/**
+ * Everything we ship is re-encoded to WebP at a bounded width — one format and
+ * one size budget for every generated image, whatever the source served. Kept
+ * here (rather than per-generator) so capitals/leaders/currencies/landmarks
+ * can't drift apart.
+ */
+export const WEBP_QUALITY = 80
+
+/** Re-encode any image buffer to WebP, downscaling to `maxWidth` (never up). */
+export const encodeWebp = async (input: Buffer, maxWidth: number): Promise<Buffer> =>
+  sharp(input)
+    .rotate() // honour EXIF orientation before we strip metadata
+    .resize({ width: maxWidth, withoutEnlargement: true })
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer()
+
+/**
+ * Write `buffer` as `${baseName}.webp`, returning its public path. Any stale
+ * `.jpg`/`.png`/`.gif` sibling from an older run is removed so the directory
+ * never holds two encodings of the same image.
+ */
+export const writeWebp = async (
+  buffer: Buffer,
+  baseName: string,
+  publicBase: string,
+  maxWidth: number
+): Promise<string | undefined> => {
+  const encoded = await encodeWebp(buffer, maxWidth).catch(() => undefined)
+  if (!encoded) return undefined
+
+  writeFileSync(`${baseName}.webp`, encoded)
+  for (const extension of ['jpg', 'png', 'gif']) {
+    if (existsSync(`${baseName}.${extension}`)) rmSync(`${baseName}.${extension}`)
+  }
+  return `${publicBase}.webp`
+}
+
 /** Fetch a Commons file at a fixed width, honouring 429 backoff. */
 export const downloadCommonsImage = async (
   file: string,
@@ -150,9 +188,67 @@ export const downloadCommonsImage = async (
 }
 
 /**
- * Download a Commons file to `${baseName}.<ext>` and return its public path
- * (relative to /public). Skips the download when a file already exists and
- * `force` is false. Returns undefined on failure.
+ * An already-encoded `${baseName}.webp`. Only WebP counts as a cache hit — a
+ * leftover `.jpg` from before the WebP switch must be re-encoded, not reused.
+ */
+export const existingImagePath = (baseName: string, publicBase: string): string | undefined =>
+  existsSync(`${baseName}.webp`) ? `${publicBase}.webp` : undefined
+
+/**
+ * Download a hand-picked image from an arbitrary URL. Used by a seed's
+ * `imageUrl` override, so it skips the viability check entirely — whoever set
+ * the URL already vouched for the photo.
+ */
+export const saveImageUrl = async (
+  url: string,
+  baseName: string,
+  publicBase: string,
+  { width, force }: { width: number; force: boolean }
+): Promise<string | undefined> => {
+  if (!force) {
+    const existing = existingImagePath(baseName, publicBase)
+    if (existing) return existing
+  }
+
+  // A plain browser UA: some hosts 403 an unknown agent, and unlike Commons
+  // these are arbitrary sites we don't have an arrangement with.
+  // Retried with backoff: a 386-seed run reliably trips Wikimedia's rate limit
+  // on at least one image, and a single 429 shouldn't drop a landmark.
+  let response: Response | undefined
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; mondiale-game-generator/1.0)' },
+    }).catch(() => undefined)
+    if (response?.ok) break
+
+    const retryable = !response || response.status === 429 || response.status >= 500
+    if (!retryable || attempt === 5) break
+
+    const retryAfter = Number(response?.headers.get('retry-after'))
+    await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2000 * attempt)
+  }
+
+  if (!response?.ok) {
+    console.warn(`  imageUrl fetch failed (${response?.status ?? 'network'}): ${url.slice(0, 90)}`)
+    return undefined
+  }
+
+  const contentType = response.headers.get('content-type')?.split(';')[0] ?? ''
+  if (!EXTENSION_BY_CONTENT_TYPE[contentType]) {
+    console.warn(`  imageUrl is not an image (${contentType || 'no content-type'})`)
+    return undefined
+  }
+
+  return writeWebp(Buffer.from(await response.arrayBuffer()), baseName, publicBase, width)
+}
+
+/**
+ * Download a Commons file, re-encode it to WebP, and return its public path
+ * (relative to /public). Skips the work when `${baseName}.webp` already exists
+ * and `force` is false. Returns undefined on failure.
+ *
+ * Commons serves the file pre-scaled to `width`, so the resize in writeWebp is
+ * usually a no-op — it's there to bound the odd source that ignores the hint.
  */
 export const saveCommonsImage = async (
   file: string,
@@ -160,16 +256,13 @@ export const saveCommonsImage = async (
   publicBase: string,
   { width, force }: { width: number; force: boolean }
 ): Promise<string | undefined> => {
-  const existing = Object.values(EXTENSION_BY_CONTENT_TYPE).find(extension =>
-    existsSync(`${baseName}.${extension}`)
-  )
-  if (existing && !force) return `${publicBase}.${existing}`
+  if (!force) {
+    const existing = existingImagePath(baseName, publicBase)
+    if (existing) return existing
+  }
 
   const response = await downloadCommonsImage(file, width)
   if (!response) return undefined
 
-  const contentType = response.headers.get('content-type')?.split(';')[0] ?? ''
-  const extension = EXTENSION_BY_CONTENT_TYPE[contentType] ?? 'jpg'
-  writeFileSync(`${baseName}.${extension}`, Buffer.from(await response.arrayBuffer()))
-  return `${publicBase}.${extension}`
+  return writeWebp(Buffer.from(await response.arrayBuffer()), baseName, publicBase, width)
 }

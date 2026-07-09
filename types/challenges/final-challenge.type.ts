@@ -14,7 +14,9 @@ export type FinalChallenge =
   // question on continental boards (where the region answers itself)
   | BaseFinalChallenge<Array<RegionChallenge | LeadershipChallenge | LanguageChallenge>, 'easy'>
   | BaseFinalChallenge<
-      Array<RegionChallenge | LeadershipChallenge | MaxChallenge | MinChallenge | LanguageChallenge>,
+      Array<
+        RegionChallenge | LeadershipChallenge | MaxChallenge | MinChallenge | LanguageChallenge
+      >,
       'normal'
     >
   | BaseFinalChallenge<

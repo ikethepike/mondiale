@@ -129,14 +129,36 @@ onMounted(() => {
         // Cases → which edge pair(s) the contour connects (saddles split)
         const connect: [[number, number], [number, number]][] = []
         switch (mask) {
-          case 1: case 14: connect.push([left, bottom]); break
-          case 2: case 13: connect.push([bottom, right]); break
-          case 3: case 12: connect.push([left, right]); break
-          case 4: case 11: connect.push([top, right]); break
-          case 5: connect.push([left, top], [bottom, right]); break
-          case 6: case 9: connect.push([top, bottom]); break
-          case 7: case 8: connect.push([left, top]); break
-          case 10: connect.push([top, right], [left, bottom]); break
+          case 1:
+          case 14:
+            connect.push([left, bottom])
+            break
+          case 2:
+          case 13:
+            connect.push([bottom, right])
+            break
+          case 3:
+          case 12:
+            connect.push([left, right])
+            break
+          case 4:
+          case 11:
+            connect.push([top, right])
+            break
+          case 5:
+            connect.push([left, top], [bottom, right])
+            break
+          case 6:
+          case 9:
+            connect.push([top, bottom])
+            break
+          case 7:
+          case 8:
+            connect.push([left, top])
+            break
+          case 10:
+            connect.push([top, right], [left, bottom])
+            break
         }
 
         for (const [a, b] of connect) {
@@ -243,7 +265,10 @@ onMounted(() => {
     renderer!.render(scene, camera)
 
     // Stop the loop once the fade lands — no perpetual rAF for a static image
-    if (settled && Math.abs((material.uniforms.uOpacity.value as number) - SETTLED_OPACITY) < 0.002) {
+    if (
+      settled &&
+      Math.abs((material.uniforms.uOpacity.value as number) - SETTLED_OPACITY) < 0.002
+    ) {
       material.uniforms.uOpacity.value = SETTLED_OPACITY
       renderer!.render(scene, camera)
       return

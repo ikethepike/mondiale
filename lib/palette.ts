@@ -7,15 +7,7 @@
  * This is distinct from `data/palette.ts` PLAYER_COLORS (pawn identity).
  */
 
-export type NamedColor =
-  | 'red'
-  | 'white'
-  | 'blue'
-  | 'green'
-  | 'yellow'
-  | 'black'
-  | 'orange'
-  | 'cyan'
+export type NamedColor = 'red' | 'white' | 'blue' | 'green' | 'yellow' | 'black' | 'orange' | 'cyan'
 
 /** RGB anchors for each bucket, tuned against real flag palettes. */
 const COLOR_ANCHORS: { name: NamedColor; rgb: [number, number, number] }[] = [

@@ -23,7 +23,8 @@ import { fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
  */
 
 const OUTPUT_DIRECTORY = 'public/leaders'
-const PORTRAIT_WIDTH = 512
+/** Portraits aren't zoomed, but 512px is soft on a HiDPI screen. */
+const PORTRAIT_WIDTH = 1024
 
 type LeaderRole = 'headOfState' | 'headOfGovernment'
 const LEADER_PROPERTIES: { [property in 'P35' | 'P6']: LeaderRole } = {

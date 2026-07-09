@@ -44,7 +44,16 @@ export const bearingDegrees = (a: LatLng, b: LatLng): number => {
   return (toDegrees(Math.atan2(y, x)) + 360) % 360
 }
 
-const COMPASS_POINTS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
+const COMPASS_POINTS = [
+  'north',
+  'north-east',
+  'east',
+  'south-east',
+  'south',
+  'south-west',
+  'west',
+  'north-west',
+]
 
 export const compassLabel = (bearing: number): string =>
   COMPASS_POINTS[Math.round(bearing / 45) % 8]

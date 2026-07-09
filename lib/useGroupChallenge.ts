@@ -57,7 +57,9 @@ export const useGroupChallenge = <T extends GroupModeChallenge['_type']>(
    * exists) fires once when the clock hits zero — typically a fail-submit.
    * `onTick` runs each second for mode-specific reveals.
    */
-  const begin = (hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}) => {
+  const begin = (
+    hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
+  ) => {
     showInterstitial.value = false
     started.value = true
     if (duration.value) {

@@ -145,7 +145,11 @@
         </header>
 
         <TransitionGroup tag="ul" name="lobby-tile">
-          <PlayerTile v-for="lobbyPlayer in playersByPhase.all" :key="lobbyPlayer.id" :player="lobbyPlayer">
+          <PlayerTile
+            v-for="lobbyPlayer in playersByPhase.all"
+            :key="lobbyPlayer.id"
+            :player="lobbyPlayer"
+          >
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
         </TransitionGroup>
@@ -161,11 +165,7 @@ import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { wait } from '~~/lib/time'
-import {
-  gameLengths,
-  gameDifficulties,
-  isValidGameConfiguration,
-} from '~~/types/game.types'
+import { gameLengths, gameDifficulties, isValidGameConfiguration } from '~~/types/game.types'
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')

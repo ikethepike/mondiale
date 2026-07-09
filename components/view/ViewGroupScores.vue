@@ -255,7 +255,14 @@ onMounted(() => {
   gsap.fromTo(
     card.value.querySelectorAll('.score-row'),
     { opacity: 0, x: 18 },
-    { opacity: 1, x: 0, duration: 0.4, ease: EASE.enter, stagger: 0.1, clearProps: 'opacity,transform' }
+    {
+      opacity: 1,
+      x: 0,
+      duration: 0.4,
+      ease: EASE.enter,
+      stagger: 0.1,
+      clearProps: 'opacity,transform',
+    }
   )
 })
 

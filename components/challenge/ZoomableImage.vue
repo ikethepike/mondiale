@@ -33,7 +33,9 @@
         ＋
       </button>
     </div>
-    <span v-if="!broken && scale === 1" class="hint" aria-hidden="true">Scroll or pinch to zoom</span>
+    <span v-if="!broken && scale === 1" class="hint" aria-hidden="true"
+      >Scroll or pinch to zoom</span
+    >
   </div>
 </template>
 <script lang="ts" setup>

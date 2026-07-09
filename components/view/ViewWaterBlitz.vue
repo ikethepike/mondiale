@@ -66,7 +66,9 @@ const { gameStore, update, currentRound, clearBoard } = useClientEvents()
 
 const challenge = computed(() => {
   const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'water-blitz-challenge'
+  return roundChallenge &&
+    '_type' in roundChallenge &&
+    roundChallenge._type === 'water-blitz-challenge'
     ? roundChallenge
     : undefined
 })

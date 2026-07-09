@@ -17,7 +17,9 @@
         <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
       </div>
       <div v-else class="money-hero">
-        <span class="money-symbol">{{ currencySymbol(getCountry(challenge.country).currency) }}</span>
+        <span class="money-symbol">{{
+          currencySymbol(getCountry(challenge.country).currency)
+        }}</span>
         <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
       </div>
 
@@ -35,10 +37,15 @@
       </div>
 
       <p class="answer">
-        Answer: <strong>{{ countryName(challenge.country) }}</strong>
-        ({{ getCountry(challenge.country).currency }} — {{ currencyName }})
-        <span v-if="picked">· you picked {{ countryName(picked) }} —
-          <strong :class="{ right: picked === challenge.country, wrong: picked !== challenge.country }">
+        Answer: <strong>{{ countryName(challenge.country) }}</strong> ({{
+          getCountry(challenge.country).currency
+        }}
+        — {{ currencyName }})
+        <span v-if="picked"
+          >· you picked {{ countryName(picked) }} —
+          <strong
+            :class="{ right: picked === challenge.country, wrong: picked !== challenge.country }"
+          >
             {{ picked === challenge.country ? 'correct' : 'wrong' }}
           </strong>
         </span>
@@ -84,7 +91,9 @@ const deal = (): MoneyChallenge | null => {
   if (!subject) return null
 
   const currency = COUNTRIES[subject].currency
-  const decoys = shuffleArray(withCurrency.filter(iso => COUNTRIES[iso].currency !== currency)).slice(0, 3)
+  const decoys = shuffleArray(
+    withCurrency.filter(iso => COUNTRIES[iso].currency !== currency)
+  ).slice(0, 3)
   const image = currency ? CURRENCIES[currency]?.image : undefined
 
   return { country: subject, options: shuffleArray([subject, ...decoys]), image }

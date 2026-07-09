@@ -28,7 +28,12 @@
 
     <section class="claim-stage">
       <div class="flag-frame">
-        <CountryFlag class="flag" :country="getCountry(challenge.country)" mode="background" fit="contain" />
+        <CountryFlag
+          class="flag"
+          :country="getCountry(challenge.country)"
+          mode="background"
+          fit="contain"
+        />
       </div>
       <ul class="claim-list">
         <li v-for="(statement, index) in challenge.statements" :key="statement.accessorId">

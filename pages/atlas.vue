@@ -1,22 +1,12 @@
 <template>
   <div class="atlas-harness">
-    <LazyGameMap
-      class="atlas-map"
-      :highlight-country="selected?.isoCode"
-      :tints="tints"
-      labels
-    />
+    <LazyGameMap class="atlas-map" :highlight-country="selected?.isoCode" :tints="tints" labels />
 
     <div v-if="!selected" class="hint">
       <p>Dynamic atlas — tap any country to explore its facts &amp; leader.</p>
     </div>
 
-    <AtlasCard
-      v-if="selected"
-      :country="selected"
-      @close="clear"
-      @select="select"
-    />
+    <AtlasCard v-if="selected" :country="selected" @close="clear" @select="select" />
   </div>
 </template>
 <script lang="ts" setup>

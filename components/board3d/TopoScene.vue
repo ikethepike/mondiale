@@ -1,8 +1,14 @@
 <template>
-  <TresPerspectiveCamera ref="cameraRef" :position="[0, 105, 88]" :fov="42" :near="0.5" :far="600" />
+  <TresPerspectiveCamera
+    ref="cameraRef"
+    :position="cameraPosition"
+    :fov="42"
+    :near="0.5"
+    :far="600"
+  />
   <!-- Terrain and tiles are unlit; only the toon-shaded pawns respond to these -->
   <TresAmbientLight :intensity="1.9" />
-  <TresDirectionalLight :position="[60, 120, 80]" :intensity="1.6" />
+  <TresDirectionalLight :position="LIGHT_POSITION" :intensity="1.6" />
   <OrbitControls
     ref="controlsRef"
     make-default
@@ -18,6 +24,7 @@
 <script lang="ts" setup>
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
+import { Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
@@ -45,6 +52,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{ ready: [] }>()
+
+// Allocated per instance: the board camera mutates `camera.position` in place
+// (see use-board-camera's flyTo), so this vector must not be shared across
+// mounts or the starting framing would drift.
+const cameraPosition = shallowRef(new Vector3(0, 105, 88))
+// Safe to share — the directional light is never animated.
+const LIGHT_POSITION = new Vector3(60, 120, 80)
 
 const cameraRef = shallowRef()
 const controlsRef = shallowRef()
@@ -80,7 +94,8 @@ const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success
     tone === 'alert' ? BOARD_COLORS.hiorAnge : BOARD_COLORS.softMint
   )
   material.uniforms.uRippleCenter.value.set(tile.position.x, tile.position.z)
-  gsap.fromTo(material.uniforms.uRippleProgress,
+  gsap.fromTo(
+    material.uniforms.uRippleProgress,
     { value: 0 },
     {
       value: 1,
@@ -286,7 +301,12 @@ watch(
 /** Template refs may hand back the three object directly or an { instance } wrapper. */
 const resolveThree = <T,>(value: unknown): T | undefined => {
   if (!value || typeof value !== 'object') return undefined
-  const wrapper = value as { instance?: unknown; value?: unknown; update?: unknown; isCamera?: boolean }
+  const wrapper = value as {
+    instance?: unknown
+    value?: unknown
+    update?: unknown
+    isCamera?: boolean
+  }
   if (wrapper.isCamera || typeof wrapper.update === 'function') return value as T
   if (wrapper.instance) return resolveThree(wrapper.instance)
   if (wrapper.value) return resolveThree(wrapper.value)
