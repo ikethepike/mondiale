@@ -156,10 +156,16 @@ const normalizeCountry = ({
       // Governance indices from Our World in Data (V-Dem, Transparency Intl).
       democracyIndex: owidAmount(isoCode, 'democracyIndex', 'index'),
       corruptionIndex: owidAmount(isoCode, 'corruptionIndex', 'score'),
+      // Wellbeing/development indices, also from Our World in Data.
+      humanDevelopmentIndex: owidAmount(isoCode, 'humanDevelopmentIndex', 'index'),
+      happiness: owidAmount(isoCode, 'happiness', 'score'),
     },
     economics: {
       inflation: getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
       gdpPerCapita: getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
+      gdpTotal: getGdpTotal(data),
+      gdpGrowth: getYearlyIndex<'%'>(data['Economy']['Real GDP growth rate'], '%'),
+      publicDebt: getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
       populationBelowPovertyLine: getTextNode<'%'>(
         data['Economy']['Population below poverty line'],
         '%'
@@ -205,6 +211,26 @@ const normalizeCountry = ({
         data.Communications?.['Internet users']?.['percent of population'],
         '%'
       ),
+      mobileSubscriptions: getTextNode<'per 100 people'>(
+        data.Communications?.['Telephones - mobile cellular']?.['subscriptions per 100 inhabitants'],
+        'per 100 people'
+      ),
+      // Factbook flattened Airports to a bare text node; fall back to the old
+      // '{ total }' shape for any country still on the previous schema.
+      airports: getTextNode<'airports'>(
+        data.Transportation.Airports?.total ?? data.Transportation.Airports,
+        'airports'
+      ),
+    },
+    energy: {
+      electricityAccess: getTextNode<'%'>(
+        data.Energy?.['Electricity access']?.['electrification - total population'],
+        '%'
+      ),
+      fossilFuels: getTextNode<'%'>(
+        data.Energy?.['Electricity generation sources']?.['fossil fuels'],
+        '%'
+      ),
     },
     gender: {
       // Factbook dropped its women-in-parliament data; sourced from the World
@@ -230,6 +256,18 @@ const normalizeCountry = ({
       population: getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
       populationGrowthRate: getTextNode<'%'>(
         data['People and Society']['Population growth rate'],
+        '%'
+      ),
+      netMigration: getTextNode<'per 1000 people'>(
+        data['People and Society']['Net migration rate'],
+        'per 1000 people'
+      ),
+      birthRate: getTextNode<'per 1000 people'>(
+        data['People and Society']['Birth rate'],
+        'per 1000 people'
+      ),
+      urbanization: getTextNode<'%'>(
+        data['People and Society'].Urbanization?.['urban population'],
         '%'
       ),
     },
@@ -278,6 +316,12 @@ const normalizeCountry = ({
         getCarbonDioxideEmissions(data) ??
         getTextNode<'megatons'>(
           data.Environment['Air pollutants']?.['carbon dioxide emissions'],
+          'megatons'
+        ),
+      methaneEmissions:
+        getMethaneEmissions(data) ??
+        getTextNode<'megatons'>(
+          data.Environment['Air pollutants']?.['methane emissions'],
           'megatons'
         ),
       renewables: getRenewablesProduction(data),
@@ -415,7 +459,7 @@ const worldBankAmount = <Unit>(
 /** Pull a governance index for a country and wrap it as an Amount. */
 const owidAmount = <Unit>(
   isoCode: string,
-  metric: 'democracyIndex' | 'corruptionIndex',
+  metric: 'democracyIndex' | 'corruptionIndex' | 'humanDevelopmentIndex' | 'happiness',
   unit: Unit
 ): Amount<Unit> | undefined => {
   const value = owidMapping[isoCode as ISOCountryCode]?.[metric]
@@ -498,6 +542,72 @@ const getCarbonDioxideEmissions = (data: FactbookResponse): Amount<'megatons'> |
     unit: 'megatons',
     year,
     amount: Math.round(numbers[0] * scale * 1000) / 1000,
+  }
+}
+
+const getGdpTotal = (data: FactbookResponse): Amount<'$'> | undefined => {
+  // GDP-PPP is a year-keyed index whose values read "$25.676 trillion (2024
+  // est.)". getYearlyIndex would keep the bare 25.676 and drop the magnitude
+  // word, storing trillions-as-dollars (inconsistent with gdpPerCapita's raw $).
+  // Take the most recent year's text and scale the word to full dollars.
+  const node = data['Economy']['Real GDP (purchasing power parity)']
+  if (!isYearlyIndex(node)) return undefined
+
+  // Year-keyed entries only ('note' is a bare string, not a TextNode); pick the
+  // one whose key carries the newest year.
+  let bestText: string | undefined
+  let bestYear = -Infinity
+  for (const [key, value] of Object.entries(node)) {
+    if (!value || typeof value !== 'object' || !('text' in value)) continue
+    const year = extractYears(key).pop() ?? extractYears(value.text).pop() ?? -Infinity
+    if (year > bestYear) {
+      bestYear = year
+      bestText = value.text
+    }
+  }
+  if (!bestText) return undefined
+
+  const numbers = extractNumbers(bestText.replaceAll(',', ''))
+  if (!numbers.length) return undefined
+
+  const scale = /trillion/i.test(bestText)
+    ? 1e12
+    : /billion/i.test(bestText)
+      ? 1e9
+      : /million/i.test(bestText)
+        ? 1e6
+        : 1
+  return {
+    unit: '$',
+    year: bestYear === -Infinity ? undefined : bestYear,
+    amount: Math.round(numbers[0] * scale),
+  }
+}
+
+const getMethaneEmissions = (data: FactbookResponse): Amount<'megatons'> | undefined => {
+  // Factbook moved methane out of 'Air pollutants' into its own section, broken
+  // out by source in kilotonnes ("20,500.6 kt") with no single total. Sum the
+  // sources and convert kt -> megatons (1 Mt = 1000 kt) to match CO2's unit.
+  const sources = data.Environment['Methane emissions']
+  if (!sources) return undefined
+
+  let kilotonnes: number | undefined = undefined
+  let year: number | undefined = undefined
+  for (const key of ['energy', 'agriculture', 'waste', 'other'] as const) {
+    const text = sources[key]?.text
+    if (!text) continue
+    const numbers = extractNumbers(text.replaceAll(',', ''))
+    if (!numbers.length) continue
+    kilotonnes = (kilotonnes ?? 0) + numbers[0]
+    year = year ?? extractYears(text).pop()
+  }
+
+  if (kilotonnes === undefined) return undefined
+
+  return {
+    unit: 'megatons',
+    year,
+    amount: Math.round((kilotonnes / 1000) * 1000) / 1000,
   }
 }
 

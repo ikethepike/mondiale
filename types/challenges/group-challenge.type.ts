@@ -213,6 +213,71 @@ export const GROUP_CHALLENGES: {
     id: 'government.corruptionIndex',
     countriesPerPlayer: {},
   },
+  'government.humanDevelopmentIndex': {
+    _type: 'group-challenge',
+    id: 'government.humanDevelopmentIndex',
+    countriesPerPlayer: {},
+  },
+  'government.happiness': {
+    _type: 'group-challenge',
+    id: 'government.happiness',
+    countriesPerPlayer: {},
+  },
+  'economics.gdpTotal': {
+    _type: 'group-challenge',
+    id: 'economics.gdpTotal',
+    countriesPerPlayer: {},
+  },
+  'economics.gdpGrowth': {
+    _type: 'group-challenge',
+    id: 'economics.gdpGrowth',
+    countriesPerPlayer: {},
+  },
+  'economics.publicDebt': {
+    _type: 'group-challenge',
+    id: 'economics.publicDebt',
+    countriesPerPlayer: {},
+  },
+  'infrastructure.mobileSubscriptions': {
+    _type: 'group-challenge',
+    id: 'infrastructure.mobileSubscriptions',
+    countriesPerPlayer: {},
+  },
+  'infrastructure.airports': {
+    _type: 'group-challenge',
+    id: 'infrastructure.airports',
+    countriesPerPlayer: {},
+  },
+  'energy.electricityAccess': {
+    _type: 'group-challenge',
+    id: 'energy.electricityAccess',
+    countriesPerPlayer: {},
+  },
+  'energy.fossilFuels': {
+    _type: 'group-challenge',
+    id: 'energy.fossilFuels',
+    countriesPerPlayer: {},
+  },
+  'people.netMigration': {
+    _type: 'group-challenge',
+    id: 'people.netMigration',
+    countriesPerPlayer: {},
+  },
+  'people.birthRate': {
+    _type: 'group-challenge',
+    id: 'people.birthRate',
+    countriesPerPlayer: {},
+  },
+  'people.urbanization': {
+    _type: 'group-challenge',
+    id: 'people.urbanization',
+    countriesPerPlayer: {},
+  },
+  'environment.methaneEmissions': {
+    _type: 'group-challenge',
+    id: 'environment.methaneEmissions',
+    countriesPerPlayer: {},
+  },
 } as const
 
 export type GroupChallengeAccessorId =
@@ -256,3 +321,16 @@ export type GroupChallengeAccessorId =
   | 'government.amountOfMilitaryConflicts'
   | 'government.democracyIndex'
   | 'government.corruptionIndex'
+  | 'government.humanDevelopmentIndex'
+  | 'government.happiness'
+  | 'economics.gdpTotal'
+  | 'economics.gdpGrowth'
+  | 'economics.publicDebt'
+  | 'infrastructure.mobileSubscriptions'
+  | 'infrastructure.airports'
+  | 'energy.electricityAccess'
+  | 'energy.fossilFuels'
+  | 'people.netMigration'
+  | 'people.birthRate'
+  | 'people.urbanization'
+  | 'environment.methaneEmissions'

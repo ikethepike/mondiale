@@ -9,6 +9,8 @@ const OUTPUT_FILE = `data/owid.gen.ts`
  * governance indices. Each grapher slug exposes `?csvType=full` as clean CSV.
  *  - democracyIndex: V-Dem Electoral Democracy Index (0–1, higher = more democratic)
  *  - corruptionIndex: Transparency International CPI (0–100, higher = LESS corrupt)
+ *  - humanDevelopmentIndex: UNDP HDI (0–1, higher = more developed)
+ *  - happiness: World Happiness Report Cantril-ladder score (0–10, higher = happier)
  */
 const METRICS = {
   democracyIndex: {
@@ -18,6 +20,14 @@ const METRICS = {
   corruptionIndex: {
     slug: 'TI-corruption-perception-index',
     column: 'Corruption Perceptions Index',
+  },
+  humanDevelopmentIndex: {
+    slug: 'human-development-index',
+    column: 'Human Development Index',
+  },
+  happiness: {
+    slug: 'happiness-cantril-ladder',
+    column: 'Self-reported life satisfaction',
   },
 } as const
 

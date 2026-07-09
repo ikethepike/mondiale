@@ -201,6 +201,14 @@ export type FactbookResponse = {
       'from petroleum and other liquids'?: TextNode
       'from consumed natural gas'?: TextNode
     }
+    // Factbook likewise moved methane out of 'Air pollutants'; it is now broken
+    // out by source in kilotonnes (no single total), so we sum these.
+    'Methane emissions'?: {
+      energy?: TextNode
+      agriculture?: TextNode
+      waste?: TextNode
+      other?: TextNode
+    }
     Climate?: TextNode
     'Land use'?: {
       'agricultural land'?: TextNode
@@ -453,8 +461,9 @@ export type FactbookResponse = {
       'annual freight traffic on registered air carriers'?: TextNode
     }
     'Civil aircraft registration country code prefix'?: TextNode
-    Airports?: {
-      total: TextNode
+    // Factbook flattened Airports from '{ total }' to a bare TextNode; keep both.
+    Airports?: TextNode & {
+      total?: TextNode
     }
     'Airports - with paved runways'?: {
       total?: TextNode

@@ -14,6 +14,7 @@ export interface ChallengeConfiguration {
     | 'health'
     | 'religion'
     | 'environment'
+    | 'energy'
     | 'human rights'
   phrasing: string
   markers?: ChallengeMarkers

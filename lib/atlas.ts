@@ -33,13 +33,19 @@ export const ATLAS_SECTIONS: AtlasSection[] = [
       'people.medianAge',
       'people.childrenPerWoman',
       'people.populationGrowthRate',
+      'people.birthRate',
+      'people.netMigration',
+      'people.urbanization',
     ],
   },
   {
     heading: 'Economy',
     accessors: [
       'economics.gdpPerCapita',
+      'economics.gdpTotal',
+      'economics.gdpGrowth',
       'economics.inflation',
+      'economics.publicDebt',
       'economics.populationBelowPovertyLine',
       'unemployment.total',
       'unemployment.youth',
@@ -47,7 +53,13 @@ export const ATLAS_SECTIONS: AtlasSection[] = [
   },
   {
     heading: 'Governance',
-    accessors: ['government.democracyIndex', 'government.corruptionIndex', 'economics.equality'],
+    accessors: [
+      'government.democracyIndex',
+      'government.corruptionIndex',
+      'government.humanDevelopmentIndex',
+      'government.happiness',
+      'economics.equality',
+    ],
   },
   {
     heading: 'Geography',
@@ -70,7 +82,16 @@ export const ATLAS_SECTIONS: AtlasSection[] = [
   },
   {
     heading: 'Connectivity & environment',
-    accessors: ['infrastructure.internetAccess', 'environment.CO2Emissions', 'environment.renewables'],
+    accessors: [
+      'infrastructure.internetAccess',
+      'infrastructure.mobileSubscriptions',
+      'infrastructure.airports',
+      'energy.electricityAccess',
+      'energy.fossilFuels',
+      'environment.CO2Emissions',
+      'environment.methaneEmissions',
+      'environment.renewables',
+    ],
   },
 ]
 

@@ -48,10 +48,20 @@ export interface Country {
     democracyIndex?: Amount<'index'>
     /** Transparency International CPI, 0–100 (higher = less corrupt). */
     corruptionIndex?: Amount<'score'>
+    /** UNDP Human Development Index, 0–1 (higher = more developed), via OWID. */
+    humanDevelopmentIndex?: Amount<'index'>
+    /** World Happiness Report Cantril-ladder score, 0–10, via OWID. */
+    happiness?: Amount<'score'>
   }
   economics: {
     inflation?: Amount<'%'>
     gdpPerCapita?: Amount<'$'>
+    /** Total GDP at purchasing-power parity. */
+    gdpTotal?: Amount<'$'>
+    /** Annual real GDP growth rate (can be negative). */
+    gdpGrowth?: Amount<'%'>
+    /** Public debt as a share of GDP. */
+    publicDebt?: Amount<'%'>
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
     equality?: Amount<'Gini Coefficient'>
@@ -78,6 +88,14 @@ export interface Country {
   infrastructure: {
     rail?: Amount<'km'>
     internetAccess?: Amount<'%'>
+    mobileSubscriptions?: Amount<'per 100 people'>
+    airports?: Amount<'airports'>
+  }
+  energy: {
+    /** Share of population with access to electricity. */
+    electricityAccess?: Amount<'%'>
+    /** Share of electricity generated from fossil fuels. */
+    fossilFuels?: Amount<'%'>
   }
   gender: {
     womenInParliament?: Amount<'%'>
@@ -89,6 +107,11 @@ export interface Country {
     medianAge?: Amount<'years'>
     childrenPerWoman?: Amount<'children'>
     populationGrowthRate?: Amount<'%'>
+    /** Net migration rate per 1000 population (can be negative). */
+    netMigration?: Amount<'per 1000 people'>
+    birthRate?: Amount<'per 1000 people'>
+    /** Share of population living in urban areas. */
+    urbanization?: Amount<'%'>
   }
   education: {
     literacy?: Amount<'%'>
@@ -109,6 +132,7 @@ export interface Country {
   }
   environment: {
     CO2Emissions?: Amount<'megatons'>
+    methaneEmissions?: Amount<'megatons'>
     renewables?: Amount<'%'>
     parisAgreement?: boolean
   }

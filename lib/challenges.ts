@@ -1151,6 +1151,13 @@ const dealHigherLower = (
   // streak on any stat — widen to the world before giving up on the variant
   for (const candidates of [countryPool, [...ISOCountryCodes]]) {
     for (const accessorId of viableAccessors) {
+      // Bounded indices (V-Dem 0–1, CPI 0–100, HDI 0–1, happiness 0–10) cluster
+      // tightly, so a relative 15% gap almost never holds and they'd never be
+      // dealt. For those, require an absolute gap of 8% of the scale's range
+      // instead (e.g. ≥0.08 on a 0–1 index) so they produce clean duels.
+      const scale = getChallengeDetails(accessorId).scale
+      const absoluteGap = scale ? (scale.max - scale.min) * 0.08 : undefined
+
       const pool = shuffleArray(
         candidates.filter(isoCode => !!getValueByAccessorID(isoCode, accessorId))
       )
@@ -1161,9 +1168,14 @@ const dealHigherLower = (
         const b = pool[index + 1]
         const valueA = getValueByAccessorID(a, accessorId)?.amount ?? 0
         const valueB = getValueByAccessorID(b, accessorId)?.amount ?? 0
-        // Skip near-ties: stale data shouldn't decide a coin-flip question
-        if (Math.min(valueA, valueB) === 0) continue
-        if (Math.abs(valueA - valueB) / Math.max(valueA, valueB) < 0.15) continue
+        // Skip near-ties: stale data shouldn't decide a coin-flip question.
+        const gap = Math.abs(valueA - valueB)
+        if (absoluteGap !== undefined) {
+          if (gap < absoluteGap) continue
+        } else {
+          if (Math.min(valueA, valueB) === 0) continue
+          if (gap / Math.max(valueA, valueB) < 0.15) continue
+        }
         pairs.push({ a, b })
       }
 
@@ -1826,6 +1838,114 @@ export const getChallengeDetails = (
       // corrupt, right = high score = least corrupt), so a plain 0–100 plot
       // of the raw CPI lands correctly — no inversion needed.
       scale: { min: 0, max: 100 },
+    },
+    'government.humanDevelopmentIndex': {
+      topic: 'general knowledge',
+      phrasing: 'Rank these countries by their Human Development Index',
+      markers: {
+        most: 'most developed',
+        least: 'least developed',
+      },
+      scale: { min: 0, max: 1 },
+    },
+    'government.happiness': {
+      topic: 'general knowledge',
+      phrasing: 'Rank these countries by their World Happiness score',
+      markers: {
+        most: 'happiest',
+        least: 'least happy',
+      },
+      // Cantril-ladder scores run roughly 1–8 in practice; a 0–10 band keeps the
+      // plotted marker legible against the ladder's full theoretical range.
+      scale: { min: 0, max: 10 },
+    },
+    'economics.gdpTotal': {
+      topic: 'economics',
+      phrasing: 'Rank these countries by total GDP (purchasing power parity)',
+      markers: {
+        most: 'largest economy',
+        least: 'smallest economy',
+      },
+    },
+    'economics.gdpGrowth': {
+      topic: 'economics',
+      phrasing: 'Rank these countries by their GDP growth rate',
+      markers: {
+        most: 'fastest growing',
+        least: 'slowest growing',
+      },
+    },
+    'economics.publicDebt': {
+      topic: 'economics',
+      phrasing: 'Rank these countries by public debt as a percentage of GDP',
+      markers: {
+        most: 'highest debt',
+        least: 'lowest debt',
+      },
+    },
+    'infrastructure.mobileSubscriptions': {
+      topic: 'infrastructure',
+      phrasing: 'Rank these countries by mobile phone subscriptions per 100 people',
+      markers: {
+        most: 'most subscriptions',
+        least: 'fewest subscriptions',
+      },
+    },
+    'infrastructure.airports': {
+      topic: 'infrastructure',
+      phrasing: 'Rank these countries by number of airports',
+      markers: {
+        most: 'most airports',
+        least: 'fewest airports',
+      },
+    },
+    'energy.electricityAccess': {
+      topic: 'energy',
+      phrasing: 'Rank these countries by the percentage of people with electricity access',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
+    },
+    'energy.fossilFuels': {
+      topic: 'energy',
+      phrasing: 'Rank these countries by the share of electricity from fossil fuels',
+      markers: {
+        most: 'highest percent',
+        least: 'lowest percent',
+      },
+    },
+    'people.netMigration': {
+      topic: 'people',
+      phrasing: 'Rank these countries by net migration rate per 1000 people',
+      markers: {
+        most: 'most inward migration',
+        least: 'most outward migration',
+      },
+    },
+    'people.birthRate': {
+      topic: 'people',
+      phrasing: 'Rank these countries by birth rate per 1000 people',
+      markers: {
+        most: 'highest birth rate',
+        least: 'lowest birth rate',
+      },
+    },
+    'people.urbanization': {
+      topic: 'people',
+      phrasing: 'Rank these countries by the percentage of people living in urban areas',
+      markers: {
+        most: 'most urban',
+        least: 'most rural',
+      },
+    },
+    'environment.methaneEmissions': {
+      topic: 'environment',
+      phrasing: 'Rank these countries by their methane emissions',
+      markers: {
+        most: 'most emissions',
+        least: 'fewest emissions',
+      },
     },
   }
 
