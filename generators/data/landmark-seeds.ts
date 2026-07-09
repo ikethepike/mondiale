@@ -23,6 +23,20 @@ export interface LandmarkSeed {
   country: ISOCountryCode
   kind: LandmarkKind
   /**
+   * Pin the exact Wikidata item, e.g. `Q243`.
+   *
+   * The generator otherwise resolves the Q-id by searching the name, and that
+   * search falls back to its first hit when nothing matches the seed's country
+   * — which quietly picks the wrong item when a name is shared. Oman has more
+   * than one Sultan Qaboos Grand Mosque; the search found a different one,
+   * 185km from Muscat. Both were in Oman, so the point-in-country check that
+   * catches the cross-border failures could not see it.
+   *
+   * Set this whenever a landmark's coordinates, photo, or city look like they
+   * belong to somewhere else.
+   */
+  qid?: string
+  /**
    * Image override, for landmarks where Wikidata's auto-picked photo is the
    * wrong subject or low quality. `imageUrl` is a direct link to any image
    * file; `unsplashPhotoId` is an EXACT Unsplash photo (the code at the end of
@@ -169,7 +183,8 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   },
   { name: 'Schönbrunn Palace', country: 'AT', kind: 'monument' },
   { name: 'Hallstatt', country: 'AT', kind: 'urban' },
-  { name: "Grand Duke's Palace Luxembourg", country: 'LU', kind: 'monument' },
+  // Without the pin, the name search finds Grand Duke Henri — the man, not the palace.
+  { name: "Grand Duke's Palace Luxembourg", country: 'LU', kind: 'monument', qid: 'Q1205254' },
 
   // --- Africa ---------------------------------------------------------------
   { name: 'Great Pyramid of Giza', country: 'EG', kind: 'ancient' },
@@ -281,7 +296,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Palm Jumeirah', country: 'AE', kind: 'urban' },
   { name: 'Petra', country: 'JO', kind: 'ancient' },
   { name: 'Wadi Rum', country: 'JO', kind: 'monument' },
-  { name: 'Registan', country: 'UZ', kind: 'ancient' },
+  { name: 'Registan', country: 'UZ', kind: 'ancient', qid: 'Q1373583' },
   { name: 'Ha Long Bay', country: 'VN', kind: 'natural' },
   { name: 'Hoi An Ancient Town', country: 'VN', kind: 'urban' },
   { name: 'Shwedagon Pagoda', country: 'MM', kind: 'religious' },
@@ -334,7 +349,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     kind: 'natural',
     unsplash: 'Great Barrier Reef aerial Australia',
   },
-  { name: 'Twelve Apostles', country: 'AU', kind: 'natural' },
+  { name: 'Twelve Apostles', country: 'AU', kind: 'natural', qid: 'Q475623' },
   { name: 'Hobbiton Movie Set', country: 'NZ', kind: 'urban' },
   { name: 'Milford Sound', country: 'NZ', kind: 'natural' },
   // Supplied URL was a 335px Google thumbnail — this is the tower at 2151px.
@@ -373,6 +388,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Arenal Volcano', country: 'CR', kind: 'natural' },
   {
     name: 'El Castillo San Salvador',
+    qid: 'Q2920340', // the search finds the University of El Salvador
     country: 'CU',
     kind: 'monument',
     imageUrl:
@@ -400,7 +416,8 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Easter Island', country: 'CL', kind: 'natural' },
   { name: 'Torres del Paine', country: 'CL', kind: 'natural' },
   { name: 'Valle de la Luna Chile', country: 'CL', kind: 'natural' },
-  { name: 'Cartagena Walled City', country: 'CO', kind: 'urban' },
+  // Unpinned, the search finds Cartagena in SPAIN and its 3rd-century BC Punic wall.
+  { name: 'Cartagena Walled City', country: 'CO', kind: 'urban', qid: 'Q657461' },
   { name: 'Ciudad Perdida', country: 'CO', kind: 'ancient' },
   { name: 'Galápagos Islands', country: 'EC', kind: 'natural' },
   { name: 'Middle of the World City', country: 'EC', kind: 'urban' },
@@ -507,7 +524,8 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: "Prince's Palace of Monaco", country: 'MC', kind: 'monument' },
   { name: 'Guaita', country: 'SM', kind: 'monument' },
   { name: 'Three Towers of San Marino', country: 'SM', kind: 'urban' },
-  { name: 'Church of Saint Sava', country: 'RS', kind: 'religious' },
+  // The name search landed 100km south of Belgrade, in open countryside.
+  { name: 'Church of Saint Sava', country: 'RS', kind: 'religious', qid: 'Q330385' },
   { name: 'Petrovaradin Fortress', country: 'RS', kind: 'monument' },
   {
     name: 'Bratislava Castle',
@@ -521,7 +539,9 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
 
   // --- More natural wonders worldwide ---------------------------------------
   { name: 'Dead Sea', country: 'JO', kind: 'natural' },
-  { name: 'Wave Rock', country: 'AU', kind: 'natural' },
+  // Wikipedia's search ranking drifts: on one run "Wave Rock" resolved to the
+  // new wave music genre. Pinning the item makes the lookup deterministic.
+  { name: 'Wave Rock', country: 'AU', kind: 'natural', qid: 'Q1754627' },
   {
     name: 'Pink Lake Hillier',
     country: 'AU',
@@ -544,6 +564,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Sahara Desert', country: 'DZ', kind: 'natural' },
   {
     name: 'Namib Desert',
+    qid: 'Q131377', // the article is geotagged 197km from our point
     country: 'NA',
     kind: 'natural',
     unsplash: 'Namib Desert Sossusvlei dunes Namibia',
@@ -583,14 +604,17 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // Wikidata's photo is a signposted doorway, not the Wall itself.
   { name: 'Western Wall', country: 'IL', kind: 'religious', unsplashPhotoId: 'd_so1tRFKJk' },
   { name: 'Badshahi Mosque', country: 'PK', kind: 'religious' },
-  { name: 'Band-e Amir', country: 'AF', kind: 'natural' },
+  { name: 'Band-e Amir', country: 'AF', kind: 'natural', qid: 'Q613251' },
   { name: 'Erdene Zuu Monastery', country: 'MN', kind: 'religious' },
   { name: 'Kourion', country: 'CY', kind: 'ancient' },
   { name: 'Shibam', country: 'YE', kind: 'urban' },
   {
+    // Oman has several mosques by this name; the search found one 185km from
+    // Muscat, so pin the Muscat landmark itself.
     name: 'Sultan Qaboos Grand Mosque',
     country: 'OM',
     kind: 'religious',
+    qid: 'Q1548443',
     unsplashPhotoId: 'plMrhMCk4bQ',
   },
   // The default photo is the modern Islamic Centre; this is the coral-stone
@@ -691,7 +715,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: "Nelson's Dockyard", country: 'AG', kind: 'monument' },
   { name: 'Molinere Underwater Sculpture Park', country: 'GD', kind: 'monument' },
   { name: 'Brimstone Hill Fortress', country: 'KN', kind: 'monument' },
-  { name: 'Pitons', country: 'LC', kind: 'natural' },
+  { name: 'Pitons', country: 'LC', kind: 'natural', qid: 'Q639487' },
   { name: 'Maracas Bay', country: 'TT', kind: 'natural' },
   { name: "Dunn's River Falls", country: 'JM', kind: 'natural' },
   { name: 'Citadelle Laferrière', country: 'HT', kind: 'monument' },
@@ -723,6 +747,7 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // explicitly chosen image instead.
   {
     name: 'Mount Nimba',
+    qid: 'Q924276', // the search finds Mount Richard-Molard
     country: 'GN',
     kind: 'natural',
     imageUrl:

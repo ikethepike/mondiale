@@ -14,3 +14,6 @@ generators/vendors/gemini/.cache/
 
 # Regenerated report, not source of truth
 generators/data/currency-coin-review.txt
+
+# Regenerated source material for the hand-written landmark descriptions
+generators/data/landmark-facts-review.txt

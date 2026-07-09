@@ -28,15 +28,20 @@
     <Transition name="dossier">
       <article v-if="landmark && result" class="pane dossier tr">
         <div class="pane-content">
-          <img class="dossier-photo" :src="landmark.image" :alt="landmark.name" />
-          <div class="dossier-copy">
-            <strong>{{ landmark.name }}</strong>
-            <span
-              >{{ landmark.city ? `${landmark.city}, ` : ''
-              }}{{ countryName(landmark.country) }}</span
-            >
-            <span class="dossier-kind">{{ KIND_COPY[landmark.kind] }}</span>
+          <div class="dossier-head">
+            <img class="dossier-photo" :src="landmark.image" :alt="landmark.name" />
+            <div class="dossier-copy">
+              <strong>{{ landmark.name }}</strong>
+              <span
+                >{{ landmark.city ? `${landmark.city}, ` : ''
+                }}{{ countryName(landmark.country) }}</span
+              >
+              <span class="dossier-kind">{{ KIND_COPY[landmark.kind] }}</span>
+            </div>
           </div>
+          <p v-if="landmark.description" class="dossier-description">
+            {{ landmark.description }}
+          </p>
         </div>
       </article>
     </Transition>
@@ -213,11 +218,23 @@ header {
   max-width: 34rem;
 
   .pane-content {
-    gap: 1.6rem;
+    gap: 1.2rem;
     display: flex;
     padding: 1.6rem;
-    align-items: center;
+    flex-flow: column nowrap;
   }
+}
+
+.dossier-head {
+  gap: 1.6rem;
+  display: flex;
+  align-items: center;
+}
+
+.dossier-description {
+  margin: 0;
+  text-align: left;
+  text-wrap: pretty;
 }
 
 .dossier-photo {

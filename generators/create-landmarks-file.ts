@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import type { ISOCountryCode } from '../types/geography.types'
+import { LANDMARK_FACTS } from './data/landmark-facts'
 import { LANDMARK_SEEDS, type LandmarkKind } from './data/landmark-seeds'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
@@ -49,6 +50,8 @@ export interface LandmarkEntry {
   /** Point location (P625), validated to fall in `country`. Powers the
    *  pin-the-landmark round: the distance between a map click and this. */
   coordinates?: LandmarkCoordinates
+  /** A line or two for the reveal, from generators/data/landmark-facts. */
+  description?: string
 }
 
 /** Reject images whose SOURCE is smaller than this — they look bad upscaled. */
@@ -141,9 +144,12 @@ console.log(`Resolving ${LANDMARK_SEEDS.length} landmark Q-ids…`)
 const resolved: { seed: (typeof LANDMARK_SEEDS)[number]; qid: string }[] = []
 for (const seed of LANDMARK_SEEDS) {
   const hasOverride = !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
-  const qid = await resolveQidBySearch(seed.name, {
-    contextCountryQid: isoToQid.get(seed.country),
-  })
+  // A pinned qid is the answer; searching for it could only get it wrong.
+  const qid =
+    seed.qid ??
+    (await resolveQidBySearch(seed.name, {
+      contextCountryQid: isoToQid.get(seed.country),
+    }))
   // The Q-id only supplies the fallback photo and the P131 city label, so an
   // overridden seed still belongs in the run even when its name doesn't
   // resolve — it just loses the `city` field.
@@ -352,6 +358,7 @@ for (const { seed, qid } of resolved) {
   const locationQid = locationQidOf.get(qid)
   const city = locationQid ? locationLabels.get(locationQid) : undefined
   const coordinates = coordinateOf.get(qid)
+  const description = LANDMARK_FACTS[slug]
   mapping[slug] = {
     name: seed.name,
     country: seed.country,
@@ -359,6 +366,7 @@ for (const { seed, qid } of resolved) {
     image: publicPath,
     ...(city ? { city } : {}),
     ...(coordinates ? { coordinates } : {}),
+    ...(description ? { description } : {}),
   }
   done++
   process.stdout.write(`\r  ${done + failed + rejected}/${resolved.length} photos`)
