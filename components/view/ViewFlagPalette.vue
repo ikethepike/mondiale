@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Flag Palette`"
       title="Whose flag is this?"
-      stakes="Only the colours — no flag. Name the country before the clock runs out. First correct guess wins the points."
+      stakes="Only the colours — no flag. Name the country before the clock runs out. The sooner you name it, the more it's worth."
       @done="start"
     />
 
@@ -53,6 +53,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
+import { buzzFraction } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
 
@@ -82,11 +83,14 @@ const regionRevealed = computed(() => {
 
 const submitRound = (correct: boolean) => {
   if (submitted.value) return
+  const active = challenge.value
   gameStore.map.status = correct ? 'correct' : undefined
-  submitOnce(
-    correct && challenge.value ? [challenge.value.country] : [],
-    correct ? (challenge.value?.maximumPoints ?? 0) : 0
-  )
+  // Name it sooner, keep more of the pot.
+  const score =
+    correct && active
+      ? Math.round(active.maximumPoints * buzzFraction(secondsLeft.value / active.durationSeconds))
+      : 0
+  submitOnce(correct && active ? [active.country] : [], score)
 }
 
 const start = () => {

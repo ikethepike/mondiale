@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Name That Water`"
       :title="challenge.kind === 'lake' ? 'Which lake is this?' : 'Which body of water is this?'"
-      :stakes="`It's glowing on the map. Three guesses, ${DURATION_SECONDS} seconds — earlier and fewer guesses score higher.`"
+      :stakes="`It's glowing on the map. ${challenge.maximumGuesses} guesses, ${challenge.durationSeconds} seconds — earlier and fewer guesses score higher.`"
       @done="begin"
     />
 
@@ -61,7 +61,7 @@
     </section>
 
     <footer v-if="!resolved">
-      <ChallengeTimer :value="secondsLeft" :total="DURATION_SECONDS" />
+      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
     </footer>
   </div>
 </template>
@@ -70,12 +70,10 @@ import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
+import { attemptFraction } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { ISOCountryCode } from '~~/types/geography.types'
-
-const DURATION_SECONDS = 45
-const MAX_ATTEMPTS = 3
 
 // The glowing feature IS the question — countries stay for context, so this
 // mode opts out of the composable's shapes-only default.
@@ -92,13 +90,14 @@ const {
   gameStore,
 } = useGroupChallenge('name-water-challenge', { solo: false })
 
-// `NameWaterChallenge` carries no `durationSeconds`, so the composable's
-// countdown never arms — this mode paces itself off the constant above.
-const secondsLeft = ref(DURATION_SECONDS)
+// This mode runs its own clock, because the reveal holds after the countdown
+// stops. `begin` below shadows the composable's, which is never destructured —
+// calling it as well would arm a second countdown off the same durationSeconds.
+const secondsLeft = ref(0)
 const resolved = ref(false)
 const resolvedCorrectly = ref(false)
 const attempts = ref(0)
-const attemptsLeft = computed(() => MAX_ATTEMPTS - attempts.value)
+const attemptsLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - attempts.value)
 
 /** Candidate names for suggestions, loaded with the geometry chunk. */
 interface WaterOption {
@@ -171,7 +170,7 @@ const resolve = (correct: boolean) => {
   gameStore.map.labels = true
 
   const clientScore = correct
-    ? Math.round(active.maximumPoints * (1 - (attempts.value - 1) * 0.3))
+    ? Math.round(active.maximumPoints * attemptFraction(attempts.value, active.maximumGuesses))
     : 0
 
   revealTimer = setTimeout(() => submitOnce([], clientScore), REVEAL_HOLD_MS)
@@ -180,6 +179,7 @@ const resolve = (correct: boolean) => {
 const begin = () => {
   showInterstitial.value = false
   started.value = true
+  secondsLeft.value = challenge.value?.durationSeconds ?? 0
   nextTick(() => input.value?.focus())
 
   countdown = setInterval(() => {
@@ -201,7 +201,7 @@ const pick = (option: WaterOption) => {
     return resolve(true)
   }
 
-  if (attempts.value >= MAX_ATTEMPTS) return resolve(false)
+  if (attempts.value >= active.maximumGuesses) return resolve(false)
   // No label: the guessed feature narrows the single shared target.
   announce({ kind: 'wrong', hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
 }

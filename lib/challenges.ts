@@ -42,6 +42,7 @@ import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { haversineKm, type LatLng } from './geo'
+import { attemptDecayScore, attemptFraction } from './scoring'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS, variantCountries } from './variant'
@@ -471,6 +472,10 @@ const getWaterBlitzChallenge = async (
   }
 }
 
+/** Names allowed before the round resolves; each spent guess is worth less. */
+const NAME_WATER_ATTEMPTS = 3
+const NAME_WATER_DURATION_SECONDS = 45
+
 const getNameWaterChallenge = async (
   game: gameTypes.Game
 ): Promise<NameWaterChallenge | undefined> => {
@@ -484,6 +489,8 @@ const getNameWaterChallenge = async (
     featureName: feature.name,
     kind: feature.kind,
     countries: feature.countries,
+    maximumGuesses: NAME_WATER_ATTEMPTS,
+    durationSeconds: NAME_WATER_DURATION_SECONDS,
     maximumPoints: maximumRoundPoints(game),
   }
 }
@@ -521,10 +528,19 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
   }
 }
 
+/** Picks allowed in the multiple-choice variants before the round resolves. */
+const CAPITAL_GUESS_ATTEMPTS = 2
+
+/** What a last-attempt win keeps. Steep on purpose: with three options and two
+ *  picks, guessing blind lands it two times in three. */
+const CAPITAL_GUESS_LAST_ATTEMPT_FRACTION = 0.4
+
 /**
  * Capital-guess: show a capital-city skyline photo and name the country (live
- * guesses shown). Deals only where a capital photo exists. Client-scored
- * all-or-nothing like flag-palette/silhouette.
+ * guesses shown). Deals only where a capital photo exists.
+ *
+ * The option variants give two picks, the second worth less. Hard mode
+ * free-types without a cap and scores on the clock instead.
  */
 const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge | undefined => {
   const pool = variantCountries(game.variant)
@@ -534,7 +550,9 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   // Outside hard mode, offer multiple-choice flag options; hard mode free-types.
   let options: ISOCountryCode[] | undefined
   if (game.difficulty !== 'hard') {
-    const decoys = pickDecoys(country, pool, 3, { preferRegion: true })
+    const decoys = pickDecoys(country, pool, game.difficulty === 'easy' ? 2 : 3, {
+      preferRegion: true,
+    })
     if (decoys) options = shuffleArray([country, ...decoys])
   }
 
@@ -543,10 +561,25 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
     country,
     image: CAPITALS[country]!.image!,
     options,
+    ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
     durationSeconds: 30,
     maximumPoints: maximumRoundPoints(game),
   }
 }
+
+/** Points for naming the country on attempt `attempt` (1-based) of `attempts`.
+ *  Exported for the View, which reports the score it earned. */
+export const capitalGuessScore = (
+  attempt: number,
+  attempts: number,
+  maximumPoints: number
+): number =>
+  Math.max(
+    1,
+    Math.round(
+      maximumPoints * attemptFraction(attempt, attempts, CAPITAL_GUESS_LAST_ATTEMPT_FRACTION)
+    )
+  )
 
 /**
  * Pin-landmark: a photo, and the whole world to drop a pin on.
@@ -729,7 +762,7 @@ const getNoMansLandChallenge = async (
 
 /**
  * Distance between two projected map-space boxes, centre to centre. The
- * recognition dataset and MAP_BOUNDS share the map's fitted Robinson space,
+ * recognition dataset and the map data share the map's fitted Robinson space,
  * so this is a subtraction rather than a reprojection.
  *
  * Deliberately NOT border-hops: Cyprus has no land borders at all, so a
@@ -739,6 +772,19 @@ const boxDistance = (
   a: readonly [number, number, number, number],
   b: readonly [number, number, number, number]
 ) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
+
+/**
+ * A country's mainland: its largest ring. The whole-country bbox is useless for
+ * distance — the US box spans the Pacific to reach Guam, putting its centre
+ * closer to Russia than to Canada.
+ */
+const mainlandBox = (
+  rings: readonly (readonly [number, number, number, number])[] | undefined,
+  fallback: readonly [number, number, number, number]
+) =>
+  rings?.length
+    ? rings.reduce((largest, ring) => (ring[2] * ring[3] > largest[2] * largest[3] ? ring : largest))
+    : fallback
 
 /** Beyond this projected distance a guess is worth nothing. Tuned so a
  *  neighbouring country still scores well and another continent scores zero. */
@@ -761,14 +807,17 @@ export const scoreGhostState = async ({
   if (!tapped) return { scored: 0, maximum }
   if (tapped === challenge.parent) return { scored: maximum, maximum }
 
-  // Dynamic, like the water dealer: MAP_BOUNDS must not ride into client
+  // Dynamic, like the water dealer: the map geometry must not ride into client
   // bundles through this module.
-  const { MAP_BOUNDS } = await import('~~/data/map.gen')
+  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
   const tappedBounds = MAP_BOUNDS[tapped]
   const parentBounds = MAP_BOUNDS[challenge.parent]
   if (!tappedBounds || !parentBounds) return { scored: 0, maximum }
 
-  const fraction = 1 - boxDistance(tappedBounds, parentBounds) / GHOST_STATE_FALLOFF
+  const tappedCentre = mainlandBox(MAP_REGIONS[tapped], tappedBounds)
+  const parentCentre = mainlandBox(MAP_REGIONS[challenge.parent], parentBounds)
+
+  const fraction = 1 - boxDistance(tappedCentre, parentCentre) / GHOST_STATE_FALLOFF
   // `scored` feeds board movement 1:1 — never emit NaN or a negative.
   const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
   return { scored: Math.min(scored, maximum), maximum }
@@ -918,8 +967,8 @@ export const scoreTraversalSubmission = ({
   }
 
   const minimumGuesses = Math.max(0, challenge.optimalHops - 1)
-  const wastedGuesses = Math.max(0, submittedGuesses.length - minimumGuesses)
-  return { scored: Math.max(2, maximum - wastedGuesses * 2), maximum }
+  const wastedGuesses = submittedGuesses.length - minimumGuesses
+  return { scored: attemptDecayScore(wastedGuesses, maximum), maximum }
 }
 
 /** Blitz: points scale with neighbours found; wrong names each cost one. */
@@ -984,7 +1033,7 @@ export const scoreHotCold = ({
   if (!found) return { scored: 0, maximum }
 
   const probes = submittedGuesses.length - 1
-  return { scored: Math.max(2, maximum - probes * 2), maximum }
+  return { scored: attemptDecayScore(probes, maximum), maximum }
 }
 
 /**

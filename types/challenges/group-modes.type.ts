@@ -107,6 +107,9 @@ export interface CapitalGuessChallenge {
   /** Multiple-choice options (includes `country`) — offered outside hard mode,
    *  where players free-type instead. */
   options?: ISOCountryCode[]
+  /** Picks allowed before the round resolves. Set only for the option variants;
+   *  hard mode free-types without a cap and scores on the clock instead. */
+  maximumGuesses?: number
   durationSeconds: number
   maximumPoints: number
 }
@@ -142,6 +145,9 @@ export interface NameWaterChallenge {
   kind: WaterFeatureKind
   /** Shore countries, shown in the reveal/scorecard. */
   countries: ISOCountryCode[]
+  /** Names allowed before the round resolves; each wrong one costs points. */
+  maximumGuesses: number
+  durationSeconds: number
   maximumPoints: number
 }
 

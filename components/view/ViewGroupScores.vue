@@ -122,6 +122,13 @@ const sketchChallenge = computed(() => {
     : undefined
 })
 
+const capitalGuessChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'capital-guess-challenge'
+    ? challenge
+    : undefined
+})
+
 const challengeHeading = computed(() => {
   const challenge = roundChallenge.value
   if (!challenge) return ''
@@ -188,6 +195,12 @@ const explainer = computed(() => {
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
       return 'Spotting the lie is all or nothing.'
+    case 'capital-guess':
+      return capitalGuessChallenge.value?.maximumGuesses
+        ? 'Name it first try for full marks — the second guess is worth less.'
+        : "The sooner you name it, the more it's worth."
+    case 'flag-palette':
+      return "The sooner you name it, the more it's worth."
     case 'river-run':
     case 'shared-shores':
     case 'highlands':
@@ -213,6 +226,10 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answer', correct: 'The Country' }
     case 'two-truths':
       return { submitted: 'Your Verdict', correct: 'The Country' }
+    case 'capital-guess':
+      return { submitted: 'Your Answer', correct: 'The Country' }
+    case 'flag-palette':
+      return { submitted: 'Your Answer', correct: 'The Country' }
     case 'river-run':
       return { submitted: 'Your Answers', correct: 'Every Country It Crosses' }
     case 'shared-shores':

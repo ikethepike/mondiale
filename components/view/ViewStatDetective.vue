@@ -86,6 +86,7 @@ import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { buzzFraction } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -218,7 +219,7 @@ const onGuess = (country: Country) => {
       0,
       (active.clues.length - revealedCount.value) / active.clues.length
     )
-    const clientScore = Math.round(active.maximumPoints * (0.35 + 0.65 * remainingFraction))
+    const clientScore = Math.round(active.maximumPoints * buzzFraction(remainingFraction))
     resolve(country.isoCode, clientScore)
     return
   }
