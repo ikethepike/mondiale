@@ -14,10 +14,22 @@
         <span>Loading...</span>
       </main>
     </Transition>
+
+    <!-- Outside the view swap: a player reaching or clearing the gauntlet is
+         announced to the room whatever anyone happens to be looking at. -->
+    <Interstitial
+      v-if="announcement"
+      :kicker="announcement.kicker"
+      :title="announcement.title"
+      :stakes="announcement.stakes"
+      :tone="announcement.tone"
+      @done="dismiss"
+    />
   </div>
 </template>
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import Interstitial from '~/components/feedback/Interstitial.vue'
 import ModalMoving from '~/components/modal/ModalMoving.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
@@ -39,12 +51,17 @@ import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
 const { update, game, player, currentRound, gameStore } = useClientEvents()
+
+// Mounted here, above the view switch: inside a view it would remount on every
+// phase change, lose the previous-phase map, and announce the same moment again.
+const { announcement, dismiss } = useGameAnnouncements()
 
 interface ActiveView {
   component: Component
