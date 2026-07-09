@@ -51,12 +51,7 @@
     </aside>
 
     <footer v-if="!result">
-      <div class="timer-track" aria-hidden="true">
-        <div
-          class="timer-fill"
-          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
-        />
-      </div>
+      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
 
       <ButtonFilled :disabled="!pin || submitted || !started" @click="lockIn">
         {{ submitted ? 'Locked in' : 'Lock in my pin' }}
@@ -66,6 +61,7 @@
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -294,20 +290,6 @@ footer {
   align-items: center;
   gap: 1.4rem;
   pointer-events: auto;
-}
-
-.timer-track {
-  width: 100%;
-  max-width: 46rem;
-  height: 0.5rem;
-  border-radius: 0.25rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.12);
-  overflow: hidden;
-}
-.timer-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 1s linear;
 }
 
 .pinned {

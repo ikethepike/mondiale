@@ -70,16 +70,14 @@
     </section>
 
     <footer v-if="!resolved">
-      <div class="timer-track" aria-hidden="true">
-        <div
-          class="timer-fill"
-          :style="{ width: `${(revealedClues.length / challenge.clues.length) * 100}%` }"
-        />
-      </div>
+      <!-- Fills as clues land, rather than draining with a clock. Counts the
+           photo clue, so it tracks the "Clue N of M" caption above. -->
+      <ChallengeTimer :value="revealedCount" :total="totalClues" />
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -353,20 +351,5 @@ header {
 footer {
   z-index: 2;
   padding: 2rem;
-}
-
-.timer-track {
-  height: 0.5rem;
-  margin: 0 auto;
-  max-width: 46rem;
-  overflow: hidden;
-  border-radius: 0.25rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.12);
-}
-
-.timer-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 1s linear;
 }
 </style>

@@ -34,12 +34,7 @@
     </section>
 
     <footer>
-      <div class="timer-track" aria-hidden="true">
-        <div
-          class="timer-fill"
-          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
-        />
-      </div>
+      <ChallengeTimer class="timer" :value="secondsLeft" :total="challenge.durationSeconds" />
       <TransitionGroup tag="ol" name="chain" class="found-list">
         <li
           v-for="isoCode in guesses"
@@ -55,6 +50,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -227,19 +223,8 @@ footer {
   padding: 2rem;
 }
 
-.timer-track {
-  height: 0.5rem;
+.timer {
   margin: 0 auto 1.6rem;
-  max-width: 46rem;
-  border-radius: 0.25rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.12);
-  overflow: hidden;
-}
-
-.timer-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 1s linear;
 }
 
 .found-list {

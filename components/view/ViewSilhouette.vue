@@ -38,12 +38,7 @@
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <!-- Ticker sits above the input so the input's suggestion list can open
            downward into clear space without the timer cutting across it. -->
-      <div class="timer-track" aria-hidden="true">
-        <div
-          class="timer-fill"
-          :style="{ width: `${(secondsLeft / challenge.durationSeconds) * 100}%` }"
-        />
-      </div>
+      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
       <div class="guess-box">
         <CountryGuessInput
           ref="guessInput"
@@ -58,6 +53,7 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -285,21 +281,5 @@ footer {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
-}
-
-.timer-track {
-  width: 100%;
-  height: 0.5rem;
-  margin: 0 auto;
-  max-width: 46rem;
-  overflow: hidden;
-  border-radius: 0.25rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.12);
-}
-
-.timer-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 1s linear;
 }
 </style>
