@@ -16,6 +16,7 @@ export const updateConfigurationHandler = defineGameHandler(
     game.difficulty = configuration.difficulty
     game.length = configuration.length
     game.variant = configuration.variant
+    game.liveGuesses = configuration.liveGuesses
     game.tiles = generateTiles(game.length)
 
     await server.updateGameState(game)

@@ -115,6 +115,18 @@
                     @change="updateConfiguration"
                   />
                 </div>
+
+                <div class="configuration-block">
+                  <span class="config-label">Live guesses</span>
+                  <SegmentedControl
+                    name="game-liveGuesses"
+                    label="Live guesses"
+                    :options="['on', 'off']"
+                    :model-value="game.liveGuesses === false ? 'off' : 'on'"
+                    :disabled="!isPlayerHost"
+                    @change="updateConfiguration"
+                  />
+                </div>
               </div>
             </form>
           </div>
@@ -219,11 +231,13 @@ const updateConfiguration = async () => {
   if (!breakdown.value) return
 
   const data = new FormData(breakdown.value)
-  const configuration: { [key: string]: FormDataEntryValue } = {}
+  const configuration: { [key: string]: FormDataEntryValue | boolean } = {}
   for (const [key, value] of data.entries()) {
     // Bind up to object
     configuration[key.replace('game-', '')] = value
   }
+  // Every FormData value arrives as a string; the toggle wants a boolean.
+  configuration.liveGuesses = configuration.liveGuesses === 'on'
 
   if (!isValidGameConfiguration(configuration)) {
     throw new TypeError(`Invalid configuration passed`)

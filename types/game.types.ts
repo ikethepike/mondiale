@@ -17,6 +17,9 @@ export interface Game {
   length: GameLength
   variant: GameVariant
   difficulty: GameDifficulty
+  /** Show opponents' guesses as they land. Absent on games created before the
+   *  setting existed, so read it as `!== false` — never as truthy. */
+  liveGuesses?: boolean
   players: { [playerId: string]: Player }
   /** Set while a new round has been staged (pushed to `rounds`) but its settle
    *  pause hasn't elapsed yet. Guards the staging + reveal so each fires once
@@ -83,13 +86,17 @@ export interface GameConfiguration {
   difficulty: GameDifficulty
   variant: GameVariant
   length: GameLength
+  liveGuesses: boolean
 }
 
 export const isValidGameConfiguration = (data: unknown): data is GameConfiguration => {
   if (!data) return false
   if (typeof data !== 'object') return false
-  if (![`difficulty`, 'length', 'variant'].every(key => Reflect.has(data, key))) return false
+  if (![`difficulty`, 'length', 'variant', 'liveGuesses'].every(key => Reflect.has(data, key)))
+    return false
   if (!isValidGameVariant((data as GameConfiguration).variant)) return false
+  // FormData hands every field over as a string; the form must coerce first.
+  if (typeof (data as GameConfiguration).liveGuesses !== 'boolean') return false
 
   return true
 }

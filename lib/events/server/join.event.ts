@@ -33,6 +33,7 @@ export const joinEventHandler: EventHandler = async ({
       host: playerId,
       length: 'medium',
       difficulty: 'normal',
+      liveGuesses: true,
       tiles: generateTiles('medium'),
     }
 
