@@ -52,7 +52,8 @@
         </div>
 
         <div class="tune">
-          <label>k <input v-model.number="knobs[row.iso].k" type="range" min="0.2" max="1" step="0.02" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].k.toFixed(2) }}</span></label>
+          <span v-if="row.iso === 'AG'" class="ag-hint">sun: k=scale, dx/dy=offset</span>
+          <label>k <input v-model.number="knobs[row.iso].k" type="range" min="0.2" max="1.5" step="0.02" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].k.toFixed(2) }}</span></label>
           <label>dx <input v-model.number="knobs[row.iso].dx" type="range" min="-300" max="300" step="5" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].dx }}</span></label>
           <label>dy <input v-model.number="knobs[row.iso].dy" type="range" min="-150" max="150" step="5" @input="markTuned(row.iso)" /><span>{{ knobs[row.iso].dy }}</span></label>
           <button class="exclude" @click="toggleExclude(row.iso)">
@@ -115,7 +116,11 @@ const knobs = reactive<Record<string, Knob>>(
   Object.fromEntries(
     isos.map(iso => [
       iso,
-      { k: defaultK(classify(iso, COUNTRIES[iso].flag)), dx: 0, dy: 0, exclude: false },
+      // AG's knobs mean sun scale / x-offset / y-offset (see composeAntigua),
+      // seeded to a sensible flush rising-sun; every other flag uses its family default.
+      iso === 'AG'
+        ? { k: 0.64, dx: 0, dy: -55, exclude: false } // baked into WIDE_SVGS.AG
+        : { k: defaultK(classify(iso, COUNTRIES[iso].flag)), dx: 0, dy: 0, exclude: false },
     ])
   )
 )
@@ -131,6 +136,44 @@ const naiveStretch = (svg: string) =>
   svg
     .replace(/preserveAspectRatio="[^"]*"/g, '')
     .replace('<svg ', '<svg preserveAspectRatio="none" style="width:100%;height:100%;display:block" ')
+
+// --- Antigua & Barbuda live sun tuner -------------------------------------
+// AG's field (red + inverted-V bands) is hand-built, so the engine's placement
+// can't drive it. Instead the knobs are re-purposed here: k = sun scale,
+// dx/dy = sun offset from the band boundary centre (450,120). The sun is drawn
+// BEFORE the blue band inside the V clip, so the blue band hides its lower half
+// (flush rising-sun z-order). Bake the final numbers into WIDE_SVGS.AG.
+const AG_SUN_PATH =
+  'M440.4 203.3 364 184l64.9-49-79.7 11.4 41-69.5-70.7 41L332.3 37l-47.9 63.8-19.3-74-21.7 76.3-47.8-65 13.7 83.2L138.5 78l41 69.5-77.4-12.5 63.8 47.8L86 203.3z'
+// Raw sun bbox centre (measured): (263, 115).
+const AG_SUN_CX = 263
+const AG_SUN_CY = 115
+const AG_BOUNDARY = 120 // black/blue band boundary in the 900x300 tile
+
+const composeAntigua = (k: number, dx: number, dy: number): string => {
+  const s = k
+  const cx = 450 + dx
+  const cy = AG_BOUNDARY + dy
+  const tx = cx - AG_SUN_CX * s
+  const ty = cy - AG_SUN_CY * s
+  // Sun clipped to above the boundary so its lower half sits behind the blue band.
+  const sun = `<g fill="#fcd116" clip-path="url(#ag-sunclip)"><path transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${s})" d="${AG_SUN_PATH}"/></g>`
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300">` +
+    `<defs>` +
+    `<clipPath id="ag-v"><path d="M0 0 H900 L450 300 Z"/></clipPath>` +
+    `<clipPath id="ag-sunclip"><rect x="0" y="0" width="900" height="${AG_BOUNDARY}"/></clipPath>` +
+    `</defs>` +
+    `<rect width="900" height="300" fill="#ce1126"/>` +
+    `<g clip-path="url(#ag-v)">` +
+    `<rect width="900" height="120" fill="#000001"/>` +
+    // Sun BEFORE the blue band → blue hides its lower half.
+    sun +
+    `<rect y="120" width="900" height="80" fill="#0072c6"/>` +
+    `<rect y="200" width="900" height="100" fill="#fff"/>` +
+    `</g></svg>`
+  )
+}
 
 // Recompute a row whenever its knobs change. We feed the knob values through as
 // a per-call override so the harness previews tuning without touching the file.
@@ -148,6 +191,18 @@ const rows = computed(() =>
           : { k: knob.k, dx: knob.dx, dy: knob.dy }
         : undefined
     const result = recompose(iso, source, override)
+    // AG: live-compose from the knobs (k=sun scale, dx/dy=sun offset) so the
+    // hand-built field + transposed sun can be tuned in-page.
+    if (iso === 'AG' && knob) {
+      const agSvg = composeAntigua(knob.k, knob.dx, knob.dy)
+      return {
+        iso,
+        result: { ...result, resolution: 'override' as const },
+        originalInline: wrapWide(source),
+        naive: naiveStretch(source),
+        wide: wrapWide(agSvg),
+      }
+    }
     return {
       iso,
       result,

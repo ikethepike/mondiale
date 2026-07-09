@@ -37,7 +37,6 @@ export const OVERRIDES: OverrideTable = {
 
   // Per-flag emblem tuning.
   CN: { k: 0.54, dx: -110 }, // China stars: cluster sized + nudged toward hoist
-  CU: { k: 0.36 }, // Cuba star: sized down to sit inside the hoist triangle
   DZ: { k: 0.3, dx: -25 }, // Algeria crescent+star: smaller, nudged toward hoist
   RS: { anchor: { x: 0.5, y: 0.5 } }, // Serbia arms: centre them in the wide tile (preserve pulled them hoist-ward)
 
