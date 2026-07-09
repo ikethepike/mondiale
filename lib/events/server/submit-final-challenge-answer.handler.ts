@@ -110,8 +110,6 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         break
     }
 
-    console.log({ currentChallenge, correct })
-
     // Wrong answer knocks the player out of the gauntlet. The result pause
     // runs OUTSIDE the per-game queue — holding the lock for five seconds
     // would stall every other player — and the follow-up re-enters through

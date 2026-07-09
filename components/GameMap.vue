@@ -144,7 +144,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import { invertRobinson, projectRobinson } from '~~/lib/geo'
+import { invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
@@ -1005,7 +1005,7 @@ let zoomOutTween: gsap.core.Tween | undefined
 let revealLocked = false
 const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   if (!wrapper.value || !svg.value) return
-  const mainland = MAP_REGIONS[isoCode]?.[0] ?? MAP_BOUNDS[isoCode]
+  const mainland = mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])
   if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
 
   // The country's full (recognisable) frame is the END; the START is a tight
@@ -1100,9 +1100,9 @@ const moveToCountry = () => {
   const { highlightCountry } = props
   if (!highlightCountry) return
 
-  // Frame the LARGEST ring, not the whole-country bbox: RU/US antimeridian
+  // Frame the mainland, not the whole-country bbox: RU/US antimeridian
   // fragments would otherwise zoom the camera out to the whole planet.
-  const mainland = MAP_REGIONS[highlightCountry]?.[0] ?? MAP_BOUNDS[highlightCountry]
+  const mainland = mainlandBox(MAP_REGIONS[highlightCountry], MAP_BOUNDS[highlightCountry])
   if (!mainland) {
     return console.warn(`Country does not exist: ${highlightCountry}`)
   }

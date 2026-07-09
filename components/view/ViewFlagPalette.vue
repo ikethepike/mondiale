@@ -53,7 +53,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
-import { buzzFraction } from '~~/lib/scoring'
+import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
 
@@ -88,7 +88,7 @@ const submitRound = (correct: boolean) => {
   // Name it sooner, keep more of the pot.
   const score =
     correct && active
-      ? Math.round(active.maximumPoints * buzzFraction(secondsLeft.value / active.durationSeconds))
+      ? buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
       : 0
   submitOnce(correct && active ? [active.country] : [], score)
 }

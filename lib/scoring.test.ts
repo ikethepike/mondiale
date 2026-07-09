@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   capitalGuessScore,
+  getCorrectRanking,
+  scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
   scoreTraversalSubmission,
 } from './challenges'
-import { attemptFraction, buzzFraction } from './scoring'
+import { attemptFraction, blitzScore, buzzFraction } from './scoring'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -56,7 +58,17 @@ describe('scoreHotCold', () => {
 
   it('floors a found-but-wasteful attempt at two points', () => {
     const submittedGuesses: ISOCountryCode[] = [
-      'BR', 'CL', 'AR', 'CO', 'EC', 'BO', 'UY', 'VE', 'PY', 'GY', 'PE',
+      'BR',
+      'CL',
+      'AR',
+      'CO',
+      'EC',
+      'BO',
+      'UY',
+      'VE',
+      'PY',
+      'GY',
+      'PE',
     ]
     expect(scoreHotCold({ challenge: hotCold(21), submittedGuesses })).toEqual({
       scored: 2,
@@ -86,7 +98,18 @@ describe('scoreTraversalSubmission', () => {
 
   it('floors a completed-but-wasteful route at two points', () => {
     const submittedGuesses: ISOCountryCode[] = [
-      'BE', 'NL', 'LU', 'CH', 'AT', 'IT', 'SI', 'HR', 'HU', 'SK', 'CZ', 'DE',
+      'BE',
+      'NL',
+      'LU',
+      'CH',
+      'AT',
+      'IT',
+      'SI',
+      'HR',
+      'HU',
+      'SK',
+      'CZ',
+      'DE',
     ]
     expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses })).toEqual({
       scored: 2,
@@ -162,6 +185,60 @@ describe('capitalGuessScore', () => {
     for (const maximum of [12, 15, 21]) {
       expect(capitalGuessScore(2, 2, maximum)).toBeLessThan(capitalGuessScore(1, 2, maximum))
     }
+  })
+})
+
+describe('scoreChallengeSubmission', () => {
+  const groupChallengeAccessorId = 'geography.area.total'
+  const dealtCountries: ISOCountryCode[] = ['RU', 'US', 'FR', 'PT', 'LU']
+  // RU > US > FR > PT > LU by total area — derived, not hardcoded, so a data
+  // regeneration can't silently invalidate the expectations below.
+  const correct = getCorrectRanking({ groupChallengeAccessorId, isoCodes: dealtCountries })
+
+  const score = (submittedRanking: ISOCountryCode[]) =>
+    scoreChallengeSubmission({ groupChallengeAccessorId, submittedRanking, dealtCountries })
+
+  it('pays full marks for the exact ranking', () => {
+    expect(score(correct)).toEqual({ scored: 15, maximum: 15 })
+  })
+
+  it('credits the top-ranked country when placed a slot late', () => {
+    // Swapping #1 and #2 leaves both one slot off (2 points each); the
+    // asymmetric scorer this replaces paid the displaced #1 nothing.
+    const swapped = [correct[1], correct[0], ...correct.slice(2)]
+    expect(score(swapped)).toEqual({ scored: 13, maximum: 15 })
+  })
+
+  it('scores displacement symmetrically in both directions', () => {
+    // Reversal displaces the ends by 4, the next pair by 2, centre exact.
+    expect(score([...correct].reverse())).toEqual({ scored: 5, maximum: 15 })
+  })
+
+  it('ignores countries that were never dealt', () => {
+    // A padded submission must not inflate the score (it feeds movement 1:1)
+    const padded: ISOCountryCode[] = ['DE', 'BR', ...correct, 'CN', 'IN']
+    expect(score(padded)).toEqual({ scored: 15, maximum: 15 })
+  })
+
+  it('counts a duplicated country once and keeps the dealt maximum', () => {
+    expect(score([correct[0], correct[0], correct[0]])).toEqual({ scored: 3, maximum: 15 })
+  })
+})
+
+describe('blitzScore', () => {
+  const answers: ISOCountryCode[] = ['FR', 'DE', 'PL', 'CZ', 'AT']
+
+  it('scales the pot by the found ratio', () => {
+    expect(blitzScore(answers, ['FR', 'DE'], 15)).toEqual({ scored: 6, maximum: 15 })
+    expect(blitzScore(answers, [...answers], 15)).toEqual({ scored: 15, maximum: 15 })
+  })
+
+  it('bites one point per wrong guess and counts duplicates once', () => {
+    expect(blitzScore(answers, ['FR', 'DE', 'ES', 'ES'], 15)).toEqual({ scored: 5, maximum: 15 })
+  })
+
+  it('never pays below zero', () => {
+    expect(blitzScore(answers, ['ES', 'PT', 'IT', 'GB'], 15)).toEqual({ scored: 0, maximum: 15 })
   })
 })
 

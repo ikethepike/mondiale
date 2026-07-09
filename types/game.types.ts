@@ -31,20 +31,8 @@ export interface Game {
 export const gameDifficulties = ['easy', 'normal', 'hard'] as const
 export type GameDifficulty = (typeof gameDifficulties)[number]
 
-export interface PlayerPosition {
-  currentPosition: number
-  moves: PlayerMove[]
-  progress: PlayerProgress[]
-}
-
-export interface PlayerProgress {
-  round: number
-  endTilePosition: number
-}
-
 export interface PlayerMove {
   endTile: Tile
-  steps: number
   challenge?: IndividualChallenge | FinalChallenge
 }
 
