@@ -83,6 +83,8 @@ const {
   currentRound,
   showInterstitial,
   started,
+  hint,
+  announce,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -138,14 +140,6 @@ const suggestions = computed(() => {
 
 watch(suggestions, () => (highlightedIndex.value = 0))
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-
 const shoreLine = computed(() => {
   const shores = challenge.value?.countries ?? []
   const names = shores.slice(0, 6).map(isoCode => countryName(isoCode))
@@ -158,7 +152,6 @@ let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (countdown) clearInterval(countdown)
   if (revealTimer) clearTimeout(revealTimer)
-  if (hintTimer) clearTimeout(hintTimer)
 })
 
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
@@ -207,7 +200,7 @@ const pick = (option: WaterOption) => {
   }
 
   if (attempts.value >= MAX_ATTEMPTS) return resolve(false)
-  flashHint(`Not the ${option.name} — ${attemptsLeft.value} left`)
+  announce({ hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
 }
 
 const submitTyped = () => {
@@ -215,7 +208,7 @@ const submitTyped = () => {
     option => normalizeName(option.name) === normalizeName(query.value)
   )
   const choice = exact ?? suggestions.value[highlightedIndex.value] ?? suggestions.value[0]
-  if (!choice) return flashHint('No water by that name')
+  if (!choice) return announce({ hint: 'No water by that name' })
   pick(choice)
 }
 </script>

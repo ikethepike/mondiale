@@ -67,7 +67,7 @@
         :disabled="submitted || !started"
         placeholder="Name the country…"
         @guess="onGuess"
-        @miss="flashHint('No country by that name')"
+        @miss="announce({ hint: 'No country by that name' })"
       />
     </footer>
   </div>
@@ -89,8 +89,9 @@ const {
   submitted,
   secondsLeft,
   begin,
+  hint,
+  announce,
   submitOnce,
-  registerCleanup,
   gameStore,
   update,
 } = useGroupChallenge('capital-guess-challenge')
@@ -114,21 +115,12 @@ const start = () => {
   nextTick(() => guessInput.value?.focus())
 }
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2000)
-}
-registerCleanup(() => hintTimer && clearTimeout(hintTimer))
-
 const onGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value || !started.value) return
   update({ event: 'player-guessing', isoCode: country.isoCode })
   if (country.isoCode === active.country) submitRound(true)
-  else flashHint(`${countryName(country)} — not it`)
+  else announce({ hint: `${countryName(country)} — not it` })
 }
 </script>
 <style lang="scss" scoped>

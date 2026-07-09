@@ -13,6 +13,16 @@ export const MOTION = {
   ambient: 6,
 } as const
 
+/**
+ * How long transient copy stays on screen, in ms. Not a motion token — nothing
+ * in `_motion.scss` mirrors these — but the same reason to keep one source:
+ * the nine views that flash a hint had drifted between 2000 and 2200.
+ */
+export const DWELL = {
+  /** A wrong-guess hint over the map, and its chip in the live-guess ticker. */
+  hint: 2200,
+} as const
+
 /** GSAP ease names matching the CSS custom-property easings. */
 export const EASE = {
   /** Entrances — matches --ease-out-expressive */

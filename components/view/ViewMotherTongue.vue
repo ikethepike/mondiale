@@ -28,7 +28,7 @@
         :excluded="guesses"
         placeholder="Type a country that speaks it…"
         @guess="onGuess"
-        @miss="flashHint('No country by that name')"
+        @miss="announce({ hint: 'No country by that name' })"
       />
     </section>
 
@@ -70,8 +70,9 @@ const {
   submitted,
   secondsLeft,
   begin,
+  hint,
+  announce,
   submitOnce,
-  registerCleanup,
   gameStore,
 } = useGroupChallenge('mother-tongue-challenge', { solo: false })
 
@@ -106,26 +107,17 @@ const start = () => {
   nextTick(() => guessInput.value?.focus())
 }
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-registerCleanup(() => hintTimer && clearTimeout(hintTimer))
-
 const onGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value || !started.value) return
 
   if (guesses.value.includes(country.isoCode)) {
-    return flashHint(`${countryName(country)} is already on the board`)
+    return announce({ hint: `${countryName(country)} is already on the board` })
   }
 
   guesses.value.push(country.isoCode)
   if (!answerSet.value.has(country.isoCode)) {
-    flashHint(`${countryName(country)} doesn't speak ${active.language}`)
+    announce({ hint: `${countryName(country)} doesn't speak ${active.language}` })
   }
 
   if (found.value.length === active.countries.length) {

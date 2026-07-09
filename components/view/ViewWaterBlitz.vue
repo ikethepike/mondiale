@@ -28,7 +28,7 @@
         :excluded="guesses"
         :placeholder="copy.placeholder"
         @guess="onGuess"
-        @miss="flashHint('No country by that name')"
+        @miss="announce({ hint: 'No country by that name' })"
       />
     </section>
 
@@ -72,8 +72,9 @@ const {
   submitted,
   secondsLeft,
   begin: beginRound,
+  hint,
+  announce,
   submitOnce,
-  registerCleanup,
   gameStore,
 } = useGroupChallenge('water-blitz-challenge', { solo: false })
 
@@ -136,15 +137,6 @@ watch(
   { deep: true, immediate: true }
 )
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-registerCleanup(() => hintTimer && clearTimeout(hintTimer))
-
 const submitRound = () => {
   if (submitted.value) return
   gameStore.map.status =
@@ -162,12 +154,12 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || !started.value) return
 
   if (guesses.value.includes(country.isoCode)) {
-    return flashHint(`${countryName(country)} is already on the board`)
+    return announce({ hint: `${countryName(country)} is already on the board` })
   }
 
   guesses.value.push(country.isoCode)
   if (!answerSet.value.has(country.isoCode)) {
-    flashHint(`${countryName(country)} isn't one of them`)
+    announce({ hint: `${countryName(country)} isn't one of them` })
   }
 
   // Everything found — no reason to run out the clock

@@ -49,7 +49,7 @@
           :disabled="submitted || !started || lockedOut"
           :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
           @guess="onGuess"
-          @miss="flashHint('No country by that name')"
+          @miss="announce({ hint: 'No country by that name' })"
         />
       </div>
     </footer>
@@ -75,6 +75,8 @@ const {
   submitted,
   secondsLeft,
   begin: beginRound,
+  hint,
+  announce,
   submitOnce,
   stopCountdown,
   registerCleanup,
@@ -101,18 +103,9 @@ onMounted(() => {
   outline.value = mainlandOutline(active.country)
 })
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
-  if (hintTimer) clearTimeout(hintTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
   if (revealTimer) clearTimeout(revealTimer)
   if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
@@ -196,7 +189,7 @@ const onGuess = (country: Country) => {
     return
   }
 
-  flashHint(`Not ${countryName(country)} — locked out for 3 seconds`)
+  announce({ hint: `Not ${countryName(country)} — locked out for 3 seconds` })
   lockedOut.value = true
   if (lockoutTimer) clearTimeout(lockoutTimer)
   lockoutTimer = setTimeout(() => {

@@ -108,8 +108,9 @@ const {
   showInterstitial,
   submitted,
   begin,
+  hint,
+  announce,
   submitOnce,
-  registerCleanup,
   gameStore,
 } = useGroupChallenge('traversal-challenge', { solo: false })
 
@@ -220,15 +221,6 @@ watch(
   { deep: true, immediate: true }
 )
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-registerCleanup(() => hintTimer && clearTimeout(hintTimer))
-
 const submitRound = () => {
   submitOnce([...guesses.value])
 }
@@ -237,12 +229,13 @@ const submitGuess = (country: Country) => {
   const active = challenge.value
   if (!active || submitted.value) return
 
-  if (country.isoCode === active.start) return flashHint(`You start in ${countryName(country)}`)
+  if (country.isoCode === active.start)
+    return announce({ hint: `You start in ${countryName(country)}` })
   if (country.isoCode === active.target) {
-    return flashHint(`${countryName(country)} is the destination — bridge the gap to it`)
+    return announce({ hint: `${countryName(country)} is the destination — bridge the gap to it` })
   }
   if (guesses.value.includes(country.isoCode)) {
-    return flashHint(`${countryName(country)} is already on the board`)
+    return announce({ hint: `${countryName(country)} is already on the board` })
   }
 
   guesses.value.push(country.isoCode)
@@ -256,7 +249,7 @@ const submitGuess = (country: Country) => {
 
   if (guesses.value.length >= active.maximumClicks) {
     gameStore.map.status = 'incorrect'
-    flashHint('Out of guesses!')
+    announce({ hint: 'Out of guesses!' })
     setTimeout(submitRound, 1200)
   }
 }
@@ -265,7 +258,7 @@ const submitTypedGuess = () => {
   const direct = findCountryByName(query.value)
   const picked = suggestions.value[highlightedIndex.value] ?? suggestions.value[0]
   const country = direct ?? picked
-  if (!country) return flashHint('No country by that name')
+  if (!country) return announce({ hint: 'No country by that name' })
 
   submitGuess(country)
 }

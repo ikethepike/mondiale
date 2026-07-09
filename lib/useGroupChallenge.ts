@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { DWELL } from '~~/lib/motion'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -57,6 +58,20 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   }
 
   /**
+   * A wrong guess, a duplicate, a name that matched nothing. `hint` renders
+   * over the map and clears itself. One call per event — the ticker hangs off
+   * this too, so views never notify twice.
+   */
+  const hint = ref('')
+  let hintTimer: ReturnType<typeof setTimeout> | undefined
+  const announce = ({ hint: text }: { hint: string }) => {
+    hint.value = text
+    if (hintTimer) clearTimeout(hintTimer)
+    hintTimer = setTimeout(() => (hint.value = ''), DWELL.hint)
+  }
+  cleanups.push(() => hintTimer && clearTimeout(hintTimer))
+
+  /**
    * Leave the interstitial and start the round. `onTimeout` (if a countdown
    * exists) fires once when the clock hits zero — typically a fail-submit.
    * `onTick` runs each second for mode-specific reveals.
@@ -107,6 +122,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     submitted,
     secondsLeft,
     begin,
+    hint,
+    announce,
     submitOnce,
     stopCountdown,
     registerCleanup,

@@ -64,7 +64,7 @@
         :disabled="submitted || !started || lockedOut"
         :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
         @guess="onGuess"
-        @miss="flashHint('No country by that name')"
+        @miss="announce({ hint: 'No country by that name' })"
       />
     </section>
 
@@ -100,6 +100,8 @@ const {
   started,
   submitted,
   begin: beginRound,
+  hint,
+  announce,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -148,21 +150,12 @@ const photoRevealed = computed(
   () => hasPhotoClue.value && revealedCount.value > statClueCount.value
 )
 
-const hint = ref('')
-let hintTimer: ReturnType<typeof setTimeout> | undefined
-const flashHint = (text: string) => {
-  hint.value = text
-  if (hintTimer) clearTimeout(hintTimer)
-  hintTimer = setTimeout(() => (hint.value = ''), 2200)
-}
-
 // Paced by `secondsPerClue`, not a round countdown — the clue interval is local
 let clueTimer: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (clueTimer) clearInterval(clueTimer)
-  if (hintTimer) clearTimeout(hintTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
   if (revealTimer) clearTimeout(revealTimer)
 })
@@ -229,7 +222,7 @@ const onGuess = (country: Country) => {
     return
   }
 
-  flashHint(`Not ${countryName(country)} — locked out for 3 seconds`)
+  announce({ hint: `Not ${countryName(country)} — locked out for 3 seconds` })
   lockedOut.value = true
   if (lockoutTimer) clearTimeout(lockoutTimer)
   lockoutTimer = setTimeout(() => {
