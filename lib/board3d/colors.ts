@@ -8,4 +8,6 @@ export const BOARD_COLORS = {
   warmSand: '#f1b982',
   hiorAnge: '#ec6247',
   ink: '#131313',
+  // Scene-only, no SCSS counterpart: the runner-up crown metal
+  silver: '#c9ccd1',
 } as const

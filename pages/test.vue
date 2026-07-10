@@ -4,6 +4,8 @@
       <button @click="step('mock-player-1', 1)">Hop P1 +1</button>
       <button @click="step('mock-player-1', 3)">Hop P1 +3</button>
       <button @click="step('mock-player-2', 2)">Hop P2 +2</button>
+      <button @click="win('mock-player-1')">Win P1</button>
+      <button @click="win('mock-player-2')">Win P2</button>
       <button @click="reseed">Reseed terrain</button>
     </nav>
     <Board3D :game="mockGame" player-id="mock-player-1" />
@@ -60,6 +62,15 @@ mockGame.players['mock-player-1'].moves = [
 const step = (playerId: string, steps: number) => {
   const player = mockGame.players[playerId]
   player.currentPosition = Math.min(player.currentPosition + steps, mockGame.tiles.length - 1)
+}
+
+// First win is the champion (gold crown), later wins are finishers (silver)
+let winCount = 0
+const win = (playerId: string) => {
+  const player = mockGame.players[playerId]
+  if (player.phase === 'victory') return
+  player.phase = 'victory'
+  player.completedAtRound = ++winCount
 }
 
 let reseedCount = 0

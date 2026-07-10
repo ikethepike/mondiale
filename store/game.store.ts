@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { LatLng } from '~~/lib/geo'
+import { compareStandings } from '~~/lib/player'
 import type { CheerEmoji, GuessKind } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -202,12 +203,7 @@ export const useGameStore = defineStore('game', {
     standings(state): Player[] {
       if (!state.game) return []
 
-      return Object.values(state.game.players).sort((a, b) => {
-        const aFinished = a.completedAtRound ?? Infinity
-        const bFinished = b.completedAtRound ?? Infinity
-        if (aFinished !== bFinished) return aFinished - bFinished
-        return b.currentPosition - a.currentPosition
-      })
+      return Object.values(state.game.players).sort(compareStandings)
     },
   },
 })

@@ -16,3 +16,14 @@ export const createPlayer = (playerId: string, takenColors: string[] = []): Play
   moves: [],
   completedAtRound: undefined,
 })
+
+/**
+ * Standings order: finished players first (earliest completion round wins),
+ * everyone else by how far along the board they are.
+ */
+export const compareStandings = (a: Player, b: Player): number => {
+  const aFinished = a.completedAtRound ?? Infinity
+  const bFinished = b.completedAtRound ?? Infinity
+  if (aFinished !== bFinished) return aFinished - bFinished
+  return b.currentPosition - a.currentPosition
+}

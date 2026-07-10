@@ -28,7 +28,9 @@ import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
+  buildCrown,
   buildPawn,
+  type CrownVariant,
   disposePawn,
   getBoardBuild,
 } from '~~/lib/board3d/board-builder'
@@ -38,6 +40,7 @@ import type { TileTransform } from '~~/lib/board3d/path'
 import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { compareStandings } from '~~/lib/player'
 import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -227,6 +230,40 @@ const removePawns = () => {
   pawns.clear()
 }
 
+const crownVariantFor = (player: Player): CrownVariant | undefined => {
+  if (player.phase !== 'victory') return undefined
+  const champion = Object.values(props.game.players).sort(compareStandings)[0]
+  return champion.id === player.id ? 'champion' : 'finisher'
+}
+
+// Victory crowns: gold for the champion, smaller silver for later finishers.
+// A crown is a child of the pawn Group, so it rides along with every hop.
+const syncCrowns = (animate = false) => {
+  const build = board.value
+  if (!build) return
+
+  for (const player of Object.values(props.game.players)) {
+    const pawn = pawns.get(player.id)
+    if (!pawn) continue
+
+    const variant = crownVariantFor(player)
+    const current = pawn.getObjectByName('crown') as Group | undefined
+    if (current?.userData.variant === variant) continue
+
+    if (current) {
+      pawn.remove(current)
+      disposePawn(current)
+    }
+    if (!variant) continue
+
+    const crown = buildCrown(build.spacing * 0.85, variant)
+    pawn.add(crown)
+    if (animate && !prefersReducedMotion()) {
+      gsap.from(crown.scale, { x: 0, y: 0, z: 0, duration: 0.6, ease: 'back.out(2.2)' })
+    }
+  }
+}
+
 const syncPawns = () => {
   const build = board.value
   if (!build || !mover) return
@@ -253,6 +290,8 @@ const syncPawns = () => {
     // (challenge-win leaps, walks begun before the scene finished loading)
     mover.restore(player.id, displayPositionFor(player))
   }
+
+  syncCrowns()
 }
 
 const rebuild = () => {
@@ -295,6 +334,15 @@ watch(
       .map(player => `${player.id}:${player.color}`)
       .join('|'),
   syncPawns
+)
+
+// Crowns pop in the moment a player's phase flips to victory
+watch(
+  () =>
+    Object.values(props.game.players)
+      .map(player => `${player.id}:${player.phase}`)
+      .join('|'),
+  () => syncCrowns(true)
 )
 
 // Server-driven movement: one socket update per 500ms step

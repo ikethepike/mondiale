@@ -15,6 +15,7 @@ import {
   MeshBasicMaterial,
   MeshToonMaterial,
   BackSide,
+  DoubleSide,
   PlaneGeometry,
   Quaternion,
   TubeGeometry,
@@ -390,6 +391,64 @@ export const buildPawn = (color: string, height: number): Group => {
   const pawn = new Group()
   pawn.add(shadow, outline, body)
   return pawn
+}
+
+export type CrownVariant = 'champion' | 'finisher'
+
+/**
+ * A victory crown resting on the pawn's head: full-size gold for the
+ * champion, smaller silver for later finishers. Same recipe as the pawn:
+ * toon-shaded body plus an ink inverted-hull outline. `height` is the pawn
+ * height passed to buildPawn; the smaller variant perches nearer the apex
+ * where the head is narrower.
+ */
+export const buildCrown = (height: number, variant: CrownVariant): Group => {
+  const champion = variant === 'champion'
+  const scale = champion ? 1 : 0.7
+  // The band shrinks less than the spikes: any narrower and the head
+  // (plus its 1.09x outline hull) swallows the finisher's circlet
+  const bandRadius = height * 0.15 * (champion ? 1 : 0.85)
+  const bandHeight = height * 0.09 * scale
+
+  const band = new CylinderGeometry(bandRadius * 1.1, bandRadius, bandHeight, 20, 1, true)
+  const parts: BufferGeometry[] = [band]
+
+  const spikeCount = champion ? 5 : 4
+  const spikeHeight = height * 0.11 * scale
+  for (let i = 0; i < spikeCount; i++) {
+    const angle = (i / spikeCount) * Math.PI * 2
+    const spike = new ConeGeometry(bandRadius * 0.32, spikeHeight, 8)
+    spike.translate(
+      Math.cos(angle) * bandRadius * 0.95,
+      bandHeight / 2 + spikeHeight * 0.4,
+      Math.sin(angle) * bandRadius * 0.95
+    )
+    parts.push(spike)
+  }
+
+  const outlines = parts.map(outlineOf)
+  const outline = new Mesh(
+    mergeGeometries(outlines),
+    new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
+  )
+  const body = new Mesh(
+    mergeGeometries(parts),
+    new MeshToonMaterial({
+      color: champion ? BOARD_COLORS.warmSand : BOARD_COLORS.silver,
+      // The band is an open tube; its inside shows through the tilt gap
+      side: DoubleSide,
+    })
+  )
+  outlines.forEach(geometry => geometry.dispose())
+  parts.forEach(geometry => geometry.dispose())
+
+  const crown = new Group()
+  crown.name = 'crown'
+  crown.userData.variant = variant
+  crown.add(outline, body)
+  crown.position.y = height * (champion ? 0.86 : 0.9)
+  crown.rotation.z = 0.09
+  return crown
 }
 
 export const disposePawn = (pawn: Group) => {
