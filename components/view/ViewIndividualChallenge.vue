@@ -99,7 +99,7 @@
                   type="button"
                   @click="showBorderHint"
                 >
-                  <span class="hint-icon eye" aria-hidden="true" />
+                  <StatTopicIcon class="hint-icon" topic="reveal" />
                   Outline (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
@@ -110,7 +110,7 @@
                   type="button"
                   @click="showIsoHint"
                 >
-                  <span class="hint-icon iso" aria-hidden="true" />
+                  <StatTopicIcon class="hint-icon" topic="question" />
                   Country code (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
@@ -310,6 +310,7 @@ import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
@@ -1003,17 +1004,7 @@ header {
   padding: 0.6rem 1.4rem;
 
   .hint-icon {
-    width: 1.8rem;
-    height: 1.8rem;
     flex-shrink: 0;
-    background: var(--dark-blue);
-
-    &.eye {
-      mask: url('~/assets/icons/eye.svg') no-repeat center/contain;
-    }
-    &.iso {
-      mask: url('~/assets/icons/isoCode.svg') no-repeat center/contain;
-    }
   }
   border-radius: 1.2rem;
   pointer-events: auto;
