@@ -40,10 +40,7 @@ const handDrawn = (
   const count = base.length
   const wobbled: OutlinePoint[] = base.map(([x, y], index) => {
     const angle = (index / count) * Math.PI * 2
-    return [
-      x + Math.cos(angle * 3 + 1) * quality.wobble,
-      y + Math.sin(angle * 2) * quality.wobble,
-    ]
+    return [x + Math.cos(angle * 3 + 1) * quality.wobble, y + Math.sin(angle * 2) * quality.wobble]
   })
   const cos = Math.cos(quality.tilt)
   const sin = Math.sin(quality.tilt)

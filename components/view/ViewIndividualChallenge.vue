@@ -8,7 +8,12 @@
     />
     <header v-else>
       <Transition name="caption" mode="out-in">
-        <div v-if="!status" key="question" class="question" :class="{ 'text-guess': textGuessVariant }">
+        <div
+          v-if="!status"
+          key="question"
+          class="question"
+          :class="{ 'text-guess': textGuessVariant }"
+        >
           <!-- Classic find-on-the-map -->
           <template v-if="variant === 'find'">
             <h1 class="map-caption">

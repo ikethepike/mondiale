@@ -240,7 +240,6 @@ footer {
     max-height: 22dvh;
     overflow-y: auto;
   }
-
 }
 
 // The miss hint floats below the prompt instead of joining its flex flow —

@@ -46,10 +46,19 @@ describe('politicalLeaderOf — title matching', () => {
   it('matches titles exactly, never by prefix', () => {
     // Armenia's payload leads with a chief of staff; Azerbaijan with a rep.
     expect(
-      leaderName('AM', rows(["Prime Minister's Chief of Staff", 'Arayik Harutyunyan'], ['Prime Min.', 'Nikol Pashinyan']))
+      leaderName(
+        'AM',
+        rows(
+          ["Prime Minister's Chief of Staff", 'Arayik Harutyunyan'],
+          ['Prime Min.', 'Nikol Pashinyan']
+        )
+      )
     ).toBe('Nikol Pashinyan')
     expect(
-      leaderName('AZ', rows(["President's Representative", 'Mukhtar Babayev'], ['Pres.', 'Ilham Aliyev']))
+      leaderName(
+        'AZ',
+        rows(["President's Representative", 'Mukhtar Babayev'], ['Pres.', 'Ilham Aliyev'])
+      )
     ).toBe('Ilham Aliyev')
   })
 
@@ -81,10 +90,18 @@ describe('politicalLeaderOf — role selection', () => {
 
   it('picks the president in president-led states', () => {
     expect(leaderName('RU', withBoth('Vladimir PUTIN', 'Mikhail MISHUSTIN'))).toBe('Vladimir PUTIN')
-    expect(leaderName('UA', withBoth('Volodymyr ZELENSKYY', 'Yuliya SVYRYDENKO'))).toBe('Volodymyr ZELENSKYY')
-    expect(leaderName('FR', withBoth('Emmanuel MACRON', 'Sebastian LECORNU'))).toBe('Emmanuel MACRON')
-    expect(leaderName('EG', withBoth('Abdelfattah ELSISI', 'Mostafa MADBOULY'))).toBe('Abdelfattah ELSISI')
-    expect(leaderName('BY', withBoth('Alyaksandr LUKASHENKA', 'Alyaksandr TURCHYN'))).toBe('Alyaksandr LUKASHENKA')
+    expect(leaderName('UA', withBoth('Volodymyr ZELENSKYY', 'Yuliya SVYRYDENKO'))).toBe(
+      'Volodymyr ZELENSKYY'
+    )
+    expect(leaderName('FR', withBoth('Emmanuel MACRON', 'Sebastian LECORNU'))).toBe(
+      'Emmanuel MACRON'
+    )
+    expect(leaderName('EG', withBoth('Abdelfattah ELSISI', 'Mostafa MADBOULY'))).toBe(
+      'Abdelfattah ELSISI'
+    )
+    expect(leaderName('BY', withBoth('Alyaksandr LUKASHENKA', 'Alyaksandr TURCHYN'))).toBe(
+      'Alyaksandr LUKASHENKA'
+    )
     // The prime ministership changed twice in a year; the president leads regardless.
     expect(leaderName('KR', withBoth('LEE Jae Myung', 'KIM Min-seok'))).toBe('LEE Jae Myung')
   })
@@ -92,18 +109,28 @@ describe('politicalLeaderOf — role selection', () => {
   it('picks the prime minister in parliamentary states', () => {
     expect(leaderName('SI', withBoth('Natasa PIRC MUSAR', 'Janez Jansa'))).toBe('Janez Jansa')
     expect(leaderName('FI', withBoth('Alexander STUBB', 'Petteri ORPO'))).toBe('Petteri ORPO')
-    expect(leaderName('GR', withBoth('Konstantinos TASOULAS', 'Kyriakos MITSOTAKIS'))).toBe('Kyriakos MITSOTAKIS')
+    expect(leaderName('GR', withBoth('Konstantinos TASOULAS', 'Kyriakos MITSOTAKIS'))).toBe(
+      'Kyriakos MITSOTAKIS'
+    )
   })
 
   it('picks the prime minister when the head of state is a monarch or governor-general', () => {
-    expect(leaderName('BE', rows(['King', 'PHILIPPE'], ['Prime Min.', 'Bart DE WEVER']))).toBe('Bart DE WEVER')
-    expect(leaderName('CA', rows(['Governor Gen.', 'Mary SIMON'], ['Prime Min.', 'Mark CARNEY']))).toBe('Mark CARNEY')
-    expect(leaderName('JP', rows(['Emperor', 'NARUHITO'], ['Prime Min.', 'TAKAICHI Sanae']))).toBe('TAKAICHI Sanae')
+    expect(leaderName('BE', rows(['King', 'PHILIPPE'], ['Prime Min.', 'Bart DE WEVER']))).toBe(
+      'Bart DE WEVER'
+    )
+    expect(
+      leaderName('CA', rows(['Governor Gen.', 'Mary SIMON'], ['Prime Min.', 'Mark CARNEY']))
+    ).toBe('Mark CARNEY')
+    expect(leaderName('JP', rows(['Emperor', 'NARUHITO'], ['Prime Min.', 'TAKAICHI Sanae']))).toBe(
+      'TAKAICHI Sanae'
+    )
   })
 
   it('treats the three corrected countries as parliamentary', () => {
     // Their presidents are ceremonial; the previous allowlist had them wrong.
-    expect(leaderName('CV', withBoth('Jose Maria Pereira NEVES', 'Francisco CARVALHO'))).toBe('Francisco CARVALHO')
+    expect(leaderName('CV', withBoth('Jose Maria Pereira NEVES', 'Francisco CARVALHO'))).toBe(
+      'Francisco CARVALHO'
+    )
     expect(leaderName('SK', withBoth('Peter PELLEGRINI', 'Robert FICO'))).toBe('Robert FICO')
     expect(leaderName('XK', withBoth('Vjosa OSMANI-Sadriu', 'Albin KURTI'))).toBe('Albin KURTI')
   })
@@ -111,11 +138,42 @@ describe('politicalLeaderOf — role selection', () => {
   it('reads a head-of-government title however the CIA styles it', () => {
     // Found by the drift warning: each of these resolved to a ceremonial head
     // of state because the title did not match exactly.
-    expect(leaderName('ES', rows(['King', 'FELIPE VI'], ['Pres. of the Govt.', 'Pedro SANCHEZ']))).toBe('Pedro SANCHEZ')
-    expect(leaderName('GB', rows(['King', 'CHARLES III'], ['Prime Minister, First Lord of the Treasury', 'Keir STARMER']))).toBe('Keir STARMER')
-    expect(leaderName('IE', rows(['Pres.', 'Catherine CONNOLLY'], ['Taoiseach (Prime Min.)', 'Micheal MARTIN']))).toBe('Micheal MARTIN')
-    expect(leaderName('DM', rows(['Pres.', 'Sylvanie BURTON'], ['Prime Min. and Min. for Investment & Governance', 'Roosevelt SKERRIT']))).toBe('Roosevelt SKERRIT')
-    expect(leaderName('KN', rows(['Governor Gen.', 'Marcella A. LIBURD'], ['Prime Minister and Minister of Finance, National Security', 'Terrance DREW']))).toBe('Terrance DREW')
+    expect(
+      leaderName('ES', rows(['King', 'FELIPE VI'], ['Pres. of the Govt.', 'Pedro SANCHEZ']))
+    ).toBe('Pedro SANCHEZ')
+    expect(
+      leaderName(
+        'GB',
+        rows(
+          ['King', 'CHARLES III'],
+          ['Prime Minister, First Lord of the Treasury', 'Keir STARMER']
+        )
+      )
+    ).toBe('Keir STARMER')
+    expect(
+      leaderName(
+        'IE',
+        rows(['Pres.', 'Catherine CONNOLLY'], ['Taoiseach (Prime Min.)', 'Micheal MARTIN'])
+      )
+    ).toBe('Micheal MARTIN')
+    expect(
+      leaderName(
+        'DM',
+        rows(
+          ['Pres.', 'Sylvanie BURTON'],
+          ['Prime Min. and Min. for Investment & Governance', 'Roosevelt SKERRIT']
+        )
+      )
+    ).toBe('Roosevelt SKERRIT')
+    expect(
+      leaderName(
+        'KN',
+        rows(
+          ['Governor Gen.', 'Marcella A. LIBURD'],
+          ['Prime Minister and Minister of Finance, National Security', 'Terrance DREW']
+        )
+      )
+    ).toBe('Terrance DREW')
   })
 
   it('never mistakes a subordinate office for the real one', () => {
@@ -133,17 +191,25 @@ describe('politicalLeaderOf — role selection', () => {
   })
 
   it('keeps semi-presidential but PM-led states on the prime minister', () => {
-    expect(leaderName('AT', withBoth('Alexander VAN DER BELLEN', 'Christian STOCKER'))).toBe('Christian STOCKER')
+    expect(leaderName('AT', withBoth('Alexander VAN DER BELLEN', 'Christian STOCKER'))).toBe(
+      'Christian STOCKER'
+    )
     expect(leaderName('RO', withBoth('Nicusor DAN', 'Ilie BOLOJAN'))).toBe('Ilie BOLOJAN')
     expect(leaderName('TL', withBoth('Jose RAMOS-HORTA', 'Xanana GUSMAO'))).toBe('Xanana GUSMAO')
-    expect(leaderName('MN', withBoth('Ukhnaa KHURELSUKH', 'Nyam-Osor UCHRAL'))).toBe('Nyam-Osor UCHRAL')
+    expect(leaderName('MN', withBoth('Ukhnaa KHURELSUKH', 'Nyam-Osor UCHRAL'))).toBe(
+      'Nyam-Osor UCHRAL'
+    )
   })
 })
 
 describe('politicalLeaderOf — collective bodies', () => {
   it('returns undefined when no single person holds the office', () => {
-    expect(politicalLeaderOf('SM', rows(['Captain Regent (Co-Head of State)', 'Alessandro CARDELLI']))).toBeUndefined()
-    expect(politicalLeaderOf('BA', rows(['Presidency Member (Bosniak)', 'Denis BECIROVIC']))).toBeUndefined()
+    expect(
+      politicalLeaderOf('SM', rows(['Captain Regent (Co-Head of State)', 'Alessandro CARDELLI']))
+    ).toBeUndefined()
+    expect(
+      politicalLeaderOf('BA', rows(['Presidency Member (Bosniak)', 'Denis BECIROVIC']))
+    ).toBeUndefined()
   })
 
   it('returns undefined when there is no recognisable office at all', () => {
@@ -152,7 +218,10 @@ describe('politicalLeaderOf — collective bodies', () => {
 
   it('ignores a vacant office, which the CIA lists with an empty name', () => {
     // Sudan's prime ministership. Without this guard the leader is "".
-    const sd = rows(['Chmn., Sovereignty Council (SC)', 'Abd-al-Fattah al-BURHAN'], ['Prime Min.', ''])
+    const sd = rows(
+      ['Chmn., Sovereignty Council (SC)', 'Abd-al-Fattah al-BURHAN'],
+      ['Prime Min.', '']
+    )
     expect(politicalLeaderOf('SD', sd)).toBeUndefined()
   })
 
@@ -165,7 +234,10 @@ describe('politicalLeaderOf — collective bodies', () => {
     expect(leaderName('HT', ht)).toBe('Alix Didier FILS-AIME')
 
     // Kyrgyzstan's cabinet chairman must not outrank the president.
-    const kg = rows(['Pres.', 'Sadyr JAPAROV'], ['Chairman, Cabinet of Ministers', 'Adylbek KASYMALIYEV'])
+    const kg = rows(
+      ['Pres.', 'Sadyr JAPAROV'],
+      ['Chairman, Cabinet of Ministers', 'Adylbek KASYMALIYEV']
+    )
     expect(leaderName('KG', kg)).toBe('Sadyr JAPAROV')
   })
 })
@@ -176,27 +248,43 @@ describe('wikidataRoleFor', () => {
     expect(wikidataRoleFor('KR', withBoth)).toBe('headOfState')
     expect(wikidataRoleFor('SI', withBoth)).toBe('headOfGovernment')
     expect(wikidataRoleFor('CV', withBoth)).toBe('headOfGovernment')
-    expect(wikidataRoleFor('JP', rows(['Emperor', 'NARUHITO'], ['Prime Min.', 'B']))).toBe('headOfGovernment')
+    expect(wikidataRoleFor('JP', rows(['Emperor', 'NARUHITO'], ['Prime Min.', 'B']))).toBe(
+      'headOfGovernment'
+    )
   })
 })
 
 describe('preferWikidata', () => {
   it('overrides when the CIA page predates the term', () => {
-    expect(preferWikidata('2024-04-02', { name: 'Tarique Rahman', sinceDate: '2026-02-16' })).toBe(true)
-    expect(preferWikidata('2024-10-10', { name: 'Mojtaba Khamenei', sinceDate: '2026-03-09' })).toBe(true)
-    expect(preferWikidata('2022-09-21', { name: 'Francisco Carvalho', sinceDate: '2026-06-19' })).toBe(true)
+    expect(preferWikidata('2024-04-02', { name: 'Tarique Rahman', sinceDate: '2026-02-16' })).toBe(
+      true
+    )
+    expect(
+      preferWikidata('2024-10-10', { name: 'Mojtaba Khamenei', sinceDate: '2026-03-09' })
+    ).toBe(true)
+    expect(
+      preferWikidata('2022-09-21', { name: 'Francisco Carvalho', sinceDate: '2026-06-19' })
+    ).toBe(true)
   })
 
   it('needs a full date, not a year — Japan is the guard', () => {
     // Page 2025-05-23, term began 2025-10-21: same year, opposite verdict.
-    expect(preferWikidata('2025-05-23', { name: 'Sanae Takaichi', sinceDate: '2025-10-21' })).toBe(true)
-    expect(preferWikidata('2025-05-23', { name: 'Sanae Takaichi', sinceDate: undefined })).toBe(false)
+    expect(preferWikidata('2025-05-23', { name: 'Sanae Takaichi', sinceDate: '2025-10-21' })).toBe(
+      true
+    )
+    expect(preferWikidata('2025-05-23', { name: 'Sanae Takaichi', sinceDate: undefined })).toBe(
+      false
+    )
   })
 
   it('does not reject a record for a weak office label', () => {
     // Takaichi's Wikidata office reads "party leader". Rejecting on that
     // would fall through to Japan's head of state — the Emperor.
-    const takaichi = { name: 'Sanae Takaichi', description: 'Japanese politician', sinceDate: '2025-10-21' }
+    const takaichi = {
+      name: 'Sanae Takaichi',
+      description: 'Japanese politician',
+      sinceDate: '2025-10-21',
+    }
     expect(preferWikidata('2025-05-23', takaichi)).toBe(true)
   })
 
@@ -215,8 +303,12 @@ describe('preferWikidata', () => {
   })
 
   it('keeps the CIA when its page is newer than the term', () => {
-    expect(preferWikidata('2026-04-07', { name: 'Paetongtarn', sinceDate: '2023-08-22' })).toBe(false)
-    expect(preferWikidata('2025-09-25', { name: 'Pravind Jugnauth', sinceDate: '2017-01-23' })).toBe(false)
+    expect(preferWikidata('2026-04-07', { name: 'Paetongtarn', sinceDate: '2023-08-22' })).toBe(
+      false
+    )
+    expect(
+      preferWikidata('2025-09-25', { name: 'Pravind Jugnauth', sinceDate: '2017-01-23' })
+    ).toBe(false)
   })
 
   it('keeps the CIA when either side is missing data', () => {

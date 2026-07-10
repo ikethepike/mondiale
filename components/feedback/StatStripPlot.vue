@@ -3,14 +3,7 @@
     <svg class="strip" viewBox="0 0 320 84" preserveAspectRatio="xMidYMid meet">
       <line class="axis" x1="10" y1="72" x2="310" y2="72" />
       <!-- Every country with data, as a quiet swarm; hover one to compare. -->
-      <circle
-        v-for="dot in dots"
-        :key="dot.iso"
-        class="dot"
-        :cx="dot.x"
-        :cy="dot.y"
-        r="2.6"
-      >
+      <circle v-for="dot in dots" :key="dot.iso" class="dot" :cx="dot.x" :cy="dot.y" r="2.6">
         <title>{{ dot.name }} — {{ dot.display }}</title>
       </circle>
       <!-- The two protagonists: the real country and the lie's source. -->

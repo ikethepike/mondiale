@@ -110,7 +110,9 @@ export const fetchCiaCountry = async (
     country: page.country ?? englishName,
     dateUpdated: page.date_updated,
     leaders: page.leaders
-      .filter((leader): leader is { name: string; title: string } => !!leader.name && !!leader.title)
+      .filter(
+        (leader): leader is { name: string; title: string } => !!leader.name && !!leader.title
+      )
       .map(leader => ({ name: leader.name, title: leader.title })),
   }
 }

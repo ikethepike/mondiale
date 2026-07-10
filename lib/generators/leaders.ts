@@ -35,20 +35,99 @@ export interface WikidataLeader {
  * `CV`, `SK` and `XK` are parliamentary — their presidents are ceremonial.
  */
 export const HEAD_OF_GOVERNMENT_LED = new Set([
-  'AL', 'AD', 'AG', 'AM', 'AU', 'AT', 'BS', 'BD', 'BB', 'BE', 'BZ', 'BT', 'BG',
-  'KH', 'CA', 'CV', 'HR', 'CZ', 'DK', 'DM', 'TL', 'EE', 'ET', 'FJ', 'FI', 'GE',
-  'DE', 'GR', 'GD', 'HU', 'IS', 'IN', 'IQ', 'IE', 'IL', 'IT', 'JM', 'JP', 'XK',
-  'LV', 'LB', 'LS', 'LY', 'LU', 'LI', 'MY', 'MT', 'MU', 'MD', 'MN', 'ME', 'NP',
-  'NL', 'NZ', 'MK', 'NO', 'PK', 'PG', 'PL', 'RO', 'KN', 'LC', 'RS', 'SG', 'SK',
-  'SI', 'SL', 'SB', 'ES', 'SE', 'TH', 'TO', 'TT', 'TV', 'GB', 'VU',
+  'AL',
+  'AD',
+  'AG',
+  'AM',
+  'AU',
+  'AT',
+  'BS',
+  'BD',
+  'BB',
+  'BE',
+  'BZ',
+  'BT',
+  'BG',
+  'KH',
+  'CA',
+  'CV',
+  'HR',
+  'CZ',
+  'DK',
+  'DM',
+  'TL',
+  'EE',
+  'ET',
+  'FJ',
+  'FI',
+  'GE',
+  'DE',
+  'GR',
+  'GD',
+  'HU',
+  'IS',
+  'IN',
+  'IQ',
+  'IE',
+  'IL',
+  'IT',
+  'JM',
+  'JP',
+  'XK',
+  'LV',
+  'LB',
+  'LS',
+  'LY',
+  'LU',
+  'LI',
+  'MY',
+  'MT',
+  'MU',
+  'MD',
+  'MN',
+  'ME',
+  'NP',
+  'NL',
+  'NZ',
+  'MK',
+  'NO',
+  'PK',
+  'PG',
+  'PL',
+  'RO',
+  'KN',
+  'LC',
+  'RS',
+  'SG',
+  'SK',
+  'SI',
+  'SL',
+  'SB',
+  'ES',
+  'SE',
+  'TH',
+  'TO',
+  'TT',
+  'TV',
+  'GB',
+  'VU',
 ])
 
 const HEAD_OF_GOVERNMENT_TITLES = new Set([
-  'prime min.', 'prime minister', 'premier', 'chancellor', 'taoiseach',
-  'chief executive', 'head of govt.', 'head of government',
+  'prime min.',
+  'prime minister',
+  'premier',
+  'chancellor',
+  'taoiseach',
+  'chief executive',
+  'head of govt.',
+  'head of government',
   // Spain's premier is styled "President of the Government"; Sierra Leone's is
   // the Chief Minister. Neither is a president in the head-of-state sense.
-  'pres. of the govt.', 'president of the government', 'chief min.', 'chief minister',
+  'pres. of the govt.',
+  'president of the government',
+  'chief min.',
+  'chief minister',
 ])
 
 /**
@@ -58,18 +137,41 @@ const HEAD_OF_GOVERNMENT_TITLES = new Set([
  * match a naive substring test, which is why titles are matched exactly and
  * only ever on a LEADING phrase.
  */
-const SUBORDINATE = /^(first|second|third|deputy|dep\.|vice|acting dep\.|senior|special|permanent|executive vice)\b|\bmin\.? (in|at|to|of state|delegate|-member)\b|\bchief of staff\b|'s (office|department|chancellery)/i
+const SUBORDINATE =
+  /^(first|second|third|deputy|dep\.|vice|acting dep\.|senior|special|permanent|executive vice)\b|\bmin\.? (in|at|to|of state|delegate|-member)\b|\bchief of staff\b|'s (office|department|chancellery)/i
 
 const HEAD_OF_STATE_TITLES = new Set([
-  'pres.', 'president', 'president of the republic', 'pres. of the republic',
-  'king', 'queen', 'emperor', 'emir', 'amir', 'sultan', 'supreme leader',
-  'head of state', 'governor gen.', 'grand duke', 'chief of state', 'sovereign',
-  'overall taliban leader', 'general secretary', 'supreme pontiff',
+  'pres.',
+  'president',
+  'president of the republic',
+  'pres. of the republic',
+  'king',
+  'queen',
+  'emperor',
+  'emir',
+  'amir',
+  'sultan',
+  'supreme leader',
+  'head of state',
+  'governor gen.',
+  'grand duke',
+  'chief of state',
+  'sovereign',
+  'overall taliban leader',
+  'general secretary',
+  'supreme pontiff',
 ])
 
 /** A ceremonial head of state means the head of government leads. */
 const MONARCH_TITLES = new Set([
-  'king', 'queen', 'emperor', 'emir', 'amir', 'sultan', 'grand duke', 'governor gen.',
+  'king',
+  'queen',
+  'emperor',
+  'emir',
+  'amir',
+  'sultan',
+  'grand duke',
+  'governor gen.',
 ])
 
 /**
@@ -164,10 +266,7 @@ const stripParentheticals = (name: string) => name.replace(/\s*\([^)]*\)/g, '').
  * between head of state and head of government, or North Korea's Kim Jong Un
  * loses to the SAC's premier.
  */
-export const politicalLeaderOf = (
-  isoCode: string,
-  leaders: CiaLeader[]
-): CiaLeader | undefined => {
+export const politicalLeaderOf = (isoCode: string, leaders: CiaLeader[]): CiaLeader | undefined => {
   // A vacant office is listed with an empty name (Sudan's prime ministership).
   const named = leaders.filter(leader => leader.name.trim() && leader.title.trim())
 

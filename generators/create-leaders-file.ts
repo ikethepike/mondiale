@@ -143,14 +143,13 @@ const isoCodeOf = (claims?: { [property: string]: Statement[] }): string | undef
  * predates the current term. Year alone is not enough: Japan's page is
  * 2025-05-23 and Takaichi took office 2025-10-21 — same year, opposite verdict.
  */
-const currentHolder = (
-  statements: Statement[] = []
-): { leaderId?: string; sinceDate?: string } => {
+const currentHolder = (statements: Statement[] = []): { leaderId?: string; sinceDate?: string } => {
   const usable = statements.filter(
     statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
   )
   const startTime = (statement: Statement) => statement.qualifiers?.P580?.[0]
-  const startYear = (statement: Statement) => yearOf(startTime(statement)?.datavalue?.value?.time) ?? 0
+  const startYear = (statement: Statement) =>
+    yearOf(startTime(statement)?.datavalue?.value?.time) ?? 0
 
   const open = usable.filter(statement => !statement.qualifiers?.P582)
   const ranked = [...open].sort((a, b) => startYear(b) - startYear(a))
