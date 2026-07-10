@@ -296,6 +296,11 @@ const startGame = () => {
     height: var(--viewport-height);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    // The room shell is pointer-events: none (map taps pass through) and only
+    // the card re-enables itself — but WebKit won't drive a scroll container
+    // that isn't hit-testable ITSELF, so the scroller must opt in too.
+    pointer-events: auto;
+    touch-action: pan-y;
   }
   .player-configuration {
     height: auto;
@@ -508,6 +513,7 @@ const startGame = () => {
     height: var(--viewport-height);
     display: flex;
     overflow-y: auto;
+    pointer-events: auto;
   }
   .player-configuration {
     height: auto;
