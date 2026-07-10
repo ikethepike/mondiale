@@ -69,6 +69,15 @@ const GLYPHS: Record<string, Glyph> = {
     paths: ['M3.5 7.5h17v11h-17z', 'M8.5 7.5 10 5h4l1.5 2.5'],
     circles: [[12, 13, 3.2]],
   },
+  // Not stat topics: the gate hint buttons borrow the same glyph language.
+  reveal: {
+    paths: ['M2.5 12C4.6 7.7 8 5.5 12 5.5s7.4 2.2 9.5 6.5c-2.1 4.3-5.5 6.5-9.5 6.5S4.6 16.3 2.5 12z'],
+    circles: [[12, 12, 2.9]],
+  },
+  question: {
+    paths: ['M9.3 9.2a2.75 2.75 0 1 1 4 2.45c-.85.45-1.3 1.05-1.3 1.95', 'M12 16.9v.01'],
+    circles: [[12, 12, 8.6]],
+  },
 }
 
 const FALLBACK: Glyph = { paths: ['M5 19v-7', 'M10 19V7', 'M15 19v-5', 'M20 19V9'] }
