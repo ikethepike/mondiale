@@ -4,6 +4,7 @@ import { gameAlreadyStartedEvent } from '~~/lib/events/client/game-already-start
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
+import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
 import { playerGuessingEvent } from '~~/lib/events/client/player-guessing.event'
 import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
 import { useGameStore } from '~~/store/game.store'
@@ -60,6 +61,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   },
   'player-guessing': {
     handler: playerGuessingEvent,
+  },
+  'player-cheering': {
+    handler: playerCheeringEvent,
   },
 }
 

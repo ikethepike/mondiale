@@ -60,6 +60,22 @@
           <p class="pane-content">{{ selectedScorecard.player.name }} hasn't answered yet.</p>
         </template>
         <nav class="pane-content card-nav">
+          <!-- Points become movement: one pip per tile the pawn will walk,
+               filling in step with the count-up above. -->
+          <div v-if="pipCount > 0" class="step-track">
+            <span class="eyebrow">Steps on the board</span>
+            <div class="pips">
+              <span
+                v-for="pip in pipCount"
+                :key="pip"
+                class="pip"
+                :class="{ filled: animatedPoints >= pip }"
+              />
+              <span v-if="pipOverflow" class="pip-overflow"
+                >×{{ selectedScorecard.score?.points.scored }}</span
+              >
+            </div>
+          </div>
           <ButtonFilled @click="closeScores">
             <span>Close Scores</span>
           </ButtonFilled>
@@ -95,8 +111,7 @@
 import { gsap } from 'gsap'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
-import { getChallengeDetails } from '~~/lib/challenges'
-import { countryName } from '~~/lib/country'
+import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
@@ -129,53 +144,7 @@ const capitalGuessChallenge = computed(() => {
     : undefined
 })
 
-const challengeHeading = computed(() => {
-  const challenge = roundChallenge.value
-  if (!challenge) return ''
-  switch (kind.value) {
-    case 'traversal': {
-      const active = traversalChallenge.value
-      if (!active) return ''
-      return active.corridor
-        ? `Link ${countryName(active.start)} to ${countryName(active.target)} — ${active.corridor.name} only`
-        : `Link ${countryName(active.start)} to ${countryName(active.target)}`
-    }
-    case 'neighbour-blitz':
-      return '_type' in challenge && challenge._type === 'neighbour-blitz-challenge'
-        ? `Name ${countryName(challenge.country)}'s neighbours`
-        : ''
-    case 'silhouette':
-      return '_type' in challenge && challenge._type === 'silhouette-challenge'
-        ? `Whose outline is this? It was ${countryName(challenge.country)}`
-        : ''
-    case 'hot-cold':
-      return '_type' in challenge && challenge._type === 'hot-cold-challenge'
-        ? `The mystery country was ${countryName(challenge.country)}`
-        : ''
-    case 'sketch':
-      return sketchChallenge.value ? `Draw ${countryName(sketchChallenge.value.country)}` : ''
-    case 'stat-detective':
-      return '_type' in challenge && challenge._type === 'stat-detective-challenge'
-        ? `The numbers belonged to ${countryName(challenge.country)}`
-        : ''
-    case 'two-truths':
-      return '_type' in challenge && challenge._type === 'two-truths-challenge'
-        ? `The lie about ${countryName(challenge.country)} came from ${countryName(challenge.lieSource)}`
-        : ''
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands':
-      return '_type' in challenge && challenge._type === 'water-blitz-challenge'
-        ? `The ${challenge.featureName} touches ${challenge.countries.length} countries`
-        : ''
-    case 'name-that-water':
-      return '_type' in challenge && challenge._type === 'name-water-challenge'
-        ? `It was the ${challenge.featureName}`
-        : ''
-    default:
-      return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
-  }
-})
+const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
 
 const explainer = computed(() => {
   switch (kind.value) {
@@ -260,6 +229,13 @@ const { display: animatedPoints } = useCountUp(
   { delay: 0.3 }
 )
 
+// One pip per step, capped so a blowout round stays one or two rows.
+const PIP_CAP = 15
+const pipCount = computed(() =>
+  Math.min(selectedScorecard.value?.score?.points.scored ?? 0, PIP_CAP)
+)
+const pipOverflow = computed(() => (selectedScorecard.value?.score?.points.scored ?? 0) > PIP_CAP)
+
 // Staggered section + leaderboard-row entrance
 onMounted(() => {
   if (!card.value || prefersReducedMotion()) return
@@ -325,6 +301,35 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   text-transform: uppercase;
   color: var(--soft-blue);
   margin-bottom: 0.8rem;
+}
+
+.step-track .eyebrow {
+  margin-bottom: 0.6rem;
+}
+
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pip {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--soft-blue);
+  transition: background-color 0.25s ease;
+
+  &.filled {
+    background: var(--soft-blue);
+  }
+}
+
+.pip-overflow {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--soft-blue);
 }
 
 .card-header {
@@ -397,10 +402,17 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .card-nav {
   display: flex;
+  align-items: center;
+  gap: 1.5rem;
   padding-top: 2rem;
   padding-bottom: 2.4rem;
-  justify-content: flex-end;
+  justify-content: space-between;
   border-top: 0.1rem solid $hairline;
+}
+
+// With no steps to show, the close button keeps its right-edge home
+.card-nav > :last-child {
+  margin-left: auto;
 }
 
 // Sidebar: ranked standings

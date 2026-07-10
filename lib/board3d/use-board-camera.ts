@@ -24,10 +24,13 @@ const USER_IDLE_RESUME_MS = 4000
 /**
  * Auto-camera that never fights the player's fingers: any orbit gesture
  * kills the active tweens; following resumes after a few idle seconds.
+ * `onUserGrab` fires on every gesture start — callers use it to drop modes
+ * (like spectating) that a grab should cancel outright.
  */
 export const createBoardCamera = (
   camera: PerspectiveCamera,
-  controls: OrbitControlsLike
+  controls: OrbitControlsLike,
+  options: { onUserGrab?: () => void } = {}
 ): BoardCamera => {
   let userHasControl = false
   let idleTimer: ReturnType<typeof setTimeout> | undefined
@@ -42,6 +45,7 @@ export const createBoardCamera = (
     userHasControl = true
     killTweens()
     if (idleTimer) clearTimeout(idleTimer)
+    options.onUserGrab?.()
   }
 
   const onUserEnd = () => {

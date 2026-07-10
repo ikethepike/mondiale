@@ -6,6 +6,11 @@ import type { ISOCountryCode, Region } from './geography.types'
  *  verdict — only that the player answered. */
 export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence'
 
+/** The only cheers that exist — the server whitelists against this set, and
+ *  clients render by indexing into it rather than echoing payload strings. */
+export const CHEER_EMOJIS = ['👏', '🔥', '😅', '⏳', '🫶'] as const
+export type CheerEmoji = (typeof CHEER_EMOJIS)[number]
+
 export type ClientEventData =
   | {
       event: 'join'
@@ -82,6 +87,14 @@ export type ClientEventData =
       isoCode?: ISOCountryCode
       label?: string
     }
+  | {
+      /** Ephemeral emoji cheer aimed at another player's pawn. Pure relay —
+       *  writes no permanent state; the server whitelists the emoji and checks
+       *  the target exists before rebroadcasting. */
+      event: 'player-cheering'
+      targetPlayerId: string
+      emoji: CheerEmoji
+    }
 
 export type ClientEvent = ClientEventData['event']
 
@@ -125,6 +138,15 @@ export type ServerEventData =
        *  a radius carries no bearing on its own. */
       distanceKm?: number
       /** Stamped server-side; keys the ticker so each guess is its own entry. */
+      entryId: string
+      at: number
+    }
+  | {
+      event: 'player-cheering'
+      /** The socket's authenticated id — never taken from the payload body. */
+      playerId: string
+      targetPlayerId: string
+      emoji: CheerEmoji
       entryId: string
       at: number
     }

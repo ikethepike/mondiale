@@ -28,3 +28,6 @@ export type PlayerPhase =
   | 'kicked'
   | 'final-challenge'
   | 'victory'
+
+/** Phases where the player is parked on the 3D board. */
+export const BOARD_PHASES: PlayerPhase[] = ['moving', 'movement-summary']

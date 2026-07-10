@@ -3,27 +3,13 @@ import { countryLatLng, haversineKm } from '~~/lib/geo'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { isValidISOCode } from '~~/types/geography.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
+import { createTokenBucket } from './rate-limit'
 import { useServerSideEvents } from '../server-side'
 
-/** Per-socket token bucket: a short burst is fine, a flood is not. */
-const BUCKET_CAPACITY = 5
-const REFILL_PER_SECOND = 2
-const buckets = new Map<string, { tokens: number; last: number }>()
+const guessBucket = createTokenBucket(5, 2)
 
 /** Called from the socket's `disconnect` so the map can't grow unbounded. */
-export const forgetGuessBucket = (socketId: string) => buckets.delete(socketId)
-
-const takeToken = (socketId: string, now: number): boolean => {
-  const bucket = buckets.get(socketId) ?? { tokens: BUCKET_CAPACITY, last: now }
-  const refill = ((now - bucket.last) / 1000) * REFILL_PER_SECOND
-  bucket.tokens = Math.min(BUCKET_CAPACITY, bucket.tokens + refill)
-  bucket.last = now
-  buckets.set(socketId, bucket)
-
-  if (bucket.tokens < 1) return false
-  bucket.tokens -= 1
-  return true
-}
+export const forgetGuessBucket = (socketId: string) => guessBucket.forget(socketId)
 
 /**
  * Ephemeral live-guess relay for group rounds. Broadcasts a player's guess to
@@ -47,7 +33,7 @@ export const playerGuessingHandler: EventHandler = async ({
   socket,
 }) => {
   if (eventData.event !== 'player-guessing') return
-  if (!takeToken(socket.id, Date.now())) return
+  if (!guessBucket.take(socket.id, Date.now())) return
 
   const server = useServerSideEvents({ socket, redis, io })
   const game = await server.fetchGame(eventTarget.gameId)

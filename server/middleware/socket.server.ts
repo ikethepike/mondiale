@@ -12,6 +12,10 @@ import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
 import {
+  forgetCheerBucket,
+  playerCheeringHandler,
+} from '~~/lib/events/server/player-cheering.handler'
+import {
   forgetGuessBucket,
   playerGuessingHandler,
 } from '~~/lib/events/server/player-guessing.handler'
@@ -64,6 +68,10 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   // Ephemeral live guess relay (group rounds) — no permanent state written
   'player-guessing': {
     handler: playerGuessingHandler,
+  },
+  // Ephemeral emoji cheer relay — no permanent state written
+  'player-cheering': {
+    handler: playerCheeringHandler,
   },
   'submit-final-challenge-answer': {
     handler: submitFinalChallengeAnswerHandler,
@@ -122,7 +130,10 @@ export default defineEventHandler(({ node }) => {
         })
       }
 
-      socket.on('disconnect', () => forgetGuessBucket(socket.id))
+      socket.on('disconnect', () => {
+        forgetGuessBucket(socket.id)
+        forgetCheerBucket(socket.id)
+      })
     })
 
     io.on('error', error => {

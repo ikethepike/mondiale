@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { LatLng } from '~~/lib/geo'
-import type { GuessKind } from '~~/types/events.types'
+import type { CheerEmoji, GuessKind } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping, MapFeatureOverlay, MapInset } from '~~/types/map.type'
@@ -21,6 +21,17 @@ export interface GuessTickerEntry {
    *  server-side. A radius with no centre — the probed country stays redacted,
    *  so this raises tension without locating the answer. */
   distanceKm?: number
+  at: number
+}
+
+/** One emoji cheer in flight, as broadcast by `player-cheering`. */
+export interface CheerEntry {
+  entryId: string
+  /** Authenticated sender. */
+  playerId: string
+  /** Whose pawn the emoji floats over. */
+  targetPlayerId: string
+  emoji: CheerEmoji
   at: number
 }
 
@@ -65,6 +76,18 @@ interface GameStoreState {
      *  and fade out on its own. */
     liveGuesses: GuessTickerEntry[]
   }
+  /** Ephemeral board-view state — never persisted, never sent to the server
+   *  (except cheers, which arrive via the `player-cheering` broadcast). */
+  board: {
+    /** Player the local camera is spectating; undefined = own camera. */
+    spectateTargetId?: string
+    /** Live emoji cheers, self-expiring like liveGuesses. */
+    cheers: CheerEntry[]
+    /** Status panel fold override; undefined = auto (folded on phones). */
+    panelFolded?: boolean
+    /** Round-history drawer visibility (board phases only). */
+    historyOpen: boolean
+  }
   /**
    * Set when the player closes the group scores; the 3D board clears it and
    * emits 'enter-movement-phase' once the scene is actually ready, so every
@@ -106,6 +129,12 @@ export const useGameStore = defineStore('game', {
       feature: undefined,
       inset: undefined,
       liveGuesses: [],
+    },
+    board: {
+      spectateTargetId: undefined,
+      cheers: [],
+      panelFolded: undefined,
+      historyOpen: false,
     },
   }),
   actions: {},

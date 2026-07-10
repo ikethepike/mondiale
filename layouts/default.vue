@@ -39,7 +39,14 @@
       v-if="showStatusPanel"
       :players="allPlayers"
       :current-player-id="gameStore.playerId"
+      :points="currentRound?.round.playerTurns"
+      :board-length="game?.tiles.length"
+      :round-number="currentRound?.number"
     />
+
+    <CheerToast />
+
+    <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />
 
     <div v-if="revealCountry && !gameStore.map.atlasMode" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
@@ -64,6 +71,8 @@
   </div>
 </template>
 <script lang="ts" setup>
+import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
+import CheerToast from '~/components/feedback/CheerToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
@@ -71,6 +80,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { BOARD_PHASES } from '~~/types/player.type'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
 
 const reveal = toRef(gameStore.map, 'reveal')
@@ -112,7 +122,6 @@ const showContours = computed(
 // froze while others are still busy. The scores and victory screens carry
 // their own player lists, so the panel stays out of their way. Only with
 // company (2+ players).
-const BOARD_PHASES = ['moving', 'movement-summary']
 const showStatusPanel = computed(
   () => allPlayers.value.length > 1 && !!player.value && BOARD_PHASES.includes(player.value.phase)
 )

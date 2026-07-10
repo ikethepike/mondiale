@@ -11,12 +11,14 @@
     </TresCanvas>
     <BoardFallback v-else-if="resolvedGame" :game="resolvedGame" />
 
+    <SpectateHud v-if="resolvedGame" :game="resolvedGame" />
+
     <Interstitial
       v-if="showMoveInterstitial"
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1}`"
       title="On the move!"
-      stakes="Pawns advance one tile per point earned — challenges block the path."
+      :stakes="interstitialStakes"
       :hold-for="2.4"
       @done="onInterstitialDone"
     />
@@ -28,6 +30,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import type { Game } from '~~/types/game.types'
 import BoardFallback from './BoardFallback.vue'
+import SpectateHud from './SpectateHud.vue'
 import TopoScene from './TopoScene.vue'
 
 // Client-only (.client suffix): three + tres load only when the board mounts.
@@ -72,6 +75,18 @@ onBeforeMount(() => {
 // re-entered by the server itself and never sets the flag.)
 const sceneReady = ref(false)
 const showMoveInterstitial = ref(gameStore.pendingMovementRequest)
+
+// Name the player's actual conversion — "7 points → 7 tiles" lands better than
+// the abstract rule. Falls back to the rule when the score isn't known yet.
+const interstitialStakes = computed(() => {
+  const scored = currentRound.value?.round.playerTurns[resolvedPlayerId.value]?.points.scored
+  if (scored === undefined) {
+    return 'Pawns advance one tile per point earned — challenges block the path.'
+  }
+  if (scored === 0) return 'No points this round — your pawn stays put.'
+  const tiles = scored === 1 ? '1 tile' : `${scored} tiles`
+  return `You scored ${scored} — your pawn walks ${tiles}. Challenges block the path.`
+})
 
 const timers: ReturnType<typeof setTimeout>[] = []
 const requestMovementIfPending = () => {

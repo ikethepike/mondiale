@@ -51,7 +51,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'pin-landmark': ['Pin Dropper', 'Dead Reckoner', 'The Long Shot', 'Coordinate Cowboy'],
 }
 
-const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
+export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   ranking: 'ranking',
   traversal: 'border-run',
   'neighbour-blitz': 'neighbour blitz',

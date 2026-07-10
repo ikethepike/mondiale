@@ -1,7 +1,7 @@
 import type { Player } from '~~/types/player.type'
 
 export interface PlayerStatus {
-  /** Short human label, e.g. "Walking · tile 34". */
+  /** Short human label, e.g. "Walking · 4 steps left". */
   label: string
   /** Actively doing something time-bound — drives the live "busy" pulse. */
   busy: boolean
@@ -9,7 +9,19 @@ export interface PlayerStatus {
   done: boolean
   /** No longer in play (kicked); callers usually drop these. */
   gone: boolean
+  /** Board steps still to walk (including beyond a pending gate), when relevant. */
+  steps?: number
 }
+
+/** Tiles left to walk: end of the final queued move minus where the pawn stands. */
+export const stepsRemaining = (player: Player): number => {
+  const lastMove = player.moves[player.moves.length - 1]
+  return lastMove ? Math.max(0, lastMove.endTile.position - player.currentPosition) : 0
+}
+
+// Non-breaking spaces keep the steps phrase whole — the label wraps at the
+// "·" separator instead of mid-phrase.
+const plural = (count: number, noun: string) => `${count}\u00A0${noun}${count === 1 ? '' : 's'}`
 
 /**
  * Map a player's live phase (and position / current move) to a status shown in
@@ -29,17 +41,34 @@ export const getPlayerStatus = (player: Player): PlayerStatus => {
       return { label: 'Reading the rules', ...idle, busy: true }
     case 'group-challenge':
       return { label: 'Answering the round', busy: true, done: false, gone: false }
-    case 'individual-challenge':
-      return { label: 'At a challenge gate', busy: true, done: false, gone: false }
-    case 'final-challenge':
-      return { label: 'In the final challenge', busy: true, done: false, gone: false }
-    case 'moving':
+    case 'individual-challenge': {
+      const steps = stepsRemaining(player)
       return {
-        label: `Walking · tile ${player.currentPosition}`,
+        label:
+          steps > 0
+            ? `At a challenge gate · ${plural(steps, 'step')}\u00A0banked`
+            : 'At a challenge gate',
         busy: true,
         done: false,
         gone: false,
+        steps,
       }
+    }
+    case 'final-challenge':
+      return { label: 'In the final challenge', busy: true, done: false, gone: false }
+    case 'moving': {
+      const steps = stepsRemaining(player)
+      return {
+        label:
+          steps > 0
+            ? `Walking · ${plural(steps, 'step')}\u00A0left`
+            : `Walking · tile ${player.currentPosition}`,
+        busy: true,
+        done: false,
+        gone: false,
+        steps,
+      }
+    }
     case 'group-scores':
       return { label: 'Reviewing scores', ...idle }
     case 'movement-summary':
