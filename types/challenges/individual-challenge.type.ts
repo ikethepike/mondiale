@@ -42,8 +42,8 @@ export interface IndividualChallenge {
   }
   /** border-detective: the mystery country's neighbours, shown as a flag ring
    *  (the answer `country` is NOT among them — it sits in the empty centre).
-   *  Timed: the clock fraction left scales the leap, and an optional outline
-   *  hint costs a step (see `gateLeapSteps`). */
+   *  Timed: the clock fraction left scales the leap, and an outline hint
+   *  (unlocked a third of the way in) costs steps (see `gateLeapSteps`). */
   neighbours?: ISOCountryCode[]
   /** capital-match / photo gates: a photo (capital skyline, landmark) whose
    *  country the player names from `options`. */

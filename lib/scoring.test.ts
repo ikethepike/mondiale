@@ -7,7 +7,14 @@ import {
   scoreHotCold,
   scoreTraversalSubmission,
 } from './challenges'
-import { attemptFraction, blitzScore, buzzFraction, GATE_LEAP_STEPS, gateLeapSteps } from './scoring'
+import {
+  attemptFraction,
+  blitzScore,
+  buzzFraction,
+  GATE_HINT_BITE_STEPS,
+  GATE_LEAP_STEPS,
+  gateLeapSteps,
+} from './scoring'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -149,9 +156,16 @@ describe('gateLeapSteps', () => {
     expect(gateLeapSteps(0)).toBe(1)
   })
 
-  it('bites one step for the outline hint, never below zero', () => {
-    expect(gateLeapSteps(1, true)).toBe(1)
-    expect(gateLeapSteps(0, true)).toBe(0)
+  it('bites GATE_HINT_BITE_STEPS per bought hint, never below zero', () => {
+    expect(gateLeapSteps(1, 1)).toBe(Math.max(0, GATE_LEAP_STEPS - GATE_HINT_BITE_STEPS))
+    expect(gateLeapSteps(0, 1)).toBe(0)
+    expect(gateLeapSteps(1, 2)).toBe(0)
+  })
+
+  it('never lets a negative or garbage hint count inflate the leap', () => {
+    expect(gateLeapSteps(1, -3)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(1, Number.NaN)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(1, 0.4)).toBe(GATE_LEAP_STEPS)
   })
 
   it('shrugs off a garbage fraction instead of walking the pawn NaN steps', () => {

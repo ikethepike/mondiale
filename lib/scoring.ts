@@ -17,18 +17,24 @@ export const buzzScore = (maximumPoints: number, remainingFraction: number): num
 /** A gate's full-pot leap in board steps — what an untimed gate always pays. */
 export const GATE_LEAP_STEPS = 2
 
+/** Each bought gate hint bites this many steps off the leap. */
+export const GATE_HINT_BITE_STEPS = 2
+
 /**
  * Steps a correct gate answer moves the pawn. Timed gates report the clock
- * fraction left and the buzz curve scales the leap; a bought hint bites one
- * step. Untimed gates report nothing and pay the whole pot. A non-finite
- * fraction (a hostile or buggy client) falls back to the pot rather than NaN.
+ * fraction left and the buzz curve scales the leap; every bought hint bites
+ * `GATE_HINT_BITE_STEPS`, never below zero. Untimed gates report nothing and
+ * pay the whole pot. Hostile or buggy payloads can't help themselves: a
+ * non-finite fraction falls back to the pot, and a negative or non-finite
+ * hint count bites nothing rather than paying extra.
  */
-export const gateLeapSteps = (remainingFraction?: number, hintUsed = false): number => {
+export const gateLeapSteps = (remainingFraction?: number, hintsUsed = 0): number => {
   const pot =
     remainingFraction !== undefined && Number.isFinite(remainingFraction)
       ? Math.round(GATE_LEAP_STEPS * buzzFraction(remainingFraction))
       : GATE_LEAP_STEPS
-  return Math.max(0, pot - (hintUsed ? 1 : 0))
+  const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed)) : 0
+  return Math.max(0, pot - bought * GATE_HINT_BITE_STEPS)
 }
 
 /**

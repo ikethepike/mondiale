@@ -50,8 +50,9 @@ export type ClientEventData =
       /** Timed gates (border-detective): fraction of the clock left at submit.
        *  Scales the leap via the buzz curve; the server clamps it. */
       remainingFraction?: number
-      /** Timed gates: an outline hint was bought — bites one step off the leap. */
-      hintUsed?: boolean
+      /** Timed gates: how many hints were bought (outline, ISO code) — each
+       *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. */
+      hintsUsed?: number
     }
   | {
       event: 'close-tutorial'

@@ -74,6 +74,7 @@
             <ChallengeTimer :value="borderSecondsLeft" :total="BORDER_DETECTIVE_SECONDS" />
             <div class="border-ring" :style="{ '--ring-count': challenge.neighbours.length }">
               <div class="ring-center" aria-hidden="true">
+                <span v-if="isoHint" class="iso-chip">{{ isoHint }}</span>
                 <svg v-if="borderHint" class="hint-outline" :viewBox="borderHint.viewBox">
                   <path :d="borderHint.d" />
                 </svg>
@@ -90,9 +91,28 @@
                 <span v-if="!isHard" class="ring-name">{{ countryName(neighbour) }}</span>
               </div>
             </div>
-            <button v-if="!borderHint" class="hint-button" type="button" @click="showBorderHint">
-              Stuck? Reveal its outline — costs a step
-            </button>
+            <div class="hint-row">
+              <Transition name="caption">
+                <button
+                  v-if="!borderHint && outlineHintUnlocked"
+                  class="hint-button"
+                  type="button"
+                  @click="showBorderHint"
+                >
+                  Stuck? Reveal its outline — costs {{ GATE_HINT_BITE_STEPS }} steps
+                </button>
+              </Transition>
+              <Transition name="caption">
+                <button
+                  v-if="!isoHint && isoHintUnlocked"
+                  class="hint-button"
+                  type="button"
+                  @click="showIsoHint"
+                >
+                  Last resort: its country code — costs {{ GATE_HINT_BITE_STEPS }} steps
+                </button>
+              </Transition>
+            </div>
             <div class="guess-box">
               <CountryGuessInput
                 :disabled="!!status"
@@ -296,6 +316,8 @@ import { currencySymbol } from '~~/lib/currency'
 import { politicalLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
+import { GATE_HINT_BITE_STEPS } from '~~/lib/scoring'
+import { mainlandOutline } from '~~/lib/outline'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -419,10 +441,19 @@ const onOutlineGuess = (country: Country) => {
 // Timed like the other mystery gates: the clock scales the leap (buzz curve,
 // applied server-side from the reported fraction) and runs out into a miss.
 const BORDER_DETECTIVE_SECONDS = 40
+/** Hints unlock in waves: the outline a third in, the ISO code two thirds in. */
+const OUTLINE_HINT_UNLOCK_ELAPSED = 1 / 3
+const ISO_HINT_UNLOCK_ELAPSED = 2 / 3
 const borderSecondsLeft = ref(BORDER_DETECTIVE_SECONDS)
 let borderTimer: ReturnType<typeof setInterval> | undefined
-/** The bought outline hint, drawn in the ring's centre. Buying it bites a step. */
+/** The bought outline hint, drawn in the ring's centre. Every hint bites steps. */
 const borderHint = ref<{ d: string; viewBox: string }>()
+/** The bought last-resort hint: the country's ISO code, chipped onto the ring. */
+const isoHint = ref<ISOCountryCode>()
+const elapsedFraction = computed(() => 1 - borderSecondsLeft.value / BORDER_DETECTIVE_SECONDS)
+const outlineHintUnlocked = computed(() => elapsedFraction.value >= OUTLINE_HINT_UNLOCK_ELAPSED)
+const isoHintUnlocked = computed(() => elapsedFraction.value >= ISO_HINT_UNLOCK_ELAPSED)
+const hintsUsed = computed(() => (borderHint.value ? 1 : 0) + (isoHint.value ? 1 : 0))
 
 const beginBorderDetective = () => {
   const active = challenge.value
@@ -445,6 +476,12 @@ const showBorderHint = () => {
   borderHint.value = mainlandOutline(active.country)
 }
 
+const showIsoHint = () => {
+  const active = challenge.value
+  if (!active || isoHint.value || status.value) return
+  isoHint.value = active.country
+}
+
 const onBorderGuess = (country: Country) => {
   if (status.value) return
   if (borderTimer) clearInterval(borderTimer)
@@ -452,7 +489,7 @@ const onBorderGuess = (country: Country) => {
   gameStore.map.solo = false
   submitAnswer(country.isoCode, {
     remainingFraction: Math.max(0, borderSecondsLeft.value) / BORDER_DETECTIVE_SECONDS,
-    hintUsed: !!borderHint.value,
+    hintsUsed: hintsUsed.value,
   })
 }
 
@@ -608,7 +645,7 @@ const incorrectMessage = computed(() => {
 
 const submitAnswer = (
   isoCode: ISOCountryCode,
-  options: { reveal?: boolean; remainingFraction?: number; hintUsed?: boolean } = {}
+  options: { reveal?: boolean; remainingFraction?: number; hintsUsed?: number } = {}
 ) => {
   if (status.value) return
   if (currentMove.value?.challenge?._type === 'final-challenge') return
@@ -619,7 +656,7 @@ const submitAnswer = (
     event: 'submit-individual-challenge-answer',
     isoCode,
     remainingFraction: options.remainingFraction,
-    hintUsed: options.hintUsed,
+    hintsUsed: options.hintsUsed,
   })
 
   const active = currentMove.value?.challenge
@@ -667,6 +704,7 @@ watch(currentMove, move => {
     borderTimer = undefined
   }
   borderHint.value = undefined
+  isoHint.value = undefined
   borderSecondsLeft.value = BORDER_DETECTIVE_SECONDS
   if (zoomOutTimer) {
     clearTimeout(zoomOutTimer)
@@ -928,6 +966,29 @@ header {
     stroke-linejoin: round;
     stroke-linecap: round;
   }
+}
+
+// The bought last resort: the ISO code chipped over the circle's top edge.
+.ring-center .iso-chip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 0.2rem 0.9rem 0.2rem 1.08rem; // optical: balance the tracking's tail
+  border-radius: 1rem;
+  color: var(--dark-blue);
+  background: hsla(36, 100%, 98%, 0.92);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+}
+
+.hint-row {
+  gap: 1rem;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
 }
 
 .hint-button {

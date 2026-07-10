@@ -33,8 +33,8 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
 
     const correct = eventData.isoCode === currentMove.challenge.country
     if (correct) {
-      // Timed gates scale the leap by the clock; a bought hint bites a step.
-      player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintUsed)
+      // Timed gates scale the leap by the clock; bought hints bite steps off.
+      player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintsUsed)
       player.moves.shift()
     } else {
       player.moves = []
