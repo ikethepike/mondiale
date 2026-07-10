@@ -481,7 +481,7 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   .group-scores {
     grid-template-columns: 100%;
     // Clear of the URL bar the lvh ModalWrapper now runs beneath.
-    margin-bottom: calc(var(--safe-bottom) + 7rem);
+    margin-bottom: calc(var(--safe-bottom) + 2rem);
   }
 
   .player-listing {

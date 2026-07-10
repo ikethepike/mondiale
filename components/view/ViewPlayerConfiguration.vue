@@ -293,10 +293,9 @@ const startGame = () => {
   // Pinning the card to the viewport height clipped the region orbs and
   // settings off the bottom with no way to reach them.
   .player-configuration-wrapper {
-    // The LARGE viewport, not dvh: the card's surface runs on beneath the
-    // browser's translucent URL bar instead of cutting off above it.
+    // dvh, deliberately: an lvh scroller cannot scroll when its content fits,
+    // stranding short steps' controls (the naming card) behind the URL bar.
     height: var(--viewport-height);
-    height: 100lvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     // The room shell is pointer-events: none (map taps pass through) and only
@@ -311,9 +310,7 @@ const startGame = () => {
     // No bottom rule on phones: the card scrolls past the URL bar, so a
     // thick edge would just strand a heavy line mid-content.
     border-bottom: none;
-    // Inner scrolling never retracts the URL bar, so the tail of the card
-    // lives under it permanently — pad the controls up into clear air.
-    padding-bottom: calc(var(--safe-bottom) + 7rem);
+    padding-bottom: calc(var(--safe-bottom) + 2.4rem);
   }
 
   .player-configuration .player-lobby ul {

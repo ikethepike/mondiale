@@ -441,12 +441,12 @@ h1 {
 }
 
 @media screen and (max-width: $tablet) {
-  // Room to breathe: the card fills the large viewport (its surface running
-  // on beneath the URL bar, like the lobby) and its sections spread out
-  // vertically instead of packing to content height.
+  // Room to breathe: the card fills the (dynamic) viewport edge to edge with
+  // its sections spread out, and drops the bottom rule so the edge at the
+  // URL bar reads soft instead of ruled off.
   .tutorial-card {
     display: flex;
-    min-height: 100lvh;
+    min-height: 100%;
     border-bottom: none;
 
     > .pane-content {
@@ -454,7 +454,7 @@ h1 {
       display: flex;
       flex-flow: column nowrap;
       justify-content: space-evenly;
-      padding-bottom: calc(var(--safe-bottom) + 7rem);
+      padding-bottom: calc(var(--safe-bottom) + 2.4rem);
     }
   }
 

@@ -14,13 +14,7 @@
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
-// Phones: the wrapper (the clipping container) extends to the LARGE viewport
-// so modal cards run beneath the translucent URL bar instead of being sheared
-// off above it. Cards keep their own tail padding to hold controls in clear
-// air — inner scrolling never retracts the bar.
-@media screen and (max-width: 640px) {
-  .modal-wrapper {
-    height: 100lvh;
-  }
-}
+// NOTE: the wrapper must stay dvh-sized. An lvh scroller cannot scroll when
+// its content fits (no overflow = no travel), stranding whatever sits behind
+// the URL bar. Under-bar bleed and inner scrolling are mutually exclusive.
 </style>
