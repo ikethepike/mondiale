@@ -480,6 +480,8 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 @media screen and (max-width: $tablet) {
   .group-scores {
     grid-template-columns: 100%;
+    // Clear of the URL bar the lvh ModalWrapper now runs beneath.
+    margin-bottom: calc(var(--safe-bottom) + 7rem);
   }
 
   .player-listing {
