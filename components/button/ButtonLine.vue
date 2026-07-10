@@ -18,7 +18,9 @@ defineProps({
 })
 </script>
 <style lang="scss" scoped>
-.line {
+// .button.line: outrank ButtonBase's `.button { border-style: none }` — see
+// ButtonFilled for the stylesheet-order trap.
+.button.line {
   background-color: transparent;
   border: 0.1rem solid var(--black);
 }
