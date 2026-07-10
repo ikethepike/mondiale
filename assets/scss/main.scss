@@ -33,6 +33,14 @@ body {
   background-color: var(--background-color);
 }
 
+// iOS auto-zooms any focused field rendering under 16px. Floor every form
+// control at 1.6rem (= 16px); components that want larger override it.
+input,
+select,
+textarea {
+  font-size: 1.6rem;
+}
+
 // Text for screen readers only — kept in the accessibility tree, out of the page.
 .visually-hidden {
   position: absolute;

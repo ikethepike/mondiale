@@ -289,6 +289,22 @@ const startGame = () => {
 }
 
 @media screen and (max-width: $tablet) {
+  // The wrapper scrolls and the card grows — same contract as desktop.
+  // Pinning the card to the viewport height clipped the region orbs and
+  // settings off the bottom with no way to reach them.
+  .player-configuration-wrapper {
+    height: var(--viewport-height);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .player-configuration {
+    height: auto;
+    min-height: 100%;
+    // No bottom rule on phones: the card scrolls past the URL bar, so a
+    // thick edge would just strand a heavy line mid-content.
+    border-bottom: none;
+  }
+
   .player-configuration .player-lobby ul {
     display: flex;
     justify-content: flex-end;

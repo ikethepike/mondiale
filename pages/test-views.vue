@@ -34,6 +34,7 @@ import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
 import ViewHotCold from '~/components/view/ViewHotCold.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
+import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
@@ -383,6 +384,18 @@ const scenarios: Scenario[] = [
         image: landmark?.image ?? '/landmarks/eiffel-tower.webp',
         landmark: { name: 'Eiffel Tower', city: 'Paris' },
       }),
+  },
+  {
+    id: 'lobby',
+    label: 'Lobby (waiting room, solo)',
+    component: ViewPlayerConfiguration,
+    build: () => {
+      const game = mockGame('waiting-for-game', [])
+      game.started = false
+      // The lonely single-player lobby, where the config card is tallest.
+      game.players = { [ME]: game.players[ME]! }
+      return game
+    },
   },
   {
     id: 'tutorial',

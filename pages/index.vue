@@ -70,6 +70,23 @@ header {
   max-width: 100%;
   margin: auto;
 }
+
+// Phones: the card stretches toward the viewport and its sections spread
+// out — logo up top, regions in the middle, the start button anchoring the
+// bottom — instead of huddling at content height.
+@media screen and (max-width: $tablet) {
+  .intro {
+    display: flex;
+    min-height: calc(var(--viewport-height) - 3rem);
+
+    form {
+      flex: 1;
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: space-between;
+    }
+  }
+}
 .logo {
   width: 100%;
   height: 4rem;
@@ -94,5 +111,4 @@ nav {
 .start-button img {
   filter: invert(1);
 }
-
 </style>
