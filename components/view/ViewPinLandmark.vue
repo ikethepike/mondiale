@@ -229,7 +229,7 @@ header {
   bottom: 3rem;
   z-index: 3;
   position: absolute;
-  max-width: 34rem;
+  width: min(40rem, 92vw);
 
   .pane-content {
     gap: 1.2rem;
@@ -252,8 +252,8 @@ header {
 }
 
 .dossier-photo {
-  width: 8rem;
-  height: 8rem;
+  width: 10rem;
+  height: 10rem;
   flex-shrink: 0;
   object-fit: cover;
   border-radius: 0.4rem;
@@ -292,11 +292,17 @@ header {
     height: min(22vh, 18rem);
   }
 
+  // Inset centring, not translateX(-50%): the dossier's enter transition
+  // animates `transform`, and the two fought — the card ended up half a width
+  // off-screen. Explicit width also stops absolute shrink-to-fit narrowing it.
   .dossier {
-    left: 50%;
+    left: 0;
+    right: 0;
     bottom: 2rem;
-    max-width: min(90vw, 34rem);
-    transform: translateX(-50%);
+    margin: 0 auto;
+    width: min(92vw, 40rem);
+    max-width: none;
+    transform: none;
   }
 }
 
@@ -343,5 +349,21 @@ footer {
       overflow-y: auto;
     }
   }
+}
+
+// The miss hint floats below the prompt instead of joining its flex flow —
+// popping in and out must not reflow the header (or the view under it).
+header .prompt {
+  position: relative;
+}
+header .prompt .hint {
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 100%;
+  position: absolute;
+  margin: 0.4rem auto 0;
 }
 </style>

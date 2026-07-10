@@ -28,38 +28,69 @@
     </header>
 
     <section class="claim-stage">
-      <div class="flag-frame">
-        <CountryFlag
-          class="flag"
-          :country="getCountry(challenge.country)"
-          mode="background"
-          fit="contain"
+      <ContourRipple v-if="foundLie" class="stage-ripple" tone="success" :delay="0.15" />
+      <!-- Before the pick: the flag. After: the lie's stat as a world strip,
+           so the reveal SHOWS where the truth and the borrowed number sit. -->
+      <Transition name="caption" mode="out-in">
+        <div v-if="picked === undefined" key="flag" class="flag-frame">
+          <CountryFlag
+            class="flag"
+            :country="getCountry(challenge.country)"
+            mode="background"
+            fit="contain"
+          />
+        </div>
+        <StatStripPlot
+          v-else-if="lieAccessorId"
+          key="plot"
+          class="plot-frame"
+          :accessor-id="lieAccessorId"
+          :target="challenge.country"
+          :decoy="challenge.lieSource"
         />
-      </div>
+      </Transition>
       <ul class="claim-list">
         <li v-for="(statement, index) in challenge.statements" :key="statement.accessorId">
-          <button
+          <StatCard
+            tag="button"
             type="button"
             class="claim-card"
             :class="claimClass(index)"
+            :label="statementLabel(statement.accessorId)"
+            :topic="statementTopic(statement.accessorId)"
             :disabled="picked !== undefined"
             @click="pick(index)"
           >
-            <span class="claim-label">{{ statementLabel(statement.accessorId) }}</span>
             <strong class="claim-value">
               {{ formatNumber(statement.amount) }}{{ statement.unit ? ` ${statement.unit}` : '' }}
             </strong>
-          </button>
+            <Transition name="caption">
+              <span
+                v-if="picked !== undefined"
+                class="verdict-tag"
+                :class="index === challenge.lieIndex ? 'lie' : 'truth'"
+              >
+                {{
+                  index === challenge.lieIndex
+                    ? `The lie — ${countryName(challenge.lieSource)}'s number`
+                    : 'True'
+                }}
+              </span>
+            </Transition>
+          </StatCard>
         </li>
       </ul>
     </section>
   </div>
 </template>
 <script lang="ts" setup>
+import StatCard from '~/components/challenge/StatCard.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { accessorTopicLabel } from '~~/lib/challenges'
+import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
+import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatNumber } from '~~/lib/number'
@@ -83,6 +114,13 @@ let submitTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => submitTimer && clearTimeout(submitTimer))
 
 const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
+const statementTopic = (accessorId: GroupChallengeAccessorId) =>
+  getChallengeDetails(accessorId)?.topic
+
+const lieAccessorId = computed(() => {
+  const active = challenge.value
+  return active ? active.statements[active.lieIndex].accessorId : undefined
+})
 
 const foundLie = computed(
   () => picked.value !== undefined && picked.value === challenge.value?.lieIndex
@@ -167,9 +205,24 @@ header {
   gap: 2.4rem;
   display: flex;
   min-height: 0;
+  position: relative;
   align-items: center;
   flex-flow: column nowrap;
   justify-content: center;
+}
+
+.stage-ripple {
+  top: 50%;
+  left: 50%;
+  width: min(34rem, 90vw);
+  height: min(34rem, 90vw);
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.plot-frame {
+  pointer-events: auto;
 }
 
 .flag-frame {
@@ -194,24 +247,18 @@ header {
   list-style: none;
   pointer-events: auto;
   grid-template-columns: repeat(3, minmax(20rem, 26rem));
+
+  // The grid stretches the list items; the card fills its item, so all
+  // three claims share one height regardless of how their copy wraps.
+  li {
+    display: flex;
+  }
 }
 
+// Card chrome lives in StatCard — only behaviour and verdicts here.
 .claim-card {
-  gap: 0.6rem;
-  width: 100%;
-  display: flex;
   cursor: pointer;
-  padding: 1.8rem;
   font-size: 1.8rem;
-  text-align: center;
-  align-items: center;
-  font-family: inherit;
-  border-radius: 1.2rem;
-  flex-flow: column nowrap;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive),
@@ -230,14 +277,22 @@ header {
     cursor: default;
   }
 
-  .claim-label {
-    opacity: 0.65;
-    font-size: 1.3rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
   .claim-value {
     font-size: 2.4rem;
+  }
+
+  // Post-pick, every card names its role — the washes carry the mood, the
+  // tags carry the fact.
+  .verdict-tag {
+    font-size: 1.2rem;
+    font-weight: bold;
+
+    &.lie {
+      color: var(--hior-ange);
+    }
+    &.truth {
+      color: hsl(170.5, 34.7%, 38%);
+    }
   }
 
   // Reveal: the lie glows coral, truths settle to mint
@@ -278,6 +333,7 @@ header {
   .claim-list {
     gap: 1rem;
     width: 100%;
+    grid-auto-rows: 1fr;
     grid-template-columns: minmax(0, 1fr);
   }
 

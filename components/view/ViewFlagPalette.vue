@@ -171,14 +171,18 @@ header {
   display: flex;
   gap: 1.2rem;
   padding: 1.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  // Six swatches must fit a 360px screen inside the frame's own padding.
+  max-width: calc(100vw - 3.2rem);
   border-radius: 1.4rem;
   background: hsla(36, 100%, 98%, 0.85);
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
 }
 
 .swatch {
-  width: min(8rem, 16vw);
-  height: min(8rem, 16vw);
+  width: min(8rem, 11vw);
+  height: min(8rem, 11vw);
   border-radius: 1rem;
   box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
 }
@@ -206,5 +210,21 @@ footer {
   footer {
     padding: 1.2rem 1.6rem clamp(8rem, 24dvh, 20rem);
   }
+}
+
+// The miss hint floats below the prompt instead of joining its flex flow —
+// popping in and out must not reflow the header (or the view under it).
+header .prompt {
+  position: relative;
+}
+header .prompt .hint {
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 100%;
+  position: absolute;
+  margin: 0.4rem auto 0;
 }
 </style>

@@ -186,6 +186,9 @@ let punchedInAt = 0
 
 const onDoubleClick = (event: MouseEvent) => {
   event.preventDefault()
+  // A trailing dblclick inside the same click burst carries detail > 2
+  // (clicks three and four) — never treat it as a deliberate toggle.
+  if (event.detail > 2) return
   // Double-tap toggles: punch into the tapped spot, or reset if already zoomed.
   if (scale.value > 1) {
     if (performance.now() - punchedInAt < PUNCH_IN_SETTLE_MS) return

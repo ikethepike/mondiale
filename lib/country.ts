@@ -73,6 +73,22 @@ export const localCountryName = (country: Country): string | undefined => {
   return local
 }
 
+/**
+ * Some countries (France, UK…) pack every overseas territory into
+ * `coordinates` as HTML. Strip tags and keep just the primary lat/long pair.
+ */
+export const primaryCoordinates = (country: Country): string | undefined => {
+  const raw = country.coordinates
+  if (!raw) return undefined
+  const plain = raw
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // First "NN NN N/S, NN NN E/W" pair.
+  const match = /\d[\d\s]*[NS],\s*\d[\d\s]*[EW]/.exec(plain)
+  return match ? match[0].replace(/\s+/g, ' ') : plain.split(/\s{2,}|·/)[0]
+}
+
 /** Common alternative names people actually type, mapped onto the data's ISO codes. */
 const COUNTRY_ALIASES: { [alias: string]: ISOCountryCode } = {
   usa: 'US',

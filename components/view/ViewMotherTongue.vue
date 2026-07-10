@@ -242,4 +242,20 @@ footer {
   }
 
 }
+
+// The miss hint floats below the prompt instead of joining its flex flow —
+// popping in and out must not reflow the header (or the view under it).
+header .prompt {
+  position: relative;
+}
+header .prompt .hint {
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 100%;
+  position: absolute;
+  margin: 0.4rem auto 0;
+}
 </style>

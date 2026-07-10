@@ -42,7 +42,7 @@
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
         <div class="pane-content">
           <CountryFlag class="flag" :country="revealCountry" />
-          <small>{{ revealCountry.coordinates }}</small>
+          <small>{{ primaryCoordinates(revealCountry) }}</small>
           <h3>{{ countryName(revealCountry) }}</h3>
           <p>{{ revealCountry.geography.capital.name }}</p>
           <small class="reveal-facts">
@@ -61,7 +61,7 @@
 </template>
 <script lang="ts" setup>
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
-import { countryName, getCountry } from '~~/lib/country'
+import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { formatNumber } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -246,12 +246,14 @@ onMounted(() => {
   }
 }
 
-// Compact reveal card on phones: narrower so the map peeks past its right
-// edge, tighter flag spacing, and clear of the home indicator.
+// Compact reveal card on phones: bottom-left like desktop, slimmed down, no
+// hairline frame around the pane's own border, clear of the home indicator.
 @media screen and (max-width: $tablet) {
   .reveal-wrapper {
-    max-width: min(34rem, calc(100% - 6rem));
-    padding-bottom: var(--safe-bottom);
+    border: none;
+    max-width: min(26rem, calc(100% - 6rem));
+    font-size: 0.95em;
+    padding: 0 0 var(--safe-bottom);
     .flag {
       margin-bottom: 1rem;
     }

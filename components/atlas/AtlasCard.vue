@@ -93,7 +93,7 @@
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { ATLAS_SECTIONS, atlasFact, type AtlasFact } from '~~/lib/atlas'
-import { countryName } from '~~/lib/country'
+import { countryName, primaryCoordinates } from '~~/lib/country'
 import { leaderTitle, politicalLeader } from '~~/lib/leaders'
 import { REGION_LABELS } from '~~/lib/variant'
 import { isValidISOCode, type Country, type ISOCountryCode } from '~~/types/geography.types'
@@ -103,19 +103,7 @@ const emit = defineEmits<{ close: []; select: [iso: ISOCountryCode] }>()
 
 const languages = computed(() => props.country.languages?.slice(0, 4).join(', '))
 
-// Some countries (France, UK…) pack every overseas territory into coordinates
-// as HTML. Strip tags and keep just the primary lat/long pair.
-const coordinates = computed(() => {
-  const raw = props.country.coordinates
-  if (!raw) return undefined
-  const plain = raw
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  // First "NN NN N/S, NN NN E/W" pair.
-  const match = /\d[\d\s]*[NS],\s*\d[\d\s]*[EW]/.exec(plain)
-  return match ? match[0].replace(/\s+/g, ' ') : plain.split(/\s{2,}|·/)[0]
-})
+const coordinates = computed(() => primaryCoordinates(props.country))
 
 const leader = computed(() => politicalLeader(props.country.isoCode))
 const leaderTitleText = computed(() => (leader.value ? leaderTitle(leader.value) : undefined))

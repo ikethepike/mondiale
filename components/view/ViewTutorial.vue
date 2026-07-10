@@ -451,6 +451,42 @@ h1 {
     bottom: -1.95rem;
     transform: translateX(50%) rotate(135deg);
   }
+
+  // Lean rows: the emblem sits to the LEFT of the copy instead of stacking
+  // above it, so the three cards read as a compact list.
+  .phase {
+    column-gap: 1.4rem;
+    row-gap: 0.2rem;
+    display: grid;
+    text-align: left;
+    align-items: center;
+    padding: 1.2rem 1.4rem 1.2rem 3.4rem;
+    grid-template-columns: auto 1fr;
+  }
+
+  .phase-index {
+    top: 50%;
+    left: 1.2rem;
+    transform: translateY(-50%);
+  }
+
+  .phase-icon {
+    width: 4.2rem;
+    height: 4.2rem;
+    grid-row: 1 / span 2;
+
+    :deep(svg) {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+  }
+
+  .phase-title {
+    align-self: end;
+  }
+  .phase-hook {
+    align-self: start;
+  }
 }
 
 @media screen and (min-width: $tablet) {
@@ -460,9 +496,17 @@ h1 {
 }
 
 // Touch devices have no hover: show every pawn's name statically beneath it
-// (the you-pointer keeps marking your own pawn).
+// (the you-pointer keeps marking your own pawn). Space the pawns out so
+// neighbouring names don't run into each other, and trim long ones.
 @media (hover: none) {
+  .roster {
+    gap: 1.6rem;
+  }
+
   .roster-pawn .pawn-name {
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
     opacity: 1;
     transform: translateX(-50%);
   }

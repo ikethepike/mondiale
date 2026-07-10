@@ -14,7 +14,7 @@
         <template v-if="!resolved">
           <h1 class="map-caption">Which country is this?</h1>
           <span class="map-caption sub">
-            Clue {{ revealedCount }} of {{ totalClues }} — earlier answers score higher
+            Clue {{ revealedCount }} of {{ totalClues }} — {{ secondsLeft }}s left
           </span>
           <span v-if="challenge.region" class="map-caption region-hint">
             Region: {{ challenge.region }}
@@ -30,10 +30,31 @@
       </div>
     </header>
 
-    <section v-if="!resolved" class="clue-stage">
+    <!-- The input sits ABOVE the clues: its suggestion list opens downward,
+         and at the bottom of the screen it would fall right off it. Over the
+         clue cards there is always room. -->
+    <section v-if="!resolved" class="guess-box">
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+      <CountryGuessInput
+        ref="guessInput"
+        :disabled="submitted || !started || lockedOut"
+        :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
+        @guess="onGuess"
+        @miss="announce({ hint: 'No country by that name' })"
+      />
+    </section>
+
+    <section v-if="!resolved" ref="clueStage" class="clue-stage">
       <TransitionGroup name="clue" tag="ul" class="clue-list">
-        <li v-for="clue in revealedClues" :key="clue.accessorId" class="clue-card">
-          <span class="clue-label">{{ clue.label }}</span>
+        <StatCard
+          v-for="(clue, index) in revealedClues"
+          :key="clue.accessorId"
+          tag="li"
+          class="clue-card"
+          :label="clue.label"
+          :topic="clue.topic"
+          :style="{ '--depth': visibleCards - 1 - index, '--index': index }"
+        >
           <strong class="clue-value">{{ clue.value }}</strong>
           <!-- The big value above already shows the number; the plot adds the
                scale context, so suppress the marker's own value label. -->
@@ -46,38 +67,35 @@
             :least-label="clue.scale.leastLabel"
             :most-label="clue.scale.mostLabel"
           />
-        </li>
+        </StatCard>
         <!-- Non-hard mode's final clue: a photo from the country (capital or
              landmark), revealed once every stat has been shown. -->
-        <li v-if="photoRevealed && challenge.photo" key="photo-clue" class="clue-card photo-clue">
-          <span class="clue-label">A glimpse of the place</span>
+        <StatCard
+          v-if="photoRevealed && challenge.photo"
+          key="photo-clue"
+          tag="li"
+          class="clue-card photo-clue"
+          label="A glimpse of the place"
+          topic="photo"
+          :style="{ '--depth': 0, '--index': statClueCount }"
+        >
           <div class="photo-clue-stage">
             <ZoomableImage :src="challenge.photo" alt="A place in the mystery country" />
           </div>
-        </li>
+        </StatCard>
       </TransitionGroup>
     </section>
 
-    <section v-if="!resolved" class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started || lockedOut"
-        :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
-        @guess="onGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
-    </section>
-
     <footer v-if="!resolved">
-      <!-- Fills as clues land, rather than draining with a clock. Counts the
-           photo clue, so it tracks the "Clue N of M" caption above. -->
-      <ChallengeTimer :value="revealedCount" :total="totalClues" />
+      <!-- Drains with the round clock, the same read as every other timed
+           view; the "Clue N of M" caption carries the clue pacing. -->
+      <ChallengeTimer :value="secondsLeft" :total="totalSeconds" />
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import StatCard from '~/components/challenge/StatCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -112,7 +130,9 @@ const {
 const resolved = ref(false)
 const lockedOut = ref(false)
 const revealedCount = ref(0)
+const secondsLeft = ref(0)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+const clueStage = ref<HTMLElement>()
 
 const clueLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 
@@ -138,6 +158,7 @@ const revealedClues = computed(() => {
     return {
       accessorId,
       label: clueLabel(accessorId),
+      topic: details?.topic,
       value: value ? `${formatNumber(value.amount)}${value.unit ? ` ${value.unit}` : ''}` : '—',
       scale,
     }
@@ -150,6 +171,20 @@ const statClueCount = computed(() => challenge.value?.clues.length ?? 0)
 const totalClues = computed(() => statClueCount.value + (hasPhotoClue.value ? 1 : 0))
 const photoRevealed = computed(
   () => hasPhotoClue.value && revealedCount.value > statClueCount.value
+)
+
+// The whole round on one clock: the last clue lands one interval before zero,
+// so the tail interval is the grace period the old timer chain gave.
+const totalSeconds = computed(() => totalClues.value * (challenge.value?.secondsPerClue ?? 0))
+
+/** Cards on screen right now — the photo counts once it has flipped. */
+const visibleCards = computed(() => Math.min(revealedCount.value, totalClues.value))
+
+// The newest card takes the front of the stack; keep it in view.
+watch(revealedCount, () =>
+  nextTick(() =>
+    clueStage.value?.scrollTo({ top: clueStage.value.scrollHeight, behavior: 'smooth' })
+  )
 )
 
 // Paced by `secondsPerClue`, not a round countdown — the clue interval is local
@@ -191,22 +226,27 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 const begin = () => {
   beginRound()
   revealedCount.value = 1
+  secondsLeft.value = totalSeconds.value
   nextTick(() => guessInput.value?.focus())
 
   const active = challenge.value
   if (!active) return
 
+  // One 1s ticker drives the countdown AND the clue pacing, so the drained
+  // bar, the seconds caption and the clue count can never drift apart.
   clueTimer = setInterval(() => {
-    if (revealedCount.value < totalClues.value) {
-      revealedCount.value++
-      return
-    }
+    secondsLeft.value = Math.max(0, secondsLeft.value - 1)
+    const elapsed = totalSeconds.value - secondsLeft.value
+    revealedCount.value = Math.min(
+      totalClues.value,
+      1 + Math.floor(elapsed / active.secondsPerClue)
+    )
 
-    // Everything shown — one final grace interval, then it resolves unsolved
+    if (secondsLeft.value > 0) return
     if (clueTimer) clearInterval(clueTimer)
     clueTimer = undefined
-    revealTimer = setTimeout(() => resolve(undefined, 0), active.secondsPerClue * 1000)
-  }, active.secondsPerClue * 1000)
+    resolve(undefined, 0)
+  }, 1000)
 }
 
 const onGuess = (country: Country) => {
@@ -281,40 +321,25 @@ header {
   display: flex;
   min-height: 0;
   overflow-y: auto;
-  align-items: center;
-  justify-content: center;
 }
 
 .clue-list {
   gap: 1.2rem;
-  margin: 0;
   padding: 0;
   display: grid;
   list-style: none;
+  // Definite width + auto margins: a flex-item grid otherwise sizes to
+  // max-content and overflows the viewport centred (clipping both edges);
+  // auto margins centre it *safely* once the stage starts scrolling.
+  width: 100%;
+  margin: auto;
   max-width: 88rem;
   grid-template-columns: repeat(auto-fit, minmax(22rem, 26rem));
   justify-content: center;
 }
 
+// Card chrome lives in StatCard — only clue-specific sizing here.
 .clue-card {
-  gap: 0.5rem;
-  display: flex;
-  padding: 1.6rem;
-  text-align: center;
-  align-items: center;
-  border-radius: 1.2rem;
-  flex-flow: column nowrap;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-
-  .clue-label {
-    opacity: 0.65;
-    font-size: 1.3rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
   .clue-value {
     font-size: 2.4rem;
   }
@@ -332,12 +357,15 @@ header {
 }
 
 // New clues arrive with a settle
-.clue-enter-active {
+// Scoped under .clue-list so the entrance outranks the phone stack's
+// depth-based opacity/transform (equal specificity would lose to it in
+// source order and swallow the animation).
+.clue-list .clue-enter-active {
   transition:
     opacity var(--motion-base) var(--ease-out-expressive),
     transform var(--motion-base) var(--ease-out-expressive);
 }
-.clue-enter-from {
+.clue-list .clue-enter-from {
   opacity: 0;
   transform: translateY(1.4rem) scale(0.94);
 }
@@ -366,19 +394,66 @@ footer {
 
   // Compact single-column clue cards: three or four visible before the
   // clue stage needs to scroll.
+  .clue-stage {
+    padding-top: 1.2rem;
+    // The view shell is pointer-events: none (map taps pass through); the
+    // stack must opt back in or finger-scrolling falls through to the map.
+    pointer-events: auto;
+    scroll-snap-type: y proximity;
+  }
   .clue-list {
     gap: 0.8rem;
     padding: 0 1.6rem;
+    // Build the pile from the top so the sticky cascade has a rail to pin
+    // to; desktop keeps the vertically-centred grid.
+    margin: 0 auto;
   }
+  // A card stack: each card pins near the top of the scroll area as newer
+  // ones slide over it, so older clues collapse to a cascade of edges behind
+  // the newest card — smaller, dimmer, the deeper they sit — and scroll back
+  // into view with the snap. Opaque backgrounds so the pile genuinely stacks.
   .clue-card {
     padding: 1rem 1.2rem;
+    position: sticky;
+    top: calc(var(--index, 0) * 1.2rem);
+    background: var(--background-color);
+    transform-origin: top center;
+    scroll-snap-align: start;
+    opacity: calc(1 - min(var(--depth, 0) * 0.12, 0.5));
+    // The standalone `scale` property, NOT transform: the TransitionGroup's
+    // FLIP move writes an inline transform that would stomp a transform-based
+    // scale — cards would pop to full size, then visibly shrink back.
+    scale: calc(1 - min(var(--depth, 0) * 0.02, 0.1));
+    transition:
+      opacity var(--motion-slow) var(--ease-smooth),
+      scale var(--motion-slow) var(--ease-smooth);
 
     .clue-value {
       font-size: 2rem;
     }
   }
+  // Contained by its card — a viewport-relative width breaks out of the
+  // card's border on narrow screens. The stack frees room, so the peek at
+  // the place gets to breathe.
   .photo-clue-stage {
-    height: min(24dvh, 24rem);
+    width: 100%;
+    height: min(34dvh, 30rem);
   }
+}
+
+// The miss hint floats below the prompt instead of joining its flex flow —
+// popping in and out must not reflow the header (or the view under it).
+header .prompt {
+  position: relative;
+}
+header .prompt .hint {
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 100%;
+  position: absolute;
+  margin: 0.4rem auto 0;
 }
 </style>

@@ -122,8 +122,8 @@
         />
         <g v-if="pinPoint" class="map-pin" :transform="`translate(${pinPoint.x} ${pinPoint.y})`">
           <g class="map-pin-scale">
-            <circle class="map-pin-halo" r="9" />
-            <circle class="map-pin-dot" r="3" />
+            <circle class="map-pin-halo" r="13" />
+            <circle class="map-pin-dot" r="4.5" />
           </g>
         </g>
         <g
@@ -132,8 +132,8 @@
           :transform="`translate(${pinAnswerPoint.x} ${pinAnswerPoint.y})`"
         >
           <g class="map-pin-scale">
-            <circle class="map-pin-halo" r="9" />
-            <circle class="map-pin-dot" r="3" />
+            <circle class="map-pin-halo" r="13" />
+            <circle class="map-pin-dot" r="4.5" />
           </g>
         </g>
       </template>
@@ -1208,7 +1208,7 @@ path[id],
 .map-pin-halo {
   fill: var(--background-color);
   stroke: currentColor;
-  stroke-width: 2px;
+  stroke-width: 3px;
 }
 
 .map-pin-dot {
@@ -1219,8 +1219,8 @@ path[id],
   fill: none;
   pointer-events: none;
   stroke: hsl(215.7, 76.4%, 41%);
-  stroke-width: calc(1.5px * var(--stroke-zoom, 1));
-  stroke-dasharray: calc(6px * var(--stroke-zoom, 1)) calc(5px * var(--stroke-zoom, 1));
+  stroke-width: calc(2.5px * var(--stroke-zoom, 1));
+  stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
 
 // Marks a contested territory that is too small to draw. Sized in screen

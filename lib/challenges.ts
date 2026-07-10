@@ -1985,7 +1985,7 @@ export const getChallengeDetails = (
     },
     'people.population': {
       topic: 'people',
-      phrasing: 'Which of these countries have the largest populations?',
+      phrasing: 'Which of these countries has the largest population?',
       markers: {
         most: 'largest population',
         least: 'smallest population',

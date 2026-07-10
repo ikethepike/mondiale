@@ -531,11 +531,13 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 }
 
 .standing-row {
-  gap: 1rem;
+  // Column gap only: the epithet wraps to its own line, and any row-gap here
+  // pushes it as far from its player as the next row — it must hug its tile.
+  gap: 0 1rem;
   display: flex;
   flex-flow: row wrap;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.6rem;
 
   .rank {
     width: 2rem;
@@ -567,6 +569,7 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
     width: 100%;
     opacity: 0.55;
     font-size: 1.2rem;
+    margin-top: 0.3rem;
     padding-left: 3rem;
   }
 }
