@@ -53,6 +53,26 @@ export const normalizeCountryName = (value: string): string =>
     .trim()
     .replace(/^the /, '')
 
+/**
+ * The data's `name.local` packs co-official variants into one string
+ * ("Schweiz / Suisse / Svizzera / Svizra") — split them so each is
+ * individually typeable and searchable.
+ */
+const localNameVariants = (country: Country): string[] =>
+  country.name.local
+    .split('/')
+    .map(variant => variant.trim())
+    .filter(Boolean)
+
+/** First local-language name, when it meaningfully differs from the English one. */
+export const localCountryName = (country: Country): string | undefined => {
+  const [local] = localNameVariants(country)
+  if (!local || normalizeCountryName(local) === normalizeCountryName(country.name.english)) {
+    return undefined
+  }
+  return local
+}
+
 /** Common alternative names people actually type, mapped onto the data's ISO codes. */
 const COUNTRY_ALIASES: { [alias: string]: ISOCountryCode } = {
   usa: 'US',
@@ -90,46 +110,115 @@ let nameIndex: Map<string, ISOCountryCode> | undefined
 const getNameIndex = (): Map<string, ISOCountryCode> => {
   if (nameIndex) return nameIndex
 
-  nameIndex = new Map()
+  const index = (nameIndex = new Map())
+  const add = (name: string, isoCode: ISOCountryCode) => {
+    const normalized = normalizeCountryName(name)
+    // Names that normalize away entirely would otherwise collide on ''
+    if (normalized) index.set(normalized, isoCode)
+  }
   for (const country of Object.values(COUNTRIES)) {
-    nameIndex.set(normalizeCountryName(country.name.english), country.isoCode)
-    nameIndex.set(normalizeCountryName(country.name.local), country.isoCode)
+    add(country.name.english, country.isoCode)
+    for (const variant of localNameVariants(country)) add(variant, country.isoCode)
   }
   for (const [alias, isoCode] of Object.entries(COUNTRY_ALIASES)) {
-    nameIndex.set(alias, isoCode)
+    index.set(alias, isoCode)
   }
 
-  return nameIndex
+  return index
 }
 
 /** Resolve a typed name (any casing, accents, common aliases) to a country. */
 export const findCountryByName = (input: string): Country | undefined => {
-  const isoCode = getNameIndex().get(normalizeCountryName(input))
+  const normalized = normalizeCountryName(input)
+  if (!normalized) return undefined
+  const isoCode = getNameIndex().get(normalized)
   return isoCode ? COUNTRIES[isoCode] : undefined
 }
 
-/** Autocomplete: prefix matches first, then substring matches, deduped. */
-export const searchCountriesByName = (query: string, limit = 6): Country[] => {
+/**
+ * Damerau–Levenshtein distance (adjacent transpositions count as one edit —
+ * the typo dyslexic and fast typists actually make), capped at `max`:
+ * anything beyond returns `max + 1`.
+ */
+const editDistance = (a: string, b: string, max: number): number => {
+  if (a === b) return 0
+  if (Math.abs(a.length - b.length) > max) return max + 1
+
+  let twoAgo: number[] = []
+  let oneAgo = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i]
+    let rowMinimum = i
+    for (let j = 1; j <= b.length; j++) {
+      let cost = Math.min(
+        oneAgo[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+        oneAgo[j] + 1,
+        row[j - 1] + 1
+      )
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        cost = Math.min(cost, twoAgo[j - 2] + 1)
+      }
+      row.push(cost)
+      if (cost < rowMinimum) rowMinimum = cost
+    }
+    if (rowMinimum > max) return max + 1
+    twoAgo = oneAgo
+    oneAgo = row
+  }
+
+  return oneAgo[b.length]
+}
+
+/** How a candidate name matched: tier, edits spent, name length — lower wins. */
+type MatchRank = [tier: number, edits: number, length: number]
+
+const compareRank = (a: MatchRank, b: MatchRank): number =>
+  a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
+
+/**
+ * Autocomplete over english names, local-name variants and aliases.
+ * Tiers: prefix, then word-prefix ("guinea" → "Papua New Guinea"), then
+ * substring, then fuzzy (typo-tolerant, edit budget scaled to query length).
+ * Fuzzy hits can never outrank a literal match, so the tolerance costs no
+ * relevancy; ties break toward shorter names ("India" before "Indonesia").
+ */
+export const searchCountriesByName = (
+  query: string,
+  limit = 6,
+  excluded?: ReadonlySet<ISOCountryCode>
+): Country[] => {
   const normalized = normalizeCountryName(query)
   if (!normalized) return []
 
-  const prefix: ISOCountryCode[] = []
-  const substring: ISOCountryCode[] = []
+  const maxEdits = normalized.length >= 7 ? 2 : normalized.length >= 4 ? 1 : 0
+
+  const best = new Map<ISOCountryCode, MatchRank>()
   for (const [name, isoCode] of getNameIndex()) {
-    if (name.startsWith(normalized)) prefix.push(isoCode)
-    else if (name.includes(normalized)) substring.push(isoCode)
+    if (excluded?.has(isoCode)) continue
+
+    let rank: MatchRank | undefined
+    if (name.startsWith(normalized)) rank = [0, 0, name.length]
+    else if (name.includes(` ${normalized}`)) rank = [1, 0, name.length]
+    else if (name.includes(normalized)) rank = [2, 0, name.length]
+    else if (maxEdits) {
+      // Compare against both the whole name (typo in a finished word) and its
+      // same-length prefix (typo while still typing)
+      const edits = Math.min(
+        editDistance(normalized, name, maxEdits),
+        editDistance(normalized, name.slice(0, normalized.length), maxEdits)
+      )
+      if (edits <= maxEdits) rank = [3, edits, name.length]
+    }
+
+    if (!rank) continue
+    const current = best.get(isoCode)
+    if (!current || compareRank(rank, current) < 0) best.set(isoCode, rank)
   }
 
-  const seen = new Set<ISOCountryCode>()
-  const results: Country[] = []
-  for (const isoCode of [...prefix, ...substring]) {
-    if (seen.has(isoCode)) continue
-    seen.add(isoCode)
-    results.push(COUNTRIES[isoCode])
-    if (results.length >= limit) break
-  }
-
-  return results
+  return [...best.entries()]
+    .sort(([, a], [, b]) => compareRank(a, b))
+    .slice(0, limit)
+    .map(([isoCode]) => COUNTRIES[isoCode])
 }
 
 export const getRandomISOCountryCode = (modifier?: 'large' | 'small'): ISOCountryCode => {

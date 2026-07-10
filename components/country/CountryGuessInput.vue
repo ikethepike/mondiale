@@ -4,35 +4,51 @@
       ref="input"
       v-model="query"
       type="text"
+      role="combobox"
       :placeholder="placeholder"
       autocomplete="off"
+      aria-autocomplete="list"
+      :aria-expanded="suggestions.length > 0"
+      :aria-controls="listId"
+      :aria-activedescendant="highlighted ? optionId(highlighted) : undefined"
       :disabled="disabled"
-      @keydown.down.prevent="
-        highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
-      "
-      @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
+      @keydown.down.prevent="moveHighlight(1)"
+      @keydown.up.prevent="moveHighlight(-1)"
+      @keydown.esc="query = ''"
     />
-    <ul v-if="suggestions.length" class="suggestions">
+    <ul v-if="suggestions.length" :id="listId" ref="list" class="suggestions" role="listbox">
       <li
         v-for="(suggestion, index) in suggestions"
+        :id="optionId(suggestion)"
         :key="suggestion.isoCode"
+        role="option"
+        :aria-selected="index === highlightedIndex"
         :class="{ highlighted: index === highlightedIndex }"
         @mousedown.prevent="pick(suggestion)"
       >
         <CountryFlag class="suggestion-flag" :country="suggestion" mode="background" />
-        <span>{{ countryName(suggestion) }}</span>
+        <span class="suggestion-name">{{ countryName(suggestion) }}</span>
+        <span v-if="localCountryName(suggestion)" class="suggestion-local">
+          {{ localCountryName(suggestion) }}
+        </span>
       </li>
     </ul>
   </form>
 </template>
 <script lang="ts" setup>
-import { countryName, findCountryByName, searchCountriesByName } from '~~/lib/country'
+import {
+  countryName,
+  findCountryByName,
+  localCountryName,
+  searchCountriesByName,
+} from '~~/lib/country'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
 
 /**
- * The typed country guess box: live suggestions, forgiving name matching
- * (case, diacritics, aliases), keyboard and pointer selection.
+ * The typed country guess box: live suggestions with local-language names,
+ * forgiving name matching (case, diacritics, aliases, typos), keyboard and
+ * pointer selection.
  */
 const props = defineProps({
   placeholder: {
@@ -53,18 +69,43 @@ const props = defineProps({
 const emit = defineEmits<{ guess: [country: Country]; miss: [input: string] }>()
 
 const query = ref('')
-const highlightedIndex = ref(0)
 const input = ref<HTMLInputElement>()
+const list = ref<HTMLUListElement>()
+
+const listId = useId()
+const optionId = (country: Country) => `${listId}-${country.isoCode}`
 
 const suggestions = computed(() => {
   if (props.disabled) return []
-  const taken = new Set(props.excluded)
-  return searchCountriesByName(query.value, 8)
-    .filter(country => !taken.has(country.isoCode))
-    .slice(0, 6)
+  return searchCountriesByName(query.value, 6, new Set(props.excluded))
 })
 
-watch(suggestions, () => (highlightedIndex.value = 0))
+/**
+ * The highlight is anchored to a country, not a slot: when the list shifts
+ * under the cursor (an `excluded` update lands, results reorder), the
+ * selection stays on the same country instead of silently becoming another.
+ * Typing clears the anchor, so the highlight returns to the best match.
+ */
+const chosenIso = ref<ISOCountryCode>()
+watch(query, () => (chosenIso.value = undefined))
+
+const highlightedIndex = computed(() => {
+  const index = suggestions.value.findIndex(country => country.isoCode === chosenIso.value)
+  return index === -1 ? 0 : index
+})
+const highlighted = computed<Country | undefined>(() => suggestions.value[highlightedIndex.value])
+
+const moveHighlight = (delta: number) => {
+  const options = suggestions.value
+  if (!options.length) return
+  const index = Math.max(0, Math.min(highlightedIndex.value + delta, options.length - 1))
+  chosenIso.value = options[index].isoCode
+}
+
+// The list scrolls once it caps out at 40vh — keep the highlight in view
+watch(highlightedIndex, index =>
+  nextTick(() => list.value?.children[index]?.scrollIntoView({ block: 'nearest' }))
+)
 
 const pick = (country: Country) => {
   query.value = ''
@@ -72,9 +113,9 @@ const pick = (country: Country) => {
 }
 
 const submitTyped = () => {
+  if (!query.value.trim()) return
   const direct = findCountryByName(query.value)
-  const highlighted = suggestions.value[highlightedIndex.value] ?? suggestions.value[0]
-  const country = direct ?? highlighted
+  const country = direct ?? highlighted.value
   if (!country) {
     emit('miss', query.value)
     return
@@ -150,5 +191,23 @@ defineExpose({ focus: () => input.value?.focus() })
   height: 1.9rem;
   flex-shrink: 0;
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+}
+
+.suggestion-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.suggestion-local {
+  opacity: 0.55;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.8em;
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>
