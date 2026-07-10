@@ -200,7 +200,7 @@ onMounted(() => {
 </script>
 <style scoped>
 .main-board {
-  height: 100vh;
+  height: var(--viewport-height);
   max-width: 100%;
   overflow: hidden;
   position: relative;

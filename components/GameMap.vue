@@ -89,7 +89,13 @@
         <!-- The magnifier: a nested viewport onto the world layer above, with a
              leader line back to the region it shows. Hidden once the player has
              zoomed in far enough to see the thing unaided. -->
-        <MapInset v-if="inset" :inset="inset" :view="viewBoxState" @zoom="flyToRegion" />
+        <MapInset
+          v-if="inset"
+          :inset="inset"
+          :view="viewBoxState"
+          :compact="isPhone"
+          @zoom="flyToRegion"
+        />
 
         <!-- A ringed marker for features too small to see. Rockall spans about
              300 metres, so its outline renders as nothing at world zoom; the
@@ -150,11 +156,15 @@ import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import MapInset from '~/components/map/MapInset.vue'
+import { useIsPhone } from '~~/lib/use-viewport'
 import type {
   CountryColorGrouping,
   MapFeatureOverlay,
   MapInset as MapInsetType,
 } from '~~/types/map.type'
+
+// Phone-width screens get the compact magnifier presentation.
+const isPhone = useIsPhone()
 
 // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
 // 1-unit stroke itself at world zoom, so they'd render as solid ink blobs.
@@ -1139,7 +1149,7 @@ watch(
 
 <style lang="scss" scoped>
 .game-map {
-  height: 100vh;
+  height: var(--viewport-height);
   overflow: hidden;
   touch-action: none;
   overscroll-behavior: none;

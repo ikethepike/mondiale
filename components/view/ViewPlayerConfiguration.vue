@@ -281,7 +281,7 @@ const startGame = () => {
 .player-configuration {
   width: 100%;
   margin: auto;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   border-radius: 0;
   max-width: 110rem;
@@ -512,7 +512,7 @@ const startGame = () => {
 
 @media screen and (min-width: $tablet) {
   .player-configuration-wrapper {
-    height: 100vh;
+    height: var(--viewport-height);
     display: flex;
     overflow-y: auto;
   }

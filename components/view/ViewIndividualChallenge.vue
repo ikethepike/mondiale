@@ -659,11 +659,12 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .individual-challenge {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   position: absolute;
 }
 
@@ -676,7 +677,6 @@ header {
   justify-content: center;
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub {
     padding: 0.4rem 1.4rem;
@@ -701,7 +701,7 @@ header {
     align-items: center;
     flex-flow: column nowrap;
     // Fallback: scroll to the options if a tall hero + cards overflow.
-    max-height: 100vh;
+    max-height: var(--viewport-height);
     overflow-y: auto;
   }
 
@@ -749,8 +749,13 @@ header {
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
 
-  &:hover {
-    transform: translateY(-0.3rem);
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active {
     border-color: var(--dark-blue);
   }
 }
@@ -785,7 +790,7 @@ header {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .twin-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -845,7 +850,7 @@ header {
   max-width: 12ch;
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .border-ring {
     width: min(30rem, 88vw);
   }
@@ -893,13 +898,13 @@ header {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .money-hero-photo .money-note {
     max-height: 34vh;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .money-hero .money-symbol {
     font-size: 6rem;
   }
@@ -994,6 +999,35 @@ header {
 @keyframes flag-float {
   50% {
     transform: translateY(-0.5rem) rotate(0.6deg);
+  }
+}
+
+// Compact phone chrome for the 13 gate variants: full-width option grids,
+// a fluid flag hero, and tighter prompt padding.
+@media (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+
+    .flag {
+      width: min(26rem, 78vw);
+      height: auto;
+      aspect-ratio: 26 / 15;
+    }
+  }
+
+  .options {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flag-option .option-flag {
+    height: 9rem;
+  }
+
+  .text-options,
+  .leader-options {
+    width: min(44rem, 100%);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

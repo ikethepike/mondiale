@@ -35,4 +35,30 @@ $paneBorderRadius: 1.9rem;
       padding-right: 3rem;
     }
   }
+
+  // Compact card padding on phones (640px matches $tablet; this template is
+  // loaded globally and can't @use the SCSS token).
+  @media screen and (max-width: 640px) {
+    .pane-content {
+      padding: 1.6rem;
+      &.vertical {
+        padding: 1.6rem 0;
+      }
+      &.horizontal {
+        padding: 0 1.6rem;
+      }
+      &.bottom {
+        padding-bottom: 1.6rem;
+      }
+      &.top {
+        padding-top: 1.6rem;
+      }
+      &.left {
+        padding-left: 1.6rem;
+      }
+      &.right {
+        padding-right: 1.6rem;
+      }
+    }
+  }
 }

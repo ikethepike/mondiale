@@ -287,13 +287,14 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 $hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .victory-stage {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   position: absolute;
 }
 
@@ -592,6 +593,32 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 @media (prefers-reduced-motion: reduce) {
   .racing {
     animation: none;
+  }
+}
+
+// Phone portrait: the report stacks — main column first, standings beneath
+// under a top rule; the stat banner wraps and shrinks.
+@media screen and (max-width: $tablet) {
+  .victory-report {
+    grid-template-columns: 100%;
+  }
+
+  .player-listing {
+    border-left: none;
+    border-top: 0.1rem solid var(--text-color);
+  }
+
+  .stat-banner {
+    gap: 1.6rem;
+    flex-wrap: wrap;
+
+    .stat-value {
+      font-size: clamp(2.8rem, 8vw, 4.2rem);
+    }
+  }
+
+  .timeline-bars {
+    overflow-x: auto;
   }
 }
 </style>

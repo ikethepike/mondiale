@@ -57,7 +57,6 @@
           :options="options"
           item-key="isoCode"
           class="countries"
-          :style="{ gridTemplateColumns: `repeat(${countries.length}, 1fr)` }"
           @sort="updateRanking"
         >
           <template #item="{ element }">
@@ -138,6 +137,12 @@ const options = ref({
   dragClass: 'drag',
   forceFallback: true,
   bubbleScroll: true,
+  // Hold-to-drag on touch only: on phones the list is vertical and can
+  // overflow (7-tile hard hands), so a quick flick must scroll while a short
+  // hold picks a tile up. Desktop mouse drags stay immediate.
+  delayOnTouchOnly: true,
+  delay: 150,
+  touchStartThreshold: 4,
 })
 </script>
 <style lang="scss" scoped>
@@ -185,7 +190,7 @@ const options = ref({
 }
 
 h1 {
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
 }
 
 .peek-button {
@@ -334,7 +339,10 @@ footer {
   display: grid;
   pointer-events: all;
   justify-content: center;
-  grid-template-columns: repeat(5, 18vw);
+  // One row of N equal columns without knowing N (hands are 4/5/7 by
+  // difficulty) — implicit tracks replace the old inline repeat(N, 1fr).
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
 }
 
 .ghost {
@@ -347,6 +355,105 @@ footer {
 @media screen and (min-width: $tablet) {
   #active-round {
     padding: 0;
+  }
+}
+
+// Vertical ranking on phones: the tiles stack as wide bars (CountryTile's own
+// $tablet mode), framed by the poles — most on top, least on bottom — with
+// the submit button last. The DOM order is unchanged; `display: contents`
+// lets the footer reorder the indicator pieces around the list.
+@media screen and (max-width: $tablet) {
+  #active-round {
+    padding: calc(1.2rem + var(--safe-top)) calc(1.2rem + var(--safe-right))
+      calc(1.2rem + var(--safe-bottom)) calc(1.2rem + var(--safe-left));
+  }
+
+  // No peek on phones: the vertical list owns the screen and the blurred map
+  // behind it isn't worth a control. (The map is fully visible between rounds.)
+  .peek-button {
+    display: none;
+  }
+
+  // The question keeps its caption intact (min-height: auto) and absorbs
+  // only the leftover space; when the screen runs short the deficit lands on
+  // the tile list, which compresses toward its row minimum and then scrolls.
+  #question {
+    height: auto;
+    flex: 1 1 auto;
+
+    h1 {
+      margin-bottom: 0;
+    }
+  }
+
+  footer {
+    gap: 1.2rem;
+    display: flex;
+    flex: 0 1 auto;
+    min-height: 0;
+    padding: 0;
+    flex-flow: column nowrap;
+  }
+
+  .indicators {
+    display: contents;
+  }
+
+  .pole-most {
+    order: 1;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .countries {
+    order: 2;
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    // Breathing room so the first/last tile's hairline border isn't shaved
+    // by the scroll container's clip edge.
+    padding: 0.2rem 0;
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(4.6rem, 6.4rem);
+    justify-content: stretch;
+  }
+  .pole-least {
+    order: 3;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .indicators > .button {
+    order: 4;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  // A flick scrolls an overflowing hand; a short hold picks a tile up
+  // (Sortable's delayOnTouchOnly). pan-y keeps the browser out of the way
+  // horizontally without swallowing list scroll.
+  .country {
+    touch-action: pan-y;
+  }
+
+  // Point the arrows at their extremes: the left-pointing "most" arrow turns
+  // up, the right-pointing "least" arrow turns down. A square layout box
+  // keeps the rotated ink tight against the label instead of leaving the
+  // original 3rem-wide gap. The horizontal nudge loops animate the wrong
+  // axis here, so they rest.
+  .pole {
+    gap: 0.6rem;
+  }
+  .pole-label {
+    font-size: 1.3rem;
+    letter-spacing: 0.12em;
+  }
+  .pole-most .pole-arrow,
+  .pole-least .pole-arrow {
+    width: 2rem;
+    height: 2rem;
+    transform: rotate(90deg);
+    animation: none;
   }
 }
 </style>

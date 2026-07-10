@@ -11,6 +11,13 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'Mondiale',
+      meta: [
+        {
+          name: 'viewport',
+          content:
+            'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content',
+        },
+      ],
     },
   },
   // The codebase predates Nuxt 4's noUncheckedIndexedAccess default

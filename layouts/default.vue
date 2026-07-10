@@ -202,8 +202,18 @@ onMounted(() => {
 }
 
 .reveal-wrapper {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 10;
+  max-width: 34rem;
   overflow: hidden;
-  position: relative;
+  position: absolute;
+  padding: 0.3rem 0.3rem 0 0;
+  animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1;
+  border-top: 0.1rem solid #ccc;
+  border-left: 0.1rem solid #ccc;
+  border-top-right-radius: 1.9rem;
   small {
     opacity: 0.7;
     display: block;
@@ -236,20 +246,23 @@ onMounted(() => {
   }
 }
 
-@media screen and (min-width: $tablet) {
+// Compact reveal card on phones: narrower so the map peeks past its right
+// edge, tighter flag spacing, and clear of the home indicator.
+@media screen and (max-width: $tablet) {
   .reveal-wrapper {
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: 34rem;
-    position: absolute;
-    padding: 0.3rem 0.3rem 0 0;
-    animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1;
-    border-top: 0.1rem solid #ccc;
-    border-left: 0.1rem solid #ccc;
-    border-top-right-radius: 1.9rem;
+    max-width: min(34rem, calc(100% - 6rem));
+    padding-bottom: var(--safe-bottom);
+    .flag {
+      margin-bottom: 1rem;
+    }
   }
 
+  .flag-pinwheel {
+    display: none;
+  }
+}
+
+@media screen and (min-width: $tablet) {
   .flag-pinwheel {
     top: -50%;
     left: -50%;

@@ -82,7 +82,6 @@ onUnmounted(() => {
   h1 {
     margin: 0;
     position: relative;
-    font-size: 3.2rem;
   }
 
   &.incorrect h1 {
@@ -96,7 +95,7 @@ onUnmounted(() => {
     position: relative;
     margin: 1.2rem auto 0;
     width: max-content;
-    max-width: 60rem;
+    max-width: min(60rem, calc(100vw - 3.2rem));
     font-size: 1.7rem;
     line-height: 1.5;
     padding: 0.6rem 1.6rem;

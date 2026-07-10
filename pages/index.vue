@@ -50,7 +50,7 @@ const onSubmit = (event: Event) => {
 main {
   width: 100%;
   display: flex;
-  min-height: 100vh;
+  min-height: var(--viewport-height);
   position: relative;
   background: transparent;
 }
@@ -68,6 +68,7 @@ header {
 .intro {
   width: 40rem;
   max-width: 100%;
+  margin: auto;
 }
 .logo {
   width: 100%;
@@ -94,9 +95,4 @@ nav {
   filter: invert(1);
 }
 
-@media screen and (min-width: $laptop) {
-  .intro {
-    margin: auto;
-  }
-}
 </style>

@@ -261,6 +261,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .view-final-challenge {
   top: 0;
   left: 0;
@@ -280,7 +281,6 @@ header {
 
   h2 {
     margin: 0;
-    font-size: 3rem;
   }
 
   .counter {
@@ -297,5 +297,13 @@ header {
 
 .result {
   margin-top: 4rem;
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
 }
 </style>

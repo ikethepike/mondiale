@@ -113,7 +113,7 @@ onMounted(randomize)
 
 <style lang="scss" scoped>
 .currency-review {
-  min-height: 100vh;
+  min-height: var(--viewport-height);
   padding: 2rem 1rem 4rem;
   display: flex;
   flex-direction: column;
@@ -157,7 +157,7 @@ onMounted(randomize)
   flex-direction: column;
   align-items: center;
   width: min(94vw, 60rem);
-  max-height: 100vh;
+  max-height: var(--viewport-height);
   overflow-y: auto;
 }
 

@@ -70,11 +70,14 @@ article {
 @media screen and (max-width: $tablet) {
   .country-tile {
     width: 100%;
+    display: block;
   }
   .country-tile article {
     width: 100%;
+    height: 100%;
     display: grid;
     align-items: center;
+    padding: 0.6rem 1.6rem;
     grid-template-columns: 60% 40%;
     border-radius: 0.6rem 0 0 0.6rem;
     border-right: 0.4rem solid var(--black);
@@ -84,9 +87,11 @@ article {
   }
   .flag-wrapper {
     border: none;
+    display: flex;
+    justify-content: flex-end;
   }
   .flag :deep(svg) {
-    max-height: 4rem;
+    max-height: 5rem;
     border: 0.1rem solid var(--black);
   }
 }

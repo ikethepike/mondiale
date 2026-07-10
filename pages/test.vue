@@ -73,7 +73,7 @@ const reseed = () => {
 <style lang="scss" scoped>
 .test-page {
   z-index: 3000;
-  height: 100vh;
+  height: var(--viewport-height);
   position: relative;
   background: var(--background-color);
 }

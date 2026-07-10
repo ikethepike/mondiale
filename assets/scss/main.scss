@@ -13,6 +13,21 @@
 @use 'templates/map-caption';
 @use 'templates/chip';
 
+// Viewport tokens: dvh tracks mobile browser chrome (URL bar) where supported;
+// safe-* keep edge-hugging chrome clear of notches and home indicators.
+:root {
+  --viewport-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+@supports (height: 100dvh) {
+  :root {
+    --viewport-height: 100dvh;
+  }
+}
+
 body {
   background-color: var(--background-color);
 }

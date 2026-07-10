@@ -55,13 +55,14 @@ const entries = computed(() =>
 .status-panel {
   position: fixed;
   left: 0;
-  // Sit below the diagnostics bar when it's present; otherwise near the top.
-  top: 1.5rem;
+  // Sit below the diagnostics bar when it's present; otherwise near the top,
+  // clear of any notch.
+  top: calc(1.5rem + var(--safe-top));
   // Behind view content and modals (which sit at z-index >= 2) — this is an
   // ambient backdrop for the board, not something to fight the foreground.
   z-index: 1;
   width: min(24rem, 60vw);
-  max-height: calc(100vh - 3rem);
+  max-height: calc(var(--viewport-height) - 3rem);
   overflow-y: auto;
   padding: 1.3rem 1.3rem 1.1rem;
   // Round only the outer (right) corners; the flush-left edge stays square.

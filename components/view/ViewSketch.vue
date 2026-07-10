@@ -160,11 +160,12 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .sketch-challenge {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -178,7 +179,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub {
     padding: 0.4rem 1.4rem;
@@ -224,5 +224,30 @@ header {
   gap: 1.2rem;
   display: flex;
   pointer-events: auto;
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+
+  // A wider, slightly shorter easel for finger drawing, with full-width
+  // tool buttons clear of the home indicator.
+  .easel {
+    padding: 0 1.6rem calc(1.6rem + var(--safe-bottom));
+  }
+  .canvas-frame {
+    width: min(94vw, 64rem);
+    height: min(46dvh, 40rem);
+  }
+  .tools {
+    width: 100%;
+
+    :deep(.button) {
+      flex: 1;
+    }
+  }
 }
 </style>

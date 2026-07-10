@@ -17,6 +17,10 @@ export interface GuessTickerEntry {
    *  not what they guessed. */
   isoCode?: ISOCountryCode
   label?: string
+  /** Hot & Cold only: how far the probe fell from the hidden target, rounded
+   *  server-side. A radius with no centre — the probed country stays redacted,
+   *  so this raises tension without locating the answer. */
+  distanceKm?: number
   at: number
 }
 

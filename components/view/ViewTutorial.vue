@@ -458,4 +458,13 @@ h1 {
     margin: auto;
   }
 }
+
+// Touch devices have no hover: show every pawn's name statically beneath it
+// (the you-pointer keeps marking your own pawn).
+@media (hover: none) {
+  .roster-pawn .pawn-name {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
 </style>

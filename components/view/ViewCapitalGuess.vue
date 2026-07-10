@@ -152,11 +152,12 @@ const onGuess = (country: Country) => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .capital-guess {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -171,7 +172,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub,
   .hint {
@@ -203,10 +203,24 @@ header {
   height: clamp(22rem, 40vh, 38rem);
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+  // The photo absorbs whatever the prompt and the option grid leave over —
+  // fewer options mean a taller hero, more options shrink it — instead of
+  // the fixed height leaving a band of dead space above the footer.
+  .stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    justify-content: center;
+  }
   .photo-stage {
     width: min(94vw, 54rem);
-    height: min(42vh, 38rem);
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 14rem;
+    max-height: min(44dvh, 38rem);
   }
 }
 
@@ -248,8 +262,13 @@ footer {
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
 
-  &:hover:not(:disabled) {
-    transform: translateY(-0.3rem);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active:not(:disabled) {
     border-color: var(--dark-blue);
   }
   &:disabled {
@@ -267,9 +286,18 @@ footer {
     border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
   }
 }
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .card-options {
+    width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  footer {
+    width: 100%;
+    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+
+    &.has-input {
+      padding-bottom: clamp(8rem, 24dvh, 20rem);
+    }
   }
 }
 </style>

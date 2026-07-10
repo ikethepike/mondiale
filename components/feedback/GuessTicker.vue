@@ -36,7 +36,11 @@ const guessText = (entry: GuessTickerEntry) => {
   if (named) return `${named} ${entry.kind === 'correct' ? '✓' : '✗'}`
   switch (entry.kind) {
     case 'probe':
-      return 'probed…'
+      // The server sends a distance but never the country — a radius that
+      // raises tension without pointing at the answer.
+      return entry.distanceKm !== undefined
+        ? `${entry.distanceKm.toLocaleString()} km away`
+        : 'probed…'
     case 'locked':
       return 'buzzed ✗'
     case 'correct':
@@ -58,6 +62,17 @@ const guessText = (entry: GuessTickerEntry) => {
   list-style: none;
   min-height: 3rem;
   justify-content: center;
+}
+
+// Tighter chips on phones so a full row of opponents fits 360px.
+@media screen and (max-width: 640px) {
+  .guess-ticker {
+    gap: 0.5rem;
+  }
+  .guess-chip {
+    font-size: 1.1rem;
+    padding: 0.2rem 0.7rem;
+  }
 }
 
 .guess-chip {

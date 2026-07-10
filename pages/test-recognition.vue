@@ -188,7 +188,7 @@ onMounted(async () => {
  * swallows every click.
  */
 .harness {
-  height: 100vh;
+  height: var(--viewport-height);
   overflow: hidden;
   position: relative;
   max-width: 100%;

@@ -305,6 +305,7 @@ const closeScores = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 $hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .group-scores {
@@ -459,6 +460,27 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
     opacity: 0.55;
     font-weight: normal;
     font-size: 1.3rem;
+  }
+}
+
+// Phone portrait: the 73/27 split becomes a stack — scorecard first, the
+// round standings beneath it under a top rule instead of a left one.
+@media screen and (max-width: $tablet) {
+  .group-scores {
+    grid-template-columns: 100%;
+  }
+
+  .player-listing {
+    border-left: none;
+    border-top: 0.1rem solid var(--text-color);
+  }
+
+  .score-summary {
+    gap: 1.4rem;
+
+    .score-stat .points {
+      font-size: 4.4rem;
+    }
   }
 }
 </style>

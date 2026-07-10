@@ -72,6 +72,14 @@ const closeScores = () => {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
 }
+
+// The five rank slots read fine as a 2-3 wrap on a phone; 5-up is unreadable.
+@media screen and (max-width: 640px) {
+  .country-order {
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+}
 .ordering {
   strong {
     display: block;

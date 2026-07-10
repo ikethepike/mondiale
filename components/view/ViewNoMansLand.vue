@@ -223,11 +223,13 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+
 .no-mans-land {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   pointer-events: none;
@@ -245,7 +247,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: clamp(1.6rem, 4vw, 3.2rem);
   }
 
   .sub {
@@ -304,6 +305,28 @@ footer {
 
 .lock {
   pointer-events: auto;
+}
+
+@media (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+
+  footer {
+    width: 100%;
+    padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
+  // Finger-sized picked-country chips, and a full-width lock button.
+  .chips button {
+    font-size: 1.2rem;
+    min-height: 3.2rem;
+    padding: 0.4rem 1.2rem;
+  }
+
+  .lock {
+    width: min(100%, 32rem);
+  }
 }
 
 // The reveal, in the shared map-caption idiom.

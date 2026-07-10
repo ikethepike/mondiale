@@ -102,7 +102,7 @@ onUnmounted(() => {
   left: 0;
   z-index: 20;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   align-items: center;
@@ -115,8 +115,8 @@ onUnmounted(() => {
 .ripple {
   top: 50%;
   left: 50%;
-  width: 46rem;
-  height: 46rem;
+  width: min(46rem, 100vw);
+  height: min(46rem, 100vw);
   position: absolute;
   transform: translate(-50%, -50%);
 }
@@ -151,7 +151,7 @@ onUnmounted(() => {
 
 h1 {
   margin: 0;
-  font-size: 4.2rem;
+  font-size: clamp(2.6rem, 7vw, 4.2rem);
   color: var(--dark-blue);
 }
 

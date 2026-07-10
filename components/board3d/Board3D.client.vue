@@ -108,7 +108,7 @@ onUnmounted(() => timers.forEach(timer => clearTimeout(timer)))
 .board3d {
   width: 100%;
   height: 100%;
-  min-height: 100vh;
+  min-height: var(--viewport-height);
   pointer-events: auto;
   touch-action: none;
 }

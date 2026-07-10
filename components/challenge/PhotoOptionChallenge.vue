@@ -38,6 +38,7 @@ withDefaults(
 const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .photo-option-challenge {
   display: flex;
   flex-direction: column;
@@ -56,10 +57,10 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
   height: clamp(20rem, 34vh, 32rem);
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .photo-stage {
     width: min(94vw, 46rem);
-    height: min(38vh, 32rem);
+    height: min(30dvh, 32rem);
   }
 }
 
@@ -87,8 +88,13 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
 
-  &:hover {
-    transform: translateY(-0.3rem);
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active {
     border-color: var(--dark-blue);
   }
 
@@ -99,9 +105,15 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .card-options {
+    width: 100%;
+    padding: 0 1.6rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  // Shorter flags so photo + all four cards share a phone screen.
+  .card-option .option-flag {
+    height: 6rem;
   }
 }
 </style>

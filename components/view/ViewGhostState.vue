@@ -271,11 +271,12 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .ghost-state {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   pointer-events: none;
@@ -295,7 +296,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: clamp(1.6rem, 4vw, 3.2rem);
   }
 
   .sub {
@@ -364,5 +364,16 @@ header {
   text-align: center;
   line-height: 1.55;
   padding: 0.6rem 1.6rem;
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+  footer {
+    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
 }
 </style>

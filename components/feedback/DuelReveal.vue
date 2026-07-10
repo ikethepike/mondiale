@@ -60,6 +60,7 @@ const rows = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .duel-reveal {
   text-align: left;
 }
@@ -151,7 +152,7 @@ const rows = computed(() =>
   text-align: center;
 }
 
-@media (max-width: 620px) {
+@media (max-width: $tablet) {
   .duel {
     grid-template-columns: auto 1fr;
     grid-template-areas: 'dot higher' 'dot lower';

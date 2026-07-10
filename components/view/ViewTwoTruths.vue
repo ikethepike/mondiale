@@ -125,11 +125,12 @@ const pick = (index: number) => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .two-truths {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -143,7 +144,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub {
     padding: 0.4rem 1.4rem;
@@ -217,8 +217,13 @@ header {
     border-color var(--motion-quick) var(--ease-out-expressive),
     background-color var(--motion-base) var(--ease-out-expressive);
 
-  &:hover:not(:disabled) {
-    transform: translateY(-0.3rem);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active:not(:disabled) {
     border-color: var(--dark-blue);
   }
   &:disabled {
@@ -247,6 +252,41 @@ header {
   &.was-picked:not(.is-lie) {
     outline: 0.25rem solid var(--hior-ange);
     outline-offset: 0.2rem;
+  }
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+
+  // Three 20rem columns overflow any phone: stack the claims full-width and
+  // compact them so flag + all three cards share one screen.
+  .claim-stage {
+    gap: 1.2rem;
+    width: 100%;
+    padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
+  .flag-frame .flag {
+    width: 12rem;
+    height: 6.75rem;
+  }
+
+  .claim-list {
+    gap: 1rem;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .claim-card {
+    padding: 1rem 1.2rem;
+
+    .claim-value {
+      font-size: 2rem;
+    }
   }
 }
 </style>

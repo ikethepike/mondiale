@@ -106,7 +106,11 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       ...ownGuesses.value.slice(-(MAX_OWN_ENTRIES - 1)),
       { entryId: uuidv4(), playerId: gameStore.playerId, kind, ...named, at: Date.now() },
     ]
-    update({ event: 'player-guessing', kind, ...named })
+    // A probe carries its country to the server even under presence: the server
+    // measures the distance to the hidden target and broadcasts that alone,
+    // never echoing the isoCode. The room sees a radius, not a bearing.
+    const wire = policy !== 'label' && kind === 'probe' ? { isoCode } : named
+    update({ event: 'player-guessing', kind, ...wire })
   }
 
   /** Opponents' chips plus our own, oldest first, each expiring on its own. */

@@ -10,32 +10,55 @@
     @pointercancel="onPointerUp"
     @dblclick="onDoubleClick"
   >
-    <!-- Blurred copy fills the letterbox gaps behind an off-ratio photo. -->
-    <div
-      v-if="!broken"
-      class="backdrop"
-      :style="{ backgroundImage: `url('${src}')` }"
-      aria-hidden="true"
-    />
     <!-- The transform lives on a wrapper so the image's object-fit is untouched. -->
-    <div v-if="!broken" class="photo-wrap" :style="transformStyle">
+    <div v-if="!broken" class="photo-wrap" :class="{ easing }" :style="transformStyle">
       <img class="photo" :src="src" :alt="alt" draggable="false" @error="broken = true" />
     </div>
     <div v-else class="missing" aria-hidden="true">?</div>
 
-    <!-- Zoom controls: clickable, and marked so pointer-panning ignores them. -->
+    <!-- Zoom controls: clickable, and marked so pointer-panning ignores them.
+         Inline SVGs, not glyphs — math-axis characters sit off-baseline (see
+         the ranking poles for the same call). -->
     <div v-if="!broken" class="controls">
-      <button type="button" class="zoom-btn" data-control title="Zoom out" @click="zoomBy(-STEP)">
-        −
+      <button
+        type="button"
+        class="zoom-btn"
+        data-control
+        title="Zoom out"
+        :disabled="scale === 1"
+        @click="discrete(() => zoomBy(-STEP))"
+      >
+        <svg class="zoom-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" /></svg>
       </button>
-      <button type="button" class="zoom-btn" data-control title="Reset" @click="reset">⤢</button>
-      <button type="button" class="zoom-btn" data-control title="Zoom in" @click="zoomBy(STEP)">
-        ＋
+      <button
+        type="button"
+        class="zoom-btn"
+        data-control
+        title="Reset"
+        :disabled="scale === 1"
+        @click="discrete(reset)"
+      >
+        <svg class="zoom-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M6 3H3v3M10 3h3v3M6 13H3v-3M10 13h3v-3" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="zoom-btn"
+        data-control
+        title="Zoom in"
+        @click="discrete(() => zoomBy(STEP))"
+      >
+        <svg class="zoom-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 3v10M3 8h10" />
+        </svg>
       </button>
     </div>
-    <span v-if="!broken && scale === 1" class="hint" aria-hidden="true"
-      >Scroll or pinch to zoom</span
-    >
+    <Transition name="hint-fade">
+      <span v-if="!broken && scale === 1 && hintVisible" class="hint chip" aria-hidden="true">{{
+        hintText
+      }}</span>
+    </Transition>
   </div>
 </template>
 <script lang="ts" setup>
@@ -51,6 +74,27 @@ const scale = ref(1)
 const tx = ref(0)
 const ty = ref(0)
 const grabbing = ref(false)
+
+// The hint pill introduces the gesture, then gets out of the photo's way.
+const hintVisible = ref(true)
+const hintText = ref('Scroll or pinch to zoom')
+let hintTimer: ReturnType<typeof setTimeout> | undefined
+onMounted(() => {
+  if (window.matchMedia('(hover: none)').matches) hintText.value = 'Pinch to zoom'
+  hintTimer = setTimeout(() => (hintVisible.value = false), 4000)
+})
+onUnmounted(() => clearTimeout(hintTimer))
+
+// Discrete actions (buttons, double-tap, reset) glide via a transient
+// transition class; continuous gestures (drag, pinch, wheel) stay 1:1.
+const easing = ref(false)
+let easingTimer: ReturnType<typeof setTimeout> | undefined
+const discrete = (action: () => void) => {
+  easing.value = true
+  action()
+  clearTimeout(easingTimer)
+  easingTimer = setTimeout(() => (easing.value = false), 400)
+}
 
 const transformStyle = computed(() => ({
   transform: `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`,
@@ -101,6 +145,27 @@ const zoomToward = (nextScale: number, fx: number, fy: number) => {
   else clampPan()
 }
 
+/**
+ * Zoom AND centre: the clicked point lands in the middle of the frame (as far
+ * as the pan clamp allows near edges). Unlike `zoomToward`, which pins the
+ * point under the cursor for continuous wheel/pinch gestures, this is the
+ * punch-in for a discrete double-tap.
+ */
+const zoomInto = (nextScale: number, fx: number, fy: number) => {
+  const element = viewport.value
+  if (!element) return
+  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  const rect = element.getBoundingClientRect()
+  // The clicked point in untransformed content space, relative to centre.
+  const contentX = (fx - rect.width / 2 - tx.value) / scale.value
+  const contentY = (fy - rect.height / 2 - ty.value) / scale.value
+  scale.value = clamped
+  tx.value = -contentX * clamped
+  ty.value = -contentY * clamped
+  if (scale.value === 1) reset()
+  else clampPan()
+}
+
 const localPoint = (event: { clientX: number; clientY: number }) => {
   const rect = viewport.value?.getBoundingClientRect()
   return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 }
@@ -113,12 +178,22 @@ const onWheel = (event: WheelEvent) => {
   zoomToward(scale.value + delta, x, y)
 }
 
+// A rapid click series can fire more than one dblclick; without this guard
+// the second one toggles the punch-in straight back out, so only a slow,
+// deliberate double-click ever appeared to work.
+const PUNCH_IN_SETTLE_MS = 700
+let punchedInAt = 0
+
 const onDoubleClick = (event: MouseEvent) => {
   event.preventDefault()
-  // Double-tap toggles: zoom in toward the point, or reset if already zoomed.
-  if (scale.value > 1) return reset()
+  // Double-tap toggles: punch into the tapped spot, or reset if already zoomed.
+  if (scale.value > 1) {
+    if (performance.now() - punchedInAt < PUNCH_IN_SETTLE_MS) return
+    return discrete(reset)
+  }
   const { x, y } = localPoint(event)
-  zoomToward(2.4, x, y)
+  punchedInAt = performance.now()
+  discrete(() => zoomInto(2.4, x, y))
 }
 
 // --- Pointer tracking (drag to pan; two pointers to pinch) ------------------
@@ -130,6 +205,9 @@ const isControl = (event: PointerEvent) =>
 
 const onPointerDown = (event: PointerEvent) => {
   if (isControl(event)) return // let the button receive its click
+  // A live finger takes over immediately — no gliding under a drag.
+  easing.value = false
+  clearTimeout(easingTimer)
   viewport.value?.setPointerCapture?.(event.pointerId)
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   if (pointers.size === 1 && scale.value > 1) grabbing.value = true
@@ -175,14 +253,23 @@ const pinchDistance = (): number => {
 }
 </script>
 <style lang="scss" scoped>
+// An atlas figure plate: the pane grammar (ink hairline, thick bottom rule)
+// around a photo mounted on a parchment mat. Square corners — a photo plate,
+// not a card.
 .zoomable {
   position: relative;
   overflow: hidden;
   width: 100%;
   height: 100%;
-  border-radius: 1.2rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-  background: hsla(215.7, 76.4%, 21.6%, 0.06);
+  // Double-tap zooms; it must never start a text selection instead.
+  user-select: none;
+  -webkit-user-select: none;
+  border: 0.1rem solid var(--text-color);
+  border-bottom: 0.6rem solid var(--text-color);
+  // Letterbox mat: sour-milk under a faint dark-blue wash — paper, not glass.
+  background:
+    linear-gradient(hsla(215.7, 76.4%, 21.6%, 0.06), hsla(215.7, 76.4%, 21.6%, 0.06)),
+    var(--background-color);
   touch-action: none; // we handle pinch/pan ourselves
   // Host views (e.g. .main-board) are pointer-events:none by default; the
   // interactive photo must re-assert its own so zoom/pan gestures land.
@@ -197,22 +284,16 @@ const pinchDistance = (): number => {
   }
 }
 
-.backdrop {
-  position: absolute;
-  inset: -2rem;
-  background-size: cover;
-  background-position: center;
-  filter: blur(1.6rem) brightness(0.7);
-  transform: scale(1.1);
-  pointer-events: none;
-}
-
 .photo-wrap {
   position: absolute;
   inset: 0;
   transform-origin: center center;
   will-change: transform;
   pointer-events: none;
+
+  &.easing {
+    transition: transform var(--motion-base) var(--ease-out-expressive);
+  }
 }
 
 .photo {
@@ -236,53 +317,89 @@ const pinchDistance = (): number => {
   color: hsla(215.7, 76.4%, 21.6%, 0.3);
 }
 
+// One chip-language pill holding the three zoom actions, hairline-divided.
 .controls {
   position: absolute;
   right: 0.8rem;
-  bottom: 0.8rem;
+  bottom: 1.2rem;
   display: flex;
-  gap: 0.4rem;
+  align-items: stretch;
+  overflow: hidden;
   z-index: 3;
+  border-radius: 999px;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(0, 0%, 100%, 0.55);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
 }
 .zoom-btn {
-  width: 2.8rem;
+  width: 3.2rem;
   height: 2.8rem;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  line-height: 1;
   cursor: pointer;
+  border: none;
+  background: none;
+  appearance: none;
+  touch-action: manipulation;
   color: var(--dark-blue);
-  border-radius: 0.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-  background: hsla(36, 100%, 98%, 0.92);
-  backdrop-filter: blur(0.4rem);
-  transition: transform var(--motion-quick) var(--ease-out-expressive);
 
-  &:hover {
-    transform: translateY(-0.1rem);
+  & + & {
+    border-left: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.15);
   }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  &:active:not(:disabled) {
+    background: hsla(197.6, 51.2%, 41.8%, 0.16);
+  }
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: hsla(197.6, 51.2%, 41.8%, 0.12);
+    }
+  }
+}
+
+.zoom-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .hint {
   position: absolute;
   left: 0.8rem;
-  bottom: 0.8rem;
+  bottom: 1.2rem;
   z-index: 2;
-  padding: 0.3rem 0.8rem;
   font-size: 1.1rem;
-  border-radius: 999px;
   pointer-events: none;
-  color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.75);
 }
 
+.hint-fade-leave-active {
+  transition: opacity var(--motion-slow) var(--ease-in-soft);
+}
+.hint-fade-leave-to {
+  opacity: 0;
+}
+
+// Finger-sized segments on touch devices.
 @media (hover: none) {
   .zoom-btn {
-    width: 3.4rem;
-    height: 3.4rem;
-    font-size: 1.8rem;
+    width: 4.2rem;
+    height: 3.6rem;
+  }
+  .zoom-icon {
+    width: 1.7rem;
+    height: 1.7rem;
   }
 }
 </style>

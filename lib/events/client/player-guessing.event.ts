@@ -21,6 +21,7 @@ export const playerGuessingEvent: ClientSideEventHandler = ({ payload, gameStore
       kind: payload.kind,
       isoCode: payload.isoCode,
       label: payload.label,
+      distanceKm: payload.distanceKm,
       at: payload.at,
     },
   ]

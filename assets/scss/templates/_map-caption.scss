@@ -6,10 +6,20 @@
   display: inline-block;
   padding: 1rem 2.2rem;
   border-radius: 1.2rem;
+  max-width: calc(100vw - 3.2rem);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.85);
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
   box-decoration-break: clone;
+}
+
+// Fluid display scale for caption headings: full size on desktop, shrinking
+// with the viewport so prompts never dominate a phone. The class also dresses
+// spans/chips/forms, which keep their inherited size — only headings scale.
+// Views must not re-declare a fixed font-size on caption headings.
+h1.map-caption,
+h2.map-caption {
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
 }
 
 // Question/result swaps over the map (Vue <Transition name="caption">)

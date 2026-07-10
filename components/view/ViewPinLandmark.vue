@@ -46,9 +46,16 @@
       </article>
     </Transition>
 
-    <aside v-if="!result" class="photo-stage">
+    <aside v-if="!result && !isPhone" class="photo-stage">
       <ZoomableImage :src="challenge.image" alt="A landmark, somewhere on Earth" />
     </aside>
+    <MediaDock
+      v-if="!result && isPhone"
+      v-model:expanded="photoExpanded"
+      class="photo-dock"
+      :src="challenge.image"
+      alt="A landmark, somewhere on Earth"
+    />
 
     <footer v-if="!result">
       <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
@@ -62,6 +69,7 @@
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import MediaDock from '~/components/challenge/MediaDock.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -70,6 +78,7 @@ import type { LandmarkKind } from '~~/generators/data/landmark-seeds'
 import { countryName } from '~~/lib/country'
 import { haversineKm, type LatLng } from '~~/lib/geo'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useIsPhone } from '~~/lib/use-viewport'
 import { isMapClickEvent } from '~~/types/events.types'
 
 const KIND_COPY: { [kind in LandmarkKind]: string } = {
@@ -99,6 +108,11 @@ const {
 
 const pin = ref<LatLng | undefined>(undefined)
 const result = ref<{ distanceKm: number } | undefined>(undefined)
+
+// Phones swap the side-docked photo for the collapsible MediaDock: study the
+// photo first, then it docks out of the map's way once the first pin lands.
+const isPhone = useIsPhone()
+const photoExpanded = ref(true)
 
 const landmark = computed(() => (challenge.value ? LANDMARKS[challenge.value.slug] : undefined))
 
@@ -137,7 +151,10 @@ const onMapClick = (event: Event) => {
   const first = !pin.value
   pin.value = latLng
   gameStore.map.pin = latLng
-  if (first) announce({ kind: 'presence' })
+  if (first) {
+    announce({ kind: 'presence' })
+    photoExpanded.value = false
+  }
 }
 
 onMounted(() => document.addEventListener('mapClick', onMapClick))
@@ -155,11 +172,13 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+
 .pin-landmark {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -175,7 +194,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub,
   .hint {
@@ -294,5 +312,36 @@ footer {
 
 .pinned {
   font-variant-numeric: tabular-nums;
+}
+
+// Phones use the MediaDock (study-then-dock) instead of the pinned photo
+// stage; the collapsed thumbnail parks bottom-left, clear of the footer.
+@media (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+
+  .photo-dock {
+    left: 1.2rem;
+    z-index: 2;
+    position: absolute;
+    bottom: calc(12rem + var(--safe-bottom));
+  }
+
+  footer {
+    width: 100%;
+    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+
+    :deep(.button) {
+      width: 100%;
+    }
+  }
+
+  .dossier {
+    .pane-content {
+      max-height: min(46rem, 55dvh);
+      overflow-y: auto;
+    }
+  }
 }
 </style>

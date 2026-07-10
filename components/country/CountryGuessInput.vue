@@ -163,7 +163,9 @@ defineExpose({ focus: () => input.value?.focus() })
   position: absolute;
   // On short screens the full list can still exceed the space below the input;
   // cap it and let it scroll rather than run off the bottom of the viewport.
-  max-height: 40vh;
+  // dvh tracks the visual viewport when the software keyboard is up.
+  max-height: min(32rem, 35vh);
+  max-height: min(32rem, 35dvh);
   overflow-y: auto;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
@@ -180,8 +182,13 @@ defineExpose({ focus: () => input.value?.focus() })
     color: var(--dark-blue);
 
     &.highlighted,
-    &:hover {
+    &:active {
       background: hsla(197.6, 51.2%, 41.8%, 0.12);
+    }
+    @media (hover: hover) {
+      &:hover {
+        background: hsla(197.6, 51.2%, 41.8%, 0.12);
+      }
     }
   }
 }

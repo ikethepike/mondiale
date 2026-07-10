@@ -118,6 +118,10 @@ export type ServerEventData =
       kind: GuessKind
       isoCode?: ISOCountryCode
       label?: string
+      /** Hot & Cold: distance from the probe to the hidden target, computed and
+       *  rounded server-side. Broadcast under 'presence' where isoCode is not —
+       *  a radius carries no bearing on its own. */
+      distanceKm?: number
       /** Stamped server-side; keys the ticker so each guess is its own entry. */
       entryId: string
       at: number

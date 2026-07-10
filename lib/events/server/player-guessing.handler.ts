@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
+import { countryLatLng, haversineKm } from '~~/lib/geo'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
+import { isValidISOCode } from '~~/types/geography.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { useServerSideEvents } from '../server-side'
 
@@ -62,9 +64,33 @@ export const playerGuessingHandler: EventHandler = async ({
       kind: eventData.kind,
       // Presence-only modes never name the guess, whatever the client sent.
       ...(policy === 'label' ? { isoCode: eventData.isoCode, label: eventData.label } : {}),
+      // Hot & Cold under presence: broadcast the probe's distance but not the
+      // country. Measured here against the round's own target — the client's
+      // probed isoCode is trusted (it's the player's own click) but never
+      // echoed, so the number is a radius with no centre.
+      ...probeDistance(challenge, eventData),
       entryId: uuidv4(),
       at: Date.now(),
     },
     eventTarget
   )
+}
+
+/**
+ * Distance from a Hot & Cold probe to the hidden target, rounded to 100 km to
+ * match the prober's own feedback line and blunt multi-probe triangulation.
+ * Empty object for any other mode, so it drops cleanly into the emit spread.
+ */
+const probeDistance = (
+  challenge: Parameters<typeof guessPolicyFor>[1],
+  eventData: { isoCode?: string }
+): { distanceKm?: number } => {
+  if (challenge?._type !== 'hot-cold-challenge') return {}
+  if (!isValidISOCode(eventData.isoCode)) return {}
+
+  const from = countryLatLng(eventData.isoCode)
+  const target = countryLatLng(challenge.country)
+  if (!from || !target) return {}
+
+  return { distanceKm: Math.round(haversineKm(from, target) / 100) * 100 }
 }

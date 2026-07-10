@@ -72,6 +72,10 @@ const props = defineProps<{
   inset: MapInset
   /** Live camera box in map space: [x, y, width, height]. */
   view: [number, number, number, number]
+  /** Phone presentation: a larger box parked on a fixed top rail (the footer
+   *  owns the bottom of a phone screen), with no cursor-dodge — there is no
+   *  hovering pointer on touch. */
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -83,8 +87,10 @@ const emit = defineEmits<{
 const DEFAULT_HIDE_AT_ZOOM = 6
 const WORLD_WIDTH = 2000
 const WORLD_HEIGHT = 1001
-/** The box, as a fraction of the current view — so it holds its screen size. */
+/** The box, as a fraction of the current view — so it holds its screen size.
+ *  Compact (phone) screens get a much larger share: 20% of 360px is a stamp. */
 const BOX_WIDTH_FRACTION = 0.2
+const COMPACT_BOX_WIDTH_FRACTION = 0.42
 const BOX_ASPECT = 3 / 4
 const EDGE_PAD_FRACTION = 0.04
 
@@ -173,10 +179,13 @@ const region = computed(() => {
  * `bottom` is measured against the WORLD's lower edge when the view overhangs
  * it, so the box never floats out over blank parchment.
  */
-/** The two rails the box parks on, and the row it sits in. */
+/** The two rails the box parks on, and the row it sits in. The bottom edge is
+ *  measured against the WORLD's lower edge when the view overhangs it — on a
+ *  portrait phone at world zoom that lands the box mid-screen, just under the
+ *  map band and clear of the footer chrome. */
 const rails = computed(() => {
   const [viewX, viewY, viewWidth, viewHeight] = props.view
-  const width = viewWidth * BOX_WIDTH_FRACTION
+  const width = viewWidth * (props.compact ? COMPACT_BOX_WIDTH_FRACTION : BOX_WIDTH_FRACTION)
   const height = width * BOX_ASPECT
   const padX = viewWidth * EDGE_PAD_FRACTION
   const padY = viewHeight * EDGE_PAD_FRACTION
@@ -204,7 +213,9 @@ const targetSlide = computed(() => {
     subject.value.x > x - padX && subject.value.x < x + width + padX && subject.value.y > y - padY
 
   const subjectLeft = subject.value.x < viewX + viewWidth / 2
-  const preferLeft = pointerSide.value ? pointerSide.value === 'right' : subjectLeft
+  // No hovering pointer exists on touch — compact mode never dodges.
+  const dodge = props.compact ? undefined : pointerSide.value
+  const preferLeft = dodge ? dodge === 'right' : subjectLeft
 
   const wanted = preferLeft ? left : right
   const settled = covers(wanted) ? (preferLeft ? right : left) : wanted
@@ -235,8 +246,10 @@ onMounted(() => {
   // Start on the correct rail; only later moves are animated.
   slide.value = targetSlide.value
 
-  host = document.querySelector('.game-map')
-  host?.addEventListener('pointermove', onPointerMove as EventListener, { passive: true })
+  if (!props.compact) {
+    host = document.querySelector('.game-map')
+    host?.addEventListener('pointermove', onPointerMove as EventListener, { passive: true })
+  }
 })
 onBeforeUnmount(() => {
   gsap.killTweensOf(slide)

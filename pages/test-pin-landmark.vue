@@ -198,7 +198,7 @@ onMounted(() => {
  * swallows every click, and no pin can ever be dropped.
  */
 .harness {
-  height: 100vh;
+  height: var(--viewport-height);
   overflow: hidden;
   position: relative;
   max-width: 100%;

@@ -118,11 +118,12 @@ const onGuess = (country: Country) => {
 // get it or the clock runs out; only the first correct guess scores.
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .flag-palette {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -137,7 +138,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub,
   .hint {
@@ -195,5 +195,16 @@ footer {
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+  footer {
+    padding: 1.2rem 1.6rem clamp(8rem, 24dvh, 20rem);
+  }
 }
 </style>

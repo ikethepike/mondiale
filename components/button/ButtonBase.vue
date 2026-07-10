@@ -36,6 +36,7 @@ const tag = computed(() => (props.element === 'NuxtLink' ? NuxtLink : props.elem
 
   cursor: pointer;
   appearance: none;
+  touch-action: manipulation;
   padding: 0 1.4rem;
   font-size: 1.5rem;
   display: flex;

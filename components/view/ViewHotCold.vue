@@ -25,7 +25,7 @@
     </header>
 
     <footer>
-      <TransitionGroup tag="ol" name="chain" class="probe-list">
+      <TransitionGroup ref="probeList" tag="ol" name="chain" class="probe-list">
         <li
           v-for="probe in probes"
           :key="probe.isoCode"
@@ -73,6 +73,18 @@ interface Probe {
 }
 
 const probes = ref<Probe[]>([])
+
+// On phones the trail is a single scrolling strip; keep the newest probe in
+// view. Harmless on desktop, where the wrapped list never overflows.
+const probeList = ref<{ $el: HTMLElement } | null>(null)
+watch(
+  () => probes.value.length,
+  async () => {
+    await nextTick()
+    const list = probeList.value?.$el
+    list?.scrollTo({ left: list.scrollWidth, behavior: 'smooth' })
+  }
+)
 const feedback = ref('')
 const warmthClass = ref<'hot' | 'warm' | 'cold' | ''>('')
 
@@ -162,11 +174,12 @@ onBeforeMount(() => {
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .hot-cold {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  height: var(--viewport-height);
   display: flex;
   position: absolute;
   flex-flow: column nowrap;
@@ -181,7 +194,6 @@ header {
 
   h1 {
     margin: 0;
-    font-size: 3.2rem;
   }
   .sub {
     padding: 0.4rem 1.4rem;
@@ -260,5 +272,33 @@ footer {
   transition:
     opacity var(--motion-quick) var(--ease-out-expressive),
     transform var(--motion-quick) var(--ease-out-expressive);
+}
+
+// Compact phone chrome: tighter prompt padding, footer clear of the home
+// indicator.
+@media screen and (max-width: $tablet) {
+  header {
+    padding: 1.2rem 1.6rem;
+  }
+  footer {
+    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
+  // A long trail would eat the map from the bottom: one scroll-snapping row,
+  // newest probe kept in view by the watcher above.
+  .probe-list {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+
+    .stop {
+      flex-shrink: 0;
+      white-space: nowrap;
+      scroll-snap-align: end;
+    }
+  }
 }
 </style>

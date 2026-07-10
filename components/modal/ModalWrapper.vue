@@ -7,9 +7,10 @@
 .modal-wrapper {
   width: 100%;
   display: flex;
-  height: 100vh;
+  height: var(--viewport-height);
   overflow-y: auto;
   position: absolute;
   pointer-events: auto;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 </style>
