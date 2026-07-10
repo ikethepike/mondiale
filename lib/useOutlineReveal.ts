@@ -1,10 +1,13 @@
 import { nextTick, ref } from 'vue'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { drawnFraction, mainlandOutline, previewSweepSeconds } from '~~/lib/outline'
+import { DRAW_COMPLETE_AT, drawnFraction, mainlandOutline, previewSweepSeconds } from '~~/lib/outline'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** How long the whole border holds on screen before sweeping away. */
 const PREVIEW_HOLD_MS = 1600
+
+/** `static` is the reduced-motion round: the full border just stays put. */
+export type OutlineRevealPhase = 'idle' | 'preview' | 'sweep' | 'drawing' | 'static'
 
 /**
  * The shared choreography of the outline-guessing modes (group Silhouette and
@@ -26,10 +29,10 @@ export const useOutlineReveal = () => {
   const outline = ref<{ d: string; viewBox: string; span: number; strokeWidth: number }>()
   const outlinePath = ref<SVGPathElement>()
 
-  type Phase = 'idle' | 'preview' | 'sweep' | 'drawing'
-  let phase: Phase = 'idle'
+  const phase = ref<OutlineRevealPhase>('idle')
   let length = 0
   let totalSeconds = 0
+  let completeAt = DRAW_COMPLETE_AT
   let lastSecondsLeft = Infinity
   let drawStartSecondsLeft = 0
   let prepared: Promise<void> = Promise.resolve()
@@ -50,7 +53,10 @@ export const useOutlineReveal = () => {
    * must not gate their own clock on it: a missing outline no-ops here.
    * Under reduced motion the full outline simply stays put for the round.
    */
-  const beginOutlineReveal = async (durationSeconds: number) => {
+  const beginOutlineReveal = async (
+    durationSeconds: number,
+    drawCompleteAt: number = DRAW_COMPLETE_AT
+  ) => {
     const armed = generation
     await prepared
     await nextTick()
@@ -60,27 +66,31 @@ export const useOutlineReveal = () => {
     if (armed !== generation || !path || !frame || !length) return
 
     totalSeconds = durationSeconds
+    completeAt = drawCompleteAt
     // Ticks may already be running if the geometry arrived late.
     lastSecondsLeft = Math.min(lastSecondsLeft, durationSeconds)
-    phase = 'preview'
     path.style.strokeDasharray = `${length}`
     path.style.transition = 'none'
     path.style.strokeDashoffset = '0'
-    if (prefersReducedMotion()) return
+    if (prefersReducedMotion()) {
+      phase.value = 'static'
+      return
+    }
+    phase.value = 'preview'
 
     previewTimer = setTimeout(() => {
       // The sweep-away un-draws the border at a pace set by its intricacy —
       // the transition lands in the same style flush as the offset change,
       // and per spec the after-change style's transition applies.
       const sweep = previewSweepSeconds(length, frame.span)
-      phase = 'sweep'
+      phase.value = 'sweep'
       path.style.transition = `stroke-dashoffset ${sweep}s ease-in`
       path.style.strokeDashoffset = `${length}`
 
       sweepTimer = setTimeout(() => {
         // Ticks land once per second; a matching linear transition chains
         // them into one continuous, ever-growing stroke.
-        phase = 'drawing'
+        phase.value = 'drawing'
         drawStartSecondsLeft = lastSecondsLeft
         path.style.transition = 'stroke-dashoffset 1s linear'
       }, sweep * 1000)
@@ -91,8 +101,10 @@ export const useOutlineReveal = () => {
   const tickOutlineReveal = (secondsLeft: number) => {
     lastSecondsLeft = secondsLeft
     const path = outlinePath.value
-    if (phase !== 'drawing' || !path || !length) return
-    const drawn = drawnFraction(secondsLeft, totalSeconds, drawStartSecondsLeft)
+    if (phase.value !== 'drawing' || !path || !length) return
+    // Target one second ahead: the 1s transition set at the tick showing N
+    // finishes as the display flips to N-1, so the stroke and the clock agree.
+    const drawn = drawnFraction(secondsLeft - 1, totalSeconds, drawStartSecondsLeft, completeAt)
     path.style.strokeDashoffset = `${length * (1 - drawn)}`
   }
 
@@ -103,7 +115,7 @@ export const useOutlineReveal = () => {
     previewTimer = undefined
     sweepTimer = undefined
     generation++
-    phase = 'idle'
+    phase.value = 'idle'
     length = 0
     lastSecondsLeft = Infinity
     prepared = Promise.resolve()
@@ -113,6 +125,7 @@ export const useOutlineReveal = () => {
   return {
     outline,
     outlinePath,
+    phase,
     prepareOutline,
     beginOutlineReveal,
     tickOutlineReveal,

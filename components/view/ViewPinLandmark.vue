@@ -28,20 +28,7 @@
     <Transition name="dossier">
       <article v-if="landmark && result" class="pane dossier tr">
         <div class="pane-content">
-          <div class="dossier-head">
-            <img class="dossier-photo" :src="landmark.image" :alt="landmark.name" />
-            <div class="dossier-copy">
-              <strong>{{ landmark.name }}</strong>
-              <span
-                >{{ landmark.city ? `${landmark.city}, ` : ''
-                }}{{ countryName(landmark.country) }}</span
-              >
-              <span class="dossier-kind">{{ KIND_COPY[landmark.kind] }}</span>
-            </div>
-          </div>
-          <p v-if="landmark.description" class="dossier-description">
-            {{ landmark.description }}
-          </p>
+          <LandmarkReveal :landmark="landmark" />
         </div>
       </article>
     </Transition>
@@ -73,21 +60,12 @@ import MediaDock from '~/components/challenge/MediaDock.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
-import type { LandmarkKind } from '~~/generators/data/landmark-seeds'
-import { countryName } from '~~/lib/country'
 import { haversineKm, type LatLng } from '~~/lib/geo'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { isMapClickEvent } from '~~/types/events.types'
-
-const KIND_COPY: { [kind in LandmarkKind]: string } = {
-  natural: 'A natural wonder',
-  religious: 'A place of worship',
-  ancient: 'An ancient site',
-  monument: 'A built monument',
-  urban: 'A city landmark',
-}
 
 const {
   challenge,
@@ -237,41 +215,6 @@ header {
     padding: 1.6rem;
     flex-flow: column nowrap;
   }
-}
-
-.dossier-head {
-  gap: 1.6rem;
-  display: flex;
-  align-items: center;
-}
-
-.dossier-description {
-  margin: 0;
-  text-align: left;
-  text-wrap: pretty;
-}
-
-.dossier-photo {
-  width: 10rem;
-  height: 10rem;
-  flex-shrink: 0;
-  object-fit: cover;
-  border-radius: 0.4rem;
-}
-
-.dossier-copy {
-  gap: 0.3rem;
-  display: flex;
-  text-align: left;
-  flex-flow: column nowrap;
-
-  strong {
-    font-size: 1.8rem;
-  }
-}
-
-.dossier-kind {
-  color: var(--soft-blue);
 }
 
 .dossier-enter-active {

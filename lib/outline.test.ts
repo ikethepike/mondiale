@@ -188,4 +188,9 @@ describe('drawnFraction', () => {
       previous = drawn
     }
   })
+
+  it('completes exactly at zero when completeAt is 1 — the closing line is the deadline', () => {
+    expect(drawnFraction(0, 25, 22, 1)).toBe(1)
+    expect(drawnFraction(1, 25, 22, 1)).toBeLessThan(1)
+  })
 })

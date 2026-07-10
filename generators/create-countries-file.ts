@@ -30,6 +30,7 @@ import {
   isValidContinent,
   type ISOCountryCode,
 } from '~~/types/geography.types'
+import type { CurrencyCode } from '~~/types/currency.type'
 import {
   isOrganizationKey,
   type Organization,
@@ -864,11 +865,16 @@ const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }):
   return []
 }
 
-const getCurrency = ({ isoCode }: { isoCode: string }): string | undefined => {
+/**
+ * Cast, not validation: this generator is the SOURCE of currency codes, so a
+ * genuinely new code shows up here before the currencies dataset (and thus
+ * CurrencyCode) knows about it — regenerate currencies after adding one.
+ */
+const getCurrency = ({ isoCode }: { isoCode: string }): CurrencyCode | undefined => {
   if (!Reflect.has(countries, isoCode)) return undefined
 
   const country = countries[isoCode as keyof typeof countries]
-  if (Array.isArray(country.currency)) return country.currency[0]
+  if (Array.isArray(country.currency)) return country.currency[0] as CurrencyCode
 
-  return country.currency
+  return country.currency as CurrencyCode | undefined
 }

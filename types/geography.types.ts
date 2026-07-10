@@ -1,5 +1,6 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { NamedColor } from '~~/lib/palette'
+import type { CurrencyCode } from './currency.type'
 import type { Organization } from './organization.type'
 
 export interface Amount<Unit> {
@@ -27,7 +28,7 @@ export interface Country {
   isoCode: ISOCountryCode
   url: string
   region: Region
-  currency?: string
+  currency?: CurrencyCode
   languages: string[]
   coordinates: string
   name: {

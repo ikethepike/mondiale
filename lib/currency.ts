@@ -1,9 +1,12 @@
+import { CURRENCIES } from '~~/data/currencies.gen'
+import type { CurrencyCode } from '~~/types/currency.type'
+
 /**
  * Currency symbols for the Money Match gate — the data only carries 3-letter
  * ISO codes (JPY, USD…), so this maps the common ones to a glyph for the
  * typographic hero. Falls back to the code when there's no distinctive symbol.
  */
-const CURRENCY_SYMBOLS: Record<string, string> = {
+const CURRENCY_SYMBOLS: Partial<Record<CurrencyCode, string>> = {
   USD: '$',
   EUR: '€',
   GBP: '£',
@@ -37,5 +40,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 }
 
 /** A display glyph for a currency code, or the code itself if none is known. */
-export const currencySymbol = (code?: string): string =>
+export const currencySymbol = (code?: CurrencyCode): string =>
   (code && CURRENCY_SYMBOLS[code]) || code || '¤'
+
+/** The currency's local name ("SEK" → "Swedish krona"), or the code if unknown. */
+export const currencyName = (code?: CurrencyCode): string =>
+  (code && CURRENCIES[code].name) || code || 'currency'

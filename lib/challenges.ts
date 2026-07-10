@@ -1235,7 +1235,8 @@ const dealCapitalMatch = (
 /**
  * Landmark-quiz (photo): "Which country is this landmark in?" — an iconic
  * landmark photo with four flag options. Picks a random curated landmark;
- * decoys prefer the same region. The name + city are carried for the reveal.
+ * decoys prefer the same region. The slug is carried for the reveal: the
+ * dossier (name, description) and the answer marker on the result map.
  */
 const dealLandmarkQuiz = (
   pool: ISOCountryCode[]
@@ -1244,17 +1245,18 @@ const dealLandmarkQuiz = (
       country: ISOCountryCode
       image: string
       options: ISOCountryCode[]
-      landmark: { name: string; city?: string }
+      landmarkSlug: string
     }
   | undefined => {
-  const entries = Object.values(LANDMARKS)
+  const entries = Object.entries(LANDMARKS)
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).
   const onBoard = new Set(pool)
-  const preferred = shuffleArray(entries.filter(entry => onBoard.has(entry.country)))
-  const landmark = preferred[0] ?? shuffleArray(entries)[0]
-  if (!landmark) return undefined
+  const preferred = shuffleArray(entries.filter(([, entry]) => onBoard.has(entry.country)))
+  const picked = preferred[0] ?? shuffleArray(entries)[0]
+  if (!picked) return undefined
+  const [landmarkSlug, landmark] = picked
 
   const decoys = pickDecoys(landmark.country, pool, 3, { preferRegion: true })
   if (!decoys) return undefined
@@ -1263,7 +1265,7 @@ const dealLandmarkQuiz = (
     country: landmark.country,
     image: landmark.image,
     options: shuffleArray([landmark.country, ...decoys]),
-    landmark: { name: landmark.name, ...(landmark.city ? { city: landmark.city } : {}) },
+    landmarkSlug,
   }
 }
 

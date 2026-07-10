@@ -362,6 +362,12 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    id: 'individual-outline-reveal',
+    label: 'Individual: outline reveal (timed)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'outline-reveal', country: 'ZA' }),
+  },
+  {
     id: 'individual-higher-lower',
     label: 'Individual: higher/lower duel',
     component: ViewIndividualChallenge,

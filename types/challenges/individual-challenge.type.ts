@@ -48,8 +48,9 @@ export interface IndividualChallenge {
   /** capital-match / photo gates: a photo (capital skyline, landmark) whose
    *  country the player names from `options`. */
   image?: string
-  /** landmark-quiz: the landmark's name + city, revealed after answering. */
-  landmark?: { name: string; city?: string }
+  /** landmark-quiz: which curated landmark (LANDMARKS key). The reveal shows
+   *  its dossier (name, description) and marks its true spot on the map. */
+  landmarkSlug?: string
 }
 
 export const individualChallengeVariants = [

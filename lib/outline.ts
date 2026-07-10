@@ -86,14 +86,16 @@ export const previewSweepSeconds = (length: number, span: number): number => {
  * Fraction of the border drawn at `secondsLeft`. The draw picks up where the
  * preview handed over (`drawStartSecondsLeft`) and maps that remaining window
  * onto the clock so every country — however long its border — completes at
- * DRAW_COMPLETE_AT of the round.
+ * `completeAt` of the round (a race mode passes 1: the closing line IS the
+ * deadline; the default leaves the study beat).
  */
 export const drawnFraction = (
   secondsLeft: number,
   totalSeconds: number,
-  drawStartSecondsLeft: number
+  drawStartSecondsLeft: number,
+  completeAt: number = DRAW_COMPLETE_AT
 ): number => {
-  const drawEndsAt = totalSeconds * (1 - DRAW_COMPLETE_AT)
+  const drawEndsAt = totalSeconds * (1 - completeAt)
   const window = Math.max(1, drawStartSecondsLeft - drawEndsAt)
   return Math.min(1, Math.max(0, (drawStartSecondsLeft - secondsLeft) / window))
 }

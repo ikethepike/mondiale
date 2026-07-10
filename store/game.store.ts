@@ -56,8 +56,9 @@ interface GameStoreState {
     tints: { [isoCode in ISOCountryCode]?: MapTint }
     /** Pin-landmark: the point the player dropped, drawn as a marker. */
     pin?: LatLng
-    /** Pin-landmark reveal: the landmark's true point. Drawn as a second marker
-     *  with a dashed line back to `pin`, so the miss reads at a glance. */
+    /** Landmark reveal: the landmark's true point (pin-landmark and
+     *  landmark-quiz). Drawn as a marker, with a dashed line back to `pin`
+     *  when one was dropped, so the miss reads at a glance. */
     pinAnswer?: LatLng
     /** Distinct per-group country fills (region final challenge, duel pairs). */
     countryGroupings?: CountryColorGrouping[]

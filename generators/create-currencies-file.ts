@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { COUNTRIES } from '../data/countries.gen'
+import type { CurrencyCode, CurrencyMapping } from '../types/currency.type'
 import {
   fetchImageDimensions,
   fetchJson,
@@ -34,14 +35,6 @@ const OUTPUT_DIRECTORY = 'public/currencies'
 const CURRENCY_WIDTH = 1280
 const REVIEW_PATH = 'generators/data/currency-coin-review.txt'
 
-export interface CurrencyEntry {
-  /** Currency name (from Wikidata labels), e.g. "United States dollar". */
-  name: string
-  /** Public path of the banknote image, when one exists on Commons. */
-  image?: string
-}
-
-export type CurrencyMapping = { [code: string]: CurrencyEntry }
 
 /**
  * Pin the Wikidata Q-id for codes where the P498 search is ambiguous — shared
@@ -92,7 +85,7 @@ const codes = [
   ...new Set(
     Object.values(COUNTRIES)
       .map(country => country.currency)
-      .filter((code): code is string => !!code)
+      .filter((code): code is CurrencyCode => !!code)
   ),
 ].sort()
 
@@ -237,8 +230,9 @@ for (const code of codes) {
 writeFileSync(
   'data/currencies.gen.ts',
   `
-      import type { CurrencyMapping } from '../generators/create-currencies-file'
-      export const CURRENCIES: CurrencyMapping = ${JSON.stringify(mapping)}
+      import type { CurrencyEntry, CurrencyMapping } from '~~/types/currency.type'
+      const data = ${JSON.stringify(mapping)} satisfies CurrencyMapping
+      export const CURRENCIES: { [code in keyof typeof data]: CurrencyEntry } = data
     `
 )
 console.log(`Wrote data/currencies.gen.ts (${Object.keys(mapping).length} currencies)`)

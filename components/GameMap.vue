@@ -352,8 +352,8 @@ const writeViewBox = () => {
   if (props.inset) echoViewBox()
 }
 
-const clampView = (view: typeof WORLD_VIEW) => {
-  view.width = Math.min(WORLD_VIEW.width, Math.max(WORLD_VIEW.width / MAX_ZOOM, view.width))
+const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZOOM) => {
+  view.width = Math.min(WORLD_VIEW.width, Math.max(minWidth, view.width))
   view.height = view.width / viewAspect
   view.x = Math.min(WORLD_VIEW.width - view.width, Math.max(0, view.x))
 
@@ -1022,14 +1022,18 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   // crop centred on it. A fixed fraction of the frame alone breaks for huge
   // countries — 18% of Russia's bbox is still half the planet — so the start is
   // also capped to an absolute deep zoom, giving every country a comparably
-  // tight sliver regardless of its size.
+  // tight sliver regardless of its size. Sized against the frame's LARGER
+  // dimension: on a portrait screen the frame is tall, and a width-based crop
+  // would span enough latitude to show the whole country plus its neighbours.
   const wide = frameForBoxes([mainland], [])
   const cx = wide.x + wide.width / 2
   const cy = wide.y + wide.height / 2
   const TIGHT_FRACTION = 0.18
-  const TIGHT_MAX_WIDTH = WORLD_VIEW.width / 14 // absolute deep-zoom ceiling
-  const startWidth = Math.min(wide.width * TIGHT_FRACTION, TIGHT_MAX_WIDTH)
-  const startHeight = startWidth * (wide.height / wide.width)
+  const TIGHT_MAX_SPAN = WORLD_VIEW.width / 14 // absolute deep-zoom ceiling
+  const wideSpan = Math.max(wide.width, wide.height)
+  const startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
+  const startWidth = startSpan * Math.min(1, viewAspect)
+  const startHeight = startWidth / viewAspect
   const tightView = {
     x: cx - startWidth / 2,
     y: cy - startHeight / 2,
@@ -1064,7 +1068,11 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   }
 
   const startView = { ...tightView }
-  clampView(startView)
+  // The crop may sit deeper than the manual-gesture MAX_ZOOM floor (a portrait
+  // screen needs a narrower width for the same latitude span) — clamp only to
+  // the world bounds, not the zoom floor. Manual zoom is locked for the whole
+  // reveal, so the camera can't be left stranded past the gesture limit.
+  clampView(startView, startWidth)
   Object.assign(viewState, startView)
   writeViewBox()
   // The reveal starts deeply zoomed, so run the LOD pass now (and periodically

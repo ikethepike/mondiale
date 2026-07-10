@@ -238,9 +238,7 @@
           <!-- Outline reveal race (hard): name it before the border completes -->
           <template v-else-if="variant === 'outline-reveal'">
             <h1 class="map-caption">Whose border is drawing itself?</h1>
-            <span class="map-caption sub">
-              {{ outlineSecondsLeft }}s — name it before the line closes
-            </span>
+            <span class="map-caption sub">{{ outlineSubCopy }}</span>
             <svg
               v-if="outlineReveal"
               class="reveal-outline"
@@ -299,6 +297,10 @@
             v-else-if="(variant === 'leader-pick' || variant === 'leader-portrait') && challenge"
             :country="challenge.country"
           />
+          <LandmarkReveal
+            v-else-if="variant === 'landmark-quiz' && landmark"
+            :landmark="landmark"
+          />
         </ChallengeResult>
       </Transition>
     </header>
@@ -309,18 +311,21 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
+import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import { LANDMARKS } from '~~/data/landmarks.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { currencySymbol } from '~~/lib/currency'
+import { currencyName, currencySymbol } from '~~/lib/currency'
 import { politicalLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { GATE_HINT_BITE_STEPS } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
+import { wait } from '~~/lib/time'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -358,6 +363,11 @@ const country = computed(() => {
   if (!challenge.value) return undefined
   return getCountry(challenge.value.country)
 })
+
+/** landmark-quiz: the curated entry behind the photo — dossier + map marker. */
+const landmark = computed(() =>
+  challenge.value?.landmarkSlug ? LANDMARKS[challenge.value.landmarkSlug] : undefined
+)
 
 const interstitialTitle = computed(() => {
   const active = challenge.value
@@ -398,6 +408,7 @@ const OUTLINE_REVEAL_SECONDS = 25
 const {
   outline: outlineReveal,
   outlinePath: outlineRevealPath,
+  phase: outlinePhase,
   prepareOutline,
   beginOutlineReveal: beginOutlineDraw,
   tickOutlineReveal,
@@ -405,6 +416,10 @@ const {
 } = useOutlineReveal()
 const outlineSecondsLeft = ref(OUTLINE_REVEAL_SECONDS)
 let outlineTimer: ReturnType<typeof setInterval> | undefined
+// Bumped on gate reset/unmount so a held clock-start can't arm a dead round.
+let outlineRound = 0
+/** Cap on holding the clock for the geometry chunk — bounded dead air. */
+const OUTLINE_CLOCK_HOLD_MS = 3000
 
 /** Any ISO that isn't the answer — a failed gate submits a can't-match token. */
 const wrongTokenFor = (correct: ISOCountryCode): ISOCountryCode => (correct === 'CH' ? 'AT' : 'CH')
@@ -412,24 +427,45 @@ const wrongTokenFor = (correct: ISOCountryCode): ISOCountryCode => (correct === 
 const beginOutlineReveal = () => {
   const active = challenge.value
   if (!active || variant.value !== 'outline-reveal' || outlineTimer) return
+  const round = ++outlineRound
   prepareOutline(active.country)
-  beginOutlineDraw(OUTLINE_REVEAL_SECONDS)
 
-  // The clock runs regardless of the outline resolving — the gate must never
-  // hang without its timeout just because the geometry was missing.
-  outlineTimer = setInterval(() => {
-    outlineSecondsLeft.value--
-    tickOutlineReveal(outlineSecondsLeft.value)
+  // Hold the clock until the preview is armed — the geometry chunk mustn't
+  // burn answer time — but never past the cap: the gate must not hang
+  // without its timeout just because the geometry was slow or missing.
+  // completeAt 1: in this race the closing line IS the deadline.
+  Promise.race([beginOutlineDraw(OUTLINE_REVEAL_SECONDS, 1), wait(OUTLINE_CLOCK_HOLD_MS)]).then(
+    () => {
+      if (round !== outlineRound || outlineTimer || status.value) return
+      outlineTimer = setInterval(() => {
+        outlineSecondsLeft.value--
+        tickOutlineReveal(outlineSecondsLeft.value)
 
-    if (outlineSecondsLeft.value <= 0) {
-      if (outlineTimer) clearInterval(outlineTimer)
-      if (!status.value) {
-        gameStore.map.solo = false
-        submitAnswer(wrongTokenFor(active.country))
-      }
+        if (outlineSecondsLeft.value <= 0) {
+          if (outlineTimer) clearInterval(outlineTimer)
+          if (!status.value) {
+            gameStore.map.solo = false
+            submitAnswer(wrongTokenFor(active.country))
+          }
+        }
+      }, 1000)
     }
-  }, 1000)
+  )
 }
+
+const outlineSubCopy = computed(() => {
+  switch (outlinePhase.value) {
+    case 'preview':
+    case 'sweep':
+      return 'Memorize it — it unravels in a moment'
+    case 'static':
+      return `${outlineSecondsLeft.value}s — the whole border, one shot`
+    case 'drawing':
+      return `${outlineSecondsLeft.value}s — name it before the line closes`
+    default:
+      return `${outlineSecondsLeft.value}s — name the country`
+  }
+})
 
 const onOutlineGuess = (country: Country) => {
   if (status.value) return
@@ -625,7 +661,9 @@ const incorrectMessage = computed(() => {
     case 'border-detective':
       return active ? `It was ${countryName(active.country)}` : 'Not quite.'
     case 'money-match':
-      return active ? `That's the ${getCountry(active.country).currency}` : 'Not quite.'
+      return active
+        ? `That's the ${currencyName(getCountry(active.country).currency)} (${getCountry(active.country).currency})`
+        : 'Not quite.'
     case 'zoom-out':
       return active ? `It was ${countryName(active.country)}` : 'Not quite.'
     case 'capital-match':
@@ -633,9 +671,8 @@ const incorrectMessage = computed(() => {
         ? `That's ${getCountry(active.country).geography.capital.name}, ${countryName(active.country)}`
         : 'Not quite.'
     case 'landmark-quiz':
-      return active?.landmark
-        ? `That's the ${active.landmark.name}${active.landmark.city ? `, ${active.landmark.city}` : ''} — ${countryName(active.country)}`
-        : 'Not quite.'
+      // The dossier below carries the landmark's name and story.
+      return active ? `It's in ${countryName(active.country)}` : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
@@ -674,7 +711,11 @@ const submitAnswer = (
   const active = currentMove.value?.challenge
   if (active) {
     const correct = isoCode === active.country
-    if (options.reveal !== false) gameStore.map.reveal = active.country
+    if (options.reveal !== false) {
+      gameStore.map.reveal = active.country
+      // Landmark-quiz: mark the landmark's true spot on the reveal zoom
+      if (landmark.value?.coordinates) gameStore.map.pinAnswer = landmark.value.coordinates
+    }
     gameStore.map.status = correct ? 'correct' : 'incorrect'
   }
 }
@@ -709,6 +750,7 @@ watch(currentMove, move => {
     clearInterval(outlineTimer)
     outlineTimer = undefined
   }
+  outlineRound++
   resetOutlineReveal()
   outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
   if (borderTimer) {
@@ -767,6 +809,7 @@ onBeforeMount(() => {
 })
 onBeforeUnmount(() => {
   clearBoard()
+  outlineRound++
   if (outlineTimer) clearInterval(outlineTimer)
   if (borderTimer) clearInterval(borderTimer)
   if (zoomOutTimer) clearTimeout(zoomOutTimer)
