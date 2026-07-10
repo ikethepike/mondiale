@@ -218,8 +218,8 @@ export interface Scorecard {
   answers?: GroupChallengeAnswer
 }
 
-/** Traversal guess verdicts painted onto the map. */
-export type MapTint = 'optimal' | 'inefficient' | 'stray' | 'endpoint'
+/** Guess verdicts painted onto the map: traversal verdicts plus hot & cold warmth. */
+export type MapTint = 'optimal' | 'inefficient' | 'stray' | 'endpoint' | 'hot' | 'warm' | 'cold'
 
 export type PlayerScore =
   | {

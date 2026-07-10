@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Hot & Cold`"
       title="Find the mystery country"
-      :stakes="`Click the map — every probe tells you how far and which way. You have ${challenge.maximumGuesses} probes.`"
+      :stakes="`Every country you click reports how far you are and which way to head. You have ${challenge.maximumGuesses} probes — the fewer you spend, the more you score.`"
       @done="begin()"
     />
 
@@ -34,7 +34,10 @@
         >
           <CountryFlag class="stop-flag" :country="getCountry(probe.isoCode)" mode="background" />
           <span>{{ countryName(probe.isoCode) }}</span>
-          <small>{{ Math.round(probe.distanceKm).toLocaleString() }} km</small>
+          <small v-if="probe.direction">
+            {{ Math.round(probe.distanceKm).toLocaleString() }} km {{ probe.direction }}
+          </small>
+          <small v-else>found it!</small>
         </li>
       </TransitionGroup>
     </footer>
@@ -46,7 +49,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { bearingDegrees, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
+import { bearingDegrees, compassArrow, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
 import type { MapTint } from '~~/store/game.store'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -70,6 +73,8 @@ interface Probe {
   isoCode: ISOCountryCode
   distanceKm: number
   warmth: 'hot' | 'warm' | 'cold'
+  /** Compass arrow towards the target — absent on the probe that found it. */
+  direction?: string
 }
 
 const probes = ref<Probe[]>([])
@@ -96,20 +101,36 @@ const warmthFor = (distanceKm: number): Probe['warmth'] => {
   return 'cold'
 }
 
-const WARMTH_TINTS: { [warmth in Probe['warmth']]: MapTint } = {
-  hot: 'optimal',
-  warm: 'inefficient',
-  cold: 'stray',
-}
-
 const paintProbes = () => {
   gameStore.map.highlighted.clear()
   const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
   for (const probe of probes.value) {
     gameStore.map.highlighted.add(probe.isoCode)
-    tints[probe.isoCode] = WARMTH_TINTS[probe.warmth]
+    tints[probe.isoCode] = probe.warmth
   }
   gameStore.map.tints = tints
+}
+
+const temperatureFor = (probe: Probe): string => {
+  if (probe.warmth === 'hot') return 'scalding'
+  if (probe.warmth === 'warm') return 'warm'
+  return probe.distanceKm > 6000 ? 'freezing' : 'cold'
+}
+
+const distancePhrase = (distanceKm: number): string =>
+  distanceKm < 100
+    ? 'less than 100 km'
+    : `about ${(Math.round(distanceKm / 100) * 100).toLocaleString()} km`
+
+const clueFor = (probe: Probe): string => {
+  const from = countryLatLng(probe.isoCode)
+  const target = challenge.value ? countryLatLng(challenge.value.country) : undefined
+  if (!from || !target) return ''
+  const direction = compassLabel(bearingDegrees(from, target))
+  // The shortest way may cross the date line — flag it, or "east of China"
+  // reads as impossible on a flat map
+  const crossesDateLine = Math.abs(target.lng - from.lng) > 180
+  return `${countryName(probe.isoCode)} is ${temperatureFor(probe)} — ${distancePhrase(probe.distanceKm)} to the ${direction}${crossesDateLine ? ', across the date line' : ''}`
 }
 
 const submitRound = () => {
@@ -128,7 +149,14 @@ const onMapClick = (event: Event) => {
 
   const isoCode = event.detail.isoCode
   if (!isValidISOCode(isoCode)) return
-  if (probes.value.some(probe => probe.isoCode === isoCode)) return
+
+  // Repeat clicks cost nothing — just replay that probe's clue
+  const previous = probes.value.find(probe => probe.isoCode === isoCode)
+  if (previous) {
+    feedback.value = `Already probed: ${clueFor(previous)}`
+    warmthClass.value = previous.warmth
+    return
+  }
 
   // Found it!
   if (isoCode === active.country) {
@@ -146,19 +174,20 @@ const onMapClick = (event: Event) => {
 
   const distanceKm = haversineKm(from, target)
   const warmth = warmthFor(distanceKm)
-  probes.value.push({ isoCode, distanceKm, warmth })
+  const probe: Probe = {
+    isoCode,
+    distanceKm,
+    warmth,
+    direction: compassArrow(bearingDegrees(from, target)),
+  }
+  probes.value.push(probe)
   paintProbes()
 
   // Never the isoCode: a probe's country and warmth together are a bearing fix
   // on the hidden country. The room sees only that someone probed.
   announce({ kind: 'probe' })
 
-  const direction = compassLabel(bearingDegrees(from, target))
-  const temperature = warmth === 'hot' ? 'Scalding' : warmth === 'warm' ? 'Warm' : 'Cold'
-  // The shortest way may cross the date line — flag it, or "east of China"
-  // reads as impossible on a flat map
-  const crossesDateLine = Math.abs(target.lng - from.lng) > 180
-  feedback.value = `${temperature} — about ${Math.round(distanceKm / 100) * 100} km to the ${direction}${crossesDateLine ? ', across the date line' : ''}`
+  feedback.value = clueFor(probe)
   warmthClass.value = warmth
 
   if (probes.value.length >= active.maximumGuesses) {

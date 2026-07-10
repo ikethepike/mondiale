@@ -58,6 +58,11 @@ const COMPASS_POINTS = [
 export const compassLabel = (bearing: number): string =>
   COMPASS_POINTS[Math.round(bearing / 45) % 8]
 
+const COMPASS_ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
+
+export const compassArrow = (bearing: number): string =>
+  COMPASS_ARROWS[Math.round(bearing / 45) % 8]
+
 // --- Projected map-space boxes -------------------------------------------------
 
 /** An axis-aligned box in the map's projected SVG space: [x, y, width, height]. */

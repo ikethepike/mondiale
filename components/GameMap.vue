@@ -241,6 +241,10 @@ const TINT_COLORS: { [tint in MapTint]: string } = {
   inefficient: 'hsla(29.7, 79.9%, 66.7%, 0.6)',
   stray: 'hsla(9.8, 81.3%, 60.2%, 0.42)',
   endpoint: 'hsla(215.7, 76.4%, 31.6%, 0.45)',
+  // Hot & cold warmth — hues match the probe-trail chips
+  hot: 'hsla(9.8, 81.3%, 60.2%, 0.55)',
+  warm: 'hsla(29.7, 79.9%, 66.7%, 0.55)',
+  cold: 'hsla(197.6, 51.2%, 55%, 0.4)',
 }
 
 const countryColors = computed(() => {
