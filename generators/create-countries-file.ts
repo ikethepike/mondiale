@@ -6,6 +6,14 @@ import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
+import { LEADERS } from '~~/data/leaders.gen'
+import {
+  politicalLeaderOf,
+  preferWikidata,
+  sharesSurname,
+  wikidataRoleFor,
+} from '~~/lib/generators/leaders'
+import { fetchCiaCountry, type CiaCountry } from '~~/lib/generators/vendors/cia'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import { simplifiedPalette } from '~~/lib/palette'
 import {
@@ -71,14 +79,24 @@ export const createCountriesFile = async (): Promise<{
   const countryVector: { [isoCode: string]: Country } = {}
   const factbookContinents = new Set<string>([])
   for (const { url, isoCode } of successfulCombinations) {
+    let data: FactbookResponse
     try {
       const response = await fetch(url)
-      const data: FactbookResponse = decodeHtmlEntitiesDeep(await response.json())
-      countryVector[isoCode] = normalizeCountry({ data, isoCode, url, briMembership })
-      factbookContinents.add(data.Geography['Map references']?.text)
+      data = decodeHtmlEntitiesDeep(await response.json())
     } catch (e) {
       console.warn(`Failed to fetch: ${isoCode} - ${url}`, e)
+      continue
     }
+
+    // Leaders come from the CIA's own site, not the Factbook mirror, which
+    // stopped updating its data on 2026-01-22. A moved endpoint must not
+    // silently blank every leader in the game, so this is deliberately NOT
+    // caught — `fetchCiaCountry` returns undefined only for the countries the
+    // CIA genuinely does not cover.
+    const cia = await fetchCiaCountry(isoCode, getNames({ data, isoCode }).english)
+
+    countryVector[isoCode] = normalizeCountry({ data, isoCode, url, briMembership, cia })
+    factbookContinents.add(data.Geography['Map references']?.text)
   }
 
   writeFileSync(
@@ -118,11 +136,13 @@ const normalizeCountry = ({
   isoCode,
   url,
   briMembership,
+  cia,
 }: {
   data: FactbookResponse
   isoCode: string
   url: string
   briMembership: string[]
+  cia: CiaCountry | undefined
 }): Country => {
   if (!data) {
     throw new ReferenceError('Undefined data passed')
@@ -148,7 +168,7 @@ const normalizeCountry = ({
       return { colors, simplifiedColors: simplifiedPalette(colors) }
     })(),
     government: {
-      leader: getLeader({ data, isoCode, names }),
+      leader: getLeader({ isoCode, cia }),
       amountOfMilitaryConflicts: (() => {
         const conflicts = conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts
         return conflicts == null ? undefined : { amount: conflicts, unit: 'conflicts' }
@@ -480,7 +500,6 @@ const isParisAgreementParty = (data: FactbookResponse): boolean => {
 
 const getCapital = (data: FactbookResponse, isoCode: string) => {
   if (isoCode === 'PS') return 'Jerusalem'
-  if (isoCode === 'HK') return 'Hong Kong'
   if (isoCode === 'NR') return 'Yaren' // Technically Nauru has no official capital city, but Yaren is the defacto capital
 
   // Steps to normalize name
@@ -792,259 +811,45 @@ const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Regio
   return continent as Region
 }
 
+/**
+ * The political leader's bare name, e.g. "Edi Rama" — never a title.
+ *
+ * Sourced from the CIA's world-leaders directory, which publishes `name` and
+ * `title` as separate fields, and merged with Wikidata where the CIA's page
+ * for a country predates the current term (38 of its pages have not been
+ * touched since 2024).
+ *
+ * `undefined` when no single person holds the office — San Marino's Captains
+ * Regent, Bosnia's tripartite presidency, a vacant presidency. Those countries
+ * are then skipped by the leader rounds.
+ */
 const getLeader = ({
-  data,
   isoCode,
-  names,
+  cia,
 }: {
-  data: FactbookResponse
   isoCode: string
-  names: Country['name']
+  cia: CiaCountry | undefined
 }): string | undefined => {
-  if (!data.Government['Executive branch']) return undefined
+  if (!cia) return undefined
 
-  // Keep the source casing (accents, hyphenated surnames) — the matching logic
-  // below lowercases as needed, but the returned name is built from these.
-  const chiefOfStateRaw =
-    removeParentheticals(data.Government['Executive branch']['chief of state']?.text || '')
-      .split(';')
-      .shift() || ''
-  const headOfGovernmentRaw =
-    removeParentheticals(data.Government['Executive branch']['head of government']?.text || '')
-      .split(';')
-      .shift() || ''
-  const chiefOfState = chiefOfStateRaw.toLowerCase()
-  const headOfGovernment = headOfGovernmentRaw.toLowerCase()
+  const ciaLeader = politicalLeaderOf(isoCode, cia.leaders)
+  if (!ciaLeader) return undefined
 
-  const parties = data.Government['Political parties and leaders']?.text || ''
-  const election = data.Government['Executive branch']['election results']?.text || ''
-  const cabinet = data.Government['Executive branch']['cabinet']?.text || ''
+  const role = wikidataRoleFor(isoCode, cia.leaders)
+  const wikidata = LEADERS[isoCode as ISOCountryCode]?.[role]
 
-  if (!chiefOfState && !headOfGovernment) return undefined
+  if (preferWikidata(cia.dateUpdated, wikidata)) return wikidata!.name
 
-  let leader = chiefOfState || headOfGovernment
-
-  const removeTitles = (name: string) => {
-    const titles = ['president', 'chancellor', 'king', 'queen', 'prime minister']
-    for (const title of titles) {
-      name = name.toLowerCase().replace(title, '')
-    }
-
-    return name.trim()
-  }
-
-  const headOfGovernmentLed: Array<ISOCountryCode | string> = [
-    'AL',
-    'AD',
-    'AG',
-    'AM',
-    'AU',
-    'AT',
-    'BS',
-    'BD',
-    'BB',
-    'BE',
-    'BZ',
-    'BT',
-    'BG',
-    'KH',
-    'CA',
-    'HR',
-    'CZ',
-    'DK',
-    'DM',
-    'TL',
-    'EE',
-    'ET',
-    'FJ',
-    'FI',
-    'GE',
-    'DE',
-    'GR',
-    'GD',
-    'HU',
-    'IS',
-    'IN',
-    'IQ',
-    'IE',
-    'IL',
-    'IT',
-    'JM',
-    'JP',
-    'LV',
-    'LB',
-    'LS',
-    'LY',
-    'LU',
-    'LI',
-    'MY',
-    'MT',
-    'MU',
-    'MD',
-    'MN',
-    'ME',
-    'NP',
-    'NL',
-    'NZ',
-    'MK',
-    'NO',
-    'PK',
-    'PG',
-    'PL',
-    'RO',
-    'KN',
-    'LC',
-    'RS',
-    'SG',
-    'SI',
-    'SL',
-    'SB',
-    'ES',
-    'SE',
-    'TH',
-    'TO',
-    'TT',
-    'TV',
-    'GB',
-    'VU',
-  ]
-
-  switch (true) {
-    case headOfGovernmentLed.includes(isoCode):
-      leader = headOfGovernment
-      break
-    case chiefOfState.includes('king'):
-    case chiefOfState.includes('queen'):
-      leader = headOfGovernment
-      break
-    case headOfGovernment.includes('chancellor'):
-      leader = headOfGovernment
-      break
-    case parties.toLowerCase().includes(removeTitles(chiefOfState)):
-      leader = chiefOfState
-      break
-    case parties.toLowerCase().includes(removeTitles(headOfGovernment)):
-      leader = headOfGovernment
-      break
-    case election.toLowerCase().includes(removeTitles(chiefOfState)):
-      leader = chiefOfState
-      break
-    case election.toLowerCase().includes(removeTitles(headOfGovernment)):
-      leader = headOfGovernment
-      break
-    case (cabinet.toLowerCase().split(',').shift() || '').includes('prime minister'):
-      leader = headOfGovernment
-      break
-    case (cabinet.toLowerCase().split(',').shift() || '').includes('president'):
-      leader = chiefOfState
-      break
-  }
-
-  // The Factbook string is "<title phrase> <Person Name>". Titles vary far
-  // beyond the five words removeTitles() knows (Spain: "President of the
-  // Government of Spain ...", Luxembourg: "Grand Duke ...", Oman: "Sultan
-  // ..."), and the phrase often embeds the COUNTRY NAME — which would give the
-  // answer away in the "Who leads X?" round. Strip any leading run of
-  // title/connective words plus the country name, keeping only the person.
-  const stripLeadingTitle = (raw: string): string => {
-    const countryWords = new Set(
-      names.english
-        .toLowerCase()
-        .split(/[\s-]+/)
-        .filter(Boolean)
+  // Drift is silent otherwise: the two sources disagree for ~25 countries, and
+  // whichever is stale simply wins. Name the pair so a regen shows the damage.
+  if (wikidata && !sharesSurname(ciaLeader.name, wikidata.name)) {
+    console.warn(
+      `  leader drift ${isoCode}: CIA "${ciaLeader.name}" (page ${cia.dateUpdated.slice(0, 10)}) ` +
+        `vs Wikidata "${wikidata.name}"${wikidata.sinceDate ? ` (since ${wikidata.sinceDate})` : ''}`
     )
-    const titleWords = new Set([
-      'president',
-      'premier',
-      'vice',
-      'prime',
-      'minister',
-      'chief',
-      'chancellor',
-      'chair',
-      'chairman',
-      'chairperson',
-      'confederation',
-      'king',
-      'queen',
-      'emperor',
-      'emir',
-      'sultan',
-      'grand',
-      'duke',
-      'duchess',
-      'crown',
-      'prince',
-      'princess',
-      'supreme',
-      'leader',
-      'head',
-      'state',
-      'government',
-      'council',
-      'sovereign',
-      'federal',
-      'captain',
-      'captains',
-      'regent',
-      'co-prince',
-      'commander',
-      'commander-in-chief',
-      'general',
-      'armed',
-      'forces',
-      'of',
-      'the',
-      'and',
-    ])
-    // Also strip the country's demonym adjective ("Sudanese" for Sudan) by
-    // matching any word that shares the country name's first four letters, plus
-    // a few irregular demonyms that don't share a stem with the country name.
-    const IRREGULAR_DEMONYMS = new Set(['swiss'])
-    const stem = (names.english.toLowerCase().match(/[a-z]{4,}/) ?? [''])[0]
-    const isCountryish = (word: string) => {
-      const w = word.toLowerCase()
-      if (countryWords.has(w) || IRREGULAR_DEMONYMS.has(w)) return true
-      return stem.length >= 4 && w.startsWith(stem)
-    }
-    const words = raw.split(/\s+/).filter(Boolean)
-    let start = 0
-    while (
-      start < words.length &&
-      (titleWords.has(words[start].toLowerCase()) || isCountryish(words[start]))
-    ) {
-      start++
-    }
-    // Everything was a title (e.g. Haiti's collective "Transitional Presidential
-    // Council") — no nameable person, so signal "no leader" with empty string.
-    return start >= words.length ? '' : words.slice(start).join(' ')
   }
 
-  // The Factbook writes surnames in ALL CAPS ("Pedro SÁNCHEZ PÉREZ-CASTEJÓN").
-  // Normalize each word to Title Case, but leave already-mixed-case tokens
-  // ("J.", "McDonald"), roman numerals ("III"), and short particles alone.
-  const ROMAN = /^[IVXLCDM]+\.?$/i
-  const titleCaseWord = (word: string): string => {
-    if (!word) return word
-    if (ROMAN.test(word)) return word.toUpperCase()
-    const isUniformCase = word === word.toLowerCase() || word === word.toUpperCase()
-    if (!isUniformCase) return word // preserve intentional casing like "J." or "McX"
-    // Title-case across hyphens so "pérez-castejón" -> "Pérez-Castejón".
-    return word
-      .toLowerCase()
-      .split('-')
-      .map(part => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
-      .join('-')
-  }
-
-  // Map the (lowercased) selected leader back to its original-case source.
-  const original = leader === chiefOfState ? chiefOfStateRaw : headOfGovernmentRaw
-
-  const person = stripLeadingTitle(original).split(' ').map(titleCaseWord).join(' ').trim()
-
-  // No nameable individual (collective leadership) — omit rather than show a
-  // bare title, which would make the leader-pick round unanswerable.
-  return person || undefined
+  return ciaLeader.name
 }
 
 const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {

@@ -186,7 +186,6 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
   "CN": [
     "AF",
     "BT",
-    "HK",
     "IN",
     "KG",
     "KP",
@@ -393,9 +392,6 @@ export const BORDERS: { [isoCode in ISOCountryCode]: ISOCountryCode[] } = {
     "GT",
     "NI",
     "SV"
-  ],
-  "HK": [
-    "CN"
   ],
   "HU": [
     "AT",

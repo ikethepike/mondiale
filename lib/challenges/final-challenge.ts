@@ -322,7 +322,6 @@ export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } =
       'KH',
       'CN',
       'GE',
-      'HK',
       'IN',
       'ID',
       'JP',

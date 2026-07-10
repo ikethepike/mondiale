@@ -184,7 +184,6 @@ const BORDER_PAIRS: [ISOCountryCode, ISOCountryCode][] = [
   ['CN', 'LA'],
   ['CN', 'VN'],
   ['CN', 'KP'],
-  ['CN', 'HK'],
   ['KP', 'KR'],
   ['MM', 'LA'],
   ['MM', 'TH'],
