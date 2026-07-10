@@ -254,14 +254,35 @@ const rmsNormalize = (points: OutlinePoint[]): OutlinePoint[] => {
   return points.map(([x, y]) => [(x - centerX) / scale, (y - centerY) / scale])
 }
 
+/**
+ * Moving-average smoothing over a closed ring. Real borders carry fractal
+ * detail (fjords, deltas) no finger can trace; grading both shapes lightly
+ * smoothed measures the gross form the player could actually reproduce.
+ */
+const smoothClosed = (points: OutlinePoint[], window = 3): OutlinePoint[] => {
+  if (window <= 1 || points.length < window) return points
+  const half = Math.floor(window / 2)
+  const count = points.length
+  return points.map((_, index) => {
+    let sumX = 0
+    let sumY = 0
+    for (let offset = -half; offset <= half; offset++) {
+      const [x, y] = points[(index + offset + count) % count]
+      sumX += x
+      sumY += y
+    }
+    return [sumX / window, sumY / window]
+  })
+}
+
 /** Map a sketch's outline distance onto the round's point scale. */
 export const scoreSketch = (
   drawn: OutlinePoint[],
   target: OutlinePoint[],
   maximumPoints: number
 ): number => {
-  const a = rmsNormalize(resampleClosed(drawn))
-  const b = rmsNormalize(resampleClosed(target))
+  const a = rmsNormalize(smoothClosed(resampleClosed(drawn)))
+  const b = rmsNormalize(smoothClosed(resampleClosed(target)))
   if (!a.length || !b.length) return 0
 
   const nearestDistances = (from: OutlinePoint[], to: OutlinePoint[]) =>
@@ -277,23 +298,33 @@ export const scoreSketch = (
     const misses = [...nearestDistances(candidate, b), ...nearestDistances(b, candidate)]
     const mean = misses.reduce((sum, miss) => sum + miss, 0) / misses.length
     // Mean distance alone flatters featureless blobs — every point of an
-    // oval is "near" a compact country's border. Blending in the 90th-
-    // percentile miss demands the distinctive features actually show up.
-    const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.9)]
-    return mean * 0.6 + worst * 0.4
+    // oval is "near" a compact country's border. Blending in the 85th-
+    // percentile miss demands the distinctive features actually show up,
+    // without letting one forgotten peninsula sink the whole drawing.
+    const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.85)]
+    return mean * 0.7 + worst * 0.3
   }
 
-  // Small scale search: drawing size is placement, not shape — a sketch 10%
-  // too large should not bleed points. Shape mismatch survives every scale.
+  // Alignment search: a hand drawing tilts a few degrees and squashes one
+  // axis without the player meaning either — that is placement, not shape.
+  // Shape mismatch survives every rotation and stretch in this window.
   let distance = Infinity
-  for (const scale of [0.88, 0.94, 1, 1.06, 1.12]) {
-    distance = Math.min(distance, blend(a.map(([x, y]) => [x * scale, y * scale])))
+  for (const rotation of [-0.1, -0.05, 0, 0.05, 0.1]) {
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+    const rotated: OutlinePoint[] = a.map(([x, y]) => [x * cos - y * sin, x * sin + y * cos])
+    for (const scaleX of [0.92, 1, 1.08]) {
+      for (const scaleY of [0.92, 1, 1.08]) {
+        distance = Math.min(distance, blend(rotated.map(([x, y]) => [x * scaleX, y * scaleY])))
+      }
+    }
   }
 
-  // Calibrated clusters (RMS units): honest human drawings — bulging,
-  // oversized, offset — land 0.04–0.09; the best ellipse-on-a-round-country
-  // manages 0.14; wrong-country tracings sit ≥0.18. Full marks ≤0.07,
-  // nothing from 0.16 up.
-  const band = Math.max(0, Math.min(1, 1 - (distance - 0.07) / 0.09))
-  return Math.round(maximumPoints * Math.pow(band, 1.4))
+  // Calibrated on simulated finger drawings of real outlines (RMS units):
+  // careful sketches land 0.05–0.13, typical honest ones 0.07–0.16, rough
+  // but recognizable 0.09–0.22; a bounding-box ellipse sits ≥0.18 on any
+  // country with a distinctive shape, wrong-country tracings ≥0.20. Full
+  // marks ≤0.07, nothing from 0.25 up.
+  const band = Math.max(0, Math.min(1, 1 - (distance - 0.07) / 0.18))
+  return Math.round(maximumPoints * Math.pow(band, 1.3))
 }
