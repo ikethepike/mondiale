@@ -28,6 +28,7 @@
 import { TresCanvas } from '@tresjs/core'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useMovementRequest } from '~~/lib/use-movement-request'
 import type { Game } from '~~/types/game.types'
 import BoardFallback from './BoardFallback.vue'
 import SpectateHud from './SpectateHud.vue'
@@ -47,13 +48,7 @@ const props = defineProps({
   },
 })
 
-const {
-  game: storeGame,
-  playerId: storePlayerId,
-  gameStore,
-  update,
-  currentRound,
-} = useClientEvents()
+const { game: storeGame, playerId: storePlayerId, gameStore, currentRound } = useClientEvents()
 
 const resolvedGame = computed(() => props.game ?? storeGame.value)
 const resolvedPlayerId = computed(() => props.playerId ?? storePlayerId.value)
@@ -88,18 +83,25 @@ const interstitialStakes = computed(() => {
   return `You scored ${scored} — your pawn walks ${tiles}. Challenges block the path.`
 })
 
-const timers: ReturnType<typeof setTimeout>[] = []
-const requestMovementIfPending = () => {
-  if (!gameStore.pendingMovementRequest) return
-  gameStore.pendingMovementRequest = false
-  update({ event: 'enter-movement-phase' })
-}
+// Delivery (ack, retry, flag clearing) lives in the shared composable —
+// ModalMoving holds the safety net, so the request survives this chunk
+// failing to load entirely. This component only handles pacing.
+const { requestMovementIfPending } = useMovementRequest()
 
 const maybeRequestMovement = () => {
   if (webglAvailable.value && !sceneReady.value) return
   if (showMoveInterstitial.value) return
   requestMovementIfPending()
 }
+
+// A request flagged while the board is already mounted (a view flip raced a
+// server snapshot) must still be consumed — mount-time reads alone miss it.
+watch(
+  () => gameStore.pendingMovementRequest,
+  pending => {
+    if (pending) maybeRequestMovement()
+  }
+)
 
 const onSceneReady = () => {
   sceneReady.value = true
@@ -113,11 +115,7 @@ const onInterstitialDone = () => {
 
 onMounted(() => {
   if (!webglAvailable.value) maybeRequestMovement()
-  // Safety net: never leave the game stalled if the scene fails to report ready
-  timers.push(setTimeout(requestMovementIfPending, 9000))
 })
-
-onUnmounted(() => timers.forEach(timer => clearTimeout(timer)))
 </script>
 <style scoped>
 .board3d {

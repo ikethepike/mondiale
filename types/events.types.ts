@@ -104,6 +104,33 @@ export type ClientEventData =
 
 export type ClientEvent = ClientEventData['event']
 
+/**
+ * State-advancing events the game cannot recover from losing: these are sent
+ * with a socket.io ack and retried until the server confirms handling. A lost
+ * one wedges the whole room (e.g. a Continue click swallowed by a reconnect
+ * gap). Ephemeral relays and lobby edits stay fire-and-forget — losing one
+ * costs nothing or is trivially redone by the player.
+ */
+export const CRITICAL_CLIENT_EVENTS = [
+  'start-game',
+  'close-tutorial',
+  'enter-movement-phase',
+  'submit-group-challenge-answers',
+  'submit-individual-challenge-answer',
+  'submit-final-challenge-answer',
+] as const satisfies readonly ClientEvent[]
+export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
+
+export const isCriticalClientEvent = (event: ClientEvent): event is CriticalClientEvent =>
+  (CRITICAL_CLIENT_EVENTS as readonly ClientEvent[]).includes(event)
+
+/** Server → client receipt for critical events. */
+export type ClientEventAck =
+  | { ok: true }
+  /** 'unbound': the socket lost its player binding (reconnect before re-join)
+   *  — the client should re-join, then retry. 'error': the handler threw. */
+  | { ok: false; reason: 'unbound' | 'error' }
+
 export interface ClientEventTarget {
   gameId: string
   playerId: string

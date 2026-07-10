@@ -21,7 +21,12 @@ import {
 } from '~~/lib/events/server/player-guessing.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
-import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
+import type {
+  ClientEvent,
+  ClientEventAck,
+  ClientEventData,
+  ClientEventTarget,
+} from '~~/types/events.types'
 
 export type EventHandler = (configuration: {
   redis: Redis
@@ -100,34 +105,61 @@ export default defineEventHandler(({ node }) => {
       (node.res.socket as { server?: import('node:http').Server })?.server
     )
     io.on('connection', async socket => {
+      // Bind the socket to the player id it presented at the handshake. The
+      // playerId is a bearer token — the handshake claim grants nothing `join`
+      // didn't. Binding here (not only in the join handler) closes the
+      // reconnect gap where socket.io flushes buffered events before the
+      // client's re-join lands, which used to silently drop them as unbound.
+      const handshakePlayerId = socket.handshake.auth?.playerId
+      if (typeof handshakePlayerId === 'string' && handshakePlayerId) {
+        socket.data.playerId = handshakePlayerId
+      }
+
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
-        socket.on(eventKey, (eventData: ClientEventData, eventTarget: ClientEventTarget) => {
-          console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
-          if (!eventTarget?.gameId) return
+        socket.on(
+          eventKey,
+          (
+            eventData: ClientEventData,
+            eventTarget: ClientEventTarget,
+            ack?: (receipt: ClientEventAck) => void
+          ) => {
+            console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
+            if (!eventTarget?.gameId) return
 
-          // Authorization: `join` establishes the socket→player binding; every
-          // other event must target the SAME player this socket claimed on
-          // join. This is the one chokepoint that stops a client forging
-          // another player's actions (server-originated re-entries call the
-          // handler functions directly and never pass through here).
-          if (eventKey !== 'join' && eventTarget.playerId !== socket.data.playerId) {
-            console.warn(
-              `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
+            // Authorization: the handshake (or `join`) establishes the
+            // socket→player binding; every other event must target the SAME
+            // player this socket claimed. This is the one chokepoint that
+            // stops a client forging another player's actions
+            // (server-originated re-entries call the handler functions
+            // directly and never pass through here).
+            if (eventKey !== 'join' && eventTarget.playerId !== socket.data.playerId) {
+              console.warn(
+                `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
+              )
+              ack?.({ ok: false, reason: 'unbound' })
+              return
+            }
+
+            // Both branches consume the task promise — an unacked handler
+            // throw must not surface as an unhandled rejection.
+            enqueueGameTask(eventTarget.gameId, () =>
+              configuration.handler({
+                io,
+                socket,
+                redis,
+                eventData,
+                eventTarget,
+                eventKey: eventKey as ClientEvent,
+              })
+            ).then(
+              () => ack?.({ ok: true }),
+              error => {
+                console.error(`Handler failed for ${eventKey} in ${eventTarget.gameId}`, error)
+                ack?.({ ok: false, reason: 'error' })
+              }
             )
-            return
           }
-
-          return enqueueGameTask(eventTarget.gameId, () =>
-            configuration.handler({
-              io,
-              socket,
-              redis,
-              eventData,
-              eventTarget,
-              eventKey: eventKey as ClientEvent,
-            })
-          )
-        })
+        )
       }
 
       socket.on('disconnect', () => {

@@ -1,7 +1,16 @@
 import { resolveAccessorPath } from '~~/lib/values'
 import { useGameStore } from '~~/store/game.store'
-import { type ClientEventData, isValidClientEventTarget } from '~~/types/events.types'
+import {
+  type ClientEventAck,
+  type ClientEventData,
+  isCriticalClientEvent,
+  isValidClientEventTarget,
+} from '~~/types/events.types'
 import type { PlayerMove } from '~~/types/game.types'
+
+const ACK_TIMEOUT_MS = 5000
+const ACK_ATTEMPTS = 3
+const RETRY_BACKOFF_MS = 750
 
 export const useClientEvents = () => {
   const router = useRouter()
@@ -76,7 +85,7 @@ export const useClientEvents = () => {
     isPlayerHost,
     currentRound,
     currentFinalChallenge,
-    update(eventData: ClientEventData) {
+    async update(eventData: ClientEventData): Promise<boolean> {
       console.log('Sending event', eventData)
       if (!socket.value) {
         throw new EvalError(`Socket not initialized`)
@@ -105,11 +114,43 @@ export const useClientEvents = () => {
         const { found } = resolveAccessorPath(game.value, eventData.accessorPattern)
         if (!found) {
           console.warn('Unable to send, invalid accessor pattern', eventData.accessorPattern)
-          return
+          return false
         }
       }
 
-      socket.value.emit(eventData.event, eventData, eventTarget)
+      if (!isCriticalClientEvent(eventData.event)) {
+        socket.value.emit(eventData.event, eventData, eventTarget)
+        return true
+      }
+
+      // Critical events advance the game's state machine — one lost in a
+      // reconnect gap wedges the whole room. Send with an ack and retry until
+      // the server confirms it ran; the handlers' duplicate guards make
+      // retries safe.
+      for (let attempt = 1; attempt <= ACK_ATTEMPTS; attempt++) {
+        try {
+          const receipt: ClientEventAck = await socket.value
+            .timeout(ACK_TIMEOUT_MS)
+            .emitWithAck(eventData.event, eventData, eventTarget)
+          if (receipt.ok) return true
+
+          // The socket lost its player binding (a reconnect raced the
+          // re-join): join binds it back, and is idempotent server-side.
+          if (receipt.reason === 'unbound' && game.value) {
+            socket.value.emit('join', { event: 'join', variant: game.value.variant }, eventTarget)
+          }
+          console.warn(`${eventData.event} not accepted (${receipt.reason}), retrying`)
+        } catch {
+          console.warn(`No ack for ${eventData.event} (attempt ${attempt}/${ACK_ATTEMPTS})`)
+        }
+
+        if (attempt < ACK_ATTEMPTS) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_BACKOFF_MS * attempt))
+        }
+      }
+
+      console.error(`Failed to deliver ${eventData.event} after ${ACK_ATTEMPTS} attempts`)
+      return false
     },
   }
 }

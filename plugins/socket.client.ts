@@ -70,14 +70,19 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
 const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`
 
 export default defineNuxtPlugin(() => {
-  const socket = io()
-  const gameStore = useGameStore()
-  gameStore.socket = socket
-  const connected = ref(false)
   const playerId = ref(localStorage.getItem(PLAYER_ID_STORAGE_KEY) || uuidv4())
 
   // Set player ID
   localStorage.setItem(PLAYER_ID_STORAGE_KEY, playerId.value)
+
+  // The handshake carries the player id so the server can bind the socket to
+  // it on EVERY (re)connection. Binding only in the join handler leaves a gap
+  // after a reconnect where buffered events flush before the re-join and are
+  // rejected as unbound — the classic post-deploy room freeze.
+  const socket = io({ auth: { playerId: playerId.value } })
+  const gameStore = useGameStore()
+  gameStore.socket = socket
+  const connected = ref(false)
 
   gameStore.playerId = playerId.value
 
