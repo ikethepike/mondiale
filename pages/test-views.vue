@@ -47,6 +47,7 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
+import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Game, PlayerColor, Round } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { Component } from 'vue'
@@ -405,7 +406,7 @@ const scenarios: Scenario[] = [
         variant: 'landmark-quiz',
         options: ['FR', 'IT', 'ES', 'GB'],
         image: landmark?.image ?? '/landmarks/eiffel-tower.webp',
-        landmark: { name: 'Eiffel Tower', city: 'Paris' },
+        landmarkSlug: 'eiffel-tower',
       }),
   },
   {
@@ -439,7 +440,7 @@ const scenarios: Scenario[] = [
 ]
 
 /** Individual gates read the challenge off the player's pending move. */
-const individualGame = (challenge: Record<string, unknown>): Game => {
+const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('individual-challenge', [settledRound()])
   const me = game.players[ME]!
   me.moves = [
