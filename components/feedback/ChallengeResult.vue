@@ -95,7 +95,9 @@ onUnmounted(() => {
     position: relative;
     margin: 1.2rem auto 0;
     width: max-content;
-    max-width: min(60rem, calc(100vw - 3.2rem));
+    // 100% keeps it inside (and centered in) padded ancestors — the host
+    // view's header padding also lands on this nested header's border box.
+    max-width: min(60rem, 100%, calc(100vw - 3.2rem));
     font-size: 1.7rem;
     line-height: 1.5;
     padding: 0.6rem 1.6rem;

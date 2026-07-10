@@ -1028,10 +1028,23 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   const wide = frameForBoxes([mainland], [])
   const cx = wide.x + wide.width / 2
   const cy = wide.y + wide.height / 2
-  const TIGHT_FRACTION = 0.18
-  const TIGHT_MAX_SPAN = WORLD_VIEW.width / 14 // absolute deep-zoom ceiling
+  const TIGHT_FRACTION = 0.13
+  const TIGHT_MAX_SPAN = WORLD_VIEW.width / 18 // absolute deep-zoom ceiling
+  const TIGHT_MIN_SPAN = WORLD_VIEW.width / 200 // geometry-legibility floor
+  /** At least one axis must show less than this much of the country. */
+  const COUNTRY_MAX_VISIBLE = 0.6
   const wideSpan = Math.max(wide.width, wide.height)
-  const startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
+  let startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
+  // Small countries (The Gambia) are dwarfed by the frame's minimum padding, so
+  // a fraction of THAT frame still contains them whole and the shape gives the
+  // answer away at the first frame. Shrink until one axis crops the country —
+  // one is enough: a crop across the narrow axis hides the outline just as well.
+  const [, , mainlandWidth, mainlandHeight] = mainland
+  const shrink = Math.max(
+    (mainlandWidth * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, viewAspect)),
+    (mainlandHeight * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, 1 / viewAspect))
+  )
+  startSpan = Math.max(startSpan * Math.min(1, shrink), TIGHT_MIN_SPAN)
   const startWidth = startSpan * Math.min(1, viewAspect)
   const startHeight = startWidth / viewAspect
   const tightView = {
@@ -1040,6 +1053,12 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
     width: startWidth,
     height: startHeight,
   }
+
+  // A tight crop can hold several borders at once (The Gambia inside Senegal):
+  // fade the neighbours' ink so the crop reads as ONE country being asked
+  // about, not a border collage. Cleared when the gate ends (watcher below).
+  svg.value.classList.add('zoom-out-reveal')
+  pathEls.get(isoCode)?.classList.add('zoom-out-target')
 
   loopRunning = false
   momentum.x = 0
@@ -1141,6 +1160,8 @@ watch(
     else {
       zoomOutTween?.kill()
       revealLocked = false
+      svg.value?.classList.remove('zoom-out-reveal')
+      svg.value?.querySelector('.zoom-out-target')?.classList.remove('zoom-out-target')
     }
   },
   { immediate: true }
@@ -1343,6 +1364,17 @@ path[id]:hover,
   .micro-marker.highlighted-country {
     fill: lemonchiffon;
     // filter: drop-shadow(0px 0px 2px #000);
+  }
+}
+
+// Zoom-Out gate: neighbours keep only a whisper of their land tint and ink so
+// a tight crop reads as ONE country being asked about — several borders (and
+// landmasses) can share the opening frame.
+.zoom-out-reveal {
+  path[data-id]:not(.zoom-out-target),
+  .micro-marker {
+    stroke-opacity: 0.35;
+    fill-opacity: 0.6;
   }
 }
 

@@ -351,6 +351,12 @@ const scenarios: Scenario[] = [
     build: () => individualGame({ variant: 'zoom-out', country: 'MY' }),
   },
   {
+    id: 'individual-zoom-out-small',
+    label: 'Individual: zoom-out (small country)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'GM' }),
+  },
+  {
     id: 'individual-border-detective',
     label: 'Individual: border detective (timed, hint)',
     component: ViewIndividualChallenge,
