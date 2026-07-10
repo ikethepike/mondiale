@@ -14,6 +14,14 @@
 @use 'templates/chip';
 @use 'templates/pulse';
 
+// A fixed-shell game: the document never scrolls, so iOS's elastic body
+// bounce is pure noise — it fights drag gestures (ranking tiles) and map
+// pans. Inner scrollers still work; they just stop chaining into a bounce.
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 // Viewport tokens: dvh tracks mobile browser chrome (URL bar) where supported;
 // safe-* keep edge-hugging chrome clear of notches and home indicators.
 :root {

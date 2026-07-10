@@ -57,6 +57,7 @@
           :options="options"
           item-key="isoCode"
           class="countries"
+          :class="{ fits: countries.length <= 5 }"
           @sort="updateRanking"
         >
           <template #item="{ element }">
@@ -409,6 +410,9 @@ footer {
     flex: 0 1 auto;
     min-height: 0;
     overflow-y: auto;
+    // A drag that overshoots the list must not chain into a page bounce —
+    // the rubber-banding wrestles the tile out of the player's finger.
+    overscroll-behavior: contain;
     // Breathing room so the first/last tile's hairline border isn't shaved
     // by the scroll container's clip edge.
     padding: 0.2rem 0;
@@ -434,6 +438,13 @@ footer {
   // horizontally without swallowing list scroll.
   .country {
     touch-action: pan-y;
+  }
+
+  // Hands that fit on screen (4–5 tiles, the normal case) have nothing to
+  // scroll — refuse the pan entirely so Safari can never wrestle a drag
+  // into a bounce.
+  .countries.fits .country {
+    touch-action: none;
   }
 
   // Point the arrows at their extremes: the left-pointing "most" arrow turns
