@@ -36,31 +36,13 @@
 
     <section class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <form class="guess-form map-caption" @submit.prevent="submitTypedGuess">
-        <input
-          ref="guessInput"
-          v-model="query"
-          type="text"
-          placeholder="Type a country…"
-          autocomplete="off"
-          :disabled="submitted"
-          @keydown.down.prevent="
-            highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
-          "
-          @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
-        />
-        <ul v-if="suggestions.length" class="suggestions">
-          <li
-            v-for="(suggestion, index) in suggestions"
-            :key="suggestion.isoCode"
-            :class="{ highlighted: index === highlightedIndex }"
-            @mousedown.prevent="submitGuess(suggestion)"
-          >
-            <CountryFlag class="suggestion-flag" :country="suggestion" mode="background" />
-            <span>{{ countryName(suggestion) }}</span>
-          </li>
-        </ul>
-      </form>
+      <CountryGuessInput
+        ref="guessInput"
+        :disabled="submitted"
+        :excluded="excluded"
+        @guess="submitGuess"
+        @miss="announce({ hint: 'No country by that name' })"
+      />
     </section>
 
     <footer>
@@ -94,9 +76,10 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { countryName, findCountryByName, getCountry, searchCountriesByName } from '~~/lib/country'
+import { countryName, getCountry } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
@@ -118,21 +101,17 @@ const {
 } = useGroupChallenge('traversal-challenge', { solo: false })
 
 const guesses = ref<ISOCountryCode[]>([])
-const query = ref('')
-const highlightedIndex = ref(0)
-const guessInput = ref<HTMLInputElement>()
+const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const guessesLeft = computed(() => (challenge.value?.maximumClicks ?? 0) - guesses.value.length)
 
-const suggestions = computed(() => {
-  if (!challenge.value || submitted.value) return []
-  const taken = new Set([challenge.value.start, challenge.value.target, ...guesses.value])
-  return searchCountriesByName(query.value, 8)
-    .filter(country => !taken.has(country.isoCode))
-    .slice(0, 6)
-})
-
-watch(suggestions, () => (highlightedIndex.value = 0))
+// Endpoints leave the suggestions but stay typeable in full — submitGuess
+// answers an exact endpoint guess with its hint rather than spending a turn.
+const excluded = computed(() =>
+  challenge.value
+    ? [challenge.value.start, challenge.value.target, ...guesses.value]
+    : ([] as ISOCountryCode[])
+)
 
 /**
  * Guesses connected (through other guesses) to either endpoint — everything
@@ -242,7 +221,6 @@ const submitGuess = (country: Country) => {
   }
 
   guesses.value.push(country.isoCode)
-  query.value = ''
   // A wrong step is named — it cost its guesser and helps nobody. A right one
   // is a stepping stone on a route the others are still hunting, so the room
   // sees only that somebody found one.
@@ -263,15 +241,6 @@ const submitGuess = (country: Country) => {
     announce({ hint: 'Out of guesses!' })
     setTimeout(submitRound, 1200)
   }
-}
-
-const submitTypedGuess = () => {
-  const direct = findCountryByName(query.value)
-  const picked = suggestions.value[highlightedIndex.value] ?? suggestions.value[0]
-  const country = direct ?? picked
-  if (!country) return announce({ hint: 'No country by that name' })
-
-  submitGuess(country)
 }
 
 const onInterstitialDone = () => {
@@ -331,66 +300,6 @@ header {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
-}
-
-.guess-form {
-  width: 34rem;
-  max-width: 84vw;
-  position: relative;
-  pointer-events: auto;
-  padding: 0.6rem;
-
-  input {
-    width: 100%;
-    border: none;
-    outline: none;
-    background: none;
-    font-size: 2.2rem;
-    text-align: center;
-    font-family: inherit;
-    color: var(--dark-blue);
-
-    &::placeholder {
-      opacity: 0.45;
-      color: var(--dark-blue);
-    }
-  }
-}
-
-.suggestions {
-  left: 0;
-  right: 0;
-  top: 100%;
-  margin: 0.6rem 0 0;
-  padding: 0.4rem;
-  list-style: none;
-  position: absolute;
-  border-radius: 1.2rem;
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.94);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-
-  li {
-    gap: 1rem;
-    display: flex;
-    cursor: pointer;
-    align-items: center;
-    border-radius: 0.8rem;
-    padding: 0.5rem 0.9rem;
-    color: var(--dark-blue);
-
-    &.highlighted,
-    &:hover {
-      background: hsla(197.6, 51.2%, 41.8%, 0.12);
-    }
-  }
-}
-
-.suggestion-flag {
-  width: 2.8rem;
-  height: 1.9rem;
-  flex-shrink: 0;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
 }
 
 footer {
