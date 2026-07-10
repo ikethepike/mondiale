@@ -178,9 +178,7 @@ const syncPathPreview = () => {
   if (target === undefined) return clearPathPreview()
 
   const walked = displayPositionFor(own)
-  const gates = new Set(
-    own.moves.filter(move => move.challenge).map(move => move.endTile.position)
-  )
+  const gates = new Set(own.moves.filter(move => move.challenge).map(move => move.endTile.position))
 
   for (const index of [...pathMarkers.keys()]) {
     if (index <= walked || index > target) retirePathMarker(index, true)

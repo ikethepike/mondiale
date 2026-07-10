@@ -69,7 +69,9 @@ const country = computed(() => {
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: 8rem;
+  // The width drives the height: the recomposed art is 3:1, and any other
+  // ratio cover-crops the hoist off (Nordic crosses lose their vertical bar).
+  aspect-ratio: 3 / 1;
   border: 0.1rem solid var(--text-color);
   background: hsla(36, 30%, 90%, 1);
 }

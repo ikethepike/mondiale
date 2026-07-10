@@ -57,6 +57,7 @@
           :options="options"
           item-key="isoCode"
           class="countries"
+          :class="{ dense: countries.length > 5 }"
           @sort="updateRanking"
         >
           <template #item="{ element }">
@@ -130,6 +131,9 @@ const submitRanking = () => {
   })
 }
 
+// No touch delay: the tiles refuse the browser's pan gestures entirely (the
+// dense layout keeps even 7-tile hands on screen without scrolling), so a
+// drag can start the instant a finger lands.
 const options = ref({
   draggable: '.draggable',
   animation: 150,
@@ -137,12 +141,6 @@ const options = ref({
   dragClass: 'drag',
   forceFallback: true,
   bubbleScroll: true,
-  // Hold-to-drag on touch only: on phones the list is vertical and can
-  // overflow (7-tile hard hands), so a quick flick must scroll while a short
-  // hold picks a tile up. Desktop mouse drags stay immediate.
-  delayOnTouchOnly: true,
-  delay: 150,
-  touchStartThreshold: 4,
 })
 </script>
 <style lang="scss" scoped>
@@ -168,6 +166,11 @@ const options = ref({
   position: absolute;
   pointer-events: auto;
   flex-flow: column nowrap;
+  // A long-press must pick a tile up, never start iOS text selection —
+  // nothing in the round is copy-worthy prose.
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   backdrop-filter: blur(0.3rem);
   transition: backdrop-filter 0.3s;
   > * {
@@ -409,6 +412,9 @@ footer {
     flex: 0 1 auto;
     min-height: 0;
     overflow-y: auto;
+    // A drag that overshoots the list must not chain into a page bounce —
+    // the rubber-banding wrestles the tile out of the player's finger.
+    overscroll-behavior: contain;
     // Breathing room so the first/last tile's hairline border isn't shaved
     // by the scroll container's clip edge.
     padding: 0.2rem 0;
@@ -429,11 +435,25 @@ footer {
     flex-shrink: 0;
   }
 
-  // A flick scrolls an overflowing hand; a short hold picks a tile up
-  // (Sortable's delayOnTouchOnly). pan-y keeps the browser out of the way
-  // horizontally without swallowing list scroll.
+  // Every hand fits on screen (dense sizing covers 7-tile hard hands), so
+  // there is never anything to scroll: refuse the pan entirely and drags
+  // start the instant a finger lands.
   .country {
-    touch-action: pan-y;
+    touch-action: none;
+  }
+
+  // Hard hands (6–7 tiles): tighter rows, gaps and flags so the whole hand
+  // still shares one screen with the poles and submit — scroll-free.
+  .countries.dense {
+    gap: 0.6rem;
+    grid-auto-rows: minmax(4rem, 5.2rem);
+
+    :deep(.country-tile article) {
+      padding: 0.4rem 1.2rem;
+    }
+    :deep(.flag svg) {
+      max-height: 3.4rem;
+    }
   }
 
   // Point the arrows at their extremes: the left-pointing "most" arrow turns

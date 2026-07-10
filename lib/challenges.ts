@@ -167,7 +167,6 @@ const SHAPE_UNFRIENDLY: ISOCountryCode[] = [
   'MT',
   'SG',
   'BH',
-  'HK',
   'VA',
   'MC',
   'SM',

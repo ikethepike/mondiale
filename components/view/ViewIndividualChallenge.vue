@@ -8,7 +8,12 @@
     />
     <header v-else>
       <Transition name="caption" mode="out-in">
-        <div v-if="!status" key="question" class="question" :class="{ 'text-guess': textGuessVariant }">
+        <div
+          v-if="!status"
+          key="question"
+          class="question"
+          :class="{ 'text-guess': textGuessVariant }"
+        >
           <!-- Classic find-on-the-map -->
           <template v-if="variant === 'find'">
             <h1 class="map-caption">
@@ -930,7 +935,8 @@ header {
 
   .option-flag {
     width: 100%;
-    height: 8rem;
+    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
+    height: auto;
     border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
   }
 }

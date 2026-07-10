@@ -112,6 +112,5 @@ describe('searchCountriesByName', () => {
 })
 
 /** Every haystack the search can match a country through, normalized-ish. */
-const countrySearchableNames = (country: {
-  name: { english: string; local: string }
-}): string => `${country.name.english} ${country.name.local}`.toLowerCase()
+const countrySearchableNames = (country: { name: { english: string; local: string } }): string =>
+  `${country.name.english} ${country.name.local}`.toLowerCase()

@@ -15,6 +15,10 @@ import { fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
  *   3. wbgetentities labels (languagefallback!) + pageprops page_image_free
  *   4. Commons Special:FilePath → the images themselves (sequential — 429s)
  *
+ * The P35/P6 statements carry a P580 start-time qualifier at day precision,
+ * so `sinceDate` needs no SPARQL round-trip — it is already in the claims
+ * payload from step 2.
+ *
  * Portraits are saved as one dedicated file per country and role under
  * public/leaders/ — nothing is inlined into the data bundle. Existing files
  * are kept unless --force is passed (elections: rerun with --force).
@@ -46,6 +50,12 @@ interface LeaderEntry {
   party?: string
   /** Year they took the current office (P39's P580 start-time qualifier). */
   sinceYear?: number
+  /**
+   * The day this term began (the country's P35/P6 statement's P580), when
+   * Wikidata records it to day precision. Used by the country generator to
+   * decide whether a CIA world-leaders page predates the current term.
+   */
+  sinceDate?: string
 }
 
 export type LeaderMapping = {
@@ -101,7 +111,8 @@ interface Statement {
   qualifiers?: { P582?: unknown[]; P580?: TimeSnak[] }
 }
 interface TimeSnak {
-  datavalue?: { value?: { time?: string } }
+  /** `precision` 11 = day, 10 = month, 9 = year. */
+  datavalue?: { value?: { time?: string; precision?: number } }
 }
 interface EntityResponse {
   entities?: {
@@ -120,14 +131,37 @@ const isoCodeOf = (claims?: { [property: string]: Statement[] }): string | undef
   return typeof value === 'string' ? value : undefined
 }
 
-/** The incumbent: preferred rank wins; otherwise a normal-rank statement with no end date. */
-const currentHolder = (statements: Statement[] = []): string | undefined => {
+/**
+ * The incumbent, plus the day their term began (P580).
+ *
+ * OPEN statements (no end-date P582) win over rank: a `preferred` statement
+ * that has been superseded is still stale, and Wikidata leaves the old one
+ * ranked up for months after a transition. Among the open statements, prefer
+ * `preferred`, then the most recent start — Bulgaria carries two open P6s.
+ *
+ * `sinceDate` is what lets the country generator decide whether a CIA page
+ * predates the current term. Year alone is not enough: Japan's page is
+ * 2025-05-23 and Takaichi took office 2025-10-21 — same year, opposite verdict.
+ */
+const currentHolder = (statements: Statement[] = []): { leaderId?: string; sinceDate?: string } => {
   const usable = statements.filter(
     statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
   )
-  const preferred = usable.find(statement => statement.rank === 'preferred')
-  const open = usable.find(statement => !statement.qualifiers?.P582)
-  return (preferred ?? open)?.mainsnak?.datavalue?.value?.id
+  const startTime = (statement: Statement) => statement.qualifiers?.P580?.[0]
+  const startYear = (statement: Statement) =>
+    yearOf(startTime(statement)?.datavalue?.value?.time) ?? 0
+
+  const open = usable.filter(statement => !statement.qualifiers?.P582)
+  const ranked = [...open].sort((a, b) => startYear(b) - startYear(a))
+  const chosen =
+    open.find(statement => statement.rank === 'preferred') ??
+    ranked[0] ??
+    usable.find(statement => statement.rank === 'preferred')
+
+  return {
+    leaderId: chosen?.mainsnak?.datavalue?.value?.id,
+    sinceDate: chosen ? dateOf(startTime(chosen)) : undefined,
+  }
 }
 
 /** Wikidata times look like "+1955-11-11T00:00:00Z"; pull the leading year. */
@@ -136,6 +170,18 @@ const yearOf = (time?: string): number | undefined => {
   const match = /^[+-]?(\d{1,4})-/.exec(time)
   const year = match ? Number(match[1]) : NaN
   return Number.isFinite(year) && year > 0 ? year : undefined
+}
+
+/**
+ * The full ISO date of a Wikidata time value, but only when it is day-precise
+ * (precision 11). Coarser values ("2025", "May 2025") would compare wrong
+ * against a CIA page date, so they are dropped rather than guessed at.
+ */
+const dateOf = (snak?: TimeSnak): string | undefined => {
+  const value = snak?.datavalue?.value
+  if (!value?.time || value.precision !== 11) return undefined
+  const match = /^\+(\d{4}-\d{2}-\d{2})T/.exec(value.time)
+  return match?.[1]
 }
 
 /**
@@ -185,12 +231,16 @@ const currentPosition = (
   // label can't be read here (it's a Q-id resolved later), so the CLIENT
   // prefers the authoritative `description` line ("Prime Minister of X") over
   // this office when they disagree (see lib/leaders.ts `leaderTitle`).
-  const preferred = live.find(statement => statement.rank === 'preferred')
+  // Open statements first: a `preferred` rank left on a closed or superseded
+  // position outranks the office the person actually holds today.
   const open = live
     .filter(statement => !statement.qualifiers?.P582)
-    .sort((a, b) => startYear(b) - startYear(a))[0]
+    .sort((a, b) => startYear(b) - startYear(a))
 
-  const chosen = preferred ?? open
+  const chosen =
+    open.find(statement => statement.rank === 'preferred') ??
+    open[0] ??
+    live.find(statement => statement.rank === 'preferred')
   return {
     officeId: chosen?.mainsnak?.datavalue?.value?.id,
     sinceYear: yearOf(chosen?.qualifiers?.P580?.[0]?.datavalue?.value?.time),
@@ -198,7 +248,12 @@ const currentPosition = (
 }
 
 console.log('Reading current officeholders…')
-const holders: { isoCode: ISOCountryCode; role: LeaderRole; leaderId: string }[] = []
+const holders: {
+  isoCode: ISOCountryCode
+  role: LeaderRole
+  leaderId: string
+  sinceDate?: string
+}[] = []
 const seenCodes = new Set<string>()
 
 // Batched claims-only fetches: Special:EntityData dumps EVERY language and
@@ -216,8 +271,8 @@ for (let index = 0; index < entityIds.length; index += 10) {
     if (!isoCode || !validCodes.has(isoCode) || seenCodes.has(isoCode)) continue
     seenCodes.add(isoCode)
     for (const [property, role] of Object.entries(LEADER_PROPERTIES)) {
-      const leaderId = currentHolder(entity.claims?.[property])
-      if (leaderId) holders.push({ isoCode: isoCode as ISOCountryCode, role, leaderId })
+      const { leaderId, sinceDate } = currentHolder(entity.claims?.[property])
+      if (leaderId) holders.push({ isoCode: isoCode as ISOCountryCode, role, leaderId, sinceDate })
     }
   }
   process.stdout.write(`\r  ${Math.min(index + 10, entityIds.length)}/${entityIds.length}`)
@@ -320,7 +375,7 @@ console.log('')
 const mapping: LeaderMapping = {}
 const portraitQueue: { isoCode: ISOCountryCode; role: LeaderRole; file: string }[] = []
 
-for (const { isoCode, role, leaderId } of holders) {
+for (const { isoCode, role, leaderId, sinceDate } of holders) {
   const details = leaderDetails.get(leaderId)
   // A bare Q-id is worse than nothing in a quiz
   if (!details?.name || /^Q\d+$/.test(details.name)) continue
@@ -329,6 +384,7 @@ for (const { isoCode, role, leaderId } of holders) {
   if (details.description) entry.description = details.description
   if (details.bornYear) entry.bornYear = details.bornYear
   if (details.sinceYear) entry.sinceYear = details.sinceYear
+  if (sinceDate) entry.sinceDate = sinceDate
   const office = details.officeId ? labelById.get(details.officeId) : undefined
   if (office) entry.office = office
   // Skip a dissolved party (CPSU etc.) — better no party than a defunct one.

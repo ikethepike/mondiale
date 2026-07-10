@@ -13,9 +13,12 @@ export default defineNuxtConfig({
       title: 'Mondiale',
       meta: [
         {
+          // maximum-scale=1 suppresses the input-focus auto-zoom; iOS still
+          // honours user pinch gestures despite it (accessibility override),
+          // and the map/photos ship their own pinch-zoom.
           name: 'viewport',
           content:
-            'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content',
+            'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content',
         },
       ],
     },

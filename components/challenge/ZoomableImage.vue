@@ -184,37 +184,61 @@ const onWheel = (event: WheelEvent) => {
 const PUNCH_IN_SETTLE_MS = 700
 let punchedInAt = 0
 
-const onDoubleClick = (event: MouseEvent) => {
-  event.preventDefault()
-  // A trailing dblclick inside the same click burst carries detail > 2
-  // (clicks three and four) — never treat it as a deliberate toggle.
-  if (event.detail > 2) return
-  // Double-tap toggles: punch into the tapped spot, or reset if already zoomed.
+/** Double-click and double-tap share one toggle: punch in, or reset. */
+const toggleZoom = (x: number, y: number) => {
   if (scale.value > 1) {
     if (performance.now() - punchedInAt < PUNCH_IN_SETTLE_MS) return
     return discrete(reset)
   }
-  const { x, y } = localPoint(event)
   punchedInAt = performance.now()
   discrete(() => zoomInto(2.4, x, y))
 }
 
+const onDoubleClick = (event: MouseEvent) => {
+  event.preventDefault()
+  // Touch double-taps are detected manually from the pointer stream (iOS
+  // never synthesises dblclick from taps) — don't double-handle them on
+  // platforms that DO fire it.
+  if (lastPointerType !== 'mouse') return
+  // A trailing dblclick inside the same click burst carries detail > 2
+  // (clicks three and four) — never treat it as a deliberate toggle.
+  if (event.detail > 2) return
+  const { x, y } = localPoint(event)
+  toggleZoom(x, y)
+}
+
 // --- Pointer tracking (drag to pan; two pointers to pinch) ------------------
 const pointers = new Map<number, { x: number; y: number }>()
+const startPoints = new Map<number, { x: number; y: number }>()
 let lastPinchDistance = 0
+let gestureWasPinch = false
+let lastPointerType = 'mouse'
+
+// iOS Safari never synthesises dblclick from touch taps — double-tap is
+// detected by hand: two quick, close, drag-free taps toggle the punch-in.
+const DOUBLE_TAP_MS = 300
+const DOUBLE_TAP_SLOP_PX = 24
+const TAP_MOVE_SLOP_PX = 10
+let lastTapAt = 0
+let lastTap = { x: 0, y: 0 }
 
 const isControl = (event: PointerEvent) =>
   (event.target as HTMLElement)?.closest?.('[data-control]') != null
 
 const onPointerDown = (event: PointerEvent) => {
   if (isControl(event)) return // let the button receive its click
+  lastPointerType = event.pointerType
   // A live finger takes over immediately — no gliding under a drag.
   easing.value = false
   clearTimeout(easingTimer)
   viewport.value?.setPointerCapture?.(event.pointerId)
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+  startPoints.set(event.pointerId, { x: event.clientX, y: event.clientY })
   if (pointers.size === 1 && scale.value > 1) grabbing.value = true
-  if (pointers.size === 2) lastPinchDistance = pinchDistance()
+  if (pointers.size === 2) {
+    lastPinchDistance = pinchDistance()
+    gestureWasPinch = true
+  }
 }
 
 const onPointerMove = (event: PointerEvent) => {
@@ -244,9 +268,38 @@ const onPointerMove = (event: PointerEvent) => {
 }
 
 const onPointerUp = (event: PointerEvent) => {
+  const start = startPoints.get(event.pointerId)
+  startPoints.delete(event.pointerId)
   pointers.delete(event.pointerId)
   if (pointers.size < 2) lastPinchDistance = 0
   if (pointers.size === 0) grabbing.value = false
+
+  // Manual double-tap (touch/pen only; mouse gets real dblclick events).
+  if (event.pointerType === 'mouse') return
+  if (pointers.size > 0) return
+  if (gestureWasPinch) {
+    gestureWasPinch = false
+    lastTapAt = 0
+    return
+  }
+  const moved = start
+    ? Math.hypot(event.clientX - start.x, event.clientY - start.y)
+    : Number.POSITIVE_INFINITY
+  if (moved > TAP_MOVE_SLOP_PX) {
+    lastTapAt = 0
+    return
+  }
+
+  const now = performance.now()
+  const { x, y } = localPoint(event)
+  const nearLastTap = Math.hypot(x - lastTap.x, y - lastTap.y) <= DOUBLE_TAP_SLOP_PX
+  if (now - lastTapAt <= DOUBLE_TAP_MS && nearLastTap) {
+    lastTapAt = 0
+    toggleZoom(x, y)
+    return
+  }
+  lastTapAt = now
+  lastTap = { x, y }
 }
 
 const pinchDistance = (): number => {

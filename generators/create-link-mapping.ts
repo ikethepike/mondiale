@@ -100,7 +100,7 @@ enum FactbookBindings {
   // HM = 'Heard Island Mcdonald Islands',
   VA = 'VT',
   HN = 'HO',
-  HK = 'HK',
+  // HK = 'HK', // Hong Kong — a dependency, not a sovereign state (cf. Macau below)
   HU = 'HU',
   IS = 'IC',
   IN = 'IN',

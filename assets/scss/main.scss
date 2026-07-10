@@ -14,6 +14,14 @@
 @use 'templates/chip';
 @use 'templates/pulse';
 
+// A fixed-shell game: the document never scrolls, so iOS's elastic body
+// bounce is pure noise — it fights drag gestures (ranking tiles) and map
+// pans. Inner scrollers still work; they just stop chaining into a bounce.
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 // Viewport tokens: dvh tracks mobile browser chrome (URL bar) where supported;
 // safe-* keep edge-hugging chrome clear of notches and home indicators.
 :root {
@@ -31,6 +39,14 @@
 
 body {
   background-color: var(--background-color);
+}
+
+// iOS auto-zooms any focused field rendering under 16px. Floor every form
+// control at 1.6rem (= 16px); components that want larger override it.
+input,
+select,
+textarea {
+  font-size: 1.6rem;
 }
 
 // Text for screen readers only — kept in the accessibility tree, out of the page.

@@ -289,6 +289,30 @@ const startGame = () => {
 }
 
 @media screen and (max-width: $tablet) {
+  // The wrapper scrolls and the card grows — same contract as desktop.
+  // Pinning the card to the viewport height clipped the region orbs and
+  // settings off the bottom with no way to reach them.
+  .player-configuration-wrapper {
+    // dvh, deliberately: an lvh scroller cannot scroll when its content fits,
+    // stranding short steps' controls (the naming card) behind the URL bar.
+    height: var(--viewport-height);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    // The room shell is pointer-events: none (map taps pass through) and only
+    // the card re-enables itself — but WebKit won't drive a scroll container
+    // that isn't hit-testable ITSELF, so the scroller must opt in too.
+    pointer-events: auto;
+    touch-action: pan-y;
+  }
+  .player-configuration {
+    height: auto;
+    min-height: 100%;
+    // No bottom rule on phones: the card scrolls past the URL bar, so a
+    // thick edge would just strand a heavy line mid-content.
+    border-bottom: none;
+    padding-bottom: calc(var(--safe-bottom) + 2.4rem);
+  }
+
   .player-configuration .player-lobby ul {
     display: flex;
     justify-content: flex-end;
@@ -492,6 +516,7 @@ const startGame = () => {
     height: var(--viewport-height);
     display: flex;
     overflow-y: auto;
+    pointer-events: auto;
   }
   .player-configuration {
     height: auto;
