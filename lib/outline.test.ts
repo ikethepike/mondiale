@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { largestRing, normalizeOutline, resampleClosed, scoreSketch } from './outline'
+import {
+  DRAW_COMPLETE_AT,
+  drawnFraction,
+  largestRing,
+  normalizeOutline,
+  previewSweepSeconds,
+  resampleClosed,
+  scoreSketch,
+} from './outline'
 import type { OutlinePoint } from './outline'
 import { MAP_PATHS } from '~~/data/map.gen'
 
@@ -114,5 +122,70 @@ describe('scoreSketch', () => {
     // for a genuinely confusable silhouette is fine, a real payout is not.
     expect(scoreSketch(ring('BR'), ring('AU'), 100)).toBeLessThanOrEqual(15)
     expect(scoreSketch(ring('EG'), ring('CL'), 100)).toBeLessThanOrEqual(10)
+  })
+})
+
+// Reveal pacing: the outline modes' preview sweep and clock-synced draw.
+
+const perimeter = (points: OutlinePoint[]): number => {
+  let total = 0
+  for (let index = 0; index < points.length; index++) {
+    const [x1, y1] = points[index]
+    const [x2, y2] = points[(index + 1) % points.length]
+    total += Math.hypot(x2 - x1, y2 - y1)
+  }
+  return total
+}
+
+const ringSpan = (points: OutlinePoint[]): number => {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const [x, y] of points) {
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+  return Math.max(maxX - minX, maxY - minY)
+}
+
+describe('previewSweepSeconds', () => {
+  it('stays within its bounds for any geometry', () => {
+    expect(previewSweepSeconds(0, 0)).toBeGreaterThanOrEqual(0.7)
+    expect(previewSweepSeconds(1, 1000)).toBeGreaterThanOrEqual(0.7)
+    expect(previewSweepSeconds(1_000_000, 1)).toBeLessThanOrEqual(2.4)
+  })
+
+  it('gives an intricate coastline a longer sweep than a compact one', () => {
+    const norway = ring('NO')
+    const egypt = ring('EG')
+    const intricate = previewSweepSeconds(perimeter(norway), ringSpan(norway))
+    const compact = previewSweepSeconds(perimeter(egypt), ringSpan(egypt))
+    expect(intricate).toBeGreaterThan(compact)
+  })
+})
+
+describe('drawnFraction', () => {
+  it('starts at zero where the preview handed over', () => {
+    expect(drawnFraction(26, 30, 26)).toBe(0)
+  })
+
+  it('completes exactly when the study beat begins, for any hand-over point', () => {
+    for (const drawStart of [30, 26, 20]) {
+      const studyBeat = 30 * (1 - DRAW_COMPLETE_AT)
+      expect(drawnFraction(studyBeat, 30, drawStart)).toBe(1)
+      expect(drawnFraction(0, 30, drawStart)).toBe(1)
+    }
+  })
+
+  it('grows monotonically as the clock runs down', () => {
+    let previous = -1
+    for (let secondsLeft = 26; secondsLeft >= 0; secondsLeft--) {
+      const drawn = drawnFraction(secondsLeft, 30, 26)
+      expect(drawn).toBeGreaterThanOrEqual(previous)
+      previous = drawn
+    }
   })
 })

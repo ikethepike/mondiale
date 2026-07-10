@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Silhouette`"
       title="Whose outline is this?"
-      :stakes="`The outline draws itself over ${challenge.durationSeconds} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
+      :stakes="`The outline flashes whole, then draws itself back in over ${challenge.durationSeconds} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
       @done="begin"
     />
 
@@ -30,7 +30,7 @@
 
     <section v-show="!resolved" class="outline-stage">
       <svg v-if="outline" class="outline" :viewBox="outline.viewBox" aria-hidden="true">
-        <path ref="outlinePath" :d="outline.d" />
+        <path ref="outlinePath" :d="outline.d" :stroke-width="outline.strokeWidth" />
       </svg>
     </section>
 
@@ -52,17 +52,15 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { gsap } from 'gsap'
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
-import { prefersReducedMotion } from '~~/lib/motion'
-import { mainlandOutline } from '~~/lib/outline'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 // Blank the world map — the silhouette IS the whole question
@@ -93,14 +91,18 @@ const regionRevealed = computed(() => {
   const total = challenge.value?.durationSeconds ?? 30
   return started.value && secondsLeft.value / total <= 0.3
 })
-const outlinePath = ref<SVGPathElement>()
-
-/** The country's mainland ring, framed in its own viewBox. */
-const outline = ref<{ d: string; viewBox: string }>()
+// Preview flash → sweep-away → clock-synced border draw, all size-relative.
+const {
+  outline,
+  outlinePath,
+  prepareOutline,
+  beginOutlineReveal,
+  tickOutlineReveal,
+  resetOutlineReveal,
+} = useOutlineReveal()
 onMounted(() => {
   const active = challenge.value
-  if (!active) return
-  outline.value = mainlandOutline(active.country)
+  if (active) prepareOutline(active.country)
 })
 
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
@@ -108,7 +110,7 @@ let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (lockoutTimer) clearTimeout(lockoutTimer)
   if (revealTimer) clearTimeout(revealTimer)
-  if (outlinePath.value) gsap.killTweensOf(outlinePath.value)
+  resetOutlineReveal()
 })
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
@@ -146,32 +148,9 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 }
 
 const begin = () => {
-  const active = challenge.value
-
-  // Dash-reveal in the path's REAL length units. The pathLength="1" trick is
-  // a trap here: values written with px units (as animation libraries do)
-  // bypass pathLength normalization in Chrome, leaving a frozen confetti of
-  // 1px dashes. getTotalLength + a CSS transition is boringly reliable.
-  const path = outlinePath.value
-  const outlineLength = path?.getTotalLength() ?? 0
-  if (path && outlineLength) {
-    path.style.strokeDasharray = `${outlineLength}`
-    path.style.strokeDashoffset = prefersReducedMotion() ? '0' : `${outlineLength}`
-    // Updated once per countdown tick with a linear 1s transition — the line
-    // creeps around the border in one continuous, ever-growing stroke
-    path.style.transition = 'stroke-dashoffset 1s linear'
-  }
-
+  beginOutlineReveal(challenge.value?.durationSeconds ?? 30)
   beginRound({
-    onTick: remaining => {
-      const total = active?.durationSeconds ?? 30
-      if (path && outlineLength && !prefersReducedMotion()) {
-        // The full border lands at ~85% of the clock, leaving a beat to study
-        // the complete shape before time runs out
-        const revealed = Math.min(1, (total - remaining) / (total * 0.85))
-        path.style.strokeDashoffset = `${outlineLength * (1 - revealed)}`
-      }
-    },
+    onTick: tickOutlineReveal,
     onTimeout: () => resolve(undefined, 0),
   })
   nextTick(() => guessInput.value?.focus())
@@ -254,11 +233,11 @@ header {
   max-height: 44vh;
   max-width: 70vw;
 
+  // Stroke width arrives as a user-unit attribute scaled to the country's
+  // frame — non-scaling-stroke would shatter the dash-reveal (see outline.ts).
   path {
     fill: none;
     stroke: var(--dark-blue);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
     stroke-linejoin: round;
     stroke-linecap: round;
   }

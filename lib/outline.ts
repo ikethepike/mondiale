@@ -9,15 +9,34 @@ export type OutlinePoint = [number, number]
 export const countryPathData = (isoCode: ISOCountryCode): string | undefined =>
   document.querySelector(`.game-map path#${isoCode}`)?.getAttribute('d') ?? undefined
 
+/** Stroke width as a share of the frame — the classic hairline at stage size. */
+const STROKE_WIDTH_RATIO = 0.0045
+
 /**
  * A country's MAINLAND ring as standalone path data, framed in its own
  * padded viewBox. Dash-reveals need one closed ring — the raw map path often
  * carries island subpaths that would smear the reveal into scattered slivers.
+ *
+ * Geometry comes from the HD tier (the same lazy chunk GameMap zooms into):
+ * the outline stage blows a single country up to near-full-screen, where the
+ * base tier's world-zoom simplification reads as jagged. Scraping the DOM is
+ * only the fallback — the DOM path holds whatever tier the last camera
+ * position happened to apply, so it isn't even deterministic.
+ *
+ * `strokeWidth` is in user units, scaled to the frame. The tempting
+ * alternative — a fixed width with vector-effect: non-scaling-stroke — is a
+ * trap for dash-reveals: per SVG2 (and Chromium) it moves stroke-dasharray
+ * and stroke-dashoffset into SCREEN space while getTotalLength stays in user
+ * units, shattering the reveal into repeating fragments. Everything must
+ * live in the country's own units.
  */
-export const mainlandOutline = (
+export const mainlandOutline = async (
   isoCode: ISOCountryCode
-): { d: string; viewBox: string } | undefined => {
-  const pathData = countryPathData(isoCode)
+): Promise<{ d: string; viewBox: string; span: number; strokeWidth: number } | undefined> => {
+  const hd = await import('~~/data/map-hd.gen')
+    .then(module => module.MAP_PATHS_HD as Partial<Record<ISOCountryCode, string>>)
+    .catch(() => undefined)
+  const pathData = hd?.[isoCode] ?? countryPathData(isoCode)
   if (!pathData) return undefined
   const ring = largestRing(pathData)
   if (!ring || ring.length < 3) return undefined
@@ -33,11 +52,50 @@ export const mainlandOutline = (
     maxY = Math.max(maxY, y)
   }
 
-  const pad = Math.max(maxX - minX, maxY - minY) * 0.12
+  const span = Math.max(maxX - minX, maxY - minY)
+  const pad = span * 0.12
   return {
     d: `M ${ring.map(([x, y]) => `${x},${y}`).join(' L ')} Z`,
     viewBox: `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`,
+    span,
+    strokeWidth: span * STROKE_WIDTH_RATIO,
   }
+}
+
+// --- Dash-reveal pacing --------------------------------------------------------
+// Every duration here derives from the border's measured geometry, so the
+// animation is relative to the country's size: the draw rate is proportional
+// to its perimeter (it must cover `length` in a fixed clock share), and the
+// preview sweep scales with intricacy (perimeter relative to frame).
+
+/** The whole border lands with this fraction of the clock spent, leaving a
+ *  beat to study the complete shape before time runs out. */
+export const DRAW_COMPLETE_AT = 0.85
+
+/**
+ * Seconds for the preview's sweep-away, scaled to the border's intricacy —
+ * its length relative to the span of its frame. A compact shape wipes in
+ * under a second; a fjord-riddled coastline visibly unwinds.
+ */
+export const previewSweepSeconds = (length: number, span: number): number => {
+  if (length <= 0 || span <= 0) return 0.7
+  return Math.min(2.4, Math.max(0.7, 0.4 + (length / span) * 0.09))
+}
+
+/**
+ * Fraction of the border drawn at `secondsLeft`. The draw picks up where the
+ * preview handed over (`drawStartSecondsLeft`) and maps that remaining window
+ * onto the clock so every country — however long its border — completes at
+ * DRAW_COMPLETE_AT of the round.
+ */
+export const drawnFraction = (
+  secondsLeft: number,
+  totalSeconds: number,
+  drawStartSecondsLeft: number
+): number => {
+  const drawEndsAt = totalSeconds * (1 - DRAW_COMPLETE_AT)
+  const window = Math.max(1, drawStartSecondsLeft - drawEndsAt)
+  return Math.min(1, Math.max(0, (drawStartSecondsLeft - secondsLeft) / window))
 }
 
 /**
