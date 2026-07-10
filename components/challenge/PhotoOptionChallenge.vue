@@ -100,7 +100,8 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 
   .option-flag {
     width: 100%;
-    height: 8rem;
+    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
+    height: auto;
     border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
   }
 }
@@ -110,10 +111,6 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
     width: 100%;
     padding: 0 1.6rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  // Shorter flags so photo + all four cards share a phone screen.
-  .card-option .option-flag {
-    height: 6rem;
   }
 }
 </style>

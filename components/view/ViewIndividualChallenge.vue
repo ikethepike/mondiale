@@ -935,7 +935,8 @@ header {
 
   .option-flag {
     width: 100%;
-    height: 8rem;
+    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
+    height: auto;
     border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
   }
 }
