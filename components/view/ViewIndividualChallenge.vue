@@ -8,7 +8,12 @@
     />
     <header v-else>
       <Transition name="caption" mode="out-in">
-        <div v-if="!status" key="question" class="question" :class="{ 'text-guess': textGuessVariant }">
+        <div
+          v-if="!status"
+          key="question"
+          class="question"
+          :class="{ 'text-guess': textGuessVariant }"
+        >
           <!-- Classic find-on-the-map -->
           <template v-if="variant === 'find'">
             <h1 class="map-caption">
@@ -209,7 +214,11 @@
               :viewBox="outlineReveal.viewBox"
               aria-hidden="true"
             >
-              <path ref="outlineRevealPath" :d="outlineReveal.d" />
+              <path
+                ref="outlineRevealPath"
+                :d="outlineReveal.d"
+                :stroke-width="outlineReveal.strokeWidth"
+              />
             </svg>
             <div class="guess-box">
               <CountryGuessInput
@@ -274,8 +283,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { currencySymbol } from '~~/lib/currency'
 import { politicalLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { prefersReducedMotion } from '~~/lib/motion'
-import { mainlandOutline } from '~~/lib/outline'
+import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -349,8 +357,15 @@ const interstitialTitle = computed(() => {
 
 // --- Outline reveal race (hard) ------------------------------------------------
 const OUTLINE_REVEAL_SECONDS = 25
-const outlineReveal = ref<{ d: string; viewBox: string }>()
-const outlineRevealPath = ref<SVGPathElement>()
+// Preview flash → sweep-away → clock-synced border draw, all size-relative.
+const {
+  outline: outlineReveal,
+  outlinePath: outlineRevealPath,
+  prepareOutline,
+  beginOutlineReveal: beginOutlineDraw,
+  tickOutlineReveal,
+  resetOutlineReveal,
+} = useOutlineReveal()
 const outlineSecondsLeft = ref(OUTLINE_REVEAL_SECONDS)
 let outlineTimer: ReturnType<typeof setInterval> | undefined
 
@@ -360,39 +375,23 @@ const wrongTokenFor = (correct: ISOCountryCode): ISOCountryCode => (correct === 
 const beginOutlineReveal = () => {
   const active = challenge.value
   if (!active || variant.value !== 'outline-reveal' || outlineTimer) return
-  outlineReveal.value = mainlandOutline(active.country)
+  prepareOutline(active.country)
+  beginOutlineDraw(OUTLINE_REVEAL_SECONDS)
 
-  nextTick(() => {
-    const path = outlineRevealPath.value
-    const length = path?.getTotalLength() ?? 0
-    if (!path || !length) return
+  // The clock runs regardless of the outline resolving — the gate must never
+  // hang without its timeout just because the geometry was missing.
+  outlineTimer = setInterval(() => {
+    outlineSecondsLeft.value--
+    tickOutlineReveal(outlineSecondsLeft.value)
 
-    // Continuous dash-reveal in the path's real length units (px-valued dash
-    // properties bypass pathLength normalization — see ViewSilhouette)
-    path.style.strokeDasharray = `${length}`
-    path.style.strokeDashoffset = prefersReducedMotion() ? '0' : `${length}`
-    path.style.transition = 'stroke-dashoffset 1s linear'
-
-    outlineTimer = setInterval(() => {
-      outlineSecondsLeft.value--
-
-      if (!prefersReducedMotion()) {
-        const revealed = Math.min(
-          1,
-          (OUTLINE_REVEAL_SECONDS - outlineSecondsLeft.value) / (OUTLINE_REVEAL_SECONDS * 0.85)
-        )
-        path.style.strokeDashoffset = `${length * (1 - revealed)}`
+    if (outlineSecondsLeft.value <= 0) {
+      if (outlineTimer) clearInterval(outlineTimer)
+      if (!status.value) {
+        gameStore.map.solo = false
+        submitAnswer(wrongTokenFor(active.country))
       }
-
-      if (outlineSecondsLeft.value <= 0) {
-        if (outlineTimer) clearInterval(outlineTimer)
-        if (!status.value) {
-          gameStore.map.solo = false
-          submitAnswer(wrongTokenFor(active.country))
-        }
-      }
-    }, 1000)
-  })
+    }
+  }, 1000)
 }
 
 const onOutlineGuess = (country: Country) => {
@@ -607,7 +606,7 @@ watch(currentMove, move => {
     clearInterval(outlineTimer)
     outlineTimer = undefined
   }
-  outlineReveal.value = undefined
+  resetOutlineReveal()
   outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
   if (zoomOutTimer) {
     clearTimeout(zoomOutTimer)
@@ -660,6 +659,7 @@ onBeforeUnmount(() => {
   clearBoard()
   if (outlineTimer) clearInterval(outlineTimer)
   if (zoomOutTimer) clearTimeout(zoomOutTimer)
+  resetOutlineReveal()
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>
@@ -945,11 +945,11 @@ header {
   max-width: 62vw;
   margin-top: 0.6rem;
 
+  // Stroke width arrives as a user-unit attribute scaled to the country's
+  // frame — non-scaling-stroke would shatter the dash-reveal (see outline.ts).
   path {
     fill: none;
     stroke: var(--dark-blue);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
     stroke-linejoin: round;
     stroke-linecap: round;
   }
