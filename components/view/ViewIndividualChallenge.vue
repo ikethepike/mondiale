@@ -99,6 +99,7 @@
                   type="button"
                   @click="showBorderHint"
                 >
+                  <span class="hint-icon eye" aria-hidden="true" />
                   Outline (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
@@ -109,6 +110,7 @@
                   type="button"
                   @click="showIsoHint"
                 >
+                  <span class="hint-icon iso" aria-hidden="true" />
                   Country code (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
@@ -993,9 +995,26 @@ header {
 
 .hint-button {
   cursor: pointer;
+  gap: 0.7rem;
+  display: inline-flex;
+  align-items: center;
   font-size: 1.4rem;
   font-family: inherit;
   padding: 0.6rem 1.4rem;
+
+  .hint-icon {
+    width: 1.8rem;
+    height: 1.8rem;
+    flex-shrink: 0;
+    background: var(--dark-blue);
+
+    &.eye {
+      mask: url('~/assets/icons/eye.svg') no-repeat center/contain;
+    }
+    &.iso {
+      mask: url('~/assets/icons/isoCode.svg') no-repeat center/contain;
+    }
+  }
   border-radius: 1.2rem;
   pointer-events: auto;
   color: var(--dark-blue);
