@@ -344,6 +344,12 @@ const scenarios: Scenario[] = [
     build: () => individualGame({ variant: 'flag-pick', options: ['NL', 'LU', 'FR', 'RU'] }),
   },
   {
+    id: 'individual-zoom-out',
+    label: 'Individual: zoom-out (typed)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'MY' }),
+  },
+  {
     id: 'individual-higher-lower',
     label: 'Individual: higher/lower duel',
     component: ViewIndividualChallenge,

@@ -8,7 +8,7 @@
     />
     <header v-else>
       <Transition name="caption" mode="out-in">
-        <div v-if="!status" key="question" class="question">
+        <div v-if="!status" key="question" class="question" :class="{ 'text-guess': textGuessVariant }">
           <!-- Classic find-on-the-map -->
           <template v-if="variant === 'find'">
             <h1 class="map-caption">
@@ -289,6 +289,11 @@ const challenge = ref(
 )
 
 const variant = computed(() => challenge.value?.variant ?? 'find')
+/** Variants that guess via CountryGuessInput need `.question` left un-clipped
+    so the downward-opening suggestion list stays visible. */
+const textGuessVariant = computed(() =>
+  ['zoom-out', 'border-detective', 'outline-reveal'].includes(variant.value)
+)
 const status = toRef(gameStore.map, 'status')
 /** Hard mode hides the helper labels (e.g. neighbour names in Border Detective). */
 const isHard = computed(() => gameStore.game?.difficulty === 'hard')
@@ -703,6 +708,13 @@ header {
     // Fallback: scroll to the options if a tall hero + cards overflow.
     max-height: var(--viewport-height);
     overflow-y: auto;
+
+    // Text-guess variants have bounded content and must not clip the
+    // guess input's downward-opening suggestion list.
+    &.text-guess {
+      max-height: none;
+      overflow-y: visible;
+    }
   }
 
   // The flag is the question — present it as the hero, framed like the
