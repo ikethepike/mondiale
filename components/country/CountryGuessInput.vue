@@ -7,6 +7,10 @@
       role="combobox"
       :placeholder="placeholder"
       autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      enterkeyhint="go"
       aria-autocomplete="list"
       :aria-expanded="suggestions.length > 0"
       :aria-controls="listId"
@@ -88,6 +92,16 @@ const suggestions = computed(() => {
  */
 const chosenIso = ref<ISOCountryCode>()
 watch(query, () => (chosenIso.value = undefined))
+
+// Keep the anchor pinned even when the user never arrow-keys: whenever the
+// anchored country leaves the list (or none is set), anchor the top match.
+// An async `excluded` update then can't reorder the list between the last
+// render and an Enter press and silently commit a different country.
+watch(suggestions, list => {
+  if (!list.some(country => country.isoCode === chosenIso.value)) {
+    chosenIso.value = list[0]?.isoCode
+  }
+})
 
 const highlightedIndex = computed(() => {
   const index = suggestions.value.findIndex(country => country.isoCode === chosenIso.value)

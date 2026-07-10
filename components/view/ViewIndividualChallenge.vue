@@ -450,7 +450,8 @@ const ISO_HINT_UNLOCK_ELAPSED = 2 / 3
 const borderSecondsLeft = ref(BORDER_DETECTIVE_SECONDS)
 let borderTimer: ReturnType<typeof setInterval> | undefined
 /** The bought outline hint, drawn in the ring's centre. Every hint bites steps. */
-const borderHint = ref<{ d: string; viewBox: string }>()
+const borderHint = ref<Awaited<ReturnType<typeof mainlandOutline>>>()
+let borderHintLoading = false
 /** The bought last-resort hint: the country's ISO code, chipped onto the ring. */
 const isoHint = ref<ISOCountryCode>()
 const elapsedFraction = computed(() => 1 - borderSecondsLeft.value / BORDER_DETECTIVE_SECONDS)
@@ -473,10 +474,18 @@ const beginBorderDetective = () => {
   }, 1000)
 }
 
-const showBorderHint = () => {
+const showBorderHint = async () => {
   const active = challenge.value
-  if (!active || borderHint.value || status.value) return
-  borderHint.value = mainlandOutline(active.country)
+  if (!active || borderHint.value || borderHintLoading || status.value) return
+  borderHintLoading = true
+  try {
+    // The outline loads the HD geometry chunk — only count (and charge) the
+    // hint once a frame actually lands, and never after the gate resolved.
+    const frame = await mainlandOutline(active.country)
+    if (frame && challenge.value === active && !status.value) borderHint.value = frame
+  } finally {
+    borderHintLoading = false
+  }
 }
 
 const showIsoHint = () => {
