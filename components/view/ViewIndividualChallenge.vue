@@ -99,7 +99,7 @@
                   type="button"
                   @click="showBorderHint"
                 >
-                  Stuck? Reveal its outline — costs {{ GATE_HINT_BITE_STEPS }} steps
+                  Outline (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
               <Transition name="caption">
@@ -109,7 +109,7 @@
                   type="button"
                   @click="showIsoHint"
                 >
-                  Last resort: its country code — costs {{ GATE_HINT_BITE_STEPS }} steps
+                  Country code (−{{ GATE_HINT_BITE_STEPS }} steps)
                 </button>
               </Transition>
             </div>
