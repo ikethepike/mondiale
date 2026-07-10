@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
+import { gameAlreadyStartedEvent } from '~~/lib/events/client/game-already-started.event'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
@@ -37,7 +38,7 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
     handler: genericUpdateEvent,
   },
   'game-already-started': {
-    handler: genericUpdateEvent,
+    handler: gameAlreadyStartedEvent,
   },
   update: {
     handler: playerUpdateEvent,

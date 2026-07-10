@@ -11,6 +11,10 @@
       </div>
     </header>
 
+    <!-- Mounted once here, above the view swap: the WebGL draw-in takes ~1s, and
+         remounting it per view would restart the sweep mid-transition. -->
+    <ContourBackdropGl v-if="showContours" class="contour-backdrop" />
+
     <LazyGameMap
       class="game-map"
       :highlighted="highlighted"
@@ -60,6 +64,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -93,6 +98,14 @@ const highlighted = computed<ISOCountryCode[]>(() => {
 })
 
 const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
+
+// The contour backdrop covers the pre-join wait and the lobby; the world map
+// takes over once the game starts. One instance spans both so the draw-in
+// sweep plays exactly once.
+const CONTOUR_PHASES = ['naming', 'waiting-for-game']
+const showContours = computed(
+  () => !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
+)
 
 // Show the "what's everyone doing" panel only while parked on the board
 // (walking / turn done), where a player would otherwise wonder if the game
@@ -161,20 +174,23 @@ onMounted(() => {
   }
 }
 
-// Naming + lobby own their OWN backdrop (the procedural topo contours in
-// ViewPlayerConfiguration). The world map still mounts and resolves its
-// geometry here so it's ready the instant the game starts — but it stays
-// hidden so the two backdrops don't fight. phase-undefined keeps the old
-// scale-in for the brief pre-join moment.
-.phase-undefined .game-map {
-  animation: scale 10s;
-  &:deep(svg path) {
-    fill: none;
-    stroke-width: 0.01rem;
-    color: rgb(91, 91, 91);
-  }
+// The WebGL contour canvas is a full-cover backdrop behind the views. Its
+// draw-in sweep and dim-to-ambient fade are driven inside the component
+// (a shader uniform), so there's no per-frame DOM cost here.
+.contour-backdrop {
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  pointer-events: none;
 }
 
+// Pre-join + lobby own the contour backdrop (see showContours). The world map
+// still mounts and resolves its geometry so it's ready the instant the game
+// starts — but it stays hidden until then so the two backdrops don't fight.
+.phase-undefined .game-map,
 .phase-naming .game-map,
 .phase-waiting-for-game .game-map {
   opacity: 0;
@@ -190,12 +206,6 @@ onMounted(() => {
 
 .phase-group-scores .game-map {
   overflow: hidden;
-}
-
-@keyframes scale {
-  0% {
-    transform: scale(10) translate(50%, 50%);
-  }
 }
 
 @media (prefers-color-scheme: dark) {

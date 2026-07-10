@@ -72,6 +72,12 @@ interface GameStoreState {
    * while the board is still loading.
    */
   pendingMovementRequest: boolean
+  /**
+   * The server refused the join because the game was already underway, and it
+   * closed the socket. Terminal: nothing further arrives, so the room page
+   * shows a dead end rather than waiting on a join that will never land.
+   */
+  rejected: boolean
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -81,6 +87,7 @@ export const useGameStore = defineStore('game', {
     playerId: '',
     socket: undefined,
     pendingMovementRequest: false,
+    rejected: false,
     map: {
       status: undefined,
       reveal: undefined,

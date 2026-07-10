@@ -10,9 +10,7 @@
       @enter-cancelled="onEnterCancelled"
     >
       <component :is="presentedView.component" v-if="presentedView" :key="presentedView.key" />
-      <main v-else key="loading" class="map-wrapper">
-        <span>Loading...</span>
-      </main>
+      <LoadingRoom v-else key="loading" />
     </Transition>
 
     <!-- Outside the view swap: a player reaching or clearing the gauntlet is
@@ -30,8 +28,10 @@
 <script lang="ts" setup>
 import type { Component } from 'vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
 import ModalMoving from '~/components/modal/ModalMoving.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
+import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
 import ViewGhostState from '~/components/view/ViewGhostState.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
@@ -77,6 +77,12 @@ interface ActiveView {
 }
 
 const activeView = computed<ActiveView | undefined>(() => {
+  // Terminal: the server refused the join and closed the socket. Checked first
+  // — no later state can arrive to move us off this screen.
+  if (gameStore.rejected) {
+    return { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
+  }
+
   if (!game.value || !player.value) return undefined
 
   if (!game.value.started) {

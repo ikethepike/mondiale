@@ -105,7 +105,9 @@ export type ServerEventData =
   | { event: 'new-round'; game: Game }
   | { event: 'group-challenge-scored'; game: Game }
   | { event: 'game-started'; game: Game }
-  | { event: 'game-already-started'; game: Game }
+  /** Join refused — deliberately carries no `game`, so `hasGame()` stays false
+   *  and the generic store-write can never strand the client mid-join. */
+  | { event: 'game-already-started' }
   | { event: 'update'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }

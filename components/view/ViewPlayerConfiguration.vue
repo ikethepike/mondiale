@@ -1,8 +1,5 @@
 <template>
   <div class="player-configuration-wrapper">
-    <!-- WebGL contour draw-in: the reveal is a single GPU uniform, so it
-         costs one draw call/frame instead of repainting ~40 huge SVG paths -->
-    <ContourBackdropGl class="contour-backdrop" @drawn="backdropSettled = true" />
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
@@ -139,10 +136,7 @@
               </div>
             </ButtonLine>
 
-            <ButtonFilled
-              v-if="isPlayerHost"
-              :disabled="!isEveryoneReady || playersByPhase.all.length === 1"
-            >
+            <ButtonFilled v-if="isPlayerHost" :disabled="!isEveryoneReady">
               <div class="start-button-content" @click="startGame">
                 <span>Start Game</span>
                 <div class="arrow-icon" />
@@ -171,7 +165,6 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
-import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -181,9 +174,6 @@ import { gameLengths, gameDifficulties, isValidGameConfiguration } from '~~/type
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
-
-// The contour backdrop sweeps in bright, then fades to a dim ambient drift
-const backdropSettled = ref(false)
 
 // Pulse the n/8 counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
@@ -292,19 +282,6 @@ const startGame = () => {
 
 .player-configuration-wrapper {
   position: relative;
-}
-
-// The WebGL contour canvas is a full-cover backdrop behind the card. Its
-// draw-in sweep and dim-to-ambient fade are driven inside the component
-// (a shader uniform), so there's no per-frame DOM cost here.
-.contour-backdrop {
-  top: 0;
-  left: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  pointer-events: none;
 }
 
 .player-configuration {

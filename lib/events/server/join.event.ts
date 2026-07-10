@@ -48,11 +48,13 @@ export const joinEventHandler: EventHandler = async ({
     game.players[playerId] = createPlayer(playerId, takenColors)
   }
 
-  // Game already started
+  // Game already started. Emit straight to this socket: it never joined the
+  // gameId room (that happens further down), so a room broadcast would reach
+  // everyone except the one player the message is about. Close only once the
+  // frame is on the wire.
   if (!game.players[playerId] && game.started) {
-    console.log('rejected!')
-    await server.emit({ event: 'game-already-started', game }, eventTarget)
-    socket.disconnect(true)
+    socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
+    socket.disconnect(false)
     return
   }
 

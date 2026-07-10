@@ -141,29 +141,7 @@ const entries = computed(() =>
   opacity: 0.75;
 }
 
-// A soft breathing dot — the visible sign that a player is actively busy, so
-// the waiting board never reads as frozen.
-.pulse {
-  flex: 0 0 auto;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: var(--soft-mint);
-  box-shadow: 0 0 0 0 hsla(170.5, 24.7%, 55%, 0.6);
-  animation: status-pulse 1.6s ease-out infinite;
-}
-
-@keyframes status-pulse {
-  0% {
-    box-shadow: 0 0 0 0 hsla(170.5, 24.7%, 55%, 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 0.5rem hsla(170.5, 24.7%, 55%, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 hsla(170.5, 24.7%, 55%, 0);
-  }
-}
+// .pulse lives in assets/scss/templates/_pulse.scss — shared with LoadingRoom.
 
 // Rows glide when the sort reorders (a player finishes / starts walking).
 .row-move {
@@ -179,12 +157,6 @@ const entries = computed(() =>
 .row-leave-to {
   opacity: 0;
   transform: translateX(-1rem);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pulse {
-    animation: none;
-  }
 }
 
 @media (max-width: $tablet) {

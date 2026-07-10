@@ -12,6 +12,7 @@
 @use 'templates/pane';
 @use 'templates/map-caption';
 @use 'templates/chip';
+@use 'templates/pulse';
 
 // Viewport tokens: dvh tracks mobile browser chrome (URL bar) where supported;
 // safe-* keep edge-hugging chrome clear of notches and home indicators.
@@ -30,4 +31,17 @@
 
 body {
   background-color: var(--background-color);
+}
+
+// Text for screen readers only — kept in the accessibility tree, out of the page.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
