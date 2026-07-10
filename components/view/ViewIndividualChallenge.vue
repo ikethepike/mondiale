@@ -68,9 +68,17 @@
           <!-- Border detective: name the country these neighbours surround -->
           <template v-else-if="variant === 'border-detective' && challenge.neighbours">
             <h1 class="map-caption">Who sits in the middle?</h1>
-            <span class="map-caption sub">Name the country these neighbours all border.</span>
+            <span class="map-caption sub">
+              {{ borderSecondsLeft }}s — name the country these neighbours all border
+            </span>
+            <ChallengeTimer :value="borderSecondsLeft" :total="BORDER_DETECTIVE_SECONDS" />
             <div class="border-ring" :style="{ '--ring-count': challenge.neighbours.length }">
-              <div class="ring-center" aria-hidden="true">?</div>
+              <div class="ring-center" aria-hidden="true">
+                <svg v-if="borderHint" class="hint-outline" :viewBox="borderHint.viewBox">
+                  <path :d="borderHint.d" />
+                </svg>
+                <template v-else>?</template>
+              </div>
               <div
                 v-for="(neighbour, index) in challenge.neighbours"
                 :key="neighbour"
@@ -82,6 +90,9 @@
                 <span v-if="!isHard" class="ring-name">{{ countryName(neighbour) }}</span>
               </div>
             </div>
+            <button v-if="!borderHint" class="hint-button" type="button" @click="showBorderHint">
+              Stuck? Reveal its outline — costs a step
+            </button>
             <div class="guess-box">
               <CountryGuessInput
                 :disabled="!!status"
@@ -276,6 +287,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
@@ -404,11 +416,44 @@ const onOutlineGuess = (country: Country) => {
 }
 
 // --- Border detective --------------------------------------------------------
+// Timed like the other mystery gates: the clock scales the leap (buzz curve,
+// applied server-side from the reported fraction) and runs out into a miss.
+const BORDER_DETECTIVE_SECONDS = 40
+const borderSecondsLeft = ref(BORDER_DETECTIVE_SECONDS)
+let borderTimer: ReturnType<typeof setInterval> | undefined
+/** The bought outline hint, drawn in the ring's centre. Buying it bites a step. */
+const borderHint = ref<{ d: string; viewBox: string }>()
+
+const beginBorderDetective = () => {
+  const active = challenge.value
+  if (!active || variant.value !== 'border-detective' || borderTimer) return
+  borderTimer = setInterval(() => {
+    borderSecondsLeft.value--
+    if (borderSecondsLeft.value <= 0) {
+      if (borderTimer) clearInterval(borderTimer)
+      if (!status.value) {
+        gameStore.map.solo = false
+        submitAnswer(wrongTokenFor(active.country))
+      }
+    }
+  }, 1000)
+}
+
+const showBorderHint = () => {
+  const active = challenge.value
+  if (!active || borderHint.value || status.value) return
+  borderHint.value = mainlandOutline(active.country)
+}
+
 const onBorderGuess = (country: Country) => {
   if (status.value) return
+  if (borderTimer) clearInterval(borderTimer)
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
-  submitAnswer(country.isoCode)
+  submitAnswer(country.isoCode, {
+    remainingFraction: Math.max(0, borderSecondsLeft.value) / BORDER_DETECTIVE_SECONDS,
+    hintUsed: !!borderHint.value,
+  })
 }
 
 // --- Zoom-out ----------------------------------------------------------------
@@ -561,13 +606,21 @@ const incorrectMessage = computed(() => {
   }
 })
 
-const submitAnswer = (isoCode: ISOCountryCode, options: { reveal?: boolean } = {}) => {
+const submitAnswer = (
+  isoCode: ISOCountryCode,
+  options: { reveal?: boolean; remainingFraction?: number; hintUsed?: boolean } = {}
+) => {
   if (status.value) return
   if (currentMove.value?.challenge?._type === 'final-challenge') return
 
   submittedISOCode.value = isoCode
   gameStore.map.highlighted.clear()
-  update({ event: 'submit-individual-challenge-answer', isoCode })
+  update({
+    event: 'submit-individual-challenge-answer',
+    isoCode,
+    remainingFraction: options.remainingFraction,
+    hintUsed: options.hintUsed,
+  })
 
   const active = currentMove.value?.challenge
   if (active) {
@@ -584,6 +637,7 @@ watch(showInterstitial, value => {
   if (value) return
   if (variant.value === 'outline-reveal') beginOutlineReveal()
   if (variant.value === 'zoom-out') beginZoomOut()
+  if (variant.value === 'border-detective') beginBorderDetective()
 })
 
 // Back-to-back gates can reach a still-mounted view (the walk between them
@@ -608,6 +662,12 @@ watch(currentMove, move => {
   }
   resetOutlineReveal()
   outlineSecondsLeft.value = OUTLINE_REVEAL_SECONDS
+  if (borderTimer) {
+    clearInterval(borderTimer)
+    borderTimer = undefined
+  }
+  borderHint.value = undefined
+  borderSecondsLeft.value = BORDER_DETECTIVE_SECONDS
   if (zoomOutTimer) {
     clearTimeout(zoomOutTimer)
     zoomOutTimer = undefined
@@ -658,6 +718,7 @@ onBeforeMount(() => {
 onBeforeUnmount(() => {
   clearBoard()
   if (outlineTimer) clearInterval(outlineTimer)
+  if (borderTimer) clearInterval(borderTimer)
   if (zoomOutTimer) clearTimeout(zoomOutTimer)
   resetOutlineReveal()
   document.removeEventListener('mapClick', onMapClick)
@@ -851,6 +912,44 @@ header {
     height: auto;
     border-radius: 0.3rem;
     filter: drop-shadow(0 1px 3px hsla(215.7, 76.4%, 21.6%, 0.25));
+  }
+}
+
+// The bought hint: the mystery country's outline takes over the "?" circle.
+.ring-center .hint-outline {
+  width: 76%;
+  height: 76%;
+
+  path {
+    fill: none;
+    stroke: var(--dark-blue);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+}
+
+.hint-button {
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-family: inherit;
+  padding: 0.6rem 1.4rem;
+  border-radius: 1.2rem;
+  pointer-events: auto;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  transition: border-color var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active {
+    border-color: var(--dark-blue);
   }
 }
 

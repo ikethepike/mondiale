@@ -1,3 +1,4 @@
+import { gateLeapSteps } from '~~/lib/scoring'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
@@ -32,7 +33,8 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
 
     const correct = eventData.isoCode === currentMove.challenge.country
     if (correct) {
-      player.currentPosition += 2
+      // Timed gates scale the leap by the clock; a bought hint bites a step.
+      player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintUsed)
       player.moves.shift()
     } else {
       player.moves = []

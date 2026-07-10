@@ -14,6 +14,23 @@ export const buzzFraction = (remainingFraction: number): number =>
 export const buzzScore = (maximumPoints: number, remainingFraction: number): number =>
   Math.round(maximumPoints * buzzFraction(remainingFraction))
 
+/** A gate's full-pot leap in board steps — what an untimed gate always pays. */
+export const GATE_LEAP_STEPS = 2
+
+/**
+ * Steps a correct gate answer moves the pawn. Timed gates report the clock
+ * fraction left and the buzz curve scales the leap; a bought hint bites one
+ * step. Untimed gates report nothing and pay the whole pot. A non-finite
+ * fraction (a hostile or buggy client) falls back to the pot rather than NaN.
+ */
+export const gateLeapSteps = (remainingFraction?: number, hintUsed = false): number => {
+  const pot =
+    remainingFraction !== undefined && Number.isFinite(remainingFraction)
+      ? Math.round(GATE_LEAP_STEPS * buzzFraction(remainingFraction))
+      : GATE_LEAP_STEPS
+  return Math.max(0, pot - (hintUsed ? 1 : 0))
+}
+
 /**
  * Blitz-family scoring (water modes, mother-tongue, neighbour-blitz): the
  * found ratio scales the pot, every wrong guess bites one point. Duplicate

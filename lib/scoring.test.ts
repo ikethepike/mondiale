@@ -7,7 +7,7 @@ import {
   scoreHotCold,
   scoreTraversalSubmission,
 } from './challenges'
-import { attemptFraction, blitzScore, buzzFraction } from './scoring'
+import { attemptFraction, blitzScore, buzzFraction, GATE_LEAP_STEPS, gateLeapSteps } from './scoring'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -134,6 +134,31 @@ describe('buzzFraction', () => {
     for (const f of [0, 0.13, 0.5, 0.87, 1]) {
       expect(buzzFraction(f)).toBeCloseTo(0.35 + 0.65 * f, 12)
     }
+  })
+})
+
+describe('gateLeapSteps', () => {
+  it('pays the whole pot when no clock is reported (untimed gates)', () => {
+    expect(gateLeapSteps()).toBe(GATE_LEAP_STEPS)
+  })
+
+  it('pays the pot for a fast answer, one step for a slow one', () => {
+    expect(gateLeapSteps(1)).toBe(2)
+    expect(gateLeapSteps(0.7)).toBe(2)
+    expect(gateLeapSteps(0.5)).toBe(1)
+    expect(gateLeapSteps(0)).toBe(1)
+  })
+
+  it('bites one step for the outline hint, never below zero', () => {
+    expect(gateLeapSteps(1, true)).toBe(1)
+    expect(gateLeapSteps(0, true)).toBe(0)
+  })
+
+  it('shrugs off a garbage fraction instead of walking the pawn NaN steps', () => {
+    expect(gateLeapSteps(Number.NaN)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(Number.POSITIVE_INFINITY)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(7)).toBe(2)
+    expect(gateLeapSteps(-3)).toBe(1)
   })
 })
 

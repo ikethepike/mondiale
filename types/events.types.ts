@@ -47,6 +47,11 @@ export type ClientEventData =
   | {
       event: 'submit-individual-challenge-answer'
       isoCode: ISOCountryCode
+      /** Timed gates (border-detective): fraction of the clock left at submit.
+       *  Scales the leap via the buzz curve; the server clamps it. */
+      remainingFraction?: number
+      /** Timed gates: an outline hint was bought — bites one step off the leap. */
+      hintUsed?: boolean
     }
   | {
       event: 'close-tutorial'

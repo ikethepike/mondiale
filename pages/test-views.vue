@@ -67,7 +67,7 @@ const installStubSocket = () => {
   gameStore.playerId = ME
   gameStore.socket = {
     emit: (event: string, eventData: Record<string, unknown>) => {
-      lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 80)}`
+      lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
     },
   } as never
 }
@@ -349,6 +349,17 @@ const scenarios: Scenario[] = [
     label: 'Individual: zoom-out (typed)',
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'MY' }),
+  },
+  {
+    id: 'individual-border-detective',
+    label: 'Individual: border detective (timed, hint)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'border-detective',
+        country: 'HU',
+        neighbours: ['AT', 'SK', 'UA', 'RO', 'RS', 'HR', 'SI'],
+      }),
   },
   {
     id: 'individual-higher-lower',
