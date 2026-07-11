@@ -1,24 +1,29 @@
 <template>
   <component :is="tag" class="stat-card">
-    <StatTopicIcon v-if="topic" class="topic-icon" :topic="topic" />
+    <StatTopicIcon v-if="topic || accessor" class="topic-icon" :topic="topic" :accessor="accessor" />
     <span v-if="label" class="stat-label">{{ label }}</span>
     <slot />
   </component>
 </template>
 <script lang="ts" setup>
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
 /**
  * The shared stat card: cream surface, hairline border, small-caps label and
- * a thin-outline topic emblem in the corner. Stat Detective's clues and Two
+ * a thin-outline stat emblem in the corner. Stat Detective's clues and Two
  * Truths' claims are both built on it — behavioural styling (hover lifts,
  * verdict washes, stack positioning) stays with the host view.
  */
-withDefaults(defineProps<{ label?: string; topic?: string; tag?: string }>(), {
-  label: undefined,
-  topic: undefined,
-  tag: 'article',
-})
+withDefaults(
+  defineProps<{ label?: string; topic?: string; accessor?: GroupChallengeAccessorId; tag?: string }>(),
+  {
+    label: undefined,
+    topic: undefined,
+    accessor: undefined,
+    tag: 'article',
+  }
+)
 </script>
 <style lang="scss" scoped>
 .stat-card {

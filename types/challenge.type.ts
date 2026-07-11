@@ -1,21 +1,23 @@
 /**
  * This is available client side and does not get populated server side
  */
+export type ChallengeTopic =
+  | 'general knowledge'
+  | 'economics'
+  | 'geography'
+  | 'unemployment'
+  | 'infrastructure'
+  | 'gender'
+  | 'people'
+  | 'education'
+  | 'health'
+  | 'religion'
+  | 'environment'
+  | 'energy'
+  | 'human rights'
+
 export interface ChallengeConfiguration {
-  topic:
-    | 'general knowledge'
-    | 'economics'
-    | 'geography'
-    | 'unemployment'
-    | 'infrastructure'
-    | 'gender'
-    | 'people'
-    | 'education'
-    | 'health'
-    | 'religion'
-    | 'environment'
-    | 'energy'
-    | 'human rights'
+  topic: ChallengeTopic
   phrasing: string
   markers?: ChallengeMarkers
   /**

@@ -1,6 +1,9 @@
 <template>
   <div class="duel-reveal">
-    <p class="topic map-caption">{{ topic }}</p>
+    <p class="topic map-caption">
+      <StatTopicIcon class="topic-icon" :accessor="accessorId" />
+      {{ topic }}
+    </p>
     <ol class="duels">
       <li v-for="(duel, index) in rows" :key="index" class="duel">
         <span class="pair-dot" :style="{ background: duel.color }" aria-hidden="true" />
@@ -15,11 +18,16 @@
           <span class="side-name">{{ countryName(duel.lower) }}</span>
           <span class="side-value">{{ duel.lowerValue }}</span>
         </div>
+        <!-- Bounded indices: both countries on one track — the gap is the lesson. -->
+        <ScalePlot v-if="duel.scale" class="duel-scale" v-bind="duel.scale" />
       </li>
     </ol>
   </div>
 </template>
 <script lang="ts" setup>
+import ScalePlot from '~/components/feedback/ScalePlot.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import { getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -45,18 +53,39 @@ const value = (iso: ISOCountryCode) => {
   return amount ? formatAmount(amount) : '—'
 }
 
+// Bounded indices plot both countries on one shared track; the loser's dot
+// echoes the row's color language (orange when wrongly picked, faded otherwise).
+const rowScale = (higher: ISOCountryCode, lower: ISOCountryCode, pickedLower: boolean) => {
+  const higherAmount = getValueByAccessorID(higher, props.accessorId)?.amount
+  const lowerAmount = getValueByAccessorID(lower, props.accessorId)?.amount
+  const base = getScaleProps(props.accessorId, higherAmount)
+  if (!base || lowerAmount === undefined) return undefined
+  const { amount, ...track } = base
+  return {
+    ...track,
+    markers: [
+      { amount, tone: 'primary' as const },
+      { amount: lowerAmount, tone: pickedLower ? ('missed' as const) : ('muted' as const) },
+    ],
+  }
+}
+
 // The "higher ranks higher" row is the lesson: show both real values, mark
 // which side the player chose so a wrong pick reads as "you took the smaller".
 const rows = computed(() =>
-  props.outcomes.map((outcome, index) => ({
-    higher: outcome.higher,
-    lower: outcome.lower,
-    higherValue: value(outcome.higher),
-    lowerValue: value(outcome.lower),
-    pickedLower: outcome.picked === outcome.lower,
-    correct: outcome.correct,
-    color: props.colors[index % props.colors.length],
-  }))
+  props.outcomes.map((outcome, index) => {
+    const pickedLower = outcome.picked === outcome.lower
+    return {
+      higher: outcome.higher,
+      lower: outcome.lower,
+      higherValue: value(outcome.higher),
+      lowerValue: value(outcome.lower),
+      pickedLower,
+      correct: outcome.correct,
+      color: props.colors[index % props.colors.length],
+      scale: rowScale(outcome.higher, outcome.lower, pickedLower),
+    }
+  })
 )
 </script>
 <style lang="scss" scoped>
@@ -66,11 +95,21 @@ const rows = computed(() =>
 }
 
 .topic {
-  display: block;
+  gap: 0.6rem;
+  display: flex;
+  align-items: center;
   margin: 0 auto 1rem;
   width: max-content;
+  max-width: 100%;
   font-size: 1.4rem;
   padding: 0.4rem 1.2rem;
+}
+
+.topic-icon {
+  flex: 0 0 auto;
+  width: 1.6rem;
+  height: 1.6rem;
+  opacity: 0.7;
 }
 
 .duels {
@@ -152,10 +191,14 @@ const rows = computed(() =>
   text-align: center;
 }
 
+.duel-scale {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: $tablet) {
   .duel {
     grid-template-columns: auto 1fr;
-    grid-template-areas: 'dot higher' 'dot lower';
+    grid-template-areas: 'dot higher' 'dot lower' 'scale scale';
     row-gap: 0.4rem;
   }
   .pair-dot {
@@ -166,6 +209,9 @@ const rows = computed(() =>
   }
   .side.lower {
     grid-area: lower;
+  }
+  .duel-scale {
+    grid-area: scale;
   }
   .versus {
     display: none;

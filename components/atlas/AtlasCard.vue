@@ -57,16 +57,7 @@
           <li v-for="fact in section.facts" :key="fact.label" class="fact">
             <span class="fact-label">{{ fact.label }}</span>
             <span class="fact-value">{{ fact.value }}</span>
-            <ScalePlot
-              v-if="fact.scale"
-              class="fact-scale"
-              :amount="fact.scale.amount"
-              :min="fact.scale.min"
-              :max="fact.scale.max"
-              :invert="fact.scale.invert"
-              :least-label="fact.scale.leastLabel"
-              :most-label="fact.scale.mostLabel"
-            />
+            <ScalePlot v-if="fact.scale" class="fact-scale" v-bind="fact.scale" />
           </li>
         </ul>
       </section>

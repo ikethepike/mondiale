@@ -2184,6 +2184,31 @@ export const getChallengeDetails = (
   return challenges[accessorID]
 }
 
+/** ScalePlot's prop object, flattened from a stat's ChallengeScale + ChallengeMarkers. */
+export interface ScalePlotProps {
+  amount: number
+  min: number
+  max: number
+  invert?: boolean
+  leastLabel: string
+  mostLabel: string
+}
+
+/**
+ * ScalePlot props for a bounded index (CPI, HDI, Gini, democracy, happiness);
+ * undefined when the accessor has no fixed scale or the amount is missing.
+ */
+export const getScaleProps = (
+  accessorId: IndividualChallengeAccessorId | GroupChallengeAccessorId,
+  amount: number | undefined
+): ScalePlotProps | undefined => {
+  if (amount === undefined) return undefined
+  const details = getChallengeDetails(accessorId)
+  if (!details?.scale || !details.markers) return undefined
+  const { min, max, invert } = details.scale
+  return { amount, min, max, invert, leastLabel: details.markers.least, mostLabel: details.markers.most }
+}
+
 export const getCorrectRanking = ({
   groupChallengeAccessorId,
   isoCodes,

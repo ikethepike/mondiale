@@ -53,20 +53,13 @@
           class="clue-card"
           :label="clue.label"
           :topic="clue.topic"
+          :accessor="clue.accessorId"
           :style="{ '--depth': visibleCards - 1 - index, '--index': index }"
         >
           <strong class="clue-value">{{ clue.value }}</strong>
           <!-- The big value above already shows the number; the plot adds the
                scale context, so suppress the marker's own value label. -->
-          <ScalePlot
-            v-if="clue.scale"
-            :amount="clue.scale.amount"
-            :min="clue.scale.min"
-            :max="clue.scale.max"
-            :invert="clue.scale.invert"
-            :least-label="clue.scale.leastLabel"
-            :most-label="clue.scale.mostLabel"
-          />
+          <ScalePlot v-if="clue.scale" v-bind="clue.scale" />
         </StatCard>
         <!-- Non-hard mode's final clue: a photo from the country (capital or
              landmark), revealed once every stat has been shown. -->
@@ -102,7 +95,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -144,17 +137,7 @@ const revealedClues = computed(() => {
     const details = getChallengeDetails(accessorId)
     // Bounded indices (democracy, corruption, gini) carry a fixed scale + pole
     // labels — plot the value so "0.3 index" reads as "low on a 0–1 scale".
-    const scale =
-      value && details?.scale && details.markers
-        ? {
-            amount: value.amount,
-            min: details.scale.min,
-            max: details.scale.max,
-            invert: details.scale.invert,
-            leastLabel: details.markers.least,
-            mostLabel: details.markers.most,
-          }
-        : undefined
+    const scale = getScaleProps(accessorId, value?.amount)
     return {
       accessorId,
       label: clueLabel(accessorId),

@@ -58,12 +58,14 @@
             :class="claimClass(index)"
             :label="statementLabel(statement.accessorId)"
             :topic="statementTopic(statement.accessorId)"
+            :accessor="statement.accessorId"
             :disabled="picked !== undefined"
             @click="pick(index)"
           >
             <strong class="claim-value">
               {{ formatNumber(statement.amount) }}{{ statement.unit ? ` ${statement.unit}` : '' }}
             </strong>
+            <ScalePlot v-if="statementScales[index]" v-bind="statementScales[index]" />
             <Transition name="caption">
               <span
                 v-if="picked !== undefined"
@@ -89,8 +91,9 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
-import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatNumber } from '~~/lib/number'
@@ -116,6 +119,14 @@ registerCleanup(() => submitTimer && clearTimeout(submitTimer))
 const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 const statementTopic = (accessorId: GroupChallengeAccessorId) =>
   getChallengeDetails(accessorId)?.topic
+
+// Bounded indices get scale context on the card. The plot shows the CLAIMED
+// amount — for the lie too, since plotting the truth would give it away.
+const statementScales = computed(() =>
+  (challenge.value?.statements ?? []).map(statement =>
+    getScaleProps(statement.accessorId, statement.amount)
+  )
+)
 
 const lieAccessorId = computed(() => {
   const active = challenge.value

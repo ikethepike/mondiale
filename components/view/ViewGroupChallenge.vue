@@ -17,9 +17,12 @@
       </header>
 
       <section id="question">
-        <h1 class="map-caption">
-          {{ details?.phrasing || 'Group Challenge' }}
-        </h1>
+        <div class="question-caption">
+          <StatTopicIcon v-if="accessorId" class="topic-icon" :accessor="accessorId" />
+          <h1 class="map-caption">
+            {{ details?.phrasing || 'Group Challenge' }}
+          </h1>
+        </div>
       </section>
 
       <footer>
@@ -73,6 +76,7 @@
 <script lang="ts" setup>
 import { Sortable } from 'sortablejs-vue3'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -101,14 +105,16 @@ watch(
   }
 )
 
-const details = computed(() => {
+const accessorId = computed(() => {
   const challenge = currentRound.value?.round.groupChallenge
   // This view only mounts for ranking rounds — traversal and group-mode rounds
   // render their own views — but the round data itself is a union.
-  if (!isGroupChallenge(challenge)) return undefined
-
-  return getChallengeDetails(challenge.id)
+  return isGroupChallenge(challenge) ? challenge.id : undefined
 })
+
+const details = computed(() =>
+  accessorId.value ? getChallengeDetails(accessorId.value) : undefined
+)
 
 const updateRanking = (event: Event) => {
   ranking.value = []
@@ -334,6 +340,20 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.question-caption {
+  gap: 0.8rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+
+  .topic-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    opacity: 0.6;
+    color: var(--dark-blue);
+  }
 }
 
 .countries {

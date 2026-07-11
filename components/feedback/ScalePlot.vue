@@ -1,8 +1,14 @@
 <template>
   <div class="scale-plot">
     <div class="track">
-      <span class="marker" :style="{ left: `${position}%` }">
-        <span v-if="display" class="marker-value">{{ display }}</span>
+      <span
+        v-for="(marker, index) in plotted"
+        :key="index"
+        class="marker"
+        :class="marker.tone ?? 'primary'"
+        :style="{ left: `${positionOf(marker.amount)}%` }"
+      >
+        <span v-if="marker.display" class="marker-value">{{ marker.display }}</span>
         <span class="marker-arrow" aria-hidden="true" />
       </span>
     </div>
@@ -13,8 +19,14 @@
   </div>
 </template>
 <script lang="ts" setup>
-const props = defineProps<{
+interface ScaleMarker {
   amount: number
+  display?: string
+  tone?: 'primary' | 'muted' | 'missed'
+}
+
+const props = defineProps<{
+  amount?: number
   min: number
   max: number
   /** Flip the plotted side without changing the number (rarely needed). */
@@ -25,17 +37,23 @@ const props = defineProps<{
   /** Pre-formatted value to show at the marker. Omit to show no marker label
    *  (e.g. when a bigger value is already displayed above the plot). */
   display?: string
+  /** Plot several values on one track (comparisons). Supersedes `amount`. */
+  markers?: ScaleMarker[]
 }>()
 
-const position = computed(() => {
+const positionOf = (amount: number) => {
   const span = props.max - props.min
   if (span <= 0) return 50
-  const raw = ((props.amount - props.min) / span) * 100
+  const raw = ((amount - props.min) / span) * 100
   const clamped = Math.max(0, Math.min(100, raw))
   return props.invert ? 100 - clamped : clamped
-})
+}
 
-const display = computed(() => props.display)
+const plotted = computed<ScaleMarker[]>(
+  () =>
+    props.markers ??
+    (props.amount !== undefined ? [{ amount: props.amount, display: props.display }] : [])
+)
 </script>
 <style lang="scss" scoped>
 .scale-plot {
@@ -84,6 +102,14 @@ const display = computed(() => props.display)
   background: var(--soft-blue);
   border: 2px solid var(--sour-milk);
   box-shadow: 0 1px 4px hsla(215.7, 76.4%, 21.6%, 0.35);
+}
+
+.marker.muted {
+  opacity: 0.7;
+}
+
+.marker.missed .marker-arrow {
+  background: var(--hior-ange);
 }
 
 .poles {

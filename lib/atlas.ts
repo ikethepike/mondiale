@@ -1,4 +1,5 @@
-import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
+import { accessorTopicLabel, getScaleProps } from '~~/lib/challenges'
+import type { ScalePlotProps } from '~~/lib/challenges'
 import { formatNumber } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -8,14 +9,7 @@ export interface AtlasFact {
   label: string
   value: string
   /** Present for bounded indices — plot on a ScalePlot. */
-  scale?: {
-    amount: number
-    min: number
-    max: number
-    invert?: boolean
-    leastLabel: string
-    mostLabel: string
-  }
+  scale?: ScalePlotProps
 }
 
 export interface AtlasSection {
@@ -104,19 +98,10 @@ export const atlasFact = (
   if (!amount) return undefined
 
   const value = `${formatNumber(amount.amount)}${amount.unit ? ` ${amount.unit}` : ''}`
-  const details = getChallengeDetails(accessorId)
 
-  const scale =
-    details?.scale && details.markers
-      ? {
-          amount: amount.amount,
-          min: details.scale.min,
-          max: details.scale.max,
-          invert: details.scale.invert,
-          leastLabel: details.markers.least,
-          mostLabel: details.markers.most,
-        }
-      : undefined
-
-  return { label: accessorTopicLabel(accessorId), value, scale }
+  return {
+    label: accessorTopicLabel(accessorId),
+    value,
+    scale: getScaleProps(accessorId, amount.amount),
+  }
 }

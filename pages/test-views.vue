@@ -211,6 +211,26 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'two-truths-scaled',
+    label: 'Two truths and a lie (bounded indices)',
+    component: ViewTwoTruths,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'two-truths-challenge',
+          country: 'DK',
+          statements: [
+            { accessorId: 'people.population', amount: 5900000, unit: 'people' },
+            { accessorId: 'government.democracyIndex', amount: 0.31, unit: 'index' },
+            { accessorId: 'government.happiness', amount: 7.6, unit: 'score' },
+          ],
+          lieIndex: 1,
+          lieSource: 'RU',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'capital-guess',
     label: 'Capital guess (options)',
     component: ViewCapitalGuess,
@@ -255,6 +275,7 @@ const scenarios: Scenario[] = [
             'people.population',
             'geography.area.total',
             'economics.gdpPerCapita',
+            'government.corruptionIndex',
             'environment.CO2Emissions',
           ],
           secondsPerClue: 4,
@@ -401,6 +422,23 @@ const scenarios: Scenario[] = [
             { a: 'NG', b: 'SE' },
             { a: 'JP', b: 'AU' },
             { a: 'BR', b: 'CA' },
+          ],
+        },
+      }),
+  },
+  {
+    id: 'individual-higher-lower-scaled',
+    label: 'Individual: higher/lower duel (bounded index)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'higher-lower',
+        higherLower: {
+          accessorId: 'government.happiness',
+          pairs: [
+            { a: 'FI', b: 'AF' },
+            { a: 'DK', b: 'IN' },
+            { a: 'SE', b: 'JP' },
           ],
         },
       }),
