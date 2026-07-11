@@ -32,9 +32,15 @@ const props = defineProps({
     type: String,
     default: 'Not quite.',
   },
+  correctMessage: {
+    type: String,
+    default: 'Correct!',
+  },
 })
 
-const message = computed(() => (props.status === 'correct' ? 'Correct!' : props.incorrectMessage))
+const message = computed(() =>
+  props.status === 'correct' ? props.correctMessage : props.incorrectMessage
+)
 
 // Whether the slot renders any real content. $slots.default is always truthy
 // when the parent supplies slot markup, but the slotted reveals are v-if'd —

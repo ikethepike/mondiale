@@ -1,4 +1,8 @@
+import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { dealReplacementChallenge, sunsetQuota } from '~~/lib/challenges/final-challenge'
+import { getValueByAccessorID } from '~~/lib/values'
+import { variantCountries } from '~~/lib/variant'
 import { isValidISOCode } from '~~/types/geography.types'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
@@ -99,7 +103,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         break
       case 'membership-challenge':
         {
-          if (submittedAnswer._type === 'region-challenge') return throwTypeMismatch()
+          if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
           if (!isValidISOCode(submittedAnswer.isoCode)) {
             correct = false
             break
@@ -108,32 +112,141 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
           correct = submittedAnswer.isoCode === currentChallenge.exception
         }
         break
+      case 'born-challenge':
+        {
+          if (submittedAnswer._type !== 'born-challenge') return throwTypeMismatch()
+
+          // Quota of distinct picks, every one of which must qualify
+          const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
+          correct =
+            picks.length >= currentChallenge.quota &&
+            picks.every(isoCode => {
+              const independence = COUNTRIES[isoCode].government.independence
+              return !!independence && independence.amount > currentChallenge.year
+            })
+        }
+        break
+      case 'made-challenge':
+        {
+          if (submittedAnswer._type !== 'made-challenge') return throwTypeMismatch()
+          if (!isValidISOCode(submittedAnswer.isoCode)) {
+            correct = false
+            break
+          }
+
+          const exports = COUNTRIES[submittedAnswer.isoCode].economics.exports ?? []
+          correct = exports.includes(currentChallenge.commodity)
+        }
+        break
+      case 'scales-challenge':
+        {
+          if (submittedAnswer._type !== 'scales-challenge') return throwTypeMismatch()
+
+          const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
+          if (
+            !picks.length ||
+            picks.length > currentChallenge.maxPicks ||
+            picks.includes(currentChallenge.target)
+          ) {
+            correct = false
+            break
+          }
+
+          const target = getValueByAccessorID(
+            currentChallenge.target,
+            currentChallenge.accessorId
+          )?.amount
+          if (!target) {
+            correct = false
+            break
+          }
+
+          let combined = 0
+          for (const isoCode of picks) {
+            combined += getValueByAccessorID(isoCode, currentChallenge.accessorId)?.amount ?? 0
+          }
+          correct =
+            combined >= target * (1 - currentChallenge.tolerance) &&
+            combined <= target * (1 + currentChallenge.tolerance)
+        }
+        break
+      case 'city-nocturne-challenge':
+        {
+          if (submittedAnswer._type !== 'city-nocturne-challenge') return throwTypeMismatch()
+
+          // Client-trust: validate the lit names against the dealt city set
+          const dealt = new Set(
+            (CITY_LIGHTS[currentChallenge.country] ?? [])
+              .slice(0, currentChallenge.cityCount)
+              .map(city => city.name)
+          )
+          const lit = [...new Set(submittedAnswer.namedCities)].filter(name => dealt.has(name))
+          correct = lit.length >= currentChallenge.quota
+        }
+        break
+      case 'sunset-blitz-challenge':
+        {
+          if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
+
+          // Client-trust like higher-lower gates. The whole board is nameable
+          // (the camera shows more than the dealt window), so validate against
+          // the variant pool; the quota is a share of the dealt window.
+          const board = new Set(variantCountries(game.variant))
+          const named = [...new Set(submittedAnswer.namedCountries)].filter(
+            isoCode => isValidISOCode(isoCode) && board.has(isoCode)
+          )
+          correct = named.length >= sunsetQuota(currentChallenge)
+        }
+        break
     }
 
-    // Wrong answer knocks the player out of the gauntlet. The result pause
-    // runs OUTSIDE the per-game queue — holding the lock for five seconds
-    // would stall every other player — and the follow-up re-enters through
-    // the queue with a fresh game fetch.
-    if (!correct) {
-      player.moves = []
-      await server.updateGameState(game)
-      setTimeout(() => {
-        enqueueGameTask(eventTarget.gameId, () =>
-          enterMovementPhaseHandler({
-            io,
-            redis,
-            socket,
-            eventTarget,
-            eventKey: 'enter-movement-phase',
-            eventData: { event: 'enter-movement-phase' },
+    const gauntlet = currentMove.challenge
+    if (correct) {
+      // Correct: the question is now consumed.
+      gauntlet.answeredCorrect += 1
+      gauntlet.challenges.shift()
+    } else {
+      // A life absorbs the miss: burn the question and advance. Victory must
+      // end on a correct answer, so a missed LAST question is replaced with a
+      // fresh one instead of skipped — burn-and-advance can never empty the
+      // queue.
+      let survives = gauntlet.lives > 0
+      if (survives) {
+        gauntlet.lives -= 1
+        if (gauntlet.challenges.length > 1) {
+          gauntlet.challenges.shift()
+        } else {
+          const replacement = dealReplacementChallenge({
+            game,
+            exclude: [currentChallenge._type],
           })
-        )
-      }, 5000)
-      return
-    }
+          if (replacement) gauntlet.challenges[0] = replacement
+          else survives = false
+        }
+      }
 
-    // Correct: the question is now consumed.
-    currentMove.challenge.challenges.shift()
+      // Out of lives: knocked out of the gauntlet. The result pause runs
+      // OUTSIDE the per-game queue — holding the lock for five seconds would
+      // stall every other player — and the follow-up re-enters through the
+      // queue with a fresh game fetch.
+      if (!survives) {
+        player.moves = []
+        await server.updateGameState(game)
+        setTimeout(() => {
+          enqueueGameTask(eventTarget.gameId, () =>
+            enterMovementPhaseHandler({
+              io,
+              redis,
+              socket,
+              eventTarget,
+              eventKey: 'enter-movement-phase',
+              eventData: { event: 'enter-movement-phase' },
+            })
+          )
+        }, 5000)
+        return
+      }
+    }
 
     // Gauntlet cleared — victory. The phase flip alone now blocks further
     // submits, so the `resolving` latch can stay set.

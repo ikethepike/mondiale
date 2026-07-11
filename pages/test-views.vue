@@ -28,6 +28,7 @@
 import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
@@ -45,10 +46,12 @@ import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
+import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
+import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
-import type { Game, PlayerColor, Round } from '~~/types/game.types'
+import type { Game, GameDifficulty, PlayerColor, Round } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { Component } from 'vue'
 
@@ -66,11 +69,19 @@ const lastEvent = ref('')
 
 const installStubSocket = () => {
   gameStore.playerId = ME
-  gameStore.socket = {
-    emit: (event: string, eventData: Record<string, unknown>) => {
-      lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
+  const record = (event: string, eventData: Record<string, unknown>) => {
+    lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
+  }
+  // Critical events go through timeout().emitWithAck() — stub both paths
+  const stub = {
+    emit: record,
+    timeout: () => stub,
+    emitWithAck: async (event: string, eventData: Record<string, unknown>) => {
+      record(event, eventData)
+      return { ok: true }
     },
-  } as never
+  }
+  gameStore.socket = stub as never
 }
 
 const mockPlayer = (id: string, name: string, color: PlayerColor, phase: PlayerPhase): Player =>
@@ -307,10 +318,13 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'flag-palette-challenge',
-          country: 'ZA',
-          swatches: COUNTRIES.ZA.identity.colors.slice(0, 6),
+          // BT: the Druk dragon — the sketch effect's hardest render test.
+          // Swap the country (and swatches source) to audition other flags;
+          // DK is the minimal-flag extreme.
+          country: 'BT',
+          swatches: COUNTRIES.BT.identity.colors.slice(0, 6),
           durationSeconds: 45,
-          region: 'Africa',
+          region: 'Asia',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -410,6 +424,119 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    id: 'final-gauntlet-easy',
+    label: 'Final gauntlet (easy, dealt)',
+    component: ViewFinalChallenge,
+    build: () => gauntletGame('easy'),
+  },
+  {
+    id: 'final-gauntlet-normal',
+    label: 'Final gauntlet (normal, dealt)',
+    component: ViewFinalChallenge,
+    build: () => gauntletGame('normal'),
+  },
+  {
+    id: 'final-gauntlet-hard',
+    label: 'Final gauntlet (hard, dealt)',
+    component: ViewFinalChallenge,
+    build: () => gauntletGame('hard'),
+  },
+  {
+    id: 'final-membership',
+    label: 'Final: membership (odd one out)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([{ _type: 'membership-challenge', organization: 'eu', exception: 'NO' }]),
+  },
+  {
+    id: 'final-scales',
+    label: 'Final: tip the scales',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'scales-challenge',
+          accessorId: 'people.population',
+          target: 'BR',
+          maxPicks: 3,
+          tolerance: 0.2,
+        },
+      ]),
+  },
+  {
+    id: 'final-sunset',
+    label: 'Final: sunset blitz (typed)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'sunset-blitz-challenge',
+          countries: ['UA', 'RO', 'PL', 'HU', 'SK', 'AT', 'CZ', 'DE', 'CH', 'NL', 'BE', 'FR'],
+          quotaRatio: 0.35,
+          durationSeconds: 60,
+        },
+      ]),
+  },
+  {
+    id: 'final-city-nocturne',
+    label: 'Final: city nocturne (typed)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'city-nocturne-challenge',
+          country: 'PL',
+          cityCount: 10,
+          quota: 3,
+          durationSeconds: 60,
+        },
+      ]),
+  },
+  {
+    id: 'final-born',
+    label: 'Final: born in (independence)',
+    component: ViewFinalChallenge,
+    build: () => finalGame([{ _type: 'born-challenge', year: 1990, quota: 3 }]),
+  },
+  {
+    id: 'final-made',
+    label: 'Final: made in (exports)',
+    component: ViewFinalChallenge,
+    build: () => finalGame([{ _type: 'made-challenge', commodity: 'cocoa beans' }]),
+  },
+  {
+    id: 'final-min-max',
+    label: 'Final: min/max (stat pick)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'max-challenge',
+          accessorId: 'people.population',
+          country: 'CN',
+          hints: ['CN', 'IN', 'US', 'ID', 'PK'],
+        },
+      ]),
+  },
+  {
+    id: 'final-language',
+    label: 'Final: language',
+    component: ViewFinalChallenge,
+    build: () => finalGame([{ _type: 'language-challenge', language: 'Portuguese' }]),
+  },
+  {
+    id: 'final-leadership',
+    label: 'Final: leadership',
+    component: ViewFinalChallenge,
+    build: () => finalGame([{ _type: 'leadership-challenge', country: 'FR' }]),
+  },
+  {
+    id: 'final-region',
+    label: 'Final: region',
+    component: ViewFinalChallenge,
+    build: () => finalGame([{ _type: 'region-challenge', country: 'KZ' }]),
+  },
+  {
     id: 'lobby',
     label: 'Lobby (waiting room, solo)',
     component: ViewPlayerConfiguration,
@@ -438,6 +565,36 @@ const scenarios: Scenario[] = [
     },
   },
 ]
+
+/** The gauntlet reads its payload off the player's pending move. */
+const finalGame = (
+  challenges: FinalChallengeItem[],
+  difficulty: GameDifficulty = 'hard'
+): Game => {
+  const game = mockGame('final-challenge', [settledRound()])
+  game.difficulty = difficulty
+  game.players[ME]!.moves = [
+    {
+      endTile: game.tiles[game.tiles.length - 1]!,
+      challenge: {
+        _type: 'final-challenge',
+        difficulty,
+        challenges,
+        lives: GAUNTLET_LIVES[difficulty],
+        totalCount: challenges.length,
+        answeredCorrect: 0,
+      },
+    },
+  ] as never
+  return game
+}
+
+/** A real dealer run — same randomness as production. */
+const gauntletGame = (difficulty: GameDifficulty): Game => {
+  const game = finalGame([], difficulty)
+  game.players[ME]!.moves[0]!.challenge = getFinalChallenges({ game })
+  return game
+}
 
 /** Individual gates read the challenge off the player's pending move. */
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {

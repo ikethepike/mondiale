@@ -1362,7 +1362,7 @@ const dealOddOneOut = (
   return attempt()
 }
 
-/** Gauntlet length: harder games demand a longer streak to pass the gate. */
+/** Mid-board higher/lower gate: harder games demand a longer duel streak. */
 const HIGHER_LOWER_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } = {
   easy: 2,
   normal: 3,

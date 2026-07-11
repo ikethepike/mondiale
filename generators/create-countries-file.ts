@@ -180,6 +180,7 @@ const normalizeCountry = ({
       // Wellbeing/development indices, also from Our World in Data.
       humanDevelopmentIndex: owidAmount(isoCode, 'humanDevelopmentIndex', 'index'),
       happiness: owidAmount(isoCode, 'happiness', 'score'),
+      independence: getIndependence(data),
     },
     economics: {
       inflation: getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
@@ -199,6 +200,8 @@ const normalizeCountry = ({
         data['Economy']['Gini Index coefficient - distribution of family income'],
         'Gini Coefficient'
       ),
+      exports: getExports(data),
+      exportsTotal: getExportsTotal(data),
     },
     geography: {
       area: {
@@ -567,12 +570,10 @@ const getCarbonDioxideEmissions = (data: FactbookResponse): Amount<'megatons'> |
   }
 }
 
-const getGdpTotal = (data: FactbookResponse): Amount<'$'> | undefined => {
-  // GDP-PPP is a year-keyed index whose values read "$25.676 trillion (2024
-  // est.)". getYearlyIndex would keep the bare 25.676 and drop the magnitude
-  // word, storing trillions-as-dollars (inconsistent with gdpPerCapita's raw $).
-  // Take the most recent year's text and scale the word to full dollars.
-  const node = data['Economy']['Real GDP (purchasing power parity)']
+// Year-keyed dollar indexes read "$25.676 trillion (2024 est.)". getYearlyIndex
+// would keep the bare 25.676 and drop the magnitude word, storing
+// trillions-as-dollars — take the newest year's text and scale to full dollars.
+const getScaledDollarIndex = (node: unknown): Amount<'$'> | undefined => {
   if (!isYearlyIndex(node)) return undefined
 
   // Year-keyed entries only ('note' is a bare string, not a TextNode); pick the
@@ -605,6 +606,13 @@ const getGdpTotal = (data: FactbookResponse): Amount<'$'> | undefined => {
     amount: Math.round(numbers[0] * scale),
   }
 }
+
+const getGdpTotal = (data: FactbookResponse): Amount<'$'> | undefined =>
+  getScaledDollarIndex(data['Economy']['Real GDP (purchasing power parity)'])
+
+/** Balance-of-payments exports of goods and services, current dollars. */
+const getExportsTotal = (data: FactbookResponse): Amount<'$'> | undefined =>
+  getScaledDollarIndex(data['Economy']['Exports'])
 
 const getMethaneEmissions = (data: FactbookResponse): Amount<'megatons'> | undefined => {
   // Factbook moved methane out of 'Air pollutants' into its own section, broken
@@ -781,6 +789,32 @@ const getMembership = ({
   }
 
   return output
+}
+
+/**
+ * Modern independence year from the Factbook's free text ("1 January 1956
+ * (from Egypt and the UK)"). Ancient/unbroken statehoods without a modern
+ * four-digit year stay undefined and sit out the Born In challenge.
+ */
+const getIndependence = (data: FactbookResponse): Country['government']['independence'] => {
+  const text = data.Government?.['Independence']?.text
+  if (!text) return undefined
+  const match = /\b(1[0-9]{3}|20[0-2][0-9])\b/.exec(text)
+  if (!match) return undefined
+  return { amount: Number(match[1]), unit: 'year' }
+}
+
+/** Top export commodities, stripped of year notes and parentheticals. */
+const getExports = (data: FactbookResponse): string[] | undefined => {
+  const text = data.Economy?.['Exports - commodities']?.text
+  if (!text) return undefined
+  const items = text
+    .replace(/\([^)]*\)/g, '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+  return items.length ? items : undefined
 }
 
 const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Region => {

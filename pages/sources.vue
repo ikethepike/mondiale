@@ -70,7 +70,7 @@ const sources: Array<{
     url: 'https://commons.wikimedia.org',
     logo: logoCommons,
     description:
-      'Photography of leaders, capitals, banknotes, landmarks and flags.',
+      'Photography of leaders, capitals, banknotes, landmarks and flags, plus emblems of international organizations.',
   },
   {
     name: 'Wikipedia',

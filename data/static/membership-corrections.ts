@@ -26,4 +26,24 @@ export const MEMBERSHIP_CORRECTIONS: {
   QA: { remove: ['opec'] },
   // Factbook lists India under OECD, but India is a key partner, not a member.
   IN: { remove: ['oecd'] },
+  // OECD members the Factbook text omits: Chile (2010), Latvia (2016),
+  // Colombia (2020), Costa Rica (2021).
+  CL: { add: ['oecd'] },
+  LV: { add: ['oecd'] },
+  CO: { add: ['oecd'] },
+  CR: { add: ['oecd'] },
+  // OPEC members the Factbook text omits: Equatorial Guinea (2017),
+  // Congo (2018), Gabon (rejoined 2016; also AU-suspended, below).
+  GQ: { add: ['opec'] },
+  CG: { add: ['opec'] },
+  // Withdrew from the Belt and Road Initiative in December 2023.
+  IT: { remove: ['bri'] },
+  // Suspended from AU activities after coups, but still member states;
+  // Factbook drops them entirely.
+  BF: { add: ['au'] },
+  GA: { add: ['au', 'opec'] },
+  GN: { add: ['au'] },
+  ML: { add: ['au'] },
+  NE: { add: ['au'] },
+  SD: { add: ['au'] },
 }

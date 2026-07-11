@@ -1,11 +1,9 @@
 <template>
   <div class="view-final-challenge">
-    <Interstitial
+    <GauntletIntro
       v-if="showInterstitial"
-      kicker="Final Challenge!"
-      :title="`${totalChallengeCount} questions stand between you and victory`"
-      stakes="Answer them all to win the game — a single miss sends you back."
-      :hold-for="3.6"
+      :questions="totalChallengeCount"
+      :lives="livesRemaining"
       @done="showInterstitial = false"
     />
     <header :class="{ dimmed: status }">
@@ -14,23 +12,113 @@
           <span class="counter map-caption"
             >{{ currentChallengeCount }}/{{ totalChallengeCount }}</span
           >
+          <OrganizationLogo
+            v-if="currentFinalChallenge?._type === 'membership-challenge'"
+            :organization="currentFinalChallenge.organization"
+          />
           <h2 class="map-caption">{{ details?.question }}</h2>
         </div>
       </Transition>
     </header>
-    <ChallengeResult v-if="status" :key="currentChallengeCount" :status="status" class="result">
+    <span
+      v-if="initialLives && !showInterstitial"
+      class="hearts map-caption"
+      aria-label="lives"
+      :class="{ dimmed: status }"
+    >
+      <span
+        v-for="index in initialLives"
+        :key="index"
+        class="heart"
+        :class="{ spent: index > livesRemaining }"
+        >♥</span
+      >
+    </span>
+    <FinalScales
+      v-if="currentFinalChallenge?._type === 'scales-challenge' && !showInterstitial"
+      :challenge="currentFinalChallenge"
+      :picks="scalesPicks"
+      :result="scalesResult"
+      @clear="clearScalesPicks"
+      @weigh="submitScales"
+    />
+    <!-- The night survives the reveal — lit countries glow in the dark while
+         the lesson shows, then the whole scene eases back to daylight -->
+    <Transition name="sunset-fade">
+      <FinalSunsetBlitz
+        v-if="currentFinalChallenge?._type === 'sunset-blitz-challenge'"
+        :key="currentChallengeCount"
+        :challenge="currentFinalChallenge"
+        :paused="showInterstitial"
+        @finished="onSunsetFinished"
+      />
+    </Transition>
+    <!-- The night holds through the reveal — lit cities keep glowing, missed
+         ones surface as cold dots — then fades with the mode transition -->
+    <Transition name="sunset-fade">
+      <FinalCityNocturne
+        v-if="currentFinalChallenge?._type === 'city-nocturne-challenge'"
+        :key="`nocturne-${currentChallengeCount}`"
+        :challenge="currentFinalChallenge"
+        :paused="showInterstitial"
+        @finished="onNocturneFinished"
+      />
+    </Transition>
+    <!-- Born In: picks wear their independence year as they land; the reveal
+         extends the chips to every qualifying country -->
+    <MapYearLabels
+      v-if="currentFinalChallenge?._type === 'born-challenge' && bornYearEntries.length"
+      :entries="bornYearEntries"
+    />
+    <ChallengeResult
+      v-if="status"
+      :key="currentChallengeCount"
+      :status="status"
+      :correct-message="
+        currentFinalChallenge?._type === 'city-nocturne-challenge' ? 'Success!' : undefined
+      "
+      class="result"
+    >
+      <SunsetReveal
+        v-if="currentFinalChallenge?._type === 'sunset-blitz-challenge' && sunsetResult"
+        :challenge="currentFinalChallenge"
+        :named="sunsetResult.named"
+        :in-play="sunsetResult.inPlay"
+        :quota="sunsetResult.quota"
+      />
+      <NocturneReveal
+        v-if="currentFinalChallenge?._type === 'city-nocturne-challenge' && nocturneResult"
+        :challenge="currentFinalChallenge"
+        :named-cities="nocturneResult"
+      />
+      <MadeReveal
+        v-if="currentFinalChallenge?._type === 'made-challenge' && madeRevealReady"
+        :challenge="currentFinalChallenge"
+        :picked="lastGuess"
+      />
       <template v-if="lesson">{{ lesson }}</template>
+      <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
   </div>
 </template>
 <script lang="ts" setup>
-import Interstitial from '~/components/feedback/Interstitial.vue'
+import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
+import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
+import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
+import MadeReveal from '~/components/challenge/MadeReveal.vue'
+import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
+import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
+import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
+import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import {
   COLOR_CODED_REGIONS,
   FINAL_STAT_LABELS,
+  GAUNTLET_LIVES,
   getFinalChallengeDetails,
+  sunsetQuota,
 } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -45,12 +133,64 @@ const { currentFinalChallenge, clearBoard, update, gameStore, currentMove, game 
 
 const status = toRef(gameStore.map, 'status')
 
+const gauntlet = computed(() => {
+  if (currentMove.value?.challenge?._type !== 'final-challenge') return undefined
+  return currentMove.value.challenge
+})
+
+// Payload-driven progress: totals survive redeals, hearts mirror the server
+const totalChallengeCount = computed(() => gauntlet.value?.totalCount ?? 0)
+const livesRemaining = computed(() => gauntlet.value?.lives ?? 0)
+const initialLives = computed(() =>
+  gauntlet.value ? GAUNTLET_LIVES[gauntlet.value.difficulty] : 0
+)
+const currentChallengeCount = computed(() => {
+  if (!gauntlet.value) return 0
+  return Math.min(
+    totalChallengeCount.value,
+    totalChallengeCount.value - gauntlet.value.challenges.length + 1
+  )
+})
+
 /**
  * The teachable moment. Wrong answers get the fact they missed AND the fact
  * they picked (so the mistake itself teaches); correct answers get the fact
  * restated with its number to reinforce it.
  */
 const lastGuess = ref<ISOCountryCode | undefined>(undefined)
+const scalesPicks = ref<ISOCountryCode[]>([])
+const scalesResult = ref<ScalesResult | undefined>(undefined)
+const sunsetResult = ref<
+  { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number } | undefined
+>(undefined)
+const nocturneResult = ref<string[] | undefined>(undefined)
+// The made-in reveal waits a beat so the lit map registers before the card
+const madeRevealReady = ref(false)
+let madeRevealTimeout: ReturnType<typeof setTimeout> | undefined
+
+// Born In: picks made so far (multi-pick quota; a wrong click ends the round)
+const bornPicks = ref<ISOCountryCode[]>([])
+
+// Year chips: during the hunt only the player's picks wear them; at the
+// reveal every qualifying country does — biggest populations first so the
+// collision skip drops the least-known chips
+const bornYearEntries = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'born-challenge') return []
+  const revealAll = !!status.value
+  return Object.values(COUNTRIES)
+    .filter(
+      country =>
+        (country.government.independence?.amount ?? 0) > challenge.year &&
+        (revealAll || bornPicks.value.includes(country.isoCode))
+    )
+    .sort((a, b) => (b.people.population?.amount ?? 0) - (a.people.population?.amount ?? 0))
+    .map(country => ({
+      isoCode: country.isoCode,
+      label: String(country.government.independence!.amount),
+    }))
+})
+
 const lesson = computed(() => {
   const challenge = currentFinalChallenge.value
   if (!challenge || !status.value) return undefined
@@ -88,9 +228,43 @@ const lesson = computed(() => {
         ? `${countryName(COUNTRIES[challenge.exception])} is the odd one out.`
         : `The odd one out was ${countryName(COUNTRIES[challenge.exception])}.`
     }
+    case 'born-challenge': {
+      const qualifying = Object.values(COUNTRIES).filter(
+        country => (country.government.independence?.amount ?? 0) > challenge.year
+      ).length
+      const pickedYear =
+        lastGuess.value && COUNTRIES[lastGuess.value].government.independence?.amount
+      const pickedLine =
+        status.value === 'incorrect' && lastGuess.value && pickedYear
+          ? ` Your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${pickedYear}.`
+          : ''
+      return `${qualifying} countries became independent after ${challenge.year} — they stay lit on the map.${pickedLine}`
+    }
+    case 'made-challenge':
+      // A beat of lit countries on the map, then MadeReveal's ranked card
+      return undefined
+    case 'scales-challenge': {
+      // The beam shows the numbers — the lesson recaps the coalition
+      if (!scalesPicks.value.length) return undefined
+      return `Your side: ${scalesPicks.value.map(isoCode => countryName(COUNTRIES[isoCode])).join(' + ')}.`
+    }
+    case 'sunset-blitz-challenge':
+      // SunsetReveal carries the whole scorecard
+      return undefined
+    case 'city-nocturne-challenge':
+      // NocturneReveal carries the whole scorecard
+      return undefined
     default:
       return undefined
   }
+})
+
+// Optimistic: the payload still holds pre-answer lives during the reveal
+const livesLine = computed(() => {
+  if (status.value !== 'incorrect') return undefined
+  return livesRemaining.value > 0
+    ? `A life is spent — ${livesRemaining.value - 1} left.`
+    : 'Out of lives — back to the board race.'
 })
 
 const details = computed(() => {
@@ -99,16 +273,6 @@ const details = computed(() => {
     challenge: currentFinalChallenge.value,
     variant: game.value?.variant,
   })
-})
-const totalChallengeCount = ref(
-  (() => {
-    if (!currentMove.value || currentMove.value.challenge?._type !== 'final-challenge') return 0
-    return currentMove.value.challenge.challenges.length
-  })()
-)
-const currentChallengeCount = computed(() => {
-  if (!currentMove.value || currentMove.value.challenge?._type !== 'final-challenge') return 0
-  return totalChallengeCount.value + 1 - currentMove.value.challenge.challenges.length
 })
 
 const triggerMembershipChallenge = () => {
@@ -122,6 +286,10 @@ const triggerMembershipChallenge = () => {
       }
     }
   }
+  if (challenge?._type === 'scales-challenge') {
+    gameStore.map.tints[challenge.target] = 'endpoint'
+    gameStore.map.focus = [challenge.target]
+  }
 }
 
 watch(currentFinalChallenge, () => {
@@ -129,12 +297,96 @@ watch(currentFinalChallenge, () => {
   gameStore.map.revealStat = undefined
   gameStore.map.status = undefined
   gameStore.map.highlighted.clear()
+  gameStore.map.tints = {}
+  gameStore.map.focus = []
   lastGuess.value = undefined
+  scalesPicks.value = []
+  scalesResult.value = undefined
+  sunsetResult.value = undefined
+  nocturneResult.value = undefined
+  bornPicks.value = []
+  madeRevealReady.value = false
+  if (madeRevealTimeout) clearTimeout(madeRevealTimeout)
 
   triggerMembershipChallenge()
 })
 
 const showInterstitial = ref(true)
+
+const clearScalesPicks = () => {
+  for (const isoCode of scalesPicks.value) gameStore.map.highlighted.delete(isoCode)
+  scalesPicks.value = []
+}
+
+const submitScales = () => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'scales-challenge' || !scalesPicks.value.length) return
+
+  const target = getValueByAccessorID(challenge.target, challenge.accessorId)
+  let combined = 0
+  for (const isoCode of scalesPicks.value) {
+    combined += getValueByAccessorID(isoCode, challenge.accessorId)?.amount ?? 0
+  }
+  const balanced =
+    !!target &&
+    combined >= target.amount * (1 - challenge.tolerance) &&
+    combined <= target.amount * (1 + challenge.tolerance)
+
+  if (target) {
+    const ratio = combined / target.amount
+    scalesResult.value = {
+      ratio,
+      offBy: Math.round(Math.abs(ratio - 1) * 100),
+      balanced,
+      targetDisplay: formatAmount(target),
+      combinedDisplay: formatAmount({ ...target, amount: combined }),
+    }
+  }
+
+  // No map.reveal here — the beam card carries the verdict; the country
+  // dossier would just shout the target's population over it
+  gameStore.map.status = balanced ? 'correct' : 'incorrect'
+
+  update({
+    event: 'submit-final-challenge-answer',
+    submittedAnswer: {
+      _type: 'scales-challenge',
+      isoCodes: [...scalesPicks.value],
+    },
+  })
+}
+
+const onNocturneFinished = (namedCities: string[]) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'city-nocturne-challenge') return
+
+  nocturneResult.value = namedCities
+  gameStore.map.status = namedCities.length >= challenge.quota ? 'correct' : 'incorrect'
+
+  update({
+    event: 'submit-final-challenge-answer',
+    submittedAnswer: {
+      _type: 'city-nocturne-challenge',
+      namedCities,
+    },
+  })
+}
+
+const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'sunset-blitz-challenge') return
+
+  sunsetResult.value = { named, inPlay, quota: sunsetQuota(challenge) }
+  gameStore.map.status = named.length >= sunsetResult.value.quota ? 'correct' : 'incorrect'
+
+  update({
+    event: 'submit-final-challenge-answer',
+    submittedAnswer: {
+      _type: 'sunset-blitz-challenge',
+      namedCountries: named,
+    },
+  })
+}
 
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
@@ -225,6 +477,64 @@ const onMapClick = (event: Event) => {
         })
       }
       break
+    case 'born-challenge':
+      {
+        if (!isValidISOCode(isoCode)) {
+          return console.error(`Unsupported country: ${isoCode}`)
+        }
+        const { year, quota } = currentFinalChallenge.value
+        if (bornPicks.value.includes(isoCode)) return
+
+        const qualifies = (COUNTRIES[isoCode].government.independence?.amount ?? 0) > year
+
+        // A qualifying pick lights up with its year and the hunt continues;
+        // a wrong one ends the round on the spot
+        if (qualifies) {
+          bornPicks.value.push(isoCode)
+          gameStore.map.highlighted.add(isoCode)
+          if (bornPicks.value.length < quota) return
+        }
+
+        for (const country of Object.values(COUNTRIES)) {
+          if ((country.government.independence?.amount ?? 0) > year) {
+            gameStore.map.highlighted.add(country.isoCode)
+          }
+        }
+        gameStore.map.status = qualifies ? 'correct' : 'incorrect'
+        update({
+          event: 'submit-final-challenge-answer',
+          submittedAnswer: {
+            _type: 'born-challenge',
+            isoCodes: [...bornPicks.value],
+          },
+        })
+      }
+      break
+    case 'made-challenge':
+      {
+        if (!isValidISOCode(isoCode)) {
+          return console.error(`Unsupported country: ${isoCode}`)
+        }
+        const { commodity } = currentFinalChallenge.value
+
+        for (const country of Object.values(COUNTRIES)) {
+          if ((country.economics.exports ?? []).includes(commodity)) {
+            gameStore.map.highlighted.add(country.isoCode)
+          }
+        }
+
+        gameStore.map.status = gameStore.map.highlighted.has(isoCode) ? 'correct' : 'incorrect'
+        madeRevealTimeout = setTimeout(() => (madeRevealReady.value = true), 1200)
+
+        update({
+          event: 'submit-final-challenge-answer',
+          submittedAnswer: {
+            _type: 'made-challenge',
+            isoCode: isoCode as ISOCountryCode,
+          },
+        })
+      }
+      break
     case 'membership-challenge':
       {
         const { exception } = currentFinalChallenge.value
@@ -243,6 +553,26 @@ const onMapClick = (event: Event) => {
         })
       }
       break
+    case 'scales-challenge':
+      {
+        const challenge = currentFinalChallenge.value
+        if (!isValidISOCode(isoCode) || isoCode === challenge.target) return
+
+        // Toggle the pick; the panel's Weigh in submits
+        const picked = scalesPicks.value.indexOf(isoCode)
+        if (picked >= 0) {
+          scalesPicks.value.splice(picked, 1)
+          gameStore.map.highlighted.delete(isoCode)
+        } else if (scalesPicks.value.length < challenge.maxPicks) {
+          scalesPicks.value.push(isoCode)
+          gameStore.map.highlighted.add(isoCode)
+        }
+      }
+      break
+    case 'sunset-blitz-challenge':
+    case 'city-nocturne-challenge':
+      // Typed modes — the map is scenery while the night holds
+      break
     default:
       console.error(`Unsupported final event type`, currentFinalChallenge.value)
       break
@@ -257,6 +587,7 @@ onBeforeMount(() => {
 })
 onBeforeUnmount(() => {
   clearBoard()
+  if (madeRevealTimeout) clearTimeout(madeRevealTimeout)
   document.removeEventListener('mapClick', onMapClick)
 })
 </script>
@@ -295,8 +626,48 @@ header {
   }
 }
 
+// Lives live in the corner — glanceable, out of the question's way
+.hearts {
+  top: 1.2rem;
+  right: 1.2rem;
+  position: absolute;
+  padding: 0.4rem 1rem;
+  transition: opacity var(--motion-base) var(--ease-smooth);
+
+  &.dimmed {
+    opacity: 0.4;
+  }
+
+  .heart {
+    color: hsla(9.8, 81.3%, 60.2%, 1);
+    margin-right: 0.2rem;
+
+    &:last-child {
+      margin-right: 0;
+    }
+
+    &.spent {
+      opacity: 0.25;
+    }
+  }
+}
+
 .result {
   margin-top: 4rem;
+}
+
+.lives-line {
+  display: block;
+  opacity: 0.75;
+  margin-top: 0.6rem;
+}
+
+.sunset-fade-leave-active {
+  transition: opacity 0.9s var(--ease-smooth);
+}
+
+.sunset-fade-leave-to {
+  opacity: 0;
 }
 
 // Compact phone chrome: tighter prompt padding, footer clear of the home

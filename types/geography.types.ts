@@ -54,6 +54,8 @@ export interface Country {
     humanDevelopmentIndex?: Amount<'index'>
     /** World Happiness Report Cantril-ladder score, 0–10, via OWID. */
     happiness?: Amount<'score'>
+    /** Modern independence year; ancient/unbroken statehoods stay undefined. */
+    independence?: Amount<'year'>
   }
   economics: {
     inflation?: Amount<'%'>
@@ -67,6 +69,10 @@ export interface Country {
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
     equality?: Amount<'Gini Coefficient'>
+    /** Top export commodities, in the Factbook's order (rank = value). */
+    exports?: string[]
+    /** Total exports of goods and services, current dollars. */
+    exportsTotal?: Amount<'$'>
   }
   geography: {
     area: {

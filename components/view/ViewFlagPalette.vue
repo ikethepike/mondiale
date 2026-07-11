@@ -9,6 +9,14 @@
       @done="start"
     />
 
+    <!-- From the final two-thirds: the flag sketches itself across the whole
+         background in ink lines — no fills, just its bones — finishing
+         exactly as the clock does -->
+    <FlagSketch
+      v-if="sketchStarted"
+      :flag="COUNTRIES[challenge.country].flag"
+      :draw-seconds="drawSeconds"
+    />
     <header>
       <div class="prompt">
         <h1 class="map-caption">Whose flag has these colours?</h1>
@@ -49,9 +57,11 @@
 </template>
 <script lang="ts" setup>
 import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -74,12 +84,19 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-// The region hint (non-hard mode) surfaces only in the final third of the
-// clock — a late nudge as time runs out, not a giveaway from the start.
-const regionRevealed = computed(() => {
+// Staged hints (non-hard mode; the dealer omits `region` on hard): the
+// region at half-time, and from the final two-thirds the flag sketches
+// itself across the background, completing with the clock. Answering early
+// stays worth more.
+const clockFraction = computed(() => {
   const total = challenge.value?.durationSeconds ?? 0
-  return started.value && total > 0 && secondsLeft.value / total <= 1 / 3
+  return started.value && total > 0 ? secondsLeft.value / total : 1
 })
+const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
+const sketchStarted = computed(
+  () => !!challenge.value?.region && clockFraction.value <= 2 / 3 && !submitted.value
+)
+const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
 
 const submitRound = (correct: boolean) => {
   if (submitted.value) return
@@ -186,6 +203,7 @@ header {
   border-radius: 1rem;
   box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
 }
+
 
 footer {
   z-index: 2;

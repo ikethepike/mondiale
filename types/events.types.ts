@@ -78,6 +78,13 @@ export type ClientEventData =
         | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
         | { _type: 'language-challenge'; isoCode: ISOCountryCode }
         | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
+        /** Client-trust (like higher-lower): the countries named in time. */
+        | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
+        | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
+        | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
+        | { _type: 'made-challenge'; isoCode: ISOCountryCode }
+        /** Client-trust: canonical CITY_LIGHTS names lit in time. */
+        | { _type: 'city-nocturne-challenge'; namedCities: string[] }
     }
   | {
       event: 'update-configuration'

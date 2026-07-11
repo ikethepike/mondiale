@@ -97,20 +97,28 @@ const HARNESS_PLAYER_ID = '00000000-0000-4000-8000-000000000000'
  */
 const installStubSocket = () => {
   gameStore.playerId = HARNESS_PLAYER_ID
-  gameStore.socket = {
-    emit: async (event: string, eventData: Record<string, unknown>) => {
-      if (event !== 'submit-group-challenge-answers') return
-      const ranking = (eventData.ranking ?? []) as ISOCountryCode[]
-      const challenge = gameStore.game?.rounds.at(-1)?.groupChallenge as never
+  const handle = async (event: string, eventData: Record<string, unknown>) => {
+    if (event !== 'submit-group-challenge-answers') return
+    const ranking = (eventData.ranking ?? []) as ISOCountryCode[]
+    const challenge = gameStore.game?.rounds.at(-1)?.groupChallenge as never
 
-      const scoring =
-        mode.value === 'ghost-state'
-          ? await scoreGhostState({ challenge, submittedGuesses: ranking })
-          : scoreNoMansLand({ challenge, submittedGuesses: ranking })
+    const scoring =
+      mode.value === 'ghost-state'
+        ? await scoreGhostState({ challenge, submittedGuesses: ranking })
+        : scoreNoMansLand({ challenge, submittedGuesses: ranking })
 
-      lastSubmission.value = { ranking, ...scoring }
+    lastSubmission.value = { ranking, ...scoring }
+  }
+  // Critical events go through timeout().emitWithAck() — stub both paths
+  const stub = {
+    emit: handle,
+    timeout: () => stub,
+    emitWithAck: async (event: string, eventData: Record<string, unknown>) => {
+      await handle(event, eventData)
+      return { ok: true }
     },
-  } as never
+  }
+  gameStore.socket = stub as never
 }
 
 const mockGame = (groupChallenge: unknown): Game =>
