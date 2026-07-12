@@ -77,7 +77,9 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       case 'min-challenge':
       case 'leadership-challenge':
         {
-          if (submittedAnswer._type === 'region-challenge') return throwTypeMismatch()
+          // Narrows away every variant without a single-country answer
+          // (region picks a region, sunset-blitz submits a country list).
+          if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
           if (!isValidISOCode(submittedAnswer.isoCode)) {
             correct = false
             break
@@ -89,7 +91,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         break
       case 'language-challenge':
         {
-          if (submittedAnswer._type === 'region-challenge') return throwTypeMismatch()
+          if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
           if (!isValidISOCode(submittedAnswer.isoCode)) {
             correct = false
             break

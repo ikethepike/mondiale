@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { ISOCountryCode } from '../types/geography.types'
+import { isValidISOCode, type ISOCountryCode } from '../types/geography.types'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
   existingImagePath,
@@ -133,8 +133,11 @@ for (let index = 0; index < countryEntityIds.length; index += 20) {
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const value = ranked(entity.claims?.P297)[0]?.mainsnak?.datavalue?.value
-    if (typeof value === 'string' && !isoOfQid.has(qid)) {
-      isoOfQid.set(qid, value as ISOCountryCode)
+    // Wikidata knows more ISO codes than the game does (Greenland, Curaçao,
+    // Marshall Islands…) — anything outside the game's set never maps, so its
+    // sites are skipped rather than emitted with an untyped country.
+    if (isValidISOCode(value) && !isoOfQid.has(qid)) {
+      isoOfQid.set(qid, value)
     }
   }
   await wait(200)
