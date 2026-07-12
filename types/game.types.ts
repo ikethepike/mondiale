@@ -93,15 +93,17 @@ export interface GameConfiguration {
 export const isValidGameConfiguration = (data: unknown): data is GameConfiguration => {
   if (!data) return false
   if (typeof data !== 'object') return false
-  if (![`difficulty`, 'length', 'variant', 'liveGuesses'].every(key => Reflect.has(data, key)))
-    return false
-  if (!isValidGameVariant((data as GameConfiguration).variant)) return false
+  const configuration = data as GameConfiguration
+  // Values, not just key presence — game.difficulty indexes
+  // DIFFICULTY_CONFIGURATION and drives every challenge gate, so an unknown
+  // difficulty from a crafted payload would crash the dealer server-side.
+  if (!isValidGameVariant(configuration.variant)) return false
+  if (!gameDifficulties.includes(configuration.difficulty)) return false
+  if (!gameLengths.includes(configuration.length)) return false
   // FormData hands every field over as a string; the form must coerce first.
-  if (typeof (data as GameConfiguration).liveGuesses !== 'boolean') return false
+  if (typeof configuration.liveGuesses !== 'boolean') return false
 
-  if (!isValidChallengeOverrides((data as GameConfiguration).challengeOverrides)) return false
-
-  return true
+  return isValidChallengeOverrides(configuration.challengeOverrides)
 }
 
 export const gameLengths = ['short', 'medium', 'long'] as const

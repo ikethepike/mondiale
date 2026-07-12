@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getGroupChallenge } from '~~/lib/challenges'
+import { isValidGameConfiguration } from '~~/types/game.types'
 import {
   autoEnabledKinds,
   CHALLENGE_GROUP_ACCESSORS,
@@ -143,5 +144,40 @@ describe('isValidChallengeOverrides', () => {
     expect(isValidChallengeOverrides({ conflicts: 'off' })).toBe(false)
     expect(isValidChallengeOverrides(['conflicts'])).toBe(false)
     expect(isValidChallengeOverrides(undefined)).toBe(false)
+  })
+
+  it('rejects prototype-chain keys that are not real groups', () => {
+    expect(isValidChallengeOverrides({ toString: true })).toBe(false)
+    expect(isValidChallengeOverrides({ constructor: false })).toBe(false)
+    expect(isValidChallengeOverrides({ hasOwnProperty: true })).toBe(false)
+  })
+})
+
+describe('isValidGameConfiguration', () => {
+  const valid = {
+    difficulty: 'normal',
+    variant: 'world',
+    length: 'medium',
+    liveGuesses: true,
+    challengeOverrides: { conflicts: false },
+  }
+
+  it('accepts a well-formed configuration', () => {
+    expect(isValidGameConfiguration(valid)).toBe(true)
+  })
+
+  it('rejects unknown difficulty and length values, not just missing keys', () => {
+    expect(isValidGameConfiguration({ ...valid, difficulty: 'nightmare' })).toBe(false)
+    expect(isValidGameConfiguration({ ...valid, length: 'marathon' })).toBe(false)
+    // FormData strings that never got coerced must not slip through either.
+    expect(isValidGameConfiguration({ ...valid, liveGuesses: 'on' })).toBe(false)
+  })
+
+  it('rejects missing or malformed overrides', () => {
+    const { challengeOverrides: _dropped, ...withoutOverrides } = valid
+    expect(isValidGameConfiguration(withoutOverrides)).toBe(false)
+    expect(isValidGameConfiguration({ ...valid, challengeOverrides: { toString: true } })).toBe(
+      false
+    )
   })
 })
