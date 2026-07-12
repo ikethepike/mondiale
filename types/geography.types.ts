@@ -45,7 +45,12 @@ export interface Country {
   membership: Organization[]
   government: {
     leader?: string
-    amountOfMilitaryConflicts?: Amount<'conflicts'>
+    /** UCDP/PRIO ACD, primary warring party only (supporters excluded). */
+    conflictsFought?: Amount<'conflicts'>
+    /** Years since 1946 with a conflict at war intensity (≥1000 battle deaths). */
+    yearsAtWar?: Amount<'years'>
+    /** Distinct conflicts active in the dataset's last five years. */
+    recentConflicts?: Amount<'conflicts'>
     /** V-Dem Electoral Democracy Index, 0–1 (higher = more democratic). */
     democracyIndex?: Amount<'index'>
     /** Transparency International CPI, 0–100 (higher = less corrupt). */

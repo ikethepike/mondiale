@@ -68,6 +68,7 @@ export type RoundChallengeKind =
   | 'mother-tongue'
   | 'flag-palette'
   | 'capital-guess'
+  | 'flashpoint'
   | 'ghost-state'
   | 'no-mans-land'
   | 'pin-landmark'
@@ -112,6 +113,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'flag-palette'
     case 'capital-guess-challenge':
       return 'capital-guess'
+    case 'flashpoint-challenge':
+      return 'flashpoint'
     case 'ghost-state-challenge':
       return 'ghost-state'
     case 'no-mans-land-challenge':

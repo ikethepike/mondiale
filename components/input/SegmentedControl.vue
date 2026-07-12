@@ -86,9 +86,14 @@ const formatLabel = (option: string) =>
 </script>
 <style lang="scss" scoped>
 // Equal-width segments (no gaps — gaps in the track would desync the thumb's
-// pure-percentage transform). The thumb sits in the 0.4rem-padded inner area.
+// pure-percentage transform). Grid, not flex: a max-content flex track hands
+// wide labels ("Auto") more room than narrow ones ("On"), and the thumb's
+// stepped translate assumes exact equal columns. Equal 1fr columns are the
+// geometry the thumb math is built on. It sits in the 0.4rem-padded inner area.
 .segmented {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   padding: 0.4rem;
   position: relative;
   width: max-content;

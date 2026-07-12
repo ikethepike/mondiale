@@ -17,6 +17,7 @@
     "generate:countries": "bun run ./generators/create-countries-file.ts",
     "generate:linking": "bun run ./generators/create-link-mapping.ts",
     "generate:conflicts": "bun run generators/vendors/ucdp/create-conflicts.ts",
+    "generate:conflict-events": "bun run generators/vendors/ucdp/create-conflict-events.ts",
     "generate:worldbank": "bun run generators/vendors/worldbank/create-worldbank.ts",
     "generate:owid": "bun run generators/vendors/owid/create-owid.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",

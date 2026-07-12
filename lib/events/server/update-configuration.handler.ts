@@ -1,4 +1,5 @@
 import { generateTiles } from '~~/lib/tiles'
+import { isValidGameConfiguration } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
 
 export const updateConfigurationHandler = defineGameHandler(
@@ -12,11 +13,16 @@ export const updateConfigurationHandler = defineGameHandler(
       return console.warn(`Configuration change rejected — game already started: ${game.id}`)
 
     const { configuration } = eventData
+    // The client validates before emitting, but the payload is still
+    // client-supplied — never assign an unchecked shape into game state.
+    if (!isValidGameConfiguration(configuration))
+      return console.warn(`Invalid configuration rejected for game: ${game.id}`)
 
     game.difficulty = configuration.difficulty
     game.length = configuration.length
     game.variant = configuration.variant
     game.liveGuesses = configuration.liveGuesses
+    game.challengeOverrides = configuration.challengeOverrides
     game.tiles = generateTiles(game.length)
 
     await server.updateGameState(game)

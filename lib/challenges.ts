@@ -9,6 +9,11 @@ import { LEADERS } from '~~/data/leaders.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
+  isAccessorEnabled,
+  isKindEnabled,
+  type ChallengeOverrides,
+} from '~~/types/challenges/challenge-groups.type'
+import {
   type GroupChallengeAccessorId,
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
@@ -16,6 +21,7 @@ import type {
   BorderChainChallenge,
   CapitalGuessChallenge,
   FlagPaletteChallenge,
+  FlashpointChallenge,
   HeritageHuntChallenge,
   GhostStateChallenge,
   HotColdChallenge,
@@ -43,6 +49,11 @@ import type {
 } from '~~/types/challenges/traversal-challenge.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
+import {
+  CONFLICT_TYPE_LABELS,
+  INCOMPATIBILITY_LABELS,
+  dominantConflict,
+} from '~~/types/vendor/ucdp/ucdp.types'
 import { shuffleArray } from './arrays'
 import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
@@ -92,6 +103,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['mother-tongue', 0.09],
   ['flag-palette', 0.08],
   ['capital-guess', 0.08],
+  ['flashpoint', 0.07],
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
   // roster in a session or two. They should land like finding something odd on
@@ -101,18 +113,6 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['no-mans-land', 0.012],
   ['pin-landmark', 0.06],
 ]
-
-/** Round kinds reserved for hard games. */
-const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
-  'highlands',
-  'name-that-water',
-  // Nobody meets Transnistria on their first game.
-  'ghost-state',
-  'no-mans-land',
-  // Naming the country is one thing; placing it to within a few hundred km is
-  // a different game entirely.
-  'pin-landmark',
-])
 
 /**
  * Test hook: FORCE_ROUND_TYPE=<kind> makes every round that kind
@@ -127,10 +127,10 @@ const forcedRoundKind = (): RoundChallengeKind | undefined => {
     : undefined
 }
 
+// Difficulty gates and the lobby's tri-state group toggles resolve in one
+// place (challenge-groups.type) — the dealer only ever asks isKindEnabled.
 const pickRoundKind = (game: gameTypes.Game): RoundChallengeKind => {
-  const weights = ROUND_WEIGHTS.filter(
-    ([kind]) => game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
-  )
+  const weights = ROUND_WEIGHTS.filter(([kind]) => isKindEnabled(game, kind))
   const total = weights.reduce((sum, [, weight]) => sum + weight, 0)
   let roll = Math.random() * total
   for (const [kind, weight] of weights) {
@@ -382,6 +382,7 @@ const getStatDetectiveChallenge = ({
     const viable = shuffleArray(
       Object.values(GROUP_CHALLENGES)
         .map(challenge => challenge.id)
+        .filter(accessorId => isAccessorEnabled(game, accessorId))
         .filter(accessorId => !!getValueByAccessorID(country, accessorId))
     )
     if (viable.length < CLUE_COUNT) continue
@@ -421,6 +422,7 @@ const getTwoTruthsChallenge = ({
     const accessors = shuffleArray(
       Object.values(GROUP_CHALLENGES)
         .map(challenge => challenge.id)
+        .filter(accessorId => isAccessorEnabled(game, accessorId))
         .filter(accessorId => !!getValueByAccessorID(country, accessorId))
     )
     if (accessors.length < 3) continue
@@ -669,6 +671,80 @@ export const capitalGuessScore = (
       maximumPoints * attemptFraction(attempt, attempts, CAPITAL_GUESS_LAST_ATTEMPT_FRACTION)
     )
   )
+
+/** Sparse dot clouds aren't a readable shape. */
+const FLASHPOINT_MIN_POINTS = 40
+/** One wave isn't a timeline. */
+const FLASHPOINT_MIN_ERAS = 2
+const FLASHPOINT_SECONDS_PER_ERA = 4
+/** Thinking time after the last wave lands. */
+const FLASHPOINT_TAIL_SECONDS = 12
+
+/**
+ * Flashpoint: a country's recorded conflict history (UCDP GED) draws itself
+ * onto the blanked map as dots, era by era — name the country, the earlier the
+ * more it's worth. Option variants get two picks like capital-guess; hard mode
+ * free-types and scores on the clock.
+ *
+ * Dynamic import for the same reason as the water dealer: only nitro runs the
+ * dealers, and the dot geometry shouldn't ride into client bundles through
+ * this module.
+ */
+const getFlashpointChallenge = async (
+  game: gameTypes.Game
+): Promise<FlashpointChallenge | undefined> => {
+  const { CONFLICT_FIELDS } = await import('~~/data/conflict-events.gen')
+  const playable = new Set(variantCountries(game.variant))
+  const pool = Object.entries(CONFLICT_FIELDS).filter(
+    ([isoCode, field]) =>
+      playable.has(isoCode as ISOCountryCode) &&
+      field!.total >= FLASHPOINT_MIN_POINTS &&
+      field!.eras.length >= FLASHPOINT_MIN_ERAS
+  )
+  const picked = shuffleArray(pool)[0]
+  if (!picked) return undefined
+  const [country, field] = picked as [ISOCountryCode, NonNullable<(typeof pool)[number][1]>]
+
+  // Outside hard mode, offer multiple-choice flag options; hard mode free-types.
+  // Decoys must be plausible hosts (have a conflict field) or they self-eliminate.
+  let options: ISOCountryCode[] | undefined
+  let hint: string | undefined
+  if (game.difficulty !== 'hard') {
+    const decoys = pickDecoys(country, [...playable], game.difficulty === 'easy' ? 2 : 3, {
+      preferRegion: true,
+      eligible: isoCode => !!CONFLICT_FIELDS[isoCode],
+    })
+    if (decoys) options = shuffleArray([country, ...decoys])
+
+    // Late hint: the defining conflict's shape, never its name — "began in
+    // 1964, a civil war over who governs" separates region-mates without
+    // handing the round over.
+    const { CONFLICTS, CONFLICTS_BY_COUNTRY } = await import('~~/data/conflict-profiles.gen')
+    const defining = dominantConflict(
+      (CONFLICTS_BY_COUNTRY[country] ?? []).flatMap(id => CONFLICTS[id] ?? [])
+    )
+    if (defining) {
+      const type = CONFLICT_TYPE_LABELS[defining.type].toLowerCase()
+      const article = /^[aeiou]/.test(type) ? 'an' : 'a'
+      const fought = INCOMPATIBILITY_LABELS[defining.incompatibility]
+      const began = defining.episodes[0]?.[0]
+      hint = `Its defining conflict began in ${began} — ${article} ${type} over ${fought}.`
+    }
+  }
+
+  const eras = field.eras.map(({ era }) => era)
+  return {
+    _type: 'flashpoint-challenge',
+    country,
+    eras,
+    secondsPerEra: FLASHPOINT_SECONDS_PER_ERA,
+    options,
+    ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
+    ...(hint ? { hint } : {}),
+    durationSeconds: eras.length * FLASHPOINT_SECONDS_PER_ERA + FLASHPOINT_TAIL_SECONDS,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
 
 /**
  * Pin-landmark: a photo, and the whole world to drop a pin on.
@@ -973,6 +1049,11 @@ export const getRoundChallenge = async ({
       if (challenge) return challenge
       break
     }
+    case 'flashpoint': {
+      const challenge = await getFlashpointChallenge(game)
+      if (challenge) return challenge
+      break
+    }
     case 'ghost-state': {
       const challenge = await getGhostStateChallenge(game)
       if (challenge) return challenge
@@ -1094,6 +1175,7 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   // little or no data — only ever deal a challenge that can fill the round,
   // otherwise players get a question with zero countries to rank.
   const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
+    if (!isAccessorEnabled(game, challenge.id)) return false
     let available = 0
     for (const isoCode of pool) {
       if (getValueByAccessorID(isoCode, challenge.id)) available++
@@ -1471,12 +1553,15 @@ const HIGHER_LOWER_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } =
 
 /** Higher-lower: a streak of stat duels with comfortably distinct values. */
 const dealHigherLower = (
-  difficulty: gameTypes.GameDifficulty,
+  settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
   countryPool: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'higherLower'> | undefined => {
+  const { difficulty } = settings
   const duels = HIGHER_LOWER_DUELS[difficulty]
   const viableAccessors = shuffleArray(
-    Object.values(GROUP_CHALLENGES).map(challenge => challenge.id)
+    Object.values(GROUP_CHALLENGES)
+      .map(challenge => challenge.id)
+      .filter(accessorId => isAccessorEnabled(settings, accessorId))
   )
 
   // Small continental pools may not carry enough clean data for a full
@@ -1664,12 +1749,15 @@ export const getIndividualChallenge = ({
   accessorId,
   difficulty = 'normal',
   variant = 'world',
+  challengeOverrides,
 }: {
   accessorId: IndividualChallengeAccessorId
   difficulty?: gameTypes.GameDifficulty
   variant?: gameTypes.GameVariant
+  challengeOverrides?: ChallengeOverrides
 }): IndividualChallenge => {
   const pool = variantCountries(variant)
+  const settings = { difficulty, challengeOverrides }
   const base: IndividualChallenge = {
     _type: 'individual-challenge',
     id: accessorId,
@@ -1702,7 +1790,7 @@ export const getIndividualChallenge = ({
         break
       }
       case 'higher-lower': {
-        const dealt = dealHigherLower(difficulty, pool)
+        const dealt = dealHigherLower(settings, pool)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
         break
       }
@@ -1783,7 +1871,7 @@ export const getIndividualChallenge = ({
         const dealt = dealCapitalMatch(pool)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
       } else if (roll < 0.4) {
-        const dealt = dealHigherLower(difficulty, pool)
+        const dealt = dealHigherLower(settings, pool)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
       } else if (roll < 0.6) {
         const dealt = dealLeaderPick(pool)
@@ -2140,12 +2228,41 @@ export const getChallengeDetails = (
         least: 'lowest percent',
       },
     },
+    // Legacy — no longer dealt; kept so in-flight games keep rendering.
     'government.amountOfMilitaryConflicts': {
       topic: 'general knowledge',
       phrasing: 'Rank these countries by the number of armed conflicts they are involved in',
       markers: {
         most: 'most conflicts',
         least: 'fewest conflicts',
+      },
+    },
+    'government.conflictsFought': {
+      topic: 'general knowledge',
+      phrasing:
+        'Rank these countries by distinct armed conflicts fought as a warring party since 1946',
+      markers: {
+        most: 'most conflicts',
+        least: 'fewest conflicts',
+      },
+    },
+    'government.yearsAtWar': {
+      topic: 'general knowledge',
+      phrasing:
+        'Rank these countries by how many years since 1946 they have spent in a conflict at war intensity',
+      markers: {
+        most: 'most years at war',
+        least: 'fewest years at war',
+      },
+      // Bounded: 1946 through the current UCDP vintage (2024).
+      scale: { min: 0, max: 79 },
+    },
+    'government.recentConflicts': {
+      topic: 'general knowledge',
+      phrasing: 'Rank these countries by armed conflicts they have been party to in the last five years',
+      markers: {
+        most: 'most recent conflicts',
+        least: 'fewest recent conflicts',
       },
     },
     'government.democracyIndex': {

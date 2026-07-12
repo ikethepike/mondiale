@@ -46,9 +46,12 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'mother-tongue': ['Polyglot', 'Tongue Twister', 'The Babel Fish', 'Lingua Franca'],
   'flag-palette': ['Colour Sommelier', 'Palette Pro', 'The Swatch Sleuth', 'Hue Hunter'],
   'capital-guess': ['Capital Idea', 'Skyline Seer', 'The City Slicker', 'Metropole Maven'],
+  flashpoint: ['Crisis Cartographer', 'Field Historian', 'The Dot Reader', 'Peace Scholar'],
   'ghost-state': ['Ghost Hunter', 'Border Skeptic', 'The Unrecognized', 'Recognition Wonk'],
   'no-mans-land': ['Rock Collector', 'Terra Nullius', 'The Claim Jumper', 'Sandbank Solicitor'],
   'pin-landmark': ['Pin Dropper', 'Dead Reckoner', 'The Long Shot', 'Coordinate Cowboy'],
+  'border-chain': ['Chain Gang Boss', 'The Last Link', 'Unbroken', 'Sudden-Death Survivor'],
+  'heritage-hunt': ['Heritage Hunter', 'Wonder Wanderer', 'The Site Seer', 'Unesco Nomad'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -67,9 +70,12 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   'mother-tongue': 'mother tongue',
   'flag-palette': 'flag palette',
   'capital-guess': 'capital guess',
+  flashpoint: 'flashpoint',
   'ghost-state': 'ghost states',
   'no-mans-land': "no man's land",
   'pin-landmark': 'drop a pin',
+  'border-chain': 'border chain',
+  'heritage-hunt': 'heritage hunt',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

@@ -99,6 +99,31 @@ export interface WaterBlitzChallenge {
   maximumPoints: number
 }
 
+/**
+ * A country's recorded conflict history draws itself onto the blanked map as
+ * dots, era by era (UCDP GED). Name the country — the earlier, the more it's
+ * worth. Dot geometry stays client-side in data/conflict-events.gen; only the
+ * iso code travels (same accepted caveat as pin-landmark).
+ */
+export interface FlashpointChallenge {
+  _type: 'flashpoint-challenge'
+  country: ISOCountryCode
+  /** Indices into CONFLICT_ERAS that will draw, oldest first. */
+  eras: number[]
+  secondsPerEra: number
+  /** Multiple-choice options (includes `country`) — offered outside hard mode,
+   *  where players free-type instead. */
+  options?: ISOCountryCode[]
+  /** Picks allowed before the round resolves. Set only with `options`. */
+  maximumGuesses?: number
+  /** Non-hard mode helper, revealed once the last wave has landed: the
+   *  defining conflict's start year + type + incompatibility, name withheld.
+   *  Absent in hard mode. */
+  hint?: string
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** A capital-city photo is shown — name the country (live guesses). */
 export interface CapitalGuessChallenge {
   _type: 'capital-guess-challenge'
@@ -312,6 +337,7 @@ export type GroupModeChallenge =
   | MotherTongueChallenge
   | FlagPaletteChallenge
   | CapitalGuessChallenge
+  | FlashpointChallenge
   | GhostStateChallenge
   | NoMansLandChallenge
   | PinLandmarkChallenge

@@ -1,6 +1,11 @@
+import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
+
 /**
  * This is an incomplete listing of Gleditsch & Ward by their respective
- * iso 3166-2 country code.
+ * iso 3166-2 country code. Dead states without a code here (Czechoslovakia
+ * 315, GDR 265, South Yemen 680, South Vietnam 816…) are skipped on purpose:
+ * the metrics describe today's states. RU = 365 is continuous through the
+ * USSR per G&W convention, so Soviet conflicts accrue to Russia.
  */
 
 export enum GWToISOCode {
@@ -102,6 +107,7 @@ export enum GWToISOCode {
   LY = 620,
   MA = 600,
   MD = 359,
+  ME = 341,
   MG = 580,
   MK = 343,
   ML = 432,
@@ -147,6 +153,7 @@ export enum GWToISOCode {
   SN = 433,
   SO = 520,
   SR = 115,
+  SS = 626,
   SV = 92,
   SY = 652,
   SZ = 572,
@@ -168,8 +175,14 @@ export enum GWToISOCode {
   UZ = 704,
   VE = 101,
   VN = 817, // North Vietnam = 816
-  YE = 680, // Arab Republic of yemen = 678
+  YE = 678, // Continues the Arab Republic of Yemen; South Yemen = 680
   ZA = 560,
   ZM = 551,
   ZW = 552,
 }
+
+export const gwToISO: ReadonlyMap<number, ISOCountryCode> = new Map(
+  Object.entries(GWToISOCode).flatMap(([iso, gwCode]) =>
+    isValidISOCode(iso) && typeof gwCode === 'number' ? [[gwCode, iso]] : []
+  )
+)

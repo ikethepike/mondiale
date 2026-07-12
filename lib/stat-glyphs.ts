@@ -923,7 +923,7 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
   },
 
   // — government (general knowledge) —
-  // Crossed swords.
+  // Crossed swords (legacy accessor — no longer dealt).
   'government.amountOfMilitaryConflicts': {
     paths: [
       'M4.5 4.5l14 14',
@@ -933,6 +933,33 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
       'M18.5 18.5l2 2',
       'M5.5 18.5l-2 2',
     ],
+  },
+  // Crossed swords.
+  'government.conflictsFought': {
+    paths: [
+      'M4.5 4.5l14 14',
+      'M19.5 4.5l-14 14',
+      'M15.5 19.5l4-4',
+      'M8.5 19.5l-4-4',
+      'M18.5 18.5l2 2',
+      'M5.5 18.5l-2 2',
+    ],
+  },
+  // Crossed swords over a year-tick baseline.
+  'government.yearsAtWar': {
+    paths: [
+      'M6 3.5l12 12',
+      'M18 3.5l-12 12',
+      'M3.5 20h17',
+      'M7 20v-2.2',
+      'M12 20v-2.2',
+      'M17 20v-2.2',
+    ],
+  },
+  // A sword beside a clock: conflict now.
+  'government.recentConflicts': {
+    paths: ['M4 4l9 9', 'M10.5 15l4.5-4.5', 'M13 13l2.5 2.5', 'M17.3 15v2.7l1.8 1.2'],
+    circles: [[17.3, 17.5, 4.2]],
   },
   // Ballot into the box.
   'government.democracyIndex': {

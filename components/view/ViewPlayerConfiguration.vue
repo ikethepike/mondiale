@@ -102,27 +102,10 @@
                 </div>
 
                 <div class="configuration-block">
-                  <span class="config-label">Difficulty</span>
-                  <SegmentedControl
-                    name="game-difficulty"
-                    label="Difficulty"
-                    :options="[...gameDifficulties]"
-                    :model-value="game.difficulty"
-                    :disabled="!isPlayerHost"
-                    @change="updateConfiguration"
-                  />
-                </div>
-
-                <div class="configuration-block">
-                  <span class="config-label">Live guesses</span>
-                  <SegmentedControl
-                    name="game-liveGuesses"
-                    label="Live guesses"
-                    :options="['on', 'off']"
-                    :model-value="game.liveGuesses === false ? 'off' : 'on'"
-                    :disabled="!isPlayerHost"
-                    @change="updateConfiguration"
-                  />
+                  <span class="config-label">Challenges</span>
+                  <ButtonLine class="settings-button" type="button" @click="showSettings = true">
+                    <span class="settings-button-content">{{ settingsSummary }}</span>
+                  </ButtonLine>
                 </div>
               </div>
             </form>
@@ -161,6 +144,81 @@
         </TransitionGroup>
       </section>
     </article>
+
+    <!-- Dedicated challenge-settings page: difficulty sets every group's AUTO
+         state; explicit toggles override it. Lives out of the start card so
+         the lobby stays lean. -->
+    <ModalWrapper v-if="showSettings && game" class="settings-overlay">
+      <form
+        ref="settingsForm"
+        class="pane tl decorator-bottom settings-card"
+        @change="updateConfiguration"
+        @submit.prevent
+      >
+        <header class="pane-content settings-header">
+          <span class="config-label">Game Settings</span>
+          <h2>Challenges</h2>
+        </header>
+
+        <div class="pane-content">
+          <div class="challenge-row">
+            <div class="challenge-meta">
+              <span class="challenge-name">Difficulty</span>
+              <span class="challenge-caption">Sets what plays by default — override below.</span>
+            </div>
+            <SegmentedControl
+              name="game-difficulty"
+              label="Difficulty"
+              :options="[...gameDifficulties]"
+              :model-value="game.difficulty"
+              :disabled="!isPlayerHost"
+              @update:model-value="value => (difficultyPreview = value as GameDifficulty)"
+              @change="updateConfiguration"
+            />
+          </div>
+
+          <div v-for="(group, id) in CHALLENGE_GROUPS" :key="id" class="challenge-row">
+            <div class="challenge-meta">
+              <span class="challenge-name">{{ group.label }}</span>
+              <span class="challenge-caption">{{ groupCaption(id) }}</span>
+            </div>
+            <SegmentedControl
+              :name="`game-challenges-${id}`"
+              :label="group.label"
+              :options="['auto', 'on', 'off']"
+              :model-value="overrideValue(id)"
+              :disabled="!isPlayerHost"
+              @change="updateConfiguration"
+            />
+          </div>
+
+          <div class="challenge-row">
+            <div class="challenge-meta">
+              <span class="challenge-name">Live guesses</span>
+              <span class="challenge-caption">Show opponents' guesses as they land.</span>
+            </div>
+            <SegmentedControl
+              name="game-liveGuesses"
+              label="Live guesses"
+              :options="['on', 'off']"
+              :model-value="game.liveGuesses === false ? 'off' : 'on'"
+              :disabled="!isPlayerHost"
+              @change="updateConfiguration"
+            />
+          </div>
+
+          <p class="challenge-footnote">
+            Ranking and stat rounds always play, so there's a game whatever you switch off.
+          </p>
+        </div>
+
+        <nav class="pane-content settings-nav">
+          <ButtonFilled type="button" @click="showSettings = false">
+            <span>Done</span>
+          </ButtonFilled>
+        </nav>
+      </form>
+    </ModalWrapper>
   </div>
 </template>
 <script lang="ts" setup>
@@ -170,10 +228,58 @@ import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { wait } from '~~/lib/time'
-import { gameLengths, gameDifficulties, isValidGameConfiguration } from '~~/types/game.types'
+import {
+  autoEnabledKinds,
+  CHALLENGE_GROUPS,
+  type ChallengeGroupId,
+} from '~~/types/challenges/challenge-groups.type'
+import {
+  gameLengths,
+  gameDifficulties,
+  isValidGameConfiguration,
+  type GameDifficulty,
+} from '~~/types/game.types'
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
+
+// Captions resolve against the difficulty tab the host just tapped, not the
+// server echo — the panel must show the effect of a difficulty change live.
+const difficultyPreview = ref<GameDifficulty>(game.value?.difficulty ?? 'normal')
+watch(
+  () => game.value?.difficulty,
+  difficulty => {
+    if (difficulty) difficultyPreview.value = difficulty
+  }
+)
+
+const showSettings = ref(false)
+const settingsForm = ref<HTMLFormElement>()
+
+/** The lobby button's one-line digest of the settings page. */
+const settingsSummary = computed(() => {
+  const overrides = Object.keys(game.value?.challengeOverrides ?? {}).length
+  const difficulty = game.value?.difficulty ?? 'normal'
+  return overrides
+    ? `${difficulty} · ${overrides} ${overrides === 1 ? 'override' : 'overrides'}`
+    : `${difficulty} · defaults`
+})
+
+const overrideValue = (id: ChallengeGroupId): string => {
+  const override = game.value?.challengeOverrides?.[id]
+  return override === undefined ? 'auto' : override ? 'on' : 'off'
+}
+
+/** What this group's current tab means in modes, at the previewed difficulty. */
+const groupCaption = (id: ChallengeGroupId): string => {
+  const override = game.value?.challengeOverrides?.[id]
+  const { enabled, total } = autoEnabledKinds(id, difficultyPreview.value)
+  if (override === true) return `all ${total.length} ${total.length === 1 ? 'mode' : 'modes'} on`
+  if (override === false) return 'off'
+  if (enabled.length === total.length) return 'on'
+  if (enabled.length === 0) return `off below hard — now ${difficultyPreview.value}`
+  return `${enabled.length} of ${total.length} modes at ${difficultyPreview.value}`
+}
 
 // Pulse the n/8 counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
@@ -218,16 +324,34 @@ const updateConfiguration = async () => {
   // binding, which flushes on the next tick — read FormData AFTER it lands,
   // or we'd send the value from before the click.
   await nextTick()
-  if (!breakdown.value) return
+  if (!breakdown.value || !game.value) return
 
-  const data = new FormData(breakdown.value)
-  const configuration: { [key: string]: FormDataEntryValue | boolean } = {}
-  for (const [key, value] of data.entries()) {
-    // Bind up to object
-    configuration[key.replace('game-', '')] = value
+  // The lobby form and the settings page are separate forms; whichever isn't
+  // mounted contributes nothing, so its fields fall back to the game's state.
+  const entries = [breakdown.value, settingsForm.value]
+    .flatMap(form => (form ? [...new FormData(form).entries()] : []))
+
+  const configuration: { [key: string]: FormDataEntryValue | boolean | object } = {}
+  const challengeOverrides: { [group: string]: boolean } = {}
+  for (const [key, value] of entries) {
+    const field = key.replace('game-', '')
+    // Group tri-states fold into one overrides object; 'auto' means no key.
+    if (field.startsWith('challenges-')) {
+      if (value !== 'auto') challengeOverrides[field.replace('challenges-', '')] = value === 'on'
+      continue
+    }
+    configuration[field] = value
   }
+
+  const settingsMounted = !!settingsForm.value
+  configuration.challengeOverrides = settingsMounted
+    ? challengeOverrides
+    : (game.value.challengeOverrides ?? {})
   // Every FormData value arrives as a string; the toggle wants a boolean.
-  configuration.liveGuesses = configuration.liveGuesses === 'on'
+  configuration.liveGuesses = settingsMounted
+    ? configuration.liveGuesses === 'on'
+    : game.value.liveGuesses !== false
+  configuration.difficulty ??= game.value.difficulty
 
   if (!isValidGameConfiguration(configuration)) {
     throw new TypeError(`Invalid configuration passed`)
@@ -237,8 +361,6 @@ const updateConfiguration = async () => {
     event: `update-configuration`,
     configuration,
   })
-
-  console.log(configuration)
 }
 
 const hasCopied = ref(false)
@@ -443,6 +565,112 @@ const startGame = () => {
   gap: 2.4rem 3.2rem;
   display: flex;
   flex-flow: row wrap;
+}
+
+// The settings page: difficulty leads, group tri-states follow, live guesses
+// closes. Rows share one hairline rhythm with the scorecards.
+// Doubled class outranks ModalWrapper's own scoped rules. Fixed, not absolute:
+// the bare wrapper carries no `top`, so inside the lobby's scroll container it
+// would land in static flow BELOW the card instead of over it. The wrapper is
+// dvh + overflow-y: auto, so a page taller than a phone screen scrolls.
+.modal-wrapper.settings-overlay {
+  inset: 0;
+  z-index: 3;
+  position: fixed;
+  background: hsla(215.7, 76.4%, 21.6%, 0.35);
+  backdrop-filter: blur(0.3rem);
+  padding: calc(var(--safe-top) + 1.6rem) calc(var(--safe-right) + 1.2rem)
+    calc(var(--safe-bottom) + 1.6rem) calc(var(--safe-left) + 1.2rem);
+}
+
+.settings-card {
+  width: 100%;
+  margin: auto;
+  max-width: 64rem;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+// The lobby's door to the settings page — sized to sit flush beside the
+// segmented controls (same track height and radius) instead of the taller
+// default button chrome.
+.settings-button.button.line {
+  height: 4.4rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border-radius: 1rem;
+  padding: 0 1.6rem;
+  width: max-content;
+  color: var(--dark-blue);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+}
+
+.settings-header {
+  padding-top: 2rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+
+  h2 {
+    margin: 0.2rem 0 0;
+    font-size: 2.4rem;
+    color: var(--dark-blue);
+  }
+}
+
+.settings-nav {
+  display: flex;
+  padding-top: 1.6rem;
+  padding-bottom: 2rem;
+  justify-content: flex-end;
+  border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+}
+
+.settings-button-content {
+  padding: 0 0.4rem;
+  text-transform: capitalize;
+}
+
+.challenge-row {
+  gap: 1rem 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 1rem 0;
+  justify-content: space-between;
+  border-bottom: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+
+  &:first-of-type {
+    border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+  }
+
+  :deep(.segment) {
+    font-size: 1.3rem;
+    padding: 0.5rem 1.3rem;
+  }
+}
+
+.challenge-meta {
+  gap: 0.2rem;
+  display: flex;
+  min-width: 0;
+  flex-flow: column nowrap;
+}
+
+.challenge-name {
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--dark-blue);
+}
+
+.challenge-caption {
+  opacity: 0.6;
+  font-size: 1.25rem;
+}
+
+.challenge-footnote {
+  opacity: 0.6;
+  margin: 0.8rem 0 0;
+  font-size: 1.25rem;
 }
 
 // Navigation

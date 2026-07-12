@@ -198,9 +198,26 @@ export const GROUP_CHALLENGES: {
     id: 'economics.inflation',
     countriesPerPlayer: {},
   },
+  // Legacy — no country carries this value anymore, so it can never be dealt;
+  // kept so in-flight games keep rendering.
   'government.amountOfMilitaryConflicts': {
     _type: 'group-challenge',
     id: 'government.amountOfMilitaryConflicts',
+    countriesPerPlayer: {},
+  },
+  'government.conflictsFought': {
+    _type: 'group-challenge',
+    id: 'government.conflictsFought',
+    countriesPerPlayer: {},
+  },
+  'government.yearsAtWar': {
+    _type: 'group-challenge',
+    id: 'government.yearsAtWar',
+    countriesPerPlayer: {},
+  },
+  'government.recentConflicts': {
+    _type: 'group-challenge',
+    id: 'government.recentConflicts',
     countriesPerPlayer: {},
   },
   'government.democracyIndex': {
@@ -319,6 +336,9 @@ export type GroupChallengeAccessorId =
   | 'humanRights.refugees'
   | 'economics.inflation'
   | 'government.amountOfMilitaryConflicts'
+  | 'government.conflictsFought'
+  | 'government.yearsAtWar'
+  | 'government.recentConflicts'
   | 'government.democracyIndex'
   | 'government.corruptionIndex'
   | 'government.humanDevelopmentIndex'

@@ -170,9 +170,14 @@ const normalizeCountry = ({
     })(),
     government: {
       leader: getLeader({ isoCode, cia }),
-      amountOfMilitaryConflicts: (() => {
-        const conflicts = conflictMapping[isoCode as unknown as ISOCountryCode]?.conflicts
-        return conflicts == null ? undefined : { amount: conflicts, unit: 'conflicts' }
+      ...(() => {
+        const metrics = conflictMapping[isoCode as unknown as ISOCountryCode]
+        if (!metrics) return {}
+        return {
+          conflictsFought: { amount: metrics.total, unit: 'conflicts' as const },
+          yearsAtWar: { amount: metrics.yearsAtWar, unit: 'years' as const },
+          recentConflicts: { amount: metrics.recent, unit: 'conflicts' as const },
+        }
       })(),
       // Governance indices from Our World in Data (V-Dem, Transparency Intl).
       democracyIndex: owidAmount(isoCode, 'democracyIndex', 'index'),

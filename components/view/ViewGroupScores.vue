@@ -52,6 +52,11 @@
               <span class="eyebrow">{{ sectionLabels.correct }}</span>
               <ViewRanking :iso-codes="selectedScorecard.answers.correct" />
             </section>
+
+            <section v-if="flashpointChallenge" class="pane-content ranking">
+              <span class="eyebrow">The Conflict Behind the Dots</span>
+              <ConflictProfileCard :country="flashpointChallenge.country" />
+            </section>
           </template>
         </template>
         <!-- A bare <template> is a native, non-rendering element — this
@@ -109,9 +114,11 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
+import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
@@ -144,6 +151,13 @@ const capitalGuessChallenge = computed(() => {
     : undefined
 })
 
+const flashpointChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'flashpoint-challenge'
+    ? challenge
+    : undefined
+})
+
 const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
 
 const explainer = computed(() => {
@@ -168,6 +182,10 @@ const explainer = computed(() => {
       return capitalGuessChallenge.value?.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
+    case 'flashpoint':
+      return flashpointChallenge.value?.maximumGuesses
+        ? 'Name it first try for full marks — the second guess is worth less.'
+        : "The earlier you name it, the more it's worth."
     case 'flag-palette':
       return "The sooner you name it, the more it's worth."
     case 'river-run':
@@ -176,8 +194,18 @@ const explainer = computed(() => {
       return 'Points scale with countries found — wrong names each cost one.'
     case 'name-that-water':
       return 'Fewer guesses, bigger score.'
-    default:
-      return '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
+    default: {
+      const base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
+      // Conflict rankings carry the one UCDP fact the numbers alone would hide.
+      const challenge = roundChallenge.value
+      const isConflictStat =
+        challenge &&
+        'id' in challenge &&
+        (CHALLENGE_GROUP_ACCESSORS.conflicts as readonly string[]).includes(challenge.id)
+      return isConflictStat
+        ? `${base} Most armed conflicts since 1946 are internal — a state against a group inside its own borders, not two states at war.`
+        : base
+    }
   }
 })
 
@@ -196,6 +224,8 @@ const sectionLabels = computed(() => {
     case 'two-truths':
       return { submitted: 'Your Verdict', correct: 'The Country' }
     case 'capital-guess':
+      return { submitted: 'Your Answer', correct: 'The Country' }
+    case 'flashpoint':
       return { submitted: 'Your Answer', correct: 'The Country' }
     case 'flag-palette':
       return { submitted: 'Your Answer', correct: 'The Country' }

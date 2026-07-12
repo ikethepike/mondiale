@@ -31,6 +31,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // ~195 candidates, free-typed: one wrong name is noise, not a clue.
   'flag-palette': 'label',
   'capital-guess': 'label',
+  flashpoint: 'label',
 
   // One hidden target, shared by the room.
   'hot-cold': 'presence',
@@ -48,7 +49,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // the room learns only that somebody has committed one.
   'pin-landmark': 'presence',
 
-  // No guess stream to speak of.
+  // One hidden point per beat, shared by the room, like pin-landmark.
+  'heritage-hunt': 'presence',
+
+  // No guess stream to speak of: turn-based, every move is already public.
+  'border-chain': 'none',
   sketch: 'none',
   ranking: 'none',
 }
@@ -65,9 +70,10 @@ export const guessPolicyFor = (
   if (!game || game.liveGuesses === false) return 'none'
   if (!challenge) return 'none'
 
-  // Outside hard mode Capital Guess offers four flag options, so naming a wrong
-  // one eliminates a quarter of the field. Hard mode free-types the whole world.
-  if ('_type' in challenge && challenge._type === 'capital-guess-challenge' && challenge.options) {
+  // Outside hard mode the option variants (capital-guess, flashpoint) offer a
+  // small flag table, so naming a wrong pick eliminates a share of the field.
+  // Hard mode free-types the whole world.
+  if ('_type' in challenge && 'options' in challenge && challenge.options) {
     return 'presence'
   }
 

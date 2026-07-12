@@ -128,6 +128,13 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
         break
       }
+      case 'flashpoint': {
+        if (roundChallenge._type !== 'flashpoint-challenge') throw new TypeError('kind mismatch')
+        const correct = eventData.ranking[0] === roundChallenge.country
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
+        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        break
+      }
       case 'ghost-state': {
         if (roundChallenge._type !== 'ghost-state-challenge') throw new TypeError('kind mismatch')
         answer = { submitted: eventData.ranking, correct: [roundChallenge.parent] }

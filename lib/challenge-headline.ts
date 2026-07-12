@@ -59,6 +59,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'capital-guess-challenge'
         ? `That skyline was ${countryName(challenge.country)}'s capital`
         : ''
+    case 'flashpoint':
+      return '_type' in challenge && challenge._type === 'flashpoint-challenge'
+        ? `Those flashpoints were ${countryName(challenge.country)}'s`
+        : ''
     case 'flag-palette':
       return '_type' in challenge && challenge._type === 'flag-palette-challenge'
         ? `Those colours fly for ${countryName(challenge.country)}`

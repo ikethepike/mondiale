@@ -64,6 +64,7 @@ export const movesForScoredPoints = ({
               accessorId,
               difficulty: game.difficulty,
               variant: game.variant,
+              challengeOverrides: game.challengeOverrides,
             }),
           }
         }

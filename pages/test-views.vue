@@ -29,6 +29,7 @@ import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
@@ -263,6 +264,125 @@ const scenarios: Scenario[] = [
           image: '/capitals/JP.webp',
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'flashpoint',
+    label: 'Flashpoint (options)',
+    component: ViewFlashpoint,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flashpoint-challenge',
+          country: 'CO',
+          eras: [0, 1, 2, 3],
+          secondsPerEra: 4,
+          options: ['CO', 'PE', 'MX', 'SV'],
+          maximumGuesses: 2,
+          hint: 'Its defining conflict began in 1964 — a civil war over who governs.',
+          durationSeconds: 28,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'flashpoint-hard',
+    label: 'Flashpoint (typed, keyboard)',
+    component: ViewFlashpoint,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flashpoint-challenge',
+          country: 'UA',
+          eras: [2, 3],
+          secondsPerEra: 4,
+          durationSeconds: 20,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'flashpoint-russia',
+    label: 'Flashpoint (Russia, all four eras)',
+    component: ViewFlashpoint,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flashpoint-challenge',
+          country: 'RU',
+          eras: [0, 1, 2, 3],
+          secondsPerEra: 4,
+          options: ['RU', 'UA', 'GE', 'TJ'],
+          maximumGuesses: 2,
+          hint: 'Its defining conflict began in 1994 — a civil war over territory.',
+          durationSeconds: 28,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    // The US has 9 recorded events on home soil — GED locates fighting where
+    // it happens, so US conflicts cloud OTHER countries' maps. Kept here to
+    // show why the dealer's 40-point floor excludes it in real games.
+    id: 'flashpoint-us',
+    label: 'Flashpoint (US, below dealer floor)',
+    component: ViewFlashpoint,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flashpoint-challenge',
+          country: 'US',
+          eras: [0, 1, 2, 3],
+          secondsPerEra: 4,
+          options: ['US', 'MX', 'CO', 'SV'],
+          maximumGuesses: 2,
+          hint: 'Its defining conflict began in 2001 — a civil war (internationalized) over who governs.',
+          durationSeconds: 24,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'flashpoint-scores',
+    label: 'Flashpoint (scorecard + conflict card)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'flashpoint-challenge',
+            country: 'CO',
+            eras: [0, 1, 2, 3],
+            secondsPerEra: 4,
+            options: ['CO', 'PE', 'MX', 'SV'],
+            maximumGuesses: 2,
+            durationSeconds: 28,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['CO'], correct: ['CO'] },
+            [RIVAL]: { submitted: ['PE'], correct: ['CO'] },
+            [THIRD]: { submitted: [], correct: ['CO'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: MAXIMUM_POINTS, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
+    id: 'ranking-years-at-war',
+    label: 'Ranking (years at war, scale bar)',
+    component: ViewGroupChallenge,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'group-challenge',
+          id: 'government.yearsAtWar',
+          countriesPerPlayer: { [ME]: ['MM', 'CO', 'SE', 'US', 'AF'] },
         }),
       ]),
   },

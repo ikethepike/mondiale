@@ -53,6 +53,7 @@ import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -120,6 +121,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'mother-tongue': ViewMotherTongue,
         'flag-palette': ViewFlagPalette,
         'capital-guess': ViewCapitalGuess,
+        flashpoint: ViewFlashpoint,
         'ghost-state': ViewGhostState,
         'no-mans-land': ViewNoMansLand,
         'pin-landmark': ViewPinLandmark,

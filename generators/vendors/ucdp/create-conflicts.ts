@@ -1,119 +1,185 @@
 import { writeFileSync } from 'fs'
-import { strFromU8, unzipSync } from 'fflate'
-import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
-import { GWToISOCode } from './gwcodes'
+import type { ISOCountryCode } from '~~/types/geography.types'
+import {
+  CONFLICT_TYPES,
+  INCOMPATIBILITIES,
+  type ConflictMapping,
+  type ConflictMetrics,
+  type ConflictParticipation,
+  type ConflictSummary,
+} from '~~/types/vendor/ucdp/ucdp.types'
+import { columnLookup, fetchZippedCsv } from '../../lib/csv'
+import { gwToISO } from './gwcodes'
 
 // The UCDP JSON API now requires an access token, but the packaged dataset
-// downloads remain open — so we fetch the dyadic CSV release instead.
+// downloads remain open — so we fetch the conflict-year CSV release instead.
 const DATASET_VERSION = '25.1'
-const DATASET_URL = `https://ucdp.uu.se/downloads/dyadic/ucdp-dyadic-${DATASET_VERSION.replace('.', '')}-csv.zip`
+const DATASET_URL = `https://ucdp.uu.se/downloads/ucdpprio/ucdp-prio-acd-${DATASET_VERSION.replace('.', '')}-csv.zip`
 
-const OUTPUT_FILE = `data/conflicts.gen.ts`
+const METRICS_FILE = 'data/conflicts.gen.ts'
+const PROFILES_FILE = 'data/conflict-profiles.gen.ts'
 
-export type ConflictMapping = {
-  [country in ISOCountryCode]?: {
-    conflicts: number
-  }
+/** Rolling window for the "recent conflicts" metric, pinned to the dataset. */
+const RECENT_YEARS = 5
+
+const WAR_INTENSITY = 2
+
+type ConflictYearRow = {
+  year: number
+  sideA: string[]
+  sideB: string[]
+  incompatibility: number
+  territory: string
+  intensity: number
+  type: number
+  location: string
+  primaries: Set<ISOCountryCode>
 }
 
-/** Minimal RFC 4180 CSV parser (handles quoted fields with commas/newlines). */
-const parseCSV = (text: string): string[][] => {
-  const rows: string[][] = []
-  let row: string[] = []
-  let field = ''
-  let inQuotes = false
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-    if (inQuotes) {
-      if (char === '"') {
-        if (text[i + 1] === '"') {
-          field += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else {
-        field += char
-      }
-    } else if (char === '"') {
-      inQuotes = true
-    } else if (char === ',') {
-      row.push(field)
-      field = ''
-    } else if (char === '\n' || char === '\r') {
-      if (char === '\r' && text[i + 1] === '\n') i++
-      row.push(field)
-      field = ''
-      rows.push(row)
-      row = []
-    } else {
-      field += char
-    }
-  }
-  if (field.length || row.length) {
-    row.push(field)
-    rows.push(row)
-  }
-
-  return rows.filter(cells => cells.some(cell => cell.length))
-}
+const splitList = (value: string) =>
+  value
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean)
 
 export const createConflictsMapping = async () => {
-  console.info(`Downloading UCDP dyadic dataset v${DATASET_VERSION}`)
-  const response = await fetch(DATASET_URL)
-  if (!response.ok) {
-    throw new Error(`Failed to download UCDP dataset (${response.status}): ${DATASET_URL}`)
-  }
-
-  const archive = unzipSync(new Uint8Array(await response.arrayBuffer()))
-  const csvEntry = Object.keys(archive).find(name => name.toLowerCase().endsWith('.csv'))
-  if (!csvEntry) throw new Error(`No CSV file found in UCDP archive: ${DATASET_URL}`)
-
-  const rows = parseCSV(strFromU8(archive[csvEntry]))
+  console.info(`Downloading UCDP/PRIO armed conflict dataset v${DATASET_VERSION}`)
+  const rows = await fetchZippedCsv(DATASET_URL)
   const header = rows.shift()
   if (!header) throw new Error('UCDP CSV is empty')
 
-  const columnIndex = (name: string) => {
-    const index = header.indexOf(name)
-    if (index === -1) throw new Error(`Column "${name}" missing from UCDP CSV`)
-    return index
+  const column = columnLookup(header, 'UCDP/PRIO ACD')
+  const conflictId = column('conflict_id')
+  const location = column('location')
+  const sideA = column('side_a')
+  const sideB = column('side_b')
+  const incompatibility = column('incompatibility')
+  const territoryName = column('territory_name')
+  const year = column('year')
+  const intensityLevel = column('intensity_level')
+  const typeOfConflict = column('type_of_conflict')
+  const gwnoA = column('gwno_a')
+  const gwnoB = column('gwno_b')
+
+  // Primary parties only — secondary supporters do not count as participation.
+  const primaryParties = (row: string[]): Set<ISOCountryCode> => {
+    const parties = new Set<ISOCountryCode>()
+    for (const value of [...splitList(row[gwnoA]), ...splitList(row[gwnoB])]) {
+      const iso = gwToISO.get(Number(value))
+      if (iso) parties.add(iso)
+    }
+    return parties
   }
 
-  const gwnoColumns = ['gwno_a', 'gwno_b'].map(columnIndex)
-  const gwnoListColumns = ['gwno_a_2nd', 'gwno_b_2nd'].map(columnIndex)
-
-  // Count how many conflict-year rows each Gleditsch & Ward state took part in
-  const conflictsByGWCode = new Map<number, number>()
-  const count = (value: string) => {
-    const gwCode = Number(value)
-    if (!value.trim() || Number.isNaN(gwCode)) return
-    conflictsByGWCode.set(gwCode, (conflictsByGWCode.get(gwCode) ?? 0) + 1)
-  }
-
+  const byConflict = new Map<number, ConflictYearRow[]>()
+  let maxYear = 0
   for (const row of rows) {
-    for (const column of gwnoColumns) count(row[column])
-    for (const column of gwnoListColumns) {
-      for (const value of row[column].split(',')) count(value)
+    const id = Number(row[conflictId])
+    if (!Number.isFinite(id)) continue
+    const parsed: ConflictYearRow = {
+      year: Number(row[year]),
+      sideA: splitList(row[sideA]),
+      sideB: splitList(row[sideB]),
+      incompatibility: Number(row[incompatibility]),
+      territory: row[territoryName].trim(),
+      intensity: Number(row[intensityLevel]),
+      type: Number(row[typeOfConflict]),
+      location: row[location].trim(),
+      primaries: primaryParties(row),
+    }
+    maxYear = Math.max(maxYear, parsed.year)
+    const existing = byConflict.get(id)
+    if (existing) existing.push(parsed)
+    else byConflict.set(id, [parsed])
+  }
+
+  const metricsByISO = new Map<ISOCountryCode, ConflictMetrics & { warYears: Set<number> }>()
+  const metricsFor = (iso: ISOCountryCode) => {
+    let metrics = metricsByISO.get(iso)
+    if (!metrics) {
+      metrics = { total: 0, yearsAtWar: 0, recent: 0, warYears: new Set() }
+      metricsByISO.set(iso, metrics)
+    }
+    return metrics
+  }
+
+  const conflicts: Record<number, ConflictSummary> = {}
+  const participation: ConflictParticipation = {}
+
+  for (const [id, conflictRows] of byConflict) {
+    conflictRows.sort((a, b) => a.year - b.year)
+    const latest = conflictRows[conflictRows.length - 1]
+    const participants = new Set<ISOCountryCode>()
+    const episodes: [number, number][] = []
+    let reachedWar = false
+
+    for (const row of conflictRows) {
+      const lastEpisode = episodes[episodes.length - 1]
+      if (lastEpisode && row.year <= lastEpisode[1] + 1) lastEpisode[1] = Math.max(lastEpisode[1], row.year)
+      else episodes.push([row.year, row.year])
+      if (row.intensity === WAR_INTENSITY) reachedWar = true
+
+      for (const iso of row.primaries) {
+        participants.add(iso)
+        if (row.intensity === WAR_INTENSITY) metricsFor(iso).warYears.add(row.year)
+      }
+    }
+
+    const recentlyActive = conflictRows.some(row => row.year > maxYear - RECENT_YEARS)
+    for (const iso of participants) {
+      const metrics = metricsFor(iso)
+      metrics.total += 1
+      if (recentlyActive) metrics.recent += 1
+      const ids = (participation[iso] ??= [])
+      ids.push(id)
+    }
+
+    const type = CONFLICT_TYPES[latest.type as keyof typeof CONFLICT_TYPES]
+    const fought = INCOMPATIBILITIES[latest.incompatibility as keyof typeof INCOMPATIBILITIES]
+    if (!type || !fought) throw new Error(`Unknown type/incompatibility codes on conflict ${id}`)
+
+    const territorial = fought !== 'government' && latest.territory
+    conflicts[id] = {
+      id,
+      name: territorial && latest.territory !== latest.location ? `${latest.location}: ${latest.territory}` : latest.location,
+      sideA: latest.sideA,
+      sideB: latest.sideB,
+      episodes,
+      type,
+      incompatibility: fought,
+      ...(territorial ? { territory: latest.territory } : {}),
+      reachedWar,
     }
   }
 
   const conflictMapping: ConflictMapping = {}
-  for (const [isoCode, gwCode] of Object.entries(GWToISOCode)) {
-    if (!isValidISOCode(isoCode)) continue // bypass unsupported nations
-    conflictMapping[isoCode] = {
-      conflicts: conflictsByGWCode.get(gwCode as number) ?? 0,
+  for (const iso of gwToISO.values()) {
+    const metrics = metricsByISO.get(iso)
+    conflictMapping[iso] = {
+      total: metrics?.total ?? 0,
+      yearsAtWar: metrics?.warYears.size ?? 0,
+      recent: metrics?.recent ?? 0,
     }
   }
 
   writeFileSync(
-    OUTPUT_FILE,
+    METRICS_FILE,
     `
-      import type { ConflictMapping } from '../generators/vendors/ucdp/create-conflicts'
+      import type { ConflictMapping } from '../types/vendor/ucdp/ucdp.types'
       export const conflictMapping: ConflictMapping = ${JSON.stringify(conflictMapping)}
     `
   )
-  console.info(`Wrote ${OUTPUT_FILE} (${Object.keys(conflictMapping).length} countries)`)
+  console.info(`Wrote ${METRICS_FILE} (${Object.keys(conflictMapping).length} countries, data through ${maxYear})`)
+
+  writeFileSync(
+    PROFILES_FILE,
+    `
+      import type { ConflictParticipation, ConflictSummary } from '../types/vendor/ucdp/ucdp.types'
+      export const CONFLICTS: Record<number, ConflictSummary> = ${JSON.stringify(conflicts)}
+      export const CONFLICTS_BY_COUNTRY: ConflictParticipation = ${JSON.stringify(participation)}
+    `
+  )
+  console.info(`Wrote ${PROFILES_FILE} (${Object.keys(conflicts).length} conflicts)`)
 }
 
 createConflictsMapping()
