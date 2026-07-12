@@ -27,7 +27,9 @@ export type ChallengeGroupId = keyof typeof CHALLENGE_GROUPS
 export type ChallengeOverrides = Partial<Record<ChallengeGroupId, boolean>>
 
 export const isValidChallengeGroupId = (value: unknown): value is ChallengeGroupId =>
-  typeof value === 'string' && value in CHALLENGE_GROUPS
+  // Object.hasOwn, not `in` — `in` walks the prototype chain, so keys like
+  // 'toString' would validate and be stored into game state.
+  typeof value === 'string' && Object.hasOwn(CHALLENGE_GROUPS, value)
 
 export const isValidChallengeOverrides = (value: unknown): value is ChallengeOverrides =>
   !!value &&
