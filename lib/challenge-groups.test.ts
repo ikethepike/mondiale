@@ -4,6 +4,7 @@ import {
   CHALLENGE_GROUP_ACCESSORS,
   CHALLENGE_GROUP_BY_KIND,
   isAccessorEnabled,
+  isGroupEnabled,
   isKindEnabled,
   isValidChallengeOverrides,
 } from '~~/types/challenges/challenge-groups.type'
@@ -92,6 +93,25 @@ describe('taxonomy shape', () => {
     expect(water.total).toHaveLength(4)
     expect(water.enabled).toEqual(expect.arrayContaining(['river-run', 'shared-shores']))
     expect(water.enabled).toHaveLength(2)
+  })
+})
+
+describe('isGroupEnabled', () => {
+  it('lets an explicit override beat the auto gate both ways', () => {
+    expect(isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: false } }, 'trends')).toBe(
+      false
+    )
+    expect(isGroupEnabled({ difficulty: 'hard', challengeOverrides: { trends: false } }, 'trends')).toBe(
+      false
+    )
+    expect(isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: true } }, 'trends', false)).toBe(
+      true
+    )
+  })
+
+  it('follows the auto gate when unset', () => {
+    expect(isGroupEnabled({ difficulty: 'easy' }, 'trends')).toBe(true)
+    expect(isGroupEnabled({ difficulty: 'easy' }, 'trends', false)).toBe(false)
   })
 })
 

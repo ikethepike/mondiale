@@ -1,5 +1,6 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
+import type { TrendMetricId } from '~~/lib/trends'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -323,6 +324,27 @@ export interface HeritageHuntState {
   finished?: boolean
 }
 
+/**
+ * Trend race: which of these countries' stat has risen/fallen the most since
+ * `windowStartYear`? Everyone picks one card before the countdown ends; the
+ * reveal flips every card to its sparkline, ranked.
+ */
+export interface TrendRaceChallenge {
+  _type: 'trend-race-challenge'
+  metric: TrendMetricId
+  direction: 'risen' | 'fallen'
+  /** Display order (shuffled once at deal, same for every player). */
+  options: ISOCountryCode[]
+  /** Options by |change| over the shared window, steepest first — standings[0]
+   *  is the answer. Pinned at deal so scoring survives a data regeneration
+   *  mid-game. */
+  standings: ISOCountryCode[]
+  /** Every option's series is compared from this year on. */
+  windowStartYear: number
+  durationSeconds: number
+  maximumPoints: number
+}
+
 export type GroupModeChallenge =
   | BorderChainChallenge
   | HeritageHuntChallenge
@@ -341,3 +363,4 @@ export type GroupModeChallenge =
   | GhostStateChallenge
   | NoMansLandChallenge
   | PinLandmarkChallenge
+  | TrendRaceChallenge

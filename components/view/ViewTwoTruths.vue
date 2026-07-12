@@ -234,6 +234,7 @@ header {
 
 .plot-frame {
   pointer-events: auto;
+  width: min(46rem, 92vw);
 }
 
 .flag-frame {

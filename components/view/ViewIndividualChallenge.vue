@@ -281,6 +281,84 @@
               </button>
             </div>
           </template>
+
+          <!-- Trend duel: whose stat is rising/falling — win every duel -->
+          <template v-else-if="variant === 'trend-duel' && currentTrendDuel">
+            <h1 class="map-caption">
+              Whose {{ trendDuelLabel }} is {{ currentTrendDuel.seek }}?
+            </h1>
+            <span class="map-caption sub"
+              >Duel {{ trendDuelIndex + 1 }} of {{ totalTrendDuels }} — win them all</span
+            >
+            <div class="options card-options">
+              <button
+                v-for="option in [currentTrendDuel.a, currentTrendDuel.b]"
+                :key="`${currentTrendDuel.metric}-${option}`"
+                class="option card-option trend-option"
+                :class="trendDuelCardClass(option)"
+                type="button"
+                :disabled="!!trendDuelReveal"
+                @click="answerTrendDuel(option)"
+              >
+                <CountryTileFlag class="option-flag" :country="getCountry(option)" />
+                <span>{{ countryName(option) }}</span>
+                <TrendSparkline
+                  v-if="trendDuelReveal && trendSeriesFor(option, currentTrendDuel.metric)"
+                  :series="trendSeriesFor(option, currentTrendDuel.metric)!"
+                  :metric="currentTrendDuel.metric"
+                  animate-in
+                />
+              </button>
+            </div>
+          </template>
+
+          <!-- Trajectory match: whose chart is this? -->
+          <template v-else-if="variant === 'trajectory-match' && challenge.trajectory">
+            <h1 class="map-caption">Whose chart is this?</h1>
+            <span class="map-caption sub">
+              {{ trajectorySecondsLeft }}s — one of these countries' {{ trajectoryLabel }}
+            </span>
+            <ChallengeTimer :value="trajectorySecondsLeft" :total="TRAJECTORY_MATCH_SECONDS" />
+            <div
+              class="border-ring trajectory-ring"
+              :style="{ '--ring-count': challenge.trajectory.options.length }"
+            >
+              <div class="ring-center chart-center" aria-hidden="true">
+                <TrendSparkline
+                  v-if="trajectorySeries"
+                  :series="trajectorySeries"
+                  :metric="challenge.trajectory.metric"
+                  :hide-values="!trajectoryValuesRevealed"
+                />
+              </div>
+              <button
+                v-for="(option, index) in challenge.trajectory.options"
+                :key="option"
+                class="ring-flag ring-pick"
+                :class="{ struck: struckOptions.has(option) }"
+                type="button"
+                :disabled="struckOptions.has(option)"
+                :style="ringSlot(index, challenge.trajectory.options.length)"
+                @click="onTrajectoryPick(option)"
+              >
+                <CountryFlag :country="getCountry(option)" mode="inline" />
+                <span v-if="!isHard" class="ring-name">{{ countryName(option) }}</span>
+              </button>
+            </div>
+            <div class="hint-row">
+              <Transition name="caption">
+                <button
+                  v-if="!struckOptions.size && strikeHintUnlocked"
+                  class="hint-button"
+                  type="button"
+                  @click="showStrikeHint"
+                >
+                  <StatTopicIcon class="hint-icon" topic="reveal" />
+                  Strike out half (−{{ GATE_HINT_BITE_STEPS }} steps)
+                </button>
+              </Transition>
+            </div>
+          </template>
         </div>
         <ChallengeResult
           v-else-if="status"
@@ -294,6 +372,12 @@
             :accessor-id="duelAccessorId"
             :topic="duelTopic"
             :colors="PAIR_COLORS"
+          />
+          <TrendSparkline
+            v-else-if="variant === 'trajectory-match' && challenge?.trajectory && trajectorySeries"
+            class="result-sparkline"
+            :series="trajectorySeries"
+            :metric="challenge.trajectory.metric"
           />
           <LeaderReveal
             v-else-if="(variant === 'leader-pick' || variant === 'leader-portrait') && challenge"
@@ -319,8 +403,12 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
+import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
+import { TRENDS } from '~~/data/trends.gen'
+import { shuffleArray } from '~~/lib/arrays'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { currencyName, currencySymbol } from '~~/lib/currency'
 import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -395,6 +483,10 @@ const interstitialTitle = computed(() => {
       return `Who leads ${countryName(active.country)}?`
     case 'higher-lower':
       return `Win ${totalDuels.value === 2 ? 'both duels' : `all ${totalDuels.value} duels`}: which country ranks higher?`
+    case 'trend-duel':
+      return `Win all ${totalTrendDuels.value} duels: whose stat is rising, whose is falling?`
+    case 'trajectory-match':
+      return 'One chart, one country — whose trajectory is this?'
     case 'outline-reveal':
       return 'Name the country before its border finishes drawing itself'
     case 'leader-portrait':
@@ -651,6 +743,113 @@ const answerDuel = (picked: ISOCountryCode) => {
   submitAnswer(wrongToken, { reveal: false })
 }
 
+// --- Trend duels ---------------------------------------------------------------
+// Higher-lower's trust model with a pow-reveal beat: pick a flag, both cards
+// flip to sparklines, hold, then the next pair slides in (or the gate resolves).
+const TREND_DUEL_REVEAL_MS = 3200
+const trendDuelIndex = ref(0)
+const totalTrendDuels = computed(() => challenge.value?.trendDuels?.length ?? 0)
+const currentTrendDuel = computed(() => challenge.value?.trendDuels?.[trendDuelIndex.value])
+const trendDuelReveal = ref<{ picked: ISOCountryCode; correct: boolean }>()
+let trendDuelTimer: ReturnType<typeof setTimeout> | undefined
+const failedTrendDuel = ref<{ answer: ISOCountryCode; seek: 'rising' | 'falling' }>()
+
+const trendSeriesFor = (isoCode: ISOCountryCode, metric: TrendMetricId) =>
+  TRENDS[isoCode]?.[metric]
+const trendDuelLabel = computed(() =>
+  currentTrendDuel.value ? TREND_METRICS[currentTrendDuel.value.metric].label : ''
+)
+
+const trendDuelCardClass = (option: ISOCountryCode) => {
+  const reveal = trendDuelReveal.value
+  if (!reveal || option !== reveal.picked) return undefined
+  return reveal.correct ? 'was-right' : 'was-wrong'
+}
+
+const answerTrendDuel = (picked: ISOCountryCode) => {
+  const active = challenge.value
+  const duel = currentTrendDuel.value
+  if (!active?.trendDuels || !duel || status.value || trendDuelReveal.value) return
+
+  const direction = readTrend(trendSeriesFor(picked, duel.metric), duel.metric)?.direction
+  const correct = direction === duel.seek
+  trendDuelReveal.value = { picked, correct }
+
+  trendDuelTimer = setTimeout(() => {
+    trendDuelReveal.value = undefined
+    if (!correct) {
+      const other = picked === duel.a ? duel.b : duel.a
+      failedTrendDuel.value = { answer: other, seek: duel.seek }
+      // Any lost duel fails the challenge: submit a token that can't match
+      const wrongToken = active.country === picked ? other : picked
+      return submitAnswer(wrongToken, { reveal: false })
+    }
+    if (trendDuelIndex.value >= totalTrendDuels.value - 1) {
+      // Swept the whole streak — submit the winning token
+      return submitAnswer(active.country, { reveal: false })
+    }
+    trendDuelIndex.value++
+  }, TREND_DUEL_REVEAL_MS)
+}
+
+// --- Trajectory match ----------------------------------------------------------
+// Timed like border-detective: the clock scales the leap, one buyable hint
+// (strike out half the decoys) bites steps, and non-hard games get the y-axis
+// values free in the final third.
+const TRAJECTORY_MATCH_SECONDS = 40
+const STRIKE_HINT_UNLOCK_ELAPSED = 1 / 3
+const VALUES_REVEAL_ELAPSED = 2 / 3
+const trajectorySecondsLeft = ref(TRAJECTORY_MATCH_SECONDS)
+let trajectoryTimer: ReturnType<typeof setInterval> | undefined
+const struckOptions = ref(new Set<ISOCountryCode>())
+
+const trajectoryElapsed = computed(() => 1 - trajectorySecondsLeft.value / TRAJECTORY_MATCH_SECONDS)
+const strikeHintUnlocked = computed(() => trajectoryElapsed.value >= STRIKE_HINT_UNLOCK_ELAPSED)
+const trajectoryValuesRevealed = computed(() => {
+  const trajectory = challenge.value?.trajectory
+  if (!trajectory) return false
+  // Result beat always shows values; during play hard mode stays shape-only.
+  if (status.value) return true
+  return trajectory.valuesHint && trajectoryElapsed.value >= VALUES_REVEAL_ELAPSED
+})
+const trajectoryLabel = computed(() => {
+  const trajectory = challenge.value?.trajectory
+  return trajectory ? TREND_METRICS[trajectory.metric].label : ''
+})
+const trajectorySeries = computed(() => {
+  const active = challenge.value
+  return active?.trajectory ? TRENDS[active.country]?.[active.trajectory.metric] : undefined
+})
+
+const beginTrajectoryMatch = () => {
+  const active = challenge.value
+  if (!active || variant.value !== 'trajectory-match' || trajectoryTimer) return
+  trajectoryTimer = setInterval(() => {
+    trajectorySecondsLeft.value--
+    if (trajectorySecondsLeft.value <= 0) {
+      if (trajectoryTimer) clearInterval(trajectoryTimer)
+      if (!status.value) submitAnswer(wrongTokenFor(active.country))
+    }
+  }, 1000)
+}
+
+const showStrikeHint = () => {
+  const active = challenge.value
+  const trajectory = active?.trajectory
+  if (!active || !trajectory || struckOptions.value.size || status.value) return
+  const decoys = shuffleArray(trajectory.options.filter(option => option !== active.country))
+  struckOptions.value = new Set(decoys.slice(0, Math.ceil(decoys.length / 2)))
+}
+
+const onTrajectoryPick = (isoCode: ISOCountryCode) => {
+  if (status.value || struckOptions.value.has(isoCode)) return
+  if (trajectoryTimer) clearInterval(trajectoryTimer)
+  submitAnswer(isoCode, {
+    remainingFraction: Math.max(0, trajectorySecondsLeft.value) / TRAJECTORY_MATCH_SECONDS,
+    hintsUsed: struckOptions.value.size ? 1 : 0,
+  })
+}
+
 // --- Result messaging ---------------------------------------------------------
 const incorrectMessage = computed(() => {
   const active = challenge.value
@@ -683,6 +882,12 @@ const incorrectMessage = computed(() => {
       return failedDuelAnswer.value
         ? `${countryName(failedDuelAnswer.value)} ranks higher`
         : 'Not quite.'
+    case 'trend-duel':
+      return failedTrendDuel.value
+        ? `${countryName(failedTrendDuel.value.answer)} is the one ${failedTrendDuel.value.seek}`
+        : 'Not quite.'
+    case 'trajectory-match':
+      return active ? `That trajectory belongs to ${countryName(active.country)}` : 'Time ran out.'
     case 'outline-reveal':
       return active ? `That border belongs to ${countryName(active.country)}` : 'Time ran out.'
     case 'leader-portrait':
@@ -730,6 +935,7 @@ watch(showInterstitial, value => {
   if (variant.value === 'outline-reveal') beginOutlineReveal()
   if (variant.value === 'zoom-out') beginZoomOut()
   if (variant.value === 'border-detective') beginBorderDetective()
+  if (variant.value === 'trajectory-match') beginTrajectoryMatch()
 })
 
 // Back-to-back gates can reach a still-mounted view (the walk between them
@@ -766,6 +972,19 @@ watch(currentMove, move => {
     clearTimeout(zoomOutTimer)
     zoomOutTimer = undefined
   }
+  if (trendDuelTimer) {
+    clearTimeout(trendDuelTimer)
+    trendDuelTimer = undefined
+  }
+  trendDuelIndex.value = 0
+  trendDuelReveal.value = undefined
+  failedTrendDuel.value = undefined
+  if (trajectoryTimer) {
+    clearInterval(trajectoryTimer)
+    trajectoryTimer = undefined
+  }
+  trajectorySecondsLeft.value = TRAJECTORY_MATCH_SECONDS
+  struckOptions.value = new Set()
   if (next.variant === 'outline-reveal' || next.variant === 'border-detective') {
     gameStore.map.solo = true
   }
@@ -815,6 +1034,8 @@ onBeforeUnmount(() => {
   if (outlineTimer) clearInterval(outlineTimer)
   if (borderTimer) clearInterval(borderTimer)
   if (zoomOutTimer) clearTimeout(zoomOutTimer)
+  if (trendDuelTimer) clearTimeout(trendDuelTimer)
+  if (trajectoryTimer) clearInterval(trajectoryTimer)
   resetOutlineReveal()
   document.removeEventListener('mapClick', onMapClick)
 })
@@ -1039,6 +1260,66 @@ header {
   color: var(--dark-blue);
   background: hsla(36, 100%, 98%, 0.92);
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+}
+
+// Trend duel: the pow reveal flips both cards to sparklines; the picked card
+// carries the verdict wash.
+.trend-option {
+  .trend-sparkline {
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+  &.was-right {
+    border-color: hsla(170.5, 34.7%, 45%, 0.7);
+    background: hsla(170.5, 34.7%, 55.1%, 0.14);
+  }
+  &.was-wrong {
+    border-color: var(--hior-ange);
+    background: hsla(9.8, 81.3%, 60.2%, 0.18);
+  }
+}
+
+// Trajectory match: the mystery chart sits where border-detective keeps its
+// "?", with the candidate flags clickable around it.
+.trajectory-ring {
+  pointer-events: auto;
+
+  .chart-center {
+    width: 52%;
+    font-size: inherit;
+    border-radius: 1.2rem;
+    aspect-ratio: auto;
+    padding: 1rem 1.2rem 0.6rem;
+    pointer-events: none;
+  }
+}
+
+.ring-pick {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  transition: opacity var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover:not(:disabled) :deep(svg) {
+      filter: drop-shadow(0 2px 5px hsla(215.7, 76.4%, 21.6%, 0.4));
+    }
+  }
+
+  &.struck {
+    opacity: 0.25;
+    cursor: default;
+    text-decoration: line-through;
+  }
+}
+
+.result-sparkline {
+  width: min(30rem, 80vw);
+  margin: 0.8rem auto 0;
 }
 
 .hint-row {

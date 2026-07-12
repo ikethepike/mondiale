@@ -1,4 +1,5 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
+import type { TrendMetricId } from '../../lib/trends'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -11,6 +12,10 @@ import type { ISOCountryCode } from '../geography.types'
  * - 'odd-one-out': `country` is the impostor among `oddOneOut.countries`
  * - 'higher-lower': three stat duels; the client submits `country` only when
  *   every duel was answered correctly (same client-trust model as the map)
+ * - 'trend-duel': which of two countries' stat is rising/falling — a streak of
+ *   pairs with one guaranteed riser + one faller (higher-lower's trust model)
+ * - 'trajectory-match': a mystery sparkline — whose chart is this? Timed like
+ *   border-detective, one buyable strike-out hint
  * - 'leader-pick': whose leader is named — `options` are the candidate
  *   countries, their leaders shown as the answers
  * - 'outline-reveal' (hard mode): `country`'s border draws itself in; name
@@ -34,6 +39,26 @@ export interface IndividualChallenge {
   higherLower?: {
     accessorId: GroupChallengeAccessorId
     pairs: { a: ISOCountryCode; b: ISOCountryCode }[]
+  }
+  /** trend-duel: which country's stat trends `seek`-ward — one riser + one
+   *  faller per pair, answered in order; the client submits `country` only on
+   *  a clean streak (same client-trust model as higher-lower, truth derived
+   *  from TRENDS via readTrend). */
+  trendDuels?: {
+    metric: TrendMetricId
+    seek: 'rising' | 'falling'
+    a: ISOCountryCode
+    b: ISOCountryCode
+  }[]
+  /** trajectory-match: whose chart is this? Timed gate like border-detective —
+   *  the clock fraction scales the leap and the one buyable hint (strike out
+   *  half the decoys) bites steps via gateLeapSteps. */
+  trajectory?: {
+    metric: TrendMetricId
+    /** Includes `country`, display order. */
+    options: ISOCountryCode[]
+    /** Non-hard: y-axis values revealed free in the final third. */
+    valuesHint: boolean
   }
   /** leader-portrait: the face on the card (name shown only in the result). */
   portrait?: {
@@ -64,6 +89,8 @@ export const individualChallengeVariants = [
   'landmark-quiz',
   'odd-one-out',
   'higher-lower',
+  'trend-duel',
+  'trajectory-match',
   'leader-pick',
   'outline-reveal',
   'leader-portrait',

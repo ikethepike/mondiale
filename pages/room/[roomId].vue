@@ -48,6 +48,7 @@ import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
+import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
@@ -125,6 +126,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'ghost-state': ViewGhostState,
         'no-mans-land': ViewNoMansLand,
         'pin-landmark': ViewPinLandmark,
+        'trend-race': ViewTrendRace,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

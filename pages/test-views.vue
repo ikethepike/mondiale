@@ -25,8 +25,9 @@
  *
  *   /test-views
  */
-import { computed, ref } from 'vue'
+import { computed, defineComponent, h, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
+import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
@@ -43,10 +44,12 @@ import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
+import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { TRENDS } from '~~/data/trends.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
@@ -162,6 +165,51 @@ interface Scenario {
 const landmark = LANDMARKS['eiffel-tower']
 const heritageSlugs = Object.keys(HERITAGE)
 
+/** Signature trajectories, one card per shape — scales, delta chips and
+ *  endpoint labels in a single screen. Data straight from data/trends.gen. */
+const GALLERY = [
+  { isoCode: 'RW', metric: 'lifeExpectancy', note: 'Rwanda — life expectancy (the V)' },
+  { isoCode: 'EE', metric: 'internetUse', note: 'Estonia — internet ramp (bounded 0–100)' },
+  { isoCode: 'SE', metric: 'co2PerCapita', note: 'Sweden — CO₂ slide' },
+  { isoCode: 'CN', metric: 'gdp', note: 'China — GDP take-off (4 sig. digits)' },
+  { isoCode: 'HU', metric: 'politicalCorruption', note: 'Hungary — corruption (bounded, inverted)' },
+  { isoCode: 'SV', metric: 'homicideRate', note: 'El Salvador — homicide collapse' },
+  { isoCode: 'US', metric: 'gini', note: 'United States — inequality (0.2–0.6 scale)' },
+  { isoCode: 'BD', metric: 'childMortality', note: 'Bangladesh — child mortality' },
+] as const
+
+const TrendGallery = defineComponent({
+  name: 'TrendGallery',
+  setup: () => () =>
+    h(
+      'div',
+      {
+        style:
+          'position:absolute;inset:0;overflow:auto;pointer-events:auto;padding:6rem 2rem 2rem;' +
+          'display:grid;gap:1.6rem;grid-template-columns:repeat(auto-fill,minmax(24rem,1fr));' +
+          'align-content:start;background:hsl(36,100%,97%)',
+      },
+      GALLERY.map(({ isoCode, metric, note }) => {
+        const series = TRENDS[isoCode]?.[metric]
+        return h(
+          'figure',
+          {
+            key: `${isoCode}-${metric}`,
+            style:
+              'margin:0;padding:1.4rem;border-radius:1.2rem;background:hsla(36,100%,99%,0.9);' +
+              'border:1px solid hsla(215.7,76.4%,21.6%,0.2)',
+          },
+          [
+            series
+              ? h(TrendSparkline, { series: [...series], metric })
+              : h('em', 'no series in data/trends.gen'),
+            h('figcaption', { style: 'margin-top:0.6rem;font-size:1.3rem' }, note),
+          ]
+        )
+      })
+    ),
+})
+
 const scenarios: Scenario[] = [
   {
     id: 'ranking',
@@ -236,6 +284,48 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'trend-sparkline-gallery',
+    label: 'Trend sparklines (shape gallery)',
+    component: TrendGallery,
+    build: () => mockGame('group-scores', []),
+  },
+  {
+    id: 'trend-race',
+    label: 'Trend race (pick → reveal on click)',
+    component: ViewTrendRace,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'trend-race-challenge',
+          metric: 'childMortality',
+          direction: 'fallen',
+          options: ['KR', 'PT', 'TR', 'BD', 'PL'],
+          standings: ['BD', 'KR', 'TR', 'PT', 'PL'],
+          windowStartYear: 1983,
+          durationSeconds: 30,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'trend-race-scaled',
+    label: 'Trend race (bounded index, inverted)',
+    component: ViewTrendRace,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'trend-race-challenge',
+          metric: 'politicalCorruption',
+          direction: 'risen',
+          options: ['HU', 'RS', 'TR', 'PL', 'GR'],
+          standings: ['TR', 'HU', 'RS', 'PL', 'GR'],
+          windowStartYear: 1990,
+          durationSeconds: 30,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'capital-guess',
     label: 'Capital guess (options)',
     component: ViewCapitalGuess,
@@ -280,7 +370,7 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['CO', 'PE', 'MX', 'SV'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 1964 — a civil war over who governs.',
+          hint: 'Its defining conflict began in 1964 — an internal conflict over who governs.',
           durationSeconds: 28,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -315,15 +405,37 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['RU', 'UA', 'GE', 'TJ'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 1994 — a civil war over territory.',
+          hint: 'Its defining conflict began in 1994 — an internal conflict over territory.',
           durationSeconds: 28,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
   },
   {
-    // The US has 9 recorded events on home soil — GED locates fighting where
-    // it happens, so US conflicts cloud OTHER countries' maps. Kept here to
+    // Where the US's wars actually land: Afghanistan's field carries the
+    // dots that a "US at war" mental model expects to see.
+    id: 'flashpoint-afghanistan',
+    label: 'Flashpoint (Afghanistan — where US wars land)',
+    component: ViewFlashpoint,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flashpoint-challenge',
+          country: 'AF',
+          eras: [0, 1, 2, 3],
+          secondsPerEra: 4,
+          options: ['AF', 'PK', 'TJ', 'IR'],
+          maximumGuesses: 2,
+          hint: 'Its defining conflict began in 1978 — an internal conflict over who governs.',
+          durationSeconds: 28,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    // The US has 9 recorded events on home soil, ALL post-1989 (GED's whole
+    // window) — GED locates fighting where it happens, so US conflicts cloud
+    // OTHER countries' maps (see the Afghanistan scenario). Kept here to
     // show why the dealer's 40-point floor excludes it in real games.
     id: 'flashpoint-us',
     label: 'Flashpoint (US, below dealer floor)',
@@ -337,7 +449,7 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['US', 'MX', 'CO', 'SV'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 2001 — a civil war (internationalized) over who governs.',
+          hint: 'Its defining conflict began in 2001 — an internal conflict (internationalized) over who governs.',
           durationSeconds: 24,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -726,6 +838,51 @@ const scenarios: Scenario[] = [
             { a: 'DK', b: 'IN' },
             { a: 'SE', b: 'JP' },
           ],
+        },
+      }),
+  },
+  {
+    id: 'individual-trend-duel',
+    label: 'Individual: trend duel (pow reveal on pick)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'trend-duel',
+        trendDuels: [
+          { metric: 'co2PerCapita', seek: 'rising', a: 'SE', b: 'IN' },
+          { metric: 'homicideRate', seek: 'falling', a: 'SV', b: 'US' },
+          { metric: 'politicalCorruption', seek: 'rising', a: 'HU', b: 'EE' },
+          { metric: 'gini', seek: 'rising', a: 'US', b: 'FR' },
+        ],
+      }),
+  },
+  {
+    id: 'individual-trajectory-match',
+    label: 'Individual: trajectory match (timed, strike hint)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'trajectory-match',
+        country: 'RW',
+        trajectory: {
+          metric: 'lifeExpectancy',
+          options: ['RW', 'UG', 'TZ', 'KE', 'BI', 'ET'],
+          valuesHint: false,
+        },
+      }),
+  },
+  {
+    id: 'individual-trajectory-match-values',
+    label: 'Individual: trajectory match (free values reveal)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'trajectory-match',
+        country: 'SV',
+        trajectory: {
+          metric: 'homicideRate',
+          options: ['SV', 'GT', 'HN', 'MX'],
+          valuesHint: true,
         },
       }),
   },

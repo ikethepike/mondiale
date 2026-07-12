@@ -19,6 +19,7 @@ export const CHALLENGE_GROUPS = {
   flags: { label: 'Flags & shapes' },
   culture: { label: 'Culture & places' },
   disputed: { label: 'Disputed places' },
+  trends: { label: 'Trends & history' },
 } as const
 
 export type ChallengeGroupId = keyof typeof CHALLENGE_GROUPS
@@ -60,6 +61,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'pin-landmark': 'culture',
   'ghost-state': 'disputed',
   'no-mans-land': 'disputed',
+  'trend-race': 'trends',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
 /** Kinds reserved for hard games unless their group is force-enabled. Lives
@@ -92,13 +94,27 @@ type ChallengeSettings = {
   challengeOverrides?: ChallengeOverrides
 }
 
+/** The shared tri-state: explicit override → as set, otherwise the given
+ *  AUTO gate. Kinds, accessors, and the trend gates all resolve through it. */
+export const isGroupEnabled = (
+  game: ChallengeSettings,
+  group: ChallengeGroupId,
+  autoEnabled = true
+): boolean => {
+  const override = game.challengeOverrides?.[group]
+  if (override !== undefined) return override
+  return autoEnabled
+}
+
 /** Core → always. Explicit override → as set. Auto → the difficulty gate. */
 export const isKindEnabled = (game: ChallengeSettings, kind: RoundChallengeKind): boolean => {
   const group = CHALLENGE_GROUP_BY_KIND[kind]
   if (group === 'core') return true
-  const override = game.challengeOverrides?.[group]
-  if (override !== undefined) return override
-  return game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
+  return isGroupEnabled(
+    game,
+    group,
+    game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
+  )
 }
 
 /** Grouped accessors ride their group's state. In auto they follow the
@@ -111,9 +127,7 @@ export const isAccessorEnabled = (
     groupAccessors[group]?.includes(accessor)
   )
   if (!owner) return true
-  const override = game.challengeOverrides?.[owner]
-  if (override !== undefined) return override
-  return game.difficulty === 'hard'
+  return isGroupEnabled(game, owner, game.difficulty === 'hard')
 }
 
 /** The lobby caption for a group's AUTO state at a given difficulty. */

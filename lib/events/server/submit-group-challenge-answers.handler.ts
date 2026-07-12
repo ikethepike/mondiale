@@ -7,6 +7,7 @@ import {
   scoreNoMansLand,
   scorePinLandmark,
   scoreTraversalSubmission,
+  scoreTrendRace,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { blitzScore } from '~~/lib/scoring'
@@ -150,6 +151,15 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         // Bir Tawil, which nobody claims, naming nobody is the correct play.
         answer = { submitted: eventData.ranking, correct: roundChallenge.claimants }
         scoring = scoreNoMansLand({
+          challenge: roundChallenge,
+          submittedGuesses: eventData.ranking,
+        })
+        break
+      }
+      case 'trend-race': {
+        if (roundChallenge._type !== 'trend-race-challenge') throw new TypeError('kind mismatch')
+        answer = { submitted: eventData.ranking, correct: [roundChallenge.standings[0]] }
+        scoring = scoreTrendRace({
           challenge: roundChallenge,
           submittedGuesses: eventData.ranking,
         })

@@ -6,10 +6,12 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { TRENDS } from '~~/data/trends.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
   isAccessorEnabled,
+  isGroupEnabled,
   isKindEnabled,
   type ChallengeOverrides,
 } from '~~/types/challenges/challenge-groups.type'
@@ -33,6 +35,7 @@ import type {
   SilhouetteChallenge,
   SketchChallenge,
   StatDetectiveChallenge,
+  TrendRaceChallenge,
   TwoTruthsChallenge,
   WaterBlitzChallenge,
   WaterFeatureKind,
@@ -59,6 +62,8 @@ import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
 import { isRouteComplete, pickTraversal } from './traversal'
+import { dramaScore, isDecisiveGap, readTrend, TREND_METRIC_IDS, TREND_METRICS } from './trends'
+import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS, variantCountries } from './variant'
 
@@ -112,6 +117,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['ghost-state', 0.018],
   ['no-mans-land', 0.012],
   ['pin-landmark', 0.06],
+  ['trend-race', 0.08],
 ]
 
 /**
@@ -963,6 +969,89 @@ export const scoreNoMansLand = ({
 }
 
 /**
+ * Trend race: which of these countries' stat moved the most? Every dealt card
+ * is a decisive mover in the same direction over a SHARED window (series
+ * clipped to the latest common start year — comparing different windows would
+ * be dishonest), and the winner's margin must itself be decisive. Anything
+ * ambiguous falls through to the ranking fallback.
+ */
+const getTrendRaceChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): TrendRaceChallenge | undefined => {
+  const pool = variantCountries(game.variant)
+  const optionCount = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
+
+  for (const metric of shuffleArray(TREND_METRIC_IDS.filter(id => TREND_METRICS[id].race))) {
+    const movers: { isoCode: ISOCountryCode; direction: TrendReading['direction'] }[] = []
+    for (const isoCode of pool) {
+      const direction = readTrend(TRENDS[isoCode]?.[metric], metric)?.direction
+      if (direction === 'rising' || direction === 'falling') movers.push({ isoCode, direction })
+    }
+
+    const risers = movers.filter(mover => mover.direction === 'rising')
+    const fallers = movers.filter(mover => mover.direction === 'falling')
+    const candidates = risers.length >= fallers.length ? risers : fallers
+    if (candidates.length < optionCount) continue
+    const seek = candidates === risers ? 'rising' : 'falling'
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const picked = shuffleArray([...candidates]).slice(0, optionCount)
+      const sharedStart = Math.max(...picked.map(({ isoCode }) => TRENDS[isoCode]![metric]![0][0]))
+      const standings = picked
+        .flatMap(({ isoCode }) => {
+          const clipped = TRENDS[isoCode]![metric]!.filter(([year]) => year >= sharedStart)
+          const reading = readTrend(clipped, metric)
+          return reading?.direction === seek
+            ? [{ isoCode, change: Math.abs(reading.change) }]
+            : []
+        })
+        .sort((a, b) => b.change - a.change)
+      if (standings.length !== optionCount) continue
+      if (!isDecisiveGap(standings[0].change, standings[1].change, TREND_METRICS[metric].scale)) {
+        continue
+      }
+
+      return {
+        _type: 'trend-race-challenge',
+        metric,
+        direction: seek === 'rising' ? 'risen' : 'fallen',
+        options: shuffleArray(standings.map(({ isoCode }) => isoCode)),
+        standings: standings.map(({ isoCode }) => isoCode),
+        windowStartYear: sharedStart,
+        durationSeconds: 30,
+        maximumPoints: maximumRoundPoints(game),
+      }
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * One shot at the steepest mover: full marks for standings[0], a linear taper
+ * to nothing for the weakest card. Server-authoritative from the pinned
+ * standings — the client's only input is which card it tapped.
+ */
+export const scoreTrendRace = ({
+  challenge,
+  submittedGuesses,
+}: {
+  challenge: TrendRaceChallenge
+  submittedGuesses: ISOCountryCode[]
+}): { scored: number; maximum: number } => {
+  const maximum = challenge.maximumPoints
+  const pick = submittedGuesses[0]
+  const position = pick ? challenge.standings.indexOf(pick) : -1
+  if (position === -1) return { scored: 0, maximum }
+  return {
+    scored: Math.round(maximum * attemptFraction(position + 1, challenge.standings.length, 0)),
+    maximum,
+  }
+}
+
+/**
  * Deal the shared challenge for a round: always a ranking challenge for the
  * opening round (it doubles as the tutorial round), then a weighted mix of
  * every group mode. Modes that can't produce a viable prompt fall back to
@@ -1066,6 +1155,11 @@ export const getRoundChallenge = async ({
     }
     case 'pin-landmark': {
       const challenge = getPinLandmarkChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'trend-race': {
+      const challenge = getTrendRaceChallenge({ game })
       if (challenge) return challenge
       break
     }
@@ -1568,12 +1662,7 @@ const dealHigherLower = (
   // streak on any stat — widen to the world before giving up on the variant
   for (const candidates of [countryPool, [...ISOCountryCodes]]) {
     for (const accessorId of viableAccessors) {
-      // Bounded indices (V-Dem 0–1, CPI 0–100, HDI 0–1, happiness 0–10) cluster
-      // tightly, so a relative 15% gap almost never holds and they'd never be
-      // dealt. For those, require an absolute gap of 8% of the scale's range
-      // instead (e.g. ≥0.08 on a 0–1 index) so they produce clean duels.
       const scale = getChallengeDetails(accessorId).scale
-      const absoluteGap = scale ? (scale.max - scale.min) * 0.08 : undefined
 
       const pool = shuffleArray(
         candidates.filter(isoCode => !!getValueByAccessorID(isoCode, accessorId))
@@ -1585,18 +1674,123 @@ const dealHigherLower = (
         const b = pool[index + 1]
         const valueA = getValueByAccessorID(a, accessorId)?.amount ?? 0
         const valueB = getValueByAccessorID(b, accessorId)?.amount ?? 0
-        // Skip near-ties: stale data shouldn't decide a coin-flip question.
-        const gap = Math.abs(valueA - valueB)
-        if (absoluteGap !== undefined) {
-          if (gap < absoluteGap) continue
-        } else {
-          if (Math.min(valueA, valueB) === 0) continue
-          if (gap / Math.max(valueA, valueB) < 0.15) continue
-        }
+        // Skip near-ties: stale data shouldn't decide a coin-flip question. A
+        // zero on an unbounded stat is missing-data noise, never a clean duel.
+        if (!scale && Math.min(valueA, valueB) === 0) continue
+        if (!isDecisiveGap(valueA, valueB, scale)) continue
         pairs.push({ a, b })
       }
 
       if (pairs.length === duels) return { higherLower: { accessorId, pairs } }
+    }
+  }
+
+  return undefined
+}
+
+/** Trend gates ask for a longer streak than higher-lower — every duel ships a
+ *  guaranteed riser + faller, so blind guessing stays a coin flip per round. */
+const TREND_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } = {
+  easy: 3,
+  normal: 4,
+  hard: 5,
+}
+
+/** Trend-duel: which of two countries' stat is rising/falling — one decisive
+ *  riser + one decisive faller per pair, a fresh metric and countries each. */
+const dealTrendDuels = (
+  settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
+  countryPool: ISOCountryCode[]
+): Pick<IndividualChallenge, 'trendDuels'> | undefined => {
+  if (!isGroupEnabled(settings, 'trends')) return undefined
+  const duels = TREND_DUELS[settings.difficulty]
+
+  // Small continental pools may not carry a riser AND a faller on enough
+  // metrics — widen to the world before giving up on the variant.
+  for (const candidates of [countryPool, [...ISOCountryCodes]]) {
+    const trendDuels: NonNullable<IndividualChallenge['trendDuels']> = []
+    const used = new Set<ISOCountryCode>()
+
+    for (const metric of shuffleArray([...TREND_METRIC_IDS])) {
+      if (trendDuels.length === duels) break
+      let riser: ISOCountryCode | undefined
+      let faller: ISOCountryCode | undefined
+      for (const isoCode of shuffleArray([...candidates])) {
+        if (used.has(isoCode)) continue
+        const direction = readTrend(TRENDS[isoCode]?.[metric], metric)?.direction
+        if (direction === 'rising') riser ??= isoCode
+        if (direction === 'falling') faller ??= isoCode
+        if (riser && faller) break
+      }
+      if (!riser || !faller) continue
+      used.add(riser)
+      used.add(faller)
+      const [a, b] = shuffleArray([riser, faller])
+      trendDuels.push({ metric, seek: Math.random() < 0.5 ? 'rising' : 'falling', a, b })
+    }
+
+    if (trendDuels.length === duels) return { trendDuels }
+  }
+
+  return undefined
+}
+
+const TRAJECTORY_OPTIONS: { [difficulty in gameTypes.GameDifficulty]: number } = {
+  easy: 4,
+  normal: 5,
+  hard: 6,
+}
+
+/** Trajectory-match: whose chart is this? The answer comes from the pool's
+ *  drama-score top decile so generic diagonals never appear; decoys prefer the
+ *  answer's region but their own series must be visibly distinct, so the
+ *  right pick is never a coin flip. */
+const dealTrajectoryMatch = (
+  settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
+  countryPool: ISOCountryCode[]
+): Pick<IndividualChallenge, 'country' | 'trajectory'> | undefined => {
+  if (!isGroupEnabled(settings, 'trends')) return undefined
+  const optionCount = TRAJECTORY_OPTIONS[settings.difficulty]
+
+  for (const candidates of [countryPool, [...ISOCountryCodes]]) {
+    for (const metric of shuffleArray([...TREND_METRIC_IDS])) {
+      const readings = new Map<ISOCountryCode, TrendReading>()
+      const scored: { isoCode: ISOCountryCode; drama: number }[] = []
+      for (const isoCode of candidates) {
+        const series = TRENDS[isoCode]?.[metric]
+        const reading = readTrend(series, metric)
+        if (!series || !reading) continue
+        readings.set(isoCode, reading)
+        if (reading.direction !== 'flat') scored.push({ isoCode, drama: dramaScore(series, metric) })
+      }
+      if (scored.length < 2 || readings.size < optionCount) continue
+
+      scored.sort((x, y) => y.drama - x.drama)
+      const topDecile = scored.slice(0, Math.max(2, Math.ceil(scored.length / 10)))
+      const country = topDecile[Math.floor(Math.random() * topDecile.length)].isoCode
+      const answer = readings.get(country)!
+
+      const decoys = pickDecoys(country, candidates, optionCount - 1, {
+        preferRegion: true,
+        eligible: isoCode => {
+          const reading = readings.get(isoCode)
+          if (!reading) return false
+          return (
+            reading.direction !== answer.direction ||
+            isDecisiveGap(reading.endAmount, answer.endAmount, TREND_METRICS[metric].scale)
+          )
+        },
+      })
+      if (!decoys) continue
+
+      return {
+        country,
+        trajectory: {
+          metric,
+          options: shuffleArray([country, ...decoys]),
+          valuesHint: settings.difficulty !== 'hard',
+        },
+      }
     }
   }
 
@@ -1794,6 +1988,16 @@ export const getIndividualChallenge = ({
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
         break
       }
+      case 'trend-duel': {
+        const dealt = dealTrendDuels(settings, pool)
+        if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
+        break
+      }
+      case 'trajectory-match': {
+        const dealt = dealTrajectoryMatch(settings, pool)
+        if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
+        break
+      }
       case 'leader-pick': {
         const dealt = dealLeaderPick(pool)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
@@ -1851,11 +2055,15 @@ export const getIndividualChallenge = ({
         const dealt = dealLandmarkQuiz(pool)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
-      if (roll < 0.75) {
+      if (roll < 0.7) {
         const dealt = dealBorderDetective(pool)
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
-      if (roll < 0.9) {
+      if (roll < 0.85) {
+        const dealt = dealTrajectoryMatch(settings, pool)
+        if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
+      }
+      if (roll < 0.95) {
         const dealt = dealOddOneOut(difficulty, pool)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
@@ -1879,6 +2087,9 @@ export const getIndividualChallenge = ({
       } else if (roll < 0.8) {
         const dealt = dealLeaderPortrait(pool)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
+      } else if (roll < 0.95) {
+        const dealt = dealTrendDuels(settings, pool)
+        if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
       }
       break
     }

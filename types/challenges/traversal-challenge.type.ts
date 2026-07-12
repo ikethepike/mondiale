@@ -72,6 +72,7 @@ export type RoundChallengeKind =
   | 'ghost-state'
   | 'no-mans-land'
   | 'pin-landmark'
+  | 'trend-race'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -121,6 +122,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'no-mans-land'
     case 'pin-landmark-challenge':
       return 'pin-landmark'
+    case 'trend-race-challenge':
+      return 'trend-race'
     default:
       return 'ranking'
   }

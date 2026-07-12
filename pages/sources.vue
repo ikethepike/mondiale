@@ -89,7 +89,7 @@ const sources: Array<{
     url: 'https://ourworldindata.org',
     logo: logoOwid,
     description:
-      'Indices on democracy, corruption, human development and happiness — aggregating V-Dem, Transparency International, UNDP and the World Happiness Report.',
+      'Indices and historical series on democracy, corruption, human development, happiness, health, emissions, crime and the economy — aggregating V-Dem, Transparency International, UNDP, the World Happiness Report, the World Bank, UNODC, the UN and the Global Carbon Budget.',
   },
   {
     name: 'Uppsala Conflict Data Program',

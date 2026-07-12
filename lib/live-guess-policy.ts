@@ -49,6 +49,9 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // the room learns only that somebody has committed one.
   'pin-landmark': 'presence',
 
+  // Five cards, one shared answer — naming a pick hands it out.
+  'trend-race': 'presence',
+
   // One hidden point per beat, shared by the room, like pin-landmark.
   'heritage-hunt': 'presence',
 
