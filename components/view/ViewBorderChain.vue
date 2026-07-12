@@ -18,11 +18,21 @@
         <h1 class="map-caption">
           {{ headline }}
         </h1>
-        <span v-if="!finished" class="map-caption sub turn-line">
+        <span
+          v-if="!finished"
+          class="map-caption sub turn-line"
+          :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
+        >
           <span class="chip" :style="{ background: activePlayer?.color }" />
           <span>{{ turnLabel }}</span>
-          <span class="clock" :class="{ urgent: secondsOnClock <= 3 }">{{ secondsOnClock }}s</span>
+          <span class="clock">{{ secondsOnClock }}s</span>
         </span>
+        <ChallengeTimer
+          v-if="!finished"
+          class="shot-clock"
+          :value="secondsOnClock"
+          :total="challenge.turnSeconds"
+        />
         <span v-if="!finished && iAmOut" class="map-caption sub out">
           You're out — spectating
         </span>
@@ -68,22 +78,32 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { activePlayerId, isStraitHop, liveChain } from '~~/lib/chain'
+import { activePlayerId, isStraitHop, liveChain, openMoves } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { countryInVariant } from '~~/lib/variant'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 // The whole world stays visible — the walked path needs the map for context.
-const { challenge, currentRound, showInterstitial, begin, hint, announce, gameStore, update } =
-  useGroupChallenge('border-chain-challenge', { solo: false })
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  begin: beginRound,
+  hint,
+  announce,
+  gameStore,
+  update,
+} = useGroupChallenge('border-chain-challenge', { solo: false })
 
 const state = computed(() => challenge.value?.state)
 const chain = computed(() => (state.value ? liveChain(state.value) : []))
@@ -98,11 +118,6 @@ const activePlayer = computed(() =>
 const myTurn = computed(() => !finished.value && activeId.value === gameStore.playerId)
 const walked = computed(() => chain.value)
 
-/** Walk-order badges over the live chain (1 = seed). */
-const sequenceEntries = computed(() =>
-  chain.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
-)
-
 // On a continental board, countries off the board are illegal moves — fade
 // them so the rule is visible before someone walks Spain → Morocco into it.
 const variant = gameStore.game?.variant ?? 'world'
@@ -110,6 +125,17 @@ gameStore.map.dimmed =
   variant === 'world'
     ? []
     : ISOCountryCodes.filter(isoCode => !countryInVariant(isoCode, variant))
+
+/** Walk-order badges over the live chain (1 = seed). On easy, the head's open
+ *  connections also carry their ISO code — the legal moves, spelled out. */
+const sequenceEntries = computed(() => {
+  const numbered = chain.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
+  if (gameStore.game?.difficulty !== 'easy' || finished.value || !state.value) return numbered
+  return [
+    ...numbered,
+    ...openMoves(state.value, variant).map(isoCode => ({ isoCode, label: isoCode })),
+  ]
+})
 
 const stakes = computed(() => {
   const grace =
@@ -132,15 +158,36 @@ const turnLabel = computed(() => {
 
 // --- Shot clock (server-owned deadline; local repaint only) ------------------
 const secondsOnClock = ref(0)
+const fractionLeft = ref(1)
 const clock = setInterval(() => {
   const deadline = state.value?.deadline ?? 0
-  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+  const remaining = deadline - Date.now()
+  secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
+  const total = (challenge.value?.turnSeconds ?? 0) * 1000
+  fractionLeft.value = total ? Math.min(1, Math.max(0, remaining / total)) : 1
 }, 200)
 onBeforeUnmount(() => clearInterval(clock))
+
+/** 0 (calm ink) through the turn's first half, 100 (ember) as the clock dies. */
+const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))
 
 // --- Submitting a move -------------------------------------------------------
 const pending = ref(false)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+const isCoarsePointer = useIsCoarsePointer()
+
+// Touch devices skip autofocus — a self-raising keyboard would bury the map.
+const focusMyTurn = () => {
+  if (!myTurn.value || isCoarsePointer.value) return
+  nextTick(() => guessInput.value?.focus())
+}
+
+// The turn watcher never fires for the round's opener (turn stays 0), so the
+// interstitial's dismissal carries the first focus.
+const begin = () => {
+  beginRound()
+  focusMyTurn()
+}
 
 const submitGuess = (country: Country) => {
   const active = challenge.value
@@ -158,7 +205,7 @@ watch(
   () => state.value?.turn,
   () => {
     pending.value = false
-    if (myTurn.value) nextTick(() => guessInput.value?.focus())
+    focusMyTurn()
   }
 )
 
@@ -201,6 +248,8 @@ const paintChain = (staggered: boolean) => {
   gameStore.map.countryGroupings = groupings
   gameStore.map.seaLinks = seaLinkKeys()
   gameStore.map.focus = current.chains.flat()
+  const head = current.finished ? undefined : liveChain(current).at(-1)
+  gameStore.map.pulsing = head ? [head] : []
 }
 
 watch(challenge, () => !finished.value && paintChain(false), { immediate: true, deep: true })
@@ -215,6 +264,7 @@ watch(
     if (!done) return
     gameStore.map.countryGroupings = undefined
     gameStore.map.seaLinks = []
+    gameStore.map.pulsing = []
     setTimeout(() => {
       paintChain(true)
       const outs = state.value?.missedOuts[gameStore.playerId] ?? []
@@ -284,17 +334,39 @@ header {
   .chip {
     width: 0.75rem;
     height: 0.75rem;
+    position: relative;
     border-radius: 50%;
+
+    // The shot clock as a sweeping ring — full at the deal, gone at zero.
+    &::before {
+      content: '';
+      inset: -0.35rem;
+      position: absolute;
+      border-radius: 50%;
+      background: conic-gradient(hsl(24, 80%, 55%) var(--ring, 360deg), transparent 0);
+      mask: radial-gradient(
+        farthest-side,
+        transparent calc(100% - 0.2rem),
+        #000 calc(100% - 0.18rem)
+      );
+    }
   }
 
   .clock {
     font-weight: bold;
     font-variant-numeric: tabular-nums;
-
-    &.urgent {
-      color: var(--hior-ange);
-    }
+    // Ink through the calm half, warming to the chain head's ember as it dies.
+    color: color-mix(
+      in oklab,
+      hsl(24, 80%, 55%) calc(var(--clock-warmth, 0) * 1%),
+      var(--dark-blue)
+    );
   }
+}
+
+.shot-clock {
+  width: 18rem;
+  max-width: 100%;
 }
 
 .out {

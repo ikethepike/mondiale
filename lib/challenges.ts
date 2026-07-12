@@ -73,16 +73,20 @@ const MAXIMUM_SCORE_PER_COUNTRY = 3
 export const DIFFICULTY_CONFIGURATION: {
   [difficulty in gameTypes.GameDifficulty]: {
     rankingChallengeCountries: number
+    chainTurnSeconds: number
   }
 } = {
   easy: {
     rankingChallengeCountries: 4,
+    chainTurnSeconds: 20,
   },
   normal: {
     rankingChallengeCountries: 5,
+    chainTurnSeconds: 14,
   },
   hard: {
     rankingChallengeCountries: 7,
+    chainTurnSeconds: 10,
   },
 }
 
@@ -217,8 +221,6 @@ const pickLargeCountry = (pool: ISOCountryCode[]): ISOCountryCode => {
   )
 }
 
-const CHAIN_TURN_SECONDS = 12
-
 /** Everyone still competing when the round is dealt takes a chain seat. */
 const chainContenders = (game: gameTypes.Game): string[] =>
   Object.entries(game.players)
@@ -239,7 +241,7 @@ const getBorderChainChallenge = ({
   const strikes = game.difficulty === 'easy' ? 1 : 0
   return {
     _type: 'border-chain-challenge',
-    turnSeconds: CHAIN_TURN_SECONDS,
+    turnSeconds: DIFFICULTY_CONFIGURATION[game.difficulty].chainTurnSeconds,
     maximumPoints: maximumRoundPoints(game),
     strikes,
     state: {

@@ -822,7 +822,7 @@ const getExports = (data: FactbookResponse): string[] | undefined => {
   return items.length ? items : undefined
 }
 
-const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Region => {
+const getRegion = ({ data, isoCode }: { isoCode: string; data: FactbookResponse }): Region => {
   const continent = data['Geography']['Map references'].text as FactbookRegion
 
   // France lists every overseas territory; its metropolitan region is Europe.
@@ -831,7 +831,10 @@ const getRegion = ({ data }: { isoCode: string; data: FactbookResponse }): Regio
 
   switch (continent) {
     case 'AsiaEurope':
-      return 'asia'
+      // The factbook flattens "Asia; Europe" for every state near the divide.
+      // Ukraine is the only one of them entirely in Europe (the factbook's own
+      // folder is europe/); the rest sit in Asia by our taxonomy.
+      return isoCode === 'UA' ? 'europe' : 'asia'
     case 'Central America and the Caribbean':
       return 'north-america'
     case 'Southeast Asia':

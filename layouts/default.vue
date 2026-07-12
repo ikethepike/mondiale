@@ -30,6 +30,7 @@
       :sea-links="gameStore.map.seaLinks"
       :staggered="gameStore.map.staggered"
       :dimmed="gameStore.map.dimmed"
+      :pulsing="gameStore.map.pulsing"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)

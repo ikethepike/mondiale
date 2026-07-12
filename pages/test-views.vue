@@ -69,6 +69,8 @@ const RIVAL = '00000000-0000-4000-8000-000000000001'
 const THIRD = '00000000-0000-4000-8000-000000000002'
 const MAXIMUM_POINTS = 21
 
+const route = useRoute()
+const router = useRouter()
 const scenarioId = ref('ranking')
 const ready = ref(false)
 const renderKey = ref(0)
@@ -638,6 +640,35 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'border-chain-easy',
+    label: 'Border chain (easy: 20s clock, ISO chips on open moves)',
+    component: ViewBorderChain,
+    build: () => {
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 20,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          state: {
+            chains: [['DK', 'SE', 'FI']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 2,
+            deadline: Date.now() + 20000,
+            named: { [RIVAL]: ['SE'], [ME]: ['FI'] },
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ])
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
     id: 'border-chain-europe',
     label: 'Border chain (Europe board, world dimmed)',
     component: ViewBorderChain,
@@ -1102,6 +1133,8 @@ const activeComponent = computed(
 const deal = () => {
   const scenario = scenarios.find(s => s.id === scenarioId.value)
   if (!scenario) return
+  // Selection survives a refresh: /test-views?scenario=border-chain-easy
+  router.replace({ query: { scenario: scenario.id } })
   lastEvent.value = ''
   gameStore.game = scenario.build()
   renderKey.value += 1
@@ -1120,6 +1153,8 @@ const seedGuesses = () => {
 
 onMounted(() => {
   installStubSocket()
+  const requested = String(route.query.scenario ?? '')
+  if (scenarios.some(s => s.id === requested)) scenarioId.value = requested
   deal()
 })
 </script>

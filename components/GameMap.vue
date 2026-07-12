@@ -45,6 +45,7 @@
             :class="{
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
+              'pulsing-country': pulsingSet.has(code),
             }"
             :data-id="code"
             :d="d"
@@ -82,6 +83,7 @@
             :class="{
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
+              'pulsing-country': pulsingSet.has(code),
             }"
             :data-id="code"
             :data-footprint="spot?.footprint"
@@ -269,6 +271,12 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Countries whose fill breathes toward yellow — the live Border Chain
+   *  head, the one square players act on. */
+  pulsing: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Stagger country fills by their countryGroupings position — the Border
    *  Chain reveal replays the walked path arriving in sequence. */
   staggered: {
@@ -313,6 +321,7 @@ const highlights = computed(() =>
 )
 
 const dimmedSet = computed(() => new Set<string>(props.dimmed))
+const pulsingSet = computed(() => new Set<string>(props.pulsing))
 
 /** State colour per micro country, driving the halo's filled-disc treatment. */
 const microHaloFills = computed<Partial<Record<string, string>>>(() => {
@@ -1330,8 +1339,27 @@ path[id],
   transition-delay: calc(var(--chain-index, 0) * 60ms);
 
   // Off the current board (a continental variant) — visibly not in play.
+  // Not element opacity: neighbouring dimmed countries repaint their shared
+  // border, and two 50% strokes stack back to near-solid ink. Fills never
+  // overlap, so fill-opacity dims them safely; the stroke gets a solid
+  // pre-blended colour that overdraws itself without accumulating.
   &.dimmed-country {
-    opacity: 0.5;
+    fill-opacity: 0.5;
+    stroke: color-mix(in srgb, currentColor 50%, var(--background-color));
+  }
+
+  // The chain head breathes ember → yellow; frames without a fill fall back
+  // to the inline grouping colour, so the pulse rides whatever the view set.
+  @media (prefers-reduced-motion: no-preference) {
+    &.pulsing-country {
+      animation: pulse-fill 1.8s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes pulse-fill {
+  50% {
+    fill: hsla(45, 85%, 55%, 0.92);
   }
 }
 

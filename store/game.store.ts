@@ -67,6 +67,8 @@ interface GameStoreState {
     seaLinks: string[]
     /** Countries faded to half strength — off the current board. */
     dimmed: ISOCountryCode[]
+    /** Countries whose fill breathes toward yellow — the Border Chain head. */
+    pulsing: ISOCountryCode[]
     /** Stagger grouped fills by position — Border Chain's replay gradient. */
     staggered: boolean
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
@@ -135,6 +137,7 @@ export const useGameStore = defineStore('game', {
       seaLinks: [],
       staggered: false,
       dimmed: [],
+      pulsing: [],
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,
