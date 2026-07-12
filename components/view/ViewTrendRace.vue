@@ -263,6 +263,7 @@ header {
 .continue-button {
   flex: none;
   align-self: center;
+  pointer-events: auto;
 }
 
 .race-card {
