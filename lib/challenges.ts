@@ -10,6 +10,7 @@ import { TRENDS } from '~~/data/trends.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
+  GROUPED_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
@@ -108,7 +109,6 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['mother-tongue', 0.09],
   ['flag-palette', 0.08],
   ['capital-guess', 0.08],
-  ['flashpoint', 0.07],
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
   // roster in a session or two. They should land like finding something odd on
@@ -116,6 +116,10 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   // roughly one time in five, and two almost never.
   ['ghost-state', 0.018],
   ['no-mans-land', 0.012],
+  // Rare for a different reason: it's the game's heaviest subject, and it
+  // must never read as a defining mode. A hard game sees one about one time
+  // in eight — an occasional, sobering find.
+  ['flashpoint', 0.02],
   ['pin-landmark', 0.06],
   ['trend-race', 0.08],
 ]
@@ -1265,11 +1269,16 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const perPlayer = Math.max(3, Math.min(configured, Math.floor(pool.length / playerIds.length)))
   const required = perPlayer * playerIds.length
 
+  // Round 1 doubles as the tutorial — it stays on universally comfortable
+  // stats. Group-owned accessors (conflicts) never open a game.
+  const opener = game.rounds.length === 0
+
   // Source data drifts between regenerations and some accessors end up with
   // little or no data — only ever deal a challenge that can fill the round,
   // otherwise players get a question with zero countries to rank.
   const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
     if (!isAccessorEnabled(game, challenge.id)) return false
+    if (opener && GROUPED_ACCESSORS.has(challenge.id)) return false
     let available = 0
     for (const isoCode of pool) {
       if (getValueByAccessorID(isoCode, challenge.id)) available++

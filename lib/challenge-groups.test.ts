@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { getGroupChallenge } from '~~/lib/challenges'
 import {
   autoEnabledKinds,
   CHALLENGE_GROUP_ACCESSORS,
   CHALLENGE_GROUP_BY_KIND,
+  GROUPED_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
@@ -112,6 +114,21 @@ describe('isGroupEnabled', () => {
   it('follows the auto gate when unset', () => {
     expect(isGroupEnabled({ difficulty: 'easy' }, 'trends')).toBe(true)
     expect(isGroupEnabled({ difficulty: 'easy' }, 'trends', false)).toBe(false)
+  })
+})
+
+describe('conflicts stay a rare find', () => {
+  it('never opens a game with a conflict stat', () => {
+    const game = {
+      variant: 'world',
+      difficulty: 'hard',
+      rounds: [],
+      players: { p1: {} },
+    } as unknown as Parameters<typeof getGroupChallenge>[0]['game']
+    for (let deal = 0; deal < 30; deal++) {
+      const challenge = getGroupChallenge({ game })
+      expect(GROUPED_ACCESSORS.has(challenge.id)).toBe(false)
+    }
   })
 })
 

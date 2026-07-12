@@ -89,6 +89,12 @@ export const CHALLENGE_GROUP_ACCESSORS = {
 const groupAccessors: Partial<Record<ChallengeGroupId, readonly GroupChallengeAccessorId[]>> =
   CHALLENGE_GROUP_ACCESSORS
 
+/** Every group-owned accessor. The opening (tutorial) ranking round skips
+ *  these — a heavy topic must never be a player's first impression. */
+export const GROUPED_ACCESSORS: ReadonlySet<GroupChallengeAccessorId> = new Set(
+  Object.values(CHALLENGE_GROUP_ACCESSORS).flat()
+)
+
 type ChallengeSettings = {
   difficulty: GameDifficulty
   challengeOverrides?: ChallengeOverrides
