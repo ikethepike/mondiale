@@ -17,6 +17,15 @@
         :r="dotRadius"
         :style="{ '--o': dot.opacity, '--i': dot.index }"
       />
+      <circle
+        v-for="dot in abroadDots"
+        :key="`a${dot.x}:${dot.y}`"
+        class="dot abroad"
+        :cx="dot.x"
+        :cy="dot.y"
+        :r="dotRadius"
+        :style="{ '--o': dot.opacity, '--i': dot.index }"
+      />
     </svg>
     <span
       v-for="chip in chips"
@@ -43,6 +52,9 @@ const props = defineProps<{
   shownWaves: number
   /** Reveal turns the label off — the dots stay, the scaffolding goes. */
   showChip?: boolean
+  /** Reveal-only second layer: the country's engagements on foreign soil,
+   *  in the companion amber. All of it lands at once. */
+  abroad?: ConflictField
 }>()
 
 const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
@@ -82,6 +94,18 @@ const dots = computed(() =>
   )
 )
 
+const abroadDots = computed(() => {
+  const eras = props.abroad?.eras ?? []
+  return eras.flatMap((era, wave) =>
+    era.points.map(([x, y], index) => ({
+      x,
+      y,
+      opacity: eras.length === 1 ? 0.75 : 0.24 + (wave / (eras.length - 1)) * 0.51,
+      index: Math.min(index, 40),
+    }))
+  )
+})
+
 /** One label, for the wave that's currently landing — wave centroids sit
  *  nearly on top of each other, so stacked chips would just collide. */
 const chips = computed(() => {
@@ -119,6 +143,12 @@ onBeforeUnmount(() => {
   fill: var(--hior-ange);
   animation: dot-in 0.4s ease-out forwards;
   animation-delay: calc(var(--i) * 30ms);
+
+  // The warm companion to the ember home dots: same family, clearly a
+  // second category — "its conflicts, someone else's soil".
+  &.abroad {
+    fill: hsl(35, 82%, 52%);
+  }
 }
 
 @keyframes dot-in {

@@ -14,6 +14,7 @@
         :field="field"
         :shown-waves="shownWaves"
         :show-chip="!submitted"
+        :abroad="submitted ? abroadField : undefined"
       />
 
       <header>
@@ -21,8 +22,11 @@
           <h1 class="map-caption">
             {{ submitted ? verdictHeadline : 'Where did this happen?' }}
           </h1>
+          <span v-if="submitted && abroadField" class="map-caption sub"
+            >Amber dots — recorded clashes abroad, in conflicts it joined.</span
+          >
           <span v-if="!submitted" class="map-caption sub"
-            >One dot, one recorded clash — where it happened, not how many died.</span
+            >One dot, one recorded clash since 1989 — where it happened, not how many died.</span
           >
           <Transition name="caption">
             <span v-if="lateHint" class="map-caption late-hint">{{ lateHint }}</span>
@@ -106,8 +110,23 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const field = ref<ConflictField>()
+const abroadField = ref<ConflictField>()
 const shownWaves = ref(1)
 const verdictHeadline = ref('')
+
+/** Padded bbox of a set of dot layers, in map space. */
+const fieldBounds = (
+  layers: (ConflictField | undefined)[]
+): [number, number, number, number] | undefined => {
+  const points = layers.flatMap(layer => layer?.eras.flatMap(era => era.points) ?? [])
+  if (!points.length) return undefined
+  const xs = points.map(([x]) => x)
+  const ys = points.map(([, y]) => y)
+  const [minX, maxX] = [Math.min(...xs), Math.max(...xs)]
+  const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
+  const pad = Math.max(6, 0.15 * Math.max(maxX - minX, maxY - minY))
+  return [minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2]
+}
 
 const stakes = computed(() => {
   const base =
@@ -139,26 +158,16 @@ const start = async () => {
   const active = challenge.value
   if (!active) return
 
-  const { CONFLICT_FIELDS } = await import('~~/data/conflict-events.gen')
+  const { CONFLICT_FIELDS, CONFLICT_FIELDS_ABROAD } = await import('~~/data/conflict-events.gen')
   field.value = CONFLICT_FIELDS[active.country]
+  abroadField.value = CONFLICT_FIELDS_ABROAD[active.country]
 
   // Fly the camera to the DOT FIELD's own bounds before any dot lands — the
   // board is blank (solo), so the flight shows nothing, and the cloud draws
   // at a scale where its shape reads. Framing the country instead breaks on
   // giants: Russia's box spans the map while its dots huddle in the Caucasus.
-  const points = field.value?.eras.flatMap(era => era.points) ?? []
-  if (points.length) {
-    const xs = points.map(([x]) => x)
-    const ys = points.map(([, y]) => y)
-    const [minX, maxX] = [Math.min(...xs), Math.max(...xs)]
-    const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
-    const pad = Math.max(6, 0.15 * Math.max(maxX - minX, maxY - minY))
-    gameStore.map.feature = {
-      d: '',
-      kind: 'area',
-      bounds: [minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2],
-    }
-  }
+  const bounds = fieldBounds([field.value])
+  if (bounds) gameStore.map.feature = { d: '', kind: 'area', bounds }
 
   begin({
     onTimeout: () => submitRound(0),
@@ -184,9 +193,13 @@ const submitRound = (score: number) => {
     : `Well read — ${countryName(active.country)}`
 
   // The reveal beat: every wave lands, the world comes back, and the camera
-  // pulls out from the dot field to frame the whole country, dots glued on.
+  // pulls out to frame the country — widened to the amber abroad layer when
+  // one exists, so an intervener's reveal shows its whole footprint.
   shownWaves.value = active.eras.length
-  gameStore.map.feature = undefined
+  const revealBounds = abroadField.value
+    ? fieldBounds([field.value, abroadField.value])
+    : undefined
+  gameStore.map.feature = revealBounds ? { d: '', kind: 'area', bounds: revealBounds } : undefined
   gameStore.map.solo = false
   gameStore.map.highlighted = new Set([active.country])
   gameStore.map.focus = [active.country]

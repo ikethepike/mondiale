@@ -43,6 +43,7 @@
       <p v-if="overflow" class="map-caption more">
         + {{ overflow }} more recorded {{ overflow === 1 ? 'conflict' : 'conflicts' }} since 1946
       </p>
+      <p v-if="supportLine" class="map-caption more">{{ supportLine }}</p>
     </div>
   </section>
 </template>
@@ -52,6 +53,7 @@ import { findCountryByName } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   CONFLICT_TYPE_LABELS,
+  conflictActiveYears,
   dominantConflict,
   type ConflictSummary,
 } from '~~/types/vendor/ucdp/ucdp.types'
@@ -69,13 +71,31 @@ const props = defineProps<{
 
 const conflict = ref<ConflictSummary>()
 const overflow = ref(0)
+const supportLine = ref('')
 
 onMounted(async () => {
-  const { CONFLICTS, CONFLICTS_BY_COUNTRY } = await import('~~/data/conflict-profiles.gen')
+  const { CONFLICTS, CONFLICTS_BY_COUNTRY, CONFLICTS_SUPPORTED_BY_COUNTRY } = await import(
+    '~~/data/conflict-profiles.gen'
+  )
   const ids = CONFLICTS_BY_COUNTRY[props.country] ?? []
   const profiles = ids.flatMap(id => CONFLICTS[id] ?? [])
   conflict.value = dominantConflict(profiles)
   overflow.value = Math.max(0, profiles.length - 1)
+
+  // Power projection, display-only: never a metric, but Korea and Vietnam
+  // belong on the US card somewhere.
+  const supported = (CONFLICTS_SUPPORTED_BY_COUNTRY[props.country] ?? []).flatMap(
+    id => CONFLICTS[id] ?? []
+  )
+  if (supported.length) {
+    const named = supported
+      .sort((a, b) => conflictActiveYears(b) - conflictActiveYears(a))
+      .map(({ name }) => name)
+      .filter(name => !name.includes(',') && name.length <= 24)
+      .slice(0, 2)
+    const examples = named.length ? ` — including ${named.join(' and ')}` : ''
+    supportLine.value = `Sent forces into ${supported.length} more ${supported.length === 1 ? 'conflict' : 'conflicts'} as a supporting party${examples}`
+  }
 })
 
 /** Two pill groups — side A › side B. "Government of X" gets X's flag pill;

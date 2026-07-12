@@ -34,6 +34,7 @@ type ConflictYearRow = {
   type: number
   location: string
   primaries: Set<ISOCountryCode>
+  secondaries: Set<ISOCountryCode>
 }
 
 const splitList = (value: string) =>
@@ -60,16 +61,25 @@ export const createConflictsMapping = async () => {
   const typeOfConflict = column('type_of_conflict')
   const gwnoA = column('gwno_a')
   const gwnoB = column('gwno_b')
+  const gwnoA2nd = column('gwno_a_2nd')
+  const gwnoB2nd = column('gwno_b_2nd')
 
-  // Primary parties only — secondary supporters do not count as participation.
-  const primaryParties = (row: string[]): Set<ISOCountryCode> => {
+  const partiesFrom = (row: string[], columns: number[]): Set<ISOCountryCode> => {
     const parties = new Set<ISOCountryCode>()
-    for (const value of [...splitList(row[gwnoA]), ...splitList(row[gwnoB])]) {
-      const iso = gwToISO.get(Number(value))
-      if (iso) parties.add(iso)
+    for (const index of columns) {
+      for (const value of splitList(row[index])) {
+        const iso = gwToISO.get(Number(value))
+        if (iso) parties.add(iso)
+      }
     }
     return parties
   }
+
+  // Primary parties only — secondary supporters do not count as participation.
+  const primaryParties = (row: string[]) => partiesFrom(row, [gwnoA, gwnoB])
+  // …but they DO make the profiles: "sent forces into Korea's war" is the
+  // story of the interventionist powers, display-only, never a metric.
+  const secondaryParties = (row: string[]) => partiesFrom(row, [gwnoA2nd, gwnoB2nd])
 
   const byConflict = new Map<number, ConflictYearRow[]>()
   let maxYear = 0
@@ -86,6 +96,7 @@ export const createConflictsMapping = async () => {
       type: Number(row[typeOfConflict]),
       location: row[location].trim(),
       primaries: primaryParties(row),
+      secondaries: secondaryParties(row),
     }
     maxYear = Math.max(maxYear, parsed.year)
     const existing = byConflict.get(id)
@@ -105,11 +116,13 @@ export const createConflictsMapping = async () => {
 
   const conflicts: Record<number, ConflictSummary> = {}
   const participation: ConflictParticipation = {}
+  const support: ConflictParticipation = {}
 
   for (const [id, conflictRows] of byConflict) {
     conflictRows.sort((a, b) => a.year - b.year)
     const latest = conflictRows[conflictRows.length - 1]
     const participants = new Set<ISOCountryCode>()
+    const supporters = new Set<ISOCountryCode>()
     const episodes: [number, number][] = []
     let reachedWar = false
 
@@ -123,6 +136,13 @@ export const createConflictsMapping = async () => {
         participants.add(iso)
         if (row.intensity === WAR_INTENSITY) metricsFor(iso).warYears.add(row.year)
       }
+      for (const iso of row.secondaries) supporters.add(iso)
+    }
+
+    for (const iso of supporters) {
+      if (participants.has(iso)) continue
+      const ids = (support[iso] ??= [])
+      ids.push(id)
     }
 
     const recentlyActive = conflictRows.some(row => row.year > maxYear - RECENT_YEARS)
@@ -177,6 +197,8 @@ export const createConflictsMapping = async () => {
       import type { ConflictParticipation, ConflictSummary } from '../types/vendor/ucdp/ucdp.types'
       export const CONFLICTS: Record<number, ConflictSummary> = ${JSON.stringify(conflicts)}
       export const CONFLICTS_BY_COUNTRY: ConflictParticipation = ${JSON.stringify(participation)}
+      /** Secondary-party roles (troops in another state's conflict) — display-only, never a metric. */
+      export const CONFLICTS_SUPPORTED_BY_COUNTRY: ConflictParticipation = ${JSON.stringify(support)}
     `
   )
   console.info(`Wrote ${PROFILES_FILE} (${Object.keys(conflicts).length} conflicts)`)
