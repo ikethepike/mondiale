@@ -35,6 +35,7 @@ import { MAP_REGIONS } from '~~/data/map.gen'
 import {
   mapRegionCentre,
   SUNSET_TILT,
+  sunsetCameraPlan,
   sunsetDuskCoordinate,
   sunsetQuota,
 } from '~~/lib/challenges/final-challenge'
@@ -224,7 +225,9 @@ const isVisible = (isoCode: ISOCountryCode) => {
 
 const start = () => {
   if (ticker || finished.value) return
-  gameStore.map.focus = [...props.challenge.countries]
+  const { focus, context } = sunsetCameraPlan(props.challenge.countries)
+  gameStore.map.focus = focus
+  gameStore.map.focusContext = context
   document.body.classList.add('sunset-blitz')
   startedAt = performance.now()
   guessInput.value?.focus()

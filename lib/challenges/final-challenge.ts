@@ -30,6 +30,7 @@ import {
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import { shuffleArray } from '../arrays'
+import { mainlandBox } from '../geo'
 import { getValueByAccessorID } from '../values'
 import { REGION_LABELS, variantCountries } from '../variant'
 
@@ -443,6 +444,24 @@ export const sunsetDuskCoordinate = (isoCode: ISOCountryCode): number => {
 const NIGHT_WINDOW_SPAN_X = 420
 const NIGHT_WINDOW_SPAN_Y = 260
 const NIGHT_WINDOW_HARD_CAP = 16
+
+/**
+ * Camera split for the window: a member whose mainland outgrows the window
+ * itself (Russia) frames by centre via focusContext — its full box would blow
+ * the shot out to half the planet.
+ */
+export const sunsetCameraPlan = (
+  countries: ISOCountryCode[]
+): { focus: ISOCountryCode[]; context: ISOCountryCode[] } => {
+  const giant = (isoCode: ISOCountryCode) => {
+    const box = mainlandBox(MAP_REGIONS[isoCode], undefined)
+    return !!box && (box[2] > NIGHT_WINDOW_SPAN_X || box[3] > NIGHT_WINDOW_SPAN_Y)
+  }
+  const focus = countries.filter(isoCode => !giant(isoCode))
+  return focus.length
+    ? { focus, context: countries.filter(giant) }
+    : { focus: countries, context: [] }
+}
 
 const getSunsetBlitzChallenge = (pool: ISOCountryCode[]): SunsetBlitzChallenge | undefined => {
   const poolSet = new Set(pool)

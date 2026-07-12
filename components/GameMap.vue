@@ -538,6 +538,18 @@ const frameForBoxes = (
   return { x, y, width, height }
 }
 
+/**
+ * A country's box for framing. Antimeridian fragments stretch the whole-country
+ * bbox across the map for RU/US/NZ/FJ-class countries — framing one would
+ * world-fit the camera — so those fall back to the mainland ring.
+ */
+const frameBoxFor = (isoCode: ISOCountryCode) => {
+  const bounds = MAP_BOUNDS[isoCode]
+  return bounds && bounds[2] > WORLD_VIEW.width / 2
+    ? mainlandBox(MAP_REGIONS[isoCode], bounds)
+    : bounds
+}
+
 const frameFocus = () => {
   if (!svg.value) return
 
@@ -545,11 +557,11 @@ const frameFocus = () => {
   uncullAll()
 
   const boxes = [
-    ...props.focusCountries.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean),
+    ...props.focusCountries.map(frameBoxFor).filter(Boolean),
     ...(props.feature?.bounds ? [props.feature.bounds] : []),
   ]
   const target = boxes.length
-    ? frameForBoxes(boxes, props.focusContext.map(isoCode => MAP_BOUNDS[isoCode]).filter(Boolean))
+    ? frameForBoxes(boxes, props.focusContext.map(frameBoxFor).filter(Boolean))
     : worldFitView()
   tweenToView(target)
 }

@@ -15,12 +15,15 @@
           Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
           {{ challenge.windowStartYear }}?
         </h1>
-        <span v-if="picked === undefined" class="map-caption sub">{{ secondsLeft }}s left</span>
+        <span v-if="!revealed" class="map-caption sub">{{ secondsLeft }}s left</span>
         <span v-else-if="pickedWinner" class="map-caption sub verdict correct">
           Called it — {{ winnerName }} moved the most
         </span>
-        <span v-else class="map-caption sub verdict incorrect">
+        <span v-else-if="picked !== undefined" class="map-caption sub verdict incorrect">
           {{ winnerName }} moved the most
+        </span>
+        <span v-else class="map-caption sub verdict incorrect">
+          Time's up — {{ winnerName }} moved the most
         </span>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </div>
@@ -30,12 +33,12 @@
       <!-- The reveal's second act: the whole world's CURRENT values as a
            gapminder strip, so the racers land in absolute context. -->
       <Transition name="caption">
-        <div v-if="picked !== undefined" class="spread">
+        <div v-if="revealed" class="spread">
           <span class="map-caption sub">Every country's {{ metricLabel }} today</span>
           <StatStripPlot
             :metric="challenge.metric"
             :target="winner"
-            :decoy="picked !== winner ? picked : undefined"
+            :decoy="picked !== undefined && picked !== winner ? picked : undefined"
             :noted="challenge.options.filter(option => option !== winner && option !== picked)"
           />
         </div>
@@ -48,11 +51,11 @@
             class="race-card"
             :class="cardClass(isoCode)"
             :topic="metricTopic"
-            :disabled="picked !== undefined"
+            :disabled="revealed"
             @click="pick(isoCode)"
           >
             <ContourRipple
-              v-if="picked !== undefined && isoCode === winner"
+              v-if="revealed && isoCode === winner"
               class="card-ripple"
               tone="success"
               :delay="0.3"
@@ -62,23 +65,30 @@
               <strong>{{ countryName(isoCode) }}</strong>
             </span>
             <TrendSparkline
-              v-if="picked !== undefined && seriesFor(isoCode)"
+              v-if="revealed && seriesFor(isoCode)"
               :series="seriesFor(isoCode)!"
               :metric="challenge.metric"
               animate-in
             />
             <Transition name="caption">
-              <span v-if="picked !== undefined" class="rank-tag" :class="{ winner: isoCode === winner }">
+              <span v-if="revealed" class="rank-tag" :class="{ winner: isoCode === winner }">
                 {{ rankLabel(isoCode) }}
               </span>
             </Transition>
           </StatCard>
         </li>
       </ul>
+      <Transition name="caption">
+        <ButtonFilled v-if="revealed" class="continue-button" @click="finish">
+          <span v-if="browseSecondsLeft > BROWSE_HINT_S">Continue</span>
+          <span v-else>Continuing in {{ browseSecondsLeft }}s</span>
+        </ButtonFilled>
+      </Transition>
     </section>
   </div>
 </template>
 <script lang="ts" setup>
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
@@ -107,8 +117,9 @@ const {
 } = useGroupChallenge('trend-race-challenge')
 
 const picked = ref<ISOCountryCode>()
-let submitTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => submitTimer && clearTimeout(submitTimer))
+const revealed = ref(false)
+let browseTimer: ReturnType<typeof setInterval> | undefined
+registerCleanup(() => browseTimer && clearInterval(browseTimer))
 
 const metricLabel = computed(() =>
   challenge.value ? TREND_METRICS[challenge.value.metric].label : ''
@@ -131,26 +142,38 @@ const rankLabel = (isoCode: ISOCountryCode) => {
 }
 
 const cardClass = (isoCode: ISOCountryCode) => {
-  if (picked.value === undefined) return undefined
+  if (!revealed.value) return undefined
   if (isoCode === winner.value) return 'is-winner'
   if (isoCode === picked.value) return 'was-picked'
   return 'is-settled'
 }
 
-const REVEAL_HOLD_MS = 4500
+// The reveal is browsable: the player leaves via Continue, the cap only
+// exists so an AFK player can't hold up the room's next-round barrier.
+const BROWSE_CAP_S = 60
+const BROWSE_HINT_S = 10
+const browseSecondsLeft = ref(BROWSE_CAP_S)
+
+/** Leave the reveal — the pick (or the empty timeout answer) is submitted. */
+const finish = () => {
+  if (browseTimer) clearInterval(browseTimer)
+  browseTimer = undefined
+  submitOnce(picked.value ? [picked.value] : [])
+}
 
 /** One resolution path for both the tap and the timeout. */
 const resolve = (isoCode?: ISOCountryCode) => {
   const active = challenge.value
-  if (!active || picked.value !== undefined) return
+  if (!active || revealed.value) return
   stopCountdown()
-  // The clock ran out without a pick: submit nothing, score nothing.
-  if (!isoCode) return submitOnce([])
-
+  revealed.value = true
   picked.value = isoCode
   // Every card is on screen — naming the pick would hand out the answer.
-  announce({ kind: 'presence' })
-  submitTimer = setTimeout(() => submitOnce([isoCode]), REVEAL_HOLD_MS)
+  if (isoCode) announce({ kind: 'presence' })
+  browseTimer = setInterval(() => {
+    browseSecondsLeft.value--
+    if (browseSecondsLeft.value <= 0) finish()
+  }, 1000)
 }
 
 const pick = (isoCode: ISOCountryCode) => {
@@ -235,6 +258,11 @@ header {
   li {
     display: flex;
   }
+}
+
+.continue-button {
+  flex: none;
+  align-self: center;
 }
 
 .race-card {

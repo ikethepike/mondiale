@@ -300,6 +300,7 @@ watch(currentFinalChallenge, () => {
   gameStore.map.highlighted.clear()
   gameStore.map.tints = {}
   gameStore.map.focus = []
+  gameStore.map.focusContext = []
   lastGuess.value = undefined
   scalesPicks.value = []
   scalesResult.value = undefined
