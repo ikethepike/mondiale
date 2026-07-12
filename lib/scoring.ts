@@ -56,6 +56,30 @@ export const blitzScore = (
   return { scored: Math.max(0, Math.min(raw, maximumPoints)), maximum: maximumPoints }
 }
 
+/**
+ * Pin-drop taper (pin-landmark, heritage-hunt): full marks anywhere
+ * inside `perfectDistanceKm`, tapering linearly to nothing at `zeroDistanceKm`.
+ * Never partially credits a wrong hemisphere.
+ */
+export const scorePinDistance = ({
+  distanceKm,
+  perfectDistanceKm,
+  zeroDistanceKm,
+  maximumPoints,
+}: {
+  distanceKm: number
+  perfectDistanceKm: number
+  zeroDistanceKm: number
+  maximumPoints: number
+}): number => {
+  if (distanceKm <= perfectDistanceKm) return maximumPoints
+  if (distanceKm >= zeroDistanceKm) return 0
+  const span = zeroDistanceKm - perfectDistanceKm
+  const missed = distanceKm - perfectDistanceKm
+  const scored = Math.round(maximumPoints * (1 - missed / span))
+  return Math.max(0, Math.min(scored, maximumPoints))
+}
+
 /** A found answer worth `maximum`, docked per wasted attempt, never below `floor`. */
 export const attemptDecayScore = (wasted: number, maximum: number, step = 2, floor = 2): number =>
   Math.max(floor, maximum - Math.max(0, wasted) * step)

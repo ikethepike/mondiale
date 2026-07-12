@@ -1,0 +1,140 @@
+Strait edges within 150 km (54 kept, 73 dropped) — review before accepting.
+A + marks a STRAIT_ADDITIONS override.
+
+  BH-QA      1.3 km
+  MY-SG      2.1 km
+  RU-US      4.0 km
+  DK-SE      4.8 km
+  AU-PG      5.1 km
+  EG-SA      7.5 km
+  CN-TW      7.7 km
++ EG-JO      8.8 km
+  PG-SB     10.6 km
+  NI-SV     15.0 km
+  TT-VE     15.3 km
+  ID-SG     16.8 km
+  BH-SA     17.4 km
+  JP-RU     18.0 km
+  DJ-YE     19.5 km
+  IN-LK     28.0 km
+  AG-KN     28.3 km
+  FR-GB     32.8 km
+  MY-PH     36.6 km
+  ER-YE     42.0 km
+  EE-FI     44.1 km
+  IR-OM     49.2 km
+  JP-KR     52.8 km
+  AE-IR     58.8 km
+  BS-CU     66.9 km
+  IT-TN     70.2 km
+  CY-TR     70.9 km
+  AL-IT     72.8 km
+  DE-SE     73.0 km
+  IT-MT     81.6 km
+  BS-US     83.1 km
+  CU-HT     85.5 km
+  ID-PH     91.3 km
+  SO-YE     94.9 km
+  DK-PL     95.3 km
+  BS-HT    102.6 km
++ GR-IT    102.7 km
+  CY-SY    103.0 km
+  PH-TW    106.1 km
+  HR-IT    106.7 km
+  JP-TW    108.2 km
+  DK-NO    112.9 km
+  IN-MV    128.2 km
+  GD-TT    128.9 km
+  DM-LC    129.7 km
++ AU-ID    130.3 km
+  BZ-HN    131.9 km
+  GD-VE    140.5 km
+  GD-LC    141.5 km
+  LV-SE    142.9 km
+  BB-LC    145.4 km
+  CU-JM    145.8 km
+  CO-NI    145.8 km
+  EE-SE    146.6 km
+
+Dropped — crossing runs through or past a third country (73):
+  IT-MC      7.4 km  via FR
+  IL-SA     15.8 km  via JO
+  PK-TJ     18.0 km  via AF
+  DZ-ES     21.2 km  via MA
+  BD-NP     22.5 km  via IN
+  IR-KW     24.7 km  via IQ
+  AT-HR     25.6 km  via SI
+  DE-LI     29.7 km  via AT
+  AO-BW     32.1 km  via NA
+  AE-QA     32.9 km  via SA
+  KZ-MN     36.1 km  via RU
+  BN-ID     36.4 km  via MY
+  AL-RS     38.8 km  via XK
+  BJ-GH     41.4 km  via TG
+  PS-SY     44.4 km  via IL
+  BD-BT     45.2 km  via IN
+  JO-LB     45.6 km  via IL
+  DE-IT     45.6 km  via AT
+  KZ-TJ     45.9 km  via UZ
+  BA-SI     46.7 km  via HR
+  BG-XK     54.1 km  via RS
+  FR-NL     55.0 km  via BE
+  LB-PS     58.4 km  via IL
+  GM-GW     62.1 km  via SN
+  IT-LI     62.4 km  via CH
+  LU-NL     63.8 km  via BE
+  BT-NP     65.7 km  via IN
+  BA-HU     66.0 km  via HR
+  CZ-HU     67.4 km  via SK
+  AL-HR     68.8 km  via ME
+  RO-SK     70.8 km  via HU
+  GM-GN     73.8 km  via SN
+  HU-PL     75.9 km  via UA
+  AL-BA     76.6 km  via ME
+  ME-MK     78.7 km  via AL
+  BE-GB     78.8 km  via FR
+  CM-NE     85.5 km  via NG
+  TH-VN     85.9 km  via LA
+  BD-CN     92.0 km  via IN
+  SA-SY     92.2 km  via JO
+  BI-UG     93.7 km  via RW
+  GQ-NG     99.0 km  via CM
+  BA-XK     99.0 km  via RS
+  PL-RO    101.9 km  via UA
+  AF-KG    102.4 km  via TJ
+  NG-TG    102.5 km  via BJ
+  HR-RO    105.5 km  via RS
+  CN-UZ    109.9 km  via KG
+  TJ-TM    110.6 km  via UZ
+  ET-YE    112.1 km  via DJ
+  CN-TH    112.4 km  via MM
+  AM-RU    112.9 km  via GE
+  GR-XK    113.2 km  via AL
+  GR-RS    114.2 km  via MK
+  ER-SO    114.8 km  via DJ
+  AO-GA    116.3 km  via CG
+  DE-SI    118.0 km  via AT
+  MM-VN    122.9 km  via CN
+  LB-TR    127.0 km  via SY
+  BF-NG    127.3 km  via BJ
+  BA-RO    128.0 km  via RS
+  HR-XK    129.3 km  via ME
+  GB-NL    132.1 km  via FR
+  PS-SA    136.2 km  via JO
+  RU-TR    137.7 km  via GE
+  SI-SK    143.2 km  via HU
+  HR-SM    143.2 km  via IT
+  AT-PL    143.7 km  via CZ
+  AT-FR    147.0 km  via CH
+  IR-SA    149.1 km  via KW
+  FR-LI    149.2 km  via CH
+  AL-BG    149.2 km  via XK
+  BG-UA    149.3 km  via RO
+
+Islands now reachable (21): AG AU BS BH BB CU CY DM GD JM JP MV MT PH KN LC SG SB LK TW TT
+Still isolated (16): CV KM FJ IS KI MG MU FM NR NZ PW ST SC TO TV VU
+
+Land-touching pairs NOT in BORDERS, skipped as editorial exclusions (1):
+  NA-ZW
+
+Exclusions applied (2): HT-US JM-US

@@ -37,8 +37,15 @@
             v-for="(d, code) in MAP_PATHS"
             :id="code"
             :key="code"
-            :style="{ fill: countryColors[code], '--stroke-base': strokeWidths[code] }"
-            :class="{ 'highlighted-country': highlights.includes(code) }"
+            :style="{
+              fill: countryColors[code],
+              '--stroke-base': strokeWidths[code],
+              '--chain-index': chainIndices[code],
+            }"
+            :class="{
+              'highlighted-country': highlights.includes(code),
+              'dimmed-country': dimmedSet.has(code),
+            }"
             :data-id="code"
             :d="d"
             @click="handleClick(code, $event)"
@@ -50,11 +57,17 @@
         Visibility is toggled with direct DOM writes (not reactive state) so
         wheel/camera zoom never forces a re-render of the 220 country paths.
       -->
-          <!-- Invisible tap halos: micro-states get ~14px of click slop at any zoom -->
+          <!-- Invisible tap halos: micro-states get ~14px of click slop at any
+               zoom. A halo whose country carries state (highlight, tint,
+               grouping) renders as a filled disc in that colour — the real
+               shape is a few pixels at best, so the disc IS the readable
+               "is Monaco lit?" signal. -->
           <circle
             v-for="(spot, code) in MICRO_COUNTRIES"
             :key="`hit-${code}`"
             class="micro-hit"
+            :class="{ 'stated-halo': microHaloFills[code] }"
+            :style="{ '--halo-state': microHaloFills[code] }"
             :data-id="code"
             :cx="spot?.x"
             :cy="spot?.y"
@@ -66,7 +79,10 @@
             :key="`dot-${code}`"
             class="micro-marker"
             :style="{ fill: countryColors[code] }"
-            :class="{ 'highlighted-country': highlights.includes(code) }"
+            :class="{
+              'highlighted-country': highlights.includes(code),
+              'dimmed-country': dimmedSet.has(code),
+            }"
             :data-id="code"
             :data-footprint="spot?.footprint"
             :cx="spot?.x"
@@ -111,6 +127,13 @@
             <circle class="feature-marker-dot" r="2" />
           </g>
         </g>
+        <!-- Border Chain: dashed sea arcs across each strait the chain hopped. -->
+        <path
+          v-for="(d, index) in seaLinkPaths"
+          :key="`sea-link-${index}`"
+          class="map-sea-link"
+          :d="d"
+        />
         <!-- Pin-landmark: the guess, then on reveal the truth and a line between. -->
         <line
           v-if="pinPoint && pinAnswerPoint"
@@ -150,6 +173,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
+import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
@@ -233,6 +257,24 @@ const props = defineProps({
     type: Object as PropType<MapInsetType>,
     default: undefined,
   },
+  /** Strait hops to draw as dashed sea arcs, as sorted "A-B" pair keys into
+   *  STRAIT_CROSSINGS (Border Chain). */
+  seaLinks: {
+    type: Array as PropType<string[]>,
+    default: () => [],
+  },
+  /** Countries faded to half strength — off the current board (Border Chain
+   *  on a continental variant). */
+  dimmed: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Stagger country fills by their countryGroupings position — the Border
+   *  Chain reveal replays the walked path arriving in sequence. */
+  staggered: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Deliberately soft washes — feedback, not verdict-shouting
@@ -269,6 +311,44 @@ const clicked = ref<ISOCountryCode | undefined>(undefined)
 const highlights = computed(() =>
   [...props.highlighted, props.highlightCountry, clicked.value].filter(Boolean)
 )
+
+const dimmedSet = computed(() => new Set<string>(props.dimmed))
+
+/** State colour per micro country, driving the halo's filled-disc treatment. */
+const microHaloFills = computed<Partial<Record<string, string>>>(() => {
+  const fills: Partial<Record<string, string>> = {}
+  for (const code of Object.keys(MICRO_COUNTRIES)) {
+    const explicit = countryColors.value[code]
+    if (explicit) fills[code] = explicit
+    else if (highlights.value.includes(code)) fills[code] = 'lemonchiffon'
+  }
+  return fills
+})
+
+/** Grouping position per country, staggering fill arrival along the chain. */
+const chainIndices = computed<Partial<Record<string, number>>>(() => {
+  if (!props.staggered || !props.countryGroupings || prefersReducedMotion()) return {}
+  const indices: Partial<Record<string, number>> = {}
+  props.countryGroupings.forEach(({ countries }, index) => {
+    for (const country of countries) indices[country] ??= index
+  })
+  return indices
+})
+
+/** Dashed lines across each named strait — straight, as a strait should be. */
+const seaLinkPaths = computed(() => {
+  const paths: string[] = []
+  for (const pair of props.seaLinks) {
+    const crossing = STRAIT_CROSSINGS[pair]
+    if (!crossing) continue
+    // A crossing hugging the antimeridian would draw across the whole world.
+    if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue
+    const from = projectRobinson(crossing.from, MAP_PROJECTION)
+    const to = projectRobinson(crossing.to, MAP_PROJECTION)
+    paths.push(`M ${from.x} ${from.y} L ${to.x} ${to.y}`)
+  }
+  return paths
+})
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
 const pinPoint = computed(() =>
@@ -1214,13 +1294,33 @@ svg {
   stroke-dasharray: calc(3px * var(--stroke-zoom, 1)) calc(3px * var(--stroke-zoom, 1));
 }
 
+// A micro country carrying state: the halo fills with the country's own
+// colour so its status reads at ANY zoom — the true shape never will.
+.micro-hit.stated-halo {
+  opacity: 1;
+  fill: var(--halo-state);
+  fill-opacity: 0.45;
+  stroke: var(--halo-state);
+  stroke-width: calc(1.5px * var(--stroke-zoom, 1));
+  stroke-dasharray: none;
+}
+
 path[id],
 .micro-marker {
   cursor: pointer;
   fill: var(--map-not-highlight);
   transition:
     fill var(--motion-slow),
+    opacity var(--motion-slow),
     filter var(--motion-base);
+  // Zero unless the map runs staggered (--chain-index set per path): then the
+  // walked chain's fills arrive in sequence, one hop after another.
+  transition-delay: calc(var(--chain-index, 0) * 60ms);
+
+  // Off the current board (a continental variant) — visibly not in play.
+  &.dimmed-country {
+    opacity: 0.5;
+  }
 }
 
 // The guess wears the accent orange; the revealed answer takes the map's own
@@ -1254,6 +1354,15 @@ path[id],
   stroke: hsl(215.7, 76.4%, 41%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
+}
+
+.map-sea-link {
+  fill: none;
+  pointer-events: none;
+  stroke: hsla(215.7, 76.4%, 41%, 0.75);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
+  stroke-dasharray: calc(5px * var(--stroke-zoom, 1)) calc(6px * var(--stroke-zoom, 1));
 }
 
 // Marks a contested territory that is too small to draw. Sized in screen

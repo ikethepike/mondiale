@@ -14,6 +14,7 @@ import {
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
+  scorePinDistance,
 } from './scoring'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
@@ -321,5 +322,25 @@ describe('scoreGhostState proximity', () => {
 
   it('pays nothing for the far side of the world', async () => {
     expect(await percentFor('NL', 'PE')).toBe(0)
+  })
+})
+
+describe('scorePinDistance', () => {
+  const taper = { perfectDistanceKm: 150, zeroDistanceKm: 3000, maximumPoints: 7 }
+
+  it('pays the full pot anywhere inside the bullseye', () => {
+    expect(scorePinDistance({ distanceKm: 0, ...taper })).toBe(7)
+    expect(scorePinDistance({ distanceKm: 150, ...taper })).toBe(7)
+  })
+
+  it('tapers linearly and hits zero at the horizon', () => {
+    expect(scorePinDistance({ distanceKm: 1575, ...taper })).toBe(4) // midway
+    expect(scorePinDistance({ distanceKm: 3000, ...taper })).toBe(0)
+    expect(scorePinDistance({ distanceKm: 12000, ...taper })).toBe(0)
+  })
+
+  it('matches the pin-landmark characterization at the shares heritage hunt uses', () => {
+    // A 21-point round split over 3 beats: each beat pays up to 7.
+    expect(scorePinDistance({ distanceKm: 320, ...taper })).toBe(7 - Math.round((7 * 170) / 2850))
   })
 })

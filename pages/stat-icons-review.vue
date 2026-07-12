@@ -30,6 +30,42 @@
     </section>
 
     <section class="group">
+      <h2>bench — government departments</h2>
+      <div class="grid">
+        <StatCard v-for="key in departmentKeys" :key="key" :topic="key" :label="benchLabel(key)">
+          <code class="accessor">{{ key }}</code>
+        </StatCard>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>bench — foreign relations</h2>
+      <div class="grid">
+        <StatCard v-for="key in relationsKeys" :key="key" :topic="key" :label="benchLabel(key)">
+          <code class="accessor">{{ key }}</code>
+        </StatCard>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>bench — society &amp; events</h2>
+      <div class="grid">
+        <StatCard v-for="key in societyKeys" :key="key" :topic="key" :label="benchLabel(key)">
+          <code class="accessor">{{ key }}</code>
+        </StatCard>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>bench — political ideologies</h2>
+      <div class="grid">
+        <StatCard v-for="key in ideologyKeys" :key="key" :topic="key" :label="benchLabel(key)">
+          <code class="accessor">{{ key }}</code>
+        </StatCard>
+      </div>
+    </section>
+
+    <section class="group">
       <h2>utility + fallback</h2>
       <div class="grid">
         <StatCard v-for="key in utilityKeys" :key="key" :topic="key" :label="key" />
@@ -43,7 +79,14 @@
 import StatCard from '~/components/challenge/StatCard.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
-import { TOPIC_GLYPHS, UTILITY_GLYPHS } from '~~/lib/stat-glyphs'
+import {
+  DEPARTMENT_GLYPHS,
+  IDEOLOGY_GLYPHS,
+  RELATIONS_GLYPHS,
+  SOCIETY_GLYPHS,
+  TOPIC_GLYPHS,
+  UTILITY_GLYPHS,
+} from '~~/lib/stat-glyphs'
 import { GROUP_CHALLENGES } from '~~/types/challenges/group-challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { ChallengeTopic } from '~~/types/challenge.type'
@@ -54,6 +97,14 @@ import type { ChallengeTopic } from '~~/types/challenge.type'
 const accessorIds = Object.keys(GROUP_CHALLENGES) as GroupChallengeAccessorId[]
 const topics = Object.keys(TOPIC_GLYPHS) as ChallengeTopic[]
 const utilityKeys = Object.keys(UTILITY_GLYPHS)
+const departmentKeys = Object.keys(DEPARTMENT_GLYPHS)
+const relationsKeys = Object.keys(RELATIONS_GLYPHS)
+const societyKeys = Object.keys(SOCIETY_GLYPHS)
+const ideologyKeys = Object.keys(IDEOLOGY_GLYPHS)
+
+// 'department.foreignAffairs' → 'foreign affairs'
+const benchLabel = (key: string) =>
+  (key.split('.').pop() ?? key).replace(/([A-Z])/g, ' $1').toLowerCase()
 
 const groups = computed(() => {
   const byTopic = new Map<string, GroupChallengeAccessorId[]>()

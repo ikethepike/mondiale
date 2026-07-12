@@ -63,6 +63,12 @@ interface GameStoreState {
     pinAnswer?: LatLng
     /** Distinct per-group country fills (region final challenge, duel pairs). */
     countryGroupings?: CountryColorGrouping[]
+    /** Strait hops drawn as dashed sea arcs, as "A-B" STRAIT_CROSSINGS keys. */
+    seaLinks: string[]
+    /** Countries faded to half strength — off the current board. */
+    dimmed: ISOCountryCode[]
+    /** Stagger grouped fills by position — Border Chain's replay gradient. */
+    staggered: boolean
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
     atlasMode: boolean
     /** Zoom-Out gate: start extreme-tight on a country, ease out over N seconds
@@ -126,6 +132,9 @@ export const useGameStore = defineStore('game', {
       pin: undefined,
       pinAnswer: undefined,
       countryGroupings: undefined,
+      seaLinks: [],
+      staggered: false,
+      dimmed: [],
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,

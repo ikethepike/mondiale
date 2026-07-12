@@ -27,6 +27,9 @@
       :tints="gameStore.map.tints"
       :feature="gameStore.map.feature"
       :inset="gameStore.map.inset"
+      :sea-links="gameStore.map.seaLinks"
+      :staggered="gameStore.map.staggered"
+      :dimmed="gameStore.map.dimmed"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)

@@ -70,6 +70,8 @@ export interface CountryShapes {
   distanceToBorderKm(isoCode: string, lat: number, lng: number): number
   /** Whether we hold any polygon for this country at all. */
   has(isoCode: string): boolean
+  /** Every boundary vertex of the country's polygons, as [lng, lat]. */
+  boundaryVertices(isoCode: string): Generator<[number, number]>
 }
 
 export const loadCountryShapes = async (): Promise<CountryShapes> => {
@@ -99,6 +101,8 @@ export const loadCountryShapes = async (): Promise<CountryShapes> => {
 
   return {
     has: isoCode => byIso.has(isoCode),
+
+    boundaryVertices: ringsOf,
 
     contains: (isoCode, lat, lng) =>
       (byIso.get(isoCode) ?? []).some(feature => geoContains(feature, [lng, lat])),

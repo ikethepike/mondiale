@@ -27,8 +27,10 @@
  */
 import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
+import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
+import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
@@ -44,6 +46,7 @@ import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
@@ -156,6 +159,7 @@ interface Scenario {
 }
 
 const landmark = LANDMARKS['eiffel-tower']
+const heritageSlugs = Object.keys(HERITAGE)
 
 const scenarios: Scenario[] = [
   {
@@ -372,6 +376,168 @@ const scenarios: Scenario[] = [
     build: () =>
       mockGame('group-challenge', [
         groupRound({ _type: 'sketch-challenge', country: 'FR', maximumPoints: MAXIMUM_POINTS }),
+      ]),
+  },
+  {
+    id: 'border-chain',
+    label: 'Border chain (your turn, strait hops)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            // Øresund and Bering hops on one chain — the dashed-arc test.
+            chains: [['DK', 'SE', 'FI', 'RU', 'US']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 4,
+            deadline: Date.now() + 12000,
+            named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['US'] },
+            strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-europe',
+    label: 'Border chain (Europe board, world dimmed)',
+    component: ViewBorderChain,
+    build: () => {
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            chains: [['ES', 'FR', 'DE']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 2,
+            deadline: Date.now() + 12000,
+            named: { [RIVAL]: ['FR'], [ME]: ['DE'] },
+            strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ])
+      game.variant = 'europe'
+      return game
+    },
+  },
+  {
+    id: 'border-chain-spectate',
+    label: 'Border chain (eliminated, spectating)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            chains: [['NO', 'SE', 'FI', 'RU', 'CN', 'MN']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 2,
+            turn: 6,
+            deadline: Date.now() + 9000,
+            named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['CN', 'MN'] },
+            strikesLeft: {},
+            eliminated: [ME],
+            outcomes: { [ME]: 'wrong' },
+            missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-reveal',
+    label: 'Border chain (finished, replay + reveal)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            chains: [
+              ['DK', 'SE', 'FI', 'RU', 'US'],
+              ['TR', 'GR', 'BG'],
+            ],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 9,
+            deadline: 0,
+            named: { [RIVAL]: ['SE', 'RU', 'GR'], [ME]: ['FI', 'BG'], [THIRD]: ['US'] },
+            strikesLeft: {},
+            eliminated: [THIRD, ME],
+            outcomes: { [THIRD]: 'timeout', [ME]: 'wrong', [RIVAL]: 'won' },
+            missedOuts: { [THIRD]: ['NO'], [ME]: ['MK', 'RO', 'RS'] },
+            trappedBy: {},
+            finished: true,
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'heritage-hunt',
+    label: 'Heritage hunt (live beat)',
+    component: ViewHeritageHunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'heritage-hunt-challenge',
+          slugs: heritageSlugs.slice(0, 3),
+          beatSeconds: 35,
+          perfectDistanceKm: 150,
+          zeroDistanceKm: 3000,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            beat: 0,
+            deadline: Date.now() + 35000,
+            order: [ME, RIVAL, THIRD],
+            pins: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'heritage-hunt-reveal',
+    label: 'Heritage hunt (beat reveal)',
+    component: ViewHeritageHunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'heritage-hunt-challenge',
+          slugs: heritageSlugs.slice(0, 3),
+          beatSeconds: 35,
+          perfectDistanceKm: 150,
+          zeroDistanceKm: 3000,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            beat: 0,
+            deadline: 0,
+            order: [ME, RIVAL, THIRD],
+            pins: {
+              [ME]: { 0: { pin: { lat: 48.8, lng: 2.3 }, distanceKm: 320, scored: 7 } },
+              [RIVAL]: { 0: { pin: { lat: 41, lng: 12 }, distanceKm: 980, scored: 4 } },
+              [THIRD]: { 0: { pin: { lat: -12, lng: 18 }, distanceKm: 5200, scored: 0 } },
+            },
+            revealing: true,
+          },
+        }),
       ]),
   },
   {

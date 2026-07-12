@@ -122,6 +122,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { titlecaseLeader } from '~~/lib/leaders'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -215,7 +216,7 @@ const lesson = computed(() => {
     case 'leadership-challenge': {
       const country = COUNTRIES[challenge.country]
       const { leader } = country.government
-      return leader ? `${leader} leads ${countryName(country)}.` : undefined
+      return leader ? `${titlecaseLeader(leader)} leads ${countryName(country)}.` : undefined
     }
     case 'language-challenge': {
       const speakers = Object.values(COUNTRIES).filter(country =>

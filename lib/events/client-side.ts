@@ -64,6 +64,9 @@ export const useClientEvents = () => {
     gameStore.map.pin = undefined
     gameStore.map.pinAnswer = undefined
     gameStore.map.countryGroupings = undefined
+    gameStore.map.seaLinks = []
+    gameStore.map.staggered = false
+    gameStore.map.dimmed = []
     gameStore.map.atlasMode = false
     gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined

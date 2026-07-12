@@ -30,7 +30,9 @@ import type { Component } from 'vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
 import ModalMoving from '~/components/modal/ModalMoving.vue'
+import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
+import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
 import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
 import ViewGhostState from '~/components/view/ViewGhostState.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
@@ -103,6 +105,8 @@ const activeView = computed<ActiveView | undefined>(() => {
       const groupViews: Record<RoundChallengeKind, Component> = {
         ranking: ViewGroupChallenge,
         traversal: ViewTraversalChallenge,
+        'border-chain': ViewBorderChain,
+        'heritage-hunt': ViewHeritageHunt,
         'neighbour-blitz': ViewNeighbourBlitz,
         silhouette: ViewSilhouette,
         'hot-cold': ViewHotCold,

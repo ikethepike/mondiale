@@ -200,7 +200,9 @@
                   aria-hidden="true"
                 />
                 <span v-else class="leader-thumb placeholder" aria-hidden="true" />
-                <span class="leader-name">{{ getCountry(option).government?.leader }}</span>
+                <span class="leader-name">{{
+                  titlecaseLeader(getCountry(option).government?.leader ?? '')
+                }}</span>
               </button>
             </div>
           </template>
@@ -320,7 +322,7 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { currencyName, currencySymbol } from '~~/lib/currency'
-import { politicalLeader } from '~~/lib/leaders'
+import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { GATE_HINT_BITE_STEPS } from '~~/lib/scoring'

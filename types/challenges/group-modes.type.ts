@@ -1,4 +1,5 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
+import type { LatLng } from '~~/lib/geo'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -207,7 +208,99 @@ export interface PinLandmarkChallenge {
   maximumPoints: number
 }
 
+/**
+ * Turn-based elimination — the only group mode where players act one at a
+ * time. Name a country connected to the chain head (land border or strait,
+ * lib/chain) that hasn't been used this chain. A miss or an expired shot
+ * clock is elimination (minus `strikes`); a head with no open connection
+ * traps the player to move. Dead-end with two or more standing deals a fresh
+ * chain. `state` is server-owned and rides the game snapshot — clients render
+ * from it and never advance it themselves.
+ */
+export interface BorderChainChallenge {
+  _type: 'border-chain-challenge'
+  turnSeconds: number
+  maximumPoints: number
+  /** Misses a player survives before elimination. 0 = sudden death. */
+  strikes: number
+  state: BorderChainState
+}
+
+export type BorderChainOutcome = 'wrong' | 'timeout' | 'trapped' | 'won'
+
+export interface BorderChainState {
+  /** Every chain walked this round, oldest first; the last is live. Each is
+   *  seed-first and its last entry is the head. */
+  chains: ISOCountryCode[][]
+  /** Player ids in play order, fixed at the deal. */
+  order: string[]
+  /** Index into `order` of the player on the clock. */
+  activeIndex: number
+  /** Monotonic turn counter — timeout token and submit idempotency key. */
+  turn: number
+  /** Epoch ms the active turn expires; the client shot clock renders from it. */
+  deadline: number
+  /** Countries each player added to a chain — link count and scorecard both. */
+  named: { [playerId: string]: ISOCountryCode[] }
+  /** Strikes left, by player. */
+  strikesLeft: { [playerId: string]: number }
+  /** Elimination order, first out first. The winner never appears here. */
+  eliminated: string[]
+  /** How each player's round ended, for the reveal. */
+  outcomes: { [playerId: string]: BorderChainOutcome }
+  /** Open moves at each player's fatal miss — the reveal's teaching beat. */
+  missedOuts: { [playerId: string]: ISOCountryCode[] }
+  /** Who made the most recent move; credits the trap-setter in the reveal. */
+  lastMoverId?: string
+  /** trapped player → the opponent whose move dead-ended them. */
+  trappedBy?: { [playerId: string]: string }
+  /** Set when the round resolves; freezes the clock and starts the reveal. */
+  finished?: boolean
+}
+
+/**
+ * Multi-beat pin-drop contest over the World Heritage register: one site
+ * photo per beat, everyone pins every photo. Points are the pin-landmark
+ * distance taper plus a smaller relative slice for out-pinning the table
+ * that beat. Like Border Chain, `state` is server-owned and rides the game
+ * snapshot.
+ */
+export interface HeritageHuntChallenge {
+  _type: 'heritage-hunt-challenge'
+  /** Keys into HERITAGE, one per beat, in play order. */
+  slugs: string[]
+  beatSeconds: number
+  perfectDistanceKm: number
+  zeroDistanceKm: number
+  /** Ceiling across ALL beats; each beat pays up to an equal share. */
+  maximumPoints: number
+  state: HeritageHuntState
+}
+
+export interface HeritagePin {
+  pin: LatLng
+  /** Settled when the beat resolves — absent while the beat is live. */
+  distanceKm?: number
+  scored?: number
+}
+
+export interface HeritageHuntState {
+  /** Index into `slugs` of the live (or just-resolved) beat. */
+  beat: number
+  /** Epoch ms the live beat closes. */
+  deadline: number
+  /** Participants at the deal. */
+  order: string[]
+  /** Per player, per beat. */
+  pins: { [playerId: string]: { [beat: number]: HeritagePin } }
+  /** The live beat has resolved — clients show distances during the hold. */
+  revealing?: boolean
+  finished?: boolean
+}
+
 export type GroupModeChallenge =
+  | BorderChainChallenge
+  | HeritageHuntChallenge
   | NeighbourBlitzChallenge
   | SilhouetteChallenge
   | HotColdChallenge

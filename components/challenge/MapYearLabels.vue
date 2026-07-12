@@ -20,19 +20,32 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * Chips that would collide with an already-placed neighbour are skipped, so
  * dense clusters stay legible.
  */
-const props = defineProps<{ entries: { isoCode: ISOCountryCode; label: string }[] }>()
-
-const TICK_MS = 150
-const MIN_GAP_PX = 44
+const props = withDefaults(
+  defineProps<{
+    entries: { isoCode: ISOCountryCode; label: string }[]
+    /** Collision radius. Sequence users (Border Chain) tighten it — a skipped
+     *  number breaks the count where a skipped year is just less clutter. */
+    minGapPx?: number
+  }>(),
+  { minGapPx: 44 }
+)
 
 const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
-let ticker: ReturnType<typeof setInterval> | undefined
+let frame: number | undefined
 let mapSvg: SVGSVGElement | null = null
+let lastRaw = ''
 
+// Track the camera per frame, not on a timer — interval sampling makes the
+// chips visibly stutter behind a pan/zoom. Unchanged frames cost one string
+// compare and no reactivity.
 const readViewBox = () => {
+  frame = requestAnimationFrame(readViewBox)
   mapSvg ??= document.querySelector('.game-map svg')
-  const raw = mapSvg?.getAttribute('viewBox')?.split(/\s+/).map(Number)
-  if (raw?.length === 4 && raw.every(Number.isFinite)) {
+  const attribute = mapSvg?.getAttribute('viewBox') ?? ''
+  if (attribute === lastRaw) return
+  lastRaw = attribute
+  const raw = attribute.split(/\s+/).map(Number)
+  if (raw.length === 4 && raw.every(Number.isFinite)) {
     viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
   }
 }
@@ -53,20 +66,17 @@ const chips = computed(() => {
     if (left < 2 || left > 98 || top < 4 || top > 96) continue
 
     const px = { x: (left / 100) * width, y: (top / 100) * height }
-    if (placed.some(point => Math.hypot(point.x - px.x, point.y - px.y) < MIN_GAP_PX)) continue
+    if (placed.some(point => Math.hypot(point.x - px.x, point.y - px.y) < props.minGapPx)) continue
     placed.push(px)
     result.push({ ...entry, left, top, index: result.length })
   }
   return result
 })
 
-onMounted(() => {
-  readViewBox()
-  ticker = setInterval(readViewBox, TICK_MS)
-})
+onMounted(readViewBox)
 
 onBeforeUnmount(() => {
-  if (ticker) clearInterval(ticker)
+  if (frame !== undefined) cancelAnimationFrame(frame)
 })
 </script>
 <style lang="scss" scoped>

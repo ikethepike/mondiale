@@ -50,6 +50,13 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'group-challenge-scored': {
     handler: groupChallengeScoredEvent,
   },
+  // Whole-table state (turn cursor, eliminations, final scoring) — full replace
+  'chain-updated': {
+    handler: genericUpdateEvent,
+  },
+  'heritage-updated': {
+    handler: genericUpdateEvent,
+  },
   'individual-challenge-checked': {
     handler: playerUpdateEvent,
   },

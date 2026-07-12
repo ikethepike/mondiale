@@ -100,6 +100,508 @@ export const UTILITY_GLYPHS: Record<UtilityGlyphKey, Glyph> = {
   },
 }
 
+// Bench glyphs: not yet bound to any stat — a ready supply for future stats
+// and modes. Addressed through the same `topic` string channel.
+export type DepartmentGlyphKey =
+  | 'department.agriculture'
+  | 'department.communications'
+  | 'department.culture'
+  | 'department.defense'
+  | 'department.education'
+  | 'department.energy'
+  | 'department.environment'
+  | 'department.finance'
+  | 'department.foreignAffairs'
+  | 'department.health'
+  | 'department.interior'
+  | 'department.justice'
+  | 'department.labor'
+  | 'department.science'
+  | 'department.trade'
+  | 'department.transport'
+
+export const DEPARTMENT_GLYPHS: Record<DepartmentGlyphKey, Glyph> = {
+  // Ear of wheat.
+  'department.agriculture': {
+    paths: [
+      'M12 20.5v-12',
+      'M12 8.5c-1.2-1.2-1.2-3.3 0-5 1.2 1.7 1.2 3.8 0 5z',
+      'M12 12.5c-2.6 0-4.2-1.4-4.2-3.7 2.6 0 4.2 1.4 4.2 3.7z',
+      'M12 12.5c2.6 0 4.2-1.4 4.2-3.7-2.6 0-4.2 1.4-4.2 3.7z',
+      'M12 17c-2.6 0-4.2-1.4-4.2-3.7 2.6 0 4.2 1.4 4.2 3.7z',
+      'M12 17c2.6 0 4.2-1.4 4.2-3.7-2.6 0-4.2 1.4-4.2 3.7z',
+    ],
+  },
+  // Radio mast.
+  'department.communications': {
+    paths: [
+      'M12 8.5 8 20.5',
+      'M12 8.5l4 12',
+      'M9.8 14h4.4',
+      'M7.3 5a6.6 6.6 0 0 1 9.4 0',
+      'M9.2 6.6a3.9 3.9 0 0 1 5.6 0',
+    ],
+  },
+  // Classical column.
+  'department.culture': {
+    paths: [
+      'M6 4.5h12',
+      'M7.5 7h9',
+      'M8.5 7v9.5',
+      'M12 7v9.5',
+      'M15.5 7v9.5',
+      'M7.5 16.5h9',
+      'M6 19.5h12',
+    ],
+  },
+  // Shield with a star.
+  'department.defense': {
+    paths: [
+      'M12 3.5 19 6.2v5.3c0 4.4-2.7 7.4-7 9.2-4.3-1.8-7-4.8-7-9.2V6.2z',
+      'M12 7.5l1.1 2.3 2.3 1.1-2.3 1.1L12 14.3l-1.1-2.3-2.3-1.1 2.3-1.1z',
+    ],
+  },
+  // Schoolhouse.
+  'department.education': {
+    paths: ['M4.5 19.5v-9L12 5l7.5 5.5v9z', 'M10 19.5V14h4v5.5'],
+    circles: [[12, 10.2, 1.2]],
+  },
+  // Battery.
+  'department.energy': {
+    paths: [
+      'M5.5 8.5h11.5A1.5 1.5 0 0 1 18.5 10v4a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 14v-4a1.5 1.5 0 0 1 1.5-1.5z',
+      'M20 10.5v3',
+      'M7.5 11v2',
+      'M10.5 11v2',
+    ],
+  },
+  // Circular arrows.
+  'department.environment': {
+    paths: [
+      'M4.5 12a7.5 7.5 0 0 1 7.5-7.5c2.2 0 4.2.9 5.6 2.3L19.5 8.5',
+      'M19.5 4.5v4h-4',
+      'M19.5 12a7.5 7.5 0 0 1-7.5 7.5c-2.2 0-4.2-.9-5.6-2.3L4.5 15.5',
+      'M4.5 19.5v-4h4',
+    ],
+  },
+  // Bank portico.
+  'department.finance': {
+    paths: [
+      'M3.5 9.5 12 4.5l8.5 5z',
+      'M6 11.5v5.5',
+      'M10 11.5v5.5',
+      'M14 11.5v5.5',
+      'M18 11.5v5.5',
+      'M3.5 19.5h17',
+    ],
+  },
+  // Globe with meridian.
+  'department.foreignAffairs': {
+    paths: [
+      'M3.5 12h17',
+      'M12 3.5c3.1 2.3 4.7 5.2 4.7 8.5s-1.6 6.2-4.7 8.5c-3.1-2.3-4.7-5.2-4.7-8.5S8.9 5.8 12 3.5z',
+    ],
+    circles: [[12, 12, 8.5]],
+  },
+  // First-aid cross.
+  'department.health': {
+    paths: [
+      'M6.5 3.5h11a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3v-11a3 3 0 0 1 3-3z',
+      'M12 8v8',
+      'M8 12h8',
+    ],
+  },
+  // Key.
+  'department.interior': {
+    paths: ['M10.4 10.4 20 20', 'M15.5 15.5 13.7 17.3', 'M18.2 18.2 16.4 20'],
+    circles: [[7.8, 7.8, 3.6]],
+  },
+  // Gavel.
+  'department.justice': {
+    paths: ['M10.3 3.5 15.5 8.7l-3.1 3.1-5.2-5.2z', 'M12 11.5 4.5 19', 'M12.5 20.5h8'],
+  },
+  // Hard hat.
+  'department.labor': {
+    paths: ['M3.5 15.5h17', 'M5 15.5a7 7 0 0 1 14 0', 'M10.5 9V5.5h3V9'],
+  },
+  // Erlenmeyer flask.
+  'department.science': {
+    paths: [
+      'M9.5 3.5h5',
+      'M10.5 3.5v5.2L5.2 17.6A2 2 0 0 0 7 20.5h10a2 2 0 0 0 1.8-2.9L13.5 8.7V3.5',
+      'M7.8 14h8.4',
+    ],
+  },
+  // Cargo ship.
+  'department.trade': {
+    paths: ['M3.5 14.5 5.5 19.5h13l2-5z', 'M6.5 14.5V10h5v4.5', 'M11.5 14.5V12h6v2.5'],
+  },
+  // Road to the horizon.
+  'department.transport': {
+    paths: ['M4 20.5 10.5 3.5', 'M20 20.5 13.5 3.5', 'M12 19v-3', 'M12 13v-2.5', 'M12 8v-2'],
+  },
+}
+
+export type RelationsGlyphKey =
+  | 'relations.aid'
+  | 'relations.alliance'
+  | 'relations.borders'
+  | 'relations.diplomacy'
+  | 'relations.embassy'
+  | 'relations.exports'
+  | 'relations.passport'
+  | 'relations.peace'
+  | 'relations.sanctions'
+  | 'relations.summit'
+  | 'relations.treaty'
+  | 'relations.visa'
+
+export const RELATIONS_GLYPHS: Record<RelationsGlyphKey, Glyph> = {
+  // Relief parcel.
+  'relations.aid': {
+    paths: [
+      'M4.5 8.5h15v11h-15z',
+      'M4.5 8.5 7 4.5h10l2.5 4',
+      'M12 16.8c-2-1.5-3-2.6-3-3.8 0-.9.7-1.5 1.5-1.5.6 0 1.2.3 1.5.9.3-.6.9-.9 1.5-.9.8 0 1.5.6 1.5 1.5 0 1.2-1 2.3-3 3.8z',
+    ],
+  },
+  // Chain link.
+  'relations.alliance': {
+    paths: [
+      'M10.5 13.5a4.2 4.2 0 0 0 6.3.45l2.5-2.5a4.2 4.2 0 0 0-5.9-5.9L12 7',
+      'M13.5 10.5a4.2 4.2 0 0 0-6.3-.45l-2.5 2.5a4.2 4.2 0 0 0 5.9 5.9L12 17',
+    ],
+  },
+  // Dashed frontier.
+  'relations.borders': {
+    paths: [
+      'M3.5 5.5h17v13h-17z',
+      'M11 6.5c.6 1 .7 1.9.4 2.9',
+      'M11.7 11.2c.5 1 .5 2 .2 3',
+      'M12.2 16c.4.8.4 1.6.2 2.4',
+    ],
+  },
+  // Two voices.
+  'relations.diplomacy': {
+    paths: ['M3.5 4.5h10V11H8.5L6 13.5V11H3.5z', 'M20.5 9.5h-8V16h4.5l2.5 2.5V16h1z'],
+  },
+  // Mission with flag.
+  'relations.embassy': {
+    paths: [
+      'M6.5 20.5v-17',
+      'M6.5 4h5.5v3.5H6.5',
+      'M11 20.5v-9h6.5v9',
+      'M13.2 14.5v.01',
+      'M15.3 14.5v.01',
+      'M3.5 20.5h17',
+    ],
+  },
+  // Crate outbound.
+  'relations.exports': {
+    paths: ['M7 11v8.5h10V11', 'M12 14v-9.5', 'M9.3 7.2 12 4.5l2.7 2.7'],
+  },
+  // Passport booklet.
+  'relations.passport': {
+    paths: [
+      'M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z',
+      'M9 16.5h6',
+    ],
+    circles: [[12, 10, 3.2]],
+  },
+  // Peace sign.
+  'relations.peace': {
+    paths: ['M12 3.5v17', 'M12 12l-6 6', 'M12 12l6 6'],
+    circles: [[12, 12, 8.5]],
+  },
+  // Coin struck through.
+  'relations.sanctions': {
+    paths: ['M6 6l12 12'],
+    circles: [
+      [12, 12, 8.5],
+      [12, 12, 3.5],
+    ],
+  },
+  // Two parties at the table.
+  'relations.summit': {
+    paths: [
+      'M3.5 13h17',
+      'M5.5 13v5.5',
+      'M18.5 13v5.5',
+      'M4.5 10.5c0-2.3 1.4-3.6 3.5-3.6s3.5 1.3 3.5 3.6',
+      'M12.5 10.5c0-2.3 1.4-3.6 3.5-3.6s3.5 1.3 3.5 3.6',
+    ],
+    circles: [
+      [8, 5.6, 2.2],
+      [16, 5.6, 2.2],
+    ],
+  },
+  // Sealed accord.
+  'relations.treaty': {
+    paths: ['M6.5 3.5H15l3.5 3.5v13.5h-12z', 'M15 3.5V7h3.5', 'M9 10.5h6', 'M9 13.5h3.5'],
+    circles: [[15, 16.5, 1.8]],
+  },
+  // Entry stamp.
+  'relations.visa': {
+    paths: [
+      'M5 20.5h14',
+      'M4.5 17.5v-1.5A2.5 2.5 0 0 1 7 13.5h10a2.5 2.5 0 0 1 2.5 2.5v1.5z',
+      'M14 13.5V9c0-1.5 1-1.5 1-3.5a3 3 0 0 0-6 0c0 2 1 2 1 3.5v4.5',
+    ],
+  },
+}
+
+export type SocietyGlyphKey =
+  | 'society.award'
+  | 'society.coup'
+  | 'society.cuisine'
+  | 'society.espionage'
+  | 'society.festival'
+  | 'society.film'
+  | 'society.monarchy'
+  | 'society.music'
+  | 'society.olympics'
+  | 'society.protest'
+  | 'society.spaceProgram'
+  | 'society.sportsTeam'
+  | 'society.tourism'
+
+export const SOCIETY_GLYPHS: Record<SocietyGlyphKey, Glyph> = {
+  // Medal on a ribbon.
+  'society.award': {
+    paths: ['M9.5 13.3 7.5 20.5l4.5-2.5 4.5 2.5-2-7.2'],
+    circles: [
+      [12, 9, 5],
+      [12, 9, 1.8],
+    ],
+  },
+  // The crown, overturned.
+  'society.coup': {
+    paths: ['M4.5 7.5 3.5 16.5l4.7-3.5L12 18.5l3.8-5.5 4.7 3.5-1-9z'],
+  },
+  // Fork and knife.
+  'society.cuisine': {
+    paths: [
+      'M7 3.5V7a2.5 2.5 0 0 0 5 0V3.5',
+      'M9.5 3.5v17',
+      'M15 20.5v-6',
+      'M15 14.5c-1-3.5-.7-7.8 1.5-11 1 3.3 1 7.5-1.5 11z',
+    ],
+  },
+  // Fedora and dark glasses.
+  'society.espionage': {
+    paths: ['M3.5 12.5h17', 'M7 12.5c0-4 1.5-6 5-6s5 2 5 6', 'M10.8 16.5h2.4'],
+    circles: [
+      [8.5, 16.5, 2.3],
+      [15.5, 16.5, 2.3],
+    ],
+  },
+  // Bunting.
+  'society.festival': {
+    paths: [
+      'M3.5 7c5.5 3.2 11.5 3.2 17 0',
+      'M5.6 8.1h4.2L7.7 12.5z',
+      'M9.9 9.3h4.2L12 13.7z',
+      'M14.2 8.1h4.2l-2.1 4.4z',
+    ],
+  },
+  // Clapperboard.
+  'society.film': {
+    paths: [
+      'M4.5 10.5h15v9h-15z',
+      'M4.5 10.5 5.5 6l14 1.5-1 3z',
+      'M9 6.4l-.7 3',
+      'M13 6.8l-.7 3',
+    ],
+  },
+  // The crown, upright.
+  'society.monarchy': {
+    paths: ['M4.5 16.5 3.5 7.5l4.7 3.5L12 5.5l3.8 5.5 4.7-3.5-1 9z'],
+  },
+  // Beamed notes.
+  'society.music': {
+    paths: ['M9.5 17V5.5l8-2V15'],
+    circles: [
+      [7.5, 17, 2],
+      [15.5, 15, 2],
+    ],
+  },
+  // Torch.
+  'society.olympics': {
+    paths: [
+      'M12 3.5c1.5 1.8 2.3 3.2 2.3 4.4a2.3 2.3 0 0 1-4.6 0c0-1.2.8-2.6 2.3-4.4z',
+      'M9.5 10.5h5',
+      'M9.5 10.5 11 20.5h2l1.5-10',
+    ],
+  },
+  // Placard.
+  'society.protest': {
+    paths: ['M5.5 4.5h13v7h-13z', 'M12 11.5v9', 'M12 6.3v2.2', 'M12 9.9v.01'],
+  },
+  // Rocket.
+  'society.spaceProgram': {
+    paths: [
+      'M12 3.5c2.2 1.8 3.3 4.6 3.3 8l-1.3 4h-4l-1.3-4c0-3.4 1.1-6.2 3.3-8z',
+      'M8.7 12.5 6.5 16l2.9-.5',
+      'M15.3 12.5 17.5 16l-2.9-.5',
+      'M12 17.5v3',
+    ],
+    circles: [[12, 9.5, 1.5]],
+  },
+  // Trophy.
+  'society.sportsTeam': {
+    paths: [
+      'M8 4.5h8v4.2a4 4 0 0 1-8 0z',
+      'M8 5.5H5c0 2.2 1.2 3.5 3.1 3.7',
+      'M16 5.5h3c0 2.2-1.2 3.5-3.1 3.7',
+      'M12 12.7V16',
+      'M9.3 16 8.5 19.5h7L14.7 16',
+    ],
+  },
+  // Rolling luggage.
+  'society.tourism': {
+    paths: [
+      'M8.5 7.5h7A1.5 1.5 0 0 1 17 9v9.5H7V9a1.5 1.5 0 0 1 1.5-1.5z',
+      'M10.5 7.5V4.5h3v3',
+      'M7 13h10',
+    ],
+    circles: [
+      [9, 19.7, 1],
+      [15, 19.7, 1],
+    ],
+  },
+}
+
+// Encyclopedic emblems for political leanings — labels, not endorsements.
+export type IdeologyGlyphKey =
+  | 'ideology.anarchism'
+  | 'ideology.capitalism'
+  | 'ideology.centrism'
+  | 'ideology.communism'
+  | 'ideology.conservatism'
+  | 'ideology.fascism'
+  | 'ideology.green'
+  | 'ideology.liberalism'
+  | 'ideology.libertarianism'
+  | 'ideology.monarchism'
+  | 'ideology.nationalism'
+  | 'ideology.populism'
+  | 'ideology.progressivism'
+  | 'ideology.socialism'
+
+export const IDEOLOGY_GLYPHS: Record<IdeologyGlyphKey, Glyph> = {
+  // Circle-A.
+  'ideology.anarchism': {
+    paths: ['M8 16.5 12 6.5l4 10', 'M9.3 13.7h5.4'],
+    circles: [[12, 12, 8.5]],
+  },
+  // Coin, rising.
+  'ideology.capitalism': {
+    paths: ['M12 15.5V4.5', 'M9.3 7.2 12 4.5l2.7 2.7'],
+    circles: [[12, 13, 6]],
+  },
+  // Bullseye.
+  'ideology.centrism': {
+    circles: [
+      [12, 12, 8.5],
+      [12, 12, 4.8],
+      [12, 12, 1.2],
+    ],
+  },
+  // Hammer and sickle.
+  'ideology.communism': {
+    paths: [
+      'M9 3.5a9.5 9.5 0 0 0 8.5 14',
+      'M17.5 17.5 20.5 20.5',
+      'M11.5 7.5l3-3 5 5-3 3z',
+      'M14 10 5.5 18.5',
+    ],
+  },
+  // Oak.
+  'ideology.conservatism': {
+    paths: [
+      'M7 16.5c-1.7 0-3-1.3-3-3 0-1.3.8-2.4 2-2.8C6 8.2 8 6.5 10.4 6.5c.6-1.2 1.9-2 3.3-2 2 0 3.7 1.5 3.9 3.4 1.4.4 2.4 1.7 2.4 3.2 0 1.9-1.5 3.4-3.4 3.4z',
+      'M12 16.5v4',
+      'M8.5 20.5h7',
+    ],
+  },
+  // Fasces.
+  'ideology.fascism': {
+    paths: [
+      'M10 4.5v16',
+      'M12 4.5v16',
+      'M14 4.5v16',
+      'M9.5 8h5',
+      'M9.5 16h5',
+      'M14 7c3-.5 4.5 1 4.5 3-2 .8-3.5.5-4.5-.5',
+    ],
+  },
+  // Sprout in a ring.
+  'ideology.green': {
+    paths: [
+      'M12 17v-4.5',
+      'M12 12.5c0-2.3-1.6-4-4-4 0 2.3 1.6 4 4 4z',
+      'M12 12.5c0-2.3 1.6-4 4-4 0 2.3-1.6 4-4 4z',
+    ],
+    circles: [[12, 12, 8.5]],
+  },
+  // Liberty torch.
+  'ideology.liberalism': {
+    paths: [
+      'M12 3.5c1.2 1.4 1.8 2.5 1.8 3.4a1.8 1.8 0 0 1-3.6 0c0-.9.6-2 1.8-3.4z',
+      'M9 9.5c.6 1.2 1.6 1.8 3 1.8s2.4-.6 3-1.8',
+      'M12 11.5v9',
+    ],
+  },
+  // Broken chain.
+  'ideology.libertarianism': {
+    paths: [
+      'M9.7 7.7 8.2 6.2a3.5 3.5 0 0 0-5 5l1.5 1.5',
+      'M9.7 7.7l1.4 1.4',
+      'M4.7 12.7l1.4 1.4',
+      'M14.3 16.3l1.5 1.5a3.5 3.5 0 0 0 5-5l-1.5-1.5',
+      'M14.3 16.3l-1.4-1.4',
+      'M19.3 11.3l-1.4-1.4',
+    ],
+  },
+  // Globus cruciger.
+  'ideology.monarchism': {
+    paths: ['M6.5 14.5h11', 'M12 8.5V4', 'M9.8 6h4.4'],
+    circles: [[12, 14, 6]],
+  },
+  // Flag with a heart.
+  'ideology.nationalism': {
+    paths: [
+      'M6.5 20.5v-17',
+      'M6.5 4.5H18v7H6.5',
+      'M12.2 10c-1.4-1-2.1-1.8-2.1-2.7 0-.6.5-1.1 1.1-1.1.4 0 .8.2 1 .6.2-.4.6-.6 1-.6.6 0 1.1.5 1.1 1.1 0 .9-.7 1.7-2.1 2.7z',
+    ],
+  },
+  // Megaphone.
+  'ideology.populism': {
+    paths: ['M6 9.5 17.5 5v13L6 14.5z', 'M3.5 10h2.5v4H3.5z', 'M19.3 9.5a4.3 4.3 0 0 1 0 5'],
+  },
+  // Sunrise.
+  'ideology.progressivism': {
+    paths: [
+      'M3.5 17h17',
+      'M7.5 17a4.5 4.5 0 0 1 9 0',
+      'M12 9V6.5',
+      'M7 11.5 5.2 9.7',
+      'M17 11.5l1.8-1.8',
+    ],
+  },
+  // Rose.
+  'ideology.socialism': {
+    paths: [
+      'M12 6.5c1.4 0 2.5 1 2.5 2.3S13.4 11 12 11',
+      'M12 13v7.5',
+      'M12 16.5c0-1.8-1.3-3-3.2-3 0 1.8 1.3 3 3.2 3z',
+      'M12 18c0-1.8 1.3-3 3.2-3 0 1.8-1.3 3-3.2 3z',
+    ],
+    circles: [[12, 8.7, 4.3]],
+  },
+}
+
 export const FALLBACK_GLYPH: Glyph = { paths: ['M5 19v-7', 'M10 19V7', 'M15 19v-5', 'M20 19V9'] }
 
 // One bespoke emblem per stat. Same-topic siblings stay visually related but
@@ -474,13 +976,19 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
   },
 }
 
+// Every glyph addressable by name through the `topic` string channel. The
+// key spaces don't overlap: topics are bare words, the benches are prefixed.
+const NAMED_GLYPHS: Record<string, Glyph> = {
+  ...TOPIC_GLYPHS,
+  ...UTILITY_GLYPHS,
+  ...DEPARTMENT_GLYPHS,
+  ...RELATIONS_GLYPHS,
+  ...SOCIETY_GLYPHS,
+  ...IDEOLOGY_GLYPHS,
+}
+
 export const resolveGlyph = (accessor?: GroupChallengeAccessorId, topic?: string): Glyph => {
   if (accessor && STAT_GLYPHS[accessor]) return STAT_GLYPHS[accessor]
-  if (topic) {
-    const named =
-      (TOPIC_GLYPHS as Record<string, Glyph | undefined>)[topic] ??
-      (UTILITY_GLYPHS as Record<string, Glyph | undefined>)[topic]
-    if (named) return named
-  }
+  if (topic && NAMED_GLYPHS[topic]) return NAMED_GLYPHS[topic]
   return FALLBACK_GLYPH
 }

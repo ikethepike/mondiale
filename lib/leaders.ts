@@ -12,6 +12,20 @@ export interface LeaderProfile {
   sinceYear?: number
 }
 
+/** Regnal numerals stay uppercase (Leo XIV, Frederik X). */
+const ROMAN_NUMERAL = /^[IVXLCDM]+$/
+
+/**
+ * The factbook prints surnames in shouting caps ("Karin KELLER-SUTTER").
+ * Soften only the all-caps words to title case — per hyphen/apostrophe
+ * segment — leaving mixed-case words, particles, and regnal numerals alone.
+ */
+export const titlecaseLeader = (name: string): string =>
+  name.replace(/[A-ZÀ-ÞŒ]{2,}(?:['’-][A-ZÀ-ÞŒ]+)*/g, word => {
+    if (ROMAN_NUMERAL.test(word)) return word
+    return word.toLowerCase().replace(/(?:^|['’-])\p{L}/gu, letter => letter.toUpperCase())
+  })
+
 /** Loose surname overlap between two leader-name strings (sources drift). */
 const sharesName = (a?: string, b?: string): boolean => {
   if (!a || !b) return false

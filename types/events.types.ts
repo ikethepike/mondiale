@@ -55,6 +55,21 @@ export type ClientEventData =
       hintsUsed?: number
     }
   | {
+      /** Border Chain: the active player extends the chain. `turn` echoes the
+       *  state's turn counter so a retried/duplicated send can never land as a
+       *  second move. */
+      event: 'submit-chain-move'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
+      /** Heritage Hunt: a pin for the live beat. `beat` echoes the state's
+       *  beat index so a retried send can't land on a later photo. */
+      event: 'submit-heritage-pin'
+      beat: number
+      pin: LatLng
+    }
+  | {
       event: 'close-tutorial'
     }
   | {
@@ -125,6 +140,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
   'submit-final-challenge-answer',
+  'submit-chain-move',
+  'submit-heritage-pin',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -164,6 +181,11 @@ export type ServerEventData =
   | { event: 'update'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
+  /** Border Chain: a turn advanced (move, strike, elimination, fresh chain,
+   *  or finish) — the whole room re-renders the chain from the snapshot. */
+  | { event: 'chain-updated'; game: Game }
+  /** Heritage Hunt: a beat resolved or advanced — whole-table state. */
+  | { event: 'heritage-updated'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
   | {

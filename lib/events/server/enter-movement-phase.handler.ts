@@ -1,5 +1,15 @@
 import { getRoundChallenge } from '~~/lib/challenges'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
+import {
+  isBorderChainChallenge,
+  scheduleChainTimeout,
+  startChainClock,
+} from './chain-turns'
+import {
+  isHeritageHuntChallenge,
+  scheduleHeritageTimeout,
+  startHeritageClock,
+} from './heritage-beats'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -132,8 +142,20 @@ export const enterMovementPhaseHandler = defineGameHandler(
         // Winners stay on their victory screen
         if (entry.phase === 'movement-summary') entry.phase = 'group-challenge'
       }
+      // The clocked rounds (Border Chain's shot clock, Heritage Hunt's beat
+      // clock): stamp the first deadline into the snapshot being revealed,
+      // and arm the timeout after the save.
+      const revealed = game.rounds[game.rounds.length - 1]?.groupChallenge
+      if (isBorderChainChallenge(revealed)) startChainClock(revealed)
+      if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       await server.updateGameState(game)
       server.emit({ event: 'new-round', game }, eventTarget)
+      if (isBorderChainChallenge(revealed)) {
+        scheduleChainTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      if (isHeritageHuntChallenge(revealed)) {
+        scheduleHeritageTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
     }
   }
 )

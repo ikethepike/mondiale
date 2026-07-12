@@ -2,6 +2,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
+import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
@@ -12,8 +13,10 @@ import {
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
 import type {
+  BorderChainChallenge,
   CapitalGuessChallenge,
   FlagPaletteChallenge,
+  HeritageHuntChallenge,
   GhostStateChallenge,
   HotColdChallenge,
   MotherTongueChallenge,
@@ -41,8 +44,9 @@ import type {
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
+import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
-import { attemptDecayScore, attemptFraction } from './scoring'
+import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS, variantCountries } from './variant'
@@ -73,6 +77,8 @@ const maximumRoundPoints = (game: gameTypes.Game) =>
 const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['ranking', 0.2],
   ['traversal', 0.13],
+  ['border-chain', 0.09],
+  ['heritage-hunt', 0.07],
   ['neighbour-blitz', 0.1],
   ['silhouette', 0.09],
   ['hot-cold', 0.09],
@@ -199,6 +205,90 @@ const pickLargeCountry = (pool: ISOCountryCode[]): ISOCountryCode => {
       return !!area && area.amount > 400
     }) ?? shuffled[0]
   )
+}
+
+const CHAIN_TURN_SECONDS = 12
+
+/** Everyone still competing when the round is dealt takes a chain seat. */
+const chainContenders = (game: gameTypes.Game): string[] =>
+  Object.entries(game.players)
+    .filter(([, player]) => !['kicked', 'victory'].includes(player.phase))
+    .map(([playerId]) => playerId)
+
+const getBorderChainChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): BorderChainChallenge | undefined => {
+  const contenders = chainContenders(game)
+  // Solo, there is nobody to outlast.
+  if (contenders.length < 2) return undefined
+  const seed = pickChainSeed(game.variant)
+  if (!seed) return undefined
+
+  const strikes = game.difficulty === 'easy' ? 1 : 0
+  return {
+    _type: 'border-chain-challenge',
+    turnSeconds: CHAIN_TURN_SECONDS,
+    maximumPoints: maximumRoundPoints(game),
+    strikes,
+    state: {
+      chains: [[seed]],
+      order: shuffleArray(contenders),
+      activeIndex: 0,
+      turn: 0,
+      // Stamped when the round is revealed (chain-turns) — staging pauses first.
+      deadline: 0,
+      named: {},
+      strikesLeft: Object.fromEntries(contenders.map(playerId => [playerId, strikes])),
+      eliminated: [],
+      outcomes: {},
+      missedOuts: {},
+    },
+  }
+}
+
+const HERITAGE_BEAT_SECONDS = 35
+const HERITAGE_BEATS = 3
+
+const getHeritageHuntChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): HeritageHuntChallenge | undefined => {
+  const contenders = chainContenders(game)
+  if (!contenders.length) return undefined
+
+  const playable = new Set(variantCountries(game.variant))
+  const pool = shuffleArray(
+    Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country))
+  )
+  // One site per country per round, for variety.
+  const slugs: string[] = []
+  const dealtCountries = new Set<ISOCountryCode>()
+  for (const [slug, site] of pool) {
+    if (dealtCountries.has(site.country)) continue
+    dealtCountries.add(site.country)
+    slugs.push(slug)
+    if (slugs.length === HERITAGE_BEATS) break
+  }
+  if (slugs.length < HERITAGE_BEATS) return undefined
+
+  return {
+    _type: 'heritage-hunt-challenge',
+    slugs,
+    beatSeconds: HERITAGE_BEAT_SECONDS,
+    perfectDistanceKm: PIN_PERFECT_KM,
+    zeroDistanceKm: PIN_ZERO_KM,
+    maximumPoints: maximumRoundPoints(game),
+    state: {
+      beat: 0,
+      // Stamped when the round is revealed (heritage-beats).
+      deadline: 0,
+      order: contenders,
+      pins: {},
+    },
+  }
 }
 
 const getNeighbourBlitzChallenge = ({
@@ -817,6 +907,16 @@ export const getRoundChallenge = async ({
       if (challenge) return challenge
       break
     }
+    case 'border-chain': {
+      const challenge = getBorderChainChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'heritage-hunt': {
+      const challenge = getHeritageHuntChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
     case 'neighbour-blitz': {
       const challenge = getNeighbourBlitzChallenge({ game })
       if (challenge) return challenge
@@ -940,13 +1040,13 @@ export const scorePinLandmark = ({
   if (!pin || !landmark?.coordinates) return { scored: 0, maximum }
 
   const distanceKm = haversineKm(pin, landmark.coordinates)
-  if (distanceKm <= challenge.perfectDistanceKm) return { scored: maximum, maximum, distanceKm }
-  if (distanceKm >= challenge.zeroDistanceKm) return { scored: 0, maximum, distanceKm }
-
-  const span = challenge.zeroDistanceKm - challenge.perfectDistanceKm
-  const missed = distanceKm - challenge.perfectDistanceKm
-  const scored = Math.round(maximum * (1 - missed / span))
-  return { scored: Math.max(0, Math.min(scored, maximum)), maximum, distanceKm }
+  const scored = scorePinDistance({
+    distanceKm,
+    perfectDistanceKm: challenge.perfectDistanceKm,
+    zeroDistanceKm: challenge.zeroDistanceKm,
+    maximumPoints: maximum,
+  })
+  return { scored, maximum, distanceKm }
 }
 
 /** Hot/cold: finding the country matters; every extra probe costs points. */

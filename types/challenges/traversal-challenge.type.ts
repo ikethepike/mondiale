@@ -53,6 +53,8 @@ export const isGroupChallenge = (
 export type RoundChallengeKind =
   | 'ranking'
   | 'traversal'
+  | 'border-chain'
+  | 'heritage-hunt'
   | 'neighbour-blitz'
   | 'silhouette'
   | 'hot-cold'
@@ -76,6 +78,10 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
   switch (challenge._type) {
     case 'traversal-challenge':
       return 'traversal'
+    case 'border-chain-challenge':
+      return 'border-chain'
+    case 'heritage-hunt-challenge':
+      return 'heritage-hunt'
     case 'neighbour-blitz-challenge':
       return 'neighbour-blitz'
     case 'silhouette-challenge':

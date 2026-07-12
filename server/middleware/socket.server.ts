@@ -8,6 +8,8 @@ import { setColorHandler } from '~~/lib/events/server/set-color.handler'
 import { setNameHandler } from '~~/lib/events/server/set-name.handler'
 import { startGameHandler } from '~~/lib/events/server/start-game.handler'
 import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-final-challenge-answer.handler'
+import { submitChainMoveHandler } from '~~/lib/events/server/submit-chain-move.handler'
+import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
 import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
@@ -59,6 +61,12 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-group-challenge-answers': {
     handler: submitGroupChallengeAnswersHandler,
+  },
+  'submit-chain-move': {
+    handler: submitChainMoveHandler,
+  },
+  'submit-heritage-pin': {
+    handler: submitHeritagePinHandler,
   },
   'close-tutorial': {
     handler: closeTutorialHandler,

@@ -1,6 +1,7 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { titlecaseLeader } from '~~/lib/leaders'
 import { MAP_REGIONS } from '~~/data/map.gen'
 import type {
   BornChallenge,
@@ -557,7 +558,7 @@ export const getFinalChallengeDetails = ({
       // question unanswerable (validation compares against challenge.country)
       const { leader } = COUNTRIES[challenge.country].government
       return {
-        question: `Which country is led by ${leader}?`,
+        question: `Which country is led by ${titlecaseLeader(leader ?? '')}?`,
       }
     }
     case 'min-challenge':
