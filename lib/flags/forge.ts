@@ -4,9 +4,12 @@
  * and its frequencies are all derived from a pixel-level study of the 197
  * real flags in flag-icons: horizontal stripes dominate (~90 flags incl.
  * emblem/canton variants), then hoist triangles, crosses, vertical tribands,
- * cantons, solid-field emblems, diagonals. Red appears in ~75% of real flags,
- * white in ~66%, gold ~42%; flags carry 2–4 significant colors, and
- * low-contrast pairs are separated by white/gold fimbriation.
+ * cantons, solid-field emblems, diagonals — plus rarer archetypes (pall,
+ * quartered, bordure, hoist bar, serrated hoist, sunburst rays). Red appears
+ * in ~75% of real flags, white in ~66%, gold ~42%; flags carry 2–4
+ * significant colors, and low-contrast pairs are separated by white/gold
+ * fimbriation. Compositions that quantize to an actual country's flag are
+ * re-picked (REAL_* guards) so no deploy accidentally flies the Netherlands.
  */
 
 export type ForgeFamily =
@@ -18,6 +21,12 @@ export type ForgeFamily =
   | 'field-emblem'
   | 'diagonal'
   | 'saltire'
+  | 'pall'
+  | 'quartered'
+  | 'bordure'
+  | 'hoist-bar'
+  | 'serrated'
+  | 'rays'
 
 export interface ForgedFlag {
   seed: string
@@ -117,6 +126,46 @@ const fimbriation = (against: FlagColor[]): FlagColor => {
   return score(WHITE) >= score(GOLD) ? WHITE : GOLD
 }
 
+// --- anti-plagiarism guards ---------------------------------------------------
+// Quantized color sequences of REAL flags (from the flag-icons pixel study).
+// A generated composition matching one of these is a real flag in disguise —
+// builders re-pick until the combination is fictional.
+
+const REAL_STRIPES = new Set([
+  'red>white>red', 'red>gold>green', 'orange>white>green', 'red>white>black',
+  'red>white>blue', 'lightblue>white>lightblue', 'gold>navy>red', 'blue>white>blue',
+  'green>gold>red', 'red>white', 'red>blue>orange', 'lightblue>red>green',
+  'black>gold>red', 'lightblue>black>lightblue', 'white>green>red', 'navy>gold>red',
+  'navy>white>red>white>navy', 'lightblue>black>white', 'navy>white>red',
+  'green>gold>blue', 'red>white>navy>white>green', 'black>red>gold', 'navy>red',
+  'red>white>green', 'green>white>orange', 'white>blue>white>blue>white',
+  'green>white>red', 'red>navy>red', 'maroon>white>maroon', 'navy>white>green',
+  'red>black>green', 'gold>green>red', 'red>green>red', 'red>navy>gold>green',
+  'green>white>green', 'white>red', 'blue>gold', 'lightblue>gold', 'white>blue>red',
+  'white>lightblue', 'green>white>blue', 'green>white>red>white>green',
+  'red>white>darkgreen', 'red>white>navy>white>red', 'black>gold>red>black>gold>red',
+  'red>gold>red', // Spain's bands (the study filed ES under emblem flags)
+])
+
+const REAL_NORDIC = new Set([
+  'red>white', 'blue>gold', 'white>blue', 'white>lightblue',
+  'red>white>navy', 'navy>white>red', 'lightblue>white>red',
+])
+
+// field|charge|kind: JP BD TR/TN VN MA SO MR EU
+const REAL_EMBLEMS = new Set([
+  'white|red|disc', 'green|red|disc', 'red|white|crescent-star', 'red|gold|star',
+  'red|green|star', 'lightblue|white|star', 'green|gold|crescent-star',
+  'red|white|star', 'navy|gold|stars-ring', 'blue|gold|stars-ring',
+])
+
+// saltire>top/bottom>hoist/fly: JM, Scotland, AL(abama)
+const REAL_SALTIRES = new Set(['gold>green>black', 'white>navy>navy', 'white>blue>blue', 'red>white>white'])
+
+const seq = (colors: FlagColor[]) => colors.map((c) => c.name).join('>')
+const isRealStripes = (colors: FlagColor[]) =>
+  REAL_STRIPES.has(seq(colors)) || REAL_STRIPES.has(seq([...colors].reverse()))
+
 // --- drawing helpers --------------------------------------------------------
 
 const n1 = (v: number) => +v.toFixed(1)
@@ -139,22 +188,52 @@ const starPath = (cx: number, cy: number, r: number, rot = -Math.PI / 2) => {
 const star = (cx: number, cy: number, r: number, c: FlagColor) =>
   `<path d="${starPath(cx, cy, r)}" fill="${c.hex}"/>`
 
-type ChargeKind = 'star' | 'stars-ring' | 'stars-arc' | 'crescent' | 'crescent-star' | 'disc' | 'disc-star'
+type ChargeKind =
+  | 'star'
+  | 'stars-ring'
+  | 'stars-arc'
+  | 'crescent'
+  | 'crescent-star'
+  | 'disc'
+  | 'disc-star'
+  | 'sun'
+  | 'trident'
+  | 'bird'
 
 const CHARGE_KINDS: Array<{ kind: ChargeKind; w: number }> = [
-  { kind: 'star', w: 34 },
-  { kind: 'stars-ring', w: 10 },
-  { kind: 'stars-arc', w: 10 },
-  { kind: 'crescent', w: 8 },
-  { kind: 'crescent-star', w: 12 },
-  { kind: 'disc', w: 14 },
-  { kind: 'disc-star', w: 12 },
+  { kind: 'star', w: 28 },
+  { kind: 'stars-ring', w: 9 },
+  { kind: 'stars-arc', w: 9 },
+  { kind: 'crescent', w: 7 },
+  { kind: 'crescent-star', w: 11 },
+  { kind: 'disc', w: 12 },
+  { kind: 'disc-star', w: 10 },
+  { kind: 'sun', w: 8 },
+  { kind: 'trident', w: 4 },
+  { kind: 'bird', w: 5 },
 ]
+
+/** Figurative silhouettes drawn in a local 0–100 box, scaled to radius r. */
+const SILHOUETTES: Record<'trident' | 'bird', string> = {
+  // Barbados-style trident head: centre spearhead, two curved side prongs,
+  // broken shaft
+  trident:
+    'M50 4 L60 24 L54 20 L54 42 L64 42 C68 34 68 26 64 20 L74 14 ' +
+    'C82 28 80 46 70 54 L54 54 L54 96 L46 96 L46 54 L30 54 ' +
+    'C20 46 18 28 26 14 L36 20 C32 26 32 34 36 42 L46 42 L46 20 L40 24 Z',
+  // frigatebird in flight: swept wings, forked tail
+  bird:
+    'M50 38 C55 28 64 23 74 24 C68 29 64 34 63 40 C74 37 87 40 94 48 ' +
+    'C84 47 75 49 68 54 C60 60 52 60 47 56 C42 64 34 71 24 74 ' +
+    'C30 67 33 60 34 53 C24 56 13 53 6 46 C14 43 24 42 32 44 C37 39 43 37 50 38 Z',
+}
 
 /** Draw a charge centered at (cx, cy) with outer radius r on background `bg`. */
 const drawCharge = (rng: Rng, kind: ChargeKind, cx: number, cy: number, r: number, c: FlagColor, bg: FlagColor): string => {
-  // multi-star charges turn into illegible dots at small radii
+  // multi-star charges turn into illegible dots at small radii, and the
+  // figurative silhouettes turn to mud
   if (r < 95 && (kind === 'stars-ring' || kind === 'stars-arc')) kind = 'star'
+  if (r < 70 && (kind === 'trident' || kind === 'bird')) kind = 'star'
   switch (kind) {
     case 'star':
       return star(cx, cy, r, c)
@@ -190,6 +269,30 @@ const drawCharge = (rng: Rng, kind: ChargeKind, cx: number, cy: number, r: numbe
       const inner = fimbriation([c])
       return circle(cx, cy, r, c) + star(cx, cy, r * 0.62, inner)
     }
+    case 'sun': {
+      const n = int(rng, 8, 12)
+      const parts = [circle(cx, cy, r * 0.52, c)]
+      const w = (Math.PI / n) * 0.5
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * 2 * Math.PI - Math.PI / 2
+        parts.push(
+          poly(
+            [
+              [cx + r * 0.62 * Math.cos(a - w), cy + r * 0.62 * Math.sin(a - w)],
+              [cx + r * Math.cos(a), cy + r * Math.sin(a)],
+              [cx + r * 0.62 * Math.cos(a + w), cy + r * 0.62 * Math.sin(a + w)],
+            ],
+            c,
+          ),
+        )
+      }
+      return parts.join('')
+    }
+    case 'trident':
+    case 'bird': {
+      const s = +((2 * r) / 100).toFixed(3)
+      return `<path d="${SILHOUETTES[kind]}" fill="${c.hex}" transform="translate(${n1(cx - r)} ${n1(cy - r)}) scale(${s})"/>`
+    }
   }
 }
 
@@ -217,6 +320,11 @@ const buildHStripes = (rng: Rng, allowCharge = true): Built => {
     colors = [pickColor(rng, [])]
     for (let i = 1; i < n; i++) colors.push(pickColor(rng, colors, [colors[i - 1]]))
   }
+  for (let guard = 0; isRealStripes(colors) && guard < 4; guard++) {
+    const i = Math.floor(colors.length / 2)
+    colors[i] = pickColor(rng, colors, [colors[i - 1], colors[i + 1]].filter(Boolean))
+  }
+  const stillReal = isRealStripes(colors)
   // Spanish 1:2:1 middle band, sometimes
   const weights = n === 3 && chance(rng, 0.25) ? [1, 2, 1] : Array(colors.length).fill(1)
   const total = weights.reduce((s, w) => s + w, 0)
@@ -229,7 +337,7 @@ const buildHStripes = (rng: Rng, allowCharge = true): Built => {
     y += h
   }
   const used = [...new Set(colors)]
-  if (allowCharge && chance(rng, 0.38)) {
+  if (allowCharge && (stillReal || chance(rng, 0.38))) {
     const mid = Math.floor(colors.length / 2)
     const [by, bh] = bounds[mid]
     const bg = colors[mid]
@@ -251,6 +359,11 @@ const buildVStripes = (rng: Rng): Built => {
   const n = chance(rng, 0.85) ? 3 : 2
   const colors = [pickColor(rng, [])]
   for (let i = 1; i < n; i++) colors.push(pickColor(rng, colors, [colors[i - 1]]))
+  for (let guard = 0; isRealStripes(colors) && guard < 4; guard++) {
+    const i = Math.floor(n / 2)
+    colors[i] = pickColor(rng, colors, [colors[i - 1], colors[i + 1]].filter(Boolean))
+  }
+  const stillReal = isRealStripes(colors)
   const weights = n === 3 && chance(rng, 0.25) ? [1, 2, 1] : Array(n).fill(1)
   const total = weights.reduce((s: number, w: number) => s + w, 0)
   const parts: string[] = []
@@ -263,7 +376,7 @@ const buildVStripes = (rng: Rng): Built => {
     x += w
   }
   const used = [...colors]
-  if (chance(rng, 0.35)) {
+  if (stillReal || chance(rng, 0.35)) {
     const mid = Math.floor(n / 2)
     const bg = colors[mid]
     const c = pickColor(rng, [], [bg], 180)
@@ -296,7 +409,13 @@ const buildHoistTriangle = (rng: Rng): Built => {
 
 const buildNordicCross = (rng: Rng): Built => {
   const field = pickColor(rng, [])
-  const cross = pickColor(rng, [field], [field])
+  let cross = pickColor(rng, [field], [field])
+  const withInner = chance(rng, 0.45)
+  let inner = withInner ? pickColor(rng, [field, cross], [cross]) : null
+  for (let guard = 0; REAL_NORDIC.has(seq([field, cross, ...(inner ? [inner] : [])])) && guard < 4; guard++) {
+    cross = pickColor(rng, [field, cross], [field])
+    if (inner) inner = pickColor(rng, [field, cross, inner], [cross])
+  }
   const t = H * (0.14 + rng() * 0.06)
   const cx = W * 0.36
   const parts = [
@@ -305,8 +424,7 @@ const buildNordicCross = (rng: Rng): Built => {
     rect(cx - t / 2, 0, t, H, cross),
   ]
   const used = [field, cross]
-  if (chance(rng, 0.45)) {
-    const inner = pickColor(rng, used, [cross])
+  if (inner) {
     const it = t * 0.45
     parts.push(rect(0, (H - it) / 2, W, it, inner), rect(cx - it / 2, 0, it, H, inner))
     used.push(inner)
@@ -345,12 +463,14 @@ const buildCanton = (rng: Rng): Built => {
 
 const buildFieldEmblem = (rng: Rng): Built => {
   const field = pickColor(rng, [])
-  const c = pickColor(rng, [field], [field], 180)
+  let c = pickColor(rng, [field], [field], 180)
+  let kind = pickWeighted(rng, CHARGE_KINDS).kind
+  for (let guard = 0; REAL_EMBLEMS.has(`${field.name}|${c.name}|${kind}`) && guard < 4; guard++) {
+    kind = pickWeighted(rng, CHARGE_KINDS).kind
+    c = pickColor(rng, [field, c], [field], 180)
+  }
   const cx = chance(rng, 0.3) ? W * 0.44 : W / 2 // hoist-shifted, Bangladesh-style
-  const parts = [
-    rect(0, 0, W, H, field),
-    drawCharge(rng, pickWeighted(rng, CHARGE_KINDS).kind, cx, H / 2, H * 0.27, c, field),
-  ]
+  const parts = [rect(0, 0, W, H, field), drawCharge(rng, kind, cx, H / 2, H * 0.27, c, field)]
   return { family: 'field-emblem', parts, used: [field, c] }
 }
 
@@ -379,9 +499,12 @@ const buildDiagonal = (rng: Rng): Built => {
 }
 
 const buildSaltire = (rng: Rng): Built => {
-  const saltire = pickColor(rng, [])
+  let saltire = pickColor(rng, [])
   const tb = pickColor(rng, [saltire], [saltire])
   const lr = chance(rng, 0.55) ? pickColor(rng, [saltire, tb], [saltire]) : tb
+  for (let guard = 0; REAL_SALTIRES.has(seq([saltire, tb, lr])) && guard < 4; guard++) {
+    saltire = pickColor(rng, [saltire, tb, lr], [tb, lr])
+  }
   const parts = [
     poly([[0, 0], [W, 0], [W / 2, H / 2]], tb),
     poly([[0, H], [W, H], [W / 2, H / 2]], tb),
@@ -400,17 +523,159 @@ const buildSaltire = (rng: Rng): Built => {
   return { family: 'saltire', parts, used: [...new Set([saltire, tb, lr])] }
 }
 
+const buildPall = (rng: Rng): Built => {
+  const top = pickColor(rng, [])
+  const bottom = chance(rng, 0.6) ? pickColor(rng, [top]) : top
+  const pall = pickColor(rng, [top, bottom])
+  // the triangle merges invisibly with a same-colored field half
+  const tri = pickColor(rng, [pall, top, bottom], [pall])
+  const x = W * 0.36
+  const t = H * 0.17
+  // The V is ONE polyline so the fork gets a clean miter join (two subpaths
+  // leave butt-cap wedges there); the ends overshoot the hoist corners so the
+  // caps are clipped away by the viewBox. The horizontal bar starts under the
+  // bend, where the same-color overlap hides the seam.
+  const L = Math.hypot(x, H / 2)
+  const [ex, ey] = [(x / L) * t * 2, ((H / 2) / L) * t * 2]
+  const vPath = `M${n1(-ex)} ${n1(-ey)} L${n1(x)} ${H / 2} L${n1(-ex)} ${n1(H + ey)}`
+  const vStroke = (tt: number, c: FlagColor) =>
+    `<path d="${vPath}" fill="none" stroke="${c.hex}" stroke-width="${n1(tt)}"/>`
+  const bar = (tt: number, c: FlagColor) => rect(x - t / 2, H / 2 - tt / 2, W - x + t / 2, tt, c)
+  const parts = [rect(0, 0, W, H / 2, top), rect(0, H / 2, W, H / 2, bottom)]
+  const used = [top, bottom, pall, tri]
+  const f = fimbriation([pall, top, bottom, tri])
+  const needsFimbriation = !contrasts(pall, top) || !contrasts(pall, bottom)
+  if (needsFimbriation) {
+    parts.push(vStroke(t * 1.55, f), bar(t * 1.55, f))
+    used.push(f)
+  }
+  parts.push(vStroke(t, pall), bar(t, pall))
+  // hoist triangle nested inside the fork, South Africa style — sized to the
+  // V's inner edge (fimbriated or not) so no field sliver shows at the seam
+  const k = needsFimbriation ? 1.0 : 0.62
+  parts.push(poly([[0, k * t], [x - k * t * 1.1, H / 2], [0, H - k * t]], tri))
+  return { family: 'pall', parts, used: [...new Set(used)] }
+}
+
+const buildQuartered = (rng: Rng): Built => {
+  const a = pickColor(rng, [])
+  const b = pickColor(rng, [a], [a])
+  const parts = [
+    rect(0, 0, W / 2, H / 2, a),
+    rect(W / 2, 0, W / 2, H / 2, b),
+    rect(0, H / 2, W / 2, H / 2, b),
+    rect(W / 2, H / 2, W / 2, H / 2, a),
+  ]
+  const used = [a, b]
+  if (chance(rng, 0.65)) {
+    // Panama-style devices in two opposite quarters
+    const c1 = pickColor(rng, [], [a], 180)
+    const c2 = chance(rng, 0.5) ? c1 : pickColor(rng, [], [a], 180)
+    const kind = pick(rng, ['star', 'star', 'disc', 'crescent'] as const)
+    parts.push(drawCharge(rng, kind, W / 4, H / 4, H * 0.14, c1, a))
+    parts.push(drawCharge(rng, kind, (3 * W) / 4, (3 * H) / 4, H * 0.14, c2, a))
+    used.push(c1, c2)
+  }
+  return { family: 'quartered', parts, used: [...new Set(used)] }
+}
+
+const buildBordure = (rng: Rng): Built => {
+  const field = pickColor(rng, [])
+  // a white border reads as no border at all against light surroundings
+  const border = pickColor(rng, [field, WHITE], [field])
+  const bw = H * (0.09 + rng() * 0.05)
+  const parts = [rect(0, 0, W, H, border), rect(bw, bw, W - 2 * bw, H - 2 * bw, field)]
+  const used = [field, border]
+  if (chance(rng, 0.75)) {
+    const c = pickColor(rng, [], [field], 180)
+    parts.push(drawCharge(rng, pickWeighted(rng, CHARGE_KINDS).kind, W / 2, H / 2, H * 0.22, c, field))
+    used.push(c)
+  }
+  return { family: 'bordure', parts, used: [...new Set(used)] }
+}
+
+const buildHoistBar = (rng: Rng): Built => {
+  const bar = pickColor(rng, [])
+  const n = chance(rng, 0.7) ? 3 : 2
+  const colors = [pickColor(rng, [bar], [bar])]
+  for (let i = 1; i < n; i++) colors.push(pickColor(rng, [bar, ...colors], [colors[i - 1], bar]))
+  const bw = W * (0.25 + rng() * 0.08)
+  const parts: string[] = []
+  for (let i = 0; i < n; i++) parts.push(rect(bw, (H * i) / n, W - bw, H / n, colors[i]))
+  parts.push(rect(0, 0, bw, H, bar))
+  const used = [bar, ...colors]
+  if (chance(rng, 0.3)) {
+    const c = pickColor(rng, [], [bar], 180)
+    parts.push(drawCharge(rng, pick(rng, ['star', 'crescent-star'] as const), bw / 2, H / 2, bw * 0.32, c, bar))
+    used.push(c)
+  }
+  return { family: 'hoist-bar', parts, used: [...new Set(used)] }
+}
+
+const buildSerrated = (rng: Rng): Built => {
+  const hoist = pickColor(rng, [])
+  const fly = pickColor(rng, [hoist], [hoist])
+  const xs = W * 0.3
+  const teeth = pick(rng, [7, 9, 11] as const)
+  const amp = W * 0.09
+  const pts: Array<[number, number]> = [[0, 0], [xs, 0]]
+  for (let i = 0; i < teeth; i++) {
+    pts.push([xs + amp, (H * (i + 0.5)) / teeth], [xs, (H * (i + 1)) / teeth])
+  }
+  pts.push([0, H])
+  const parts = [rect(0, 0, W, H, fly), poly(pts, hoist)]
+  return { family: 'serrated', parts, used: [hoist, fly] }
+}
+
+const REAL_RAYS = new Set(['white>red', 'red>gold']) // Japanese naval ensign, North Macedonia
+
+const buildRays = (rng: Rng): Built => {
+  const field = pickColor(rng, [])
+  let ray = pickColor(rng, [field], [field], 180)
+  for (let guard = 0; REAL_RAYS.has(seq([field, ray])) && guard < 4; guard++) {
+    ray = pickColor(rng, [field, ray], [field], 180)
+  }
+  const nRays = pick(rng, [8, 10, 12] as const)
+  const cx = W / 2
+  const cy = H / 2
+  const delta = (Math.PI / nRays) * 0.38
+  const R = W
+  const parts = [rect(0, 0, W, H, field)]
+  for (let i = 0; i < nRays; i++) {
+    const a = (i / nRays) * 2 * Math.PI - Math.PI / 2
+    parts.push(
+      poly(
+        [
+          [cx, cy],
+          [cx + R * Math.cos(a - delta), cy + R * Math.sin(a - delta)],
+          [cx + R * Math.cos(a + delta), cy + R * Math.sin(a + delta)],
+        ],
+        ray,
+      ),
+    )
+  }
+  // sun disc set off from the rays by a thin ring of field, Macedonia style
+  parts.push(circle(cx, cy, H * 0.19, field), circle(cx, cy, H * 0.155, ray))
+  return { family: 'rays', parts, used: [field, ray] }
+}
+
 // --- entry point -------------------------------------------------------------
 
 const FAMILIES: Array<{ w: number; build: (rng: Rng) => Built }> = [
-  { w: 30, build: buildHStripes },
-  { w: 11, build: buildVStripes },
-  { w: 12, build: buildHoistTriangle },
-  { w: 8, build: buildNordicCross },
-  { w: 9, build: buildCanton },
-  { w: 10, build: buildFieldEmblem },
+  { w: 24, build: buildHStripes },
+  { w: 9, build: buildVStripes },
+  { w: 11, build: buildHoistTriangle },
+  { w: 7, build: buildNordicCross },
+  { w: 8, build: buildCanton },
+  { w: 8, build: buildFieldEmblem },
   { w: 6, build: buildDiagonal },
   { w: 4, build: buildSaltire },
+  { w: 5, build: buildPall },
+  { w: 4, build: buildQuartered },
+  { w: 4, build: buildBordure },
+  { w: 5, build: buildHoistBar },
+  { w: 4, build: buildSerrated },
+  { w: 4, build: buildRays },
 ]
 
 export const forgeFlag = (seed: string): ForgedFlag => {

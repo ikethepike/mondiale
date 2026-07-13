@@ -43,6 +43,12 @@ describe('forgeFlag', () => {
       'field-emblem',
       'diagonal',
       'saltire',
+      'pall',
+      'quartered',
+      'bordure',
+      'hoist-bar',
+      'serrated',
+      'rays',
     ]
     for (const f of all) expect(families).toContain(f)
   })
