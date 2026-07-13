@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "deploy": "fly deploy --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
     "start": "node .output/server/index.mjs",
     "dev": "nuxt dev --host=0.0.0.0",
     "generate": "nuxt generate",

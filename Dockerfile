@@ -15,6 +15,10 @@ RUN bun install --frozen-lockfile
 
 # Build the Nitro server bundle.
 COPY . .
+# .git is dockerignored, so the commit hash for /health comes in as a build arg
+# (bun run deploy passes it).
+ARG GIT_SHA
+ENV GIT_SHA=$GIT_SHA
 # Bundling the generated country/water data needs more heap than the container
 # default; 1536 started OOMing as the data grew, so give the Nitro build room.
 ENV NODE_OPTIONS="--max-old-space-size=3584"

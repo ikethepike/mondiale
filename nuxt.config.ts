@@ -1,3 +1,19 @@
+import { execSync } from 'node:child_process'
+
+// Baked in at build time for /health. In Docker the .git dir is excluded, so
+// the SHA arrives via the GIT_SHA build arg (see Dockerfile + deploy script);
+// locally it comes straight from git.
+const commitHash = (() => {
+  if (process.env.GIT_SHA) return process.env.GIT_SHA.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return 'unknown'
+  }
+})()
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   pages: true,
@@ -35,6 +51,12 @@ export default defineNuxtConfig({
       compilerOptions: {
         noUncheckedIndexedAccess: false,
       },
+    },
+  },
+  runtimeConfig: {
+    public: {
+      commitHash,
+      buildTime: new Date().toISOString(),
     },
   },
   nitro: {
