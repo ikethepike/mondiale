@@ -334,7 +334,15 @@ header {
   .claim-stage {
     gap: 1.2rem;
     width: 100%;
-    padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
+    overflow-y: auto;
+    // Centering + overflow pushes the reveal's plot above the scroll origin,
+    // where it can never be scrolled back into view — anchor to the top.
+    justify-content: flex-start;
+    // .main-board kills pointer events; the scroll container must take
+    // touches itself or drags between the cards won't scroll.
+    pointer-events: auto;
+    overscroll-behavior: contain;
+    padding: 0.4rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
   .flag-frame .flag {
