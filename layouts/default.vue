@@ -1,5 +1,5 @@
 <template>
-  <div class="layout" :class="[`phase-${player?.phase}`]">
+  <div class="layout" :class="[phaseClass]">
     <header v-if="diagnostics" id="diagnostic-bar">
       <div>
         <h3>Player</h3>
@@ -89,6 +89,13 @@ const { player, game, currentRound, gameStore, currentFinalChallenge } = useClie
 
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
+
+// Spectators (latecomers with no player record, or finishers watching the
+// race) get their own phase class: `phase-undefined` would hide the map.
+const phaseClass = computed(() => {
+  if (gameStore.isSpectator || gameStore.spectating) return 'phase-spectating'
+  return `phase-${player.value?.phase}`
+})
 
 const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
 
@@ -213,7 +220,8 @@ onMounted(() => {
 .phase-group-challenge .game-map,
 .phase-individual-challenge .game-map,
 .phase-final-challenge .game-map,
-.phase-victory .game-map {
+.phase-victory .game-map,
+.phase-spectating .game-map {
   transform: scale(1);
 }
 

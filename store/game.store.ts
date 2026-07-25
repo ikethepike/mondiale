@@ -111,6 +111,12 @@ interface GameStoreState {
    * shows a dead end rather than waiting on a join that will never land.
    */
   rejected: boolean
+  /**
+   * A FINISHED player watching the race from their victory screen. Purely
+   * client-side — they already receive every broadcast; this only swaps the
+   * view. Latecomer spectators are the `isSpectator` getter instead.
+   */
+  spectating: boolean
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -121,6 +127,7 @@ export const useGameStore = defineStore('game', {
     socket: undefined,
     pendingMovementRequest: false,
     rejected: false,
+    spectating: false,
     map: {
       status: undefined,
       reveal: undefined,
@@ -216,6 +223,16 @@ export const useGameStore = defineStore('game', {
       if (!state.game) return []
 
       return Object.values(state.game.players).sort(compareStandings)
+    },
+    /** Admitted through the spectator door: watching a started game from
+     *  outside `players`. Ejection (door closed mid-watch) flips this false. */
+    isSpectator(state): boolean {
+      if (!state.game?.started || !state.playerId) return false
+      if (state.game.players[state.playerId]) return false
+      return !!state.game.spectators?.[state.playerId]
+    },
+    spectatorCount(state): number {
+      return Object.keys(state.game?.spectators ?? {}).length
     },
   },
 })

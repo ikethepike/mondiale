@@ -11,7 +11,7 @@
       }`"
     >
       <PlayerPawn v-if="senderFor(group)" class="pawn" :player="senderFor(group)!" />
-      <span class="name">{{ senderFor(group)?.name || 'Someone' }}</span>
+      <span class="name">{{ senderFor(group)?.name || senderFallback(group) }}</span>
       <span class="emoji">{{ group.emoji }}</span>
       <!-- Keyed on count so each repeat re-mounts the badge and pops it -->
       <span v-if="group.count > 1" :key="group.count" class="count">×{{ group.count }}</span>
@@ -85,6 +85,10 @@ const visible = computed<CheerChip[]>(() => {
 })
 
 const senderFor = (group: CheerChip) => gameStore.game?.players[group.playerId]
+
+// Spectators can cheer too — they have no player record to name them by.
+const senderFallback = (group: CheerChip) =>
+  gameStore.game?.spectators?.[group.playerId] ? 'A spectator' : 'Someone'
 </script>
 <style lang="scss" scoped>
 // The anchor point: chips hang off it absolutely, so the extra top room

@@ -29,10 +29,21 @@ export interface Game {
    *  true = force-enabled below its gate, false = off at any difficulty. */
   challengeOverrides?: ChallengeOverrides
   players: { [playerId: string]: Player }
+  /** Host toggle: let latecomers watch a started game. Absent = off. */
+  allowSpectators?: boolean
+  /** Watchers, not competitors — never in `players`, never own a pawn.
+   *  Populated only while `allowSpectators` is on. */
+  spectators?: { [spectatorId: string]: Spectator }
   /** Set while a new round has been staged (pushed to `rounds`) but its settle
    *  pause hasn't elapsed yet. Guards the staging + reveal so each fires once
    *  even though the movement handler re-enters itself across the pause. */
   pendingRoundStart?: boolean
+}
+
+export interface Spectator {
+  id: string
+  /** The round underway when they arrived. */
+  joinedAtRound: number
 }
 
 export const gameDifficulties = ['easy', 'normal', 'hard'] as const

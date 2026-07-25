@@ -49,11 +49,27 @@ export const joinEventHandler: EventHandler = async ({
     game.players[playerId] = createPlayer(playerId, takenColors)
   }
 
-  // Game already started. Emit straight to this socket: it never joined the
-  // gameId room (that happens further down), so a room broadcast would reach
-  // everyone except the one player the message is about. Close only once the
-  // frame is on the wire.
+  // Game already started: latecomers fork on the spectator door. With it open
+  // they watch — in the socket room (every broadcast is a room broadcast, so
+  // this alone makes spectating live), never in `players`, never own a pawn.
+  // The upsert keeps re-joins idempotent, exactly like player joins.
   if (!game.players[playerId] && game.started) {
+    if (game.allowSpectators) {
+      game.spectators ??= {}
+      game.spectators[playerId] ??= { id: playerId, joinedAtRound: game.rounds.length }
+
+      await socket.join(gameId)
+      socket.data.playerId = playerId
+      socket.data.gameId = gameId
+
+      await server.updateGameState(game)
+      server.emit({ event: 'player-joined', game }, eventTarget)
+      return
+    }
+
+    // Door closed. Emit straight to this socket: it never joined the gameId
+    // room, so a room broadcast would reach everyone except the one player
+    // the message is about. Close only once the frame is on the wire.
     socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
     socket.disconnect(false)
     return
