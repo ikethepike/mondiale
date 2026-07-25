@@ -53,12 +53,14 @@ import { TRENDS } from '~~/data/trends.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
+import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Game, GameDifficulty, PlayerColor, Round } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { Component } from 'vue'
 
@@ -124,35 +126,41 @@ const mockGame = (phase: PlayerPhase, rounds: unknown[]): Game => {
   return game
 }
 
-/** A settled ranking round, for score/standings screens. */
-const settledRound = (): Round =>
-  ({
+/** A settled ranking round, for score/standings screens. Answers and points
+ *  come from the real scorer, so the reveal breakdown always adds up. */
+const settledRound = (): Round => {
+  const accessorId = 'economics.gdpPerCapita'
+  const dealt: ISOCountryCode[] = ['FR', 'BR', 'JP', 'NG', 'SE']
+  const correct = getCorrectRanking({ groupChallengeAccessorId: accessorId, isoCodes: dealt })
+  const submissions: { [playerId: string]: ISOCountryCode[] } = {
+    [ME]: ['SE', 'BR', 'JP', 'FR', 'NG'],
+    [RIVAL]: [correct[1]!, correct[0]!, ...correct.slice(2)],
+    [THIRD]: [...correct].reverse(),
+  }
+
+  return {
     groupChallenge: {
       _type: 'group-challenge',
-      id: 'economics.gdpPerCapita',
-      countriesPerPlayer: {
-        [ME]: ['FR', 'BR', 'JP', 'NG', 'SE'],
-        [RIVAL]: ['FR', 'BR', 'JP', 'NG', 'SE'],
-        [THIRD]: ['FR', 'BR', 'JP', 'NG', 'SE'],
-      },
+      id: accessorId,
+      countriesPerPlayer: { [ME]: dealt, [RIVAL]: dealt, [THIRD]: dealt },
     },
-    groupAnswers: {
-      [ME]: { submitted: ['SE', 'FR', 'JP', 'BR', 'NG'], correct: ['SE', 'JP', 'FR', 'BR', 'NG'] },
-      [RIVAL]: {
-        submitted: ['FR', 'SE', 'JP', 'NG', 'BR'],
-        correct: ['SE', 'JP', 'FR', 'BR', 'NG'],
-      },
-      [THIRD]: {
-        submitted: ['NG', 'BR', 'JP', 'SE', 'FR'],
-        correct: ['SE', 'JP', 'FR', 'BR', 'NG'],
-      },
-    },
-    playerTurns: {
-      [ME]: { points: { scored: 3, maximum: 5 } },
-      [RIVAL]: { points: { scored: 2, maximum: 5 } },
-      [THIRD]: { points: { scored: 1, maximum: 5 } },
-    },
-  }) as unknown as Round
+    groupAnswers: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [playerId, { submitted, correct }])
+    ),
+    playerTurns: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        {
+          points: scoreChallengeSubmission({
+            groupChallengeAccessorId: accessorId,
+            submittedRanking: submitted,
+            dealtCountries: dealt,
+          }),
+        },
+      ])
+    ),
+  } as unknown as Round
+}
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
@@ -174,7 +182,11 @@ const GALLERY = [
   { isoCode: 'EE', metric: 'internetUse', note: 'Estonia — internet ramp (bounded 0–100)' },
   { isoCode: 'SE', metric: 'co2PerCapita', note: 'Sweden — CO₂ slide' },
   { isoCode: 'CN', metric: 'gdp', note: 'China — GDP take-off (4 sig. digits)' },
-  { isoCode: 'HU', metric: 'politicalCorruption', note: 'Hungary — corruption (bounded, inverted)' },
+  {
+    isoCode: 'HU',
+    metric: 'politicalCorruption',
+    note: 'Hungary — corruption (bounded, inverted)',
+  },
   { isoCode: 'SV', metric: 'homicideRate', note: 'El Salvador — homicide collapse' },
   { isoCode: 'US', metric: 'gini', note: 'United States — inequality (0.2–0.6 scale)' },
   { isoCode: 'BD', metric: 'childMortality', note: 'Bangladesh — child mortality' },
@@ -1079,10 +1091,7 @@ const scenarios: Scenario[] = [
 ]
 
 /** The gauntlet reads its payload off the player's pending move. */
-const finalGame = (
-  challenges: FinalChallengeItem[],
-  difficulty: GameDifficulty = 'hard'
-): Game => {
+const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty = 'hard'): Game => {
   const game = mockGame('final-challenge', [settledRound()])
   game.difficulty = difficulty
   game.players[ME]!.moves = [

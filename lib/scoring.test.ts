@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   capitalGuessScore,
   getCorrectRanking,
+  rankingBreakdown,
   scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
@@ -262,6 +263,47 @@ describe('scoreChallengeSubmission', () => {
 
   it('counts a duplicated country once and keeps the dealt maximum', () => {
     expect(score([correct[0], correct[0], correct[0]])).toEqual({ scored: 3, maximum: 15 })
+  })
+
+  // The scorecard reveal renders rankingBreakdown; the scorer sums it. These
+  // pin that the two can never disagree.
+  it('pays exactly what the per-country breakdown adds up to', () => {
+    for (const submitted of [correct, [...correct].reverse(), correct.slice(1)]) {
+      const rows = rankingBreakdown({ submitted, correct })
+      expect(score(submitted).scored).toBe(rows.reduce((sum, row) => sum + row.points, 0))
+    }
+  })
+})
+
+describe('rankingBreakdown', () => {
+  const correct: ISOCountryCode[] = ['RU', 'US', 'FR', 'PT', 'LU']
+
+  it('walks the correct order with 1-based positions and per-slot points', () => {
+    // US and FR swapped: both one off, everything else exact.
+    const rows = rankingBreakdown({ submitted: ['RU', 'FR', 'US', 'PT', 'LU'], correct })
+    expect(rows).toEqual([
+      { isoCode: 'RU', correctPosition: 1, submittedPosition: 1, points: 3 },
+      { isoCode: 'US', correctPosition: 2, submittedPosition: 3, points: 2 },
+      { isoCode: 'FR', correctPosition: 3, submittedPosition: 2, points: 2 },
+      { isoCode: 'PT', correctPosition: 4, submittedPosition: 4, points: 3 },
+      { isoCode: 'LU', correctPosition: 5, submittedPosition: 5, points: 3 },
+    ])
+  })
+
+  it('marks a never-placed country as unplaced and worthless', () => {
+    const rows = rankingBreakdown({ submitted: ['RU', 'US'], correct })
+    expect(rows[2]).toEqual({
+      isoCode: 'FR',
+      correctPosition: 3,
+      submittedPosition: undefined,
+      points: 0,
+    })
+  })
+
+  it('ignores duplicates and countries outside the dealt hand', () => {
+    const rows = rankingBreakdown({ submitted: ['DE', 'RU', 'RU', 'US'], correct })
+    expect(rows[0]).toMatchObject({ isoCode: 'RU', submittedPosition: 1, points: 3 })
+    expect(rows[1]).toMatchObject({ isoCode: 'US', submittedPosition: 2, points: 3 })
   })
 })
 
