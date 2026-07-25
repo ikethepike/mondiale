@@ -1,5 +1,10 @@
 <template>
-  <div v-if="game" class="spectate-stage">
+  <div v-if="game" class="spectate-stage" :class="`stage-${stage}`">
+    <!-- The 3D board rides under everything while pawns are on the move -->
+    <Transition name="stage-fade">
+      <SpectateBoard v-if="stage === 'board' && followed" :followed-id="followed.id" />
+    </Transition>
+
     <!-- The booth: who's racing, what round, live feed — over the full map -->
     <header class="pane tl booth">
       <div class="pane-content booth-header">
@@ -7,16 +12,20 @@
         <div class="booth-title">
           <span class="eyebrow">{{ raceOver ? 'Race complete' : 'Spectating' }}</span>
           <h1 v-if="raceOver">Final standings</h1>
-          <h1 v-else-if="currentRound">
-            Round {{ currentRound.number }} · {{ roundKindLabel }}
-          </h1>
+          <h1 v-else-if="currentRound">Round {{ currentRound.number }} · {{ roundKindLabel }}</h1>
           <h1 v-else>Waiting for the first round</h1>
-          <!-- The reveal headline stays sealed while racers are still answering:
-               spectators see the drama, not the answer key. -->
-          <p v-if="raceOver">Every racer has crossed the line — the crown is settled.</p>
-          <p v-else-if="roundSettled && headline">{{ headline }}</p>
-          <p v-else-if="currentRound">
-            {{ answeredCount }} of {{ racers.length }} answered — the round is still open.
+          <p v-if="followed && !raceOver" class="follow-line">
+            <PlayerPawn class="follow-pawn" :player="followed" />
+            Following {{ followed.name || 'a racer' }} — {{ followedStatus }}
+            <button
+              v-if="gameStore.spectateFollowId"
+              class="follow-release"
+              type="button"
+              @click="gameStore.spectateFollowId = undefined"
+            >
+              back to auto
+            </button>
+            <span v-else class="auto-tag">auto director</span>
           </p>
         </div>
         <span class="watching" :title="`${gameStore.spectatorCount} watching`">
@@ -25,7 +34,19 @@
       </div>
     </header>
 
-    <!-- The race rail: every pawn's live status and progress to the finish -->
+    <!-- Centre stage: what the followed racer is looking at right now -->
+    <Transition name="stage-fade" mode="out-in">
+      <SpectateStage
+        v-if="stage !== 'board'"
+        :key="`${stage}-${followed?.id ?? 'none'}`"
+        :stage="stage"
+        :story="story"
+        :followed="followed"
+        :race-over="raceOver"
+      />
+    </Transition>
+
+    <!-- The race rail: every pawn's live status; tap a row to follow them -->
     <aside class="pane tr rail">
       <div class="pane-content">
         <header class="rail-header">
@@ -39,14 +60,26 @@
             v-for="(entry, index) in rail"
             :key="entry.player.id"
             class="rail-row"
-            :class="{ finished: entry.status.done, leader: index === 0 && !raceOver }"
+            role="button"
+            tabindex="0"
+            :class="{
+              finished: entry.status.done,
+              leader: index === 0 && !raceOver,
+              followed: entry.player.id === followed?.id,
+              pinned: entry.player.id === gameStore.spectateFollowId,
+            }"
             :style="`--player-color: ${entry.player.color}; --progress: ${entry.progress}`"
+            :aria-pressed="entry.player.id === gameStore.spectateFollowId"
+            @click="toggleFollow(entry.player.id)"
+            @keydown.enter.prevent="toggleFollow(entry.player.id)"
+            @keydown.space.prevent="toggleFollow(entry.player.id)"
           >
             <span class="rank">{{ index + 1 }}</span>
             <PlayerPawn class="pawn" :player="entry.player" />
             <span class="who">
               <span class="name">
                 {{ entry.player.name || 'Player' }}
+                <span v-if="entry.player.id === followed?.id" class="camera-tag">🎥</span>
                 <span v-if="entry.points !== undefined" class="points">+{{ entry.points }}</span>
               </span>
               <span class="status">
@@ -94,7 +127,11 @@
     </aside>
 
     <!-- Opponent guesses landing in real time, same redaction the room gets -->
-    <GuessTicker class="spectate-ticker" :entries="gameStore.map.liveGuesses" :players="game.players" />
+    <GuessTicker
+      class="spectate-ticker"
+      :entries="gameStore.map.liveGuesses"
+      :players="game.players"
+    />
 
     <RoundHistoryDrawer :game="game" />
   </div>
@@ -103,9 +140,18 @@
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
-import { roundChallengeHeadline } from '~~/lib/challenge-headline'
+import SpectateBoard from '~/components/spectate/SpectateBoard.vue'
+import SpectateStage from '~/components/spectate/SpectateStage.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { getPlayerStatus } from '~~/lib/player-status'
+import {
+  finalStory,
+  gateStory,
+  pickDirectorTarget,
+  roundStory,
+  stageForPhase,
+  type SpectateStory,
+} from '~~/lib/spectate'
 import { KIND_LABELS, visitedCountries } from '~~/lib/victory-stats'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
@@ -117,21 +163,61 @@ const raceOver = computed(
   () => racers.value.length > 0 && racers.value.every(player => !!player.completedAtRound)
 )
 
+// --- The director: who the camera follows ------------------------------------
+// A pinned racer wins while they're still in the game; otherwise the auto
+// director cuts to the most watchable moment (walking > gauntlet > gate > …).
+const followed = computed(() => {
+  const pinnedId = gameStore.spectateFollowId
+  const pinned = pinnedId ? game.value?.players[pinnedId] : undefined
+  if (pinned && pinned.phase !== 'kicked') return pinned
+  return pickDirectorTarget(racers.value)
+})
+
+const followedStatus = computed(() =>
+  followed.value ? getPlayerStatus(followed.value).label : ''
+)
+
+const toggleFollow = (playerId: string) => {
+  strip.value = undefined
+  gameStore.spectateFollowId = gameStore.spectateFollowId === playerId ? undefined : playerId
+}
+
+const stage = computed(() => {
+  if (raceOver.value) return 'scores'
+  return followed.value ? stageForPhase(followed.value.phase) : 'idle'
+})
+
 const currentRound = toRef(gameStore, 'currentRound')
 const roundKindLabel = computed(() => {
   const challenge = currentRound.value?.round.groupChallenge
   return challenge ? KIND_LABELS[roundChallengeKind(challenge)] : ''
 })
-const headline = computed(() => roundChallengeHeadline(currentRound.value?.round.groupChallenge))
 
-// A racer counts as "in" once their answer lands; finishers are past answering.
-const answeredCount = computed(() => {
-  const answers = currentRound.value?.round.groupAnswers ?? {}
-  return racers.value.filter(player => answers[player.id] || player.completedAtRound).length
+/** The centre card's copy — also drives what the shared map paints. */
+const story = computed<SpectateStory>(() => {
+  const target = followed.value
+  switch (stage.value) {
+    case 'question':
+      return roundStory(currentRound.value?.round.groupChallenge)
+    case 'gate': {
+      const gate = target?.moves[0]?.challenge
+      return gate?._type === 'individual-challenge'
+        ? gateStory(gate)
+        : { kicker: 'Challenge gate', prompt: 'A gate blocks the path…' }
+    }
+    case 'final': {
+      const gauntlet = target?.moves[0]?.challenge
+      return gauntlet?._type === 'final-challenge'
+        ? finalStory(gauntlet.challenges[0])
+        : { kicker: 'Final gauntlet', prompt: 'The gauntlet is being dealt…' }
+    }
+    default:
+      return {
+        kicker: target?.name ? `Following ${target.name}` : 'Between moments',
+        prompt: target ? getPlayerStatus(target).label : 'Waiting for the race…',
+      }
+  }
 })
-const roundSettled = computed(
-  () => racers.value.length > 0 && answeredCount.value === racers.value.length
-)
 
 const rail = computed(() =>
   racers.value.map(player => ({
@@ -165,21 +251,35 @@ const closeStrip = () => {
 onMounted(() => document.addEventListener('click', closeStrip))
 onUnmounted(() => document.removeEventListener('click', closeStrip))
 
-// The map is the stage: glow every country the game has touched so far (the
-// victory atlas treatment), refreshed as new rounds land.
-const paintAtlas = () => {
-  if (!game.value) return
-  gameStore.map.tints = {}
+// --- The map is the stage's backdrop -----------------------------------------
+// The story's focus countries glow and the camera frames them; with nothing
+// to point at (scores, idle), fall back to the game's atlas glow. The 3D
+// board covers the map entirely, so painting pauses there.
+const paintMap = () => {
+  if (!game.value || stage.value === 'board') return
+  clearBoard()
+
+  const focus = story.value.focus
+  if (focus?.length) {
+    for (const isoCode of focus) gameStore.map.tints[isoCode] = 'endpoint'
+    gameStore.map.focus = [...focus]
+    return
+  }
+
   for (const isoCode of visitedCountries(game.value)) {
     gameStore.map.tints[isoCode] = 'inefficient'
   }
 }
-onMounted(() => {
+
+// Keyed repaint: snapshots land every 500ms during walks and would otherwise
+// re-fit the map camera on identical focus sets.
+const paintKey = computed(() => `${stage.value}|${(story.value.focus ?? []).join(',')}`)
+onMounted(paintMap)
+watch(paintKey, paintMap)
+onBeforeUnmount(() => {
+  gameStore.spectateFollowId = undefined
   clearBoard()
-  paintAtlas()
 })
-watch(() => game.value?.rounds.length, paintAtlas)
-onBeforeUnmount(clearBoard)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
@@ -244,11 +344,43 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
     font-size: 2.4rem;
     color: var(--dark-blue);
   }
-  p {
-    margin: 0.4rem 0 0;
-    opacity: 0.7;
-    font-size: 1.4rem;
-  }
+}
+
+.follow-line {
+  gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0;
+  opacity: 0.85;
+  font-size: 1.35rem;
+}
+
+.follow-pawn {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.auto-tag {
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  opacity: 0.8;
+}
+
+.follow-release {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid $hairline;
+  border-radius: 1rem;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .eyebrow {
@@ -321,6 +453,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0.6rem 0.8rem 1rem;
   border-radius: 0.9rem;
   position: relative;
+  cursor: pointer;
   background: hsla(0, 0%, 100%, 0.5);
   border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
   border-left: 0.3rem solid var(--player-color);
@@ -331,6 +464,13 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   }
   &.finished {
     opacity: 0.8;
+  }
+  &.followed {
+    background: hsla(29.7, 79.9%, 72.7%, 0.22); // warm-sand wash
+  }
+  &.pinned {
+    outline: 0.2rem solid var(--player-color);
+    outline-offset: -0.2rem;
   }
 }
 
@@ -363,6 +503,10 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.camera-tag {
+  font-size: 1.2rem;
 }
 
 .points {
@@ -452,12 +596,22 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   border-top: 0.1rem solid $hairline;
 }
 
-// Live guesses land bottom-left, clear of the rail
+// Live guesses land bottom-left, clear of the rail and the stage card
 .spectate-ticker {
   left: calc(1.5rem + var(--safe-left));
   bottom: calc(1.5rem + var(--safe-bottom));
   position: absolute;
-  max-width: min(40rem, 60vw);
+  max-width: min(30rem, 24vw);
+}
+
+// Stage swaps dissolve — a broadcast cut, not a hard pop
+.stage-fade-enter-active,
+.stage-fade-leave-active {
+  transition: opacity 0.35s ease;
+}
+.stage-fade-enter-from,
+.stage-fade-leave-to {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -467,28 +621,43 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   .progress-fill {
     transition: none;
   }
+  .stage-fade-enter-active,
+  .stage-fade-leave-active {
+    transition: none;
+  }
 }
 
-// Phones: the booth and rail stack — booth on top, rail beneath it, both
-// full-width; the ticker keeps the bottom edge.
+// Phones: absolutes give way to a scrollable stack — booth, stage card, rail —
+// so nothing fights for the same bottom edge. The board keeps full-screen.
 @media screen and (max-width: $tablet) {
-  .booth {
-    left: 1rem;
-    right: 1rem;
-    top: calc(1rem + var(--safe-top));
-    max-width: none;
+  .spectate-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding: calc(1rem + var(--safe-top)) 1rem calc(1rem + var(--safe-bottom));
   }
 
-  .rail {
-    left: 1rem;
-    right: 1rem;
+  .booth,
+  .rail,
+  :deep(.stage-card) {
+    position: static;
     width: auto;
-    top: auto;
-    bottom: calc(6rem + var(--safe-bottom));
-    max-height: 55vh;
+    max-width: none;
+    max-height: none;
+    transform: none;
+    flex-shrink: 0;
+  }
+
+  .spectate-board {
+    position: fixed;
+    inset: 0;
   }
 
   .spectate-ticker {
+    position: fixed;
+    left: 1rem;
+    bottom: calc(1rem + var(--safe-bottom));
     max-width: calc(100vw - 2rem);
   }
 }

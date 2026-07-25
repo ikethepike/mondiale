@@ -92,18 +92,16 @@ default off) is the actual defence.
 
 ## The spectator view
 
-`ViewSpectate.vue` — a broadcast booth over the live world map (the map
-renders at full scale behind it, tinted with every country the game has
-visited so far, exactly like the victory atlas glow):
+`ViewSpectate.vue` — a broadcast booth over the live world map:
 
 - **Header**: a LIVE badge, round number and mode ("Round 4 · silhouette"),
-  and how many players have answered. The reveal headline ("The mystery
-  country was Chad") only appears once every racer has answered — spectators
-  see the drama, not the answer key, while a round is still open.
+  who the camera is following and why (pinned or auto director), and the
+  watcher count.
 - **The race rail**: one row per player — pawn, name, live status (from
   `getPlayerStatus`, the same labels the in-game panel uses), points chip for
-  the current round, and a tile-progress bar toward the finish. Finished
-  players get their crown order.
+  the current round, and a tile-progress bar toward the finish. Tapping a row
+  pins the camera to that racer (🎥); tapping again hands control back to the
+  auto director.
 - **Live guesses**: the existing `GuessTicker` fed by the `player-guessing`
   relay — spectators watch answers land in real time, under the same
   redaction policy players get (presence-only rounds stay presence-only).
@@ -116,6 +114,38 @@ visited so far, exactly like the victory atlas glow):
 - **Footer**: finishers get "Back to your report"; latecomers get a home
   link. When the last racer finishes, the header flips to "Race complete —
   final standings" and the rail becomes the final order.
+
+## Follow mode: the centre stage
+
+The booth is a dashboard; the **stage** is the camera. `lib/spectate.ts`
+holds the logic, `components/spectate/` the two surfaces:
+
+- **The auto director** (`pickDirectorTarget`) cuts to the most watchable
+  moment: walking pawns beat the final gauntlet, which beats challenge gates,
+  which beat quiet thinking; ties go to the race leader. Pinning a rail row
+  overrides it; `stageForPhase` then maps the followed racer's phase to a
+  stage.
+- **Question stage** (group rounds): a lower-third card with the round's task
+  as the racers see it (`roundStory` — for ranking rounds it shows the
+  followed player's actual dealt hand of flags), plus per-player answered
+  ticks. The card carries the **audience secret**: the answer, framed as
+  dramatic irony ("It's Chad — will anyone see it?"). Racers never see this;
+  watchers hold no pawn, and room snapshots carry the data regardless.
+- **Scores stage**: the round's scorecard the moment it settles, with the
+  reveal headline.
+- **Board stage**: the real 3D board (`SpectateBoard` mounts `Board3D` with
+  the followed racer as the scene's "own pawn"), so the entry framing,
+  follow-cam, path preview and gate knocks all track them. Spectators can
+  grab and orbit the camera like any player.
+- **Gate / gauntlet stages**: the actual question at the followed player's
+  gate (`gateStory` — phrasing tokens like `{leader}` filled by the shared
+  `processReplacements`), banked steps, and for the final gauntlet a
+  cleared/lives progress bar (`finalStory` per question type).
+- **The map is the stage's backdrop**: each story's focus countries glow and
+  the camera frames them (the optimal traversal route, the mystery country,
+  the gauntlet's subject); with nothing to point at it falls back to the
+  game's atlas glow. Repaints are keyed on the focus set, so the 500ms walk
+  snapshots never thrash the camera.
 
 Client plumbing is deliberately thin: an `isSpectator` getter
 (`started && spectators[me] && !players[me]`) routes the room page to
@@ -144,5 +174,9 @@ Client plumbing is deliberately thin: an `isSpectator` getter
   mid-race without waiting for their victory screen.
 - **Spectator link**: a `?spectate` URL that skips the player path even in the
   lobby (stream overlays, projectors).
-- **Camera following**: drive `board.spectateTargetId` from the rail so a
-  spectator's 3D board camera chases the leader.
+- **Richer stage embeds**: mount the real challenge views read-only (the
+  silhouette shape, the trend sparklines) inside the stage card instead of
+  describing them.
+- **Cut animations**: a brief "camera cut" wipe when the auto director
+  switches subjects, and a ticker of director decisions ("cutting to Vera —
+  final gauntlet").

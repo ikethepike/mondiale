@@ -117,6 +117,8 @@ interface GameStoreState {
    * view. Latecomer spectators are the `isSpectator` getter instead.
    */
   spectating: boolean
+  /** Spectator booth: pinned player to follow; undefined = auto-director. */
+  spectateFollowId?: string
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -128,6 +130,7 @@ export const useGameStore = defineStore('game', {
     pendingMovementRequest: false,
     rejected: false,
     spectating: false,
+    spectateFollowId: undefined,
     map: {
       status: undefined,
       reveal: undefined,
