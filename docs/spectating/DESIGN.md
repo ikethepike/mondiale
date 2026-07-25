@@ -72,23 +72,61 @@ In `join.event.ts`, the started-game rejection becomes a fork:
 
 ```
 game started, playerId not in players
-├── allowSpectators → upsert into game.spectators, join room, bind socket,
-│                     broadcast 'player-joined' (room sees "2 watching")
-└── otherwise       → 'game-already-started' to that socket, disconnect
+├── allowSpectators + under cap → upsert into game.spectators, join room,
+│                                 bind socket, broadcast 'player-joined'
+├── allowSpectators + at cap     → 'game-already-started', disconnect
+└── otherwise                    → 'game-already-started', disconnect
 ```
 
 The upsert (`??=`) makes spectator joins idempotent, exactly like player
 joins — reconnects re-enter cleanly. Everything below the fork (rejoin
 healing, phase repair) still runs only for real players.
 
-Security posture is unchanged: the socket-to-player binding chokepoint in
-`socket.server.ts` applies to spectators too, and every gameplay handler
-resolves the sender through `game.players` — a spectator emitting
-`submit-*` is a no-op. The one relay open to them by design is
-`player-cheering` (see below). Note the same honesty caveat players already
-live with: snapshots carry round answers, so a spectator colluding with a
-player over a phone call was never preventable — the door toggle (and its
-default off) is the actual defence.
+`MAX_SPECTATORS` (20) caps the watcher set: spectator records ride every
+broadcast snapshot, so an unbounded set would inflate the payload for the
+whole room. Returning watchers (already in the set) are never turned away.
+
+**Spectators are pruned on disconnect.** `pruneSpectatorOnDisconnect` (in
+`socket.server.ts`, on the per-game queue) removes a dropped watcher from
+`game.spectators` and rebroadcasts, so the "N watching" count stays honest.
+Players are the deliberate exception — their records persist across
+disconnects for reconnect healing, so the prune skips anyone in
+`game.players`.
+
+### Impersonation: why a public id is not enough
+
+`playerId` is the PUBLIC identifier — it keys every client render and rides
+in every snapshot. Before spectators, only players saw those ids; now anyone
+admitted through the door does. So the id can no longer double as the bearer
+token that binds a socket to an identity, or a spectator could read a racer's
+id off the wire and act as them.
+
+The fix (`lib/player-secret.ts`) splits the two roles. Each client also holds
+a private **secret** (uuid in `localStorage`), sent only in the handshake
+auth — never in an event payload, never in a snapshot. Secrets live under a
+separate `${gameId}:secrets` redis key that is physically outside the `Game`
+object, so they cannot ride a broadcast. Both bind points verify it:
+
+- the `join` handler, before binding `socket.data.playerId`;
+- the handshake fast-path in `socket.server.ts`, for reconnect rebinding.
+
+`verifyPlayerSecret(recorded, presented)` returns `claim` (first join —
+record it), `ok` (match — bind), `reject` (a secret is on file and the
+presented one is missing or wrong — an impersonation attempt), or `open` (no
+secret either side — a cached pre-secret client; bind unverified so it keeps
+working). Critically, once a secret is on file, *omitting* one rejects — an
+attacker can't sidestep the check by sending nothing.
+
+**Migration.** Games already in flight at deploy have no secrets on file, so
+the first secret each client presents is claimed. A narrow window exists
+where, before an offline owner reconnects, an attacker who already knows that
+game's ids could claim a slot first; it closes per-player as each reconnects
+and fully drains within the 2-day game TTL. Live games are not invalidated.
+
+Beyond binding, the honesty caveat players already live with still holds:
+snapshots carry round answers, so a spectator colluding with a player over a
+phone call was never preventable — the door toggle (default off) and the
+spoiler control are the practical defences there.
 
 ## The spectator view
 
@@ -144,8 +182,20 @@ holds the logic, `components/spectate/` the two surfaces:
 - **The map is the stage's backdrop**: each story's focus countries glow and
   the camera frames them (the optimal traversal route, the mystery country,
   the gauntlet's subject); with nothing to point at it falls back to the
-  game's atlas glow. Repaints are keyed on the focus set, so the 500ms walk
-  snapshots never thrash the camera.
+  game's atlas glow. Repaints are keyed on the focus set (and the spoiler
+  flag), so the 500ms walk snapshots never thrash the camera, and painting
+  preserves the live-guess ticker across its `clearBoard`.
+
+### The spoiler control
+
+The secrets, pre-settle reveal headlines and answer-focus map glow are the
+spectator's dramatic irony — but a watcher's screen might be glanced at by
+someone in the room, and a pinned fast player reaches the scores stage while
+others are still answering. A **"Spoilers shown / hidden"** toggle in the
+booth (`spectateHideSpoilers`, default *shown* — the engaging default) hides
+all three at once: the secret card, the pre-race scores headline, and the map
+focus glow (which falls back to the atlas). Prompts, dealt hands, answered
+ticks and the board are never spoilers, so they stay.
 
 Client plumbing is deliberately thin: an `isSpectator` getter
 (`started && spectators[me] && !players[me]`) routes the room page to
@@ -158,12 +208,16 @@ Client plumbing is deliberately thin: an `isSpectator` getter
 | Case | Behaviour |
 | --- | --- |
 | Latecomer, door closed | Unchanged: `game-already-started` dead end |
-| Latecomer, door open | Admitted as spectator, room notified |
-| Spectator reconnects | Idempotent re-join (same upsert path) |
+| Latecomer, door open, under cap | Admitted as spectator, room notified |
+| Latecomer, door open, at cap (20) | Refused: `game-already-started` dead end |
+| Spectator reconnects | Idempotent re-join (same upsert path); prune + re-add blips the count |
+| Spectator disconnects | Pruned from `game.spectators`, count rebroadcast (players never pruned) |
 | Door closed mid-watch | Spectators ejected: state dropped, sockets leave the room, dead-end screen |
-| Spectator sends gameplay events | No-op: not in `players`, handlers resolve sender via `players` |
+| Spectator forges another id | Rejected at bind: secret mismatch → `game-already-started`, disconnect |
+| Spectator sends its own gameplay events | No-op: not in `players`, handlers resolve sender via `players` |
 | Finisher spectates, race ends | Rail shows final order; return button back to the report |
 | Pre-feature games in Redis | `allowSpectators`/`spectators` absent ⇒ off/empty — old snapshots stay valid |
+| In-flight game at deploy | No secrets on file yet — first presented secret is claimed (see Migration) |
 | Host quits after finishing | Door state persists in the snapshot; toggle needs the host present (future: transferable host) |
 
 ## Future directions

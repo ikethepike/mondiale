@@ -207,6 +207,17 @@ const route = useRoute()
 
 const joinRoom = () => {
   const { variant } = route.query
+
+  // Fold this room's id into the handshake auth (which already carries
+  // playerId + secret from the socket plugin). A reconnect then re-presents
+  // all three, letting the server verify and rebind before buffered events
+  // flush — the first connection has no room yet, so `join` binds instead.
+  const socket = gameStore.socket
+  const roomId = route.params.roomId
+  if (socket && typeof roomId === 'string') {
+    socket.auth = { ...(socket.auth as Record<string, unknown>), gameId: roomId }
+  }
+
   update({
     event: 'join',
     variant: isValidGameVariant(variant) ? variant : gameVariants[0],

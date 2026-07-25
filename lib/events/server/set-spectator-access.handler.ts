@@ -12,6 +12,11 @@ export const setSpectatorAccessHandler = defineGameHandler(
     if (game.host !== eventTarget.playerId)
       return console.warn(`Non-host tried to set spectator access: ${eventTarget.playerId}`)
 
+    // Never assign an unchecked client value into game state — a crafted
+    // non-boolean would land in the snapshot every client reads.
+    if (typeof eventData.allowed !== 'boolean')
+      return console.warn(`Invalid spectator-access payload for ${game.id}`)
+
     game.allowSpectators = eventData.allowed
 
     const ejected = eventData.allowed ? [] : Object.keys(game.spectators ?? {})

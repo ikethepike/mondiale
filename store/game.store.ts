@@ -119,6 +119,9 @@ interface GameStoreState {
   spectating: boolean
   /** Spectator booth: pinned player to follow; undefined = auto-director. */
   spectateFollowId?: string
+  /** Spectator booth: hide the answer secrets, pre-settle reveals and map
+   *  focus glow — for a screen someone in the room might glance at. */
+  spectateHideSpoilers: boolean
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -131,6 +134,7 @@ export const useGameStore = defineStore('game', {
     rejected: false,
     spectating: false,
     spectateFollowId: undefined,
+    spectateHideSpoilers: false,
     map: {
       status: undefined,
       reveal: undefined,

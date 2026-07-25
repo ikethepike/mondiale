@@ -28,9 +28,19 @@
             <span v-else class="auto-tag">auto director</span>
           </p>
         </div>
-        <span class="watching" :title="`${gameStore.spectatorCount} watching`">
-          👁 {{ gameStore.spectatorCount || 1 }}
-        </span>
+        <div class="booth-controls">
+          <button
+            class="spoiler-toggle"
+            type="button"
+            :aria-pressed="gameStore.spectateHideSpoilers"
+            @click="gameStore.spectateHideSpoilers = !gameStore.spectateHideSpoilers"
+          >
+            {{ gameStore.spectateHideSpoilers ? 'Spoilers hidden' : 'Spoilers shown' }}
+          </button>
+          <span class="watching" :title="`${gameStore.spectatorCount} watching`">
+            👁 {{ gameStore.spectatorCount || 1 }}
+          </span>
+        </div>
       </div>
     </header>
 
@@ -43,6 +53,7 @@
         :story="story"
         :followed="followed"
         :race-over="raceOver"
+        :hide-spoilers="gameStore.spectateHideSpoilers"
       />
     </Transition>
 
@@ -257,9 +268,17 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
 // board covers the map entirely, so painting pauses there.
 const paintMap = () => {
   if (!game.value || stage.value === 'board') return
-  clearBoard()
 
-  const focus = story.value.focus
+  // clearBoard() also resets the live-guess ticker; snapshot and restore it so
+  // a repaint mid-round (border-chain / heritage focus shifts) can't wipe
+  // in-flight guess chips.
+  const guesses = gameStore.map.liveGuesses
+  clearBoard()
+  gameStore.map.liveGuesses = guesses
+
+  // Hiding spoilers pulls the focus glow too — it would point straight at the
+  // answer country. Fall back to the game's atlas glow.
+  const focus = gameStore.spectateHideSpoilers ? undefined : story.value.focus
   if (focus?.length) {
     for (const isoCode of focus) gameStore.map.tints[isoCode] = 'endpoint'
     gameStore.map.focus = [...focus]
@@ -272,8 +291,12 @@ const paintMap = () => {
 }
 
 // Keyed repaint: snapshots land every 500ms during walks and would otherwise
-// re-fit the map camera on identical focus sets.
-const paintKey = computed(() => `${stage.value}|${(story.value.focus ?? []).join(',')}`)
+// re-fit the map camera on identical focus sets. The spoiler flag is in the
+// key so toggling it repaints immediately.
+const paintKey = computed(
+  () =>
+    `${stage.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
+)
 onMounted(paintMap)
 watch(paintKey, paintMap)
 onBeforeUnmount(() => {
@@ -393,9 +416,34 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   margin-bottom: 0.4rem;
 }
 
-.watching {
+.booth-controls {
+  gap: 0.6rem;
+  display: flex;
   flex-shrink: 0;
   margin-left: auto;
+  align-items: center;
+}
+
+.spoiler-toggle {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid $hairline;
+  border-radius: 1rem;
+  background: none;
+  color: inherit;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &[aria-pressed='true'] {
+    color: var(--dark-blue);
+    border-color: var(--dark-blue);
+    background: hsla(29.7, 79.9%, 72.7%, 0.18);
+  }
+}
+
+.watching {
+  flex-shrink: 0;
   font-size: 1.4rem;
   opacity: 0.7;
   white-space: nowrap;

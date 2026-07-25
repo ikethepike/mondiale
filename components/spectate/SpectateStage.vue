@@ -38,7 +38,7 @@
         </ul>
 
         <!-- The audience's dramatic irony — the racers can't see this -->
-        <p v-if="story.secret" class="secret">
+        <p v-if="story.secret && !hideSpoilers" class="secret">
           <span class="secret-tag">Only you can see this</span>
           {{ story.secret }}
         </p>
@@ -92,7 +92,10 @@ const props = defineProps<{
   story: SpectateStory
   followed?: Player
   raceOver: boolean
+  hideSpoilers?: boolean
 }>()
+
+const hideSpoilers = computed(() => props.hideSpoilers)
 
 const { game, gameStore } = useClientEvents()
 
@@ -109,10 +112,13 @@ const hand = computed(() => {
   return isoCodes.map(getCountry).filter(country => !!country)
 })
 
-/** Post-scoring reveal line — safe now, every racer has answered. */
-const headline = computed(() =>
-  props.raceOver ? 'Every racer has crossed the line' : roundChallengeHeadline(challenge.value)
-)
+/** Post-scoring reveal line. Held back under spoiler-protection until the race
+ *  is over, since a pinned fast player reaches scores while others still play. */
+const headline = computed(() => {
+  if (props.raceOver) return 'Every racer has crossed the line'
+  if (props.hideSpoilers) return ''
+  return roundChallengeHeadline(challenge.value)
+})
 
 const scorecards = computed(() => gameStore.rankedScores)
 
