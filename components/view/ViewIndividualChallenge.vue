@@ -365,6 +365,7 @@
           key="result"
           class="result"
           :status="status"
+          :correct-message="correctMessage"
           :incorrect-message="incorrectMessage"
         >
           <DuelReveal
@@ -414,7 +415,7 @@ import { currencyName, currencySymbol } from '~~/lib/currency'
 import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
-import { GATE_HINT_BITE_STEPS } from '~~/lib/scoring'
+import { GATE_HINT_BITE_STEPS, gateLeapSteps } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
@@ -852,6 +853,18 @@ const onTrajectoryPick = (isoCode: ISOCountryCode) => {
 }
 
 // --- Result messaging ---------------------------------------------------------
+/**
+ * The win names its prize — the exact steps the board is about to walk out
+ * (mirrors the server's gateLeapSteps from the same submitted inputs), so the
+ * hops the player watches next are already accounted for.
+ */
+const earnedLeapSteps = ref<number>()
+const correctMessage = computed(() => {
+  const steps = earnedLeapSteps.value
+  if (!steps) return 'Correct!'
+  return steps === 1 ? 'Correct — leap 1 tile ahead!' : `Correct — leap ${steps} tiles ahead!`
+})
+
 const incorrectMessage = computed(() => {
   const active = challenge.value
   const picked = submittedCountry.value
@@ -919,6 +932,9 @@ const submitAnswer = (
   const active = currentMove.value?.challenge
   if (active) {
     const correct = isoCode === active.country
+    if (correct) {
+      earnedLeapSteps.value = gateLeapSteps(options.remainingFraction, options.hintsUsed)
+    }
     if (options.reveal !== false) {
       gameStore.map.reveal = active.country
       // Landmark-quiz: mark the landmark's true spot on the reveal zoom
@@ -952,6 +968,7 @@ watch(currentMove, move => {
   challenge.value = next
   clearBoard()
   submittedISOCode.value = undefined
+  earnedLeapSteps.value = undefined
   failedDuelAnswer.value = undefined
   duelIndex.value = 0
   showDoubleTapHint.value = false

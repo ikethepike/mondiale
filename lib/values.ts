@@ -1,4 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
+import { currencyName } from '~~/lib/currency'
+import { titlecaseLeader } from '~~/lib/leaders'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import { type Amount, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
@@ -62,7 +64,7 @@ export const setByAccessorPath = (
 }
 
 export const processReplacements = (text: string, isoCode: ISOCountryCode) => {
-  const replacements = ['{countryName}', '{capital}'] as const
+  const replacements = ['{countryName}', '{capital}', '{leader}', '{currency}'] as const
 
   const replacementsPresent = replacements.filter(replacement => text.includes(replacement))
   if (!replacementsPresent.length) return text
@@ -75,6 +77,12 @@ export const processReplacements = (text: string, isoCode: ISOCountryCode) => {
         break
       case '{countryName}':
         text = text.replaceAll(replacement, country.name.english)
+        break
+      case '{leader}':
+        text = text.replaceAll(replacement, titlecaseLeader(country.government?.leader ?? ''))
+        break
+      case '{currency}':
+        text = text.replaceAll(replacement, currencyName(country.currency))
         break
     }
   }
