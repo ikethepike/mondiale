@@ -29,6 +29,29 @@
 
         <img v-if="story.image" class="stage-photo" :src="story.image" alt="" />
 
+        <!-- Silhouette: the outline IS the question, so it shows either way -->
+        <svg v-if="outlinePath" class="stage-outline" :viewBox="outlinePath.viewBox">
+          <path :d="outlinePath.d" />
+        </svg>
+
+        <!-- Flag-palette: the colour swatches the racer names the flag from -->
+        <ul v-if="story.swatches?.length" class="swatches">
+          <li
+            v-for="(hex, index) in story.swatches"
+            :key="`${hex}-${index}`"
+            class="swatch"
+            :style="{ background: hex }"
+          />
+        </ul>
+
+        <!-- The dossier / claims the racer reads (stat-detective, two-truths) -->
+        <ul v-if="story.facts?.length" class="facts">
+          <li v-for="(fact, index) in story.facts" :key="`${fact.label}-${index}`" class="fact">
+            <span class="fact-label">{{ fact.label }}</span>
+            <strong v-if="fact.value" class="fact-value">{{ fact.value }}</strong>
+          </li>
+        </ul>
+
         <!-- The choices the racer reasons over (flag options / neighbour ring).
              The question itself, so shown even under spoiler-protection; only
              the correct pick is marked, and only when spoilers are shown. -->
@@ -98,6 +121,7 @@ import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { mainlandOutline } from '~~/lib/outline'
 import type { SpectateStageKind, SpectateStory } from '~~/lib/spectate'
 import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Player } from '~~/types/player.type'
@@ -124,6 +148,23 @@ const story = computed(() => props.story)
 /** Gate choices (flag options, a neighbour ring) as country records to flag. */
 const optionCountries = computed(() =>
   (props.story.options ?? []).map(getCountry).filter(country => !!country)
+)
+
+// Silhouette: the mainland outline path, resolved from the HD map data (falls
+// back to the mounted world map's DOM path). Async, so it's fetched per-country.
+const outlinePath = ref<{ d: string; viewBox: string }>()
+watch(
+  () => props.story.outline,
+  async iso => {
+    if (!iso) {
+      outlinePath.value = undefined
+      return
+    }
+    const resolved = await mainlandOutline(iso)
+    // Guard against a race: only apply if the followed country is still this one.
+    if (props.story.outline === iso) outlinePath.value = resolved
+  },
+  { immediate: true }
 )
 
 /** Ranking rounds deal hands — show the followed player's cards. */
@@ -216,6 +257,65 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
     text-transform: uppercase;
     opacity: 0.6;
     margin-bottom: 0.3rem;
+  }
+}
+
+.stage-outline {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  margin-top: 1.4rem;
+
+  path {
+    fill: var(--dark-blue);
+    stroke: var(--dark-blue);
+    stroke-width: 0.5;
+    opacity: 0.85;
+  }
+}
+
+.swatches {
+  gap: 0.6rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.swatch {
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 0.5rem;
+  border: 0.1rem solid $hairline;
+}
+
+.facts {
+  gap: 0.5rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: grid;
+  list-style: none;
+}
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.6rem;
+  background: hsla(0, 0%, 100%, 0.5);
+  border-left: 0.3rem solid var(--soft-blue);
+
+  .fact-label {
+    font-size: 1.35rem;
+    text-transform: capitalize;
+  }
+  .fact-value {
+    font-size: 1.4rem;
+    color: var(--dark-blue);
+    white-space: nowrap;
   }
 }
 

@@ -97,6 +97,15 @@ export interface SpectateStory {
   focus?: ISOCountryCode[]
   /** Photo prompt when the round is image-driven. */
   image?: string
+  /** Flag-palette hex swatches — the colours the racer names the flag from.
+   *  The question, so shown regardless of spoiler state. */
+  swatches?: string[]
+  /** A short fact list shown verbatim (two-truths claims, the stat-detective
+   *  dossier). The question, so shown regardless of spoiler state. */
+  facts?: { label: string; value?: string }[]
+  /** Draw this country's silhouette — the outline IS the question (the name is
+   *  the answer), so it shows regardless of spoiler state. */
+  outline?: ISOCountryCode
 }
 
 const listNames = (isoCodes: ISOCountryCode[], limit = 6): string => {
@@ -166,6 +175,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
         kicker: 'Silhouette',
         prompt: 'First to name the mystery country from its silhouette takes the round',
         secret: `It's ${countryName(challenge.country as ISOCountryCode)} — will anyone see it?`,
+        outline: challenge.country as ISOCountryCode,
         focus: [challenge.country as ISOCountryCode],
       }
     }
@@ -187,20 +197,27 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       }
     }
     case 'stat-detective': {
-      if (!('country' in challenge)) break
+      if (!('clues' in challenge)) break
       return {
         kicker: 'Stat detective',
-        prompt: 'A dossier of numbers, one country — whose are they?',
-        secret: `The dossier belongs to ${countryName(challenge.country as ISOCountryCode)}`,
-        focus: [challenge.country as ISOCountryCode],
+        prompt: 'One country fits this whole dossier — whose is it?',
+        secret: `The dossier belongs to ${countryName(challenge.country)}`,
+        facts: challenge.clues.map(clue => ({ label: accessorTopicLabel(clue) })),
+        focus: [challenge.country],
       }
     }
     case 'two-truths': {
-      if (!('lieSource' in challenge)) break
+      if (!('statements' in challenge)) break
       return {
         kicker: 'Two truths and a lie',
-        prompt: `Three claims about ${countryName(challenge.country)} — spot the lie`,
-        secret: `The lie was borrowed from ${countryName(challenge.lieSource)}`,
+        prompt: `Three claims about ${countryName(challenge.country)} — one is false`,
+        secret: `The lie is the ${accessorTopicLabel(
+          challenge.statements[challenge.lieIndex]?.accessorId ?? challenge.statements[0].accessorId
+        )} claim — really ${countryName(challenge.lieSource)}'s`,
+        facts: challenge.statements.map(statement => ({
+          label: accessorTopicLabel(statement.accessorId),
+          value: `${statement.amount.toLocaleString()} ${statement.unit}`.trim(),
+        })),
         focus: [challenge.country],
       }
     }
@@ -219,7 +236,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('featureName' in challenge)) break
       return {
         kicker: 'Name that water',
-        prompt: 'Name the mystery sea, lake or river tracing itself onto the map',
+        prompt: 'Name the mystery body of water',
         secret: `It's the ${challenge.featureName}`,
       }
     }
@@ -236,8 +253,9 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('country' in challenge)) break
       return {
         kicker: 'Flag palette',
-        prompt: "Name the country from its flag's colour palette",
+        prompt: "Name the country from its flag's colours",
         secret: `Those colours fly for ${countryName(challenge.country as ISOCountryCode)}`,
+        swatches: 'swatches' in challenge ? challenge.swatches : undefined,
         focus: [challenge.country as ISOCountryCode],
       }
     }
@@ -255,8 +273,8 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('country' in challenge)) break
       return {
         kicker: 'Flashpoint',
-        prompt: 'A century of conflict draws itself in — whose history is this?',
-        secret: `${countryName(challenge.country as ISOCountryCode)}'s`,
+        prompt: 'Name the country from a century of its conflict history',
+        secret: `It's ${countryName(challenge.country as ISOCountryCode)}'s`,
         focus: [challenge.country as ISOCountryCode],
       }
     }
@@ -303,7 +321,8 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
           TREND_METRICS[challenge.metric]?.label ?? challenge.metric
         }?`,
         secret: `The steepest curve is ${countryName(challenge.standings[0])}`,
-        focus: challenge.options,
+        options: challenge.options,
+        answer: challenge.standings[0],
       }
     }
   }
@@ -445,10 +464,13 @@ export const gateStory = (challenge: IndividualChallenge): SpectateStory => {
         focus: [challenge.country],
       }
     case 'outline-reveal':
+      // The racer names the country as its border draws in — mirror the shape
+      // (the outline is the puzzle; the name stays the spoiler-gated secret).
       return {
         kicker,
-        prompt: 'Name the country as its border draws itself in',
+        prompt: 'Name the country from its outline',
         secret: `It's ${answer}`,
+        outline: challenge.country,
         focus: [challenge.country],
       }
     case 'find':
@@ -492,11 +514,12 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
     case 'min-challenge':
       return {
         kicker,
-        prompt: `Find the ${item._type === 'max-challenge' ? 'highest' : 'lowest'} ${accessorTopicLabel(
-          item.accessorId
-        )} among the marked countries`,
+        prompt: `Which of these has the ${
+          item._type === 'max-challenge' ? 'highest' : 'lowest'
+        } ${accessorTopicLabel(item.accessorId)}?`,
         secret: `It's ${countryName(item.country)}`,
-        focus: [...item.hints, item.country],
+        options: [...item.hints, item.country],
+        answer: item.country,
       }
     case 'leadership-challenge': {
       const leader = politicalLeader(item.country)
@@ -512,14 +535,14 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
     case 'membership-challenge':
       return {
         kicker,
-        prompt: `Every marked country is in the ${OrganizationVector[item.organization]} — except one`,
+        prompt: `Spot the one country that is NOT in the ${OrganizationVector[item.organization]}`,
         secret: `The exception is ${countryName(item.exception)}`,
         focus: [item.exception],
       }
     case 'sunset-blitz-challenge':
       return {
         kicker,
-        prompt: `Night sweeps east to west — name ${Math.round(item.quotaRatio * 100)}% of the window before dark`,
+        prompt: `Name ${Math.round(item.quotaRatio * 100)}% of the countries as night sweeps east to west`,
         focus: item.countries,
       }
     case 'scales-challenge':

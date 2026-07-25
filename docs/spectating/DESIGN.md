@@ -193,6 +193,31 @@ holds the logic, `components/spectate/` the two surfaces:
   flag), so the 500ms walk snapshots never thrash the camera, and painting
   preserves the live-guess ticker across its `clearBoard`.
 
+### Every card shows its real prompt
+
+A spectator card must never *describe* an asset it doesn't *show* — a flag gate
+that says "which flag?" with no flag, a silhouette round that says "name the
+outline" with no outline. Every challenge type now mirrors what the racer
+actually sees:
+
+- **Flags** — flag-pick/flag-twins/leader-pick/odd-one-out/border-detective,
+  the min/max and trend-race choice sets: the candidate flags render as a row;
+  the correct one is ticked only when spoilers are shown (the choices are the
+  question, so they render either way).
+- **Photos** — capital skylines, landmarks, leader portraits, heritage sites.
+- **Silhouettes** — the country's mainland outline (`mainlandOutline`), for the
+  silhouette round and the outline-reveal gate.
+- **Colour swatches** — flag-palette's hex swatches.
+- **Fact lists** — two-truths' three claims (with values) and the
+  stat-detective dossier (topics).
+
+Anything genuinely map-driven (hot & cold probes, flashpoint dots, water
+features) or subject-named (traversal, neighbour-blitz, mother-tongue) is
+self-contained narration that points at nothing it doesn't render. A test
+(`spectate.test.ts`) enumerates **every** round kind, gate variant and final
+question type and fails if any prompt references an unshown asset — the
+regression net for this invariant.
+
 ### The spoiler control
 
 The secrets, pre-settle reveal headlines and answer-focus map glow are the
@@ -235,9 +260,10 @@ Client plumbing is deliberately thin: an `isSpectator` getter
   mid-race without waiting for their victory screen.
 - **Spectator link**: a `?spectate` URL that skips the player path even in the
   lobby (stream overlays, projectors).
-- **Richer stage embeds**: mount the real challenge views read-only (the
-  silhouette shape, the trend sparklines) inside the stage card instead of
-  describing them.
+- **Live asset animation**: the stage renders each prompt's asset statically
+  (the silhouette shape, the swatches, the dossier topics); animating them as
+  the racer sees them (the outline drawing in, stat cards flipping, conflict
+  dots landing) would be the next fidelity step.
 - **Cut animations**: a brief "camera cut" wipe when the auto director
   switches subjects, and a ticker of director decisions ("cutting to Vera —
   final gauntlet").
