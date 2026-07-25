@@ -9,6 +9,13 @@
       @done="start"
     />
     <template v-else>
+      <ChallengeTimerRadial
+        v-if="!submitted && challenge"
+        class="round-clock"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      />
+
       <header>
         <div ref="flagHost" class="flag" />
 
@@ -26,11 +33,7 @@
         </div>
       </header>
 
-      <footer v-if="!submitted && challenge">
-        <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-      </footer>
-
-      <footer v-else-if="submitted && territory" class="dossier">
+      <footer v-if="submitted && territory" class="dossier">
         <p class="map-caption facts">
           <span><strong>Claimed by</strong> {{ parentName }}</span>
           <span><strong>Internationally recognized by</strong> {{ recogniserNames }}</span>
@@ -44,7 +47,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -323,8 +326,8 @@ header {
   }
 }
 
-// The round clock while guessing, the dossier after — both in the shared
-// bottom-footer slot every timed mode uses.
+// The reveal dossier's berth; while guessing, the round clock floats in the
+// shared .round-clock corner instead.
 footer {
   z-index: 2;
   display: flex;

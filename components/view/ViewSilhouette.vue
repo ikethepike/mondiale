@@ -13,7 +13,7 @@
       <div class="prompt">
         <template v-if="!resolved">
           <h1 class="map-caption">Whose outline is this?</h1>
-          <span class="map-caption sub">{{ secondsLeft }}s — earlier answers score higher</span>
+          <span class="map-caption sub">Earlier answers score higher</span>
           <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
             Region: {{ challenge.region }}
           </span>
@@ -36,23 +36,22 @@
 
     <footer v-if="!resolved">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <!-- Ticker sits above the input so the input's suggestion list can open
-           downward into clear space without the timer cutting across it. -->
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
       <div class="guess-box">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted || !started || lockedOut"
-          :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
-          @guess="onGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
+        <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="submitted || !started || lockedOut"
+            :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
+            @guess="onGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
       </div>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -246,6 +245,11 @@ header {
 .guess-box {
   display: flex;
   justify-content: center;
+  width: 100%;
+}
+
+.console {
+  width: min(42rem, calc(100vw - 3.2rem));
 }
 
 footer {

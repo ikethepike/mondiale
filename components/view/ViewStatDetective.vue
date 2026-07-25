@@ -13,9 +13,7 @@
       <div class="prompt">
         <template v-if="!resolved">
           <h1 class="map-caption">Which country is this?</h1>
-          <span class="map-caption sub">
-            Clue {{ revealedCount }} of {{ totalClues }} — {{ secondsLeft }}s left
-          </span>
+          <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
           <span v-if="challenge.region" class="map-caption region-hint">
             Region: {{ challenge.region }}
           </span>
@@ -35,13 +33,17 @@
          clue cards there is always room. -->
     <section v-if="!resolved" class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started || lockedOut"
-        :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
-        @guess="onGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
+      <!-- The console drains with the round clock; the "Clue N of M" caption
+           carries the clue pacing. -->
+      <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted || !started || lockedOut"
+          :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
+          @guess="onGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </ChallengeConsole>
     </section>
 
     <section v-if="!resolved" ref="clueStage" class="clue-stage">
@@ -79,15 +81,10 @@
       </TransitionGroup>
     </section>
 
-    <footer v-if="!resolved">
-      <!-- Drains with the round clock, the same read as every other timed
-           view; the "Clue N of M" caption carries the clue pacing. -->
-      <ChallengeTimer :value="secondsLeft" :total="totalSeconds" />
-    </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -360,19 +357,14 @@ header {
   flex-flow: column nowrap;
 }
 
-footer {
-  z-index: 2;
-  padding: 2rem;
+.console {
+  width: min(42rem, calc(100vw - 3.2rem));
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
+// Compact phone chrome: tighter prompt padding.
 @media screen and (max-width: $tablet) {
   header {
     padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
   // Compact single-column clue cards: three or four visible before the

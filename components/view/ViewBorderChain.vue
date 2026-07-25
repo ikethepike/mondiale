@@ -27,12 +27,6 @@
           <span>{{ turnLabel }}</span>
           <span class="clock">{{ secondsOnClock }}s</span>
         </span>
-        <ChallengeTimer
-          v-if="!finished"
-          class="shot-clock"
-          :value="secondsOnClock"
-          :total="challenge.turnSeconds"
-        />
         <span v-if="!finished && iAmOut" class="map-caption sub out">
           You're out — spectating
         </span>
@@ -42,14 +36,18 @@
       </div>
     </header>
 
+    <!-- On your turn the shot clock lives inside the guess console; between
+         turns the header's turn-line chip carries the countdown. -->
     <section v-if="myTurn && !finished" class="guess-box">
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="pending"
-        :excluded="walked"
-        @guess="submitGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
+      <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="pending"
+          :excluded="walked"
+          @guess="submitGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </ChallengeConsole>
     </section>
 
     <ChainReveal
@@ -78,7 +76,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
@@ -364,11 +362,6 @@ header {
   }
 }
 
-.shot-clock {
-  width: 18rem;
-  max-width: 100%;
-}
-
 .out {
   opacity: 0.75;
 }
@@ -378,6 +371,10 @@ header {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+.console {
+  width: min(42rem, calc(100vw - 3.2rem));
 }
 
 .reveal {

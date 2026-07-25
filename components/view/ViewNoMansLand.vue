@@ -16,7 +16,7 @@
                cannot be shown until the round is over. -->
           <template v-if="!submitted">
             <h1 class="map-caption">{{ territory?.name }}</h1>
-            <span class="map-caption sub">{{ teaser }} — {{ secondsLeft }}s</span>
+            <span class="map-caption sub">{{ teaser }}</span>
           </template>
           <template v-else-if="territory">
             <h1 class="map-caption">{{ verdictHeadline }}</h1>
@@ -27,20 +27,25 @@
 
       <footer>
         <template v-if="!submitted">
-          <ChallengeTimer
-            v-if="challenge"
-            :value="secondsLeft"
-            :total="challenge.durationSeconds"
-          />
           <p class="map-caption ask">Who claims it?</p>
           <ul v-if="picks.length" class="chips">
             <li v-for="isoCode in picks" :key="isoCode">
               <button type="button" @click="toggle(isoCode)">{{ countryName(isoCode) }}</button>
             </li>
           </ul>
-          <ButtonFilled class="lock" @click="submitRound">
-            {{ picks.length ? 'Lock it in' : 'Nobody claims it' }}
-          </ButtonFilled>
+          <!-- The round clock docks beside the lock — the action and the time
+               to act read as one row, as in the guess consoles. -->
+          <div class="lock-row">
+            <ButtonFilled class="lock" @click="submitRound">
+              {{ picks.length ? 'Lock it in' : 'Nobody claims it' }}
+            </ButtonFilled>
+            <ChallengeTimerRadial
+              v-if="challenge"
+              class="lock-clock"
+              :value="secondsLeft"
+              :total="challenge.durationSeconds"
+            />
+          </div>
         </template>
 
         <template v-else-if="territory">
@@ -58,7 +63,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref } from 'vue'
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -309,6 +314,18 @@ footer {
   }
 }
 
+.lock-row {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+
+  .lock-clock {
+    flex: none;
+    --clock-size: 4.6rem;
+    --clock-seconds-size: 1.5rem;
+  }
+}
+
 .lock {
   pointer-events: auto;
 }
@@ -323,15 +340,19 @@ footer {
     padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
-  // Finger-sized picked-country chips, and a full-width lock button.
+  // Finger-sized picked-country chips, and a full-width lock row.
   .chips button {
     font-size: 1.2rem;
     min-height: 3.2rem;
     padding: 0.4rem 1.2rem;
   }
 
-  .lock {
+  .lock-row {
     width: min(100%, 32rem);
+  }
+  .lock {
+    flex: 1;
+    min-width: 0;
   }
 }
 

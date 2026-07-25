@@ -16,8 +16,7 @@
             {{ challenge.kind === 'lake' ? 'Which lake is this?' : 'Which body of water is this?' }}
           </h1>
           <span class="map-caption sub">
-            {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left —
-            {{ secondsLeft }}s
+            {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left
           </span>
         </template>
         <template v-else>
@@ -34,7 +33,8 @@
 
     <section v-if="!resolved" class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <form class="guess-form map-caption" @submit.prevent="submitTyped">
+      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+        <form class="guess-form map-caption" @submit.prevent="submitTyped">
         <input
           ref="input"
           v-model="query"
@@ -57,16 +57,13 @@
             <span>{{ suggestion.name }}</span>
           </li>
         </ul>
-      </form>
+        </form>
+      </ChallengeConsole>
     </section>
-
-    <footer v-if="!resolved">
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-    </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
@@ -257,12 +254,18 @@ header {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+  // Centred in the space under the prompt (the old footer used to hold the
+  // bottom): the suggestion list opens downward and needs the room below.
+  margin: auto 0;
 }
 
-// Mirrors CountryGuessInput's look for a consistent typing surface
+.console {
+  width: min(42rem, calc(100vw - 3.2rem));
+}
+
+// Mirrors CountryGuessInput's look for a consistent typing surface (the
+// console strips the pill and owns the width).
 .guess-form {
-  width: 34rem;
-  max-width: 86vw;
   position: relative;
   pointer-events: auto;
 
@@ -307,19 +310,10 @@ header {
   }
 }
 
-footer {
-  z-index: 2;
-  padding: 2rem;
-}
-
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
+// Compact phone chrome: tighter prompt padding.
 @media screen and (max-width: $tablet) {
   header {
     padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 }
 

@@ -68,10 +68,12 @@
           <!-- Border detective: name the country these neighbours surround -->
           <template v-else-if="variant === 'border-detective' && challenge.neighbours">
             <h1 class="map-caption">Who sits in the middle?</h1>
-            <span class="map-caption sub">
-              {{ borderSecondsLeft }}s — name the country these neighbours all border
-            </span>
-            <ChallengeTimer :value="borderSecondsLeft" :total="BORDER_DETECTIVE_SECONDS" />
+            <span class="map-caption sub">Name the country these neighbours all border</span>
+            <ChallengeTimerRadial
+              class="gate-clock"
+              :value="borderSecondsLeft"
+              :total="BORDER_DETECTIVE_SECONDS"
+            />
             <div class="border-ring" :style="{ '--ring-count': challenge.neighbours.length }">
               <div class="ring-center" aria-hidden="true">
                 <span v-if="isoHint" class="iso-chip">{{ isoHint }}</span>
@@ -315,10 +317,12 @@
           <!-- Trajectory match: whose chart is this? -->
           <template v-else-if="variant === 'trajectory-match' && challenge.trajectory">
             <h1 class="map-caption">Whose chart is this?</h1>
-            <span class="map-caption sub">
-              {{ trajectorySecondsLeft }}s — one of these countries' {{ trajectoryLabel }}
-            </span>
-            <ChallengeTimer :value="trajectorySecondsLeft" :total="TRAJECTORY_MATCH_SECONDS" />
+            <span class="map-caption sub">One of these countries' {{ trajectoryLabel }}</span>
+            <ChallengeTimerRadial
+              class="gate-clock"
+              :value="trajectorySecondsLeft"
+              :total="TRAJECTORY_MATCH_SECONDS"
+            />
             <div
               class="border-ring trajectory-ring"
               :style="{ '--ring-count': challenge.trajectory.options.length }"
@@ -400,7 +404,7 @@ import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
@@ -1211,6 +1215,13 @@ header {
   .twin-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+// The timed gates' round clock, centred between the sub caption and the ring.
+.gate-clock {
+  margin: 0 auto;
+  --clock-size: 5.2rem;
+  --clock-seconds-size: 1.7rem;
 }
 
 // Border detective: neighbour flags in a ring around an empty "?" centre.
