@@ -480,9 +480,14 @@ footer {
   // up, the right-pointing "least" arrow turns down. A square layout box
   // keeps the rotated ink tight against the label instead of leaving the
   // original 3rem-wide gap. The horizontal nudge loops animate the wrong
-  // axis here, so they rest.
+  // axis here, so they rest. Both poles read label-then-arrow and keep
+  // clear air between the question, the list and the submit button.
   .pole {
     gap: 0.6rem;
+    margin: 0.6rem 0;
+  }
+  .pole-most .pole-arrow {
+    order: 2;
   }
   .pole-label {
     font-size: 1.3rem;

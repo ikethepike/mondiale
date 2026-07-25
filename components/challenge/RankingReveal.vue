@@ -23,7 +23,8 @@
       >
         <span class="place">{{ row.correctPosition }}</span>
         <div v-if="row.country" class="flag-stage">
-          <CountryTileFlag class="flag" :country="row.country" />
+          <CountryFlag v-if="isPhone" class="flag" :country="row.country" />
+          <CountryTileFlag v-else class="flag" :country="row.country" />
         </div>
         <div class="identity">
           <strong class="name">{{ row.name }}</strong>
@@ -90,16 +91,19 @@
   </div>
 </template>
 <script lang="ts" setup>
+import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
 import { getChallengeDetails, MAXIMUM_SCORE_PER_COUNTRY, rankingBreakdown } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useIsPhone } from '~~/lib/use-viewport'
 import { formatAmount, formatOrdinal } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentRound } = useClientEvents()
+const isPhone = useIsPhone()
 
 const props = defineProps({
   submitted: {
@@ -348,17 +352,34 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 }
 
 // Phone: the verdict cluster tucks under the identity, flag and place spanning
-// both rows; the bar keeps its lane but loses its cap.
+// both rows; the bar keeps its lane but loses its cap. The poles read
+// label-then-arrow and get extra clearance from the list.
 @media screen and (max-width: $tablet) {
+  .pole {
+    gap: 0.6rem;
+  }
+  .pole-top {
+    margin-bottom: 1.4rem;
+  }
+  .pole-bottom {
+    margin-top: 1.4rem;
+  }
+  .pole .pole-arrow {
+    order: 2;
+  }
+
   .row {
     grid-template-areas:
       'place flag identity'
       'place flag verdict';
-    grid-template-columns: 1.8rem 6rem minmax(0, 1fr);
+    grid-template-columns: 1.8rem 5rem minmax(0, 1fr);
   }
 
+  // The normal flag replaces the wide tile here, so the stage shrinks to the
+  // ~3:2 a real flag wants and hands the freed width to the identity column.
   .flag-stage {
-    width: 6rem;
+    width: 5rem;
+    aspect-ratio: 3 / 2;
   }
 
   .verdict {
