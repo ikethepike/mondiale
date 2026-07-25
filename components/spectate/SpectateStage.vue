@@ -29,9 +29,10 @@
 
         <img v-if="story.image" class="stage-photo" :src="story.image" alt="" />
 
-        <!-- Silhouette: the outline IS the question, so it shows either way -->
+        <!-- Silhouette: the outline IS the question, so it shows either way.
+             It draws itself in, echoing the racer's reveal. -->
         <svg v-if="outlinePath" class="stage-outline" :viewBox="outlinePath.viewBox">
-          <path :d="outlinePath.d" />
+          <path ref="outlineEl" :d="outlinePath.d" />
         </svg>
 
         <!-- Flag-palette: the colour swatches the racer names the flag from -->
@@ -39,14 +40,20 @@
           <li
             v-for="(hex, index) in story.swatches"
             :key="`${hex}-${index}`"
-            class="swatch"
-            :style="{ background: hex }"
+            class="swatch stagger-in"
+            :style="{ background: hex, '--i': index }"
           />
         </ul>
 
-        <!-- The dossier / claims the racer reads (stat-detective, two-truths) -->
+        <!-- The dossier / claims the racer reads (stat-detective, two-truths),
+             flipping in one at a time like the racer's own reveal. -->
         <ul v-if="story.facts?.length" class="facts">
-          <li v-for="(fact, index) in story.facts" :key="`${fact.label}-${index}`" class="fact">
+          <li
+            v-for="(fact, index) in story.facts"
+            :key="`${fact.label}-${index}`"
+            class="fact stagger-in"
+            :style="{ '--i': index }"
+          >
             <span class="fact-label">{{ fact.label }}</span>
             <strong v-if="fact.value" class="fact-value">{{ fact.value }}</strong>
           </li>
@@ -57,10 +64,11 @@
              the correct pick is marked, and only when spoilers are shown. -->
         <ul v-if="optionCountries.length" class="options-row">
           <li
-            v-for="country in optionCountries"
+            v-for="(country, index) in optionCountries"
             :key="country.isoCode"
-            class="option-flag-item"
+            class="option-flag-item stagger-in"
             :class="{ correct: !hideSpoilers && country.isoCode === story.answer }"
+            :style="{ '--i': index }"
           >
             <CountryFlag class="option-flag" :country="country" />
             <span v-if="!hideSpoilers && country.isoCode === story.answer" class="option-tick"
@@ -118,9 +126,11 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import { gsap } from 'gsap'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { mainlandOutline } from '~~/lib/outline'
 import type { SpectateStageKind, SpectateStory } from '~~/lib/spectate'
 import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
@@ -153,6 +163,7 @@ const optionCountries = computed(() =>
 // Silhouette: the mainland outline path, resolved from the HD map data (falls
 // back to the mounted world map's DOM path). Async, so it's fetched per-country.
 const outlinePath = ref<{ d: string; viewBox: string }>()
+const outlineEl = ref<SVGPathElement>()
 watch(
   () => props.story.outline,
   async iso => {
@@ -162,10 +173,34 @@ watch(
     }
     const resolved = await mainlandOutline(iso)
     // Guard against a race: only apply if the followed country is still this one.
-    if (props.story.outline === iso) outlinePath.value = resolved
+    if (props.story.outline !== iso) return
+    outlinePath.value = resolved
+    await nextTick()
+    drawOutline()
   },
   { immediate: true }
 )
+
+// The border strokes itself in, then the fill washes up under it — the same
+// beat the racer sees, on the spectator's own clock (the reveal timing isn't
+// in the snapshot, so this is ambience, not a synced game timer).
+const drawOutline = () => {
+  const el = outlineEl.value
+  if (!el) return
+  if (prefersReducedMotion()) {
+    gsap.set(el, { strokeDashoffset: 0, fillOpacity: 0.85 })
+    return
+  }
+  let length = 0
+  try {
+    length = el.getTotalLength()
+  } catch {
+    return // getTotalLength is browser-only; skip if unavailable
+  }
+  gsap.set(el, { strokeDasharray: length, strokeDashoffset: length, fillOpacity: 0 })
+  gsap.to(el, { strokeDashoffset: 0, duration: 1.5, ease: EASE.enter })
+  gsap.to(el, { fillOpacity: 0.85, duration: 0.6, delay: 1.1, ease: 'power1.out' })
+}
 
 /** Ranking rounds deal hands — show the followed player's cards. */
 const hand = computed(() => {
@@ -268,9 +303,35 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
 
   path {
     fill: var(--dark-blue);
+    // GSAP drives fill-opacity from 0 → 0.85 as the stroke draws in; this is
+    // the no-JS / pre-animation resting state so the shape is never invisible.
+    fill-opacity: 0.85;
     stroke: var(--dark-blue);
     stroke-width: 0.5;
-    opacity: 0.85;
+  }
+}
+
+// Assets flip in one at a time (facts, swatches, option flags), echoing the
+// racer's staggered reveal. Index drives the delay via the --i custom property.
+.stagger-in {
+  animation: stage-pop 0.4s var(--ease-out-expressive, ease) backwards;
+  animation-delay: calc(var(--i, 0) * 0.09s);
+}
+
+@keyframes stage-pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in {
+    animation: none;
   }
 }
 

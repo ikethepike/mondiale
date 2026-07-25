@@ -260,10 +260,27 @@ Client plumbing is deliberately thin: an `isSpectator` getter
   mid-race without waiting for their victory screen.
 - **Spectator link**: a `?spectate` URL that skips the player path even in the
   lobby (stream overlays, projectors).
-- **Live asset animation**: the stage renders each prompt's asset statically
-  (the silhouette shape, the swatches, the dossier topics); animating them as
-  the racer sees them (the outline drawing in, stat cards flipping, conflict
-  dots landing) would be the next fidelity step.
+- **Mounting the real challenge views read-only**: rejected for now. The
+  challenge components (`View*.vue`) read the *local* player via
+  `useGroupChallenge`, run *local countdown timers started at mount*, own the
+  shared `gameStore.map.*`, and submit on their own timers. A `readonly` flag
+  would mean threading a followed-player override + emit/timer suppression
+  through ~25 gameplay components (high regression risk), and — because the
+  reveal timing isn't in the snapshot for most modes — it would still only
+  produce a *desynced local replay*, not the racer's real progress. The
+  isolated card (spectator code that can't touch gameplay or emit) is the safer
+  architecture; the fidelity gap was motion, addressed below. The two
+  snapshot-driven modes (border-chain, heritage-hunt) are the only ones a
+  read-only mount could genuinely sync — a possible future exception.
 - **Cut animations**: a brief "camera cut" wipe when the auto director
   switches subjects, and a ticker of director decisions ("cutting to Vera —
   final gauntlet").
+
+### Asset motion
+
+The rendered assets animate in, echoing the racer's own reveal — on the
+spectator's clock, since the timing isn't in the snapshot (it's ambience, not
+a synced game timer). The silhouette / outline-reveal border **strokes itself
+in** (GSAP over `getTotalLength`), then the fill washes up under it; facts,
+swatches and option flags **flip in one at a time** (a CSS `stagger-in` keyed
+on index). All of it is `prefers-reduced-motion` safe — assets appear at rest.
