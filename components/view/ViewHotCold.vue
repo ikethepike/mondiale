@@ -322,6 +322,9 @@ footer {
     justify-content: flex-start;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
+    // .main-board kills pointer events — restore them or the trail can't be
+    // finger-scrolled at all.
+    pointer-events: auto;
 
     .stop {
       flex-shrink: 0;

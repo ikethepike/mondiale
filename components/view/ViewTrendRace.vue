@@ -335,8 +335,20 @@ header {
 
   .race-stage {
     overflow-y: auto;
-    align-items: flex-start;
-    padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
+    // Centering + overflow pushes content above the scroll origin, where it
+    // can never be scrolled back into view — anchor to the top instead.
+    justify-content: flex-start;
+    // .main-board kills pointer events; the scroll container must take
+    // touches itself or drags on gaps between cards won't scroll.
+    pointer-events: auto;
+    overscroll-behavior: contain;
+    padding: 0.4rem 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
+  // 94vw is wider than the stage's padded inner width — with the stage now a
+  // scroll container that would surface as horizontal jitter.
+  .spread {
+    width: 100%;
   }
 
   .race-list {

@@ -438,6 +438,10 @@ footer {
   .route {
     max-height: 22dvh;
     overflow-y: auto;
+    // .main-board kills pointer events — restore them or the chain can't be
+    // touch-scrolled at all.
+    pointer-events: auto;
+    overscroll-behavior: contain;
   }
 }
 </style>

@@ -95,6 +95,9 @@ onUnmounted(() => {
   }
 
   .lesson {
+    // Hosts render under .main-board's pointer-events: none — the slotted
+    // reveals (sunset/nocturne/made) are scroll containers and need touches.
+    pointer-events: auto;
     // .map-caption is inline-block — without this the lesson pill lands on
     // the SAME line as the "Correct!" pill whenever the two fit side by side
     display: block;

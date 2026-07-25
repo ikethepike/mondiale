@@ -363,6 +363,7 @@
         <ChallengeResult
           v-else-if="status"
           key="result"
+          class="result"
           :status="status"
           :incorrect-message="incorrectMessage"
         >
@@ -1077,7 +1078,8 @@ header {
       transform: none;
     }
   }
-  .question {
+  .question,
+  .result {
     gap: 1rem;
     display: flex;
     align-items: center;
@@ -1092,6 +1094,15 @@ header {
       max-height: none;
       overflow-y: visible;
     }
+  }
+
+  // The round is resolved — nothing behind the reveal needs taps, and the
+  // scroll container must take touches itself under .main-board's
+  // pointer-events: none. The play-state .question stays pass-through so
+  // map-tap variants keep working.
+  .result {
+    pointer-events: auto;
+    overscroll-behavior: contain;
   }
 
   // The flag is the question — present it as the hero, framed like the
