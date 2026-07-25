@@ -293,7 +293,14 @@ const triggerMembershipChallenge = () => {
   }
 }
 
-watch(currentFinalChallenge, () => {
+watch(currentFinalChallenge, (challenge, previous) => {
+  // Every server snapshot rebuilds the game object, so the SAME unchanged
+  // challenge routinely arrives with a fresh identity (another player's event,
+  // a spectator joining). Resetting on identity alone blanked map.focus
+  // mid-round — the camera watcher then world-fit the globe in the middle of
+  // a running sunset blitz. Only an actual challenge change may reset.
+  if (JSON.stringify(challenge) === JSON.stringify(previous)) return
+
   gameStore.map.reveal = undefined
   gameStore.map.revealStat = undefined
   gameStore.map.status = undefined
