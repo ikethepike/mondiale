@@ -38,6 +38,15 @@ const PAWN_REST_Y = 0.6
 const SHARED_TILE_SCALE = 0.72
 
 /**
+ * Backlog size beyond which a walk stops replaying hop-by-hop and snaps.
+ * Post-challenge catch-ups (a win leap plus the steps consumed while the
+ * result screen and view swap covered the board) must play out — the player
+ * was promised every earned step — so only a true reset (a reconnect after a
+ * long gap) is big enough to snap.
+ */
+const REPLAY_SNAP_STEPS = 12
+
+/**
  * How long a pawn waits on a tile with an empty queue before it counts as
  * having *landed* (squash + ripple). Server steps arrive ~500ms apart, so the
  * queue is briefly empty between every step — the debounce keeps the landing
@@ -246,11 +255,15 @@ export const createPawnMover = (options: {
 
     state.hopping = true
     state.hopTarget = next
+    // Catch-up pacing: a deep queue means the pawn is replaying steps it took
+    // while the board was covered — quick-fire hops keep every step visible
+    // without dragging the replay out longer than the live walk.
+    const duration = state.queue.length >= 3 ? 0.22 : state.queue.length ? 0.3 : 0.38
     const proxy = { t: 0 }
     state.activeTween = track(
       gsap.to(proxy, {
         t: 1,
-        duration: 0.38,
+        duration,
         ease: 'power1.inOut',
         onUpdate() {
           const t = proxy.t
@@ -301,7 +314,7 @@ export const createPawnMover = (options: {
       state.queue.push(step)
     }
 
-    if (prefersReducedMotion() || state.queue.length > 4) {
+    if (prefersReducedMotion() || state.queue.length > REPLAY_SNAP_STEPS) {
       // Fast-forward: snap to the destination with a single landing
       state.queue = []
       const tile = options.tileFor(tileIndex)
