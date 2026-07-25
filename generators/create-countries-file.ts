@@ -8,6 +8,7 @@ import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { LEADERS } from '~~/data/leaders.gen'
 import {
+  HEAD_OF_GOVERNMENT_LED,
   politicalLeaderOf,
   preferWikidata,
   sharesSurname,
@@ -865,6 +866,9 @@ const getRegion = ({ data, isoCode }: { isoCode: string; data: FactbookResponse 
  * `undefined` when no single person holds the office — San Marino's Captains
  * Regent, Bosnia's tripartite presidency, a vacant presidency. Those countries
  * are then skipped by the leader rounds.
+ *
+ * Countries the CIA world-leaders directory does not cover (US, PS) fall back
+ * to Wikidata, or they would vanish from the leader rounds entirely.
  */
 const getLeader = ({
   isoCode,
@@ -873,7 +877,10 @@ const getLeader = ({
   isoCode: string
   cia: CiaCountry | undefined
 }): string | undefined => {
-  if (!cia) return undefined
+  if (!cia) {
+    const role = HEAD_OF_GOVERNMENT_LED.has(isoCode) ? 'headOfGovernment' : 'headOfState'
+    return LEADERS[isoCode as ISOCountryCode]?.[role]?.name
+  }
 
   const ciaLeader = politicalLeaderOf(isoCode, cia.leaders)
   if (!ciaLeader) return undefined

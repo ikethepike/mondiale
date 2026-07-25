@@ -104,6 +104,8 @@ describe('politicalLeaderOf — role selection', () => {
     )
     // The prime ministership changed twice in a year; the president leads regardless.
     expect(leaderName('KR', withBoth('LEE Jae Myung', 'KIM Min-seok'))).toBe('LEE Jae Myung')
+    // Romania's president sits in the European Council and leads foreign policy.
+    expect(leaderName('RO', withBoth('Nicusor DAN', 'Ilie BOLOJAN'))).toBe('Nicusor DAN')
   })
 
   it('picks the prime minister in parliamentary states', () => {
@@ -194,7 +196,6 @@ describe('politicalLeaderOf — role selection', () => {
     expect(leaderName('AT', withBoth('Alexander VAN DER BELLEN', 'Christian STOCKER'))).toBe(
       'Christian STOCKER'
     )
-    expect(leaderName('RO', withBoth('Nicusor DAN', 'Ilie BOLOJAN'))).toBe('Ilie BOLOJAN')
     expect(leaderName('TL', withBoth('Jose RAMOS-HORTA', 'Xanana GUSMAO'))).toBe('Xanana GUSMAO')
     expect(leaderName('MN', withBoth('Ukhnaa KHURELSUKH', 'Nyam-Osor UCHRAL'))).toBe(
       'Nyam-Osor UCHRAL'

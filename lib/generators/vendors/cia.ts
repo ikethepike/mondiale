@@ -65,7 +65,7 @@ const SLUG_OVERRIDES: { [isoCode: string]: string } = {
 /** Countries the CIA does not publish a world-leaders page for. */
 const NO_PAGE = new Set([
   'US', // not a foreign government
-  'PS', // no page; the game stores no leader for Palestine either
+  'PS', // no page
 ])
 
 const slugFor = (isoCode: string, englishName: string): string =>

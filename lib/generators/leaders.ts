@@ -33,6 +33,8 @@ export interface WikidataLeader {
  *
  * Ported from the previous Factbook-based `getLeader`, with three corrections:
  * `CV`, `SK` and `XK` are parliamentary — their presidents are ceremonial.
+ * `RO` is deliberately absent: like `FR` and `LT`, its president sits in the
+ * European Council and leads foreign policy.
  */
 export const HEAD_OF_GOVERNMENT_LED = new Set([
   'AL',
@@ -94,7 +96,6 @@ export const HEAD_OF_GOVERNMENT_LED = new Set([
   'PK',
   'PG',
   'PL',
-  'RO',
   'KN',
   'LC',
   'RS',
