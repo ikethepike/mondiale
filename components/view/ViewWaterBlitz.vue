@@ -13,7 +13,7 @@
       <div class="prompt">
         <h1 class="map-caption">{{ copy.title }}</h1>
         <span class="map-caption sub">
-          {{ found.length }} of {{ challenge.countries.length }} found — {{ secondsLeft }}s left
+          {{ found.length }} of {{ challenge.countries.length }} found
         </span>
         <Transition name="caption">
           <span v-if="hint" class="map-caption hint">{{ hint }}</span>
@@ -23,18 +23,21 @@
 
     <section class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started"
-        :excluded="guesses"
-        :placeholder="copy.placeholder"
-        @guess="onGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
+      <!-- The round clock lives inside the console pill — this mode's lower
+           half belongs to the guess box and the found list. -->
+      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted || !started"
+          :excluded="guesses"
+          :placeholder="copy.placeholder"
+          @guess="onGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </ChallengeConsole>
     </section>
 
     <footer>
-      <ChallengeTimer class="timer" :value="secondsLeft" :total="challenge.durationSeconds" />
       <TransitionGroup tag="ol" name="chain" class="found-list">
         <li
           v-for="isoCode in guesses"
@@ -50,7 +53,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -218,13 +221,13 @@ header {
   flex-flow: column nowrap;
 }
 
+.console {
+  width: min(42rem, calc(100vw - 3.2rem));
+}
+
 footer {
   z-index: 2;
   padding: 2rem;
-}
-
-.timer {
-  margin: 0 auto 1.6rem;
 }
 
 .found-list {

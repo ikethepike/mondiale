@@ -1,0 +1,21 @@
+@use '../rules/breakpoints' as *;
+
+// The round clock's shared floating berth, for modes whose lower edge is
+// free: top-right on desktop, a smaller dial at bottom-right on phones —
+// clear of the question up top and reachable-eye territory above the thumb.
+// Modes with a bottom input dock the dial into that row instead.
+.round-clock {
+  top: 2rem;
+  right: 2rem;
+  z-index: 5;
+  position: absolute;
+  pointer-events: none;
+
+  @media screen and (max-width: $tablet) {
+    --clock-size: 5.2rem;
+    --clock-seconds-size: 1.7rem;
+    top: auto;
+    right: calc(1.2rem + var(--safe-right));
+    bottom: calc(1.6rem + var(--safe-bottom));
+  }
+}

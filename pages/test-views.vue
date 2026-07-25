@@ -45,6 +45,7 @@ import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
+import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
@@ -568,6 +569,23 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'water-blitz',
+    label: 'Water blitz (shared shores, typed)',
+    component: ViewWaterBlitz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'water-blitz-challenge',
+          featureId: 'adriatic-sea',
+          featureName: 'Adriatic Sea',
+          kind: 'sea',
+          countries: ['AL', 'BA', 'GR', 'HR', 'IT', 'ME', 'SI'],
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'hot-cold',
     label: 'Hot & cold (probe trail)',
     component: ViewHotCold,
@@ -596,6 +614,21 @@ const scenarios: Scenario[] = [
           swatches: COUNTRIES.BT.identity.colors.slice(0, 6),
           durationSeconds: 45,
           region: 'Asia',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'flag-palette-hard',
+    label: 'Flag palette (hard: no region, sketch still draws)',
+    component: ViewFlagPalette,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flag-palette-challenge',
+          country: 'BT',
+          swatches: COUNTRIES.BT.identity.colors.slice(0, 6),
+          durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

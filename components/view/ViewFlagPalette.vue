@@ -20,7 +20,6 @@
     <header>
       <div class="prompt">
         <h1 class="map-caption">Whose flag has these colours?</h1>
-        <span class="map-caption sub">{{ secondsLeft }}s left</span>
         <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
           Region: {{ challenge.region }}
         </span>
@@ -44,19 +43,26 @@
     </section>
 
     <footer>
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started"
-        placeholder="Name the country…"
-        @guess="onGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
+      <!-- This mode's lower edge belongs to the guess box, so the round
+           clock lives inside the console pill instead of the corner berth. -->
+      <ChallengeConsole
+        class="console"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      >
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted || !started"
+          placeholder="Name the country…"
+          @guess="onGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </ChallengeConsole>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -84,18 +90,16 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-// Staged hints (non-hard mode; the dealer omits `region` on hard): the
-// region at half-time, and from the final two-thirds the flag sketches
-// itself across the background, completing with the clock. Answering early
-// stays worth more.
+// Staged hints: the region at half-time (non-hard only — the dealer omits
+// `region` on hard), and from the final two-thirds the flag sketches itself
+// across the background, completing with the clock — every difficulty gets
+// the sketch. Answering early stays worth more.
 const clockFraction = computed(() => {
   const total = challenge.value?.durationSeconds ?? 0
   return started.value && total > 0 ? secondsLeft.value / total : 1
 })
 const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
-const sketchStarted = computed(
-  () => !!challenge.value?.region && clockFraction.value <= 2 / 3 && !submitted.value
-)
+const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
 const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
 
 const submitRound = (correct: boolean) => {
@@ -204,6 +208,10 @@ header {
   box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
 }
 
+
+.console {
+  width: min(42rem, 100%);
+}
 
 footer {
   z-index: 2;

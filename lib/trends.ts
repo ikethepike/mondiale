@@ -2,6 +2,7 @@
 // self-invokes at module bottom.
 import type { TrendMetricId, TrendSeries } from '~~/generators/vendors/owid/create-owid'
 import type { ChallengeScale, ChallengeTopic } from '~~/types/challenge.type'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
 export type {
   TrendMapping,
@@ -32,6 +33,8 @@ export const isDecisiveGap = (a: number, b: number, scale?: ChallengeScale): boo
  * required for direction questions (a rising/falling question about life
  * expectancy is a giveaway). `race` marks "moved the most" eligibility.
  * `invert` on a scale means higher = worse (corruption, inequality).
+ * `glyph` points at the metric's bespoke stat emblem in STAT_GLYPHS — the
+ * topic emblem is too generic on a card (internet use drew a bridge).
  */
 export const TREND_METRICS: Record<
   TrendMetricId,
@@ -39,6 +42,7 @@ export const TREND_METRICS: Record<
     label: string
     unit: string
     topic: ChallengeTopic
+    glyph?: GroupChallengeAccessorId
     scale?: ChallengeScale
     mixed: boolean
     race: boolean
@@ -48,6 +52,7 @@ export const TREND_METRICS: Record<
     label: 'democracy index',
     unit: 'index',
     topic: 'general knowledge',
+    glyph: 'government.democracyIndex',
     scale: { min: 0, max: 1 },
     mixed: true,
     race: true,
@@ -56,6 +61,7 @@ export const TREND_METRICS: Record<
     label: 'Human Development Index',
     unit: 'index',
     topic: 'general knowledge',
+    glyph: 'government.humanDevelopmentIndex',
     scale: { min: 0, max: 1 },
     mixed: false,
     race: true,
@@ -64,6 +70,7 @@ export const TREND_METRICS: Record<
     label: 'political corruption',
     unit: 'index',
     topic: 'general knowledge',
+    glyph: 'government.corruptionIndex',
     scale: { min: 0, max: 1, invert: true },
     mixed: true,
     race: true,
@@ -72,6 +79,7 @@ export const TREND_METRICS: Record<
     label: 'CO₂ emissions per person',
     unit: 't',
     topic: 'environment',
+    glyph: 'environment.CO2Emissions',
     mixed: true,
     race: true,
   },
@@ -79,6 +87,7 @@ export const TREND_METRICS: Record<
     label: 'life expectancy',
     unit: 'years',
     topic: 'health',
+    glyph: 'health.lifeExpectancy',
     mixed: false,
     race: true,
   },
@@ -86,6 +95,7 @@ export const TREND_METRICS: Record<
     label: 'fertility rate',
     unit: 'children',
     topic: 'people',
+    glyph: 'people.childrenPerWoman',
     mixed: false,
     race: true,
   },
@@ -100,6 +110,7 @@ export const TREND_METRICS: Record<
     label: 'internet use',
     unit: '%',
     topic: 'infrastructure',
+    glyph: 'infrastructure.internetAccess',
     scale: { min: 0, max: 100 },
     mixed: false,
     race: true,
@@ -115,6 +126,7 @@ export const TREND_METRICS: Record<
     label: 'total GDP',
     unit: '$',
     topic: 'economics',
+    glyph: 'economics.gdpTotal',
     mixed: false,
     race: true,
   },
@@ -122,6 +134,7 @@ export const TREND_METRICS: Record<
     label: 'GDP per person',
     unit: '$',
     topic: 'economics',
+    glyph: 'economics.gdpPerCapita',
     mixed: false,
     race: true,
   },
@@ -129,6 +142,7 @@ export const TREND_METRICS: Record<
     label: 'income inequality',
     unit: 'index',
     topic: 'economics',
+    glyph: 'economics.equality',
     // Real-world Gini coefficients span ~0.2–0.6; a 0–1 track would bury every
     // country in the middle and make the 8% decisiveness gap unreachable.
     scale: { min: 0.2, max: 0.6, invert: true },

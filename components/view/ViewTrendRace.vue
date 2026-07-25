@@ -9,20 +9,26 @@
       @done="begin({ onTimeout: () => resolve() })"
     />
 
+    <ChallengeTimerRadial
+      v-if="!revealed && !showInterstitial"
+      class="round-clock"
+      :value="secondsLeft"
+      :total="challenge.durationSeconds"
+    />
+
     <header>
       <div class="prompt">
         <h1 class="map-caption">
           Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
           {{ challenge.windowStartYear }}?
         </h1>
-        <span v-if="!revealed" class="map-caption sub">{{ secondsLeft }}s left</span>
-        <span v-else-if="pickedWinner" class="map-caption sub verdict correct">
+        <span v-if="revealed && pickedWinner" class="map-caption sub verdict correct">
           Called it — {{ winnerName }} moved the most
         </span>
-        <span v-else-if="picked !== undefined" class="map-caption sub verdict incorrect">
+        <span v-else-if="revealed && picked !== undefined" class="map-caption sub verdict incorrect">
           {{ winnerName }} moved the most
         </span>
-        <span v-else class="map-caption sub verdict incorrect">
+        <span v-else-if="revealed" class="map-caption sub verdict incorrect">
           Time's up — {{ winnerName }} moved the most
         </span>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -51,6 +57,7 @@
             class="race-card"
             :class="cardClass(isoCode)"
             :topic="metricTopic"
+            :accessor="metricGlyph"
             :disabled="revealed"
             @click="pick(isoCode)"
           >
@@ -85,10 +92,12 @@
         </ButtonFilled>
       </Transition>
     </section>
+
   </div>
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
@@ -126,6 +135,9 @@ const metricLabel = computed(() =>
 )
 const metricTopic = computed(() =>
   challenge.value ? TREND_METRICS[challenge.value.metric].topic : undefined
+)
+const metricGlyph = computed(() =>
+  challenge.value ? TREND_METRICS[challenge.value.metric].glyph : undefined
 )
 
 const winner = computed(() => challenge.value?.standings[0])
@@ -266,6 +278,7 @@ header {
   pointer-events: auto;
 }
 
+
 .race-card {
   cursor: pointer;
   position: relative;
@@ -352,8 +365,36 @@ header {
   }
 
   .race-list {
-    gap: 1rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  // Phone cards read as rows: flag and name lead, the stat emblem holds the
+  // far edge in flow — as a corner overlay it sat underneath the flag.
+  .race-card {
+    gap: 0.8rem 1rem;
+    padding: 1.2rem 1.4rem;
+    flex-flow: row wrap;
+    text-align: left;
+
+    .race-country {
+      flex: 1;
+      order: -2;
+      min-width: 0;
+    }
+
+    :deep(.topic-icon) {
+      order: -1;
+      position: static;
+    }
+
+    :deep(.trend-sparkline) {
+      width: 100%;
+    }
+
+    .rank-tag {
+      width: 100%;
+    }
   }
 }
 </style>
