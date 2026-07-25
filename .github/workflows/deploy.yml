@@ -25,4 +25,6 @@ jobs:
       # --ha=false keeps Mondiale on a single machine: the Socket.IO server
       # holds its io instance in per-machine memory, so a second machine
       # without sticky sessions + a Redis adapter breaks live game sessions.
-      - run: flyctl deploy --remote-only --ha=false
+      # GIT_SHA bakes the commit into /health (.git is dockerignored, so the
+      # build can't read it itself — same as bun run deploy).
+      - run: flyctl deploy --remote-only --ha=false --build-arg GIT_SHA=${{ github.sha }}
