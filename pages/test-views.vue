@@ -45,6 +45,7 @@ import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
+import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
@@ -562,6 +563,23 @@ const scenarios: Scenario[] = [
           _type: 'no-mans-land-challenge',
           territoryId: 'hans-island',
           claimants: ['DK', 'CA'],
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'water-blitz',
+    label: 'Water blitz (shared shores, typed)',
+    component: ViewWaterBlitz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'water-blitz-challenge',
+          featureId: 'adriatic-sea',
+          featureName: 'Adriatic Sea',
+          kind: 'sea',
+          countries: ['AL', 'BA', 'GR', 'HR', 'IT', 'ME', 'SI'],
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),

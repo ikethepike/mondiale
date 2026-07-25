@@ -103,12 +103,14 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 // (and future hosts) can scale the dial without fighting scoped specificity.
 // No `position` of its own: the dial stacks svg and numeral in one grid cell,
 // so a host's placement class (e.g. .round-clock) fully owns positioning.
+// Every colour reads through a custom property so themed surfaces (the night
+// console) can dress the dial without reaching into scoped internals.
 .radial-timer {
   width: var(--clock-size, 6.4rem);
   height: var(--clock-size, 6.4rem);
   display: grid;
   place-items: center;
-  color: var(--dark-blue);
+  color: var(--clock-ink, var(--dark-blue));
   animation: clock-in var(--motion-slow) var(--ease-out-expressive) both;
 
   svg {
@@ -119,8 +121,8 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 }
 
 .disc {
-  fill: hsla(36, 100%, 98%, 0.88);
-  stroke: hsla(215.7, 76.4%, 21.6%, 0.25);
+  fill: var(--clock-disc-fill, hsla(36, 100%, 98%, 0.88));
+  stroke: var(--clock-disc-stroke, hsla(215.7, 76.4%, 21.6%, 0.25));
   stroke-width: 1;
 }
 
@@ -138,7 +140,7 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 
 .arc {
   fill: none;
-  stroke: var(--soft-blue);
+  stroke: var(--clock-arc, var(--soft-blue));
   stroke-width: 2.5;
   stroke-linecap: round;
   transform: rotate(-90deg);
@@ -168,10 +170,10 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 // The ink warms as time runs low…
 .radial-timer.low {
   .arc {
-    stroke: var(--hior-ange);
+    stroke: var(--clock-warn, var(--hior-ange));
   }
   .seconds {
-    color: var(--hior-ange);
+    color: var(--clock-warn, var(--hior-ange));
   }
 }
 

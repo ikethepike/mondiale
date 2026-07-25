@@ -1,35 +1,31 @@
 <template>
   <div class="night-console">
-    <div class="tally">
-      <span class="lit">{{ lit }} lit</span> · {{ quota }} to pass · {{ clock }}
+    <div class="tally"><span class="lit">{{ lit }} lit</span> · {{ quota }} to pass</div>
+    <div class="console-row">
+      <div class="console-input"><slot /></div>
+      <ChallengeTimerRadial :value="secondsLeft" :total="durationSeconds" />
     </div>
-    <slot />
     <p v-if="feedback !== undefined" class="feedback" :class="{ visible: feedback }">
       {{ feedback }}
     </p>
-    <ChallengeTimer :value="secondsLeft" :total="durationSeconds" />
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 
 /**
- * The night modes' shared bottom card: dark glass, the lit/quota/clock tally,
- * a slotted input (bare or CountryGuessInput), and the round timer as the
- * card's bottom edge. Pass `feedback` (even '') to reserve the flash line.
+ * The night modes' shared bottom card: dark glass, the lit/quota tally, a
+ * slotted input (bare or CountryGuessInput) with the round clock docked at
+ * the row's end — the radial dial dressed for the dark, its arc in the same
+ * amber as the lit tally.
  */
-const props = defineProps<{
+defineProps<{
   lit: number
   quota: number
   secondsLeft: number
   durationSeconds: number
   feedback?: string
 }>()
-
-const clock = computed(() => {
-  const seconds = Math.max(0, props.secondsLeft)
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
-})
 </script>
 <style lang="scss" scoped>
 .night-console {
@@ -37,7 +33,7 @@ const clock = computed(() => {
   left: 50%;
   bottom: 1.6rem;
   display: flex;
-  padding: 1.2rem 1.6rem 0;
+  padding: 1.2rem 1.6rem;
   position: absolute;
   overflow: visible; // suggestions open upward, past the card
   transform: translateX(-50%);
@@ -49,16 +45,28 @@ const clock = computed(() => {
   background: hsla(216, 45%, 12%, 0.85);
   backdrop-filter: blur(0.6rem);
   box-shadow: 0 0.4rem 2.4rem hsla(216, 58%, 4%, 0.5);
-  width: min(40rem, calc(100vw - 3.2rem));
+  width: min(44rem, calc(100vw - 3.2rem));
 
-  // The timer is the card's bottom edge, not a bar floating inside it
-  :deep(.timer-track) {
-    margin: 0.6rem -1.6rem 0;
-    max-width: none;
-    width: calc(100% + 3.2rem);
-    border-radius: 0 0 1.4rem 1.4rem;
-    background: hsla(216, 30%, 45%, 0.25);
-  }
+  // The dial wears the night: dark glass disc, moonlit ink, the arc in the
+  // tally's amber so "time left" and "lit" read as one system.
+  --clock-size: 5.2rem;
+  --clock-seconds-size: 1.7rem;
+  --clock-ink: hsla(216, 30%, 78%, 1);
+  --clock-arc: hsla(45, 96%, 72%, 1);
+  --clock-disc-fill: hsla(216, 45%, 16%, 0.75);
+  --clock-disc-stroke: hsla(216, 30%, 50%, 0.35);
+}
+
+.console-row {
+  gap: 1rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.console-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .tally {
@@ -99,8 +107,11 @@ const clock = computed(() => {
 }
 
 // CountryGuessInput's form wears the parchment .map-caption pill by default —
-// light-on-light against the night text. Dress the pill dark to match.
+// light-on-light against the night text. Dress the pill dark to match, and
+// let it flex into the console row instead of keeping its fixed width.
 .night-console :deep(.guess-form) {
+  width: 100%;
+  min-width: 0;
   border-color: hsla(216, 30%, 50%, 0.35);
   background: hsla(216, 45%, 16%, 0.75);
 }

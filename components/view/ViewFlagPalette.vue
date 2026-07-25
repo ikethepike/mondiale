@@ -20,7 +20,6 @@
     <header>
       <div class="prompt">
         <h1 class="map-caption">Whose flag has these colours?</h1>
-        <span class="map-caption sub">{{ secondsLeft }}s left</span>
         <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
           Region: {{ challenge.region }}
         </span>
@@ -44,19 +43,28 @@
     </section>
 
     <footer>
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted || !started"
-        placeholder="Name the country…"
-        @guess="onGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
+      <!-- The round clock docks beside the input: this mode's lower edge
+           belongs to the guess box, so the dial joins its row instead of
+           floating in the shared corner berth. -->
+      <div class="console-row">
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted || !started"
+          placeholder="Name the country…"
+          @guess="onGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+        <ChallengeTimerRadial
+          class="docked-clock"
+          :value="secondsLeft"
+          :total="challenge.durationSeconds"
+        />
+      </div>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -204,6 +212,27 @@ header {
   box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
 }
 
+
+// The guess box and the round clock share one row: the input yields its
+// fixed width and flexes, the dial keeps its size at the row's end.
+.console-row {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+  width: min(42rem, 100%);
+
+  :deep(.guess-form) {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .docked-clock {
+    --clock-size: 5.6rem;
+    --clock-seconds-size: 1.8rem;
+    flex: none;
+  }
+}
 
 footer {
   z-index: 2;
