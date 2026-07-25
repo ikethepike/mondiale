@@ -393,7 +393,9 @@ footer {
 
   // No peek on phones: the vertical list owns the screen and the blurred map
   // behind it isn't worth a control. (The map is fully visible between rounds.)
-  .peek-button {
+  // Chained with .button to outrank ButtonBase's `display: flex` — equal
+  // specificity leaves the winner to stylesheet order, which varies per build.
+  .peek-button.button {
     display: none;
   }
 
