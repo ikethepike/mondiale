@@ -83,6 +83,9 @@
               <ButtonLine @click="showAtlas = true">
                 <span>View the atlas</span>
               </ButtonLine>
+              <ButtonLine v-if="!raceOver" @click="gameStore.spectating = true">
+                <span>Watch the race live</span>
+              </ButtonLine>
               <ButtonLine @click="goHome">
                 <span>Back to the home screen</span>
               </ButtonLine>
@@ -91,6 +94,16 @@
               You're free to leave — the race carries on without you, and this room remembers your
               crown if you return.
             </p>
+            <label v-if="isPlayerHost && !raceOver" class="spectator-door">
+              <input
+                type="checkbox"
+                :checked="!!game.allowSpectators"
+                @change="setSpectatorAccess"
+              />
+              <span>
+                Open to spectators — anyone with the room link can watch the rest of the race
+              </span>
+            </label>
           </footer>
         </section>
 
@@ -135,7 +148,16 @@ import { useCountUp } from '~~/lib/use-count-up'
 import { gameStats, visitedCountries } from '~~/lib/victory-stats'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
-const { game, player, playerId, gameStore, clearBoard } = useClientEvents()
+const { game, player, playerId, gameStore, clearBoard, isPlayerHost, update } = useClientEvents()
+
+// Host-only door policy, flippable mid-race — the one lever that works after
+// start-game froze the rest of the configuration.
+const setSpectatorAccess = (event: Event) => {
+  update({
+    event: 'set-spectator-access',
+    allowed: (event.target as HTMLInputElement).checked,
+  })
+}
 
 const router = useRouter()
 // Replace, not push: leaving a finished game shouldn't leave the room URL in
@@ -486,6 +508,28 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
     opacity: 0.55;
     font-size: 1.3rem;
     margin-top: 1.2rem;
+  }
+
+  .spectator-door {
+    gap: 0.8rem;
+    display: flex;
+    cursor: pointer;
+    font-size: 1.3rem;
+    margin-top: 1.4rem;
+    align-items: center;
+    pointer-events: auto;
+
+    input {
+      margin: 0;
+      flex-shrink: 0;
+      width: 1.6rem;
+      height: 1.6rem;
+      accent-color: var(--dark-blue);
+    }
+
+    span {
+      opacity: 0.7;
+    }
   }
 }
 

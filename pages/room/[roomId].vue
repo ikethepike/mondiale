@@ -44,6 +44,7 @@ import ViewHotCold from '~/components/view/ViewHotCold.vue'
 import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
+import ViewSpectate from '~/components/view/ViewSpectate.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
@@ -87,7 +88,18 @@ const activeView = computed<ActiveView | undefined>(() => {
     return { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
   }
 
-  if (!game.value || !player.value) return undefined
+  if (!game.value) return undefined
+
+  // No player record in a started game: a watcher. Either admitted through
+  // the spectator door, or ejected mid-watch (door closed) — the same dead
+  // end a closed-door latecomer gets.
+  if (game.value.started && !player.value) {
+    return gameStore.isSpectator
+      ? { component: ViewSpectate, kind: 'score', key: 'spectate' }
+      : { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
+  }
+
+  if (!player.value) return undefined
 
   if (!game.value.started) {
     return { component: ViewPlayerConfiguration, kind: 'lobby', key: 'lobby' }
@@ -145,7 +157,11 @@ const activeView = computed<ActiveView | undefined>(() => {
     case 'final-challenge':
       return { component: ViewFinalChallenge, kind: 'challenge', key: 'final-challenge' }
     case 'victory':
-      return { component: ViewVictory, kind: 'victory', key: 'victory' }
+      // A finisher can flip to watching the ongoing race and back — the flag
+      // is purely client-side, they already receive every broadcast.
+      return gameStore.spectating
+        ? { component: ViewSpectate, kind: 'score', key: 'spectate' }
+        : { component: ViewVictory, kind: 'victory', key: 'victory' }
     default:
       return undefined
   }
@@ -191,6 +207,17 @@ const route = useRoute()
 
 const joinRoom = () => {
   const { variant } = route.query
+
+  // Fold this room's id into the handshake auth (which already carries
+  // playerId + secret from the socket plugin). A reconnect then re-presents
+  // all three, letting the server verify and rebind before buffered events
+  // flush — the first connection has no room yet, so `join` binds instead.
+  const socket = gameStore.socket
+  const roomId = route.params.roomId
+  if (socket && typeof roomId === 'string') {
+    socket.auth = { ...(socket.auth as Record<string, unknown>), gameId: roomId }
+  }
+
   update({
     event: 'join',
     variant: isValidGameVariant(variant) ? variant : gameVariants[0],

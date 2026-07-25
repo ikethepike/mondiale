@@ -9,9 +9,32 @@ import type {
 import { type Game, isValidGame } from '../../types/game.types'
 import type { Player } from '../../types/player.type'
 import type { EventHandler } from '~~/server/middleware/socket.server'
+import { secretsKey } from '~~/lib/player-secret'
 import type { Redis } from '@upstash/redis'
 
 const TWO_DAYS_IN_SECONDS = 172800
+
+/**
+ * Per-player bearer secrets, stored under a key SEPARATE from the game so they
+ * can never ride a broadcast (which only ever carries the `Game` object). This
+ * is what stops a spectator — who sees every player's public id in the
+ * snapshot — from binding a socket to someone else's id.
+ */
+export const fetchSecrets = async (
+  redis: Redis,
+  gameId: string
+): Promise<Record<string, string>> => {
+  return (await redis.get<Record<string, string>>(secretsKey(gameId))) ?? {}
+}
+
+export const saveSecrets = async (
+  redis: Redis,
+  gameId: string,
+  secrets: Record<string, string>
+): Promise<void> => {
+  await redis.set(secretsKey(gameId), secrets)
+  await redis.expire(secretsKey(gameId), TWO_DAYS_IN_SECONDS)
+}
 
 /**
  * Per-socket data set on join. `playerId` binds the socket to the player it

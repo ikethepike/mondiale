@@ -24,7 +24,8 @@ export const useClientEvents = () => {
   const currentMoves = computed<PlayerMove[]>(() => {
     if (!game.value) return []
     if (!playerId.value) return []
-    return game.value.players[playerId.value].moves
+    // Spectators are never in `players` — they have no moves to show.
+    return game.value.players[playerId.value]?.moves ?? []
   })
 
   const currentMove = computed<PlayerMove | undefined>(() => {

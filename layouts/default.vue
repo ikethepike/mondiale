@@ -1,5 +1,5 @@
 <template>
-  <div class="layout" :class="[`phase-${player?.phase}`]">
+  <div class="layout" :class="[phaseClass]">
     <header v-if="diagnostics" id="diagnostic-bar">
       <div>
         <h3>Player</h3>
@@ -90,6 +90,13 @@ const { player, game, currentRound, gameStore, currentFinalChallenge } = useClie
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
 
+// Spectators (latecomers with no player record, or finishers watching the
+// race) get their own phase class: `phase-undefined` would hide the map.
+const phaseClass = computed(() => {
+  if (gameStore.isSpectator || gameStore.spectating) return 'phase-spectating'
+  return `phase-${player.value?.phase}`
+})
+
 const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
 
 const revealPopulation = computed(() => {
@@ -115,11 +122,14 @@ const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
 
 // The contour backdrop covers the pre-join wait and the lobby; the world map
 // takes over once the game starts. One instance spans both so the draw-in
-// sweep plays exactly once.
+// sweep plays exactly once. Spectators have no player record — without the
+// explicit check, `!player?.phase` would mount the lobby contours over their
+// live map for the whole match.
 const CONTOUR_PHASES = ['naming', 'waiting-for-game']
-const showContours = computed(
-  () => !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
-)
+const showContours = computed(() => {
+  if (gameStore.isSpectator || gameStore.spectating) return false
+  return !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
+})
 
 // Show the "what's everyone doing" panel only while parked on the board
 // (walking / turn done), where a player would otherwise wonder if the game
@@ -213,7 +223,8 @@ onMounted(() => {
 .phase-group-challenge .game-map,
 .phase-individual-challenge .game-map,
 .phase-final-challenge .game-map,
-.phase-victory .game-map {
+.phase-victory .game-map,
+.phase-spectating .game-map {
   transform: scale(1);
 }
 

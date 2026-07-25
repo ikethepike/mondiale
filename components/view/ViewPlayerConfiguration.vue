@@ -207,6 +207,23 @@
             />
           </div>
 
+          <div class="challenge-row">
+            <div class="challenge-meta">
+              <span class="challenge-name">Spectators</span>
+              <span class="challenge-caption"
+                >Let latecomers watch the race live. Off keeps the room sealed.</span
+              >
+            </div>
+            <SegmentedControl
+              name="game-spectators"
+              label="Spectators"
+              :options="['on', 'off']"
+              :model-value="game.allowSpectators ? 'on' : 'off'"
+              :disabled="!isPlayerHost"
+              @change="setSpectatorAccess"
+            />
+          </div>
+
           <p class="challenge-footnote">
             Ranking and stat rounds always play, so there's a game whatever you switch off.
           </p>
@@ -340,6 +357,9 @@ const updateConfiguration = async () => {
       if (value !== 'auto') challengeOverrides[field.replace('challenges-', '')] = value === 'on'
       continue
     }
+    // The spectator door rides its own event (it must swing mid-game too) —
+    // its control sits in this form only for layout.
+    if (field === 'spectators') continue
     configuration[field] = value
   }
 
@@ -375,6 +395,13 @@ const copyInviteLink = async () => {
 
   await wait(2000)
   hasCopied.value = false
+}
+
+const setSpectatorAccess = (value: string) => {
+  update({
+    event: 'set-spectator-access',
+    allowed: value === 'on',
+  })
 }
 
 const startGame = () => {

@@ -75,6 +75,7 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
 }
 
 const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`
+const PLAYER_SECRET_STORAGE_KEY = `GL_PLAYER_SECRET`
 
 export default defineNuxtPlugin(() => {
   const playerId = ref(localStorage.getItem(PLAYER_ID_STORAGE_KEY) || uuidv4())
@@ -82,11 +83,19 @@ export default defineNuxtPlugin(() => {
   // Set player ID
   localStorage.setItem(PLAYER_ID_STORAGE_KEY, playerId.value)
 
-  // The handshake carries the player id so the server can bind the socket to
-  // it on EVERY (re)connection. Binding only in the join handler leaves a gap
-  // after a reconnect where buffered events flush before the re-join and are
-  // rejected as unbound — the classic post-deploy room freeze.
-  const socket = io({ auth: { playerId: playerId.value } })
+  // The private bearer token that proves this browser owns `playerId`. The id
+  // is public (it rides every snapshot); the secret never does, so seeing an
+  // id off the wire is not enough to act as its owner. Kept in localStorage
+  // alongside the id and sent in the handshake auth, never in event payloads.
+  const secret = localStorage.getItem(PLAYER_SECRET_STORAGE_KEY) || uuidv4()
+  localStorage.setItem(PLAYER_SECRET_STORAGE_KEY, secret)
+
+  // The handshake carries the id + secret so the server can VERIFY and rebind
+  // the socket on every (re)connection. Verifying on the handshake (not only
+  // in the join handler) closes the reconnect gap where buffered events flush
+  // before the re-join lands — the classic post-deploy room freeze. gameId is
+  // added to the auth by the room page so reconnects can be verified.
+  const socket = io({ auth: { playerId: playerId.value, secret } })
   const gameStore = useGameStore()
   gameStore.socket = socket
   const connected = ref(false)

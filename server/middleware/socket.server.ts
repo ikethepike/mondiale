@@ -1,6 +1,13 @@
 import { Redis } from '@upstash/redis'
 import { Server } from 'socket.io'
-import { enqueueGameTask, type GameServer, type GameSocket } from '~~/lib/events/server-side'
+import {
+  enqueueGameTask,
+  fetchSecrets,
+  useServerSideEvents,
+  type GameServer,
+  type GameSocket,
+} from '~~/lib/events/server-side'
+import { verifyPlayerSecret } from '~~/lib/player-secret'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
 import { joinEventHandler } from '~~/lib/events/server/join.event'
@@ -21,6 +28,7 @@ import {
   forgetGuessBucket,
   playerGuessingHandler,
 } from '~~/lib/events/server/player-guessing.handler'
+import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
 import type {
@@ -92,6 +100,34 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   'update-configuration': {
     handler: updateConfigurationHandler,
   },
+  'set-spectator-access': {
+    handler: setSpectatorAccessHandler,
+  },
+}
+
+/**
+ * A watcher's socket dropped — remove them from the spectator set so the "N
+ * watching" count and every broadcast snapshot stay honest. Players are NEVER
+ * pruned: their records persist across disconnects on purpose (reconnect
+ * healing rebuilds them). Runs on the per-game queue so it can't race a
+ * concurrent handler's read-modify-write.
+ */
+const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSocket) => {
+  const { gameId, playerId } = socket.data
+  if (!gameId || !playerId) return
+
+  enqueueGameTask(gameId, async () => {
+    const server = useServerSideEvents({ socket, redis, io })
+    const game = await server.fetchGame(gameId)
+    if (!game?.spectators?.[playerId]) return
+    if (game.players[playerId]) return // a real player — never prune
+
+    game.spectators = Object.fromEntries(
+      Object.entries(game.spectators).filter(([id]) => id !== playerId)
+    )
+    await server.updateGameState(game)
+    server.emit({ event: 'player-joined', game }, { gameId, playerId })
+  }).catch(error => console.error(`Spectator prune failed for ${gameId}`, error))
 }
 
 export default defineEventHandler(({ node }) => {
@@ -113,16 +149,8 @@ export default defineEventHandler(({ node }) => {
       (node.res.socket as { server?: import('node:http').Server })?.server
     )
     io.on('connection', async socket => {
-      // Bind the socket to the player id it presented at the handshake. The
-      // playerId is a bearer token — the handshake claim grants nothing `join`
-      // didn't. Binding here (not only in the join handler) closes the
-      // reconnect gap where socket.io flushes buffered events before the
-      // client's re-join lands, which used to silently drop them as unbound.
-      const handshakePlayerId = socket.handshake.auth?.playerId
-      if (typeof handshakePlayerId === 'string' && handshakePlayerId) {
-        socket.data.playerId = handshakePlayerId
-      }
-
+      // Register event handlers synchronously FIRST, so nothing is missed
+      // while the async handshake verification below runs.
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
         socket.on(
           eventKey,
@@ -173,7 +201,31 @@ export default defineEventHandler(({ node }) => {
       socket.on('disconnect', () => {
         forgetGuessBucket(socket.id)
         forgetCheerBucket(socket.id)
+        pruneSpectatorOnDisconnect(io, redis, socket)
       })
+
+      // Optimistic bind for RECONNECTS: once a client has joined a room its
+      // handshake carries { playerId, secret, gameId }, so verifying here
+      // rebinds the socket before its buffered events flush — closing the
+      // reconnect gap that used to drop them as unbound — WITHOUT trusting an
+      // unproven id claim. The first connection (home page, no gameId) skips
+      // this and lets the verified `join` handler do the binding.
+      const { playerId, secret, gameId } = socket.handshake.auth ?? {}
+      if (typeof playerId === 'string' && playerId && typeof gameId === 'string' && gameId) {
+        try {
+          const secrets = await fetchSecrets(redis, gameId)
+          const verdict = verifyPlayerSecret(
+            secrets[playerId],
+            typeof secret === 'string' ? secret : undefined
+          )
+          if (verdict === 'ok' || verdict === 'open') {
+            socket.data.playerId = playerId
+            socket.data.gameId = gameId
+          }
+        } catch (error) {
+          console.error('Handshake secret check failed', error)
+        }
+      }
     })
 
     io.on('error', error => {

@@ -106,6 +106,13 @@ export type ClientEventData =
       configuration: GameConfiguration
     }
   | {
+      /** Host-only door policy for watchers. Deliberately NOT part of
+       *  GameConfiguration: configuration freezes at start-game (it regenerates
+       *  tiles), while the spectator door must swing mid-race too. */
+      event: 'set-spectator-access'
+      allowed: boolean
+    }
+  | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
        *  state (like update-by-index). `isoCode`/`label` are omitted under a
