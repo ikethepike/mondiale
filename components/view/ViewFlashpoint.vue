@@ -43,30 +43,43 @@
 
       <footer :class="{ 'has-input': !challenge.options && !submitted }">
         <template v-if="!submitted">
-          <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-          <!-- Non-hard mode: pick from flag options. Hard mode: free-type. -->
-          <div v-if="challenge.options" class="options card-options">
-            <button
-              v-for="option in challenge.options"
-              :key="option"
-              class="option card-option"
-              :class="{ 'is-spent': spent.includes(option) }"
-              type="button"
-              :disabled="submitted || !started || spent.includes(option)"
-              @click="onGuess(getCountry(option))"
-            >
-              <CountryTileFlag class="option-flag" :country="getCountry(option)" />
-              <span>{{ countryName(option) }}</span>
-            </button>
-          </div>
-          <CountryGuessInput
+          <!-- Non-hard mode: pick from flag options, the round clock above
+               them. Hard mode: the clock lives inside the guess console. -->
+          <template v-if="challenge.options">
+            <ChallengeTimerRadial
+              class="footer-clock"
+              :value="secondsLeft"
+              :total="challenge.durationSeconds"
+            />
+            <div class="options card-options">
+              <button
+                v-for="option in challenge.options"
+                :key="option"
+                class="option card-option"
+                :class="{ 'is-spent': spent.includes(option) }"
+                type="button"
+                :disabled="submitted || !started || spent.includes(option)"
+                @click="onGuess(getCountry(option))"
+              >
+                <CountryTileFlag class="option-flag" :country="getCountry(option)" />
+                <span>{{ countryName(option) }}</span>
+              </button>
+            </div>
+          </template>
+          <ChallengeConsole
             v-else
-            ref="guessInput"
-            :disabled="submitted || !started"
-            placeholder="Name the country…"
-            @guess="onGuess"
-            @miss="announce({ hint: 'No country by that name' })"
-          />
+            class="console"
+            :value="secondsLeft"
+            :total="challenge.durationSeconds"
+          >
+            <CountryGuessInput
+              ref="guessInput"
+              :disabled="submitted || !started"
+              placeholder="Name the country…"
+              @guess="onGuess"
+              @miss="announce({ hint: 'No country by that name' })"
+            />
+          </ChallengeConsole>
         </template>
         <ConflictProfileCard v-else :country="challenge.country" />
       </footer>
@@ -74,7 +87,8 @@
   </section>
 </template>
 <script lang="ts" setup>
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ConflictDotField from '~/components/challenge/ConflictDotField.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
@@ -298,6 +312,16 @@ header .prompt .hint {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+.console {
+  width: min(42rem, 100%);
+}
+
+// The options variant's round clock, centred above the flag grid.
+.footer-clock {
+  --clock-size: 5.6rem;
+  --clock-seconds-size: 1.8rem;
 }
 
 footer {

@@ -45,17 +45,24 @@
     />
 
     <footer v-if="!result">
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-
-      <ButtonFilled :disabled="!pin || submitted || !started" @click="lockIn">
-        {{ submitted ? 'Locked in' : 'Lock in my pin' }}
-      </ButtonFilled>
+      <!-- The round clock docks beside the lock — the action and the time
+           to act read as one row, as in the guess consoles. -->
+      <div class="lock-row">
+        <ButtonFilled :disabled="!pin || submitted || !started" @click="lockIn">
+          {{ submitted ? 'Locked in' : 'Lock in my pin' }}
+        </ButtonFilled>
+        <ChallengeTimerRadial
+          class="lock-clock"
+          :value="secondsLeft"
+          :total="challenge.durationSeconds"
+        />
+      </div>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import MediaDock from '~/components/challenge/MediaDock.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -259,6 +266,18 @@ footer {
   pointer-events: auto;
 }
 
+.lock-row {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+
+  .lock-clock {
+    flex: none;
+    --clock-size: 4.6rem;
+    --clock-seconds-size: 1.5rem;
+  }
+}
+
 .pinned {
   font-variant-numeric: tabular-nums;
 }
@@ -280,9 +299,14 @@ footer {
   footer {
     width: 100%;
     padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
+  .lock-row {
+    width: 100%;
 
     :deep(.button) {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
     }
   }
 
