@@ -9,20 +9,26 @@
       @done="begin({ onTimeout: () => resolve() })"
     />
 
+    <ChallengeTimerRadial
+      v-if="!revealed && !showInterstitial"
+      class="round-clock"
+      :value="secondsLeft"
+      :total="challenge.durationSeconds"
+    />
+
     <header>
       <div class="prompt">
         <h1 class="map-caption">
           Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
           {{ challenge.windowStartYear }}?
         </h1>
-        <span v-if="!revealed" class="map-caption sub">{{ secondsLeft }}s left</span>
-        <span v-else-if="pickedWinner" class="map-caption sub verdict correct">
+        <span v-if="revealed && pickedWinner" class="map-caption sub verdict correct">
           Called it — {{ winnerName }} moved the most
         </span>
-        <span v-else-if="picked !== undefined" class="map-caption sub verdict incorrect">
+        <span v-else-if="revealed && picked !== undefined" class="map-caption sub verdict incorrect">
           {{ winnerName }} moved the most
         </span>
-        <span v-else class="map-caption sub verdict incorrect">
+        <span v-else-if="revealed" class="map-caption sub verdict incorrect">
           Time's up — {{ winnerName }} moved the most
         </span>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -87,14 +93,11 @@
       </Transition>
     </section>
 
-    <footer v-if="!revealed">
-      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
-    </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
-import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
@@ -275,14 +278,6 @@ header {
   pointer-events: auto;
 }
 
-// The round clock, in the shared bottom-footer slot every timed mode uses.
-footer {
-  z-index: 2;
-  padding: 2rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
 
 .race-card {
   cursor: pointer;
@@ -367,10 +362,6 @@ footer {
   // scroll container that would surface as horizontal jitter.
   .spread {
     width: 100%;
-  }
-
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
   .race-list {

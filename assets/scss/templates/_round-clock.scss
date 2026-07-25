@@ -1,0 +1,19 @@
+@use '../rules/breakpoints' as *;
+
+// The round clock's shared berth. Every timed mode mounts its radial timer
+// with this class so the clock sits in the same place in every round:
+// top-right on desktop, a smaller dial tucked under the safe area on phones.
+.round-clock {
+  top: 2rem;
+  right: 2rem;
+  z-index: 5;
+  position: absolute;
+  pointer-events: none;
+
+  @media screen and (max-width: $tablet) {
+    --clock-size: 5.2rem;
+    --clock-seconds-size: 1.7rem;
+    top: calc(1.2rem + var(--safe-top));
+    right: calc(1.2rem + var(--safe-right));
+  }
+}
