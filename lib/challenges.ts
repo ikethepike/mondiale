@@ -1950,6 +1950,28 @@ const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined =
     : undefined
 }
 
+/**
+ * The find-fallback subject for the themed gates: a leader gate needs a named
+ * leader and a currency gate a currency, or the phrasing has a hole in it.
+ */
+const pickThemedFindCountry = (
+  accessorId: IndividualChallengeAccessorId,
+  pool: ISOCountryCode[]
+): ISOCountryCode => {
+  const withProperty = (predicate: (isoCode: ISOCountryCode) => boolean) => {
+    const themed = pool.filter(predicate)
+    return pickLargeCountry(themed.length ? themed : pool)
+  }
+  switch (accessorId) {
+    case 'government.leader':
+      return withProperty(isoCode => !!COUNTRIES[isoCode].government?.leader)
+    case 'currency':
+      return withProperty(isoCode => !!COUNTRIES[isoCode].currency)
+    default:
+      return pickLargeCountry(pool)
+  }
+}
+
 export const getIndividualChallenge = ({
   accessorId,
   difficulty = 'normal',
@@ -1966,7 +1988,7 @@ export const getIndividualChallenge = ({
   const base: IndividualChallenge = {
     _type: 'individual-challenge',
     id: accessorId,
-    country: pickLargeCountry(pool),
+    country: pickThemedFindCountry(accessorId, pool),
     variant: 'find',
   }
 
@@ -2101,6 +2123,44 @@ export const getIndividualChallenge = ({
       } else if (roll < 0.95) {
         const dealt = dealTrendDuels(settings, pool)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
+      }
+      break
+    }
+    case 'government.leader': {
+      // The leadership gate: faces first, names second; the find fallback is
+      // a map hunt for the phrased leader's country.
+      if (roll < 0.5) {
+        const dealt = dealLeaderPortrait(pool)
+        if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
+      }
+      if (roll < 0.9) {
+        const dealt = dealLeaderPick(pool)
+        if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
+      }
+      break
+    }
+    case 'currency': {
+      // The money gate: money-match headlines here (not hard-only, unlike the
+      // knowledge tile); a stat duel backs it up when a note can't be dealt.
+      if (roll < 0.65) {
+        const dealt = dealMoneyMatch(pool)
+        if (dealt) return { ...base, variant: 'money-match', ...dealt }
+      }
+      if (roll < 0.85) {
+        const dealt = dealHigherLower(settings, pool)
+        if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
+      }
+      break
+    }
+    case 'landmarks': {
+      // The landmark gate: photo quizzes, with the capital skyline sibling.
+      if (roll < 0.6) {
+        const dealt = dealLandmarkQuiz(pool)
+        if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
+      }
+      if (roll < 0.9) {
+        const dealt = dealCapitalMatch(pool)
+        if (dealt) return { ...base, variant: 'capital-match', ...dealt }
       }
       break
     }
@@ -2384,6 +2444,18 @@ export const getChallengeDetails = (
     },
     isoCode: {
       topic: 'general knowledge',
+      phrasing: 'Where on the map is {countryName}?',
+    },
+    'government.leader': {
+      topic: 'general knowledge',
+      phrasing: 'Which country is led by {leader}?',
+    },
+    currency: {
+      topic: 'economics',
+      phrasing: 'Which country spends the {currency}?',
+    },
+    landmarks: {
+      topic: 'geography',
       phrasing: 'Where on the map is {countryName}?',
     },
     'infrastructure.internetAccess': {

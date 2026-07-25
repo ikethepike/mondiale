@@ -97,7 +97,14 @@ export const individualChallengeVariants = [
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
-export const individualChallengeAccessors = ['flag', 'isoCode', 'capital.name'] as const
+export const individualChallengeAccessors = [
+  'flag',
+  'isoCode',
+  'capital.name',
+  'government.leader',
+  'currency',
+  'landmarks',
+] as const
 export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (
   accessorId: unknown

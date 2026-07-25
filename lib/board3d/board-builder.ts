@@ -18,6 +18,7 @@ import {
   DoubleSide,
   PlaneGeometry,
   Quaternion,
+  SphereGeometry,
   TubeGeometry,
   Vector2,
   Vector3,
@@ -225,8 +226,9 @@ interface MarkerPart {
  * Local-space marker shapes per challenge type (y up, origin at tile ground,
  * +z pointing along the path). Chunky low-poly forms in the toon language:
  * a flag for flag challenges, an obelisk for capitals, a signpost for ISO
- * codes and a full arch spanning the final tile — physical gates that read
- * as a hard border to pass.
+ * codes, a statue for leaders, a standing coin for currencies, a pyramid for
+ * landmarks and a full arch spanning the final tile — physical gates that
+ * read as a hard border to pass.
  */
 const markerPartsFor = (
   type: IndividualChallengeAccessorId | 'final',
@@ -262,6 +264,42 @@ const markerPartsFor = (
       return [
         { geometry: pole, color: BOARD_COLORS.darkBlue },
         { geometry: plate, color: BOARD_COLORS.warmSand },
+      ]
+    }
+    case 'government.leader': {
+      const plinth = new BoxGeometry(0.34 * s, 0.22 * s, 0.34 * s)
+      plinth.translate(0, 0.11 * s, 0)
+      const torso = new CylinderGeometry(0.07 * s, 0.13 * s, 0.42 * s, 10)
+      torso.translate(0, 0.43 * s, 0)
+      const head = new SphereGeometry(0.1 * s, 12, 10)
+      head.translate(0, 0.72 * s, 0)
+      return [
+        { geometry: plinth, color: BOARD_COLORS.warmSand },
+        { geometry: torso, color: BOARD_COLORS.darkBlue },
+        { geometry: head, color: BOARD_COLORS.darkBlue },
+      ]
+    }
+    case 'currency': {
+      const plinth = new BoxGeometry(0.4 * s, 0.14 * s, 0.2 * s)
+      plinth.translate(0, 0.07 * s, 0)
+      // A fat disc stood on its edge — reads as a coin at board scale
+      const coin = new CylinderGeometry(0.26 * s, 0.26 * s, 0.09 * s, 20)
+      coin.rotateX(Math.PI / 2)
+      coin.translate(0, 0.42 * s, 0)
+      return [
+        { geometry: plinth, color: BOARD_COLORS.darkBlue },
+        { geometry: coin, color: BOARD_COLORS.warmSand },
+      ]
+    }
+    case 'landmarks': {
+      const base = new BoxGeometry(0.52 * s, 0.1 * s, 0.52 * s)
+      base.translate(0, 0.05 * s, 0)
+      const pyramid = new ConeGeometry(0.34 * s, 0.55 * s, 4)
+      pyramid.rotateY(Math.PI / 4)
+      pyramid.translate(0, 0.375 * s, 0)
+      return [
+        { geometry: base, color: BOARD_COLORS.darkBlue },
+        { geometry: pyramid, color: BOARD_COLORS.warmSand },
       ]
     }
     case 'final': {
