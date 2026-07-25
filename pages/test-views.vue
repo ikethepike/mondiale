@@ -619,6 +619,21 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'flag-palette-hard',
+    label: 'Flag palette (hard: no region, sketch still draws)',
+    component: ViewFlagPalette,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'flag-palette-challenge',
+          country: 'BT',
+          swatches: COUNTRIES.BT.identity.colors.slice(0, 6),
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'silhouette',
     label: 'Silhouette (typed)',
     component: ViewSilhouette,

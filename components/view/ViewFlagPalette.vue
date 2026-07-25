@@ -90,18 +90,16 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-// Staged hints (non-hard mode; the dealer omits `region` on hard): the
-// region at half-time, and from the final two-thirds the flag sketches
-// itself across the background, completing with the clock. Answering early
-// stays worth more.
+// Staged hints: the region at half-time (non-hard only — the dealer omits
+// `region` on hard), and from the final two-thirds the flag sketches itself
+// across the background, completing with the clock — every difficulty gets
+// the sketch. Answering early stays worth more.
 const clockFraction = computed(() => {
   const total = challenge.value?.durationSeconds ?? 0
   return started.value && total > 0 ? secondsLeft.value / total : 1
 })
 const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
-const sketchStarted = computed(
-  () => !!challenge.value?.region && clockFraction.value <= 2 / 3 && !submitted.value
-)
+const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
 const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
 
 const submitRound = (correct: boolean) => {
