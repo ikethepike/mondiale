@@ -34,7 +34,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 /**
  * The round clock: one radial element carrying both the draining arc and the
@@ -69,13 +69,35 @@ const TICKS = Array.from({ length: 12 }, (_, i) => {
 // Timed modes decrement once more on the tick that fires onTimeout, so
 // `value` reaches -1. Clamp both the numeral and the arc.
 const seconds = computed(() => Math.max(0, props.value))
+
+// Hosts tick `value` in whole seconds, so the arc interpolates against the
+// wall clock between ticks — a per-second CSS transition stalls and restarts
+// as the interval drifts. Until the first tick, `value` is taken as exact.
+const smoothSeconds = ref(props.value)
+let tickAt = 0
+let frameHandle: number | undefined
+watch(
+  () => props.value,
+  () => {
+    tickAt = performance.now()
+    smoothSeconds.value = props.value
+  }
+)
+const frame = () => {
+  if (tickAt) {
+    const elapsed = Math.min(1, (performance.now() - tickAt) / 1000)
+    smoothSeconds.value = props.value - elapsed
+  }
+  frameHandle = requestAnimationFrame(frame)
+}
+
 const fraction = computed(() =>
-  props.total ? Math.min(1, Math.max(0, props.value / props.total)) : 0
+  props.total ? Math.min(1, Math.max(0, smoothSeconds.value / props.total)) : 0
 )
 
 // Entrance: the arc sweeps in from empty to the current fraction, pulling the
 // eye to the clock as the round settles; after the sweep it drains linearly,
-// one smooth second per tick.
+// frame by frame.
 const entered = ref(false)
 const sweeping = ref(true)
 let sweepTimer: ReturnType<typeof setTimeout> | undefined
@@ -86,8 +108,15 @@ onMounted(() => {
   sweepTimer = setTimeout(() => {
     sweeping.value = false
   }, 1000)
+  // Reduced motion keeps the arc stepping in whole seconds.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    frameHandle = requestAnimationFrame(frame)
+  }
 })
-onBeforeUnmount(() => sweepTimer && clearTimeout(sweepTimer))
+onBeforeUnmount(() => {
+  if (sweepTimer) clearTimeout(sweepTimer)
+  if (frameHandle) cancelAnimationFrame(frameHandle)
+})
 
 const dashOffset = computed(() =>
   entered.value ? CIRCUMFERENCE * (1 - fraction.value) : CIRCUMFERENCE
@@ -145,12 +174,13 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
   stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: center;
-  transition:
-    stroke-dashoffset 1s linear,
-    stroke var(--motion-base) var(--ease-smooth);
+  // No dashoffset transition here: after the sweep the script retargets the
+  // offset every frame, and a transition would trail behind it.
+  transition: stroke var(--motion-base) var(--ease-smooth);
 }
 
-// The entrance sweep gets the expressive easing; ticking is linear.
+// The entrance sweep gets the expressive easing; after it the arc drains
+// frame-by-frame against the wall clock.
 .radial-timer.sweeping .arc {
   transition:
     stroke-dashoffset 0.9s var(--ease-out-expressive),
