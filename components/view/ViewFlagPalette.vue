@@ -234,6 +234,76 @@ header {
   }
 }
 
+// Variant: the console card — the day twin of the night console. The row
+// itself becomes the parchment surface; the input sheds its own pill and
+// the dial's disc fades to a wash so card, input and clock read as one.
+.console-row.console-card {
+  gap: 0.6rem;
+  padding: 0.8rem 0.8rem 0.8rem 1rem;
+  border-radius: 1.8rem;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+
+  :deep(.guess-form) {
+    border: none;
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .docked-clock {
+    --clock-size: 5rem;
+    --clock-seconds-size: 1.7rem;
+    --clock-disc-fill: hsla(215.7, 76.4%, 21.6%, 0.06);
+    --clock-disc-stroke: transparent;
+  }
+}
+
+// Variant: the clock lives inside the input pill itself — the row wears the
+// map-caption pill and the dial tucks against its right cap, bezel only.
+.console-row.console-pill {
+  gap: 0.2rem;
+  padding: 0.3rem 0.4rem 0.3rem 0;
+  border-radius: 1.2rem;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.85);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+
+  :deep(.guess-form) {
+    border: none;
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .docked-clock {
+    --clock-size: 4.6rem;
+    --clock-seconds-size: 1.5rem;
+    --clock-disc-fill: transparent;
+    --clock-disc-stroke: transparent;
+  }
+}
+
+// Variant: the badge — the dial overlaps the pill's right cap, half in,
+// half out, its disc covering the seam like a wax seal on the console.
+.console-row.console-badge {
+  gap: 0;
+
+  .docked-clock {
+    --clock-size: 6rem;
+    --clock-seconds-size: 1.9rem;
+    // Opaque face, stacked over the guess form (which carries z-index 10
+    // for its suggestion list): the seal must cover the pill's cap.
+    --clock-disc-fill: hsl(36, 100%, 98%);
+    z-index: 11;
+    position: relative;
+    margin-left: -3rem;
+  }
+
+  :deep(.guess-form) {
+    padding-right: 4.4rem;
+  }
+}
+
 footer {
   z-index: 2;
   padding: 2rem;
