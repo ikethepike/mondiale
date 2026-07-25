@@ -176,9 +176,16 @@ holds the logic, `components/spectate/` the two surfaces:
   follow-cam, path preview and gate knocks all track them. Spectators can
   grab and orbit the camera like any player.
 - **Gate / gauntlet stages**: the actual question at the followed player's
-  gate (`gateStory` — phrasing tokens like `{leader}` filled by the shared
-  `processReplacements`), banked steps, and for the final gauntlet a
-  cleared/lives progress bar (`finalStory` per question type).
+  gate (`gateStory`), banked steps, and for the final gauntlet a cleared/lives
+  progress bar (`finalStory` per question type). Each variant mirrors what the
+  racer actually sees rather than the accessor phrasing: flag gates render the
+  candidate flags ("Which flag belongs to Brazil?"), photo gates show the
+  skyline/landmark/portrait, and "name the hidden country" gates (silhouette,
+  zoom-out, outline-reveal) keep the country in the spoiler-gated secret
+  instead of the prompt. Where the answer is one of the shown choices, its
+  flag is ticked — but only when spoilers are shown; the choices themselves
+  are the question, so they render either way (a hidden-spoiler spectator can
+  still play along).
 - **The map is the stage's backdrop**: each story's focus countries glow and
   the camera frames them (the optimal traversal route, the mystery country,
   the gauntlet's subject); with nothing to point at it falls back to the

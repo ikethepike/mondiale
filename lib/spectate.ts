@@ -87,6 +87,12 @@ export interface SpectateStory {
   prompt: string
   /** What the racers can't see — the answer, told to the audience. */
   secret?: string
+  /** Choice flags the racer reasons over (flag options, a neighbour ring). The
+   *  question itself, so rendered as a flag row even under spoiler-protection. */
+  options?: ISOCountryCode[]
+  /** Which option is the correct pick — marked only when spoilers are shown.
+   *  May sit outside `options` (e.g. the country a border ring surrounds). */
+  answer?: ISOCountryCode
   /** Countries the stage paints on the shared map. */
   focus?: ISOCountryCode[]
   /** Photo prompt when the round is image-driven. */
@@ -158,7 +164,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('country' in challenge)) break
       return {
         kicker: 'Silhouette',
-        prompt: 'Whose outline is this? First right answer takes the round.',
+        prompt: 'First to name the mystery country from its silhouette takes the round',
         secret: `It's ${countryName(challenge.country as ISOCountryCode)} — will anyone see it?`,
         focus: [challenge.country as ISOCountryCode],
       }
@@ -213,7 +219,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('featureName' in challenge)) break
       return {
         kicker: 'Name that water',
-        prompt: 'Name the highlighted feature',
+        prompt: 'Name the mystery sea, lake or river tracing itself onto the map',
         secret: `It's the ${challenge.featureName}`,
       }
     }
@@ -230,8 +236,8 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('country' in challenge)) break
       return {
         kicker: 'Flag palette',
-        prompt: 'Whose flag flies these colours?',
-        secret: `${countryName(challenge.country as ISOCountryCode)}'s`,
+        prompt: "Name the country from its flag's colour palette",
+        secret: `Those colours fly for ${countryName(challenge.country as ISOCountryCode)}`,
         focus: [challenge.country as ISOCountryCode],
       }
     }
@@ -329,12 +335,38 @@ export const gateStory = (challenge: IndividualChallenge): SpectateStory => {
   const answer = countryName(challenge.country)
 
   switch (variant) {
+    // Flag gates name the country openly and ask the racer to pick its flag —
+    // so the country is NOT a secret; the correct flag is. Render the choices
+    // and mark the right one only when spoilers are shown.
+    case 'flag-pick':
+      return {
+        kicker,
+        prompt: `Which flag belongs to ${answer}?`,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'flag-twins':
+      return {
+        kicker,
+        prompt: `These look-alikes share the same colours — which is ${answer}?`,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'leader-pick':
+      return {
+        kicker,
+        prompt: 'Whose leader is named? Pick the country.',
+        secret: `The answer is ${answer}`,
+        options: challenge.options,
+        answer: challenge.country,
+      }
     case 'odd-one-out':
       return {
         kicker,
-        prompt: `One of these doesn't belong: ${challenge.oddOneOut?.propertyLabel ?? 'find the impostor'}`,
-        secret: `The impostor is ${answer}`,
-        focus: challenge.oddOneOut?.countries,
+        prompt: `One of these doesn't belong — ${challenge.oddOneOut?.propertyLabel ?? 'find the impostor'}`,
+        secret: `The odd one out is ${answer}`,
+        options: challenge.oddOneOut?.countries,
+        answer: challenge.country,
       }
     case 'higher-lower':
       return {
@@ -355,7 +387,77 @@ export const gateStory = (challenge: IndividualChallenge): SpectateStory => {
         kicker,
         prompt: 'A ring of neighbours, an empty centre — name the country they surround',
         secret: `They surround ${answer}`,
+        options: challenge.neighbours,
         focus: challenge.neighbours,
+      }
+    // Photo gates: the racer sees an image and picks a country — mirror the
+    // photo, not the accessor phrasing (which would name the subject).
+    case 'capital-match':
+      return {
+        kicker,
+        prompt: "Name the country from its capital's skyline",
+        secret: `That skyline is ${answer}'s capital`,
+        image: challenge.image,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'landmark-quiz':
+      return {
+        kicker,
+        prompt: 'Which country is this landmark in?',
+        secret: `It's in ${answer}`,
+        image: challenge.image,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'leader-portrait':
+      return {
+        kicker,
+        prompt: 'Which country does this leader govern?',
+        secret: `They govern ${answer}`,
+        image: challenge.portrait?.image,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'money-match':
+      return {
+        kicker,
+        prompt: 'Match the currency to the country that spends it',
+        secret: `It's ${answer}'s`,
+        options: challenge.options,
+        answer: challenge.country,
+      }
+    case 'trajectory-match':
+      return {
+        kicker,
+        prompt: 'Whose trend line is this?',
+        secret: `The chart is ${answer}'s`,
+        options: challenge.trajectory?.options,
+        answer: challenge.country,
+      }
+    // "Name the hidden country" gates: the country is NOT named to the racer —
+    // it's the whole puzzle — so keep it in the (spoiler-gated) secret.
+    case 'zoom-out':
+      return {
+        kicker,
+        prompt: 'Name the country as the map eases out from a tight crop',
+        secret: `It's ${answer}`,
+        focus: [challenge.country],
+      }
+    case 'outline-reveal':
+      return {
+        kicker,
+        prompt: 'Name the country as its border draws itself in',
+        secret: `It's ${answer}`,
+        focus: [challenge.country],
+      }
+    case 'find':
+      // 'find' names the target openly; the answer is WHERE it is (the map
+      // focus, spoiler-gated), so no separate secret line is needed.
+      return {
+        kicker,
+        prompt: `Find ${answer} on the map`,
+        focus: [challenge.country],
       }
     default: {
       // Accessor phrasings carry {leader}/{currency}-style tokens — fill them

@@ -100,7 +100,7 @@ describe('roundStory', () => {
 })
 
 describe('gateStory', () => {
-  it('names the answer for accessor-phrased gates', () => {
+  it('renders flag choices and marks the answer for a flag-pick gate', () => {
     const challenge: IndividualChallenge = {
       _type: 'individual-challenge',
       id: 'flag',
@@ -110,6 +110,37 @@ describe('gateStory', () => {
     }
     const story = gateStory(challenge)
     expect(story.kicker).toContain('gate')
+    // The country is named openly (as the real gate does), the flags are the
+    // choices, and the correct one is flagged via `answer`.
+    expect(story.prompt).toContain('Sweden')
+    expect(story.options).toEqual(['SE', 'NO', 'DK'])
+    expect(story.answer).toBe('SE')
+  })
+
+  it('mirrors the photo, not the accessor phrasing, for a capital-match gate', () => {
+    const challenge: IndividualChallenge = {
+      _type: 'individual-challenge',
+      id: 'capital.name',
+      country: 'SE',
+      variant: 'capital-match',
+      image: '/skylines/stockholm.webp',
+      options: ['SE', 'NO', 'DK'],
+    }
+    const story = gateStory(challenge)
+    expect(story.image).toBe('/skylines/stockholm.webp')
+    expect(story.prompt).not.toContain('Stockholm') // the skyline is the clue, not its name
+    expect(story.answer).toBe('SE')
+  })
+
+  it('keeps the hidden country a secret for a zoom-out gate', () => {
+    const challenge: IndividualChallenge = {
+      _type: 'individual-challenge',
+      id: 'isoCode',
+      country: 'SE',
+      variant: 'zoom-out',
+    }
+    const story = gateStory(challenge)
+    expect(story.prompt).not.toContain('Sweden')
     expect(story.secret).toContain('Sweden')
   })
 

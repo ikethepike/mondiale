@@ -29,6 +29,23 @@
 
         <img v-if="story.image" class="stage-photo" :src="story.image" alt="" />
 
+        <!-- The choices the racer reasons over (flag options / neighbour ring).
+             The question itself, so shown even under spoiler-protection; only
+             the correct pick is marked, and only when spoilers are shown. -->
+        <ul v-if="optionCountries.length" class="options-row">
+          <li
+            v-for="country in optionCountries"
+            :key="country.isoCode"
+            class="option-flag-item"
+            :class="{ correct: !hideSpoilers && country.isoCode === story.answer }"
+          >
+            <CountryFlag class="option-flag" :country="country" />
+            <span v-if="!hideSpoilers && country.isoCode === story.answer" class="option-tick"
+              >✓</span
+            >
+          </li>
+        </ul>
+
         <!-- Ranking rounds: the followed player's actual hand -->
         <ul v-if="hand.length" class="hand">
           <li v-for="country in hand" :key="country.isoCode" class="hand-card">
@@ -103,6 +120,11 @@ const round = computed(() => gameStore.currentRound?.round)
 const challenge = computed(() => round.value?.groupChallenge)
 
 const story = computed(() => props.story)
+
+/** Gate choices (flag options, a neighbour ring) as country records to flag. */
+const optionCountries = computed(() =>
+  (props.story.options ?? []).map(getCountry).filter(country => !!country)
+)
 
 /** Ranking rounds deal hands — show the followed player's cards. */
 const hand = computed(() => {
@@ -195,6 +217,51 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
     opacity: 0.6;
     margin-bottom: 0.3rem;
   }
+}
+
+.options-row {
+  gap: 0.8rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.option-flag-item {
+  position: relative;
+  width: 6rem;
+  border-radius: 0.4rem;
+  border: 0.2rem solid transparent;
+
+  &.correct {
+    border-color: var(--soft-mint, #6cae94);
+  }
+}
+
+.option-flag {
+  width: 100%;
+  border: 0.1rem solid $hairline;
+  :deep(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+
+.option-tick {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.7rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  border-radius: 50%;
+  background: var(--dark-blue);
 }
 
 .hand {
