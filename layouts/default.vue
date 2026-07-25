@@ -122,11 +122,14 @@ const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
 
 // The contour backdrop covers the pre-join wait and the lobby; the world map
 // takes over once the game starts. One instance spans both so the draw-in
-// sweep plays exactly once.
+// sweep plays exactly once. Spectators have no player record — without the
+// explicit check, `!player?.phase` would mount the lobby contours over their
+// live map for the whole match.
 const CONTOUR_PHASES = ['naming', 'waiting-for-game']
-const showContours = computed(
-  () => !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
-)
+const showContours = computed(() => {
+  if (gameStore.isSpectator || gameStore.spectating) return false
+  return !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
+})
 
 // Show the "what's everyone doing" panel only while parked on the board
 // (walking / turn done), where a player would otherwise wonder if the game
