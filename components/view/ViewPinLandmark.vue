@@ -86,6 +86,7 @@ const {
   announce,
   entries,
   registerCleanup,
+  stopCountdown,
   gameStore,
   update,
   clearBoard,
@@ -114,16 +115,32 @@ const verdict = computed(() => {
 const formatLatLng = ({ lat, lng }: LatLng) =>
   `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}`
 
+/**
+ * Resolution beat, as in the silhouette view: the true point lands on the map
+ * and the dossier opens, then the scorecard follows after the hold — enough
+ * time to read the miss distance and where the landmark actually is.
+ */
+const REVEAL_HOLD_MS = 6000
+let submitTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => submitTimer && clearTimeout(submitTimer))
+
 const lockIn = () => {
   const active = challenge.value
   if (!active || !pin.value || submitted.value) return
-
-  update({ event: 'submit-group-challenge-answers', ranking: [], pin: pin.value })
+  submitted.value = true
+  stopCountdown()
 
   const answer = LANDMARKS[active.slug]?.coordinates
-  if (!answer) return
-  gameStore.map.pinAnswer = answer
-  result.value = { distanceKm: haversineKm(pin.value, answer) }
+  if (answer) {
+    gameStore.map.pinAnswer = answer
+    result.value = { distanceKm: haversineKm(pin.value, answer) }
+  }
+
+  const pinned = pin.value
+  submitTimer = setTimeout(
+    () => update({ event: 'submit-group-challenge-answers', ranking: [], pin: pinned }),
+    REVEAL_HOLD_MS
+  )
 }
 
 const onMapClick = (event: Event) => {
@@ -207,6 +224,20 @@ header {
   border-radius: 0.6rem;
   width: clamp(18rem, 24vw, 24rem);
   height: clamp(13rem, 22vh, 18rem);
+  transition:
+    width var(--motion-base) var(--ease-out-expressive),
+    height var(--motion-base) var(--ease-out-expressive);
+
+  // Desktop: the stage swells under the cursor for studying detail, then
+  // shrinks out of the map's way on leave. Width/height, not scale — the
+  // photo re-lays out and stays sharp.
+  @media (hover: hover) and (min-width: 901px) {
+    &:hover {
+      z-index: 3;
+      width: clamp(28rem, 44vw, 52rem);
+      height: clamp(20rem, 44vh, 38rem);
+    }
+  }
 }
 
 .dossier {
