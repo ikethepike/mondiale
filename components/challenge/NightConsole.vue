@@ -1,5 +1,5 @@
 <template>
-  <div class="night-console">
+  <div class="night-console" :class="{ low }">
     <div class="tally"><span class="lit">{{ lit }} lit</span> · {{ quota }} to pass</div>
     <div class="console-row">
       <div class="console-input"><slot /></div>
@@ -19,13 +19,19 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
  * the row's end — the radial dial dressed for the dark, its arc in the same
  * amber as the lit tally.
  */
-defineProps<{
+const props = defineProps<{
   lit: number
   quota: number
   secondsLeft: number
   durationSeconds: number
   feedback?: string
 }>()
+
+// The console's border warms over the round's final fifth — the same slow
+// tide as the day console's pill.
+const low = computed(
+  () => props.durationSeconds > 0 && props.secondsLeft / props.durationSeconds <= 0.2
+)
 </script>
 <style lang="scss" scoped>
 .night-console {
@@ -46,6 +52,11 @@ defineProps<{
   backdrop-filter: blur(0.6rem);
   box-shadow: 0 0.4rem 2.4rem hsla(216, 58%, 4%, 0.5);
   width: min(44rem, calc(100vw - 3.2rem));
+  transition: border-color 2s var(--ease-smooth);
+
+  &.low {
+    border-color: hsla(9.8, 81.3%, 60.2%, 0.7);
+  }
 
   // The dial wears the night: dark glass disc, moonlit ink, the arc in the
   // tally's amber so "time left" and "lit" read as one system.

@@ -23,9 +23,9 @@
 
     <section class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <!-- The round clock docks beside the input — this mode's lower half
-           belongs to the guess box and the found list. -->
-      <div class="console-row">
+      <!-- The round clock lives inside the console pill — this mode's lower
+           half belongs to the guess box and the found list. -->
+      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
         <CountryGuessInput
           ref="guessInput"
           :disabled="submitted || !started"
@@ -34,12 +34,7 @@
           @guess="onGuess"
           @miss="announce({ hint: 'No country by that name' })"
         />
-        <ChallengeTimerRadial
-          class="docked-clock"
-          :value="secondsLeft"
-          :total="challenge.durationSeconds"
-        />
-      </div>
+      </ChallengeConsole>
     </section>
 
     <footer>
@@ -58,7 +53,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -226,25 +221,8 @@ header {
   flex-flow: column nowrap;
 }
 
-// The guess box and the round clock share one row: the input yields its
-// fixed width and flexes, the dial keeps its size at the row's end.
-.console-row {
-  gap: 1rem;
-  display: flex;
-  align-items: center;
+.console {
   width: min(42rem, calc(100vw - 3.2rem));
-
-  :deep(.guess-form) {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-  }
-
-  .docked-clock {
-    --clock-size: 5.6rem;
-    --clock-seconds-size: 1.8rem;
-    flex: none;
-  }
 }
 
 footer {

@@ -43,10 +43,13 @@
     </section>
 
     <footer>
-      <!-- The round clock docks beside the input: this mode's lower edge
-           belongs to the guess box, so the dial joins its row instead of
-           floating in the shared corner berth. -->
-      <div class="console-row">
+      <!-- This mode's lower edge belongs to the guess box, so the round
+           clock lives inside the console pill instead of the corner berth. -->
+      <ChallengeConsole
+        class="console"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      >
         <CountryGuessInput
           ref="guessInput"
           :disabled="submitted || !started"
@@ -54,17 +57,12 @@
           @guess="onGuess"
           @miss="announce({ hint: 'No country by that name' })"
         />
-        <ChallengeTimerRadial
-          class="docked-clock"
-          :value="secondsLeft"
-          :total="challenge.durationSeconds"
-        />
-      </div>
+      </ChallengeConsole>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
-import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -213,95 +211,8 @@ header {
 }
 
 
-// The guess box and the round clock share one row: the input yields its
-// fixed width and flexes, the dial keeps its size at the row's end.
-.console-row {
-  gap: 1rem;
-  display: flex;
-  align-items: center;
+.console {
   width: min(42rem, 100%);
-
-  :deep(.guess-form) {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-  }
-
-  .docked-clock {
-    --clock-size: 5.6rem;
-    --clock-seconds-size: 1.8rem;
-    flex: none;
-  }
-}
-
-// Variant: the console card — the day twin of the night console. The row
-// itself becomes the parchment surface; the input sheds its own pill and
-// the dial's disc fades to a wash so card, input and clock read as one.
-.console-row.console-card {
-  gap: 0.6rem;
-  padding: 0.8rem 0.8rem 0.8rem 1rem;
-  border-radius: 1.8rem;
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-
-  :deep(.guess-form) {
-    border: none;
-    background: none;
-    backdrop-filter: none;
-  }
-
-  .docked-clock {
-    --clock-size: 5rem;
-    --clock-seconds-size: 1.7rem;
-    --clock-disc-fill: hsla(215.7, 76.4%, 21.6%, 0.06);
-    --clock-disc-stroke: transparent;
-  }
-}
-
-// Variant: the clock lives inside the input pill itself — the row wears the
-// map-caption pill and the dial tucks against its right cap, bezel only.
-.console-row.console-pill {
-  gap: 0.2rem;
-  padding: 0.3rem 0.4rem 0.3rem 0;
-  border-radius: 1.2rem;
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-
-  :deep(.guess-form) {
-    border: none;
-    background: none;
-    backdrop-filter: none;
-  }
-
-  .docked-clock {
-    --clock-size: 4.6rem;
-    --clock-seconds-size: 1.5rem;
-    --clock-disc-fill: transparent;
-    --clock-disc-stroke: transparent;
-  }
-}
-
-// Variant: the badge — the dial overlaps the pill's right cap, half in,
-// half out, its disc covering the seam like a wax seal on the console.
-.console-row.console-badge {
-  gap: 0;
-
-  .docked-clock {
-    --clock-size: 6rem;
-    --clock-seconds-size: 1.9rem;
-    // Opaque face, stacked over the guess form (which carries z-index 10
-    // for its suggestion list): the seal must cover the pill's cap.
-    --clock-disc-fill: hsl(36, 100%, 98%);
-    z-index: 11;
-    position: relative;
-    margin-left: -3rem;
-  }
-
-  :deep(.guess-form) {
-    padding-right: 4.4rem;
-  }
 }
 
 footer {
