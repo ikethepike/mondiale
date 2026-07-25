@@ -51,6 +51,7 @@
             class="race-card"
             :class="cardClass(isoCode)"
             :topic="metricTopic"
+            :accessor="metricGlyph"
             :disabled="revealed"
             @click="pick(isoCode)"
           >
@@ -85,10 +86,15 @@
         </ButtonFilled>
       </Transition>
     </section>
+
+    <footer v-if="!revealed">
+      <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
@@ -126,6 +132,9 @@ const metricLabel = computed(() =>
 )
 const metricTopic = computed(() =>
   challenge.value ? TREND_METRICS[challenge.value.metric].topic : undefined
+)
+const metricGlyph = computed(() =>
+  challenge.value ? TREND_METRICS[challenge.value.metric].glyph : undefined
 )
 
 const winner = computed(() => challenge.value?.standings[0])
@@ -266,6 +275,15 @@ header {
   pointer-events: auto;
 }
 
+// The round clock, in the shared bottom-footer slot every timed mode uses.
+footer {
+  z-index: 2;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+
 .race-card {
   cursor: pointer;
   position: relative;
@@ -351,9 +369,41 @@ header {
     width: 100%;
   }
 
+  footer {
+    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+  }
+
   .race-list {
-    gap: 1rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  // Phone cards read as rows: flag and name lead, the stat emblem holds the
+  // far edge in flow — as a corner overlay it sat underneath the flag.
+  .race-card {
+    gap: 0.8rem 1rem;
+    padding: 1.2rem 1.4rem;
+    flex-flow: row wrap;
+    text-align: left;
+
+    .race-country {
+      flex: 1;
+      order: -2;
+      min-width: 0;
+    }
+
+    :deep(.topic-icon) {
+      order: -1;
+      position: static;
+    }
+
+    :deep(.trend-sparkline) {
+      width: 100%;
+    }
+
+    .rank-tag {
+      width: 100%;
+    }
   }
 }
 </style>

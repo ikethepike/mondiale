@@ -31,12 +31,6 @@
           <Transition name="caption">
             <span v-if="lateHint" class="map-caption late-hint">{{ lateHint }}</span>
           </Transition>
-          <ChallengeTimer
-            v-if="!submitted"
-            class="timer"
-            :value="secondsLeft"
-            :total="challenge.durationSeconds"
-          />
           <Transition name="caption">
             <span v-if="hint" class="map-caption hint">{{ hint }}</span>
           </Transition>
@@ -49,6 +43,7 @@
 
       <footer :class="{ 'has-input': !challenge.options && !submitted }">
         <template v-if="!submitted">
+          <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
           <!-- Non-hard mode: pick from flag options. Hard mode: free-type. -->
           <div v-if="challenge.options" class="options card-options">
             <button
@@ -276,9 +271,6 @@ header {
   }
   .late-hint {
     font-weight: 600;
-  }
-  .timer {
-    max-width: min(80vw, 40rem);
   }
   .prompt {
     gap: 1rem;

@@ -27,6 +27,11 @@
 
       <footer>
         <template v-if="!submitted">
+          <ChallengeTimer
+            v-if="challenge"
+            :value="secondsLeft"
+            :total="challenge.durationSeconds"
+          />
           <p class="map-caption ask">Who claims it?</p>
           <ul v-if="picks.length" class="chips">
             <li v-for="isoCode in picks" :key="isoCode">
@@ -53,6 +58,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref } from 'vue'
+import ChallengeTimer from '~/components/challenge/ChallengeTimer.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'

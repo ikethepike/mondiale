@@ -18,12 +18,6 @@
           <template v-if="!submitted">
             <h1 class="map-caption">Where on Earth is this?</h1>
             <span class="map-caption sub">{{ teaser }}</span>
-            <ChallengeTimer
-              v-if="challenge"
-              class="timer"
-              :value="secondsLeft"
-              :total="challenge.durationSeconds"
-            />
           </template>
           <template v-else-if="territory">
             <h1 class="map-caption">{{ verdictHeadline }} — {{ territory.name }}</h1>
@@ -32,7 +26,11 @@
         </div>
       </header>
 
-      <footer v-if="submitted && territory" class="dossier">
+      <footer v-if="!submitted && challenge">
+        <ChallengeTimer :value="secondsLeft" :total="challenge.durationSeconds" />
+      </footer>
+
+      <footer v-else-if="submitted && territory" class="dossier">
         <p class="map-caption facts">
           <span><strong>Claimed by</strong> {{ parentName }}</span>
           <span><strong>Internationally recognized by</strong> {{ recogniserNames }}</span>
@@ -303,11 +301,6 @@ header {
     max-width: min(80vw, 40rem);
   }
 
-  // Match the teaser's measure so the bar reads as part of the prompt.
-  .timer {
-    max-width: min(80vw, 40rem);
-  }
-
   // Question, then teaser, stacked — never side by side.
   .prompt {
     gap: 1rem;
@@ -330,14 +323,19 @@ header {
   }
 }
 
-// The reveal: what the round withheld, in the map-caption idiom.
-.dossier {
-  gap: 0.6rem;
+// The round clock while guessing, the dossier after — both in the shared
+// bottom-footer slot every timed mode uses.
+footer {
   z-index: 2;
   display: flex;
   padding: 0 2rem 2rem;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+// The reveal: what the round withheld, in the map-caption idiom.
+.dossier {
+  gap: 0.6rem;
 }
 
 .facts {
