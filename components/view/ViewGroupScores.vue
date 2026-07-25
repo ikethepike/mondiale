@@ -42,6 +42,17 @@
               />
             </section>
           </template>
+          <!-- `right` restores the pane padding the tile rows give up to scroll
+               edge-to-edge — the reveal's ledger column must not kiss the rule -->
+          <template v-else-if="kind === 'ranking'">
+            <section class="pane-content ranking right">
+              <span class="eyebrow">The True Order</span>
+              <RankingReveal
+                :submitted="selectedScorecard.answers.submitted"
+                :correct="selectedScorecard.answers.correct"
+              />
+            </section>
+          </template>
           <template v-else>
             <section class="pane-content ranking">
               <span class="eyebrow">{{ sectionLabels.submitted }}</span>
@@ -115,6 +126,7 @@
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
+import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'

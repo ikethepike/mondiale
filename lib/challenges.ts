@@ -68,7 +68,7 @@ import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS, variantCountries } from './variant'
 
-const MAXIMUM_SCORE_PER_COUNTRY = 3
+export const MAXIMUM_SCORE_PER_COUNTRY = 3
 
 export const DIFFICULTY_CONFIGURATION: {
   [difficulty in gameTypes.GameDifficulty]: {
@@ -1009,9 +1009,7 @@ const getTrendRaceChallenge = ({
         .flatMap(({ isoCode }) => {
           const clipped = TRENDS[isoCode]![metric]!.filter(([year]) => year >= sharedStart)
           const reading = readTrend(clipped, metric)
-          return reading?.direction === seek
-            ? [{ isoCode, change: Math.abs(reading.change) }]
-            : []
+          return reading?.direction === seek ? [{ isoCode, change: Math.abs(reading.change) }] : []
         })
         .sort((a, b) => b.change - a.change)
       if (standings.length !== optionCount) continue
@@ -1772,7 +1770,8 @@ const dealTrajectoryMatch = (
         const reading = readTrend(series, metric)
         if (!series || !reading) continue
         readings.set(isoCode, reading)
-        if (reading.direction !== 'flat') scored.push({ isoCode, drama: dramaScore(series, metric) })
+        if (reading.direction !== 'flat')
+          scored.push({ isoCode, drama: dramaScore(series, metric) })
       }
       if (scored.length < 2 || readings.size < optionCount) continue
 
@@ -2481,7 +2480,8 @@ export const getChallengeDetails = (
     },
     'government.recentConflicts': {
       topic: 'general knowledge',
-      phrasing: 'Rank these countries by armed conflicts they have been party to in the last five years',
+      phrasing:
+        'Rank these countries by armed conflicts they have been party to in the last five years',
       markers: {
         most: 'most recent conflicts',
         least: 'fewest recent conflicts',
@@ -2645,7 +2645,14 @@ export const getScaleProps = (
   const details = getChallengeDetails(accessorId)
   if (!details?.scale || !details.markers) return undefined
   const { min, max, invert } = details.scale
-  return { amount, min, max, invert, leastLabel: details.markers.least, mostLabel: details.markers.most }
+  return {
+    amount,
+    min,
+    max,
+    invert,
+    leastLabel: details.markers.least,
+    mostLabel: details.markers.most,
+  }
 }
 
 export const getCorrectRanking = ({
@@ -2671,6 +2678,44 @@ export const getCorrectRanking = ({
   return sorted.map(value => value.isoCode)
 }
 
+export interface RankingBreakdownRow {
+  isoCode: ISOCountryCode
+  /** 1-based slot in the correct order. */
+  correctPosition: number
+  /** 1-based slot the player put it in; undefined when it was never placed. */
+  submittedPosition?: number
+  points: number
+}
+
+/**
+ * Per-country ledger of a ranking round, in correct order. The scorer and the
+ * scorecard's reveal both read from this, so the taught breakdown can never
+ * drift from the points actually paid.
+ */
+export const rankingBreakdown = ({
+  submitted,
+  correct,
+}: {
+  submitted: ISOCountryCode[]
+  correct: ISOCountryCode[]
+}): RankingBreakdownRow[] => {
+  const ranked = new Set(correct)
+  const placed = [...new Set(submitted)].filter(isoCode => ranked.has(isoCode))
+
+  return correct.map((isoCode, index) => {
+    const submittedIndex = placed.indexOf(isoCode)
+    return {
+      isoCode,
+      correctPosition: index + 1,
+      submittedPosition: submittedIndex === -1 ? undefined : submittedIndex + 1,
+      points:
+        submittedIndex === -1
+          ? 0
+          : Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - Math.abs(submittedIndex - index)),
+    }
+  })
+}
+
 /**
  * Score a ranking round: full marks per country in its exact slot, one point
  * less per slot of displacement in either direction, nothing beyond that.
@@ -2691,19 +2736,11 @@ export const scoreChallengeSubmission = ({
   scored: number
   maximum: number
 } => {
-  const dealt = new Set(dealtCountries)
-  const submitted = [...new Set(submittedRanking)].filter(isoCode => dealt.has(isoCode))
   const correctRanking = getCorrectRanking({ groupChallengeAccessorId, isoCodes: dealtCountries })
-
-  let accruedPoints = 0
-  for (const [index, isoCode] of correctRanking.entries()) {
-    const submittedIndex = submitted.indexOf(isoCode)
-    if (submittedIndex === -1) continue
-    accruedPoints += Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - Math.abs(submittedIndex - index))
-  }
+  const rows = rankingBreakdown({ submitted: submittedRanking, correct: correctRanking })
 
   return {
-    scored: accruedPoints,
+    scored: rows.reduce((sum, row) => sum + row.points, 0),
     maximum: dealtCountries.length * MAXIMUM_SCORE_PER_COUNTRY,
   }
 }

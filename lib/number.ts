@@ -20,6 +20,18 @@ export const formatNumber = (number: number): string => {
   }
 }
 
+const ORDINAL_SUFFIXES: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'st',
+  two: 'nd',
+  few: 'rd',
+}
+
+/** 1 → "1st", 2 → "2nd" — placement copy on scorecards. */
+export const formatOrdinal = (position: number): string => {
+  const rule = new Intl.PluralRules('en', { type: 'ordinal' }).select(position)
+  return `${position}${ORDINAL_SUFFIXES[rule] ?? 'th'}`
+}
+
 /** "12.34m people", "61.3 %" — a country stat with its unit, for lessons. */
 export const formatAmount = (amount: { amount: number; unit: string }): string => {
   const unit = String(amount.unit ?? '').trim()
