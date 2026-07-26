@@ -53,6 +53,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'border-chain': ['Chain Gang Boss', 'The Last Link', 'Unbroken', 'Sudden-Death Survivor'],
   'heritage-hunt': ['Heritage Hunter', 'Wonder Wanderer', 'The Site Seer', 'Unesco Nomad'],
   'trend-race': ['Trend Spotter', 'Curve Caller', 'The Momentum Reader', 'Delta Detective'],
+  timeline: ['The Chronicler', 'Keeper of Years', 'Century Threader', 'History Buff'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -78,6 +79,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   'border-chain': 'border chain',
   'heritage-hunt': 'heritage hunt',
   'trend-race': 'trend race',
+  timeline: 'timeline',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

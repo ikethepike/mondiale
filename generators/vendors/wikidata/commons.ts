@@ -125,6 +125,53 @@ export const fetchImageDimensions = async (
   return undefined
 }
 
+interface ExtMetadataResponse {
+  query?: {
+    pages?: {
+      [pageId: string]: {
+        imageinfo?: {
+          extmetadata?: {
+            Artist?: { value?: string }
+            LicenseShortName?: { value?: string }
+          }
+        }[]
+      }
+    }
+  }
+}
+
+/** Strip the HTML Commons wraps around metadata values ("<a href=…>Name</a>"). */
+const stripTags = (html: string): string =>
+  html
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/**
+ * A Commons file's author and licence, from its extmetadata. Wikimedia photos
+ * are free to use but most licences require attribution — anything shipped to
+ * players should carry this credit line.
+ */
+export const fetchImageAttribution = async (
+  file: string
+): Promise<{ credit?: string; license?: string } | undefined> => {
+  const data = await fetchJson<ExtMetadataResponse>(
+    `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
+      `File:${file}`
+    )}&prop=imageinfo&iiprop=extmetadata&format=json`
+  )
+  const metadata = Object.values(data?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
+  if (!metadata) return undefined
+
+  const credit = metadata.Artist?.value ? stripTags(metadata.Artist.value) : undefined
+  const license = metadata.LicenseShortName?.value
+    ? stripTags(metadata.LicenseShortName.value)
+    : undefined
+  if (!credit && !license) return undefined
+  // Some "artist" fields are whole camera-club paragraphs — too long to credit.
+  return { credit: credit && credit.length <= 80 ? credit : undefined, license }
+}
+
 export const EXTENSION_BY_CONTENT_TYPE: { [contentType: string]: string } = {
   'image/jpeg': 'jpg',
   'image/png': 'png',

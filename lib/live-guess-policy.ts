@@ -57,6 +57,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
 
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
+  timeline: 'none',
   sketch: 'none',
   ranking: 'none',
 }

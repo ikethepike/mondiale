@@ -206,6 +206,8 @@ const explainer = computed(() => {
       return 'Points scale with countries found — wrong names each cost one.'
     case 'name-that-water':
       return 'Fewer guesses, bigger score.'
+    case 'timeline':
+      return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
     default: {
       const base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
       // Conflict rankings carry the one UCDP fact the numbers alone would hide.
@@ -249,6 +251,8 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
     case 'name-that-water':
       return { submitted: 'Your Answer', correct: 'Its Shores' }
+    case 'timeline':
+      return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
     default:
       return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
   }

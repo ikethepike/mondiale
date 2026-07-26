@@ -345,8 +345,69 @@ export interface TrendRaceChallenge {
   maximumPoints: number
 }
 
+/**
+ * Timeline: curated historical events (data/events.gen) are inserted one at a
+ * time into a shared chronological line. Turn-based like Border Chain — the
+ * active player slots the drawn card BETWEEN the cards already placed, never
+ * naming a year. A correct slot banks points scaled by how crowded the line
+ * already was; a wrong slot snaps the card to where it belongs, for everyone
+ * to learn from. Every card ends up on the line either way, so placements get
+ * genuinely harder all round. `state` is server-owned and rides the game
+ * snapshot — clients render from it and never advance it themselves.
+ */
+export interface TimelineChallenge {
+  _type: 'timeline-challenge'
+  turnSeconds: number
+  /** Seconds the post-placement story card holds before the next turn. */
+  revealSeconds: number
+  /** Ceiling across the round; each card pays a density-scaled share. */
+  maximumPoints: number
+  state: TimelineState
+}
+
+export interface TimelinePlacement {
+  playerId: string
+  /** EVENTS key of the card that was placed. */
+  slug: string
+  /** Slot index the player chose (0 = before the line's earliest card). */
+  chosenSlot: number
+  /** Where the card actually landed on the line they saw. */
+  correctSlot: number
+  correct: boolean
+  /** Points banked for the placement (0 when wrong or timed out). */
+  scored: number
+  /** 'timeout' placements were never chosen — the card filed itself. */
+  kind: 'placed' | 'timeout'
+}
+
+export interface TimelineState {
+  /** EVENTS keys dealt this round: [0] opens the line, the rest draw in order. */
+  deck: string[]
+  /** Cards locked into the line so far, in chronological order. */
+  placed: string[]
+  /** Index into `deck` of the card being placed; deck.length = exhausted. */
+  card: number
+  /** Player ids in play order, fixed at the deal. */
+  order: string[]
+  /** Index into `order` of the player on the clock. */
+  activeIndex: number
+  /** Monotonic turn counter — timeout token and submit idempotency key. */
+  turn: number
+  /** Epoch ms the active turn (or the reveal hold) expires. */
+  deadline: number
+  /** Points banked per player so far. */
+  banked: { [playerId: string]: number }
+  /** Every resolved placement, oldest first — the round's teaching record. */
+  placements: TimelinePlacement[]
+  /** A placement just resolved — clients hold on its story card. */
+  revealing?: boolean
+  /** Set when the deck runs out; freezes the clock and starts the reveal. */
+  finished?: boolean
+}
+
 export type GroupModeChallenge =
   | BorderChainChallenge
+  | TimelineChallenge
   | HeritageHuntChallenge
   | NeighbourBlitzChallenge
   | SilhouetteChallenge

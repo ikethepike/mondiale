@@ -49,6 +49,7 @@ import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
+import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
@@ -139,6 +140,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'no-mans-land': ViewNoMansLand,
         'pin-landmark': ViewPinLandmark,
         'trend-race': ViewTrendRace,
+        timeline: ViewTimeline,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

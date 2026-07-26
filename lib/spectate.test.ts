@@ -18,6 +18,7 @@ import {
   type IndividualChallenge,
 } from '~~/types/challenges/individual-challenge.type'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
+import { EVENTS } from '~~/data/events.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
@@ -236,6 +237,7 @@ const assertNoDangle = (label: string, story: SpectateStory) => {
 
 const heritageSlug = Object.keys(HERITAGE)[0]
 const landmarkSlug = Object.keys(LANDMARKS)[0]
+const eventSlugs = Object.keys(EVENTS).slice(0, 3)
 const territoryId = Object.keys(RECOGNITION_TERRITORIES)[0]
 
 const ROUND_FIXTURES: RoundChallenge[] = [
@@ -294,6 +296,23 @@ const ROUND_FIXTURES: RoundChallenge[] = [
     maximumPoints: 8,
     state: { beat: 0, deadline: 0, order: [], pins: {} },
   },
+  {
+    _type: 'timeline-challenge',
+    turnSeconds: 15,
+    revealSeconds: 7,
+    maximumPoints: 8,
+    state: {
+      deck: eventSlugs,
+      placed: [eventSlugs[0]],
+      card: 1,
+      order: [],
+      activeIndex: 0,
+      turn: 0,
+      deadline: 0,
+      banked: {},
+      placements: [],
+    },
+  },
 ] as unknown as RoundChallenge[]
 
 const FINAL_FIXTURES: FinalChallengeItem[] = [
@@ -324,7 +343,7 @@ describe('no spectator card dangles an unshown asset', () => {
       'silhouette', 'hot-cold', 'sketch', 'stat-detective', 'two-truths',
       'river-run', 'shared-shores', 'highlands', 'name-that-water', 'mother-tongue',
       'flag-palette', 'capital-guess', 'flashpoint', 'ghost-state', 'no-mans-land',
-      'pin-landmark', 'trend-race',
+      'pin-landmark', 'trend-race', 'timeline',
     ]
     for (const kind of ALL_KINDS) expect(covered.has(kind), `missing round kind: ${kind}`).toBe(true)
   })
