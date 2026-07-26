@@ -2,47 +2,4 @@ events: 405 shipped of 405 seeds
 
 dropped (0) — fix the year or pin a qid:
 
-no image (43) — add a commons/imageUrl override:
-  fall-of-the-western-roman-empire
-  kalmar-union
-  treaty-of-tordesillas
-  1755-lisbon-earthquake
-  boxer-rebellion
-  federation-of-australia
-  dissolution-of-the-union-between-norway-and-sweden
-  young-turk-revolution
-  amundsen-s-south-pole-expedition
-  gallipoli-campaign
-  anglo-irish-treaty
-  discovery-of-penicillin
-  1930-fifa-world-cup
-  treaty-of-manila-1946
-  marshall-plan
-  egyptian-revolution-of-1952
-  molecular-structure-of-nucleic-acids-a-structure-for-deoxyribose-nucleic-acid
-  independence-of-nigeria
-  evian-accords
-  independence-of-jamaica
-  organisation-of-african-unity
-  first-heart-transplant
-  1971-ugandan-coup-d-etat
-  carnation-revolution
-  independence-of-angola
-  death-of-francisco-franco
-  independence-of-zimbabwe
-  1989-tiananmen-square-protests-and-massacre
-  independence-of-namibia
-  independence-of-eritrea
-  1994-south-african-general-election
-  good-friday-agreement
-  iphone-1st-generation
-  independence-of-south-sudan
-  2022-fifa-world-cup
-  battle-of-ain-jalut
-  workers-leaving-the-lumiere-factory
-  1936-summer-olympics
-  rubik-s-cube
-  1954-guatemalan-coup-d-etat
-  deep-blue-versus-garry-kasparov
-  iau-definition-of-planet
-  first-observation-of-gravitational-waves
+no image (0) — add a commons/imageUrl override:
