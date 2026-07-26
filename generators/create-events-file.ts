@@ -177,6 +177,34 @@ const verifySeed = async (seed: EventSeed): Promise<Verification | { failure: st
   }
 }
 
+interface SitelinksResponse {
+  entities?: { [qid: string]: { sitelinks?: { enwiki?: { title?: string } } } }
+}
+
+interface PageImageResponse {
+  query?: { pages?: { [pageId: string]: { pageimage?: string } } }
+}
+
+/**
+ * Fallback picture: the item's English Wikipedia article lead image. Many
+ * event items carry no image of their own while their article leads with a
+ * fine one. Only Commons-hosted files survive — enwiki-local (fair use)
+ * images fail the Commons download and are correctly left behind.
+ */
+const wikipediaLeadImage = async (qid: string): Promise<string | undefined> => {
+  const sitelinks = await fetchJson<SitelinksResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&props=sitelinks&sitefilter=enwiki&format=json`
+  )
+  const title = sitelinks?.entities?.[qid]?.sitelinks?.enwiki?.title
+  if (!title) return undefined
+  const data = await fetchJson<PageImageResponse>(
+    `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=name&redirects=1&titles=${encodeURIComponent(
+      title
+    )}&format=json`
+  )
+  return Object.values(data?.query?.pages ?? {})[0]?.pageimage
+}
+
 // --- Main flow -----------------------------------------------------------------
 
 console.log(`Verifying ${EVENT_SEEDS.length} event seeds against Wikidata…`)
@@ -229,22 +257,29 @@ for (const { seed, slug, qid } of verified) {
     const cached = force ? undefined : existsSync(`${baseName}.webp`)
     const wikidataFile = pageImages.get(qid)
     if (cached) {
+      // The cached WebP's true source isn't re-derivable (it may have come
+      // from the article-lead fallback), so its credit carries over below.
       image = `${publicBase}.webp`
-      commonsFile = wikidataFile
-    } else if (wikidataFile) {
-      const dimensions = await fetchImageDimensions(wikidataFile)
-      if (dimensions && dimensions.width >= MIN_IMAGE_WIDTH) {
-        commonsFile = wikidataFile
-        image = await saveCommonsImage(wikidataFile, baseName, publicBase, {
+    } else {
+      // The item's own image first, the article's lead image as the fallback.
+      for (const file of [wikidataFile, await wikipediaLeadImage(qid)]) {
+        if (!file || image) continue
+        const dimensions = await fetchImageDimensions(file)
+        if (!dimensions || dimensions.width < MIN_IMAGE_WIDTH) continue
+        const saved = await saveCommonsImage(file, baseName, publicBase, {
           width: EVENT_WIDTH,
           force,
         })
+        if (saved) {
+          image = saved
+          commonsFile = file
+        }
       }
     }
   }
 
-  let credit: string | undefined
-  let license: string | undefined
+  let credit = previous[slug]?.credit
+  let license = previous[slug]?.license
   if (image && commonsFile) {
     const attribution = await fetchImageAttribution(commonsFile)
     credit = attribution?.credit

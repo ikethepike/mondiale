@@ -1325,7 +1325,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'conflict',
     year: 1934,
     description:
-      "Encircled by Nationalist armies, the Chinese communists broke out and marched some 9,000 kilometres over mountains and rivers to a new base at Yan'an. Mao emerged from it as the party's leader.",
+      "Encircled by Nationalist armies, the Chinese communists broke out and marched thousands of kilometres over mountains and rivers to a new base at Yan'an. Mao emerged from it as the party's leader.",
   },
   {
     name: 'Second Italo-Ethiopian War',

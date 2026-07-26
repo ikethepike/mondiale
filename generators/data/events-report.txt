@@ -1,63 +1,25 @@
-events: 285 shipped of 302 seeds
+events: 300 shipped of 300 seeds
 
-dropped (18) — fix the year or pin a qid:
-  mayflower	1620	candidates carry no time claims at all
-  first-fleet	1788	no time claim near 1788 (saw 1912, 1829)
-  perry-expedition	1853	no time claim near 1853 (saw 2012, 1858, 1969)
-  suez-canal	1869	no time claim near 1869 (saw 2021, 1956, 2000, 1974)
-  first-transcontinental-railroad	1869	candidates carry no time claims at all
-  panama-canal	1914	no time claim near 1914 (saw 1903, 1979, 1999)
-  discovery-of-insulin	1921	no time claim near 1921 (saw 1982, 2021, 1971, 2010)
-  discovery-of-penicillin	1928	no time claim near 1928 (saw 1983, 1998, 1955, 1949)
-  independence-of-the-democratic-republic-of-the-congo	1960	no time claim near 1960 (saw 2007, 1965, 2010)
-  woodstock	1969	no time claim near 1969 (saw 1829, 1851, 1761, 1852)
-  concorde	1969	no time claim near 1969 (saw 1772, 1977)
-  aswan-dam	1970	no time claim near 1970 (saw 1960, 1902, 2000, 2020)
-  death-and-state-funeral-of-francisco-franco	1975	no Wikidata search hits
-  release-of-nelson-mandela	1990	no time claim near 1990 (saw 2008)
-  dolly-sheep	1996	no time claim near 1996 (saw 2018)
-  panama-canal-handover	1999	candidates carry no time claims at all
-  east-timor	2002	no time claim near 2002 (saw 1975)
-  burj-khalifa	2010	no time claim near 2010 (saw 2004, 2014)
+dropped (0) — fix the year or pin a qid:
 
-no image (62) — add a commons/imageUrl override:
-  death-of-alexander-the-great
-  edict-of-milan
+no image (35) — add a commons/imageUrl override:
   fall-of-the-western-roman-empire
-  hegira
-  mongol-empire
   kalmar-union
   treaty-of-tordesillas
-  glorious-revolution
-  acts-of-union-1707
   1755-lisbon-earthquake
-  slave-trade-act-1807
-  independence-of-brazil
-  slavery-abolition-act-1833
-  liberian-declaration-of-independence
-  american-civil-war
-  spanish-american-war
   boxer-rebellion
   federation-of-australia
   dissolution-of-the-union-between-norway-and-sweden
   young-turk-revolution
   amundsen-s-south-pole-expedition
-  xinhai-revolution
   gallipoli-campaign
   anglo-irish-treaty
+  discovery-of-penicillin
   1930-fifa-world-cup
-  machtergreifung
-  long-march
   treaty-of-manila-1946
   marshall-plan
-  assassination-of-mahatma-gandhi
-  israeli-declaration-of-independence
-  proclamation-of-the-people-s-republic-of-china
   egyptian-revolution-of-1952
   molecular-structure-of-nucleic-acids-a-structure-for-deoxyribose-nucleic-acid
-  bandung-conference
-  independence-of-ghana
-  sputnik-1
   independence-of-nigeria
   evian-accords
   independence-of-jamaica
@@ -66,20 +28,13 @@ no image (62) — add a commons/imageUrl override:
   1971-ugandan-coup-d-etat
   carnation-revolution
   independence-of-angola
+  death-of-francisco-franco
   independence-of-zimbabwe
-  iran-iraq-war
   1989-tiananmen-square-protests-and-massacre
   independence-of-namibia
-  gulf-war
-  dissolution-of-czechoslovakia
   independence-of-eritrea
   1994-south-african-general-election
-  1997-asian-financial-crisis
   good-friday-agreement
-  iraq-war
-  2006-montenegrin-independence-referendum
   iphone-1st-generation
-  bankruptcy-of-lehman-brothers
   independence-of-south-sudan
   2022-fifa-world-cup
-  1990-mongolian-revolution
