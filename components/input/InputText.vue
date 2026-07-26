@@ -1,6 +1,14 @@
 <template>
   <div class="input-text">
-    <input ref="input" type="text" :placeholder="placeholder" @change="onChange" @input="onInput" />
+    <input
+      ref="input"
+      type="text"
+      :placeholder="placeholder"
+      :required="required"
+      :maxlength="maxlength"
+      @change="onChange"
+      @input="onInput"
+    />
     <ButtonFilled v-if="inlineButton" class="inline-button" @click="onClick">
       <span class="button-text">{{ inlineButton }}</span>
     </ButtonFilled>
@@ -19,6 +27,14 @@ defineProps({
   },
   inlineButton: {
     type: String,
+    default: undefined,
+  },
+  required: {
+    type: Boolean,
+    default: false,
+  },
+  maxlength: {
+    type: Number,
     default: undefined,
   },
 })
