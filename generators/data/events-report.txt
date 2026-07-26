@@ -1,8 +1,8 @@
-events: 300 shipped of 300 seeds
+events: 405 shipped of 405 seeds
 
 dropped (0) — fix the year or pin a qid:
 
-no image (35) — add a commons/imageUrl override:
+no image (43) — add a commons/imageUrl override:
   fall-of-the-western-roman-empire
   kalmar-union
   treaty-of-tordesillas
@@ -38,3 +38,11 @@ no image (35) — add a commons/imageUrl override:
   iphone-1st-generation
   independence-of-south-sudan
   2022-fifa-world-cup
+  battle-of-ain-jalut
+  workers-leaving-the-lumiere-factory
+  1936-summer-olympics
+  rubik-s-cube
+  1954-guatemalan-coup-d-etat
+  deep-blue-versus-garry-kasparov
+  iau-definition-of-planet
+  first-observation-of-gravitational-waves

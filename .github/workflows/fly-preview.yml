@@ -1,0 +1,106 @@
+name: Fly PR Preview
+
+# One throwaway Fly app per open PR (pr-<number>-mondiale), deployed on every
+# push and destroyed when the PR closes. Uses fly.preview.toml so idle
+# previews stop their machine and cost ~nothing.
+#
+# Needs (repo → Settings → Secrets and variables → Actions):
+#   FLY_API_TOKEN — already used by deploy.yml. A deploy-scoped org token
+#     (`fly tokens create org`) is enough; it must be allowed to create apps.
+#   PREVIEW_UPSTASH_REDIS_REST_URL / PREVIEW_UPSTASH_REDIS_REST_TOKEN —
+#     optional. A free separate Upstash database keeps preview games out of
+#     production Redis. When absent, the deploy still works but multiplayer
+#     rooms will fail to persist (the socket server needs a Redis token).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  FLY_ORG: personal
+  APP: pr-${{ github.event.number }}-mondiale
+  PREVIEW_REDIS_URL: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_URL }}
+  PREVIEW_REDIS_TOKEN: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_TOKEN }}
+
+# One deploy per PR at a time; a newer push cancels the older build.
+concurrency:
+  group: fly-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy preview
+    # Forks don't get secrets, so a fork PR would only fail noisily here.
+    if: >
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    environment:
+      name: pr-${{ github.event.number }}
+      url: https://pr-${{ github.event.number }}-mondiale.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create the preview app on first deploy
+        run: flyctl status --app "$APP" > /dev/null 2>&1 || flyctl apps create "$APP" --org "$FLY_ORG"
+
+      - name: Stage the preview Redis secrets
+        if: env.PREVIEW_REDIS_TOKEN != ''
+        run: |
+          flyctl secrets set --app "$APP" --stage \
+            UPSTASH_REDIS_REST_URL="$PREVIEW_REDIS_URL" \
+            UPSTASH_REDIS_REST_TOKEN="$PREVIEW_REDIS_TOKEN"
+
+      # --ha=false for the same reason as deploy.yml: the Socket.IO server
+      # holds its io instance in per-machine memory.
+      - name: Deploy
+        run: |
+          flyctl deploy --remote-only --ha=false \
+            --config fly.preview.toml \
+            --app "$APP" \
+            --build-arg GIT_SHA=${{ github.event.pull_request.head.sha }}
+
+      - name: Comment the preview link on the PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- fly-preview -->'
+            const body = [
+              marker,
+              `🛰 **Fly preview**: https://${process.env.APP}.fly.dev`,
+              '',
+              `Deployed \`${context.payload.pull_request.head.sha.slice(0, 7)}\` — the app`,
+              'stops when idle and cold-starts on the first request, so give the',
+              'first load a few seconds. It is destroyed when this PR closes.',
+            ].join('\n')
+
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.issue.number,
+            })
+            const existing = comments.find(comment => comment.body?.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
+
+  destroy:
+    name: Destroy preview
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # `|| true`: a PR that never deployed (fork, failed build) has no app.
+      - run: flyctl apps destroy "$APP" --yes || true

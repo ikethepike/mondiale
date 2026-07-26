@@ -2661,4 +2661,953 @@ export const EVENT_SEEDS: EventSeed[] = [
     description:
       'The first treaty binding industrialised countries to cut greenhouse-gas emissions was adopted in Kyoto — the ancestor, through years of argument, of the Paris Agreement.',
   },
+
+  // --- Expansion: deeper antiquity to early modern ---------------------------
+  {
+    name: 'Battle of Zama',
+    title: 'Rome breaks Carthage at Zama',
+    country: 'TN',
+    kind: 'conflict',
+    year: -202,
+    description:
+      "Scipio defeated Hannibal himself on Carthage's home ground, ending the Second Punic War. Rome never again faced a rival for the western Mediterranean.",
+  },
+  {
+    name: 'Battle of the Teutoburg Forest',
+    country: 'DE',
+    kind: 'conflict',
+    year: 9,
+    description:
+      'Germanic tribes under Arminius annihilated three Roman legions in the forests east of the Rhine. Rome kept the river as its frontier for the next four centuries.',
+  },
+  {
+    name: 'Plague of Justinian',
+    country: 'TR',
+    kind: 'disaster',
+    year: 541,
+    // The pandemic's own item is undated; the "first plague pandemic" carries it.
+    qid: 'Q96377989',
+    description:
+      "The first recorded plague pandemic reached Constantinople along the grain routes and hollowed out Justinian's empire — a rehearsal, eight centuries early, for the Black Death.",
+  },
+  {
+    name: 'Battle of Tours',
+    country: 'FR',
+    kind: 'conflict',
+    year: 732,
+    description:
+      "Charles Martel's Franks turned back an Umayyad raiding army between Tours and Poitiers — the high-water mark of the Arab advance into Western Europe.",
+  },
+  {
+    name: 'Baghdad',
+    title: 'Baghdad is founded',
+    country: 'IQ',
+    kind: 'nation',
+    year: 762,
+    description:
+      'The Abbasid caliph al-Mansur laid out a brand-new round city on the Tigris. Within a century it was the largest city in the world and the heart of a golden age of learning.',
+  },
+  {
+    name: 'Treaty of Verdun',
+    title: "Charlemagne's empire is split in three",
+    country: 'FR',
+    kind: 'politics',
+    year: 843,
+    description:
+      "Charlemagne's three grandsons partitioned his empire at Verdun. The western and eastern kingdoms it drew would grow, roughly, into France and Germany.",
+  },
+  {
+    name: 'Battle of Manzikert',
+    country: 'TR',
+    kind: 'conflict',
+    year: 1071,
+    description:
+      'The Seljuk Turks captured the Byzantine emperor and broke his army in eastern Anatolia. The empire never recovered its heartland — and its call for help seeded the Crusades.',
+  },
+  {
+    name: 'Domesday Book',
+    country: 'GB',
+    kind: 'politics',
+    year: 1086,
+    description:
+      'Twenty years after Hastings, William the Conqueror had every manor, mill and pig in England surveyed and written down — a census so final the English named it after Judgement Day.',
+  },
+  {
+    name: 'Siege of Jerusalem (1187)',
+    title: 'Saladin retakes Jerusalem',
+    country: 'IL',
+    kind: 'conflict',
+    year: 1187,
+    description:
+      'After crushing the crusader army at Hattin, Saladin took Jerusalem back for Islam after 88 years — and, pointedly, without the massacre that had marked its capture.',
+  },
+  {
+    name: 'Sack of Constantinople',
+    title: 'Crusaders sack Constantinople',
+    country: 'TR',
+    kind: 'conflict',
+    year: 1204,
+    description:
+      'The Fourth Crusade never reached the Holy Land — diverted by debts and Venetian politics, it stormed and looted Christian Constantinople instead. Byzantium never truly recovered.',
+  },
+  {
+    name: 'Battle of Ain Jalut',
+    title: 'The Mongol advance is stopped at Ain Jalut',
+    country: 'IL',
+    kind: 'conflict',
+    year: 1260,
+    description:
+      "Egypt's Mamluks met the Mongols in Galilee and beat them — the first major defeat the Mongol Empire could not avenge, and the end of its westward expansion.",
+  },
+  {
+    name: 'Battle of Bannockburn',
+    country: 'GB',
+    kind: 'conflict',
+    year: 1314,
+    description:
+      "Robert the Bruce's spearmen routed a far larger English army in the marshes below Stirling Castle, securing Scotland's independence for the next three centuries.",
+  },
+  {
+    name: "Hundred Years' War",
+    title: "The Hundred Years' War begins",
+    country: 'FR',
+    kind: 'conflict',
+    year: 1337,
+    description:
+      "The English king's claim to the French crown opened a war that ran, with pauses, for 116 years — long enough to see knights give way to longbows and then to cannon.",
+  },
+  {
+    name: 'Battle of Agincourt',
+    country: 'FR',
+    kind: 'conflict',
+    year: 1415,
+    description:
+      "Henry V's exhausted, outnumbered army destroyed the flower of French chivalry in the mud of Agincourt — the longbow's most famous hour, remembered ever after via Shakespeare.",
+  },
+  {
+    name: 'Great Stand on the Ugra River',
+    title: 'Russia faces down the Horde on the Ugra',
+    country: 'RU',
+    kind: 'conflict',
+    year: 1480,
+    description:
+      "Ivan III's army faced the Great Horde across the Ugra river until the Horde simply turned for home — the bloodless moment counted as the end of two and a half centuries of Mongol overlordship.",
+  },
+  {
+    name: 'Safavid Iran',
+    title: 'The Safavids take Iran',
+    country: 'IR',
+    kind: 'nation',
+    year: 1501,
+    description:
+      'The young Shah Ismail took Tabriz and founded the Safavid dynasty, making Shia Islam the state religion — the decision that still shapes Iran five centuries on.',
+  },
+  {
+    name: 'Mona Lisa',
+    title: 'Leonardo begins the Mona Lisa',
+    country: 'IT',
+    kind: 'culture',
+    year: 1503,
+    description:
+      "Leonardo da Vinci began a portrait of a Florentine merchant's wife and kept refining it for years, carrying it with him to France — where it never left.",
+  },
+  {
+    name: 'Sistine Chapel ceiling',
+    title: 'Michelangelo begins the Sistine ceiling',
+    country: 'VA',
+    kind: 'culture',
+    year: 1508,
+    description:
+      'Michelangelo — a sculptor, protesting he was no painter — spent four years on his back over the Sistine Chapel, and produced the most famous ceiling on Earth.',
+  },
+  {
+    name: 'Potosí',
+    title: 'Silver is struck at Potosí',
+    country: 'BO',
+    kind: 'culture',
+    year: 1545,
+    description:
+      "A mountain of silver discovered in the high Andes became the largest source of wealth in the Spanish Empire — mined at a terrible cost in forced labour, and minting the world's first global currency.",
+  },
+  {
+    name: 'Gregorian calendar',
+    title: 'The Gregorian calendar is introduced',
+    country: 'VA',
+    kind: 'science',
+    year: 1582,
+    description:
+      'Pope Gregory XIII deleted ten days from October to fix the drifting Julian calendar. Catholic Europe switched at once; Britain held out until 1752, Russia until 1918.',
+  },
+  {
+    name: 'Tulip mania',
+    country: 'NL',
+    kind: 'culture',
+    year: 1637,
+    description:
+      'At the peak of the Dutch tulip craze single bulbs traded for the price of a canal house — then the market collapsed in weeks. It remains the byword for a speculative bubble.',
+  },
+  {
+    name: 'Battle of Shanhai Pass',
+    title: 'The Qing take Beijing',
+    country: 'CN',
+    kind: 'conflict',
+    year: 1644,
+    description:
+      "A Ming general opened the Great Wall's eastern gate to the Manchus, who swept in to claim a collapsing empire. Their Qing dynasty ruled China until 1912.",
+  },
+  {
+    name: 'Salem witch trials',
+    country: 'US',
+    kind: 'culture',
+    year: 1692,
+    description:
+      'A wave of accusations in a small Massachusetts town saw twenty people executed for witchcraft before the panic burned out — and became the permanent shorthand for one.',
+  },
+  {
+    name: "Seven Years' War",
+    title: "The Seven Years' War begins",
+    country: 'DE',
+    kind: 'conflict',
+    year: 1756,
+    description:
+      'Fought in Europe, the Americas, India and at sea, it has a claim to being the first world war. Britain emerged with Canada and India; France with the debts that fed its revolution.',
+  },
+  {
+    name: 'Constitution of the United States',
+    title: 'The US Constitution is signed',
+    country: 'US',
+    kind: 'politics',
+    year: 1787,
+    description:
+      'A summer of closed-door argument in Philadelphia produced the oldest written national constitution still in force — beginning, boldly, "We the People".',
+  },
+  {
+    name: 'Louisiana Purchase',
+    country: 'US',
+    kind: 'politics',
+    year: 1803,
+    description:
+      "Napoleon, needing war money, sold France's vast Louisiana territory for $15 million. The United States doubled in size overnight at about three cents an acre.",
+  },
+  {
+    name: 'Second voyage of HMS Beagle',
+    title: 'The Beagle sails, Darwin aboard',
+    country: 'EC',
+    kind: 'science',
+    year: 1831,
+    description:
+      'A five-year survey voyage carried the young Charles Darwin around South America and to the Galápagos Islands, whose finches and tortoises seeded the theory of evolution.',
+  },
+  {
+    name: 'Battle of Carabobo',
+    title: 'Venezuela wins its freedom at Carabobo',
+    country: 'VE',
+    kind: 'revolution',
+    year: 1821,
+    description:
+      "Bolívar's decisive victory at Carabobo effectively ended Spanish rule in Venezuela — June 24 is still the army's day of days.",
+  },
+  {
+    name: 'View from the Window at Le Gras',
+    title: 'The first photograph is taken',
+    country: 'FR',
+    kind: 'science',
+    year: 1826,
+    description:
+      'Nicéphore Niépce pointed a pewter plate out of his workroom window in Burgundy and exposed it for hours — the oldest surviving photograph of the real world.',
+  },
+  {
+    name: 'Neptune',
+    title: 'Neptune is discovered by mathematics',
+    country: 'DE',
+    kind: 'science',
+    year: 1846,
+    description:
+      "Astronomers in Berlin found Neptune within a degree of where the Frenchman Le Verrier's calculations said an unseen planet must be — discovered by pen before telescope.",
+  },
+  {
+    name: 'Dynamite',
+    title: 'Nobel invents dynamite',
+    country: 'SE',
+    kind: 'science',
+    year: 1867,
+    description:
+      'Alfred Nobel tamed nitroglycerine into a stable stick and made a fortune remaking mining, construction — and war. The prizes in his name were his answer to that legacy.',
+  },
+  {
+    name: 'Brooklyn Bridge',
+    title: 'The Brooklyn Bridge opens',
+    country: 'US',
+    kind: 'engineering',
+    year: 1883,
+    description:
+      'The longest suspension bridge of its day crossed the East River on steel cables — finished by Emily Roebling, who ran the project after her engineer husband was paralysed.',
+  },
+  {
+    name: 'Benz Patent-Motorwagen',
+    title: 'Karl Benz patents the automobile',
+    country: 'DE',
+    kind: 'engineering',
+    year: 1886,
+    description:
+      'Karl Benz patented a three-wheeled carriage driven by a petrol engine — the first true automobile. His wife Bertha made the first road trip in it, without telling him.',
+  },
+  {
+    name: 'Workers Leaving the Lumière Factory',
+    title: 'The Lumières screen the first films',
+    country: 'FR',
+    kind: 'culture',
+    year: 1895,
+    description:
+      "The Lumière brothers filmed their own workers streaming out of the factory gates in Lyon and projected it to paying audiences — cinema's founding minute of footage.",
+  },
+  {
+    name: 'Radium',
+    title: 'The Curies discover radium',
+    country: 'FR',
+    kind: 'science',
+    year: 1898,
+    description:
+      'Marie and Pierre Curie boiled down tonnes of pitchblende in a Paris shed to isolate a new, faintly glowing element. Marie became the first person to win two Nobel Prizes.',
+  },
+
+  // --- Expansion: the twentieth century ---------------------------------------
+  {
+    name: '1903 Tour de France',
+    title: 'The first Tour de France',
+    country: 'FR',
+    kind: 'culture',
+    year: 1903,
+    description:
+      'A newspaper circulation stunt sent sixty riders around France over 2,428 kilometres. The survivors made it the biggest annual sporting event on Earth.',
+  },
+  {
+    name: 'Annus Mirabilis papers',
+    title: "Einstein's miracle year",
+    country: 'CH',
+    kind: 'science',
+    year: 1905,
+    description:
+      'In one year, a 26-year-old patent clerk in Bern published four papers — on light quanta, Brownian motion, special relativity and E=mc² — and physics was never the same.',
+  },
+  {
+    name: 'Great Mosque of Djenné',
+    title: 'The Great Mosque of Djenné is raised',
+    country: 'ML',
+    kind: 'engineering',
+    year: 1907,
+    description:
+      'The largest mud-brick building in the world rose on the site of a 13th-century mosque in Mali. The whole town replasters it by hand at an annual festival.',
+  },
+  {
+    name: 'Ford Model T',
+    title: 'The Model T rolls out',
+    country: 'US',
+    kind: 'engineering',
+    year: 1908,
+    description:
+      "Ford's simple, rugged Model T — soon built on a moving assembly line that cut its price year after year — put the world's middle class on wheels. Half the cars on Earth were once Model Ts.",
+  },
+  {
+    name: 'African National Congress',
+    title: 'The ANC is founded',
+    country: 'ZA',
+    kind: 'politics',
+    year: 1912,
+    description:
+      "Chiefs, lawyers and churchmen met in Bloemfontein to resist the new Union of South Africa's colour bar — the movement that would, 82 years later, win the country's first free election.",
+  },
+  {
+    name: 'Balfour Declaration',
+    country: 'GB',
+    kind: 'politics',
+    year: 1917,
+    description:
+      'A 67-word letter from Britain\'s foreign secretary promised support for "a national home for the Jewish people" in Palestine — a sentence whose consequences are still being argued.',
+  },
+  {
+    name: 'Prohibition in the United States',
+    title: 'America goes dry',
+    country: 'US',
+    kind: 'politics',
+    year: 1920,
+    description:
+      'The Eighteenth Amendment banned the making and selling of alcohol nationwide. Thirteen years of speakeasies and Al Capone later, it became the only amendment ever repealed.',
+  },
+  {
+    name: '1924 Winter Olympics',
+    title: 'The first Winter Olympics',
+    country: 'FR',
+    kind: 'culture',
+    year: 1924,
+    description:
+      'Sixteen nations met at Chamonix under Mont Blanc for an "International Winter Sports Week" — retroactively crowned the first Winter Olympic Games.',
+  },
+  {
+    name: 'Spirit of St. Louis',
+    title: 'Lindbergh flies the Atlantic alone',
+    country: 'US',
+    kind: 'science',
+    year: 1927,
+    description:
+      'Charles Lindbergh flew 33½ hours from New York to Paris, alone and without radio, in a single-engine plane with a fuel tank where the windscreen should be. A crowd of 100,000 mobbed the field.',
+  },
+  {
+    name: 'Hoover Dam',
+    title: 'The Hoover Dam is completed',
+    country: 'US',
+    kind: 'engineering',
+    year: 1936,
+    description:
+      'A Depression mega-project higher than a 60-storey building corked the Colorado River, creating the largest reservoir in the United States and lighting the Southwest.',
+  },
+  {
+    name: '1936 Summer Olympics',
+    title: "Jesse Owens spoils Hitler's Olympics",
+    country: 'DE',
+    kind: 'culture',
+    year: 1936,
+    description:
+      'The Nazis staged the Berlin Games as a showcase of Aryan supremacy — and the Black American sprinter Jesse Owens won four gold medals in front of them.',
+  },
+  {
+    name: 'Winter War',
+    title: 'Finland stands alone in the Winter War',
+    country: 'FI',
+    kind: 'conflict',
+    year: 1939,
+    description:
+      'The Soviet Union invaded Finland expecting weeks; ski troops in white held the Red Army through a brutal winter for three and a half months. Finland lost territory but kept its independence.',
+  },
+  {
+    name: 'Warsaw Ghetto Uprising',
+    country: 'PL',
+    kind: 'conflict',
+    year: 1943,
+    description:
+      'Facing final deportation to the death camps, the young Jews of the Warsaw Ghetto fought the SS with smuggled pistols and petrol bombs for nearly a month — the largest Jewish revolt of the Holocaust.',
+  },
+  {
+    name: 'Colossus computer',
+    title: 'Colossus — the first electronic computer',
+    country: 'GB',
+    kind: 'science',
+    year: 1943,
+    description:
+      'Built in secret at Bletchley Park to break German cipher traffic, Colossus was the first programmable electronic digital computer. Churchill ordered it smashed after the war; the secret held for 30 years.',
+  },
+  {
+    name: 'ENIAC',
+    title: 'ENIAC is unveiled',
+    country: 'US',
+    kind: 'science',
+    year: 1946,
+    description:
+      'Thirty tonnes and 18,000 vacuum tubes, built for artillery tables — the first general-purpose electronic computer, programmed by six women history took decades to credit.',
+  },
+  {
+    name: 'The Diary of a Young Girl',
+    title: "Anne Frank's diary is published",
+    country: 'NL',
+    kind: 'culture',
+    year: 1947,
+    description:
+      'Two years after Anne Frank died in Bergen-Belsen at fifteen, her father published the diary she kept in the Amsterdam hiding place. It has been read in some seventy languages.',
+  },
+  {
+    name: 'Kon-Tiki expedition',
+    title: 'Kon-Tiki crosses the Pacific',
+    country: 'NO',
+    kind: 'science',
+    year: 1947,
+    description:
+      'Thor Heyerdahl and five companions drifted 8,000 kilometres from Peru to Polynesia on a balsa-wood raft to prove such a voyage was possible. Science disagreed; the world was enchanted.',
+  },
+  {
+    name: 'Dominion of Ceylon',
+    title: 'Ceylon becomes independent',
+    country: 'LK',
+    kind: 'nation',
+    year: 1948,
+    description:
+      'The island of Ceylon took independence from Britain in the same post-war wave as India and Burma, and in 1972 renamed itself Sri Lanka.',
+  },
+  {
+    name: 'Myanmar',
+    title: 'Burma becomes independent',
+    country: 'MM',
+    kind: 'nation',
+    year: 1948,
+    description:
+      'Burma left the British Empire outright — declining even Commonwealth membership — months after independence hero Aung San was assassinated with most of his cabinet.',
+  },
+  {
+    name: 'Cambodia',
+    title: 'Cambodia becomes independent',
+    country: 'KH',
+    kind: 'nation',
+    year: 1953,
+    description:
+      "King Norodom Sihanouk talked France out of its protectorate without a war — his self-styled 'royal crusade for independence'.",
+  },
+  {
+    name: 'Mau Mau rebellion',
+    title: 'The Mau Mau uprising begins',
+    country: 'KE',
+    kind: 'revolution',
+    year: 1952,
+    description:
+      'A land-and-freedom revolt among the Kikuyu drove Britain to declare an eight-year emergency in Kenya, detaining tens of thousands in camps. Independence followed within a decade.',
+  },
+  {
+    name: 'Eurovision Song Contest 1956',
+    title: 'The first Eurovision Song Contest',
+    country: 'CH',
+    kind: 'culture',
+    year: 1956,
+    description:
+      'Seven countries sent songs to a Swiss casino theatre in a television experiment for the new European Broadcasting Union. The host nation won; the contest never stopped growing.',
+  },
+  {
+    name: 'Laser',
+    title: 'The first laser fires',
+    country: 'US',
+    kind: 'science',
+    year: 1960,
+    description:
+      "Theodore Maiman coaxed a synthetic ruby into emitting the first laser light — a solution famously 'looking for a problem' that ended up in everything from surgery to supermarkets.",
+  },
+  {
+    name: 'The Beatles',
+    title: 'The Beatles form in Liverpool',
+    country: 'GB',
+    kind: 'culture',
+    year: 1960,
+    description:
+      'Four Liverpool teenagers settled on a name and went to play the Hamburg clubs. Within four years they were the biggest band on Earth; popular music still lives in their wake.',
+  },
+  {
+    name: 'Vostok 6',
+    title: 'The first woman in space',
+    country: 'RU',
+    kind: 'science',
+    year: 1963,
+    description:
+      'Valentina Tereshkova, a 26-year-old former textile worker and amateur parachutist, orbited the Earth 48 times — more than every American astronaut to that date combined.',
+  },
+  {
+    name: 'Tōkaidō Shinkansen',
+    title: 'The bullet train debuts',
+    country: 'JP',
+    kind: 'engineering',
+    year: 1964,
+    description:
+      'Nine days before the Tokyo Olympics opened, the first Shinkansen slid out for Osaka at 210 km/h — the fastest railway on Earth, in a country written off as war-broken twenty years before.',
+  },
+  {
+    name: 'Boeing 747',
+    title: 'The 747 takes flight',
+    country: 'US',
+    kind: 'engineering',
+    year: 1969,
+    description:
+      'The first jumbo jet — two and a half times bigger than anything before it — made flying cheap enough for ordinary families. It kept the "Queen of the Skies" title for half a century.',
+  },
+  {
+    name: 'Intel 4004',
+    title: 'The first microprocessor',
+    country: 'US',
+    kind: 'science',
+    year: 1971,
+    description:
+      "Intel squeezed a computer's entire processor onto one fingernail-sized chip, built for a Japanese calculator. Everything with a brain today descends from that bargain.",
+  },
+  {
+    name: 'Watergate scandal',
+    title: 'The Watergate break-in',
+    country: 'US',
+    kind: 'politics',
+    year: 1972,
+    description:
+      'A bungled burglary at the Democratic headquarters unravelled, over two years of reporting and tapes, into the only resignation of a US president.',
+  },
+  {
+    name: "Rubik's Cube",
+    title: "Rubik's Cube is invented",
+    country: 'HU',
+    kind: 'culture',
+    year: 1974,
+    description:
+      'A Budapest architecture lecturer built a twisting cube to teach spatial thinking — then spent a month working out how to solve his own puzzle. It became the best-selling toy in history.',
+  },
+  {
+    name: 'Apple Inc.',
+    title: 'Apple is founded in a garage',
+    country: 'US',
+    kind: 'culture',
+    year: 1976,
+    description:
+      "Two Steves — Jobs selling, Wozniak soldering — founded a computer company in a Silicon Valley garage on April Fools' Day. It became the most valuable company in the world.",
+  },
+  {
+    name: 'Star Wars',
+    title: 'Star Wars opens',
+    country: 'US',
+    kind: 'culture',
+    year: 1977,
+    description:
+      'A space fantasy the studio barely believed in opened in 32 cinemas and rewired popular culture — the blockbuster, the franchise and the summer movie all date from it.',
+  },
+  {
+    name: 'Premiership of Margaret Thatcher',
+    title: "Britain's first woman prime minister",
+    country: 'GB',
+    kind: 'politics',
+    year: 1979,
+    description:
+      "Margaret Thatcher entered Downing Street as Britain's first female prime minister and held it for eleven years, remaking — and dividing — the country.",
+  },
+  {
+    name: 'Walkman',
+    title: 'The Walkman starts the soundtrack age',
+    country: 'JP',
+    kind: 'culture',
+    year: 1979,
+    description:
+      "Sony's pocket cassette player, built because a founder wanted opera on long flights, put private soundtracks into public space — the ancestor of every earbud on the street.",
+  },
+  {
+    name: 'IBM Personal Computer',
+    title: 'The IBM PC arrives',
+    country: 'US',
+    kind: 'science',
+    year: 1981,
+    description:
+      "IBM's rushed, open-parts personal computer became the standard everyone cloned — and made the fortune of the small company that supplied its operating system: Microsoft.",
+  },
+  {
+    name: 'Schengen Agreement',
+    title: 'Europe agrees to drop its borders',
+    country: 'LU',
+    kind: 'politics',
+    year: 1985,
+    description:
+      'Five countries signed on a river boat moored at Schengen, a Luxembourg village where France and Germany meet, to abolish their border checks — passport-free travel now spans most of Europe.',
+  },
+  {
+    name: '1986 FIFA World Cup',
+    title: "Maradona's World Cup",
+    country: 'MX',
+    kind: 'culture',
+    year: 1986,
+    description:
+      'Mexico hosted at five weeks\' notice after Colombia withdrew, and Diego Maradona decided the tournament almost alone — scoring the infamous "Hand of God" and the Goal of the Century four minutes apart.',
+  },
+
+  // --- Expansion: decolonisation and the wider world --------------------------
+  {
+    name: 'Libya',
+    title: 'Libya becomes independent',
+    country: 'LY',
+    kind: 'nation',
+    year: 1951,
+    description:
+      'The first country created by the United Nations: the former Italian colony became an independent kingdom under King Idris, years before oil turned up beneath it.',
+  },
+  {
+    name: "1954 Guatemalan coup d'état",
+    title: "A CIA coup topples Guatemala's president",
+    country: 'GT',
+    kind: 'revolution',
+    year: 1954,
+    description:
+      'The elected president Árbenz, whose land reform threatened the United Fruit Company, was overthrown in a CIA-organised coup — a template, and a warning, for the whole Cold War hemisphere.',
+  },
+  {
+    name: 'Sudan',
+    title: 'Sudan becomes independent',
+    country: 'SD',
+    kind: 'nation',
+    year: 1956,
+    description:
+      "Africa's largest country left joint British-Egyptian rule on New Year's Day 1956 — already carrying the north–south divide that would bring two long civil wars.",
+  },
+  {
+    name: 'Somalia',
+    title: 'Somalia becomes independent',
+    country: 'SO',
+    kind: 'nation',
+    year: 1960,
+    description:
+      'British Somaliland and Italian Somalia became independent within a week of each other and merged into a single Somali Republic.',
+  },
+  {
+    name: 'Madagascar',
+    title: 'Madagascar becomes independent',
+    country: 'MG',
+    kind: 'nation',
+    year: 1960,
+    description:
+      "The world's fourth-largest island took its independence from France in the Year of Africa, thirteen years after a rising that French forces had crushed at terrible cost.",
+  },
+  {
+    name: 'Tanzania',
+    title: 'Tanganyika and Zanzibar become Tanzania',
+    country: 'TZ',
+    kind: 'nation',
+    year: 1964,
+    description:
+      'Mainland Tanganyika and the island of Zanzibar united into one republic under Julius Nyerere — the rare African union that held.',
+  },
+  {
+    name: 'Zambia',
+    title: 'Zambia becomes independent',
+    country: 'ZM',
+    kind: 'nation',
+    year: 1964,
+    description:
+      'Northern Rhodesia became Zambia under Kenneth Kaunda, taking its name from the Zambezi — and inheriting an economy built almost entirely on copper.',
+  },
+  {
+    name: 'Botswana',
+    title: 'Botswana becomes independent',
+    country: 'BW',
+    kind: 'nation',
+    year: 1966,
+    description:
+      "One of the poorest countries on Earth at independence, Botswana found diamonds within a year — and managed them into one of Africa's steadiest democracies and economies.",
+  },
+  {
+    name: 'Fiji',
+    title: 'Fiji becomes independent',
+    country: 'FJ',
+    kind: 'nation',
+    year: 1970,
+    description:
+      'Fiji ended 96 years as a British colony, taking independence with a population almost evenly split between indigenous Fijians and Indian-descended islanders.',
+  },
+  {
+    name: 'Papua New Guinea',
+    title: 'Papua New Guinea becomes independent',
+    country: 'PG',
+    kind: 'nation',
+    year: 1975,
+    description:
+      'The most linguistically diverse country on Earth — some 840 languages — took independence from Australia peacefully, without a war of liberation.',
+  },
+  {
+    name: 'Suriname',
+    title: 'Suriname becomes independent',
+    country: 'SR',
+    kind: 'nation',
+    year: 1975,
+    description:
+      "The Netherlands' South American colony became independent; within five years almost a third of its people had emigrated to the country it left.",
+  },
+  {
+    name: 'Green March',
+    country: 'MA',
+    kind: 'politics',
+    year: 1975,
+    description:
+      'Morocco sent 350,000 unarmed civilians walking into Spanish Sahara behind flags and Qurans. Spain withdrew — and the status of Western Sahara has been disputed ever since.',
+  },
+  {
+    name: 'Nicaraguan Revolution',
+    title: 'The Sandinistas take Managua',
+    country: 'NI',
+    kind: 'revolution',
+    year: 1979,
+    description:
+      "The Sandinista guerrillas toppled the Somoza family after 43 years of dynastic rule. The US-backed Contra war against the new government defined the region's next decade.",
+  },
+  {
+    name: 'Dakar Rally',
+    title: 'The first Paris–Dakar rally sets off',
+    country: 'SN',
+    kind: 'culture',
+    year: 1978,
+    description:
+      'A racer who had gotten lost in the Libyan desert decided everyone should: some 180 vehicles left Paris for Dakar across the Sahara. Fewer than half arrived.',
+  },
+  {
+    name: "1989 Paraguayan coup d'état",
+    title: 'Stroessner falls after 35 years',
+    country: 'PY',
+    kind: 'revolution',
+    year: 1989,
+    description:
+      "General Stroessner — the hemisphere's longest-ruling dictator — was toppled by his own son-in-law's faction in a night of fighting in Asunción, opening Paraguay's slow turn to elections.",
+  },
+  {
+    name: 'Kazakhstan',
+    title: 'Kazakhstan becomes independent',
+    country: 'KZ',
+    kind: 'nation',
+    year: 1991,
+    description:
+      "The last Soviet republic to declare independence — five days before the USSR itself dissolved — inherited the world's ninth-largest territory and its main spaceport, Baikonur.",
+  },
+  {
+    name: 'Chapultepec Peace Accords',
+    title: "El Salvador's war ends at Chapultepec",
+    country: 'SV',
+    kind: 'politics',
+    year: 1992,
+    // The accords item is undated; the war's end time carries the year.
+    qid: 'Q1783607',
+    description:
+      "Government and FMLN guerrillas signed away twelve years of civil war — 75,000 dead — in Mexico City's Chapultepec Castle, folding the guerrillas into electoral politics.",
+  },
+  {
+    name: 'Barbados',
+    title: 'Barbados becomes independent',
+    country: 'BB',
+    kind: 'nation',
+    year: 1966,
+    description:
+      'Barbados took independence from Britain after three centuries as a sugar colony — and in 2021 completed the journey, replacing the Queen with a Barbadian president.',
+  },
+  {
+    name: '2008 Bhutanese National Assembly election',
+    title: 'Bhutan votes for the first time',
+    country: 'BT',
+    kind: 'politics',
+    year: 2008,
+    qid: 'Q864684',
+    description:
+      "The Himalayan kingdom famous for measuring Gross National Happiness held its first general election — a democracy introduced from the throne, at the king's own insistence.",
+  },
+
+  // --- Expansion: the digital age and the present ------------------------------
+  {
+    name: 'PlayStation',
+    title: 'The PlayStation launches',
+    country: 'JP',
+    kind: 'culture',
+    year: 1994,
+    // Bare name search finds the brand, not the 1994 console.
+    qid: 'Q10677',
+    description:
+      "Born from a Nintendo partnership that collapsed, Sony's grey box took video games from the children's bedroom to the living room — the first console to sell 100 million.",
+  },
+  {
+    name: 'Deep Blue versus Garry Kasparov',
+    title: 'Deep Blue beats the world champion',
+    country: 'US',
+    kind: 'science',
+    year: 1997,
+    // The match item is undated; the deciding sixth game carries the year.
+    qid: 'Q2631085',
+    description:
+      "IBM's chess machine beat world champion Garry Kasparov over six games — the first defeat of a reigning champion by a computer, and a line quietly crossed for everyone.",
+  },
+  {
+    name: 'Google',
+    title: 'Google is founded',
+    country: 'US',
+    kind: 'culture',
+    year: 1998,
+    description:
+      'Two Stanford students incorporated their search project in a rented garage. Its name became the verb for finding anything out.',
+  },
+  {
+    name: 'Shenzhou 5',
+    title: 'China puts a person in space',
+    country: 'CN',
+    kind: 'science',
+    year: 2003,
+    description:
+      'Yang Liwei orbited the Earth fourteen times aboard Shenzhou 5, making China the third nation — forty-two years after the first two — to launch a human into space on its own.',
+  },
+  {
+    name: 'Facebook',
+    title: 'Facebook goes online',
+    country: 'US',
+    kind: 'culture',
+    year: 2004,
+    description:
+      "A student directory coded in a Harvard dorm room grew into the network holding a third of humanity — and into the era's hardest arguments about privacy and truth.",
+  },
+  {
+    name: 'IAU definition of planet',
+    title: 'Pluto is demoted',
+    country: 'CZ',
+    kind: 'science',
+    year: 2006,
+    description:
+      'Astronomers meeting in Prague voted a formal definition of "planet" — and Pluto, beloved ninth planet for 76 years, became a dwarf planet by show of hands.',
+  },
+  {
+    name: '2010 eruptions of Eyjafjallajökull',
+    title: 'An Icelandic volcano grounds Europe',
+    country: 'IS',
+    kind: 'disaster',
+    year: 2010,
+    description:
+      "Ash from an unpronounceable Icelandic volcano closed most of Europe's airspace for nearly a week — the largest air-traffic shutdown since the Second World War, without a single casualty.",
+  },
+  {
+    name: '2010 Copiapó mining accident',
+    title: 'The 33 Chilean miners surface',
+    country: 'CL',
+    kind: 'disaster',
+    year: 2010,
+    description:
+      'Thirty-three miners survived 69 days seven hundred metres underground in the Atacama, and a billion people watched the capsule winch every one of them back to daylight.',
+  },
+  {
+    name: 'First observation of gravitational waves',
+    title: 'Gravitational waves are heard',
+    country: 'US',
+    kind: 'science',
+    year: 2015,
+    description:
+      'Twin LIGO detectors caught the spacetime ripple of two black holes colliding a billion light-years away — the confirmation Einstein predicted but thought undetectable.',
+  },
+  {
+    name: 'AlphaGo versus Lee Sedol',
+    title: 'AlphaGo beats Lee Sedol',
+    country: 'KR',
+    kind: 'science',
+    year: 2016,
+    description:
+      'DeepMind\'s AlphaGo beat the great Lee Sedol four games to one at Go, a game thought safe from machines for decades — its "move 37" was so alien commentators assumed a mistake.',
+  },
+  {
+    name: 'Tham Luang cave rescue',
+    title: 'The Thai cave rescue',
+    country: 'TH',
+    kind: 'culture',
+    year: 2018,
+    description:
+      'Twelve boys and their football coach, trapped ten days deep in a flooding cave, were sedated and dived out one by one by an improvised international team — all thirteen survived.',
+  },
+  {
+    name: 'School Strike for Climate',
+    title: 'A school strike goes global',
+    country: 'SE',
+    kind: 'culture',
+    year: 2018,
+    description:
+      "Fifteen-year-old Greta Thunberg sat down outside Sweden's parliament with a hand-painted sign instead of going to school. Within a year, millions were striking with her.",
+  },
+  {
+    name: '2021 Suez Canal obstruction',
+    title: 'One ship blocks world trade',
+    country: 'EG',
+    kind: 'culture',
+    year: 2021,
+    description:
+      "The 400-metre container ship Ever Given wedged itself across the Suez Canal for six days, holding up billions in trade daily — and becoming the internet's favourite metaphor.",
+  },
+  {
+    name: 'Chandrayaan-3',
+    title: 'India lands at the lunar south pole',
+    country: 'IN',
+    kind: 'science',
+    year: 2023,
+    description:
+      'India became the fourth country to soft-land on the Moon and the first to reach its south polar region — days after a Russian attempt crashed, and on a famously lean budget.',
+  },
 ]
