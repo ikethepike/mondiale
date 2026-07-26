@@ -25,6 +25,7 @@
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:currencies": "bun run generators/create-currencies-file.ts",
     "generate:landmarks": "bun run generators/create-landmarks-file.ts",
+    "generate:events": "bun run generators/create-events-file.ts",
     "generate:heritage": "bun run generators/create-heritage-file.ts",
     "generate:cities": "bun run generators/vendors/geonames/create-cities.ts",
     "generate:map": "bun run generators/vendors/naturalearth/create-map.ts",

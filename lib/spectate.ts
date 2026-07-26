@@ -3,6 +3,7 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { politicalLeader } from '~~/lib/leaders'
 import { processReplacements } from '~~/lib/values'
 import { TREND_METRICS } from '~~/lib/trends'
@@ -146,6 +147,27 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
           ? `Extend the chain from ${countryName(head)} — ${liveChain.length} links and counting`
           : 'Chain unbroken borders, one country per turn',
         focus: liveChain,
+      }
+    }
+    case 'timeline': {
+      if (!('state' in challenge) || !('deck' in challenge.state)) break
+      const { state } = challenge
+      const drawn = state.deck[state.card]
+      const event = drawn ? timelineEvent(drawn) : undefined
+      return {
+        kicker: `Timeline · card ${Math.min(state.card, state.deck.length - 1)} of ${
+          state.deck.length - 1
+        }`,
+        prompt: event
+          ? `Slot "${event.name}" into the growing timeline — ${state.placed.length} cards locked in`
+          : 'Slot each event into the shared timeline, before-or-after only',
+        secret: event ? `It belongs in ${formatEventYear(event.year)}` : undefined,
+        image: event?.image,
+        facts: state.placed.map(slug => ({
+          label: timelineEvent(slug)?.name ?? slug,
+          value: formatEventYear(timelineEvent(slug)?.year ?? 0),
+        })),
+        focus: event ? [event.country] : undefined,
       }
     }
     case 'heritage-hunt': {

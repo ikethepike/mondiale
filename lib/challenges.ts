@@ -36,6 +36,7 @@ import type {
   SilhouetteChallenge,
   SketchChallenge,
   StatDetectiveChallenge,
+  TimelineChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
   WaterBlitzChallenge,
@@ -62,6 +63,7 @@ import { shuffleArray } from './arrays'
 import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
+import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { dramaScore, isDecisiveGap, readTrend, TREND_METRIC_IDS, TREND_METRICS } from './trends'
 import type { TrendReading } from './trends'
@@ -126,6 +128,7 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['flashpoint', 0.02],
   ['pin-landmark', 0.06],
   ['trend-race', 0.08],
+  ['timeline', 0.08],
 ]
 
 /**
@@ -256,6 +259,50 @@ const getBorderChainChallenge = ({
       eliminated: [],
       outcomes: {},
       missedOuts: {},
+    },
+  }
+}
+
+/**
+ * Timeline dealer: an opener plus a fixed hand per player, era-spread by the
+ * difficulty's minimum year gap. Unlike the chain there is no one to outlast,
+ * so a solo table still deals — the line just grows alone.
+ */
+const getTimelineChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): TimelineChallenge | undefined => {
+  const contenders = chainContenders(game)
+  if (!contenders.length) return undefined
+
+  const tuning = TIMELINE_TUNING[game.difficulty]
+  const cardCount = 1 + tuning.cardsPerPlayer * contenders.length
+  const deck = dealTimelineDeck(
+    game.variant,
+    cardCount,
+    tuning.minimumYearGap,
+    tuning.eraWindowYears
+  )
+  if (!deck) return undefined
+
+  return {
+    _type: 'timeline-challenge',
+    turnSeconds: tuning.turnSeconds,
+    revealSeconds: tuning.revealSeconds,
+    maximumPoints: maximumRoundPoints(game),
+    state: {
+      deck,
+      // The opener anchors the line so the first placement is a real choice.
+      placed: [deck[0]],
+      card: 1,
+      order: shuffleArray(contenders),
+      activeIndex: 0,
+      turn: 0,
+      // Stamped when the round is revealed (timeline-turns) — staging pauses first.
+      deadline: 0,
+      banked: {},
+      placements: [],
     },
   }
 }
@@ -1078,6 +1125,11 @@ export const getRoundChallenge = async ({
     }
     case 'border-chain': {
       const challenge = getBorderChainChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'timeline': {
+      const challenge = getTimelineChallenge({ game })
       if (challenge) return challenge
       break
     }

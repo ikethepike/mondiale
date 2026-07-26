@@ -2,6 +2,7 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import {
   isTraversalChallenge,
   roundChallengeKind,
@@ -87,6 +88,15 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'pin-landmark-challenge'
         ? `The landmark was ${LANDMARKS[challenge.slug]?.name ?? 'a mystery'}`
         : ''
+    case 'timeline': {
+      if (!('_type' in challenge) || challenge._type !== 'timeline-challenge') return ''
+      const placed = challenge.state.placed
+      const first = timelineEvent(placed[0])
+      const last = timelineEvent(placed[placed.length - 1])
+      return first && last && placed.length > 1
+        ? `The timeline ran from ${formatEventYear(first.year)} to ${formatEventYear(last.year)}`
+        : 'The timeline round'
+    }
     default:
       return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
   }

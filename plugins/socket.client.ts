@@ -57,6 +57,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'heritage-updated': {
     handler: genericUpdateEvent,
   },
+  'timeline-updated': {
+    handler: genericUpdateEvent,
+  },
   'individual-challenge-checked': {
     handler: playerUpdateEvent,
   },

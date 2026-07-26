@@ -1,0 +1,45 @@
+# fly.preview.toml — per-PR preview apps (.github/workflows/fly-preview.yml)
+#
+# Same app as fly.toml with preview economics: machines stop when idle and
+# nothing is pinned running, so an open PR costs ~nothing between visits.
+# The trade-off is deliberate: an idle-stop kills in-memory Socket.IO state,
+# which live multiplayer would never accept (see fly.toml) — but a preview
+# exists to click around a branch, and the machine cold-starts on request.
+#
+# The app name here is a placeholder — the workflow deploys each PR with
+# `--app pr-<number>-mondiale`, which takes precedence.
+
+app = "mondiale-preview"
+primary_region = "arn"
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 20
+    hard_limit = 25
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

@@ -70,6 +70,14 @@ export type ClientEventData =
       pin: LatLng
     }
   | {
+      /** Timeline: the active player slots the drawn card into the line.
+       *  `turn` echoes the state's turn counter so a retried/duplicated send
+       *  can never land as a second placement. */
+      event: 'submit-timeline-placement'
+      slot: number
+      turn: number
+    }
+  | {
       event: 'close-tutorial'
     }
   | {
@@ -149,6 +157,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-final-challenge-answer',
   'submit-chain-move',
   'submit-heritage-pin',
+  'submit-timeline-placement',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -193,6 +202,9 @@ export type ServerEventData =
   | { event: 'chain-updated'; game: Game }
   /** Heritage Hunt: a beat resolved or advanced — whole-table state. */
   | { event: 'heritage-updated'; game: Game }
+  /** Timeline: a placement resolved, the reveal held, or the next turn began —
+   *  whole-table state. */
+  | { event: 'timeline-updated'; game: Game }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
   | {

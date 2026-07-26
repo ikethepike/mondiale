@@ -64,6 +64,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'ghost-state': 'disputed',
   'no-mans-land': 'disputed',
   'trend-race': 'trends',
+  timeline: 'trends',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
 /** Kinds reserved for hard games unless their group is force-enabled. Lives

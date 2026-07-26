@@ -10,6 +10,11 @@ import {
   scheduleHeritageTimeout,
   startHeritageClock,
 } from './heritage-beats'
+import {
+  isTimelineChallenge,
+  scheduleTimelineTimeout,
+  startTimelineClock,
+} from './timeline-turns'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -148,6 +153,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       const revealed = game.rounds[game.rounds.length - 1]?.groupChallenge
       if (isBorderChainChallenge(revealed)) startChainClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
+      if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
       await server.updateGameState(game)
       server.emit({ event: 'new-round', game }, eventTarget)
       if (isBorderChainChallenge(revealed)) {
@@ -155,6 +161,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
       }
       if (isHeritageHuntChallenge(revealed)) {
         scheduleHeritageTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      if (isTimelineChallenge(revealed)) {
+        scheduleTimelineTimeout({ io, redis, socket, eventTarget }, revealed)
       }
     }
   }
