@@ -512,6 +512,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1707,
     description:
       'The English and Scottish parliaments voted themselves into a single Kingdom of Great Britain with one parliament at Westminster.',
+    // Illuminated title page of the 1707 Articles of Union, Parliamentary Archives — PD.
+    commons: 'Articles of Union between England and Scotland 28 Jan 1707.png',
   },
   {
     name: 'Battle of Poltava',
@@ -2285,6 +2287,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1997,
     description:
       'Thailand\'s forced float of the baht set off a contagion that crashed currencies and economies from Jakarta to Seoul, humbling the "Asian tigers" and toppling Indonesia\'s Suharto.',
+    // Suharto's resignation address, Indonesian government publication — PD.
+    commons: 'Suharto resigns.jpg',
   },
   {
     name: 'Good Friday Agreement',
@@ -2386,6 +2390,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 2004,
     description:
       "Ten countries — eight of them from behind the old Iron Curtain — joined the EU in its largest single expansion, stitching the continent's Cold War halves together.",
+    // NASA World Wind satellite map, accession states highlighted — PD.
+    commons: 'Eu expansion 2004 map.jpg',
   },
   {
     name: 'Orange Revolution',
@@ -2411,6 +2417,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 2006,
     description:
       'Montenegro voted to leave its union with Serbia — clearing the 55% bar by half a point — and the last piece of the old Yugoslavia went its own way.',
+    // "PO!" (Yes) campaign posters in Plav, uploader PD release.
+    commons: 'Albanian language poster for Montenegro referendum.JPG',
   },
   {
     name: 'iPhone (1st generation)',
@@ -2560,6 +2568,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 2016,
     description:
       'Britain voted 52–48 to leave the European Union, the first member ever to go. The prime minister resigned the next morning; the leaving took four and a half more years.',
+    // The referendum ballot paper (no date printed on it) — PD-textlogo.
+    commons: '2016 EU Referendum Ballot Paper.jpg',
   },
   {
     name: 'Colombian peace agreement',
@@ -2656,6 +2666,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1990,
     description:
       "Hunger strikes and mass protests in freezing Ulaanbaatar persuaded the communist politburo to resign en masse — a peaceful exit, and Asia's first post-Soviet democracy.",
+    // First post-revolution State Baga Khural, parliament.mn — CC BY 4.0 (no PD image exists).
+    commons: 'State Baga Khural in session, 1990.png',
   },
   {
     name: 'Kyoto Protocol',
@@ -3020,6 +3032,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1912,
     description:
       "Chiefs, lawyers and churchmen met in Bloemfontein to resist the new Union of South Africa's colour bar — the movement that would, 82 years later, win the country's first free election.",
+    // 1914 SANNC deputation studio portrait (Dube, Plaatje, Rubusana…) — PD-old.
+    commons: 'ANC1914.jpg',
   },
   {
     name: 'Balfour Declaration',
@@ -3442,6 +3456,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1989,
     description:
       "General Stroessner — the hemisphere's longest-ruling dictator — was toppled by his own son-in-law's faction in a night of fighting in Asunción, opening Paraguay's slow turn to elections.",
+    // 1954 official portrait, Casa Fotográfica Resck — PD-Paraguay.
+    commons: 'Alfredo Stroessner en 1954.jpg',
   },
   {
     name: 'Kazakhstan',
@@ -3481,6 +3497,9 @@ export const EVENT_SEEDS: EventSeed[] = [
     qid: 'Q864684',
     description:
       "The Himalayan kingdom famous for measuring Gross National Happiness held its first general election — a democracy introduced from the throne, at the king's own insistence.",
+    // Bhutan's CEC preparing the first election, Election Commission of India photo — GODL-India (no PD image exists).
+    commons:
+      'The Chief Election Commissioner, Shri B.B Tandon and the Chief Election Commissioner of Bhutan, Mr. Kunzan Wangdi signing an MoU for cooperation in Electoral Management in Thimpu, Bhutan on May 24, 2006.jpg',
   },
 
   // --- Expansion: the digital age and the present ------------------------------
