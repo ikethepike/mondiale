@@ -26,7 +26,7 @@
       <NuxtLink to="/privacy">Privacy</NuxtLink>
       <span class="divider" aria-hidden="true">·</span>
       <span class="copyright">© {{ currentYear }} Mondiale</span>
-      <NuxtLink class="version-flag" to="/version" :title="`Version ${commitHash}`" aria-label="Version">
+      <NuxtLink class="version-flag" to="/version" external :title="`Version ${commitHash}`" aria-label="Version">
         <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally from the commit hash -->
         <span class="flag" v-html="deployFlag.svg" />
       </NuxtLink>
