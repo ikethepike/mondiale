@@ -1,6 +1,19 @@
 import type { Player } from '../types/player.type'
 import { getRandomPlayerColor } from './color'
 
+export const MAX_PLAYER_NAME_LENGTH = 24
+
+/**
+ * The one gate a submitted player name passes through (client guard and
+ * server handler alike): trims whitespace and clamps the length, returning
+ * undefined when nothing readable remains — blank names never enter a game.
+ */
+export const normalizePlayerName = (name: unknown): string | undefined => {
+  if (typeof name !== 'string') return undefined
+  const trimmed = name.trim().slice(0, MAX_PLAYER_NAME_LENGTH).trim()
+  return trimmed || undefined
+}
+
 /**
  * A fresh player. `takenColors` are the colours already in the game, so a
  * new joiner gets a colour nobody else has (falling back to a random one

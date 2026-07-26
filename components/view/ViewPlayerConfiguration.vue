@@ -42,7 +42,13 @@
               <div class="name-wrapper">
                 <label>
                   <strong>What's your name?</strong>
-                  <InputText inline-button="Save" @change="(value: string) => (name = value)" />
+                  <InputText
+                    required
+                    inline-button="Save"
+                    :maxlength="MAX_PLAYER_NAME_LENGTH"
+                    @change="(value: string) => (name = value)"
+                    @input="(value: string) => (name = value)"
+                  />
                 </label>
               </div>
             </form>
@@ -244,6 +250,7 @@ import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
+import { MAX_PLAYER_NAME_LENGTH, normalizePlayerName } from '~~/lib/player'
 import { wait } from '~~/lib/time'
 import {
   autoEnabledKinds,
@@ -327,10 +334,15 @@ const changeColor = (direction?: 'next' | 'previous') => {
     direction,
   })
 }
+// The input's `required` blocks empty submits natively; this guard backstops
+// whitespace-only names, which pass constraint validation but aren't names.
 const setName = () => {
+  const validName = normalizePlayerName(name.value)
+  if (!validName) return
+
   update({
     event: 'set-name',
-    name: name.value,
+    name: validName,
   })
 }
 

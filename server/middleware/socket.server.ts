@@ -134,11 +134,23 @@ const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSo
   }).catch(error => console.error(`Spectator prune failed for ${gameId}`, error))
 }
 
+let warnedMissingRedisToken = false
+
 export default defineEventHandler(({ node }) => {
   const { REDIS_PASSWORD, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
   const redisToken = UPSTASH_REDIS_REST_TOKEN ?? REDIS_PASSWORD
   if (!redisToken) {
-    throw new ReferenceError('No redis token supplied (UPSTASH_REDIS_REST_TOKEN or REDIS_PASSWORD)')
+    // PR previews may deploy without Redis secrets (see fly-preview.yml):
+    // the site must still serve — /health especially, or Fly's health checks
+    // can never pass — so skip the socket server instead of failing every
+    // request. Multiplayer stays dark until a token is supplied.
+    if (!warnedMissingRedisToken) {
+      warnedMissingRedisToken = true
+      console.warn(
+        'No redis token supplied (UPSTASH_REDIS_REST_TOKEN or REDIS_PASSWORD) — socket server disabled'
+      )
+    }
+    return
   }
 
   // Use globalThis for better cross-environment compatibility
