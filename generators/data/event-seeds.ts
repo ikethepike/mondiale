@@ -1634,6 +1634,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1957,
     description:
       'The Gold Coast became Ghana under Kwame Nkrumah — the first sub-Saharan colony to win independence. "Our independence is meaningless," he said that night, "unless it is linked up with the total liberation of Africa."',
+    // UK National Archives (CO 1069) portrait of Nkrumah — OGL v1.0.
+    commons: 'Kwame Nkrumah - The National Archives UK - CO 1069-50-1.jpg',
   },
   {
     name: 'Treaty of Rome',
@@ -2081,6 +2083,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1989,
     description:
       'At CERN, Tim Berners-Lee proposed a hypertext system for sharing physics papers; his manager pencilled "vague, but exciting". He gave the Web away patent-free.',
+    // Berners-Lee's own WorldWideWeb browser on NeXTStep — public domain.
+    commons: 'WorldWideWeb.1.png',
   },
   {
     name: 'Baltic Way',
