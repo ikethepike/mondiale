@@ -31,9 +31,20 @@ import type { ISOCountryCode } from '../types/geography.types'
  */
 
 const OUTPUT_DIRECTORY = 'public/events'
-/** Event cards render at card size, never a full-screen zoom stage. */
+/**
+ * In the family's width band (landmarks 2000, heritage 1400, capitals 1280,
+ * leaders 1024): event cards render at most ~608 CSS px and never zoom, so
+ * heritage's 1400 gives full 2× retina headroom. Everything goes through the
+ * shared writeWebp — WebP only, downscale-only, like every other pipeline.
+ */
 const EVENT_WIDTH = 1400
-/** Reject Wikidata-suggested images whose SOURCE is smaller than this. */
+/**
+ * Reject Wikidata-suggested images whose SOURCE is smaller than this.
+ * Deliberately below landmarks/heritage's 900: those photos feed zoom stages,
+ * an event card does not — and for the ~40 events (Thermopylae, the Black
+ * Death…) whose best free image is 640-850px, a slightly soft photo beats a
+ * photo-less card.
+ */
 const MIN_IMAGE_WIDTH = 640
 /** |seed year − claim year| a verification will accept — calendar edges. */
 const YEAR_TOLERANCE = 1
