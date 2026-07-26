@@ -641,6 +641,21 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: padding var(--motion-base) var(--ease-out-expressive);
+
+  // Desktop: the line parts around the slot under consideration — pointer or
+  // keyboard cursor — so the user sees exactly where the card would press in.
+  @media (min-width: ($tablet + 1)) {
+    &:has(.slot.selected) {
+      padding: 0 1.1rem;
+    }
+
+    @media (hover: hover) {
+      &:hover:has(.slot:not(:disabled)) {
+        padding: 0 1.1rem;
+      }
+    }
+  }
 
   .tick {
     width: 0.9rem;
@@ -662,15 +677,27 @@ footer {
       border-color var(--motion-quick) var(--ease-out-expressive),
       background-color var(--motion-quick) var(--ease-out-expressive);
 
-    &::before {
-      content: '+';
-      inset: 0;
-      display: flex;
-      font-size: 1.6rem;
-      font-weight: bold;
+    // The plus drawn as two bars, dead-centre by geometry — the serif's
+    // glyph metrics left it riding high in the circle.
+    &::before,
+    &::after {
+      content: '';
+      top: 50%;
+      left: 50%;
       position: absolute;
-      align-items: center;
-      justify-content: center;
+      border-radius: 0.1rem;
+      background: currentColor;
+      transform: translate(-50%, -50%);
+    }
+
+    &::before {
+      width: 1.1rem;
+      height: 0.18rem;
+    }
+
+    &::after {
+      width: 0.18rem;
+      height: 1.1rem;
     }
 
     // A slow beckon while the call is yours — the answer surface announces
@@ -747,8 +774,12 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gap .slot:not(:disabled) {
-    animation: none;
+  .gap {
+    transition: none;
+
+    .slot:not(:disabled) {
+      animation: none;
+    }
   }
 }
 
