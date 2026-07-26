@@ -448,6 +448,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     country: 'US',
     kind: 'nation',
     year: 1620,
+    // The ship item carries no dates; the voyage item does.
+    qid: 'Q41967248',
     description:
       'A hundred-odd settlers, the Pilgrims among them, crossed from England to Cape Cod aboard the Mayflower, signing a self-government compact before stepping ashore.',
   },
@@ -555,11 +557,13 @@ export const EVENT_SEEDS: EventSeed[] = [
       'Thirteen British colonies declared themselves free and independent states, resting the claim on the self-evident truth that all men are created equal.',
   },
   {
-    name: 'First Fleet',
+    // The First Fleet item is undated; Sydney's inception carries the year.
+    name: 'Sydney',
     title: 'The First Fleet reaches Australia',
     country: 'AU',
     kind: 'nation',
     year: 1788,
+    qid: 'Q3130',
     description:
       'Eleven British ships carrying around 1,400 people — most of them convicts — anchored at Sydney Cove to found a penal colony, beginning the European settlement of Australia.',
   },
@@ -784,15 +788,6 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1851,
     description:
       "The first world's fair filled a vast prefabricated glass hall in Hyde Park with the machines and goods of the industrial age. Six million people came — a third of Britain's population.",
-  },
-  {
-    name: 'Perry Expedition',
-    title: 'American gunboats open Japan',
-    country: 'JP',
-    kind: 'politics',
-    year: 1853,
-    description:
-      'Commodore Perry\'s steam warships — the "black ships" — anchored in Edo Bay and demanded Japan open to trade, ending over two centuries of near-total seclusion.',
   },
   {
     name: 'Crimean War',
@@ -1206,15 +1201,6 @@ export const EVENT_SEEDS: EventSeed[] = [
       'The first world organisation for collective security assembled in Geneva — without the United States, whose Senate refused to join the body its own president had championed.',
   },
   {
-    name: 'Discovery of insulin',
-    title: 'Insulin is discovered',
-    country: 'CA',
-    kind: 'science',
-    year: 1921,
-    description:
-      'Banting and Best isolated insulin in a Toronto laboratory, turning type 1 diabetes from a death sentence into a manageable condition. The patent was sold to the university for one dollar.',
-  },
-  {
     name: 'Anglo-Irish Treaty',
     title: 'The Irish Free State is born',
     country: 'IE',
@@ -1273,6 +1259,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     country: 'GB',
     kind: 'science',
     year: 1928,
+    // The penicillin item itself holds the discovery date (P575).
+    qid: 'Q12190',
     description:
       'Alexander Fleming returned from holiday to find mould killing the bacteria on a neglected culture plate. The antibiotic age it opened has saved hundreds of millions of lives.',
   },
@@ -1697,6 +1685,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     country: 'CD',
     kind: 'nation',
     year: 1960,
+    // No event item; the country's inception carries the year.
+    qid: 'Q974',
     description:
       "Belgium handed over the Congo at two weeks' organised notice after decades of brutal rule. Within months the army mutinied, Katanga seceded and Prime Minister Lumumba was murdered.",
   },
@@ -1826,6 +1816,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     country: 'US',
     kind: 'culture',
     year: 1969,
+    // Bare name search finds the town, not the festival.
+    qid: 'Q164815',
     description:
       'Some 400,000 people descended on a dairy farm in upstate New York for three days of music and rain. The festival lost money, ran out of everything, and became the emblem of a generation.',
   },
@@ -1842,12 +1834,13 @@ export const EVENT_SEEDS: EventSeed[] = [
   // --- The seventies and eighties ---------------------------------------------
   {
     name: 'Aswan Dam',
-    title: 'The Aswan High Dam is completed',
+    title: 'Work begins on the Aswan High Dam',
     country: 'EG',
     kind: 'engineering',
-    year: 1970,
+    year: 1960,
+    qid: 'Q38891',
     description:
-      "The Soviet-financed dam tamed the Nile's ancient flood and lit Egypt — while drowning Nubian homelands and forcing the block-by-block rescue of the Abu Simbel temples.",
+      "Begun in 1960 and completed a decade later, the Soviet-financed dam tamed the Nile's ancient flood and lit Egypt — while drowning Nubian homelands and forcing the block-by-block rescue of the Abu Simbel temples.",
   },
   {
     name: 'Bangladesh Liberation War',
@@ -1937,11 +1930,12 @@ export const EVENT_SEEDS: EventSeed[] = [
       "Angola took independence as Portugal's empire collapsed after the Carnation Revolution — and slid straight into a superpower-fuelled civil war that ran, with pauses, until 2002.",
   },
   {
-    name: 'Death and state funeral of Francisco Franco',
+    name: 'Death of Francisco Franco',
     title: 'Franco dies — Spain turns to democracy',
     country: 'ES',
     kind: 'politics',
     year: 1975,
+    qid: 'Q51753258',
     description:
       'Franco died after 36 years of dictatorship, and the king he had groomed, Juan Carlos, steered Spain instead to parliamentary democracy within three years.',
   },
@@ -2131,13 +2125,13 @@ export const EVENT_SEEDS: EventSeed[] = [
       "The only violent fall in Eastern Europe's year of revolutions: a week of fighting ended with the Ceaușescus tried by a drumhead court and shot on Christmas Day.",
   },
   {
-    name: 'Release of Nelson Mandela',
-    title: 'Mandela walks free',
+    name: '1995 Rugby World Cup',
+    title: 'The Rainbow Nation wins the Rugby World Cup',
     country: 'ZA',
-    kind: 'politics',
-    year: 1990,
+    kind: 'culture',
+    year: 1995,
     description:
-      'Nelson Mandela walked out of Victor Verster prison hand in hand with Winnie after 27 years, live on global television, and told a Cape Town crowd the struggle would continue until one person, one vote.',
+      "A year into democracy, South Africa hosted the tournament and won it — and Nelson Mandela handed François Pienaar the trophy wearing the Springboks' jersey, apartheid's old symbol turned unifier.",
   },
   {
     name: 'German reunification',
@@ -2263,11 +2257,12 @@ export const EVENT_SEEDS: EventSeed[] = [
       'Three years of siege and ethnic cleansing — including genocide at Srebrenica that summer — ended with a peace hammered out at a US airbase in Ohio, freezing Bosnia into two entities under one roof.',
   },
   {
-    name: 'Dolly (sheep)',
+    name: 'Dolly the Sheep',
     title: 'Dolly the sheep is cloned',
     country: 'GB',
     kind: 'science',
     year: 1996,
+    qid: 'Q171433',
     description:
       'Scientists near Edinburgh cloned a sheep from a single adult udder cell — the first cloned mammal, named after Dolly Parton for exactly the reason you suspect.',
   },
@@ -2314,13 +2309,14 @@ export const EVENT_SEEDS: EventSeed[] = [
       'Eleven EU countries locked their currencies into the euro; notes and coins followed in 2002, retiring the franc, mark, lira and peseta. It is now money for over 340 million people.',
   },
   {
-    name: 'Panama Canal handover',
-    title: 'Panama takes over its canal',
+    name: 'Torrijos–Carter Treaties',
+    title: 'America promises the canal to Panama',
     country: 'PA',
     kind: 'politics',
-    year: 1999,
+    year: 1977,
+    qid: 'Q277343',
     description:
-      'On the last day of 1999 the United States handed the canal to Panama under the Torrijos–Carter treaties, ending nearly a century of American control of the waterway that splits the country.',
+      "Carter and Panama's Torrijos signed the treaties returning the canal — the handover itself came at noon on the last day of 1999, ending nearly a century of American control.",
   },
 
   // --- The 21st century ---------------------------------------------------------
@@ -2347,6 +2343,9 @@ export const EVENT_SEEDS: EventSeed[] = [
     country: 'TL',
     kind: 'nation',
     year: 2002,
+    // The country item's inception is the 1975 proclamation; the UN
+    // transitional administration's dissolution marks the 2002 restoration.
+    qid: 'Q332358',
     description:
       'The first new state of the century rose from a quarter-century of brutal Indonesian occupation and a UN-run transition after its people voted overwhelmingly for freedom in 1999.',
   },

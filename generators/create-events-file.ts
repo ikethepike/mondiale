@@ -38,8 +38,23 @@ const MIN_IMAGE_WIDTH = 640
 /** |seed year − claim year| a verification will accept — calendar edges. */
 const YEAR_TOLERANCE = 1
 
-/** Time-bearing properties, in the order the issue's spec trusts them. */
-const TIME_PROPERTIES = ['P585', 'P580', 'P582', 'P571', 'P577', 'P575', 'P619', 'P576'] as const
+/** Time-bearing properties, in the order the issue's spec trusts them:
+ *  point in time, start/end, inception, publication, discovery, launch,
+ *  dissolution, official opening, first flight, birth, death. */
+const TIME_PROPERTIES = [
+  'P585',
+  'P580',
+  'P582',
+  'P571',
+  'P577',
+  'P575',
+  'P619',
+  'P576',
+  'P1619',
+  'P606',
+  'P569',
+  'P570',
+] as const
 
 export interface EventEntry {
   /** Card title, e.g. "The Berlin Wall falls". */

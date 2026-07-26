@@ -9,17 +9,21 @@
       @done="begin()"
     />
 
+    <!-- The shared round clock, re-swept on every turn handoff. -->
+    <ChallengeTimerRadial
+      v-if="clockRunning"
+      :key="`turn-${state!.turn}`"
+      class="round-clock"
+      :value="secondsOnClock"
+      :total="challenge.turnSeconds"
+    />
+
     <header>
       <div class="prompt">
         <h1 class="map-caption">{{ headline }}</h1>
-        <span
-          v-if="!finished && !revealing"
-          class="map-caption sub turn-line"
-          :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
-        >
+        <span v-if="!finished && !revealing" class="map-caption sub turn-line">
           <span class="chip" :style="{ background: activePlayer?.color }" />
           <span>{{ turnLabel }}</span>
-          <span class="clock">{{ secondsOnClock }}s</span>
         </span>
       </div>
     </header>
@@ -136,6 +140,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
@@ -144,6 +149,8 @@ import {
   drawnCard,
   EVENT_KIND_COPY,
   formatEventYear,
+  perCardPoints,
+  slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -203,9 +210,18 @@ const turnLabel = computed(() => {
   return `${activePlayer.value?.name || 'Anonymous'} is on the clock`
 })
 
+/** What a correct call on the current line pays — the density economy, shown. */
+const stakePoints = computed(() => {
+  const active = challenge.value
+  if (!active) return 0
+  return Math.round(
+    perCardPoints(active) * slotDensityFraction(placed.value.length + 1, active.state.deck.length)
+  )
+})
+
 const askLine = computed(() =>
   myTurn.value
-    ? 'Tap the slot on the line where this belongs'
+    ? `Tap the slot on the line where this belongs — a correct call banks ${stakePoints.value} pts`
     : `${activePlayer.value?.name || 'Anonymous'} is weighing the line`
 )
 
@@ -236,18 +252,13 @@ const story = computed(() => {
 
 // --- Shot clock (server-owned deadline; local repaint only) ------------------
 const secondsOnClock = ref(0)
-const fractionLeft = ref(1)
 const clock = setInterval(() => {
   const deadline = state.value?.deadline ?? 0
-  const remaining = deadline - Date.now()
-  secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
-  const total = (challenge.value?.turnSeconds ?? 0) * 1000
-  fractionLeft.value = total ? Math.min(1, Math.max(0, remaining / total)) : 1
+  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
 }, 200)
 onBeforeUnmount(() => clearInterval(clock))
 
-/** 0 (calm ink) through the turn's first half, 100 (ember) as the clock dies. */
-const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))
+const clockRunning = computed(() => !showInterstitial.value && !finished.value && !revealing.value)
 
 // --- Placing a card ------------------------------------------------------------
 const pending = ref(false)
@@ -355,35 +366,12 @@ header {
   display: inline-flex;
   align-items: center;
 
+  // The countdown itself lives in the shared round clock — the chip only
+  // says WHOSE call it is, in their pawn colour.
   .chip {
     width: 0.75rem;
     height: 0.75rem;
-    position: relative;
     border-radius: 50%;
-
-    // The shot clock as a sweeping ring — full at the deal, gone at zero.
-    &::before {
-      content: '';
-      inset: -0.35rem;
-      position: absolute;
-      border-radius: 50%;
-      background: conic-gradient(hsl(24, 80%, 55%) var(--ring, 360deg), transparent 0);
-      mask: radial-gradient(
-        farthest-side,
-        transparent calc(100% - 0.2rem),
-        #000 calc(100% - 0.18rem)
-      );
-    }
-  }
-
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    color: color-mix(
-      in oklab,
-      hsl(24, 80%, 55%) calc(var(--clock-warmth, 0) * 1%),
-      var(--dark-blue)
-    );
   }
 }
 
@@ -663,11 +651,18 @@ footer {
       justify-content: center;
     }
 
+    // A slow beckon while the call is yours — the answer surface announces
+    // itself without a tutorial.
+    &:not(:disabled) {
+      animation: slot-beckon 2s var(--ease-smooth) infinite;
+    }
+
     @media (hover: hover) {
       &:hover:not(:disabled) {
         transform: scale(1.18);
         border-style: solid;
         border-color: var(--dark-blue);
+        animation: none;
       }
     }
 
@@ -676,19 +671,48 @@ footer {
       transform: scale(1.18);
       border-color: var(--dark-blue);
       background: hsla(29.7, 79.9%, 72.7%, 0.55);
+      animation: none;
     }
 
     &:disabled {
       cursor: default;
       opacity: 0.55;
+      animation: none;
     }
+  }
+}
+
+@keyframes slot-beckon {
+  0%,
+  100% {
+    border-color: hsla(215.7, 76.4%, 41%, 0.65);
+    box-shadow: 0 0 0 0 hsla(197.6, 51.2%, 41.8%, 0);
+  }
+  50% {
+    border-color: var(--soft-blue);
+    box-shadow: 0 0 0 0.35rem hsla(197.6, 51.2%, 41.8%, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gap .slot:not(:disabled) {
+    animation: none;
   }
 }
 
 // --- Phones: the line stands upright and scrolls like a ledger -------------------
 @media screen and (max-width: $tablet) {
   header {
-    padding: 1.2rem 1.6rem;
+    // Side gutters keep the headline pill clear of the round clock's berth.
+    padding: 1.2rem 6rem;
+  }
+
+  // The line owns the bottom edge, so the dial keeps to the top corner
+  // instead of .round-clock's phone default (bottom-right).
+  :global(.timeline-round .round-clock) {
+    top: calc(1rem + var(--safe-top));
+    right: calc(1.2rem + var(--safe-right));
+    bottom: auto;
   }
 
   .stage {
