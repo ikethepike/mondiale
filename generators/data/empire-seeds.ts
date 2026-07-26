@@ -1135,7 +1135,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['DE', 'IT', 'ES', 'CH', 'SI', 'HR', 'MC', 'VA', 'AD'],
     },
     capitals: [{ name: 'Paris', coordinates: [2.3522, 48.8566] }],
-    commons: 'Flag of France (1794–1815).svg',
+    commons: 'Flag of the First French Empire (with coat of arms).svg',
     blurb:
       'By 1812 the empire proper counted 130 departments, from Rome to Hamburg, with satellite kingdoms beyond — an order run on one legal code and conscription. The Russian campaign that year cost the Grande Armée, and the borders of 1815 reverted to those of 1789.',
   },
@@ -1549,8 +1549,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SZ', 'MZ'],
     },
     capitals: [{ name: 'Ulundi', coordinates: [31.4166, -28.3352] }],
-    // hand-drawn: the isihlangu war shield with assegai; emblematic, not a flag
-    commons: 'Nguni shield emblem (hand-drawn).svg',
+    commons: 'Zulu flag.svg',
     blurb:
       'Shaka reorganized a minor chiefdom into a regimental state that dominated the country between the Pongola and the Tugela within a decade. The kingdom destroyed a British column at Isandlwana in 1879, was partitioned the same year, and was annexed in 1887.',
   },

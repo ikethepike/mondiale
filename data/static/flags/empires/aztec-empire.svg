@@ -1,14 +1,47 @@
-<!-- Hand-simplified after a Codex Mendoza warrior chimalli (supplied plate): the dark-green stepped fret (xicalcoliuhqui) on a gold shield with feather fringe. Emblematic device, not a flag. -->
+<!-- Hand-drawn after the supplied Aztec sun-glyph insignia: the gold eight-point sun with volutes and ollin core, on red between teal bands. Modern reconstruction in the style of Mexica lapidary art. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
-  <rect width="900" height="600" fill="#9c3026"/>
-  <circle cx="450" cy="270" r="168" fill="#d8a021"/>
-  <circle cx="450" cy="270" r="168" fill="none" stroke="#7a5410" stroke-width="10"/>
-  <path fill="#1f5c46" d="M330 350 L330 310 L370 310 L370 230 L450 230 L450 190 L570 190 L570 250 L490 250 L490 330 L410 330 L410 350 Z"/>
-  <g fill="#d8a021">
-    <rect x="360" y="446" width="26" height="64" rx="10"/>
-    <rect x="402" y="452" width="26" height="72" rx="10"/>
-    <rect x="444" y="454" width="26" height="76" rx="10"/>
-    <rect x="486" y="452" width="26" height="72" rx="10"/>
-    <rect x="528" y="446" width="26" height="64" rx="10"/>
+  <rect width="900" height="600" fill="#2f8a85"/>
+  <rect x="140" width="620" height="600" fill="#b32a0e"/>
+  <g fill="#f5d312">
+    <!-- four long points with volutes, rotated around the centre -->
+    <g id="ray">
+      <path d="M450 30 C 462 96, 472 146, 484 170 C 472 188, 428 188, 416 170 C 428 146, 438 96, 450 30 Z"/>
+      <path d="M414 178 C 402 152, 380 144, 360 152 C 372 158, 378 166, 378 176 C 366 174, 356 178, 352 188 C 362 198, 378 200, 392 194 C 404 190, 412 185, 414 178 Z"/>
+      <path d="M486 178 C 498 152, 520 144, 540 152 C 528 158, 522 166, 522 176 C 534 174, 544 178, 548 188 C 538 198, 522 200, 508 194 C 496 190, 488 185, 486 178 Z"/>
+    </g>
+    <use href="#ray" transform="rotate(90 450 300)"/>
+    <use href="#ray" transform="rotate(180 450 300)"/>
+    <use href="#ray" transform="rotate(270 450 300)"/>
+    <!-- four diagonal open-triangle points -->
+    <g id="diag">
+      <path d="M450 118 L 488 190 L 412 190 Z M450 146 L 468 182 L 432 182 Z" fill-rule="evenodd" transform="rotate(45 450 300)"/>
+    </g>
+    <use href="#diag" transform="rotate(90 450 300)"/>
+    <use href="#diag" transform="rotate(180 450 300)"/>
+    <use href="#diag" transform="rotate(270 450 300)"/>
+  </g>
+  <!-- ring -->
+  <circle cx="450" cy="300" r="118" fill="none" stroke="#f5d312" stroke-width="18"/>
+  <!-- inner glyphs: mirrored serpent-brow motifs above and below -->
+  <g fill="#f5d312">
+    <g id="brow">
+      <path d="M368 258 C 372 232, 396 218, 424 222 L 424 244 C 440 236, 458 236, 476 244 L 476 222 C 504 218, 528 232, 532 258 C 516 250, 500 248, 488 254 C 474 246, 426 246, 412 254 C 400 248, 384 250, 368 258 Z"/>
+      <circle cx="398" cy="266" r="13"/>
+      <circle cx="502" cy="266" r="13"/>
+      <rect x="418" y="258" width="9" height="26" rx="3"/>
+      <rect x="434" y="256" width="9" height="30" rx="3"/>
+      <rect x="457" y="256" width="9" height="30" rx="3"/>
+      <rect x="473" y="258" width="9" height="26" rx="3"/>
+    </g>
+    <use href="#brow" transform="rotate(180 450 300)"/>
+    <!-- ollin core: barred disc with double spiral -->
+    <rect x="340" y="292" width="60" height="16" rx="5"/>
+    <rect x="500" y="292" width="60" height="16" rx="5"/>
+    <rect x="336" y="286" width="20" height="28" rx="4"/>
+    <rect x="544" y="286" width="20" height="28" rx="4"/>
+  </g>
+  <circle cx="450" cy="300" r="52" fill="#f5d312"/>
+  <g fill="#b32a0e">
+    <path d="M450 268 C 470 268, 482 282, 480 298 C 478 312, 466 318, 456 314 C 448 310, 446 302, 452 296 C 456 292, 462 294, 462 300 C 468 296, 468 286, 458 282 C 444 278, 432 288, 432 302 C 432 320, 448 332, 466 328 C 456 336, 438 334, 428 322 C 416 308, 422 284, 440 274 C 444 270, 447 268, 450 268 Z"/>
   </g>
 </svg>

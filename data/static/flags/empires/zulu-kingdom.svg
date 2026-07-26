@@ -1,18 +1,36 @@
-<!-- Approximation: the Nguni war shield (isihlangu) with assegai, the kingdom's attested regimental iconography, on an earth field. Emblematic device, not a flag. -->
+<!-- Hand-drawn after the supplied Zulu Kingdom flag reference: the white Nguni shield (isihlangu) with black lacing, crossed spears and staff with plume, on red. Modern reconstruction. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
-  <rect width="900" height="600" fill="#6e4423"/>
-  <g transform="rotate(24 450 300)">
-    <rect x="441" y="20" width="14" height="560" rx="7" fill="#caa25c"/>
-    <path d="M448 14 C 470 60, 470 100, 448 140 C 426 100, 426 60, 448 14 Z" fill="#d8d2c4"/>
+  <rect width="900" height="600" fill="#b10d0d"/>
+  <g stroke="#141414" stroke-width="5" fill="#f4f1ea">
+    <!-- crossed spears: one vertical spear (blade co-axial with shaft),
+         rotated into the X around its tip -->
+    <defs>
+      <g id="spear">
+        <rect x="-6" y="66" width="12" height="400" rx="6"/>
+        <rect x="-9" y="60" width="18" height="12" rx="4"/>
+        <path d="M0 0 C 15 18, 19 40, 12 64 L -12 64 C -19 40, -15 18, 0 0 Z"/>
+      </g>
+    </defs>
+    <use href="#spear" transform="translate(322 84) rotate(-36)"/>
+    <use href="#spear" transform="translate(578 84) rotate(36)"/>
+    <!-- central staff -->
+    <rect x="443" y="76" width="14" height="472" rx="7"/>
+    <!-- plume: rounded ostrich tuft -->
+    <path d="M450 26 C 430 22, 414 32, 410 48 C 404 46, 396 48, 392 56 C 398 64, 406 66, 414 62 C 410 74, 416 86, 428 90 C 432 82, 438 78, 444 78 C 442 88, 448 98, 458 100 C 466 94, 468 84, 464 76 C 474 78, 484 74, 488 64 C 482 58, 474 56, 466 58 C 470 44, 464 32, 450 26 Z"/>
   </g>
-  <ellipse cx="450" cy="310" rx="150" ry="230" fill="#e9e2d2"/>
-  <ellipse cx="450" cy="310" rx="150" ry="230" fill="none" stroke="#3a2a18" stroke-width="10"/>
-  <g fill="#5b3d20">
-    <path d="M380 180 C 420 170, 440 190, 430 230 C 400 240, 372 224, 380 180 Z"/>
-    <path d="M520 250 C 556 246, 570 274, 556 310 C 524 316, 504 292, 520 250 Z"/>
-    <path d="M370 340 C 404 332, 424 352, 416 392 C 384 400, 360 380, 370 340 Z"/>
-    <path d="M490 400 C 524 394, 540 416, 530 452 C 500 460, 480 440, 490 400 Z"/>
+  <!-- shield: tall pointed oval -->
+  <path d="M450 100 C 566 162, 566 398, 450 460 C 334 398, 334 162, 450 100 Z" fill="#f4f1ea" stroke="#141414" stroke-width="7"/>
+  <!-- lacing rows, central up-arrow, lower marks -->
+  <g fill="#141414">
+    <rect x="398" y="150" width="40" height="13" rx="4"/><rect x="462" y="150" width="40" height="13" rx="4"/>
+    <rect x="398" y="174" width="40" height="13" rx="4"/><rect x="462" y="174" width="40" height="13" rx="4"/>
+    <rect x="398" y="198" width="40" height="13" rx="4"/><rect x="462" y="198" width="40" height="13" rx="4"/>
+    <rect x="398" y="222" width="40" height="13" rx="4"/><rect x="462" y="222" width="40" height="13" rx="4"/>
+    <rect x="398" y="294" width="40" height="13" rx="4"/><rect x="462" y="294" width="40" height="13" rx="4"/>
+    <rect x="398" y="318" width="40" height="13" rx="4"/><rect x="462" y="318" width="40" height="13" rx="4"/>
+    <rect x="398" y="342" width="40" height="13" rx="4"/><rect x="462" y="342" width="40" height="13" rx="4"/>
+    <rect x="445" y="200" width="10" height="158" rx="5"/>
+    <path d="M450 172 L 475 212 L 425 212 Z"/>
+    <ellipse cx="450" cy="398" rx="23" ry="14"/>
   </g>
-  <rect x="443" y="60" width="14" height="500" rx="7" fill="#8a6535"/>
-  <circle cx="450" cy="66" r="16" fill="#3a2a18"/>
 </svg>
