@@ -130,6 +130,15 @@ describe('dealTimelineDeck', () => {
   it('refuses a pool that cannot sustain the round', () => {
     expect(dealTimelineDeck('world', Object.keys(EVENTS).length + 1, 0)).toBeUndefined()
   })
+
+  it('confines an era-windowed deck to one stretch of history', () => {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const deck = dealTimelineDeck('world', 10, 2, 140)
+      expect(deck).toBeDefined()
+      const years = deck!.map(slug => EVENTS[slug]!.year)
+      expect(Math.max(...years) - Math.min(...years)).toBeLessThanOrEqual(140)
+    }
+  })
 })
 
 // --- The dealer, through the front door ----------------------------------------
@@ -162,6 +171,24 @@ describe('getTimelineChallenge (via getRoundChallenge)', () => {
     expect(dealt.state.deadline).toBe(0)
     expect([...dealt.state.order].sort()).toEqual(['a', 'b', 'c'])
     expect(dealt.turnSeconds).toBeGreaterThan(0)
+    expect(dealt.revealSeconds).toBeGreaterThan(0)
+  })
+
+  it('scales with difficulty: era-clustered and faster on hard, roomier on easy', async () => {
+    process.env.FORCE_ROUND_TYPE = 'timeline'
+    const hard = (await getRoundChallenge({ game: game('hard') })) as TimelineChallenge
+    const easy = (await getRoundChallenge({ game: game('easy') })) as TimelineChallenge
+
+    expect(hard.turnSeconds).toBeLessThan(easy.turnSeconds)
+    expect(easy.state.deck.length).toBeLessThan(hard.state.deck.length)
+
+    // Hard confines the round to one era; easy spreads the centuries out.
+    const hardYears = hard.state.deck.map(slug => EVENTS[slug]!.year)
+    expect(Math.max(...hardYears) - Math.min(...hardYears)).toBeLessThanOrEqual(140)
+    const easyYears = [...easy.state.deck.map(slug => EVENTS[slug]!.year)].sort((a, b) => a - b)
+    for (let index = 1; index < easyYears.length; index++) {
+      expect(easyYears[index] - easyYears[index - 1]).toBeGreaterThanOrEqual(25)
+    }
   })
 
   it('never deals when the trends group is toggled off (unforced weights)', async () => {

@@ -17,19 +17,30 @@ import { countryInVariant } from './variant'
 export const TIMELINE_TUNING: {
   [difficulty in GameDifficulty]: {
     turnSeconds: number
+    /** Seconds the post-placement story card holds — reading time. */
+    revealSeconds: number
     /** Cards each player will place (the opener is on the house). */
     cardsPerPlayer: number
     /** Dealt cards keep at least this many years apart — tighter is harder. */
     minimumYearGap: number
+    /**
+     * Hard mode's real teeth: confine the deck to one stretch of history, so
+     * calls are "1936 or 1938?", never "Vikings or the Moon landing?". Absent
+     * = the whole sweep of the library, where centuries do the separating.
+     */
+    eraWindowYears?: number
   }
 } = {
-  easy: { turnSeconds: 30, cardsPerPlayer: 2, minimumYearGap: 25 },
-  normal: { turnSeconds: 22, cardsPerPlayer: 3, minimumYearGap: 10 },
-  hard: { turnSeconds: 15, cardsPerPlayer: 3, minimumYearGap: 2 },
+  easy: { turnSeconds: 30, revealSeconds: 9, cardsPerPlayer: 2, minimumYearGap: 25 },
+  normal: { turnSeconds: 22, revealSeconds: 7, cardsPerPlayer: 3, minimumYearGap: 10 },
+  hard: {
+    turnSeconds: 15,
+    revealSeconds: 6,
+    cardsPerPlayer: 3,
+    minimumYearGap: 2,
+    eraWindowYears: 140,
+  },
 }
-
-/** Post-placement story beat: long enough to read the event's description. */
-export const TIMELINE_REVEAL_SECONDS = 7
 
 export const timelineEvent = (slug: string): EventEntry | undefined => EVENTS[slug]
 
@@ -121,19 +132,36 @@ const MAXIMUM_PER_COUNTRY = 2
 
 /**
  * Deal a deck of event slugs for the round: variant-filtered, era-spread by
- * the difficulty's minimum year gap, capped per country. Returns undefined
- * when the pool can't sustain the round (tiny variants) — the dealer falls
- * back to a ranking round.
+ * the difficulty's minimum year gap, capped per country. With an era window
+ * (hard mode), the whole deck is drawn from one randomly-anchored stretch of
+ * history — the same century must be told apart, not the same millennium.
+ * Returns undefined when the pool can't sustain the round (tiny variants) —
+ * the dealer falls back to a ranking round.
  */
 export const dealTimelineDeck = (
   variant: GameVariant,
   cardCount: number,
-  minimumYearGap: number
+  minimumYearGap: number,
+  eraWindowYears?: number
 ): string[] | undefined => {
-  const pool = shuffleArray(
+  let pool = shuffleArray(
     Object.entries(EVENTS).filter(([, event]) => countryInVariant(event.country, variant))
   )
   if (pool.length < cardCount) return undefined
+
+  if (eraWindowYears) {
+    // Anchor the window on a shuffled candidate whose surroundings can fill
+    // the deck; a sparse anchor (antiquity) is skipped, not fallen into.
+    for (const [, anchor] of pool) {
+      const within = pool.filter(
+        ([, event]) => Math.abs(event.year - anchor.year) <= eraWindowYears / 2
+      )
+      if (within.length >= cardCount + 2) {
+        pool = within
+        break
+      }
+    }
+  }
 
   const deck: string[] = []
   const years: number[] = []

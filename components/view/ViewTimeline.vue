@@ -21,10 +21,13 @@
     <header>
       <div class="prompt">
         <h1 class="map-caption">{{ headline }}</h1>
-        <span v-if="!finished && !revealing" class="map-caption sub turn-line">
-          <span class="chip" :style="{ background: activePlayer?.color }" />
-          <span>{{ turnLabel }}</span>
-        </span>
+        <!-- The handoff beat: the old name lifts away, the next settles in. -->
+        <Transition name="caption" mode="out-in">
+          <span v-if="!finished && !revealing" :key="activeId" class="map-caption sub turn-line">
+            <span class="chip" :style="{ background: activePlayer?.color }" />
+            <span>{{ turnLabel }}</span>
+          </span>
+        </Transition>
       </div>
     </header>
 
@@ -90,50 +93,50 @@
     <footer>
       <div class="line-frame">
         <span class="direction">{{ isPhone ? '↑ Earlier' : '← Earlier' }}</span>
-        <ol ref="lineEl" class="line">
-          <template v-for="(slug, index) in placed" :key="slug">
-            <li class="gap" :data-slot="index">
+        <!-- Keyed group so a filed card presses IN while its neighbours
+             glide apart (FLIP moves), instead of the line snapping. -->
+        <TransitionGroup ref="lineEl" tag="ol" name="line" class="line">
+          <li
+            v-for="item in lineItems"
+            :key="item.key"
+            :class="
+              item.type === 'gap'
+                ? 'gap'
+                : {
+                    stop: true,
+                    fresh: item.slug === freshSlug,
+                    won: item.slug === freshSlug && lastPlacement?.correct,
+                    lost: item.slug === freshSlug && lastPlacement && !lastPlacement.correct,
+                  }
+            "
+            :data-slot="item.type === 'gap' ? item.slot : undefined"
+            :data-stop="item.slug"
+          >
+            <template v-if="item.type === 'gap'">
               <button
                 v-if="canPlace"
                 class="slot"
-                :class="{ selected: selectedSlot === index }"
+                :class="{ selected: selectedSlot === item.slot }"
                 :disabled="pending"
-                :aria-label="slotLabel(index)"
-                @click="place(index)"
+                :aria-label="slotLabel(item.slot)"
+                @click="place(item.slot)"
               />
               <span v-else class="tick" aria-hidden="true" />
-            </li>
-            <li
-              class="stop"
-              :data-stop="slug"
-              :class="{
-                fresh: slug === freshSlug,
-                won: slug === freshSlug && lastPlacement?.correct,
-                lost: slug === freshSlug && lastPlacement && !lastPlacement.correct,
-              }"
-            >
+            </template>
+            <template v-else>
               <img
-                v-if="timelineEvent(slug)?.image"
+                v-if="timelineEvent(item.slug!)?.image"
                 class="stop-photo"
-                :src="timelineEvent(slug)!.image"
-                :alt="timelineEvent(slug)!.name"
+                :src="timelineEvent(item.slug!)!.image"
+                :alt="timelineEvent(item.slug!)!.name"
               />
-              <span class="stop-year">{{ formatEventYear(timelineEvent(slug)?.year ?? 0) }}</span>
-              <span class="stop-name">{{ timelineEvent(slug)?.name ?? slug }}</span>
-            </li>
-          </template>
-          <li class="gap" :data-slot="placed.length">
-            <button
-              v-if="canPlace"
-              class="slot"
-              :class="{ selected: selectedSlot === placed.length }"
-              :disabled="pending"
-              :aria-label="slotLabel(placed.length)"
-              @click="place(placed.length)"
-            />
-            <span v-else class="tick" aria-hidden="true" />
+              <span class="stop-year">
+                {{ formatEventYear(timelineEvent(item.slug!)?.year ?? 0) }}
+              </span>
+              <span class="stop-name">{{ timelineEvent(item.slug!)?.name ?? item.slug }}</span>
+            </template>
           </li>
-        </ol>
+        </TransitionGroup>
         <span class="direction">{{ isPhone ? '↓ Later' : 'Later →' }}</span>
       </div>
     </footer>
@@ -272,6 +275,24 @@ const place = (slot: number) => {
   update({ event: 'submit-timeline-placement', slot, turn: active.state.turn })
 }
 
+interface LineItem {
+  key: string
+  type: 'gap' | 'stop'
+  slot: number
+  slug?: string
+}
+
+/** The line flattened for the keyed TransitionGroup: gap, stop, gap, stop… */
+const lineItems = computed<LineItem[]>(() => {
+  const items: LineItem[] = []
+  placed.value.forEach((slug, index) => {
+    items.push({ key: `gap-${index}`, type: 'gap', slot: index })
+    items.push({ key: slug, type: 'stop', slot: index, slug })
+  })
+  items.push({ key: `gap-${placed.value.length}`, type: 'gap', slot: placed.value.length })
+  return items
+})
+
 const slotLabel = (slot: number): string => {
   const before = slot > 0 ? timelineEvent(placed.value[slot - 1])?.name : undefined
   const after = slot < placed.value.length ? timelineEvent(placed.value[slot])?.name : undefined
@@ -310,11 +331,12 @@ if (import.meta.client) {
 }
 
 // --- Keeping the action on screen ---------------------------------------------
-const lineEl = ref<HTMLOListElement>()
+// TransitionGroup ref resolves to the component; its $el is the <ol>.
+const lineEl = ref<{ $el?: HTMLElement } | null>(null)
 
 const scrollLineTo = (selector: string) => {
   nextTick(() => {
-    lineEl.value
+    lineEl.value?.$el
       ?.querySelector(selector)
       ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   })
@@ -679,6 +701,36 @@ footer {
       opacity: 0.55;
       animation: none;
     }
+  }
+}
+
+// Turn handoff on the line: the filed card presses in from below while its
+// neighbours glide apart to make room (TransitionGroup FLIP moves).
+.line-move {
+  transition: transform var(--motion-slow) var(--ease-out-expressive);
+}
+
+.line-enter-active {
+  transition:
+    opacity var(--motion-slow) var(--ease-out-expressive),
+    transform var(--motion-slow) var(--ease-out-expressive);
+}
+
+.line-enter-from {
+  opacity: 0;
+  transform: translateY(0.9rem) scale(0.92);
+}
+
+// Nothing leaves the line mid-round; the guard keeps a teardown from jumping.
+.line-leave-active {
+  position: absolute;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line-move,
+  .line-enter-active {
+    transition: none;
   }
 }
 

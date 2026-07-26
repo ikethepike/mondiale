@@ -63,7 +63,7 @@ import { shuffleArray } from './arrays'
 import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
-import { dealTimelineDeck, TIMELINE_REVEAL_SECONDS, TIMELINE_TUNING } from './timeline'
+import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
 import { isRouteComplete, pickTraversal } from './traversal'
 import { dramaScore, isDecisiveGap, readTrend, TREND_METRIC_IDS, TREND_METRICS } from './trends'
 import type { TrendReading } from './trends'
@@ -278,13 +278,18 @@ const getTimelineChallenge = ({
 
   const tuning = TIMELINE_TUNING[game.difficulty]
   const cardCount = 1 + tuning.cardsPerPlayer * contenders.length
-  const deck = dealTimelineDeck(game.variant, cardCount, tuning.minimumYearGap)
+  const deck = dealTimelineDeck(
+    game.variant,
+    cardCount,
+    tuning.minimumYearGap,
+    tuning.eraWindowYears
+  )
   if (!deck) return undefined
 
   return {
     _type: 'timeline-challenge',
     turnSeconds: tuning.turnSeconds,
-    revealSeconds: TIMELINE_REVEAL_SECONDS,
+    revealSeconds: tuning.revealSeconds,
     maximumPoints: maximumRoundPoints(game),
     state: {
       deck,
