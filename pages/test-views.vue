@@ -30,6 +30,7 @@ import { v4 as uuidv4 } from 'uuid'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
@@ -51,6 +52,7 @@ import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { EMPIRES } from '~~/data/empires.gen'
 import { TRENDS } from '~~/data/trends.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
@@ -458,6 +460,94 @@ const scenarios: Scenario[] = [
             ],
           },
         }),
+      ]),
+  },
+  {
+    id: 'empire',
+    label: 'Ghosts of Empires (options + flag)',
+    component: ViewEmpire,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'empire-challenge',
+          empireId: 'gran-colombia',
+          keyframeYears: EMPIRES['gran-colombia'].keyframeYears,
+          peakYear: EMPIRES['gran-colombia'].peakYear,
+          durationSeconds: 28,
+          tapSeconds: 35,
+          members: EMPIRES['gran-colombia'].members.core,
+          partialMembers: EMPIRES['gran-colombia'].members.partial,
+          options: ['gran-colombia', 'inca-empire', 'portuguese-brazil'],
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'empire-hard',
+    label: 'Ghosts of Empires (free pick, no flag)',
+    component: ViewEmpire,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'empire-challenge',
+          empireId: 'soviet-union',
+          keyframeYears: EMPIRES['soviet-union'].keyframeYears,
+          peakYear: EMPIRES['soviet-union'].peakYear,
+          durationSeconds: 24,
+          tapSeconds: 30,
+          members: EMPIRES['soviet-union'].members.core,
+          partialMembers: EMPIRES['soviet-union'].members.partial,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'empire-taps',
+    label: 'Ghosts of Empires (beat 2 fast-forward)',
+    component: ViewEmpire,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'empire-challenge',
+          empireId: 'abbasid-caliphate',
+          keyframeYears: EMPIRES['abbasid-caliphate'].keyframeYears,
+          peakYear: EMPIRES['abbasid-caliphate'].peakYear,
+          // The sweep collapses straight into the tap beat — no test hook needed.
+          durationSeconds: 3,
+          tapSeconds: 35,
+          members: EMPIRES['abbasid-caliphate'].members.core,
+          partialMembers: EMPIRES['abbasid-caliphate'].members.partial,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'empire-scores',
+    label: 'Ghosts of Empires (scorecard)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          ...groupRound({
+            _type: 'empire-challenge',
+            empireId: 'gran-colombia',
+            keyframeYears: EMPIRES['gran-colombia'].keyframeYears,
+            peakYear: EMPIRES['gran-colombia'].peakYear,
+            durationSeconds: 28,
+            tapSeconds: 35,
+            members: EMPIRES['gran-colombia'].members.core,
+            partialMembers: EMPIRES['gran-colombia'].members.partial,
+            maximumPoints: MAXIMUM_POINTS,
+          }),
+          groupAnswers: {
+            [ME]: {
+              submitted: ['CO', 'VE', 'PE'],
+              correct: EMPIRES['gran-colombia'].members.core,
+              empireGuess: { id: 'inca-empire', correct: false },
+            },
+          },
+          playerTurns: { [ME]: { points: { scored: 6, maximum: MAXIMUM_POINTS } } },
+        } as unknown as Round,
       ]),
   },
   {

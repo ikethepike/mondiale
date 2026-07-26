@@ -1,0 +1,23 @@
+<!-- Hand-simplified after a Wari feathered-panel textile (Khan Academy / museum photograph supplied by the project): offset teal-gold weave blocks. Emblematic textile, not a flag. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#256e6f"/>
+  <g fill="#efb810">
+    <rect x="0" y="75" width="150" height="150"/>
+    <rect x="0" y="375" width="150" height="150"/>
+    <rect x="150" y="0" width="150" height="150"/>
+    <rect x="150" y="300" width="150" height="150"/>
+    <rect x="300" y="150" width="150" height="150"/>
+    <rect x="300" y="450" width="150" height="150"/>
+    <rect x="300" y="0" width="150" height="75" fill="#256e6f"/>
+    <rect x="450" y="75" width="150" height="150"/>
+    <rect x="450" y="375" width="150" height="150"/>
+    <rect x="600" y="0" width="150" height="150"/>
+    <rect x="600" y="300" width="150" height="150"/>
+    <rect x="750" y="150" width="150" height="150"/>
+    <rect x="750" y="450" width="150" height="150"/>
+    <rect x="0" y="0" width="150" height="75"/>
+    <rect x="450" y="0" width="150" height="75"/>
+    <rect x="150" y="525" width="150" height="75"/>
+    <rect x="600" y="525" width="150" height="75"/>
+  </g>
+</svg>

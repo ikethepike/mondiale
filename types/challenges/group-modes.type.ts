@@ -405,7 +405,49 @@ export interface TimelineState {
   finished?: boolean
 }
 
+/**
+ * Ghosts of empires, in two beats. Beat 1: a dead polity's extent sweeps the
+ * blanked map through its keyframe years — buzz early with its name for more.
+ * Beat 2: the sweep freezes at `peakYear` and the overlay lifts — tap the
+ * modern countries whose heartlands it held. Reveal: extent over modern
+ * borders, capitals starred, partial holdings confessed.
+ *
+ * Keyframe geometry stays client-side (lazy import keyed by `empireId`); only
+ * ids, years and member lists travel. Members are pinned at the deal so a
+ * data regeneration mid-game can't shift the answers. `empireId` is openly
+ * the beat-1 answer — the silhouette caveat: the client UI is trusted with
+ * the answer, the SCORE is not (beat 1 is clamped, beat 2 derived server-side).
+ */
+export interface EmpireChallenge {
+  _type: 'empire-challenge'
+  /** Key into EMPIRES (data/empires.gen). */
+  empireId: string
+  /** Years the extent animates through, oldest first, subsampled per
+   *  difficulty; spans the full arc rise → peak → decline. Always includes
+   *  `peakYear`, which usually sits mid-arc. */
+  keyframeYears: number[]
+  /** Beat 2 freezes here — the greatest extent. */
+  peakYear: number
+  /** Beat 1's clock: the sweep plus the buzz window. Named durationSeconds so
+   *  useGroupChallenge's shared countdown picks it up. */
+  durationSeconds: number
+  /** Beat 2's clock: tapping the modern countries inside the extent. */
+  tapSeconds: number
+  /** Beat 2's answers: modern countries whose core lay inside the peak
+   *  extent. Partial holdings are deliberately not here. */
+  members: ISOCountryCode[]
+  /** Countries the empire only partly held — excluded from play, confessed
+   *  at the reveal, forgiven (never scored either way) if tapped. */
+  partialMembers: ISOCountryCode[]
+  /** Multiple-choice empire ids (includes `empireId`) — offered outside hard
+   *  mode with each option's own historical flag; hard mode free-types
+   *  against the full register instead. */
+  options?: string[]
+  maximumPoints: number
+}
+
 export type GroupModeChallenge =
+  | EmpireChallenge
   | BorderChainChallenge
   | TimelineChallenge
   | HeritageHuntChallenge

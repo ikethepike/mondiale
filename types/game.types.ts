@@ -78,6 +78,9 @@ export interface GroupChallengeAnswer {
    *  Both exist for the reveal — the score is already settled by then. */
   pin?: LatLng
   distanceKm?: number
+  /** Ghosts-of-empires rounds: the beat-1 name verdict, for the scorecard.
+   *  `id` keys EMPIRES; absent when the player never buzzed. */
+  empireGuess?: { id?: string; correct: boolean }
 }
 
 export const gameVariants = [

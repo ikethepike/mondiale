@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" role="img" aria-label="historical-basemaps">
+  <g fill="none" stroke="#1a3a63" stroke-width="3" stroke-linejoin="round">
+    <path d="M14 44 L14 20 L24 12 L34 20 L34 44 z" />
+    <path d="M24 12 L24 44" stroke-width="1.6" />
+    <path d="M8 48 C 30 40, 42 52, 60 44" stroke-width="1.6" stroke-dasharray="4 3" />
+  </g>
+  <text x="72" y="31" font-family="Georgia, serif" font-size="19" fill="#1a3a63">historical</text>
+  <text x="72" y="51" font-family="Georgia, serif" font-size="19" fill="#1a3a63">basemaps</text>
+</svg>

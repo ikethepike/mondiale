@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Aztec Empire 1440 (Valley of Mexico with Morelos and southern Hidalgo)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-100.0, 19.2],
+            [-99.8, 20.0],
+            [-99.2, 20.4],
+            [-98.4, 20.2],
+            [-97.9, 19.6],
+            [-97.8, 18.9],
+            [-98.3, 18.3],
+            [-99.1, 18.2],
+            [-99.8, 18.5],
+            [-100.0, 19.2]
+          ]
+        ]
+      }
+    }
+  ]
+}

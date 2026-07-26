@@ -74,6 +74,7 @@ export type RoundChallengeKind =
   | 'pin-landmark'
   | 'trend-race'
   | 'timeline'
+  | 'empire'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -127,6 +128,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'trend-race'
     case 'timeline-challenge':
       return 'timeline'
+    case 'empire-challenge':
+      return 'empire'
     default:
       return 'ranking'
   }

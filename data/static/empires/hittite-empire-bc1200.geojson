@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Hittite core 1200 BCE (central plateau on the eve of the collapse)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [31.5, 40.8],
+            [34.0, 41.3],
+            [36.0, 41.0],
+            [37.5, 40.0],
+            [38.0, 38.8],
+            [37.2, 37.8],
+            [36.0, 37.2],
+            [34.5, 37.0],
+            [33.0, 37.3],
+            [31.8, 38.0],
+            [31.0, 39.0],
+            [30.8, 40.0],
+            [31.5, 40.8]
+          ]
+        ]
+      }
+    }
+  ]
+}

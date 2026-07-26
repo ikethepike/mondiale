@@ -54,6 +54,7 @@
             </section>
           </template>
           <template v-else>
+            <p v-if="empireVerdict" class="pane-content empire-verdict">{{ empireVerdict }}</p>
             <section class="pane-content ranking">
               <span class="eyebrow">{{ sectionLabels.submitted }}</span>
               <ViewRanking :iso-codes="selectedScorecard.answers.submitted" />
@@ -129,6 +130,8 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
+import { EMPIRES } from '~~/data/empires.gen'
+import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -172,6 +175,19 @@ const flashpointChallenge = computed(() => {
 
 const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
 
+/** Ghosts of empires: the beat-1 name verdict, above the tap ledger. */
+const empireVerdict = computed(() => {
+  const challenge = roundChallenge.value
+  if (!challenge || !('_type' in challenge) || challenge._type !== 'empire-challenge') return ''
+  const truth = empireDisplayName(EMPIRES[challenge.empireId]?.name ?? 'the empire')
+  const guess = selectedScorecard.value.answers?.empireGuess
+  if (!guess) return `Never named — it was ${truth}.`
+  const guessName = EMPIRES[guess.id ?? '']?.name
+  return guess.correct
+    ? `You named ${truth}.`
+    : `You named ${guessName ? empireDisplayName(guessName) : 'the wrong power'} — it was ${truth}.`
+})
+
 const explainer = computed(() => {
   switch (kind.value) {
     case 'traversal': {
@@ -208,6 +224,8 @@ const explainer = computed(() => {
       return 'Fewer guesses, bigger score.'
     case 'timeline':
       return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
+    case 'empire':
+      return 'Naming the ghost pays the smaller share — the earlier the buzz, the more of it. The rest is for tracing its lands: points scale with how closely your taps match its core.'
     default: {
       const base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
       // Conflict rankings carry the one UCDP fact the numbers alone would hide.
@@ -253,6 +271,8 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answer', correct: 'Its Shores' }
     case 'timeline':
       return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
+    case 'empire':
+      return { submitted: 'Lands You Traced', correct: 'Its Core Lands' }
     default:
       return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
   }
@@ -427,6 +447,14 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
       opacity: 0.6;
       font-size: 1.4rem;
     }
+  }
+
+  .empire-verdict {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   .score-ripple {

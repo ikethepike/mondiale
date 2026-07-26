@@ -1,0 +1,50 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Majapahit remnant 1520 (eastern Java before Demak)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              111.8,
+              -6.9
+            ],
+            [
+              113.2,
+              -7.0
+            ],
+            [
+              114.4,
+              -7.5
+            ],
+            [
+              114.4,
+              -8.4
+            ],
+            [
+              113.2,
+              -8.3
+            ],
+            [
+              112.0,
+              -8.2
+            ],
+            [
+              111.5,
+              -7.6
+            ],
+            [
+              111.8,
+              -6.9
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

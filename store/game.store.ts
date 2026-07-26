@@ -47,6 +47,9 @@ interface GameStoreState {
     highlighted: Set<ISOCountryCode>
     /** Shapes-only mode: only highlighted/tinted countries render (traversal). */
     solo: boolean
+    /** With solo: keep the continents as one quiet silhouette — same fill,
+     *  no strokes, so internal borders vanish (ghosts-of-empires backdrop). */
+    landmass: boolean
     /** Show ISO acronym labels on countries (easy traversal aid). */
     labels: boolean
     /** Countries the map camera should frame together. */
@@ -141,6 +144,7 @@ export const useGameStore = defineStore('game', {
       revealStat: undefined,
       highlighted: new Set([]),
       solo: false,
+      landmass: false,
       labels: false,
       focus: [],
       focusContext: [],

@@ -23,6 +23,7 @@ import {
 import type {
   BorderChainChallenge,
   CapitalGuessChallenge,
+  EmpireChallenge,
   FlagPaletteChallenge,
   FlashpointChallenge,
   HeritageHuntChallenge,
@@ -60,6 +61,7 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { shuffleArray } from './arrays'
+import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
 import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
@@ -129,6 +131,11 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['pin-landmark', 0.06],
   ['trend-race', 0.08],
   ['timeline', 0.08],
+  // A set-piece, dealt sparingly: two beats make it the longest single-player
+  // round in the game, and each empire is one-shot learnable — a roster of a
+  // few dozen at a staple's rate would repeat inside a fortnight of games.
+  // At 0.05 a full game usually sees one, rarely two.
+  ['empire', 0.05],
 ]
 
 /**
@@ -946,6 +953,101 @@ const getNoMansLandChallenge = async (
 }
 
 /**
+ * Ghosts of empires. Deals only where the board can be honest: every core
+ * member must be playable in this variant, or the beat-2 Jaccard would score
+ * countries the table cannot tap — an empire that spans boards simply doesn't
+ * deal on a continental one (world always qualifies). Rotates regions so the
+ * roster's spread doesn't collapse into one continent's voice, never repeats
+ * an empire within a game, and weights tiers per difficulty (icons everywhere,
+ * deep cuts toward hard).
+ */
+const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge | undefined> => {
+  // Dynamic, like the water dealer: metadata is small, but the dealer only
+  // runs on nitro and the import keeps this module's client footprint flat.
+  const { EMPIRES } = await import('~~/data/empires.gen')
+  const tuning = EMPIRE_TUNING[game.difficulty]
+  const playable = new Set(variantCountries(game.variant))
+
+  const dealtIds = new Set<string>()
+  const dealtRegions = new Set<string>()
+  for (const round of game.rounds) {
+    const prior = round.groupChallenge
+    if (prior && '_type' in prior && prior._type === 'empire-challenge') {
+      dealtIds.add(prior.empireId)
+      const region = EMPIRES[prior.empireId]?.region
+      if (region) dealtRegions.add(region)
+    }
+  }
+
+  const candidates = Object.values(EMPIRES).filter(
+    empire =>
+      !dealtIds.has(empire.id) &&
+      tuning.tierWeights[empire.tier] > 0 &&
+      empire.members.core.length >= 2 &&
+      empire.members.core.every(isoCode => isValidISOCode(isoCode) && playable.has(isoCode)) &&
+      empire.keyframeYears.length >= 2
+  )
+  if (!candidates.length) return undefined
+
+  // Regional rotation, two-stage: a REGION first (uniform over regions not yet
+  // dealt this game), then a tier-weighted empire inside it. Uniform-over-
+  // regions is the rotation — it stops a skewed roster from making any one
+  // continent the default deal.
+  const byRegion = new Map<string, (typeof candidates)[number][]>()
+  for (const empire of candidates) {
+    byRegion.set(empire.region, [...(byRegion.get(empire.region) ?? []), empire])
+  }
+  const fresh = [...byRegion.keys()].filter(region => !dealtRegions.has(region))
+  const regions = fresh.length ? fresh : [...byRegion.keys()]
+  const region = regions[Math.floor(Math.random() * regions.length)]
+  const pool = byRegion.get(region) ?? []
+
+  const weights = pool.map(empire => tuning.tierWeights[empire.tier])
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  let roll = Math.random() * total
+  let empire = pool[pool.length - 1]
+  for (let index = 0; index < pool.length; index++) {
+    roll -= weights[index]
+    if (roll <= 0) {
+      empire = pool[index]
+      break
+    }
+  }
+  if (!empire) return undefined
+
+  // Non-hard helper: 3 name options (same-region icons preferred, so the
+  // choice is a real one). The view shows flags only when EVERY option has an
+  // honest one, so a flagged answer prefers flagged decoys — flag rounds stay
+  // flag rounds instead of collapsing to text over one bare card.
+  let options: string[] | undefined
+  if (tuning.optionCount > 0) {
+    const decoyPool = Object.values(EMPIRES).filter(
+      other => other.id !== empire.id && other.tier === 'icon'
+    )
+    const preferred = decoyPool.filter(other => other.region === empire.region)
+    const source = preferred.length >= tuning.optionCount - 1 ? preferred : decoyPool
+    const ordered = empire.hasFlag
+      ? [...shuffleArray(source.filter(other => other.hasFlag)), ...shuffleArray(source.filter(other => !other.hasFlag))]
+      : shuffleArray(source)
+    const decoys = ordered.slice(0, tuning.optionCount - 1).map(other => other.id)
+    if (decoys.length === tuning.optionCount - 1) options = shuffleArray([empire.id, ...decoys])
+  }
+
+  return {
+    _type: 'empire-challenge',
+    empireId: empire.id,
+    keyframeYears: subsampleKeyframes(empire.keyframeYears, tuning.keyframes, empire.peakYear),
+    peakYear: empire.peakYear,
+    durationSeconds: tuning.nameSeconds,
+    tapSeconds: tuning.tapSeconds,
+    members: [...empire.members.core],
+    partialMembers: empire.members.partial.filter(isValidISOCode),
+    ...(options ? { options } : {}),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/**
  * Distance between two projected map-space boxes, centre to centre. The
  * recognition dataset and the map data share the map's fitted Robinson space,
  * so this is a subtraction rather than a reprojection.
@@ -1146,6 +1248,11 @@ const dealRoundChallenge = async (
     }
     case 'timeline': {
       const challenge = getTimelineChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'empire': {
+      const challenge = await getEmpireChallenge(game)
       if (challenge) return challenge
       break
     }

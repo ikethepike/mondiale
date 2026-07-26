@@ -10,6 +10,7 @@ import {
   scoreTrendRace,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
+import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { blitzScore } from '~~/lib/scoring'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { GroupChallengeAnswer } from '~~/types/game.types'
@@ -154,6 +155,29 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
           challenge: roundChallenge,
           submittedGuesses: eventData.ranking,
         })
+        break
+      }
+      case 'empire': {
+        if (roundChallenge._type !== 'empire-challenge') throw new TypeError('kind mismatch')
+        const pots = empirePots(roundChallenge.maximumPoints)
+        // Beat 1: the server re-derives correctness from the id and clamps the
+        // claimed buzz points to beat 1's share — a wrong or absent buzz pays
+        // nothing there, but beat 2 still scores in full.
+        const guessedId = eventData.empire?.guessedId
+        const named = guessedId === roundChallenge.empireId
+        const beat1 = clampClientScore(eventData.empire?.clientScore, pots.name, named)
+        // Beat 2: server-derived Jaccard over the pinned core; partials forgiven.
+        const beat2 = scoreEmpireExtent({
+          challenge: roundChallenge,
+          taps: eventData.ranking,
+          maximumPoints: pots.extent,
+        })
+        answer = {
+          submitted: eventData.ranking,
+          correct: roundChallenge.members,
+          ...(guessedId !== undefined ? { empireGuess: { id: guessedId, correct: named } } : {}),
+        }
+        scoring = { scored: beat1.scored + beat2.scored, maximum: roundChallenge.maximumPoints }
         break
       }
       case 'trend-race': {

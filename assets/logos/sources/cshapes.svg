@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" role="img" aria-label="CShapes">
+  <g fill="none" stroke="#1a3a63" stroke-width="3" stroke-linejoin="round">
+    <path d="M12 30 a 18 18 0 1 1 5 12" stroke-linecap="round" />
+    <path d="M22 24 l 8 -4 l 8 6 l -3 9 l -10 2 z" stroke-width="1.6" />
+  </g>
+  <text x="58" y="38" font-family="Georgia, serif" font-size="24" fill="#1a3a63">CShapes 2.0</text>
+</svg>

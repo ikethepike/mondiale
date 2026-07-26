@@ -20,6 +20,7 @@ export const CHALLENGE_GROUPS = {
   culture: { label: 'Culture & places' },
   disputed: { label: 'Disputed places' },
   trends: { label: 'Trends & history' },
+  empires: { label: 'Empires & colonies' },
 } as const
 
 export type ChallengeGroupId = keyof typeof CHALLENGE_GROUPS
@@ -65,6 +66,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'no-mans-land': 'disputed',
   'trend-race': 'trends',
   timeline: 'trends',
+  // Its own toggle, not under conflicts: imperial content is its own consent
+  // axis, and the mode deals on every difficulty (deep cuts gate in-dealer).
+  empire: 'empires',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
 /** Kinds reserved for hard games unless their group is force-enabled. Lives

@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Timur's realm 1370 (Transoxiana consolidated)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [62.0, 39.5],
+            [63.5, 40.5],
+            [65.5, 41.3],
+            [67.5, 41.8],
+            [69.5, 41.5],
+            [71.0, 40.5],
+            [70.0, 39.2],
+            [68.5, 38.0],
+            [66.5, 37.2],
+            [64.5, 36.8],
+            [62.8, 37.2],
+            [61.8, 38.2],
+            [62.0, 39.5]
+          ]
+        ]
+      }
+    }
+  ]
+}

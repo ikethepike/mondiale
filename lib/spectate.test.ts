@@ -313,6 +313,17 @@ const ROUND_FIXTURES: RoundChallenge[] = [
       placements: [],
     },
   },
+  {
+    _type: 'empire-challenge',
+    empireId: 'gran-colombia',
+    keyframeYears: [1819, 1826, 1830],
+    peakYear: 1826,
+    durationSeconds: 28,
+    tapSeconds: 35,
+    members: ['CO', 'VE', 'EC', 'PA'],
+    partialMembers: ['PE'],
+    maximumPoints: 8,
+  },
 ] as unknown as RoundChallenge[]
 
 const FINAL_FIXTURES: FinalChallengeItem[] = [
@@ -343,7 +354,7 @@ describe('no spectator card dangles an unshown asset', () => {
       'silhouette', 'hot-cold', 'sketch', 'stat-detective', 'two-truths',
       'river-run', 'shared-shores', 'highlands', 'name-that-water', 'mother-tongue',
       'flag-palette', 'capital-guess', 'flashpoint', 'ghost-state', 'no-mans-land',
-      'pin-landmark', 'trend-race', 'timeline',
+      'pin-landmark', 'trend-race', 'timeline', 'empire',
     ]
     for (const kind of ALL_KINDS) expect(covered.has(kind), `missing round kind: ${kind}`).toBe(true)
   })

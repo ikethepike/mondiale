@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Akkadian rump 2150 BCE (Akkad and Kish under Gutian pressure)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [43.8, 32.2],
+            [44.6, 32.0],
+            [45.4, 32.3],
+            [45.9, 32.9],
+            [45.7, 33.6],
+            [45.0, 34.1],
+            [44.2, 34.2],
+            [43.5, 33.8],
+            [43.3, 33.0],
+            [43.8, 32.2]
+          ]
+        ]
+      }
+    }
+  ]
+}

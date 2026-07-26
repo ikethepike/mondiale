@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Triple Alliance at its founding, 1428 (Valley of Mexico)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.5, 19.3],
+            [-99.4, 19.8],
+            [-99.0, 20.0],
+            [-98.6, 19.8],
+            [-98.5, 19.3],
+            [-98.8, 18.9],
+            [-99.2, 18.9],
+            [-99.5, 19.3]
+          ]
+        ]
+      }
+    }
+  ]
+}

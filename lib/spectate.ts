@@ -1,3 +1,5 @@
+import { EMPIRES } from '~~/data/empires.gen'
+import { empireDisplayName } from '~~/lib/empires'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
@@ -189,6 +191,20 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
         prompt: `Name every neighbour of ${countryName(challenge.country)}`,
         secret: `${challenge.neighbours.length} to find: ${listNames(challenge.neighbours)}`,
         focus: [challenge.country, ...challenge.neighbours],
+      }
+    }
+    case 'empire': {
+      if (!('empireId' in challenge)) break
+      const empire = EMPIRES[challenge.empireId]
+      return {
+        kicker: 'Ghosts of empires',
+        prompt: 'A vanished power sweeps the map, year by year — name it, then trace what it held',
+        ...(empire
+          ? {
+              secret: `It's ${empireDisplayName(empire.name)}, at its greatest extent in ${formatEventYear(challenge.peakYear)}`,
+            }
+          : {}),
+        focus: challenge.members,
       }
     }
     case 'silhouette': {

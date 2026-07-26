@@ -43,6 +43,12 @@ export type ClientEventData =
       /** Pin-landmark rounds: where on the globe the player dropped their pin.
        *  The server scores the distance itself, so this is the whole answer. */
       pin?: LatLng
+      /** Ghosts-of-empires rounds: the beat-1 buzz. `guessedId` is the empire
+       *  the player named (absent = never buzzed); `clientScore` is the buzz
+       *  points claimed for beat 1 alone — the server re-checks the name and
+       *  clamps the claim to beat 1's share of the pot. Beat-2 taps travel in
+       *  `ranking` as usual. */
+      empire?: { guessedId?: string; clientScore: number }
     }
   | {
       event: 'submit-individual-challenge-answer'

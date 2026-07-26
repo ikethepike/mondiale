@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Abbasid Caliphate 1200 (rump Mesopotamia under al-Nasir)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [41.8, 34.5],
+            [43.5, 35.5],
+            [45.5, 35.0],
+            [46.5, 33.5],
+            [47.5, 32.0],
+            [48.3, 30.5],
+            [47.5, 30.0],
+            [46.0, 30.5],
+            [44.0, 31.0],
+            [42.5, 32.5],
+            [41.5, 33.5],
+            [41.8, 34.5]
+          ]
+        ]
+      }
+    }
+  ]
+}

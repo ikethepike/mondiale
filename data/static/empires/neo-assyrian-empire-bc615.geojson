@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Assyrian heartland 615 BCE (Assur fallen, Nineveh besieged)" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [42.0, 35.2],
+            [42.8, 34.9],
+            [43.8, 34.8],
+            [44.8, 35.2],
+            [45.3, 35.9],
+            [45.0, 36.6],
+            [44.2, 37.1],
+            [43.2, 37.4],
+            [42.0, 37.5],
+            [40.8, 37.3],
+            [39.6, 37.0],
+            [38.8, 36.6],
+            [39.2, 36.1],
+            [40.2, 35.9],
+            [41.1, 35.6],
+            [42.0, 35.2]
+          ]
+        ]
+      }
+    }
+  ]
+}

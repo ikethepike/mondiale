@@ -56,6 +56,7 @@ import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
@@ -141,6 +142,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'pin-landmark': ViewPinLandmark,
         'trend-race': ViewTrendRace,
         timeline: ViewTimeline,
+        empire: ViewEmpire,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

@@ -21,6 +21,7 @@
       :highlight-country="reveal"
       :status="status"
       :solo="gameStore.map.solo"
+      :landmass="gameStore.map.landmass"
       :labels="gameStore.map.labels"
       :focus-countries="gameStore.map.focus"
       :focus-context="gameStore.map.focusContext"

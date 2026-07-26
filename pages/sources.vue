@@ -35,6 +35,8 @@ import logoWorldBank from '~/assets/logos/sources/worldbank.svg'
 import logoOwid from '~/assets/logos/sources/owid.png'
 import logoUppsala from '~/assets/logos/sources/uppsala.svg'
 import logoUnsplash from '~/assets/logos/sources/unsplash.svg'
+import logoBasemaps from '~/assets/logos/sources/historical-basemaps.svg'
+import logoCshapes from '~/assets/logos/sources/cshapes.svg'
 
 const sources: Array<{
   name: string
@@ -96,6 +98,20 @@ const sources: Array<{
     url: 'https://ucdp.uu.se',
     logo: logoUppsala,
     description: 'Armed-conflict data from Uppsala University.',
+  },
+  {
+    name: 'historical-basemaps',
+    url: 'https://github.com/aourednik/historical-basemaps',
+    logo: logoBasemaps,
+    description:
+      'World country borders across five millennia of snapshots, for the empire extents. GPL-3.0.',
+  },
+  {
+    name: 'CShapes 2.0',
+    url: 'https://icr.ethz.ch/data/cshapes/',
+    logo: logoCshapes,
+    description:
+      'State borders and capitals 1886–2019, dated to the day — Schvitz et al. 2022, Journal of Conflict Resolution. CC BY-NC-SA 4.0.',
   },
   {
     name: 'Unsplash',

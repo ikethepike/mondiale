@@ -1,0 +1,14 @@
+<!-- Hand-simplified reconstruction of the Seleucid anchor device (blue field, meander ring, downward anchor) after a modern reconstruction supplied by the project. Closest approximation, not an attested artifact. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#2038a8"/>
+  <circle cx="450" cy="300" r="212" fill="none" stroke="#ffffff" stroke-width="40"/>
+  <circle cx="450" cy="300" r="212" fill="none" stroke="#2038a8" stroke-width="16" stroke-dasharray="20 16"/>
+  <g fill="#ffffff">
+    <rect x="436" y="152" width="28" height="266" rx="12"/>
+    <rect x="348" y="396" width="204" height="30" rx="13"/>
+    <path d="M450 418 L478 442 L450 466 L422 442 Z"/>
+    <rect x="420" y="128" width="60" height="26" rx="10"/>
+    <path d="M436 168 C 356 190, 316 260, 330 320 C 352 264, 392 224, 444 210 Z"/>
+    <path d="M464 168 C 544 190, 584 260, 570 320 C 548 264, 508 224, 456 210 Z"/>
+  </g>
+</svg>

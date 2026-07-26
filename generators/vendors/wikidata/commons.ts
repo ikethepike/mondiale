@@ -235,6 +235,46 @@ export const downloadCommonsImage = async (
 }
 
 /**
+ * Fetch a Commons SVG file's raw markup. `downloadCommonsImage` always appends
+ * `?width=`, which makes Commons rasterize SVGs to PNG — this is the same
+ * fetch/backoff dance without the width hint, so the original vector comes
+ * back. Returns undefined when the file isn't SVG or keeps failing.
+ */
+export const fetchCommonsSvgText = async (
+  file: string,
+  attempt = 1
+): Promise<string | undefined> => {
+  const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}`
+  const response = await fetch(url, { headers: { 'User-Agent': WIKIDATA_USER_AGENT } }).catch(
+    () => undefined
+  )
+  if (response?.ok) {
+    const contentType = response.headers.get('content-type') ?? ''
+    // Some Commons SVGs are saved as UTF-16 (BOM-prefixed) — response.text()
+    // assumes UTF-8 and produces null-riddled garbage. Sniff the BOM.
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    const encoding =
+      bytes[0] === 0xff && bytes[1] === 0xfe
+        ? 'utf-16le'
+        : bytes[0] === 0xfe && bytes[1] === 0xff
+          ? 'utf-16be'
+          : 'utf-8'
+    const body = new TextDecoder(encoding).decode(bytes).replace(/^﻿/, '')
+    const looksLikeSvg = contentType.includes('svg') || /^\s*(<\?xml|<svg)/.test(body)
+    if (!looksLikeSvg) {
+      console.warn(`  not an SVG (${contentType || 'no content-type'}): ${file}`)
+      return undefined
+    }
+    return body
+  }
+  if (attempt >= 6) return undefined
+
+  const retryAfter = Number(response?.headers.get('retry-after'))
+  await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
+  return fetchCommonsSvgText(file, attempt + 1)
+}
+
+/**
  * An already-encoded `${baseName}.webp`. Only WebP counts as a cache hit — a
  * leftover `.jpg` from before the WebP switch must be re-encoded, not reused.
  */

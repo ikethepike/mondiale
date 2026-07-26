@@ -1,0 +1,79 @@
+empires: 68 shipped of 68 seeds
+
+regions: middle-east:13 asia:16 europe:13 africa:15 south-america:5 north-america:6 (europe share 19%)
+
+no flag (11) — add a commons override:
+  akkadian-empire (no commons override)
+  neo-babylonian-empire (no commons override)
+  mongol-empire (no commons override)
+  gupta-empire (no commons override)
+  srivijaya (no commons override)
+  chola-empire (no commons override)
+  carthage (no commons override)
+  ghana-empire (no commons override)
+  zulu-kingdom (no commons override)
+  aksum (no commons override)
+  aztec-empire (no commons override)
+
+capitals outside their peak extent (8):
+  ottoman-empire: Constantinople falls outside the peak extent
+  safavid-empire: Tabriz falls outside the peak extent
+  safavid-empire: Qazvin falls outside the peak extent
+  byzantine-empire: Constantinople falls outside the peak extent
+  kalmar-union: Copenhagen falls outside the peak extent
+  swedish-empire: Stockholm falls outside the peak extent
+  carthage: Carthage falls outside the peak extent
+  portuguese-brazil: Salvador falls outside the peak extent
+
+membership aid (geometry vs curated lists — curator judgment wins):
+  achaemenid-empire: listed core but peak overlap < 0.3 — CY
+  umayyad-caliphate: suggested but unlisted — core: —, partial: AD
+  seljuk-empire: suggested but unlisted — core: QA, partial: PK SA
+  seljuk-empire: listed core but peak overlap < 0.3 — TM
+  mongol-empire: suggested but unlisted — core: BY BT NP QA, partial: FI LA LV PL SA
+  han-dynasty: suggested but unlisted — core: —, partial: LA
+  tang-dynasty: suggested but unlisted — core: —, partial: LA
+  qing-dynasty: listed core but peak overlap < 0.3 — TW
+  maurya-empire: suggested but unlisted — core: —, partial: BT
+  mughal-empire: suggested but unlisted — core: —, partial: TJ
+  srivijaya: listed core but peak overlap < 0.3 — ID
+  majapahit: listed core but peak overlap < 0.3 — ID
+  timurid-empire: suggested but unlisted — core: KW QA, partial: SA
+  chola-empire: listed core but peak overlap < 0.3 — IN
+  vijayanagara: listed core but peak overlap < 0.3 — IN
+  golden-horde: suggested but unlisted — core: —, partial: GE
+  roman-empire: suggested but unlisted — core: KW, partial: —
+  roman-empire: listed core but peak overlap < 0.3 — MT MC
+  macedonian-empire: suggested but unlisted — core: —, partial: RO
+  byzantine-empire: suggested but unlisted — core: —, partial: PT SI
+  napoleonic-france: suggested but unlisted — core: —, partial: BA
+  british-empire: suggested but unlisted — core: —, partial: BT
+  british-empire: listed core but peak overlap < 0.3 — BB BZ CY FJ GM GY IE JM MY MT SL SG LK TT
+  russian-empire: listed core but peak overlap < 0.3 — MD
+  third-reich: suggested but unlisted — core: AD VA LI MC SM CH, partial: —
+  venice: suggested but unlisted — core: —, partial: AT
+  venice: listed core but peak overlap < 0.3 — IT
+  ancient-egypt: listed core but peak overlap < 0.3 — EG
+  ghana-empire: listed core but peak overlap < 0.3 — ML MR
+  zulu-kingdom: listed core but peak overlap < 0.3 — ZA
+  kongo-kingdom: listed core but peak overlap < 0.3 — AO
+  kanem-bornu: listed core but peak overlap < 0.3 — TD NG
+  benin-empire: listed core but peak overlap < 0.3 — NG
+  mamluk-sultanate: listed core but peak overlap < 0.3 — SY
+  inca-empire: listed core but peak overlap < 0.3 — BO
+  tiwanaku: listed core but peak overlap < 0.3 — BO
+  aztec-empire: listed core but peak overlap < 0.3 — MX
+  toltec-empire: listed core but peak overlap < 0.3 — MX
+  new-france: listed core but peak overlap < 0.3 — CA
+
+heaviest empires by path bytes:
+  roman-empire	77.3 KB
+  soviet-union	62.6 KB
+  ottoman-empire	62.0 KB
+  qing-dynasty	57.8 KB
+  british-empire	57.2 KB
+  us-expansion	55.1 KB
+  russian-empire	50.8 KB
+  swedish-empire	49.7 KB
+  byzantine-empire	47.5 KB
+  kalmar-union	43.6 KB

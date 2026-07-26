@@ -52,6 +52,10 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // Five cards, one shared answer — naming a pick hands it out.
   'trend-race': 'presence',
 
+  // Two beats, both hunting shared answers: the buzz names the one ghost,
+  // the taps trace the one extent.
+  empire: 'presence',
+
   // One hidden point per beat, shared by the room, like pin-landmark.
   'heritage-hunt': 'presence',
 

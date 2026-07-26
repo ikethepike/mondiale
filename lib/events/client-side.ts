@@ -58,6 +58,7 @@ export const useClientEvents = () => {
     gameStore.map.revealStat = undefined
     gameStore.map.status = undefined
     gameStore.map.solo = false
+    gameStore.map.landmass = false
     gameStore.map.labels = false
     gameStore.map.focus = []
     gameStore.map.focusContext = []

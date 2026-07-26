@@ -33,6 +33,14 @@ describe('isKindEnabled', () => {
     expect(isKindEnabled(game, 'capital-guess')).toBe(false)
   })
 
+  it('deals empires on every difficulty in auto, off when the group is', () => {
+    expect(isKindEnabled({ difficulty: 'easy' }, 'empire')).toBe(true)
+    expect(isKindEnabled({ difficulty: 'hard' }, 'empire')).toBe(true)
+    expect(
+      isKindEnabled({ difficulty: 'hard', challengeOverrides: { empires: false } }, 'empire')
+    ).toBe(false)
+  })
+
   it('gates hard-only kinds by difficulty in auto', () => {
     expect(isKindEnabled({ difficulty: 'normal' }, 'flashpoint')).toBe(false)
     expect(isKindEnabled({ difficulty: 'hard' }, 'flashpoint')).toBe(true)

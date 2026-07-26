@@ -1,3 +1,5 @@
+import { EMPIRES } from '~~/data/empires.gen'
+import { empireDisplayName } from '~~/lib/empires'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
@@ -88,6 +90,12 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'pin-landmark-challenge'
         ? `The landmark was ${LANDMARKS[challenge.slug]?.name ?? 'a mystery'}`
         : ''
+    case 'empire': {
+      if (!('_type' in challenge) || challenge._type !== 'empire-challenge') return ''
+      const name = EMPIRES[challenge.empireId]?.name
+      const display = name ? empireDisplayName(name) : 'an empire'
+      return `${display[0].toUpperCase()}${display.slice(1)} — greatest extent, ${formatEventYear(challenge.peakYear)}`
+    }
     case 'timeline': {
       if (!('_type' in challenge) || challenge._type !== 'timeline-challenge') return ''
       const placed = challenge.state.placed

@@ -1,0 +1,21 @@
+<!-- Hand-simplified after File:Flag of Maurya Empire.pvg.png on Wikimedia Commons (modern reconstruction; raster-only source). The central device is the Indic sauwastika with bindu dots, an auspicious symbol attested in Maurya-era iconography. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#c73b2a"/>
+  <rect y="110" width="900" height="105" fill="#ffffff"/>
+  <rect y="215" width="900" height="170" fill="#7a2e26"/>
+  <rect y="385" width="900" height="105" fill="#ffffff"/>
+  <g stroke="#f0c419" stroke-width="34" stroke-linecap="round" fill="none">
+    <path d="M450 190 L450 410"/>
+    <path d="M340 300 L560 300"/>
+    <path d="M450 190 L380 190"/>
+    <path d="M450 410 L520 410"/>
+    <path d="M340 300 L340 370"/>
+    <path d="M560 300 L560 230"/>
+  </g>
+  <g fill="#f0c419">
+    <circle cx="395" cy="252" r="17"/>
+    <circle cx="508" cy="252" r="17"/>
+    <circle cx="395" cy="352" r="17"/>
+    <circle cx="508" cy="352" r="17"/>
+  </g>
+</svg>

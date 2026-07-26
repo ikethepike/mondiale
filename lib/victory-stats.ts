@@ -54,6 +54,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'heritage-hunt': ['Heritage Hunter', 'Wonder Wanderer', 'The Site Seer', 'Unesco Nomad'],
   'trend-race': ['Trend Spotter', 'Curve Caller', 'The Momentum Reader', 'Delta Detective'],
   timeline: ['The Chronicler', 'Keeper of Years', 'Century Threader', 'History Buff'],
+  empire: ['The Archivist', 'Reader of Ruins', 'Keeper of Old Maps', 'Dust of Empires'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -80,6 +81,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   'heritage-hunt': 'heritage hunt',
   'trend-race': 'trend race',
   timeline: 'timeline',
+  empire: 'ghosts of empires',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {
@@ -113,6 +115,11 @@ export const visitedCountries = (game: Game): ISOCountryCode[] => {
       for (const isoCode of challenge.neighbours) visited.add(isoCode)
     }
     if ('lieSource' in challenge) visited.add(challenge.lieSource)
+    // Ghosts of empires: the core members feed the post-game atlas; partial
+    // holdings stay confessed-only.
+    if ('empireId' in challenge) {
+      for (const isoCode of challenge.members) visited.add(isoCode)
+    }
   }
   return [...visited]
 }

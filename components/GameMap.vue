@@ -1,5 +1,5 @@
 <template>
-  <div ref="wrapper" :class="[`game-map`, status, { solo, 'show-labels': labels }]">
+  <div ref="wrapper" :class="[`game-map`, status, { solo, landmass, 'show-labels': labels }]">
     <!--
       Pan/zoom is viewBox-native (see the camera section in the script):
       repainting one viewport's worth of culled base-tier geometry per frame
@@ -222,6 +222,12 @@ const props = defineProps({
   },
   /** Shapes-only: countries without an inline fill disappear entirely. */
   solo: {
+    type: Boolean,
+    default: false,
+  },
+  /** With solo: continents stay as one silhouette — uniform fill, no strokes,
+   *  so internal borders vanish and an overlay reads against real coastlines. */
+  landmass: {
     type: Boolean,
     default: false,
   },
@@ -1554,6 +1560,14 @@ path[id]:hover,
 }
 .solo path.highlighted-country {
   stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
+}
+// Solo + landmass: the continents stay as one quiet silhouette. A uniform
+// fill with no strokes makes internal borders vanish — adjacent countries
+// share topology arcs, so same-fill polygons fuse seamlessly and only the
+// coastlines read. The ghosts-of-empires backdrop.
+.solo.landmass path[data-id] {
+  fill: hsla(36, 28%, 88%, 1);
+  stroke: transparent;
 }
 // Solo hides non-participating countries entirely — their tap halos must
 // not linger as ghost rings (linking challenges are solo AND deep-zoomed,
