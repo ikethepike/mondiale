@@ -2268,7 +2268,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Handover of Hong Kong',
-    country: 'HK',
+    country: 'CN',
     kind: 'politics',
     year: 1997,
     description:

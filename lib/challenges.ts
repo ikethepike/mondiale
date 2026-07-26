@@ -1117,6 +1117,22 @@ export const getRoundChallenge = async ({
   const isFirstRound = game.rounds.length === 0
   const kind = forced ?? (isFirstRound ? 'ranking' : pickRoundKind(game))
 
+  // A dealer that THROWS (bad generated data, drifted accessor) must degrade
+  // to the ranking fallback below, exactly like one that deals nothing — an
+  // escaped throw fails the round-staging task with no retry, freezing the
+  // room permanently (prod postmortem: timeline's HK card).
+  try {
+    return await dealRoundChallenge(kind, game)
+  } catch (error) {
+    console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
+    return getGroupChallenge({ game })
+  }
+}
+
+const dealRoundChallenge = async (
+  kind: RoundChallengeKind,
+  game: gameTypes.Game
+): Promise<RoundChallenge> => {
   switch (kind) {
     case 'traversal': {
       const challenge = getTraversalChallenge({ game })

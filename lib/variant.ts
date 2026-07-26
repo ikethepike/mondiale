@@ -42,7 +42,10 @@ const COUNTRY_EXTRA_VARIANTS: { [isoCode in ISOCountryCode]?: GameVariant[] } = 
 /** Does a country belong to a variant's board — by region or by extra membership? */
 export const countryInVariant = (isoCode: ISOCountryCode, variant: GameVariant): boolean => {
   if (variant === 'world') return true
-  const region = COUNTRIES[isoCode].region
+  // Generated datasets can smuggle in codes outside the playable set (typed as
+  // ISOCountryCode but never typechecked at generation time) — exclude, never throw.
+  const region = COUNTRIES[isoCode]?.region
+  if (!region) return false
   if (region === variant) return true
   if (VARIANT_EXTRA_REGIONS[variant]?.includes(region)) return true
   return COUNTRY_EXTRA_VARIANTS[isoCode]?.includes(variant) ?? false

@@ -9,6 +9,7 @@ import {
   saveImageUrl,
   wait,
 } from './vendors/wikidata/commons'
+import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
 
 /**
@@ -97,6 +98,21 @@ const slugify = (name: string) =>
     .replace(/^-|-$/g, '')
 
 const force = process.argv.includes('--force')
+
+// Bun runs this file without typechecking, so the ISOCountryCode annotation on
+// EventSeed.country proves nothing at runtime. A code outside the playable set
+// crashes COUNTRIES lookups all the way up in round staging (frozen room), so
+// refuse to generate at all.
+const unplayable = EVENT_SEEDS.filter(
+  seed => !(ISOCountryCodes as readonly string[]).includes(seed.country)
+)
+if (unplayable.length) {
+  throw new Error(
+    `Event seeds anchored to non-playable country codes: ${unplayable
+      .map(seed => `${seed.name} (${seed.country})`)
+      .join(', ')}`
+  )
+}
 
 // --- Previous run, for merging ----------------------------------------------
 let previous: EventMapping = {}

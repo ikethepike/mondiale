@@ -1,6 +1,7 @@
 import { EVENTS } from '~~/data/events.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventKind } from '~~/generators/data/event-seeds'
+import { isValidISOCode } from '~~/types/geography.types'
 import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty, GameVariant } from '~~/types/game.types'
 import { shuffleArray } from './arrays'
@@ -144,8 +145,13 @@ export const dealTimelineDeck = (
   minimumYearGap: number,
   eraWindowYears?: number
 ): string[] | undefined => {
+  // The playable-code check guards world decks too ('world' short-circuits
+  // countryInVariant): a card with a non-playable anchor would crash every
+  // client's COUNTRIES lookup when rendered.
   let pool = shuffleArray(
-    Object.entries(EVENTS).filter(([, event]) => countryInVariant(event.country, variant))
+    Object.entries(EVENTS).filter(
+      ([, event]) => isValidISOCode(event.country) && countryInVariant(event.country, variant)
+    )
   )
   if (pool.length < cardCount) return undefined
 
