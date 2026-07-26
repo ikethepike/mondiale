@@ -1,0 +1,18 @@
+<!-- Approximation: the Nguni war shield (isihlangu) with assegai, the kingdom's attested regimental iconography, on an earth field. Emblematic device, not a flag. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#6e4423"/>
+  <g transform="rotate(24 450 300)">
+    <rect x="441" y="20" width="14" height="560" rx="7" fill="#caa25c"/>
+    <path d="M448 14 C 470 60, 470 100, 448 140 C 426 100, 426 60, 448 14 Z" fill="#d8d2c4"/>
+  </g>
+  <ellipse cx="450" cy="310" rx="150" ry="230" fill="#e9e2d2"/>
+  <ellipse cx="450" cy="310" rx="150" ry="230" fill="none" stroke="#3a2a18" stroke-width="10"/>
+  <g fill="#5b3d20">
+    <path d="M380 180 C 420 170, 440 190, 430 230 C 400 240, 372 224, 380 180 Z"/>
+    <path d="M520 250 C 556 246, 570 274, 556 310 C 524 316, 504 292, 520 250 Z"/>
+    <path d="M370 340 C 404 332, 424 352, 416 392 C 384 400, 360 380, 370 340 Z"/>
+    <path d="M490 400 C 524 394, 540 416, 530 452 C 500 460, 480 440, 490 400 Z"/>
+  </g>
+  <rect x="443" y="60" width="14" height="500" rx="7" fill="#8a6535"/>
+  <circle cx="450" cy="66" r="16" fill="#3a2a18"/>
+</svg>

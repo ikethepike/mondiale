@@ -1,0 +1,16 @@
+<!-- Invented emblematic device — no Srivijayan vexillology survives: a gold outrigger ship, after the Borobudur ship reliefs that depict the maritime world Srivijaya commanded, on deep sea teal. Clearly a modern composition. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#134f57"/>
+  <g fill="#dcaf3c">
+    <path d="M230 372 C 300 404, 600 404, 670 372 L 706 316 L 668 336 C 590 366, 310 366, 232 336 L 194 316 Z"/>
+    <path d="M212 318 C 196 296, 196 272, 214 248 L 232 262 C 222 280, 222 298, 230 314 Z"/>
+    <path d="M688 318 C 704 296, 704 272, 686 248 L 668 262 C 678 280, 678 298, 670 314 Z"/>
+    <rect x="442" y="150" width="16" height="220" rx="8"/>
+    <path d="M462 166 L 620 300 L 462 300 Z"/>
+    <path d="M438 166 L 300 290 L 438 290 Z"/>
+  </g>
+  <g fill="none" stroke="#dcaf3c" stroke-width="12" stroke-linecap="round">
+    <path d="M250 430 L 650 430"/>
+    <path d="M290 466 L 610 466"/>
+  </g>
+</svg>

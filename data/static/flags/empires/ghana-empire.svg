@@ -1,0 +1,8 @@
+<!-- Invented emblematic device — no Wagadu iconography survives: the gold disc between salt-white and Sahel-black halves, for the trade the empire brokered. Clearly a modern composition. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="450" height="600" fill="#f0e9da"/>
+  <rect x="450" width="450" height="600" fill="#2b2320"/>
+  <circle cx="450" cy="300" r="140" fill="#dda829"/>
+  <circle cx="450" cy="300" r="140" fill="none" stroke="#8a5f14" stroke-width="10" stroke-dasharray="4 22" stroke-linecap="round"/>
+  <circle cx="450" cy="300" r="86" fill="none" stroke="#8a5f14" stroke-width="8"/>
+</svg>

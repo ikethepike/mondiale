@@ -1,0 +1,19 @@
+<!-- Approximation: the Chola tiger banner, attested in Tamil literature as the dynasty's device; stylized seated tiger in gold on madder red. Reconstruction, no period artifact survives. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#a8281c"/>
+  <g fill="#e3b23c">
+    <path d="M300 430 C 300 350, 340 300, 420 290 L 560 285 C 610 285, 640 310, 640 350 L 640 430 L 600 430 L 600 370 C 600 340, 580 325, 550 325 L 430 330 C 370 336, 340 370, 340 430 Z"/>
+    <path d="M620 300 C 620 260, 650 235, 690 240 L 700 250 L 680 258 L 700 270 L 678 276 L 694 292 C 690 316, 668 330, 640 326 Z"/>
+    <rect x="316" y="420" width="34" height="70" rx="12"/>
+    <rect x="392" y="420" width="34" height="70" rx="12"/>
+    <rect x="530" y="420" width="34" height="70" rx="12"/>
+    <rect x="596" y="420" width="34" height="70" rx="12"/>
+    <path d="M310 320 C 260 300, 240 260, 258 220 C 278 250, 300 268, 330 276 Z"/>
+  </g>
+  <g fill="#a8281c">
+    <rect x="430" y="292" width="16" height="40" rx="8"/>
+    <rect x="480" y="288" width="16" height="44" rx="8"/>
+    <rect x="530" y="288" width="16" height="42" rx="8"/>
+    <circle cx="668" cy="262" r="7"/>
+  </g>
+</svg>

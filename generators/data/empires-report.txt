@@ -2,18 +2,7 @@ empires: 68 shipped of 68 seeds
 
 regions: middle-east:13 asia:16 europe:13 africa:15 south-america:5 north-america:6 (europe share 19%)
 
-no flag (11) — add a commons override:
-  akkadian-empire (no commons override)
-  neo-babylonian-empire (no commons override)
-  mongol-empire (no commons override)
-  gupta-empire (no commons override)
-  srivijaya (no commons override)
-  chola-empire (no commons override)
-  carthage (no commons override)
-  ghana-empire (no commons override)
-  zulu-kingdom (no commons override)
-  aksum (no commons override)
-  aztec-empire (no commons override)
+no flag (0) — add a commons override:
 
 capitals outside their peak extent (8):
   ottoman-empire: Constantinople falls outside the peak extent

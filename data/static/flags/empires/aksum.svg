@@ -1,0 +1,18 @@
+<!-- Approximation after Aksumite gold coinage: the cross-in-disc framed by wheat stalks, on a coin-gold field. No Aksumite flag is attested; emblem-banner reconstruction. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#d3a445"/>
+  <circle cx="450" cy="300" r="150" fill="#8a5a22"/>
+  <circle cx="450" cy="300" r="118" fill="#d3a445"/>
+  <g fill="#8a5a22">
+    <rect x="430" y="212" width="40" height="176" rx="8"/>
+    <rect x="362" y="280" width="176" height="40" rx="8"/>
+  </g>
+  <g fill="none" stroke="#8a5a22" stroke-width="18" stroke-linecap="round">
+    <path d="M256 452 C 214 360, 214 240, 256 148"/>
+    <path d="M644 452 C 686 360, 686 240, 644 148"/>
+  </g>
+  <g stroke="#8a5a22" stroke-width="12" stroke-linecap="round">
+    <path d="M247 180 l -34 -18 M240 240 l -36 -10 M237 300 l -37 0 M240 360 l -36 10 M247 420 l -34 18"/>
+    <path d="M653 180 l 34 -18 M660 240 l 36 -10 M663 300 l 37 0 M660 360 l 36 10 M653 420 l 34 18"/>
+  </g>
+</svg>

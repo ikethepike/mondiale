@@ -1,22 +1,5 @@
-<!-- Source: File:Umayyad Flag.svg on Wikimedia Commons | Author: Ch1902 | Licence: Public domain -->
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-<svg
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   version="1.0"
-   width="600"
-   height="300"
-   id="svg2">
-  <defs
-     id="defs4" />
-  <g
-     id="layer1">
-    <rect
-       width="600"
-       height="300"
-       x="0"
-       y="0"
-       id="rect2383"
-       style="fill:#ffffff;stroke:none" />
-  </g>
+<!-- The attested Umayyad device: a plain white banner (after File:Umayyad Flag.svg, Ch1902, public domain). Toned to cloth-white with an inked keyline so it reads as a banner rather than an empty tile. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#f8f4ea"/>
+  <rect x="14" y="14" width="872" height="572" fill="none" stroke="#4a4234" stroke-opacity="0.35" stroke-width="6"/>
 </svg>

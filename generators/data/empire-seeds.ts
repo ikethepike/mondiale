@@ -150,6 +150,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SY', 'IR', 'TR', 'KW'],
     },
     capitals: [{ name: 'Akkad', coordinates: [44.1, 33.1] }],
+    // hand-drawn: attested Mesopotamian star emblem on a banner field; no Akkadian flag exists
+    commons: 'Star of Ishtar banner (hand-drawn).svg',
     blurb:
       'Often counted the first empire: Sargon’s dynasty yoked the Sumerian city-states to campaigns reaching the Mediterranean and Elam. It lasted about 180 years before drought and Gutian incursions broke it; the city of Akkad itself has never been found.',
   },
@@ -197,6 +199,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SA', 'TR', 'KW'],
     },
     capitals: [{ name: 'Babylon', coordinates: [44.4275, 32.5364] }],
+    // hand-drawn: the Ishtar Gate rosette on lapis; no Babylonian flag exists
+    commons: 'Ishtar Gate rosette banner (hand-drawn).svg',
     blurb:
       'The last native Mesopotamian empire, whose kings rebuilt Babylon around the Ishtar Gate and deported Judah’s elite after taking Jerusalem in 587 BCE. Nabonidus lost the city to Cyrus without a siege in 539, and Babylonia became a Persian satrapy.',
   },
@@ -507,6 +511,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       { name: 'Karakorum', coordinates: [102.8456, 47.194], to: 1279 },
       { name: 'Khanbaliq', coordinates: [116.4074, 39.9042], from: 1279 },
     ],
+    // hand-drawn: the attested nine-tailed white tug; Commons' rectangular Mongol flag is speculative and rejected
+    commons: 'White tug standard (hand-drawn).svg',
     blurb:
       'The largest contiguous land empire there has been, assembled within three generations of Genghis Khan’s 1206 proclamation and knit together by relay post-roads. It ran from Korea to Hungary before partitioning into four khanates that went their own ways.',
   },
@@ -629,6 +635,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['PK', 'NP'],
     },
     capitals: [{ name: 'Pataliputra', coordinates: [85.1376, 25.5941] }],
+    // hand-drawn after the Garudadhvaja on Gupta coins and seals
+    commons: 'Garuda standard (hand-drawn).svg',
     blurb:
       'Northern India under one dynasty in the age of Kalidasa’s poetry, the zero digit and the Nalanda schools — later historiography’s classical benchmark. Hunnic invasions and defecting feudatories reduced it to Magadha by the mid-sixth century.',
   },
@@ -703,6 +711,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['TH', 'SG'],
     },
     capitals: [{ name: 'Palembang', coordinates: [104.7458, -2.9761] }],
+    // hand-drawn INVENTED emblem after the Borobudur ship reliefs; no Srivijayan vexillology survives
+    commons: 'Borobudur ship emblem (hand-drawn).svg',
     blurb:
       'A Buddhist thalassocracy on the Palembang river that taxed every hull passing the Malacca and Sunda straits for four centuries, endowing monasteries as far as Nalanda. Chola raids in 1025 broke its grip, and the ports drifted to rival houses.',
   },
@@ -782,6 +792,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       { name: 'Thanjavur', coordinates: [79.1378, 10.787], to: 1000 },
       { name: 'Gangaikonda Cholapuram', coordinates: [79.4485, 11.2054], from: 1000 },
     ],
+    // hand-drawn: the tiger banner attested in Tamil literature; stylized reconstruction
+    commons: 'Chola tiger banner (hand-drawn).svg',
     blurb:
       'A Tamil dynasty that ruled the Kaveri delta through temple-centred bureaucracy, took northern Sri Lanka, and sent a fleet against Srivijaya in 1025 — the rare Indian state to project power overseas. Pandya rivals absorbed it in the late thirteenth century.',
   },
@@ -806,7 +818,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['CN', 'PH', 'ID', 'MY', 'SG', 'MM', 'VN', 'LA', 'KH', 'TH', 'BN', 'PG'],
     },
     capitals: [{ name: 'Tokyo', coordinates: [139.6917, 35.6895] }],
-    commons: 'Merchant flag of Japan (1870).svg',
+    commons: 'War flag of the Imperial Japanese Army.svg',
     blurb:
       'Meiji industrialization turned an archipelago into a colonial power — Taiwan by 1895, Korea by 1910, Manchuria by 1932 — and by mid-1942 its occupation ran from Burma to New Guinea. Surrender in 1945 returned the state to the home islands.',
   },
@@ -1059,7 +1071,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['EE', 'LV', 'RU', 'DE', 'PL', 'DK'],
     },
     capitals: [{ name: 'Stockholm', coordinates: [18.0686, 59.3293] }],
-    commons: 'Flag of Sweden.svg',
+    commons: 'Naval Ensign of Sweden.svg',
     blurb:
       'For a century after Gustavus Adolphus’s interventions the Baltic was close to a Swedish lake, ringed by Finland, Estonia, Livonia, Ingria and Pomeranian bridgeheads. The Great Northern War stripped the provinces away, sealed at Nystad in 1721.',
   },
@@ -1274,7 +1286,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       { name: 'Moscow', coordinates: [37.6173, 55.7558], to: 1712 },
       { name: 'Saint Petersburg', coordinates: [30.3351, 59.9343], from: 1712 },
     ],
-    commons: 'Flag of Russia.svg',
+    commons: 'Flag of Russian Empire for private use (1914–1917) 3.svg',
     blurb:
       'Two centuries of expansion from Muscovy reached the Baltic under Peter, the Black Sea under Catherine, and the Pacific, Caucasus and Central Asia after — one subject in six was ethnically Russian. War strain broke the dynasty in February 1917.',
   },
@@ -1411,6 +1423,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['DZ', 'LY', 'MA', 'ES', 'IT', 'MT'],
     },
     capitals: [{ name: 'Carthage', coordinates: [10.3236, 36.8528] }],
+    // hand-drawn: the Tanit sign and crescent-disc from Punic stelae on Tyrian purple
+    commons: 'Sign of Tanit banner (hand-drawn).svg',
     blurb:
       'A Phoenician harbour city that came to run the western Mediterranean — Sardinia, western Sicily, the Iberian coast — on shipping lanes rather than land. Three wars with Rome ended with the city razed in 146 BCE and its fields annexed as a Roman province.',
   },
@@ -1484,6 +1498,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SN'],
     },
     capitals: [{ name: 'Koumbi Saleh', coordinates: [-7.97, 15.77] }],
+    // hand-drawn INVENTED emblem (salt/gold trade halves); no Wagadu iconography survives
+    commons: 'Wagadu trade emblem (hand-drawn).svg',
     blurb:
       'The first of the Sahelian trading empires, brokering Saharan salt against Bambuk gold from a twin capital on the desert edge — in modern Mauritania and Mali, not the republic that later took its name. It faded through the twelfth century and its lands passed to rising Mali.',
   },
@@ -1533,6 +1549,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SZ', 'MZ'],
     },
     capitals: [{ name: 'Ulundi', coordinates: [31.4166, -28.3352] }],
+    // hand-drawn: the isihlangu war shield with assegai; emblematic, not a flag
+    commons: 'Nguni shield emblem (hand-drawn).svg',
     blurb:
       'Shaka reorganized a minor chiefdom into a regimental state that dominated the country between the Pongola and the Tugela within a decade. The kingdom destroyed a British column at Isandlwana in 1879, was partitioned the same year, and was annexed in 1887.',
   },
@@ -1634,6 +1652,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['SD', 'SS', 'DJ', 'YE', 'SA'],
     },
     capitals: [{ name: 'Aksum', coordinates: [38.7167, 14.1211] }],
+    // hand-drawn after Aksumite coinage: cross-in-disc with wheat stalks
+    commons: 'Aksumite coin device (hand-drawn).svg',
     blurb:
       'A Red Sea trading state that minted its own gold coinage, raised monolithic stelae, and adopted Christianity in the fourth century — at times ruling both shores of the strait. Its ports declined as trade routes shifted after the seventh century, and the centre moved inland.',
   },
@@ -1885,6 +1905,8 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       partial: ['GT'],
     },
     capitals: [{ name: 'Tenochtitlan', coordinates: [-99.1332, 19.4326] }],
+    // hand-drawn after a Codex Mendoza warrior shield: the xicalcoliuhqui stepped fret
+    commons: 'Codex Mendoza chimalli (hand-drawn).svg',
     blurb:
       'A tribute network run from an island city of causeways and floating gardens, extracting cacao, quetzal feathers and captives from central Mexico to the Pacific coast. Tenochtitlan fell to a Spanish-Tlaxcalan siege in 1521, two years after first contact.',
   },

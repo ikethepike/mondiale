@@ -1,0 +1,13 @@
+<!-- Approximation: the sign of Tanit beneath the crescent-and-disc, attested on Carthaginian stelae, in white on Tyrian purple. No Punic flag is attested; emblem-banner reconstruction. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#54204c"/>
+  <g fill="#f2ece2">
+    <path d="M348 128 A 118 118 0 0 1 552 128 A 132 132 0 0 0 348 128 Z"/>
+    <circle cx="450" cy="132" r="34"/>
+    <circle cx="450" cy="242" r="40"/>
+    <rect x="330" y="292" width="240" height="26" rx="13"/>
+    <rect x="318" y="258" width="26" height="60" rx="13"/>
+    <rect x="556" y="258" width="26" height="60" rx="13"/>
+    <path d="M450 300 L560 490 L340 490 Z"/>
+  </g>
+</svg>

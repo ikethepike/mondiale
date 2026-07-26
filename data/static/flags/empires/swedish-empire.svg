@@ -1,2 +1,6 @@
-<!-- Source: File:Flag of Sweden.svg on Wikimedia Commons | Author: Jon Harald Søby and others. | Licence: Public domain -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 5" width="1600" height="1000"><path fill="#005293" d="M0,0H8V5H0Z"/><path stroke="#fecb00" d="M0,2.5h8M3,0v5"/></svg>
+<!-- Source: File:Naval Ensign of Sweden.svg on Wikimedia Commons | Author: User: David Newton | Licence: CC BY-SA 3.0 -->
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="600" height="300">
+	<path d="M 0,0 H 600 L 360,120 V 180 L 600,300 H 0 z" fill="#005293"/>
+	<rect x="150" width="60" height="300" fill="#fecb00"/>
+	<path d="M 0,120 H 360 L 600,150 L 360,180 H 0 z" fill="#fecb00"/>
+</svg>

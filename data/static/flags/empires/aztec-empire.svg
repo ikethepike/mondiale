@@ -1,0 +1,14 @@
+<!-- Hand-simplified after a Codex Mendoza warrior chimalli (supplied plate): the dark-green stepped fret (xicalcoliuhqui) on a gold shield with feather fringe. Emblematic device, not a flag. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#9c3026"/>
+  <circle cx="450" cy="270" r="168" fill="#d8a021"/>
+  <circle cx="450" cy="270" r="168" fill="none" stroke="#7a5410" stroke-width="10"/>
+  <path fill="#1f5c46" d="M330 350 L330 310 L370 310 L370 230 L450 230 L450 190 L570 190 L570 250 L490 250 L490 330 L410 330 L410 350 Z"/>
+  <g fill="#d8a021">
+    <rect x="360" y="446" width="26" height="64" rx="10"/>
+    <rect x="402" y="452" width="26" height="72" rx="10"/>
+    <rect x="444" y="454" width="26" height="76" rx="10"/>
+    <rect x="486" y="452" width="26" height="72" rx="10"/>
+    <rect x="528" y="446" width="26" height="64" rx="10"/>
+  </g>
+</svg>

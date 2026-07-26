@@ -1,0 +1,16 @@
+<!-- Approximation: the eight-pointed star of Ishtar/Shamash, attested Mesopotamian iconography, on a terracotta field. No Akkadian flag is attested; emblem-banner reconstruction. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#8a3a26"/>
+  <g fill="#e8b64c">
+    <path d="M450 90 L478 262 L450 300 L422 262 Z"/>
+    <path d="M450 510 L478 338 L450 300 L422 338 Z"/>
+    <path d="M240 300 L412 272 L450 300 L412 328 Z"/>
+    <path d="M660 300 L488 272 L450 300 L488 328 Z"/>
+    <path d="M318 168 L432 250 L450 300 L394 288 Z"/>
+    <path d="M582 168 L468 250 L450 300 L506 288 Z"/>
+    <path d="M318 432 L432 350 L450 300 L394 312 Z"/>
+    <path d="M582 432 L468 350 L450 300 L506 312 Z"/>
+    <circle cx="450" cy="300" r="42"/>
+  </g>
+  <circle cx="450" cy="300" r="24" fill="#8a3a26"/>
+</svg>

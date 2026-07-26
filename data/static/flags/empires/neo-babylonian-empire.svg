@@ -1,0 +1,18 @@
+<!-- Approximation: the gold eight-petal rosette of the Ishtar Gate glazed brickwork on lapis blue. No Babylonian flag is attested; emblem-banner reconstruction. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#1c3d7a"/>
+  <rect y="40" width="900" height="14" fill="#d9a83c"/>
+  <rect y="546" width="900" height="14" fill="#d9a83c"/>
+  <g fill="#e8bd55">
+    <ellipse cx="450" cy="196" rx="34" ry="74"/>
+    <ellipse cx="450" cy="404" rx="34" ry="74"/>
+    <ellipse cx="346" cy="300" rx="74" ry="34"/>
+    <ellipse cx="554" cy="300" rx="74" ry="34"/>
+    <ellipse cx="376" cy="226" rx="30" ry="64" transform="rotate(-45 376 226)"/>
+    <ellipse cx="524" cy="226" rx="30" ry="64" transform="rotate(45 524 226)"/>
+    <ellipse cx="376" cy="374" rx="30" ry="64" transform="rotate(45 376 374)"/>
+    <ellipse cx="524" cy="374" rx="30" ry="64" transform="rotate(-45 524 374)"/>
+  </g>
+  <circle cx="450" cy="300" r="52" fill="#f2e2b0"/>
+  <circle cx="450" cy="300" r="52" fill="none" stroke="#b8862e" stroke-width="8"/>
+</svg>
