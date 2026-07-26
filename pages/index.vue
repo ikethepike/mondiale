@@ -26,14 +26,21 @@
       <NuxtLink to="/privacy">Privacy</NuxtLink>
       <span class="divider" aria-hidden="true">·</span>
       <span class="copyright">© {{ currentYear }} Mondiale</span>
+      <NuxtLink class="version-flag" to="/version" :title="`Version ${commitHash}`" aria-label="Version">
+        <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally from the commit hash -->
+        <span class="flag" v-html="deployFlag.svg" />
+      </NuxtLink>
     </footer>
   </main>
 </template>
 <script lang="ts" setup>
 import { generate } from 'random-words'
+import { forgeFlag } from '~~/lib/flags/forge'
 const roomName = ref(generate({ exactly: 3, join: '-' }))
 const router = useRouter()
 const currentYear = new Date().getFullYear()
+const { commitHash } = useRuntimeConfig().public
+const deployFlag = forgeFlag(commitHash)
 
 definePageMeta({
   pageTransition: {
@@ -133,6 +140,7 @@ nav {
   justify-content: center;
   padding-bottom: var(--safe-bottom);
   font-size: 1.3rem;
+  position: relative;
 
   a {
     color: var(--text-color);
@@ -152,6 +160,32 @@ nav {
 
   .divider {
     opacity: 0.4;
+  }
+
+  .version-flag {
+    position: absolute;
+    top: 0;
+    right: 1.6rem;
+    bottom: var(--safe-bottom);
+    display: flex;
+    align-items: center;
+    opacity: 0.65;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    .flag {
+      display: block;
+      height: 1.2rem;
+      border: 0.1rem solid var(--text-color);
+    }
+
+    :deep(svg) {
+      display: block;
+      height: 100%;
+      width: auto;
+    }
   }
 }
 </style>
