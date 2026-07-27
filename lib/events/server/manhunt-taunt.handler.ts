@@ -32,6 +32,8 @@ export const manhuntTauntHandler: EventHandler = async ({
   if (!game) return
   const challenge = currentManhunt(game)
   if (!challenge || challenge.state.finished) return
+  // The briefing is a reading room, not a stage.
+  if (challenge.state.briefing) return
 
   const role =
     eventTarget.playerId === challenge.despotId

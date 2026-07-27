@@ -119,14 +119,17 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   )
 
   // One pruner for both lists — entries carry their own timestamp, so expiry is
-  // a filter rather than a timer per chip.
+  // a filter rather than a timer per chip. Dwell is per kind: a taunt is a
+  // sentence and outstays a verdict chip.
+  const dwellFor = (entry: GuessTickerEntry) => (entry.kind === 'taunt' ? DWELL.taunt : DWELL.hint)
+  const expired = (entry: GuessTickerEntry, now: number) => entry.at + dwellFor(entry) <= now
   const pruner = setInterval(() => {
-    const cutoff = Date.now() - DWELL.hint
-    if (ownGuesses.value.some(entry => entry.at <= cutoff)) {
-      ownGuesses.value = ownGuesses.value.filter(entry => entry.at > cutoff)
+    const now = Date.now()
+    if (ownGuesses.value.some(entry => expired(entry, now))) {
+      ownGuesses.value = ownGuesses.value.filter(entry => !expired(entry, now))
     }
-    if (gameStore.map.liveGuesses.some(entry => entry.at <= cutoff)) {
-      gameStore.map.liveGuesses = gameStore.map.liveGuesses.filter(entry => entry.at > cutoff)
+    if (gameStore.map.liveGuesses.some(entry => expired(entry, now))) {
+      gameStore.map.liveGuesses = gameStore.map.liveGuesses.filter(entry => !expired(entry, now))
     }
   }, PRUNE_INTERVAL_MS)
 

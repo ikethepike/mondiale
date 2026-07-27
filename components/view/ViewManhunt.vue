@@ -93,7 +93,11 @@
 
     <!-- The briefing: role cards each player dismisses explicitly. No clock
          runs until the whole table is ready (or the server's cap forces it). -->
-    <section v-if="briefing" class="briefing pane tr decorator-bottom">
+    <section
+      v-if="briefing"
+      class="briefing pane tr decorator-bottom"
+      :class="{ despotic: isDespot }"
+    >
       <DespotHat class="briefing-hat" />
       <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
       <ul class="briefing-points">
@@ -969,6 +973,22 @@ header .prompt {
   flex-flow: column nowrap;
   pointer-events: auto;
   max-width: min(34rem, calc(100% - 2.4rem));
+
+  // Glorious Leader gets the ember treatment: the accent that marks "you"
+  // on the map becomes the whole room, white ink on top.
+  &.despotic {
+    color: #fff;
+    border-color: hsl(18, 75%, 34%);
+    background: linear-gradient(160deg, hsl(26, 84%, 50%), hsl(16, 80%, 43%));
+
+    .briefing-waiting {
+      opacity: 0.9;
+    }
+
+    .seat-name {
+      color: #fff;
+    }
+  }
 
   .briefing-hat {
     width: 5.2rem;
