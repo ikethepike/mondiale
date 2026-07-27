@@ -169,11 +169,21 @@
             :key="clue.text"
             tag="li"
             class="intel-row"
+            :class="{ plotted: clueHasPlot(clue) }"
             :accessor="clue.accessorId"
             :topic="clue.topic"
             :label="clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`"
           >
             <span class="intel-text">{{ clue.text }}</span>
+            <!-- The freshest threshold clue shows its cut across the whole
+                 field — the strip the stat rounds already speak. -->
+            <StatStripPlot
+              v-if="clueHasPlot(clue)"
+              class="intel-plot"
+              :accessor-id="clue.accessorId"
+              :cut-at="clue.threshold"
+              :keep-above="clue.above"
+            />
           </StatCard>
         </ol>
       </div>
@@ -184,6 +194,7 @@
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
+import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -358,6 +369,13 @@ const seaPassageAnnounced = computed(() => {
 })
 
 const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
+
+/** Only the freshest clue earns the strip plot — one chart, not a gallery. */
+const clueHasPlot = (clue: (typeof recentClues.value)[number]) =>
+  clue === recentClues.value[0] &&
+  clue.kind === 'threshold' &&
+  clue.accessorId !== undefined &&
+  clue.threshold !== undefined
 
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
@@ -821,6 +839,17 @@ header {
   .intel-text {
     display: block;
   }
+
+  &.plotted {
+    max-width: 34rem;
+    pointer-events: auto;
+  }
+
+  .intel-plot {
+    width: 100%;
+    margin-top: 0.5rem;
+    --swarm-height: 3.6rem;
+  }
 }
 
 .rail-label {
@@ -828,6 +857,17 @@ header {
   font-weight: bold;
   align-self: center;
   padding: 0.4rem 1.2rem;
+}
+
+header .headline-line {
+  gap: 1rem;
+  display: inline-flex;
+  align-items: center;
+
+  .despot-hat {
+    width: 3.6rem;
+    flex-shrink: 0;
+  }
 }
 
 header .prompt {

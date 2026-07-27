@@ -26,6 +26,9 @@
 <style lang="scss" scoped>
 .despot-hat {
   display: block;
+  // Intrinsic default so an unstyled mount is a cap, never a billboard —
+  // consumers override the width; height follows the viewBox.
+  width: 3.2rem;
 
   .cap {
     fill: var(--hat-cap, var(--dark-blue));

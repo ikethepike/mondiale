@@ -51,6 +51,15 @@
         </div>
       </Transition>
       <div class="axis" aria-hidden="true" />
+      <!-- The clue's cut: a rule where the field was sliced, the surviving
+           side washed — deduction you can see. -->
+      <template v-if="cutX !== undefined">
+        <div
+          class="cut-wash"
+          :style="keepAbove ? { left: `${cutX}%`, right: 0 } : { left: 0, width: `${cutX}%` }"
+        />
+        <div class="cut-rule" :style="{ left: `${cutX}%` }" />
+      </template>
     </div>
     <figcaption class="legend">
       <span v-for="mark in legend" :key="mark.iso" class="chip legend-chip" :class="mark.kind">
@@ -93,6 +102,10 @@ const props = defineProps<{
   decoy?: ISOCountryCode
   /** Also-rans worth finding in the swarm, marked without verdict colours. */
   noted?: ISOCountryCode[]
+  /** Draw a cut rule at this value (manhunt's threshold intel) … */
+  cutAt?: number
+  /** … washing the surviving side (true = everything right of the rule). */
+  keepAbove?: boolean
 }>()
 
 /** Percent-space plot band: x margins clear the edges, y jitters mid-band. */
@@ -150,6 +163,12 @@ const scale = computed(() => {
   }
 })
 
+/** The cut rule's x, through the same (possibly log) scale as the swarm. */
+const cutX = computed(() => {
+  if (props.cutAt === undefined || !entries.value.length) return undefined
+  return Math.min(97, Math.max(3, scale.value(props.cutAt)))
+})
+
 const display = (amount: number, unit: string | undefined) =>
   `${formatNumber(amount)}${unit ? ` ${unit}` : ''}`
 
@@ -203,6 +222,24 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   width: 100%;
   position: relative;
   height: var(--swarm-height, 10rem);
+}
+
+.cut-wash {
+  top: 8%;
+  bottom: 8%;
+  position: absolute;
+  pointer-events: none;
+  background: hsla(212, 58%, 62%, 0.16);
+}
+
+.cut-rule {
+  top: 4%;
+  bottom: 4%;
+  width: 0.15rem;
+  position: absolute;
+  pointer-events: none;
+  border-radius: 0.1rem;
+  background: hsl(24, 80%, 45%);
 }
 
 .axis {

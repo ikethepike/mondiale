@@ -234,6 +234,17 @@ describe('clue engine', () => {
     expect(economy.matches.length).toBeLessThan(candidates.length)
   })
 
+  it('never lets a subpoena single out a unique-language country', () => {
+    const candidates = initialManhuntCandidates(RULES)
+    // Hungarian is official in one candidate — the naive answer is a
+    // giveaway. The sharpness floor must route around it.
+    for (let i = 0; i < 5; i++) {
+      const pick = answerManhuntSubpoena(game, 'HU', candidates, 1, [], 'language')
+      expect(pick.matches).toContain('HU')
+      expect(pick.matches.length).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('falls back to the best cut when a topic is exhausted', () => {
     const candidates = initialManhuntCandidates(RULES)
     // Burn the language topic dry for a country with few official languages,

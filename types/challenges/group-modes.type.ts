@@ -495,6 +495,11 @@ export interface ManhuntClue {
   accessorId?: GroupChallengeAccessorId
   /** Categorical clues name a glyph key instead (topic/relations/department). */
   topic?: string
+  /** Threshold clues carry their cut, structured — the intel card plots the
+   *  field with the rule drawn where the clue slices it. */
+  threshold?: number
+  /** Which side of the cut survives. */
+  above?: boolean
   /** Set when a detective subpoenaed this clue rather than the engine
    *  dealing it — credits the asker in the rail and the reveal. */
   askedBy?: string

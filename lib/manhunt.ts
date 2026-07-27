@@ -333,6 +333,8 @@ const clueCandidates = (
         hop,
         kind: 'threshold',
         accessorId,
+        threshold,
+        above,
         text: `Its ${label} is ${above ? 'at least' : 'below'} ${formatThreshold(
           threshold,
           despotValue.unit
@@ -535,14 +537,21 @@ export const answerManhuntSubpoena = (
 ): ManhuntCluePick => {
   const pool = clueCandidates(game, despotAt, candidates, hop, used)
   const topic = MANHUNT_SUBPOENA_TOPICS.find(entry => entry.id === topicId)
+  // The sharpness floor: engine-dealt clues aim for the bisection target, but
+  // a scoped subpoena can hold only kill-shots — "official languages include
+  // Lithuanian" is a singleton. No token may cut below ~10% of the field
+  // (min 3); a topic with only sharper truths falls back to the engine's
+  // best honest cut, so the token still buys a cut, never a giveaway.
+  const floor = Math.min(candidates.length, Math.max(3, Math.ceil(candidates.length * 0.1)))
   const scoped = topic
     ? pool.filter(
         candidate =>
-          (candidate.accessorId &&
+          candidate.matches.length >= floor &&
+          ((candidate.accessorId &&
             (topic.accessors as readonly GroupChallengeAccessorId[]).includes(
               candidate.accessorId
             )) ||
-          (topic.kinds as readonly ManhuntClue['kind'][]).includes(candidate.clue.kind)
+            (topic.kinds as readonly ManhuntClue['kind'][]).includes(candidate.clue.kind))
       )
     : []
   const best = bestClueCandidate(scoped.length ? scoped : pool, candidates)
