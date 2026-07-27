@@ -16,25 +16,31 @@
       :min-gap-px="26"
     />
 
+    <!-- The shared round clock, re-swept on every beat handoff. -->
+    <ChallengeTimerRadial
+      v-if="!showInterstitial && !finished"
+      :key="`turn-${state.turn}`"
+      class="round-clock"
+      :value="secondsOnClock"
+      :total="beatTotalSeconds"
+    />
+
     <header>
       <div class="prompt">
         <h1 class="map-caption">{{ headline }}</h1>
-        <span
-          v-if="!finished"
-          class="map-caption sub turn-line"
-          :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
-        >
-          <span class="chip" :style="{ background: despotPlayer?.color }" />
-          <span>{{ beatLabel }}</span>
-          <span class="clock">{{ secondsOnClock }}s</span>
-        </span>
+        <Transition name="caption" mode="out-in">
+          <span v-if="!finished" :key="beatLabel" class="map-caption sub turn-line">
+            <span class="chip" :style="{ background: despotPlayer?.color }" />
+            <span>{{ beatLabel }}</span>
+          </span>
+        </Transition>
         <Transition name="caption">
-          <span v-if="seaPassageAnnounced" class="map-caption sub sea-banner">
+          <span v-if="seaPassageAnnounced" class="map-caption sea-banner">
             ⚓ The Despot has taken sea passage!
           </span>
         </Transition>
         <Transition name="caption" mode="out-in">
-          <span v-if="clueLine" :key="clueLine" class="map-caption clue">
+          <span v-if="clueLine" :key="clueLine" class="map-caption intel-card">
             {{ clueLine }}
           </span>
         </Transition>
@@ -68,6 +74,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ManhuntReveal from '~/components/challenge/ManhuntReveal.vue'
@@ -79,7 +86,7 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { countryInVariant } from '~~/lib/variant'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CountryColorGrouping } from '~~/types/map.type'
-import { isMapClickEvent } from '~~/types/events.types'
+import { isMapClickEvent, isMapHoverEvent } from '~~/types/events.types'
 import type { ManhuntState } from '~~/types/challenges/group-modes.type'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
@@ -198,19 +205,17 @@ const iAmDetective = computed(() => state.value.detectives.includes(gameStore.pl
 
 // --- Shot clock (server-owned deadline; local repaint only) ------------------
 const secondsOnClock = ref(0)
-const fractionLeft = ref(1)
 const clock = setInterval(() => {
-  const active = challenge.value
-  if (!active) return
   const remaining = (state.value.deadline ?? 0) - Date.now()
   secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
-  const total =
-    (state.value.beat === 'move' ? active.moveSeconds : active.huntSeconds) * 1000
-  fractionLeft.value = total ? Math.min(1, Math.max(0, remaining / total)) : 1
 }, 200)
 registerCleanup(() => clearInterval(clock))
 
-const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))
+const beatTotalSeconds = computed(() =>
+  state.value.beat === 'move'
+    ? (challenge.value?.moveSeconds ?? 0)
+    : (challenge.value?.huntSeconds ?? 0)
+)
 
 // --- Acting ------------------------------------------------------------------
 const pending = ref(false)
@@ -260,6 +265,29 @@ const onMapClick = (event: Event) => {
 
 onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
+
+// Hovering a legal sea destination previews the passage as a dashed line
+// from the current hideout — the map's strait language, before committing a
+// charge. Despot's move beat only; the reveal owns seaLinks after finish.
+const onMapHover = (event: Event) => {
+  if (!isMapHoverEvent(event)) return
+  if (finished.value || !isDespot.value || state.value.beat !== 'move') return
+  const from = despotAt.value
+  const hovered = event.detail.isoCode
+  const isSeaMove =
+    from && isValidISOCode(hovered) && legalMoves.value.sea.includes(hovered)
+  gameStore.map.seaLinks =
+    isSeaMove && from ? [from < hovered ? `${from}-${hovered}` : `${hovered}-${from}`] : []
+}
+onBeforeMount(() => document.addEventListener('mapHover', onMapHover))
+registerCleanup(() => document.removeEventListener('mapHover', onMapHover))
+// A move mid-hover must not strand the preview line into the hunt beat.
+watch(
+  () => state.value.beat,
+  () => {
+    if (!finished.value) gameStore.map.seaLinks = []
+  }
+)
 
 // --- Painting the map --------------------------------------------------------
 /** Candidates in one quiet blue; the despot's trail deepens along the walk. */
@@ -377,23 +405,35 @@ header {
     margin: 0;
   }
 
-  .sub,
-  .hint,
-  .clue {
+  .sub {
     padding: 0.4rem 1.4rem;
   }
 
   .hint {
+    padding: 0.5rem 1.6rem;
+    font-weight: bold;
     color: var(--hior-ange);
+    border-color: var(--hior-ange);
   }
 
-  .clue {
+  // The intel line IS the round each turn — dressed as a dispatch card
+  // rather than a sub-caption, so the eye lands on it before the map.
+  .intel-card {
+    font-size: 1.25em;
     font-weight: bold;
+    padding: 0.8rem 2rem;
+    border-width: 0.15rem;
+    border-color: hsla(215.7, 76.4%, 41%, 0.55);
+    box-shadow: 0 0.3rem 1.2rem hsla(215.7, 76.4%, 21.6%, 0.18);
   }
 
   .sea-banner {
+    font-size: 1.15em;
     font-weight: bold;
+    padding: 0.6rem 1.8rem;
     color: hsl(215.7, 76.4%, 41%);
+    border-width: 0.15rem;
+    border-color: hsla(215.7, 76.4%, 41%, 0.55);
   }
 
   .prompt {
@@ -413,31 +453,7 @@ header {
   .chip {
     width: 0.75rem;
     height: 0.75rem;
-    position: relative;
     border-radius: 50%;
-
-    &::before {
-      content: '';
-      inset: -0.35rem;
-      position: absolute;
-      border-radius: 50%;
-      background: conic-gradient(hsl(24, 80%, 55%) var(--ring, 360deg), transparent 0);
-      mask: radial-gradient(
-        farthest-side,
-        transparent calc(100% - 0.2rem),
-        #000 calc(100% - 0.18rem)
-      );
-    }
-  }
-
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    color: color-mix(
-      in oklab,
-      hsl(24, 80%, 55%) calc(var(--clock-warmth, 0) * 1%),
-      var(--dark-blue)
-    );
   }
 }
 

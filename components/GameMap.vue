@@ -177,7 +177,7 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
+import { countryLatLng, invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
@@ -366,11 +366,20 @@ const chainIndices = computed<Partial<Record<string, number>>>(() => {
   return indices
 })
 
-/** Dashed lines across each named strait — straight, as a strait should be. */
+/** Dashed lines across water — straight, as a strait should be. Named strait
+ *  pairs cross at their validated coastline points; any other pair (manhunt's
+ *  sea passages span whole seas) falls back to a centroid-to-centroid line. */
 const seaLinkPaths = computed(() => {
   const paths: string[] = []
   for (const pair of props.seaLinks) {
-    const crossing = STRAIT_CROSSINGS[pair]
+    const crossing =
+      STRAIT_CROSSINGS[pair] ??
+      (() => {
+        const [a, b] = pair.split('-') as ISOCountryCode[]
+        const from = countryLatLng(a)
+        const to = countryLatLng(b)
+        return from && to ? { from, to } : undefined
+      })()
     if (!crossing) continue
     // A crossing hugging the antimeridian would draw across the whole world.
     if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue
@@ -711,6 +720,21 @@ const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined =
   point.y = event.clientY
   const { x, y } = point.matrixTransform(matrix.inverse())
   return { x, y }
+}
+
+// --- Hover relay -------------------------------------------------------------
+// One delegated listener on the wrapper (never per-path bindings — Vue must
+// not diff 220 paths for a pointer move). Views subscribe like mapClick;
+// deduped so resting on a country fires once, and mouse-only — hover is not
+// a touch idiom.
+let hoveredId: string | undefined
+const onPointerOver = (event: PointerEvent) => {
+  if (event.pointerType && event.pointerType !== 'mouse') return
+  const target = event.target as Element | null
+  const isoCode = target?.getAttribute?.('data-id') ?? undefined
+  if (isoCode === hoveredId) return
+  hoveredId = isoCode
+  document.dispatchEvent(new CustomEvent('mapHover', { detail: { isoCode } }))
 }
 
 const handleClick = (isoCode: string, event?: MouseEvent) => {
@@ -1117,6 +1141,7 @@ onMounted(async () => {
   })
 
   wrapper.value.addEventListener('wheel', onWheel) // non-passive: it owns the scroll
+  wrapper.value.addEventListener('pointerover', onPointerOver)
   wrapper.value.addEventListener('pointerdown', onPointerDown)
   wrapper.value.addEventListener('pointermove', onPointerMove)
   wrapper.value.addEventListener('pointerup', onPointerUp)

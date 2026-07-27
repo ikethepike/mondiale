@@ -295,3 +295,11 @@ export type MapClickEvent = CustomEvent<{
 export const isMapClickEvent = (event: Event): event is MapClickEvent => {
   return event && Reflect.has(event, 'detail')
 }
+
+/** Pointer rests on (or leaves) a country — `isoCode` absent over open water.
+ *  Mouse-only by design: hover is not a touch idiom. */
+export type MapHoverEvent = CustomEvent<{ isoCode?: ISOCountryCode | string }>
+
+export const isMapHoverEvent = (event: Event): event is MapHoverEvent => {
+  return event && Reflect.has(event, 'detail')
+}
