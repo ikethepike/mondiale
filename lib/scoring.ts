@@ -37,6 +37,20 @@ export const gateLeapSteps = (remainingFraction?: number, hintsUsed = 0): number
   return Math.max(0, pot - bought * GATE_HINT_BITE_STEPS)
 }
 
+/** Each bought point-mode hint bites this fraction of the pot. */
+export const HINT_BITE_FRACTION = 0.2
+
+/**
+ * A correct answer's points after paying for bought hints: each bites
+ * `HINT_BITE_FRACTION` of the pot, never below zero. Same posture as
+ * `gateLeapSteps` on hostile counts — a negative or non-finite hint count
+ * bites nothing rather than paying extra.
+ */
+export const hintDockedScore = (scored: number, maximumPoints: number, hintsUsed = 0): number => {
+  const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed)) : 0
+  return Math.max(0, scored - bought * Math.round(maximumPoints * HINT_BITE_FRACTION))
+}
+
 /**
  * Blitz-family scoring (water modes, mother-tongue, neighbour-blitz): the
  * found ratio scales the pot, every wrong guess bites one point. Duplicate

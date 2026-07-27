@@ -53,6 +53,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'hot-cold': 'navigation',
   'river-run': 'water',
   'shared-shores': 'water',
+  // Deals on every difficulty — the pool scales in-dealer (famous seas on
+  // easy, major lakes join on normal, the whole atlas on hard).
   'name-that-water': 'water',
   highlands: 'water',
   sketch: 'flags',
@@ -75,7 +77,6 @@ export const CHALLENGE_GROUP_BY_KIND = {
  *  with the taxonomy (not the dealer) because the lobby renders it too. */
 export const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
   'highlands',
-  'name-that-water',
   // Nobody meets Transnistria on their first game.
   'ghost-state',
   'no-mans-land',

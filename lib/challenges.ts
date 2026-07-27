@@ -7,6 +7,8 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { TRENDS } from '~~/data/trends.gen'
+// Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
+import type { WaterFeature } from '~~/data/water.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
@@ -630,10 +632,45 @@ const getWaterBlitzChallenge = async (
 const NAME_WATER_ATTEMPTS = 3
 const NAME_WATER_DURATION_SECONDS = 45
 
+/**
+ * The dataset carries no fame field, so projected footprint × shore count
+ * stands in for prominence — the Mediterranean outscores Antongil Bay by
+ * three orders of magnitude.
+ */
+const waterProminence = (feature: Pick<WaterFeature, 'bounds' | 'countries'>) =>
+  feature.bounds[2] * feature.bounds[3] * Math.max(1, feature.countries.length)
+
+/** Name That Water scales with difficulty: easy sticks to the famous seas,
+ *  normal adds the major lakes, hard deals the whole atlas. */
+export const NAME_WATER_TIERS: {
+  [difficulty in gameTypes.GameDifficulty]: {
+    kinds: WaterFeatureKind[]
+    poolFraction: number
+  }
+} = {
+  easy: { kinds: ['sea'], poolFraction: 0.25 },
+  normal: { kinds: ['sea', 'lake'], poolFraction: 0.6 },
+  hard: { kinds: ['sea', 'lake'], poolFraction: 1 },
+}
+
+/** Small variants slice thin — never starve the pool below a replayable spread. */
+const NAME_WATER_MINIMUM_POOL = 8
+
+/** The difficulty's slice of the pool: prominence-sorted, top fraction. */
+export const nameWaterCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+  features: T[],
+  difficulty: gameTypes.GameDifficulty
+): T[] => {
+  const sorted = [...features].sort((a, b) => waterProminence(b) - waterProminence(a))
+  const take = Math.ceil(sorted.length * NAME_WATER_TIERS[difficulty].poolFraction)
+  return sorted.slice(0, Math.max(NAME_WATER_MINIMUM_POOL, take))
+}
+
 const getNameWaterChallenge = async (
   game: gameTypes.Game
 ): Promise<NameWaterChallenge | undefined> => {
-  const candidates = await waterFeaturePool(game, ['sea', 'lake'])
+  const pool = await waterFeaturePool(game, NAME_WATER_TIERS[game.difficulty].kinds)
+  const candidates = nameWaterCandidates(pool, game.difficulty)
   const feature = candidates[Math.floor(Math.random() * candidates.length)]
   if (!feature) return undefined
 

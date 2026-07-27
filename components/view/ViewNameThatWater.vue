@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Name That Water`"
       :title="challenge.kind === 'lake' ? 'Which lake is this?' : 'Which body of water is this?'"
-      :stakes="`It's glowing on the map. ${challenge.maximumGuesses} guesses, ${challenge.durationSeconds} seconds — earlier and fewer guesses score higher.`"
+      :stakes="`It's glowing on the map. ${challenge.maximumGuesses} guesses, ${challenge.durationSeconds} seconds — earlier and fewer guesses score higher. Hints surface as the clock runs, each costing points.`"
       @done="begin"
     />
 
@@ -18,6 +18,12 @@
           <span class="map-caption sub">
             {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left
           </span>
+          <Transition name="caption">
+            <span v-if="shoreHint" class="map-caption sub clue">{{ shoreHint }}</span>
+          </Transition>
+          <Transition name="caption">
+            <span v-if="letterHint" class="map-caption sub clue">{{ letterHint }}</span>
+          </Transition>
         </template>
         <template v-else>
           <h1 class="map-caption">
@@ -33,6 +39,30 @@
 
     <section v-if="!resolved" class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+      <div class="hint-row">
+        <Transition name="caption">
+          <button
+            v-if="!shoreHint && shoreHintUnlocked"
+            class="hint-button"
+            type="button"
+            @click="showShoreHint"
+          >
+            <StatTopicIcon class="hint-icon" topic="reveal" />
+            Shores (−{{ hintBitePoints }} pts)
+          </button>
+        </Transition>
+        <Transition name="caption">
+          <button
+            v-if="!letterHint && letterHintUnlocked"
+            class="hint-button"
+            type="button"
+            @click="showLetterHint"
+          >
+            <StatTopicIcon class="hint-icon" topic="question" />
+            Initials (−{{ hintBitePoints }} pts)
+          </button>
+        </Transition>
+      </div>
       <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
         <form class="guess-form map-caption" @submit.prevent="submitTyped">
         <input
@@ -64,10 +94,11 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
-import { attemptFraction } from '~~/lib/scoring'
+import { attemptFraction, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -138,6 +169,46 @@ const suggestions = computed(() => {
 
 watch(suggestions, () => (highlightedIndex.value = 0))
 
+// Buyable hints unlock in waves: shores a third in, initials two thirds in.
+// Each bought hint bites HINT_BITE_FRACTION of the pot off the final score.
+const SHORE_HINT_UNLOCK_ELAPSED = 1 / 3
+const LETTER_HINT_UNLOCK_ELAPSED = 2 / 3
+const shoreHint = ref<string>()
+const letterHint = ref<string>()
+
+const elapsedFraction = computed(() => {
+  const total = challenge.value?.durationSeconds
+  if (!total || !started.value) return 0
+  return 1 - secondsLeft.value / total
+})
+const shoreHintUnlocked = computed(
+  () => !resolved.value && elapsedFraction.value >= SHORE_HINT_UNLOCK_ELAPSED
+)
+const letterHintUnlocked = computed(
+  () => !resolved.value && elapsedFraction.value >= LETTER_HINT_UNLOCK_ELAPSED
+)
+const hintsUsed = computed(() => (shoreHint.value ? 1 : 0) + (letterHint.value ? 1 : 0))
+const hintBitePoints = computed(() =>
+  Math.round((challenge.value?.maximumPoints ?? 0) * HINT_BITE_FRACTION)
+)
+
+const showShoreHint = () => {
+  const active = challenge.value
+  if (!active || resolved.value || shoreHint.value) return
+  const shores = active.countries.slice(0, 2).map(isoCode => countryName(isoCode))
+  shoreHint.value = `Touches ${shores.join(' and ')}`
+}
+
+const showLetterHint = () => {
+  const active = challenge.value
+  if (!active || resolved.value || letterHint.value) return
+  const initials = active.featureName
+    .split(/\s+/)
+    .map(word => `${word[0]}…`)
+    .join(' ')
+  letterHint.value = `Its initials: ${initials}`
+}
+
 const shoreLine = computed(() => {
   const shores = challenge.value?.countries ?? []
   const names = shores.slice(0, 6).map(isoCode => countryName(isoCode))
@@ -167,7 +238,11 @@ const resolve = (correct: boolean) => {
   gameStore.map.labels = true
 
   const clientScore = correct
-    ? Math.round(active.maximumPoints * attemptFraction(attempts.value, active.maximumGuesses))
+    ? hintDockedScore(
+        Math.round(active.maximumPoints * attemptFraction(attempts.value, active.maximumGuesses)),
+        active.maximumPoints,
+        hintsUsed.value
+      )
     : 0
 
   revealTimer = setTimeout(() => submitOnce([], clientScore), REVEAL_HOLD_MS)
@@ -241,6 +316,10 @@ header {
   .hint {
     color: var(--hior-ange);
   }
+  // Bought clues persist under the guess counter, unlike the transient miss toast.
+  .clue {
+    color: var(--hior-ange);
+  }
   .prompt {
     gap: 1rem;
     display: flex;
@@ -261,6 +340,44 @@ header {
 
 .console {
   width: min(42rem, calc(100vw - 3.2rem));
+}
+
+// Mirrors the gate challenges' hint buttons for a consistent paid-hint surface.
+.hint-row {
+  gap: 1rem;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+}
+
+.hint-button {
+  cursor: pointer;
+  gap: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.4rem;
+  font-family: inherit;
+  padding: 0.6rem 1.4rem;
+  border-radius: 1.2rem;
+  pointer-events: auto;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  transition: border-color var(--motion-quick) var(--ease-out-expressive);
+
+  .hint-icon {
+    flex-shrink: 0;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active {
+    border-color: var(--dark-blue);
+  }
 }
 
 // Mirrors CountryGuessInput's look for a consistent typing surface (the
