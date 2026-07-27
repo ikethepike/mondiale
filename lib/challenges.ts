@@ -640,7 +640,7 @@ const NAME_WATER_DURATION_SECONDS = 45
 const waterProminence = (feature: Pick<WaterFeature, 'bounds' | 'countries'>) =>
   feature.bounds[2] * feature.bounds[3] * Math.max(1, feature.countries.length)
 
-/** Name That Water scales with difficulty: easy sticks to the famous seas,
+/** Name That Water scales with difficulty: easy deals oceans and famous seas,
  *  normal adds the major lakes, hard deals the whole atlas. */
 export const NAME_WATER_TIERS: {
   [difficulty in gameTypes.GameDifficulty]: {
@@ -648,9 +648,9 @@ export const NAME_WATER_TIERS: {
     poolFraction: number
   }
 } = {
-  easy: { kinds: ['sea'], poolFraction: 0.25 },
-  normal: { kinds: ['sea', 'lake'], poolFraction: 0.6 },
-  hard: { kinds: ['sea', 'lake'], poolFraction: 1 },
+  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
+  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
+  hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
 /** Small variants slice thin — never starve the pool below a replayable spread. */

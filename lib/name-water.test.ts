@@ -10,15 +10,30 @@ const feature = (id: number, footprint: number, shores = 1) => ({
 })
 
 describe('NAME_WATER_TIERS', () => {
-  it('keeps easy to seas, opens lakes from normal up', () => {
-    expect(NAME_WATER_TIERS.easy.kinds).toEqual(['sea'])
+  it('keeps easy to oceans and seas, opens lakes from normal up', () => {
+    expect(NAME_WATER_TIERS.easy.kinds).toEqual(['ocean', 'sea'])
+    expect(NAME_WATER_TIERS.easy.kinds).not.toContain('lake')
     expect(NAME_WATER_TIERS.normal.kinds).toContain('lake')
     expect(NAME_WATER_TIERS.hard.kinds).toContain('lake')
+    // Oceans deal everywhere — prominence keeps them in every slice.
+    expect(NAME_WATER_TIERS.normal.kinds).toContain('ocean')
+    expect(NAME_WATER_TIERS.hard.kinds).toContain('ocean')
   })
 
   it('widens the pool with difficulty, hard taking everything', () => {
     expect(NAME_WATER_TIERS.easy.poolFraction).toBeLessThan(NAME_WATER_TIERS.normal.poolFraction)
     expect(NAME_WATER_TIERS.hard.poolFraction).toBe(1)
+  })
+})
+
+describe('generated oceans', () => {
+  it('ships the four playable oceans with enough shores to deal', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    for (const id of ['pacific-ocean', 'atlantic-ocean', 'indian-ocean', 'arctic-ocean']) {
+      const ocean = WATER_FEATURES[id]
+      expect(ocean?.kind).toBe('ocean')
+      expect(ocean.countries.length).toBeGreaterThanOrEqual(2)
+    }
   })
 })
 

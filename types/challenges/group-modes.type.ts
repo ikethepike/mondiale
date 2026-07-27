@@ -82,7 +82,7 @@ export interface TwoTruthsChallenge {
 }
 
 /** Physical-geography flavours (mirror of data/water.gen's WaterKind). */
-export type WaterFeatureKind = 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterFeatureKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
 
 /**
  * Name the countries a physical feature touches: rivers (river run), seas

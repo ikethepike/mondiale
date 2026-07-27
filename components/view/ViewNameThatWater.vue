@@ -4,7 +4,7 @@
       v-if="showInterstitial"
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Name That Water`"
-      :title="challenge.kind === 'lake' ? 'Which lake is this?' : 'Which body of water is this?'"
+      :title="promptTitle"
       :stakes="`It's glowing on the map. ${challenge.maximumGuesses} guesses, ${challenge.durationSeconds} seconds — earlier and fewer guesses score higher. Hints surface as the clock runs, each costing points.`"
       @done="begin"
     />
@@ -12,9 +12,7 @@
     <header>
       <div class="prompt">
         <template v-if="!resolved">
-          <h1 class="map-caption">
-            {{ challenge.kind === 'lake' ? 'Which lake is this?' : 'Which body of water is this?' }}
-          </h1>
+          <h1 class="map-caption">{{ promptTitle }}</h1>
           <span class="map-caption sub">
             {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left
           </span>
@@ -151,10 +149,24 @@ onMounted(async () => {
   if (feature) {
     gameStore.map.feature = { d: feature.d, kind: 'area', bounds: feature.bounds }
   }
-  // Suggestions offer every sea and lake — the full haystack is the game
+  // Suggestions offer every ocean, sea and lake — the full haystack is the game
   options.value = Object.values(WATER_FEATURES)
-    .filter(candidate => candidate.kind === 'sea' || candidate.kind === 'lake')
+    .filter(
+      candidate =>
+        candidate.kind === 'ocean' || candidate.kind === 'sea' || candidate.kind === 'lake'
+    )
     .map(candidate => ({ id: candidate.id, name: candidate.name }))
+})
+
+const promptTitle = computed(() => {
+  switch (challenge.value?.kind) {
+    case 'ocean':
+      return 'Which ocean is this?'
+    case 'lake':
+      return 'Which lake is this?'
+    default:
+      return 'Which body of water is this?'
+  }
 })
 
 const query = ref('')
