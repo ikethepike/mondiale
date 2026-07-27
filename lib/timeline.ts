@@ -3,10 +3,10 @@ import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventKind } from '~~/generators/data/event-seeds'
 import { isValidISOCode } from '~~/types/geography.types'
 import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group-modes.type'
-import type { GameDifficulty, GameVariant } from '~~/types/game.types'
+import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import { shuffleArray } from './arrays'
+import { isCountryPlayable } from './game-rules'
 import { attemptFraction } from './scoring'
-import { countryInVariant } from './variant'
 
 /**
  * Timeline's pure logic: slot arithmetic over the growing line, the
@@ -140,17 +140,18 @@ const MAXIMUM_PER_COUNTRY = 2
  * the dealer falls back to a ranking round.
  */
 export const dealTimelineDeck = (
-  variant: GameVariant,
+  rules: GameRules,
   cardCount: number,
   minimumYearGap: number,
   eraWindowYears?: number
 ): string[] | undefined => {
   // The playable-code check guards world decks too ('world' short-circuits
-  // countryInVariant): a card with a non-playable anchor would crash every
-  // client's COUNTRIES lookup when rendered.
+  // the variant test): a card with a non-playable anchor would crash every
+  // client's COUNTRIES lookup when rendered — and a benched micro-nation's
+  // card would put a country the game excludes on the table.
   let pool = shuffleArray(
     Object.entries(EVENTS).filter(
-      ([, event]) => isValidISOCode(event.country) && countryInVariant(event.country, variant)
+      ([, event]) => isValidISOCode(event.country) && isCountryPlayable(rules, event.country)
     )
   )
   if (pool.length < cardCount) return undefined

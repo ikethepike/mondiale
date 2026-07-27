@@ -25,6 +25,10 @@ export interface Game {
   /** Show opponents' guesses as they land. Absent on games created before the
    *  setting existed, so read it as `!== false` — never as truthy. */
   liveGuesses?: boolean
+  /** Host tri-state for micro-nations (Vatican, Monaco…): absent = auto
+   *  (follow the difficulty — in play on hard only), true/false = forced.
+   *  Never read directly — resolve through lib/game-rules. */
+  includeMicroNations?: boolean
   /** Host's per-group tri-state: absent key = auto (follow difficulty),
    *  true = force-enabled below its gate, false = off at any difficulty. */
   challengeOverrides?: ChallengeOverrides
@@ -48,6 +52,10 @@ export interface Spectator {
 
 export const gameDifficulties = ['easy', 'normal', 'hard'] as const
 export type GameDifficulty = (typeof gameDifficulties)[number]
+
+/** The configuration slice every pool and gate decision reads (lib/game-rules).
+ *  A full Game satisfies it, so both ends of the wire share one shape. */
+export type GameRules = Pick<Game, 'variant' | 'difficulty' | 'includeMicroNations'>
 
 export interface PlayerMove {
   endTile: Tile
@@ -101,6 +109,8 @@ export interface GameConfiguration {
   variant: GameVariant
   length: GameLength
   liveGuesses: boolean
+  /** Tri-state like the group overrides: absent = auto (difficulty decides). */
+  includeMicroNations?: boolean
   challengeOverrides: ChallengeOverrides
 }
 
@@ -116,6 +126,14 @@ export const isValidGameConfiguration = (data: unknown): data is GameConfigurati
   if (!gameLengths.includes(configuration.length)) return false
   // FormData hands every field over as a string; the form must coerce first.
   if (typeof configuration.liveGuesses !== 'boolean') return false
+  // Absent = auto (the difficulty decides); anything present must be a real
+  // boolean or the dealer pools would resolve off a truthy string.
+  if (
+    configuration.includeMicroNations !== undefined &&
+    typeof configuration.includeMicroNations !== 'boolean'
+  ) {
+    return false
+  }
 
   return isValidChallengeOverrides(configuration.challengeOverrides)
 }

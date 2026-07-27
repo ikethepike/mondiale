@@ -62,6 +62,12 @@ import {
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { shuffleArray } from './arrays'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
+import {
+  DIFFICULTY_CONFIGURATION,
+  isCountryInPlay,
+  playableCountries,
+  playableWorldCountries,
+} from './game-rules'
 import { pickChainSeed } from './chain'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
@@ -70,29 +76,12 @@ import { isRouteComplete, pickTraversal } from './traversal'
 import { dramaScore, isDecisiveGap, readTrend, TREND_METRIC_IDS, TREND_METRICS } from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
-import { REGION_LABELS, variantCountries } from './variant'
+import { REGION_LABELS } from './variant'
 
 export const MAXIMUM_SCORE_PER_COUNTRY = 3
 
-export const DIFFICULTY_CONFIGURATION: {
-  [difficulty in gameTypes.GameDifficulty]: {
-    rankingChallengeCountries: number
-    chainTurnSeconds: number
-  }
-} = {
-  easy: {
-    rankingChallengeCountries: 4,
-    chainTurnSeconds: 20,
-  },
-  normal: {
-    rankingChallengeCountries: 5,
-    chainTurnSeconds: 14,
-  },
-  hard: {
-    rankingChallengeCountries: 7,
-    chainTurnSeconds: 10,
-  },
-}
+// Difficulty numbers live with the rest of the core game rules.
+export { DIFFICULTY_CONFIGURATION } from './game-rules'
 
 /** Standard points ceiling per round, scaled by difficulty. */
 const maximumRoundPoints = (game: gameTypes.Game) =>
@@ -205,7 +194,10 @@ const SHAPE_UNFRIENDLY: ISOCountryCode[] = [
   'LU',
 ]
 
-const pickShapeFriendlyCountry = (candidates: ISOCountryCode[]): ISOCountryCode => {
+const pickShapeFriendlyCountry = (
+  candidates: ISOCountryCode[],
+  world: ISOCountryCode[] = [...ISOCountryCodes]
+): ISOCountryCode => {
   const excluded = new Set(SHAPE_UNFRIENDLY)
   const filter = (isoCodes: ISOCountryCode[]) =>
     isoCodes.filter(isoCode => {
@@ -216,7 +208,7 @@ const pickShapeFriendlyCountry = (candidates: ISOCountryCode[]): ISOCountryCode 
 
   // A variant pool that filters down to nothing falls back to the world
   const pool = filter(candidates)
-  const viable = pool.length ? pool : filter([...ISOCountryCodes])
+  const viable = pool.length ? pool : filter(world)
   return viable[Math.floor(Math.random() * viable.length)]
 }
 
@@ -245,7 +237,7 @@ const getBorderChainChallenge = ({
   const contenders = chainContenders(game)
   // Solo, there is nobody to outlast.
   if (contenders.length < 2) return undefined
-  const seed = pickChainSeed(game.variant)
+  const seed = pickChainSeed(game)
   if (!seed) return undefined
 
   const strikes = game.difficulty === 'easy' ? 1 : 0
@@ -285,12 +277,7 @@ const getTimelineChallenge = ({
 
   const tuning = TIMELINE_TUNING[game.difficulty]
   const cardCount = 1 + tuning.cardsPerPlayer * contenders.length
-  const deck = dealTimelineDeck(
-    game.variant,
-    cardCount,
-    tuning.minimumYearGap,
-    tuning.eraWindowYears
-  )
+  const deck = dealTimelineDeck(game, cardCount, tuning.minimumYearGap, tuning.eraWindowYears)
   if (!deck) return undefined
 
   return {
@@ -325,7 +312,7 @@ const getHeritageHuntChallenge = ({
   const contenders = chainContenders(game)
   if (!contenders.length) return undefined
 
-  const playable = new Set(variantCountries(game.variant))
+  const playable = new Set(playableCountries(game))
   const pool = shuffleArray(
     Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country))
   )
@@ -362,8 +349,13 @@ const getNeighbourBlitzChallenge = ({
 }: {
   game: gameTypes.Game
 }): NeighbourBlitzChallenge | undefined => {
+  // Benched micro-nations vanish from the answer key too (Italy without the
+  // Vatican and San Marino), so the subject must still clear the bar without
+  // them — and the dealt list must match what's scoreable and selectable.
+  const inPlayNeighbours = (isoCode: ISOCountryCode) =>
+    (BORDERS[isoCode] ?? []).filter(neighbour => isCountryInPlay(game, neighbour))
   const pool = shuffleArray(
-    variantCountries(game.variant).filter(isoCode => (BORDERS[isoCode]?.length ?? 0) >= 4)
+    playableCountries(game).filter(isoCode => inPlayNeighbours(isoCode).length >= 4)
   )
   const country = pool[0]
   if (!country) return undefined
@@ -371,14 +363,14 @@ const getNeighbourBlitzChallenge = ({
   return {
     _type: 'neighbour-blitz-challenge',
     country,
-    neighbours: [...BORDERS[country]],
+    neighbours: inPlayNeighbours(country),
     durationSeconds: 45,
     maximumPoints: maximumRoundPoints(game),
   }
 }
 
 const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteChallenge => {
-  const country = pickShapeFriendlyCountry(variantCountries(game.variant))
+  const country = pickShapeFriendlyCountry(playableCountries(game), playableWorldCountries(game))
   return {
     _type: 'silhouette-challenge',
     country,
@@ -399,12 +391,10 @@ const HOT_COLD_EXCLUDED = new Set<ISOCountryCode>(
 )
 
 const getHotColdChallenge = ({ game }: { game: gameTypes.Game }): HotColdChallenge => {
-  const candidates = variantCountries(game.variant).filter(
-    isoCode => !HOT_COLD_EXCLUDED.has(isoCode)
-  )
+  const candidates = playableCountries(game).filter(isoCode => !HOT_COLD_EXCLUDED.has(isoCode))
   const pool = candidates.length
     ? candidates
-    : ISOCountryCodes.filter(isoCode => !HOT_COLD_EXCLUDED.has(isoCode))
+    : playableWorldCountries(game).filter(isoCode => !HOT_COLD_EXCLUDED.has(isoCode))
   return {
     _type: 'hot-cold-challenge',
     country: pool[Math.floor(Math.random() * pool.length)],
@@ -415,7 +405,7 @@ const getHotColdChallenge = ({ game }: { game: gameTypes.Game }): HotColdChallen
 
 const getSketchChallenge = ({ game }: { game: gameTypes.Game }): SketchChallenge => ({
   _type: 'sketch-challenge',
-  country: pickShapeFriendlyCountry(variantCountries(game.variant)),
+  country: pickShapeFriendlyCountry(playableCountries(game), playableWorldCountries(game)),
   maximumPoints: maximumRoundPoints(game),
 })
 
@@ -441,7 +431,7 @@ const getStatDetectiveChallenge = ({
   game: gameTypes.Game
 }): StatDetectiveChallenge | undefined => {
   const CLUE_COUNT = 6
-  const pool = shuffleArray(variantCountries(game.variant))
+  const pool = shuffleArray(playableCountries(game))
   const assisted = game.difficulty !== 'hard'
 
   for (const country of pool.slice(0, 40)) {
@@ -482,7 +472,7 @@ const getTwoTruthsChallenge = ({
 }: {
   game: gameTypes.Game
 }): TwoTruthsChallenge | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
 
   for (const country of shuffleArray([...pool]).slice(0, 40)) {
     const accessors = shuffleArray(
@@ -499,8 +489,8 @@ const getTwoTruthsChallenge = ({
     const truth = getValueByAccessorID(country, lieAccessor)
     if (!truth) continue
 
-    // Decoys prefer the variant pool but a lie may come from anywhere
-    const lieSource = shuffleArray([...pool, ...ISOCountryCodes]).find(isoCode => {
+    // Decoys prefer the variant pool but a lie may come from anywhere in play
+    const lieSource = shuffleArray([...pool, ...playableWorldCountries(game)]).find(isoCode => {
       if (isoCode === country) return false
       const candidate = getValueByAccessorID(isoCode, lieAccessor)
       if (!candidate) return false
@@ -549,7 +539,7 @@ const getTraversalChallenge = ({
       CORRIDOR_ORGANIZATIONS[Math.floor(Math.random() * CORRIDOR_ORGANIZATIONS.length)]
 
     let organizationName = organizationId.toUpperCase()
-    const variantPool = new Set(variantCountries(game.variant))
+    const variantPool = new Set(playableCountries(game))
     const members: ISOCountryCode[] = []
     for (const country of Object.values(COUNTRIES)) {
       const membership = country.membership?.find(entry => entry.id === organizationId)
@@ -563,7 +553,7 @@ const getTraversalChallenge = ({
     if (organizationId === 'nato') organizationName = 'NATO'
 
     const within = new Set(members)
-    const pick = pickTraversal(game.difficulty, game.variant, within)
+    const pick = pickTraversal(game, within)
     if (pick) {
       return {
         _type: 'traversal-challenge',
@@ -575,7 +565,7 @@ const getTraversalChallenge = ({
     }
   }
 
-  const pick = pickTraversal(game.difficulty, game.variant)
+  const pick = pickTraversal(game)
   if (!pick) return undefined
 
   return {
@@ -594,15 +584,22 @@ const getTraversalChallenge = ({
  */
 const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
-  const pool = new Set(variantCountries(game.variant))
+  const pool = new Set(playableCountries(game))
 
-  return Object.values(WATER_FEATURES).filter(feature => {
-    if (!kinds.includes(feature.kind)) return false
-    // The feature must belong to the board being played: at least two
-    // playable countries on the variant, and not mostly off-map
-    const onBoard = feature.countries.filter(isoCode => pool.has(isoCode))
-    return onBoard.length >= 2 && onBoard.length >= feature.countries.length / 3
-  })
+  return Object.values(WATER_FEATURES)
+    .filter(feature => {
+      if (!kinds.includes(feature.kind)) return false
+      // The feature must belong to the board being played: at least two
+      // playable countries on the variant, and not mostly off-map
+      const onBoard = feature.countries.filter(isoCode => pool.has(isoCode))
+      return onBoard.length >= 2 && onBoard.length >= feature.countries.length / 3
+    })
+    .map(feature => ({
+      ...feature,
+      // The dealt list is the answer key AND the clock scale — benched
+      // micro-nations (Monaco on the Mediterranean) can't be required.
+      countries: feature.countries.filter(isoCode => isCountryInPlay(game, isoCode)),
+    }))
 }
 
 /** More touching countries = a longer clock. */
@@ -656,7 +653,7 @@ const getNameWaterChallenge = async (
 const MOTHER_TONGUE_MIN_SPEAKERS = 3
 const MOTHER_TONGUE_MAX_SPEAKERS = 12
 const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
 
   // Count on-board speakers per language, keep the answerable band (a language
   // spoken by 3–12 board countries — fewer is guessable, more is a slog).
@@ -700,7 +697,7 @@ const CAPITAL_GUESS_LAST_ATTEMPT_FRACTION = 0.4
  * free-types without a cap and scores on the clock instead.
  */
 const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
   const country = shuffleArray(pool).find(isoCode => !!CAPITALS[isoCode]?.image)
   if (!country) return undefined
 
@@ -709,6 +706,7 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   if (game.difficulty !== 'hard') {
     const decoys = pickDecoys(country, pool, game.difficulty === 'easy' ? 2 : 3, {
       preferRegion: true,
+      widen: playableWorldCountries(game),
     })
     if (decoys) options = shuffleArray([country, ...decoys])
   }
@@ -760,7 +758,7 @@ const getFlashpointChallenge = async (
   game: gameTypes.Game
 ): Promise<FlashpointChallenge | undefined> => {
   const { CONFLICT_FIELDS } = await import('~~/data/conflict-events.gen')
-  const playable = new Set(variantCountries(game.variant))
+  const playable = new Set(playableCountries(game))
   const pool = Object.entries(CONFLICT_FIELDS).filter(
     ([isoCode, field]) =>
       playable.has(isoCode as ISOCountryCode) &&
@@ -779,6 +777,7 @@ const getFlashpointChallenge = async (
     const decoys = pickDecoys(country, [...playable], game.difficulty === 'easy' ? 2 : 3, {
       preferRegion: true,
       eligible: isoCode => !!CONFLICT_FIELDS[isoCode],
+      widen: playableWorldCountries(game),
     })
     if (decoys) options = shuffleArray([country, ...decoys])
 
@@ -827,7 +826,7 @@ const PIN_ZERO_KM = 3000
 const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
   // Only landmarks whose coordinates survived the generator's country check;
   // and only countries this variant actually deals.
-  const playable = new Set(variantCountries(game.variant))
+  const playable = new Set(playableCountries(game))
   const pool = Object.entries(LANDMARKS).filter(
     ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
   )
@@ -853,7 +852,7 @@ const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | u
  * flags). Client-scored all-or-nothing like silhouette.
  */
 const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
   const candidates = shuffleArray(
     pool.filter(isoCode => {
       const colors = COUNTRIES[isoCode].identity.colors
@@ -956,17 +955,22 @@ const getNoMansLandChallenge = async (
  * Ghosts of empires. Deals only where the board can be honest: every core
  * member must be playable in this variant, or the beat-2 Jaccard would score
  * countries the table cannot tap — an empire that spans boards simply doesn't
- * deal on a continental one (world always qualifies). Rotates regions so the
- * roster's spread doesn't collapse into one continent's voice, never repeats
- * an empire within a game, and weights tiers per difficulty (icons everywhere,
- * deep cuts toward hard).
+ * deal on a continental one (world always qualifies). Benched micro-nations
+ * are different: they drop OFF the scored roster instead of blocking the
+ * deal, or the Roman Empire (core: AD/LI/MC/SM/VA) would vanish below hard.
+ * Rotates regions so the roster's spread doesn't collapse into one
+ * continent's voice, never repeats an empire within a game, and weights
+ * tiers per difficulty (icons everywhere, deep cuts toward hard).
  */
 const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge | undefined> => {
   // Dynamic, like the water dealer: metadata is small, but the dealer only
   // runs on nitro and the import keeps this module's client footprint flat.
   const { EMPIRES } = await import('~~/data/empires.gen')
   const tuning = EMPIRE_TUNING[game.difficulty]
-  const playable = new Set(variantCountries(game.variant))
+  const playable = new Set(playableCountries(game))
+  /** The scored, tappable core — the benched micro-nations drop out. */
+  const inPlayCore = (core: readonly ISOCountryCode[]) =>
+    core.filter(isoCode => isCountryInPlay(game, isoCode))
 
   const dealtIds = new Set<string>()
   const dealtRegions = new Set<string>()
@@ -983,8 +987,13 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
     empire =>
       !dealtIds.has(empire.id) &&
       tuning.tierWeights[empire.tier] > 0 &&
-      empire.members.core.length >= 2 &&
-      empire.members.core.every(isoCode => isValidISOCode(isoCode) && playable.has(isoCode)) &&
+      inPlayCore(empire.members.core).length >= 2 &&
+      // Every core member must be valid and on this board — except a benched
+      // micro-nation, which drops off the scored roster instead of blocking.
+      empire.members.core.every(
+        isoCode =>
+          isValidISOCode(isoCode) && (playable.has(isoCode) || !isCountryInPlay(game, isoCode))
+      ) &&
       empire.keyframeYears.length >= 2
   )
   if (!candidates.length) return undefined
@@ -1040,8 +1049,10 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
     peakYear: empire.peakYear,
     durationSeconds: tuning.nameSeconds,
     tapSeconds: tuning.tapSeconds,
-    members: [...empire.members.core],
-    partialMembers: empire.members.partial.filter(isValidISOCode),
+    members: inPlayCore(empire.members.core),
+    partialMembers: empire.members.partial.filter(
+      isoCode => isValidISOCode(isoCode) && isCountryInPlay(game, isoCode)
+    ),
     ...(options ? { options } : {}),
     maximumPoints: maximumRoundPoints(game),
   }
@@ -1135,7 +1146,7 @@ const getTrendRaceChallenge = ({
 }: {
   game: gameTypes.Game
 }): TrendRaceChallenge | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
   const optionCount = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
 
   for (const metric of shuffleArray(TREND_METRIC_IDS.filter(id => TREND_METRICS[id].race))) {
@@ -1435,7 +1446,7 @@ export const clampClientScore = (
 
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const playerIds = Object.keys(game.players)
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
 
   // Continental pools are small — a full lobby on hard could ask for more
   // countries than the continent has data for. Shrink the hand per player
@@ -1529,14 +1540,17 @@ const pickDecoys = (
     eligible?: (isoCode: ISOCountryCode) => boolean
     /** How many nearest-by-similarity to shuffle among (flag-pick used 8). */
     similarityShortlist?: number
+    /** The widen set when `pool` can't fill the table — pass the game's
+     *  in-play world pool so benched micro-nations never turn up as decoys. */
+    widen?: ISOCountryCode[]
   } = {}
 ): ISOCountryCode[] | undefined => {
   const eligible = (list: ISOCountryCode[]) =>
     list.filter(isoCode => isoCode !== country && (opts.eligible?.(isoCode) ?? true))
 
-  // Widen to the whole world when the board pool can't fill the table.
+  // Widen to the whole (in-play) world when the board pool can't fill the table.
   let candidates = eligible(pool)
-  if (candidates.length < count) candidates = eligible([...ISOCountryCodes])
+  if (candidates.length < count) candidates = eligible(opts.widen ?? [...ISOCountryCodes])
   if (candidates.length < count) return undefined
 
   if (opts.similarity) {
@@ -1561,11 +1575,13 @@ const pickDecoys = (
 /** Flag-pick: the real flag among the three most colour-confusable decoys. */
 const dealFlagPick = (
   country: ISOCountryCode,
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): Partial<IndividualChallenge> | undefined => {
   const palette = COUNTRIES[country].identity?.colors ?? []
   const decoys = pickDecoys(country, pool, 3, {
     similarity: isoCode => flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
+    widen: world,
   })
   if (!decoys) return undefined
 
@@ -1582,16 +1598,18 @@ const dealFlagPick = (
  */
 const dealFlagTwins = (
   country: ISOCountryCode,
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[]; variant: 'flag-twins' } | undefined => {
-  // The subject needs a usable palette AND ≥3 palette-twins. If the passed
-  // country is an emblem flag (empty palette), pick one that qualifies rather
-  // than bailing — keeps the variant dealable and FORCE testing reliable.
+  // The subject needs a usable palette AND ≥3 palette-twins (among countries
+  // in play — a benched twin can't take a decoy seat). If the passed country
+  // is an emblem flag (empty palette), pick one that qualifies rather than
+  // bailing — keeps the variant dealable and FORCE testing reliable.
   const hasPaletteTwins = (isoCode: ISOCountryCode): boolean => {
     const palette = COUNTRIES[isoCode].identity.simplifiedColors
     if (!palette.length) return false
     let twins = 0
-    for (const other of ISOCountryCodes) {
+    for (const other of world) {
       if (other === isoCode) continue
       if (sameSimplifiedPalette(palette, COUNTRIES[other].identity.simplifiedColors)) twins++
       if (twins >= 3) return true
@@ -1601,14 +1619,14 @@ const dealFlagTwins = (
 
   const subject = hasPaletteTwins(country)
     ? country
-    : (shuffleArray(pool).find(hasPaletteTwins) ??
-      shuffleArray([...ISOCountryCodes]).find(hasPaletteTwins))
+    : (shuffleArray(pool).find(hasPaletteTwins) ?? shuffleArray(world).find(hasPaletteTwins))
   if (!subject) return undefined
 
   const palette = COUNTRIES[subject].identity.simplifiedColors
   const decoys = pickDecoys(subject, pool, 3, {
     eligible: isoCode =>
       sameSimplifiedPalette(palette, COUNTRIES[isoCode].identity.simplifiedColors),
+    widen: world,
   })
   if (!decoys) return undefined
 
@@ -1625,7 +1643,8 @@ const dealFlagTwins = (
 const BORDER_DETECTIVE_MIN = 3
 const BORDER_DETECTIVE_MAX = 6
 const dealBorderDetective = (
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): { country: ISOCountryCode; neighbours: ISOCountryCode[] } | undefined => {
   const onBoard = new Set(pool)
   const eligible = (candidatePool: ISOCountryCode[]) =>
@@ -1637,7 +1656,7 @@ const dealBorderDetective = (
     })
 
   // Prefer an on-board subject; widen to the world if the continent is too sparse.
-  const country = eligible(pool) ?? eligible([...ISOCountryCodes])
+  const country = eligible(pool) ?? eligible(world)
   if (!country) return undefined
 
   const neighbours = (BORDERS[country] ?? []).filter((border): border is ISOCountryCode =>
@@ -1653,7 +1672,8 @@ const dealBorderDetective = (
  * naive pick could have several correct options).
  */
 const dealMoneyMatch = (
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[]; image?: string } | undefined => {
   const subject = shuffleArray(pool).find(isoCode => !!COUNTRIES[isoCode].currency)
   if (!subject) return undefined
@@ -1662,6 +1682,7 @@ const dealMoneyMatch = (
   const decoys = pickDecoys(subject, pool, 3, {
     preferRegion: true,
     eligible: isoCode => !!COUNTRIES[isoCode].currency && COUNTRIES[isoCode].currency !== currency,
+    widen: world,
   })
   if (!decoys) return undefined
 
@@ -1678,15 +1699,15 @@ const dealMoneyMatch = (
  * prefer the same region.
  */
 const dealCapitalMatch = (
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): { country: ISOCountryCode; image: string; options: ISOCountryCode[] } | undefined => {
   const hasPhoto = (isoCode: ISOCountryCode) => !!CAPITALS[isoCode]?.image
-  const subject =
-    shuffleArray(pool).find(hasPhoto) ?? shuffleArray([...ISOCountryCodes]).find(hasPhoto)
+  const subject = shuffleArray(pool).find(hasPhoto) ?? shuffleArray(world).find(hasPhoto)
   if (!subject) return undefined
   const image = CAPITALS[subject]!.image!
 
-  const decoys = pickDecoys(subject, pool, 3, { preferRegion: true })
+  const decoys = pickDecoys(subject, pool, 3, { preferRegion: true, widen: world })
   if (!decoys) return undefined
 
   return { country: subject, image, options: shuffleArray([subject, ...decoys]) }
@@ -1699,7 +1720,8 @@ const dealCapitalMatch = (
  * dossier (name, description) and the answer marker on the result map.
  */
 const dealLandmarkQuiz = (
-  pool: ISOCountryCode[]
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ):
   | {
       country: ISOCountryCode
@@ -1708,7 +1730,10 @@ const dealLandmarkQuiz = (
       landmarkSlug: string
     }
   | undefined => {
-  const entries = Object.entries(LANDMARKS)
+  // Only landmarks whose country is in play — a benched micro-nation
+  // (St Peter's → the Vatican) can't be the answer to anything.
+  const inPlay = new Set(world)
+  const entries = Object.entries(LANDMARKS).filter(([, entry]) => inPlay.has(entry.country))
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).
@@ -1718,7 +1743,7 @@ const dealLandmarkQuiz = (
   if (!picked) return undefined
   const [landmarkSlug, landmark] = picked
 
-  const decoys = pickDecoys(landmark.country, pool, 3, { preferRegion: true })
+  const decoys = pickDecoys(landmark.country, pool, 3, { preferRegion: true, widen: world })
   if (!decoys) return undefined
 
   return {
@@ -1732,12 +1757,14 @@ const dealLandmarkQuiz = (
 /** Odd-one-out: three countries share a property, `country` is the impostor. */
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  /** Whether this is the world board — the pool alone can't tell once
+   *  benched micro-nations have thinned it below the full roster. */
+  isWorld: boolean
 ): { country: ISOCountryCode; oddOneOut: IndividualChallenge['oddOneOut'] } | undefined => {
   // A single-continent board makes "three share a region" unanswerable —
   // everything shares the region. Those games ask about language (and, on
   // hard, alliances) instead.
-  const isWorld = countryPool.length === ISOCountryCodes.length
   const kinds: ('region' | 'language' | 'organization')[] = isWorld
     ? ['region', 'language']
     : ['language']
@@ -1832,7 +1859,8 @@ const HIGHER_LOWER_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } =
 /** Higher-lower: a streak of stat duels with comfortably distinct values. */
 const dealHigherLower = (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'higherLower'> | undefined => {
   const { difficulty } = settings
   const duels = HIGHER_LOWER_DUELS[difficulty]
@@ -1844,7 +1872,7 @@ const dealHigherLower = (
 
   // Small continental pools may not carry enough clean data for a full
   // streak on any stat — widen to the world before giving up on the variant
-  for (const candidates of [countryPool, [...ISOCountryCodes]]) {
+  for (const candidates of [countryPool, world]) {
     for (const accessorId of viableAccessors) {
       const scale = getChallengeDetails(accessorId).scale
 
@@ -1884,14 +1912,15 @@ const TREND_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } = {
  *  riser + one decisive faller per pair, a fresh metric and countries each. */
 const dealTrendDuels = (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'trendDuels'> | undefined => {
   if (!isGroupEnabled(settings, 'trends')) return undefined
   const duels = TREND_DUELS[settings.difficulty]
 
   // Small continental pools may not carry a riser AND a faller on enough
   // metrics — widen to the world before giving up on the variant.
-  for (const candidates of [countryPool, [...ISOCountryCodes]]) {
+  for (const candidates of [countryPool, world]) {
     const trendDuels: NonNullable<IndividualChallenge['trendDuels']> = []
     const used = new Set<ISOCountryCode>()
 
@@ -1931,12 +1960,13 @@ const TRAJECTORY_OPTIONS: { [difficulty in gameTypes.GameDifficulty]: number } =
  *  right pick is never a coin flip. */
 const dealTrajectoryMatch = (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'trajectory'> | undefined => {
   if (!isGroupEnabled(settings, 'trends')) return undefined
   const optionCount = TRAJECTORY_OPTIONS[settings.difficulty]
 
-  for (const candidates of [countryPool, [...ISOCountryCodes]]) {
+  for (const candidates of [countryPool, world]) {
     for (const metric of shuffleArray([...TREND_METRIC_IDS])) {
       const readings = new Map<ISOCountryCode, TrendReading>()
       const scored: { isoCode: ISOCountryCode; drama: number }[] = []
@@ -1984,19 +2014,21 @@ const dealTrajectoryMatch = (
 
 /** Leader-pick: who runs this country, millionaire-style (decoys same region). */
 const dealLeaderPick = (
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
   const poolLeaders = countryPool.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
   const withLeaders =
     poolLeaders.length >= 4
       ? poolLeaders
-      : ISOCountryCodes.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
+      : world.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
   if (withLeaders.length < 4) return undefined
 
   const country = withLeaders[Math.floor(Math.random() * withLeaders.length)]
   const decoys = pickDecoys(country, withLeaders, 3, {
     preferRegion: true,
     eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
+    widen: world,
   })
   if (!decoys) return undefined
 
@@ -2093,7 +2125,8 @@ const portraitFor = (isoCode: ISOCountryCode) => {
 
 /** Leader-portrait: whose face is this? Decoys prefer the same region. */
 const dealLeaderPortrait = (
-  countryPool: ISOCountryCode[]
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'options' | 'portrait'> | undefined => {
   const withPortraits = shuffleArray(countryPool.filter(isoCode => !!portraitFor(isoCode)))
   const country = withPortraits[0]
@@ -2101,7 +2134,7 @@ const dealLeaderPortrait = (
   const portrait = portraitFor(country)
   if (!portrait) return undefined
 
-  const decoys = pickDecoys(country, countryPool, 3, { preferRegion: true })
+  const decoys = pickDecoys(country, countryPool, 3, { preferRegion: true, widen: world })
   if (!decoys) return undefined
 
   return { country, options: shuffleArray([country, ...decoys]), portrait }
@@ -2150,14 +2183,19 @@ export const getIndividualChallenge = ({
   accessorId,
   difficulty = 'normal',
   variant = 'world',
+  includeMicroNations,
   challengeOverrides,
 }: {
   accessorId: IndividualChallengeAccessorId
   difficulty?: gameTypes.GameDifficulty
   variant?: gameTypes.GameVariant
+  includeMicroNations?: boolean
   challengeOverrides?: ChallengeOverrides
 }): IndividualChallenge => {
-  const pool = variantCountries(variant)
+  const rules: gameTypes.GameRules = { difficulty, variant, includeMicroNations }
+  const pool = playableCountries(rules)
+  const world = playableWorldCountries(rules)
+  const isWorld = variant === 'world'
   const settings = { difficulty, challengeOverrides }
   const base: IndividualChallenge = {
     _type: 'individual-challenge',
@@ -2170,62 +2208,62 @@ export const getIndividualChallenge = ({
   if (forced) {
     switch (forced) {
       case 'flag-pick': {
-        const dealt = dealFlagPick(base.country, pool)
+        const dealt = dealFlagPick(base.country, pool, world)
         return dealt ? { ...base, ...dealt } : base
       }
       case 'flag-twins': {
-        const dealt = dealFlagTwins(base.country, pool)
+        const dealt = dealFlagTwins(base.country, pool, world)
         return dealt ? { ...base, ...dealt } : base
       }
       case 'border-detective': {
-        const dealt = dealBorderDetective(pool)
+        const dealt = dealBorderDetective(pool, world)
         return dealt ? { ...base, variant: 'border-detective', ...dealt } : base
       }
       case 'money-match': {
-        const dealt = dealMoneyMatch(pool)
+        const dealt = dealMoneyMatch(pool, world)
         return dealt ? { ...base, variant: 'money-match', ...dealt } : base
       }
       case 'odd-one-out': {
-        const dealt = dealOddOneOut(difficulty, pool)
+        const dealt = dealOddOneOut(difficulty, pool, isWorld)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
         break
       }
       case 'higher-lower': {
-        const dealt = dealHigherLower(settings, pool)
+        const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
         break
       }
       case 'trend-duel': {
-        const dealt = dealTrendDuels(settings, pool)
+        const dealt = dealTrendDuels(settings, pool, world)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
         break
       }
       case 'trajectory-match': {
-        const dealt = dealTrajectoryMatch(settings, pool)
+        const dealt = dealTrajectoryMatch(settings, pool, world)
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
         break
       }
       case 'leader-pick': {
-        const dealt = dealLeaderPick(pool)
+        const dealt = dealLeaderPick(pool, world)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
         break
       }
       case 'outline-reveal':
-        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
+        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool, world) }
       case 'zoom-out':
-        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool) }
+        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
       case 'leader-portrait': {
-        const dealt = dealLeaderPortrait(pool)
+        const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
         break
       }
       case 'capital-match': {
-        const dealt = dealCapitalMatch(pool)
+        const dealt = dealCapitalMatch(pool, world)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
         break
       }
       case 'landmark-quiz': {
-        const dealt = dealLandmarkQuiz(pool)
+        const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
         break
       }
@@ -2240,11 +2278,11 @@ export const getIndividualChallenge = ({
       // more on hard boards; both fall back to `find` if they can't deal.
       const twinsChance = difficulty === 'hard' ? 0.5 : 0.3
       if (roll < twinsChance) {
-        const dealt = dealFlagTwins(base.country, pool)
+        const dealt = dealFlagTwins(base.country, pool, world)
         if (dealt) return { ...base, ...dealt }
       }
       if (roll < 0.75) {
-        const dealt = dealFlagPick(base.country, pool)
+        const dealt = dealFlagPick(base.country, pool, world)
         if (dealt) return { ...base, ...dealt }
       }
       break
@@ -2253,25 +2291,25 @@ export const getIndividualChallenge = ({
       // Two kinetic "name the country" gates on this tile: outline-reveal (the
       // border draws itself) and zoom-out (the map zooms out from a coastline).
       if (difficulty === 'hard' && roll < 0.25) {
-        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool) }
+        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool, world) }
       }
       if (roll < 0.35) {
-        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool) }
+        return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
       }
       if (roll < 0.55) {
-        const dealt = dealLandmarkQuiz(pool)
+        const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.7) {
-        const dealt = dealBorderDetective(pool)
+        const dealt = dealBorderDetective(pool, world)
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
       if (roll < 0.85) {
-        const dealt = dealTrajectoryMatch(settings, pool)
+        const dealt = dealTrajectoryMatch(settings, pool, world)
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
       }
       if (roll < 0.95) {
-        const dealt = dealOddOneOut(difficulty, pool)
+        const dealt = dealOddOneOut(difficulty, pool, isWorld)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
       break
@@ -2279,23 +2317,23 @@ export const getIndividualChallenge = ({
     case 'capital.name': {
       // Money-match is a hard-only twist on this "knowledge" tile.
       if (difficulty === 'hard' && roll < 0.18) {
-        const dealt = dealMoneyMatch(pool)
+        const dealt = dealMoneyMatch(pool, world)
         if (dealt) return { ...base, variant: 'money-match', ...dealt }
       }
       if (roll < 0.2) {
-        const dealt = dealCapitalMatch(pool)
+        const dealt = dealCapitalMatch(pool, world)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
       } else if (roll < 0.4) {
-        const dealt = dealHigherLower(settings, pool)
+        const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
       } else if (roll < 0.6) {
-        const dealt = dealLeaderPick(pool)
+        const dealt = dealLeaderPick(pool, world)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
       } else if (roll < 0.8) {
-        const dealt = dealLeaderPortrait(pool)
+        const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       } else if (roll < 0.95) {
-        const dealt = dealTrendDuels(settings, pool)
+        const dealt = dealTrendDuels(settings, pool, world)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
       }
       break
@@ -2304,11 +2342,11 @@ export const getIndividualChallenge = ({
       // The leadership gate: faces first, names second; the find fallback is
       // a map hunt for the phrased leader's country.
       if (roll < 0.5) {
-        const dealt = dealLeaderPortrait(pool)
+        const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       }
       if (roll < 0.9) {
-        const dealt = dealLeaderPick(pool)
+        const dealt = dealLeaderPick(pool, world)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
       }
       break
@@ -2317,11 +2355,11 @@ export const getIndividualChallenge = ({
       // The money gate: money-match headlines here (not hard-only, unlike the
       // knowledge tile); a stat duel backs it up when a note can't be dealt.
       if (roll < 0.65) {
-        const dealt = dealMoneyMatch(pool)
+        const dealt = dealMoneyMatch(pool, world)
         if (dealt) return { ...base, variant: 'money-match', ...dealt }
       }
       if (roll < 0.85) {
-        const dealt = dealHigherLower(settings, pool)
+        const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
       }
       break
@@ -2329,11 +2367,11 @@ export const getIndividualChallenge = ({
     case 'landmarks': {
       // The landmark gate: photo quizzes, with the capital skyline sibling.
       if (roll < 0.6) {
-        const dealt = dealLandmarkQuiz(pool)
+        const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.9) {
-        const dealt = dealCapitalMatch(pool)
+        const dealt = dealCapitalMatch(pool, world)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
       }
       break

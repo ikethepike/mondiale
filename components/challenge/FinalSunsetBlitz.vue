@@ -41,7 +41,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { variantCountries } from '~~/lib/variant'
+import { playableCountries } from '~~/lib/game-rules'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -66,7 +66,12 @@ const { gameStore, game } = useClientEvents()
 // The whole board plays, not just the dealt window: on wide screens the
 // camera shows far more than the window, and a visible country you can't
 // name reads as a bug. The window only sizes the sweep, quota and camera.
-const pool = computed(() => variantCountries(game.value?.variant ?? 'world'))
+// Same pool the server validates against — variant minus benched micros.
+const pool = computed(() =>
+  game.value
+    ? playableCountries(game.value)
+    : playableCountries({ variant: 'world', difficulty: 'normal' })
+)
 
 const TICK_MS = 100
 

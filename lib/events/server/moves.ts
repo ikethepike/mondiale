@@ -64,6 +64,7 @@ export const movesForScoredPoints = ({
               accessorId,
               difficulty: game.difficulty,
               variant: game.variant,
+              includeMicroNations: game.includeMicroNations,
               challengeOverrides: game.challengeOverrides,
             }),
           }

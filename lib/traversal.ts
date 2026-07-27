@@ -1,9 +1,9 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import type { GameDifficulty, GameVariant } from '~~/types/game.types'
+import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
-import { countryInVariant } from './variant'
+import { isCountryPlayable, microNationsIncluded, playableWorldCountries } from './game-rules'
 
 export const isNeighbour = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
   BORDERS[a]?.includes(b) ?? false
@@ -124,17 +124,23 @@ export interface TraversalPick {
  * restrict the candidate endpoints (routes may still pass anywhere).
  */
 export const pickTraversal = (
-  difficulty: GameDifficulty,
-  variant: GameVariant = 'world',
+  rules: GameRules,
   within?: Set<ISOCountryCode>
 ): TraversalPick | undefined => {
-  const { minHops, maxHops } = TRAVERSAL_DIFFICULTY[difficulty]
+  const { minHops, maxHops } = TRAVERSAL_DIFFICULTY[rules.difficulty]
+
+  // With micro-nations benched, routes must not lean on them as stepping
+  // stones either (an unselectable bridge is an unwalkable one) — restrict
+  // the whole graph to countries in play, like an alliance corridor does.
+  if (!within && !microNationsIncluded(rules)) {
+    within = new Set(playableWorldCountries(rules))
+  }
 
   const candidates = shuffleArray(
     ISOCountryCodes.filter(isoCode => {
       if (!BORDERS[isoCode]?.length) return false
       if (within && !within.has(isoCode)) return false
-      return countryInVariant(isoCode, variant)
+      return isCountryPlayable(rules, isoCode)
     })
   )
 

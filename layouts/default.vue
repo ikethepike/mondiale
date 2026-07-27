@@ -32,6 +32,7 @@
       :staggered="gameStore.map.staggered"
       :dimmed="gameStore.map.dimmed"
       :pulsing="gameStore.map.pulsing"
+      :unselectable="unselectableCountries"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal
           ? Object.values(COLOR_CODED_REGIONS)
@@ -82,6 +83,7 @@ import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { excludedMicroNations } from '~~/lib/game-rules'
 import { formatNumber } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -99,6 +101,12 @@ const phaseClass = computed(() => {
 })
 
 const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
+
+// The game's benched micro-nations are unselectable on every view; the
+// post-game atlas lifts the bench — there, clicks only inspect.
+const unselectableCountries = computed(() =>
+  !game.value || gameStore.map.atlasMode ? [] : excludedMicroNations(game.value)
+)
 
 const revealPopulation = computed(() => {
   const population = revealCountry.value?.people?.population
