@@ -4,7 +4,7 @@ import type { ISOCountryCode, Region } from './geography.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
  *  verdict — only that the player answered. */
-export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence'
+export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 'taunt'
 
 /** The only cheers that exist — the server whitelists against this set, and
  *  clients render by indexing into it rather than echoing payload strings. */
@@ -82,6 +82,48 @@ export type ClientEventData =
       event: 'submit-timeline-placement'
       slot: number
       turn: number
+    }
+  | {
+      /** Manhunt: the despot's forced hop. Kind (ground vs sea passage) is
+       *  inferred server-side, preferring ground so no charge is wasted.
+       *  `turn` echoes the state's beat counter — a retried send can't land
+       *  as a second move. */
+      event: 'submit-manhunt-move'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
+      /** Manhunt: a detective's marker for the live hunt beat. The marker
+       *  itself stays off the broadcast (presence-only) — it lands in the
+       *  round's secret blob. */
+      event: 'submit-manhunt-marker'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
+      /** Manhunt: a detective spends a subpoena token to force a clue onto
+       *  their chosen topic, mid hunt beat. `turn` echoes the beat counter so
+       *  a retried send can't spend two tokens. */
+      event: 'submit-manhunt-subpoena'
+      topic: string
+      turn: number
+    }
+  | {
+      /** Manhunt: a player dismissed their briefing card. The round's first
+       *  clock starts when everyone has (or the briefing cap forces it). */
+      event: 'manhunt-ready'
+    }
+  | {
+      /** Manhunt: an ephemeral taunt — an index into the sender's role list
+       *  (MANHUNT_TAUNTS), never free text. Pure relay, no state. */
+      event: 'manhunt-taunt'
+      index: number
+    }
+  | {
+      /** Manhunt: the despot's client asks for its own trail (reconnect
+       *  path). Answered with a targeted 'manhunt-position' emit; ignored for
+       *  anyone but the despot. */
+      event: 'fetch-manhunt-position'
     }
   | {
       event: 'close-tutorial'
@@ -164,6 +206,10 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-chain-move',
   'submit-heritage-pin',
   'submit-timeline-placement',
+  'submit-manhunt-move',
+  'submit-manhunt-marker',
+  'submit-manhunt-subpoena',
+  'manhunt-ready',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -211,6 +257,21 @@ export type ServerEventData =
   /** Timeline: a placement resolved, the reveal held, or the next turn began —
    *  whole-table state. */
   | { event: 'timeline-updated'; game: Game }
+  /** Manhunt: a beat advanced or the round resolved — whole-table state. */
+  | { event: 'manhunt-updated'; game: Game }
+  /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
+   *  never broadcast. `turn` stamps which beat the trail was current at. */
+  | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }
+  /** Manhunt: a relayed taunt. `role` picks the phrase list; `index` the
+   *  line. The sender id is the socket's authenticated id. */
+  | {
+      event: 'manhunt-taunt'
+      playerId: string
+      role: 'despot' | 'detective'
+      index: number
+      entryId: string
+      at: number
+    }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
   | {
@@ -263,5 +324,13 @@ export type MapClickEvent = CustomEvent<{
 }>
 
 export const isMapClickEvent = (event: Event): event is MapClickEvent => {
+  return event && Reflect.has(event, 'detail')
+}
+
+/** Pointer rests on (or leaves) a country — `isoCode` absent over open water.
+ *  Mouse-only by design: hover is not a touch idiom. */
+export type MapHoverEvent = CustomEvent<{ isoCode?: ISOCountryCode | string }>
+
+export const isMapHoverEvent = (event: Event): event is MapHoverEvent => {
   return event && Reflect.has(event, 'detail')
 }

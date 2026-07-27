@@ -4,6 +4,8 @@ import { gameAlreadyStartedEvent } from '~~/lib/events/client/game-already-start
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
+import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
+import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
 import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
 import { playerGuessingEvent } from '~~/lib/events/client/player-guessing.event'
 import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
@@ -59,6 +61,17 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   },
   'timeline-updated': {
     handler: genericUpdateEvent,
+  },
+  'manhunt-updated': {
+    handler: genericUpdateEvent,
+  },
+  // Despot's eyes only — arrives on their socket alone, no game payload
+  'manhunt-position': {
+    handler: manhuntPositionEvent,
+  },
+  // Ephemeral taunt relay — no game payload
+  'manhunt-taunt': {
+    handler: manhuntTauntEvent,
   },
   'individual-challenge-checked': {
     handler: playerUpdateEvent,

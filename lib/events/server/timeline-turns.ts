@@ -13,6 +13,7 @@ import type { Game } from '~~/types/game.types'
 import { enqueueGameTask, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { movesForScoredPoints } from './moves'
+import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
 
 /**
  * Timeline's turn engine — chain-turns' rotation crossed with heritage-beats'
@@ -22,13 +23,6 @@ import { movesForScoredPoints } from './moves'
  * date, then the next player draws. Timers run outside the per-game queue;
  * the (turn, revealing) pair is the staleness token.
  */
-
-/** Post-round basking time before scores, matching the challenge handlers' 5s. */
-const REVEAL_HOLD_MS = 6000
-/** Buzzer grace so an on-the-wire placement beats its own turn's timeout. */
-const TIMEOUT_SLACK_MS = 350
-/** Extra opening-turn time — the first clock starts behind the interstitial. */
-const FIRST_TURN_GRACE_MS = 4000
 
 export const isTimelineChallenge = (challenge: unknown): challenge is TimelineChallenge =>
   !!challenge &&

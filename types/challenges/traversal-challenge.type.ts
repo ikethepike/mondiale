@@ -75,6 +75,7 @@ export type RoundChallengeKind =
   | 'trend-race'
   | 'timeline'
   | 'empire'
+  | 'manhunt'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -130,6 +131,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'timeline'
     case 'empire-challenge':
       return 'empire'
+    case 'manhunt-challenge':
+      return 'manhunt'
     default:
       return 'ranking'
   }

@@ -59,6 +59,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // One hidden point per beat, shared by the room, like pin-landmark.
   'heritage-hunt': 'presence',
 
+  // The first turn-based mode with a live secret: every detective hunts the
+  // one hidden despot, so a named marker is a bearing on the hideout. The
+  // room sees who has locked in, never where.
+  manhunt: 'presence',
+
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
   timeline: 'none',

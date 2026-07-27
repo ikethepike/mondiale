@@ -140,7 +140,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       }
     }
     case 'border-chain': {
-      if (!('state' in challenge)) break
+      if (!('state' in challenge) || !('chains' in challenge.state)) break
       const liveChain = challenge.state.chains[challenge.state.chains.length - 1] ?? []
       const head = liveChain[liveChain.length - 1]
       return {
@@ -149,6 +149,26 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
           ? `Extend the chain from ${countryName(head)} — ${liveChain.length} links and counting`
           : 'Chain unbroken borders, one country per turn',
         focus: liveChain,
+      }
+    }
+    case 'manhunt': {
+      if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') break
+      const { state } = challenge
+      // Unlike every other mode, the true answer (the despot's position) is
+      // NOT in the broadcast this story derives from — the trail lives in a
+      // server-side blob until the round's outcome. The booth's dramatic irony
+      // here is the shrinking candidate set, not the hideout itself.
+      return {
+        kicker: `The Despot · turn ${state.hop} of ${challenge.turnCount}`,
+        prompt:
+          state.beat === 'move'
+            ? 'The despot is choosing their next hideout'
+            : `The dragnet is closing — ${state.committed.length} of ${state.detectives.length} markers locked`,
+        secret: state.candidates.length
+          ? `The trail points to ${state.candidates.length} possible hideouts`
+          : undefined,
+        facts: state.clues.slice(-4).map(clue => ({ label: `Turn ${clue.hop}`, value: clue.text })),
+        focus: state.candidates.length ? state.candidates : undefined,
       }
     }
     case 'timeline': {

@@ -17,6 +17,7 @@ import {
   type GameSocket,
 } from '../server-side'
 import { movesForScoredPoints } from './moves'
+import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Redis } from '@upstash/redis'
 
@@ -28,11 +29,6 @@ import type { Redis } from '@upstash/redis'
  * no lock, and the state's `turn` counter is the token that makes a stale
  * timeout a no-op.
  */
-
-/** Post-round basking time before scores, matching the challenge handlers' 5s. */
-const REVEAL_HOLD_MS = 6000
-/** Buzzer grace so an on-the-wire move beats its own turn's timeout. */
-const TIMEOUT_SLACK_MS = 350
 
 export interface ChainContext {
   io: GameServer
@@ -85,10 +81,6 @@ const eliminate = (
   state.outcomes[playerId] = outcome
   state.missedOuts[playerId] = outs
 }
-
-/** Extra opening-turn time — the first player's clock starts behind the
- *  round interstitial, which everyone watches for a few seconds. */
-const FIRST_TURN_GRACE_MS = 4000
 
 /**
  * Kick off the revealed round: stamp the first deadline (call BEFORE the

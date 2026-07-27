@@ -39,6 +39,12 @@ export interface CheerEntry {
 interface GameStoreState {
   game?: Game
   playerId: string
+  /**
+   * Manhunt, despot's eyes only: their own trail, arriving over the targeted
+   * 'manhunt-position' emit — never in a broadcast snapshot. Cleared when a
+   * new round arrives; detectives never see this populated.
+   */
+  manhunt?: { trail: ISOCountryCode[]; turn: number }
   map: {
     reveal?: ISOCountryCode
     /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */
@@ -83,6 +89,13 @@ interface GameStoreState {
     feature?: MapFeatureOverlay
     /** Magnifying inset for a subject too small to see at world zoom. */
     inset?: MapInset
+    /** Action affordance rings — countries the player may act on right now
+     *  (manhunt hops, border chain's easy-mode outs). Strokes, never fills. */
+    ringed: ISOCountryCode[]
+    /** Directed 'FROM>TO' overland route legs (manhunt's escape trail). */
+    landRoutes: string[]
+    /** Coastlines humming sea-blue — "you can sail from here". */
+    seaGlow: ISOCountryCode[]
     /** Opponents' live guesses during a group round, fed by the ephemeral
      *  `player-guessing` broadcast. Append-only and self-expiring: a player's
      *  second guess is a new entry, not an overwrite, so each one can pop in
@@ -132,6 +145,7 @@ export const useGameStore = defineStore('game', {
   state: (): GameStoreState => ({
     game: undefined,
     playerId: '',
+    manhunt: undefined,
     socket: undefined,
     pendingMovementRequest: false,
     rejected: false,
@@ -160,6 +174,9 @@ export const useGameStore = defineStore('game', {
       zoomOut: undefined,
       feature: undefined,
       inset: undefined,
+      ringed: [],
+      landRoutes: [],
+      seaGlow: [],
       liveGuesses: [],
     },
     board: {

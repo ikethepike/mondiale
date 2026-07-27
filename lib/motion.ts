@@ -21,6 +21,8 @@ export const MOTION = {
 export const DWELL = {
   /** A wrong-guess hint over the map, and its chip in the live-guess ticker. */
   hint: 2200,
+  /** A taunt is a sentence, not a verdict — it lingers long enough to land. */
+  taunt: 5200,
 } as const
 
 /** GSAP ease names matching the CSS custom-property easings. */

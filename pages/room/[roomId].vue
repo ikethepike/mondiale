@@ -31,6 +31,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
 import ModalMoving from '~/components/modal/ModalMoving.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
+import ViewManhunt from '~/components/view/ViewManhunt.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
 import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
@@ -143,6 +144,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         'trend-race': ViewTrendRace,
         timeline: ViewTimeline,
         empire: ViewEmpire,
+        manhunt: ViewManhunt,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

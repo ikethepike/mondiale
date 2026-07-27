@@ -133,6 +133,20 @@ const sequenceEntries = computed(() => {
   ]
 })
 
+// Easy mode's open moves also get the shared action ring (the stroke channel
+// manhunt speaks) — the ISO chips name them, the rings place them. Harder
+// difficulties stay unassisted: revealing legal moves is the assist itself.
+watch(
+  [chain, finished],
+  () => {
+    gameStore.map.ringed =
+      gameStore.game?.difficulty === 'easy' && !finished.value && state.value
+        ? openMoves(state.value, rules)
+        : []
+  },
+  { immediate: true }
+)
+
 const stakes = computed(() => {
   const grace =
     (challenge.value?.strikes ?? 0) > 0
@@ -220,7 +234,8 @@ const seaLinkKeys = (): string[] => {
   for (const walkedChain of state.value?.chains ?? []) {
     for (let index = 1; index < walkedChain.length; index++) {
       const [a, b] = [walkedChain[index - 1], walkedChain[index]]
-      if (isStraitHop(a, b)) keys.push(a < b ? `${a}-${b}` : `${b}-${a}`)
+      // Directed: the arc's dash drift follows the walk.
+      if (isStraitHop(a, b)) keys.push(`${a}>${b}`)
     }
   }
   return keys

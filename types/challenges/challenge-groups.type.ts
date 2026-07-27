@@ -51,6 +51,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'border-chain': 'navigation',
   'neighbour-blitz': 'navigation',
   'hot-cold': 'navigation',
+  manhunt: 'navigation',
   'river-run': 'water',
   'shared-shores': 'water',
   // Deals on every difficulty — the pool scales in-dealer (famous seas on

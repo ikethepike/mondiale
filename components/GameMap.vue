@@ -130,13 +130,34 @@
             <circle class="feature-marker-dot" r="2" />
           </g>
         </g>
-        <!-- Border Chain: dashed sea arcs across each strait the chain hopped. -->
+        <!-- Overland route legs (manhunt's escape trail): solid bowed arcs —
+             the walked journey, distinct from the sailed one below. -->
         <path
-          v-for="(d, index) in seaLinkPaths"
-          :key="`sea-link-${index}`"
-          class="map-sea-link"
-          :d="d"
+          v-for="(arc, index) in landRouteArcs"
+          :key="`land-route-${index}`"
+          class="map-land-route"
+          :d="arc.d"
         />
+        <!-- Water crossings (chain strait hops, manhunt sea passages): a bowed
+             dashed arc, dashes drifting toward the destination, with a sail
+             chip at the crown so the line reads as "sailed", not "borders". -->
+        <g v-for="(arc, index) in seaLinkArcs" :key="`sea-link-${index}`">
+          <path class="map-sea-link" :d="arc.d" />
+          <g
+            v-if="showSailChips"
+            class="map-sea-chip"
+            :transform="`translate(${arc.mid.x} ${arc.mid.y})`"
+          >
+            <g class="map-sea-chip-scale">
+              <circle class="chip-disc" r="10" />
+              <!-- The cargo ship from the shared stat-glyph stroke language,
+                   centred from its 24×24 box (artwork centre ≈ 12, 14.75). -->
+              <g class="chip-ship" transform="translate(-10.2 -12.5) scale(0.85)">
+                <path v-for="(d, shipIndex) in SEA_CHIP_SHIP" :key="shipIndex" :d="d" />
+              </g>
+            </g>
+          </g>
+        </g>
         <!-- Pin-landmark: the guess, then on reveal the truth and a line between. -->
         <line
           v-if="pinPoint && pinAnswerPoint"
@@ -177,7 +198,8 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
+import { countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
+import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
@@ -278,6 +300,27 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Action affordance: countries the player may act on right now, drawn as
+   *  a stroke ring — never a fill. Fills carry knowledge; strokes carry you.
+   *  (Manhunt's legal hops, Border Chain's easy-mode open moves.) */
+  ringed: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Directed 'FROM>TO' overland legs drawn as solid route arcs — the
+   *  journey language (manhunt's escape trail). Water legs belong in
+   *  `seaLinks` instead. */
+  landRoutes: {
+    type: Array as PropType<string[]>,
+    default: () => [],
+  },
+  /** Countries whose coastline hums the sea-blue — "you can sail from
+   *  here". A standing whisper, not an affordance list (manhunt's hideout
+   *  while sea passages remain). */
+  seaGlow: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Countries whose fill breathes toward yellow — the live Border Chain
    *  head, the one square players act on. */
   pulsing: {
@@ -366,20 +409,124 @@ const chainIndices = computed<Partial<Record<string, number>>>(() => {
   return indices
 })
 
-/** Dashed lines across each named strait — straight, as a strait should be. */
-const seaLinkPaths = computed(() => {
-  const paths: string[] = []
-  for (const pair of props.seaLinks) {
-    const crossing = STRAIT_CROSSINGS[pair]
-    if (!crossing) continue
-    // A crossing hugging the antimeridian would draw across the whole world.
-    if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue
-    const from = projectRobinson(crossing.from, MAP_PROJECTION)
-    const to = projectRobinson(crossing.to, MAP_PROJECTION)
-    paths.push(`M ${from.x} ${from.y} L ${to.x} ${to.y}`)
+/**
+ * Dashed sailing arcs across water. Named strait pairs cross at their
+ * validated coastline points; any other pair (manhunt's sea passages span
+ * whole seas) falls back to a centroid-to-centroid arc. Each bows gently
+ * poleward like a rhumb-line sketch on a chart, its dashes drift from origin
+ * to destination (the direction of travel), and a small sail chip sits at
+ * the arc's crown naming the crossing for what it is.
+ */
+/** The sea chip's ship — the trade department's cargo-ship emblem, reused so
+ *  the map speaks the same glyph language as the stat cards. */
+const SEA_CHIP_SHIP = DEPARTMENT_GLYPHS['department.trade'].paths ?? []
+
+/** One gently north-bowed arc between a directed or sorted pair key.
+ *  'FROM>TO' keys carry travel direction; legacy 'A-B' keys stay sorted. */
+const arcForPair = (pair: string): { d: string; mid: { x: number; y: number } } | undefined => {
+  const directed = pair.includes('>')
+  const [a, b] = (directed ? pair.split('>') : pair.split('-')) as ISOCountryCode[]
+  const sortedKey = a < b ? `${a}-${b}` : `${b}-${a}`
+  const known = STRAIT_CROSSINGS[sortedKey]
+  let crossing: { from: LatLng; to: LatLng } | undefined
+  if (known) {
+    // A stored crossing's `from` belongs to the sorted-first country —
+    // swap it when the travel direction runs the other way.
+    const runsBackward = directed && a !== (a < b ? a : b)
+    crossing = runsBackward ? { from: known.to, to: known.from } : known
+  } else {
+    const from = countryLatLng(a)
+    const to = countryLatLng(b)
+    crossing = from && to ? { from, to } : undefined
   }
-  return paths
+  if (!crossing) return undefined
+  // A crossing hugging the antimeridian would draw across the whole world.
+  if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) return undefined
+  const from = projectRobinson(crossing.from, MAP_PROJECTION)
+  const to = projectRobinson(crossing.to, MAP_PROJECTION)
+  const chordX = to.x - from.x
+  const chordY = to.y - from.y
+  const length = Math.hypot(chordX, chordY) || 1
+  // Control point: perpendicular to the chord, always bowing map-north.
+  let perpX = -chordY / length
+  let perpY = chordX / length
+  if (perpY > 0) {
+    perpX = -perpX
+    perpY = -perpY
+  }
+  const bow = length * 0.14
+  const controlX = (from.x + to.x) / 2 + perpX * bow
+  const controlY = (from.y + to.y) / 2 + perpY * bow
+  return {
+    d: `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`,
+    // The quadratic's own midpoint (t = 0.5) — the crown of the arc.
+    mid: {
+      x: (from.x + 2 * controlX + to.x) / 4,
+      y: (from.y + 2 * controlY + to.y) / 4,
+    },
+  }
+}
+
+const seaLinkArcs = computed(() =>
+  props.seaLinks.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+)
+
+/** Overland legs: same bow, solid stroke, no chip — walked, not sailed. */
+const landRouteArcs = computed(() =>
+  props.landRoutes.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+)
+
+// ringed/seaGlow change on every hover crossing — as template bindings they
+// re-diff all 220 paths per change (measured: pan p95 doubled). Applied as
+// direct classList writes instead, the micro-dot discipline: reactivity never
+// touches the path list.
+const applyCountryClass = (
+  className: string,
+  previous: ReadonlySet<string>,
+  next: ReadonlySet<string>
+) => {
+  const host = svg.value
+  if (!host) return
+  for (const iso of previous) {
+    if (next.has(iso)) continue
+    for (const el of host.querySelectorAll(`[data-id="${iso}"]`)) el.classList.remove(className)
+  }
+  for (const iso of next) {
+    if (previous.has(iso)) continue
+    for (const el of host.querySelectorAll(`[data-id="${iso}"]`)) el.classList.add(className)
+  }
+}
+let appliedRinged: ReadonlySet<string> = new Set()
+let appliedSeaGlow: ReadonlySet<string> = new Set()
+watch(
+  () => props.ringed,
+  ringed => {
+    const next = new Set(ringed)
+    applyCountryClass('ringed-country', appliedRinged, next)
+    appliedRinged = next
+  },
+  { flush: 'post' }
+)
+watch(
+  () => props.seaGlow,
+  seaGlow => {
+    const next = new Set(seaGlow)
+    applyCountryClass('sea-glow-country', appliedSeaGlow, next)
+    appliedSeaGlow = next
+  },
+  { flush: 'post' }
+)
+onMounted(() => {
+  appliedRinged = new Set(props.ringed)
+  appliedSeaGlow = new Set(props.seaGlow)
+  applyCountryClass('ringed-country', new Set(), appliedRinged)
+  applyCountryClass('sea-glow-country', new Set(), appliedSeaGlow)
 })
+
+/** The sail chip earns its place on a lone arc (a hover preview, a walked
+ *  leg); on a fanned-out reach the dashes already say water, and a chip per
+ *  arc is chart junk. */
+const showSailChips = computed(() => seaLinkArcs.value.length <= 3)
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
 const pinPoint = computed(() =>
@@ -711,6 +858,24 @@ const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined =
   point.y = event.clientY
   const { x, y } = point.matrixTransform(matrix.inverse())
   return { x, y }
+}
+
+// --- Hover relay -------------------------------------------------------------
+// One delegated listener on the wrapper (never per-path bindings — Vue must
+// not diff 220 paths for a pointer move). Views subscribe like mapClick;
+// deduped so resting on a country fires once, and mouse-only — hover is not
+// a touch idiom.
+let hoveredId: string | undefined
+const onPointerOver = (event: PointerEvent) => {
+  if (event.pointerType && event.pointerType !== 'mouse') return
+  // Mid-gesture the paths are pointer-inert anyway — don't churn views with
+  // enter/exit noise from whatever the camera slides under the cursor.
+  if (wrapper.value?.classList.contains('is-interacting')) return
+  const target = event.target as Element | null
+  const isoCode = target?.getAttribute?.('data-id') ?? undefined
+  if (isoCode === hoveredId) return
+  hoveredId = isoCode
+  document.dispatchEvent(new CustomEvent('mapHover', { detail: { isoCode } }))
 }
 
 const handleClick = (isoCode: string, event?: MouseEvent) => {
@@ -1117,6 +1282,7 @@ onMounted(async () => {
   })
 
   wrapper.value.addEventListener('wheel', onWheel) // non-passive: it owns the scroll
+  wrapper.value.addEventListener('pointerover', onPointerOver)
   wrapper.value.addEventListener('pointerdown', onPointerDown)
   wrapper.value.addEventListener('pointermove', onPointerMove)
   wrapper.value.addEventListener('pointerup', onPointerUp)
@@ -1429,6 +1595,33 @@ path[id],
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
 
+// The action ring: a stroke, never a fill — "you may act here". Ember, the
+// "you" accent (the pulsing head shares it), so it can never be mistaken
+// for the map's dark border ink.
+path.ringed-country,
+.micro-marker.ringed-country {
+  stroke: hsl(24, 80%, 45%);
+  stroke-width: calc(2.5px * var(--stroke-zoom, 1));
+  stroke-linejoin: round;
+}
+
+// The sailing whisper: the hideout's coast hums sea-blue while passages
+// remain — a signal that boats exist, never a list of where they go.
+path.sea-glow-country {
+  stroke: hsl(215.7, 76.4%, 41%);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-dasharray: calc(1.5px * var(--stroke-zoom, 1)) calc(3px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
+}
+
+.map-land-route {
+  fill: none;
+  pointer-events: none;
+  stroke: hsla(215.7, 40%, 30%, 0.8);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
+}
+
 .map-sea-link {
   fill: none;
   pointer-events: none;
@@ -1436,6 +1629,45 @@ path[id],
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-linecap: round;
   stroke-dasharray: calc(5px * var(--stroke-zoom, 1)) calc(6px * var(--stroke-zoom, 1));
+  // The dashes drift from origin to destination — slow enough to read as a
+  // current, not a marquee. One cycle = one dash+gap, so the loop is seamless.
+  animation: sea-drift 1.6s linear infinite;
+}
+
+@keyframes sea-drift {
+  to {
+    stroke-dashoffset: calc(-11px * var(--stroke-zoom, 1));
+  }
+}
+
+// The sail chip at the arc's crown: same cream-disc language as the walk
+// numbers (MapYearLabels), sized in screen pixels via --stroke-zoom.
+.map-sea-chip {
+  pointer-events: none;
+}
+
+.map-sea-chip-scale {
+  transform: scale(var(--stroke-zoom, 1));
+}
+
+.chip-disc {
+  fill: hsla(36, 100%, 98%, 0.95);
+  stroke: hsla(215.7, 76.4%, 41%, 0.6);
+  stroke-width: 1;
+}
+
+.chip-ship {
+  fill: none;
+  stroke: hsl(215.7, 76.4%, 30%);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-sea-link {
+    animation: none;
+  }
 }
 
 // Marks a contested territory that is too small to draw. Sized in screen
@@ -1529,6 +1761,11 @@ path[id] {
   .micro-hit {
     pointer-events: none;
     transition: none;
+  }
+
+  // The sailing dashes hold their drift while the camera is the animation.
+  .map-sea-link {
+    animation-play-state: paused;
   }
 }
 

@@ -38,6 +38,7 @@ import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
 import ViewHotCold from '~/components/view/ViewHotCold.vue'
+import ViewManhunt from '~/components/view/ViewManhunt.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
@@ -1071,6 +1072,242 @@ const scenarios: Scenario[] = [
             eliminated: [ME],
             outcomes: { [ME]: 'wrong' },
             missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-detective',
+    label: 'The Despot (detective, hunt beat, candidates painted)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: RIVAL,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            ready: [],
+            turn: 5,
+            hop: 3,
+            beat: 'hunt',
+            deadline: Date.now() + 25000,
+            detectives: [ME, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', topic: 'geography', text: 'The despot is hiding in Europe' },
+              {
+                hop: 2,
+                kind: 'threshold',
+                accessorId: 'people.medianAge',
+                threshold: 42,
+                above: true,
+                text: 'Its median age is at least 42 years',
+              },
+              {
+                hop: 3,
+                kind: 'threshold',
+                accessorId: 'economics.gdpPerCapita',
+                threshold: 30000,
+                above: true,
+                text: 'Its GDP per capita is at least $30,000',
+              },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+              { hop: 3, kind: 'sea' },
+            ],
+            seaPassagesLeft: 1,
+            subpoenasLeft: { [ME]: 2, [THIRD]: 1 },
+            candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
+            dragnets: [
+              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'PL' } },
+              { hop: 2, markers: { [ME]: 'DE', [THIRD]: 'DE' } },
+            ],
+            committed: [THIRD],
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-briefing',
+    label: 'The Despot (briefing — detective case file)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: RIVAL,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            briefing: true,
+            ready: [THIRD],
+            turn: 0,
+            hop: 1,
+            beat: 'move',
+            deadline: 0,
+            detectives: [ME, THIRD],
+            clues: [],
+            moves: [],
+            seaPassagesLeft: 2,
+            subpoenasLeft: { [ME]: 2, [THIRD]: 2 },
+            candidates: [],
+            dragnets: [],
+            committed: [],
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-briefing-despot',
+    label: 'The Despot (briefing — Glorious Leader card)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: ME,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            briefing: true,
+            ready: [THIRD],
+            turn: 0,
+            hop: 1,
+            beat: 'move',
+            deadline: 0,
+            detectives: [RIVAL, THIRD],
+            clues: [],
+            moves: [],
+            seaPassagesLeft: 2,
+            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
+            candidates: [],
+            dragnets: [],
+            committed: [],
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-despot',
+    label: 'The Despot (you flee, move beat, trail + dragnet)',
+    component: ViewManhunt,
+    build: () => {
+      // The trail arrives over the targeted position channel in real play —
+      // the harness plants it directly.
+      gameStore.manhunt = { trail: ['CZ', 'AT', 'IT'], turn: 4 }
+      return mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: ME,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            ready: [],
+            turn: 4,
+            hop: 3,
+            beat: 'move',
+            deadline: Date.now() + 15000,
+            detectives: [RIVAL, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
+              { hop: 2, kind: 'language', text: 'Official languages there include German' },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+            ],
+            seaPassagesLeft: 2,
+            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
+            candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
+            dragnets: [
+              { hop: 1, markers: { [RIVAL]: 'DE', [THIRD]: 'PL' } },
+              { hop: 2, markers: { [RIVAL]: 'AT', [THIRD]: 'CH' } },
+            ],
+            committed: [],
+          },
+        }),
+      ])
+    },
+  },
+  {
+    id: 'manhunt-reveal',
+    label: 'The Despot (captured, trail replay + reveal)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: RIVAL,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            ready: [],
+            turn: 10,
+            hop: 5,
+            beat: 'hunt',
+            deadline: 0,
+            detectives: [ME, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
+              { hop: 2, kind: 'threshold', text: 'Its urbanization is below 68%' },
+              { hop: 3, kind: 'language', text: 'Official languages there include Italian' },
+              { hop: 4, kind: 'flag-colors', text: 'The flag flying over the hideout carries green' },
+              { hop: 5, kind: 'threshold', text: 'Its population is below 11,000,000' },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+              { hop: 3, kind: 'sea' },
+              { hop: 4, kind: 'ground' },
+              { hop: 5, kind: 'ground' },
+            ],
+            seaPassagesLeft: 1,
+            subpoenasLeft: { [ME]: 0, [THIRD]: 1 },
+            candidates: ['IT', 'SI'],
+            dragnets: [
+              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'DE' } },
+              { hop: 2, markers: { [ME]: 'AT', [THIRD]: 'AT' } },
+              { hop: 3, markers: { [ME]: 'ES', [THIRD]: 'IT' } },
+              { hop: 4, markers: { [ME]: 'HR', [THIRD]: 'HR' } },
+              { hop: 5, markers: { [ME]: 'SI', [THIRD]: 'SI' } },
+            ],
+            committed: [ME, THIRD],
+            outcome: {
+              kind: 'captured',
+              hop: 5,
+              capturerIds: [ME, THIRD],
+              country: 'SI',
+              trail: ['CZ', 'AT', 'IT', 'HR', 'SI'],
+            },
+            finished: true,
           },
         }),
       ]),

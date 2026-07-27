@@ -15,6 +15,11 @@ import {
   scheduleTimelineTimeout,
   startTimelineClock,
 } from './timeline-turns'
+import {
+  isManhuntChallenge,
+  scheduleManhuntTimeout,
+  startManhunt,
+} from './manhunt-beats'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -154,6 +159,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
       if (isBorderChainChallenge(revealed)) startChainClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
+      // Manhunt's start is async: the despot's trail seeds into its secret
+      // redis blob (never the snapshot) before the reveal saves.
+      if (isManhuntChallenge(revealed)) {
+        await startManhunt({ io, redis, socket, eventTarget }, game, revealed)
+      }
       await server.updateGameState(game)
       server.emit({ event: 'new-round', game }, eventTarget)
       if (isBorderChainChallenge(revealed)) {
@@ -164,6 +174,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
       }
       if (isTimelineChallenge(revealed)) {
         scheduleTimelineTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      if (isManhuntChallenge(revealed) && !revealed.state.finished) {
+        scheduleManhuntTimeout({ io, redis, socket, eventTarget }, revealed)
       }
     }
   }

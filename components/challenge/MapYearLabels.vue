@@ -4,7 +4,8 @@
       v-for="chip in chips"
       :key="chip.isoCode"
       class="chip map-caption"
-      :style="{ left: `${chip.left}%`, top: `${chip.top}%`, '--i': chip.index }"
+      :class="{ accented: chip.color }"
+      :style="{ left: `${chip.left}%`, top: `${chip.top}%`, '--i': chip.index, '--chip-accent': chip.color }"
     >
       {{ chip.label }}
     </span>
@@ -22,7 +23,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const props = withDefaults(
   defineProps<{
-    entries: { isoCode: ISOCountryCode; label: string }[]
+    entries: { isoCode: ISOCountryCode; label: string; color?: string }[]
     /** Collision radius. Sequence users (Border Chain) tighten it — a skipped
      *  number breaks the count where a skipped year is just less clutter. */
     minGapPx?: number
@@ -57,7 +58,14 @@ const chips = computed(() => {
   const height = window.innerHeight
 
   const placed: { x: number; y: number }[] = []
-  const result: { isoCode: ISOCountryCode; label: string; left: number; top: number; index: number }[] =
+  const result: {
+    isoCode: ISOCountryCode
+    label: string
+    color?: string
+    left: number
+    top: number
+    index: number
+  }[] =
     []
   for (const entry of props.entries) {
     const centre = mapRegionCentre(entry.isoCode)
@@ -95,6 +103,13 @@ onBeforeUnmount(() => {
   font-weight: bold;
   animation: chip-in 0.35s var(--ease-smooth) forwards;
   animation-delay: calc(var(--i) * 60ms + 300ms);
+
+  // Attributed chips (manhunt's dragnet marks) wear their player's colour
+  // as the border — the board's identity language, no name needed.
+  &.accented {
+    border-width: 0.2rem;
+    border-color: var(--chip-accent);
+  }
 }
 
 @keyframes chip-in {
