@@ -94,6 +94,16 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
   return leader.office
 }
 
+/**
+ * Is this exact name one of the country's leader roles? Shared leaders are
+ * real — Charles III reigns over 14 realms, Macron co-rules Andorra — so a
+ * portrait question must never offer two countries the same person leads.
+ */
+export const countryLedBy = (isoCode: ISOCountryCode, name: string): boolean => {
+  const entry = LEADERS[isoCode]
+  return entry?.headOfState?.name === name || entry?.headOfGovernment?.name === name
+}
+
 /** Both distinct roles for a country's atlas/reveal (state + government). */
 export const leaderRoles = (
   isoCode: ISOCountryCode

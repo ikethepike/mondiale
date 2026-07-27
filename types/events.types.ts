@@ -1,6 +1,7 @@
 import type { LatLng } from '~~/lib/geo'
+import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
-import type { ISOCountryCode, Region } from './geography.types'
+import type { ISOCountryCode } from './geography.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
  *  verdict — only that the player answered. */
@@ -142,20 +143,7 @@ export type ClientEventData =
     }
   | {
       event: 'submit-final-challenge-answer'
-      submittedAnswer:
-        | { _type: 'region-challenge'; region: Region }
-        | { _type: 'min-challenge'; isoCode: ISOCountryCode }
-        | { _type: 'max-challenge'; isoCode: ISOCountryCode }
-        | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
-        | { _type: 'language-challenge'; isoCode: ISOCountryCode }
-        | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
-        /** Client-trust (like higher-lower): the countries named in time. */
-        | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
-        | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
-        | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
-        | { _type: 'made-challenge'; isoCode: ISOCountryCode }
-        /** Client-trust: canonical CITY_LIGHTS names lit in time. */
-        | { _type: 'city-nocturne-challenge'; namedCities: string[] }
+      submittedAnswer: FinalChallengeAnswer
     }
   | {
       event: 'update-configuration'

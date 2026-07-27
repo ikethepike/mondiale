@@ -412,7 +412,11 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import { TRENDS } from '~~/data/trends.gen'
 import { shuffleArray } from '~~/lib/arrays'
-import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
+import {
+  accessorTopicLabel,
+  getChallengeDetails,
+  isCorrectIndividualAnswer,
+} from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { currencyName, currencySymbol } from '~~/lib/currency'
@@ -913,6 +917,12 @@ const incorrectMessage = computed(() => {
         ? `That's ${active.portrait.name} — ${countryName(active.country)}'s leader`
         : 'Not quite.'
     default:
+      // Currency find gate: name what the pressed country actually spends —
+      // clearer than the reveal zoom alone, since shared currencies mean the
+      // dealt subject isn't the only right answer.
+      if (active?.id === 'currency' && picked?.currency) {
+        return `${countryName(picked)} spends the ${currencyName(picked.currency)}`
+      }
       return picked ? `Sorry, you pressed: ${countryName(picked)}` : 'Not quite.'
   }
 })
@@ -935,12 +945,14 @@ const submitAnswer = (
 
   const active = currentMove.value?.challenge
   if (active) {
-    const correct = isoCode === active.country
+    const correct = isCorrectIndividualAnswer(active, isoCode)
     if (correct) {
       earnedLeapSteps.value = gateLeapSteps(options.remainingFraction, options.hintsUsed)
     }
     if (options.reveal !== false) {
-      gameStore.map.reveal = active.country
+      // A shared-currency gate can be won on a country other than the dealt
+      // subject — zoom the reveal to the country the player actually got right.
+      gameStore.map.reveal = correct ? isoCode : active.country
       // Landmark-quiz: mark the landmark's true spot on the reveal zoom
       if (landmark.value?.coordinates) gameStore.map.pinAnswer = landmark.value.coordinates
     }

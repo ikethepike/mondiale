@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
+import type { MinChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
-import { dealReplacementChallenge, GAUNTLET_LIVES, getFinalChallenges } from './final-challenge'
+import {
+  dealReplacementChallenge,
+  GAUNTLET_LIVES,
+  getFinalChallenges,
+  isCorrectFinalAnswer,
+} from './final-challenge'
 
 const gameFor = (variant: Game['variant'], difficulty: GameDifficulty) =>
   ({ variant, difficulty }) as Game
@@ -149,5 +155,91 @@ describe('dealReplacementChallenge', () => {
       expect(replacement).toBeDefined()
       expect(replacement?._type).not.toBe('membership-challenge')
     }
+  })
+})
+
+describe('isCorrectFinalAnswer', () => {
+  const pool = Object.keys(COUNTRIES) as (keyof typeof COUNTRIES)[]
+
+  it('accepts any country tied at the dealt extreme on min/max questions', () => {
+    // Real tie in the dataset: several countries host the same smallest
+    // refugee count — every one of them is a right answer.
+    const values = pool
+      .map(isoCode => ({ isoCode, amount: COUNTRIES[isoCode].humanRights?.refugees?.amount }))
+      .filter(entry => entry.amount !== undefined)
+      .sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0))
+    const minimum = values[0]
+    const tied = values.filter(entry => entry.amount === minimum.amount)
+
+    const challenge: MinChallenge = {
+      _type: 'min-challenge',
+      accessorId: 'humanRights.refugees',
+      country: tied[0].isoCode,
+      hints: [],
+    }
+    for (const entry of tied) {
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'min-challenge', isoCode: entry.isoCode },
+          pool,
+        })
+      ).toBe(true)
+    }
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'min-challenge', isoCode: values[values.length - 1].isoCode },
+        pool,
+      })
+    ).toBe(false)
+  })
+
+  it('accepts any speaker on language questions', () => {
+    const challenge = { _type: 'language-challenge', language: 'French' } as const
+    const speakers = pool.filter(isoCode => COUNTRIES[isoCode].languages.includes('French'))
+    expect(speakers.length).toBeGreaterThan(1)
+    for (const isoCode of speakers.slice(0, 5)) {
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'language-challenge', isoCode },
+          pool,
+        })
+      ).toBe(true)
+    }
+    const nonSpeaker = pool.find(isoCode => !COUNTRIES[isoCode].languages.includes('French'))!
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: nonSpeaker },
+        pool,
+      })
+    ).toBe(false)
+  })
+
+  it('stays strict on leadership questions and throws on shape mismatches', () => {
+    const challenge = { _type: 'leadership-challenge', country: 'SE' } as const
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'leadership-challenge', isoCode: 'SE' },
+        pool,
+      })
+    ).toBe(true)
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'leadership-challenge', isoCode: 'NO' },
+        pool,
+      })
+    ).toBe(false)
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+        pool,
+      })
+    ).toThrow(TypeError)
   })
 })

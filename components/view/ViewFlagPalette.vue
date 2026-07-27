@@ -68,6 +68,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { isFlagPaletteMatch } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -102,7 +103,7 @@ const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
 const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
 const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
 
-const submitRound = (correct: boolean) => {
+const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   if (submitted.value) return
   const active = challenge.value
   gameStore.map.status = correct ? 'correct' : undefined
@@ -111,7 +112,7 @@ const submitRound = (correct: boolean) => {
     correct && active
       ? buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
       : 0
-  submitOnce(correct && active ? [active.country] : [], score)
+  submitOnce(correct && active ? [guessed ?? active.country] : [], score)
 }
 
 const start = () => {
@@ -124,8 +125,9 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || !started.value) return
 
   // The winning guess is never broadcast — it would hand opponents the answer.
-  if (country.isoCode === active.country) {
-    submitRound(true)
+  // Palette twins count: the shared verdict accepts any exact colour match.
+  if (isFlagPaletteMatch(active, country.isoCode)) {
+    submitRound(true, country.isoCode)
   } else {
     announce({
       kind: 'wrong',

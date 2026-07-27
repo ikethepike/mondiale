@@ -4,9 +4,11 @@ import type { ISOCountryCode } from '../geography.types'
 
 /**
  * Individual challenges gate the board: answer correctly to leap ahead, fail
- * and you're knocked back. They all validate the same way server-side — the
- * submitted ISO code must equal `country` — so every variant encodes its
- * winning answer there:
+ * and you're knocked back. They all validate through the shared
+ * `isCorrectIndividualAnswer` (lib/challenges.ts): the submitted ISO code must
+ * equal `country`, except currency questions accept any country spending the
+ * same (possibly shared) currency. Every variant encodes its winning answer
+ * in `country`:
  * - 'find' (default / legacy data): locate `country` on the map
  * - 'flag-pick': `country`'s flag among lookalike decoys in `options`
  * - 'odd-one-out': `country` is the impostor among `oddOneOut.countries`

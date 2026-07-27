@@ -7,6 +7,7 @@ import type {
   BornChallenge,
   CityNocturneChallenge,
   FinalChallenge,
+  FinalChallengeAnswer,
   FinalChallengeItem,
   LanguageChallenge,
   LeadershipChallenge,
@@ -354,9 +355,7 @@ const getBornChallenge = (
 ): BornChallenge | undefined => {
   const quota = BORN_QUOTA[difficulty]
   for (const year of shuffleArray([...BORN_CUTOFFS])) {
-    const qualifying = pool.filter(
-      isoCode => (COUNTRIES[isoCode].government.independence?.amount ?? 0) > year
-    ).length
+    const qualifying = pool.filter(isoCode => bornAfter(isoCode, year)).length
     // Enough valid answers to be findable, few enough to need real knowledge
     if (qualifying >= Math.max(3, quota) && qualifying <= pool.length / 2) {
       return { _type: 'born-challenge', year, quota }
@@ -558,6 +557,137 @@ const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => 
     _type: 'leadership-challenge',
     country: country.isoCode,
   }
+}
+
+/** Did this country gain independence after `year`? */
+export const bornAfter = (isoCode: ISOCountryCode, year: number): boolean => {
+  const independence = COUNTRIES[isoCode].government.independence
+  return !!independence && independence.amount > year
+}
+
+/** Does the country speak this language? */
+export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
+  COUNTRIES[isoCode].languages.includes(language)
+
+/** Do the country's top exports include the commodity? */
+export const exportsCommodity = (isoCode: ISOCountryCode, commodity: string): boolean =>
+  (COUNTRIES[isoCode].economics.exports ?? []).includes(commodity)
+
+/** The scales weigh-in — shared by the verdict and the client's beam card. */
+export const weighScalesPicks = (
+  challenge: ScalesChallenge,
+  picks: ISOCountryCode[]
+): { combined: number; target: Amount<string>; balanced: boolean } | undefined => {
+  const target = getValueByAccessorID(challenge.target, challenge.accessorId)
+  if (!target?.amount) return undefined
+  let combined = 0
+  for (const isoCode of picks) {
+    combined += getValueByAccessorID(isoCode, challenge.accessorId)?.amount ?? 0
+  }
+  const balanced =
+    combined >= target.amount * (1 - challenge.tolerance) &&
+    combined <= target.amount * (1 + challenge.tolerance)
+  return { combined, target, balanced }
+}
+
+/** The dealt cities a nocturne answer may light — the top N of CITY_LIGHTS. */
+export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
+  new Set(
+    (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount).map(city => city.name)
+  )
+
+/**
+ * The single verdict for a final-challenge answer, shared by the server
+ * handler and the client's result beat. Property questions ("speaks X",
+ * "exports Y") accept ANY qualifying country, and the min/max extremes accept
+ * exact value ties — several countries can share the dealt extreme (five tie
+ * on the lowest alcohol consumption, seven on the smallest refugee count), so
+ * the one that happened to sort first must not be the only right answer.
+ * Throws on an answer whose shape doesn't match the question — that's a
+ * client bug, and the caller must not consume a life (or a question) for it.
+ */
+export const isCorrectFinalAnswer = ({
+  challenge,
+  submittedAnswer,
+  pool,
+}: {
+  challenge: FinalChallengeItem
+  submittedAnswer: FinalChallengeAnswer
+  /** The board's playable countries — scopes sunset-blitz validation. */
+  pool: ISOCountryCode[]
+}): boolean => {
+  const throwTypeMismatch = (): never => {
+    throw new TypeError(`Challenge type mismatch: ${submittedAnswer._type || challenge._type}`)
+  }
+
+  switch (challenge._type) {
+    case 'region-challenge': {
+      if (submittedAnswer._type !== 'region-challenge') return throwTypeMismatch()
+      return COUNTRIES[challenge.country].region === submittedAnswer.region
+    }
+    case 'max-challenge':
+    case 'min-challenge': {
+      // Narrows away every variant without a single-country answer
+      // (region picks a region, sunset-blitz submits a country list).
+      if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
+      if (!isValidISOCode(submittedAnswer.isoCode)) return false
+      if (submittedAnswer.isoCode === challenge.country) return true
+      const dealt = getValueByAccessorID(challenge.country, challenge.accessorId)?.amount
+      const submitted = getValueByAccessorID(submittedAnswer.isoCode, challenge.accessorId)?.amount
+      return dealt !== undefined && submitted === dealt
+    }
+    case 'leadership-challenge': {
+      if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
+      return isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.country
+    }
+    case 'language-challenge': {
+      if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
+      if (!isValidISOCode(submittedAnswer.isoCode)) return false
+      return speaksLanguage(submittedAnswer.isoCode, challenge.language)
+    }
+    case 'membership-challenge': {
+      if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
+      return isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
+    }
+    case 'born-challenge': {
+      if (submittedAnswer._type !== 'born-challenge') return throwTypeMismatch()
+      // Quota of distinct picks, every one of which must qualify
+      const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
+      return picks.length >= challenge.quota && picks.every(iso => bornAfter(iso, challenge.year))
+    }
+    case 'made-challenge': {
+      if (submittedAnswer._type !== 'made-challenge') return throwTypeMismatch()
+      if (!isValidISOCode(submittedAnswer.isoCode)) return false
+      return exportsCommodity(submittedAnswer.isoCode, challenge.commodity)
+    }
+    case 'scales-challenge': {
+      if (submittedAnswer._type !== 'scales-challenge') return throwTypeMismatch()
+      const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
+      if (!picks.length || picks.length > challenge.maxPicks || picks.includes(challenge.target)) {
+        return false
+      }
+      return !!weighScalesPicks(challenge, picks)?.balanced
+    }
+    case 'city-nocturne-challenge': {
+      if (submittedAnswer._type !== 'city-nocturne-challenge') return throwTypeMismatch()
+      // Client-trust: validate the lit names against the dealt city set
+      const dealt = nocturneDealtCities(challenge)
+      const lit = [...new Set(submittedAnswer.namedCities)].filter(name => dealt.has(name))
+      return lit.length >= challenge.quota
+    }
+    case 'sunset-blitz-challenge': {
+      if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
+      // Client-trust like higher-lower gates. The whole board is nameable
+      // (the camera shows more than the dealt window), so validate against
+      // the board pool; the quota is a share of the dealt window.
+      const board = new Set(pool)
+      const named = [...new Set(submittedAnswer.namedCountries)].filter(
+        isoCode => isValidISOCode(isoCode) && board.has(isoCode)
+      )
+      return named.length >= sunsetQuota(challenge)
+    }
+  }
+  return throwTypeMismatch()
 }
 
 export const getFinalChallengeDetails = ({

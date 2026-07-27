@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getGroupChallenge } from '~~/lib/challenges'
+import { COUNTRIES } from '~~/data/countries.gen'
+import { getGroupChallenge, isFlagPaletteMatch } from '~~/lib/challenges'
 import { isValidGameConfiguration } from '~~/types/game.types'
 import {
   autoEnabledKinds,
@@ -190,5 +191,22 @@ describe('isValidGameConfiguration', () => {
     expect(isValidGameConfiguration({ ...valid, challengeOverrides: { toString: true } })).toBe(
       false
     )
+  })
+})
+
+describe('isFlagPaletteMatch', () => {
+  it('accepts the subject and any exact palette twin, nothing else', () => {
+    const challenge = {
+      country: 'CL',
+      swatches: COUNTRIES.CL.identity.colors.slice(0, 6),
+    } as const
+    expect(isFlagPaletteMatch(challenge, 'CL')).toBe(true)
+    // Chile and Russia fly the identical ordered palette in the dataset —
+    // indistinguishable from the swatches alone, so both must count.
+    if (COUNTRIES.RU.identity.colors.join('|') === COUNTRIES.CL.identity.colors.join('|')) {
+      expect(isFlagPaletteMatch(challenge, 'RU')).toBe(true)
+    }
+    expect(isFlagPaletteMatch(challenge, 'SE')).toBe(false)
+    expect(isFlagPaletteMatch(challenge, undefined)).toBe(false)
   })
 })

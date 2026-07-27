@@ -65,6 +65,7 @@ import {
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { shuffleArray } from './arrays'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
+import { countryLedBy } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -970,6 +971,21 @@ const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | u
 }
 
 /**
+ * Flag-palette verdict, shared by the server scorer and the client's guess
+ * check. The puzzle shows ONLY the swatches, so any country whose flag carries
+ * the exact same ordered colour list is indistinguishable from the subject
+ * (Chile and Russia both fly white|blue|red) — every such country must count.
+ */
+export const isFlagPaletteMatch = (
+  challenge: Pick<FlagPaletteChallenge, 'country' | 'swatches'>,
+  isoCode: ISOCountryCode | undefined
+): boolean => {
+  if (!isoCode) return false
+  if (isoCode === challenge.country) return true
+  return COUNTRIES[isoCode]?.identity.colors.join('|') === challenge.swatches.join('|')
+}
+
+/**
  * Recognition modes deal from the generated disputed-territories dataset.
  * Dynamic import for the same reason as the water dealer: only nitro runs
  * the dealers, and the geometry must not ride into client bundles through
@@ -1793,6 +1809,29 @@ const dealMoneyMatch = (
 }
 
 /**
+ * The single verdict for an individual gate answer, shared by the server
+ * handler and the client's result beat. Strict ISO equality, with one
+ * carve-out: currency questions ("Which country spends the euro?") have many
+ * right answers when the currency is shared (the Euro-zone alone spans 20+
+ * countries), so any submitted country spending the challenge currency wins.
+ * Scoped to the currency-asking variants only — other variants on the money
+ * gate (e.g. higher-lower) submit wrong-answer tokens that may coincidentally
+ * share a currency with the subject.
+ */
+export const isCorrectIndividualAnswer = (
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant'>,
+  isoCode: ISOCountryCode
+): boolean => {
+  if (isoCode === challenge.country) return true
+  const variant = challenge.variant ?? 'find'
+  const asksForCurrency =
+    variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
+  if (!asksForCurrency) return false
+  const currency = COUNTRIES[challenge.country].currency
+  return !!currency && COUNTRIES[isoCode]?.currency === currency
+}
+
+/**
  * Capital-match (photo): "Which country's capital is this?" — a skyline photo
  * with four flag options. Deals only where a capital photo exists; decoys
  * prefer the same region.
@@ -2222,7 +2261,9 @@ const portraitFor = (isoCode: ISOCountryCode) => {
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
-/** Leader-portrait: whose face is this? Decoys prefer the same region. */
+/** Leader-portrait: whose face is this? Decoys prefer the same region — but
+ *  never a country the pictured leader ALSO leads (Macron co-rules Andorra),
+ *  or the gate has two right answers. */
 const dealLeaderPortrait = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
@@ -2233,7 +2274,11 @@ const dealLeaderPortrait = (
   const portrait = portraitFor(country)
   if (!portrait) return undefined
 
-  const decoys = pickDecoys(country, countryPool, 3, { preferRegion: true, widen: world })
+  const decoys = pickDecoys(country, countryPool, 3, {
+    preferRegion: true,
+    eligible: isoCode => !countryLedBy(isoCode, portrait.name),
+    widen: world,
+  })
   if (!decoys) return undefined
 
   return { country, options: shuffleArray([country, ...decoys]), portrait }
@@ -2242,7 +2287,7 @@ const dealLeaderPortrait = (
 /**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
- * variant identically (submitted ISO === challenge.country).
+ * variant through `isCorrectIndividualAnswer`.
  */
 /** Test hook: FORCE_INDIVIDUAL_VARIANT=<variant> makes every gate that variant. */
 const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined => {

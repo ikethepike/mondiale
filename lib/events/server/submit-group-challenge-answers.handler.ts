@@ -1,6 +1,7 @@
 import {
   clampClientScore,
   getCorrectRanking,
+  isFlagPaletteMatch,
   scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
@@ -118,7 +119,9 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       }
       case 'flag-palette': {
         if (roundChallenge._type !== 'flag-palette-challenge') throw new TypeError('kind mismatch')
-        const correct = eventData.ranking[0] === roundChallenge.country
+        // Palette twins (Chile/Russia) are indistinguishable from the swatches
+        // alone — the shared verdict accepts any exact colour match.
+        const correct = isFlagPaletteMatch(roundChallenge, eventData.ranking[0])
         answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
         scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
         break

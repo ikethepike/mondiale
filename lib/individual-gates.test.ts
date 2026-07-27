@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { getIndividualChallenge } from '~~/lib/challenges'
+import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { countryLedBy } from '~~/lib/leaders'
 import { processReplacements } from '~~/lib/values'
 import {
   individualChallengeAccessors,
@@ -51,5 +52,50 @@ describe('getIndividualChallenge (gate accessors)', () => {
     )
     expect(currencyQuestion).not.toContain('{currency}')
     expect(currencyQuestion.length).toBeGreaterThan('Which country spends the ?'.length)
+  })
+})
+
+describe('dealLeaderPortrait (via forced variant)', () => {
+  it('never offers two countries the pictured leader leads', () => {
+    // Shared leaders are real: Charles III reigns over 14 realms and Macron
+    // co-rules Andorra — a portrait's decoys must all be led by someone else.
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'leader-portrait'
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const dealt = getIndividualChallenge({ accessorId: 'government.leader' })
+      if (dealt.variant !== 'leader-portrait' || !dealt.options || !dealt.portrait) continue
+      const led = dealt.options.filter(isoCode => countryLedBy(isoCode, dealt.portrait!.name))
+      expect(led).toEqual([dealt.country])
+    }
+  })
+})
+
+describe('isCorrectIndividualAnswer', () => {
+  it('accepts any country spending the shared currency on the find gate', () => {
+    const gate = { id: 'currency', country: 'FI', variant: 'find' } as const
+    expect(COUNTRIES.FI.currency).toBe('EUR')
+    expect(COUNTRIES.DE.currency).toBe('EUR')
+    expect(isCorrectIndividualAnswer(gate, 'DE')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'FI')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'NO')).toBe(false)
+  })
+
+  it('accepts a same-currency country on money-match', () => {
+    const gate = { id: 'capital.name', country: 'FR', variant: 'money-match' } as const
+    expect(isCorrectIndividualAnswer(gate, 'ES')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'CH')).toBe(false)
+  })
+
+  it('stays strict for every non-currency question', () => {
+    // Two euro countries — a shared currency must not leak into e.g. a flag
+    // or higher-lower verdict.
+    expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'DE')).toBe(
+      false
+    )
+    expect(
+      isCorrectIndividualAnswer({ id: 'currency', country: 'FI', variant: 'higher-lower' }, 'DE')
+    ).toBe(false)
+    expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'FI')).toBe(
+      true
+    )
   })
 })

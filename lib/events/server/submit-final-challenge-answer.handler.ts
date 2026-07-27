@@ -1,9 +1,8 @@
-import { CITY_LIGHTS } from '~~/data/cities.gen'
-import { COUNTRIES } from '~~/data/countries.gen'
-import { dealReplacementChallenge, sunsetQuota } from '~~/lib/challenges/final-challenge'
-import { getValueByAccessorID } from '~~/lib/values'
+import {
+  dealReplacementChallenge,
+  isCorrectFinalAnswer,
+} from '~~/lib/challenges/final-challenge'
 import { playableCountries } from '~~/lib/game-rules'
-import { isValidISOCode } from '~~/types/geography.types'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 
@@ -53,154 +52,13 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
     player.resolving = true
 
-    const { submittedAnswer } = eventData
-
-    const throwTypeMismatch = () => {
-      throw new TypeError(
-        `Challenge type mismatch: ${submittedAnswer._type || currentChallenge._type}`
-      )
-    }
-
-    let correct = false
-    switch (currentChallenge._type) {
-      case 'region-challenge':
-        {
-          if (submittedAnswer._type !== 'region-challenge') {
-            return throwTypeMismatch()
-          }
-
-          const correctRegion = COUNTRIES[currentChallenge.country].region
-          correct = correctRegion === submittedAnswer.region
-        }
-        break
-      case 'max-challenge':
-      case 'min-challenge':
-      case 'leadership-challenge':
-        {
-          // Narrows away every variant without a single-country answer
-          // (region picks a region, sunset-blitz submits a country list).
-          if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
-          if (!isValidISOCode(submittedAnswer.isoCode)) {
-            correct = false
-            break
-          }
-
-          const { isoCode } = submittedAnswer
-          correct = currentChallenge.country === isoCode
-        }
-        break
-      case 'language-challenge':
-        {
-          if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
-          if (!isValidISOCode(submittedAnswer.isoCode)) {
-            correct = false
-            break
-          }
-
-          const submittedCountry = COUNTRIES[submittedAnswer.isoCode]
-          correct = submittedCountry.languages.some(language => {
-            return language === currentChallenge.language
-          })
-        }
-        break
-      case 'membership-challenge':
-        {
-          if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
-          if (!isValidISOCode(submittedAnswer.isoCode)) {
-            correct = false
-            break
-          }
-
-          correct = submittedAnswer.isoCode === currentChallenge.exception
-        }
-        break
-      case 'born-challenge':
-        {
-          if (submittedAnswer._type !== 'born-challenge') return throwTypeMismatch()
-
-          // Quota of distinct picks, every one of which must qualify
-          const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
-          correct =
-            picks.length >= currentChallenge.quota &&
-            picks.every(isoCode => {
-              const independence = COUNTRIES[isoCode].government.independence
-              return !!independence && independence.amount > currentChallenge.year
-            })
-        }
-        break
-      case 'made-challenge':
-        {
-          if (submittedAnswer._type !== 'made-challenge') return throwTypeMismatch()
-          if (!isValidISOCode(submittedAnswer.isoCode)) {
-            correct = false
-            break
-          }
-
-          const exports = COUNTRIES[submittedAnswer.isoCode].economics.exports ?? []
-          correct = exports.includes(currentChallenge.commodity)
-        }
-        break
-      case 'scales-challenge':
-        {
-          if (submittedAnswer._type !== 'scales-challenge') return throwTypeMismatch()
-
-          const picks = [...new Set(submittedAnswer.isoCodes)].filter(isValidISOCode)
-          if (
-            !picks.length ||
-            picks.length > currentChallenge.maxPicks ||
-            picks.includes(currentChallenge.target)
-          ) {
-            correct = false
-            break
-          }
-
-          const target = getValueByAccessorID(
-            currentChallenge.target,
-            currentChallenge.accessorId
-          )?.amount
-          if (!target) {
-            correct = false
-            break
-          }
-
-          let combined = 0
-          for (const isoCode of picks) {
-            combined += getValueByAccessorID(isoCode, currentChallenge.accessorId)?.amount ?? 0
-          }
-          correct =
-            combined >= target * (1 - currentChallenge.tolerance) &&
-            combined <= target * (1 + currentChallenge.tolerance)
-        }
-        break
-      case 'city-nocturne-challenge':
-        {
-          if (submittedAnswer._type !== 'city-nocturne-challenge') return throwTypeMismatch()
-
-          // Client-trust: validate the lit names against the dealt city set
-          const dealt = new Set(
-            (CITY_LIGHTS[currentChallenge.country] ?? [])
-              .slice(0, currentChallenge.cityCount)
-              .map(city => city.name)
-          )
-          const lit = [...new Set(submittedAnswer.namedCities)].filter(name => dealt.has(name))
-          correct = lit.length >= currentChallenge.quota
-        }
-        break
-      case 'sunset-blitz-challenge':
-        {
-          if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
-
-          // Client-trust like higher-lower gates. The whole board is nameable
-          // (the camera shows more than the dealt window), so validate against
-          // the variant pool; the quota is a share of the dealt window.
-          const board = new Set(playableCountries(game))
-          const named = [...new Set(submittedAnswer.namedCountries)].filter(
-            isoCode => isValidISOCode(isoCode) && board.has(isoCode)
-          )
-          correct = named.length >= sunsetQuota(currentChallenge)
-        }
-        break
-    }
+    // The shared verdict throws on an answer/question shape mismatch, exiting
+    // before the question is consumed — see the guard note above.
+    const correct = isCorrectFinalAnswer({
+      challenge: currentChallenge,
+      submittedAnswer: eventData.submittedAnswer,
+      pool: playableCountries(game),
+    })
 
     const gauntlet = currentMove.challenge
     if (correct) {

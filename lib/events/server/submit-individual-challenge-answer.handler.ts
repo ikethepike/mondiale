@@ -1,3 +1,4 @@
+import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { gateLeapSteps } from '~~/lib/scoring'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
@@ -31,7 +32,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     }
     player.resolving = true
 
-    const correct = eventData.isoCode === currentMove.challenge.country
+    const correct = isCorrectIndividualAnswer(currentMove.challenge, eventData.isoCode)
     if (correct) {
       // Timed gates scale the leap by the clock; bought hints bite steps off.
       player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintsUsed)
