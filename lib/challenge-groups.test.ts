@@ -102,8 +102,11 @@ describe('taxonomy shape', () => {
     expect(autoEnabledKinds('conflicts', 'hard').enabled).toEqual(['flashpoint'])
     const water = autoEnabledKinds('water', 'normal')
     expect(water.total).toHaveLength(4)
-    expect(water.enabled).toEqual(expect.arrayContaining(['river-run', 'shared-shores']))
-    expect(water.enabled).toHaveLength(2)
+    // name-that-water deals below hard too — its pool scales in-dealer.
+    expect(water.enabled).toEqual(
+      expect.arrayContaining(['river-run', 'shared-shores', 'name-that-water'])
+    )
+    expect(water.enabled).toHaveLength(3)
   })
 })
 

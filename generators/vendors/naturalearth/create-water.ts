@@ -43,8 +43,14 @@ const LAYERS = {
   regions: 'ne_10m_geography_regions_polys',
 } as const
 
-/** Marine feature classes that make good questions (oceans are too big). */
-const MARINE_KINDS: Record<string, 'sea'> = {
+/**
+ * Marine feature classes that make good questions. Oceans glow map-wide but
+ * that's the point on easy — and NE's ocean rings are already cut at the
+ * antimeridian (the Arctic closes along lat 90, a flat line under Robinson),
+ * so the plain point projection renders them correctly.
+ */
+const MARINE_KINDS: Record<string, 'sea' | 'ocean'> = {
+  ocean: 'ocean',
   sea: 'sea',
   gulf: 'sea',
   bay: 'sea',
@@ -70,7 +76,7 @@ const RIVER_SAMPLE_STEP = 1.2
 
 type Point = [number, number]
 
-export type WaterKind = 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
 
 export interface WaterFeature {
   id: string
@@ -305,9 +311,26 @@ const slugify = (name: string) =>
 // --- Build -------------------------------------------------------------------
 const features: Record<string, WaterFeature> = {}
 const add = (feature: WaterFeature) => {
+  const existing = features[feature.id]
+  // NE splits the Pacific and Atlantic into hemispheric halves that share one
+  // English name — merge the halves into the canonical ocean.
+  if (existing && existing.kind === 'ocean' && feature.kind === 'ocean') {
+    const [ax, ay, aw, ah] = existing.bounds
+    const [bx, by, bw, bh] = feature.bounds
+    const minX = Math.min(ax, bx)
+    const minY = Math.min(ay, by)
+    existing.d = `${existing.d} ${feature.d}`
+    existing.bounds = [
+      minX,
+      minY,
+      roundTo(Math.max(ax + aw, bx + bw) - minX),
+      roundTo(Math.max(ay + ah, by + bh) - minY),
+    ]
+    existing.countries = [...new Set([...existing.countries, ...feature.countries])].sort()
+    return
+  }
   // Some names repeat across the globe (two "North Channel"s) — keep the
   // one with more adjacent countries, it's the better question
-  const existing = features[feature.id]
   if (existing && existing.countries.length >= feature.countries.length) return
   features[feature.id] = feature
 }
@@ -493,7 +516,7 @@ const main = async () => {
 // projected with the map's fitted Robinson (see data/map.gen.ts).
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-export type WaterKind = 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
 
 export interface WaterFeature {
   id: string

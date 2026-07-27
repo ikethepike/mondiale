@@ -15,6 +15,8 @@ import {
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
+  HINT_BITE_FRACTION,
+  hintDockedScore,
   scorePinDistance,
 } from './scoring'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
@@ -175,6 +177,26 @@ describe('gateLeapSteps', () => {
     expect(gateLeapSteps(Number.POSITIVE_INFINITY)).toBe(GATE_LEAP_STEPS)
     expect(gateLeapSteps(7)).toBe(2)
     expect(gateLeapSteps(-3)).toBe(1)
+  })
+})
+
+describe('hintDockedScore', () => {
+  it('leaves an unhinted answer untouched', () => {
+    expect(hintDockedScore(15, 15)).toBe(15)
+    expect(hintDockedScore(15, 15, 0)).toBe(15)
+  })
+
+  it('bites HINT_BITE_FRACTION of the pot per bought hint, never below zero', () => {
+    const bite = Math.round(15 * HINT_BITE_FRACTION)
+    expect(hintDockedScore(15, 15, 1)).toBe(15 - bite)
+    expect(hintDockedScore(15, 15, 2)).toBe(15 - 2 * bite)
+    expect(hintDockedScore(6, 15, 2)).toBe(0)
+  })
+
+  it('never lets a negative or garbage hint count inflate the score', () => {
+    expect(hintDockedScore(15, 15, -3)).toBe(15)
+    expect(hintDockedScore(15, 15, Number.NaN)).toBe(15)
+    expect(hintDockedScore(15, 15, 0.4)).toBe(15)
   })
 })
 
