@@ -496,6 +496,11 @@ export interface ManhuntClue {
 }
 
 export interface ManhuntState {
+  /** The round opens on a briefing: role cards each player must explicitly
+   *  dismiss. No clock runs until everyone is ready (or the cap forces it). */
+  briefing?: boolean
+  /** Players who dismissed their briefing card. */
+  ready: string[]
   /** Monotonic beat counter — timeout token and submit idempotency key.
    *  Increments on EVERY beat transition, mirroring border chain's `turn`. */
   turn: number

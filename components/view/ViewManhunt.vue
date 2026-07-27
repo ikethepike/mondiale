@@ -24,7 +24,7 @@
 
     <!-- The shared round clock, re-swept on every beat handoff. -->
     <ChallengeTimerRadial
-      v-if="!showInterstitial && !finished"
+      v-if="!showInterstitial && !finished && !briefing"
       :key="`turn-${state.turn}`"
       class="round-clock"
       :value="secondsOnClock"
@@ -34,7 +34,7 @@
     <!-- The despot's action dock, moored by the clock: resources, never
          intel — the rail below stays pure knowledge. Pressing it fans out
          every reachable shore (the touch path to sea reach). -->
-    <aside v-if="isDespot && !showInterstitial && !finished" class="despot-dock">
+    <aside v-if="isDespot && !showInterstitial && !finished && !briefing" class="despot-dock">
       <button
         class="dock-line"
         :class="{ open: seaFanOpen }"
@@ -91,6 +91,33 @@
       </div>
     </header>
 
+    <!-- The briefing: role cards each player dismisses explicitly. No clock
+         runs until the whole table is ready (or the server's cap forces it). -->
+    <section v-if="briefing" class="briefing pane tr decorator-bottom">
+      <DespotHat class="briefing-hat" />
+      <h2>{{ isDespot ? 'Your escape plan' : 'Your case file' }}</h2>
+      <ul class="briefing-points">
+        <template v-if="isDespot">
+          <li>Each turn, hop to a neighbouring country — across a border or a strait.</li>
+          <li>⚓ Sea passages jump a whole shared sea, but the crossing is announced.</li>
+          <li>Every turn the hunt learns one true fact about your hideout.</li>
+          <li>Survive {{ challenge.turnCount }} turns and the treasury is yours.</li>
+        </template>
+        <template v-else>
+          <li>Each turn brings one true intel report on the Despot's hideout.</li>
+          <li>Click the map to drop your marker — land on the Despot to capture.</li>
+          <li>⚖ Subpoenas force the next clue onto a topic of your choosing.</li>
+          <li>The closer your final marker, the bigger your share of the bounty.</li>
+        </template>
+      </ul>
+      <ButtonFilled v-if="!iAmReady" @click="sendReady">
+        {{ isDespot ? 'Start running' : 'Open the hunt' }}
+      </ButtonFilled>
+      <p v-else class="briefing-waiting">
+        {{ state.ready.length }} of {{ tableSize }} ready…
+      </p>
+    </section>
+
     <ManhuntReveal
       v-if="finished"
       class="reveal"
@@ -100,6 +127,15 @@
     />
 
     <footer>
+      <!-- One-tap taunt: a random line from your role's list, server-limited. -->
+      <button
+        v-if="!finished && !briefing && (isDespot || iAmDetective)"
+        class="taunt-chip map-caption"
+        :disabled="tauntCooling"
+        @click="sendTaunt"
+      >
+        📣 Taunt
+      </button>
       <!-- Subpoena dock, down where the detective's hands already are. -->
       <div v-if="canSubpoena" class="subpoena-dock map-caption">
         <span class="subpoena-lead">
@@ -131,6 +167,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -141,6 +178,7 @@ import { isStraitHop } from '~~/lib/chain'
 import {
   legalManhuntMoves,
   MANHUNT_SUBPOENA_TOPICS,
+  MANHUNT_TAUNTS,
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -168,6 +206,7 @@ const {
 // Total fallback: timers and watchers keep evaluating for a beat after the
 // round advances past manhunt, so the state must never dereference undefined.
 const EMPTY_STATE: ManhuntState = {
+  ready: [],
   turn: 0,
   hop: 1,
   beat: 'move',
@@ -306,6 +345,27 @@ const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
 
+const briefing = computed(() => !!state.value.briefing && !finished.value && !showInterstitial.value)
+const iAmReady = computed(() => state.value.ready.includes(gameStore.playerId))
+const tableSize = computed(() => state.value.detectives.length + 1)
+const readySent = ref(false)
+const sendReady = () => {
+  if (readySent.value) return
+  readySent.value = true
+  update({ event: 'manhunt-ready' })
+}
+
+const tauntCooling = ref(false)
+let tauntTimer: ReturnType<typeof setTimeout> | undefined
+registerCleanup(() => tauntTimer && clearTimeout(tauntTimer))
+const sendTaunt = () => {
+  if (tauntCooling.value) return
+  const lines = MANHUNT_TAUNTS[isDespot.value ? 'despot' : 'detective']
+  update({ event: 'manhunt-taunt', index: Math.floor(Math.random() * lines.length) })
+  tauntCooling.value = true
+  tauntTimer = setTimeout(() => (tauntCooling.value = false), 6000)
+}
+
 const nameOf = (playerId: string) =>
   playerId === gameStore.playerId ? 'you' : gameStore.game?.players[playerId]?.name || 'Anonymous'
 
@@ -366,7 +426,7 @@ watch(
 
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
-  if (showInterstitial.value || finished.value || pending.value) return
+  if (showInterstitial.value || finished.value || pending.value || briefing.value) return
   const active = challenge.value
   if (!active) return
   const isoCode = event.detail.isoCode
@@ -775,6 +835,56 @@ header .prompt {
     top: auto;
     right: calc(1.2rem + var(--safe-right));
     bottom: calc(1.6rem + var(--safe-bottom) + 6rem);
+  }
+}
+
+.briefing {
+  gap: 1rem;
+  z-index: 3;
+  display: flex;
+  margin: 0 auto;
+  padding: 1.8rem 2.2rem;
+  text-align: center;
+  align-items: center;
+  flex-flow: column nowrap;
+  pointer-events: auto;
+  max-width: min(34rem, calc(100% - 2.4rem));
+
+  .briefing-hat {
+    width: 5.2rem;
+    transform: rotate(-9deg);
+  }
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.briefing-points {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  text-align: left;
+  gap: 0.55rem;
+  flex-flow: column nowrap;
+}
+
+.briefing-waiting {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.taunt-chip {
+  font: inherit;
+  display: block;
+  cursor: pointer;
+  margin: 0 auto 0.6rem;
+  pointer-events: auto;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 }
 

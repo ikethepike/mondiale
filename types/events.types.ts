@@ -4,7 +4,7 @@ import type { ISOCountryCode, Region } from './geography.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
  *  verdict — only that the player answered. */
-export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence'
+export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 'taunt'
 
 /** The only cheers that exist — the server whitelists against this set, and
  *  clients render by indexing into it rather than echoing payload strings. */
@@ -109,6 +109,17 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Manhunt: a player dismissed their briefing card. The round's first
+       *  clock starts when everyone has (or the briefing cap forces it). */
+      event: 'manhunt-ready'
+    }
+  | {
+      /** Manhunt: an ephemeral taunt — an index into the sender's role list
+       *  (MANHUNT_TAUNTS), never free text. Pure relay, no state. */
+      event: 'manhunt-taunt'
+      index: number
+    }
+  | {
       /** Manhunt: the despot's client asks for its own trail (reconnect
        *  path). Answered with a targeted 'manhunt-position' emit; ignored for
        *  anyone but the despot. */
@@ -198,6 +209,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-manhunt-move',
   'submit-manhunt-marker',
   'submit-manhunt-subpoena',
+  'manhunt-ready',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -250,6 +262,16 @@ export type ServerEventData =
   /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
    *  never broadcast. `turn` stamps which beat the trail was current at. */
   | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }
+  /** Manhunt: a relayed taunt. `role` picks the phrase list; `index` the
+   *  line. The sender id is the socket's authenticated id. */
+  | {
+      event: 'manhunt-taunt'
+      playerId: string
+      role: 'despot' | 'detective'
+      index: number
+      entryId: string
+      at: number
+    }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
   | {

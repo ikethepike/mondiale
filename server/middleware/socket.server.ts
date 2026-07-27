@@ -20,6 +20,11 @@ import { submitManhuntMoveHandler } from '~~/lib/events/server/submit-manhunt-mo
 import { submitManhuntMarkerHandler } from '~~/lib/events/server/submit-manhunt-marker.handler'
 import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
+import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
+import {
+  forgetTauntBucket,
+  manhuntTauntHandler,
+} from '~~/lib/events/server/manhunt-taunt.handler'
 import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
 import { submitTimelinePlacementHandler } from '~~/lib/events/server/submit-timeline-placement.handler'
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
@@ -89,6 +94,13 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-manhunt-subpoena': {
     handler: submitManhuntSubpoenaHandler,
+  },
+  'manhunt-ready': {
+    handler: manhuntReadyHandler,
+  },
+  // Ephemeral taunt relay — no permanent state written
+  'manhunt-taunt': {
+    handler: manhuntTauntHandler,
   },
   // Reads only the requesting despot's own secret; answers on their socket
   'fetch-manhunt-position': {
@@ -234,6 +246,7 @@ export default defineEventHandler(({ node }) => {
       socket.on('disconnect', () => {
         forgetGuessBucket(socket.id)
         forgetCheerBucket(socket.id)
+        forgetTauntBucket(socket.id)
         pruneSpectatorOnDisconnect(io, redis, socket)
       })
 

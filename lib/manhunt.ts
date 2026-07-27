@@ -520,6 +520,25 @@ export const answerManhuntSubpoena = (
   return guardedPick(best, despotAt, candidates, hop)
 }
 
+// --- Taunts -------------------------------------------------------------------
+
+/** The only words that travel — clients render by index, the server
+ *  whitelists against these lists (the cheer-relay discipline). */
+export const MANHUNT_TAUNTS = {
+  despot: [
+    "You'll never take me alive",
+    'Lovely weather in my hideout',
+    'Was that marker supposed to scare me?',
+    'The treasury sends its regards',
+  ],
+  detective: [
+    'The net is closing',
+    'We can smell the cologne from here',
+    'Nowhere left to run',
+    'Your face is on every lamppost',
+  ],
+} as const
+
 // --- Scoring ----------------------------------------------------------------
 
 /** The despot's share grows with every hop survived; the chase pot splits by

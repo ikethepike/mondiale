@@ -32,6 +32,8 @@ defineProps<{
  * than what was picked — the guess itself would narrow a shared hidden target.
  */
 const guessText = (entry: GuessTickerEntry) => {
+  // A taunt is said, not judged — no verdict mark.
+  if (entry.kind === 'taunt') return `\u201c${entry.label ?? '\u2026'}\u201d`
   const named = entry.label ?? (entry.isoCode ? countryName(entry.isoCode) : undefined)
   if (named) return `${named} ${entry.kind === 'correct' ? '✓' : '✗'}`
   switch (entry.kind) {

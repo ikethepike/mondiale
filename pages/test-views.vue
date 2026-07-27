@@ -1093,6 +1093,7 @@ const scenarios: Scenario[] = [
           subpoenas: 2,
           showCandidates: true,
           state: {
+            ready: [],
             turn: 5,
             hop: 3,
             beat: 'hunt',
@@ -1140,6 +1141,7 @@ const scenarios: Scenario[] = [
           subpoenas: 2,
           showCandidates: true,
           state: {
+            ready: [],
             turn: 4,
             hop: 3,
             beat: 'move',
@@ -1183,6 +1185,7 @@ const scenarios: Scenario[] = [
           subpoenas: 2,
           showCandidates: true,
           state: {
+            ready: [],
             turn: 10,
             hop: 5,
             beat: 'hunt',

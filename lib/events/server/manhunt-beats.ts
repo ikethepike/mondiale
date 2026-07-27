@@ -122,11 +122,65 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
     markers: {},
   }
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
+  // No clock yet: the round opens on the briefing, and the despot's first
+  // move clock starts only when everyone is ready (or the cap forces it).
+}
+
+/** How long the table may read before the pursuit starts regardless. */
+const BRIEFING_CAP_MS = 30000
+
+const briefingParticipants = (challenge: ManhuntChallenge): string[] => [
+  challenge.despotId,
+  ...challenge.state.detectives,
+]
+
+/** A player dismissed their briefing card. Idempotent; the last ready (or the
+ *  cap) opens the pursuit. */
+export const applyManhuntReady = async (
+  ctx: ChainContext,
+  game: Game,
+  challenge: ManhuntChallenge,
+  playerId: string
+) => {
+  const { state } = challenge
+  if (!state.briefing || state.ready.includes(playerId)) return
+  state.ready.push(playerId)
+
+  if (briefingParticipants(challenge).every(id => state.ready.includes(id))) {
+    return beginPursuit(ctx, game, challenge)
+  }
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+}
+
+/** Briefing over: the despot's first move clock starts for real. */
+const beginPursuit = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
+  challenge.state.briefing = false
   stampDeadline(challenge, FIRST_TURN_GRACE_MS)
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+  scheduleManhuntTimeout(ctx, challenge)
 }
 
 /** Arm the beat clock (call AFTER the save — the fired task re-reads fresh state). */
 export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChallenge) => {
+  // During the briefing there is no beat clock — arm the reading cap instead;
+  // it force-starts the pursuit for a table that never all clicks ready.
+  if (challenge.state.briefing) {
+    setTimeout(() => {
+      enqueueGameTask(ctx.eventTarget.gameId, async () => {
+        const server = useServerSideEvents(ctx)
+        const game = await server.fetchGame(ctx.eventTarget.gameId)
+        if (!game) return
+        const current = currentManhunt(game)
+        if (!current || current.state.finished || !current.state.briefing) return
+        await beginPursuit(ctx, game, current)
+      })
+    }, BRIEFING_CAP_MS)
+    return
+  }
   const { turn, deadline } = challenge.state
   const delay = Math.max(0, deadline - Date.now()) + TIMEOUT_SLACK_MS
   setTimeout(() => {

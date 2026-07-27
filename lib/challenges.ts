@@ -302,6 +302,8 @@ const getManhuntChallenge = ({
     subpoenas: tuning.subpoenas,
     showCandidates: game.difficulty !== 'hard',
     state: {
+      briefing: true,
+      ready: [],
       turn: 0,
       hop: 1,
       beat: 'move',

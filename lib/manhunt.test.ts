@@ -28,6 +28,7 @@ const RULES = { variant: 'world' as const, difficulty: 'normal' as const }
 const game = { difficulty: 'normal' as const }
 
 const state = (overrides: Partial<ManhuntState> = {}): ManhuntState => ({
+  ready: [],
   turn: 0,
   hop: 1,
   beat: 'move',
