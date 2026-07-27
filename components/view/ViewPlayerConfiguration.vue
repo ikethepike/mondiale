@@ -218,6 +218,21 @@
 
           <div class="challenge-row">
             <div class="challenge-meta">
+              <span class="challenge-name">Micro-nations</span>
+              <span class="challenge-caption">{{ microNationsCaption }}</span>
+            </div>
+            <SegmentedControl
+              name="game-microNations"
+              label="Micro-nations"
+              :options="['auto', 'on', 'off']"
+              :model-value="microNationsValue"
+              :disabled="!isPlayerHost"
+              @change="updateConfiguration"
+            />
+          </div>
+
+          <div class="challenge-row">
+            <div class="challenge-meta">
               <span class="challenge-name">Live guesses</span>
               <span class="challenge-caption">Show opponents' guesses as they land.</span>
             </div>
@@ -267,6 +282,7 @@ import { gsap } from 'gsap'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { MAX_PLAYER_NAME_LENGTH, normalizePlayerName } from '~~/lib/player'
 import { wait } from '~~/lib/time'
@@ -306,6 +322,23 @@ const overrideValue = (id: ChallengeGroupId): string => {
   const override = game.value?.challengeOverrides?.[id]
   return override === undefined ? 'auto' : override ? 'on' : 'off'
 }
+
+/** Micro-nations tri-state, resolved exactly like the group overrides. */
+const microNationsValue = computed(() => {
+  const override = game.value?.includeMicroNations
+  return override === undefined ? 'auto' : override ? 'on' : 'off'
+})
+
+// Same terse idiom as the group captions — a long line here wraps the meta
+// column wide and shoves the control out of the row.
+const microNationsCaption = computed(() => {
+  const override = game.value?.includeMicroNations
+  if (override === true) return 'on'
+  if (override === false) return 'off'
+  return microNationsIncluded({ difficulty: difficultyPreview.value })
+    ? 'on'
+    : `off below hard — now ${difficultyPreview.value}`
+})
 
 /** What this group's current tab means in modes, at the previewed difficulty. */
 const groupCaption = (id: ChallengeGroupId): string => {
@@ -384,6 +417,11 @@ const updateConfiguration = async () => {
       if (value !== 'auto') challengeOverrides[field.replace('challenges-', '')] = value === 'on'
       continue
     }
+    // Micro-nations is a tri-state too: 'auto' = no key (difficulty decides).
+    if (field === 'microNations') {
+      if (value !== 'auto') configuration.includeMicroNations = value === 'on'
+      continue
+    }
     // The spectator door rides its own event (it must swing mid-game too) —
     // its control sits in this form only for layout.
     if (field === 'spectators') continue
@@ -398,6 +436,10 @@ const updateConfiguration = async () => {
   configuration.liveGuesses = settingsMounted
     ? configuration.liveGuesses === 'on'
     : game.value.liveGuesses !== false
+  // Settings not mounted: carry the game's stored tri-state (absent = auto).
+  if (!settingsMounted && game.value.includeMicroNations !== undefined) {
+    configuration.includeMicroNations = game.value.includeMicroNations
+  }
   configuration.difficulty ??= game.value.difficulty
 
   if (!isValidGameConfiguration(configuration)) {

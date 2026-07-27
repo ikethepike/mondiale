@@ -84,9 +84,9 @@ import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { activePlayerId, isStraitHop, liveChain, openMoves } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
+import { isCountryPlayable } from '~~/lib/game-rules'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
-import { countryInVariant } from '~~/lib/variant'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -116,13 +116,11 @@ const activePlayer = computed(() =>
 const myTurn = computed(() => !finished.value && activeId.value === gameStore.playerId)
 const walked = computed(() => chain.value)
 
-// On a continental board, countries off the board are illegal moves — fade
-// them so the rule is visible before someone walks Spain → Morocco into it.
-const variant = gameStore.game?.variant ?? 'world'
-gameStore.map.dimmed =
-  variant === 'world'
-    ? []
-    : ISOCountryCodes.filter(isoCode => !countryInVariant(isoCode, variant))
+// Countries out of this game — off a continental board, or benched
+// micro-nations — are illegal moves; fade them so the rule is visible
+// before someone walks Spain → Morocco into it.
+const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+gameStore.map.dimmed = ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))
 
 /** Walk-order badges over the live chain (1 = seed). On easy, the head's open
  *  connections also carry their ISO code — the legal moves, spelled out. */
@@ -131,7 +129,7 @@ const sequenceEntries = computed(() => {
   if (gameStore.game?.difficulty !== 'easy' || finished.value || !state.value) return numbered
   return [
     ...numbered,
-    ...openMoves(state.value, variant).map(isoCode => ({ isoCode, label: isoCode })),
+    ...openMoves(state.value, rules).map(isoCode => ({ isoCode, label: isoCode })),
   ]
 })
 

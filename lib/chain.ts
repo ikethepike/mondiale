@@ -1,10 +1,10 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { STRAITS } from '~~/data/straits.gen'
 import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
-import type { GameVariant } from '~~/types/game.types'
+import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
-import { countryInVariant } from './variant'
+import { isCountryPlayable } from './game-rules'
 
 /**
  * Border Chain's graph: land adjacency plus sea straits. The strait edges are
@@ -28,12 +28,12 @@ export const chainHead = (state: BorderChainState): ISOCountryCode | undefined =
 }
 
 /** Legal extensions of the live chain: connected to the head, unused, on the board. */
-export const openMoves = (state: BorderChainState, variant: GameVariant): ISOCountryCode[] => {
+export const openMoves = (state: BorderChainState, rules: GameRules): ISOCountryCode[] => {
   const head = chainHead(state)
   if (!head) return []
   const used = new Set(liveChain(state))
   return connectionsOf(head).filter(
-    isoCode => !used.has(isoCode) && countryInVariant(isoCode, variant)
+    isoCode => !used.has(isoCode) && isCountryPlayable(rules, isoCode)
   )
 }
 
@@ -51,17 +51,17 @@ export const standingPlayers = (state: BorderChainState): string[] => {
 const MINIMUM_SEED_MOVES = 3
 
 export const pickChainSeed = (
-  variant: GameVariant,
+  rules: GameRules,
   exclude: Set<ISOCountryCode> = new Set()
 ): ISOCountryCode | undefined => {
   const pool = shuffleArray(
     (Object.keys(BORDERS) as ISOCountryCode[]).filter(
-      isoCode => countryInVariant(isoCode, variant) && !exclude.has(isoCode)
+      isoCode => isCountryPlayable(rules, isoCode) && !exclude.has(isoCode)
     )
   )
   return pool.find(isoCode => {
     const open = connectionsOf(isoCode).filter(
-      connected => connected !== isoCode && countryInVariant(connected, variant)
+      connected => connected !== isoCode && isCountryPlayable(rules, connected)
     )
     return new Set(open).size >= MINIMUM_SEED_MOVES
   })

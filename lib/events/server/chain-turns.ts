@@ -136,7 +136,7 @@ export const applyChainMove = async (
   state.lastMoverId = moverId
   advanceTurn(challenge)
 
-  while (openMoves(state, game.variant).length === 0) {
+  while (openMoves(state, game).length === 0) {
     const trappedId = activePlayerId(state)
     eliminate(challenge, trappedId, 'trapped', [])
     if (state.lastMoverId && state.lastMoverId !== trappedId) {
@@ -149,7 +149,7 @@ export const applyChainMove = async (
 
     // Fresh ground for the survivors — never a country already walked.
     const walked = new Set(state.chains.flat())
-    const seed = pickChainSeed(game.variant, walked) ?? pickChainSeed(game.variant)
+    const seed = pickChainSeed(game, walked) ?? pickChainSeed(game)
     if (!seed) return finishChainRound(ctx, game, challenge)
     state.chains.push([seed])
     advanceTurn(challenge)
@@ -171,7 +171,7 @@ export const resolveChainMiss = async (
   if ((state.strikesLeft[missedId] ?? 0) > 0) {
     state.strikesLeft[missedId]--
   } else {
-    eliminate(challenge, missedId, kind, openMoves(state, game.variant))
+    eliminate(challenge, missedId, kind, openMoves(state, game))
     if (standingPlayers(state).length <= 1) {
       return finishChainRound(ctx, game, challenge)
     }
@@ -246,4 +246,4 @@ const finishChainRound = async (
 
 /** Reveal-path entry (enter-movement-phase): sanity-recheck the opening head. */
 export const chainHasOpenStart = (challenge: BorderChainChallenge, game: Game): boolean =>
-  !!chainHead(challenge.state) && openMoves(challenge.state, game.variant).length > 0
+  !!chainHead(challenge.state) && openMoves(challenge.state, game).length > 0

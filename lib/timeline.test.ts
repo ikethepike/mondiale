@@ -10,7 +10,10 @@ import {
   slotDensityFraction,
 } from '~~/lib/timeline'
 import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group-modes.type'
-import type { Game, GameDifficulty } from '~~/types/game.types'
+import type { Game, GameDifficulty, GameRules } from '~~/types/game.types'
+
+// Hard rules keep micro-nations in play — the full event library, as before.
+const WORLD: GameRules = { variant: 'world', difficulty: 'hard' }
 
 const state = (overrides: Partial<TimelineState> = {}): TimelineState => ({
   deck: [],
@@ -113,7 +116,7 @@ describe('formatEventYear', () => {
 describe('dealTimelineDeck', () => {
   it('deals unique, country-capped decks from the world pool', () => {
     for (let attempt = 0; attempt < 10; attempt++) {
-      const deck = dealTimelineDeck('world', 10, 10)
+      const deck = dealTimelineDeck(WORLD, 10, 10)
       expect(deck).toBeDefined()
       expect(deck).toHaveLength(10)
       expect(new Set(deck).size).toBe(10)
@@ -128,12 +131,12 @@ describe('dealTimelineDeck', () => {
   })
 
   it('refuses a pool that cannot sustain the round', () => {
-    expect(dealTimelineDeck('world', Object.keys(EVENTS).length + 1, 0)).toBeUndefined()
+    expect(dealTimelineDeck(WORLD, Object.keys(EVENTS).length + 1, 0)).toBeUndefined()
   })
 
   it('confines an era-windowed deck to one stretch of history', () => {
     for (let attempt = 0; attempt < 10; attempt++) {
-      const deck = dealTimelineDeck('world', 10, 2, 140)
+      const deck = dealTimelineDeck(WORLD, 10, 2, 140)
       expect(deck).toBeDefined()
       const years = deck!.map(slug => EVENTS[slug]!.year)
       expect(Math.max(...years) - Math.min(...years)).toBeLessThanOrEqual(140)

@@ -32,7 +32,8 @@ import { OrganizationVector } from '~~/types/organization.type'
 import { shuffleArray } from '../arrays'
 import { mainlandBox } from '../geo'
 import { getValueByAccessorID } from '../values'
-import { REGION_LABELS, variantCountries } from '../variant'
+import { playableCountries } from '../game-rules'
+import { REGION_LABELS } from '../variant'
 
 type FinalChallengeType = FinalChallengeItem['_type']
 
@@ -108,7 +109,7 @@ const dealChallenge = (
 }
 
 export const getFinalChallenges = ({ game }: { game: Game }): FinalChallenge => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
   const count = GAUNTLET_LENGTH[game.difficulty]
 
   const drawn: FinalChallengeItem[] = []
@@ -147,7 +148,7 @@ export const dealReplacementChallenge = ({
   game: Game
   exclude: FinalChallengeType[]
 }): FinalChallengeItem | undefined => {
-  const pool = variantCountries(game.variant)
+  const pool = playableCountries(game)
   const types = shuffleArray(eligibleTypes(game, pool))
   for (const type of [...types.filter(t => !exclude.includes(t)), ...types]) {
     const item = dealChallenge(type, pool, game.difficulty)

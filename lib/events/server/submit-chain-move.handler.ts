@@ -18,7 +18,7 @@ export const submitChainMoveHandler = defineGameHandler(
     if (!isValidISOCode(eventData.isoCode)) return
 
     const ctx = { io, redis, socket, eventTarget }
-    if (openMoves(state, game.variant).includes(eventData.isoCode)) {
+    if (openMoves(state, game).includes(eventData.isoCode)) {
       await applyChainMove(ctx, game, challenge, eventData.isoCode)
     } else {
       await resolveChainMiss(ctx, game, challenge, 'wrong')

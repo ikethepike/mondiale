@@ -46,6 +46,8 @@ import {
   localCountryName,
   searchCountriesByName,
 } from '~~/lib/country'
+import { excludedMicroNations } from '~~/lib/game-rules'
+import { useGameStore } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
 
@@ -79,9 +81,14 @@ const list = ref<HTMLUListElement>()
 const listId = useId()
 const optionId = (country: Country) => `${listId}-${country.isoCode}`
 
+// The game's benched micro-nations are unselectable here too — one gate for
+// every view that types its guesses, matching the map's click gate.
+const gameStore = useGameStore()
+const benched = computed(() => new Set(gameStore.game ? excludedMicroNations(gameStore.game) : []))
+
 const suggestions = computed(() => {
   if (props.disabled) return []
-  return searchCountriesByName(query.value, 6, new Set(props.excluded))
+  return searchCountriesByName(query.value, 6, new Set([...props.excluded, ...benched.value]))
 })
 
 /**
@@ -128,7 +135,13 @@ const pick = (country: Country) => {
 
 const submitTyped = () => {
   if (!query.value.trim()) return
+  // A typed-out benched country ("vatican") must not fall through to the
+  // highlighted suggestion — that would silently commit a different country.
   const direct = findCountryByName(query.value)
+  if (direct && benched.value.has(direct.isoCode)) {
+    emit('miss', query.value)
+    return
+  }
   const country = direct ?? highlighted.value
   if (!country) {
     emit('miss', query.value)

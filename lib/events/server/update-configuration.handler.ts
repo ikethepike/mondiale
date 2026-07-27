@@ -22,6 +22,10 @@ export const updateConfigurationHandler = defineGameHandler(
     game.length = configuration.length
     game.variant = configuration.variant
     game.liveGuesses = configuration.liveGuesses
+    // Tri-state: an absent key means auto (the difficulty decides), so the
+    // key must actually disappear rather than persist as an explicit value.
+    if (configuration.includeMicroNations === undefined) delete game.includeMicroNations
+    else game.includeMicroNations = configuration.includeMicroNations
     game.challengeOverrides = configuration.challengeOverrides
     game.tiles = generateTiles(game.length)
 

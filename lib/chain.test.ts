@@ -5,6 +5,7 @@ import type {
   BorderChainChallenge,
   BorderChainState,
 } from '~~/types/challenges/group-modes.type'
+import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   chainHead,
@@ -16,6 +17,10 @@ import {
   scoreBorderChain,
   standingPlayers,
 } from './chain'
+
+// Hard rules keep micro-nations in play, preserving the full historic graph.
+const WORLD: GameRules = { variant: 'world', difficulty: 'hard' }
+const EUROPE: GameRules = { variant: 'europe', difficulty: 'hard' }
 
 const state = (overrides: Partial<BorderChainState> = {}): BorderChainState => ({
   chains: [['NO']],
@@ -85,7 +90,7 @@ describe('connectionsOf', () => {
 describe('openMoves', () => {
   it('excludes countries already walked this chain', () => {
     const walked = state({ chains: [['NO', 'SE', 'FI']] })
-    const moves = openMoves(walked, 'world')
+    const moves = openMoves(walked, WORLD)
     expect(moves).toContain('RU') // FI-RU is open
     expect(moves).not.toContain('SE')
     expect(moves).not.toContain('NO')
@@ -93,8 +98,8 @@ describe('openMoves', () => {
 
   it('scopes to the board variant', () => {
     const atRussia = state({ chains: [['FI', 'RU']] })
-    const world = openMoves(atRussia, 'world')
-    const europe = openMoves(atRussia, 'europe')
+    const world = openMoves(atRussia, WORLD)
+    const europe = openMoves(atRussia, EUROPE)
     expect(world).toContain('CN')
     expect(europe).not.toContain('CN')
     expect(europe).toContain('EE')
@@ -102,22 +107,22 @@ describe('openMoves', () => {
 
   it('only reads the live chain, not earlier ones', () => {
     const redealt = state({ chains: [['PT', 'ES', 'FR'], ['DE']] })
-    expect(openMoves(redealt, 'world')).toContain('FR')
+    expect(openMoves(redealt, WORLD)).toContain('FR')
   })
 
   it('reports a dead end as no moves', () => {
     // Portugal's only connection is Spain — already walked.
     const trapped = state({ chains: [['ES', 'PT']] })
-    expect(openMoves(trapped, 'world')).toEqual([])
+    expect(openMoves(trapped, WORLD)).toEqual([])
   })
 })
 
 describe('pickChainSeed', () => {
   it('deals a seed with at least three outs on the board', () => {
     for (let attempt = 0; attempt < 25; attempt++) {
-      const seed = pickChainSeed('europe')
+      const seed = pickChainSeed(EUROPE)
       expect(seed).toBeDefined()
-      const outs = new Set(openMoves(state({ chains: [[seed!]] }), 'europe'))
+      const outs = new Set(openMoves(state({ chains: [[seed!]] }), EUROPE))
       expect(outs.size).toBeGreaterThanOrEqual(3)
     }
   })
@@ -125,7 +130,7 @@ describe('pickChainSeed', () => {
   it('respects the exclusion set', () => {
     const exclude = new Set<ISOCountryCode>(['DE'])
     for (let attempt = 0; attempt < 25; attempt++) {
-      expect(pickChainSeed('europe', exclude)).not.toBe('DE')
+      expect(pickChainSeed(EUROPE, exclude)).not.toBe('DE')
     }
   })
 })

@@ -2,7 +2,7 @@ import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { dealReplacementChallenge, sunsetQuota } from '~~/lib/challenges/final-challenge'
 import { getValueByAccessorID } from '~~/lib/values'
-import { variantCountries } from '~~/lib/variant'
+import { playableCountries } from '~~/lib/game-rules'
 import { isValidISOCode } from '~~/types/geography.types'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
@@ -193,7 +193,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
           // Client-trust like higher-lower gates. The whole board is nameable
           // (the camera shows more than the dealt window), so validate against
           // the variant pool; the quota is a share of the dealt window.
-          const board = new Set(variantCountries(game.variant))
+          const board = new Set(playableCountries(game))
           const named = [...new Set(submittedAnswer.namedCountries)].filter(
             isoCode => isValidISOCode(isoCode) && board.has(isoCode)
           )

@@ -46,6 +46,7 @@
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
+              'unselectable-country': unselectableSet.has(code),
             }"
             :data-id="code"
             :d="d"
@@ -64,7 +65,7 @@
                shape is a few pixels at best, so the disc IS the readable
                "is Monaco lit?" signal. -->
           <circle
-            v-for="(spot, code) in MICRO_COUNTRIES"
+            v-for="(spot, code) in microCountries"
             :key="`hit-${code}`"
             class="micro-hit"
             :class="{ 'stated-halo': microHaloFills[code] }"
@@ -76,7 +77,7 @@
             @click="handleClick(code, $event)"
           />
           <circle
-            v-for="(spot, code) in MICRO_COUNTRIES"
+            v-for="(spot, code) in microCountries"
             :key="`dot-${code}`"
             class="micro-marker"
             :style="{ fill: countryColors[code] }"
@@ -283,6 +284,13 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Countries this game never lets anyone select (benched micro-nations):
+   *  clicks are swallowed and their dot markers/tap halos don't render, so
+   *  the exclusion holds across every view in one place. */
+  unselectable: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Stagger country fills by their countryGroupings position — the Border
    *  Chain reveal replays the walked path arriving in sequence. */
   staggered: {
@@ -328,6 +336,14 @@ const highlights = computed(() =>
 
 const dimmedSet = computed(() => new Set<string>(props.dimmed))
 const pulsingSet = computed(() => new Set<string>(props.pulsing))
+const unselectableSet = computed(() => new Set<string>(props.unselectable))
+
+/** Micro-state dots and tap halos, minus any the game has benched. */
+const microCountries = computed(() =>
+  Object.fromEntries(
+    Object.entries(MICRO_COUNTRIES).filter(([code]) => !unselectableSet.value.has(code))
+  )
+)
 
 /** State colour per micro country, driving the halo's filled-disc treatment. */
 const microHaloFills = computed<Partial<Record<string, string>>>(() => {
@@ -698,6 +714,10 @@ const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined =
 }
 
 const handleClick = (isoCode: string, event?: MouseEvent) => {
+  // Benched countries are not click targets anywhere — swallowing the click
+  // here gates every listener (views, atlas, document mapClick) at once.
+  if (unselectableSet.value.has(isoCode)) return
+
   emit('countryClick', isoCode)
 
   // Pin-the-landmark scores the exact point, not the country, so carry the
@@ -1330,6 +1350,13 @@ svg {
   stroke: var(--halo-state);
   stroke-width: calc(1.5px * var(--stroke-zoom, 1));
   stroke-dasharray: none;
+}
+
+// Benched countries: part of the terrain, never a target — no hand cursor,
+// no hit-testing (handleClick also swallows them, belt and braces).
+path[id].unselectable-country {
+  cursor: default;
+  pointer-events: none;
 }
 
 path[id],
