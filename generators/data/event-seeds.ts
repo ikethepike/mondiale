@@ -3633,4 +3633,586 @@ export const EVENT_SEEDS: EventSeed[] = [
     description:
       'India became the fourth country to soft-land on the Moon and the first to reach its south polar region — days after a Russian attempt crashed, and on a famously lean budget.',
   },
+
+  // --- Expansion: geographic discovery and exploration ------------------------
+  {
+    name: 'First voyage of James Cook',
+    title: 'Cook charts the Pacific',
+    country: 'AU',
+    kind: 'science',
+    year: 1770,
+    description:
+      "Sent to Tahiti to watch Venus cross the Sun, James Cook's Endeavour sailed on to circle New Zealand and chart Australia's east coast, claiming it for Britain at Botany Bay.",
+  },
+  {
+    name: 'Lewis and Clark Expedition',
+    title: 'Lewis and Clark head west',
+    country: 'US',
+    kind: 'science',
+    year: 1804,
+    description:
+      'Jefferson sent Meriwether Lewis and William Clark up the Missouri to find a route to the Pacific. With the Shoshone guide Sacagawea they crossed the continent and back in two and a half years.',
+  },
+  {
+    name: 'Challenger expedition',
+    title: 'The Challenger expedition sails',
+    country: 'GB',
+    kind: 'science',
+    year: 1872,
+    description:
+      'HMS Challenger left Portsmouth to spend four years sounding the oceans — the voyage that founded oceanography, catalogued thousands of new species, and first plumbed the deep that now carries its name.',
+  },
+  {
+    name: 'Imperial Trans-Antarctic Expedition',
+    title: "Shackleton's Endurance is crushed",
+    country: 'GB',
+    kind: 'science',
+    year: 1915,
+    description:
+      "Shackleton's ship Endurance was squeezed to splinters by Antarctic pack ice. His crew drifted on ice floes, sailed an open boat 1,300 km to South Georgia — and every one of the 28 men survived.",
+  },
+  {
+    name: 'Bathyscaphe Trieste',
+    title: 'The deepest dive on Earth',
+    country: 'CH',
+    kind: 'science',
+    year: 1960,
+    // Name search lands on the US Navy vessel item, which is undated in its own
+    // right but carries the 1960 dive; pin it and supply the photo directly.
+    qid: 'Q58952739',
+    description:
+      'Jacques Piccard and Don Walsh rode the Swiss-built Trieste eleven kilometres down into the Mariana Trench — the deepest point of any ocean. No one returned for over fifty years.',
+    commons: 'Bathyscaphe Trieste.jpg',
+  },
+
+  // --- Expansion: space --------------------------------------------------------
+  {
+    name: 'Luna 2',
+    title: 'The first craft reaches the Moon',
+    country: 'RU',
+    kind: 'science',
+    year: 1959,
+    description:
+      'The Soviet probe Luna 2 crashed into the Moon by design — the first human-made object to touch another world, scattering Soviet pennants across the surface.',
+  },
+  {
+    name: 'Voskhod 2',
+    title: 'The first spacewalk',
+    country: 'RU',
+    kind: 'science',
+    year: 1965,
+    description:
+      'Alexei Leonov floated out of Voskhod 2 on a five-metre tether for twelve minutes. His suit ballooned so badly in the vacuum that he barely squeezed back through the airlock — a detail kept secret for years.',
+  },
+  {
+    name: 'Apollo 8',
+    title: 'First humans around the Moon',
+    country: 'US',
+    kind: 'science',
+    year: 1968,
+    description:
+      'Apollo 8 carried the first people beyond Earth orbit, looping the Moon on Christmas Eve. Its crew brought home Earthrise — the photograph of our planet rising over a grey horizon.',
+  },
+  {
+    name: 'Apollo 13',
+    title: "Apollo 13's safe return",
+    country: 'US',
+    kind: 'science',
+    year: 1970,
+    description:
+      'An oxygen tank exploded 320,000 km from Earth, and a Moon landing became a rescue: the crew rode their freezing lunar module around the Moon and home — the "successful failure".',
+  },
+  {
+    name: 'Salyut 1',
+    title: 'The first space station',
+    country: 'RU',
+    kind: 'science',
+    year: 1971,
+    description:
+      'The Soviet Union orbited Salyut 1, the first station humans lived aboard in space. Its first crew stayed 23 days — then died on re-entry when their capsule lost its air.',
+  },
+  {
+    name: 'Apollo–Soyuz',
+    title: 'A handshake in orbit',
+    country: 'US',
+    kind: 'science',
+    year: 1975,
+    description:
+      "An American Apollo and a Soviet Soyuz docked nose to nose, and their commanders shook hands through the hatch — the Cold War rivals' first joint flight, and the symbolic close of the space race.",
+  },
+  {
+    name: 'Viking 1',
+    title: 'Viking 1 lands on Mars',
+    country: 'US',
+    kind: 'science',
+    year: 1976,
+    description:
+      "NASA's Viking 1 made the first fully successful landing on Mars and worked its patch of red desert for six years, sending home the first photographs taken on the planet's surface.",
+  },
+  {
+    name: 'Mir (space station)',
+    title: 'Mir goes up',
+    country: 'RU',
+    kind: 'science',
+    year: 1986,
+    description:
+      'The Soviet Union launched the core of Mir, the first station assembled in orbit module by module. It hosted crews for fifteen years — one cosmonaut stayed aboard 437 days without a break.',
+  },
+  {
+    name: 'Mars Pathfinder',
+    title: 'A rover rolls onto Mars',
+    country: 'US',
+    kind: 'science',
+    year: 1997,
+    description:
+      'Pathfinder bounced onto Mars wrapped in airbags and released Sojourner, a rover the size of a microwave oven — the first wheels ever to turn on another planet.',
+  },
+  {
+    name: 'Rosetta (spacecraft)',
+    title: 'Rosetta sets off to catch a comet',
+    country: 'DE',
+    kind: 'science',
+    year: 2004,
+    description:
+      "Europe's Rosetta probe left on a ten-year chase to orbit a comet, and in 2014 dropped its lander Philae onto the surface — the first controlled landing on a comet.",
+  },
+  {
+    name: 'Curiosity (rover)',
+    title: 'Curiosity lands on Mars',
+    country: 'US',
+    kind: 'science',
+    year: 2012,
+    description:
+      'The car-sized rover Curiosity was lowered onto Mars by a hovering rocket crane — "seven minutes of terror" executed perfectly — and found the chemistry of an ancient habitable lake.',
+  },
+  {
+    name: 'Falcon 9 flight 20',
+    title: 'A rocket lands itself',
+    country: 'US',
+    kind: 'engineering',
+    year: 2015,
+    description:
+      "SpaceX's Falcon 9 delivered its satellites, then flew its first stage back to Cape Canaveral and set it down upright — the trick that made rockets reusable and launch costs collapse.",
+  },
+  {
+    name: 'Ingenuity (helicopter)',
+    title: 'First flight on another planet',
+    country: 'US',
+    kind: 'science',
+    year: 2021,
+    description:
+      "The little helicopter Ingenuity spun its blades in air a hundredth as thick as Earth's and lifted off over Mars — the first powered flight on another planet, carrying a scrap of the Wright Flyer's wing.",
+  },
+
+  // --- Expansion: scientific discovery -----------------------------------------
+  {
+    name: 'Smallpox vaccine',
+    title: 'Jenner develops the smallpox vaccine',
+    country: 'GB',
+    kind: 'science',
+    year: 1798,
+    // Bare name search finds the modern vaccine concept (undated); pin Jenner's.
+    qid: 'Q1037810',
+    description:
+      "Edward Jenner scratched cowpox into a boy's arm and proved it protected against smallpox — the first vaccine, named for the cow. The disease it beat is the only human one ever eradicated.",
+  },
+  {
+    name: 'Experiments on Plant Hybridization',
+    title: 'Mendel publishes his pea experiments',
+    country: 'CZ',
+    kind: 'science',
+    year: 1866,
+    description:
+      'The monk Gregor Mendel, counting traits across thousands of pea plants in his monastery garden in Brno, worked out the laws of inheritance — then was ignored for thirty-four years.',
+  },
+  {
+    name: 'Periodic table',
+    title: 'Mendeleev arranges the elements',
+    country: 'RU',
+    kind: 'science',
+    year: 1869,
+    description:
+      'Dmitri Mendeleev laid the elements out by weight and saw their properties repeat in periods — and left gaps for elements not yet discovered, predicting what would fill them. It did.',
+  },
+  {
+    name: 'X-ray',
+    title: 'Röntgen discovers X-rays',
+    country: 'DE',
+    kind: 'science',
+    year: 1895,
+    // The concept item is undated; pin the dated "Hand with Rings" first X-ray.
+    qid: 'Q123318211',
+    description:
+      "Wilhelm Röntgen chased a mysterious ray that made a screen glow across his darkened lab, and within weeks photographed the bones of his wife's hand. He refused to patent it; medicine changed overnight.",
+  },
+  {
+    name: 'Electron',
+    title: 'The electron is discovered',
+    country: 'GB',
+    kind: 'science',
+    year: 1897,
+    description:
+      'J. J. Thomson showed cathode rays were streams of particles nearly two thousand times lighter than the lightest atom — the first piece of the atom found, and the carrier every electronic device runs on.',
+  },
+  {
+    name: 'General relativity',
+    title: 'Einstein presents general relativity',
+    country: 'DE',
+    kind: 'science',
+    year: 1915,
+    description:
+      'Einstein told the Prussian Academy that gravity is not a force but the curving of space and time. A 1919 eclipse showed starlight bending around the Sun — and made him world-famous.',
+  },
+  {
+    name: 'Pluto',
+    title: 'Pluto is discovered',
+    country: 'US',
+    kind: 'science',
+    year: 1930,
+    description:
+      'Clyde Tombaugh, a 24-year-old farm boy hired to compare photographs of the night sky, spotted a moving speck from an Arizona observatory — the ninth planet, until its 2006 demotion.',
+  },
+  {
+    name: 'Lascaux',
+    title: 'The Lascaux cave paintings are found',
+    country: 'FR',
+    kind: 'science',
+    year: 1940,
+    description:
+      'Four teenagers following their dog into a hole in the Dordogne found galleries of bulls and horses painted some 17,000 years earlier — among the finest prehistoric art ever discovered.',
+  },
+  {
+    name: 'Cosmic microwave background',
+    title: "The Big Bang's afterglow is found",
+    country: 'US',
+    kind: 'science',
+    year: 1964,
+    description:
+      'Two radio astronomers could not silence a faint hiss in their antenna — not even after evicting its pigeons. It was the cooled glow of the Big Bang itself, and it won them the Nobel Prize.',
+  },
+  {
+    name: 'Lucy (Australopithecus)',
+    title: 'Lucy is unearthed',
+    country: 'ET',
+    kind: 'science',
+    year: 1974,
+    description:
+      "In Ethiopia's Afar desert, palaeontologists dug up a 3.2-million-year-old skeleton that had walked upright — and named her Lucy, after the Beatles song playing in camp that night.",
+  },
+  {
+    name: 'Terracotta Army',
+    title: 'The Terracotta Army is found',
+    country: 'CN',
+    kind: 'science',
+    year: 1974,
+    description:
+      "Farmers digging a well near Xi'an struck the buried bodyguard of China's First Emperor: thousands of life-sized clay soldiers, no two faces alike, standing in ranks for 2,200 years.",
+  },
+  {
+    name: '51 Pegasi b',
+    title: 'A planet around another sun',
+    country: 'CH',
+    kind: 'science',
+    year: 1995,
+    description:
+      'Two Swiss astronomers caught a star fifty light-years away wobbling under the pull of an unseen companion — the first planet found orbiting a Sun-like star. Thousands more followed.',
+  },
+
+  // --- Expansion: inventions ---------------------------------------------------
+  {
+    name: 'Dandy horse',
+    title: 'The first bicycle rolls out',
+    country: 'DE',
+    kind: 'engineering',
+    year: 1817,
+    description:
+      'Karl von Drais pushed his two-wheeled "running machine" along the Mannheim road — no pedals yet, but the bicycle was born, invented partly because a failed harvest had left horses scarce.',
+  },
+  {
+    name: 'Transatlantic telegraph cable',
+    title: 'A cable crosses the Atlantic',
+    country: 'GB',
+    kind: 'engineering',
+    year: 1858,
+    description:
+      'A telegraph cable laid across the ocean floor let Queen Victoria wire the US president in minutes instead of ten days by ship. The first cable died within weeks — but the world had shrunk for good.',
+  },
+  {
+    name: 'London Underground',
+    title: 'The first underground railway opens',
+    country: 'GB',
+    kind: 'engineering',
+    year: 1863,
+    description:
+      'The Metropolitan Railway carried some 38,000 Londoners underground on its opening day, behind steam engines that filled the tunnels with smoke — the world\'s first metro, and the reason many still call it the Tube.',
+  },
+  {
+    name: 'Telephone',
+    title: 'Bell patents the telephone',
+    country: 'US',
+    kind: 'engineering',
+    year: 1876,
+    description:
+      'Alexander Graham Bell patented the telephone hours ahead of a rival inventor, and days later spoke the first words down a wire: "Mr. Watson, come here — I want to see you."',
+  },
+  {
+    name: 'Phonograph',
+    title: 'Edison records sound',
+    country: 'US',
+    kind: 'engineering',
+    year: 1877,
+    description:
+      'Thomas Edison shouted "Mary had a little lamb" at a tinfoil cylinder and played his own voice back — the first machine that could both record and reproduce sound. He was as startled as anyone.',
+  },
+  {
+    name: 'Zeppelin LZ 1',
+    title: 'The first Zeppelin flies',
+    country: 'DE',
+    kind: 'engineering',
+    year: 1900,
+    description:
+      "Count Zeppelin's 128-metre airship rose over Lake Constance for eighteen minutes — three years before the Wright brothers. For a generation, the future of flight looked like this.",
+  },
+  {
+    name: 'Heinkel He 178',
+    title: 'The first jet aircraft flies',
+    country: 'DE',
+    kind: 'engineering',
+    year: 1939,
+    description:
+      'Days before the Second World War began, the Heinkel He 178 made the first flight powered by a turbojet — the engine, designed by Hans von Ohain, that every airliner descends from.',
+  },
+  {
+    name: 'Transistor',
+    title: 'The transistor is invented',
+    country: 'US',
+    kind: 'engineering',
+    year: 1947,
+    description:
+      'Three Bell Labs physicists made a sliver of germanium amplify a current — the transistor, replacement for the hot, fragile vacuum tube. Billions of them now sit in every phone.',
+  },
+  {
+    name: 'ARPANET',
+    title: 'The internet sends its first message',
+    country: 'US',
+    kind: 'engineering',
+    year: 1969,
+    // Bare name search collides with a TV episode and a musician; pin the network.
+    qid: 'Q177524',
+    description:
+      'A computer at UCLA tried to send "LOGIN" to Stanford and crashed after two letters — "LO". ARPANET grew from those two machines into the internet.',
+  },
+  {
+    name: 'Compact disc',
+    title: 'The compact disc arrives',
+    country: 'NL',
+    kind: 'engineering',
+    year: 1982,
+    description:
+      "Philips and Sony launched the compact disc, music read by laser with no needle and no hiss. Legend has it the 74-minute length was chosen to hold Beethoven's Ninth uninterrupted.",
+  },
+
+  // --- Expansion: culture ------------------------------------------------------
+  {
+    name: 'Don Quixote',
+    title: 'Don Quixote is published',
+    country: 'ES',
+    kind: 'culture',
+    year: 1605,
+    description:
+      'Cervantes published his tale of a country gentleman driven mad by chivalry books, tilting at windmills beside his squire Sancho Panza — often called the first modern novel, and still among the most printed.',
+  },
+  {
+    name: "L'Orfeo",
+    title: "Opera is born with L'Orfeo",
+    country: 'IT',
+    kind: 'culture',
+    year: 1607,
+    description:
+      "Monteverdi's L'Orfeo, staged for the duke of Mantua, told the Orpheus myth entirely through music — the earliest opera still regularly performed, four centuries on.",
+    // The work's item has no photo; the composer's Strozzi portrait stands in.
+    commons: 'Bernardo Strozzi - Claudio Monteverdi (c.1630).jpg',
+  },
+  {
+    name: 'First Folio',
+    title: "Shakespeare's First Folio is printed",
+    country: 'GB',
+    kind: 'culture',
+    year: 1623,
+    description:
+      'Seven years after Shakespeare died, two fellow actors gathered 36 of his plays into one volume. Half of them — Macbeth among them — had never been printed and would otherwise be lost.',
+  },
+  {
+    name: 'La Scala',
+    title: 'La Scala opens in Milan',
+    country: 'IT',
+    kind: 'culture',
+    year: 1778,
+    description:
+      "Milan's opera house rose in two years on the site of a burned theatre, paid for by its box-holders. Verdi, Puccini and Maria Callas made its stage the most famous in opera.",
+  },
+  {
+    name: 'Symphony No. 9 (Beethoven)',
+    title: "Beethoven's Ninth premieres",
+    country: 'AT',
+    kind: 'culture',
+    year: 1824,
+    description:
+      "Beethoven, by then completely deaf, stood beside the conductor at the Vienna premiere of his Ninth — and had to be turned around to see the applause he could not hear. Its Ode to Joy is now Europe's anthem.",
+  },
+  {
+    name: '1877 Wimbledon Championship',
+    title: 'The first Wimbledon',
+    country: 'GB',
+    kind: 'culture',
+    year: 1877,
+    description:
+      'The All England Croquet Club held a lawn-tennis tournament to raise money for a broken roller — 22 gentlemen, a 25-guinea trophy, and the oldest tennis championship in the world.',
+  },
+  {
+    name: 'The Starry Night',
+    title: 'Van Gogh paints The Starry Night',
+    country: 'NL',
+    kind: 'culture',
+    year: 1889,
+    description:
+      'From his asylum window in Saint-Rémy, Vincent van Gogh painted the night sky boiling with stars. He thought little of it; it became one of the most recognised paintings on Earth.',
+  },
+  {
+    name: 'The Scream',
+    title: 'Munch paints The Scream',
+    country: 'NO',
+    kind: 'culture',
+    year: 1893,
+    description:
+      'Walking at sunset above Oslo, Edvard Munch felt "an infinite scream passing through nature" — and painted the swirling, hollow-faced figure that became the modern face of anxiety.',
+  },
+  {
+    name: 'Raja Harishchandra',
+    title: "India's first feature film",
+    country: 'IN',
+    kind: 'culture',
+    year: 1913,
+    description:
+      "Dadasaheb Phalke wrote, produced and directed Raja Harishchandra, India's first full-length feature — with men in the women's roles, since no actress would join. Indian cinema counts its history from it.",
+    // No photo on the item; a surviving still from the 1913 film.
+    commons: 'A scene from film, Raja Harishchandra (1913).jpg',
+  },
+  {
+    name: 'Steamboat Willie',
+    title: 'Mickey Mouse whistles into view',
+    country: 'US',
+    kind: 'culture',
+    year: 1928,
+    description:
+      "Disney's Steamboat Willie was among the first cartoons with fully synchronised sound — a whistling mouse at a ship's wheel who became the most famous character ever drawn.",
+  },
+  {
+    name: '1st Academy Awards',
+    title: 'The first Oscars',
+    country: 'US',
+    kind: 'culture',
+    year: 1929,
+    description:
+      'Hollywood\'s first Academy Awards took fifteen minutes to hand out, at a private dinner where the winners had been announced three months in advance. The statuette\'s nickname — Oscar — came later.',
+  },
+  {
+    name: 'Snow White and the Seven Dwarfs (1937 film)',
+    title: 'The first feature-length cartoon',
+    country: 'US',
+    kind: 'culture',
+    year: 1937,
+    description:
+      'The press called it "Disney\'s Folly" — surely no one would sit through 83 minutes of animation. Snow White became the highest-grossing film of its day and invented the animated feature.',
+  },
+  {
+    name: 'Guernica (Picasso)',
+    title: 'Picasso paints Guernica',
+    country: 'ES',
+    kind: 'culture',
+    year: 1937,
+    description:
+      'Weeks after German bombers flattened the Basque town of Gernika, Picasso answered with a canvas eight metres wide of screaming horses and grieving mothers — the century\'s defining image of war.',
+  },
+  {
+    name: 'The Lord of the Rings',
+    title: 'The Lord of the Rings is published',
+    country: 'GB',
+    kind: 'culture',
+    year: 1954,
+    description:
+      'Tolkien\'s "new Hobbit" had swollen into a three-volume epic, twelve years in the writing. The Fellowship of the Ring appeared in 1954 and founded modern fantasy almost single-handed.',
+  },
+  {
+    name: 'Disneyland',
+    title: 'Disneyland opens its gates',
+    country: 'US',
+    kind: 'culture',
+    year: 1955,
+    description:
+      'Walt Disney opened his park in a former Anaheim orange grove on a chaotic day of broken rides, gate-crashers and softening asphalt — and created the template every theme park since has copied.',
+  },
+  {
+    name: 'One Hundred Years of Solitude',
+    title: 'García Márquez conjures Macondo',
+    country: 'CO',
+    kind: 'culture',
+    year: 1967,
+    description:
+      'Gabriel García Márquez pawned household goods to post the manuscript of One Hundred Years of Solitude to his publisher. The chronicle of the Buendía family made magical realism world literature.',
+    // Book item carries no free cover; the author's portrait stands in.
+    commons: 'Gabriel García Márquez 01.jpg',
+  },
+  {
+    name: 'Thriller (album)',
+    title: 'Thriller takes over the world',
+    country: 'US',
+    kind: 'culture',
+    year: 1982,
+    description:
+      'Michael Jackson released Thriller, and its zombie-dance title video turned the music album into cinema. It remains the best-selling album ever recorded.',
+    // Album cover is non-free; a 1984 public-domain White House photograph.
+    commons:
+      'Michael Jackson with President Ronald Reagan and Nancy Reagan at the White House, Washington D.C., 1984.jpg',
+  },
+  {
+    name: 'Tetris',
+    title: 'Tetris escapes Moscow',
+    country: 'RU',
+    kind: 'culture',
+    year: 1984,
+    description:
+      'Alexey Pajitnov, a researcher at the Soviet Academy of Sciences, wrote a falling-blocks puzzle on a machine with no graphics — its bricks drawn from text characters. It became the most ported game in history.',
+    // No free screenshot; a photograph of the creator.
+    commons: 'Alexey Pajitnov (415117666).jpg',
+  },
+  {
+    name: 'Game Boy',
+    title: 'The Game Boy launches',
+    country: 'JP',
+    kind: 'culture',
+    year: 1989,
+    description:
+      "Nintendo's grey brick with a green screen was mocked beside its full-colour rivals — and outsold them all on battery life and Tetris, putting video games in every pocket.",
+  },
+  {
+    name: "Harry Potter and the Philosopher's Stone",
+    title: 'Harry Potter arrives',
+    country: 'GB',
+    kind: 'culture',
+    year: 1997,
+    // Bare name search prefers the film and games; pin the 1997 novel.
+    qid: 'Q43361',
+    description:
+      "Turned down by a dozen publishers, J. K. Rowling's boy wizard appeared in a first print run of 500 copies. The series went on to sell more than half a billion books and revive children's reading worldwide.",
+  },
+  {
+    name: 'YouTube',
+    title: 'YouTube uploads its first video',
+    country: 'US',
+    kind: 'culture',
+    year: 2005,
+    description:
+      'Three former PayPal employees launched a site for sharing home videos; the first upload was nineteen seconds at the zoo. Within two years the world watched more video there than on any TV network.',
+  },
 ]
