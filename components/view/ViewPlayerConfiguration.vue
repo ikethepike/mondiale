@@ -108,10 +108,28 @@
                 </div>
 
                 <div class="configuration-block">
-                  <span class="config-label">Challenges</span>
-                  <ButtonLine class="settings-button" type="button" @click="showSettings = true">
-                    <span class="settings-button-content">{{ settingsSummary }}</span>
-                  </ButtonLine>
+                  <span class="config-label">Difficulty</span>
+                  <SegmentedControl
+                    name="game-difficulty"
+                    label="Difficulty"
+                    :options="[...gameDifficulties]"
+                    :model-value="difficultyPreview"
+                    :disabled="!isPlayerHost"
+                    @update:model-value="value => (difficultyPreview = value as GameDifficulty)"
+                    @change="updateConfiguration"
+                  >
+                    <template #action>
+                      <button
+                        type="button"
+                        class="customize-button"
+                        aria-label="Customize challenges"
+                        @click="showSettings = true"
+                      />
+                    </template>
+                  </SegmentedControl>
+                  <span v-if="overrideCount" class="config-caption">
+                    {{ overrideCount }} challenge {{ overrideCount === 1 ? 'override' : 'overrides' }}
+                  </span>
                 </div>
               </div>
             </form>
@@ -176,7 +194,7 @@
               name="game-difficulty"
               label="Difficulty"
               :options="[...gameDifficulties]"
-              :model-value="game.difficulty"
+              :model-value="difficultyPreview"
               :disabled="!isPlayerHost"
               @update:model-value="value => (difficultyPreview = value as GameDifficulty)"
               @change="updateConfiguration"
@@ -267,8 +285,9 @@ import {
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
 
-// Captions resolve against the difficulty tab the host just tapped, not the
-// server echo — the panel must show the effect of a difficulty change live.
+// The optimistic difficulty: both the lobby and settings controls bind to it,
+// so a tap in one mirrors to the other (and to the captions) before the
+// server echoes — which still wins when it lands.
 const difficultyPreview = ref<GameDifficulty>(game.value?.difficulty ?? 'normal')
 watch(
   () => game.value?.difficulty,
@@ -280,14 +299,8 @@ watch(
 const showSettings = ref(false)
 const settingsForm = ref<HTMLFormElement>()
 
-/** The lobby button's one-line digest of the settings page. */
-const settingsSummary = computed(() => {
-  const overrides = Object.keys(game.value?.challengeOverrides ?? {}).length
-  const difficulty = game.value?.difficulty ?? 'normal'
-  return overrides
-    ? `${difficulty} · ${overrides} ${overrides === 1 ? 'override' : 'overrides'}`
-    : `${difficulty} · defaults`
-})
+/** Overrides badge under the lobby's difficulty control. */
+const overrideCount = computed(() => Object.keys(game.value?.challengeOverrides ?? {}).length)
 
 const overrideValue = (id: ChallengeGroupId): string => {
   const override = game.value?.challengeOverrides?.[id]
@@ -357,6 +370,8 @@ const updateConfiguration = async () => {
 
   // The lobby form and the settings page are separate forms; whichever isn't
   // mounted contributes nothing, so its fields fall back to the game's state.
+  // Difficulty lives in BOTH — the settings entry comes later and wins, and
+  // both controls track the same model, so the loser is never stale.
   const entries = [breakdown.value, settingsForm.value]
     .flatMap(form => (form ? [...new FormData(form).entries()] : []))
 
@@ -630,18 +645,37 @@ const startGame = () => {
   flex-flow: column nowrap;
 }
 
-// The lobby's door to the settings page — sized to sit flush beside the
-// segmented controls (same track height and radius) instead of the taller
-// default button chrome.
-.settings-button.button.line {
-  height: 4.4rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  border-radius: 1rem;
-  padding: 0 1.6rem;
-  width: max-content;
-  color: var(--dark-blue);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+// The lobby's door to the settings page — a compact icon riding the far right
+// of the difficulty control's track, inside its chrome.
+.customize-button {
+  border: none;
+  padding: 0;
+  display: grid;
+  width: 3.6rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: transparent;
+  transition: background-color var(--motion-quick) var(--ease-out-expressive);
+
+  &::before {
+    content: '';
+    display: block;
+    width: 1.8rem;
+    height: 1.8rem;
+    background: var(--dark-blue);
+    mask: url('~/assets/icons/sliders.svg') no-repeat center / contain;
+  }
+
+  &:hover {
+    background: hsla(215.7, 76.4%, 21.6%, 0.09);
+  }
+}
+
+.config-caption {
+  opacity: 0.6;
+  font-size: 1.25rem;
 }
 
 .settings-header {
@@ -662,11 +696,6 @@ const startGame = () => {
   padding-bottom: 2rem;
   justify-content: flex-end;
   border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
-}
-
-.settings-button-content {
-  padding: 0 0.4rem;
-  text-transform: capitalize;
 }
 
 .challenge-row {
@@ -710,6 +739,26 @@ const startGame = () => {
   opacity: 0.6;
   margin: 0.8rem 0 0;
   font-size: 1.25rem;
+}
+
+// One layout for every row on phones: meta above, full-width control below.
+// Flex-wrap decided per-row by label length, so neighbouring rows broke
+// differently and the page read as a jumble.
+@media screen and (max-width: $tablet) {
+  .config-row {
+    flex-flow: column nowrap;
+  }
+
+  .challenge-row {
+    gap: 0.8rem;
+    align-items: stretch;
+    flex-flow: column nowrap;
+  }
+
+  .config-row .configuration-block :deep(.segmented),
+  .challenge-row :deep(.segmented) {
+    width: 100%;
+  }
 }
 
 // Navigation
