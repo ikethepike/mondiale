@@ -48,6 +48,7 @@
               'pulsing-country': pulsingSet.has(code),
               'unselectable-country': unselectableSet.has(code),
               'ringed-country': ringedSet.has(code),
+              'sea-glow-country': seaGlowSet.has(code),
             }"
             :data-id="code"
             :d="d"
@@ -145,7 +146,11 @@
              chip at the crown so the line reads as "sailed", not "borders". -->
         <g v-for="(arc, index) in seaLinkArcs" :key="`sea-link-${index}`">
           <path class="map-sea-link" :d="arc.d" />
-          <g class="map-sea-chip" :transform="`translate(${arc.mid.x} ${arc.mid.y})`">
+          <g
+            v-if="showSailChips"
+            class="map-sea-chip"
+            :transform="`translate(${arc.mid.x} ${arc.mid.y})`"
+          >
             <g class="map-sea-chip-scale">
               <circle class="chip-disc" r="10" />
               <!-- The cargo ship from the shared stat-glyph stroke language,
@@ -312,6 +317,13 @@ const props = defineProps({
     type: Array as PropType<string[]>,
     default: () => [],
   },
+  /** Countries whose coastline hums the sea-blue — "you can sail from
+   *  here". A standing whisper, not an affordance list (manhunt's hideout
+   *  while sea passages remain). */
+  seaGlow: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Countries whose fill breathes toward yellow — the live Border Chain
    *  head, the one square players act on. */
   pulsing: {
@@ -468,6 +480,12 @@ const landRouteArcs = computed(() =>
 )
 
 const ringedSet = computed(() => new Set<string>(props.ringed))
+const seaGlowSet = computed(() => new Set<string>(props.seaGlow))
+
+/** The sail chip earns its place on a lone arc (a hover preview, a walked
+ *  leg); on a fanned-out reach the dashes already say water, and a chip per
+ *  arc is chart junk. */
+const showSailChips = computed(() => seaLinkArcs.value.length <= 3)
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
 const pinPoint = computed(() =>
@@ -1533,13 +1551,23 @@ path[id],
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
 
-// The action ring: a stroke, never a fill — "you may act here". Fills stay
-// the knowledge channel (candidates, dragnets, groupings).
+// The action ring: a stroke, never a fill — "you may act here". Ember, the
+// "you" accent (the pulsing head shares it), so it can never be mistaken
+// for the map's dark border ink.
 path.ringed-country,
 .micro-marker.ringed-country {
-  stroke: hsl(215.7, 76.4%, 30%);
-  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke: hsl(24, 80%, 45%);
+  stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-linejoin: round;
+}
+
+// The sailing whisper: the hideout's coast hums sea-blue while passages
+// remain — a signal that boats exist, never a list of where they go.
+path.sea-glow-country {
+  stroke: hsl(215.7, 76.4%, 41%);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-dasharray: calc(1.5px * var(--stroke-zoom, 1)) calc(3px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
 }
 
 .map-land-route {

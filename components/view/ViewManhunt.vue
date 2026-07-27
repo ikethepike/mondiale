@@ -9,10 +9,12 @@
       @done="begin()"
     />
 
-    <!-- Walk-order numbers over the trail — despot's eyes only. -->
+    <!-- Chips over the map: the despot's numbered trail (their eyes only)
+         and last turn's dragnet misses as ✕ marks for everyone — a marker
+         is a mark, never a country recoloured. -->
     <MapYearLabels
-      v-if="!showInterstitial && isDespot && trail.length"
-      :entries="trailEntries"
+      v-if="!showInterstitial && mapChipEntries.length"
+      :entries="mapChipEntries"
       :min-gap-px="26"
     />
 
@@ -199,6 +201,30 @@ const trailEntries = computed(() =>
   trail.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
 )
 
+/** Trail numbers (despot only) plus the last dragnet's misses as ✕ marks —
+ *  a country the trail passed keeps its number; the ✕ never overwrites it.
+ *  On easy, the despot's legal hops carry their ISO chips too — border
+ *  chain's exact assist, same gating. */
+const mapChipEntries = computed(() => {
+  const entries = [...trailEntries.value]
+  if (finished.value) return entries
+  const taken = new Set(trail.value)
+  for (const [isoCode, count] of Object.entries(lastDragnet.value?.markers ?? {})) {
+    if (taken.has(isoCode as ISOCountryCode)) continue
+    entries.push({ isoCode: isoCode as ISOCountryCode, label: count > 1 ? `✕${count}` : '✕' })
+  }
+  if (
+    isDespot.value &&
+    state.value.beat === 'move' &&
+    gameStore.game?.difficulty === 'easy'
+  ) {
+    for (const isoCode of [...legalMoves.value.ground, ...legalMoves.value.sea]) {
+      if (!taken.has(isoCode)) entries.push({ isoCode, label: isoCode })
+    }
+  }
+  return entries
+})
+
 const interstitialTitle = computed(() =>
   isDespot.value
     ? 'You are the Despot — run'
@@ -347,6 +373,7 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 // reach appears only on demand — a hover previews one passage, the dock's ⚓
 // fans out all of them (the touch path). Never a standing wash.
 const hoveredSea = ref<ISOCountryCode | undefined>()
+const hoveredGround = ref<ISOCountryCode | undefined>()
 const seaFanOpen = ref(false)
 
 /** The trail's own water legs (sea passages and strait hops), directed. */
@@ -373,16 +400,19 @@ const onMapHover = (event: Event) => {
   if (!isMapHoverEvent(event)) return
   if (finished.value || !isDespot.value || state.value.beat !== 'move') return
   const hovered = event.detail.isoCode
-  hoveredSea.value =
-    isValidISOCode(hovered) && legalMoves.value.sea.includes(hovered) ? hovered : undefined
+  const legal = isValidISOCode(hovered)
+  hoveredSea.value = legal && legalMoves.value.sea.includes(hovered) ? hovered : undefined
+  hoveredGround.value = legal && legalMoves.value.ground.includes(hovered) ? hovered : undefined
 }
 onBeforeMount(() => document.addEventListener('mapHover', onMapHover))
 registerCleanup(() => document.removeEventListener('mapHover', onMapHover))
-// A move mid-hover must not strand the preview into the hunt beat.
+// A beat handoff clears every under-the-cursor answer; the fan is always
+// an explicit request, never a default.
 watch(
   () => state.value.beat,
   () => {
     hoveredSea.value = undefined
+    hoveredGround.value = undefined
     seaFanOpen.value = false
   }
 )
@@ -390,7 +420,6 @@ watch(
 // --- Painting the map --------------------------------------------------------
 /** Candidates in one quiet blue; the despot's trail deepens along the walk. */
 const CANDIDATE_FILL = 'hsla(212, 58%, 62%, 0.4)'
-const DRAGNET_FILL = 'hsla(345, 60%, 52%, 0.5)'
 const trailColor = (index: number, count: number, head: boolean): string => {
   if (head) return 'hsla(24, 80%, 55%, 0.92)'
   const t = count <= 1 ? 1 : index / (count - 1)
@@ -421,10 +450,8 @@ const paintPursuit = () => {
   } else if (state.value.candidates.length) {
     groupings.push({ color: CANDIDATE_FILL, countries: [...state.value.candidates] })
   }
-  const dragnetCountries = Object.keys(lastDragnet.value?.markers ?? {}) as ISOCountryCode[]
-  if (dragnetCountries.length) {
-    groupings.push({ color: DRAGNET_FILL, countries: dragnetCountries })
-  }
+  // Dragnet misses render as ✕ chips (mapChipEntries), never as fills — a
+  // pink country reads as state about the COUNTRY, not about a marker.
 
   // The camera frames the live knowledge: the candidate set where painted,
   // else the playable board — a Europe game plays on Europe, not a world map
@@ -447,11 +474,16 @@ const paintPursuit = () => {
     if (despotAt.value) {
       groupings.push({ color: trailColor(1, 1, true), countries: [despotAt.value] })
     }
-    gameStore.map.ringed =
-      state.value.beat === 'move' ? [...legalMoves.value.ground, ...legalMoves.value.sea] : []
+    const hovered = hoveredGround.value ?? hoveredSea.value
+    gameStore.map.ringed = state.value.beat === 'move' && hovered ? [hovered] : []
+    gameStore.map.seaGlow =
+      state.value.beat === 'move' && state.value.seaPassagesLeft > 0 && legalMoves.value.sea.length
+        ? [despotAt.value].filter(Boolean)
+        : []
     gameStore.map.pulsing = despotAt.value ? [despotAt.value] : []
   } else {
     gameStore.map.ringed = []
+    gameStore.map.seaGlow = []
     gameStore.map.pulsing = []
   }
 
@@ -465,7 +497,7 @@ const paintPursuit = () => {
   gameStore.map.tints = tints
 }
 
-watch([challenge, trail, myMarker, hoveredSea, seaFanOpen], () => paintPursuit(), {
+watch([challenge, trail, myMarker, hoveredSea, hoveredGround, seaFanOpen], () => paintPursuit(), {
   immediate: true,
   deep: true,
 })

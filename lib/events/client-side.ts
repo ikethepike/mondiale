@@ -69,6 +69,7 @@ export const useClientEvents = () => {
     gameStore.map.seaLinks = []
     gameStore.map.ringed = []
     gameStore.map.landRoutes = []
+    gameStore.map.seaGlow = []
     gameStore.map.staggered = false
     gameStore.map.dimmed = []
     gameStore.map.pulsing = []

@@ -94,6 +94,8 @@ interface GameStoreState {
     ringed: ISOCountryCode[]
     /** Directed 'FROM>TO' overland route legs (manhunt's escape trail). */
     landRoutes: string[]
+    /** Coastlines humming sea-blue — "you can sail from here". */
+    seaGlow: ISOCountryCode[]
     /** Opponents' live guesses during a group round, fed by the ephemeral
      *  `player-guessing` broadcast. Append-only and self-expiring: a player's
      *  second guess is a new entry, not an overwrite, so each one can pop in
@@ -174,6 +176,7 @@ export const useGameStore = defineStore('game', {
       inset: undefined,
       ringed: [],
       landRoutes: [],
+      seaGlow: [],
       liveGuesses: [],
     },
     board: {
