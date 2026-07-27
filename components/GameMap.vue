@@ -130,13 +130,20 @@
             <circle class="feature-marker-dot" r="2" />
           </g>
         </g>
-        <!-- Border Chain: dashed sea arcs across each strait the chain hopped. -->
-        <path
-          v-for="(d, index) in seaLinkPaths"
-          :key="`sea-link-${index}`"
-          class="map-sea-link"
-          :d="d"
-        />
+        <!-- Water crossings (chain strait hops, manhunt sea passages): a bowed
+             dashed arc, dashes drifting toward the destination, with a sail
+             chip at the crown so the line reads as "sailed", not "borders". -->
+        <g v-for="(arc, index) in seaLinkArcs" :key="`sea-link-${index}`">
+          <path class="map-sea-link" :d="arc.d" />
+          <g class="map-sea-chip" :transform="`translate(${arc.mid.x} ${arc.mid.y})`">
+            <g class="map-sea-chip-scale">
+              <circle class="chip-disc" r="7" />
+              <path class="chip-sail" d="M 0.6 -4.2 L 0.6 0.8 L 4 0.8 Z" />
+              <path class="chip-sail" d="M -0.9 -4.2 L -0.9 0.8 L -3.4 0.8 Z" />
+              <path class="chip-hull" d="M -4.4 2 L 4.4 2 L 2.8 4.2 L -2.8 4.2 Z" />
+            </g>
+          </g>
+        </g>
         <!-- Pin-landmark: the guess, then on reveal the truth and a line between. -->
         <line
           v-if="pinPoint && pinAnswerPoint"
@@ -366,11 +373,16 @@ const chainIndices = computed<Partial<Record<string, number>>>(() => {
   return indices
 })
 
-/** Dashed lines across water — straight, as a strait should be. Named strait
- *  pairs cross at their validated coastline points; any other pair (manhunt's
- *  sea passages span whole seas) falls back to a centroid-to-centroid line. */
-const seaLinkPaths = computed(() => {
-  const paths: string[] = []
+/**
+ * Dashed sailing arcs across water. Named strait pairs cross at their
+ * validated coastline points; any other pair (manhunt's sea passages span
+ * whole seas) falls back to a centroid-to-centroid arc. Each bows gently
+ * poleward like a rhumb-line sketch on a chart, its dashes drift from origin
+ * to destination (the direction of travel), and a small sail chip sits at
+ * the arc's crown naming the crossing for what it is.
+ */
+const seaLinkArcs = computed(() => {
+  const arcs: { d: string; mid: { x: number; y: number } }[] = []
   for (const pair of props.seaLinks) {
     const crossing =
       STRAIT_CROSSINGS[pair] ??
@@ -385,9 +397,29 @@ const seaLinkPaths = computed(() => {
     if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue
     const from = projectRobinson(crossing.from, MAP_PROJECTION)
     const to = projectRobinson(crossing.to, MAP_PROJECTION)
-    paths.push(`M ${from.x} ${from.y} L ${to.x} ${to.y}`)
+    const chordX = to.x - from.x
+    const chordY = to.y - from.y
+    const length = Math.hypot(chordX, chordY) || 1
+    // Control point: perpendicular to the chord, always bowing map-north.
+    let perpX = -chordY / length
+    let perpY = chordX / length
+    if (perpY > 0) {
+      perpX = -perpX
+      perpY = -perpY
+    }
+    const bow = length * 0.14
+    const controlX = (from.x + to.x) / 2 + perpX * bow
+    const controlY = (from.y + to.y) / 2 + perpY * bow
+    arcs.push({
+      d: `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`,
+      // The quadratic's own midpoint (t = 0.5) — the crown of the arc.
+      mid: {
+        x: (from.x + 2 * controlX + to.x) / 4,
+        y: (from.y + 2 * controlY + to.y) / 4,
+      },
+    })
   }
-  return paths
+  return arcs
 })
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
@@ -1461,6 +1493,45 @@ path[id],
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-linecap: round;
   stroke-dasharray: calc(5px * var(--stroke-zoom, 1)) calc(6px * var(--stroke-zoom, 1));
+  // The dashes drift from origin to destination — slow enough to read as a
+  // current, not a marquee. One cycle = one dash+gap, so the loop is seamless.
+  animation: sea-drift 1.6s linear infinite;
+}
+
+@keyframes sea-drift {
+  to {
+    stroke-dashoffset: calc(-11px * var(--stroke-zoom, 1));
+  }
+}
+
+// The sail chip at the arc's crown: same cream-disc language as the walk
+// numbers (MapYearLabels), sized in screen pixels via --stroke-zoom.
+.map-sea-chip {
+  pointer-events: none;
+}
+
+.map-sea-chip-scale {
+  transform: scale(var(--stroke-zoom, 1));
+}
+
+.chip-disc {
+  fill: hsla(36, 100%, 98%, 0.92);
+  stroke: hsla(215.7, 76.4%, 41%, 0.55);
+  stroke-width: 0.8;
+}
+
+.chip-sail {
+  fill: hsl(215.7, 76.4%, 41%);
+}
+
+.chip-hull {
+  fill: hsl(215.7, 76.4%, 30%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-sea-link {
+    animation: none;
+  }
 }
 
 // Marks a contested territory that is too small to draw. Sized in screen
