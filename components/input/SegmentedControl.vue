@@ -1,38 +1,38 @@
 <template>
-  <div
-    class="segmented"
-    :class="{ disabled }"
-    role="radiogroup"
-    :aria-label="label"
-    :style="{ '--segments': options.length }"
-  >
-    <!-- Sliding highlight. Width = one segment's share of the track; it moves
-         by whole multiples of ITS OWN width (translateX 100% = one segment),
-         so it's mathematically pinned inside the padded track — no gaps in the
-         transform means no corner overflow at the ends. -->
-    <div
-      class="segmented-thumb"
-      aria-hidden="true"
-      :style="{
-        width: `calc((100% - 0.8rem) / ${options.length})`,
-        transform: `translateX(${activeIndex * 100}%)`,
-      }"
-    />
-    <button
-      v-for="option in options"
-      :key="option"
-      type="button"
-      role="radio"
-      :aria-checked="option === selected"
-      :disabled="disabled"
-      class="segment"
-      :class="{ active: option === selected }"
-      @click="select(option)"
-    >
-      {{ formatLabel(option) }}
-    </button>
-    <!-- Carries the value into the surrounding FormData contract -->
-    <input type="hidden" :name="name" :value="selected" />
+  <div class="segmented" :class="{ disabled }" :style="{ '--segments': options.length }">
+    <div class="segmented-track" role="radiogroup" :aria-label="label">
+      <!-- Sliding highlight. Width = one segment's share of the track; it moves
+           by whole multiples of ITS OWN width (translateX 100% = one segment),
+           so it's mathematically pinned inside the track — no gaps in the
+           transform means no corner overflow at the ends. -->
+      <div
+        class="segmented-thumb"
+        aria-hidden="true"
+        :style="{ transform: `translateX(${activeIndex * 100}%)` }"
+      />
+      <button
+        v-for="option in options"
+        :key="option"
+        type="button"
+        role="radio"
+        :aria-checked="option === selected"
+        :disabled="disabled"
+        class="segment"
+        :class="{ active: option === selected }"
+        @click="select(option)"
+      >
+        {{ formatLabel(option) }}
+      </button>
+      <!-- Carries the value into the surrounding FormData contract -->
+      <input type="hidden" :name="name" :value="selected" />
+    </div>
+    <!-- Optional trailing action (e.g. a customize button) sharing the track's
+         chrome. Outside .segmented-track so a disabled control keeps its
+         action tappable — non-hosts may still open read-only pages. -->
+    <template v-if="slots.action">
+      <span class="segmented-divider" aria-hidden="true" />
+      <slot name="action" />
+    </template>
   </div>
 </template>
 <script lang="ts" setup>
@@ -61,6 +61,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string]; change: [value: string] }>()
+const slots = useSlots()
 
 // Optimistic local selection — the tab moves instantly; server state (via
 // modelValue) still wins when it changes. A purely-controlled value would
@@ -85,33 +86,42 @@ const formatLabel = (option: string) =>
   option.replace(/-/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
 </script>
 <style lang="scss" scoped>
-// Equal-width segments (no gaps — gaps in the track would desync the thumb's
-// pure-percentage transform). Grid, not flex: a max-content flex track hands
-// wide labels ("Auto") more room than narrow ones ("On"), and the thumb's
-// stepped translate assumes exact equal columns. Equal 1fr columns are the
-// geometry the thumb math is built on. It sits in the 0.4rem-padded inner area.
 .segmented {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  display: flex;
+  align-items: stretch;
   padding: 0.4rem;
-  position: relative;
   width: max-content;
   max-width: 100%;
   border-radius: 1rem;
   background: hsla(215.7, 76.4%, 21.6%, 0.06);
   border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.14);
 
-  &.disabled {
+  &.disabled .segmented-track {
     opacity: 0.6;
     pointer-events: none;
   }
 }
 
+// Equal-width segments (no gaps — gaps in the track would desync the thumb's
+// pure-percentage transform). Grid, not flex: a max-content flex track hands
+// wide labels ("Auto") more room than narrow ones ("On"), and the thumb's
+// stepped translate assumes exact equal columns. Equal 1fr columns are the
+// geometry the thumb math is built on. flex: 1 stretches the track — not the
+// action — when the host sizes the whole control (full-width mobile rows).
+.segmented-track {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  position: relative;
+}
+
 .segmented-thumb {
-  top: 0.4rem;
-  left: 0.4rem;
-  bottom: 0.4rem;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: calc(100% / var(--segments));
   position: absolute;
   border-radius: 0.7rem;
   background: var(--dark-blue);
@@ -119,10 +129,17 @@ const formatLabel = (option: string) =>
   transition: transform var(--motion-base) var(--ease-out-expressive);
 }
 
+.segmented-divider {
+  width: 0.1rem;
+  flex-shrink: 0;
+  margin: 0.3rem 0.4rem;
+  border-radius: 0.05rem;
+  background: hsla(215.7, 76.4%, 21.6%, 0.18);
+}
+
 .segment {
   z-index: 1;
   border: none;
-  flex: 1 1 0;
   cursor: pointer;
   font-size: 1.5rem;
   font-weight: 600;
