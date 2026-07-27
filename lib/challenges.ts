@@ -31,6 +31,7 @@ import type {
   HeritageHuntChallenge,
   GhostStateChallenge,
   HotColdChallenge,
+  ManhuntChallenge,
   MotherTongueChallenge,
   NameWaterChallenge,
   NeighbourBlitzChallenge,
@@ -71,6 +72,7 @@ import {
   playableWorldCountries,
 } from './game-rules'
 import { pickChainSeed } from './chain'
+import { MANHUNT_TUNING, pickManhuntSeed } from './manhunt'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
@@ -127,6 +129,10 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   // few dozen at a staple's rate would repeat inside a fortnight of games.
   // At 0.05 a full game usually sees one, rarely two.
   ['empire', 0.05],
+  // Another set-piece — a full pursuit spans up to eight two-beat turns —
+  // and it needs four players to deal at all, so it self-rarifies further
+  // at small tables.
+  ['manhunt', 0.05],
 ]
 
 /**
@@ -260,6 +266,52 @@ const getBorderChainChallenge = ({
       eliminated: [],
       outcomes: {},
       missedOuts: {},
+    },
+  }
+}
+
+/**
+ * Manhunt dealer: one contender becomes the despot on the run, the rest form
+ * the detective dragnet. Below four players the rivalry collapses, so the
+ * mode simply never deals at small tables. The seed country is NOT dealt
+ * here — the dealer has no redis handle, and the trail must never ride the
+ * broadcast challenge; manhunt-beats picks it at the round reveal.
+ */
+const getManhuntChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): ManhuntChallenge | undefined => {
+  const contenders = chainContenders(game)
+  if (contenders.length < 4) return undefined
+  // Verify the variant can seed a pursuit at all (a sparse continental board
+  // may not) — the real seed is picked at reveal, off the snapshot.
+  if (!pickManhuntSeed(game.variant)) return undefined
+
+  const tuning = MANHUNT_TUNING[game.difficulty]
+  const despotId = contenders[Math.floor(Math.random() * contenders.length)]
+  return {
+    _type: 'manhunt-challenge',
+    turnCount: tuning.turnCount,
+    moveSeconds: tuning.moveSeconds,
+    huntSeconds: tuning.huntSeconds,
+    maximumPoints: maximumRoundPoints(game),
+    despotId,
+    seaPassages: tuning.seaPassages,
+    showCandidates: game.difficulty !== 'hard',
+    state: {
+      turn: 0,
+      hop: 1,
+      beat: 'move',
+      // Stamped when the round is revealed (manhunt-beats) — staging pauses first.
+      deadline: 0,
+      detectives: shuffleArray(contenders.filter(playerId => playerId !== despotId)),
+      clues: [],
+      moves: [],
+      seaPassagesLeft: tuning.seaPassages,
+      candidates: [],
+      dragnets: [],
+      committed: [],
     },
   }
 }
@@ -1291,6 +1343,11 @@ const dealRoundChallenge = async (
     }
     case 'border-chain': {
       const challenge = getBorderChainChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'manhunt': {
+      const challenge = getManhuntChallenge({ game })
       if (challenge) return challenge
       break
     }

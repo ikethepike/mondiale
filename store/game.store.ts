@@ -39,6 +39,12 @@ export interface CheerEntry {
 interface GameStoreState {
   game?: Game
   playerId: string
+  /**
+   * Manhunt, despot's eyes only: their own trail, arriving over the targeted
+   * 'manhunt-position' emit — never in a broadcast snapshot. Cleared when a
+   * new round arrives; detectives never see this populated.
+   */
+  manhunt?: { trail: ISOCountryCode[]; turn: number }
   map: {
     reveal?: ISOCountryCode
     /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */
@@ -132,6 +138,7 @@ export const useGameStore = defineStore('game', {
   state: (): GameStoreState => ({
     game: undefined,
     playerId: '',
+    manhunt: undefined,
     socket: undefined,
     pendingMovementRequest: false,
     rejected: false,

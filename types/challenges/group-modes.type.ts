@@ -446,9 +446,89 @@ export interface EmpireChallenge {
   maximumPoints: number
 }
 
+/**
+ * Manhunt: one player is the Despot, secretly fleeing country-to-country;
+ * everyone knows WHO, not WHERE. Each turn has two beats — the despot makes a
+ * forced hop (ground = border/strait, or a limited announced sea passage
+ * across a shared named sea), then every detective drops one marker after a
+ * server-picked clue that bisects the live candidate set. A marker on the
+ * despot's country captures them.
+ *
+ * Unlike every other mode, the answer must NOT ride the game snapshot: the
+ * trail, live markers and authoritative candidate set live in a separate
+ * redis blob (lib/manhunt manhuntKey) that never enters a broadcast. `state`
+ * carries only what the whole table may see; the trail goes public only in
+ * `outcome` at round end. The despot's own client learns its position over a
+ * targeted socket emit ('manhunt-position').
+ */
+export interface ManhuntChallenge {
+  _type: 'manhunt-challenge'
+  /** Hops the despot must survive to escape. */
+  turnCount: number
+  moveSeconds: number
+  huntSeconds: number
+  maximumPoints: number
+  /** WHO the despot is, is public by design — only WHERE is hidden. */
+  despotId: string
+  /** Sea passage charges the despot starts with. */
+  seaPassages: number
+  /** Easy/normal paint the candidate set on the map; hard shows clue text
+   *  only. A difficulty gate, not a security boundary — the set is derivable
+   *  from the public clues and the graph. */
+  showCandidates: boolean
+  state: ManhuntState
+}
+
+export type ManhuntMoveKind = 'ground' | 'sea'
+
+export interface ManhuntClue {
+  /** 1-based hop the clue was emitted on. */
+  hop: number
+  kind: 'threshold' | 'region' | 'language' | 'membership' | 'flag-colors'
+  /** Server-composed, render-ready intel line. */
+  text: string
+}
+
+export interface ManhuntState {
+  /** Monotonic beat counter — timeout token and submit idempotency key.
+   *  Increments on EVERY beat transition, mirroring border chain's `turn`. */
+  turn: number
+  /** 1..turnCount — which budgeted hop we're in. */
+  hop: number
+  beat: 'move' | 'hunt'
+  /** Epoch ms the live beat expires; client shot clocks render from it. */
+  deadline: number
+  /** Everyone but the despot, fixed at the deal. */
+  detectives: string[]
+  /** Public clue history, oldest first. */
+  clues: ManhuntClue[]
+  /** Movement-kind log — sea passages are announced, ground hops are not. */
+  moves: { hop: number; kind: ManhuntMoveKind }[]
+  seaPassagesLeft: number
+  /** Clue-consistent set snapshot for the live hunt beat; [] on hard. */
+  candidates: ISOCountryCode[]
+  /** Marker aggregates from RESOLVED turns only: the public dragnet. */
+  dragnets: { hop: number; markers: { [isoCode: string]: number } }[]
+  /** Detectives who locked a marker this hunt beat — presence, never where. */
+  committed: string[]
+  /** The trail becomes public ONLY here, at round end. */
+  outcome?:
+    | {
+        kind: 'captured'
+        hop: number
+        capturerIds: string[]
+        country: ISOCountryCode
+        trail: ISOCountryCode[]
+      }
+    | { kind: 'escaped'; country: ISOCountryCode; trail: ISOCountryCode[] }
+  /** Set when the round resolves; freezes the clock and starts the reveal. */
+  finished?: boolean
+}
+
 export type GroupModeChallenge =
   | EmpireChallenge
   | BorderChainChallenge
+  | ManhuntChallenge
   | TimelineChallenge
   | HeritageHuntChallenge
   | NeighbourBlitzChallenge

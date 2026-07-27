@@ -84,6 +84,29 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Manhunt: the despot's forced hop. Kind (ground vs sea passage) is
+       *  inferred server-side, preferring ground so no charge is wasted.
+       *  `turn` echoes the state's beat counter — a retried send can't land
+       *  as a second move. */
+      event: 'submit-manhunt-move'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
+      /** Manhunt: a detective's marker for the live hunt beat. The marker
+       *  itself stays off the broadcast (presence-only) — it lands in the
+       *  round's secret blob. */
+      event: 'submit-manhunt-marker'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
+      /** Manhunt: the despot's client asks for its own trail (reconnect
+       *  path). Answered with a targeted 'manhunt-position' emit; ignored for
+       *  anyone but the despot. */
+      event: 'fetch-manhunt-position'
+    }
+  | {
       event: 'close-tutorial'
     }
   | {
@@ -164,6 +187,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-chain-move',
   'submit-heritage-pin',
   'submit-timeline-placement',
+  'submit-manhunt-move',
+  'submit-manhunt-marker',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -211,6 +236,11 @@ export type ServerEventData =
   /** Timeline: a placement resolved, the reveal held, or the next turn began —
    *  whole-table state. */
   | { event: 'timeline-updated'; game: Game }
+  /** Manhunt: a beat advanced or the round resolved — whole-table state. */
+  | { event: 'manhunt-updated'; game: Game }
+  /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
+   *  never broadcast. `turn` stamps which beat the trail was current at. */
+  | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
   | { event: 'final-challenge-checked'; game: Game }
   | {

@@ -8,15 +8,22 @@ import { isCountryPlayable, microNationsIncluded, playableWorldCountries } from 
 export const isNeighbour = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
   BORDERS[a]?.includes(b) ?? false
 
-/** BFS distances (in border crossings) from one country to every reachable one. */
-export const distancesFrom = (origin: ISOCountryCode): Map<ISOCountryCode, number> => {
+/**
+ * BFS distances (in crossings) from one country to every reachable one.
+ * Land borders by default; pass a neighbour function to widen the graph
+ * (manhunt hands in borders ∪ straits ∪ sea lanes).
+ */
+export const distancesFrom = (
+  origin: ISOCountryCode,
+  neighboursOf: (isoCode: ISOCountryCode) => ISOCountryCode[] = isoCode => BORDERS[isoCode] ?? []
+): Map<ISOCountryCode, number> => {
   const distances = new Map<ISOCountryCode, number>([[origin, 0]])
   const queue: ISOCountryCode[] = [origin]
 
   while (queue.length) {
     const current = queue.shift() as ISOCountryCode
     const distance = distances.get(current) as number
-    for (const next of BORDERS[current] ?? []) {
+    for (const next of neighboursOf(current)) {
       if (distances.has(next)) continue
       distances.set(next, distance + 1)
       queue.push(next)

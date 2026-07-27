@@ -38,6 +38,7 @@ import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
 import ViewHotCold from '~/components/view/ViewHotCold.vue'
+import ViewManhunt from '~/components/view/ViewManhunt.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
@@ -1071,6 +1072,149 @@ const scenarios: Scenario[] = [
             eliminated: [ME],
             outcomes: { [ME]: 'wrong' },
             missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-detective',
+    label: 'The Despot (detective, hunt beat, candidates painted)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: RIVAL,
+          seaPassages: 2,
+          showCandidates: true,
+          state: {
+            turn: 5,
+            hop: 3,
+            beat: 'hunt',
+            deadline: Date.now() + 25000,
+            detectives: [ME, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
+              { hop: 2, kind: 'threshold', text: 'Its median age is at least 42 years' },
+              { hop: 3, kind: 'membership', text: 'The country is a member of the European Union' },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+              { hop: 3, kind: 'sea' },
+            ],
+            seaPassagesLeft: 1,
+            candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
+            dragnets: [
+              { hop: 1, markers: { FR: 1, PL: 1 } },
+              { hop: 2, markers: { DE: 2 } },
+            ],
+            committed: [THIRD],
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-despot',
+    label: 'The Despot (you flee, move beat, trail + dragnet)',
+    component: ViewManhunt,
+    build: () => {
+      // The trail arrives over the targeted position channel in real play —
+      // the harness plants it directly.
+      gameStore.manhunt = { trail: ['CZ', 'AT', 'IT'], turn: 4 }
+      return mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: ME,
+          seaPassages: 2,
+          showCandidates: true,
+          state: {
+            turn: 4,
+            hop: 3,
+            beat: 'move',
+            deadline: Date.now() + 15000,
+            detectives: [RIVAL, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
+              { hop: 2, kind: 'language', text: 'Official languages there include German' },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+            ],
+            seaPassagesLeft: 2,
+            candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
+            dragnets: [
+              { hop: 1, markers: { DE: 1, PL: 1 } },
+              { hop: 2, markers: { AT: 1, CH: 1 } },
+            ],
+            committed: [],
+          },
+        }),
+      ])
+    },
+  },
+  {
+    id: 'manhunt-reveal',
+    label: 'The Despot (captured, trail replay + reveal)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: RIVAL,
+          seaPassages: 2,
+          showCandidates: true,
+          state: {
+            turn: 10,
+            hop: 5,
+            beat: 'hunt',
+            deadline: 0,
+            detectives: [ME, THIRD],
+            clues: [
+              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
+              { hop: 2, kind: 'threshold', text: 'Its urbanization is below 68%' },
+              { hop: 3, kind: 'language', text: 'Official languages there include Italian' },
+              { hop: 4, kind: 'flag-colors', text: 'The flag flying over the hideout carries green' },
+              { hop: 5, kind: 'threshold', text: 'Its population is below 11,000,000' },
+            ],
+            moves: [
+              { hop: 1, kind: 'ground' },
+              { hop: 2, kind: 'ground' },
+              { hop: 3, kind: 'sea' },
+              { hop: 4, kind: 'ground' },
+              { hop: 5, kind: 'ground' },
+            ],
+            seaPassagesLeft: 1,
+            candidates: ['IT', 'SI'],
+            dragnets: [
+              { hop: 1, markers: { FR: 1, DE: 1 } },
+              { hop: 2, markers: { AT: 2 } },
+              { hop: 3, markers: { ES: 1, IT: 1 } },
+              { hop: 4, markers: { HR: 2 } },
+              { hop: 5, markers: { SI: 2 } },
+            ],
+            committed: [ME, THIRD],
+            outcome: {
+              kind: 'captured',
+              hop: 5,
+              capturerIds: [ME, THIRD],
+              country: 'SI',
+              trail: ['CZ', 'AT', 'IT', 'HR', 'SI'],
+            },
+            finished: true,
           },
         }),
       ]),

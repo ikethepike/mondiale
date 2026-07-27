@@ -6,6 +6,11 @@ import type { Game } from '~~/types/game.types'
 import { enqueueGameTask, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { movesForScoredPoints } from './moves'
+import {
+  FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS,
+  REVEAL_HOLD_MS,
+  TIMEOUT_SLACK_MS,
+} from './turn-timing'
 
 /**
  * Heritage Hunt's beat engine, the pattern sibling of chain-turns: one photo
@@ -16,10 +21,6 @@ import { movesForScoredPoints } from './moves'
  * per-game queue; the (beat, revealing) pair is the staleness token.
  */
 
-const REVEAL_HOLD_MS = 6000
-const TIMEOUT_SLACK_MS = 350
-/** Extra opening-beat time — the first clock starts behind the interstitial. */
-const FIRST_BEAT_GRACE_MS = 4000
 /** The taper's share of a beat; the rest pays beat rank (solo pays it whole). */
 const TAPER_SHARE = 0.8
 

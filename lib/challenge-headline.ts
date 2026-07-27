@@ -105,6 +105,17 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         ? `The timeline ran from ${formatEventYear(first.year)} to ${formatEventYear(last.year)}`
         : 'The timeline round'
     }
+    case 'manhunt': {
+      if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') return ''
+      const outcome = challenge.state.outcome
+      if (outcome?.kind === 'captured') {
+        return `The despot was cornered in ${countryName(outcome.country)} on turn ${outcome.hop}`
+      }
+      if (outcome?.kind === 'escaped') {
+        return `The despot escaped after ${challenge.turnCount} turns on the run`
+      }
+      return 'The hunt for the despot'
+    }
     default:
       return 'id' in challenge ? (getChallengeDetails(challenge.id)?.phrasing ?? '') : ''
   }
