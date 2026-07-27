@@ -329,16 +329,15 @@ const microNationsValue = computed(() => {
   return override === undefined ? 'auto' : override ? 'on' : 'off'
 })
 
+// Same terse idiom as the group captions — a long line here wraps the meta
+// column wide and shoves the control out of the row.
 const microNationsCaption = computed(() => {
   const override = game.value?.includeMicroNations
-  const resolved = microNationsIncluded({
-    difficulty: difficultyPreview.value,
-    includeMicroNations: override,
-  })
-  const autoNote = override === undefined ? ' (auto: hard only)' : ''
-  return resolved
-    ? `Vatican, Monaco & co are in play${autoNote}.`
-    : `Vatican, Monaco & co sit out — tiny stat pools skew rankings${autoNote}.`
+  if (override === true) return 'on'
+  if (override === false) return 'off'
+  return microNationsIncluded({ difficulty: difficultyPreview.value })
+    ? 'on'
+    : `off below hard — now ${difficultyPreview.value}`
 })
 
 /** What this group's current tab means in modes, at the previewed difficulty. */
