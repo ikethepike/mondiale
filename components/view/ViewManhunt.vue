@@ -106,12 +106,14 @@
           <li>⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its movements will be… reported.</li>
           <li>Interpol leaks one true fact about your location every turn. Trust no census, Excellency.</li>
           <li>Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally — sails with you.</li>
+          <li>Every turn at large banks its share of the pot; captured early, you keep only what you had banked.</li>
         </template>
         <template v-else>
           <li>Each turn brings one true intel report on the Despot's hideout.</li>
           <li>Click the map to drop your marker — land on the Despot to capture.</li>
           <li>⚖ Subpoenas force the next clue onto a topic of your choosing.</li>
-          <li>The closer your final marker, the bigger your share of the bounty.</li>
+          <li>On a capture, the bounty splits by how close each final marker sits — and whoever lands the cuff takes a bonus.</li>
+          <li>If the Despot slips away, only a thin consolation splits by proximity — so close the net.</li>
         </template>
       </ul>
       <!-- The table, pawn by pawn: colour = briefed and ready, faded = still

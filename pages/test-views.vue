@@ -1137,7 +1137,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'manhunt-briefing',
-    label: 'The Despot (briefing cards, explicit ready)',
+    label: 'The Despot (briefing — detective case file)',
     component: ViewManhunt,
     build: () =>
       mockGame('group-challenge', [
@@ -1163,6 +1163,41 @@ const scenarios: Scenario[] = [
             moves: [],
             seaPassagesLeft: 2,
             subpoenasLeft: { [ME]: 2, [THIRD]: 2 },
+            candidates: [],
+            dragnets: [],
+            committed: [],
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'manhunt-briefing-despot',
+    label: 'The Despot (briefing — Glorious Leader card)',
+    component: ViewManhunt,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'manhunt-challenge',
+          turnCount: 7,
+          moveSeconds: 15,
+          huntSeconds: 25,
+          maximumPoints: MAXIMUM_POINTS,
+          despotId: ME,
+          seaPassages: 2,
+          subpoenas: 2,
+          showCandidates: true,
+          state: {
+            briefing: true,
+            ready: [THIRD],
+            turn: 0,
+            hop: 1,
+            beat: 'move',
+            deadline: 0,
+            detectives: [RIVAL, THIRD],
+            clues: [],
+            moves: [],
+            seaPassagesLeft: 2,
+            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
             candidates: [],
             dragnets: [],
             committed: [],
