@@ -8,9 +8,9 @@ export const closeTutorialHandler = defineGameHandler(
 
     // A manhunt dealt as round 1 (FORCE_ROUND_TYPE — natural round 1 is always
     // ranking) never passes the enter-movement-phase reveal, so its secret
-    // blob and clock start here instead, on the FIRST tutorial close. The
-    // per-game queue serializes closes; the deadline guard makes later ones
-    // no-ops.
+    // blob seeds here instead. Every close during the briefing re-enters
+    // (the deadline stays 0 until the pursuit begins) — startManhunt is
+    // idempotent on the secret, so only the first close seeds.
     const manhunt = currentManhunt(game)
     const startsManhunt = manhunt && !manhunt.state.finished && manhunt.state.deadline === 0
     if (startsManhunt) {

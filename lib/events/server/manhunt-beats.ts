@@ -32,8 +32,8 @@ import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-ti
  * lives in a redis blob under manhuntKey — the player-secret pattern, a key
  * that never rides a broadcast — alongside the hunt beat's live markers and
  * the authoritative candidate set. The public challenge state carries clues,
- * dragnet aggregates and presence only; the trail surfaces in the snapshot
- * exactly once, inside `state.outcome` at round end. The despot's own client
+ * presence, and RESOLVED beats' attributed markers only; the trail surfaces
+ * in the snapshot exactly once, inside `state.outcome` at round end. The despot's own client
  * learns its position over a single-socket 'manhunt-position' emit.
  */
 
@@ -109,6 +109,11 @@ export const pushManhuntPosition = async (
  * scheduleManhuntTimeout arms AFTER, as usual.
  */
 export const startManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
+  // Idempotent: the round-1 path calls this from EVERY tutorial close (the
+  // briefing keeps deadline at 0, so the caller's guard can't distinguish
+  // first from later closes) — a second run must never re-seed the trail.
+  const existing = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
+  if (existing) return
   const seed = pickManhuntSeed(game)
   if (!seed) {
     // The dealer verified the pool, so only drifted data lands here — run the
