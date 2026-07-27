@@ -95,13 +95,13 @@
          runs until the whole table is ready (or the server's cap forces it). -->
     <section v-if="briefing" class="briefing pane tr decorator-bottom">
       <DespotHat class="briefing-hat" />
-      <h2>{{ isDespot ? 'Your escape plan' : 'Your case file' }}</h2>
+      <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
       <ul class="briefing-points">
         <template v-if="isDespot">
-          <li>Each turn, hop to a neighbouring country — across a border or a strait.</li>
-          <li>⚓ Sea passages jump a whole shared sea, but the crossing is announced.</li>
-          <li>Every turn the hunt learns one true fact about your hideout.</li>
-          <li>Survive {{ challenge.turnCount }} turns and the treasury is yours.</li>
+          <li>The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border, a strait, anywhere but here.</li>
+          <li>⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its movements will be… reported.</li>
+          <li>Interpol leaks one true fact about your location every turn. Trust no census, Excellency.</li>
+          <li>Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally — sails with you.</li>
         </template>
         <template v-else>
           <li>Each turn brings one true intel report on the Despot's hideout.</li>
@@ -110,12 +110,25 @@
           <li>The closer your final marker, the bigger your share of the bounty.</li>
         </template>
       </ul>
+      <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
+           reading. The gate's state at a glance, no counting required. -->
+      <div class="ready-row">
+        <div
+          v-for="playerId in briefingParticipants"
+          :key="playerId"
+          class="ready-seat"
+          :class="{ waiting: !state.ready.includes(playerId) }"
+        >
+          <!-- The cap marks the quarry — everyone knows WHO from the start. -->
+          <DespotHat v-if="playerId === challenge.despotId" class="seat-hat" />
+          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
+          <span class="seat-name">{{ seatName(playerId) }}</span>
+        </div>
+      </div>
       <ButtonFilled v-if="!iAmReady" @click="sendReady">
-        {{ isDespot ? 'Start running' : 'Open the hunt' }}
+        {{ isDespot ? 'Flee with dignity' : 'Open the hunt' }}
       </ButtonFilled>
-      <p v-else class="briefing-waiting">
-        {{ state.ready.length }} of {{ tableSize }} ready…
-      </p>
+      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
     </section>
 
     <ManhuntReveal
@@ -169,21 +182,11 @@
             :key="clue.text"
             tag="li"
             class="intel-row"
-            :class="{ plotted: clueHasPlot(clue) }"
             :accessor="clue.accessorId"
             :topic="clue.topic"
             :label="clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`"
           >
             <span class="intel-text">{{ clue.text }}</span>
-            <!-- The freshest threshold clue shows its cut across the whole
-                 field — the strip the stat rounds already speak. -->
-            <StatStripPlot
-              v-if="clueHasPlot(clue)"
-              class="intel-plot"
-              :accessor-id="clue.accessorId"
-              :cut-at="clue.threshold"
-              :keep-above="clue.above"
-            />
           </StatCard>
         </ol>
       </div>
@@ -193,8 +196,8 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
-import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -370,17 +373,18 @@ const seaPassageAnnounced = computed(() => {
 
 const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 
-/** Only the freshest clue earns the strip plot — one chart, not a gallery. */
-const clueHasPlot = (clue: (typeof recentClues.value)[number]) =>
-  clue === recentClues.value[0] &&
-  clue.kind === 'threshold' &&
-  clue.accessorId !== undefined &&
-  clue.threshold !== undefined
-
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
 
 const briefing = computed(() => !!state.value.briefing && !finished.value && !showInterstitial.value)
+const seatName = (playerId: string) =>
+  playerId === gameStore.playerId
+    ? 'You'
+    : gameStore.game?.players[playerId]?.name || 'Anonymous'
+
+const briefingParticipants = computed(() =>
+  challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
+)
 const iAmReady = computed(() => state.value.ready.includes(gameStore.playerId))
 const tableSize = computed(() => state.value.detectives.length + 1)
 const readySent = ref(false)
@@ -840,16 +844,6 @@ header {
     display: block;
   }
 
-  &.plotted {
-    max-width: 34rem;
-    pointer-events: auto;
-  }
-
-  .intel-plot {
-    width: 100%;
-    margin-top: 0.5rem;
-    --swarm-height: 3.6rem;
-  }
 }
 
 .rail-label {
@@ -974,6 +968,45 @@ header .prompt {
   text-align: left;
   gap: 0.55rem;
   flex-flow: column nowrap;
+}
+
+.ready-row {
+  gap: 1.2rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ready-seat {
+  gap: 0.25rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+  transition:
+    opacity var(--motion-base) var(--ease-smooth),
+    filter var(--motion-base) var(--ease-smooth);
+
+  &.waiting {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+
+  .seat-hat {
+    width: 2.4rem;
+    z-index: 1;
+    // Seated ON the pawn's head, tipped — not hovering in the air above it.
+    margin-bottom: -1.15rem;
+    transform: rotate(-10deg);
+  }
+
+  .ready-pawn {
+    width: 2.6rem;
+  }
+
+  .seat-name {
+    font-size: 1.15rem;
+    color: var(--dark-blue);
+  }
 }
 
 .briefing-waiting {
