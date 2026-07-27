@@ -490,6 +490,11 @@ export interface ManhuntClue {
   kind: 'threshold' | 'region' | 'language' | 'membership' | 'flag-colors'
   /** Server-composed, render-ready intel line. */
   text: string
+  /** Threshold clues name their accessor — the intel card wears the stat's
+   *  own emblem (StatTopicIcon), like Stat Detective's dossier. */
+  accessorId?: GroupChallengeAccessorId
+  /** Categorical clues name a glyph key instead (topic/relations/department). */
+  topic?: string
   /** Set when a detective subpoenaed this clue rather than the engine
    *  dealing it — credits the asker in the rail and the reveal. */
   askedBy?: string

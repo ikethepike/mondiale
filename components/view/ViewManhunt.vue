@@ -127,47 +127,64 @@
     />
 
     <footer>
-      <!-- One-tap taunt: a random line from your role's list, server-limited. -->
-      <button
-        v-if="!finished && !briefing && (isDespot || iAmDetective)"
-        class="taunt-chip map-caption"
-        :disabled="tauntCooling"
-        @click="sendTaunt"
-      >
-        📣 Taunt
-      </button>
-      <!-- Subpoena dock, down where the detective's hands already are. -->
-      <div v-if="canSubpoena" class="subpoena-dock map-caption">
-        <span class="subpoena-lead">
-          Subpoena · {{ mySubpoenas }} {{ mySubpoenas === 1 ? 'token' : 'tokens' }}
-        </span>
-        <button
-          v-for="topic in MANHUNT_SUBPOENA_TOPICS"
-          :key="topic.id"
-          class="subpoena-chip"
-          :disabled="subpoenaPending"
-          @click="sendSubpoena(topic.id)"
-        >
-          {{ topic.label }}
-        </button>
+      <!-- One dock, one surface: the intel dossier (Stat Detective's card
+           language) with the round's actions in a single row above it. -->
+      <div v-if="!finished && !briefing && !showInterstitial" class="hunt-dock">
+        <div v-if="canSubpoena || isDespot || iAmDetective" class="dock-actions map-caption">
+          <template v-if="canSubpoena">
+            <span class="subpoena-lead">
+              ⚖
+              <span
+                v-for="index in challenge.subpoenas"
+                :key="index"
+                class="token-pip"
+                :class="{ spent: index > mySubpoenas }"
+              />
+            </span>
+            <button
+              v-for="topic in MANHUNT_SUBPOENA_TOPICS"
+              :key="topic.id"
+              class="topic-chip"
+              :disabled="subpoenaPending"
+              @click="sendSubpoena(topic.id)"
+            >
+              <StatTopicIcon
+                class="chip-icon"
+                :topic="topic.icon.topic"
+                :accessor="topic.icon.accessor"
+              />
+              <span>{{ topic.label }}</span>
+            </button>
+            <span class="dock-divider" />
+          </template>
+          <button class="topic-chip" :disabled="tauntCooling" @click="sendTaunt">
+            <StatTopicIcon class="chip-icon" topic="society.protest" />
+            <span>Taunt</span>
+          </button>
+        </div>
+        <ol v-if="recentClues.length" class="intel">
+          <li v-if="isDespot" class="rail-label map-caption">What the hunt knows</li>
+          <StatCard
+            v-for="clue in recentClues"
+            :key="clue.text"
+            tag="li"
+            class="intel-row"
+            :accessor="clue.accessorId"
+            :topic="clue.topic"
+            :label="clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`"
+          >
+            <span class="intel-text">{{ clue.text }}</span>
+          </StatCard>
+        </ol>
       </div>
-      <ol v-if="!finished && recentClues.length" class="intel">
-        <!-- On the despot's screen the rail is their wanted poster — label it. -->
-        <li v-if="isDespot" class="entry map-caption rail-label">What the hunt knows</li>
-        <li v-for="clue in recentClues" :key="clue.text" class="entry map-caption">
-          <span class="hop-badge">{{ clue.hop }}</span>
-          <span>{{ clue.text }}</span>
-          <span v-if="clue.askedBy" class="asked-by">
-            ⚖ {{ nameOf(clue.askedBy) }}
-          </span>
-        </li>
-      </ol>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import StatCard from '~/components/challenge/StatCard.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -715,35 +732,69 @@ header {
   }
 }
 
-// Below the map's pointer-events blanket — restore them or the chips are
-// unclickable ornaments (the border chain's route learned this the hard way).
-.subpoena-dock {
+.hunt-dock {
+  gap: 0.6rem;
+  display: flex;
+  margin: 0 auto;
+  align-items: center;
+  flex-flow: column nowrap;
+  max-width: calc(100vw - 2.4rem);
+}
+
+// One pill holds every action — the console language, not floating chips.
+.dock-actions {
   gap: 0.5rem;
   display: flex;
   flex-wrap: wrap;
-  margin: 0 auto 0.6rem;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1.2rem;
-  width: fit-content;
+  padding: 0.45rem 1rem;
   pointer-events: auto;
 
   .subpoena-lead {
+    gap: 0.3rem;
+    display: inline-flex;
+    align-items: center;
     font-weight: bold;
-    margin-right: 0.4rem;
+    margin-right: 0.2rem;
   }
 
-  .subpoena-chip {
+  .token-pip {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: hsl(215.7, 76.4%, 41%);
+
+    &.spent {
+      opacity: 0.25;
+    }
+  }
+
+  .dock-divider {
+    width: 0.1rem;
+    height: 1.8rem;
+    background: hsla(215.7, 76.4%, 21.6%, 0.25);
+  }
+
+  .topic-chip {
     font: inherit;
+    gap: 0.45rem;
+    display: inline-flex;
     cursor: pointer;
+    align-items: center;
     color: var(--dark-blue);
-    padding: 0.25rem 0.9rem;
+    padding: 0.3rem 0.9rem;
     border-radius: 1rem;
-    border: 0.1rem solid hsla(215.7, 76.4%, 41%, 0.45);
-    background: hsla(212, 58%, 62%, 0.14);
+    border: 0.1rem solid hsla(215.7, 76.4%, 41%, 0.35);
+    background: none;
+
+    .chip-icon {
+      width: 1.6rem;
+      height: 1.6rem;
+    }
 
     &:hover:not(:disabled) {
-      background: hsla(212, 58%, 62%, 0.3);
+      background: hsla(212, 58%, 62%, 0.18);
     }
 
     &:disabled {
@@ -753,15 +804,30 @@ header {
   }
 }
 
-header .headline-line {
-  gap: 1rem;
-  display: inline-flex;
-  align-items: center;
+.intel {
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  align-items: stretch;
+  justify-content: center;
+}
 
-  .despot-hat {
-    width: 3.6rem;
-    flex-shrink: 0;
+.intel-row {
+  max-width: 24rem;
+
+  .intel-text {
+    display: block;
   }
+}
+
+.rail-label {
+  opacity: 0.75;
+  font-weight: bold;
+  align-self: center;
+  padding: 0.4rem 1.2rem;
 }
 
 header .prompt {
@@ -875,29 +941,6 @@ header .prompt {
   opacity: 0.75;
 }
 
-.taunt-chip {
-  font: inherit;
-  display: block;
-  cursor: pointer;
-  margin: 0 auto 0.6rem;
-  pointer-events: auto;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
-
-.rail-label {
-  opacity: 0.75;
-  font-weight: bold;
-}
-
-.asked-by {
-  opacity: 0.7;
-  font-size: 0.85em;
-}
-
 .reveal {
   z-index: 2;
   margin: 0 auto;
@@ -909,40 +952,6 @@ footer {
   padding: 2rem;
 }
 
-.intel {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.entry {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
-
-  &.charges {
-    font-weight: bold;
-    color: hsl(215.7, 76.4%, 41%);
-  }
-}
-
-.hop-badge {
-  width: 1.4rem;
-  height: 1.4rem;
-  display: grid;
-  font-size: 0.8em;
-  font-weight: bold;
-  place-items: center;
-  border-radius: 50%;
-  background: hsla(212, 58%, 52%, 0.18);
-}
-
 @media screen and (max-width: $tablet) {
   header {
     padding: 1.2rem 1.6rem;
@@ -950,11 +959,5 @@ footer {
   footer {
     padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
-  .intel {
-    max-height: 22dvh;
-    overflow-y: auto;
-    pointer-events: auto;
-    overscroll-behavior: contain;
   }
-}
 </style>

@@ -257,13 +257,23 @@ const clueCandidates = (
 
   // Region — the guaranteed fallback: always defined, always true.
   push(
-    { hop, kind: 'region', text: `The despot is hiding in ${REGION_LABELS[country.region]}` },
+    {
+      hop,
+      kind: 'region',
+      topic: 'geography',
+      text: `The despot is hiding in ${REGION_LABELS[country.region]}`,
+    },
     candidates.filter(isoCode => getCountry(isoCode)?.region === country.region)
   )
 
   for (const language of country.languages ?? []) {
     push(
-      { hop, kind: 'language', text: `Official languages there include ${language}` },
+      {
+        hop,
+        kind: 'language',
+        topic: 'department.communications',
+        text: `Official languages there include ${language}`,
+      },
       candidates.filter(isoCode => getCountry(isoCode)?.languages?.includes(language))
     )
   }
@@ -273,6 +283,7 @@ const clueCandidates = (
       {
         hop,
         kind: 'membership',
+        topic: 'relations.alliance',
         text: `The country is a member of the ${OrganizationVector[organization.id]}`,
       },
       candidates.filter(isoCode =>
@@ -283,7 +294,12 @@ const clueCandidates = (
 
   for (const color of country.identity?.simplifiedColors ?? []) {
     push(
-      { hop, kind: 'flag-colors', text: `The flag flying over the hideout carries ${color}` },
+      {
+        hop,
+        kind: 'flag-colors',
+        topic: 'relations.embassy',
+        text: `The flag flying over the hideout carries ${color}`,
+      },
       candidates.filter(isoCode => getCountry(isoCode)?.identity?.simplifiedColors?.includes(color))
     )
   }
@@ -316,6 +332,7 @@ const clueCandidates = (
       clue: {
         hop,
         kind: 'threshold',
+        accessorId,
         text: `Its ${label} is ${above ? 'at least' : 'below'} ${formatThreshold(
           threshold,
           despotValue.unit
@@ -434,10 +451,18 @@ export const pickManhuntClue = (
  * topics by accessor, categorical topics by clue kind. Curated so every
  * topic has near-complete data behind it.
  */
+interface SubpoenaTopicIcon {
+  accessor?: GroupChallengeAccessorId
+  topic?: string
+}
+/** Widens each entry's icon literal so chips can probe both fields. */
+const subpoenaIcon = (icon: SubpoenaTopicIcon): SubpoenaTopicIcon => icon
+
 export const MANHUNT_SUBPOENA_TOPICS = [
   {
     id: 'people',
-    label: 'People & population',
+    label: 'People',
+    icon: subpoenaIcon({ accessor: 'people.population' }),
     accessors: [
       'people.population',
       'people.medianAge',
@@ -451,6 +476,7 @@ export const MANHUNT_SUBPOENA_TOPICS = [
   {
     id: 'economy',
     label: 'Economy',
+    icon: subpoenaIcon({ topic: 'economics' }),
     accessors: [
       'economics.gdpPerCapita',
       'economics.gdpTotal',
@@ -461,7 +487,8 @@ export const MANHUNT_SUBPOENA_TOPICS = [
   },
   {
     id: 'land',
-    label: 'Land & area',
+    label: 'Land',
+    icon: subpoenaIcon({ topic: 'geography' }),
     accessors: [
       'geography.area.total',
       'geography.area.land',
@@ -473,12 +500,14 @@ export const MANHUNT_SUBPOENA_TOPICS = [
   {
     id: 'language',
     label: 'Languages',
+    icon: subpoenaIcon({ topic: 'department.communications' }),
     accessors: [] as GroupChallengeAccessorId[],
     kinds: ['language'] as ManhuntClue['kind'][],
   },
   {
     id: 'alliances',
     label: 'Alliances',
+    icon: subpoenaIcon({ topic: 'relations.alliance' }),
     accessors: [] as GroupChallengeAccessorId[],
     kinds: ['membership'] as ManhuntClue['kind'][],
   },
