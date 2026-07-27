@@ -1,4 +1,5 @@
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { clamp01 } from './number'
 
 export type OutlinePoint = [number, number]
 
@@ -97,7 +98,7 @@ export const drawnFraction = (
 ): number => {
   const drawEndsAt = totalSeconds * (1 - completeAt)
   const window = Math.max(1, drawStartSecondsLeft - drawEndsAt)
-  return Math.min(1, Math.max(0, (drawStartSecondsLeft - secondsLeft) / window))
+  return clamp01((drawStartSecondsLeft - secondsLeft) / window)
 }
 
 /**
@@ -186,7 +187,8 @@ export const parsePolygons = (d: string): OutlinePoint[][] => {
   return rings
 }
 
-const ringArea = (ring: OutlinePoint[]): number => {
+/** Shoelace area of a closed ring — the one copy (empire morphing uses it too). */
+export const ringArea = (ring: readonly (readonly [number, number])[]): number => {
   let area = 0
   for (let index = 0; index < ring.length; index++) {
     const [x1, y1] = ring[index]
@@ -194,6 +196,17 @@ const ringArea = (ring: OutlinePoint[]): number => {
     area += x1 * y2 - x2 * y1
   }
   return Math.abs(area / 2)
+}
+
+/** Mean-of-vertices centre of a ring. */
+export const ringCentroid = (ring: readonly (readonly [number, number])[]): [number, number] => {
+  let x = 0
+  let y = 0
+  for (const [px, py] of ring) {
+    x += px
+    y += py
+  }
+  return [x / ring.length, y / ring.length]
 }
 
 /** The mainland: the largest ring by area (archipelago islands drop away). */
@@ -244,23 +257,18 @@ export const resampleClosed = (points: OutlinePoint[], count = 96): OutlinePoint
 export const normalizeOutline = (points: OutlinePoint[]): OutlinePoint[] => {
   if (!points.length) return points
 
-  let sumX = 0
-  let sumY = 0
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
   for (const [x, y] of points) {
-    sumX += x
-    sumY += y
     minX = Math.min(minX, x)
     minY = Math.min(minY, y)
     maxX = Math.max(maxX, x)
     maxY = Math.max(maxY, y)
   }
 
-  const centerX = sumX / points.length
-  const centerY = sumY / points.length
+  const [centerX, centerY] = ringCentroid(points)
   const scale = Math.max(maxX - minX, maxY - minY) || 1
 
   return points.map(([x, y]) => [(x - centerX) / scale, (y - centerY) / scale])
@@ -296,14 +304,7 @@ export const outlineDistance = (a: OutlinePoint[], b: OutlinePoint[]): number =>
  */
 const rmsNormalize = (points: OutlinePoint[]): OutlinePoint[] => {
   if (!points.length) return points
-  let sumX = 0
-  let sumY = 0
-  for (const [x, y] of points) {
-    sumX += x
-    sumY += y
-  }
-  const centerX = sumX / points.length
-  const centerY = sumY / points.length
+  const [centerX, centerY] = ringCentroid(points)
 
   let radius = 0
   for (const [x, y] of points) {
@@ -385,6 +386,6 @@ export const scoreSketch = (
   // but recognizable 0.09–0.22; a bounding-box ellipse sits ≥0.18 on any
   // country with a distinctive shape, wrong-country tracings ≥0.20. Full
   // marks ≤0.07, nothing from 0.25 up.
-  const band = Math.max(0, Math.min(1, 1 - (distance - 0.07) / 0.18))
+  const band = clamp01(1 - (distance - 0.07) / 0.18)
   return Math.round(maximumPoints * Math.pow(band, 1.3))
 }

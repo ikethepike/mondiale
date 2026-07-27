@@ -42,6 +42,7 @@ import {
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -80,7 +81,7 @@ const named = ref(new Set<ISOCountryCode>())
 const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
+const { viewBox } = useMapViewBox()
 
 const durationMs = props.challenge.durationSeconds * 1000
 // The sweep clock starts once the camera has settled and the bounds are
@@ -175,15 +176,6 @@ const positionSeaNight = () => {
 
 let ticker: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
-let mapSvg: SVGSVGElement | null = null
-
-const readViewBox = () => {
-  mapSvg ??= document.querySelector('.game-map svg')
-  const raw = mapSvg?.getAttribute('viewBox')?.split(/\s+/).map(Number)
-  if (raw?.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
 
 const finish = () => {
   if (finished.value) return
@@ -238,7 +230,6 @@ const start = () => {
   guessInput.value?.focus()
   ticker = setInterval(() => {
     elapsedMs.value = performance.now() - startedAt
-    readViewBox()
     lockSweepBounds()
     // Until the camera settles and the bounds lock, the night stays entirely
     // off-screen (the --sunset-veil fallback) and takes no land — positioning

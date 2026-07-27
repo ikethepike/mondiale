@@ -1,6 +1,6 @@
 import gsap from 'gsap'
 import { EASE, MOTION } from '~~/lib/motion'
-import { parsePolygons } from '~~/lib/outline'
+import { parsePolygons, ringArea, ringCentroid as centroid } from '~~/lib/outline'
 
 /**
  * The Ghosts of Empires morph engine: turns an empire's keyframe paths into
@@ -35,24 +35,6 @@ const FADE_SECONDS = 0.6
  *  shows the whole story once and most of it twice. */
 const SEGMENT_BASE_SECONDS = 1.8
 const SEGMENT_POOL_SECONDS = 9
-
-const ringArea = (ring: Ring): number => {
-  let area = 0
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    area += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1])
-  }
-  return Math.abs(area / 2)
-}
-
-const centroid = (ring: Ring): [number, number] => {
-  let x = 0
-  let y = 0
-  for (const [px, py] of ring) {
-    x += px
-    y += py
-  }
-  return [x / ring.length, y / ring.length]
-}
 
 const distance = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1])
 

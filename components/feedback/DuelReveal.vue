@@ -31,15 +31,9 @@ import { getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
+import type { DuelOutcome } from '~~/types/challenges/individual-challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
-
-interface DuelOutcome {
-  picked: ISOCountryCode
-  higher: ISOCountryCode
-  lower: ISOCountryCode
-  correct: boolean
-}
 
 const props = defineProps<{
   outcomes: DuelOutcome[]

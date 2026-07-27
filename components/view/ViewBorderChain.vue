@@ -84,10 +84,11 @@ import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { activePlayerId, isStraitHop, liveChain, openMoves } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
-import { isCountryPlayable } from '~~/lib/game-rules'
+import { unplayableCountries } from '~~/lib/game-rules'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { playerDisplayName } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -120,7 +121,7 @@ const walked = computed(() => chain.value)
 // micro-nations — are illegal moves; fade them so the rule is visible
 // before someone walks Spain → Morocco into it.
 const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
-gameStore.map.dimmed = ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))
+gameStore.map.dimmed = unplayableCountries(rules)
 
 /** Walk-order badges over the live chain (1 = seed). On easy, the head's open
  *  connections also carry their ISO code — the legal moves, spelled out. */
@@ -163,20 +164,13 @@ const headline = computed(() => {
 
 const turnLabel = computed(() => {
   if (myTurn.value) return 'Your move'
-  return `${activePlayer.value?.name || 'Anonymous'} is on the clock`
+  return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
-// --- Shot clock (server-owned deadline; local repaint only) ------------------
-const secondsOnClock = ref(0)
-const fractionLeft = ref(1)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  const remaining = deadline - Date.now()
-  secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
-  const total = (challenge.value?.turnSeconds ?? 0) * 1000
-  fractionLeft.value = total ? Math.min(1, Math.max(0, remaining / total)) : 1
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
+const { secondsOnClock, fractionLeft } = useDeadlineClock(
+  () => state.value?.deadline,
+  () => challenge.value?.turnSeconds
+)
 
 /** 0 (calm ink) through the turn's first half, 100 (ember) as the clock dies. */
 const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))

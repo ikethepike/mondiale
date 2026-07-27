@@ -54,6 +54,7 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import type { RecognitionTerritory } from '~~/data/recognition.gen'
+import { sanitizeSvg } from '~~/lib/svg'
 
 // The whole world must stay tappable — the answer is a place, not a shape.
 const {
@@ -85,22 +86,10 @@ const verdictHeadline = ref('')
 watchEffect(() => {
   if (!flagHost.value || !flagSvg.value) return
 
-  const parsed = new DOMParser().parseFromString(flagSvg.value, 'image/svg+xml')
-  const svg = parsed.documentElement
-  if (svg.nodeName.toLowerCase() !== 'svg') return
-
-  svg.querySelectorAll('script, foreignObject').forEach(node => node.remove())
-  for (const element of [svg, ...svg.querySelectorAll('*')]) {
-    for (const attribute of [...element.attributes]) {
-      if (attribute.name.toLowerCase().startsWith('on')) element.removeAttribute(attribute.name)
-    }
-  }
-
   // These flags run 2:1 and 3:2, unlike the 4:3 country set. Let the SVG keep
   // its own ratio inside the host box.
-  svg.removeAttribute('width')
-  svg.removeAttribute('height')
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  const svg = sanitizeSvg(flagSvg.value)
+  if (!svg) return
 
   flagHost.value.replaceChildren(svg)
 })

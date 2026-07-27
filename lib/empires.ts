@@ -1,6 +1,8 @@
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { clampScore, jaccardFraction } from './scoring'
+import { editDistance, normalizeAnswer } from './strings'
 
 /**
  * Ghosts of Empires — tuning and pure scoring, shared by the dealer, the
@@ -94,11 +96,8 @@ export const scoreEmpireExtent = ({
   const truth = new Set(challenge.members)
   const partial = new Set(challenge.partialMembers)
   const guess = new Set(taps.filter(tap => !partial.has(tap)))
-  if (truth.size === 0 && guess.size === 0) return { scored: maximumPoints, maximum: maximumPoints }
-  const intersection = [...guess].filter(isoCode => truth.has(isoCode)).length
-  const union = new Set([...guess, ...truth]).size
   return {
-    scored: union ? Math.max(0, Math.round(maximumPoints * (intersection / union))) : 0,
+    scored: clampScore(maximumPoints * jaccardFraction(guess, truth), maximumPoints),
     maximum: maximumPoints,
   }
 }
@@ -117,29 +116,7 @@ export const empireDisplayName = (name: string): string =>
 
 /** Normalize a typed answer for the name match: case-, diacritic- and
  *  punctuation-insensitive, leading article dropped. */
-export const normalizeEmpireAnswer = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .replace(/^the\s+/, '')
-
-/** Plain Levenshtein — shared with the generator's alias suggestions. */
-export const editDistance = (a: string, b: string): number => {
-  const previous = Array.from({ length: b.length + 1 }, (_, i) => i)
-  for (let i = 1; i <= a.length; i++) {
-    let diagonal = previous[0]
-    previous[0] = i
-    for (let j = 1; j <= b.length; j++) {
-      const substitution = diagonal + (a[i - 1] === b[j - 1] ? 0 : 1)
-      diagonal = previous[j]
-      previous[j] = Math.min(previous[j] + 1, previous[j - 1] + 1, substitution)
-    }
-  }
-  return previous[b.length]
-}
+export const normalizeEmpireAnswer = (value: string): string => normalizeAnswer(value)
 
 /** Polity-type words that carry no identity — "Abbasid" IS the Abbasid
  *  Caliphate; "Union of Soviet Socialist Republics" is the Soviet Union. */

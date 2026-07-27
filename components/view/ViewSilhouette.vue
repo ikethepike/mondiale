@@ -70,6 +70,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin: beginRound,
   hint,
   announce,
@@ -86,10 +87,7 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 // The region hint (non-hard mode) surfaces only in the final 30% of the clock —
 // a late nudge once the outline is nearly whole, not a giveaway from the start.
-const regionRevealed = computed(() => {
-  const total = challenge.value?.durationSeconds ?? 30
-  return started.value && secondsLeft.value / total <= 0.3
-})
+const regionRevealed = computed(() => started.value && remainingFraction.value <= 0.3)
 // Preview flash → sweep-away → clock-synced border draw, all size-relative.
 const {
   outline,
@@ -160,8 +158,7 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
 
   if (country.isoCode === active.country) {
-    const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
-    const clientScore = buzzScore(active.maximumPoints, remainingFraction)
+    const clientScore = buzzScore(active.maximumPoints, remainingFraction.value)
     resolve(country.isoCode, clientScore)
     return
   }

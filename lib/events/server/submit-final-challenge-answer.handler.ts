@@ -4,7 +4,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { playableCountries } from '~~/lib/game-rules'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
+import { scheduleMovementPhase } from './enter-movement-phase.handler'
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
   'submit-final-challenge-answer',
@@ -92,18 +92,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       if (!survives) {
         player.moves = []
         await server.updateGameState(game)
-        setTimeout(() => {
-          enqueueGameTask(eventTarget.gameId, () =>
-            enterMovementPhaseHandler({
-              io,
-              redis,
-              socket,
-              eventTarget,
-              eventKey: 'enter-movement-phase',
-              eventData: { event: 'enter-movement-phase' },
-            })
-          )
-        }, 5000)
+        scheduleMovementPhase(5000, { io, redis, socket, eventTarget })
         return
       }
     }
@@ -125,18 +114,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // skips settled players and only runs the advancement check) so it stages
     // and reveals the next round for the remaining players.
     if (won) {
-      setTimeout(() => {
-        enqueueGameTask(eventTarget.gameId, () =>
-          enterMovementPhaseHandler({
-            io,
-            redis,
-            socket,
-            eventTarget,
-            eventKey: 'enter-movement-phase',
-            eventData: { event: 'enter-movement-phase' },
-          })
-        )
-      }, 0)
+      scheduleMovementPhase(0, { io, redis, socket, eventTarget })
     }
 
     // Pace the reveal: the client shows its own result beat first, then the

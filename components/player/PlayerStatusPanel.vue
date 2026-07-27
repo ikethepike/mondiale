@@ -82,6 +82,8 @@ import { useGameStore } from '~~/store/game.store'
 import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
 import type { Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { boardProgress } from '~~/lib/player'
+import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 
 const props = defineProps<{
   players: Player[]
@@ -100,7 +102,7 @@ const gameStore = useGameStore()
 // the full panel would cover most of the board; the toggle overrides per session.
 const isSmallScreen = ref(false)
 onMounted(() => {
-  isSmallScreen.value = window.matchMedia('(max-width: 640px)').matches
+  isSmallScreen.value = window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
 })
 const folded = computed(() => gameStore.board.panelFolded ?? isSmallScreen.value)
 const toggleFold = () => {
@@ -152,7 +154,7 @@ const entries = computed(() =>
         you: player.id === props.currentPlayerId,
         status,
         points: props.points?.[player.id]?.points.scored,
-        progress: props.boardLength ? player.currentPosition / span : 0,
+        progress: props.boardLength ? boardProgress(player.currentPosition, props.boardLength) : 0,
         // Ghost tail: steps still queued this turn, drawn past the solid fill
         pending: props.boardLength && status.steps ? status.steps / span : 0,
       }

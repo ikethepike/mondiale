@@ -47,6 +47,7 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { formatEventYear } from '~~/lib/timeline'
+import { clamp01 } from '~~/lib/number'
 
 /**
  * The empire round's one footer element, every beat: a console pill holding
@@ -83,7 +84,7 @@ const low = computed(
 )
 
 const setT = (t: number) => {
-  const fraction = Math.max(0, Math.min(1, t / Math.max(1, props.years.length - 1)))
+  const fraction = clamp01(t / Math.max(1, props.years.length - 1))
   if (fillEl.value) fillEl.value.style.width = `${fraction * 100}%`
   if (rangeEl.value && !scrubbing) rangeEl.value.value = String(Math.round(fraction * 1000))
 }

@@ -32,20 +32,19 @@
 </template>
 <script lang="ts" setup>
 import { type GameVariant, gameVariants } from '~~/types/game.types'
+import { REGION_MAP_COMPONENT_NAMES } from '~~/lib/variant'
 
 const slider = ref<HTMLUListElement>()
 const selectedVariant = ref<GameVariant>(gameVariants[0])
 const atEnd = ref(false)
 const atStart = ref(true)
 
-const components: { [component in GameVariant]: ReturnType<typeof resolveComponent> } = {
-  africa: resolveComponent('MapAfrica'),
-  world: resolveComponent('MapWorld'),
-  asia: resolveComponent('MapAsia'),
-  europe: resolveComponent('MapEurope'),
-  'south-america': resolveComponent('MapSouthAmerica'),
-  'north-america': resolveComponent('MapNorthAmerica'),
-}
+const components = Object.fromEntries(
+  Object.entries(REGION_MAP_COMPONENT_NAMES).map(([variant, name]) => [
+    variant,
+    resolveComponent(name),
+  ])
+) as { [variant in GameVariant]: ReturnType<typeof resolveComponent> }
 
 const scroll = (direction: 'left' | 'right') => {
   if (!slider.value) throw new ReferenceError('Slider is not defined')

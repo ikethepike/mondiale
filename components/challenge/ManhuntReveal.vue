@@ -38,6 +38,7 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import { isStraitHop } from '~~/lib/chain'
+import { seatLabel } from '~~/lib/player'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -48,8 +49,7 @@ const props = defineProps<{
   playerId: string
 }>()
 
-const nameOf = (playerId: string) =>
-  playerId === props.playerId ? 'You' : props.players[playerId]?.name || 'Anonymous'
+const nameOf = (playerId: string) => seatLabel(props.players, playerId, props.playerId)
 
 const outcome = computed(() => props.challenge.state.outcome)
 const walk = computed(() => outcome.value?.trail ?? [])

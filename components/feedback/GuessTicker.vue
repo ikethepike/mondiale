@@ -19,6 +19,7 @@
 <script lang="ts" setup>
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName } from '~~/lib/country'
+import { formatKm } from '~~/lib/number'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { Player } from '~~/types/player.type'
 
@@ -41,7 +42,7 @@ const guessText = (entry: GuessTickerEntry) => {
       // The server sends a distance but never the country — a radius that
       // raises tension without pointing at the answer.
       return entry.distanceKm !== undefined
-        ? `${entry.distanceKm.toLocaleString()} km away`
+        ? `${formatKm(entry.distanceKm)} away`
         : 'probed…'
     case 'locked':
       return 'buzzed ✗'

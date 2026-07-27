@@ -96,7 +96,7 @@ import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/c
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -139,7 +139,7 @@ const revealedClues = computed(() => {
       accessorId,
       label: clueLabel(accessorId),
       topic: details?.topic,
-      value: value ? `${formatNumber(value.amount)}${value.unit ? ` ${value.unit}` : ''}` : '—',
+      value: value ? formatAmount(value) : '—',
       scale,
     }
   })

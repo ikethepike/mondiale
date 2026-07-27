@@ -35,6 +35,8 @@
 </template>
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { clamp01 } from '~~/lib/number'
+import { prefersReducedMotion } from '~~/lib/motion'
 
 /**
  * The round clock: one radial element carrying both the draining arc and the
@@ -92,7 +94,7 @@ const frame = () => {
 }
 
 const fraction = computed(() =>
-  props.total ? Math.min(1, Math.max(0, smoothSeconds.value / props.total)) : 0
+  props.total ? clamp01(smoothSeconds.value / props.total) : 0
 )
 
 // Entrance: the arc sweeps in from empty to the current fraction, pulling the
@@ -109,7 +111,7 @@ onMounted(() => {
     sweeping.value = false
   }, 1000)
   // Reduced motion keeps the arc stepping in whole seconds.
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!prefersReducedMotion()) {
     frameHandle = requestAnimationFrame(frame)
   }
 })

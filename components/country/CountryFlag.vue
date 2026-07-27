@@ -14,6 +14,7 @@
 <script lang="ts" setup>
 import { flagDataUri, flagWideDataUri, loadFlagsWide } from '~~/lib/country'
 import type { Country } from '~~/types/geography.types'
+import { sanitizeSvg } from '~~/lib/svg'
 
 const props = defineProps({
   country: {
@@ -89,29 +90,11 @@ const inlineHost = ref<HTMLElement>()
 watchEffect(() => {
   if (!inlineHost.value || props.mode !== 'inline') return
 
-  const parsed = new DOMParser().parseFromString(namespacedMarkup.value, 'image/svg+xml')
-  const svg = parsed.documentElement
-  if (svg.nodeName.toLowerCase() !== 'svg') return
-
-  svg.querySelectorAll('script, foreignObject').forEach(node => node.remove())
-  for (const element of [svg, ...svg.querySelectorAll('*')]) {
-    for (const attribute of [...element.attributes]) {
-      if (attribute.name.toLowerCase().startsWith('on')) {
-        element.removeAttribute(attribute.name)
-      }
-    }
-  }
-
   // Flags carry all aspect ratios (2:1, 3:2, 1:1, Nepal's pennon, Switzerland's
-  // square). Drop any hardcoded width/height and let the SVG scale to the
-  // container while preserving its own ratio — the host box uses `fit` (contain
+  // square). Sizing scales to the container; the host box uses `fit` (contain
   // = whole flag with letterboxing, cover = fill+crop) to decide how.
-  svg.removeAttribute('width')
-  svg.removeAttribute('height')
-  svg.setAttribute(
-    'preserveAspectRatio',
-    props.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'
-  )
+  const svg = sanitizeSvg(namespacedMarkup.value, { fit: props.fit === 'cover' ? 'cover' : 'contain' })
+  if (!svg) return
 
   inlineHost.value.replaceChildren(svg)
 })

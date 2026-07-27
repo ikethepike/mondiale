@@ -95,3 +95,7 @@ export const playableWorldCountries = (rules: GameRules): ISOCountryCode[] =>
  *  unselectable set and the typed-guess exclusions. */
 export const excludedMicroNations = (rules: GameRules): ISOCountryCode[] =>
   microNationsIncluded(rules) ? [] : [...getMicroNations()]
+
+/** The complement of `playableCountries` — what a board dims or greys out. */
+export const unplayableCountries = (rules: GameRules): ISOCountryCode[] =>
+  ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))

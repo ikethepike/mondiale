@@ -31,6 +31,33 @@ export const createPlayer = (playerId: string, takenColors: string[] = []): Play
 })
 
 /**
+ * The one display-name fallback. Every surface that prints a player name
+ * routes through here so an unnamed player reads the same everywhere.
+ */
+export const playerDisplayName = (player?: Pick<Player, 'name'>): string =>
+  player?.name || 'Anonymous'
+
+/**
+ * "You" for the viewer, the display name for everyone else — the seat label
+ * every turn-based mode and reveal card prints.
+ */
+export const seatLabel = (
+  players: Partial<Record<string, Pick<Player, 'name'>>> | undefined,
+  playerId: string,
+  viewerId?: string
+): string => (playerId === viewerId ? 'You' : playerDisplayName(players?.[playerId]))
+
+/**
+ * How far along the board a pawn is, as a 0..1 fraction of the last tile.
+ * The one formula — progress bars must not re-derive it (they had drifted
+ * between `/ length` and `/ (length - 1)`).
+ */
+export const boardProgress = (position: number, tileCount: number): number => {
+  const span = Math.max(1, tileCount - 1)
+  return Math.min(1, Math.max(0, position / span))
+}
+
+/**
  * Standings order: finished players first (earliest completion round wins),
  * everyone else by how far along the board they are.
  */

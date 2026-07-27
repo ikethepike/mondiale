@@ -1,16 +1,17 @@
 import { HERITAGE } from '~~/data/heritage.gen'
+import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { haversineKm, type LatLng } from '~~/lib/geo'
-import { scorePinDistance } from '~~/lib/scoring'
+import { clampScore, scorePinDistance } from '~~/lib/scoring'
 import type { HeritageHuntChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import { enqueueGameTask, useServerSideEvents } from '../server-side'
+import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { movesForScoredPoints } from './moves'
 import {
-  FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS,
-  REVEAL_HOLD_MS,
-  TIMEOUT_SLACK_MS,
-} from './turn-timing'
+  scheduleDeadlineTask,
+  scheduleRevealTask,
+  settleRoundScores,
+} from './round-engine'
+import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from './turn-timing'
 
 /**
  * Heritage Hunt's beat engine, the pattern sibling of chain-turns: one photo
@@ -25,15 +26,10 @@ import {
 const TAPER_SHARE = 0.8
 
 export const isHeritageHuntChallenge = (challenge: unknown): challenge is HeritageHuntChallenge =>
-  !!challenge &&
-  typeof challenge === 'object' &&
-  '_type' in challenge &&
-  challenge._type === 'heritage-hunt-challenge'
+  isChallengeOfType(challenge, 'heritage-hunt-challenge')
 
-export const currentHeritageHunt = (game: Game): HeritageHuntChallenge | undefined => {
-  const challenge = game.rounds[game.rounds.length - 1]?.groupChallenge
-  return isHeritageHuntChallenge(challenge) ? challenge : undefined
-}
+export const currentHeritageHunt = (game: Game): HeritageHuntChallenge | undefined =>
+  latestChallengeOfType(game, 'heritage-hunt-challenge')
 
 const beatShare = (challenge: HeritageHuntChallenge): number =>
   challenge.maximumPoints / challenge.slugs.length
@@ -48,18 +44,12 @@ export const startHeritageClock = (challenge: HeritageHuntChallenge) => {
 
 export const scheduleHeritageTimeout = (ctx: ChainContext, challenge: HeritageHuntChallenge) => {
   const { beat, deadline } = challenge.state
-  const delay = Math.max(0, deadline - Date.now()) + TIMEOUT_SLACK_MS
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!game) return
-      const current = currentHeritageHunt(game)
-      if (!current || current.state.finished || current.state.revealing) return
-      if (current.state.beat !== beat) return
-      await resolveHeritageBeat(ctx, game, current)
-    })
-  }, delay)
+  scheduleDeadlineTask(ctx, deadline, async game => {
+    const current = currentHeritageHunt(game)
+    if (!current || current.state.finished || current.state.revealing) return
+    if (current.state.beat !== beat) return
+    await resolveHeritageBeat(ctx, game, current)
+  })
 }
 
 /** A pin from a player for the live beat. */
@@ -132,15 +122,11 @@ const resolveHeritageBeat = async (
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
 
   const revealedBeat = state.beat
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const fresh = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!fresh) return
-      const current = currentHeritageHunt(fresh)
-      if (!current?.state.revealing || current.state.beat !== revealedBeat) return
-      await advanceHeritageBeat(ctx, fresh, current)
-    })
-  }, REVEAL_HOLD_MS)
+  scheduleRevealTask(ctx, async fresh => {
+    const current = currentHeritageHunt(fresh)
+    if (!current?.state.revealing || current.state.beat !== revealedBeat) return
+    await advanceHeritageBeat(ctx, fresh, current)
+  })
 }
 
 const advanceHeritageBeat = async (
@@ -164,23 +150,27 @@ const advanceHeritageBeat = async (
   // Round over: everyone banks what their pins earned.
   state.finished = true
   state.revealing = false
-  const round = game.rounds[game.rounds.length - 1]
-  for (const playerId of state.order) {
-    const player = game.players[playerId]
-    const scored = Object.values(state.pins[playerId] ?? {}).reduce(
-      (sum, pin) => sum + (pin.scored ?? 0),
-      0
-    )
-    const capped = Math.min(scored, challenge.maximumPoints)
-    round.groupAnswers[playerId] = { submitted: [], correct: [] }
-    round.playerTurns[playerId] = {
-      points: { scored: capped, maximum: challenge.maximumPoints },
-    }
-    if (player && player.phase === 'group-challenge') {
-      player.phase = 'group-scores'
-      player.moves = movesForScoredPoints({ game, player, scored: capped })
-    }
-  }
+  const round = latestRound(game)
+  if (!round) return
+  const scores = Object.fromEntries(
+    state.order.map(playerId => {
+      const scored = Object.values(state.pins[playerId] ?? {}).reduce(
+        (sum, pin) => sum + (pin.scored ?? 0),
+        0
+      )
+      return [
+        playerId,
+        { scored: clampScore(scored, challenge.maximumPoints), maximum: challenge.maximumPoints },
+      ]
+    })
+  )
+  settleRoundScores({
+    game,
+    round,
+    order: state.order,
+    scores,
+    maximumPoints: challenge.maximumPoints,
+  })
 
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)

@@ -198,7 +198,7 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
+import { WORLD_BOX, countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
@@ -543,7 +543,7 @@ const pinAnswerPoint = computed(() =>
 // zoom of a cached raster layer) breaks down at map scale: the browser
 // endlessly re-rasterizes tiles of a giant layer, which reads as shimmer and
 // stutter. Nothing here is reactive — Vue must never diff 220 paths a frame.
-const WORLD_VIEW = { x: 0, y: 0, width: 2000, height: 1001 }
+const WORLD_VIEW = { ...WORLD_BOX }
 const MAX_ZOOM = 40
 /**
  * How far past a world edge the camera may be dragged, as a fraction of the

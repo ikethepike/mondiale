@@ -14,7 +14,7 @@
         <h1 v-if="!result" class="map-caption">Where in the world is this?</h1>
         <h1 v-else class="map-caption">{{ verdict }}</h1>
         <span v-if="result" class="map-caption sub">
-          {{ Math.round(result.distanceKm).toLocaleString() }} km from the mark
+          {{ formatKm(result.distanceKm) }} from the mark
         </span>
         <span v-else-if="pin" class="map-caption sub pinned">{{ formatLatLng(pin) }}</span>
         <span v-else class="map-caption sub">Click the map to drop your pin</span>
@@ -70,6 +70,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { haversineKm, type LatLng } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { isMapClickEvent } from '~~/types/events.types'

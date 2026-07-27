@@ -3,8 +3,8 @@ import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer } from '../../../lib/player'
 
-import { enqueueGameTask, fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
+import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
+import { scheduleMovementPhase } from './enter-movement-phase.handler'
 
 /** A room stops admitting watchers past this — a bound on the "N watching"
  *  count and, more importantly, on the spectator records that ride every
@@ -140,18 +140,7 @@ export const joinEventHandler: EventHandler = async ({
     // The walk guard rejects 'moving' re-entry; hand the phase back first
     if (wedgedMoving) rejoining.phase = 'group-scores'
 
-    setTimeout(() => {
-      enqueueGameTask(gameId, () =>
-        enterMovementPhaseHandler({
-          io,
-          redis,
-          socket,
-          eventTarget,
-          eventKey: 'enter-movement-phase',
-          eventData: { event: 'enter-movement-phase' },
-        })
-      )
-    }, 1500)
+    scheduleMovementPhase(1500, { io, redis, socket, eventTarget })
   }
 
   await socket.join(gameId)

@@ -36,6 +36,8 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { titleCase } from '~~/lib/strings'
+
 const props = defineProps({
   /** The hidden input's name — becomes a FormData key on the parent form. */
   name: {
@@ -82,8 +84,7 @@ const select = (option: string) => {
   emit('change', option)
 }
 
-const formatLabel = (option: string) =>
-  option.replace(/-/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
+const formatLabel = (option: string) => titleCase(option)
 </script>
 <style lang="scss" scoped>
 .segmented {

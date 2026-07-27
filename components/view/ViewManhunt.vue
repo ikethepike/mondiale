@@ -219,8 +219,10 @@ import {
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { isCountryPlayable, playableCountries } from '~~/lib/game-rules'
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { sample } from '~~/lib/arrays'
+import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { isMapClickEvent, isMapHoverEvent } from '~~/types/events.types'
 import type { ManhuntState } from '~~/types/challenges/group-modes.type'
@@ -264,7 +266,7 @@ const isDespot = computed(() => challenge.value?.despotId === gameStore.playerId
 const despotPlayer = computed(() =>
   challenge.value ? gameStore.game?.players[challenge.value.despotId] : undefined
 )
-const despotName = computed(() => despotPlayer.value?.name || 'Anonymous')
+const despotName = computed(() => playerDisplayName(despotPlayer.value))
 
 /** The despot's own trail, from the targeted position channel — empty for
  *  everyone else, always. */
@@ -279,7 +281,7 @@ onMounted(() => {
 // Off-board and benched (micro-nation) countries both fade — the despot can
 // reach neither, so the rule is visible before a hop is attempted.
 const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
-gameStore.map.dimmed = ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))
+gameStore.map.dimmed = unplayableCountries(rules)
 
 const trailEntries = computed(() =>
   trail.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
@@ -383,10 +385,7 @@ const iCommitted = computed(() => state.value.committed.includes(gameStore.playe
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
 
 const briefing = computed(() => !!state.value.briefing && !finished.value && !showInterstitial.value)
-const seatName = (playerId: string) =>
-  playerId === gameStore.playerId
-    ? 'You'
-    : gameStore.game?.players[playerId]?.name || 'Anonymous'
+const seatName = (playerId: string) => seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
 
 const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
@@ -405,13 +404,13 @@ registerCleanup(() => tauntTimer && clearTimeout(tauntTimer))
 const sendTaunt = () => {
   if (tauntCooling.value) return
   const lines = MANHUNT_TAUNTS[isDespot.value ? 'despot' : 'detective']
-  update({ event: 'manhunt-taunt', index: Math.floor(Math.random() * lines.length) })
+  update({ event: 'manhunt-taunt', index: sample(lines.keys().toArray() as number[]) ?? 0 })
   tauntCooling.value = true
   tauntTimer = setTimeout(() => (tauntCooling.value = false), 6000)
 }
 
 const nameOf = (playerId: string) =>
-  playerId === gameStore.playerId ? 'you' : gameStore.game?.players[playerId]?.name || 'Anonymous'
+  playerId === gameStore.playerId ? 'you' : playerDisplayName(gameStore.game?.players[playerId])
 
 // --- Subpoenas ---------------------------------------------------------------
 const mySubpoenas = computed(() => state.value.subpoenasLeft[gameStore.playerId] ?? 0)
@@ -435,19 +434,12 @@ const sendSubpoena = (topic: ManhuntSubpoenaTopicId) => {
   update({ event: 'submit-manhunt-subpoena', topic, turn: state.value.turn })
 }
 
-// --- Shot clock (server-owned deadline; local repaint only) ------------------
-const secondsOnClock = ref(0)
-const clock = setInterval(() => {
-  const remaining = (state.value.deadline ?? 0) - Date.now()
-  secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
-}, 200)
-registerCleanup(() => clearInterval(clock))
-
 const beatTotalSeconds = computed(() =>
   state.value.beat === 'move'
     ? (challenge.value?.moveSeconds ?? 0)
     : (challenge.value?.huntSeconds ?? 0)
 )
+const { secondsOnClock } = useDeadlineClock(() => state.value.deadline)
 
 // --- Acting ------------------------------------------------------------------
 const pending = ref(false)

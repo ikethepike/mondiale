@@ -96,6 +96,7 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
+import { normalizeAnswer } from '~~/lib/strings'
 import { attemptFraction, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
@@ -108,6 +109,7 @@ const {
   currentRound,
   showInterstitial,
   started,
+  elapsedFraction,
   hint,
   announce,
   entries,
@@ -132,14 +134,7 @@ interface WaterOption {
 }
 const options = ref<WaterOption[]>([])
 
-const normalizeName = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/^(the|el|la|il)\s+/i, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
+const normalizeName = (name: string) => normalizeAnswer(name, { articles: ['the', 'el', 'la', 'il'] })
 
 onMounted(async () => {
   const active = challenge.value
@@ -188,11 +183,6 @@ const LETTER_HINT_UNLOCK_ELAPSED = 2 / 3
 const shoreHint = ref<string>()
 const letterHint = ref<string>()
 
-const elapsedFraction = computed(() => {
-  const total = challenge.value?.durationSeconds
-  if (!total || !started.value) return 0
-  return 1 - secondsLeft.value / total
-})
 const shoreHintUnlocked = computed(
   () => !resolved.value && elapsedFraction.value >= SHORE_HINT_UNLOCK_ELAPSED
 )

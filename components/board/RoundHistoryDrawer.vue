@@ -106,6 +106,8 @@ import { useGameStore } from '~~/store/game.store'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { Game } from '~~/types/game.types'
 import { isValidISOCode } from '~~/types/geography.types'
+import { boardProgress } from '~~/lib/player'
+import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 
 const props = defineProps<{ game: Game }>()
 
@@ -120,7 +122,7 @@ const close = () => {
 // upward), and on release a velocity sample decides — flick or far enough
 // dismisses with matched momentum, anything else springs back.
 const drawerEl = ref<HTMLElement>()
-const isSheet = () => window.matchMedia('(max-width: 640px)').matches
+const isSheet = () => window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
 
 let dragging = false
 let startY = 0
@@ -196,11 +198,10 @@ onUnmounted(() => {
 // Points accumulated across every round (including the one in progress),
 // ranked — the "who's actually winning" view the board itself can't show.
 const totals = computed(() => {
-  const span = Math.max(1, props.game.tiles.length - 1)
   return Object.values(props.game.players)
     .map(player => ({
       player,
-      progress: player.currentPosition / span,
+      progress: boardProgress(player.currentPosition, props.game.tiles.length),
       total: props.game.rounds.reduce(
         (sum, round) => sum + (round.playerTurns[player.id]?.points.scored ?? 0),
         0

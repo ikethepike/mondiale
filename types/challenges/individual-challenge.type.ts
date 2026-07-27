@@ -116,3 +116,11 @@ export const isValidIndividualChallengeAccessorId = (
     individualChallengeAccessors.includes(accessorId as IndividualChallengeAccessorId)
   )
 }
+
+/** One higher/lower duel a player faced, kept for the educational reveal. */
+export interface DuelOutcome {
+  picked: ISOCountryCode
+  higher: ISOCountryCode
+  lower: ISOCountryCode
+  correct: boolean
+}

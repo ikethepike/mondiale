@@ -20,7 +20,9 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { titleCase } from '~~/lib/strings'
 import { type GameVariant, gameVariants } from '~~/types/game.types'
+import { REGION_MAP_COMPONENT_NAMES } from '~~/lib/variant'
 
 const props = defineProps({
   modelValue: {
@@ -48,15 +50,12 @@ watch(
   value => (selected.value = value)
 )
 
-// The hand-drawn region maps, keyed by variant (same set VariantPicker uses)
-const regionMaps: { [variant in GameVariant]: ReturnType<typeof resolveComponent> } = {
-  world: resolveComponent('MapWorld'),
-  europe: resolveComponent('MapEurope'),
-  africa: resolveComponent('MapAfrica'),
-  asia: resolveComponent('MapAsia'),
-  'north-america': resolveComponent('MapNorthAmerica'),
-  'south-america': resolveComponent('MapSouthAmerica'),
-}
+const regionMaps = Object.fromEntries(
+  Object.entries(REGION_MAP_COMPONENT_NAMES).map(([variant, name]) => [
+    variant,
+    resolveComponent(name),
+  ])
+) as { [variant in GameVariant]: ReturnType<typeof resolveComponent> }
 
 const select = (variant: GameVariant) => {
   selected.value = variant
@@ -64,8 +63,7 @@ const select = (variant: GameVariant) => {
   emit('change', variant)
 }
 
-const formatLabel = (variant: GameVariant) =>
-  variant.replace(/-/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
+const formatLabel = (variant: GameVariant) => titleCase(variant)
 </script>
 <style lang="scss" scoped>
 .region-orbs {

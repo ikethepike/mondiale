@@ -28,6 +28,7 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
@@ -39,7 +40,7 @@ const props = defineProps<{
   playerId: string
 }>()
 
-const nameOf = (playerId: string) => props.players[playerId]?.name || 'Anonymous'
+const nameOf = (playerId: string) => playerDisplayName(props.players[playerId])
 
 const headline = computed(() => {
   const winnerId = standingPlayers(props.state)[0]
@@ -67,7 +68,7 @@ const rows = computed(() => {
             : 'stepped off the map'
     return {
       playerId,
-      name: playerId === props.playerId ? 'You' : nameOf(playerId),
+      name: seatLabel(props.players, playerId, props.playerId),
       fate,
       links: props.state.named[playerId]?.length ?? 0,
     }

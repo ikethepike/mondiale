@@ -10,16 +10,15 @@ import {
 import type { BorderChainChallenge, BorderChainOutcome } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { useServerSideEvents } from '../server-side'
+import { FIRST_TURN_GRACE_MS } from './turn-timing'
+import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
-  enqueueGameTask,
-  useServerSideEvents,
-  type GameServer,
-  type GameSocket,
-} from '../server-side'
-import { movesForScoredPoints } from './moves'
-import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
-import type { ClientEventTarget } from '~~/types/events.types'
-import type { Redis } from '@upstash/redis'
+  scheduleDeadlineTask,
+  scheduleRevealTask,
+  settleRoundScores,
+  type EngineContext,
+} from './round-engine'
 
 /**
  * Border Chain's turn engine. The game's only turn-based round: state lives on
@@ -30,26 +29,15 @@ import type { Redis } from '@upstash/redis'
  * timeout a no-op.
  */
 
-export interface ChainContext {
-  io: GameServer
-  redis: Redis
-  socket: GameSocket
-  eventTarget: ClientEventTarget
-}
+/** Alias kept for the sibling engines that import it. */
+export type ChainContext = EngineContext
 
-export const isBorderChainChallenge = (
-  challenge: unknown
-): challenge is BorderChainChallenge =>
-  !!challenge &&
-  typeof challenge === 'object' &&
-  '_type' in challenge &&
-  challenge._type === 'border-chain-challenge'
+export const isBorderChainChallenge = (challenge: unknown): challenge is BorderChainChallenge =>
+  isChallengeOfType(challenge, 'border-chain-challenge')
 
 /** The live round's chain challenge, when the live round is one. */
-export const currentBorderChain = (game: Game): BorderChainChallenge | undefined => {
-  const challenge = game.rounds[game.rounds.length - 1]?.groupChallenge
-  return isBorderChainChallenge(challenge) ? challenge : undefined
-}
+export const currentBorderChain = (game: Game): BorderChainChallenge | undefined =>
+  latestChallengeOfType(game, 'border-chain-challenge')
 
 const stampDeadline = (challenge: BorderChainChallenge) => {
   challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000
@@ -94,18 +82,12 @@ export const startChainClock = (challenge: BorderChainChallenge) => {
 /** … then arm the shot clock (call AFTER the save — it re-reads fresh state). */
 export const scheduleChainTimeout = (ctx: ChainContext, challenge: BorderChainChallenge) => {
   const { turn, deadline } = challenge.state
-  const delay = Math.max(0, deadline - Date.now()) + TIMEOUT_SLACK_MS
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!game) return
-      const current = currentBorderChain(game)
-      // A move, strike, or finish advanced the state — this timeout is stale.
-      if (!current || current.state.finished || current.state.turn !== turn) return
-      await resolveChainMiss(ctx, game, current, 'timeout')
-    })
-  }, delay)
+  scheduleDeadlineTask(ctx, deadline, async game => {
+    const current = currentBorderChain(game)
+    // A move, strike, or finish advanced the state — this timeout is stale.
+    if (!current || current.state.finished || current.state.turn !== turn) return
+    await resolveChainMiss(ctx, game, current, 'timeout')
+  })
 }
 
 /**
@@ -202,38 +184,31 @@ const finishChainRound = async (
   await server.updateGameState(game)
   server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
 
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const fresh = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!fresh) return
-      const current = currentBorderChain(fresh)
-      if (!current?.state.finished) return
+  scheduleRevealTask(ctx, async (fresh, freshServer) => {
+    const current = currentBorderChain(fresh)
+    if (!current?.state.finished) return
 
-      const round = fresh.rounds[fresh.rounds.length - 1]
-      // The reveal follow-up fires exactly once: scoring marks the round.
-      if (Object.keys(round.groupAnswers).length) return
+    const round = latestRound(fresh)
+    // The reveal follow-up fires exactly once: scoring marks the round.
+    if (!round || Object.keys(round.groupAnswers).length) return
 
-      const scores = scoreBorderChain(current)
-      for (const playerId of current.state.order) {
-        const player = fresh.players[playerId]
-        const scoring = scores[playerId] ?? { scored: 0, maximum: current.maximumPoints }
-        round.groupAnswers[playerId] = {
-          submitted: current.state.named[playerId] ?? [],
-          correct: current.state.named[playerId] ?? [],
-        }
-        round.playerTurns[playerId] = { points: scoring }
-        if (player && player.phase === 'group-challenge') {
-          player.phase = 'group-scores'
-          player.moves = movesForScoredPoints({ game: fresh, player, scored: scoring.scored })
-        }
-      }
-
-      await server.updateGameState(fresh)
-      // Not 'group-challenge-scored': its client handler applies only the
-      // target player's slice, and this scoring lands for the whole table.
-      server.emit({ event: 'chain-updated', game: fresh }, ctx.eventTarget)
+    settleRoundScores({
+      game: fresh,
+      round,
+      order: current.state.order,
+      scores: scoreBorderChain(current),
+      maximumPoints: current.maximumPoints,
+      answerFor: playerId => ({
+        submitted: current.state.named[playerId] ?? [],
+        correct: current.state.named[playerId] ?? [],
+      }),
     })
-  }, REVEAL_HOLD_MS)
+
+    await freshServer.updateGameState(fresh)
+    // Not 'group-challenge-scored': its client handler applies only the
+    // target player's slice, and this scoring lands for the whole table.
+    freshServer.emit({ event: 'chain-updated', game: fresh }, ctx.eventTarget)
+  })
 }
 
 /** Reveal-path entry (enter-movement-phase): sanity-recheck the opening head. */

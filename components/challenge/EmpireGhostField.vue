@@ -42,6 +42,7 @@
 <script lang="ts" setup>
 import { useEmpireMorph } from '~~/lib/useEmpireMorph'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
 
 /**
  * The animated empire extent: a single-hue umber ghost that morphs through
@@ -67,26 +68,11 @@ const ghostEl = ref<SVGPathElement>()
 const visible = ref(true)
 const currentIndex = ref(0)
 
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
-let frame: number | undefined
-let mapSvg: SVGSVGElement | null = null
-let lastRaw = ''
-
-const readViewBox = () => {
-  frame = requestAnimationFrame(readViewBox)
-  mapSvg ??= document.querySelector('.game-map svg')
-  const attribute = mapSvg?.getAttribute('viewBox') ?? ''
-  if (attribute === lastRaw) return
-  lastRaw = attribute
-  const raw = attribute.split(/\s+/).map(Number)
-  if (raw.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
+const { viewBox, cameraScale } = useMapViewBox()
 
 /** Stroke and star sizes counter-scale off the camera so zoom never balloons them. */
-const ghostStroke = computed(() => `${(viewBox.value?.w ?? 2000) * 0.0012}px`)
-const starScale = computed(() => ((viewBox.value?.w ?? 2000) / 2000) * 1.4)
+const ghostStroke = computed(() => `${(viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0012}px`)
+const starScale = computed(() => cameraScale.value * 1.4)
 /** A 5-point star, unit-ish size, centred on the origin. */
 const starPath =
   'M 0,-6 L 1.8,-1.9 L 6,-1.9 L 2.6,0.9 L 3.7,5 L 0,2.4 L -3.7,5 L -2.6,0.9 L -6,-1.9 L -1.8,-1.9 z'
@@ -151,11 +137,7 @@ const fadeIn = () => (visible.value = true)
 
 defineExpose({ build, play, freezeAtPeak, seek, fadeOut, fadeIn })
 
-onMounted(readViewBox)
-onBeforeUnmount(() => {
-  if (frame !== undefined) cancelAnimationFrame(frame)
-  morph.dispose()
-})
+onBeforeUnmount(() => morph.dispose())
 </script>
 <style lang="scss" scoped>
 .empire-ghost-field {

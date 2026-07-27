@@ -166,6 +166,7 @@ import {
 import { KIND_LABELS, visitedCountries } from '~~/lib/victory-stats'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
+import { boardProgress } from '~~/lib/player'
 
 const { game, gameStore, update, clearBoard } = useClientEvents()
 
@@ -236,7 +237,7 @@ const rail = computed(() =>
     status: getPlayerStatus(player),
     points: currentRound.value?.round.playerTurns[player.id]?.points.scored,
     progress: game.value?.tiles.length
-      ? player.currentPosition / Math.max(1, game.value.tiles.length - 1)
+      ? boardProgress(player.currentPosition, game.value.tiles.length)
       : 0,
   }))
 )

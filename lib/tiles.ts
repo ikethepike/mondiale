@@ -1,5 +1,6 @@
 import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import type { GameLength, Tile } from '~~/types/game.types'
+import { weightedPick } from './arrays'
 
 /** Relative deal weights for gate tiles — currency runs at half rate so money
  *  questions surface a little less often than the other themes. */
@@ -12,16 +13,8 @@ const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
   landmarks: 1,
 }
 
-const pickGateTileType = (): IndividualChallengeAccessorId => {
-  const entries = Object.entries(GATE_TILE_WEIGHTS) as [IndividualChallengeAccessorId, number][]
-  const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
-  let roll = Math.random() * total
-  for (const [accessorId, weight] of entries) {
-    roll -= weight
-    if (roll < 0) return accessorId
-  }
-  return entries[entries.length - 1][0]
-}
+const pickGateTileType = (): IndividualChallengeAccessorId =>
+  weightedPick(Object.entries(GATE_TILE_WEIGHTS) as [IndividualChallengeAccessorId, number][])!
 
 export const generateTiles = (length: GameLength) => {
   const lengths: { [length in GameLength]: number } = {

@@ -19,7 +19,7 @@
   </figure>
 </template>
 <script lang="ts" setup>
-import { formatNumber } from '~~/lib/number'
+import { formatNumber, clamp  } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId, type TrendSeries } from '~~/lib/trends'
 
 /**
@@ -64,7 +64,7 @@ const points = computed(() => {
   return props.series
     .map(([year, amount]) => {
       const x = PAD + ((year - firstYear) / yearSpan) * (WIDTH - PAD * 2)
-      const clamped = Math.max(min, Math.min(max, amount))
+      const clamped = clamp(amount, min, max)
       const y = PAD + (1 - (clamped - min) / (max - min)) * (HEIGHT - PAD * 2)
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })

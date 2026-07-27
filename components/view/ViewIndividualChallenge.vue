@@ -427,6 +427,7 @@ import { GATE_HINT_BITE_STEPS, gateLeapSteps } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
+import type { DuelOutcome } from '~~/types/challenges/individual-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -694,13 +695,6 @@ const duelTopic = computed(() => {
 
 const failedDuelAnswer = ref<ISOCountryCode>()
 
-/** Each duel the player actually faced, kept for the educational reveal. */
-export interface DuelOutcome {
-  picked: ISOCountryCode
-  higher: ISOCountryCode
-  lower: ISOCountryCode
-  correct: boolean
-}
 const duelOutcomes = ref<DuelOutcome[]>([])
 
 // Distinct wash per pair, so the reveal's map highlight matches its cards.

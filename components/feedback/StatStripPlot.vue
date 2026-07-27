@@ -74,7 +74,7 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { TRENDS } from '~~/data/trends.gen'
 import { countryName, getCountry } from '~~/lib/country'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount, clamp  } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -166,11 +166,10 @@ const scale = computed(() => {
 /** The cut rule's x, through the same (possibly log) scale as the swarm. */
 const cutX = computed(() => {
   if (props.cutAt === undefined || !entries.value.length) return undefined
-  return Math.min(97, Math.max(3, scale.value(props.cutAt)))
+  return clamp(scale.value(props.cutAt), 3, 97)
 })
 
-const display = (amount: number, unit: string | undefined) =>
-  `${formatNumber(amount)}${unit ? ` ${unit}` : ''}`
+const display = (amount: number, unit: string | undefined) => formatAmount({ amount, unit: unit ?? '' })
 
 /** Marked countries with their verdict role, protagonists last (drawn on top). */
 const marked = computed<{ iso: ISOCountryCode; kind: 'truth' | 'lie' | 'noted' }[]>(() => [

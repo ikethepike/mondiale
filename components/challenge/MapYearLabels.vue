@@ -13,6 +13,7 @@
 </template>
 <script lang="ts" setup>
 import { mapRegionCentre } from '~~/lib/challenges/final-challenge'
+import { useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -31,25 +32,7 @@ const props = withDefaults(
   { minGapPx: 44 }
 )
 
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
-let frame: number | undefined
-let mapSvg: SVGSVGElement | null = null
-let lastRaw = ''
-
-// Track the camera per frame, not on a timer — interval sampling makes the
-// chips visibly stutter behind a pan/zoom. Unchanged frames cost one string
-// compare and no reactivity.
-const readViewBox = () => {
-  frame = requestAnimationFrame(readViewBox)
-  mapSvg ??= document.querySelector('.game-map svg')
-  const attribute = mapSvg?.getAttribute('viewBox') ?? ''
-  if (attribute === lastRaw) return
-  lastRaw = attribute
-  const raw = attribute.split(/\s+/).map(Number)
-  if (raw.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
+const { viewBox } = useMapViewBox()
 
 const chips = computed(() => {
   const vb = viewBox.value
@@ -81,11 +64,6 @@ const chips = computed(() => {
   return result
 })
 
-onMounted(readViewBox)
-
-onBeforeUnmount(() => {
-  if (frame !== undefined) cancelAnimationFrame(frame)
-})
 </script>
 <style lang="scss" scoped>
 .map-year-labels {

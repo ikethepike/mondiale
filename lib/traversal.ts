@@ -2,7 +2,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { shuffleArray } from './arrays'
+import { sample, shuffleArray } from './arrays'
 import { isCountryPlayable, microNationsIncluded, playableWorldCountries } from './game-rules'
 
 export const isNeighbour = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
@@ -175,7 +175,7 @@ export const pickTraversal = (
     )
     if (!inBand.length) continue
 
-    const [target, optimalHops] = inBand[Math.floor(Math.random() * inBand.length)]
+    const [target, optimalHops] = sample(inBand)!
     const optimalPath = shortestPath(start, target, within)
     if (!optimalPath) continue
 

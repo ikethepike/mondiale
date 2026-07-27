@@ -5,6 +5,7 @@ import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
+import { sentenceCase } from '~~/lib/strings'
 import {
   isTraversalChallenge,
   roundChallengeKind,
@@ -94,7 +95,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       if (!('_type' in challenge) || challenge._type !== 'empire-challenge') return ''
       const name = EMPIRES[challenge.empireId]?.name
       const display = name ? empireDisplayName(name) : 'an empire'
-      return `${display[0].toUpperCase()}${display.slice(1)} — greatest extent, ${formatEventYear(challenge.peakYear)}`
+      return `${sentenceCase(display)} — greatest extent, ${formatEventYear(challenge.peakYear)}`
     }
     case 'timeline': {
       if (!('_type' in challenge) || challenge._type !== 'timeline-challenge') return ''

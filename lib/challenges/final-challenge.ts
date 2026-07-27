@@ -30,7 +30,8 @@ import {
 } from '~~/types/geography.types'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
-import { shuffleArray } from '../arrays'
+import { sample, shuffleArray } from '../arrays'
+import { pickSizedCountry } from '../country'
 import { mainlandBox } from '../geo'
 import { getValueByAccessorID } from '../values'
 import { playableCountries } from '../game-rules'
@@ -159,22 +160,15 @@ export const dealReplacementChallenge = ({
 }
 
 const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge => {
-  const shuffled = shuffleArray([...pool])
-  const country =
-    shuffled.find(isoCode => {
-      const area = COUNTRIES[isoCode].geography.area.total
-      return !!area && area.amount > 400
-    }) ?? shuffled[0]
-
   return {
     _type: 'region-challenge',
-    country,
+    country: pickSizedCountry(pool, 'large')!,
   }
 }
 
 const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge => {
   const languages = pool.flatMap(isoCode => COUNTRIES[isoCode].languages)
-  const language = shuffleArray(languages).shift()
+  const language = sample(languages)
   if (!language) throw new ReferenceError(`No language found in language challenge`)
 
   return {
@@ -270,7 +264,7 @@ const eligibleOrganizations = (pool: ISOCountryCode[]): (keyof typeof Organizati
 }
 
 const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge | undefined => {
-  const organization = shuffleArray(eligibleOrganizations(pool)).shift()
+  const organization = sample(eligibleOrganizations(pool))
   if (!organization) return undefined
 
   const exception = shuffleArray(

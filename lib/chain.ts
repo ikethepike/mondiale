@@ -5,6 +5,7 @@ import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { isCountryPlayable } from './game-rules'
+import { clampScore } from './scoring'
 
 /**
  * Border Chain's graph: land adjacency plus sea straits. The strait edges are
@@ -95,7 +96,7 @@ export const scoreBorderChain = (
     const scored = Math.round(
       maximumPoints * (PLACEMENT_SHARE * placementFraction + (1 - PLACEMENT_SHARE) * linkFraction)
     )
-    scores[playerId] = { scored: Math.min(scored, maximumPoints), maximum: maximumPoints }
+    scores[playerId] = { scored: clampScore(scored, maximumPoints), maximum: maximumPoints }
   }
   return scores
 }

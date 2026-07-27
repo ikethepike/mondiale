@@ -81,6 +81,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   hint,
   announce,
@@ -95,10 +96,7 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 // `region` on hard), and from the final two-thirds the flag sketches itself
 // across the background, completing with the clock — every difficulty gets
 // the sketch. Answering early stays worth more.
-const clockFraction = computed(() => {
-  const total = challenge.value?.durationSeconds ?? 0
-  return started.value && total > 0 ? secondsLeft.value / total : 1
-})
+const clockFraction = remainingFraction
 const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
 const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
 const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
@@ -110,7 +108,7 @@ const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   // Name it sooner, keep more of the pot.
   const score =
     correct && active
-      ? buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
+      ? buzzScore(active.maximumPoints, remainingFraction.value)
       : 0
   submitOnce(correct && active ? [guessed ?? active.country] : [], score)
 }

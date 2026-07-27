@@ -5,6 +5,7 @@
   <div class="flag-sketch" :style="{ '--draw-seconds': `${drawSeconds}s` }" v-html="sketch" />
 </template>
 <script lang="ts" setup>
+import { sanitizeSvg } from '~~/lib/svg'
 /**
  * The flag as a drawing lesson: every shape stripped of its fill and drawn on
  * as a single ink line, all shapes in step (pathLength normalizes them), the
@@ -21,10 +22,8 @@ const props = defineProps<{
 const SHAPES = 'path, rect, circle, ellipse, polygon, polyline, line'
 
 const sketch = computed(() => {
-  if (typeof window === 'undefined') return ''
-  const doc = new DOMParser().parseFromString(props.flag, 'image/svg+xml')
-  const svg = doc.documentElement
-  if (svg.nodeName !== 'svg') return ''
+  const svg = sanitizeSvg(props.flag, { sizing: 'keep' })
+  if (!svg) return ''
 
   svg.setAttribute('width', '100%')
   svg.setAttribute('height', '100%')

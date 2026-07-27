@@ -10,10 +10,16 @@ import {
 } from '~~/lib/timeline'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import { enqueueGameTask, useServerSideEvents } from '../server-side'
+import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { movesForScoredPoints } from './moves'
-import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
+import { FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS } from './turn-timing'
+import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import {
+  scheduleDeadlineTask,
+  scheduleEngineTask,
+  scheduleRevealTask,
+  settleRoundScores,
+} from './round-engine'
 
 /**
  * Timeline's turn engine — chain-turns' rotation crossed with heritage-beats'
@@ -25,16 +31,11 @@ import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-ti
  */
 
 export const isTimelineChallenge = (challenge: unknown): challenge is TimelineChallenge =>
-  !!challenge &&
-  typeof challenge === 'object' &&
-  '_type' in challenge &&
-  challenge._type === 'timeline-challenge'
+  isChallengeOfType(challenge, 'timeline-challenge')
 
 /** The live round's timeline challenge, when the live round is one. */
-export const currentTimeline = (game: Game): TimelineChallenge | undefined => {
-  const challenge = game.rounds[game.rounds.length - 1]?.groupChallenge
-  return isTimelineChallenge(challenge) ? challenge : undefined
-}
+export const currentTimeline = (game: Game): TimelineChallenge | undefined =>
+  latestChallengeOfType(game, 'timeline-challenge')
 
 const stampTurnDeadline = (challenge: TimelineChallenge, extraMs = 0) => {
   challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000 + extraMs
@@ -51,19 +52,13 @@ export const startTimelineClock = (challenge: TimelineChallenge) => {
 /** … then arm the shot clock (call AFTER the save — it re-reads fresh state). */
 export const scheduleTimelineTimeout = (ctx: ChainContext, challenge: TimelineChallenge) => {
   const { turn, deadline } = challenge.state
-  const delay = Math.max(0, deadline - Date.now()) + TIMEOUT_SLACK_MS
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!game) return
-      const current = currentTimeline(game)
-      // A placement or the reveal advanced the state — this timeout is stale.
-      if (!current || current.state.finished || current.state.revealing) return
-      if (current.state.turn !== turn) return
-      await resolveTimelinePlacement(ctx, game, current, undefined)
-    })
-  }, delay)
+  scheduleDeadlineTask(ctx, deadline, async game => {
+    const current = currentTimeline(game)
+    // A placement or the reveal advanced the state — this timeout is stale.
+    if (!current || current.state.finished || current.state.revealing) return
+    if (current.state.turn !== turn) return
+    await resolveTimelinePlacement(ctx, game, current, undefined)
+  })
 }
 
 /**
@@ -112,20 +107,15 @@ export const resolveTimelinePlacement = async (
   await server.updateGameState(game)
   server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 
+  // The story card's own hold: not the shot clock, so scheduleEngineTask with
+  // the reveal's fixed length plus the usual buzzer slack.
   const revealedTurn = state.turn
-  setTimeout(
-    () => {
-      enqueueGameTask(ctx.eventTarget.gameId, async () => {
-        const fresh = await server.fetchGame(ctx.eventTarget.gameId)
-        if (!fresh) return
-        const current = currentTimeline(fresh)
-        if (!current?.state.revealing || current.state.finished) return
-        if (current.state.turn !== revealedTurn) return
-        await advanceTimelineTurn(ctx, fresh, current)
-      })
-    },
-    challenge.revealSeconds * 1000 + TIMEOUT_SLACK_MS
-  )
+  scheduleEngineTask(ctx, challenge.revealSeconds * 1000 + TIMEOUT_SLACK_MS, async fresh => {
+    const current = currentTimeline(fresh)
+    if (!current?.state.revealing || current.state.finished) return
+    if (current.state.turn !== revealedTurn) return
+    await advanceTimelineTurn(ctx, fresh, current)
+  })
 }
 
 /** The reveal hold elapsed: draw the next card or close the round. */
@@ -162,23 +152,23 @@ const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: Tim
   await server.updateGameState(game)
   server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const fresh = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!fresh) return
-      const current = currentTimeline(fresh)
-      if (!current?.state.finished) return
+  scheduleRevealTask(ctx, async (fresh, freshServer) => {
+    const current = currentTimeline(fresh)
+    if (!current?.state.finished) return
 
-      const round = fresh.rounds[fresh.rounds.length - 1]
-      // The reveal follow-up fires exactly once: scoring marks the round.
-      if (Object.keys(round.groupAnswers).length) return
+    const round = latestRound(fresh)
+    // The reveal follow-up fires exactly once: scoring marks the round.
+    if (!round || Object.keys(round.groupAnswers).length) return
 
-      const scores = scoreTimeline(current)
-      for (const playerId of current.state.order) {
-        const player = fresh.players[playerId]
-        const scoring = scores[playerId] ?? { scored: 0, maximum: current.maximumPoints }
+    settleRoundScores({
+      game: fresh,
+      round,
+      order: current.state.order,
+      scores: scoreTimeline(current),
+      maximumPoints: current.maximumPoints,
+      answerFor: playerId => {
         const mine = current.state.placements.filter(entry => entry.playerId === playerId)
-        round.groupAnswers[playerId] = {
+        return {
           submitted: mine.flatMap(entry => {
             const country = timelineEvent(entry.slug)?.country
             return country ? [country] : []
@@ -188,17 +178,12 @@ const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: Tim
             return entry.correct && country ? [country] : []
           }),
         }
-        round.playerTurns[playerId] = { points: scoring }
-        if (player && player.phase === 'group-challenge') {
-          player.phase = 'group-scores'
-          player.moves = movesForScoredPoints({ game: fresh, player, scored: scoring.scored })
-        }
-      }
-
-      await server.updateGameState(fresh)
-      // Not 'group-challenge-scored': its client handler applies only the
-      // target player's slice, and this scoring lands for the whole table.
-      server.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
+      },
     })
-  }, REVEAL_HOLD_MS)
+
+    await freshServer.updateGameState(fresh)
+    // Not 'group-challenge-scored': its client handler applies only the
+    // target player's slice, and this scoring lands for the whole table.
+    freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
+  })
 }

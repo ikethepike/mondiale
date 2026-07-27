@@ -50,6 +50,7 @@ import { excludedMicroNations } from '~~/lib/game-rules'
 import { useGameStore } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
+import { clamp } from '~~/lib/number'
 
 /**
  * The typed country guess box: live suggestions with local-language names,
@@ -119,7 +120,7 @@ const highlighted = computed<Country | undefined>(() => suggestions.value[highli
 const moveHighlight = (delta: number) => {
   const options = suggestions.value
   if (!options.length) return
-  const index = Math.max(0, Math.min(highlightedIndex.value + delta, options.length - 1))
+  const index = clamp(highlightedIndex.value + delta, 0, options.length - 1)
   chosenIso.value = options[index].isoCode
 }
 

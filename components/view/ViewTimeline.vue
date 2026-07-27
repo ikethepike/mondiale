@@ -156,8 +156,10 @@ import {
   slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { EventEntry } from '~~/generators/create-events-file'
 
 // A card table, not a map question — the board blanks out underneath.
@@ -210,7 +212,7 @@ const headline = computed(() => {
 
 const turnLabel = computed(() => {
   if (myTurn.value) return 'Your call'
-  return `${activePlayer.value?.name || 'Anonymous'} is on the clock`
+  return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
 /** What a correct call on the current line pays — the density economy, shown. */
@@ -225,7 +227,7 @@ const stakePoints = computed(() => {
 const askLine = computed(() =>
   myTurn.value
     ? `Tap the slot on the line where this belongs — a correct call banks ${stakePoints.value} pts`
-    : `${activePlayer.value?.name || 'Anonymous'} is weighing the line`
+    : `${playerDisplayName(activePlayer.value)} is weighing the line`
 )
 
 /** "Photo: name · licence" — Commons authors earn their line on the card. */
@@ -241,10 +243,7 @@ const story = computed(() => {
   const event = timelineEvent(placement.slug)
   if (!event) return undefined
 
-  const who =
-    placement.playerId === gameStore.playerId
-      ? 'You'
-      : gameStore.game?.players[placement.playerId]?.name || 'Anonymous'
+  const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.playerId)
   const verdict = placement.correct
     ? `${who === 'You' ? 'You nail it' : `${who} nails it`} — +${placement.scored} pts`
     : placement.kind === 'timeout'
@@ -253,13 +252,7 @@ const story = computed(() => {
   return { event, correct: placement.correct, verdict }
 })
 
-// --- Shot clock (server-owned deadline; local repaint only) ------------------
-const secondsOnClock = ref(0)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
+const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 const clockRunning = computed(() => !showInterstitial.value && !finished.value && !revealing.value)
 

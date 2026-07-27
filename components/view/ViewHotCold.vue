@@ -35,7 +35,7 @@
           <CountryFlag class="stop-flag" :country="getCountry(probe.isoCode)" mode="background" />
           <span>{{ countryName(probe.isoCode) }}</span>
           <small v-if="probe.direction">
-            {{ Math.round(probe.distanceKm).toLocaleString() }} km {{ probe.direction }}
+            {{ formatKm(probe.distanceKm) }} {{ probe.direction }}
           </small>
           <small v-else>found it!</small>
         </li>
@@ -50,6 +50,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { bearingDegrees, compassArrow, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
 import type { MapTint } from '~~/store/game.store'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'

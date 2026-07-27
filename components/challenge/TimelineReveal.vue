@@ -16,6 +16,7 @@
 </template>
 <script lang="ts" setup>
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import { seatLabel } from '~~/lib/player'
 import type { TimelineState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
@@ -24,8 +25,6 @@ const props = defineProps<{
   players: { [playerId: string]: Player }
   playerId: string
 }>()
-
-const nameOf = (playerId: string) => props.players[playerId]?.name || 'Anonymous'
 
 interface Row {
   playerId: string
@@ -44,7 +43,7 @@ const rows = computed<Row[]>(() =>
       const correct = mine.filter(entry => entry.correct).length
       return {
         playerId,
-        name: playerId === props.playerId ? 'You' : nameOf(playerId),
+        name: seatLabel(props.players, playerId, props.playerId),
         fate: `${correct} of ${mine.length} placed right`,
         correct,
         total: mine.length,

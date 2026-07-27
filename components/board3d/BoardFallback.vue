@@ -12,7 +12,7 @@
               <div
                 class="bar"
                 :style="{
-                  width: `${((player.currentPosition + 1) / game.tiles.length) * 100}%`,
+                  width: `${boardProgress(player.currentPosition, game.tiles.length) * 100}%`,
                   background: player.color,
                 }"
               />
@@ -25,6 +25,7 @@
 </template>
 <script lang="ts" setup>
 import type { Game } from '~~/types/game.types'
+import { boardProgress } from '~~/lib/player'
 
 // Shown when WebGL is unavailable: a plain progress list in the pane style.
 const props = defineProps({

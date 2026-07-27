@@ -172,6 +172,7 @@ import { prefersReducedMotion } from '~~/lib/motion'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const {
@@ -181,6 +182,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   stopCountdown,
   hint,
@@ -251,7 +253,7 @@ const headline = computed(() => {
   if (beat.value === 'guess') return 'What power is this?'
   if (beat.value === 'tap') return 'Name every modern country inside it'
   const display = empireDisplayName(empire.value?.name ?? 'the empire')
-  return `${display[0].toUpperCase()}${display.slice(1)} — greatest extent, ${formatEventYear(challenge.value?.peakYear ?? 0)}`
+  return `${sentenceCase(display)} — greatest extent, ${formatEventYear(challenge.value?.peakYear ?? 0)}`
 })
 
 const subline = computed(() => {
@@ -328,8 +330,7 @@ const lockOut = (message: string) => {
 const buzz = (guessedId: string) => {
   const active = challenge.value
   if (!active || beat.value !== 'guess') return
-  const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
-  resolveBeat1(guessedId, buzzScore(pots.value.name, remainingFraction))
+  resolveBeat1(guessedId, buzzScore(pots.value.name, remainingFraction.value))
 }
 
 const onOptionPick = (option: string) => {

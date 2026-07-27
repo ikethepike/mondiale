@@ -79,8 +79,11 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { HERITAGE } from '~~/data/heritage.gen'
 import type { LatLng } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
+import { seatLabel } from '~~/lib/player'
 import { isMapClickEvent } from '~~/types/events.types'
 
 const {
@@ -127,27 +130,18 @@ const beatStandings = computed(() => {
       const entry = current.pins[playerId]?.[current.beat]
       return {
         playerId,
-        name:
-          playerId === gameStore.playerId
-            ? 'You'
-            : gameStore.game?.players[playerId]?.name || 'Anonymous',
+        name: seatLabel(gameStore.game?.players, playerId, gameStore.playerId),
         distanceKm: entry?.distanceKm,
         distance:
           entry?.distanceKm !== undefined
-            ? `${Math.round(entry.distanceKm).toLocaleString()} km`
+            ? formatKm(entry.distanceKm)
             : 'no pin',
       }
     })
     .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
 })
 
-// --- Beat clock (server-owned deadline) --------------------------------------
-const secondsOnClock = ref(0)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
+const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 // --- Pinning ------------------------------------------------------------------
 const lockIn = () => {

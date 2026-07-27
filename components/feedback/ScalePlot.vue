@@ -19,6 +19,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { clamp } from '~~/lib/number'
 interface ScaleMarker {
   amount: number
   display?: string
@@ -45,7 +46,7 @@ const positionOf = (amount: number) => {
   const span = props.max - props.min
   if (span <= 0) return 50
   const raw = ((amount - props.min) / span) * 100
-  const clamped = Math.max(0, Math.min(100, raw))
+  const clamped = clamp(raw, 0, 100)
   return props.invert ? 100 - clamped : clamped
 }
 

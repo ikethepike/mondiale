@@ -50,6 +50,7 @@ import { MAP_PROJECTION } from '~~/data/map.gen'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { projectRobinson } from '~~/lib/geo'
+import { useMapViewBox } from '~~/lib/use-map-viewbox'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
 
@@ -76,7 +77,7 @@ const entry = ref('')
 const named = ref(new Set<string>())
 const elapsedMs = ref(0)
 const finished = ref(false)
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
+const { viewBox } = useMapViewBox()
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
@@ -111,16 +112,7 @@ const shownCities = computed(() => {
 
 let ticker: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
-let mapSvg: SVGSVGElement | null = null
 let targetPath: Element | null = null
-
-const readViewBox = () => {
-  mapSvg ??= document.querySelector('.game-map svg')
-  const raw = mapSvg?.getAttribute('viewBox')?.split(/\s+/).map(Number)
-  if (raw?.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
 
 const nightfall = () => {
   document.body.classList.add('nocturne-night')
@@ -148,7 +140,6 @@ const start = () => {
   field.value?.focus()
   ticker = setInterval(() => {
     elapsedMs.value = performance.now() - startedAt
-    readViewBox()
     if (elapsedMs.value >= durationMs) finish()
   }, TICK_MS)
 }

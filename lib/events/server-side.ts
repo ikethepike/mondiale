@@ -12,7 +12,14 @@ import type { EventHandler } from '~~/server/middleware/socket.server'
 import { secretsKey } from '~~/lib/player-secret'
 import type { Redis } from '@upstash/redis'
 
-const TWO_DAYS_IN_SECONDS = 172800
+/** Game-state artifacts (game, secrets, hidden seeds) all expire together. */
+export const GAME_STATE_TTL_SECONDS = 172800
+
+/** The one set-then-expire pair for game-state keys — TTL can't be forgotten. */
+export const setWithGameTtl = async (redis: Redis, key: string, value: unknown): Promise<void> => {
+  await redis.set(key, value)
+  await redis.expire(key, GAME_STATE_TTL_SECONDS)
+}
 
 /**
  * Per-player bearer secrets, stored under a key SEPARATE from the game so they
@@ -32,8 +39,7 @@ export const saveSecrets = async (
   gameId: string,
   secrets: Record<string, string>
 ): Promise<void> => {
-  await redis.set(secretsKey(gameId), secrets)
-  await redis.expire(secretsKey(gameId), TWO_DAYS_IN_SECONDS)
+  await setWithGameTtl(redis, secretsKey(gameId), secrets)
 }
 
 /**
@@ -82,8 +88,7 @@ export const useServerSideEvents = ({
     },
     async updateGameState(game: Game) {
       // The upstash client (de)serializes JSON itself — store the object as-is
-      await redis.set(game.id, game)
-      await redis.expire(game.id, TWO_DAYS_IN_SECONDS)
+      await setWithGameTtl(redis, game.id, game)
     },
     async fetchGame(gameId: string): Promise<Game | undefined> {
       if (!gameId) throw new EvalError('Blank string passed')

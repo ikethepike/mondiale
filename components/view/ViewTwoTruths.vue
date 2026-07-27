@@ -63,7 +63,7 @@
             @click="pick(index)"
           >
             <strong class="claim-value">
-              {{ formatNumber(statement.amount) }}{{ statement.unit ? ` ${statement.unit}` : '' }}
+              {{ formatAmount(statement) }}
             </strong>
             <ScalePlot v-if="statementScales[index]" v-bind="statementScales[index]" />
             <Transition name="caption">
@@ -96,7 +96,7 @@ import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
@@ -147,7 +147,7 @@ const truthDisplay = computed(() => {
   const active = challenge.value
   if (!active) return ''
   const real = getValueByAccessorID(active.country, active.statements[active.lieIndex].accessorId)
-  return real ? `${formatNumber(real.amount)}${real.unit ? ` ${real.unit}` : ''}` : '—'
+  return real ? formatAmount(real) : '—'
 })
 
 const claimClass = (index: number) => {

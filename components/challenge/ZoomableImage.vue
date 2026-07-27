@@ -62,6 +62,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { clamp } from '~~/lib/number'
 withDefaults(defineProps<{ src: string; alt?: string }>(), { alt: 'A photo to identify' })
 
 const MIN_SCALE = 1
@@ -107,8 +108,8 @@ const clampPan = () => {
   const { width, height } = element.getBoundingClientRect()
   const maxX = (Math.max(scale.value, 1) - 1) * width * 0.5
   const maxY = (Math.max(scale.value, 1) - 1) * height * 0.5
-  tx.value = Math.min(maxX, Math.max(-maxX, tx.value))
-  ty.value = Math.min(maxY, Math.max(-maxY, ty.value))
+  tx.value = clamp(tx.value, -maxX, maxX)
+  ty.value = clamp(ty.value, -maxY, maxY)
 }
 
 const reset = () => {
@@ -118,7 +119,7 @@ const reset = () => {
 }
 
 const setScale = (next: number) => {
-  scale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next))
+  scale.value = clamp(next, MIN_SCALE, MAX_SCALE)
   if (scale.value === 1) reset()
   else clampPan()
 }
@@ -132,7 +133,7 @@ const zoomBy = (delta: number) => setScale(scale.value + delta)
 const zoomToward = (nextScale: number, fx: number, fy: number) => {
   const element = viewport.value
   if (!element) return
-  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  const clamped = clamp(nextScale, MIN_SCALE, MAX_SCALE)
   if (clamped === scale.value) return
   const rect = element.getBoundingClientRect()
   const originX = fx - rect.width / 2 - tx.value
@@ -154,7 +155,7 @@ const zoomToward = (nextScale: number, fx: number, fy: number) => {
 const zoomInto = (nextScale: number, fx: number, fy: number) => {
   const element = viewport.value
   if (!element) return
-  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  const clamped = clamp(nextScale, MIN_SCALE, MAX_SCALE)
   const rect = element.getBoundingClientRect()
   // The clicked point in untransformed content space, relative to centre.
   const contentX = (fx - rect.width / 2 - tx.value) / scale.value

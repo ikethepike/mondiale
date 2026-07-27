@@ -96,7 +96,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ButtonLine from '~/components/button/ButtonLine.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
-import { formatAmount } from '~~/lib/number'
+import { formatAmount, clamp  } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { ScalesChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -175,7 +175,7 @@ watch(
     if (!result) return (angle.value = 0)
     const strain = (result.ratio - 1) / props.challenge.tolerance
     requestAnimationFrame(() => {
-      angle.value = Math.max(-1.6, Math.min(1.6, strain)) * 8
+      angle.value = clamp(strain, -1.6, 1.6) * 8
     })
   },
   { immediate: true }

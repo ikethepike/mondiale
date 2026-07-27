@@ -1,6 +1,6 @@
 import { accessorTopicLabel, getScaleProps } from '~~/lib/challenges'
 import type { ScalePlotProps } from '~~/lib/challenges'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -97,7 +97,7 @@ export const atlasFact = (
   const amount = getValueByAccessorID(isoCode, accessorId)
   if (!amount) return undefined
 
-  const value = `${formatNumber(amount.amount)}${amount.unit ? ` ${amount.unit}` : ''}`
+  const value = formatAmount(amount)
 
   return {
     label: accessorTopicLabel(accessorId),

@@ -1,6 +1,7 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { editDistance } from './strings'
 
 export interface LeaderProfile {
   name: string
@@ -26,38 +27,77 @@ export const titlecaseLeader = (name: string): string =>
     return word.toLowerCase().replace(/(?:^|['’-])\p{L}/gu, letter => letter.toUpperCase())
   })
 
-/** Loose surname overlap between two leader-name strings (sources drift). */
-const sharesName = (a?: string, b?: string): boolean => {
+const LEADER_TITLE_NOISE = new Set([
+  'the',
+  'king',
+  'queen',
+  'president',
+  'prime',
+  'minister',
+  'chancellor',
+  'taoiseach',
+  'interim',
+  'caretaker',
+  'transition',
+  'transitional',
+  'general',
+  'leader',
+])
+
+/** Name tokens robust to titles, diacritics and punctuation. */
+const leaderNameTokens = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z]+/)
+    .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
+
+/**
+ * Same person? Tokens match fuzzily (Christodoulidis≈Christodoulides,
+ * Tiani≈Tchiani — transliterations drift between sources). The ONE leader
+ * name matcher: quiz dealing and reveal copy select through the same ruler.
+ */
+export const leaderNamesOverlap = (a?: string, b?: string): boolean => {
   if (!a || !b) return false
-  const tokens = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .split(/[^a-z]+/)
-      .filter(token => token.length >= 4)
-  const bt = tokens(b)
-  return tokens(a).some(token => bt.includes(token))
+  const aTokens = leaderNameTokens(a)
+  const bTokens = leaderNameTokens(b)
+  return aTokens.some(tokenA =>
+    bTokens.some(tokenB => {
+      const budget = Math.min(tokenA.length, tokenB.length) >= 6 ? 2 : 1
+      return editDistance(tokenA, tokenB, budget) <= budget
+    })
+  )
 }
 
 /**
- * The POLITICAL leader to surface for a country — matching the challenge
- * builder's selection so quiz and reveal agree. Prefers the role whose name
- * matches the factbook `government.leader`, then the role the factbook TITLE
- * implies, else head of government (the political office by construction).
- * Unlike the challenge's `portraitFor`, this does NOT require a portrait — the
- * caller can fall back to the name when `image` is absent.
+ * The POLITICAL leader to surface for a country — never a ceremonial
+ * figurehead by accident, and the ONE selector, so the quiz dealer and the
+ * reveal can't disagree. Selection order:
+ *  1. The role whose name matches the factbook's `government.leader`
+ *     (fuzzy — transliterations drift between sources).
+ *  2. The role the factbook's TITLE names ("Prime Minister…" → government,
+ *     "President/King…" → state).
+ *  3. Head of government — the political office by construction; defaulting
+ *     to head of state was how Thailand dealt its king.
+ * `requireImage` narrows the pick to roles with a portrait (the quiz needs a
+ * face); reveals leave it off and fall back to the name.
  */
-export const politicalLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
+export const politicalLeader = (
+  isoCode: ISOCountryCode,
+  options: { requireImage?: boolean } = {}
+): LeaderProfile | undefined => {
   const entry = LEADERS[isoCode]
   if (!entry) return undefined
-  const state = entry.headOfState
-  const government = entry.headOfGovernment
+  const eligible = (role?: LeaderProfile) =>
+    role && (!options.requireImage || role.image) ? role : undefined
+  const state = eligible(entry.headOfState)
+  const government = eligible(entry.headOfGovernment)
   if (!state && !government) return undefined
 
   const factbookLeader = COUNTRIES[isoCode]?.government?.leader ?? ''
 
-  const named = [state, government].find(role => sharesName(role?.name, factbookLeader))
+  const named = [state, government].find(role => leaderNamesOverlap(role?.name, factbookLeader))
   const byTitle = /prime minister|chancellor|taoiseach|premier/i.test(factbookLeader)
     ? government
     : /president|king|queen|emir|sultan|emperor|pope/i.test(factbookLeader)

@@ -1,5 +1,5 @@
 <template>
-  <ButtonBase class="line" :element="element" :to="to">
+  <ButtonBase class="line" :element="element" :to="to" :disabled="disabled">
     <slot />
   </ButtonBase>
 </template>
@@ -14,6 +14,10 @@ defineProps({
   to: {
     type: String,
     default: undefined,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
   },
 })
 </script>

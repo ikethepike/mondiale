@@ -85,6 +85,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   hint,
   announce,
@@ -128,7 +129,7 @@ const start = () => {
 const scoreFor = (active: NonNullable<typeof challenge.value>) =>
   active.maximumGuesses
     ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
-    : buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
+    : buzzScore(active.maximumPoints, remainingFraction.value)
 
 const onGuess = (country: Country) => {
   const active = challenge.value
