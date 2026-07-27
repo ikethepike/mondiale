@@ -2,7 +2,11 @@
   <div ref="root" class="interstitial" :class="tone" @click="skip">
     <ContourRipple class="ripple" :tone="tone === 'alert' ? 'alert' : 'success'" :delay="0.35" />
     <div class="content">
-      <span data-interstitial class="kicker map-caption">{{ kicker }}</span>
+      <span data-interstitial class="kicker map-caption">
+        {{ kicker }}
+        <!-- A mode may toss its emblem onto the sign's corner. -->
+        <span v-if="$slots.emblem" class="kicker-emblem"><slot name="emblem" /></span>
+      </span>
       <h1 data-interstitial>{{ title }}</h1>
       <hr data-interstitial />
       <p data-interstitial class="stakes">{{ stakes }}</p>
@@ -130,6 +134,23 @@ onUnmounted(() => {
   flex-flow: column nowrap;
   max-width: 64rem;
   padding: 0 3rem;
+}
+
+.kicker {
+  position: relative;
+}
+
+.kicker-emblem {
+  top: -2.4rem;
+  right: -2rem;
+  position: absolute;
+  // Tossed onto the sign's corner — a tilt keeps the silhouette readable
+  // where a full 45° hang dissolved it.
+  transform: rotate(14deg);
+
+  :deep(svg) {
+    width: 4.6rem;
+  }
 }
 
 .kicker {

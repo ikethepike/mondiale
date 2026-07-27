@@ -7,7 +7,11 @@
       :title="interstitialTitle"
       :stakes="stakes"
       @done="begin()"
-    />
+    >
+      <template #emblem>
+        <DespotHat />
+      </template>
+    </Interstitial>
 
     <!-- Chips over the map: the despot's numbered trail (their eyes only)
          and last turn's dragnet misses as ✕ marks for everyone — a marker
@@ -58,7 +62,10 @@
 
     <header>
       <div class="prompt">
-        <h1 class="map-caption">{{ headline }}</h1>
+        <h1 class="map-caption headline-line">
+          <DespotHat class="despot-hat" />
+          <span>{{ headline }}</span>
+        </h1>
         <!-- One status line: the sea-passage announcement IS the beat's
              statement while it's live, so it replaces the turn line rather
              than stacking on it. Still, no motion — the wash on the map
@@ -124,6 +131,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import DespotHat from '~/components/challenge/DespotHat.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ManhuntReveal from '~/components/challenge/ManhuntReveal.vue'
@@ -201,23 +209,41 @@ const trailEntries = computed(() =>
   trail.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
 )
 
-/** Trail numbers (despot only) plus the last dragnet's misses as ✕ marks —
- *  a country the trail passed keeps its number; the ✕ never overwrites it.
- *  On easy, the despot's legal hops carry their ISO chips too — border
- *  chain's exact assist, same gating. */
+const playerColor = (playerId: string): string | undefined =>
+  gameStore.game?.players[playerId]?.color
+
+/** Trail numbers (despot only), the last dragnet's misses as ✕ marks wearing
+ *  each detective's colour (several markers on one country fall back to a
+ *  neutral ✕N), and — while a hunt beat is live — your own locked marker in
+ *  your colour. On easy, the despot's legal hops carry their ISO chips too:
+ *  border chain's exact assist, same gating. */
 const mapChipEntries = computed(() => {
-  const entries = [...trailEntries.value]
+  const entries: { isoCode: ISOCountryCode; label: string; color?: string }[] = [
+    ...trailEntries.value,
+  ]
   if (finished.value) return entries
   const taken = new Set(trail.value)
-  for (const [isoCode, count] of Object.entries(lastDragnet.value?.markers ?? {})) {
-    if (taken.has(isoCode as ISOCountryCode)) continue
-    entries.push({ isoCode: isoCode as ISOCountryCode, label: count > 1 ? `✕${count}` : '✕' })
+
+  const byCountry = new Map<ISOCountryCode, string[]>()
+  for (const [playerId, isoCode] of Object.entries(lastDragnet.value?.markers ?? {})) {
+    const list = byCountry.get(isoCode as ISOCountryCode) ?? []
+    list.push(playerId)
+    byCountry.set(isoCode as ISOCountryCode, list)
   }
-  if (
-    isDespot.value &&
-    state.value.beat === 'move' &&
-    gameStore.game?.difficulty === 'easy'
-  ) {
+  for (const [isoCode, playerIds] of byCountry) {
+    if (taken.has(isoCode)) continue
+    entries.push(
+      playerIds.length === 1
+        ? { isoCode, label: '✕', color: playerColor(playerIds[0]) }
+        : { isoCode, label: `✕${playerIds.length}` }
+    )
+  }
+
+  if (iAmDetective.value && state.value.beat === 'hunt' && myMarker.value) {
+    entries.push({ isoCode: myMarker.value, label: '✕', color: playerColor(gameStore.playerId) })
+  }
+
+  if (isDespot.value && state.value.beat === 'move' && gameStore.game?.difficulty === 'easy') {
     for (const isoCode of [...legalMoves.value.ground, ...legalMoves.value.sea]) {
       if (!taken.has(isoCode)) entries.push({ isoCode, label: isoCode })
     }
@@ -393,6 +419,11 @@ const previewSeaKeys = computed(() => {
   if (!from) return []
   if (seaFanOpen.value) return legalMoves.value.sea.map(isoCode => `${from}>${isoCode}`)
   if (hoveredSea.value) return [`${from}>${hoveredSea.value}`]
+  // A hovered strait neighbour is a FREE water crossing — without the arc it
+  // reads as a plain land border (the Italy→Greece mystery).
+  if (hoveredGround.value && isStraitHop(from, hoveredGround.value)) {
+    return [`${from}>${hoveredGround.value}`]
+  }
   return []
 })
 
@@ -502,8 +533,8 @@ const paintPursuit = () => {
     writeIfChanged('pulsing', [])
   }
 
-  // A committed detective keeps sight of their own marker.
-  if (myMarker.value) tints[myMarker.value] = 'optimal'
+  // The detective's own marker renders as their coloured chip (mapChipEntries),
+  // not a fill — fills stay the knowledge channel.
 
   writeIfChanged('landRoutes', routes)
   writeIfChanged('seaLinks', trailSeaKeys.value.concat(previewSeaKeys.value))
@@ -659,6 +690,17 @@ header {
       opacity: 0.5;
       cursor: default;
     }
+  }
+}
+
+header .headline-line {
+  gap: 1rem;
+  display: inline-flex;
+  align-items: center;
+
+  .despot-hat {
+    width: 3.6rem;
+    flex-shrink: 0;
   }
 }
 

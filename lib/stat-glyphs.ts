@@ -241,7 +241,6 @@ export const DEPARTMENT_GLYPHS: Record<DepartmentGlyphKey, Glyph> = {
     paths: ['M4 20.5 10.5 3.5', 'M20 20.5 13.5 3.5', 'M12 19v-3', 'M12 13v-2.5', 'M12 8v-2'],
   },
 }
-
 export type RelationsGlyphKey =
   | 'relations.aid'
   | 'relations.alliance'

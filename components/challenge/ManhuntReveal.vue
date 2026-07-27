@@ -1,5 +1,6 @@
 <template>
   <section class="manhunt-reveal pane tr decorator-bottom">
+    <DespotHat class="despot-hat" />
     <h2 class="headline">
       {{ headline }}
     </h2>
@@ -35,6 +36,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import DespotHat from '~/components/challenge/DespotHat.vue'
 import { isStraitHop } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
@@ -101,6 +103,12 @@ const isSeaHop = (index: number): boolean =>
   text-align: center;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+.despot-hat {
+  width: 4.6rem;
+  // Worn slightly askew, as the office demands.
+  transform: rotate(-9deg);
 }
 
 .headline {

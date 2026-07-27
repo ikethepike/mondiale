@@ -515,8 +515,9 @@ export interface ManhuntState {
   subpoenasLeft: { [playerId: string]: number }
   /** Clue-consistent set snapshot for the live hunt beat; [] on hard. */
   candidates: ISOCountryCode[]
-  /** Marker aggregates from RESOLVED turns only: the public dragnet. */
-  dragnets: { hop: number; markers: { [isoCode: string]: number } }[]
+  /** RESOLVED turns' markers, attributed — public only once the beat is
+   *  over and the information is spent. Live markers stay in the secret. */
+  dragnets: { hop: number; markers: { [playerId: string]: ISOCountryCode } }[]
   /** Detectives who locked a marker this hunt beat — presence, never where. */
   committed: string[]
   /** The trail becomes public ONLY here, at round end. */

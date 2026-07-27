@@ -286,11 +286,7 @@ const resolveHuntBeat = async (ctx: ChainContext, game: Game, challenge: Manhunt
   if (!secret) return
 
   const despotAt = secret.trail[secret.trail.length - 1]
-  const markerCounts: { [isoCode: string]: number } = {}
-  for (const marker of Object.values(secret.markers)) {
-    markerCounts[marker] = (markerCounts[marker] ?? 0) + 1
-  }
-  state.dragnets.push({ hop: state.hop, markers: markerCounts })
+  state.dragnets.push({ hop: state.hop, markers: { ...secret.markers } })
 
   const capturerIds = state.detectives.filter(playerId => secret.markers[playerId] === despotAt)
   if (capturerIds.length) {

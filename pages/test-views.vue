@@ -1112,8 +1112,8 @@ const scenarios: Scenario[] = [
             subpoenasLeft: { [ME]: 2, [THIRD]: 1 },
             candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
             dragnets: [
-              { hop: 1, markers: { FR: 1, PL: 1 } },
-              { hop: 2, markers: { DE: 2 } },
+              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'PL' } },
+              { hop: 2, markers: { [ME]: 'DE', [THIRD]: 'DE' } },
             ],
             committed: [THIRD],
           },
@@ -1157,8 +1157,8 @@ const scenarios: Scenario[] = [
             subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
             candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
             dragnets: [
-              { hop: 1, markers: { DE: 1, PL: 1 } },
-              { hop: 2, markers: { AT: 1, CH: 1 } },
+              { hop: 1, markers: { [RIVAL]: 'DE', [THIRD]: 'PL' } },
+              { hop: 2, markers: { [RIVAL]: 'AT', [THIRD]: 'CH' } },
             ],
             committed: [],
           },
@@ -1206,11 +1206,11 @@ const scenarios: Scenario[] = [
             subpoenasLeft: { [ME]: 0, [THIRD]: 1 },
             candidates: ['IT', 'SI'],
             dragnets: [
-              { hop: 1, markers: { FR: 1, DE: 1 } },
-              { hop: 2, markers: { AT: 2 } },
-              { hop: 3, markers: { ES: 1, IT: 1 } },
-              { hop: 4, markers: { HR: 2 } },
-              { hop: 5, markers: { SI: 2 } },
+              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'DE' } },
+              { hop: 2, markers: { [ME]: 'AT', [THIRD]: 'AT' } },
+              { hop: 3, markers: { [ME]: 'ES', [THIRD]: 'IT' } },
+              { hop: 4, markers: { [ME]: 'HR', [THIRD]: 'HR' } },
+              { hop: 5, markers: { [ME]: 'SI', [THIRD]: 'SI' } },
             ],
             committed: [ME, THIRD],
             outcome: {
