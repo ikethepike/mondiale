@@ -47,8 +47,6 @@
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
               'unselectable-country': unselectableSet.has(code),
-              'ringed-country': ringedSet.has(code),
-              'sea-glow-country': seaGlowSet.has(code),
             }"
             :data-id="code"
             :d="d"
@@ -87,7 +85,6 @@
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
-              'ringed-country': ringedSet.has(code),
             }"
             :data-id="code"
             :data-footprint="spot?.footprint"
@@ -479,8 +476,52 @@ const landRouteArcs = computed(() =>
   props.landRoutes.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
 )
 
-const ringedSet = computed(() => new Set<string>(props.ringed))
-const seaGlowSet = computed(() => new Set<string>(props.seaGlow))
+// ringed/seaGlow change on every hover crossing — as template bindings they
+// re-diff all 220 paths per change (measured: pan p95 doubled). Applied as
+// direct classList writes instead, the micro-dot discipline: reactivity never
+// touches the path list.
+const applyCountryClass = (
+  className: string,
+  previous: ReadonlySet<string>,
+  next: ReadonlySet<string>
+) => {
+  const host = svg.value
+  if (!host) return
+  for (const iso of previous) {
+    if (next.has(iso)) continue
+    for (const el of host.querySelectorAll(`[data-id="${iso}"]`)) el.classList.remove(className)
+  }
+  for (const iso of next) {
+    if (previous.has(iso)) continue
+    for (const el of host.querySelectorAll(`[data-id="${iso}"]`)) el.classList.add(className)
+  }
+}
+let appliedRinged: ReadonlySet<string> = new Set()
+let appliedSeaGlow: ReadonlySet<string> = new Set()
+watch(
+  () => props.ringed,
+  ringed => {
+    const next = new Set(ringed)
+    applyCountryClass('ringed-country', appliedRinged, next)
+    appliedRinged = next
+  },
+  { flush: 'post' }
+)
+watch(
+  () => props.seaGlow,
+  seaGlow => {
+    const next = new Set(seaGlow)
+    applyCountryClass('sea-glow-country', appliedSeaGlow, next)
+    appliedSeaGlow = next
+  },
+  { flush: 'post' }
+)
+onMounted(() => {
+  appliedRinged = new Set(props.ringed)
+  appliedSeaGlow = new Set(props.seaGlow)
+  applyCountryClass('ringed-country', new Set(), appliedRinged)
+  applyCountryClass('sea-glow-country', new Set(), appliedSeaGlow)
+})
 
 /** The sail chip earns its place on a lone arc (a hover preview, a walked
  *  leg); on a fanned-out reach the dashes already say water, and a chip per
@@ -827,6 +868,9 @@ const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined =
 let hoveredId: string | undefined
 const onPointerOver = (event: PointerEvent) => {
   if (event.pointerType && event.pointerType !== 'mouse') return
+  // Mid-gesture the paths are pointer-inert anyway — don't churn views with
+  // enter/exit noise from whatever the camera slides under the cursor.
+  if (wrapper.value?.classList.contains('is-interacting')) return
   const target = event.target as Element | null
   const isoCode = target?.getAttribute?.('data-id') ?? undefined
   if (isoCode === hoveredId) return
@@ -1717,6 +1761,11 @@ path[id] {
   .micro-hit {
     pointer-events: none;
     transition: none;
+  }
+
+  // The sailing dashes hold their drift while the camera is the animation.
+  .map-sea-link {
+    animation-play-state: paused;
   }
 }
 

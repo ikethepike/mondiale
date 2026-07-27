@@ -571,6 +571,26 @@ const writeIfChanged = (
   if (gameStore.map[key].join('|') !== next.join('|')) gameStore.map[key] = next as never
 }
 
+/** Same discipline for the heavy payloads: groupings and tints repaint every
+ *  country fill downstream, so a fresh-but-identical object per hover
+ *  crossing is a full-map repaint for nothing. */
+let paintedGroupings = ''
+let paintedTints = ''
+const writeGroupings = (groupings: CountryColorGrouping[]) => {
+  const key = groupings.map(g => `${g.color}:${g.countries.join(',')}`).join('|')
+  if (key === paintedGroupings) return
+  paintedGroupings = key
+  gameStore.map.countryGroupings = groupings
+}
+const writeTints = (tints: (typeof gameStore.map)['tints']) => {
+  const key = Object.entries(tints)
+    .map(([iso, tint]) => `${iso}:${tint}`)
+    .join('|')
+  if (key === paintedTints) return
+  paintedTints = key
+  gameStore.map.tints = tints
+}
+
 const paintPursuit = () => {
   if (finished.value) return
   const groupings: CountryColorGrouping[] = []
@@ -638,8 +658,8 @@ const paintPursuit = () => {
   writeIfChanged('landRoutes', routes)
   writeIfChanged('seaLinks', trailSeaKeys.value.concat(previewSeaKeys.value))
   gameStore.map.staggered = washing
-  gameStore.map.countryGroupings = groupings
-  gameStore.map.tints = tints
+  writeGroupings(groupings)
+  writeTints(tints)
 }
 
 watch([challenge, trail, myMarker, hoveredSea, hoveredGround, seaFanOpen], () => paintPursuit(), {
