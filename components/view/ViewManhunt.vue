@@ -432,6 +432,15 @@ const lastDragnet = computed(() => state.value.dragnets[state.value.dragnets.len
  *  once-per-announcement moment, not a repaint effect). */
 let washedTurn = -1
 
+/** Replace a map list only when its contents changed — same-content writes
+ *  churn watchers downstream (worst of all the camera tween). */
+const writeIfChanged = (
+  key: 'focus' | 'ringed' | 'seaGlow' | 'pulsing' | 'landRoutes' | 'seaLinks',
+  next: string[]
+) => {
+  if (gameStore.map[key].join('|') !== next.join('|')) gameStore.map[key] = next as never
+}
+
 const paintPursuit = () => {
   if (finished.value) return
   const groupings: CountryColorGrouping[] = []
@@ -455,10 +464,14 @@ const paintPursuit = () => {
 
   // The camera frames the live knowledge: the candidate set where painted,
   // else the playable board — a Europe game plays on Europe, not a world map
-  // with a postage stamp of action.
-  gameStore.map.focus = state.value.candidates.length
-    ? [...state.value.candidates]
-    : playableCountries(rules)
+  // with a postage stamp of action. Written ONLY on real change: a fresh
+  // array identity per paint retargets GameMap's camera tween, the map
+  // glides under the resting cursor, hover exits fire, and the repaint loop
+  // keeps the camera restless forever (the bug that ate the hover rings).
+  writeIfChanged(
+    'focus',
+    state.value.candidates.length ? [...state.value.candidates] : playableCountries(rules)
+  )
 
   // Despot: fills stay the knowledge channel — only the hideout itself gets
   // the ember fill. The journey is a route line, the options are rings, and
@@ -475,23 +488,25 @@ const paintPursuit = () => {
       groupings.push({ color: trailColor(1, 1, true), countries: [despotAt.value] })
     }
     const hovered = hoveredGround.value ?? hoveredSea.value
-    gameStore.map.ringed = state.value.beat === 'move' && hovered ? [hovered] : []
-    gameStore.map.seaGlow =
+    writeIfChanged('ringed', state.value.beat === 'move' && hovered ? [hovered] : [])
+    writeIfChanged(
+      'seaGlow',
       state.value.beat === 'move' && state.value.seaPassagesLeft > 0 && legalMoves.value.sea.length
         ? [despotAt.value].filter(Boolean)
         : []
-    gameStore.map.pulsing = despotAt.value ? [despotAt.value] : []
+    )
+    writeIfChanged('pulsing', despotAt.value ? [despotAt.value] : [])
   } else {
-    gameStore.map.ringed = []
-    gameStore.map.seaGlow = []
-    gameStore.map.pulsing = []
+    writeIfChanged('ringed', [])
+    writeIfChanged('seaGlow', [])
+    writeIfChanged('pulsing', [])
   }
 
   // A committed detective keeps sight of their own marker.
   if (myMarker.value) tints[myMarker.value] = 'optimal'
 
-  gameStore.map.landRoutes = routes
-  gameStore.map.seaLinks = trailSeaKeys.value.concat(previewSeaKeys.value)
+  writeIfChanged('landRoutes', routes)
+  writeIfChanged('seaLinks', trailSeaKeys.value.concat(previewSeaKeys.value))
   gameStore.map.staggered = washing
   gameStore.map.countryGroupings = groupings
   gameStore.map.tints = tints
