@@ -128,6 +128,10 @@ export const randomManhuntMove = (
  *  chain's seed guard) — which also keeps island pockets out of the pool. */
 const MINIMUM_SEED_MOVES = 3
 
+/** Below this many viable seeds the board is too small to hide on (South
+ *  America fields nine) — the dealer declines and another mode deals. */
+export const MINIMUM_MANHUNT_POOL = 25
+
 export const pickManhuntSeed = (rules: GameRules): ISOCountryCode | undefined => {
   const pool = shuffleArray(initialManhuntCandidates(rules))
   return pool[0]
@@ -226,6 +230,8 @@ const formatThreshold = (value: number, unit: string): string => {
 interface ClueCandidate {
   clue: ManhuntClue
   matches: ISOCountryCode[]
+  /** Set on threshold clues — lets a subpoena scope the pool to its topic. */
+  accessorId?: GroupChallengeAccessorId
 }
 
 type ChallengeSettings = Parameters<typeof isAccessorEnabled>[0]
@@ -306,8 +312,8 @@ const clueCandidates = (
       if (amount === undefined) return true
       return amount >= threshold === above
     })
-    push(
-      {
+    out.push({
+      clue: {
         hop,
         kind: 'threshold',
         text: `Its ${label} is ${above ? 'at least' : 'below'} ${formatThreshold(
@@ -315,11 +321,12 @@ const clueCandidates = (
           despotValue.unit
         )}`,
       },
-      matches
-    )
+      matches,
+      accessorId,
+    })
   }
 
-  return out
+  return out.filter(candidate => !usedTexts.has(candidate.clue.text))
 }
 
 /** Lazy import breaker: lib/challenges imports this module for the dealer, so
@@ -363,16 +370,11 @@ const CLUE_TARGET_FRACTION = 0.35
  * — a despot hiding among statistical twins blunts every cut, and each
  * dragnet miss sharpens the next one.
  */
-export const pickManhuntClue = (
-  game: ChallengeSettings,
-  despotAt: ISOCountryCode,
-  candidates: ISOCountryCode[],
-  hop: number,
-  used: ManhuntClue[]
-): ManhuntCluePick => {
-  const pool = clueCandidates(game, despotAt, candidates, hop, used)
+const bestClueCandidate = (
+  pool: ClueCandidate[],
+  candidates: ISOCountryCode[]
+): ClueCandidate | undefined => {
   const target = Math.max(2, candidates.length * CLUE_TARGET_FRACTION)
-
   let best: ClueCandidate | undefined
   for (const candidate of shuffleArray(pool)) {
     // A clue matching the whole set carries no information — dealt only if
@@ -388,25 +390,134 @@ export const pickManhuntClue = (
       continue
     }
     if (!bestUseless && candidateUseless) continue
-    if (
-      Math.abs(candidate.matches.length - target) < Math.abs(best.matches.length - target)
-    ) {
+    if (Math.abs(candidate.matches.length - target) < Math.abs(best.matches.length - target)) {
       best = candidate
     }
   }
+  return best
+}
 
+/** The truth invariant: the despot always satisfies their own clue. Data
+ *  drift must degrade, never crash the round or strand the target. */
+const guardedPick = (
+  best: ClueCandidate | undefined,
+  despotAt: ISOCountryCode,
+  candidates: ISOCountryCode[],
+  hop: number
+): ManhuntCluePick => {
   if (best) {
-    // The truth invariant: the despot always satisfies their own clue. Data
-    // drift must degrade, never crash the round or strand the target.
     if (!best.matches.includes(despotAt)) best.matches.push(despotAt)
-    return best
+    return { clue: best.clue, matches: best.matches }
   }
-
   // Unreachable with real data (region always produces) — total fallback.
   return {
     clue: { hop, kind: 'region', text: 'The trail has gone cold' },
     matches: [...candidates],
   }
+}
+
+export const pickManhuntClue = (
+  game: ChallengeSettings,
+  despotAt: ISOCountryCode,
+  candidates: ISOCountryCode[],
+  hop: number,
+  used: ManhuntClue[]
+): ManhuntCluePick => {
+  const pool = clueCandidates(game, despotAt, candidates, hop, used)
+  return guardedPick(bestClueCandidate(pool, candidates), despotAt, candidates, hop)
+}
+
+// --- Subpoenas ---------------------------------------------------------------
+
+/**
+ * The topics a detective may subpoena. Each scopes the clue pool: threshold
+ * topics by accessor, categorical topics by clue kind. Curated so every
+ * topic has near-complete data behind it.
+ */
+export const MANHUNT_SUBPOENA_TOPICS = [
+  {
+    id: 'people',
+    label: 'People & population',
+    accessors: [
+      'people.population',
+      'people.medianAge',
+      'people.lifeExpectancy',
+      'people.birthRate',
+      'people.urbanization',
+      'people.childrenPerWoman',
+    ] as GroupChallengeAccessorId[],
+    kinds: [] as ManhuntClue['kind'][],
+  },
+  {
+    id: 'economy',
+    label: 'Economy',
+    accessors: [
+      'economics.gdpPerCapita',
+      'economics.gdpTotal',
+      'infrastructure.internetAccess',
+      'infrastructure.mobileSubscriptions',
+    ] as GroupChallengeAccessorId[],
+    kinds: [] as ManhuntClue['kind'][],
+  },
+  {
+    id: 'land',
+    label: 'Land & area',
+    accessors: [
+      'geography.area.total',
+      'geography.area.land',
+      'geography.area.arable',
+      'geography.area.forested',
+    ] as GroupChallengeAccessorId[],
+    kinds: [] as ManhuntClue['kind'][],
+  },
+  {
+    id: 'language',
+    label: 'Languages',
+    accessors: [] as GroupChallengeAccessorId[],
+    kinds: ['language'] as ManhuntClue['kind'][],
+  },
+  {
+    id: 'alliances',
+    label: 'Alliances',
+    accessors: [] as GroupChallengeAccessorId[],
+    kinds: ['membership'] as ManhuntClue['kind'][],
+  },
+] as const
+
+export type ManhuntSubpoenaTopicId = (typeof MANHUNT_SUBPOENA_TOPICS)[number]['id']
+
+export const isManhuntSubpoenaTopic = (value: unknown): value is ManhuntSubpoenaTopicId =>
+  MANHUNT_SUBPOENA_TOPICS.some(topic => topic.id === value)
+
+/**
+ * A detective forces the next cut onto THEIR topic: the answer is still a
+ * true, engine-graded clue about the despot's current country, scoped to the
+ * requested territory of fact. An empty scope (no data, topic exhausted)
+ * falls back to the engine's own best cut — the token still buys a cut,
+ * never a dud.
+ */
+export const answerManhuntSubpoena = (
+  game: ChallengeSettings,
+  despotAt: ISOCountryCode,
+  candidates: ISOCountryCode[],
+  hop: number,
+  used: ManhuntClue[],
+  topicId: ManhuntSubpoenaTopicId
+): ManhuntCluePick => {
+  const pool = clueCandidates(game, despotAt, candidates, hop, used)
+  const topic = MANHUNT_SUBPOENA_TOPICS.find(entry => entry.id === topicId)
+  const scoped = topic
+    ? pool.filter(
+        candidate =>
+          (candidate.accessorId &&
+            (topic.accessors as readonly GroupChallengeAccessorId[]).includes(
+              candidate.accessorId
+            )) ||
+          (topic.kinds as readonly ManhuntClue['kind'][]).includes(candidate.clue.kind)
+      )
+    : []
+  const best = bestClueCandidate(scoped.length ? scoped : pool, candidates)
+  return guardedPick(best, despotAt, candidates, hop)
 }
 
 // --- Scoring ----------------------------------------------------------------
@@ -464,9 +575,11 @@ export const MANHUNT_TUNING: {
     moveSeconds: number
     huntSeconds: number
     seaPassages: number
+    /** Subpoena tokens per detective for the whole round. */
+    subpoenas: number
   }
 } = {
-  easy: { turnCount: 6, moveSeconds: 15, huntSeconds: 30, seaPassages: 1 },
-  normal: { turnCount: 7, moveSeconds: 15, huntSeconds: 25, seaPassages: 2 },
-  hard: { turnCount: 8, moveSeconds: 15, huntSeconds: 20, seaPassages: 2 },
+  easy: { turnCount: 6, moveSeconds: 15, huntSeconds: 30, seaPassages: 1, subpoenas: 2 },
+  normal: { turnCount: 7, moveSeconds: 15, huntSeconds: 25, seaPassages: 2, subpoenas: 2 },
+  hard: { turnCount: 8, moveSeconds: 15, huntSeconds: 20, seaPassages: 2, subpoenas: 1 },
 }

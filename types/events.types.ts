@@ -101,6 +101,14 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Manhunt: a detective spends a subpoena token to force a clue onto
+       *  their chosen topic, mid hunt beat. `turn` echoes the beat counter so
+       *  a retried send can't spend two tokens. */
+      event: 'submit-manhunt-subpoena'
+      topic: string
+      turn: number
+    }
+  | {
       /** Manhunt: the despot's client asks for its own trail (reconnect
        *  path). Answered with a targeted 'manhunt-position' emit; ignored for
        *  anyone but the despot. */
@@ -189,6 +197,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-timeline-placement',
   'submit-manhunt-move',
   'submit-manhunt-marker',
+  'submit-manhunt-subpoena',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 

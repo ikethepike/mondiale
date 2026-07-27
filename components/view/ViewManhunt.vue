@@ -25,18 +25,36 @@
       :total="beatTotalSeconds"
     />
 
+    <!-- The despot's action dock, moored by the clock: resources, never
+         intel — the rail below stays pure knowledge. -->
+    <aside v-if="isDespot && !showInterstitial && !finished" class="despot-dock">
+      <span class="dock-line">
+        <span
+          v-for="index in challenge.seaPassages"
+          :key="index"
+          class="passage-pip"
+          :class="{ spent: index > state.seaPassagesLeft }"
+        >⚓</span>
+      </span>
+      <span class="dock-caption">
+        {{ state.seaPassagesLeft ? 'sea passages' : 'no passages left' }}
+      </span>
+    </aside>
+
     <header>
       <div class="prompt">
         <h1 class="map-caption">{{ headline }}</h1>
+        <!-- One status line: the sea-passage announcement IS the beat's
+             statement while it's live, so it replaces the turn line rather
+             than stacking on it. Still, no motion — the wash on the map
+             carries the drama. -->
         <Transition name="caption" mode="out-in">
-          <span v-if="!finished" :key="beatLabel" class="map-caption sub turn-line">
+          <span v-if="!finished && seaPassageAnnounced" class="map-caption sub sea-banner">
+            ⚓ The Despot has taken sea passage!
+          </span>
+          <span v-else-if="!finished" :key="beatLabel" class="map-caption sub turn-line">
             <span class="chip" :style="{ background: despotPlayer?.color }" />
             <span>{{ beatLabel }}</span>
-          </span>
-        </Transition>
-        <Transition name="caption">
-          <span v-if="seaPassageAnnounced" class="map-caption sea-banner">
-            ⚓ The Despot has taken sea passage!
           </span>
         </Transition>
         <Transition name="caption" mode="out-in">
@@ -60,14 +78,30 @@
     />
 
     <footer>
-      <ol v-if="!finished" class="intel">
-        <li v-if="isDespot && !finished" class="entry map-caption charges">
-          ⚓ {{ state.seaPassagesLeft }} sea
-          {{ state.seaPassagesLeft === 1 ? 'passage' : 'passages' }} left
-        </li>
-        <li v-for="clue in recentClues" :key="clue.hop" class="entry map-caption">
+      <!-- Subpoena dock, down where the detective's hands already are. -->
+      <div v-if="canSubpoena" class="subpoena-dock map-caption">
+        <span class="subpoena-lead">
+          Subpoena · {{ mySubpoenas }} {{ mySubpoenas === 1 ? 'token' : 'tokens' }}
+        </span>
+        <button
+          v-for="topic in MANHUNT_SUBPOENA_TOPICS"
+          :key="topic.id"
+          class="subpoena-chip"
+          :disabled="subpoenaPending"
+          @click="sendSubpoena(topic.id)"
+        >
+          {{ topic.label }}
+        </button>
+      </div>
+      <ol v-if="!finished && recentClues.length" class="intel">
+        <!-- On the despot's screen the rail is their wanted poster — label it. -->
+        <li v-if="isDespot" class="entry map-caption rail-label">What the hunt knows</li>
+        <li v-for="clue in recentClues" :key="clue.text" class="entry map-caption">
           <span class="hop-badge">{{ clue.hop }}</span>
           <span>{{ clue.text }}</span>
+          <span v-if="clue.askedBy" class="asked-by">
+            ⚖ {{ nameOf(clue.askedBy) }}
+          </span>
         </li>
       </ol>
     </footer>
@@ -81,9 +115,13 @@ import ManhuntReveal from '~/components/challenge/ManhuntReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { isStraitHop } from '~~/lib/chain'
-import { legalManhuntMoves } from '~~/lib/manhunt'
+import {
+  legalManhuntMoves,
+  MANHUNT_SUBPOENA_TOPICS,
+  type ManhuntSubpoenaTopicId,
+} from '~~/lib/manhunt'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { isCountryPlayable } from '~~/lib/game-rules'
+import { isCountryPlayable, playableCountries } from '~~/lib/game-rules'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { isMapClickEvent, isMapHoverEvent } from '~~/types/events.types'
@@ -115,6 +153,7 @@ const EMPTY_STATE: ManhuntState = {
   clues: [],
   moves: [],
   seaPassagesLeft: 0,
+  subpoenasLeft: {},
   candidates: [],
   dragnets: [],
   committed: [],
@@ -201,6 +240,31 @@ const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
+
+const nameOf = (playerId: string) =>
+  playerId === gameStore.playerId ? 'you' : gameStore.game?.players[playerId]?.name || 'Anonymous'
+
+// --- Subpoenas ---------------------------------------------------------------
+const mySubpoenas = computed(() => state.value.subpoenasLeft[gameStore.playerId] ?? 0)
+const canSubpoena = computed(
+  () =>
+    !finished.value &&
+    !showInterstitial.value &&
+    iAmDetective.value &&
+    state.value.beat === 'hunt' &&
+    mySubpoenas.value > 0
+)
+/** One in flight at a time; unlocks when the answer lands (clue count grows). */
+const subpoenaPending = ref(false)
+watch(
+  () => state.value.clues.length,
+  () => (subpoenaPending.value = false)
+)
+const sendSubpoena = (topic: ManhuntSubpoenaTopicId) => {
+  if (!canSubpoena.value || subpoenaPending.value) return
+  subpoenaPending.value = true
+  update({ event: 'submit-manhunt-subpoena', topic, turn: state.value.turn })
+}
 
 // --- Shot clock (server-owned deadline; local repaint only) ------------------
 const secondsOnClock = ref(0)
@@ -300,18 +364,39 @@ const trailColor = (index: number, count: number, head: boolean): string => {
 
 const lastDragnet = computed(() => state.value.dragnets[state.value.dragnets.length - 1])
 
+/** The beat whose sea-passage wash already ran (staggered arrival is a
+ *  once-per-announcement moment, not a repaint effect). */
+let washedTurn = -1
+
 const paintPursuit = () => {
   if (finished.value) return
   const groupings: CountryColorGrouping[] = []
 
   // Everyone: the painted candidate set (empty on hard) and the last dragnet.
-  if (state.value.candidates.length) {
+  // An announced sea passage gets the full beat moment: the set arrives as a
+  // staggered wash, one country after another — the net visibly blowing open.
+  // Once per beat: mid-beat repaints (marker commits) must not re-run it.
+  const washing =
+    seaPassageAnnounced.value && state.value.candidates.length > 0 && washedTurn !== state.value.turn
+  if (washing) washedTurn = state.value.turn
+  if (washing) {
+    for (const isoCode of state.value.candidates) {
+      groupings.push({ color: CANDIDATE_FILL, countries: [isoCode] })
+    }
+  } else if (state.value.candidates.length) {
     groupings.push({ color: CANDIDATE_FILL, countries: [...state.value.candidates] })
   }
   const dragnetCountries = Object.keys(lastDragnet.value?.markers ?? {}) as ISOCountryCode[]
   if (dragnetCountries.length) {
     groupings.push({ color: DRAGNET_FILL, countries: dragnetCountries })
   }
+
+  // The camera frames the live knowledge: the candidate set where painted,
+  // else the playable board — a Europe game plays on Europe, not a world map
+  // with a postage stamp of action.
+  gameStore.map.focus = state.value.candidates.length
+    ? [...state.value.candidates]
+    : playableCountries(rules)
 
   // Despot: their own trail over the top, head pulsing; legal outs on a move
   // beat as tints (sea options distinct from ground).
@@ -336,7 +421,7 @@ const paintPursuit = () => {
   // A committed detective keeps sight of their own marker.
   if (myMarker.value) tints[myMarker.value] = 'optimal'
 
-  gameStore.map.staggered = false
+  gameStore.map.staggered = washing
   gameStore.map.countryGroupings = groupings
   gameStore.map.tints = tints
 }
@@ -428,21 +513,56 @@ header {
   }
 
   .sea-banner {
-    font-size: 1.15em;
     font-weight: bold;
-    padding: 0.6rem 1.8rem;
     color: hsl(215.7, 76.4%, 41%);
-    border-width: 0.15rem;
     border-color: hsla(215.7, 76.4%, 41%, 0.55);
   }
+}
 
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
+// Below the map's pointer-events blanket — restore them or the chips are
+// unclickable ornaments (the border chain's route learned this the hard way).
+.subpoena-dock {
+  gap: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 auto 0.6rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.2rem;
+  width: fit-content;
+  pointer-events: auto;
+
+  .subpoena-lead {
+    font-weight: bold;
+    margin-right: 0.4rem;
   }
+
+  .subpoena-chip {
+    font: inherit;
+    cursor: pointer;
+    color: var(--dark-blue);
+    padding: 0.25rem 0.9rem;
+    border-radius: 1rem;
+    border: 0.1rem solid hsla(215.7, 76.4%, 41%, 0.45);
+    background: hsla(212, 58%, 62%, 0.14);
+
+    &:hover:not(:disabled) {
+      background: hsla(212, 58%, 62%, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}
+
+header .prompt {
+  gap: 1rem;
+  display: flex;
+  position: relative;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 .turn-line {
@@ -455,6 +575,55 @@ header {
     height: 0.75rem;
     border-radius: 50%;
   }
+}
+
+// The despot's resources, moored under the shared round clock.
+.despot-dock {
+  top: calc(2rem + 7.2rem);
+  right: 2rem;
+  z-index: 5;
+  gap: 0.2rem;
+  display: flex;
+  position: absolute;
+  align-items: center;
+  flex-flow: column nowrap;
+  pointer-events: none;
+
+  .dock-line {
+    gap: 0.3rem;
+    display: flex;
+  }
+
+  .passage-pip {
+    font-size: 1.5rem;
+    color: hsl(215.7, 76.4%, 41%);
+
+    &.spent {
+      opacity: 0.25;
+    }
+  }
+
+  .dock-caption {
+    font-size: 1.1rem;
+    opacity: 0.7;
+    color: var(--dark-blue);
+  }
+
+  @media screen and (max-width: $tablet) {
+    top: auto;
+    right: calc(1.2rem + var(--safe-right));
+    bottom: calc(1.6rem + var(--safe-bottom) + 6rem);
+  }
+}
+
+.rail-label {
+  opacity: 0.75;
+  font-weight: bold;
+}
+
+.asked-by {
+  opacity: 0.7;
+  font-size: 0.85em;
 }
 
 .reveal {

@@ -1,5 +1,6 @@
 import type { Redis } from '@upstash/redis'
 import {
+  answerManhuntSubpoena,
   initialManhuntCandidates,
   legalManhuntMoves,
   manhuntKey,
@@ -10,6 +11,7 @@ import {
   scoreManhunt,
   stepManhuntCandidates,
   type ManhuntSecret,
+  type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import type { ManhuntChallenge, ManhuntMoveKind } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
@@ -210,6 +212,38 @@ const commitManhuntMove = async (
   server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
   await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
   scheduleManhuntTimeout(ctx, challenge)
+}
+
+/**
+ * A detective spends a subpoena token mid hunt beat: the engine answers with
+ * a true clue scoped to their chosen topic, the candidate set takes the cut
+ * immediately, and the beat clock keeps running — `state.turn` is untouched,
+ * so pending timeouts stay valid.
+ */
+export const applyManhuntSubpoena = async (
+  ctx: ChainContext,
+  game: Game,
+  challenge: ManhuntChallenge,
+  playerId: string,
+  topicId: ManhuntSubpoenaTopicId
+) => {
+  const { state } = challenge
+  if ((state.subpoenasLeft[playerId] ?? 0) < 1) return
+  const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
+  if (!secret) return
+
+  const despotAt = secret.trail[secret.trail.length - 1]
+  const pick = answerManhuntSubpoena(game, despotAt, secret.candidates, state.hop, state.clues, topicId)
+  secret.candidates = pick.matches
+  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
+
+  state.subpoenasLeft[playerId] = (state.subpoenasLeft[playerId] ?? 0) - 1
+  state.clues.push({ ...pick.clue, askedBy: playerId })
+  state.candidates = challenge.showCandidates ? [...pick.matches] : []
+
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
 }
 
 /** A detective locked a marker. WHERE it landed goes to the secret blob; the

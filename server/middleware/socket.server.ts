@@ -18,6 +18,7 @@ import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-f
 import { submitChainMoveHandler } from '~~/lib/events/server/submit-chain-move.handler'
 import { submitManhuntMoveHandler } from '~~/lib/events/server/submit-manhunt-move.handler'
 import { submitManhuntMarkerHandler } from '~~/lib/events/server/submit-manhunt-marker.handler'
+import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
 import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
 import { submitTimelinePlacementHandler } from '~~/lib/events/server/submit-timeline-placement.handler'
@@ -85,6 +86,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-manhunt-marker': {
     handler: submitManhuntMarkerHandler,
+  },
+  'submit-manhunt-subpoena': {
+    handler: submitManhuntSubpoenaHandler,
   },
   // Reads only the requesting despot's own secret; answers on their socket
   'fetch-manhunt-position': {

@@ -72,7 +72,7 @@ import {
   playableWorldCountries,
 } from './game-rules'
 import { pickChainSeed } from './chain'
-import { MANHUNT_TUNING, pickManhuntSeed } from './manhunt'
+import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
@@ -284,12 +284,13 @@ const getManhuntChallenge = ({
 }): ManhuntChallenge | undefined => {
   const contenders = chainContenders(game)
   if (contenders.length < 4) return undefined
-  // Verify the variant can seed a pursuit at all (a sparse continental board
-  // may not) — the real seed is picked at reveal, off the snapshot.
-  if (!pickManhuntSeed(game)) return undefined
+  // A board too small to hide on never deals (South America fields nine
+  // viable seeds) — the real seed is picked at reveal, off the snapshot.
+  if (initialManhuntCandidates(game).length < MINIMUM_MANHUNT_POOL) return undefined
 
   const tuning = MANHUNT_TUNING[game.difficulty]
   const despotId = contenders[Math.floor(Math.random() * contenders.length)]
+  const detectives = shuffleArray(contenders.filter(playerId => playerId !== despotId))
   return {
     _type: 'manhunt-challenge',
     turnCount: tuning.turnCount,
@@ -298,6 +299,7 @@ const getManhuntChallenge = ({
     maximumPoints: maximumRoundPoints(game),
     despotId,
     seaPassages: tuning.seaPassages,
+    subpoenas: tuning.subpoenas,
     showCandidates: game.difficulty !== 'hard',
     state: {
       turn: 0,
@@ -305,10 +307,11 @@ const getManhuntChallenge = ({
       beat: 'move',
       // Stamped when the round is revealed (manhunt-beats) — staging pauses first.
       deadline: 0,
-      detectives: shuffleArray(contenders.filter(playerId => playerId !== despotId)),
+      detectives,
       clues: [],
       moves: [],
       seaPassagesLeft: tuning.seaPassages,
+      subpoenasLeft: Object.fromEntries(detectives.map(playerId => [playerId, tuning.subpoenas])),
       candidates: [],
       dragnets: [],
       committed: [],

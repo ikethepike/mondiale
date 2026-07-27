@@ -8,7 +8,9 @@ import type {
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { connectionsOf } from './chain'
 import {
+  answerManhuntSubpoena,
   initialManhuntCandidates,
+  MANHUNT_SUBPOENA_TOPICS,
   legalManhuntMoves,
   MANHUNT_THRESHOLD_ACCESSORS,
   pickManhuntClue,
@@ -34,6 +36,7 @@ const state = (overrides: Partial<ManhuntState> = {}): ManhuntState => ({
   clues: [],
   moves: [],
   seaPassagesLeft: 2,
+  subpoenasLeft: {},
   candidates: [],
   dragnets: [],
   committed: [],
@@ -48,6 +51,7 @@ const challenge = (stateOverrides: Partial<ManhuntState> = {}): ManhuntChallenge
   maximumPoints: 15,
   despotId: 'despot',
   seaPassages: 2,
+  subpoenas: 2,
   showCandidates: true,
   state: state(stateOverrides),
 })
@@ -215,6 +219,36 @@ describe('clue engine', () => {
     }
     const mean = endgameSizes.reduce((sum, size) => sum + size, 0) / endgameSizes.length
     expect(mean).toBeLessThan(30)
+  })
+
+  it('answers a subpoena inside the requested topic, truthfully', () => {
+    const candidates = initialManhuntCandidates(RULES)
+    const language = answerManhuntSubpoena(game, 'FR', candidates, 1, [], 'language')
+    expect(language.clue.kind).toBe('language')
+    expect(language.matches).toContain('FR')
+
+    const economy = answerManhuntSubpoena(game, 'FR', candidates, 1, [], 'economy')
+    expect(economy.clue.kind).toBe('threshold')
+    expect(economy.matches).toContain('FR')
+    expect(economy.matches.length).toBeLessThan(candidates.length)
+  })
+
+  it('falls back to the best cut when a topic is exhausted', () => {
+    const candidates = initialManhuntCandidates(RULES)
+    // Burn the language topic dry for a country with few official languages,
+    // then ask again — the token still buys a true, useful clue.
+    const first = answerManhuntSubpoena(game, 'DE', candidates, 1, [], 'language')
+    const again = answerManhuntSubpoena(game, 'DE', candidates, 2, [first.clue], 'language')
+    expect(again.matches).toContain('DE')
+    expect(again.matches.length).toBeGreaterThan(0)
+  })
+
+  it('every subpoena topic answers for a typical country', () => {
+    const candidates = initialManhuntCandidates(RULES)
+    for (const topic of MANHUNT_SUBPOENA_TOPICS) {
+      const pick = answerManhuntSubpoena(game, 'BR', candidates, 1, [], topic.id)
+      expect(pick.matches, topic.id).toContain('BR')
+    }
   })
 
   it('never repeats a clue', () => {

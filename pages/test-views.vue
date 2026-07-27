@@ -1090,6 +1090,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           despotId: RIVAL,
           seaPassages: 2,
+          subpoenas: 2,
           showCandidates: true,
           state: {
             turn: 5,
@@ -1108,6 +1109,7 @@ const scenarios: Scenario[] = [
               { hop: 3, kind: 'sea' },
             ],
             seaPassagesLeft: 1,
+            subpoenasLeft: { [ME]: 2, [THIRD]: 1 },
             candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
             dragnets: [
               { hop: 1, markers: { FR: 1, PL: 1 } },
@@ -1135,6 +1137,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           despotId: ME,
           seaPassages: 2,
+          subpoenas: 2,
           showCandidates: true,
           state: {
             turn: 4,
@@ -1151,6 +1154,7 @@ const scenarios: Scenario[] = [
               { hop: 2, kind: 'ground' },
             ],
             seaPassagesLeft: 2,
+            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
             candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
             dragnets: [
               { hop: 1, markers: { DE: 1, PL: 1 } },
@@ -1176,6 +1180,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           despotId: RIVAL,
           seaPassages: 2,
+          subpoenas: 2,
           showCandidates: true,
           state: {
             turn: 10,
@@ -1198,6 +1203,7 @@ const scenarios: Scenario[] = [
               { hop: 5, kind: 'ground' },
             ],
             seaPassagesLeft: 1,
+            subpoenasLeft: { [ME]: 0, [THIRD]: 1 },
             candidates: ['IT', 'SI'],
             dragnets: [
               { hop: 1, markers: { FR: 1, DE: 1 } },

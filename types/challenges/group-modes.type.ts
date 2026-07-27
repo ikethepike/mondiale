@@ -472,6 +472,9 @@ export interface ManhuntChallenge {
   despotId: string
   /** Sea passage charges the despot starts with. */
   seaPassages: number
+  /** Subpoena tokens each detective starts with: spending one forces a true
+   *  engine-graded clue onto a topic of THEIR choosing, mid hunt beat. */
+  subpoenas: number
   /** Easy/normal paint the candidate set on the map; hard shows clue text
    *  only. A difficulty gate, not a security boundary — the set is derivable
    *  from the public clues and the graph. */
@@ -487,6 +490,9 @@ export interface ManhuntClue {
   kind: 'threshold' | 'region' | 'language' | 'membership' | 'flag-colors'
   /** Server-composed, render-ready intel line. */
   text: string
+  /** Set when a detective subpoenaed this clue rather than the engine
+   *  dealing it — credits the asker in the rail and the reveal. */
+  askedBy?: string
 }
 
 export interface ManhuntState {
@@ -505,6 +511,8 @@ export interface ManhuntState {
   /** Movement-kind log — sea passages are announced, ground hops are not. */
   moves: { hop: number; kind: ManhuntMoveKind }[]
   seaPassagesLeft: number
+  /** Subpoena tokens remaining, by detective. */
+  subpoenasLeft: { [playerId: string]: number }
   /** Clue-consistent set snapshot for the live hunt beat; [] on hard. */
   candidates: ISOCountryCode[]
   /** Marker aggregates from RESOLVED turns only: the public dragnet. */
