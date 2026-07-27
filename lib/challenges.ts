@@ -65,6 +65,7 @@ import {
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { shuffleArray } from './arrays'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
+import { countryLedBy } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -967,6 +968,21 @@ const getFlagPaletteChallenge = (game: gameTypes.Game): FlagPaletteChallenge | u
     // Non-hard mode gets a region hint in the final third of the countdown.
     ...(game.difficulty !== 'hard' ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
   }
+}
+
+/**
+ * Flag-palette verdict, shared by the server scorer and the client's guess
+ * check. The puzzle shows ONLY the swatches, so any country whose flag carries
+ * the exact same ordered colour list is indistinguishable from the subject
+ * (Chile and Russia both fly white|blue|red) — every such country must count.
+ */
+export const isFlagPaletteMatch = (
+  challenge: Pick<FlagPaletteChallenge, 'country' | 'swatches'>,
+  isoCode: ISOCountryCode | undefined
+): boolean => {
+  if (!isoCode) return false
+  if (isoCode === challenge.country) return true
+  return COUNTRIES[isoCode]?.identity.colors.join('|') === challenge.swatches.join('|')
 }
 
 /**
@@ -2245,7 +2261,9 @@ const portraitFor = (isoCode: ISOCountryCode) => {
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
-/** Leader-portrait: whose face is this? Decoys prefer the same region. */
+/** Leader-portrait: whose face is this? Decoys prefer the same region — but
+ *  never a country the pictured leader ALSO leads (Macron co-rules Andorra),
+ *  or the gate has two right answers. */
 const dealLeaderPortrait = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
@@ -2256,7 +2274,11 @@ const dealLeaderPortrait = (
   const portrait = portraitFor(country)
   if (!portrait) return undefined
 
-  const decoys = pickDecoys(country, countryPool, 3, { preferRegion: true, widen: world })
+  const decoys = pickDecoys(country, countryPool, 3, {
+    preferRegion: true,
+    eligible: isoCode => !countryLedBy(isoCode, portrait.name),
+    widen: world,
+  })
   if (!decoys) return undefined
 
   return { country, options: shuffleArray([country, ...decoys]), portrait }

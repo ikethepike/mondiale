@@ -1,5 +1,5 @@
 import type { GameDifficulty } from '../game.types'
-import type { ISOCountryCode } from '../geography.types'
+import type { ISOCountryCode, Region } from '../geography.types'
 import type { OrganizationVector } from '../organization.type'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 
@@ -28,6 +28,25 @@ export type FinalChallengeItem =
   | BornChallenge
   | MadeChallenge
   | CityNocturneChallenge
+
+/**
+ * What the client submits per question type — verdicts come from the shared
+ * `isCorrectFinalAnswer` (lib/challenges/final-challenge.ts) on both sides.
+ */
+export type FinalChallengeAnswer =
+  | { _type: 'region-challenge'; region: Region }
+  | { _type: 'min-challenge'; isoCode: ISOCountryCode }
+  | { _type: 'max-challenge'; isoCode: ISOCountryCode }
+  | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
+  | { _type: 'language-challenge'; isoCode: ISOCountryCode }
+  | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
+  /** Client-trust (like higher-lower): the countries named in time. */
+  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
+  | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
+  | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
+  | { _type: 'made-challenge'; isoCode: ISOCountryCode }
+  /** Client-trust: canonical CITY_LIGHTS names lit in time. */
+  | { _type: 'city-nocturne-challenge'; namedCities: string[] }
 
 export interface RegionChallenge {
   _type: 'region-challenge'

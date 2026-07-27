@@ -114,18 +114,25 @@ import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import {
+  bornAfter,
   COLOR_CODED_REGIONS,
+  exportsCommodity,
   FINAL_STAT_LABELS,
   GAUNTLET_LIVES,
   getFinalChallengeDetails,
+  isCorrectFinalAnswer,
+  speaksLanguage,
   sunsetQuota,
+  weighScalesPicks,
 } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { playableCountries } from '~~/lib/game-rules'
 import { titlecaseLeader } from '~~/lib/leaders'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
+import type { FinalChallengeAnswer } from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
@@ -138,6 +145,17 @@ const gauntlet = computed(() => {
   if (currentMove.value?.challenge?._type !== 'final-challenge') return undefined
   return currentMove.value.challenge
 })
+
+/** The result beat's verdict — the same shared function the server runs. */
+const checkAnswer = (submittedAnswer: FinalChallengeAnswer): boolean => {
+  const challenge = currentFinalChallenge.value
+  if (!challenge) return false
+  return isCorrectFinalAnswer({
+    challenge,
+    submittedAnswer,
+    pool: game.value ? playableCountries(game.value) : [],
+  })
+}
 
 // Payload-driven progress: totals survive redeals, hearts mirror the server
 const totalChallengeCount = computed(() => gauntlet.value?.totalCount ?? 0)
@@ -182,7 +200,7 @@ const bornYearEntries = computed(() => {
   return Object.values(COUNTRIES)
     .filter(
       country =>
-        (country.government.independence?.amount ?? 0) > challenge.year &&
+        bornAfter(country.isoCode, challenge.year) &&
         (revealAll || bornPicks.value.includes(country.isoCode))
     )
     .sort((a, b) => (b.people.population?.amount ?? 0) - (a.people.population?.amount ?? 0))
@@ -200,9 +218,13 @@ const lesson = computed(() => {
     case 'min-challenge':
     case 'max-challenge': {
       const label = FINAL_STAT_LABELS[challenge.accessorId]
-      const answer = getValueByAccessorID(challenge.country, challenge.accessorId)
+      // A value tie can crown a country other than the dealt extreme — teach
+      // the one the player actually answered with.
+      const answered =
+        status.value === 'correct' && lastGuess.value ? lastGuess.value : challenge.country
+      const answer = getValueByAccessorID(answered, challenge.accessorId)
       if (!answer) return undefined
-      const answerLine = `${countryName(COUNTRIES[challenge.country])}: ${formatAmount(answer)} ${label.toLowerCase()}`
+      const answerLine = `${countryName(COUNTRIES[answered])}: ${formatAmount(answer)} ${label.toLowerCase()}`
       if (status.value === 'correct' || !lastGuess.value || lastGuess.value === challenge.country)
         return answerLine
       const guessed = getValueByAccessorID(lastGuess.value, challenge.accessorId)
@@ -220,7 +242,7 @@ const lesson = computed(() => {
     }
     case 'language-challenge': {
       const speakers = Object.values(COUNTRIES).filter(country =>
-        country.languages.includes(challenge.language)
+        speaksLanguage(country.isoCode, challenge.language)
       ).length
       return `${challenge.language} is spoken in ${speakers} ${speakers === 1 ? 'country' : 'countries'} — they stay lit on the map.`
     }
@@ -230,8 +252,8 @@ const lesson = computed(() => {
         : `The odd one out was ${countryName(COUNTRIES[challenge.exception])}.`
     }
     case 'born-challenge': {
-      const qualifying = Object.values(COUNTRIES).filter(
-        country => (country.government.independence?.amount ?? 0) > challenge.year
+      const qualifying = Object.values(COUNTRIES).filter(country =>
+        bornAfter(country.isoCode, challenge.year)
       ).length
       const pickedYear =
         lastGuess.value && COUNTRIES[lastGuess.value].government.independence?.amount
@@ -331,38 +353,27 @@ const submitScales = () => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type !== 'scales-challenge' || !scalesPicks.value.length) return
 
-  const target = getValueByAccessorID(challenge.target, challenge.accessorId)
-  let combined = 0
-  for (const isoCode of scalesPicks.value) {
-    combined += getValueByAccessorID(isoCode, challenge.accessorId)?.amount ?? 0
-  }
-  const balanced =
-    !!target &&
-    combined >= target.amount * (1 - challenge.tolerance) &&
-    combined <= target.amount * (1 + challenge.tolerance)
-
-  if (target) {
-    const ratio = combined / target.amount
+  const weighed = weighScalesPicks(challenge, scalesPicks.value)
+  if (weighed) {
+    const ratio = weighed.combined / weighed.target.amount
     scalesResult.value = {
       ratio,
       offBy: Math.round(Math.abs(ratio - 1) * 100),
-      balanced,
-      targetDisplay: formatAmount(target),
-      combinedDisplay: formatAmount({ ...target, amount: combined }),
+      balanced: weighed.balanced,
+      targetDisplay: formatAmount(weighed.target),
+      combinedDisplay: formatAmount({ ...weighed.target, amount: weighed.combined }),
     }
   }
 
+  const submittedAnswer: FinalChallengeAnswer = {
+    _type: 'scales-challenge',
+    isoCodes: [...scalesPicks.value],
+  }
   // No map.reveal here — the beam card carries the verdict; the country
   // dossier would just shout the target's population over it
-  gameStore.map.status = balanced ? 'correct' : 'incorrect'
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({
-    event: 'submit-final-challenge-answer',
-    submittedAnswer: {
-      _type: 'scales-challenge',
-      isoCodes: [...scalesPicks.value],
-    },
-  })
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
 }
 
 const onNocturneFinished = (namedCities: string[]) => {
@@ -370,15 +381,10 @@ const onNocturneFinished = (namedCities: string[]) => {
   if (challenge?._type !== 'city-nocturne-challenge') return
 
   nocturneResult.value = namedCities
-  gameStore.map.status = namedCities.length >= challenge.quota ? 'correct' : 'incorrect'
+  const submittedAnswer = { _type: 'city-nocturne-challenge', namedCities } as const
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({
-    event: 'submit-final-challenge-answer',
-    submittedAnswer: {
-      _type: 'city-nocturne-challenge',
-      namedCities,
-    },
-  })
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
 }
 
 const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => {
@@ -386,15 +392,10 @@ const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => 
   if (challenge?._type !== 'sunset-blitz-challenge') return
 
   sunsetResult.value = { named, inPlay, quota: sunsetQuota(challenge) }
-  gameStore.map.status = named.length >= sunsetResult.value.quota ? 'correct' : 'incorrect'
+  const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({
-    event: 'submit-final-challenge-answer',
-    submittedAnswer: {
-      _type: 'sunset-blitz-challenge',
-      namedCountries: named,
-    },
-  })
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
 }
 
 const onMapClick = (event: Event) => {
@@ -420,33 +421,33 @@ const onMapClick = (event: Event) => {
           throw new ReferenceError(`Unable to identify region: ${isoCode}`)
         }
 
-        // Show if answer was correct
-        const isCorrect = selectedRegion === COUNTRIES[currentFinalChallenge.value.country].region
+        const submittedAnswer = { _type: 'region-challenge', region: selectedRegion } as const
 
         gameStore.map.reveal = currentFinalChallenge.value.country
-        gameStore.map.status = isCorrect ? 'correct' : 'incorrect'
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        // ! Submit answer
-        update({
-          event: 'submit-final-challenge-answer',
-          submittedAnswer: {
-            _type: 'region-challenge',
-            region: selectedRegion,
-          },
-        })
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
     case 'max-challenge':
     case 'min-challenge':
-    case 'leadership-challenge':
-      gameStore.map.reveal = currentFinalChallenge.value.country
-      gameStore.map.status =
-        isoCode === currentFinalChallenge.value.country ? 'correct' : 'incorrect'
+    case 'leadership-challenge': {
+      const submittedAnswer: FinalChallengeAnswer = {
+        _type: currentFinalChallenge.value._type,
+        isoCode: isoCode as ISOCountryCode, // We check this in the backend
+      }
+      const correct = checkAnswer(submittedAnswer)
+      // Stat ties share the podium — reveal the country the player actually
+      // got right, not the dealt extreme it happens to equal.
+      const revealIso =
+        correct && isValidISOCode(isoCode) ? isoCode : currentFinalChallenge.value.country
+      gameStore.map.reveal = revealIso
+      gameStore.map.status = correct ? 'correct' : 'incorrect'
 
       // Surface the stat on the reveal card — the number is the lesson
       if (currentFinalChallenge.value._type !== 'leadership-challenge') {
-        const { accessorId, country } = currentFinalChallenge.value
-        const amount = getValueByAccessorID(country, accessorId)
+        const { accessorId } = currentFinalChallenge.value
+        const amount = getValueByAccessorID(revealIso, accessorId)
         if (amount) {
           gameStore.map.revealStat = {
             label: FINAL_STAT_LABELS[accessorId],
@@ -455,14 +456,9 @@ const onMapClick = (event: Event) => {
         }
       }
 
-      update({
-        event: 'submit-final-challenge-answer',
-        submittedAnswer: {
-          _type: currentFinalChallenge.value._type,
-          isoCode: isoCode as ISOCountryCode, // We check this in the backend
-        },
-      })
+      update({ event: 'submit-final-challenge-answer', submittedAnswer })
       break
+    }
     case 'language-challenge':
       {
         if (!isValidISOCode(isoCode)) {
@@ -470,20 +466,14 @@ const onMapClick = (event: Event) => {
         }
 
         for (const country of Object.values(COUNTRIES)) {
-          if (!country.languages.includes(currentFinalChallenge.value.language)) continue
+          if (!speaksLanguage(country.isoCode, currentFinalChallenge.value.language)) continue
           gameStore.map.highlighted.add(country.isoCode)
         }
 
-        const isCorrect = gameStore.map.highlighted.has(isoCode)
-        gameStore.map.status = isCorrect ? 'correct' : 'incorrect'
+        const submittedAnswer = { _type: 'language-challenge', isoCode } as const
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        update({
-          event: 'submit-final-challenge-answer',
-          submittedAnswer: {
-            _type: 'language-challenge',
-            isoCode: isoCode as ISOCountryCode,
-          },
-        })
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
     case 'born-challenge':
@@ -494,29 +484,25 @@ const onMapClick = (event: Event) => {
         const { year, quota } = currentFinalChallenge.value
         if (bornPicks.value.includes(isoCode)) return
 
-        const qualifies = (COUNTRIES[isoCode].government.independence?.amount ?? 0) > year
-
         // A qualifying pick lights up with its year and the hunt continues;
         // a wrong one ends the round on the spot
-        if (qualifies) {
+        if (bornAfter(isoCode, year)) {
           bornPicks.value.push(isoCode)
           gameStore.map.highlighted.add(isoCode)
           if (bornPicks.value.length < quota) return
         }
 
         for (const country of Object.values(COUNTRIES)) {
-          if ((country.government.independence?.amount ?? 0) > year) {
+          if (bornAfter(country.isoCode, year)) {
             gameStore.map.highlighted.add(country.isoCode)
           }
         }
-        gameStore.map.status = qualifies ? 'correct' : 'incorrect'
-        update({
-          event: 'submit-final-challenge-answer',
-          submittedAnswer: {
-            _type: 'born-challenge',
-            isoCodes: [...bornPicks.value],
-          },
-        })
+        const submittedAnswer: FinalChallengeAnswer = {
+          _type: 'born-challenge',
+          isoCodes: [...bornPicks.value],
+        }
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
     case 'made-challenge':
@@ -527,21 +513,16 @@ const onMapClick = (event: Event) => {
         const { commodity } = currentFinalChallenge.value
 
         for (const country of Object.values(COUNTRIES)) {
-          if ((country.economics.exports ?? []).includes(commodity)) {
+          if (exportsCommodity(country.isoCode, commodity)) {
             gameStore.map.highlighted.add(country.isoCode)
           }
         }
 
-        gameStore.map.status = gameStore.map.highlighted.has(isoCode) ? 'correct' : 'incorrect'
+        const submittedAnswer = { _type: 'made-challenge', isoCode } as const
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
         madeRevealTimeout = setTimeout(() => (madeRevealReady.value = true), 1200)
 
-        update({
-          event: 'submit-final-challenge-answer',
-          submittedAnswer: {
-            _type: 'made-challenge',
-            isoCode: isoCode as ISOCountryCode,
-          },
-        })
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
     case 'membership-challenge':
@@ -549,17 +530,14 @@ const onMapClick = (event: Event) => {
         const { exception } = currentFinalChallenge.value
         gameStore.map.highlighted.clear()
 
-        const isCorrect = isoCode === exception
+        const submittedAnswer = {
+          _type: 'membership-challenge',
+          isoCode: isoCode as ISOCountryCode,
+        } as const
         gameStore.map.reveal = exception
-        gameStore.map.status = isCorrect ? 'correct' : 'incorrect'
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        update({
-          event: 'submit-final-challenge-answer',
-          submittedAnswer: {
-            _type: 'membership-challenge',
-            isoCode: isoCode as ISOCountryCode,
-          },
-        })
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
     case 'scales-challenge':
