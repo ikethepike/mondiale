@@ -26,18 +26,31 @@
     />
 
     <!-- The despot's action dock, moored by the clock: resources, never
-         intel — the rail below stays pure knowledge. -->
+         intel — the rail below stays pure knowledge. Pressing it fans out
+         every reachable shore (the touch path to sea reach). -->
     <aside v-if="isDespot && !showInterstitial && !finished" class="despot-dock">
-      <span class="dock-line">
+      <button
+        class="dock-line"
+        :class="{ open: seaFanOpen }"
+        :disabled="state.beat !== 'move' || !state.seaPassagesLeft"
+        :aria-pressed="seaFanOpen"
+        @click="seaFanOpen = !seaFanOpen"
+      >
         <span
           v-for="index in challenge.seaPassages"
           :key="index"
           class="passage-pip"
           :class="{ spent: index > state.seaPassagesLeft }"
         >⚓</span>
-      </span>
+      </button>
       <span class="dock-caption">
-        {{ state.seaPassagesLeft ? 'sea passages' : 'no passages left' }}
+        {{
+          !state.seaPassagesLeft
+            ? 'no passages left'
+            : seaFanOpen
+              ? 'sea reach shown'
+              : 'show sea reach'
+        }}
       </span>
     </aside>
 
@@ -329,26 +342,48 @@ const onMapClick = (event: Event) => {
 onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 
-// Hovering a legal sea destination previews the passage as a dashed line
-// from the current hideout — the map's strait language, before committing a
-// charge. Despot's move beat only; the reveal owns seaLinks after finish.
+// --- Sea reach, on demand ----------------------------------------------------
+// The despot's own sailed legs stay drawn (their journey); prospective sea
+// reach appears only on demand — a hover previews one passage, the dock's ⚓
+// fans out all of them (the touch path). Never a standing wash.
+const hoveredSea = ref<ISOCountryCode | undefined>()
+const seaFanOpen = ref(false)
+
+/** The trail's own water legs (sea passages and strait hops), directed. */
+const trailSeaKeys = computed(() => {
+  if (!isDespot.value) return [] as string[]
+  const keys: string[] = []
+  for (let index = 1; index < trail.value.length; index++) {
+    const [a, b] = [trail.value[index - 1], trail.value[index]]
+    if (state.value.moves[index - 1]?.kind === 'sea' || isStraitHop(a, b)) keys.push(`${a}>${b}`)
+  }
+  return keys
+})
+
+const previewSeaKeys = computed(() => {
+  if (finished.value || !isDespot.value || state.value.beat !== 'move') return [] as string[]
+  const from = despotAt.value
+  if (!from) return []
+  if (seaFanOpen.value) return legalMoves.value.sea.map(isoCode => `${from}>${isoCode}`)
+  if (hoveredSea.value) return [`${from}>${hoveredSea.value}`]
+  return []
+})
+
 const onMapHover = (event: Event) => {
   if (!isMapHoverEvent(event)) return
   if (finished.value || !isDespot.value || state.value.beat !== 'move') return
-  const from = despotAt.value
   const hovered = event.detail.isoCode
-  const isSeaMove =
-    from && isValidISOCode(hovered) && legalMoves.value.sea.includes(hovered)
-  // Directed key: the dash drift sails from the hideout toward the hover.
-  gameStore.map.seaLinks = isSeaMove && from ? [`${from}>${hovered}`] : []
+  hoveredSea.value =
+    isValidISOCode(hovered) && legalMoves.value.sea.includes(hovered) ? hovered : undefined
 }
 onBeforeMount(() => document.addEventListener('mapHover', onMapHover))
 registerCleanup(() => document.removeEventListener('mapHover', onMapHover))
-// A move mid-hover must not strand the preview line into the hunt beat.
+// A move mid-hover must not strand the preview into the hunt beat.
 watch(
   () => state.value.beat,
   () => {
-    if (!finished.value) gameStore.map.seaLinks = []
+    hoveredSea.value = undefined
+    seaFanOpen.value = false
   }
 )
 
@@ -398,35 +433,55 @@ const paintPursuit = () => {
     ? [...state.value.candidates]
     : playableCountries(rules)
 
-  // Despot: their own trail over the top, head pulsing; legal outs on a move
-  // beat as tints (sea options distinct from ground).
+  // Despot: fills stay the knowledge channel — only the hideout itself gets
+  // the ember fill. The journey is a route line, the options are rings, and
+  // sea reach appears on demand (hover, or the dock's fan) — never a wash.
   const tints: (typeof gameStore.map)['tints'] = {}
+  const routes: string[] = []
   if (isDespot.value && trail.value.length) {
-    trail.value.forEach((isoCode, index) => {
-      const head = index === trail.value.length - 1
-      groupings.push({
-        color: trailColor(index, trail.value.length, head),
-        countries: [isoCode],
-      })
-    })
-    if (state.value.beat === 'move') {
-      for (const isoCode of legalMoves.value.ground) tints[isoCode] = 'optimal'
-      for (const isoCode of legalMoves.value.sea) tints[isoCode] = 'endpoint'
+    for (let index = 1; index < trail.value.length; index++) {
+      const [a, b] = [trail.value[index - 1], trail.value[index]]
+      const sailed = state.value.moves[index - 1]?.kind === 'sea' || isStraitHop(a, b)
+      if (!sailed) routes.push(`${a}>${b}`)
     }
+    if (despotAt.value) {
+      groupings.push({ color: trailColor(1, 1, true), countries: [despotAt.value] })
+    }
+    gameStore.map.ringed =
+      state.value.beat === 'move' ? [...legalMoves.value.ground, ...legalMoves.value.sea] : []
     gameStore.map.pulsing = despotAt.value ? [despotAt.value] : []
   } else {
+    gameStore.map.ringed = []
     gameStore.map.pulsing = []
   }
 
   // A committed detective keeps sight of their own marker.
   if (myMarker.value) tints[myMarker.value] = 'optimal'
 
+  gameStore.map.landRoutes = routes
+  gameStore.map.seaLinks = trailSeaKeys.value.concat(previewSeaKeys.value)
   gameStore.map.staggered = washing
   gameStore.map.countryGroupings = groupings
   gameStore.map.tints = tints
 }
 
-watch([challenge, trail, myMarker], () => paintPursuit(), { immediate: true, deep: true })
+watch([challenge, trail, myMarker, hoveredSea, seaFanOpen], () => paintPursuit(), {
+  immediate: true,
+  deep: true,
+})
+
+/** Overland legs of the reveal walk — the escape route's solid strokes. */
+const revealLandRoutes = (walk: ISOCountryCode[]): string[] => {
+  const seaHops = new Set(
+    state.value.moves.filter(move => move.kind === 'sea').map(move => move.hop)
+  )
+  const keys: string[] = []
+  for (let index = 1; index < walk.length; index++) {
+    const [a, b] = [walk[index - 1], walk[index]]
+    if (!seaHops.has(index) && !isStraitHop(a, b)) keys.push(`${a}>${b}`)
+  }
+  return keys
+}
 
 /** Sea-arc keys for the reveal walk: strait hops and sea passages both. */
 const revealSeaLinks = (walk: ISOCountryCode[]): string[] => {
@@ -453,6 +508,8 @@ watch(
     gameStore.map.countryGroupings = undefined
     gameStore.map.tints = {}
     gameStore.map.pulsing = []
+    gameStore.map.ringed = []
+    gameStore.map.landRoutes = []
     setTimeout(() => {
       const groupings: CountryColorGrouping[] = walk.map((isoCode, index) => ({
         color: trailColor(index, walk.length, index === walk.length - 1),
@@ -461,6 +518,7 @@ watch(
       gameStore.map.staggered = true
       gameStore.map.countryGroupings = groupings
       gameStore.map.seaLinks = revealSeaLinks(walk)
+      gameStore.map.landRoutes = revealLandRoutes(walk)
       gameStore.map.focus = [...walk]
     }, 400)
   },
@@ -587,11 +645,26 @@ header .prompt {
   position: absolute;
   align-items: center;
   flex-flow: column nowrap;
-  pointer-events: none;
+  pointer-events: auto;
 
   .dock-line {
     gap: 0.3rem;
     display: flex;
+    cursor: pointer;
+    padding: 0.3rem 0.8rem;
+    border-radius: 1rem;
+    border: 0.1rem solid transparent;
+    background: none;
+
+    &.open {
+      border-color: hsla(215.7, 76.4%, 41%, 0.55);
+      background: hsla(212, 58%, 62%, 0.18);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
   }
 
   .passage-pip {

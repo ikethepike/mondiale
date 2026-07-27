@@ -89,6 +89,11 @@ interface GameStoreState {
     feature?: MapFeatureOverlay
     /** Magnifying inset for a subject too small to see at world zoom. */
     inset?: MapInset
+    /** Action affordance rings — countries the player may act on right now
+     *  (manhunt hops, border chain's easy-mode outs). Strokes, never fills. */
+    ringed: ISOCountryCode[]
+    /** Directed 'FROM>TO' overland route legs (manhunt's escape trail). */
+    landRoutes: string[]
     /** Opponents' live guesses during a group round, fed by the ephemeral
      *  `player-guessing` broadcast. Append-only and self-expiring: a player's
      *  second guess is a new entry, not an overwrite, so each one can pop in
@@ -167,6 +172,8 @@ export const useGameStore = defineStore('game', {
       zoomOut: undefined,
       feature: undefined,
       inset: undefined,
+      ringed: [],
+      landRoutes: [],
       liveGuesses: [],
     },
     board: {

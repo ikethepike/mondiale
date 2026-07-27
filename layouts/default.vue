@@ -29,6 +29,8 @@
       :feature="gameStore.map.feature"
       :inset="gameStore.map.inset"
       :sea-links="gameStore.map.seaLinks"
+      :ringed="gameStore.map.ringed"
+      :land-routes="gameStore.map.landRoutes"
       :staggered="gameStore.map.staggered"
       :dimmed="gameStore.map.dimmed"
       :pulsing="gameStore.map.pulsing"

@@ -47,6 +47,7 @@
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
               'unselectable-country': unselectableSet.has(code),
+              'ringed-country': ringedSet.has(code),
             }"
             :data-id="code"
             :d="d"
@@ -85,6 +86,7 @@
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
+              'ringed-country': ringedSet.has(code),
             }"
             :data-id="code"
             :data-footprint="spot?.footprint"
@@ -130,6 +132,14 @@
             <circle class="feature-marker-dot" r="2" />
           </g>
         </g>
+        <!-- Overland route legs (manhunt's escape trail): solid bowed arcs —
+             the walked journey, distinct from the sailed one below. -->
+        <path
+          v-for="(arc, index) in landRouteArcs"
+          :key="`land-route-${index}`"
+          class="map-land-route"
+          :d="arc.d"
+        />
         <!-- Water crossings (chain strait hops, manhunt sea passages): a bowed
              dashed arc, dashes drifting toward the destination, with a sail
              chip at the crown so the line reads as "sailed", not "borders". -->
@@ -288,6 +298,20 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Action affordance: countries the player may act on right now, drawn as
+   *  a stroke ring — never a fill. Fills carry knowledge; strokes carry you.
+   *  (Manhunt's legal hops, Border Chain's easy-mode open moves.) */
+  ringed: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Directed 'FROM>TO' overland legs drawn as solid route arcs — the
+   *  journey language (manhunt's escape trail). Water legs belong in
+   *  `seaLinks` instead. */
+  landRoutes: {
+    type: Array as PropType<string[]>,
+    default: () => [],
+  },
   /** Countries whose fill breathes toward yellow — the live Border Chain
    *  head, the one square players act on. */
   pulsing: {
@@ -388,55 +412,62 @@ const chainIndices = computed<Partial<Record<string, number>>>(() => {
  *  the map speaks the same glyph language as the stat cards. */
 const SEA_CHIP_SHIP = DEPARTMENT_GLYPHS['department.trade'].paths ?? []
 
-const seaLinkArcs = computed(() => {
-  const arcs: { d: string; mid: { x: number; y: number } }[] = []
-  for (const pair of props.seaLinks) {
-    // 'FROM>TO' keys carry travel direction (the dash drift follows it);
-    // legacy 'A-B' keys stay sorted and drift alphabetically.
-    const directed = pair.includes('>')
-    const [a, b] = (directed ? pair.split('>') : pair.split('-')) as ISOCountryCode[]
-    const sortedKey = a < b ? `${a}-${b}` : `${b}-${a}`
-    const known = STRAIT_CROSSINGS[sortedKey]
-    let crossing: { from: LatLng; to: LatLng } | undefined
-    if (known) {
-      // A stored crossing's `from` belongs to the sorted-first country —
-      // swap it when the travel direction runs the other way.
-      const runsBackward = directed && a !== (a < b ? a : b)
-      crossing = runsBackward ? { from: known.to, to: known.from } : known
-    } else {
-      const from = countryLatLng(a)
-      const to = countryLatLng(b)
-      crossing = from && to ? { from, to } : undefined
-    }
-    if (!crossing) continue
-    // A crossing hugging the antimeridian would draw across the whole world.
-    if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue
-    const from = projectRobinson(crossing.from, MAP_PROJECTION)
-    const to = projectRobinson(crossing.to, MAP_PROJECTION)
-    const chordX = to.x - from.x
-    const chordY = to.y - from.y
-    const length = Math.hypot(chordX, chordY) || 1
-    // Control point: perpendicular to the chord, always bowing map-north.
-    let perpX = -chordY / length
-    let perpY = chordX / length
-    if (perpY > 0) {
-      perpX = -perpX
-      perpY = -perpY
-    }
-    const bow = length * 0.14
-    const controlX = (from.x + to.x) / 2 + perpX * bow
-    const controlY = (from.y + to.y) / 2 + perpY * bow
-    arcs.push({
-      d: `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`,
-      // The quadratic's own midpoint (t = 0.5) — the crown of the arc.
-      mid: {
-        x: (from.x + 2 * controlX + to.x) / 4,
-        y: (from.y + 2 * controlY + to.y) / 4,
-      },
-    })
+/** One gently north-bowed arc between a directed or sorted pair key.
+ *  'FROM>TO' keys carry travel direction; legacy 'A-B' keys stay sorted. */
+const arcForPair = (pair: string): { d: string; mid: { x: number; y: number } } | undefined => {
+  const directed = pair.includes('>')
+  const [a, b] = (directed ? pair.split('>') : pair.split('-')) as ISOCountryCode[]
+  const sortedKey = a < b ? `${a}-${b}` : `${b}-${a}`
+  const known = STRAIT_CROSSINGS[sortedKey]
+  let crossing: { from: LatLng; to: LatLng } | undefined
+  if (known) {
+    // A stored crossing's `from` belongs to the sorted-first country —
+    // swap it when the travel direction runs the other way.
+    const runsBackward = directed && a !== (a < b ? a : b)
+    crossing = runsBackward ? { from: known.to, to: known.from } : known
+  } else {
+    const from = countryLatLng(a)
+    const to = countryLatLng(b)
+    crossing = from && to ? { from, to } : undefined
   }
-  return arcs
-})
+  if (!crossing) return undefined
+  // A crossing hugging the antimeridian would draw across the whole world.
+  if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) return undefined
+  const from = projectRobinson(crossing.from, MAP_PROJECTION)
+  const to = projectRobinson(crossing.to, MAP_PROJECTION)
+  const chordX = to.x - from.x
+  const chordY = to.y - from.y
+  const length = Math.hypot(chordX, chordY) || 1
+  // Control point: perpendicular to the chord, always bowing map-north.
+  let perpX = -chordY / length
+  let perpY = chordX / length
+  if (perpY > 0) {
+    perpX = -perpX
+    perpY = -perpY
+  }
+  const bow = length * 0.14
+  const controlX = (from.x + to.x) / 2 + perpX * bow
+  const controlY = (from.y + to.y) / 2 + perpY * bow
+  return {
+    d: `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`,
+    // The quadratic's own midpoint (t = 0.5) — the crown of the arc.
+    mid: {
+      x: (from.x + 2 * controlX + to.x) / 4,
+      y: (from.y + 2 * controlY + to.y) / 4,
+    },
+  }
+}
+
+const seaLinkArcs = computed(() =>
+  props.seaLinks.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+)
+
+/** Overland legs: same bow, solid stroke, no chip — walked, not sailed. */
+const landRouteArcs = computed(() =>
+  props.landRoutes.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+)
+
+const ringedSet = computed(() => new Set<string>(props.ringed))
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
 const pinPoint = computed(() =>
@@ -1500,6 +1531,23 @@ path[id],
   stroke: hsl(215.7, 76.4%, 41%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
+}
+
+// The action ring: a stroke, never a fill — "you may act here". Fills stay
+// the knowledge channel (candidates, dragnets, groupings).
+path.ringed-country,
+.micro-marker.ringed-country {
+  stroke: hsl(215.7, 76.4%, 30%);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-linejoin: round;
+}
+
+.map-land-route {
+  fill: none;
+  pointer-events: none;
+  stroke: hsla(215.7, 40%, 30%, 0.8);
+  stroke-width: calc(2px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
 }
 
 .map-sea-link {
