@@ -259,7 +259,7 @@ export const fetchCommonsSvgText = async (
         : bytes[0] === 0xfe && bytes[1] === 0xff
           ? 'utf-16be'
           : 'utf-8'
-    const body = new TextDecoder(encoding).decode(bytes).replace(/^﻿/, '')
+    const body = new TextDecoder(encoding).decode(bytes).replace(/^\uFEFF/, '')
     const looksLikeSvg = contentType.includes('svg') || /^\s*(<\?xml|<svg)/.test(body)
     if (!looksLikeSvg) {
       console.warn(`  not an SVG (${contentType || 'no content-type'}): ${file}`)

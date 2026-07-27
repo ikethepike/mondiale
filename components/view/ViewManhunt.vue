@@ -104,7 +104,7 @@
         <template v-if="isDespot">
           <li>The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border, a strait, anywhere but here.</li>
           <li>⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its movements will be… reported.</li>
-          <li>Interpol leaks one true fact about your location every turn. Trust no census, Excellency.</li>
+          <li>Interpol leaks one true fact about your location every turn.</li>
           <li>Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally — sails with you.</li>
           <li>Every turn at large banks its share of the pot; captured early, you keep only what you had banked.</li>
         </template>
@@ -392,7 +392,6 @@ const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
 )
 const iAmReady = computed(() => state.value.ready.includes(gameStore.playerId))
-const tableSize = computed(() => state.value.detectives.length + 1)
 const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
@@ -981,7 +980,7 @@ header .prompt {
   &.despotic {
     color: #fff;
     border-color: hsl(18, 75%, 34%);
-    background: linear-gradient(160deg, hsl(26, 84%, 50%), hsl(16, 80%, 43%));
+    background: hsl(20, 80%, 44%);
 
     .briefing-waiting {
       opacity: 0.9;
