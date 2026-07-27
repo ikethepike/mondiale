@@ -186,7 +186,7 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { countryLatLng, invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
+import { countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
@@ -391,14 +391,23 @@ const SEA_CHIP_SHIP = DEPARTMENT_GLYPHS['department.trade'].paths ?? []
 const seaLinkArcs = computed(() => {
   const arcs: { d: string; mid: { x: number; y: number } }[] = []
   for (const pair of props.seaLinks) {
-    const crossing =
-      STRAIT_CROSSINGS[pair] ??
-      (() => {
-        const [a, b] = pair.split('-') as ISOCountryCode[]
-        const from = countryLatLng(a)
-        const to = countryLatLng(b)
-        return from && to ? { from, to } : undefined
-      })()
+    // 'FROM>TO' keys carry travel direction (the dash drift follows it);
+    // legacy 'A-B' keys stay sorted and drift alphabetically.
+    const directed = pair.includes('>')
+    const [a, b] = (directed ? pair.split('>') : pair.split('-')) as ISOCountryCode[]
+    const sortedKey = a < b ? `${a}-${b}` : `${b}-${a}`
+    const known = STRAIT_CROSSINGS[sortedKey]
+    let crossing: { from: LatLng; to: LatLng } | undefined
+    if (known) {
+      // A stored crossing's `from` belongs to the sorted-first country —
+      // swap it when the travel direction runs the other way.
+      const runsBackward = directed && a !== (a < b ? a : b)
+      crossing = runsBackward ? { from: known.to, to: known.from } : known
+    } else {
+      const from = countryLatLng(a)
+      const to = countryLatLng(b)
+      crossing = from && to ? { from, to } : undefined
+    }
     if (!crossing) continue
     // A crossing hugging the antimeridian would draw across the whole world.
     if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) continue

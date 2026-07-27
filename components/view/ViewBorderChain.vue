@@ -220,7 +220,8 @@ const seaLinkKeys = (): string[] => {
   for (const walkedChain of state.value?.chains ?? []) {
     for (let index = 1; index < walkedChain.length; index++) {
       const [a, b] = [walkedChain[index - 1], walkedChain[index]]
-      if (isStraitHop(a, b)) keys.push(a < b ? `${a}-${b}` : `${b}-${a}`)
+      // Directed: the arc's dash drift follows the walk.
+      if (isStraitHop(a, b)) keys.push(`${a}>${b}`)
     }
   }
   return keys

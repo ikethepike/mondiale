@@ -275,8 +275,8 @@ const onMapHover = (event: Event) => {
   const hovered = event.detail.isoCode
   const isSeaMove =
     from && isValidISOCode(hovered) && legalMoves.value.sea.includes(hovered)
-  gameStore.map.seaLinks =
-    isSeaMove && from ? [from < hovered ? `${from}-${hovered}` : `${hovered}-${from}`] : []
+  // Directed key: the dash drift sails from the hideout toward the hover.
+  gameStore.map.seaLinks = isSeaMove && from ? [`${from}>${hovered}`] : []
 }
 onBeforeMount(() => document.addEventListener('mapHover', onMapHover))
 registerCleanup(() => document.removeEventListener('mapHover', onMapHover))
@@ -351,7 +351,8 @@ const revealSeaLinks = (walk: ISOCountryCode[]): string[] => {
   )
   for (let index = 1; index < walk.length; index++) {
     const [a, b] = [walk[index - 1], walk[index]]
-    if (seaHops.has(index) || isStraitHop(a, b)) keys.push(a < b ? `${a}-${b}` : `${b}-${a}`)
+    // Directed: the reveal's arcs drift the way the despot actually fled.
+    if (seaHops.has(index) || isStraitHop(a, b)) keys.push(`${a}>${b}`)
   }
   return keys
 }
