@@ -1793,6 +1793,29 @@ const dealMoneyMatch = (
 }
 
 /**
+ * The single verdict for an individual gate answer, shared by the server
+ * handler and the client's result beat. Strict ISO equality, with one
+ * carve-out: currency questions ("Which country spends the euro?") have many
+ * right answers when the currency is shared (the Euro-zone alone spans 20+
+ * countries), so any submitted country spending the challenge currency wins.
+ * Scoped to the currency-asking variants only — other variants on the money
+ * gate (e.g. higher-lower) submit wrong-answer tokens that may coincidentally
+ * share a currency with the subject.
+ */
+export const isCorrectIndividualAnswer = (
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant'>,
+  isoCode: ISOCountryCode
+): boolean => {
+  if (isoCode === challenge.country) return true
+  const variant = challenge.variant ?? 'find'
+  const asksForCurrency =
+    variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
+  if (!asksForCurrency) return false
+  const currency = COUNTRIES[challenge.country].currency
+  return !!currency && COUNTRIES[isoCode]?.currency === currency
+}
+
+/**
  * Capital-match (photo): "Which country's capital is this?" — a skyline photo
  * with four flag options. Deals only where a capital photo exists; decoys
  * prefer the same region.
@@ -2242,7 +2265,7 @@ const dealLeaderPortrait = (
 /**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
- * variant identically (submitted ISO === challenge.country).
+ * variant through `isCorrectIndividualAnswer`.
  */
 /** Test hook: FORCE_INDIVIDUAL_VARIANT=<variant> makes every gate that variant. */
 const forcedIndividualVariant = (): IndividualChallenge['variant'] | undefined => {

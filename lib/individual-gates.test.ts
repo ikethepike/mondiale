@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { getIndividualChallenge } from '~~/lib/challenges'
+import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { processReplacements } from '~~/lib/values'
 import {
   individualChallengeAccessors,
@@ -51,5 +51,36 @@ describe('getIndividualChallenge (gate accessors)', () => {
     )
     expect(currencyQuestion).not.toContain('{currency}')
     expect(currencyQuestion.length).toBeGreaterThan('Which country spends the ?'.length)
+  })
+})
+
+describe('isCorrectIndividualAnswer', () => {
+  it('accepts any country spending the shared currency on the find gate', () => {
+    const gate = { id: 'currency', country: 'FI', variant: 'find' } as const
+    expect(COUNTRIES.FI.currency).toBe('EUR')
+    expect(COUNTRIES.DE.currency).toBe('EUR')
+    expect(isCorrectIndividualAnswer(gate, 'DE')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'FI')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'NO')).toBe(false)
+  })
+
+  it('accepts a same-currency country on money-match', () => {
+    const gate = { id: 'capital.name', country: 'FR', variant: 'money-match' } as const
+    expect(isCorrectIndividualAnswer(gate, 'ES')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'CH')).toBe(false)
+  })
+
+  it('stays strict for every non-currency question', () => {
+    // Two euro countries — a shared currency must not leak into e.g. a flag
+    // or higher-lower verdict.
+    expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'DE')).toBe(
+      false
+    )
+    expect(
+      isCorrectIndividualAnswer({ id: 'currency', country: 'FI', variant: 'higher-lower' }, 'DE')
+    ).toBe(false)
+    expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'FI')).toBe(
+      true
+    )
   })
 })

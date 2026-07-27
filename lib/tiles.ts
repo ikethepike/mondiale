@@ -1,5 +1,27 @@
-import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
+import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import type { GameLength, Tile } from '~~/types/game.types'
+
+/** Relative deal weights for gate tiles — currency runs at half rate so money
+ *  questions surface a little less often than the other themes. */
+const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
+  flag: 1,
+  isoCode: 1,
+  'capital.name': 1,
+  'government.leader': 1,
+  currency: 0.5,
+  landmarks: 1,
+}
+
+const pickGateTileType = (): IndividualChallengeAccessorId => {
+  const entries = Object.entries(GATE_TILE_WEIGHTS) as [IndividualChallengeAccessorId, number][]
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
+  let roll = Math.random() * total
+  for (const [accessorId, weight] of entries) {
+    roll -= weight
+    if (roll < 0) return accessorId
+  }
+  return entries[entries.length - 1][0]
+}
 
 export const generateTiles = (length: GameLength) => {
   const lengths: { [length in GameLength]: number } = {
@@ -20,8 +42,7 @@ export const generateTiles = (length: GameLength) => {
     }
 
     if (index && index % 5 === 0) {
-      const type = Math.floor(Math.random() * individualChallengeAccessors.length)
-      tile.type = individualChallengeAccessors[type]
+      tile.type = pickGateTileType()
     }
 
     if (index + 1 === count) {
