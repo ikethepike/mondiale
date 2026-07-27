@@ -137,10 +137,12 @@
           <path class="map-sea-link" :d="arc.d" />
           <g class="map-sea-chip" :transform="`translate(${arc.mid.x} ${arc.mid.y})`">
             <g class="map-sea-chip-scale">
-              <circle class="chip-disc" r="7" />
-              <path class="chip-sail" d="M 0.6 -4.2 L 0.6 0.8 L 4 0.8 Z" />
-              <path class="chip-sail" d="M -0.9 -4.2 L -0.9 0.8 L -3.4 0.8 Z" />
-              <path class="chip-hull" d="M -4.4 2 L 4.4 2 L 2.8 4.2 L -2.8 4.2 Z" />
+              <circle class="chip-disc" r="10" />
+              <!-- The cargo ship from the shared stat-glyph stroke language,
+                   centred from its 24×24 box (artwork centre ≈ 12, 14.75). -->
+              <g class="chip-ship" transform="translate(-10.2 -12.5) scale(0.85)">
+                <path v-for="(d, shipIndex) in SEA_CHIP_SHIP" :key="shipIndex" :d="d" />
+              </g>
             </g>
           </g>
         </g>
@@ -185,6 +187,7 @@ import {
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { countryLatLng, invertRobinson, mainlandBox, projectRobinson } from '~~/lib/geo'
+import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
@@ -381,6 +384,10 @@ const chainIndices = computed<Partial<Record<string, number>>>(() => {
  * to destination (the direction of travel), and a small sail chip sits at
  * the arc's crown naming the crossing for what it is.
  */
+/** The sea chip's ship — the trade department's cargo-ship emblem, reused so
+ *  the map speaks the same glyph language as the stat cards. */
+const SEA_CHIP_SHIP = DEPARTMENT_GLYPHS['department.trade'].paths ?? []
+
 const seaLinkArcs = computed(() => {
   const arcs: { d: string; mid: { x: number; y: number } }[] = []
   for (const pair of props.seaLinks) {
@@ -1515,17 +1522,17 @@ path[id],
 }
 
 .chip-disc {
-  fill: hsla(36, 100%, 98%, 0.92);
-  stroke: hsla(215.7, 76.4%, 41%, 0.55);
-  stroke-width: 0.8;
+  fill: hsla(36, 100%, 98%, 0.95);
+  stroke: hsla(215.7, 76.4%, 41%, 0.6);
+  stroke-width: 1;
 }
 
-.chip-sail {
-  fill: hsl(215.7, 76.4%, 41%);
-}
-
-.chip-hull {
-  fill: hsl(215.7, 76.4%, 30%);
+.chip-ship {
+  fill: none;
+  stroke: hsl(215.7, 76.4%, 30%);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 @media (prefers-reduced-motion: reduce) {

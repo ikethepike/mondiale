@@ -107,7 +107,7 @@ export const pushManhuntPosition = async (
  * scheduleManhuntTimeout arms AFTER, as usual.
  */
 export const startManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
-  const seed = pickManhuntSeed(game.variant)
+  const seed = pickManhuntSeed(game)
   if (!seed) {
     // The dealer verified the pool, so only drifted data lands here — run the
     // finish ritual (everyone scores zero, phases advance) rather than strand
@@ -116,7 +116,7 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   }
   const secret: ManhuntSecret = {
     trail: [seed],
-    candidates: initialManhuntCandidates(game.variant),
+    candidates: initialManhuntCandidates(game),
     markers: {},
   }
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
@@ -142,7 +142,7 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
         const from = secret.trail[secret.trail.length - 1]
         // The free hop: random, ground where possible — a charge burns only
         // when the despot idles somewhere ground can't leave.
-        const move = randomManhuntMove(from, current.state.seaPassagesLeft, game.variant)
+        const move = randomManhuntMove(from, current.state.seaPassagesLeft, game)
         await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
       } else {
         await resolveHuntBeat(ctx, game, current)
@@ -162,7 +162,7 @@ export const applyManhuntMove = async (
   const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
   if (!secret) return
   const from = secret.trail[secret.trail.length - 1]
-  const { ground, sea } = legalManhuntMoves(from, challenge.state.seaPassagesLeft, game.variant)
+  const { ground, sea } = legalManhuntMoves(from, challenge.state.seaPassagesLeft, game)
   // Ground first: a destination reachable both ways never wastes a charge.
   const kind: ManhuntMoveKind | undefined = ground.includes(isoCode)
     ? 'ground'
@@ -192,7 +192,7 @@ const commitManhuntMove = async (
   if (kind === 'sea') state.seaPassagesLeft = Math.max(0, state.seaPassagesLeft - 1)
   state.moves.push({ hop: state.hop, kind })
 
-  const stepped = stepManhuntCandidates(secret.candidates, kind, game.variant)
+  const stepped = stepManhuntCandidates(secret.candidates, kind, game)
   const pick = pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
   secret.candidates = pick.matches
   secret.markers = {}

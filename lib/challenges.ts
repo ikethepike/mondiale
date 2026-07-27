@@ -286,7 +286,7 @@ const getManhuntChallenge = ({
   if (contenders.length < 4) return undefined
   // Verify the variant can seed a pursuit at all (a sparse continental board
   // may not) — the real seed is picked at reveal, off the snapshot.
-  if (!pickManhuntSeed(game.variant)) return undefined
+  if (!pickManhuntSeed(game)) return undefined
 
   const tuning = MANHUNT_TUNING[game.difficulty]
   const despotId = contenders[Math.floor(Math.random() * contenders.length)]

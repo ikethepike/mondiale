@@ -83,7 +83,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { isStraitHop } from '~~/lib/chain'
 import { legalManhuntMoves } from '~~/lib/manhunt'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { countryInVariant } from '~~/lib/variant'
+import { isCountryPlayable } from '~~/lib/game-rules'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { isMapClickEvent, isMapHoverEvent } from '~~/types/events.types'
@@ -138,11 +138,10 @@ onMounted(() => {
   if (isDespot.value) update({ event: 'fetch-manhunt-position' })
 })
 
-const variant = gameStore.game?.variant ?? 'world'
-gameStore.map.dimmed =
-  variant === 'world'
-    ? []
-    : ISOCountryCodes.filter(isoCode => !countryInVariant(isoCode, variant))
+// Off-board and benched (micro-nation) countries both fade — the despot can
+// reach neither, so the rule is visible before a hop is attempted.
+const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+gameStore.map.dimmed = ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))
 
 const trailEntries = computed(() =>
   trail.value.map((isoCode, index) => ({ isoCode, label: String(index + 1) }))
@@ -226,7 +225,7 @@ watch(
 
 const legalMoves = computed(() => {
   if (!isDespot.value || !despotAt.value) return { ground: [], sea: [] }
-  return legalManhuntMoves(despotAt.value, state.value.seaPassagesLeft, variant)
+  return legalManhuntMoves(despotAt.value, state.value.seaPassagesLeft, rules)
 })
 
 /** My locked marker this beat — client-side memory; the snapshot never names it. */

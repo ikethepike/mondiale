@@ -6,7 +6,7 @@ import type {
 } from '~~/types/challenges/group-modes.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import { isAccessorEnabled } from '~~/types/challenges/challenge-groups.type'
-import type { GameDifficulty, GameVariant } from '~~/types/game.types'
+import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { OrganizationVector } from '~~/types/organization.type'
 import { shuffleArray } from './arrays'
@@ -14,7 +14,8 @@ import { connectionsOf } from './chain'
 import { getCountry } from './country'
 import { distancesFrom } from './traversal'
 import { getValueByAccessorID } from './values'
-import { countryInVariant, REGION_LABELS, variantCountries } from './variant'
+import { isCountryPlayable, playableCountries } from './game-rules'
+import { REGION_LABELS } from './variant'
 
 /**
  * Manhunt: detectives hunting a deposed despot on the run. The despot's trail
@@ -70,10 +71,10 @@ export const pursuitNeighboursOf = (isoCode: ISOCountryCode): ISOCountryCode[] =
 
 // --- Movement ---------------------------------------------------------------
 
-const groundMovesOf = (isoCode: ISOCountryCode, variant: GameVariant): ISOCountryCode[] => [
+const groundMovesOf = (isoCode: ISOCountryCode, rules: GameRules): ISOCountryCode[] => [
   ...new Set(
     connectionsOf(isoCode).filter(
-      connected => connected !== isoCode && countryInVariant(connected, variant)
+      connected => connected !== isoCode && isCountryPlayable(rules, connected)
     )
   ),
 ]
@@ -87,16 +88,16 @@ const groundMovesOf = (isoCode: ISOCountryCode, variant: GameVariant): ISOCountr
 export const legalManhuntMoves = (
   from: ISOCountryCode,
   seaPassagesLeft: number,
-  variant: GameVariant
+  rules: GameRules
 ): { ground: ISOCountryCode[]; sea: ISOCountryCode[] } => {
-  const ground = groundMovesOf(from, variant)
+  const ground = groundMovesOf(from, rules)
   if (seaPassagesLeft < 1) return { ground, sea: [] }
 
   const groundSet = new Set(ground)
   const sea = seaNeighboursOf(from).filter(destination => {
     if (destination === from || groundSet.has(destination)) return false
-    if (!countryInVariant(destination, variant)) return false
-    return groundMovesOf(destination, variant).length > 0 || seaPassagesLeft >= 2
+    if (!isCountryPlayable(rules, destination)) return false
+    return groundMovesOf(destination, rules).length > 0 || seaPassagesLeft >= 2
   })
   return { ground, sea }
 }
@@ -109,9 +110,9 @@ export const legalManhuntMoves = (
 export const randomManhuntMove = (
   from: ISOCountryCode,
   seaPassagesLeft: number,
-  variant: GameVariant
+  rules: GameRules
 ): { isoCode: ISOCountryCode; kind: ManhuntMoveKind } => {
-  const { ground, sea } = legalManhuntMoves(from, seaPassagesLeft, variant)
+  const { ground, sea } = legalManhuntMoves(from, seaPassagesLeft, rules)
   if (ground.length) {
     return { isoCode: ground[Math.floor(Math.random() * ground.length)], kind: 'ground' }
   }
@@ -127,8 +128,8 @@ export const randomManhuntMove = (
  *  chain's seed guard) — which also keeps island pockets out of the pool. */
 const MINIMUM_SEED_MOVES = 3
 
-export const pickManhuntSeed = (variant: GameVariant): ISOCountryCode | undefined => {
-  const pool = shuffleArray(initialManhuntCandidates(variant))
+export const pickManhuntSeed = (rules: GameRules): ISOCountryCode | undefined => {
+  const pool = shuffleArray(initialManhuntCandidates(rules))
   return pool[0]
 }
 
@@ -136,9 +137,9 @@ export const pickManhuntSeed = (variant: GameVariant): ISOCountryCode | undefine
  * The detectives' opening knowledge: every country the seed could have been.
  * Exactly the pickManhuntSeed predicate, so the candidate engine starts sound.
  */
-export const initialManhuntCandidates = (variant: GameVariant): ISOCountryCode[] =>
-  variantCountries(variant).filter(
-    isoCode => groundMovesOf(isoCode, variant).length >= MINIMUM_SEED_MOVES
+export const initialManhuntCandidates = (rules: GameRules): ISOCountryCode[] =>
+  playableCountries(rules).filter(
+    isoCode => groundMovesOf(isoCode, rules).length >= MINIMUM_SEED_MOVES
   )
 
 // --- The candidate engine ---------------------------------------------------
@@ -147,16 +148,16 @@ export const initialManhuntCandidates = (variant: GameVariant): ISOCountryCode[]
 export const stepManhuntCandidates = (
   set: ISOCountryCode[],
   kind: ManhuntMoveKind,
-  variant: GameVariant
+  rules: GameRules
 ): ISOCountryCode[] => {
   const stepped = new Set<ISOCountryCode>()
   for (const isoCode of set) {
     const moves =
       kind === 'sea'
         ? seaNeighboursOf(isoCode).filter(
-            destination => destination !== isoCode && countryInVariant(destination, variant)
+            destination => destination !== isoCode && isCountryPlayable(rules, destination)
           )
-        : groundMovesOf(isoCode, variant)
+        : groundMovesOf(isoCode, rules)
     for (const destination of moves) stepped.add(destination)
   }
   return [...stepped]

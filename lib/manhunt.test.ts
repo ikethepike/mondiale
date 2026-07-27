@@ -22,6 +22,7 @@ import {
 } from './manhunt'
 import { getValueByAccessorID } from './values'
 
+const RULES = { variant: 'world' as const, difficulty: 'normal' as const }
 const game = { difficulty: 'normal' as const }
 
 const state = (overrides: Partial<ManhuntState> = {}): ManhuntState => ({
@@ -74,22 +75,22 @@ describe('sea lanes', () => {
 describe('seeding and initial candidates', () => {
   it('deals a seed with real outs', () => {
     for (let i = 0; i < 20; i++) {
-      const seed = pickManhuntSeed('world')
+      const seed = pickManhuntSeed(RULES)
       expect(seed).toBeDefined()
       expect(connectionsOf(seed as ISOCountryCode).length).toBeGreaterThanOrEqual(3)
     }
   })
 
   it('starts the candidate set exactly on the seed pool', () => {
-    const candidates = initialManhuntCandidates('world')
+    const candidates = initialManhuntCandidates(RULES)
     expect(candidates.length).toBeGreaterThan(100)
     for (let i = 0; i < 20; i++) {
-      expect(candidates).toContain(pickManhuntSeed('world'))
+      expect(candidates).toContain(pickManhuntSeed(RULES))
     }
   })
 
   it('excludes marooned islands from the pool', () => {
-    const candidates = initialManhuntCandidates('world')
+    const candidates = initialManhuntCandidates(RULES)
     for (const island of ['IS', 'NZ', 'MG', 'AG', 'KN'] as ISOCountryCode[]) {
       expect(candidates).not.toContain(island)
     }
@@ -98,13 +99,13 @@ describe('seeding and initial candidates', () => {
 
 describe('movement', () => {
   it('offers ground moves without charges', () => {
-    const { ground, sea } = legalManhuntMoves('FR', 0, 'world')
+    const { ground, sea } = legalManhuntMoves('FR', 0, RULES)
     expect(ground.length).toBeGreaterThan(3)
     expect(sea).toEqual([])
   })
 
   it('offers sea passages with a charge, minus ground duplicates', () => {
-    const { ground, sea } = legalManhuntMoves('FR', 1, 'world')
+    const { ground, sea } = legalManhuntMoves('FR', 1, RULES)
     expect(sea.length).toBeGreaterThan(0)
     for (const destination of sea) expect(ground).not.toContain(destination)
   })
@@ -112,40 +113,40 @@ describe('movement', () => {
   it('blocks a one-way trip to an exit-less island on the last charge', () => {
     // Iceland has no ground exit: reachable on the first of two charges,
     // never on the last.
-    const lastCharge = legalManhuntMoves('NO', 1, 'world')
-    const spareCharge = legalManhuntMoves('NO', 2, 'world')
+    const lastCharge = legalManhuntMoves('NO', 1, RULES)
+    const spareCharge = legalManhuntMoves('NO', 2, RULES)
     expect(spareCharge.sea).toContain('IS')
     expect(lastCharge.sea).not.toContain('IS')
   })
 
   it('random timeout hop stays on the ground when possible', () => {
     for (let i = 0; i < 10; i++) {
-      const { isoCode, kind } = randomManhuntMove('DE', 2, 'world')
+      const { isoCode, kind } = randomManhuntMove('DE', 2, RULES)
       expect(kind).toBe('ground')
       expect(connectionsOf('DE')).toContain(isoCode)
     }
   })
 
   it('random timeout hop burns a charge only when marooned', () => {
-    const { kind } = randomManhuntMove('IS', 1, 'world')
+    const { kind } = randomManhuntMove('IS', 1, RULES)
     expect(kind).toBe('sea')
   })
 })
 
 describe('candidate engine', () => {
   it('steps to the exact ground neighbour image', () => {
-    const stepped = stepManhuntCandidates(['DE'], 'ground', 'world')
+    const stepped = stepManhuntCandidates(['DE'], 'ground', RULES)
     expect(stepped.sort()).toEqual([...new Set(connectionsOf('DE'))].sort())
   })
 
   it('allows backtracking through stepping', () => {
-    const once = stepManhuntCandidates(['DE'], 'ground', 'world')
-    const twice = stepManhuntCandidates(once, 'ground', 'world')
+    const once = stepManhuntCandidates(['DE'], 'ground', RULES)
+    const twice = stepManhuntCandidates(once, 'ground', RULES)
     expect(twice).toContain('DE')
   })
 
   it('balloons on a sea passage', () => {
-    const stepped = stepManhuntCandidates(['IT'], 'sea', 'world')
+    const stepped = stepManhuntCandidates(['IT'], 'sea', RULES)
     expect(stepped.length).toBeGreaterThan(connectionsOf('IT').length)
     expect(stepped).toContain('ES')
   })
@@ -166,7 +167,7 @@ describe('clue engine', () => {
   })
 
   it('always tells the truth about the despot', () => {
-    const candidates = initialManhuntCandidates('world')
+    const candidates = initialManhuntCandidates(RULES)
     for (let i = 0; i < 50; i++) {
       const despotAt = candidates[Math.floor(Math.random() * candidates.length)]
       const pick = pickManhuntClue(game, despotAt, candidates, 1, [])
@@ -177,7 +178,7 @@ describe('clue engine', () => {
   })
 
   it('roughly bisects a large candidate set', () => {
-    const candidates = initialManhuntCandidates('world')
+    const candidates = initialManhuntCandidates(RULES)
     let total = 0
     const rounds = 25
     for (let i = 0; i < rounds; i++) {
@@ -193,13 +194,13 @@ describe('clue engine', () => {
   it('converges a full simulated round to a huntable set', () => {
     const endgameSizes: number[] = []
     for (let run = 0; run < 10; run++) {
-      let candidates = initialManhuntCandidates('world')
-      let despotAt = pickManhuntSeed('world') as ISOCountryCode
+      let candidates = initialManhuntCandidates(RULES)
+      let despotAt = pickManhuntSeed(RULES) as ISOCountryCode
       const used: ManhuntClue[] = []
       for (let hop = 1; hop <= 7; hop++) {
-        const { isoCode } = randomManhuntMove(despotAt, 0, 'world')
+        const { isoCode } = randomManhuntMove(despotAt, 0, RULES)
         despotAt = isoCode
-        candidates = stepManhuntCandidates(candidates, 'ground', 'world')
+        candidates = stepManhuntCandidates(candidates, 'ground', RULES)
         const pick = pickManhuntClue(game, despotAt, candidates, hop, used)
         used.push(pick.clue)
         candidates = pick.matches
@@ -217,7 +218,7 @@ describe('clue engine', () => {
   })
 
   it('never repeats a clue', () => {
-    const candidates = initialManhuntCandidates('world')
+    const candidates = initialManhuntCandidates(RULES)
     const used: ManhuntClue[] = []
     for (let hop = 1; hop <= 7; hop++) {
       const pick = pickManhuntClue(game, 'FR', candidates, hop, used)
