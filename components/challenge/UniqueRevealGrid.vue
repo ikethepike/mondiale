@@ -41,13 +41,25 @@
           :class="{ paid: cell.scored, mine: cell.holders.includes(playerId) }"
           :style="{ '--land-delay': `${panelIndex * 0.12 + cellIndex * 0.07}s` }"
         >
-          <CountryFlag
-            v-if="flagFor(panel.category, cell)"
-            class="cell-flag"
-            :country="flagFor(panel.category, cell)!"
-            mode="background"
+          <!-- Country cells are chosen-country labels — CountryChip by law.
+               Capital cells label the CITY, so the chip's country name would
+               be wrong; they wear the flag as provenance beside their own. -->
+          <CountryChip
+            v-if="panel.category === 'country' && countryFor(cell)"
+            class="cell-country"
+            compact
+            tag="span"
+            :country="countryFor(cell)!"
           />
-          <span class="cell-name">{{ cell.name }}</span>
+          <template v-else>
+            <CountryFlag
+              v-if="panel.category === 'capital' && countryFor(cell)"
+              class="cell-flag"
+              :country="countryFor(cell)!"
+              mode="background"
+            />
+            <span class="cell-name">{{ cell.name }}</span>
+          </template>
           <span class="cell-holders">
             <PlayerPawn
               v-for="holderId in cell.holders"
@@ -65,6 +77,7 @@
   </section>
 </template>
 <script lang="ts" setup>
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
@@ -74,7 +87,6 @@ import { seatLabel } from '~~/lib/player'
 import { UNIQUE_CATEGORIES } from '~~/lib/unique-or-bust'
 import type {
   UniqueBoardCell,
-  UniqueCategoryId,
   UniqueOrBustChallenge,
 } from '~~/types/challenges/group-modes.type'
 import { isValidISOCode, type Country } from '~~/types/geography.types'
@@ -119,12 +131,9 @@ const standings = computed(() => {
     .sort((a, b) => b.banked - a.banked)
 })
 
-/** Country and capital cells carry their ISO code as the cell id — wear the
- *  flag (a chosen-country label without one is a bug). */
-const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | undefined => {
-  if (category !== 'country' && category !== 'capital') return undefined
-  return isValidISOCode(cell.id) ? getCountry(cell.id) : undefined
-}
+/** Country and capital cells carry their ISO code as the cell id. */
+const countryFor = (cell: UniqueBoardCell): Country | undefined =>
+  isValidISOCode(cell.id) ? getCountry(cell.id) : undefined
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
@@ -278,22 +287,34 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   animation: row-land var(--motion-base) var(--ease-out-expressive) both;
   animation-delay: var(--land-delay);
 
-  .cell-name {
+  .cell-name,
+  :deep(.chip-name) {
     opacity: 0.55;
+    font-weight: 600;
     text-decoration: line-through;
+  }
+
+  // The chip brings its own padding for floating over the map — inside a
+  // row it sits flush like its text siblings.
+  .cell-country {
+    padding: 0;
   }
 
   &.paid {
     background: milk(0.7);
 
-    .cell-name {
+    .cell-name,
+    :deep(.chip-name) {
       opacity: 1;
       text-decoration: none;
     }
   }
 
-  &.mine .cell-name {
-    font-weight: 700;
+  &.mine {
+    .cell-name,
+    :deep(.chip-name) {
+      font-weight: 700;
+    }
   }
 }
 
@@ -307,7 +328,6 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
 .cell-name {
   min-width: 0;
   overflow: hidden;
-  font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }

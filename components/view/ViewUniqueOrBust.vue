@@ -76,7 +76,17 @@
           >
             <StatTopicIcon class="slot-icon" v-bind="UNIQUE_CATEGORIES[category].icon" />
             <span class="slot-prompt">{{ UNIQUE_CATEGORIES[category].prompt }}</span>
-            <span v-if="ownPick(category)" class="slot-answer">{{ ownPick(category) }}</span>
+            <!-- A locked country is a chosen-country label — it wears the flag. -->
+            <CountryChip
+              v-if="ownCountryPick(category)"
+              class="slot-chip"
+              compact
+              tag="span"
+              :country="ownCountryPick(category)!"
+            />
+            <span v-else-if="ownPick(category)" class="slot-answer">
+              {{ ownPick(category)!.name }}
+            </span>
             <span v-else-if="isMineLocked(category)" class="slot-answer">Locked in</span>
             <span v-else class="slot-answer open">{{ challenge.letter }}…</span>
           </button>
@@ -125,9 +135,11 @@ import SuggestInput, { type SuggestOption } from '~/components/challenge/Suggest
 import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
 import UniqueRevealGrid from '~/components/challenge/UniqueRevealGrid.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import {
   UNIQUE_CATEGORIES,
@@ -138,6 +150,7 @@ import {
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { UniqueCategoryId, UniqueOrBustState } from '~~/types/challenges/group-modes.type'
+import { isValidISOCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -232,10 +245,17 @@ const allMineLocked = computed(() =>
   (challenge.value?.categories ?? []).every(category => isMineLocked(category))
 )
 
-/** Own words, client-side only — the wire carries presence. After a mid-round
+/** Own picks, client-side only — the wire carries presence. After a mid-round
  *  reconnect the slot shows "Locked in" instead; the reveal restores the word. */
-const ownPicks = ref<Partial<Record<UniqueCategoryId, string>>>({})
+const ownPicks = ref<Partial<Record<UniqueCategoryId, SuggestOption>>>({})
 const ownPick = (category: UniqueCategoryId) => ownPicks.value[category]
+
+/** The locked country slot's chip subject — id is the ISO code there. */
+const ownCountryPick = (category: UniqueCategoryId) => {
+  if (category !== 'country') return undefined
+  const pick = ownPicks.value[category]
+  return pick && isValidISOCode(pick.id) ? getCountry(pick.id) : undefined
+}
 
 const rivalsLocked = (category: UniqueCategoryId) =>
   state.value.order.filter(
@@ -249,7 +269,7 @@ const pick = (option: SuggestOption) => {
   const category = activeCategory.value
   if (!challenge.value || finished.value || isMineLocked(category)) return
 
-  ownPicks.value = { ...ownPicks.value, [category]: option.name }
+  ownPicks.value = { ...ownPicks.value, [category]: option }
   update({ event: 'submit-unique-answer', category, id: option.id })
   // Presence only — the room learns a blank was filled, never the word.
   announce({ kind: 'presence' })
@@ -441,6 +461,17 @@ const verdictLine = computed(() => {
   &.open {
     opacity: 0.35;
     font-weight: 400;
+  }
+}
+
+// Flush in the row like its text siblings — the chip's padding is for
+// floating over the map.
+.slot-chip {
+  padding: 0;
+  min-width: 0;
+
+  :deep(.chip-name) {
+    font-weight: 600;
   }
 }
 
