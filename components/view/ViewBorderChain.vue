@@ -33,6 +33,13 @@
          Despot's gate). The opening shot clock only starts when the whole
          table is ready — or the server's reading cap forces it. -->
     <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
+      <!-- Two linked rings — the mode's mark, in the stroke language the
+           stat glyphs speak (The Despot's hat, Unique's letter badge). -->
+      <svg class="briefing-mark" viewBox="0 0 48 24" aria-hidden="true">
+        <rect x="3" y="7" width="18" height="10" rx="5" />
+        <rect x="27" y="7" width="18" height="10" rx="5" />
+        <path d="M21 12h6" />
+      </svg>
       <h2>Border Chain</h2>
       <ul class="briefing-points">
         <li>
@@ -313,6 +320,18 @@ watch(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+.briefing-mark {
+  width: 4.4rem;
+  fill: none;
+  stroke: var(--dark-blue);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.briefing h2 {
+  margin: 0;
+}
+
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;
