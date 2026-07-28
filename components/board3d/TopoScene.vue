@@ -180,7 +180,11 @@ const acquirePathMarker = (radius: number): Mesh<RingGeometry, MeshBasicMaterial
   }
 
   const marker =
-    markerPool.pop() ?? new Mesh(markerGeometry, new MeshBasicMaterial({ transparent: true }))
+    markerPool.pop() ??
+    new Mesh(
+      markerGeometry,
+      new MeshBasicMaterial({ transparent: true, depthWrite: false })
+    )
   gsap.killTweensOf(marker.material)
   marker.geometry = markerGeometry
   marker.material.opacity = 0.85
@@ -241,7 +245,12 @@ const syncHighlight = () => {
     const radius = build.spacing * 0.42
     highlightRing = new Mesh(
       new RingGeometry(radius * 0.98, radius * 1.16, 32),
-      new MeshBasicMaterial({ color: BOARD_COLORS.softMint, transparent: true, opacity: 0.55 })
+      new MeshBasicMaterial({
+        color: BOARD_COLORS.softMint,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      })
     )
     highlightRing.rotation.x = -Math.PI / 2
     build.group.add(highlightRing)
@@ -258,8 +267,10 @@ const syncHighlight = () => {
     }
   }
 
+  // 0.68 floats clear of the tile's top face (+0.64) and under the number
+  // labels (+0.71) — coplanar overlays z-fight into flickering speckles
   const tile = tileFor(displayPositionFor(own))
-  if (tile) highlightRing.position.set(tile.position.x, tile.position.y + 0.62, tile.position.z)
+  if (tile) highlightRing.position.set(tile.position.x, tile.position.y + 0.68, tile.position.z)
 }
 
 const syncPathPreview = () => {

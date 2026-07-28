@@ -454,9 +454,18 @@ export const buildPawn = (color: string, height: number): Group => {
   shadowGeometry.rotateX(-Math.PI / 2)
   const shadow = new Mesh(
     shadowGeometry,
-    new MeshBasicMaterial({ color: BOARD_COLORS.ink, transparent: true, opacity: 0.16 })
+    // depthWrite off: a translucent overlay must not occlude in the depth
+    // buffer or near-coplanar surfaces speckle
+    new MeshBasicMaterial({
+      color: BOARD_COLORS.ink,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+    })
   )
-  shadow.position.y = 0.04
+  // Pawns rest 0.04 below the tile's top face (PAWN_REST_Y 0.6 vs rim 0.55 +
+  // 0.09 disc inset) — 0.1 clears the face by a z-fight-proof margin
+  shadow.position.y = 0.1
 
   const pawn = new Group()
   pawn.add(shadow, outline, body)
