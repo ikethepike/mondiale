@@ -53,38 +53,3 @@ export const createNumberAtlas = (count: number, color: string): NumberAtlas => 
     },
   }
 }
-
-/** Rasterize an icon SVG (stroke/fill agnostic) into a solid-color texture. */
-export const svgToTexture = async (
-  svgMarkup: string,
-  color: string,
-  size = 128
-): Promise<CanvasTexture> => {
-  const blob = new Blob([svgMarkup], { type: 'image/svg+xml' })
-  const url = URL.createObjectURL(blob)
-
-  try {
-    const image = new Image()
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve()
-      image.onerror = () => reject(new EvalError('Unable to rasterize icon svg'))
-      image.src = url
-    })
-
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = size
-    const context = canvas.getContext('2d')
-    if (!context) throw new EvalError('Unable to acquire 2d context for icon texture')
-
-    context.drawImage(image, 0, 0, size, size)
-    context.globalCompositeOperation = 'source-in'
-    context.fillStyle = color
-    context.fillRect(0, 0, size, size)
-
-    const texture = new CanvasTexture(canvas)
-    texture.colorSpace = SRGBColorSpace
-    return texture
-  } finally {
-    URL.revokeObjectURL(url)
-  }
-}

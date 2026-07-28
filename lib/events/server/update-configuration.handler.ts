@@ -27,7 +27,7 @@ export const updateConfigurationHandler = defineGameHandler(
     if (configuration.includeMicroNations === undefined) delete game.includeMicroNations
     else game.includeMicroNations = configuration.includeMicroNations
     game.challengeOverrides = configuration.challengeOverrides
-    game.tiles = generateTiles(game.length)
+    game.tiles = generateTiles(game.length, game.id)
 
     await server.updateGameState(game)
     // A dedicated event so clients replace the WHOLE game (config is

@@ -7,6 +7,9 @@
       <button @click="win('mock-player-1')">Win P1</button>
       <button @click="win('mock-player-2')">Win P2</button>
       <button @click="reseed">Reseed terrain</button>
+      <select v-model="length" @change="regenerate">
+        <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
+      </select>
     </nav>
     <Board3D :game="mockGame" player-id="mock-player-1" />
   </div>
@@ -14,7 +17,7 @@
 <script lang="ts" setup>
 import { PLAYER_COLORS } from '~~/data/palette'
 import { generateTiles } from '~~/lib/tiles'
-import type { Game } from '~~/types/game.types'
+import { gameLengths, type Game, type GameLength, type Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 
 // Dev harness for the 3D board: a mock game with a fixed seed so terrain,
@@ -30,8 +33,9 @@ const mockPlayer = (id: string, name: string, color: string, position: number): 
 })
 
 const seed = ref('topo-harness')
+const length = ref<GameLength>('medium')
 
-const tiles = generateTiles('medium')
+const tiles = generateTiles(length.value, seed.value)
 
 const mockGame = reactive<Game>({
   id: seed.value,
@@ -50,11 +54,15 @@ const mockGame = reactive<Game>({
   },
 })
 
-// Ada is headed into the challenge on tile 5 — hopping her there exercises
-// the blocked-pawn display, the knock reaction and the alert ripple
+// Ada is headed into the first gate — hopping her there exercises the
+// blocked-pawn display, the knock reaction and the alert ripple. Gate
+// positions are seeded, so the gate is found rather than assumed.
+const firstGate = (board: Tile[]) =>
+  board.find(tile => !['start', 'normal', 'final'].includes(tile.type))!
+
 mockGame.players['mock-player-1'].moves = [
   {
-    endTile: tiles[5],
+    endTile: firstGate(tiles),
     challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' },
   },
 ]
@@ -74,11 +82,21 @@ const win = (playerId: string) => {
 }
 
 let reseedCount = 0
+const regenerate = () => {
+  mockGame.length = length.value
+  mockGame.tiles = generateTiles(length.value, mockGame.id)
+  mockGame.players['mock-player-1'].moves = [
+    {
+      endTile: firstGate(mockGame.tiles),
+      challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' },
+    },
+  ]
+}
+
 const reseed = () => {
   reseedCount++
   mockGame.id = `topo-harness-${reseedCount}`
-  // Changing tile count forces a rebuild; keep count stable, id drives the seed
-  mockGame.tiles = [...generateTiles('medium')]
+  regenerate()
 }
 </script>
 <style lang="scss" scoped>

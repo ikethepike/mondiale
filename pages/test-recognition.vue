@@ -125,7 +125,7 @@ const mockGame = (groupChallenge: unknown): Game =>
   ({
     id: 'recognition-harness',
     host: HARNESS_PLAYER_ID,
-    tiles: generateTiles('medium'),
+    tiles: generateTiles('medium', 'recognition-harness'),
     started: true,
     length: 'medium',
     difficulty: 'hard',

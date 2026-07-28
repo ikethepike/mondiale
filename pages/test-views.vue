@@ -116,7 +116,7 @@ const mockGame = (phase: PlayerPhase, rounds: unknown[]): Game => {
   const game = {
     id: 'view-harness',
     host: ME,
-    tiles: generateTiles('medium'),
+    tiles: generateTiles('medium', 'view-harness'),
     started: true,
     length: 'medium',
     difficulty: 'normal',

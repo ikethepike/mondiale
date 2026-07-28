@@ -60,7 +60,7 @@ export const joinEventHandler: EventHandler = async ({
       difficulty: 'normal',
       liveGuesses: true,
       challengeOverrides: {},
-      tiles: generateTiles('medium'),
+      tiles: generateTiles('medium', gameId),
     }
 
     game.players[playerId] = createPlayer(playerId)
