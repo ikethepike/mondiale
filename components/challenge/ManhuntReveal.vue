@@ -5,15 +5,17 @@
       {{ headline }}
     </h2>
     <p class="escape-line">{{ escapeLine }}</p>
-    <ol class="trail">
+    <ol class="trail country-chip-list">
       <template v-for="(isoCode, index) in walk" :key="`${index}-${isoCode}`">
         <li v-if="index > 0" class="hop-mark" :class="{ sea: isSeaHop(index) }">
           {{ isSeaHop(index) ? '〜' : '→' }}
         </li>
-        <li class="stop map-caption" :class="{ last: index === walk.length - 1 }">
-          <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-          <span>{{ countryName(getCountry(isoCode)) }}</span>
-        </li>
+        <CountryChip
+          compact
+          class="map-caption"
+          :class="{ last: index === walk.length - 1 }"
+          :country="getCountry(isoCode)"
+        />
       </template>
     </ol>
     <div v-if="capturerNames.length" class="capturers">
@@ -35,7 +37,7 @@
   </section>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import { isStraitHop } from '~~/lib/chain'
 import { seatLabel } from '~~/lib/player'
@@ -121,33 +123,14 @@ const isSeaHop = (index: number): boolean =>
   opacity: 0.75;
 }
 
+// Chip and trail-list recipes come from templates/_country-chip.scss.
 .trail {
   gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
 }
 
-.stop {
-  gap: 0.5rem;
-  display: flex;
-  align-items: center;
-  padding: 0.3rem 0.9rem;
-
-  &.last {
-    font-weight: bold;
-    border-width: 0.15rem;
-  }
-}
-
-.stop-flag {
-  width: 2.2rem;
-  height: 1.5rem;
-  border: 0.1rem solid ink(0.25);
+.last {
+  font-weight: bold;
+  border-width: 0.15rem;
 }
 
 .hop-mark {

@@ -26,9 +26,18 @@
       <footer>
         <template v-if="!submitted">
           <p class="map-caption ask">Who claims it?</p>
-          <ul v-if="picks.length" class="chips">
+          <ul v-if="picks.length" class="chips country-chip-list">
             <li v-for="isoCode in picks" :key="isoCode">
-              <button type="button" @click="toggle(isoCode)">{{ countryName(isoCode) }}</button>
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="pick map-caption"
+                :country="getCountry(isoCode)"
+                @click="toggle(isoCode)"
+              >
+                <span class="remove">×</span>
+              </CountryChip>
             </li>
           </ul>
           <!-- The round clock docks beside the lock — the action and the time
@@ -63,8 +72,9 @@
 import { computed, onBeforeMount, ref } from 'vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { countryName } from '~~/lib/country'
+import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -254,29 +264,23 @@ footer {
   }
 }
 
-// The countries picked so far. Tapping one takes it back off the list.
+// The countries picked so far, as shared country chips — tap one to unpick it.
 .chips {
   gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
   max-width: min(90vw, 46rem);
-  flex-wrap: wrap;
-  list-style: none;
-  justify-content: center;
   pointer-events: auto;
+}
 
-  button {
-    color: var(--dark-blue);
-    cursor: pointer;
-    padding: 0.35rem 0.9rem;
-    font-size: 0.95rem;
-    font-family: inherit;
-    background: hsla(36, 100%, 98%, 0.85);
-    border: 0.1rem solid ink(0.2);
-    border-radius: 999px;
-    backdrop-filter: blur(0.5rem);
-  }
+.pick {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--dark-blue);
+  border-radius: 999px;
+}
+
+.remove {
+  opacity: 0.6;
 }
 
 .lock {
@@ -289,7 +293,7 @@ footer {
   }
 
   // Finger-sized picked-country chips, and a full-width lock row.
-  .chips button {
+  .pick {
     font-size: 1.2rem;
     min-height: 3.2rem;
     padding: 0.4rem 1.2rem;

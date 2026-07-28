@@ -5,16 +5,16 @@
       You lit {{ named.length }} before the dark — {{ quota }} were needed
     </span>
     <span class="chips">
-      <span
+      <CountryChip
         v-for="chip in chips"
         :key="chip.isoCode"
+        tag="span"
+        compact
         class="light-chip"
         :class="[chip.held ? 'held' : 'taken', { extra: chip.extra }]"
         :title="chip.extra ? 'Beyond the window' : undefined"
-      >
-        <CountryFlag class="chip-flag" :country="COUNTRIES[chip.isoCode]" mode="background" />
-        {{ chip.name }}
-      </span>
+        :country="COUNTRIES[chip.isoCode]"
+      />
       <span v-if="unlitBeyondCount" class="light-chip taken summary">
         +{{ unlitBeyondCount }} more slipped into the night
       </span>
@@ -23,7 +23,7 @@
   </span>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
@@ -107,10 +107,9 @@ const sunGap = computed(() => {
   justify-content: center;
 }
 
+// Chip layout and flag sizing come from templates/_country-chip.scss;
+// this reveal only paints its warm/night surfaces.
 .light-chip {
-  gap: 0.5rem;
-  display: inline-flex;
-  align-items: center;
   font-size: 1.3rem;
   padding: 0.3rem 0.9rem 0.3rem 0.4rem;
   border-radius: 2rem;
@@ -124,7 +123,7 @@ const sunGap = computed(() => {
     color: hsla(216, 30%, 88%, 0.95);
     background: hsla(216, 45%, 18%, 0.92);
 
-    .chip-flag {
+    :deep(.chip-flag) {
       opacity: 0.55;
     }
   }
@@ -135,17 +134,13 @@ const sunGap = computed(() => {
   }
 
   &.summary {
+    gap: 0.5rem;
+    display: inline-flex;
+    align-items: center;
     padding-left: 0.9rem;
     font-style: italic;
     opacity: 0.85;
   }
-}
-
-.chip-flag {
-  width: 2.2rem;
-  height: 1.5rem;
-  flex-shrink: 0;
-  border-radius: 0.2rem;
 }
 
 .sun-line {

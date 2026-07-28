@@ -59,3 +59,16 @@
     opacity: 0;
   }
 }
+
+// The <TransitionGroup name="chain"> landing: a new chip pops in from below
+// and neighbours slide aside. One definition for every chosen-country list.
+.chain-enter-from {
+  opacity: 0;
+  transform: translateY(0.8rem) scale(0.9);
+}
+.chain-enter-active,
+.chain-move {
+  transition:
+    opacity var(--motion-quick) var(--ease-out-expressive),
+    transform var(--motion-quick) var(--ease-out-expressive);
+}

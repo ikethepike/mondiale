@@ -6,20 +6,23 @@
     <PlacementList :rows="rows" :players="players" />
     <div v-if="myOuts.length" class="outs">
       <p class="outs-lead">You had {{ myOuts.length === 1 ? 'an open door' : 'open doors' }}:</p>
-      <ul class="doors">
-        <li v-for="isoCode in shownOuts" :key="isoCode" class="door">
-          <CountryFlag class="door-flag" :country="getCountry(isoCode)" mode="background" />
-          <span>{{ countryName(getCountry(isoCode)) }}</span>
-        </li>
+      <ul class="doors country-chip-list">
+        <CountryChip
+          v-for="isoCode in shownOuts"
+          :key="isoCode"
+          compact
+          class="door"
+          :country="getCountry(isoCode)"
+        />
         <li v-if="overflowCount" class="door more">+ {{ overflowCount }} others</li>
       </ul>
     </div>
   </section>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
-import { countryName, getCountry } from '~~/lib/country'
+import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { BorderChainState } from '~~/types/challenges/group-modes.type'
@@ -101,33 +104,24 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
   }
 }
 
+// Chip and list recipes come from templates/_country-chip.scss;
+// doors only add their hairline pill.
 .doors {
   gap: 0.45rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
+  justify-content: flex-start;
 }
 
 .door {
-  gap: 0.55rem;
-  display: flex;
-  padding: 0.3rem 0.9rem;
   font-size: 1.15rem;
-  align-items: center;
   border: 0.1rem solid ink(0.3);
   border-radius: 1.2rem;
 
   &.more {
     opacity: 0.65;
+    display: flex;
+    align-items: center;
+    padding: 0.3rem 0.9rem;
     border-style: dashed;
   }
-}
-
-.door-flag {
-  width: 1.8rem;
-  height: 1.25rem;
-  border: 0.05rem solid ink(0.25);
 }
 </style>

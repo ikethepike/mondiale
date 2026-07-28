@@ -99,13 +99,18 @@
         <!-- Beat 2: name the modern countries inside the frozen peak — the
              blitz-modes' skill, typed against the same bar. -->
         <template v-else-if="beat === 'tap'">
-          <ul v-if="picks.length" class="picks">
-            <li v-for="isoCode in picks" :key="isoCode" class="stop map-caption">
-              <button type="button" @click="toggle(isoCode)">
-                <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-                <span>{{ countryName(isoCode) }}</span>
+          <ul v-if="picks.length" class="picks country-chip-list">
+            <li v-for="isoCode in picks" :key="isoCode">
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="pick map-caption"
+                :country="getCountry(isoCode)"
+                @click="toggle(isoCode)"
+              >
                 <span class="remove">×</span>
-              </button>
+              </CountryChip>
             </li>
           </ul>
           <EmpireTimebar
@@ -148,7 +153,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import EmpireFlag from '~/components/challenge/EmpireFlag.vue'
 import EmpireGhostField from '~/components/challenge/EmpireGhostField.vue'
@@ -620,45 +625,21 @@ footer {
   }
 }
 
-// Named countries, in the house flag-chip recipe (neighbour-blitz found-list).
+// Named countries as shared country chips — tap one to unpick it.
 .picks {
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: row wrap;
-  justify-content: center;
   max-width: min(52rem, 100%);
+}
 
-  .stop {
-    padding: 0;
+.pick {
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--dark-blue);
+}
 
-    button {
-      gap: 0.6rem;
-      border: none;
-      display: flex;
-      cursor: pointer;
-      background: none;
-      font: inherit;
-      font-size: 1.2rem;
-      font-weight: 600;
-      align-items: center;
-      color: var(--dark-blue);
-      padding: 0.3rem 0.9rem;
-    }
-  }
-
-  .stop-flag {
-    width: 2.2rem;
-    height: 1.5rem;
-    border-radius: 0.2rem;
-    border: 0.1rem solid ink(0.25);
-  }
-
-  .remove {
-    opacity: 0.6;
-  }
+.remove {
+  opacity: 0.6;
 }
 
 // The timebar's lock: a quiet chip-weight action docked in the console row,

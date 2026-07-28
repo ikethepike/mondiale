@@ -45,6 +45,7 @@ and wire every caller through it. Never inline a second copy "just for this view
 | Buyable hint chips | `.hint-row`/`.hint-button` in `templates/_hint-chip.scss` |
 | Small-caps section label | `.eyebrow` in `templates/_eyebrow.scss` |
 | Reveal placement rows (pawn/name/fate/tail) | `components/challenge/PlacementList.vue` |
+| Chosen-country labels (flag + name chip, chip lists, phone scroll/rail) | `components/country/CountryChip.vue` + `.country-chip-list` in `templates/_country-chip.scss` — a chosen-country label without a flag is a bug; `chain` landing transition lives in `_animations.scss` |
 | Ranked-bar scorecards (stagger + growing bars) | `.ranked-bars` in `templates/_ranked-bars.scss`; compact values via `formatCompact` in `lib/number.ts` |
 | Full-screen intro beats (fade → stagger → rule → hold) | `lib/use-intro-beat.ts` + `.intro-overlay` in `templates/_intro-overlay.scss` |
 | Card-header hairline | `$hairline` in `rules/_ink.scss` |

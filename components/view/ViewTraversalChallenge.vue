@@ -41,37 +41,25 @@
     </section>
 
     <footer>
-      <ol class="route">
-        <li class="stop endpoint map-caption">
-          <CountryFlag class="stop-flag" :country="getCountry(challenge.start)" mode="background" />
-          <span>{{ countryName(challenge.start) }}</span>
-        </li>
+      <ol class="route country-chip-list">
+        <CountryChip class="endpoint map-caption" :country="getCountry(challenge.start)" />
         <TransitionGroup name="chain">
-          <li
+          <CountryChip
             v-for="isoCode in guesses"
             :key="isoCode"
-            class="stop map-caption"
+            class="map-caption"
             :class="{ stray: !linkedSet.has(isoCode) }"
-          >
-            <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-            <span>{{ countryName(isoCode) }}</span>
-          </li>
-        </TransitionGroup>
-        <li class="stop endpoint target map-caption">
-          <CountryFlag
-            class="stop-flag"
-            :country="getCountry(challenge.target)"
-            mode="background"
+            :country="getCountry(isoCode)"
           />
-          <span>{{ countryName(challenge.target) }}</span>
-        </li>
+        </TransitionGroup>
+        <CountryChip class="endpoint target map-caption" :country="getCountry(challenge.target)" />
       </ol>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -254,68 +242,18 @@ header .corridor {
   border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
 }
 
-.route {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
+// Chip and route-list recipes come from templates/_country-chip.scss;
+// only the journey's own accents live here.
+.endpoint {
+  font-weight: bold;
+  border-color: var(--dark-blue);
+  border-width: 0.15rem;
 }
 
-.stop {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
-
-  &.endpoint {
-    font-weight: bold;
-    border-color: var(--dark-blue);
-    border-width: 0.15rem;
-  }
-
-  // The destination reads as "still to reach"
-  &.target::before {
-    content: '⟶';
-    opacity: 0.5;
-    font-weight: normal;
-  }
-
-  &.stray {
-    opacity: 0.65;
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.6);
-  }
-}
-
-.stop-flag {
-  width: 2.6rem;
-  height: 1.8rem;
-  border: 0.1rem solid ink(0.25);
-}
-
-.chain-enter-from {
-  opacity: 0;
-  transform: translateY(0.8rem) scale(0.9);
-}
-.chain-enter-active,
-.chain-move {
-  transition:
-    opacity var(--motion-quick) var(--ease-out-expressive),
-    transform var(--motion-quick) var(--ease-out-expressive);
-}
-
-@media screen and (max-width: $tablet) {
-  // Long answer lists scroll instead of swallowing the map and input.
-  .route {
-    max-height: 22dvh;
-    overflow-y: auto;
-    // .main-board kills pointer events — restore them or the route can't be
-    // touch-scrolled at all.
-    pointer-events: auto;
-    overscroll-behavior: contain;
-  }
+// The destination reads as "still to reach"
+.target::before {
+  content: '⟶';
+  opacity: 0.5;
+  font-weight: normal;
 }
 </style>

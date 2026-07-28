@@ -54,17 +54,15 @@
     />
 
     <footer>
-      <ol class="route">
+      <ol class="route country-chip-list">
         <template v-for="(isoCode, index) in chain" :key="`${chainCount}-${isoCode}`">
           <li v-if="index > 0 && isStraitHop(chain[index - 1], isoCode)" class="sea-hop">〜</li>
-          <li
-            class="stop map-caption"
+          <CountryChip
+            class="walked map-caption"
             :class="{ head: index === chain.length - 1 && !finished }"
             :style="{ '--stop-color': stopColor(index) }"
-          >
-            <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-            <span>{{ countryName(getCountry(isoCode)) }}</span>
-          </li>
+            :country="getCountry(isoCode)"
+          />
         </template>
       </ol>
     </footer>
@@ -73,7 +71,7 @@
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
@@ -330,22 +328,9 @@ watch(
   max-width: min(34rem, calc(100% - 2.4rem));
 }
 
-.route {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.stop {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
+// Chip and route-list recipes come from templates/_country-chip.scss;
+// only the walk's own accents live here.
+.walked {
   border-color: var(--stop-color);
 
   &.head {
@@ -358,23 +343,5 @@ watch(
   opacity: 0.6;
   font-weight: bold;
   color: ink(1, 41%);
-}
-
-.stop-flag {
-  width: 2.6rem;
-  height: 1.8rem;
-  border: 0.1rem solid ink(0.25);
-}
-
-@media screen and (max-width: $tablet) {
-  // Long chains scroll instead of swallowing the map and input.
-  .route {
-    max-height: 22dvh;
-    overflow-y: auto;
-    // .main-board kills pointer events — restore them or the chain can't be
-    // touch-scrolled at all.
-    pointer-events: auto;
-    overscroll-behavior: contain;
-  }
 }
 </style>

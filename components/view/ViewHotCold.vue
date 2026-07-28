@@ -23,27 +23,26 @@
     </ChallengePrompt>
 
     <footer>
-      <TransitionGroup ref="probeList" tag="ol" name="chain" class="probe-list">
-        <li
+      <TransitionGroup ref="probeList" tag="ol" name="chain" class="country-chip-list rail">
+        <CountryChip
           v-for="probe in probes"
           :key="probe.isoCode"
-          class="stop map-caption"
+          class="map-caption"
           :class="probe.warmth"
+          :country="getCountry(probe.isoCode)"
         >
-          <CountryFlag class="stop-flag" :country="getCountry(probe.isoCode)" mode="background" />
-          <span>{{ countryName(probe.isoCode) }}</span>
           <small v-if="probe.direction">
             {{ formatKm(probe.distanceKm) }} {{ probe.direction }}
           </small>
           <small v-else>found it!</small>
-        </li>
+        </CountryChip>
       </TransitionGroup>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
@@ -221,22 +220,9 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
   }
 }
 
-.probe-list {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  justify-content: center;
-}
-
-.stop {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
-
+// Chip, trail-list and phone rail recipes come from templates/_country-chip.scss;
+// only the warmth borders live here.
+.country-chip {
   small {
     opacity: 0.6;
   }
@@ -249,45 +235,6 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
   }
   &.cold {
     border-color: hsla(197.6, 51.2%, 41.8%, 0.4);
-  }
-}
-
-.stop-flag {
-  width: 2.6rem;
-  height: 1.8rem;
-  border: 0.1rem solid ink(0.25);
-}
-
-.chain-enter-from {
-  opacity: 0;
-  transform: translateY(0.8rem) scale(0.9);
-}
-.chain-enter-active,
-.chain-move {
-  transition:
-    opacity var(--motion-quick) var(--ease-out-expressive),
-    transform var(--motion-quick) var(--ease-out-expressive);
-}
-
-@media screen and (max-width: $tablet) {
-  // A long trail would eat the map from the bottom: one scroll-snapping row,
-  // newest probe kept in view by the watcher above.
-  .probe-list {
-    flex-wrap: nowrap;
-    max-width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    // .main-board kills pointer events — restore them or the trail can't be
-    // finger-scrolled at all.
-    pointer-events: auto;
-
-    .stop {
-      flex-shrink: 0;
-      white-space: nowrap;
-      scroll-snap-align: end;
-    }
   }
 }
 </style>

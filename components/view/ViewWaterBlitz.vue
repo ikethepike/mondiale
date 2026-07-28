@@ -33,16 +33,14 @@
     </section>
 
     <footer>
-      <TransitionGroup tag="ol" name="chain" class="found-list">
-        <li
+      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
+        <CountryChip
           v-for="isoCode in guesses"
           :key="isoCode"
-          class="stop map-caption"
+          class="map-caption"
           :class="{ stray: !answerSet.has(isoCode) }"
-        >
-          <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-          <span>{{ countryName(isoCode) }}</span>
-        </li>
+          :country="getCountry(isoCode)"
+        />
       </TransitionGroup>
     </footer>
   </div>
@@ -50,7 +48,7 @@
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -127,57 +125,4 @@ const { guesses, answerSet, found, start: begin, onGuess } = useCollectSetRound(
   }
 )
 </script>
-<style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
-@use '~/assets/scss/rules/breakpoints' as *;
-.found-list {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  justify-content: center;
-}
-
-.stop {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
-
-  &.stray {
-    opacity: 0.65;
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.6);
-  }
-}
-
-.stop-flag {
-  width: 2.6rem;
-  height: 1.8rem;
-  border: 0.1rem solid ink(0.25);
-}
-
-.chain-enter-from {
-  opacity: 0;
-  transform: translateY(0.8rem) scale(0.9);
-}
-.chain-enter-active,
-.chain-move {
-  transition:
-    opacity var(--motion-quick) var(--ease-out-expressive),
-    transform var(--motion-quick) var(--ease-out-expressive);
-}
-
-@media screen and (max-width: $tablet) {
-  // Long answer lists scroll instead of swallowing the map and input.
-  .found-list {
-    max-height: 22dvh;
-    overflow-y: auto;
-    // .main-board kills pointer events — restore them or the list can't be
-    // touch-scrolled at all.
-    pointer-events: auto;
-    overscroll-behavior: contain;
-  }
-}
-</style>
+<!-- Chips, list layout and the chain landing all come from shared templates. -->
