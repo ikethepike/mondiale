@@ -20,7 +20,10 @@
 // Views must not re-declare a fixed font-size on caption headings.
 h1.map-caption,
 h2.map-caption {
-  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+  // The shallow slope keeps the scale genuinely fluid through intermediate
+  // widths — a bare 4.5vw slammed into the cap by 711px, leaving every
+  // desktop size at the maximum.
+  font-size: clamp(1.8rem, 1rem + 1.8vw, 3.2rem);
 }
 
 // Question/result swaps over the map (Vue <Transition name="caption">)

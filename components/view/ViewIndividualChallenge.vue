@@ -370,7 +370,7 @@
           key="result"
           class="result"
           :status="status"
-          :correct-message="correctMessage"
+          :leap-steps="earnedLeapSteps ?? 0"
           :incorrect-message="incorrectMessage"
         >
           <DuelReveal
@@ -876,16 +876,11 @@ const onTrajectoryPick = (isoCode: ISOCountryCode) => {
 
 // --- Result messaging ---------------------------------------------------------
 /**
- * The win names its prize — the exact steps the board is about to walk out
- * (mirrors the server's gateLeapSteps from the same submitted inputs), so the
- * hops the player watches next are already accounted for.
+ * The win shows its prize — one hop dot per step the board is about to walk
+ * out (mirrors the server's gateLeapSteps from the same submitted inputs),
+ * rendered by ChallengeResult's leap track instead of spelled out in copy.
  */
 const earnedLeapSteps = ref<number>()
-const correctMessage = computed(() => {
-  const steps = earnedLeapSteps.value
-  if (!steps) return 'Correct!'
-  return steps === 1 ? 'Correct — leap 1 tile ahead!' : `Correct — leap ${steps} tiles ahead!`
-})
 
 const incorrectMessage = computed(() => {
   const active = challenge.value

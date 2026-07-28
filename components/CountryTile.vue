@@ -98,6 +98,10 @@ article {
 
 @media screen and (min-width: $tablet) {
   .country-tile {
+    // The tile is the responsive unit, not the viewport: hands deal 4/5/7
+    // tiles by difficulty, so the same screen width leaves very different
+    // tracks. Everything inside scales off the tile's own inline size.
+    container: country-tile / inline-size;
     padding: $countryTilePadding $countryTilePadding 0 $countryTilePadding;
     border-radius: 1.9rem 1.9rem 0 0;
     &:hover {
@@ -110,25 +114,45 @@ article {
 
   article {
     text-align: center;
+    padding: clamp(0.8rem, 7cqw, 2rem);
     border-radius: 1.9rem 1.9rem 0 0;
     border-bottom: 0.6rem solid #000;
   }
   header {
     text-align: center;
-    margin-bottom: 1rem;
+    margin-bottom: clamp(0.3rem, 3cqw, 1rem);
+
+    h3 {
+      line-height: 1.2;
+      font-size: clamp(1.3rem, 9cqw, 1.9rem);
+      // Never clip a name against the card edge — long ones (Liechtenstein,
+      // Bosnia and Herzegovina) wrap instead.
+      overflow-wrap: break-word;
+    }
+  }
+  .subtitle {
+    font-size: clamp(1.1rem, 6.5cqw, 1.6rem);
+  }
+
+  // On the narrowest tracks (7-tile hands at intermediate widths) the
+  // capital yields before the country name has to.
+  @container country-tile (max-width: 130px) {
+    .subtitle {
+      display: none;
+    }
   }
 
   // country exceptions
   .country-tile {
     &[data-iso='NP'] :deep(svg) {
       margin: auto;
-      max-height: 14rem;
+      max-height: clamp(6rem, 60cqw, 14rem);
     }
     &[data-iso='CH'] .flag {
       background: #d52b1e;
       :deep(svg) {
         margin: auto;
-        max-height: 14rem;
+        max-height: clamp(6rem, 60cqw, 14rem);
       }
     }
   }
