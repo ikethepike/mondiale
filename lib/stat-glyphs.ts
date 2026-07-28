@@ -91,7 +91,9 @@ export const UTILITY_GLYPHS: Record<UtilityGlyphKey, Glyph> = {
     circles: [[12, 13, 3.2]],
   },
   reveal: {
-    paths: ['M2.5 12C4.6 7.7 8 5.5 12 5.5s7.4 2.2 9.5 6.5c-2.1 4.3-5.5 6.5-9.5 6.5S4.6 16.3 2.5 12z'],
+    paths: [
+      'M2.5 12C4.6 7.7 8 5.5 12 5.5s7.4 2.2 9.5 6.5c-2.1 4.3-5.5 6.5-9.5 6.5S4.6 16.3 2.5 12z',
+    ],
     circles: [[12, 12, 2.9]],
   },
   question: {
@@ -405,12 +407,7 @@ export const SOCIETY_GLYPHS: Record<SocietyGlyphKey, Glyph> = {
   },
   // Clapperboard.
   'society.film': {
-    paths: [
-      'M4.5 10.5h15v9h-15z',
-      'M4.5 10.5 5.5 6l14 1.5-1 3z',
-      'M9 6.4l-.7 3',
-      'M13 6.8l-.7 3',
-    ],
+    paths: ['M4.5 10.5h15v9h-15z', 'M4.5 10.5 5.5 6l14 1.5-1 3z', 'M9 6.4l-.7 3', 'M13 6.8l-.7 3'],
   },
   // The crown, upright.
   'society.monarchy': {
@@ -650,6 +647,20 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
       'M7.5 9.5h9l1.8 8.2a1.5 1.5 0 0 1-1.5 1.8H7.2a1.5 1.5 0 0 1-1.5-1.8z',
     ],
   },
+  // Suitcase with straps.
+  'economics.touristArrivals': {
+    paths: [
+      'M5.5 8.5h13v11h-13z',
+      'M10 8.5V6.8c0-.7.6-1.3 1.3-1.3h1.4c.7 0 1.3.6 1.3 1.3v1.7',
+      'M8.5 8.5v11',
+      'M15.5 8.5v11',
+    ],
+  },
+  // Clock face.
+  'economics.workingHours': {
+    paths: ['M12 7v5l3.2 2.6'],
+    circles: [[12, 12, 8]],
+  },
 
   // — geography —
   // Rolling hill under the sun.
@@ -764,26 +775,42 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
     circles: [[6.4, 12.8, 1.7]],
   },
   // Heartbeat trace.
-  'health.lifeExpectancy': {
-    paths: ['M3 12.5h3.8l1.9-3.8 3.2 7.6 2.4-5.7 1.4 1.9H21'],
-  },
   // Wine glass.
   'health.alcoholConsumption': {
     paths: ['M8 3.5h8c0 5-1.7 8-4 8s-4-3-4-8z', 'M12 11.5V20', 'M8.5 20h7'],
   },
   // Cigarette and smoke.
   'health.tobaccoUse': {
-    paths: [
-      'M3.5 14.5h13v3.5h-13z',
-      'M13.5 14.5V18',
-      'M18 12c-.9-.9-.9-1.8 0-2.7s.9-1.8 0-2.7',
-    ],
+    paths: ['M3.5 14.5h13v3.5h-13z', 'M13.5 14.5V18', 'M18 12c-.9-.9-.9-1.8 0-2.7s.9-1.8 0-2.7'],
   },
   // Capsule.
   'health.accessToContraceptives': {
     paths: [
       'M6.3 13.2l6.9-6.9a3.6 3.6 0 0 1 5.1 5.1l-6.9 6.9a3.6 3.6 0 0 1-5.1-5.1z',
       'M9.8 9.7l4.5 4.5',
+    ],
+  },
+  // Drumstick.
+  'health.meatConsumption': {
+    paths: ['M15 3.5a5.5 5.5 0 0 1 0 11 5.4 5.4 0 0 1-4-1.6l-4.2 4.3'],
+    circles: [[5.6, 18.4, 1.8]],
+  },
+  // Person beside a height arrow.
+  'health.maleHeight': {
+    paths: [
+      'M5.5 18.5c0-3.2 1.9-5 4.7-5s4.7 1.8 4.7 5',
+      'M19 4.5v15',
+      'M17.3 6.2 19 4.5l1.7 1.7',
+      'M17.3 17.8 19 19.5l1.7-1.7',
+    ],
+    circles: [[10.2, 8.3, 2.6]],
+  },
+  // Car in profile.
+  'health.roadDeaths': {
+    paths: ['M4 16.5v-3l1.8-4.5A2 2 0 0 1 7.7 8h8.6a2 2 0 0 1 1.9 1l1.8 4.5v3z', 'M4 13.5h16'],
+    circles: [
+      [8, 17.5, 1.8],
+      [16, 17.5, 1.8],
     ],
   },
 
@@ -840,6 +867,45 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
     paths: [
       'M12 3.5c3.4 0 6 3.6 6 8.2a6 6 0 0 1-12 0c0-4.6 2.6-8.2 6-8.2z',
       'M8.6 13l1.7-1.4 1.7 1.4 1.7-1.4 1.7 1.4',
+    ],
+  },
+  // Candle.
+  'people.deathRate': {
+    paths: [
+      'M9.5 11.5h5V20h-5z',
+      'M12 8.5v3',
+      'M12 3.5c1 1.2 1.5 2 1.5 2.8a1.5 1.5 0 0 1-3 0c0-.8.5-1.6 1.5-2.8z',
+      'M7 20h10',
+    ],
+  },
+  // A crowd, shoulder to shoulder.
+  'people.density': {
+    paths: [
+      'M3.5 18.5c0-2.4 1.2-3.8 3.2-3.8s3.2 1.4 3.2 3.8',
+      'M8.8 18.5c0-2.8 1.3-4.3 3.2-4.3s3.2 1.5 3.2 4.3',
+      'M14.1 18.5c0-2.4 1.2-3.8 3.2-3.8s3.2 1.4 3.2 3.8',
+    ],
+    circles: [
+      [6.7, 9.5, 2],
+      [12, 8.3, 2.3],
+      [17.3, 9.5, 2],
+    ],
+  },
+  // Elder with a cane.
+  'people.share65Plus': {
+    paths: [
+      'M5.5 18.5c0-3.2 1.8-5 4.5-5s4.5 1.8 4.5 5',
+      'M17.5 10.5a2 2 0 0 0-2-2',
+      'M17.5 10.5V19',
+    ],
+    circles: [[10, 6.5, 2.5]],
+  },
+  // Mars and Venus.
+  'people.sexRatio': {
+    paths: ['M7.5 12.5V17', 'M5.6 15h3.8', 'M17 10.5 20.5 7', 'M17.2 7h3.3v3.3'],
+    circles: [
+      [7.5, 9.5, 3],
+      [14.5, 13, 3.5],
     ],
   },
   // Skyline.
@@ -978,12 +1044,63 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
   },
   // Smile.
   'government.happiness': {
-    paths: [
-      'M8.8 9.8v.01',
-      'M15.2 9.8v.01',
-      'M8.3 14c1 1.6 2.3 2.4 3.7 2.4s2.7-.8 3.7-2.4',
-    ],
+    paths: ['M8.8 9.8v.01', 'M15.2 9.8v.01', 'M8.3 14c1 1.6 2.3 2.4 3.7 2.4s2.7-.8 3.7-2.4'],
     circles: [[12, 12, 8.5]],
+  },
+  // Smog cloud over haze.
+  'environment.airPollution': {
+    paths: [
+      'M7 13.5a3.75 3.75 0 0 1 0-7.5 5 5 0 0 1 9.7-1.2 3.6 3.6 0 0 1 .3 8.7z',
+      'M5.5 17h6',
+      'M14 17h4.5',
+      'M8 20h4',
+      'M15 20h3',
+    ],
+  },
+  // Shield with an alert.
+  'environment.redListIndex': {
+    paths: ['M12 3.5 19 6v5.5c0 4.5-2.8 7.6-7 9-4.2-1.4-7-4.5-7-9V6z', 'M12 8v5', 'M12 16.5v.01'],
+  },
+  // Paw print.
+  'environment.threatenedMammals': {
+    paths: [
+      'M12 11.5c2.8 0 4.8 1.9 4.8 4.2 0 2.1-1.6 3.4-3 2.9a5.7 5.7 0 0 0-3.6 0c-1.4.5-3-.8-3-2.9 0-2.3 2-4.2 4.8-4.2z',
+    ],
+    circles: [
+      [6.8, 9, 1.6],
+      [10.3, 6.7, 1.6],
+      [13.7, 6.7, 1.6],
+      [17.2, 9, 1.6],
+    ],
+  },
+  // Tree behind a fence.
+  'environment.protectedLand': {
+    paths: [
+      'M12 4 8.8 8.8h1.7L8 12.8h8l-2.5-4h1.7z',
+      'M12 12.8V15',
+      'M4.5 16.5h15',
+      'M6.5 16.5V20',
+      'M12 16.5V20',
+      'M17.5 16.5V20',
+    ],
+  },
+  // Glass of water.
+  'environment.freshwaterPerCapita': {
+    paths: [
+      'M7 4.5h10l-1.2 14.6a1.5 1.5 0 0 1-1.5 1.4h-4.6a1.5 1.5 0 0 1-1.5-1.4z',
+      'M7.6 11.5h8.8',
+    ],
+  },
+  // Car under a charging bolt.
+  'environment.evSalesShare': {
+    paths: [
+      'M4 17v-2.5l1.5-3.8a2 2 0 0 1 1.9-1.2h9.2a2 2 0 0 1 1.9 1.2l1.5 3.8V17z',
+      'M12.6 3 10 7.2h2l-1 3.3 2.6-4.2h-2z',
+    ],
+    circles: [
+      [7.8, 18, 1.6],
+      [16.2, 18, 1.6],
+    ],
   },
 
   // — energy —
@@ -999,6 +1116,10 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
       'M6.5 16h11',
       'M12 10.2c1 1.2 1.5 2.1 1.5 2.9a1.5 1.5 0 0 1-3 0c0-.8.5-1.7 1.5-2.9z',
     ],
+  },
+  // Power meter.
+  'energy.consumptionPerCapita': {
+    paths: ['M4 16.5a8 8 0 1 1 16 0', 'M12 16.5 16.2 10', 'M4 20h16'],
   },
 }
 

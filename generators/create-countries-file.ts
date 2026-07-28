@@ -4,6 +4,7 @@ import { decode } from 'he'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
+import { wppMapping } from '~~/data/wpp.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { LEADERS } from '~~/data/leaders.gen'
@@ -198,10 +199,12 @@ const normalizeCountry = ({
         data['Economy']['Population below poverty line'],
         '%'
       ),
-      militarySpending: getYearlyIndex<'%'>(
-        data['Military and Security']?.['Military expenditures'],
-        '%'
-      ),
+      // OWID (SIPRI) is dated and reaches 2025; the Factbook node backstops.
+      militarySpending:
+        owidAmount(isoCode, 'militarySpending', '%') ??
+        getYearlyIndex<'%'>(data['Military and Security']?.['Military expenditures'], '%'),
+      touristArrivals: owidAmount(isoCode, 'touristArrivals', 'tourists'),
+      workingHours: owidAmount(isoCode, 'workingHours', 'hours'),
       equality: getYearlyIndex<'Gini Coefficient'>(
         data['Economy']['Gini Index coefficient - distribution of family income'],
         'Gini Coefficient'
@@ -219,7 +222,9 @@ const normalizeCountry = ({
           data['Geography']['Area']['total '] ?? data['Geography']['Area']['total'],
           'km²'
         ),
-        forested: getTextNode<'%'>(data['Geography']['Land use']?.forest, '%'),
+        forested:
+          owidAmount(isoCode, 'forested', '%') ??
+          getTextNode<'%'>(data['Geography']['Land use']?.forest, '%'),
         arable: getTextNode<'%'>(
           data['Geography']['Land use']?.['agricultural land: arable land'],
           '%'
@@ -263,6 +268,7 @@ const normalizeCountry = ({
         data.Energy?.['Electricity generation sources']?.['fossil fuels'],
         '%'
       ),
+      consumptionPerCapita: owidAmount(isoCode, 'energyUse', 'kWh'),
     },
     gender: {
       // Factbook dropped its women-in-parliament data; sourced from the World
@@ -274,34 +280,45 @@ const normalizeCountry = ({
       ),
     },
     people: {
-      lifeExpectancy: getTextNode<'years'>(
-        data['People and Society']['Life expectancy at birth']?.['total population'],
-        'years'
-      ),
-      medianAge: getTextNode<'years'>(data['People and Society']['Median age']?.total, 'years'),
-      childrenPerWoman: getTextNode<'children'>(
-        data['People and Society']['Total fertility rate'],
-        'children'
-      ),
+      // Demography prefers UN WPP — dated, internally consistent values from
+      // one modeled system; the undated Factbook nodes backstop (they also
+      // cover VA-style gaps in any future revision).
+      lifeExpectancy:
+        wppAmount(isoCode, 'lifeExpectancy', 'years') ??
+        getTextNode<'years'>(
+          data['People and Society']['Life expectancy at birth']?.['total population'],
+          'years'
+        ),
+      medianAge:
+        wppAmount(isoCode, 'medianAge', 'years') ??
+        getTextNode<'years'>(data['People and Society']['Median age']?.total, 'years'),
+      childrenPerWoman:
+        wppAmount(isoCode, 'childrenPerWoman', 'children') ??
+        getTextNode<'children'>(data['People and Society']['Total fertility rate'], 'children'),
       // Factbook nests the headline figure under Population.total; the bare
       // Population node has no .text of its own (it drifted from a flat node).
-      population: getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
-      populationGrowthRate: getTextNode<'%'>(
-        data['People and Society']['Population growth rate'],
-        '%'
-      ),
-      netMigration: getTextNode<'per 1000 people'>(
-        data['People and Society']['Net migration rate'],
-        'per 1000 people'
-      ),
-      birthRate: getTextNode<'per 1000 people'>(
-        data['People and Society']['Birth rate'],
-        'per 1000 people'
-      ),
-      urbanization: getTextNode<'%'>(
-        data['People and Society'].Urbanization?.['urban population'],
-        '%'
-      ),
+      population:
+        wppAmount(isoCode, 'population', 'people') ??
+        getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
+      populationGrowthRate:
+        wppAmount(isoCode, 'populationGrowthRate', '%') ??
+        getTextNode<'%'>(data['People and Society']['Population growth rate'], '%'),
+      netMigration:
+        wppAmount(isoCode, 'netMigration', 'per 1000 people') ??
+        getTextNode<'per 1000 people'>(
+          data['People and Society']['Net migration rate'],
+          'per 1000 people'
+        ),
+      birthRate:
+        wppAmount(isoCode, 'birthRate', 'per 1000 people') ??
+        getTextNode<'per 1000 people'>(data['People and Society']['Birth rate'], 'per 1000 people'),
+      deathRate: wppAmount(isoCode, 'deathRate', 'per 1000 people'),
+      density: wppAmount(isoCode, 'density', 'per km²'),
+      share65Plus: wppAmount(isoCode, 'share65Plus', '%'),
+      sexRatio: wppAmount(isoCode, 'sexRatio', 'males per 100 females'),
+      urbanization:
+        owidAmount(isoCode, 'urbanization', '%') ??
+        getTextNode<'%'>(data['People and Society'].Urbanization?.['urban population'], '%'),
     },
     education: {
       literacy: getTextNode(data['People and Society'].Literacy?.['total population'], '%'),
@@ -311,7 +328,11 @@ const normalizeCountry = ({
       ),
     },
     health: {
-      obesity: getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
+      // WHO via OWID first for the lifestyle stats — dated, with history for
+      // the trend modes; the undated Factbook nodes backstop.
+      obesity:
+        owidAmount(isoCode, 'obesity', '%') ??
+        getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
       // Factbook renamed 'Physicians density' to 'Physician density'.
       doctors: getTextNode<'per 1000 people'>(
         data['People and Society']['Physician density'] ??
@@ -327,15 +348,18 @@ const normalizeCountry = ({
       accessToContraceptives:
         worldBankAmount(isoCode, 'contraceptivePrevalence', '%') ??
         getTextNode<'%'>(data['People and Society']['Contraceptive prevalence rate'], '%'),
-      lifeExpectancy: getTextNode<'years'>(
-        data['People and Society']['Life expectancy at birth']?.['total population'],
-        'years'
-      ),
-      alcoholConsumption: getTextNode<'liters of pure alcohol'>(
-        data['People and Society']['Alcohol consumption per capita']?.total,
-        'liters of pure alcohol'
-      ),
-      tobaccoUse: getTextNode<'%'>(data['People and Society']['Tobacco use']?.total, '%'),
+      alcoholConsumption:
+        owidAmount(isoCode, 'alcoholConsumption', 'liters of pure alcohol') ??
+        getTextNode<'liters of pure alcohol'>(
+          data['People and Society']['Alcohol consumption per capita']?.total,
+          'liters of pure alcohol'
+        ),
+      tobaccoUse:
+        owidAmount(isoCode, 'tobaccoUse', '%') ??
+        getTextNode<'%'>(data['People and Society']['Tobacco use']?.total, '%'),
+      meatConsumption: owidAmount(isoCode, 'meatConsumption', 'kg'),
+      maleHeight: owidAmount(isoCode, 'maleHeight', 'cm'),
+      roadDeaths: owidAmount(isoCode, 'roadDeaths', 'per 100k people'),
     },
     religion: {
       atheism: getReligion(data).atheism,
@@ -356,8 +380,16 @@ const normalizeCountry = ({
           data.Environment['Air pollutants']?.['methane emissions'],
           'megatons'
         ),
-      renewables: getRenewablesProduction(data),
+      // Ember/Energy Institute via OWID first — annual series vs the
+      // Factbook's undated share.
+      renewables: owidAmount(isoCode, 'renewables', '%') ?? getRenewablesProduction(data),
       parisAgreement: isParisAgreementParty(data),
+      airPollution: owidAmount(isoCode, 'airPollution', 'µg/m³'),
+      redListIndex: owidAmount(isoCode, 'redListIndex', 'index'),
+      threatenedMammals: owidAmount(isoCode, 'threatenedMammals', 'species'),
+      protectedLand: owidAmount(isoCode, 'protectedLand', '%'),
+      freshwaterPerCapita: owidAmount(isoCode, 'freshwaterPerCapita', 'm³'),
+      evSalesShare: owidAmount(isoCode, 'evSalesShare', '%'),
     },
     humanRights: {
       refugees: getRefugees(data, isoCode),
@@ -488,10 +520,21 @@ const worldBankAmount = <Unit>(
   }
 }
 
-/** Pull a governance index for a country and wrap it as an Amount. */
+/** Pull a UN WPP metric for a country and wrap it as an Amount. */
+const wppAmount = <Unit>(
+  isoCode: string,
+  metric: keyof NonNullable<(typeof wppMapping)[ISOCountryCode]>,
+  unit: Unit
+): Amount<Unit> | undefined => {
+  const value = wppMapping[isoCode as ISOCountryCode]?.[metric]
+  if (!value) return undefined
+  return { unit, year: value.year, amount: value.amount }
+}
+
+/** Pull an OWID metric for a country and wrap it as an Amount. */
 const owidAmount = <Unit>(
   isoCode: string,
-  metric: 'democracyIndex' | 'corruptionIndex' | 'humanDevelopmentIndex' | 'happiness',
+  metric: keyof NonNullable<(typeof owidMapping)[ISOCountryCode]>,
   unit: Unit
 ): Amount<Unit> | undefined => {
   const value = owidMapping[isoCode as ISOCountryCode]?.[metric]

@@ -289,9 +289,7 @@
 
           <!-- Trend duel: whose stat is rising/falling — win every duel -->
           <template v-else-if="variant === 'trend-duel' && currentTrendDuel">
-            <h1 class="map-caption">
-              Whose {{ trendDuelLabel }} is {{ currentTrendDuel.seek }}?
-            </h1>
+            <h1 class="map-caption">Whose {{ trendDuelLabel }} is {{ currentTrendDuel.seek }}?</h1>
             <span class="map-caption sub"
               >Duel {{ trendDuelIndex + 1 }} of {{ totalTrendDuels }} — win them all</span
             >
@@ -414,7 +412,7 @@ import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vu
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
-import { TRENDS } from '~~/data/trends.gen'
+import { TRENDS } from '~~/lib/trends'
 import { shuffleArray } from '~~/lib/arrays'
 import {
   accessorTopicLabel,
@@ -781,8 +779,7 @@ const trendDuelReveal = ref<{ picked: ISOCountryCode; correct: boolean }>()
 let trendDuelTimer: ReturnType<typeof setTimeout> | undefined
 const failedTrendDuel = ref<{ answer: ISOCountryCode; seek: 'rising' | 'falling' }>()
 
-const trendSeriesFor = (isoCode: ISOCountryCode, metric: TrendMetricId) =>
-  TRENDS[isoCode]?.[metric]
+const trendSeriesFor = (isoCode: ISOCountryCode, metric: TrendMetricId) => TRENDS[isoCode]?.[metric]
 const trendDuelLabel = computed(() =>
   currentTrendDuel.value ? TREND_METRICS[currentTrendDuel.value.metric].label : ''
 )
@@ -1475,7 +1472,6 @@ header .flag {
   margin-top: 1rem;
 }
 
-
 .leader-options {
   grid-template-columns: minmax(28rem, 44rem);
 }
@@ -1499,11 +1495,7 @@ header .flag {
 
     &.placeholder {
       // A subtle silhouette stand-in when no portrait exists.
-      background-image: radial-gradient(
-        circle at 50% 38%,
-        ink(0.25) 0 1.1rem,
-        transparent 1.2rem
-      );
+      background-image: radial-gradient(circle at 50% 38%, ink(0.25) 0 1.1rem, transparent 1.2rem);
     }
   }
 

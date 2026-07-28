@@ -5,13 +5,12 @@ import { CURRENCIES } from '~~/data/currencies.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { TRENDS } from '~~/data/trends.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import type { ChallengeConfiguration } from '~~/types/challenge.type'
 import {
-  GROUPED_ACCESSORS,
+  HEAVY_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
@@ -79,10 +78,24 @@ import { pickChainSeed } from './chain'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
-import { attemptDecayScore, attemptFraction, clampScore, jaccardFraction, scorePinDistance } from './scoring'
+import {
+  attemptDecayScore,
+  attemptFraction,
+  clampScore,
+  jaccardFraction,
+  scorePinDistance,
+} from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
 import { isRouteComplete, pickTraversal } from './traversal'
-import { dramaScore, isDecisiveGap, readTrend, relativeGap, TREND_METRIC_IDS, TREND_METRICS } from './trends'
+import {
+  dramaScore,
+  isDecisiveGap,
+  readTrend,
+  relativeGap,
+  TREND_METRIC_IDS,
+  TREND_METRICS,
+  TRENDS,
+} from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS } from './variant'
@@ -220,8 +233,6 @@ const pickShapeFriendlyCountry = (
   return sample(viable)!
 }
 
-
-
 /** Everyone still competing when the round is dealt takes a chain seat. */
 const chainContenders = (game: gameTypes.Game): string[] =>
   Object.entries(game.players)
@@ -268,11 +279,7 @@ const getBorderChainChallenge = ({
  * here — the dealer has no redis handle, and the trail must never ride the
  * broadcast challenge; manhunt-beats picks it at the round reveal.
  */
-const getManhuntChallenge = ({
-  game,
-}: {
-  game: gameTypes.Game
-}): ManhuntChallenge | undefined => {
+const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallenge | undefined => {
   const contenders = chainContenders(game)
   if (contenders.length < (MINIMUM_TABLE_BY_KIND.manhunt ?? 0)) return undefined
   // A board too small to hide on never deals (South America fields nine
@@ -623,8 +630,7 @@ const getTraversalChallenge = ({
 }): TraversalChallenge | undefined => {
   // Hard games sometimes restrict the run to an alliance corridor
   if (game.difficulty === 'hard' && Math.random() < CORRIDOR_CHANCE_ON_HARD) {
-    const organizationId =
-      sample(CORRIDOR_ORGANIZATIONS)!
+    const organizationId = sample(CORRIDOR_ORGANIZATIONS)!
 
     let organizationName = organizationId.toUpperCase()
     const variantPool = new Set(playableCountries(game))
@@ -1051,7 +1057,9 @@ const getGhostStateChallenge = async (
     return Math.max(0.05, ghostStateOddity(drawnApart, povs.length || 1))
   })
 
-  const territory = weightedPick(pool.map((candidate, index) => [candidate, weights[index]] as const))
+  const territory = weightedPick(
+    pool.map((candidate, index) => [candidate, weights[index]] as const)
+  )
   if (!territory?.parent) return undefined
 
   return {
@@ -1140,7 +1148,9 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   const region = sample(regions)!
   const pool = byRegion.get(region) ?? []
 
-  const empire = weightedPick(pool.map(candidate => [candidate, tuning.tierWeights[candidate.tier]] as const))
+  const empire = weightedPick(
+    pool.map(candidate => [candidate, tuning.tierWeights[candidate.tier]] as const)
+  )
   if (!empire) return undefined
 
   // Non-hard helper: 3 name options (same-region icons preferred, so the
@@ -1155,7 +1165,10 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
     const preferred = decoyPool.filter(other => other.region === empire.region)
     const source = preferred.length >= tuning.optionCount - 1 ? preferred : decoyPool
     const ordered = empire.hasFlag
-      ? [...shuffleArray(source.filter(other => other.hasFlag)), ...shuffleArray(source.filter(other => !other.hasFlag))]
+      ? [
+          ...shuffleArray(source.filter(other => other.hasFlag)),
+          ...shuffleArray(source.filter(other => !other.hasFlag)),
+        ]
       : shuffleArray(source)
     const decoys = ordered.slice(0, tuning.optionCount - 1).map(other => other.id)
     if (decoys.length === tuning.optionCount - 1) options = shuffleArray([empire.id, ...decoys])
@@ -1579,7 +1592,7 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const required = perPlayer * playerIds.length
 
   // Round 1 doubles as the tutorial — it stays on universally comfortable
-  // stats. Group-owned accessors (conflicts) never open a game.
+  // stats. Heavy-group accessors (conflicts) never open a game.
   const opener = game.rounds.length === 0
 
   // Source data drifts between regenerations and some accessors end up with
@@ -1587,7 +1600,7 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   // otherwise players get a question with zero countries to rank.
   const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
     if (!isAccessorEnabled(game, challenge.id)) return false
-    if (opener && GROUPED_ACCESSORS.has(challenge.id)) return false
+    if (opener && HEAVY_ACCESSORS.has(challenge.id)) return false
     let available = 0
     for (const isoCode of pool) {
       if (getValueByAccessorID(isoCode, challenge.id)) available++
@@ -2319,7 +2332,11 @@ export const getIndividualChallenge = ({
         break
       }
       case 'outline-reveal':
-        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool, world) }
+        return {
+          ...base,
+          variant: 'outline-reveal',
+          country: pickShapeFriendlyCountry(pool, world),
+        }
       case 'zoom-out':
         return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
       case 'leader-portrait': {
@@ -2361,7 +2378,11 @@ export const getIndividualChallenge = ({
       // Two kinetic "name the country" gates on this tile: outline-reveal (the
       // border draws itself) and zoom-out (the map zooms out from a coastline).
       if (difficulty === 'hard' && roll < 0.25) {
-        return { ...base, variant: 'outline-reveal', country: pickShapeFriendlyCountry(pool, world) }
+        return {
+          ...base,
+          variant: 'outline-reveal',
+          country: pickShapeFriendlyCountry(pool, world),
+        }
       }
       if (roll < 0.35) {
         return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
@@ -2476,499 +2497,626 @@ export const accessorTopicLabel = (
 const CHALLENGE_DETAILS: {
   [key in IndividualChallengeAccessorId | GroupChallengeAccessorId]: ChallengeConfiguration
 } = {
-    'economics.gdpPerCapita': {
-      topic: 'economics',
-      phrasing: 'Rank the following countries by GDP per capita',
-      markers: {
-        most: 'highest GDP',
-        least: 'lowest GDP',
-      },
+  'economics.gdpPerCapita': {
+    topic: 'economics',
+    phrasing: 'Rank the following countries by GDP per capita',
+    markers: {
+      most: 'highest GDP',
+      least: 'lowest GDP',
     },
-    'economics.militarySpending': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by military spending as a percentage of their economy',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'economics.militarySpending': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by military spending as a percentage of their economy',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'economics.populationBelowPovertyLine': {
-      topic: 'economics',
-      phrasing: 'Rank the following countries by the percentage of people under the poverty line',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'economics.populationBelowPovertyLine': {
+    topic: 'economics',
+    phrasing: 'Rank the following countries by the percentage of people under the poverty line',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'economics.equality': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by the level of economic inequality',
-      markers: {
-        most: 'unequal',
-        least: 'equal',
-      },
-      // Gini is theoretically 0–100 but real countries cluster ~24–59; a
-      // 20–70 band keeps the plotted marker legible instead of bunched mid-track.
-      scale: { min: 20, max: 70 },
+  },
+  'economics.equality': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by the level of economic inequality',
+    markers: {
+      most: 'unequal',
+      least: 'equal',
     },
-    'geography.area.land': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by land area',
-      markers: {
-        most: 'largest area',
-        least: 'smallest area',
-      },
+    // Gini is theoretically 0–100 but real countries cluster ~24–59; a
+    // 20–70 band keeps the plotted marker legible instead of bunched mid-track.
+    scale: { min: 20, max: 70 },
+  },
+  'geography.area.land': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by land area',
+    markers: {
+      most: 'largest area',
+      least: 'smallest area',
     },
-    'geography.area.water': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by amount of surface water',
-      markers: {
-        most: 'largest area',
-        least: 'smallest area',
-      },
+  },
+  'geography.area.water': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by amount of surface water',
+    markers: {
+      most: 'largest area',
+      least: 'smallest area',
     },
-    'geography.area.total': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by total area',
-      markers: {
-        most: 'largest area',
-        least: 'smallest area',
-      },
+  },
+  'geography.area.total': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by total area',
+    markers: {
+      most: 'largest area',
+      least: 'smallest area',
     },
-    'geography.area.arable': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by the percentage of their land that is arable',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'geography.area.arable': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by the percentage of their land that is arable',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'geography.area.forested': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by the percentage of their land that is forested',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'geography.area.forested': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by the percentage of their land that is forested',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'geography.highestPeak': {
-      topic: 'geography',
-      phrasing: 'Rank these countries by highest mountain',
-      markers: {
-        most: 'highest mountain',
-        least: 'shortest mountain',
-      },
+  },
+  'geography.highestPeak': {
+    topic: 'geography',
+    phrasing: 'Rank these countries by highest mountain',
+    markers: {
+      most: 'highest mountain',
+      least: 'shortest mountain',
     },
-    'unemployment.youth': {
-      topic: 'unemployment',
-      phrasing: 'Rank these countries by levels of youth unemployment',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'unemployment.youth': {
+    topic: 'unemployment',
+    phrasing: 'Rank these countries by levels of youth unemployment',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'unemployment.total': {
-      topic: 'unemployment',
-      phrasing: 'Rank these countries by levels of unemployment',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'unemployment.total': {
+    topic: 'unemployment',
+    phrasing: 'Rank these countries by levels of unemployment',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'infrastructure.rail': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by length of railway network',
-      markers: {
-        most: 'most kilometers',
-        least: 'fewest kilometers',
-      },
+  },
+  'infrastructure.rail': {
+    topic: 'infrastructure',
+    phrasing: 'Rank these countries by length of railway network',
+    markers: {
+      most: 'most kilometers',
+      least: 'fewest kilometers',
     },
-    'gender.womenInParliament': {
-      topic: 'gender',
-      phrasing: 'Rank these countries by the percentage of parliament seats held by women',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'gender.womenInParliament': {
+    topic: 'gender',
+    phrasing: 'Rank these countries by the percentage of parliament seats held by women',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'gender.motherMeanAgeAtBirth': {
-      topic: 'gender',
-      phrasing: 'Rank these countries by the mean age of birth at which women give birth',
-      markers: {
-        most: 'oldest',
-        least: 'youngest',
-      },
+  },
+  'gender.motherMeanAgeAtBirth': {
+    topic: 'gender',
+    phrasing: 'Rank these countries by the mean age of birth at which women give birth',
+    markers: {
+      most: 'oldest',
+      least: 'youngest',
     },
-    'health.obesity': {
-      topic: 'health',
-      phrasing: 'Rank these countries by the percentage of adults who are obese',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'health.obesity': {
+    topic: 'health',
+    phrasing: 'Rank these countries by the percentage of adults who are obese',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'people.lifeExpectancy': {
-      topic: 'people',
-      phrasing: 'Rank these countries by average life expectancy at birth',
-      markers: {
-        most: 'oldest',
-        least: 'youngest',
-      },
+  },
+  'people.lifeExpectancy': {
+    topic: 'people',
+    phrasing: 'Rank these countries by average life expectancy at birth',
+    markers: {
+      most: 'oldest',
+      least: 'youngest',
     },
-    'people.medianAge': {
-      topic: 'people',
-      phrasing: 'Rank these countries by median age',
-      markers: {
-        most: 'oldest',
-        least: 'youngest',
-      },
+  },
+  'people.medianAge': {
+    topic: 'people',
+    phrasing: 'Rank these countries by median age',
+    markers: {
+      most: 'oldest',
+      least: 'youngest',
     },
-    'people.childrenPerWoman': {
-      topic: 'people',
-      phrasing: 'Rank these countries by the average number of children per women',
-      markers: {
-        most: 'most children',
-        least: 'fewest children',
-      },
+  },
+  'people.childrenPerWoman': {
+    topic: 'people',
+    phrasing: 'Rank these countries by the average number of children per women',
+    markers: {
+      most: 'most children',
+      least: 'fewest children',
     },
-    'education.literacy': {
-      topic: 'education',
-      phrasing: 'Rank these countries by the percentage of people who are literate',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'education.literacy': {
+    topic: 'education',
+    phrasing: 'Rank these countries by the percentage of people who are literate',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'education.averageYearsOfStudy': {
-      topic: 'education',
-      phrasing: 'Rank these countries by the average number of years spent in school',
-      markers: {
-        most: 'most years',
-        least: 'fewest years',
-      },
+  },
+  'education.averageYearsOfStudy': {
+    topic: 'education',
+    phrasing: 'Rank these countries by the average number of years spent in school',
+    markers: {
+      most: 'most years',
+      least: 'fewest years',
     },
-    'health.doctors': {
-      topic: 'health',
-      phrasing: 'Rank these countries by number of doctors per capita',
-      markers: {
-        most: 'most doctors',
-        least: 'fewest doctors',
-      },
+  },
+  'health.doctors': {
+    topic: 'health',
+    phrasing: 'Rank these countries by number of doctors per capita',
+    markers: {
+      most: 'most doctors',
+      least: 'fewest doctors',
     },
-    'health.hospitalBeds': {
-      topic: 'health',
-      phrasing: 'Rank these countries by number of hospital beds per capita',
-      markers: {
-        most: 'most beds',
-        least: 'fewest beds',
-      },
+  },
+  'health.hospitalBeds': {
+    topic: 'health',
+    phrasing: 'Rank these countries by number of hospital beds per capita',
+    markers: {
+      most: 'most beds',
+      least: 'fewest beds',
     },
-    'health.accessToContraceptives': {
-      topic: 'health',
-      phrasing: 'Rank these countries by the percentage of people with access to contraceptives',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'health.accessToContraceptives': {
+    topic: 'health',
+    phrasing: 'Rank these countries by the percentage of people with access to contraceptives',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'religion.atheism': {
-      topic: 'religion',
-      phrasing: 'Rank these countries by the percentage of people who are atheist',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'religion.atheism': {
+    topic: 'religion',
+    phrasing: 'Rank these countries by the percentage of people who are atheist',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'religion.believers': {
-      topic: 'religion',
-      phrasing: 'Rank these countries by the percentage of people who follow a religion',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'religion.believers': {
+    topic: 'religion',
+    phrasing: 'Rank these countries by the percentage of people who follow a religion',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'environment.CO2Emissions': {
-      topic: 'environment',
-      phrasing: 'Rank these countries by CO2 emissions',
-      markers: {
-        most: 'highest CO2 emissions',
-        least: 'lowest CO2 emissions',
-      },
+  },
+  'environment.CO2Emissions': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by CO2 emissions',
+    markers: {
+      most: 'highest CO2 emissions',
+      least: 'lowest CO2 emissions',
     },
-    'environment.renewables': {
-      topic: 'environment',
-      phrasing: 'Rank these countries by percent renewable energy in their national energy mix',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'environment.renewables': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by percent renewable energy in their national energy mix',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'humanRights.gayMarriageLegalized': {
-      topic: 'human rights',
-      phrasing: 'Rank these countries by year gay marriage was legalized',
-      markers: {
-        most: 'latest',
-        least: 'earliest',
-      },
+  },
+  'humanRights.gayMarriageLegalized': {
+    topic: 'human rights',
+    phrasing: 'Rank these countries by year gay marriage was legalized',
+    markers: {
+      most: 'latest',
+      least: 'earliest',
     },
-    // Individual challenges
-    'capital.name': {
-      topic: 'general knowledge',
-      phrasing: 'What country has {capital} as its capital?',
+  },
+  // Individual challenges
+  'capital.name': {
+    topic: 'general knowledge',
+    phrasing: 'What country has {capital} as its capital?',
+  },
+  flag: {
+    topic: 'general knowledge',
+    phrasing: 'Which country does this flag represent?',
+  },
+  isoCode: {
+    topic: 'general knowledge',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  'government.leader': {
+    topic: 'general knowledge',
+    phrasing: 'Which country is led by {leader}?',
+  },
+  currency: {
+    topic: 'economics',
+    phrasing: 'Which country spends the {currency}?',
+  },
+  landmarks: {
+    topic: 'geography',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  'infrastructure.internetAccess': {
+    topic: 'infrastructure',
+    phrasing: 'Rank these countries by the percentage of people with internet access',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    flag: {
-      topic: 'general knowledge',
-      phrasing: 'Which country does this flag represent?',
+  },
+  'people.population': {
+    topic: 'people',
+    phrasing: 'Which of these countries has the largest population?',
+    markers: {
+      most: 'largest population',
+      least: 'smallest population',
     },
-    isoCode: {
-      topic: 'general knowledge',
-      phrasing: 'Where on the map is {countryName}?',
+  },
+  'people.populationGrowthRate': {
+    topic: 'people',
+    phrasing: 'Rank the following by population growth rate',
+    markers: {
+      most: 'fastest growing',
+      least: 'slowest growing',
     },
-    'government.leader': {
-      topic: 'general knowledge',
-      phrasing: 'Which country is led by {leader}?',
+  },
+  'health.tobaccoUse': {
+    topic: 'health',
+    phrasing: 'Rank the following by the percentage of adults who use tobacco',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    currency: {
-      topic: 'economics',
-      phrasing: 'Which country spends the {currency}?',
+  },
+  'health.alcoholConsumption': {
+    topic: 'health',
+    phrasing: 'Rank the following by litres of pure alcohol consumed per adult each year',
+    markers: {
+      most: 'most litres',
+      least: 'fewest litres',
     },
-    landmarks: {
-      topic: 'geography',
-      phrasing: 'Where on the map is {countryName}?',
+  },
+  'humanRights.refugees': {
+    topic: 'human rights',
+    phrasing: 'Rank these countries by the number of refugees they host',
+    markers: {
+      most: 'most refugees',
+      least: 'fewest refugees',
     },
-    'infrastructure.internetAccess': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by the percentage of people with internet access',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'economics.inflation': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by their annual inflation rate',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'people.population': {
-      topic: 'people',
-      phrasing: 'Which of these countries has the largest population?',
-      markers: {
-        most: 'largest population',
-        least: 'smallest population',
-      },
+  },
+  // Legacy — no longer dealt; kept so in-flight games keep rendering.
+  'government.amountOfMilitaryConflicts': {
+    topic: 'general knowledge',
+    phrasing: 'Rank these countries by the number of armed conflicts they are involved in',
+    markers: {
+      most: 'most conflicts',
+      least: 'fewest conflicts',
     },
-    'people.populationGrowthRate': {
-      topic: 'people',
-      phrasing: 'Rank the following by population growth rate',
-      markers: {
-        most: 'fastest growing',
-        least: 'slowest growing',
-      },
+  },
+  'government.conflictsFought': {
+    topic: 'general knowledge',
+    phrasing:
+      'Rank these countries by distinct armed conflicts fought as a warring party since 1946',
+    markers: {
+      most: 'most conflicts',
+      least: 'fewest conflicts',
     },
-    'health.lifeExpectancy': {
-      topic: 'health',
-      phrasing: 'Rank the following by life expectancy.',
-      markers: {
-        most: 'oldest',
-        least: 'youngest',
-      },
+  },
+  'government.yearsAtWar': {
+    topic: 'general knowledge',
+    phrasing:
+      'Rank these countries by how many years since 1946 they have spent in a conflict at war intensity',
+    markers: {
+      most: 'most years at war',
+      least: 'fewest years at war',
     },
-    'health.tobaccoUse': {
-      topic: 'health',
-      phrasing: 'Rank the following by the percentage of adults who use tobacco',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+    // Bounded: 1946 through the current UCDP vintage (2024).
+    scale: { min: 0, max: 79 },
+  },
+  'government.recentConflicts': {
+    topic: 'general knowledge',
+    phrasing:
+      'Rank these countries by armed conflicts they have been party to in the last five years',
+    markers: {
+      most: 'most recent conflicts',
+      least: 'fewest recent conflicts',
     },
-    'health.alcoholConsumption': {
-      topic: 'health',
-      phrasing: 'Rank the following by litres of pure alcohol consumed per adult each year',
-      markers: {
-        most: 'most litres',
-        least: 'fewest litres',
-      },
+  },
+  'government.democracyIndex': {
+    topic: 'general knowledge',
+    phrasing: 'Rank these countries by their democracy index (V-Dem electoral democracy)',
+    markers: {
+      most: 'most democratic',
+      least: 'least democratic',
     },
-    'humanRights.refugees': {
-      topic: 'human rights',
-      phrasing: 'Rank these countries by the number of refugees they host',
-      markers: {
-        most: 'most refugees',
-        least: 'fewest refugees',
-      },
+    scale: { min: 0, max: 1 },
+  },
+  'government.corruptionIndex': {
+    topic: 'general knowledge',
+    // CPI is scored 0–100 where higher = cleaner; the ranking sorts on the
+    // raw score, so the top pole is the least corrupt.
+    phrasing: 'Rank these countries by their Corruption Perceptions Index score',
+    markers: {
+      most: 'least corrupt',
+      least: 'most corrupt',
     },
-    'economics.inflation': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by their annual inflation rate',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+    // The markers already run in score order (left = low score = most
+    // corrupt, right = high score = least corrupt), so a plain 0–100 plot
+    // of the raw CPI lands correctly — no inversion needed.
+    scale: { min: 0, max: 100 },
+  },
+  'government.humanDevelopmentIndex': {
+    topic: 'general knowledge',
+    phrasing: 'Rank these countries by their Human Development Index',
+    markers: {
+      most: 'most developed',
+      least: 'least developed',
     },
-    // Legacy — no longer dealt; kept so in-flight games keep rendering.
-    'government.amountOfMilitaryConflicts': {
-      topic: 'general knowledge',
-      phrasing: 'Rank these countries by the number of armed conflicts they are involved in',
-      markers: {
-        most: 'most conflicts',
-        least: 'fewest conflicts',
-      },
+    scale: { min: 0, max: 1 },
+  },
+  'government.happiness': {
+    topic: 'general knowledge',
+    phrasing: 'Rank these countries by their World Happiness score',
+    markers: {
+      most: 'happiest',
+      least: 'least happy',
     },
-    'government.conflictsFought': {
-      topic: 'general knowledge',
-      phrasing:
-        'Rank these countries by distinct armed conflicts fought as a warring party since 1946',
-      markers: {
-        most: 'most conflicts',
-        least: 'fewest conflicts',
-      },
+    // Cantril-ladder scores run roughly 1–8 in practice; a 0–10 band keeps the
+    // plotted marker legible against the ladder's full theoretical range.
+    scale: { min: 0, max: 10 },
+  },
+  'economics.gdpTotal': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by total GDP (purchasing power parity)',
+    markers: {
+      most: 'largest economy',
+      least: 'smallest economy',
     },
-    'government.yearsAtWar': {
-      topic: 'general knowledge',
-      phrasing:
-        'Rank these countries by how many years since 1946 they have spent in a conflict at war intensity',
-      markers: {
-        most: 'most years at war',
-        least: 'fewest years at war',
-      },
-      // Bounded: 1946 through the current UCDP vintage (2024).
-      scale: { min: 0, max: 79 },
+  },
+  'economics.gdpGrowth': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by their GDP growth rate',
+    markers: {
+      most: 'fastest growing',
+      least: 'slowest growing',
     },
-    'government.recentConflicts': {
-      topic: 'general knowledge',
-      phrasing:
-        'Rank these countries by armed conflicts they have been party to in the last five years',
-      markers: {
-        most: 'most recent conflicts',
-        least: 'fewest recent conflicts',
-      },
+  },
+  'economics.publicDebt': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by public debt as a percentage of GDP',
+    markers: {
+      most: 'highest debt',
+      least: 'lowest debt',
     },
-    'government.democracyIndex': {
-      topic: 'general knowledge',
-      phrasing: 'Rank these countries by their democracy index (V-Dem electoral democracy)',
-      markers: {
-        most: 'most democratic',
-        least: 'least democratic',
-      },
-      scale: { min: 0, max: 1 },
+  },
+  'infrastructure.mobileSubscriptions': {
+    topic: 'infrastructure',
+    phrasing: 'Rank these countries by mobile phone subscriptions per 100 people',
+    markers: {
+      most: 'most subscriptions',
+      least: 'fewest subscriptions',
     },
-    'government.corruptionIndex': {
-      topic: 'general knowledge',
-      // CPI is scored 0–100 where higher = cleaner; the ranking sorts on the
-      // raw score, so the top pole is the least corrupt.
-      phrasing: 'Rank these countries by their Corruption Perceptions Index score',
-      markers: {
-        most: 'least corrupt',
-        least: 'most corrupt',
-      },
-      // The markers already run in score order (left = low score = most
-      // corrupt, right = high score = least corrupt), so a plain 0–100 plot
-      // of the raw CPI lands correctly — no inversion needed.
-      scale: { min: 0, max: 100 },
+  },
+  'infrastructure.airports': {
+    topic: 'infrastructure',
+    phrasing: 'Rank these countries by number of airports',
+    markers: {
+      most: 'most airports',
+      least: 'fewest airports',
     },
-    'government.humanDevelopmentIndex': {
-      topic: 'general knowledge',
-      phrasing: 'Rank these countries by their Human Development Index',
-      markers: {
-        most: 'most developed',
-        least: 'least developed',
-      },
-      scale: { min: 0, max: 1 },
+  },
+  'energy.electricityAccess': {
+    topic: 'energy',
+    phrasing: 'Rank these countries by the percentage of people with electricity access',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'government.happiness': {
-      topic: 'general knowledge',
-      phrasing: 'Rank these countries by their World Happiness score',
-      markers: {
-        most: 'happiest',
-        least: 'least happy',
-      },
-      // Cantril-ladder scores run roughly 1–8 in practice; a 0–10 band keeps the
-      // plotted marker legible against the ladder's full theoretical range.
-      scale: { min: 0, max: 10 },
+  },
+  'energy.fossilFuels': {
+    topic: 'energy',
+    phrasing: 'Rank these countries by the share of electricity from fossil fuels',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
     },
-    'economics.gdpTotal': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by total GDP (purchasing power parity)',
-      markers: {
-        most: 'largest economy',
-        least: 'smallest economy',
-      },
+  },
+  'people.netMigration': {
+    topic: 'people',
+    phrasing: 'Rank these countries by net migration rate per 1000 people',
+    markers: {
+      most: 'most inward migration',
+      least: 'most outward migration',
     },
-    'economics.gdpGrowth': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by their GDP growth rate',
-      markers: {
-        most: 'fastest growing',
-        least: 'slowest growing',
-      },
+  },
+  'people.birthRate': {
+    topic: 'people',
+    phrasing: 'Rank these countries by birth rate per 1000 people',
+    markers: {
+      most: 'highest birth rate',
+      least: 'lowest birth rate',
     },
-    'economics.publicDebt': {
-      topic: 'economics',
-      phrasing: 'Rank these countries by public debt as a percentage of GDP',
-      markers: {
-        most: 'highest debt',
-        least: 'lowest debt',
-      },
+  },
+  'people.urbanization': {
+    topic: 'people',
+    phrasing: 'Rank these countries by the percentage of people living in urban areas',
+    markers: {
+      most: 'most urban',
+      least: 'most rural',
     },
-    'infrastructure.mobileSubscriptions': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by mobile phone subscriptions per 100 people',
-      markers: {
-        most: 'most subscriptions',
-        least: 'fewest subscriptions',
-      },
+  },
+  'environment.methaneEmissions': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by their methane emissions',
+    markers: {
+      most: 'most emissions',
+      least: 'fewest emissions',
     },
-    'infrastructure.airports': {
-      topic: 'infrastructure',
-      phrasing: 'Rank these countries by number of airports',
-      markers: {
-        most: 'most airports',
-        least: 'fewest airports',
-      },
+  },
+  'economics.touristArrivals': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by yearly international tourist arrivals',
+    markers: {
+      most: 'most visited',
+      least: 'least visited',
     },
-    'energy.electricityAccess': {
-      topic: 'energy',
-      phrasing: 'Rank these countries by the percentage of people with electricity access',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'economics.workingHours': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by annual working hours per worker',
+    markers: {
+      most: 'longest hours',
+      least: 'shortest hours',
     },
-    'energy.fossilFuels': {
-      topic: 'energy',
-      phrasing: 'Rank these countries by the share of electricity from fossil fuels',
-      markers: {
-        most: 'highest percent',
-        least: 'lowest percent',
-      },
+  },
+  'energy.consumptionPerCapita': {
+    topic: 'energy',
+    phrasing: 'Rank these countries by energy use per person',
+    markers: {
+      most: 'highest use',
+      least: 'lowest use',
     },
-    'people.netMigration': {
-      topic: 'people',
-      phrasing: 'Rank these countries by net migration rate per 1000 people',
-      markers: {
-        most: 'most inward migration',
-        least: 'most outward migration',
-      },
+  },
+  'health.meatConsumption': {
+    topic: 'health',
+    phrasing: 'Rank these countries by meat consumption per person',
+    markers: {
+      most: 'most meat',
+      least: 'least meat',
     },
-    'people.birthRate': {
-      topic: 'people',
-      phrasing: 'Rank these countries by birth rate per 1000 people',
-      markers: {
-        most: 'highest birth rate',
-        least: 'lowest birth rate',
-      },
+  },
+  'health.maleHeight': {
+    topic: 'health',
+    phrasing: 'Rank these countries by average male height',
+    markers: {
+      most: 'tallest',
+      least: 'shortest',
     },
-    'people.urbanization': {
-      topic: 'people',
-      phrasing: 'Rank these countries by the percentage of people living in urban areas',
-      markers: {
-        most: 'most urban',
-        least: 'most rural',
-      },
+    // Adult male means span ~160–184 cm; a full 0-based track would bury
+    // every country at the top and make the decisiveness gap unreachable.
+    scale: { min: 155, max: 190 },
+  },
+  'health.roadDeaths': {
+    topic: 'health',
+    phrasing: 'Rank these countries by road-traffic deaths per 100,000 people',
+    markers: {
+      most: 'most deaths',
+      least: 'fewest deaths',
     },
-    'environment.methaneEmissions': {
-      topic: 'environment',
-      phrasing: 'Rank these countries by their methane emissions',
-      markers: {
-        most: 'most emissions',
-        least: 'fewest emissions',
-      },
+  },
+  'environment.airPollution': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by outdoor air pollution',
+    markers: {
+      most: 'most polluted',
+      least: 'cleanest air',
     },
+  },
+  'environment.redListIndex': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by how safe their wildlife is from extinction',
+    markers: {
+      most: 'safest wildlife',
+      least: 'most at risk',
+    },
+    // The Red List Index is 0–1 but real countries sit ~0.4–1.
+    scale: { min: 0.4, max: 1 },
+  },
+  'environment.threatenedMammals': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by their number of threatened mammal species',
+    markers: {
+      most: 'most species',
+      least: 'fewest species',
+    },
+  },
+  'environment.protectedLand': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by the share of their land that is protected',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
+    },
+  },
+  'environment.freshwaterPerCapita': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by renewable freshwater per person',
+    markers: {
+      most: 'most water',
+      least: 'least water',
+    },
+  },
+  'environment.evSalesShare': {
+    topic: 'environment',
+    phrasing: 'Rank these countries by the share of new cars sold that are electric',
+    markers: {
+      most: 'highest percent',
+      least: 'lowest percent',
+    },
+  },
+  'people.deathRate': {
+    topic: 'people',
+    phrasing: 'Rank these countries by yearly deaths per 1,000 people',
+    markers: {
+      most: 'highest rate',
+      least: 'lowest rate',
+    },
+  },
+  'people.density': {
+    topic: 'people',
+    phrasing: 'Rank these countries by population density',
+    markers: {
+      most: 'most dense',
+      least: 'most sparse',
+    },
+  },
+  'people.share65Plus': {
+    topic: 'people',
+    phrasing: 'Rank these countries by the share of people aged 65 and over',
+    markers: {
+      most: 'oldest',
+      least: 'youngest',
+    },
+    // Shares run ~1–30%; a 0–100 track would bunch everyone at the bottom.
+    scale: { min: 0, max: 35 },
+  },
+  'people.sexRatio': {
+    topic: 'people',
+    phrasing: 'Rank these countries by the number of men per 100 women',
+    markers: {
+      most: 'most men',
+      least: 'most women',
+    },
+  },
 }
 
 /**

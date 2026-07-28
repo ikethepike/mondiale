@@ -55,7 +55,7 @@ import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EMPIRES } from '~~/data/empires.gen'
-import { TRENDS } from '~~/data/trends.gen'
+import { TRENDS } from '~~/lib/trends'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
@@ -1101,7 +1101,12 @@ const scenarios: Scenario[] = [
             deadline: Date.now() + 25000,
             detectives: [ME, THIRD],
             clues: [
-              { hop: 1, kind: 'region', topic: 'geography', text: 'The despot is hiding in Europe' },
+              {
+                hop: 1,
+                kind: 'region',
+                topic: 'geography',
+                text: 'The despot is hiding in Europe',
+              },
               {
                 hop: 2,
                 kind: 'threshold',
@@ -1280,7 +1285,11 @@ const scenarios: Scenario[] = [
               { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
               { hop: 2, kind: 'threshold', text: 'Its urbanization is below 68%' },
               { hop: 3, kind: 'language', text: 'Official languages there include Italian' },
-              { hop: 4, kind: 'flag-colors', text: 'The flag flying over the hideout carries green' },
+              {
+                hop: 4,
+                kind: 'flag-colors',
+                text: 'The flag flying over the hideout carries green',
+              },
               { hop: 5, kind: 'threshold', text: 'Its population is below 11,000,000' },
             ],
             moves: [

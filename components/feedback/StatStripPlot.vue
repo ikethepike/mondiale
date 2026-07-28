@@ -72,9 +72,9 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { TRENDS } from '~~/data/trends.gen'
+import { TRENDS } from '~~/lib/trends'
 import { countryName, getCountry } from '~~/lib/country'
-import { formatAmount, clamp  } from '~~/lib/number'
+import { formatAmount, clamp } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -169,7 +169,8 @@ const cutX = computed(() => {
   return clamp(scale.value(props.cutAt), 3, 97)
 })
 
-const display = (amount: number, unit: string | undefined) => formatAmount({ amount, unit: unit ?? '' })
+const display = (amount: number, unit: string | undefined) =>
+  formatAmount({ amount, unit: unit ?? '' })
 
 /** Marked countries with their verdict role, protagonists last (drawn on top). */
 const marked = computed<{ iso: ISOCountryCode; kind: 'truth' | 'lie' | 'noted' }[]>(() => [

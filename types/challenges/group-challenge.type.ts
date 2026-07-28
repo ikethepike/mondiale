@@ -138,11 +138,6 @@ export const GROUP_CHALLENGES: {
     id: 'health.hospitalBeds',
     countriesPerPlayer: {},
   },
-  'health.lifeExpectancy': {
-    _type: 'group-challenge',
-    id: 'health.lifeExpectancy',
-    countriesPerPlayer: {},
-  },
   'health.alcoholConsumption': {
     _type: 'group-challenge',
     id: 'health.alcoholConsumption',
@@ -295,6 +290,86 @@ export const GROUP_CHALLENGES: {
     id: 'environment.methaneEmissions',
     countriesPerPlayer: {},
   },
+  'economics.touristArrivals': {
+    _type: 'group-challenge',
+    id: 'economics.touristArrivals',
+    countriesPerPlayer: {},
+  },
+  'economics.workingHours': {
+    _type: 'group-challenge',
+    id: 'economics.workingHours',
+    countriesPerPlayer: {},
+  },
+  'energy.consumptionPerCapita': {
+    _type: 'group-challenge',
+    id: 'energy.consumptionPerCapita',
+    countriesPerPlayer: {},
+  },
+  'health.meatConsumption': {
+    _type: 'group-challenge',
+    id: 'health.meatConsumption',
+    countriesPerPlayer: {},
+  },
+  'health.maleHeight': {
+    _type: 'group-challenge',
+    id: 'health.maleHeight',
+    countriesPerPlayer: {},
+  },
+  'health.roadDeaths': {
+    _type: 'group-challenge',
+    id: 'health.roadDeaths',
+    countriesPerPlayer: {},
+  },
+  'environment.airPollution': {
+    _type: 'group-challenge',
+    id: 'environment.airPollution',
+    countriesPerPlayer: {},
+  },
+  'environment.redListIndex': {
+    _type: 'group-challenge',
+    id: 'environment.redListIndex',
+    countriesPerPlayer: {},
+  },
+  'environment.threatenedMammals': {
+    _type: 'group-challenge',
+    id: 'environment.threatenedMammals',
+    countriesPerPlayer: {},
+  },
+  'environment.protectedLand': {
+    _type: 'group-challenge',
+    id: 'environment.protectedLand',
+    countriesPerPlayer: {},
+  },
+  'environment.freshwaterPerCapita': {
+    _type: 'group-challenge',
+    id: 'environment.freshwaterPerCapita',
+    countriesPerPlayer: {},
+  },
+  'environment.evSalesShare': {
+    _type: 'group-challenge',
+    id: 'environment.evSalesShare',
+    countriesPerPlayer: {},
+  },
+  'people.deathRate': {
+    _type: 'group-challenge',
+    id: 'people.deathRate',
+    countriesPerPlayer: {},
+  },
+  'people.density': {
+    _type: 'group-challenge',
+    id: 'people.density',
+    countriesPerPlayer: {},
+  },
+  'people.share65Plus': {
+    _type: 'group-challenge',
+    id: 'people.share65Plus',
+    countriesPerPlayer: {},
+  },
+  'people.sexRatio': {
+    _type: 'group-challenge',
+    id: 'people.sexRatio',
+    countriesPerPlayer: {},
+  },
 } as const
 
 export type GroupChallengeAccessorId =
@@ -325,7 +400,6 @@ export type GroupChallengeAccessorId =
   | 'health.doctors'
   | 'health.hospitalBeds'
   | 'health.accessToContraceptives'
-  | 'health.lifeExpectancy'
   | 'health.tobaccoUse'
   | 'health.alcoholConsumption'
   | 'religion.atheism'
@@ -354,3 +428,19 @@ export type GroupChallengeAccessorId =
   | 'people.birthRate'
   | 'people.urbanization'
   | 'environment.methaneEmissions'
+  | 'economics.touristArrivals'
+  | 'economics.workingHours'
+  | 'energy.consumptionPerCapita'
+  | 'health.meatConsumption'
+  | 'health.maleHeight'
+  | 'health.roadDeaths'
+  | 'environment.airPollution'
+  | 'environment.redListIndex'
+  | 'environment.threatenedMammals'
+  | 'environment.protectedLand'
+  | 'environment.freshwaterPerCapita'
+  | 'environment.evSalesShare'
+  | 'people.deathRate'
+  | 'people.density'
+  | 'people.share65Plus'
+  | 'people.sexRatio'

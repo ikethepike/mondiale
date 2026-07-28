@@ -128,7 +128,8 @@
                     </template>
                   </SegmentedControl>
                   <span v-if="overrideCount" class="config-caption">
-                    {{ overrideCount }} challenge {{ overrideCount === 1 ? 'override' : 'overrides' }}
+                    {{ overrideCount }} challenge
+                    {{ overrideCount === 1 ? 'override' : 'overrides' }}
                   </span>
                 </div>
               </div>
@@ -201,7 +202,7 @@
             />
           </div>
 
-          <div v-for="(group, id) in CHALLENGE_GROUPS" :key="id" class="challenge-row">
+          <div v-for="(group, id) in visibleChallengeGroups" :key="id" class="challenge-row">
             <div class="challenge-meta">
               <span class="challenge-name">{{ group.label }}</span>
               <span class="challenge-caption">{{ groupCaption(id) }}</span>
@@ -289,6 +290,7 @@ import { wait } from '~~/lib/time'
 import {
   autoEnabledKinds,
   CHALLENGE_GROUPS,
+  type ChallengeGroup,
   type ChallengeGroupId,
 } from '~~/types/challenges/challenge-groups.type'
 import {
@@ -300,6 +302,13 @@ import {
 
 const { player, isPlayerHost, hostPlayer, game, update, gameStore } = useClientEvents()
 const playersByPhase = toRef(gameStore, 'playersByPhase')
+
+// Hidden groups (stat-topic gates without a lobby row yet) stay out of the
+// panel until their toggle ships. The cast drops the filtered keys' optional
+// slots — v-for only visits present entries.
+const visibleChallengeGroups = Object.fromEntries(
+  Object.entries(CHALLENGE_GROUPS).filter(([, group]) => !('hidden' in group))
+) as Record<ChallengeGroupId, ChallengeGroup>
 
 // The optimistic difficulty: both the lobby and settings controls bind to it,
 // so a tap in one mirrors to the other (and to the captions) before the
@@ -405,8 +414,9 @@ const updateConfiguration = async () => {
   // mounted contributes nothing, so its fields fall back to the game's state.
   // Difficulty lives in BOTH — the settings entry comes later and wins, and
   // both controls track the same model, so the loser is never stale.
-  const entries = [breakdown.value, settingsForm.value]
-    .flatMap(form => (form ? [...new FormData(form).entries()] : []))
+  const entries = [breakdown.value, settingsForm.value].flatMap(form =>
+    form ? [...new FormData(form).entries()] : []
+  )
 
   const configuration: { [key: string]: FormDataEntryValue | boolean | object } = {}
   const challengeOverrides: { [group: string]: boolean } = {}

@@ -21,6 +21,7 @@
     "generate:conflict-events": "bun run generators/vendors/ucdp/create-conflict-events.ts",
     "generate:worldbank": "bun run generators/vendors/worldbank/create-worldbank.ts",
     "generate:owid": "bun run generators/vendors/owid/create-owid.ts",
+    "generate:wpp": "bun run generators/vendors/unwpp/create-wpp.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:currencies": "bun run generators/create-currencies-file.ts",
