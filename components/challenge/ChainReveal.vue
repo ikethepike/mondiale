@@ -3,14 +3,7 @@
     <h2 class="headline">
       {{ headline }}
     </h2>
-    <ol class="placements">
-      <li v-for="row in rows" :key="row.playerId" class="placement">
-        <PlayerPawn class="pawn" :player="players[row.playerId]" />
-        <span class="name">{{ row.name }}</span>
-        <span class="fate">{{ row.fate }}</span>
-        <span class="links">{{ row.links }} {{ row.links === 1 ? 'link' : 'links' }}</span>
-      </li>
-    </ol>
+    <PlacementList :rows="rows" :players="players" />
     <div v-if="myOuts.length" class="outs">
       <p class="outs-lead">You had {{ myOuts.length === 1 ? 'an open door' : 'open doors' }}:</p>
       <ul class="doors">
@@ -25,7 +18,7 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import PlacementList from '~/components/challenge/PlacementList.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
@@ -66,11 +59,12 @@ const rows = computed(() => {
           : outcome === 'timeout'
             ? 'ran out of clock'
             : 'stepped off the map'
+    const links = props.state.named[playerId]?.length ?? 0
     return {
       playerId,
       name: seatLabel(props.players, playerId, props.playerId),
       fate,
-      links: props.state.named[playerId]?.length ?? 0,
+      tail: `${links} ${links === 1 ? 'link' : 'links'}`,
     }
   })
 })
@@ -93,42 +87,6 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
 .headline {
   margin: 0;
   font-size: 1.8rem;
-}
-
-.placements {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: column nowrap;
-}
-
-.placement {
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
-  font-size: 1.3rem;
-
-  .pawn {
-    width: 1.2rem;
-    height: 1.85rem;
-    flex: none;
-  }
-
-  .name {
-    font-weight: bold;
-  }
-
-  .fate {
-    opacity: 0.75;
-  }
-
-  .links {
-    opacity: 0.6;
-    margin-left: auto;
-    white-space: nowrap;
-  }
 }
 
 .outs {

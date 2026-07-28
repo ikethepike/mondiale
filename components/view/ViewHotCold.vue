@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="hot-cold">
+  <div v-if="challenge" class="hot-cold challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,20 +9,18 @@
       @done="begin()"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Find the mystery country</h1>
-        <span class="map-caption sub">
-          {{ probesLeft }} {{ probesLeft === 1 ? 'probe' : 'probes' }} left
+    <ChallengePrompt>
+      <h1 class="map-caption">Find the mystery country</h1>
+      <span class="map-caption sub">
+        {{ probesLeft }} {{ probesLeft === 1 ? 'probe' : 'probes' }} left
+      </span>
+      <Transition name="caption" mode="out-in">
+        <span v-if="feedback" :key="feedback" class="map-caption feedback" :class="warmthClass">
+          {{ feedback }}
         </span>
-        <Transition name="caption" mode="out-in">
-          <span v-if="feedback" :key="feedback" class="map-caption feedback" :class="warmthClass">
-            {{ feedback }}
-          </span>
-        </Transition>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+      </Transition>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <footer>
       <TransitionGroup ref="probeList" tag="ol" name="chain" class="probe-list">
@@ -44,6 +42,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -206,36 +205,6 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.hot-cold {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
 
 .feedback {
   padding: 0.4rem 1.4rem;
@@ -250,11 +219,6 @@ header {
   &.cold {
     color: var(--soft-blue);
   }
-}
-
-footer {
-  z-index: 2;
-  padding: 2rem;
 }
 
 .probe-list {
@@ -305,16 +269,7 @@ footer {
     transform var(--motion-quick) var(--ease-out-expressive);
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
-
   // A long trail would eat the map from the bottom: one scroll-snapping row,
   // newest probe kept in view by the watcher above.
   .probe-list {

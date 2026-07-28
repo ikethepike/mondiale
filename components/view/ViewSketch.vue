@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="sketch-challenge">
+  <div v-if="challenge" class="sketch-challenge challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,12 +9,10 @@
       @done="showInterstitial = false"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Draw {{ countryName(challenge.country) }}</h1>
-        <span class="map-caption sub">One continuous line — north is up</span>
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">Draw {{ countryName(challenge.country) }}</h1>
+      <span class="map-caption sub">One continuous line — north is up</span>
+    </ChallengePrompt>
 
     <section class="easel">
       <div class="canvas-frame">
@@ -38,6 +36,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -162,35 +161,6 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.sketch-challenge {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
 
 .easel {
   flex: 1;
@@ -227,13 +197,7 @@ header {
   pointer-events: auto;
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   // A wider, slightly shorter easel for finger drawing, with full-width
   // tool buttons clear of the home indicator.
   .easel {

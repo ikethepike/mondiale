@@ -1,6 +1,6 @@
 <template>
   <!-- Spans throughout: renders inside ChallengeResult's lesson <p>. -->
-  <span class="made-reveal">
+  <span class="ranked-bars made-reveal">
     <span class="header">
       <strong class="commodity">{{ challenge.commodity }}</strong>
       <span class="subtitle">
@@ -33,6 +33,7 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
+import { formatCompact } from '~~/lib/number'
 import type { MadeChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -47,13 +48,6 @@ const props = defineProps<{
   /** The player's answer, right or wrong. */
   picked?: ISOCountryCode
 }>()
-
-const compact = new Intl.NumberFormat('en', {
-  style: 'currency',
-  currency: 'USD',
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
 
 const rows = computed(() => {
   const exporters = Object.values(COUNTRIES).filter(country =>
@@ -71,7 +65,7 @@ const rows = computed(() => {
         name: countryName(country),
         total: total ?? 0,
         width: total ? Math.max(3, (total / largest) * 100) : 3,
-        display: total ? compact.format(total) : '—',
+        display: total ? formatCompact(total, { currency: true }) : '—',
       }
     })
     .sort((a, b) => b.total - a.total)
@@ -88,17 +82,7 @@ const pickedLine = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
-.made-reveal {
-  gap: 1.2rem;
-  display: flex;
-  flex-flow: column nowrap;
-  padding: 0.8rem 0.6rem;
-  min-width: min(42rem, 100%);
-  max-height: min(52vh, 46rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
+// Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
 .header {
   gap: 0.3rem;
   display: flex;
@@ -116,21 +100,8 @@ const pickedLine = computed(() => {
   }
 }
 
-.rows {
-  gap: 0.45rem;
-  display: flex;
-  flex-flow: column nowrap;
-}
-
 .row {
-  gap: 0.8rem;
-  display: flex;
-  opacity: 0;
-  align-items: center;
-  font-size: 1.4rem;
   border-radius: 0.6rem;
-  animation: row-land 0.4s var(--ease-smooth) forwards;
-  animation-delay: calc(var(--i) * 110ms);
 
   &.picked {
     padding: 0.2rem 0.5rem;
@@ -162,22 +133,8 @@ const pickedLine = computed(() => {
   }
 }
 
-.bar {
-  flex: 1;
-  height: 0.7rem;
-  overflow: hidden;
-  border-radius: 0.35rem;
-  background: hsla(216, 40%, 25%, 0.1);
-
-  .fill {
-    height: 100%;
-    display: block;
-    border-radius: 0.35rem;
-    background: var(--soft-blue);
-    transform-origin: left center;
-    animation: bar-grow 0.5s var(--ease-smooth) backwards;
-    animation-delay: calc(var(--i) * 110ms + 200ms);
-  }
+.bar .fill {
+  background: var(--soft-blue);
 }
 
 .picked-line {
@@ -187,30 +144,15 @@ const pickedLine = computed(() => {
   animation-delay: calc(var(--i) * 110ms + 250ms);
 }
 
-// row-land and bar-grow come from rules/_animations.scss
-
-
 @media (prefers-reduced-motion: reduce) {
-  .row,
   .picked-line {
     animation: none;
     opacity: 1;
   }
-
-  .bar .fill {
-    animation: none;
-  }
 }
 
 @media screen and (max-width: 480px) {
-  .made-reveal {
-    padding: 0.4rem 0;
-  }
-
   .row {
-    gap: 0.6rem;
-    font-size: 1.3rem;
-
     .country {
       width: 8.5rem;
     }

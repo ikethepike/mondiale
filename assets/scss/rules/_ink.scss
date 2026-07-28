@@ -7,3 +7,6 @@
 @function ink($alpha: 1, $lightness: 21.6%) {
   @return hsla(215.7, 76.4%, $lightness, $alpha);
 }
+
+// The hairline divider under card headers — near-black at 12%, one token.
+$hairline: hsla(0, 0%, 7.5%, 0.12);

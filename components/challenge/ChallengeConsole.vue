@@ -24,6 +24,9 @@ const low = computed(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 .challenge-console {
+  // The console owns its width — ten views used to re-declare it around the
+  // component (in two drifted spellings).
+  width: min(42rem, calc(100vw - 3.2rem));
   gap: 0.2rem;
   display: flex;
   align-items: center;

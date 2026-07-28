@@ -311,7 +311,6 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .victory-stage {
   top: 0;
@@ -398,16 +397,6 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   display: grid;
   max-width: 110rem;
   grid-template-columns: 68% 32%;
-}
-
-.eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
-  margin-bottom: 0.8rem;
 }
 
 .report-header {

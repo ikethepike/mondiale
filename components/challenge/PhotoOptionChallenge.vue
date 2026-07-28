@@ -38,7 +38,6 @@ withDefaults(
 const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .photo-option-challenge {
   display: flex;
@@ -66,45 +65,13 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 }
 
 .card-options {
-  gap: 1.4rem;
-  display: grid;
   margin-top: 1.4rem;
-  pointer-events: auto;
   grid-template-columns: repeat(2, minmax(16rem, 24rem));
 }
 
 .card-option {
-  cursor: pointer;
-  padding: 1.2rem;
   gap: 1rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-  border-radius: 1.2rem;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid ink(0.25);
-  transition:
-    transform var(--motion-quick) var(--ease-out-expressive),
-    border-color var(--motion-quick) var(--ease-out-expressive);
-
-  @media (hover: hover) {
-    &:hover {
-      transform: translateY(-0.3rem);
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active {
-    border-color: var(--dark-blue);
-  }
-
-  .option-flag {
-    width: 100%;
-    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
-    height: auto;
-    border: 0.1rem solid ink(0.25);
-  }
+  padding: 1.2rem;
 }
 
 @media (max-width: $tablet) {

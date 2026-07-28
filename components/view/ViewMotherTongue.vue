@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="mother-tongue">
+  <div v-if="challenge" class="mother-tongue challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,17 +9,12 @@
       @done="start"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Who speaks {{ challenge.language }}?</h1>
-        <span class="map-caption sub">
-          {{ found.length }} of {{ challenge.countries.length }} found
-        </span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">Who speaks {{ challenge.language }}?</h1>
+      <span class="map-caption sub">
+        {{ found.length }} of {{ challenge.countries.length }} found
+      </span>
+    </ChallengePrompt>
 
     <section class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -52,6 +47,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -90,57 +86,6 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.mother-tongue {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
-
-.guess-box {
-  gap: 1.2rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
-}
-
-footer {
-  z-index: 2;
-  padding: 2rem;
-}
-
 .found-list {
   gap: 0.8rem;
   margin: 0;
@@ -180,15 +125,7 @@ footer {
     transform var(--motion-quick) var(--ease-out-expressive);
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
   // Long answer lists scroll instead of swallowing the map and input.
   .found-list {
     max-height: 22dvh;
@@ -198,21 +135,5 @@ footer {
     pointer-events: auto;
     overscroll-behavior: contain;
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

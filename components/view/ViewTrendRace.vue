@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="trend-race">
+  <div v-if="challenge" class="trend-race challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -16,24 +16,22 @@
       :total="challenge.durationSeconds"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">
-          Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
-          {{ challenge.windowStartYear }}?
-        </h1>
-        <span v-if="revealed && pickedWinner" class="map-caption sub verdict correct">
-          Called it — {{ winnerName }} moved the most
-        </span>
-        <span v-else-if="revealed && picked !== undefined" class="map-caption sub verdict incorrect">
-          {{ winnerName }} moved the most
-        </span>
-        <span v-else-if="revealed" class="map-caption sub verdict incorrect">
-          Time's up — {{ winnerName }} moved the most
-        </span>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">
+        Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
+        {{ challenge.windowStartYear }}?
+      </h1>
+      <span v-if="revealed && pickedWinner" class="map-caption sub verdict correct">
+        Called it — {{ winnerName }} moved the most
+      </span>
+      <span v-else-if="revealed && picked !== undefined" class="map-caption sub verdict incorrect">
+        {{ winnerName }} moved the most
+      </span>
+      <span v-else-if="revealed" class="map-caption sub verdict incorrect">
+        Time's up — {{ winnerName }} moved the most
+      </span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <section class="race-stage">
       <!-- The reveal's second act: the whole world's CURRENT values as a
@@ -97,6 +95,7 @@
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
@@ -195,40 +194,12 @@ const pick = (isoCode: ISOCountryCode) => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-.trend-race {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
+
+header .verdict.correct {
+  color: var(--dark-blue);
 }
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .verdict.correct {
-    color: var(--dark-blue);
-  }
-  .verdict.incorrect {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .verdict.incorrect {
+  color: var(--hior-ange);
 }
 
 .race-stage {
@@ -342,10 +313,6 @@ header {
 }
 
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   .race-stage {
     overflow-y: auto;
     // Centering + overflow pushes content above the scroll origin, where it

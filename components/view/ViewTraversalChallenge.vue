@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="traversal-challenge">
+  <div v-if="challenge" class="traversal-challenge challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       :tone="challenge.corridor ? 'alert' : 'info'"
@@ -17,22 +17,17 @@
       @done="onInterstitialDone"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">
-          Link {{ countryName(challenge.start) }} to {{ countryName(challenge.target) }}
-        </h1>
-        <span v-if="challenge.corridor" class="map-caption corridor">
-          Corridor rule: only {{ challenge.corridor.name }} members can bridge the route
-        </span>
-        <span class="map-caption sub">
-          {{ guessesLeft }} {{ guessesLeft === 1 ? 'guess' : 'guesses' }} left
-        </span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">
+        Link {{ countryName(challenge.start) }} to {{ countryName(challenge.target) }}
+      </h1>
+      <span v-if="challenge.corridor" class="map-caption corridor">
+        Corridor rule: only {{ challenge.corridor.name }} members can bridge the route
+      </span>
+      <span class="map-caption sub">
+        {{ guessesLeft }} {{ guessesLeft === 1 ? 'guess' : 'guesses' }} left
+      </span>
+    </ChallengePrompt>
 
     <section class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -75,6 +70,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -251,61 +247,11 @@ const onInterstitialDone = () => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.traversal-challenge {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub,
-  .hint,
-  .corridor {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .hint,
-  .corridor {
-    color: var(--hior-ange);
-  }
-
-  .corridor {
-    font-weight: bold;
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
-
-.guess-box {
-  gap: 1.2rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-footer {
-  z-index: 2;
-  padding: 2rem;
+header .corridor {
+  font-weight: bold;
+  padding: 0.4rem 1.4rem;
+  color: var(--hior-ange);
+  border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
 }
 
 .route {
@@ -361,15 +307,7 @@ footer {
     transform var(--motion-quick) var(--ease-out-expressive);
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
   // Long answer lists scroll instead of swallowing the map and input.
   .route {
     max-height: 22dvh;
@@ -379,21 +317,5 @@ footer {
     pointer-events: auto;
     overscroll-behavior: contain;
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

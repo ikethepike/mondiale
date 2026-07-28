@@ -10,6 +10,12 @@
 
 // Templates
 @use 'templates/pane';
+@use 'templates/intro-overlay';
+@use 'templates/ranked-bars';
+@use 'templates/challenge-shell';
+@use 'templates/option-card';
+@use 'templates/hint-chip';
+@use 'templates/eyebrow';
 @use 'templates/player-accent';
 @use 'templates/map-caption';
 @use 'templates/chip';

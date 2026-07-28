@@ -1,0 +1,56 @@
+@use '../rules/ink' as *;
+
+// The house multiple-choice recipe: a grid of tappable cream cards (photo
+// options, flag tables, empire names). Five surfaces carried this verbatim;
+// views declare only their own grid-template-columns on `.card-options`.
+.card-options {
+  gap: 1.4rem;
+  display: grid;
+  pointer-events: auto;
+}
+
+.card-option {
+  gap: 0.8rem;
+  cursor: pointer;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+  border-radius: 1.2rem;
+  color: var(--dark-blue);
+  font-family: inherit;
+  backdrop-filter: blur(0.5rem);
+  background: hsla(36, 100%, 98%, 0.88);
+  border: 0.1rem solid ink(0.25);
+  transition:
+    transform var(--motion-quick) var(--ease-out-expressive),
+    border-color var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+
+  &:active:not(:disabled) {
+    border-color: var(--dark-blue);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  // A wrong pick already spent against the cap — greyed and marked.
+  &.is-spent {
+    opacity: 0.35;
+    border-color: var(--hior-ange);
+  }
+
+  .option-flag {
+    width: 100%;
+    height: auto;
+    border: 0.1rem solid ink(0.25);
+  }
+}

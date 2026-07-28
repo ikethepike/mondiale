@@ -39,6 +39,16 @@ and wire every caller through it. Never inline a second copy "just for this view
 | Shared keyframes (`chip-in`, `row-land`, `bar-grow`, `stroke-draw`, …) | `assets/scss/rules/_animations.scss` — scoped blocks reference them by name |
 | Player identity edge (colour border on owned rows/cards) | `.player-accent` in `assets/scss/templates/_player-accent.scss` + inline `--player-color` |
 | SCSS breakpoints | `$tablet`/`$laptop`/`$desktop` in `rules/_breakpoints.scss` — never a raw `640px` media query |
+| Challenge view chrome (full-viewport shell, footer berth + safe area, guess-box, lock-row) | `.challenge-shell` in `templates/_challenge-shell.scss` |
+| Challenge header/prompt (title column, subs, floating miss hint) | `components/challenge/ChallengePrompt.vue` — views never declare their own `header` recipe |
+| Multiple-choice option cards | `.card-options`/`.card-option` in `templates/_option-card.scss` — views declare only their grid columns |
+| Buyable hint chips | `.hint-row`/`.hint-button` in `templates/_hint-chip.scss` |
+| Small-caps section label | `.eyebrow` in `templates/_eyebrow.scss` |
+| Reveal placement rows (pawn/name/fate/tail) | `components/challenge/PlacementList.vue` |
+| Ranked-bar scorecards (stagger + growing bars) | `.ranked-bars` in `templates/_ranked-bars.scss`; compact values via `formatCompact` in `lib/number.ts` |
+| Full-screen intro beats (fade → stagger → rule → hold) | `lib/use-intro-beat.ts` + `.intro-overlay` in `templates/_intro-overlay.scss` |
+| Card-header hairline | `$hairline` in `rules/_ink.scss` |
+| Guess-console width | owned by `ChallengeConsole.vue` itself — views must not re-declare it |
 
 ## Principles
 

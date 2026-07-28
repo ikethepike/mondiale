@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="two-truths">
+  <div v-if="challenge" class="two-truths challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,23 +9,21 @@
       @done="begin"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-        <span v-if="picked === undefined" class="map-caption sub">
-          Tap the claim that doesn't belong
-        </span>
-        <span v-else-if="foundLie" class="map-caption sub verdict correct">
-          Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
-          {{ truthDisplay }}
-        </span>
-        <span v-else class="map-caption sub verdict incorrect">
-          That one was true — the lie was {{ lieLabel }}, which belongs to
-          {{ countryName(challenge.lieSource) }}
-        </span>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
+      <span v-if="picked === undefined" class="map-caption sub">
+        Tap the claim that doesn't belong
+      </span>
+      <span v-else-if="foundLie" class="map-caption sub verdict correct">
+        Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
+        {{ truthDisplay }}
+      </span>
+      <span v-else class="map-caption sub verdict incorrect">
+        That one was true — the lie was {{ lieLabel }}, which belongs to
+        {{ countryName(challenge.lieSource) }}
+      </span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <section class="claim-stage">
       <ContourRipple v-if="foundLie" class="stage-ripple" tone="success" :delay="0.15" />
@@ -86,6 +84,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
@@ -176,40 +175,12 @@ const pick = (index: number) => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.two-truths {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
+
+header .verdict.correct {
+  color: var(--dark-blue);
 }
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .verdict.correct {
-    color: var(--dark-blue);
-  }
-  .verdict.incorrect {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .verdict.incorrect {
+  color: var(--hior-ange);
 }
 
 .claim-stage {
@@ -323,13 +294,7 @@ header {
   }
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   // Three 20rem columns overflow any phone: stack the claims full-width and
   // compact them so flag + all three cards share one screen.
   .claim-stage {

@@ -194,11 +194,6 @@ const ucdpNote = computed(() => {
   justify-content: center;
 }
 
-.side-group {
-  gap: 1rem;
-  display: inline-flex;
-  align-items: center;
-}
 
 .versus {
   opacity: 0.45;

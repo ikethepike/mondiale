@@ -2,20 +2,13 @@
   <section class="timeline-reveal pane tr decorator-bottom">
     <div class="pane-content">
       <h2 class="headline">{{ headline }}</h2>
-      <ol class="placements">
-        <li v-for="row in rows" :key="row.playerId" class="placement">
-          <PlayerPawn class="pawn" :player="players[row.playerId]" />
-          <span class="name">{{ row.name }}</span>
-          <span class="fate">{{ row.fate }}</span>
-          <span class="points">{{ row.banked }} pts</span>
-        </li>
-      </ol>
+      <PlacementList :rows="rows" :players="players" />
       <p class="coda">The finished line runs below — every card where history put it.</p>
     </div>
   </section>
 </template>
 <script lang="ts" setup>
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import PlacementList from '~/components/challenge/PlacementList.vue'
 import { seatLabel } from '~~/lib/player'
 import type { TimelineState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -30,8 +23,8 @@ interface Row {
   playerId: string
   name: string
   fate: string
+  tail: string
   correct: number
-  total: number
   banked: number
 }
 
@@ -41,13 +34,14 @@ const rows = computed<Row[]>(() =>
     .map(playerId => {
       const mine = props.state.placements.filter(entry => entry.playerId === playerId)
       const correct = mine.filter(entry => entry.correct).length
+      const banked = Math.round(props.state.banked[playerId] ?? 0)
       return {
         playerId,
         name: seatLabel(props.players, playerId, props.playerId),
         fate: `${correct} of ${mine.length} placed right`,
+        tail: `${banked} pts`,
         correct,
-        total: mine.length,
-        banked: Math.round(props.state.banked[playerId] ?? 0),
+        banked,
       }
     })
     .sort((a, b) => b.banked - a.banked || b.correct - a.correct)
@@ -76,43 +70,6 @@ const headline = computed(() => {
 .headline {
   margin: 0;
   font-size: 1.8rem;
-}
-
-.placements {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: column nowrap;
-}
-
-.placement {
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
-  font-size: 1.3rem;
-
-  .pawn {
-    width: 1.2rem;
-    height: 1.85rem;
-    flex: none;
-  }
-
-  .name {
-    font-weight: bold;
-  }
-
-  .fate {
-    opacity: 0.75;
-  }
-
-  .points {
-    opacity: 0.8;
-    margin-left: auto;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
 }
 
 .coda {

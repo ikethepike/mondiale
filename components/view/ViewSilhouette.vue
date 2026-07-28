@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="silhouette-challenge">
+  <div v-if="challenge" class="silhouette-challenge challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,24 +9,19 @@
       @done="begin"
     />
 
-    <header>
-      <div class="prompt">
-        <template v-if="!resolved">
-          <h1 class="map-caption">Whose outline is this?</h1>
-          <span class="map-caption sub">Earlier answers score higher</span>
-          <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
-            Region: {{ challenge.region }}
-          </span>
-        </template>
-        <template v-else>
-          <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
-          <span class="map-caption sub">Here it is among its neighbours</span>
-        </template>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <template v-if="!resolved">
+        <h1 class="map-caption">Whose outline is this?</h1>
+        <span class="map-caption sub">Earlier answers score higher</span>
+        <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
+          Region: {{ challenge.region }}
+        </span>
+      </template>
+      <template v-else>
+        <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
+        <span class="map-caption sub">Here it is among its neighbours</span>
+      </template>
+    </ChallengePrompt>
 
     <section v-show="!resolved" class="outline-stage">
       <svg v-if="outline" class="outline" :viewBox="outline.viewBox" aria-hidden="true">
@@ -52,6 +47,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -175,44 +171,11 @@ const onGuess = (country: Country) => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-.silhouette-challenge {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
 
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .region-hint {
-    padding: 0.4rem 1.4rem;
-    color: var(--soft-blue);
-    font-weight: 600;
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .region-hint {
+  padding: 0.4rem 1.4rem;
+  color: var(--soft-blue);
+  font-weight: 600;
 }
 
 .outline-stage {
@@ -245,13 +208,7 @@ header {
   width: 100%;
 }
 
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
-}
-
 footer {
-  z-index: 2;
-  padding: 2rem;
   // Reserve room below the guess input so its suggestion list (which opens
   // downward) isn't clipped off the bottom of the screen. Scales with viewport
   // height so it never steals too much room on short screens.
@@ -263,30 +220,10 @@ footer {
   flex-flow: column nowrap;
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
+// Compact phone chrome: footer clear of the home indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
   footer {
     padding: 1.2rem 1.6rem clamp(8rem, 24dvh, 20rem);
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

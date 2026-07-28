@@ -1,5 +1,5 @@
 <template>
-  <section class="no-mans-land">
+  <section class="no-mans-land challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,21 +9,19 @@
       @done="start"
     />
     <template v-else>
-      <header>
-        <div class="prompt">
-          <!-- The NE status line reads "Administered by Eritrea. Claimed by
-               Djibouti" — administrator ∪ claimants IS the answer set, so it
-               cannot be shown until the round is over. -->
-          <template v-if="!submitted">
-            <h1 class="map-caption">{{ territory?.name }}</h1>
-            <span class="map-caption sub">{{ teaser }}</span>
-          </template>
-          <template v-else-if="territory">
-            <h1 class="map-caption">{{ verdictHeadline }}</h1>
-            <span class="map-caption sub">{{ statusLine }}</span>
-          </template>
-        </div>
-      </header>
+      <ChallengePrompt>
+        <!-- The NE status line reads "Administered by Eritrea. Claimed by
+             Djibouti" — administrator ∪ claimants IS the answer set, so it
+             cannot be shown until the round is over. -->
+        <template v-if="!submitted">
+          <h1 class="map-caption">{{ territory?.name }}</h1>
+          <span class="map-caption sub">{{ teaser }}</span>
+        </template>
+        <template v-else-if="territory">
+          <h1 class="map-caption">{{ verdictHeadline }}</h1>
+          <span class="map-caption sub">{{ statusLine }}</span>
+        </template>
+      </ChallengePrompt>
 
       <footer>
         <template v-if="!submitted">
@@ -63,6 +61,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref } from 'vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
@@ -237,47 +236,12 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.no-mans-land {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  pointer-events: none;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  display: flex;
-  padding: 2rem 4rem;
-  text-align: center;
-  justify-content: center;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-    max-width: min(80vw, 40rem);
-  }
-
-  // Title, then status, stacked — never side by side.
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .sub {
+  max-width: min(80vw, 40rem);
 }
 
 footer {
   gap: 1rem;
-  z-index: 2;
   display: flex;
   padding: 0 2rem 2rem;
   align-items: center;
@@ -315,29 +279,12 @@ footer {
   }
 }
 
-.lock-row {
-  gap: 1rem;
-  display: flex;
-  align-items: center;
-
-  .lock-clock {
-    flex: none;
-    --clock-size: 4.6rem;
-    --clock-seconds-size: 1.5rem;
-  }
-}
-
 .lock {
   pointer-events: auto;
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   footer {
-    width: 100%;
     padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 

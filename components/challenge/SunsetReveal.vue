@@ -8,14 +8,14 @@
       <span
         v-for="chip in chips"
         :key="chip.isoCode"
-        class="chip"
+        class="light-chip"
         :class="[chip.held ? 'held' : 'taken', { extra: chip.extra }]"
         :title="chip.extra ? 'Beyond the window' : undefined"
       >
         <CountryFlag class="chip-flag" :country="COUNTRIES[chip.isoCode]" mode="background" />
         {{ chip.name }}
       </span>
-      <span v-if="unlitBeyondCount" class="chip taken summary">
+      <span v-if="unlitBeyondCount" class="light-chip taken summary">
         +{{ unlitBeyondCount }} more slipped into the night
       </span>
     </span>
@@ -107,7 +107,7 @@ const sunGap = computed(() => {
   justify-content: center;
 }
 
-.chip {
+.light-chip {
   gap: 0.5rem;
   display: inline-flex;
   align-items: center;

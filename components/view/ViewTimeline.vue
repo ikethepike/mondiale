@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="timeline-round">
+  <div v-if="challenge" class="timeline-round challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -18,18 +18,16 @@
       :total="challenge.turnSeconds"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">{{ headline }}</h1>
-        <!-- The handoff beat: the old name lifts away, the next settles in. -->
-        <Transition name="caption" mode="out-in">
-          <span v-if="!finished && !revealing" :key="activeId" class="map-caption sub turn-line">
-            <span class="chip" :style="{ background: activePlayer?.color }" />
-            <span>{{ turnLabel }}</span>
-          </span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">{{ headline }}</h1>
+      <!-- The handoff beat: the old name lifts away, the next settles in. -->
+      <Transition name="caption" mode="out-in">
+        <span v-if="!finished && !revealing" :key="activeId" class="map-caption sub turn-line">
+          <span class="chip" :style="{ background: activePlayer?.color }" />
+          <span>{{ turnLabel }}</span>
+        </span>
+      </Transition>
+    </ChallengePrompt>
 
     <!-- Centre stage: the drawn card, its post-placement story, or the scorecard. -->
     <section class="stage">
@@ -143,6 +141,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -344,39 +343,6 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.timeline-round {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
-
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;
@@ -539,7 +505,6 @@ header {
 
 // --- The line --------------------------------------------------------------------
 footer {
-  z-index: 2;
   padding: 1.4rem 2rem 2rem;
 }
 

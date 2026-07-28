@@ -184,12 +184,6 @@ const closeTutorial = () => {
 }
 
 .eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
   margin-bottom: 0.6rem;
 }
 

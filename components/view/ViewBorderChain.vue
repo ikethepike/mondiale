@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="border-chain">
+  <div v-if="challenge" class="border-chain challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -13,28 +13,23 @@
          journey's age, the numbers make the sequence unambiguous. -->
     <MapYearLabels v-if="!showInterstitial" :entries="sequenceEntries" :min-gap-px="26" />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">
-          {{ headline }}
-        </h1>
-        <span
-          v-if="!finished"
-          class="map-caption sub turn-line"
-          :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
-        >
-          <span class="chip" :style="{ background: activePlayer?.color }" />
-          <span>{{ turnLabel }}</span>
-          <span class="clock">{{ secondsOnClock }}s</span>
-        </span>
-        <span v-if="!finished && iAmOut" class="map-caption sub out">
-          You're out — spectating
-        </span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">
+        {{ headline }}
+      </h1>
+      <span
+        v-if="!finished"
+        class="map-caption sub turn-line"
+        :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
+      >
+        <span class="chip" :style="{ background: activePlayer?.color }" />
+        <span>{{ turnLabel }}</span>
+        <span class="clock">{{ secondsOnClock }}s</span>
+      </span>
+      <span v-if="!finished && iAmOut" class="map-caption sub out">
+        You're out — spectating
+      </span>
+    </ChallengePrompt>
 
     <!-- On your turn the shot clock lives inside the guess console; between
          turns the header's turn-line chip carries the countdown. -->
@@ -77,6 +72,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
@@ -282,56 +278,6 @@ watch(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.border-chain {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .hint {
-    color: var(--hior-ange);
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-
-  .prompt .hint {
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 3;
-    width: max-content;
-    max-width: 100%;
-    position: absolute;
-    margin: 0.4rem auto 0;
-  }
-}
-
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;
@@ -376,24 +322,12 @@ header {
 
 .guess-box {
   z-index: 2;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
 }
 
 .reveal {
   z-index: 2;
   margin: 0 auto;
   max-width: min(34rem, calc(100% - 2.4rem));
-}
-
-footer {
-  z-index: 2;
-  padding: 2rem;
 }
 
 .route {
@@ -433,12 +367,6 @@ footer {
 }
 
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
   // Long chains scroll instead of swallowing the map and input.
   .route {
     max-height: 22dvh;

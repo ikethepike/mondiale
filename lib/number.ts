@@ -45,6 +45,18 @@ export const formatAmount = (amount: { amount: number; unit: string }): string =
   return unit ? `${formatNumber(amount.amount)} ${unit}` : formatNumber(amount.amount)
 }
 
+const COMPACT = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+const COMPACT_USD = new Intl.NumberFormat('en', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
+/** "1.4M" / "$1.4B" — the one compact formatter for tight scorecard columns. */
+export const formatCompact = (amount: number, options: { currency?: boolean } = {}): string =>
+  (options.currency ? COMPACT_USD : COMPACT).format(amount)
+
 /** "1,234 km" — the one distance formatter for pin drops, probes and standings. */
 export const formatKm = (distanceKm: number): string =>
   `${Math.round(distanceKm).toLocaleString()} km`

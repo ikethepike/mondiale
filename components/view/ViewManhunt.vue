@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="manhunt">
+  <div v-if="challenge" class="manhunt challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -60,36 +60,34 @@
       </span>
     </aside>
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption headline-line">
-          <DespotHat class="despot-hat" />
-          <span>{{ headline }}</span>
-        </h1>
-        <!-- One status line: the sea-passage announcement IS the beat's
-             statement while it's live, so it replaces the turn line rather
-             than stacking on it. Still, no motion — the wash on the map
-             carries the drama. -->
-        <Transition name="caption" mode="out-in">
-          <span v-if="!finished && seaPassageAnnounced" class="map-caption sub sea-banner">
-            ⚓ The Despot has taken sea passage!
-          </span>
-          <span v-else-if="!finished" :key="beatLabel" class="map-caption sub turn-line">
-            <span class="chip" :style="{ background: despotPlayer?.color }" />
-            <span>{{ beatLabel }}</span>
-          </span>
-        </Transition>
-        <Transition name="caption" mode="out-in">
-          <span v-if="clueLine" :key="clueLine" class="map-caption intel-card">
-            {{ clueLine }}
-          </span>
-        </Transition>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption headline-line">
+        <DespotHat class="despot-hat" />
+        <span>{{ headline }}</span>
+      </h1>
+      <!-- One status line: the sea-passage announcement IS the beat's
+           statement while it's live, so it replaces the turn line rather
+           than stacking on it. Still, no motion — the wash on the map
+           carries the drama. -->
+      <Transition name="caption" mode="out-in">
+        <span v-if="!finished && seaPassageAnnounced" class="map-caption sub sea-banner">
+          ⚓ The Despot has taken sea passage!
+        </span>
+        <span v-else-if="!finished" :key="beatLabel" class="map-caption sub turn-line">
+          <span class="chip" :style="{ background: despotPlayer?.color }" />
+          <span>{{ beatLabel }}</span>
+        </span>
+      </Transition>
+      <Transition name="caption" mode="out-in">
+        <span v-if="clueLine" :key="clueLine" class="map-caption intel-card">
+          {{ clueLine }}
+        </span>
+      </Transition>
+      <Transition name="caption">
+        <span v-if="hint" class="map-caption hint">{{ hint }}</span>
+      </Transition>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <!-- The briefing: role cards each player dismisses explicitly. No clock
          runs until the whole table is ready (or the server's cap forces it). -->
@@ -200,6 +198,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
@@ -722,54 +721,28 @@ watch(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.manhunt {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
+header .hint {
+  padding: 0.5rem 1.6rem;
+  font-weight: bold;
+  color: var(--hior-ange);
+  border-color: var(--hior-ange);
 }
 
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
+// The intel line IS the round each turn — dressed as a dispatch card
+// rather than a sub-caption, so the eye lands on it before the map.
+header .intel-card {
+  font-size: 1.25em;
+  font-weight: bold;
+  padding: 0.8rem 2rem;
+  border-width: 0.15rem;
+  border-color: ink(0.55, 41%);
+  box-shadow: 0 0.3rem 1.2rem ink(0.18);
+}
 
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .hint {
-    padding: 0.5rem 1.6rem;
-    font-weight: bold;
-    color: var(--hior-ange);
-    border-color: var(--hior-ange);
-  }
-
-  // The intel line IS the round each turn — dressed as a dispatch card
-  // rather than a sub-caption, so the eye lands on it before the map.
-  .intel-card {
-    font-size: 1.25em;
-    font-weight: bold;
-    padding: 0.8rem 2rem;
-    border-width: 0.15rem;
-    border-color: ink(0.55, 41%);
-    box-shadow: 0 0.3rem 1.2rem ink(0.18);
-  }
-
-  .sea-banner {
-    font-weight: bold;
-    color: ink(1, 41%);
-    border-color: ink(0.55, 41%);
-  }
+header .sea-banner {
+  font-weight: bold;
+  color: ink(1, 41%);
+  border-color: ink(0.55, 41%);
 }
 
 .hunt-dock {
@@ -880,14 +853,6 @@ header .headline-line {
     width: 3.6rem;
     flex-shrink: 0;
   }
-}
-
-header .prompt {
-  gap: 1rem;
-  display: flex;
-  position: relative;
-  align-items: center;
-  flex-flow: column nowrap;
 }
 
 .turn-line {
@@ -1054,17 +1019,4 @@ header .prompt {
   max-width: min(34rem, calc(100% - 2.4rem));
 }
 
-footer {
-  z-index: 2;
-  padding: 2rem;
-}
-
-@media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
-  }
 </style>

@@ -1,12 +1,12 @@
 <template>
-  <div class="view-final-challenge">
+  <div class="view-final-challenge challenge-shell">
     <GauntletIntro
       v-if="showInterstitial"
       :questions="totalChallengeCount"
       :lives="livesRemaining"
       @done="showInterstitial = false"
     />
-    <header :class="{ dimmed: status }">
+    <ChallengePrompt :class="{ dimmed: status }">
       <Transition name="caption" mode="out-in">
         <div :key="currentChallengeCount" class="prompt">
           <span class="counter map-caption"
@@ -19,7 +19,7 @@
           <h2 class="map-caption">{{ details?.question }}</h2>
         </div>
       </Transition>
-    </header>
+    </ChallengePrompt>
     <span
       v-if="initialLives && !showInterstitial"
       class="hearts map-caption"
@@ -102,6 +102,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
@@ -579,23 +580,27 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/breakpoints' as *;
+// The gauntlet stacks its beats from the top (the result follows the
+// question), not against both edges.
 .view-final-challenge {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  position: absolute;
+  justify-content: flex-start;
 }
 
 header {
-  text-align: center;
-  padding: 2rem 4rem;
   transition: opacity var(--motion-base) var(--ease-smooth);
 
   &.dimmed {
     opacity: 0.4;
   }
+}
+
+// The keyed swap wrapper inside the shared prompt column keeps the recipe —
+// the whole beat (counter, logo, question) lifts away and settles as one.
+header .prompt {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
 
   h2 {
     margin: 0;
@@ -603,13 +608,6 @@ header {
 
   .counter {
     padding: 0.4rem 1.4rem;
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
   }
 }
 
@@ -655,13 +653,5 @@ header {
 
 .sunset-fade-leave-to {
   opacity: 0;
-}
-
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
-@media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
 }
 </style>

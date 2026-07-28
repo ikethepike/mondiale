@@ -1,0 +1,11 @@
+// The small-caps section label. Five surfaces re-declared it verbatim; put it
+// on the element and keep local overrides to genuine differences only.
+.eyebrow {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--soft-blue);
+  margin-bottom: 0.8rem;
+}
