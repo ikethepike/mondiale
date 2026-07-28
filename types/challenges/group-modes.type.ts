@@ -549,6 +549,64 @@ export interface ManhuntState {
   finished?: boolean
 }
 
+/** Unique or Bust's category board — each id names a register in lib/unique-or-bust. */
+export type UniqueCategoryId = 'country' | 'capital' | 'river' | 'megacity'
+
+/**
+ * Unique or Bust: a letter and a category board drop; everyone fills the board
+ * on one clock. At reveal, a correct answer held by exactly ONE player pays its
+ * category's share — duplicates cancel each other to zero. Answers must NOT
+ * ride the game snapshot while the round is live (seeing a rival's word lets
+ * you dodge the duplicate), so they live in a redis blob (lib/unique-or-bust
+ * uniqueKey) until the collision grid lands in `state.results`. Like the other
+ * clocked modes, `state` is server-owned and rides the game snapshot.
+ */
+export interface UniqueOrBustChallenge {
+  _type: 'unique-or-bust-challenge'
+  /** Display letter, uppercase. Every answer must start with it. */
+  letter: string
+  /** The board, in slot order — fixed per deal. */
+  categories: UniqueCategoryId[]
+  durationSeconds: number
+  maximumPoints: number
+  state: UniqueOrBustState
+}
+
+/** One distinct answer in the reveal's collision grid. */
+export interface UniqueBoardCell {
+  /** Collision key: the normalized answer name (uniqueNameKey). */
+  key: string
+  /** Register entry id of the first locker's pick — for `country` and
+   *  `capital` cells this is the ISO code, so reveals can wear the flag. */
+  id: string
+  /** Display name as the first locker's register spells it. */
+  name: string
+  /** Everyone who locked this answer — more than one cancels the cell. */
+  holders: string[]
+  /** What each holder banked for the cell (0 when cancelled). */
+  scored: number
+}
+
+export interface UniqueOrBustState {
+  /** The round opens on a rules card each player must explicitly dismiss.
+   *  No clock runs until everyone is ready (or the cap forces it). */
+  briefing?: boolean
+  /** Players who dismissed their briefing card. */
+  ready: string[]
+  /** Epoch ms the writing window closes; 0 while the briefing holds. */
+  deadline: number
+  /** Participants at the deal. */
+  order: string[]
+  /** Slots each player has locked — presence only; the words stay in the
+   *  round's secret blob until the reveal. */
+  locked: { [playerId: string]: UniqueCategoryId[] }
+  /** The collision grid, filled at resolve — the answers' first and only
+   *  appearance in a snapshot. */
+  results?: { [category in UniqueCategoryId]?: UniqueBoardCell[] }
+  /** Set when the round resolves; freezes the clock and starts the reveal. */
+  finished?: boolean
+}
+
 export type GroupModeChallenge =
   | EmpireChallenge
   | BorderChainChallenge
@@ -571,3 +629,4 @@ export type GroupModeChallenge =
   | NoMansLandChallenge
   | PinLandmarkChallenge
   | TrendRaceChallenge
+  | UniqueOrBustChallenge

@@ -152,6 +152,21 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
         focus: liveChain,
       }
     }
+    case 'unique-or-bust': {
+      if (!('_type' in challenge) || challenge._type !== 'unique-or-bust-challenge') break
+      const { state } = challenge
+      const slots = challenge.categories.length * state.order.length
+      const locked = Object.values(state.locked).reduce((sum, list) => sum + list.length, 0)
+      // No `secret` here: like manhunt, the live answers never ride the
+      // broadcast this story derives from — the booth's tension is watching
+      // the blanks lock, not knowing who doomed whom.
+      return {
+        kicker: `Unique or Bust · letter ${challenge.letter}`,
+        prompt: state.briefing
+          ? 'The table is reading the rules — shared answers will cancel to zero'
+          : `Fill the board with ${challenge.letter}-answers nobody else picks — ${locked} of ${slots} blanks locked`,
+      }
+    }
     case 'manhunt': {
       if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') break
       const { state } = challenge

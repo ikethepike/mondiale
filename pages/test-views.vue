@@ -51,6 +51,7 @@ import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
+import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -1306,6 +1307,104 @@ const scenarios: Scenario[] = [
               capturerIds: [ME, THIRD],
               country: 'SI',
               trail: ['CZ', 'AT', 'IT', 'HR', 'SI'],
+            },
+            finished: true,
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'unique-briefing',
+    label: 'Unique or Bust (briefing — tutorial card)',
+    component: ViewUniqueOrBust,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'unique-or-bust-challenge',
+          letter: 'M',
+          categories: ['country', 'capital', 'river', 'megacity'],
+          durationSeconds: 75,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            briefing: true,
+            ready: [THIRD],
+            deadline: 0,
+            order: [ME, RIVAL, THIRD],
+            locked: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'unique-board',
+    label: 'Unique or Bust (live board, rivals locking)',
+    component: ViewUniqueOrBust,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'unique-or-bust-challenge',
+          letter: 'M',
+          categories: ['country', 'capital', 'river', 'megacity'],
+          durationSeconds: 75,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            ready: [ME, RIVAL, THIRD],
+            deadline: Date.now() + 48000,
+            order: [ME, RIVAL, THIRD],
+            locked: { [RIVAL]: ['country', 'river'], [THIRD]: ['country'] },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'unique-reveal',
+    label: 'Unique or Bust (collision grid reveal)',
+    component: ViewUniqueOrBust,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'unique-or-bust-challenge',
+          letter: 'M',
+          categories: ['country', 'capital', 'river', 'megacity'],
+          durationSeconds: 75,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            ready: [ME, RIVAL, THIRD],
+            deadline: 0,
+            order: [ME, RIVAL, THIRD],
+            locked: {
+              [ME]: ['country', 'capital', 'river', 'megacity'],
+              [RIVAL]: ['country', 'capital', 'river'],
+              [THIRD]: ['country', 'megacity'],
+            },
+            results: {
+              country: [
+                {
+                  key: 'mexico',
+                  id: 'MX',
+                  name: 'Mexico',
+                  holders: [ME, RIVAL],
+                  scored: 0,
+                },
+                { key: 'mauritania', id: 'MR', name: 'Mauritania', holders: [THIRD], scored: 5 },
+              ],
+              capital: [
+                { key: 'madrid', id: 'ES', name: 'Madrid', holders: [ME], scored: 5 },
+                { key: 'manila', id: 'PH', name: 'Manila', holders: [RIVAL], scored: 5 },
+              ],
+              river: [
+                {
+                  key: 'mississippi',
+                  id: 'mississippi',
+                  name: 'Mississippi',
+                  holders: [ME, RIVAL],
+                  scored: 0,
+                },
+              ],
+              megacity: [
+                { key: 'mumbai', id: 'IN:Mumbai', name: 'Mumbai', holders: [ME], scored: 5 },
+                { key: 'madrid', id: 'ES:Madrid', name: 'Madrid', holders: [THIRD], scored: 5 },
+              ],
             },
             finished: true,
           },

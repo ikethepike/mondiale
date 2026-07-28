@@ -65,6 +65,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'manhunt-updated': {
     handler: genericUpdateEvent,
   },
+  'unique-updated': {
+    handler: genericUpdateEvent,
+  },
   // Despot's eyes only — arrives on their socket alone, no game payload
   'manhunt-position': {
     handler: manhuntPositionEvent,

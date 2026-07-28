@@ -21,6 +21,8 @@ import { submitManhuntMarkerHandler } from '~~/lib/events/server/submit-manhunt-
 import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
 import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
+import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
+import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
 import {
   forgetTauntBucket,
   manhuntTauntHandler,
@@ -97,6 +99,12 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'manhunt-ready': {
     handler: manhuntReadyHandler,
+  },
+  'unique-ready': {
+    handler: uniqueReadyHandler,
+  },
+  'submit-unique-answer': {
+    handler: submitUniqueAnswerHandler,
   },
   // Ephemeral taunt relay — no permanent state written
   'manhunt-taunt': {
