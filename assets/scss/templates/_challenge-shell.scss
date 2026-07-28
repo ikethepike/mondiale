@@ -26,12 +26,15 @@
     padding: 2rem;
   }
 
-  // The typing consoles' column: input pill over its helpers.
+  // The typing consoles' column: input pill over its helpers. Interactive by
+  // right — the passthrough shell is pointer-events: none for the map's sake,
+  // and the shared strips opt back in HERE, never per view.
   .guess-box {
     gap: 1.2rem;
     display: flex;
     align-items: center;
     flex-flow: column nowrap;
+    pointer-events: auto;
   }
 
   // An action button with the round clock docked beside it — the action and
@@ -40,6 +43,7 @@
     gap: 1rem;
     display: flex;
     align-items: center;
+    pointer-events: auto;
 
     .lock-clock {
       flex: none;

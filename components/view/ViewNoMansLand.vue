@@ -268,7 +268,6 @@ footer {
 .chips {
   gap: 0.5rem;
   max-width: min(90vw, 46rem);
-  pointer-events: auto;
 }
 
 .pick {
@@ -281,10 +280,6 @@ footer {
 
 .remove {
   opacity: 0.6;
-}
-
-.lock {
-  pointer-events: auto;
 }
 
 @media (max-width: $tablet) {

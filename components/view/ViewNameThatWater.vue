@@ -299,49 +299,12 @@ header .clue {
   margin: auto 0;
 }
 
-// Mirrors the gate challenges' hint buttons for a consistent paid-hint surface.
-.hint-row {
-  gap: 1rem;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: center;
-}
-
-.hint-button {
-  cursor: pointer;
-  gap: 0.7rem;
-  display: inline-flex;
-  align-items: center;
-  font-size: 1.4rem;
-  font-family: inherit;
-  padding: 0.6rem 1.4rem;
-  border-radius: 1.2rem;
-  pointer-events: auto;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: milk(0.88);
-  border: 0.1rem solid ink(0.25);
-  transition: border-color var(--motion-quick) var(--ease-out-expressive);
-
-  .hint-icon {
-    flex-shrink: 0;
-  }
-
-  @media (hover: hover) {
-    &:hover {
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active {
-    border-color: var(--dark-blue);
-  }
-}
+// Hint chips come from templates/_hint-chip.scss.
 
 // Mirrors CountryGuessInput's look for a consistent typing surface (the
 // console strips the pill and owns the width).
 .guess-form {
   position: relative;
-  pointer-events: auto;
 
   input {
     width: 100%;

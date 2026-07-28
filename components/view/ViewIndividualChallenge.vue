@@ -1473,7 +1473,6 @@ header .flag {
 
 .guess-box {
   margin-top: 1rem;
-  pointer-events: auto;
 }
 
 

@@ -47,15 +47,15 @@
   list-style: none;
   align-items: center;
   justify-content: center;
+  // The passthrough shell is pointer-events: none — the list opts back in so
+  // its chips can be tapped (removable picks) and the overflow scrolled.
+  pointer-events: auto;
 }
 
 @media screen and (max-width: $tablet) {
   .country-chip-list {
     max-height: 22dvh;
     overflow-y: auto;
-    // .main-board kills pointer events — restore them or the list can't be
-    // touch-scrolled at all.
-    pointer-events: auto;
     overscroll-behavior: contain;
 
     &.rail {
