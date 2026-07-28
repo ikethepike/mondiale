@@ -60,6 +60,7 @@ import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
+import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
@@ -145,6 +146,7 @@ const activeView = computed<ActiveView | undefined>(() => {
         timeline: ViewTimeline,
         empire: ViewEmpire,
         manhunt: ViewManhunt,
+        'unique-or-bust': ViewUniqueOrBust,
       }
       const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
       return {

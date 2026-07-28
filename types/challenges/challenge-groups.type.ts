@@ -63,6 +63,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   silhouette: 'flags',
   'heritage-hunt': 'culture',
   'mother-tongue': 'culture',
+  // Countries, capitals, rivers and megacities in one board — places at large.
+  'unique-or-bust': 'culture',
   'capital-guess': 'culture',
   'pin-landmark': 'culture',
   'ghost-state': 'disputed',
@@ -87,6 +89,17 @@ export const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
   // Conflict content is opt-in below hard — sober by default.
   'flashpoint',
 ])
+
+/**
+ * Kinds that only deal at tables of at least this many contenders. Lives with
+ * the taxonomy (like HARD_ONLY_ROUND_KINDS) because it's a property of the
+ * mode, not of any one dealer: manhunt's rivalry collapses below four, and
+ * unique-or-bust's duplicate-cancel scoring loses its teeth below three.
+ */
+export const MINIMUM_TABLE_BY_KIND: Partial<Record<RoundChallengeKind, number>> = {
+  manhunt: 4,
+  'unique-or-bust': 3,
+}
 
 /** Accessors pulled from the stat pool (ranking, stat detective, two truths,
  *  higher/lower) with their group. Keys are compile-checked against the real

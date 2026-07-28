@@ -64,6 +64,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // room sees who has locked in, never where.
   manhunt: 'presence',
 
+  // Everyone answers the same letter, and a duplicate cancels both holders —
+  // naming a pick would let the table dodge the collision. The room sees who
+  // has locked a slot, never the word.
+  'unique-or-bust': 'presence',
+
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
   timeline: 'none',

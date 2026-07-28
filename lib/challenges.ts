@@ -15,6 +15,7 @@ import {
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
+  MINIMUM_TABLE_BY_KIND,
   type ChallengeOverrides,
 } from '~~/types/challenges/challenge-groups.type'
 import {
@@ -42,6 +43,7 @@ import type {
   TimelineChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
+  UniqueOrBustChallenge,
   WaterBlitzChallenge,
   WaterFeatureKind,
 } from '~~/types/challenges/group-modes.type'
@@ -75,6 +77,7 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
+import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
 import { attemptDecayScore, attemptFraction, clampScore, jaccardFraction, scorePinDistance } from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
@@ -135,6 +138,9 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   // and it needs four players to deal at all, so it self-rarifies further
   // at small tables.
   ['manhunt', 0.05],
+  // Needs three players before duplicate-cancel scoring has teeth, so it
+  // self-rarifies at duos the same way manhunt does.
+  ['unique-or-bust', 0.07],
 ]
 
 /**
@@ -268,7 +274,7 @@ const getManhuntChallenge = ({
   game: gameTypes.Game
 }): ManhuntChallenge | undefined => {
   const contenders = chainContenders(game)
-  if (contenders.length < 4) return undefined
+  if (contenders.length < (MINIMUM_TABLE_BY_KIND.manhunt ?? 0)) return undefined
   // A board too small to hide on never deals (South America fields nine
   // viable seeds) — the real seed is picked at reveal, off the snapshot.
   if (initialManhuntCandidates(game).length < MINIMUM_MANHUNT_POOL) return undefined
@@ -302,6 +308,47 @@ const getManhuntChallenge = ({
       candidates: [],
       dragnets: [],
       committed: [],
+    },
+  }
+}
+
+/** Every category must field this many answers beyond the table's seats, so
+ *  reaching past the obvious pick is always possible. */
+const UNIQUE_LETTER_SLACK = 2
+
+/**
+ * Unique or Bust dealer: one letter, four category blanks, everyone writes at
+ * once. Below three players duplicates rarely collide and the cancel scoring
+ * loses its teeth, so smaller tables never see it. The letter comes from the
+ * pools every category can serve deep enough that the table can't be forced
+ * into collisions.
+ */
+const getUniqueOrBustChallenge = async ({
+  game,
+}: {
+  game: gameTypes.Game
+}): Promise<UniqueOrBustChallenge | undefined> => {
+  const contenders = chainContenders(game)
+  if (contenders.length < (MINIMUM_TABLE_BY_KIND['unique-or-bust'] ?? 0)) return undefined
+
+  const registers = await uniqueRegisters(game)
+  const letters = uniqueViableLetters(registers, contenders.length + UNIQUE_LETTER_SLACK)
+  const letter = sample(letters)
+  if (!letter) return undefined
+
+  return {
+    _type: 'unique-or-bust-challenge',
+    letter: letter.toUpperCase(),
+    categories: [...UNIQUE_BOARD],
+    durationSeconds: UNIQUE_TUNING[game.difficulty].durationSeconds,
+    maximumPoints: maximumRoundPoints(game),
+    state: {
+      briefing: true,
+      ready: [],
+      // Stamped when the table is briefed (unique-beats) — no clock until then.
+      deadline: 0,
+      order: contenders,
+      locked: {},
     },
   }
 }
@@ -1325,6 +1372,11 @@ const dealRoundChallenge = async (
     }
     case 'manhunt': {
       const challenge = getManhuntChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'unique-or-bust': {
+      const challenge = await getUniqueOrBustChallenge({ game })
       if (challenge) return challenge
       break
     }

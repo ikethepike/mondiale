@@ -1,5 +1,6 @@
 import { defineGameHandler } from '../server-side'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
+import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(
   'close-tutorial',
@@ -21,6 +22,15 @@ export const closeTutorialHandler = defineGameHandler(
     server.emit({ event: 'update', game }, eventTarget)
     if (startsManhunt && !manhunt.state.finished) {
       scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)
+    }
+
+    // Same round-1 FORCE_ROUND_TYPE seam for Unique or Bust: its briefing cap
+    // normally arms at the enter-movement-phase reveal, which round 1 never
+    // passes. Re-arming on every close is the manhunt precedent — a stale cap
+    // task bails on the briefing flag.
+    const unique = currentUniqueOrBust(game)
+    if (unique && !unique.state.finished && unique.state.briefing) {
+      scheduleUniqueTimeout({ io, redis, socket, eventTarget }, unique)
     }
   }
 )

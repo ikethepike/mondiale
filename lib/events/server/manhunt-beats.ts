@@ -18,7 +18,7 @@ import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,
@@ -128,9 +128,6 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   // No clock yet: the round opens on the briefing, and the despot's first
   // move clock starts only when everyone is ready (or the cap forces it).
 }
-
-/** How long the table may read before the pursuit starts regardless. */
-const BRIEFING_CAP_MS = 30000
 
 const briefingParticipants = (challenge: ManhuntChallenge): string[] => [
   challenge.despotId,

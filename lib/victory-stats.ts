@@ -56,6 +56,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   timeline: ['The Chronicler', 'Keeper of Years', 'Century Threader', 'History Buff'],
   empire: ['The Archivist', 'Reader of Ruins', 'Keeper of Old Maps', 'Dust of Empires'],
   manhunt: ['Dragnet Chief', 'The Bloodhound', 'Ghost of the Map', 'Interpol Ace'],
+  'unique-or-bust': ['One of One', 'The Contrarian', 'Road Less Travelled', 'The Original'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -84,6 +85,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   timeline: 'timeline',
   empire: 'ghosts of empires',
   manhunt: 'the despot',
+  'unique-or-bust': 'unique or bust',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

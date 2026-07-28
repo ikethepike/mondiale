@@ -1,5 +1,6 @@
 import type { LatLng } from '~~/lib/geo'
 import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
+import type { UniqueCategoryId } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
@@ -127,6 +128,19 @@ export type ClientEventData =
       event: 'fetch-manhunt-position'
     }
   | {
+      /** Unique or Bust: a player dismissed their briefing card. The writing
+       *  clock starts when everyone has (or the briefing cap forces it). */
+      event: 'unique-ready'
+    }
+  | {
+      /** Unique or Bust: lock one board slot to a register entry. The pick
+       *  stays off the broadcast (presence-only) — it lands in the round's
+       *  secret blob until the reveal. A repeat on a locked slot is a no-op. */
+      event: 'submit-unique-answer'
+      category: UniqueCategoryId
+      id: string
+    }
+  | {
       event: 'close-tutorial'
     }
   | {
@@ -198,6 +212,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-manhunt-marker',
   'submit-manhunt-subpoena',
   'manhunt-ready',
+  'unique-ready',
+  'submit-unique-answer',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -247,6 +263,9 @@ export type ServerEventData =
   | { event: 'timeline-updated'; game: Game }
   /** Manhunt: a beat advanced or the round resolved — whole-table state. */
   | { event: 'manhunt-updated'; game: Game }
+  /** Unique or Bust: the briefing gate, a slot lock, or the collision reveal —
+   *  whole-table state. */
+  | { event: 'unique-updated'; game: Game }
   /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
    *  never broadcast. `turn` stamps which beat the trail was current at. */
   | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }

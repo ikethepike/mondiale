@@ -20,6 +20,7 @@ import {
   scheduleManhuntTimeout,
   startManhunt,
 } from './manhunt-beats'
+import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -184,6 +185,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
       }
       if (isManhuntChallenge(revealed) && !revealed.state.finished) {
         scheduleManhuntTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      // Unique or Bust opens on its briefing (deadline stays 0) — this arms
+      // the reading cap; the writing clock stamps when the table is briefed.
+      if (isUniqueOrBustChallenge(revealed)) {
+        scheduleUniqueTimeout({ io, redis, socket, eventTarget }, revealed)
       }
     }
   }

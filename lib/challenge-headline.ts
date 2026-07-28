@@ -106,6 +106,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         ? `The timeline ran from ${formatEventYear(first.year)} to ${formatEventYear(last.year)}`
         : 'The timeline round'
     }
+    case 'unique-or-bust':
+      return '_type' in challenge && challenge._type === 'unique-or-bust-challenge'
+        ? `Letter ${challenge.letter} — only unshared answers paid`
+        : ''
     case 'manhunt': {
       if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') return ''
       const outcome = challenge.state.outcome

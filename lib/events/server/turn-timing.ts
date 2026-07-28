@@ -11,3 +11,6 @@ export const TIMEOUT_SLACK_MS = 350
 /** Extra opening-turn time — the first clock starts behind the round
  *  interstitial, which everyone watches for a few seconds. */
 export const FIRST_TURN_GRACE_MS = 4000
+/** How long a briefing (the click-away rules cards manhunt and unique-or-bust
+ *  open on) may hold before the round starts regardless. */
+export const BRIEFING_CAP_MS = 30000
