@@ -57,30 +57,15 @@
         </Transition>
       </div>
       <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
-        <form class="guess-form map-caption" @submit.prevent="submitTyped">
-        <input
+        <SuggestInput
           ref="input"
-          v-model="query"
-          type="text"
+          :options="options"
+          :normalize="normalizeName"
           placeholder="Type its name…"
-          autocomplete="off"
           :disabled="!started"
-          @keydown.down.prevent="
-            highlightedIndex = Math.min(highlightedIndex + 1, suggestions.length - 1)
-          "
-          @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
+          @pick="pick"
+          @miss="announce({ hint: 'No water by that name' })"
         />
-        <ul v-if="suggestions.length" class="suggestions">
-          <li
-            v-for="(suggestion, index) in suggestions"
-            :key="suggestion.id"
-            :class="{ highlighted: index === highlightedIndex }"
-            @mousedown.prevent="pick(suggestion)"
-          >
-            <span>{{ suggestion.name }}</span>
-          </li>
-        </ul>
-        </form>
       </ChallengeConsole>
     </section>
   </div>
@@ -89,6 +74,7 @@
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
@@ -124,30 +110,31 @@ const attempts = ref(0)
 const attemptsLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - attempts.value)
 
 /** Candidate names for suggestions, loaded with the geometry chunk. */
-interface WaterOption {
-  id: string
-  name: string
-}
-const options = ref<WaterOption[]>([])
+const options = ref<SuggestOption[]>([])
 
 const normalizeName = (name: string) => normalizeAnswer(name, { articles: ['the', 'el', 'la', 'il'] })
 
-onMounted(async () => {
-  const active = challenge.value
-  if (!active) return
-  const { WATER_FEATURES } = await import('~~/data/water.gen')
-  const feature = WATER_FEATURES[active.featureId]
-  if (feature) {
-    gameStore.map.feature = { d: feature.d, kind: 'area', bounds: feature.bounds }
-  }
-  // Suggestions offer every ocean, sea and lake — the full haystack is the game
-  options.value = Object.values(WATER_FEATURES)
-    .filter(
-      candidate =>
-        candidate.kind === 'ocean' || candidate.kind === 'sea' || candidate.kind === 'lake'
-    )
-    .map(candidate => ({ id: candidate.id, name: candidate.name }))
-})
+// Immediate watch, not onMounted: the challenge can land a beat after mount,
+// and an early return then would leave the suggestion list empty all round.
+watch(
+  challenge,
+  async active => {
+    if (!active || options.value.length) return
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    const feature = WATER_FEATURES[active.featureId]
+    if (feature) {
+      gameStore.map.feature = { d: feature.d, kind: 'area', bounds: feature.bounds }
+    }
+    // Suggestions offer every ocean, sea and lake — the full haystack is the game
+    options.value = Object.values(WATER_FEATURES)
+      .filter(
+        candidate =>
+          candidate.kind === 'ocean' || candidate.kind === 'sea' || candidate.kind === 'lake'
+      )
+      .map(candidate => ({ id: candidate.id, name: candidate.name }))
+  },
+  { immediate: true }
+)
 
 const promptTitle = computed(() => {
   switch (challenge.value?.kind) {
@@ -160,17 +147,7 @@ const promptTitle = computed(() => {
   }
 })
 
-const query = ref('')
-const highlightedIndex = ref(0)
-const input = ref<HTMLInputElement>()
-
-const suggestions = computed(() => {
-  const needle = normalizeName(query.value)
-  if (!needle) return []
-  return options.value.filter(option => normalizeName(option.name).includes(needle)).slice(0, 6)
-})
-
-watch(suggestions, () => (highlightedIndex.value = 0))
+const input = ref<InstanceType<typeof SuggestInput>>()
 
 // Buyable hints unlock in waves: shores a third in, initials two thirds in.
 // Each bought hint bites HINT_BITE_FRACTION of the pot off the final score.
@@ -258,10 +235,9 @@ const begin = () => {
   }, 1000)
 }
 
-const pick = (option: WaterOption) => {
+const pick = (option: SuggestOption) => {
   const active = challenge.value
   if (!active || resolved.value || !started.value) return
-  query.value = ''
   attempts.value++
 
   if (
@@ -275,19 +251,8 @@ const pick = (option: WaterOption) => {
   // No label: the guessed feature narrows the single shared target.
   announce({ kind: 'wrong', hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
 }
-
-const submitTyped = () => {
-  const exact = options.value.find(
-    option => normalizeName(option.name) === normalizeName(query.value)
-  )
-  const choice = exact ?? suggestions.value[highlightedIndex.value] ?? suggestions.value[0]
-  if (!choice) return announce({ hint: 'No water by that name' })
-  pick(choice)
-}
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
-
 // Bought clues persist under the guess counter, unlike the transient miss toast.
 header .clue {
   color: var(--hior-ange);
@@ -299,51 +264,6 @@ header .clue {
   margin: auto 0;
 }
 
-// Hint chips come from templates/_hint-chip.scss.
-
-// Mirrors CountryGuessInput's look for a consistent typing surface (the
-// console strips the pill and owns the width).
-.guess-form {
-  position: relative;
-
-  input {
-    width: 100%;
-    border: none;
-    font-size: 1.8rem;
-    font-family: inherit;
-    background: transparent;
-    color: var(--dark-blue);
-    padding: 0.6rem 0.4rem;
-    text-align: center;
-
-    &:focus {
-      outline: none;
-    }
-  }
-
-  .suggestions {
-    left: 0;
-    right: 0;
-    margin: 0.6rem 0 0;
-    padding: 0.4rem;
-    list-style: none;
-    position: absolute;
-    border-radius: 0.9rem;
-    backdrop-filter: blur(0.5rem);
-    background: milk(0.94);
-    border: 0.1rem solid ink(0.25);
-
-    li {
-      cursor: pointer;
-      font-size: 1.6rem;
-      border-radius: 0.5rem;
-      padding: 0.5rem 0.9rem;
-
-      &.highlighted,
-      &:hover {
-        background: ink(0.08);
-      }
-    }
-  }
-}
+// Hint chips come from templates/_hint-chip.scss; the typing surface and its
+// suggestion list are SuggestInput's own (the console strips the pill).
 </style>
