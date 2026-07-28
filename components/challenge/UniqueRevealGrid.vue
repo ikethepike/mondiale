@@ -2,7 +2,7 @@
   <section class="unique-reveal">
     <!-- The take: who walked away with what, ranked. The grid below is the
          why; this is the outcome at a glance. -->
-    <header class="take pane">
+    <header class="take card">
       <span class="eyebrow">The take — letter {{ challenge.letter }}</span>
       <ul class="take-row">
         <li
@@ -21,7 +21,7 @@
     <article
       v-for="(panel, panelIndex) in panels"
       :key="panel.category"
-      class="panel pane"
+      class="panel card"
       :style="{ '--panel-index': panelIndex }"
     >
       <header class="panel-head">
@@ -130,6 +130,23 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   display: grid;
   align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  // StatCard's surface, as a cluster: cream wash, ink hairline, soft radius.
+  // The small-caps labels wear muted ink here, not the section-label blue —
+  // four blue headings in one screen shouted over the verdicts.
+  .card {
+    border-radius: 1.2rem;
+    backdrop-filter: blur(0.5rem);
+    background: milk(0.88);
+    border: 0.1rem solid ink(0.25);
+  }
+
+  .eyebrow {
+    opacity: 0.65;
+    font-size: 1.25rem;
+    letter-spacing: 0.06em;
+    color: var(--dark-blue);
+  }
 }
 
 .take {
