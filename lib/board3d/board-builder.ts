@@ -317,6 +317,32 @@ const markerPartsFor = (
   }
 }
 
+/** Tiles before the final arch that get flanking gauntlet pylons. */
+const GAUNTLET_APPROACH_TILES = 3
+
+/**
+ * A pair of pennant pylons flanking the track on a gauntlet-approach tile.
+ * `tier` counts up toward the final arch (1 = furthest out) and raises the
+ * pylons as they close in, so the run-in reads as a funnel into the gate.
+ */
+const gauntletPylonParts = (spacing: number, tier: number): MarkerPart[] => {
+  const s = spacing
+  const parts: MarkerPart[] = []
+  const height = (0.5 + tier * 0.14) * s
+
+  for (const side of [-1, 1]) {
+    const shaft = new CylinderGeometry(0.045 * s, 0.08 * s, height, 8)
+    shaft.translate(side * 0.62 * s, height / 2, 0)
+    parts.push({ geometry: shaft, color: BOARD_COLORS.darkBlue })
+
+    // Streams along the walk direction (local +z points along the path)
+    const pennant = new BoxGeometry(0.05 * s, 0.16 * s, 0.3 * s)
+    pennant.translate(side * 0.62 * s, height - 0.09 * s, 0.18 * s)
+    parts.push({ geometry: pennant, color: BOARD_COLORS.hiorAnge })
+  }
+  return parts
+}
+
 /** Inverted-hull copy of a part, inflated about its own local center. */
 const outlineOf = (geometry: BufferGeometry): BufferGeometry => {
   const outline = geometry.clone()
@@ -331,7 +357,8 @@ const outlineOf = (geometry: BufferGeometry): BufferGeometry => {
 
 /**
  * All challenge markers merged by color (a handful of draw calls total):
- * toon-shaded structures plus one ink inverted-hull outline mesh.
+ * toon-shaded structures plus one ink inverted-hull outline mesh. The final
+ * arch gets a gauntlet run-in — pylon pairs lining the last approach tiles.
  */
 const buildChallengeMarkers = (
   tiles: Tile[],
@@ -345,18 +372,7 @@ const buildChallengeMarkers = (
   const quaternion = new Quaternion()
   const up = new Vector3(0, 1, 0)
 
-  for (const tile of tiles) {
-    if (tile.type === 'normal' || tile.type === 'start') continue
-
-    const { position, tangent } = transforms[tile.position]
-    const isFinal = tile.type === 'final'
-    const parts = markerPartsFor(isFinal ? 'final' : tile.type, spacing)
-
-    // Gates stand at the tile's exit edge, facing across the path — the
-    // final arch spans the tile itself
-    const anchor = isFinal
-      ? position.clone()
-      : position.clone().addScaledVector(tangent, tileRadius * 1.05)
+  const placeParts = (parts: MarkerPart[], anchor: Vector3, tangent: Vector3) => {
     quaternion.setFromAxisAngle(up, Math.atan2(tangent.x, tangent.z))
     matrix.compose(anchor, quaternion, new Vector3(1, 1, 1))
 
@@ -370,6 +386,30 @@ const buildChallengeMarkers = (
       bucket.push(part.geometry)
       colorBuckets.set(part.color, bucket)
     }
+  }
+
+  for (const tile of tiles) {
+    if (tile.type === 'normal' || tile.type === 'start') continue
+
+    const { position, tangent } = transforms[tile.position]
+    const isFinal = tile.type === 'final'
+
+    // Gates stand at the tile's exit edge, facing across the path — the
+    // final arch spans the tile itself
+    const anchor = isFinal
+      ? position.clone()
+      : position.clone().addScaledVector(tangent, tileRadius * 1.05)
+    placeParts(markerPartsFor(isFinal ? 'final' : tile.type, spacing), anchor, tangent)
+  }
+
+  // --- The gauntlet approach: pennant pylons lining the final run-in --------
+  const finalIndex = tiles.findIndex(tile => tile.type === 'final')
+  for (let back = GAUNTLET_APPROACH_TILES; finalIndex !== -1 && back >= 1; back--) {
+    const index = finalIndex - back
+    // Never crowd the start tile or another gate's own marker
+    if (index <= 0 || tiles[index].type !== 'normal') continue
+    const { position, tangent } = transforms[index]
+    placeParts(gauntletPylonParts(spacing, GAUNTLET_APPROACH_TILES - back + 1), position, tangent)
   }
 
   const meshes: Mesh[] = []
