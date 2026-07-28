@@ -257,11 +257,14 @@ const getBorderChainChallenge = ({
     maximumPoints: maximumRoundPoints(game),
     strikes,
     state: {
+      // The rules card holds the opening shot clock until the table is ready.
+      briefing: true,
+      ready: [],
       chains: [[seed]],
       order: shuffleArray(contenders),
       activeIndex: 0,
       turn: 0,
-      // Stamped when the round is revealed (chain-turns) — staging pauses first.
+      // Stamped when the briefing lifts (chain-turns) — staging pauses first.
       deadline: 0,
       named: {},
       strikesLeft: Object.fromEntries(contenders.map(playerId => [playerId, strikes])),

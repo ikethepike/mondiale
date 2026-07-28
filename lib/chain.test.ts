@@ -20,6 +20,7 @@ const WORLD: GameRules = { variant: 'world', difficulty: 'hard' }
 const EUROPE: GameRules = { variant: 'europe', difficulty: 'hard' }
 
 const state = (overrides: Partial<BorderChainState> = {}): BorderChainState => ({
+  ready: [],
   chains: [['NO']],
   order: ['a', 'b', 'c'],
   activeIndex: 0,

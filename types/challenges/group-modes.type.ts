@@ -257,6 +257,11 @@ export interface BorderChainChallenge {
 export type BorderChainOutcome = 'wrong' | 'timeout' | 'trapped' | 'won'
 
 export interface BorderChainState {
+  /** The round opens on a briefing: a rules card each player must explicitly
+   *  dismiss. No shot clock runs until everyone is ready (or the cap forces it). */
+  briefing?: boolean
+  /** Players who dismissed their briefing card. */
+  ready: string[]
   /** Every chain walked this round, oldest first; the last is live. Each is
    *  seed-first and its last entry is the head. */
   chains: ISOCountryCode[][]

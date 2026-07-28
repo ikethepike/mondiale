@@ -9,6 +9,8 @@ export const submitChainMoveHandler = defineGameHandler(
     const challenge = currentBorderChain(game)
     if (!challenge || challenge.state.finished) return
     const { state } = challenge
+    // No moves while the rules card is up — the clock hasn't started.
+    if (state.briefing) return
 
     // Only the player on the clock may act, and only for the turn they saw —
     // a retried critical event or a stale client re-send lands after the turn

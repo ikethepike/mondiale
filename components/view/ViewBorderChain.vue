@@ -17,7 +17,7 @@
       <h1 class="map-caption">
         {{ headline }}
       </h1>
-      <span v-if="!finished" class="map-caption sub turn-line">
+      <span v-if="!finished && !briefing" class="map-caption sub turn-line">
         <span class="chip" :style="{ background: activePlayer?.color }" />
         <span>{{ turnLabel }}</span>
         <ChallengeTimerRadial
@@ -29,9 +29,42 @@
       <span v-if="!finished && iAmOut" class="map-caption sub out"> You're out — spectating </span>
     </ChallengePrompt>
 
+    <!-- The briefing: a rules card each player dismisses explicitly (The
+         Despot's gate). The opening shot clock only starts when the whole
+         table is ready — or the server's reading cap forces it. -->
+    <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
+      <h2>Border Chain</h2>
+      <ul class="briefing-points">
+        <li>
+          One chain, in turns: name a country that borders the head —
+          {{ challenge.turnSeconds }} seconds a move.
+        </li>
+        <li>〜 Named strait crossings count as borders.</li>
+        <li>No repeats — every country walks once.</li>
+        <li v-if="challenge.strikes > 0">
+          A wrong name or a dead clock burns your strike; the next puts you out.
+        </li>
+        <li v-else>A wrong name or a dead clock puts you out — sudden death.</li>
+        <li>Dead ends trap whoever holds them. Outlast the table.</li>
+      </ul>
+      <div class="ready-row">
+        <div
+          v-for="playerId in state!.order"
+          :key="playerId"
+          class="ready-seat"
+          :class="{ waiting: !state!.ready.includes(playerId) }"
+        >
+          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
+          <span class="seat-name">{{ seatName(playerId) }}</span>
+        </div>
+      </div>
+      <ButtonFilled v-if="!iAmReady" @click="sendReady">Link me in</ButtonFilled>
+      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
+    </section>
+
     <!-- On your turn the shot clock lives inside the guess console; between
          turns the header's turn-line chip carries the countdown. -->
-    <section v-if="myTurn && !finished" class="guess-box">
+    <section v-if="myTurn && !finished && !briefing" class="guess-box">
       <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
         <CountryGuessInput
           ref="guessInput"
@@ -74,14 +107,16 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
-import { playerDisplayName } from '~~/lib/player'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -98,6 +133,17 @@ const {
 } = useGroupChallenge('border-chain-challenge', { solo: false })
 
 const state = computed(() => challenge.value?.state)
+const briefing = computed(() => !!state.value?.briefing)
+const iAmReady = computed(() => !!state.value?.ready.includes(gameStore.playerId))
+const readySent = ref(false)
+const sendReady = () => {
+  if (readySent.value) return
+  readySent.value = true
+  update({ event: 'chain-ready' })
+}
+const seatName = (playerId: string) =>
+  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+
 const chain = computed(() => (state.value ? liveChain(state.value) : []))
 const chainCount = computed(() => state.value?.chains.length ?? 0)
 const seed = computed(() => state.value?.chains[0]?.[0] as ISOCountryCode)

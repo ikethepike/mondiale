@@ -973,58 +973,14 @@ header .headline-line {
   }
 }
 
-.briefing-points {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  text-align: left;
-  gap: 0.55rem;
-  flex-flow: column nowrap;
-}
-
-.ready-row {
-  gap: 1.2rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.ready-seat {
-  gap: 0.25rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-  transition:
-    opacity var(--motion-base) var(--ease-smooth),
-    filter var(--motion-base) var(--ease-smooth);
-
-  &.waiting {
-    opacity: 0.35;
-    filter: grayscale(1);
-  }
-
-  .seat-hat {
-    width: 2.4rem;
-    z-index: 1;
-    // Seated ON the pawn's head, tipped — not hovering in the air above it.
-    margin-bottom: -1.15rem;
-    transform: rotate(-10deg);
-  }
-
-  .ready-pawn {
-    width: 2.6rem;
-  }
-
-  .seat-name {
-    font-size: 1.15rem;
-    color: var(--dark-blue);
-  }
-}
-
-.briefing-waiting {
-  margin: 0;
-  opacity: 0.75;
+// The points list and ready row come from the shared .briefing-card
+// template; only the despot's hat placement is local.
+.ready-seat .seat-hat {
+  width: 2.4rem;
+  z-index: 1;
+  // Seated ON the pawn's head, tipped — not hovering in the air above it.
+  margin-bottom: -1.15rem;
+  transform: rotate(-10deg);
 }
 
 .reveal {

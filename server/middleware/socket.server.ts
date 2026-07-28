@@ -22,6 +22,7 @@ import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhun
 import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
 import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
 import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
+import { chainReadyHandler } from '~~/lib/events/server/chain-ready.handler'
 import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
 import { forgetTauntBucket, manhuntTauntHandler } from '~~/lib/events/server/manhunt-taunt.handler'
 import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
@@ -99,6 +100,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'unique-ready': {
     handler: uniqueReadyHandler,
+  },
+  'chain-ready': {
+    handler: chainReadyHandler,
   },
   'submit-unique-answer': {
     handler: submitUniqueAnswerHandler,

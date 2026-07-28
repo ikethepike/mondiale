@@ -978,6 +978,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           strikes: 0,
           state: {
+            ready: [RIVAL, ME, THIRD],
             // Øresund and Bering hops on one chain — the dashed-arc test.
             chains: [['DK', 'SE', 'FI', 'RU', 'US']],
             order: [RIVAL, ME, THIRD],
@@ -986,6 +987,34 @@ const scenarios: Scenario[] = [
             deadline: Date.now() + 12000,
             named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['US'] },
             strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-briefing',
+    label: 'Border chain (briefing — rules card, one rival ready)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          state: {
+            briefing: true,
+            ready: [RIVAL],
+            chains: [['DK']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 0,
+            deadline: 0,
+            named: {},
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
             eliminated: [],
             outcomes: {},
             missedOuts: {},
@@ -1005,6 +1034,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           strikes: 1,
           state: {
+            ready: [RIVAL, ME, THIRD],
             chains: [['DK', 'SE', 'FI']],
             order: [RIVAL, ME, THIRD],
             activeIndex: 1,
