@@ -83,7 +83,7 @@ import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
 import type { Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { boardProgress } from '~~/lib/player'
-import { PHONE_MAX_PX } from '~~/lib/use-viewport'
+import { useIsPhone } from '~~/lib/use-viewport'
 
 const props = defineProps<{
   players: Player[]
@@ -100,10 +100,7 @@ const gameStore = useGameStore()
 
 // Folded = compact avatar strip. Defaults to folded on phones ($tablet), where
 // the full panel would cover most of the board; the toggle overrides per session.
-const isSmallScreen = ref(false)
-onMounted(() => {
-  isSmallScreen.value = window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
-})
+const isSmallScreen = useIsPhone()
 const folded = computed(() => gameStore.board.panelFolded ?? isSmallScreen.value)
 const toggleFold = () => {
   gameStore.board.panelFolded = !folded.value

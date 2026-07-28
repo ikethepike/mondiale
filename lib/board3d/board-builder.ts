@@ -26,8 +26,10 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import type { Tile } from '~~/types/game.types'
+import { PHONE_MAX_PX } from '~~/lib/use-viewport'
+import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
-import { BOARD_COLORS } from './colors'
+import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { createTilePath, type TileTransform } from './path'
 import { BOARD_SIZE, createHeightSampler, withPathShelf } from './terrain'
@@ -42,14 +44,19 @@ export interface BoardBuild {
 
 /**
  * The board is rebuilt-on-mount several times per game (each movement phase).
- * The build is deterministic per (seed, tile count), so cache the latest one —
+ * The build is deterministic per (seed, tiles), so cache the latest one —
  * terrain displacement over ~90k vertices is the expensive part. three.js
  * re-uploads cached geometry/textures automatically when a new renderer mounts.
  */
 let cachedBuild: { key: string; build: BoardBuild } | undefined
 
+/** Tile types vary independently of length (seeded gate rhythm), so the cache
+ *  key fingerprints every type — a same-length regeneration still rebuilds. */
+export const boardBuildKey = (seed: string, tiles: Tile[]): string =>
+  `${seed}:${tiles.map(tile => tile.type).join(',')}`
+
 export const getBoardBuild = (seed: string, tiles: Tile[]): BoardBuild => {
-  const key = `${seed}:${tiles.length}`
+  const key = boardBuildKey(seed, tiles)
   if (cachedBuild?.key === key) return cachedBuild.build
 
   cachedBuild?.build.dispose()
@@ -75,7 +82,8 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const sampler = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
 
   // --- Terrain -------------------------------------------------------------
-  const segments = typeof window !== 'undefined' && window.innerWidth < 900 ? 220 : 300
+  const segments =
+    typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
   const terrainSize = BOARD_SIZE * TERRAIN_OVERHANG
   const terrainGeometry = new PlaneGeometry(terrainSize, terrainSize, segments, segments)
   terrainGeometry.rotateX(-Math.PI / 2)
@@ -83,15 +91,33 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const positions = terrainGeometry.attributes.position
   const slopes = new Float32Array(positions.count)
   const epsilon = terrainSize / segments
+
+  // One sampler tap per vertex: the grid pitch equals `epsilon`, so the
+  // finite-difference taps land exactly on neighbouring lattice points —
+  // central differences over the precomputed heights are identical to
+  // re-sampling, at a fifth of the cost. PlaneGeometry is row-major with x
+  // varying fastest; one-sided differences at the (faded-out) edges.
+  const lattice = segments + 1
+  const heights = new Float32Array(positions.count)
   for (let index = 0; index < positions.count; index++) {
-    const x = positions.getX(index)
-    const z = positions.getZ(index)
-    positions.setY(index, sampler(x, z))
+    heights[index] = sampler(positions.getX(index), positions.getZ(index))
+  }
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, heights[index])
 
     // World-space slope magnitude — drives contour-line fading in the shader.
     // (Screen-space derivatives vary with zoom/view angle and made lines patchy.)
-    const gradientX = (sampler(x + epsilon, z) - sampler(x - epsilon, z)) / (2 * epsilon)
-    const gradientZ = (sampler(x, z + epsilon) - sampler(x, z - epsilon)) / (2 * epsilon)
+    const row = Math.floor(index / lattice)
+    const column = index % lattice
+    const left = Math.max(column - 1, 0)
+    const right = Math.min(column + 1, segments)
+    const near = Math.max(row - 1, 0)
+    const far = Math.min(row + 1, segments)
+    const gradientX =
+      (heights[row * lattice + right] - heights[row * lattice + left]) / ((right - left) * epsilon)
+    const gradientZ =
+      (heights[far * lattice + column] - heights[near * lattice + column]) /
+      ((far - near) * epsilon)
     slopes[index] = Math.hypot(gradientX, gradientZ)
   }
   positions.needsUpdate = true
@@ -131,6 +157,7 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const matrix = new Matrix4()
   const quaternion = new Quaternion()
   const topColor = new Color()
+  const climaxWarmth = new Color(BOARD_COLORS.warmSand)
 
   tiles.forEach((tile, index) => {
     const { position } = transforms[index]
@@ -157,12 +184,17 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
       case 'final':
         topColor.set(BOARD_COLORS.hiorAnge)
         break
-      case 'normal':
+      case 'normal': {
         topColor.set(BOARD_COLORS.sourMilk)
+        // Final approach warms up: plain tiles inside the climax zone blend
+        // toward sand the closer they sit to the arch.
+        const climaxProgress = (index - (tiles.length - 1 - CLIMAX_TILES)) / CLIMAX_TILES
+        if (climaxProgress > 0) topColor.lerp(climaxWarmth, climaxProgress * 0.45)
         break
+      }
       default:
-        // Individual challenge tiles keep the current orb's mint semantics
-        topColor.set(BOARD_COLORS.softMint)
+        // Gate tops carry their theme's wash; the marker stays the lead cue
+        topColor.set(TILE_TOP_TINTS[tile.type])
     }
     topMesh.setColorAt(index, topColor)
   })

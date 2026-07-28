@@ -139,7 +139,7 @@ const mockGame = (groupChallenge: unknown): Game =>
   ({
     id: 'pin-landmark-harness',
     host: HARNESS_PLAYER_ID,
-    tiles: generateTiles('medium'),
+    tiles: generateTiles('medium', 'pin-landmark-harness'),
     started: true,
     length: 'medium',
     difficulty: 'hard',

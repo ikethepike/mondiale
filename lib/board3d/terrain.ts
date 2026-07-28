@@ -68,23 +68,45 @@ export const withPathShelf = (
   minZ -= radius
   maxZ += radius
 
+  // Uniform grid over the path points, cell size = radius: every point within
+  // `radius` of a query lives in the query's 3×3 cell neighbourhood, so the
+  // nearest-in-neighbourhood IS the global nearest whenever it matters
+  // (distance < radius) — identical output to a full scan, at O(1) per query.
+  const grid = new Map<string, Vector3[]>()
+  const cellOf = (value: number) => Math.floor(value / radius)
+  for (const point of pathPoints) {
+    const key = `${cellOf(point.x)},${cellOf(point.z)}`
+    const bucket = grid.get(key)
+    if (bucket) bucket.push(point)
+    else grid.set(key, [point])
+  }
+
   return (x, z) => {
     if (x < minX || x > maxX || z < minZ || z > maxZ) return sampler(x, z)
 
     let nearestSquared = Infinity
     let pathY = 0
 
-    for (const point of pathPoints) {
-      const dx = point.x - x
-      const dz = point.z - z
-      const distanceSquared = dx * dx + dz * dz
-      if (distanceSquared < nearestSquared) {
-        nearestSquared = distanceSquared
-        pathY = point.y
+    const cellX = cellOf(x)
+    const cellZ = cellOf(z)
+    for (let gridX = cellX - 1; gridX <= cellX + 1; gridX++) {
+      for (let gridZ = cellZ - 1; gridZ <= cellZ + 1; gridZ++) {
+        const bucket = grid.get(`${gridX},${gridZ}`)
+        if (!bucket) continue
+        for (const point of bucket) {
+          const dx = point.x - x
+          const dz = point.z - z
+          const distanceSquared = dx * dx + dz * dz
+          if (distanceSquared < nearestSquared) {
+            nearestSquared = distanceSquared
+            pathY = point.y
+          }
+        }
       }
     }
 
     const height = sampler(x, z)
+    if (nearestSquared === Infinity) return height
     const distance = Math.sqrt(nearestSquared)
     if (distance >= radius) return height
 

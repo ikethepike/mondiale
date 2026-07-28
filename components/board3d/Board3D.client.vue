@@ -3,7 +3,7 @@
     <TresCanvas
       v-if="webglAvailable && resolvedGame && resolvedPlayerId"
       clear-color="#fffaf5"
-      :dpr="[1, 2]"
+      :dpr="isPhone ? [1, 1.5] : [1, 2]"
       power-preference="high-performance"
       antialias
     >
@@ -29,6 +29,7 @@ import { TresCanvas } from '@tresjs/core'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useMovementRequest } from '~~/lib/use-movement-request'
+import { useIsPhone } from '~~/lib/use-viewport'
 import type { Game } from '~~/types/game.types'
 import BoardFallback from './BoardFallback.vue'
 import SpectateHud from './SpectateHud.vue'
@@ -52,6 +53,10 @@ const { game: storeGame, playerId: storePlayerId, gameStore, currentRound } = us
 
 const resolvedGame = computed(() => props.game ?? storeGame.value)
 const resolvedPlayerId = computed(() => props.playerId ?? storePlayerId.value)
+
+// Phones cap device-pixel-ratio at 1.5 — a full-retina 3x canvas costs more
+// GPU than the small screen can show.
+const isPhone = useIsPhone()
 
 const webglAvailable = ref(true)
 onBeforeMount(() => {

@@ -28,6 +28,7 @@ import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
+  boardBuildKey,
   buildCrown,
   buildPawn,
   type CrownVariant,
@@ -71,6 +72,17 @@ const board = shallowRef<BoardBuild>()
 
 const pawns = new Map<string, Group>()
 const stuckTweens = new Map<string, gsap.core.Tween>()
+
+// Every deferred beat goes through here so unmount can cancel the lot —
+// a bare setTimeout would fire against a torn-down scene.
+const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
+const schedule = (callback: () => void, delay: number) => {
+  const id = setTimeout(() => {
+    pendingTimers.delete(id)
+    callback()
+  }, delay)
+  pendingTimers.add(id)
+}
 let mover: PawnMover | undefined
 let boardCamera: BoardCamera | undefined
 let hasFlownIn = false
@@ -151,25 +163,103 @@ const playChallengeHit = (playerId: string, tile: TileTransform) => {
 
 // --- Path preview: rings over the tiles the local pawn is about to walk ----
 // Overlaid meshes rather than instance-color edits: the board build is cached
-// across mounts and must stay untouched.
+// across mounts and must stay untouched. Meshes are pooled — a walk retires
+// one ring per step, and create/dispose churn per hop adds up.
 const pathMarkers = new Map<number, Mesh<RingGeometry, MeshBasicMaterial>>()
+const markerPool: Mesh<RingGeometry, MeshBasicMaterial>[] = []
+let markerGeometry: RingGeometry | undefined
+let markerRadius = 0
+
+const acquirePathMarker = (radius: number): Mesh<RingGeometry, MeshBasicMaterial> => {
+  // The ring size only changes with a new build (spacing is per board)
+  if (!markerGeometry || markerRadius !== radius) {
+    markerGeometry?.dispose()
+    markerGeometry = new RingGeometry(radius * 0.62, radius * 0.8, 24)
+    markerRadius = radius
+    markerPool.forEach(marker => (marker.geometry = markerGeometry!))
+  }
+
+  const marker =
+    markerPool.pop() ?? new Mesh(markerGeometry, new MeshBasicMaterial({ transparent: true }))
+  gsap.killTweensOf(marker.material)
+  marker.geometry = markerGeometry
+  marker.material.opacity = 0.85
+  marker.rotation.x = -Math.PI / 2
+  return marker
+}
 
 const retirePathMarker = (index: number, fade: boolean) => {
   const marker = pathMarkers.get(index)
   if (!marker) return
   pathMarkers.delete(index)
 
-  const remove = () => {
+  const recycle = () => {
     board.value?.group.remove(marker)
-    marker.geometry.dispose()
-    marker.material.dispose()
+    markerPool.push(marker)
   }
-  if (!fade || prefersReducedMotion()) return remove()
-  gsap.to(marker.material, { opacity: 0, duration: 0.4, ease: 'power1.out', onComplete: remove })
+  if (!fade || prefersReducedMotion()) return recycle()
+  gsap.to(marker.material, { opacity: 0, duration: 0.4, ease: 'power1.out', onComplete: recycle })
 }
 
 const clearPathPreview = () => {
   for (const index of [...pathMarkers.keys()]) retirePathMarker(index, false)
+}
+
+const disposePathMarkers = () => {
+  clearPathPreview()
+  markerPool.forEach(marker => {
+    gsap.killTweensOf(marker.material)
+    marker.material.dispose()
+  })
+  markerPool.length = 0
+  markerGeometry?.dispose()
+  markerGeometry = undefined
+}
+
+// --- Current-tile highlight: a soft pulsing ring under the own pawn --------
+// Overlay mesh for the same reason as the path preview: the cached build's
+// instance colors must stay untouched.
+let highlightRing: Mesh<RingGeometry, MeshBasicMaterial> | undefined
+let highlightTween: gsap.core.Tween | undefined
+
+const disposeHighlight = () => {
+  highlightTween?.kill()
+  highlightTween = undefined
+  if (!highlightRing) return
+  highlightRing.parent?.remove(highlightRing)
+  highlightRing.geometry.dispose()
+  highlightRing.material.dispose()
+  highlightRing = undefined
+}
+
+const syncHighlight = () => {
+  const build = board.value
+  const own = props.game.players[props.playerId]
+  if (!build || !own) return
+
+  if (!highlightRing) {
+    const radius = build.spacing * 0.42
+    highlightRing = new Mesh(
+      new RingGeometry(radius * 0.98, radius * 1.16, 32),
+      new MeshBasicMaterial({ color: BOARD_COLORS.softMint, transparent: true, opacity: 0.55 })
+    )
+    highlightRing.rotation.x = -Math.PI / 2
+    build.group.add(highlightRing)
+    if (!prefersReducedMotion()) {
+      highlightTween = gsap.to(highlightRing.scale, {
+        x: 1.08,
+        y: 1.08,
+        z: 1.08,
+        duration: 1.4,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+      })
+    }
+  }
+
+  const tile = tileFor(displayPositionFor(own))
+  if (tile) highlightRing.position.set(tile.position.x, tile.position.y + 0.62, tile.position.z)
 }
 
 const syncPathPreview = () => {
@@ -193,15 +283,8 @@ const syncPathPreview = () => {
     const tile = tileFor(index)
     if (!tile) continue
 
-    const marker = new Mesh(
-      new RingGeometry(radius * 0.62, radius * 0.8, 24),
-      new MeshBasicMaterial({
-        color: gates.has(index) ? BOARD_COLORS.hiorAnge : BOARD_COLORS.warmSand,
-        transparent: true,
-        opacity: 0.85,
-      })
-    )
-    marker.rotation.x = -Math.PI / 2
+    const marker = acquirePathMarker(radius)
+    marker.material.color.set(gates.has(index) ? BOARD_COLORS.hiorAnge : BOARD_COLORS.warmSand)
     marker.position.set(tile.position.x, tile.position.y + 0.75, tile.position.z)
     pathMarkers.set(index, marker)
     build.group.add(marker)
@@ -298,6 +381,7 @@ const rebuild = () => {
   mover?.dispose()
   removePawns()
   clearPathPreview()
+  disposeHighlight()
 
   // Cached across mounts — the board reappears every round
   const build = getBoardBuild(props.game.id, props.game.tiles)
@@ -323,9 +407,12 @@ const rebuild = () => {
 
   syncPawns()
   syncPathPreview()
+  syncHighlight()
 }
 
-watch(() => [props.game.id, props.game.tiles.length], rebuild, { immediate: true })
+// Fingerprint the tile types: with seeded gate rhythm, same-length boards
+// differ — a count-based key would serve a stale build after regeneration
+watch(() => boardBuildKey(props.game.id, props.game.tiles), rebuild, { immediate: true })
 
 // New players joining / colors changing
 watch(
@@ -345,19 +432,33 @@ watch(
   () => syncCrowns(true)
 )
 
-// Server-driven movement: one socket update per 500ms step
+// Server-driven movement: one socket update per 500ms step. String signature
+// (like the sibling watchers) so the callback runs only when a position
+// actually changes — an object getter re-fires on every reactive touch of the
+// game and each fire rebuilt the camera-follow tween.
+const positionSignatureEntries = (signature: string) =>
+  signature
+    ? signature.split('|').map(entry => {
+        const split = entry.lastIndexOf(':')
+        return [entry.slice(0, split), Number(entry.slice(split + 1))] as const
+      })
+    : []
+
 watch(
   () =>
-    Object.fromEntries(
-      Object.values(props.game.players).map(player => [player.id, displayPositionFor(player)])
-    ),
-  positions => {
-    for (const [playerId, position] of Object.entries(positions)) {
+    Object.values(props.game.players)
+      .map(player => `${player.id}:${displayPositionFor(player)}`)
+      .join('|'),
+  (signature, previousSignature) => {
+    const previous = new Map(positionSignatureEntries(previousSignature ?? ''))
+    for (const [playerId, position] of positionSignatureEntries(signature)) {
+      if (previous.get(playerId) === position) continue
       mover?.moveTo(playerId, position)
       if (playerId === cameraTargetId.value) {
         const tile = tileFor(position)
         if (tile) boardCamera?.follow(tile.position)
       }
+      if (playerId === props.playerId) syncHighlight()
     }
   }
 )
@@ -366,6 +467,7 @@ watch(
 // broadcast entry. Sprites self-clean; the sets exist for unmount teardown.
 // Bursts fan out: the slot is the number of cheers currently in flight on
 // that pawn, freed again when a sprite finishes.
+const CHEER_MEMORY = 200
 const seenCheers = new Set<string>()
 const cheerCleanups = new Set<() => void>()
 const cheersInFlight = new Map<string, number>()
@@ -379,6 +481,11 @@ watch(
     for (const cheer of cheers) {
       if (seenCheers.has(cheer.entryId)) continue
       seenCheers.add(cheer.entryId)
+      // Bounded memory: evict oldest ids (Sets iterate in insertion order)
+      for (const stale of seenCheers) {
+        if (seenCheers.size <= CHEER_MEMORY) break
+        seenCheers.delete(stale)
+      }
       // Skip stale entries replayed into a freshly mounted scene
       if (cheer.at < Date.now() - 3000) continue
 
@@ -423,7 +530,7 @@ watch(
       gameStore.board.spectateTargetId = undefined
     } else if (state === 'done') {
       // Let the final follow land before handing the camera back
-      setTimeout(() => {
+      schedule(() => {
         const targetId = gameStore.board.spectateTargetId
         const phase = targetId ? props.game.players[targetId]?.phase : undefined
         if (phase && SPECTATE_RELEASE_PHASES.includes(phase)) {
@@ -470,7 +577,7 @@ watch(
 
       const settledPlayerId = playerId
       const settledTile = tile
-      setTimeout(() => {
+      schedule(() => {
         const current = props.game.players[settledPlayerId]
         if (current && isBlockedByChallenge(current)) {
           playChallengeHit(settledPlayerId, settledTile)
@@ -533,7 +640,7 @@ watch([cameraRef, controlsRef, board], () => {
   if (!hasFlownIn) {
     hasFlownIn = true
     const spacing = board.value?.spacing ?? 8
-    setTimeout(() => {
+    schedule(() => {
       const focus = props.game.players[cameraTargetId.value]
       const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
       if (tile) boardCamera?.flyTo(tile.position, spacing * 5.5)
@@ -545,9 +652,12 @@ onMounted(() => emit('ready'))
 
 onUnmounted(() => {
   gameStore.board.spectateTargetId = undefined
+  pendingTimers.forEach(id => clearTimeout(id))
+  pendingTimers.clear()
   mover?.dispose()
   boardCamera?.dispose()
-  clearPathPreview()
+  disposePathMarkers()
+  disposeHighlight()
   // Cheer sprites before pawn disposal — disposePawn won't reach their materials
   cheerCleanups.forEach(cleanup => cleanup())
   cheerCleanups.clear()
