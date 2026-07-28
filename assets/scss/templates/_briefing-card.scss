@@ -1,0 +1,23 @@
+// The dismissible rules card fronting tutorial-style rounds (The Despot's
+// role cards, Unique or Bust). One scroll recipe for every host: the card
+// centers itself in the shell's column, caps below the viewport and scrolls
+// its own overflow — a phone-height card must never trap its dismiss button
+// off-screen. Views keep only their flavor (palettes, hats, point lists).
+.briefing-card {
+  gap: 1rem;
+  z-index: 3;
+  display: flex;
+  // Auto on both axes: the shell is a space-between column, and with no
+  // footer in this phase the card would otherwise pin to an edge.
+  margin: auto;
+  overflow-y: auto;
+  // A scroll that hits the card's end must not chain into the map behind it.
+  overscroll-behavior: contain;
+  max-height: calc(var(--viewport-height) - 10rem);
+  padding: 1.8rem 2.2rem;
+  text-align: center;
+  align-items: center;
+  flex-flow: column nowrap;
+  pointer-events: auto;
+  max-width: min(34rem, calc(100% - 2.4rem));
+}

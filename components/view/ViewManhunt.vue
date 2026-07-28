@@ -61,7 +61,9 @@
       </span>
     </aside>
 
-    <ChallengePrompt>
+    <!-- No prompt while the briefing is up: "Your move" belongs to a round
+         that has actually started, not to the card explaining it. -->
+    <ChallengePrompt v-if="!briefing">
       <h1 class="map-caption headline-line">
         <DespotHat class="despot-hat" />
         <span>{{ headline }}</span>
@@ -94,7 +96,7 @@
          runs until the whole table is ready (or the server's cap forces it). -->
     <section
       v-if="briefing"
-      class="briefing pane tr decorator-bottom"
+      class="briefing briefing-card pane tr decorator-bottom"
       :class="{ despotic: isDespot }"
     >
       <DespotHat class="briefing-hat" />
@@ -942,18 +944,9 @@ header .headline-line {
   }
 }
 
+// Layout and scrolling come from the shared .briefing-card template; only
+// the Despot flavor lives here.
 .briefing {
-  gap: 1rem;
-  z-index: 3;
-  display: flex;
-  margin: 0 auto;
-  padding: 1.8rem 2.2rem;
-  text-align: center;
-  align-items: center;
-  flex-flow: column nowrap;
-  pointer-events: auto;
-  max-width: min(34rem, calc(100% - 2.4rem));
-
   // Glorious Leader gets the ember treatment: the accent that marks "you"
   // on the map becomes the whole room, white ink on top.
   &.despotic {

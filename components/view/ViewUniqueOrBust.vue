@@ -34,7 +34,7 @@
     <!-- The briefing: a rules card each player dismisses explicitly (The
          Despot's gate). No clock runs until the whole table is ready — or the
          server's reading cap forces it. -->
-    <section v-if="briefing" class="briefing pane tr decorator-bottom">
+    <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
       <UniqueLetterBadge class="banner" letter="?" />
       <h2>Unique or Bust</h2>
       <ul class="briefing-points">
@@ -102,10 +102,13 @@
         </li>
       </ul>
       <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.durationSeconds">
+        <!-- Blind box: a recall round with a browsable dropdown is a menu.
+             Typos still land through the submit-time fuzzy match. -->
         <SuggestInput
           v-if="!allMineLocked"
           ref="input"
           :options="activeOptions"
+          :suggest="false"
           placeholder="Type your answer…"
           @pick="pick"
           @miss="announce({ hint: `Nothing on the ${categoryLabel} list by that name` })"
@@ -308,22 +311,8 @@ const verdictLine = computed(() => {
 
 // The rules card wears The Despot's briefing recipe — same pane classes, same
 // ready-row grammar — so the tutorial gate reads identically across modes.
+// Layout and scrolling come from the shared .briefing-card template.
 .briefing {
-  gap: 1rem;
-  z-index: 3;
-  display: flex;
-  // Auto on both axes: the shell is a space-between column, and with no
-  // footer in this phase the card would otherwise pin to the bottom edge.
-  margin: auto;
-  overflow-y: auto;
-  max-height: calc(var(--viewport-height) - 10rem);
-  padding: 1.8rem 2.2rem;
-  text-align: center;
-  align-items: center;
-  flex-flow: column nowrap;
-  pointer-events: auto;
-  max-width: min(34rem, calc(100% - 2.4rem));
-
   h2 {
     margin: 0;
   }

@@ -18,6 +18,7 @@
 @use 'templates/eyebrow';
 @use 'templates/player-accent';
 @use 'templates/map-caption';
+@use 'templates/briefing-card';
 // After map-caption: a chip that wears both classes keeps chip-scale padding.
 @use 'templates/country-chip';
 @use 'templates/chip';

@@ -4,16 +4,16 @@
       ref="input"
       v-model="query"
       type="text"
-      role="combobox"
+      :role="suggest ? 'combobox' : undefined"
       :placeholder="placeholder"
       autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"
       enterkeyhint="go"
-      aria-autocomplete="list"
-      :aria-expanded="suggestions.length > 0"
-      :aria-controls="listId"
+      :aria-autocomplete="suggest ? 'list' : undefined"
+      :aria-expanded="suggest ? suggestions.length > 0 : undefined"
+      :aria-controls="suggest ? listId : undefined"
       :aria-activedescendant="highlighted ? optionId(highlighted) : undefined"
       :disabled="disabled"
       @keydown.down.prevent="moveHighlight(1)"
@@ -37,7 +37,7 @@
 </template>
 <script lang="ts" setup>
 import { clamp } from '~~/lib/number'
-import { normalizeAnswer } from '~~/lib/strings'
+import { editDistance, normalizeAnswer } from '~~/lib/strings'
 
 /**
  * CountryGuessInput's sibling for every other register: a typed guess box
@@ -47,6 +47,10 @@ import { normalizeAnswer } from '~~/lib/strings'
  * filter can't place falls out as a `miss` so views can run their own
  * forgiving fallback. Consoles restyle it through the same `.guess-form` /
  * `.suggestions` hooks as the country box.
+ *
+ * `suggest: false` keeps the box blind — no dropdown to fish from (recall
+ * rounds like Unique or Bust) — while submits stay forgiving: normalized
+ * exact matches land, and a length-scaled typo budget catches near-misses.
  */
 export interface SuggestOption {
   id: string
@@ -73,6 +77,11 @@ const props = defineProps({
     type: Function as PropType<(value: string) => string>,
     default: (value: string) => normalizeAnswer(value),
   },
+  /** Show the live suggestion list. Off = type from memory, submit to find out. */
+  suggest: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits<{ pick: [option: SuggestOption]; miss: [input: string] }>()
@@ -92,7 +101,7 @@ const keyed = computed(() =>
 )
 
 const suggestions = computed(() => {
-  if (props.disabled) return []
+  if (props.disabled || !props.suggest) return []
   const needle = props.normalize(query.value)
   if (!needle) return []
   const hits = keyed.value.filter(({ keys }) => keys.some(key => key.includes(needle)))
@@ -142,11 +151,29 @@ const pick = (option: SuggestOption) => {
   emit('pick', option)
 }
 
+/** Typo forgiveness for submits the list can't anchor (suggestions off, or
+ *  no substring hit): the same length-scaled budget as country search —
+ *  short words earn no edits, so prefix-fishing never lands. */
+const fuzzyMatch = (needle: string): SuggestOption | undefined => {
+  const budget = needle.length >= 7 ? 2 : needle.length >= 4 ? 1 : 0
+  if (!budget) return undefined
+  let best: { option: SuggestOption; distance: number } | undefined
+  for (const { option, keys } of keyed.value) {
+    for (const key of keys) {
+      const distance = editDistance(needle, key, budget)
+      if (distance <= budget && (!best || distance < best.distance)) {
+        best = { option, distance }
+      }
+    }
+  }
+  return best?.option
+}
+
 const submitTyped = () => {
   if (!query.value.trim()) return
   const needle = props.normalize(query.value)
   const exact = keyed.value.find(({ keys }) => keys.some(key => key === needle))?.option
-  const choice = exact ?? highlighted.value
+  const choice = exact ?? highlighted.value ?? fuzzyMatch(needle)
   if (!choice) {
     emit('miss', query.value)
     return
