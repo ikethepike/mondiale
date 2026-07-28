@@ -29,8 +29,16 @@ and wire every caller through it. Never inline a second copy "just for this view
 | Redis game-state TTL | `setWithGameTtl` / `GAME_STATE_TTL_SECONDS` in `lib/events/server-side.ts` |
 | Motion tokens, reduced-motion, dwell times | `lib/motion.ts` (`MOTION`, `EASE`, `DWELL`, `prefersReducedMotion`) — never raw `matchMedia` for reduced motion |
 | Viewport breakpoints | `lib/use-viewport.ts` (`PHONE_MAX_PX`, `useIsPhone`, `useIsCoarsePointer`) — never a hardcoded `640px` in script |
-| Region-variant labels and map components | `lib/variant.ts` (`REGION_LABELS`, `REGION_MAP_COMPONENT_NAMES`) |
+| Region-variant labels | `lib/variant.ts` (`REGION_LABELS`) |
+| Hand-drawn region maps (per variant) | `components/map/RegionMap.vue` + `REGION_MAP_COMPONENTS` in `components/map/region-maps.ts` — REAL imports; `resolveComponent` only resolves literal names, a dynamic name renders inert elements |
 | Outline geometry (rings, area, centroid, resampling) | `lib/outline.ts` (`ringArea`, `ringCentroid`, …) |
+| Small-option-table guess rounds (spent picks, attempt cap, per-attempt pay) | `lib/use-attempt-options.ts` |
+| Collect-a-set blitz rounds (guess list, tinting, dupe bounce, early finish) | `lib/use-collect-set-round.ts` |
+| The dark-blue ink and its washes | `ink($alpha, $lightness?)` in `assets/scss/rules/_ink.scss` — never a raw `hsla(215.7, …)`. NOTE: Sass does not evaluate functions inside custom-property values; write `--token: #{ink()}`, and JS strings need the literal color |
+| Night-mode palette (City Nocturne / Sunset Blitz) | `--night-page`, `--night-land`, `--night-stroke`, `--night-amber` in `_palette.scss` |
+| Shared keyframes (`chip-in`, `row-land`, `bar-grow`, `stroke-draw`, …) | `assets/scss/rules/_animations.scss` — scoped blocks reference them by name |
+| Player identity edge (colour border on owned rows/cards) | `.player-accent` in `assets/scss/templates/_player-accent.scss` + inline `--player-color` |
+| SCSS breakpoints | `$tablet`/`$laptop`/`$desktop` in `rules/_breakpoints.scss` — never a raw `640px` media query |
 
 ## Principles
 

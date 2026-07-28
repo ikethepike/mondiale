@@ -1,3 +1,4 @@
+@use 'ink' as *;
 /* Palette */
 
 :root {
@@ -12,11 +13,18 @@
 
   --sour-milk: hsl(36, 100%, 98%);
 
-  --dark-blue: hsla(215.7, 76.4%, 21.6%, 1);
+  --dark-blue: #{ink()};
   --soft-blue: hsla(197.6, 51.2%, 41.8%, 1);
   --soft-mint: hsl(170.5, 24.7%, 65.1%);
   --warm-sand: hsl(29.7, 79.9%, 72.7%);
   --hior-ange: hsl(9.8, 81.3%, 60.2%);
+
+  // The night modes (City Nocturne, Sunset Blitz) share one darkness — their
+  // page, land and stroke inks echo by design, so they are tokens, not copies.
+  --night-page: hsl(216, 50%, 7%);
+  --night-land: hsl(216, 42%, 15%);
+  --night-stroke: hsla(216, 24%, 52%, 0.65);
+  --night-amber: hsl(45, 96%, 72%);
 
   --black: hsl(0, 0%, 7.5%);
   --white: hsl(0, 0%, 94.9%);

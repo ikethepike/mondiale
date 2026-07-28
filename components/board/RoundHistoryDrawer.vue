@@ -26,7 +26,7 @@
             <li
               v-for="(entry, index) in totals"
               :key="entry.player.id"
-              class="total-row"
+              class="total-row player-accent"
               :class="{ leader: index === 0 && entry.total > 0 }"
               :style="`--player-color: ${entry.player.color}; --progress: ${entry.progress}`"
             >
@@ -64,7 +64,7 @@
             <li
               v-for="row in entry.rows"
               :key="row.player.id"
-              class="score-row"
+              class="score-row player-accent"
               :class="{ winner: row.winner }"
               :style="`--player-color: ${row.player.color}`"
             >
@@ -258,14 +258,15 @@ const pastRounds = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
+$hairline: ink(0.12);
 
 .history-backdrop {
   position: fixed;
   inset: 0;
   z-index: 19;
-  background: hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: ink(0.25);
 }
 
 .history-drawer {
@@ -305,7 +306,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   color: inherit;
   font-size: 1.9rem;
   line-height: 1;
@@ -371,8 +372,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0.5rem 0.8rem;
   border-radius: 0.9rem;
   background: hsla(0, 0%, 100%, 0.5);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
-  border-left: 0.3rem solid var(--player-color);
+  border: 1px solid ink(0.08);
 
   // Same board-progress hairline as the status panel — one visual language
   &::after {
@@ -414,7 +414,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 1.2rem 1.4rem 1.3rem;
   border-radius: 0.9rem;
   background: hsla(0, 0%, 100%, 0.5);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
+  border: 1px solid ink(0.08);
 }
 
 .round-header .eyebrow {
@@ -454,7 +454,6 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   align-items: center;
   gap: 0.7rem;
   padding: 0.35rem 0.6rem;
-  border-left: 0.3rem solid var(--player-color);
   border-radius: 0.5rem;
 
   &.winner {
@@ -590,7 +589,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
       width: 4rem;
       height: 0.4rem;
       border-radius: 999px;
-      background: hsla(215.7, 76.4%, 21.6%, 0.2);
+      background: ink(0.2);
     }
   }
 

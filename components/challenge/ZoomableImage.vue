@@ -310,6 +310,7 @@ const pinchDistance = (): number => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // An atlas figure plate: the pane grammar (ink hairline, thick bottom rule)
 // around a photo mounted on a parchment mat. Square corners — a photo plate,
 // not a card.
@@ -325,7 +326,7 @@ const pinchDistance = (): number => {
   border-bottom: 0.6rem solid var(--text-color);
   // Letterbox mat: sour-milk under a faint dark-blue wash — paper, not glass.
   background:
-    linear-gradient(hsla(215.7, 76.4%, 21.6%, 0.06), hsla(215.7, 76.4%, 21.6%, 0.06)),
+    linear-gradient(ink(0.06), ink(0.06)),
     var(--background-color);
   touch-action: none; // we handle pinch/pan ourselves
   // Host views (e.g. .main-board) are pointer-events:none by default; the
@@ -371,7 +372,7 @@ const pinchDistance = (): number => {
   align-items: center;
   justify-content: center;
   font-size: 5rem;
-  color: hsla(215.7, 76.4%, 21.6%, 0.3);
+  color: ink(0.3);
 }
 
 // One chip-language pill holding the three zoom actions, hairline-divided.
@@ -386,7 +387,7 @@ const pinchDistance = (): number => {
   border-radius: 999px;
   backdrop-filter: blur(0.5rem);
   background: hsla(0, 0%, 100%, 0.55);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
 }
 .zoom-btn {
   width: 3.2rem;
@@ -403,7 +404,7 @@ const pinchDistance = (): number => {
   color: var(--dark-blue);
 
   & + & {
-    border-left: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.15);
+    border-left: 0.1rem solid ink(0.15);
   }
 
   &:disabled {

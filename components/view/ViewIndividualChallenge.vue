@@ -1069,6 +1069,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .individual-challenge {
   top: 0;
@@ -1140,7 +1141,7 @@ header {
     border-radius: 1.2rem;
     backdrop-filter: blur(0.5rem);
     background: hsla(36, 100%, 98%, 0.85);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+    border: 0.1rem solid ink(0.2);
     animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
   }
   .flag {
@@ -1148,7 +1149,7 @@ header {
     height: 15rem;
     display: block;
     max-width: 70vw;
-    filter: drop-shadow(0 0.4rem 0.8rem hsla(215.7, 76.4%, 21.6%, 0.18));
+    filter: drop-shadow(0 0.4rem 0.8rem ink(0.18));
     animation: flag-float calc(var(--motion-ambient) * 0.7) ease-in-out infinite;
   }
 }
@@ -1171,7 +1172,7 @@ header {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
@@ -1197,7 +1198,7 @@ header {
 
 .flag-option .option-flag {
   height: 11rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 // Palette twins: large inline flags so the subtle differences (stripe order, a
@@ -1213,7 +1214,7 @@ header {
     width: 100%;
     aspect-ratio: 3 / 2;
     border-radius: 0.4rem;
-    box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.2);
+    box-shadow: 0 0 0 1px ink(0.2);
   }
 }
 
@@ -1252,8 +1253,8 @@ header {
   border-radius: 50%;
   font-size: 4rem;
   font-weight: 700;
-  color: hsla(215.7, 76.4%, 21.6%, 0.35);
-  border: 0.2rem dashed hsla(215.7, 76.4%, 21.6%, 0.3);
+  color: ink(0.35);
+  border: 0.2rem dashed ink(0.3);
   background: hsla(36, 100%, 98%, 0.6);
 }
 
@@ -1272,7 +1273,7 @@ header {
     width: 100%;
     height: auto;
     border-radius: 0.3rem;
-    filter: drop-shadow(0 1px 3px hsla(215.7, 76.4%, 21.6%, 0.25));
+    filter: drop-shadow(0 1px 3px ink(0.25));
   }
 }
 
@@ -1304,7 +1305,7 @@ header {
   border-radius: 1rem;
   color: var(--dark-blue);
   background: hsla(36, 100%, 98%, 0.92);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+  border: 0.1rem solid ink(0.3);
 }
 
 // Trend duel: the pow reveal flips both cards to sparklines; the picked card
@@ -1351,7 +1352,7 @@ header {
 
   @media (hover: hover) {
     &:hover:not(:disabled) :deep(svg) {
-      filter: drop-shadow(0 2px 5px hsla(215.7, 76.4%, 21.6%, 0.4));
+      filter: drop-shadow(0 2px 5px ink(0.4));
     }
   }
 
@@ -1391,7 +1392,7 @@ header {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 
   @media (hover: hover) {
@@ -1456,7 +1457,7 @@ header {
     max-height: 42vh;
     object-fit: contain;
     border-radius: 0.6rem;
-    box-shadow: 0 0.6rem 1.8rem hsla(215.7, 76.4%, 21.6%, 0.28);
+    box-shadow: 0 0.6rem 1.8rem ink(0.28);
   }
 }
 
@@ -1482,7 +1483,7 @@ header {
     width: 100%;
     // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
     height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
   }
 }
 
@@ -1533,14 +1534,14 @@ header {
     border-radius: 50%;
     background-size: cover;
     background-position: center top;
-    background-color: hsla(215.7, 76.4%, 21.6%, 0.08);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+    background-color: ink(0.08);
+    border: 0.1rem solid ink(0.2);
 
     &.placeholder {
       // A subtle silhouette stand-in when no portrait exists.
       background-image: radial-gradient(
         circle at 50% 38%,
-        hsla(215.7, 76.4%, 21.6%, 0.25) 0 1.1rem,
+        ink(0.25) 0 1.1rem,
         transparent 1.2rem
       );
     }

@@ -1,11 +1,15 @@
 import { prefersReducedMotion } from './motion'
 
-export const useAnimatedGameMap = (maximumMovement = 0.1) => {
+export const useAnimatedGameMap = (
+  maximumMovement = 0.1,
+  target?: () => SVGElement | null | undefined
+) => {
   const map = ref<SVGElement>()
 
   onMounted(() => {
     if (prefersReducedMotion()) return
 
+    map.value ??= target?.() ?? undefined
     if (!map.value) {
       console.error('Could not find map')
       return

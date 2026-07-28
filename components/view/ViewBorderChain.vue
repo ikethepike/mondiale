@@ -280,6 +280,7 @@ watch(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .border-chain {
   top: 0;
@@ -422,13 +423,13 @@ footer {
 .sea-hop {
   opacity: 0.6;
   font-weight: bold;
-  color: hsl(215.7, 76.4%, 41%);
+  color: ink(1, 41%);
 }
 
 .stop-flag {
   width: 2.6rem;
   height: 1.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 @media screen and (max-width: $tablet) {

@@ -94,11 +94,9 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import type { ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
 
 const {
@@ -155,14 +153,6 @@ const lateHint = computed(() => {
   return active.durationSeconds - secondsLeft.value >= wavesDone + 2 ? active.hint : ''
 })
 
-/** Options already picked and wrong — greyed out, and counted against the cap. */
-const spent = ref<ISOCountryCode[]>([])
-const attemptsUsed = computed(() => spent.value.length)
-const attemptsLeft = computed(() =>
-  challenge.value?.maximumGuesses
-    ? challenge.value.maximumGuesses - attemptsUsed.value
-    : Number.POSITIVE_INFINITY
-)
 
 const start = async () => {
   const active = challenge.value
@@ -220,39 +210,19 @@ const submitRound = (score: number) => {
   submitOnce(correct ? [active.country] : [], score)
 }
 
-/** Option variants pay by attempt; hard mode free-types against the clock. */
-const scoreFor = (active: NonNullable<typeof challenge.value>) =>
-  active.maximumGuesses
-    ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
-    : buzzScore(active.maximumPoints, remainingFraction.value)
-
-const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || !started.value) return
-
-  // The winning guess is never broadcast — it would hand opponents the answer.
-  if (country.isoCode === active.country) return submitRound(scoreFor(active))
-
-  if (active.maximumGuesses) {
-    if (spent.value.includes(country.isoCode)) return
-    spent.value = [...spent.value, country.isoCode]
-    if (attemptsLeft.value <= 0) {
-      announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses' })
-      return submitRound(0)
-    }
-  }
-
-  const left = attemptsLeft.value
-  announce({
-    kind: 'wrong',
-    isoCode: country.isoCode,
-    hint: Number.isFinite(left)
-      ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
-      : `${countryName(country)} — not it`,
-  })
-}
+// The winning guess is never broadcast — outside hard mode the small option
+// table makes even a wrong name too strong a clue (policy drops to presence).
+const { spent, onGuess } = useAttemptOptions({
+  challenge,
+  submitted,
+  started,
+  remainingFraction,
+  announce,
+  submitRound,
+})
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .flashpoint {
   top: 0;
@@ -360,7 +330,7 @@ footer {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
@@ -386,7 +356,7 @@ footer {
   .option-flag {
     width: 100%;
     height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
   }
 }
 

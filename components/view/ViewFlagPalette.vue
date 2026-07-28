@@ -139,6 +139,7 @@ const onGuess = (country: Country) => {
 // get it or the clock runs out; only the first correct guess scores.
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .flag-palette {
   top: 0;
@@ -198,14 +199,14 @@ header {
   max-width: calc(100vw - 3.2rem);
   border-radius: 1.4rem;
   background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
 }
 
 .swatch {
   width: min(8rem, 11vw);
   height: min(8rem, 11vw);
   border-radius: 1rem;
-  box-shadow: inset 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
+  box-shadow: inset 0 0 0 1px ink(0.15);
 }
 
 

@@ -56,6 +56,7 @@ const guessText = (entry: GuessTickerEntry) => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .guess-ticker {
   gap: 0.8rem;
   margin: 0;
@@ -68,7 +69,7 @@ const guessText = (entry: GuessTickerEntry) => {
 }
 
 // Tighter chips on phones so a full row of opponents fits 360px.
-@media screen and (max-width: 640px) {
+@media screen and (max-width: $tablet) {
   .guess-ticker {
     gap: 0.5rem;
   }

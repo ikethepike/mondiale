@@ -38,6 +38,7 @@ withDefaults(
 const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .photo-option-challenge {
   display: flex;
@@ -83,7 +84,7 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
@@ -102,7 +103,7 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
     width: 100%;
     // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
     height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
   }
 }
 

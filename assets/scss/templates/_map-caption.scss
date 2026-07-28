@@ -1,3 +1,4 @@
+@use '../rules/ink' as *;
 // Text that floats directly over the world map needs guaranteed contrast
 // against any country fill (correct/incorrect washes, highlights, region
 // colors): dark-blue type on a translucent cream scrim with backdrop blur.
@@ -9,7 +10,7 @@
   max-width: calc(100vw - 3.2rem);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
   box-decoration-break: clone;
 }
 

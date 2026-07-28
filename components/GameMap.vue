@@ -1474,6 +1474,7 @@ watch(
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .game-map {
   height: var(--viewport-height);
   overflow: hidden;
@@ -1569,7 +1570,7 @@ path[id],
   color: var(--hior-ange);
 
   &.answer {
-    color: hsl(215.7, 76.4%, 41%);
+    color: ink(1, 41%);
   }
 }
 
@@ -1590,7 +1591,7 @@ path[id],
 .map-pin-link {
   fill: none;
   pointer-events: none;
-  stroke: hsl(215.7, 76.4%, 41%);
+  stroke: ink(1, 41%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
@@ -1608,7 +1609,7 @@ path.ringed-country,
 // The sailing whisper: the hideout's coast hums sea-blue while passages
 // remain — a signal that boats exist, never a list of where they go.
 path.sea-glow-country {
-  stroke: hsl(215.7, 76.4%, 41%);
+  stroke: ink(1, 41%);
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(1.5px * var(--stroke-zoom, 1)) calc(3px * var(--stroke-zoom, 1));
   stroke-linecap: round;
@@ -1625,7 +1626,7 @@ path.sea-glow-country {
 .map-sea-link {
   fill: none;
   pointer-events: none;
-  stroke: hsla(215.7, 76.4%, 41%, 0.75);
+  stroke: ink(0.75, 41%);
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-linecap: round;
   stroke-dasharray: calc(5px * var(--stroke-zoom, 1)) calc(6px * var(--stroke-zoom, 1));
@@ -1652,13 +1653,13 @@ path.sea-glow-country {
 
 .chip-disc {
   fill: hsla(36, 100%, 98%, 0.95);
-  stroke: hsla(215.7, 76.4%, 41%, 0.6);
+  stroke: ink(0.6, 41%);
   stroke-width: 1;
 }
 
 .chip-ship {
   fill: none;
-  stroke: hsl(215.7, 76.4%, 30%);
+  stroke: ink(1, 30%);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1675,7 +1676,7 @@ path.sea-glow-country {
 // deep zoom on a nine-metre rock.
 .feature-marker {
   pointer-events: none;
-  color: hsl(215.7, 76.4%, 41%);
+  color: ink(1, 41%);
 }
 
 .feature-marker-scale {
@@ -1686,7 +1687,7 @@ path.sea-glow-country {
   fill: hsla(199, 68%, 62%, 0.45);
   stroke: currentColor;
   stroke-width: 2px;
-  filter: drop-shadow(0 0 3px hsla(215.7, 76.4%, 60%, 0.6));
+  filter: drop-shadow(0 0 3px ink(0.6, 60%));
 }
 
 .feature-marker-dot {
@@ -1722,15 +1723,15 @@ path.sea-glow-country {
 
   &.line {
     fill: none;
-    stroke: hsl(215.7, 76.4%, 41%);
+    stroke: ink(1, 41%);
     stroke-width: calc(2.4px * var(--stroke-zoom, 1));
     stroke-linecap: round;
     stroke-linejoin: round;
-    filter: drop-shadow(0 0 calc(1.5px * var(--stroke-zoom, 1)) hsla(215.7, 76.4%, 60%, 0.5));
+    filter: drop-shadow(0 0 calc(1.5px * var(--stroke-zoom, 1)) ink(0.5, 60%));
   }
 
   &.area {
-    stroke: hsl(215.7, 76.4%, 35%);
+    stroke: ink(1, 35%);
     stroke-width: calc(1.2px * var(--stroke-zoom, 1));
     fill: hsla(199, 68%, 62%, 0.38);
     animation: feature-wash var(--motion-slow) var(--ease-out-expressive) 1;
@@ -1823,7 +1824,7 @@ path[id]:hover,
   stroke: transparent;
 }
 .solo path.highlighted-country {
-  stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
+  stroke: ink(0.55);
 }
 // Solo + landmass: the continents stay as one quiet silhouette. A uniform
 // fill with no strokes makes internal borders vanish — adjacent countries

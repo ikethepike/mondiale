@@ -19,7 +19,7 @@
       <li
         v-for="entry in entries"
         :key="entry.player.id"
-        class="row"
+        class="row player-accent"
         :class="{
           you: entry.you,
           busy: entry.status.busy,
@@ -168,6 +168,7 @@ const entries = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .status-panel {
@@ -198,7 +199,7 @@ const entries = computed(() =>
 
 .history-button {
   padding: 0.2rem 0.7rem;
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.15);
+  border: 1px solid ink(0.15);
   border-radius: 1rem;
   background: none;
   color: inherit;
@@ -261,8 +262,7 @@ const entries = computed(() =>
   padding: 0.55rem 0.7rem;
   border-radius: 0.9rem;
   background: hsla(0, 0%, 100%, 0.5);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
-  border-left: 0.3rem solid var(--player-color);
+  border: 1px solid ink(0.08);
 
   // Board progress: a static hairline along the bottom edge — reads at a
   // glance without costing the row any height.
@@ -310,7 +310,7 @@ const entries = computed(() =>
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
@@ -335,7 +335,7 @@ const entries = computed(() =>
   padding: 0;
   border: none;
   border-radius: 0.7rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.6rem;
   line-height: 1;
   cursor: pointer;
@@ -380,7 +380,7 @@ const entries = computed(() =>
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--dark-blue);
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 .steps-badge {

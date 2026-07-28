@@ -484,6 +484,7 @@ const startGame = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .player-configuration {
@@ -614,7 +615,7 @@ const startGame = () => {
   }
 
   &:hover {
-    background: hsla(215.7, 76.4%, 21.6%, 0.09);
+    background: ink(0.09);
   }
   &:hover::before {
     transform: scale(1.12);
@@ -673,7 +674,7 @@ const startGame = () => {
   inset: 0;
   z-index: 3;
   position: fixed;
-  background: hsla(215.7, 76.4%, 21.6%, 0.35);
+  background: ink(0.35);
   backdrop-filter: blur(0.3rem);
   padding: calc(var(--safe-top) + 1.6rem) calc(var(--safe-right) + 1.2rem)
     calc(var(--safe-bottom) + 1.6rem) calc(var(--safe-left) + 1.2rem);
@@ -711,7 +712,7 @@ const startGame = () => {
   }
 
   &:hover {
-    background: hsla(215.7, 76.4%, 21.6%, 0.09);
+    background: ink(0.09);
   }
 }
 

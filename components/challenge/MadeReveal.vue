@@ -187,22 +187,8 @@ const pickedLine = computed(() => {
   animation-delay: calc(var(--i) * 110ms + 250ms);
 }
 
-@keyframes row-land {
-  from {
-    opacity: 0;
-    transform: translateY(0.8rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+// row-land and bar-grow come from rules/_animations.scss
 
-@keyframes bar-grow {
-  from {
-    transform: scaleX(0);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .row,

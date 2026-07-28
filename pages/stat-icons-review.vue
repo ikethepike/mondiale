@@ -121,6 +121,7 @@ definePageMeta({ layout: false })
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .review {
   padding: 1rem 1.6rem 6rem;
   color: var(--dark-blue, #1b2a4a);
@@ -137,7 +138,7 @@ definePageMeta({ layout: false })
   align-items: baseline;
   padding: 0.8rem 0;
   background: inherit;
-  border-bottom: 1px solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border-bottom: 1px solid ink(0.2);
 }
 
 h1 {

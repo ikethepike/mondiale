@@ -14,3 +14,41 @@
     transform: translateY(100%);
   }
 }
+
+// A floating map chip lands at its anchor (year labels, conflict-era chips)
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+// A scorecard row settles into place
+@keyframes row-land {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// A ranked bar grows from its origin (pair with transform-origin: left)
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+// A dashed stroke draws itself on (pair with stroke-dasharray/-offset)
+@keyframes stroke-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

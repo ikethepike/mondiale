@@ -287,9 +287,10 @@ const labelOffset = computed(() => 22 * unitsPerPixel.value)
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .map-inset {
   pointer-events: none;
-  color: hsl(215.7, 76.4%, 41%);
+  color: ink(1, 41%);
   transition: opacity var(--motion-base) var(--ease-out-expressive);
 
   &.is-entering {
@@ -331,7 +332,7 @@ const labelOffset = computed(() => 22 * unitsPerPixel.value)
   stroke: currentColor;
   pointer-events: all;
   stroke-width: calc(2px * var(--inset-px, 1));
-  filter: drop-shadow(0 0 calc(3px * var(--inset-px, 1)) hsla(215.7, 76.4%, 21.6%, 0.35));
+  filter: drop-shadow(0 0 calc(3px * var(--inset-px, 1)) ink(0.35));
   transition: stroke-width var(--motion-base) var(--ease-out-expressive);
 
   &:hover {

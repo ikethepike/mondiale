@@ -212,6 +212,7 @@ const marks = computed(() =>
 const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .stat-strip-plot {
   margin: 0;
   width: 100%;
@@ -247,7 +248,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   bottom: 0;
   height: 1px;
   position: absolute;
-  background: hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: ink(0.25);
 }
 
 .mode-toggle {
@@ -264,7 +265,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   border-radius: 1rem;
   color: var(--dark-blue);
   background: hsla(36, 100%, 98%, 0.9);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 // A comfortable hit area around a small visual dot.
@@ -291,7 +292,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
 .dot::before {
   width: 0.55rem;
   height: 0.55rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.18);
+  background: ink(0.18);
   transition: transform var(--motion-quick) var(--ease-out-expressive);
 }
 
@@ -331,10 +332,10 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
     border-color: var(--hior-ange);
   }
   &.noted::before {
-    background: hsla(215.7, 76.4%, 21.6%, 0.55);
+    background: ink(0.55);
   }
   &.noted::after {
-    border-color: hsla(215.7, 76.4%, 21.6%, 0.35);
+    border-color: ink(0.35);
   }
 }
 
@@ -352,7 +353,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
     width: 100%;
     height: 100%;
     border-radius: 0.2rem;
-    box-shadow: 0 1px 2px hsla(215.7, 76.4%, 21.6%, 0.3);
+    box-shadow: 0 1px 2px ink(0.3);
     transition: transform var(--motion-quick) var(--ease-out-expressive);
   }
 
@@ -385,8 +386,8 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   color: var(--dark-blue);
   transform: translate(-50%, calc(-100% - 1.2rem));
   background: hsla(36, 100%, 98%, 0.96);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  box-shadow: 0 2px 8px hsla(215.7, 76.4%, 21.6%, 0.15);
+  border: 0.1rem solid ink(0.25);
+  box-shadow: 0 2px 8px ink(0.15);
 }
 
 .legend {

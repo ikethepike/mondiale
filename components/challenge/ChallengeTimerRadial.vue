@@ -130,6 +130,7 @@ const low = computed(() => seconds.value <= 10 && fraction.value < 1)
 const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // Sized through custom properties so the shared .round-clock placement rules
 // (and future hosts) can scale the dial without fighting scoped specificity.
 // No `position` of its own: the dial stacks svg and numeral in one grid cell,
@@ -153,7 +154,7 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 
 .disc {
   fill: var(--clock-disc-fill, hsla(36, 100%, 98%, 0.88));
-  stroke: var(--clock-disc-stroke, hsla(215.7, 76.4%, 21.6%, 0.25));
+  stroke: var(--clock-disc-stroke, ink(0.25));
   stroke-width: 1;
 }
 

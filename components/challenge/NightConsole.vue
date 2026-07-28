@@ -63,7 +63,7 @@ const low = computed(
   --clock-size: 5.2rem;
   --clock-seconds-size: 1.7rem;
   --clock-ink: hsla(216, 30%, 78%, 1);
-  --clock-arc: hsla(45, 96%, 72%, 1);
+  --clock-arc: var(--night-amber);
   --clock-disc-fill: hsla(216, 45%, 16%, 0.75);
   --clock-disc-stroke: hsla(216, 30%, 50%, 0.35);
 }
@@ -87,7 +87,7 @@ const low = computed(
   text-transform: uppercase;
 
   .lit {
-    color: hsla(45, 96%, 72%, 1);
+    color: var(--night-amber);
     font-weight: bold;
   }
 }

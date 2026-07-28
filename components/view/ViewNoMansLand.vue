@@ -234,6 +234,7 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .no-mans-land {
@@ -308,7 +309,7 @@ footer {
     font-size: 0.95rem;
     font-family: inherit;
     background: hsla(36, 100%, 98%, 0.85);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+    border: 0.1rem solid ink(0.2);
     border-radius: 999px;
     backdrop-filter: blur(0.5rem);
   }

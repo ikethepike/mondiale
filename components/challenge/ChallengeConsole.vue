@@ -22,6 +22,7 @@ const low = computed(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .challenge-console {
   gap: 0.2rem;
   display: flex;
@@ -31,7 +32,7 @@ const low = computed(
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
   // Slow on purpose: the warming border is a tide, not an alarm.
   transition: border-color 2s var(--ease-smooth);
 

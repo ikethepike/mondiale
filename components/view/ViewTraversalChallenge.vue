@@ -249,6 +249,7 @@ const onInterstitialDone = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .traversal-challenge {
   top: 0;
@@ -346,7 +347,7 @@ footer {
 .stop-flag {
   width: 2.6rem;
   height: 1.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .chain-enter-from {

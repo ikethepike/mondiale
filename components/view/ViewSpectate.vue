@@ -70,7 +70,7 @@
           <li
             v-for="(entry, index) in rail"
             :key="entry.player.id"
-            class="rail-row"
+            class="rail-row player-accent"
             role="button"
             tabindex="0"
             :class="{
@@ -306,8 +306,9 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
+$hairline: ink(0.12);
 
 .spectate-stage {
   top: 0;
@@ -391,7 +392,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   font-size: 1rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   opacity: 0.8;
 }
 
@@ -504,8 +505,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   position: relative;
   cursor: pointer;
   background: hsla(0, 0%, 100%, 0.5);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
-  border-left: 0.3rem solid var(--player-color);
+  border: 1px solid ink(0.08);
 
   &.leader {
     outline: 0.2rem solid var(--warm-sand);
@@ -565,7 +565,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--dark-blue);
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 .status {
@@ -585,7 +585,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
@@ -609,7 +609,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0;
   border: none;
   border-radius: 0.7rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.6rem;
   line-height: 1;
   cursor: pointer;
@@ -629,7 +629,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   position: absolute;
   border-radius: 0 0 0.9rem 0.9rem;
   overflow: hidden;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 .progress-fill {

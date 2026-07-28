@@ -61,6 +61,7 @@ const closeScores = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 .flag {
   height: 6rem;
   background-size: cover;
@@ -74,7 +75,7 @@ const closeScores = () => {
 }
 
 // The five rank slots read fine as a 2-3 wrap on a phone; 5-up is unreadable.
-@media screen and (max-width: 640px) {
+@media screen and (max-width: $tablet) {
   .country-order {
     gap: 1rem;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));

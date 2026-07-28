@@ -100,6 +100,7 @@ const onInput = () => {
 defineExpose({ setT })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // The NightConsole card's anatomy and dimensions, in the day skin: same
 // padding, radius, width and clock scale — parchment glass instead of night
 // glass, plus the empire-timeline strip.
@@ -113,8 +114,8 @@ defineExpose({ setT })
   pointer-events: auto;
   backdrop-filter: blur(0.6rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-  box-shadow: 0 0.4rem 2.4rem hsla(215.7, 76.4%, 21.6%, 0.15);
+  border: 0.1rem solid ink(0.2);
+  box-shadow: 0 0.4rem 2.4rem ink(0.15);
   width: min(44rem, calc(100vw - 3.2rem));
   transition: border-color 2s var(--ease-smooth);
 
@@ -210,7 +211,7 @@ defineExpose({ setT })
     height: 0.2rem;
     position: absolute;
     border-radius: 999px;
-    background: hsla(215.7, 76.4%, 21.6%, 0.25);
+    background: ink(0.25);
   }
 }
 
@@ -230,7 +231,7 @@ defineExpose({ setT })
   position: absolute;
   border-radius: 999px;
   transform: translateX(-50%);
-  background: hsla(215.7, 76.4%, 21.6%, 0.4);
+  background: ink(0.4);
   pointer-events: none;
 }
 
@@ -251,7 +252,7 @@ input[type='range'] {
     border-radius: 999px;
     background: var(--dark-blue);
     border: 0.25rem solid hsla(36, 100%, 98%, 0.95);
-    box-shadow: 0 0 0 0.1rem hsla(215.7, 76.4%, 21.6%, 0.35);
+    box-shadow: 0 0 0 0.1rem ink(0.35);
   }
   &::-moz-range-thumb {
     width: 1.1rem;
@@ -259,7 +260,7 @@ input[type='range'] {
     border-radius: 999px;
     background: var(--dark-blue);
     border: 0.25rem solid hsla(36, 100%, 98%, 0.95);
-    box-shadow: 0 0 0 0.1rem hsla(215.7, 76.4%, 21.6%, 0.35);
+    box-shadow: 0 0 0 0.1rem ink(0.35);
   }
 }
 

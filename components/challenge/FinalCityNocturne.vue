@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 // The ocean darkens via body only — .main-board/.harness are SIBLINGS
 // painted ABOVE the map, so giving them a background blacks out the world
 body.nocturne-night {
-  background: hsl(216, 50%, 7%);
+  background: var(--night-page);
 
   // The night holds still: no panning or zooming mid-round — the dots and
   // the framed country stay exactly where the camera settled them
@@ -191,8 +191,8 @@ body.nocturne-night {
   // (non-scaling) because the engine's zoom-scaled widths render sub-pixel
   // under the skin's static values.
   .game-map path[data-id] {
-    fill: hsl(216, 42%, 15%) !important;
-    stroke: hsla(216, 24%, 52%, 0.65) !important;
+    fill: var(--night-land) !important;
+    stroke: var(--night-stroke) !important;
     stroke-width: 1.1px !important;
     vector-effect: non-scaling-stroke;
     transition:
@@ -236,7 +236,7 @@ body.nocturne-night {
     height: 1rem;
     display: block;
     border-radius: 50%;
-    background: hsla(45, 96%, 72%, 1);
+    background: var(--night-amber);
     box-shadow:
       0 0 0.6rem 0.2rem hsla(45, 96%, 65%, 0.9),
       0 0 2.4rem 0.8rem hsla(38, 90%, 55%, 0.45);

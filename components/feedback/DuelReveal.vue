@@ -83,6 +83,7 @@ const rows = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .duel-reveal {
   text-align: left;
@@ -122,14 +123,14 @@ const rows = computed(() =>
   padding: 0.7rem 1rem;
   border-radius: 1.2rem;
   background: hsla(0, 0%, 100%, 0.55);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.1);
+  border: 1px solid ink(0.1);
 }
 
 .pair-dot {
   width: 0.9rem;
   height: 0.9rem;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
+  box-shadow: 0 0 0 1px ink(0.15);
 }
 
 .side {
@@ -144,7 +145,7 @@ const rows = computed(() =>
   width: 2.2rem;
   height: 1.5rem;
   border-radius: 0.3rem;
-  box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.12);
+  box-shadow: 0 0 0 1px ink(0.12);
 }
 
 .side-name {
@@ -181,7 +182,7 @@ const rows = computed(() =>
 
 .versus {
   font-size: 1.6rem;
-  color: hsla(215.7, 76.4%, 21.6%, 0.4);
+  color: ink(0.4);
   text-align: center;
 }
 

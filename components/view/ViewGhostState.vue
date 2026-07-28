@@ -261,6 +261,7 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .ghost-state {
   top: 0;
@@ -306,7 +307,7 @@ header {
 .flag {
   width: min(34vw, 220px);
   border-radius: 0.4rem;
-  box-shadow: 0 0.6rem 2rem hsla(215.7, 76.4%, 21.6%, 0.35);
+  box-shadow: 0 0.6rem 2rem ink(0.35);
 
   :deep(svg) {
     width: 100%;

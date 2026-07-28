@@ -154,6 +154,7 @@ const submitTyped = () => {
 defineExpose({ focus: () => input.value?.focus() })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .guess-form {
   width: 34rem;
   max-width: 84vw;
@@ -198,7 +199,7 @@ defineExpose({ focus: () => input.value?.focus() })
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.94);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
 
   li {
     gap: 1rem;
@@ -225,7 +226,7 @@ defineExpose({ focus: () => input.value?.focus() })
   width: 2.8rem;
   height: 1.9rem;
   flex-shrink: 0;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .suggestion-name {

@@ -112,6 +112,8 @@ onMounted(randomize)
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/ink' as *;
 .currency-review {
   min-height: var(--viewport-height);
   padding: 2rem 1rem 4rem;
@@ -206,11 +208,11 @@ onMounted(randomize)
     max-height: 42vh;
     object-fit: contain;
     border-radius: 0.6rem;
-    box-shadow: 0 0.6rem 1.8rem hsla(215.7, 76.4%, 21.6%, 0.28);
+    box-shadow: 0 0.6rem 1.8rem ink(0.28);
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .money-hero-photo .money-note {
     max-height: 34vh;
   }
@@ -233,7 +235,7 @@ onMounted(randomize)
   border-radius: 1.2rem;
   color: var(--dark-blue);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 
   &:hover {
     border-color: var(--dark-blue);
@@ -242,11 +244,11 @@ onMounted(randomize)
   .option-flag {
     width: 100%;
     height: 8rem;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: $tablet) {
   .card-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

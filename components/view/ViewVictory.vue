@@ -309,6 +309,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 $hairline: hsla(0, 0%, 7.5%, 0.12);
 
@@ -548,7 +549,7 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   transform: translateX(-50%);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.92);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.35);
+  border: 0.1rem solid ink(0.35);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);

@@ -140,6 +140,7 @@ defineExpose({ build, play, freezeAtPeak, seek, fadeOut, fadeIn })
 onBeforeUnmount(() => morph.dispose())
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .empire-ghost-field {
   inset: 0;
   position: absolute;
@@ -185,7 +186,7 @@ onBeforeUnmount(() => morph.dispose())
 
 .capital-star {
   fill: hsl(45, 85%, 55%);
-  stroke: hsla(215.7, 76.4%, 21.6%, 0.75);
+  stroke: ink(0.75);
   stroke-width: 0.6px;
   animation: star-bloom 0.9s var(--ease-out-expressive) 2;
   transform-origin: center;

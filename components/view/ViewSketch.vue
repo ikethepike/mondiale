@@ -87,7 +87,7 @@ onMounted(() => {
   parts.context.lineWidth = 3
   parts.context.lineCap = 'round'
   parts.context.lineJoin = 'round'
-  parts.context.strokeStyle = 'hsl(215.7, 76.4%, 21.6%)'
+  parts.context.strokeStyle = 'hsla(215.7, 76.4%, 21.6%, 1)'
 })
 
 const canvasPoint = (event: PointerEvent): OutlinePoint | undefined => {
@@ -160,6 +160,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .sketch-challenge {
   top: 0;
@@ -209,7 +210,7 @@ header {
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.9);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 
   canvas {
     width: 100%;

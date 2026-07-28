@@ -57,9 +57,8 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { MapTint } from '~~/store/game.store'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 // Shapes-only map: the centre country plus guesses materializing around it
 const {
@@ -77,77 +76,41 @@ const {
   gameStore,
 } = useGroupChallenge('neighbour-blitz-challenge')
 
-const guesses = ref<ISOCountryCode[]>([])
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-const neighbourSet = computed(() => new Set(challenge.value?.neighbours ?? []))
-const found = computed(() => guesses.value.filter(isoCode => neighbourSet.value.has(isoCode)))
-
-watch(
-  [guesses, challenge],
-  () => {
-    const active = challenge.value
-    gameStore.map.highlighted.clear()
-    const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
-    if (active) {
-      gameStore.map.highlighted.add(active.country)
-      tints[active.country] = 'endpoint'
-      for (const isoCode of guesses.value) {
-        gameStore.map.highlighted.add(isoCode)
-        tints[isoCode] = neighbourSet.value.has(isoCode) ? 'optimal' : 'stray'
+const {
+  guesses,
+  answerSet: neighbourSet,
+  found,
+  start: begin,
+  onGuess,
+} = useCollectSetRound(
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  {
+    answers: () => challenge.value?.neighbours ?? [],
+    wrongHint: country =>
+      `${countryName(country)} doesn't border ${challenge.value ? countryName(challenge.value.country) : 'it'}`,
+    reject: country =>
+      country.isoCode === challenge.value?.country
+        ? `${countryName(country)} is the country itself`
+        : undefined,
+    // The centre country anchors the frame; guesses materialize around it.
+    decorate: (tints, guessed) => {
+      const active = challenge.value
+      gameStore.map.highlighted.clear()
+      if (active) {
+        gameStore.map.highlighted.add(active.country)
+        tints[active.country] = 'endpoint'
+        for (const isoCode of guessed) gameStore.map.highlighted.add(isoCode)
       }
-    }
-    gameStore.map.tints = tints
-    gameStore.map.focus = active ? [active.country, ...guesses.value] : []
-  },
-  { deep: true, immediate: true }
+      gameStore.map.focus = active ? [active.country, ...guessed] : []
+    },
+    focusInput: () => guessInput.value?.focus(),
+  }
 )
-
-const submitRound = () => {
-  if (submitted.value) return
-  gameStore.map.status =
-    found.value.length >= (challenge.value?.neighbours.length ?? Infinity) ? 'correct' : undefined
-  submitOnce([...guesses.value])
-}
-
-const begin = () => {
-  beginRound({ onTimeout: submitRound })
-  nextTick(() => guessInput.value?.focus())
-}
-
-const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || !started.value) return
-
-  if (country.isoCode === active.country) {
-    return announce({ hint: `${countryName(country)} is the country itself` })
-  }
-  if (guesses.value.includes(country.isoCode)) {
-    return announce({ hint: `${countryName(country)} is already on the board` })
-  }
-
-  guesses.value.push(country.isoCode)
-  const correct = neighbourSet.value.has(country.isoCode)
-  // Everyone races the same list, so a right name would be a free answer. Only
-  // the misses are named; a hit says just that somebody found one.
-  announce({
-    kind: correct ? 'correct' : 'wrong',
-    ...(correct
-      ? {}
-      : {
-          isoCode: country.isoCode,
-          hint: `${countryName(country)} doesn't border ${countryName(active.country)}`,
-        }),
-  })
-
-  // Every neighbour found — no reason to run out the clock
-  if (found.value.length === active.neighbours.length) {
-    gameStore.map.status = 'correct'
-    submitRound()
-  }
-}
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .neighbour-blitz {
   top: 0;
@@ -225,7 +188,7 @@ footer {
 .stop-flag {
   width: 2.6rem;
   height: 1.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .chain-enter-from {

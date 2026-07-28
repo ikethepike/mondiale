@@ -43,6 +43,7 @@ onMounted(() => document.addEventListener('mapClick', onMapClick))
 onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .atlas-harness {
   position: fixed;
   inset: 0;
@@ -63,7 +64,7 @@ onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
   padding: 0.8rem 1.6rem;
   border-radius: 999px;
   background: hsla(0, 0%, 100%, 0.7);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.12);
+  border: 1px solid ink(0.12);
   pointer-events: none;
 
   p {

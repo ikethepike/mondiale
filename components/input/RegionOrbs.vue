@@ -12,7 +12,7 @@
       @click="select(variant)"
     >
       <span class="orb-face">
-        <component :is="regionMaps[variant]" class="orb-map" />
+        <RegionMap :variant="variant" class="orb-map" />
       </span>
       <span class="orb-label">{{ formatLabel(variant) }}</span>
     </button>
@@ -20,9 +20,9 @@
   </div>
 </template>
 <script lang="ts" setup>
+import RegionMap from '~/components/map/RegionMap.vue'
 import { titleCase } from '~~/lib/strings'
 import { type GameVariant, gameVariants } from '~~/types/game.types'
-import { REGION_MAP_COMPONENT_NAMES } from '~~/lib/variant'
 
 const props = defineProps({
   modelValue: {
@@ -50,12 +50,6 @@ watch(
   value => (selected.value = value)
 )
 
-const regionMaps = Object.fromEntries(
-  Object.entries(REGION_MAP_COMPONENT_NAMES).map(([variant, name]) => [
-    variant,
-    resolveComponent(name),
-  ])
-) as { [variant in GameVariant]: ReturnType<typeof resolveComponent> }
 
 const select = (variant: GameVariant) => {
   selected.value = variant
@@ -66,6 +60,7 @@ const select = (variant: GameVariant) => {
 const formatLabel = (variant: GameVariant) => titleCase(variant)
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .region-orbs {
   gap: 1.6rem 1.4rem;
   display: grid;
@@ -102,7 +97,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
   place-items: center;
   border-radius: 50%;
   background: hsla(36, 100%, 98%, 0.7);
-  border: 0.2rem solid hsla(215.7, 76.4%, 21.6%, 0.16);
+  border: 0.2rem solid ink(0.16);
   transition:
     transform var(--motion-base) var(--ease-out-expressive),
     border-color var(--motion-base) var(--ease-out-expressive),
@@ -110,9 +105,13 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
     background-color var(--motion-base) var(--ease-out-expressive);
 }
 
-.orb-map {
+// RegionMap's root is display: contents, so size the svg itself.
+.orb-map :deep(svg) {
   width: 92%;
   height: 92%;
+}
+
+.orb-map {
 
   // The maps carry their own square background and globe outline — the orb
   // provides both, so strip them and keep only the landmass strokes.
@@ -131,7 +130,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
 
 .orb:hover .orb-face {
   transform: translateY(-0.3rem);
-  border-color: hsla(215.7, 76.4%, 21.6%, 0.35);
+  border-color: ink(0.35);
 }
 
 .orb.active .orb-face {
@@ -140,7 +139,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
   transform: scale(1.08);
   border-color: var(--dark-blue);
   background: var(--dark-blue);
-  box-shadow: 0 0.4rem 1.4rem hsla(215.7, 76.4%, 21.6%, 0.35);
+  box-shadow: 0 0.4rem 1.4rem ink(0.35);
 }
 
 .orb-label {

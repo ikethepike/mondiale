@@ -26,6 +26,7 @@ withDefaults(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .stat-card {
   gap: 0.6rem;
   width: 100%;
@@ -40,7 +41,7 @@ withDefaults(
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .topic-icon {

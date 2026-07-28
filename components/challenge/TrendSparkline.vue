@@ -82,6 +82,7 @@ const delta = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .trend-sparkline {
   gap: 0.4rem;
   margin: 0;
@@ -107,16 +108,12 @@ svg {
     &.draw {
       stroke-dasharray: 1;
       stroke-dashoffset: 1;
-      animation: sparkline-draw 0.9s var(--ease-out-expressive) forwards;
+      animation: stroke-draw 0.9s var(--ease-out-expressive) forwards;
     }
   }
 }
 
-@keyframes sparkline-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
+// stroke-draw comes from rules/_animations.scss
 
 .delta-chip {
   top: 0;
@@ -127,7 +124,7 @@ svg {
   padding: 0.2rem 0.6rem;
   border-radius: 0.8rem;
   color: var(--dark-blue);
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 figcaption {

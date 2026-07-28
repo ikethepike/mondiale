@@ -163,6 +163,7 @@ const ucdpNote = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .conflict-profile {
   &.floating {
     gap: 0.6rem;
@@ -215,7 +216,7 @@ const ucdpNote = computed(() => {
   font-weight: 600;
   color: var(--dark-blue);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .side-flag {
@@ -223,7 +224,7 @@ const ucdpNote = computed(() => {
   height: 1.5rem;
   flex-shrink: 0;
   border-radius: 0.25rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
 }
 
 .facts {

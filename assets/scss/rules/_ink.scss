@@ -1,0 +1,9 @@
+// The ink family: every wash, hairline and border of the brand dark-blue
+// (--dark-blue in _palette.scss) comes from this one function — the hue is
+// declared exactly once. `ink($alpha)` for washes of the base ink;
+// `ink($alpha, $lightness)` for the lightened link/accent variants.
+// Pure module (no emitted CSS), safe to @use from any scoped block.
+
+@function ink($alpha: 1, $lightness: 21.6%) {
+  @return hsla(215.7, 76.4%, $lightness, $alpha);
+}

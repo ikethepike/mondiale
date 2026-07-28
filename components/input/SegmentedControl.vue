@@ -87,6 +87,7 @@ const select = (option: string) => {
 const formatLabel = (option: string) => titleCase(option)
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .segmented {
   display: flex;
   align-items: stretch;
@@ -94,8 +95,8 @@ const formatLabel = (option: string) => titleCase(option)
   width: max-content;
   max-width: 100%;
   border-radius: 1rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.06);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.14);
+  background: ink(0.06);
+  border: 0.1rem solid ink(0.14);
 
   &.disabled .segmented-track {
     opacity: 0.6;
@@ -126,7 +127,7 @@ const formatLabel = (option: string) => titleCase(option)
   position: absolute;
   border-radius: 0.7rem;
   background: var(--dark-blue);
-  box-shadow: 0 0.2rem 0.6rem hsla(215.7, 76.4%, 21.6%, 0.25);
+  box-shadow: 0 0.2rem 0.6rem ink(0.25);
   transition: transform var(--motion-base) var(--ease-out-expressive);
 }
 
@@ -135,7 +136,7 @@ const formatLabel = (option: string) => titleCase(option)
   flex-shrink: 0;
   margin: 0.3rem 0.4rem;
   border-radius: 0.05rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.18);
+  background: ink(0.18);
 }
 
 .segment {

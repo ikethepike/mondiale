@@ -96,6 +96,7 @@ const isSeaHop = (index: number): boolean =>
   seaHopNumbers.value.has(index) || isStraitHop(walk.value[index - 1], walk.value[index])
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .manhunt-reveal {
   gap: 1rem;
   display: flex;
@@ -146,7 +147,7 @@ const isSeaHop = (index: number): boolean =>
 .stop-flag {
   width: 2.2rem;
   height: 1.5rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .hop-mark {
@@ -154,7 +155,7 @@ const isSeaHop = (index: number): boolean =>
   font-weight: bold;
 
   &.sea {
-    color: hsl(215.7, 76.4%, 41%);
+    color: ink(1, 41%);
   }
 }
 

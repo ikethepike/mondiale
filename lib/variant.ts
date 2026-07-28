@@ -61,15 +61,3 @@ export const variantCountries = (variant: GameVariant = 'world'): ISOCountryCode
   if (variant === 'world') return [...ISOCountryCodes]
   return ISOCountryCodes.filter(isoCode => countryInVariant(isoCode, variant))
 }
-
-/** The hand-drawn region map component per variant — resolve with
- *  `resolveComponent` at the call site (auto-imported components can't be
- *  resolved from plain modules). One table, so pickers can't drift. */
-export const REGION_MAP_COMPONENT_NAMES: { [variant in GameVariant]: string } = {
-  world: 'MapWorld',
-  europe: 'MapEurope',
-  africa: 'MapAfrica',
-  asia: 'MapAsia',
-  'north-america': 'MapNorthAmerica',
-  'south-america': 'MapSouthAmerica',
-}

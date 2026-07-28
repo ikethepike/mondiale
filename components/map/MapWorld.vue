@@ -1,7 +1,6 @@
 <template>
   <svg
     id="world-map"
-    ref="map"
     width="600"
     height="600"
     viewBox="0 0 600 600"
@@ -37,18 +36,3 @@
     />
   </svg>
 </template>
-<script lang="ts" setup>
-import { useAnimatedGameMap } from '~~/lib/animations'
-
-const { map } = useAnimatedGameMap()
-</script>
-<style scoped>
-svg {
-  width: 100%;
-  display: block;
-  max-height: 100%;
-}
-svg > * {
-  pointer-events: none;
-}
-</style>

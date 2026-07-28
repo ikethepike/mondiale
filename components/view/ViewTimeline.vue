@@ -341,6 +341,7 @@ watch(freshSlug, slug => slug && scrollLineTo(`[data-stop="${CSS.escape(slug)}"]
 watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${slot}"]`))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .timeline-round {
@@ -431,7 +432,7 @@ header {
       position: absolute;
       padding: 0.15rem 0.6rem;
       color: var(--sour-milk);
-      background: hsla(215.7, 76.4%, 12%, 0.55);
+      background: ink(0.55, 12%);
       border-top-left-radius: 0.4rem;
     }
   }
@@ -585,7 +586,7 @@ footer {
   border-radius: 0.7rem;
   flex-flow: column nowrap;
   background: hsla(36, 100%, 98%, 0.9);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   border-bottom-width: 0.3rem;
   transition: border-color var(--motion-base) var(--ease-out-expressive);
 
@@ -653,7 +654,7 @@ footer {
   .tick {
     width: 0.9rem;
     height: 0.1rem;
-    background: hsla(215.7, 76.4%, 21.6%, 0.3);
+    background: ink(0.3);
   }
 
   .slot {
@@ -664,7 +665,7 @@ footer {
     position: relative;
     color: var(--dark-blue);
     background: hsla(36, 100%, 98%, 0.92);
-    border: 0.15rem dashed hsla(215.7, 76.4%, 41%, 0.65);
+    border: 0.15rem dashed ink(0.65, 41%);
     transition:
       transform var(--motion-quick) var(--ease-out-expressive),
       border-color var(--motion-quick) var(--ease-out-expressive),
@@ -757,7 +758,7 @@ footer {
 @keyframes slot-beckon {
   0%,
   100% {
-    border-color: hsla(215.7, 76.4%, 41%, 0.65);
+    border-color: ink(0.65, 41%);
     box-shadow: 0 0 0 0 hsla(197.6, 51.2%, 41.8%, 0);
   }
   50% {

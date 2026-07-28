@@ -81,6 +81,7 @@ const shownOuts = computed(() => myOuts.value.slice(0, MAX_DOORS_SHOWN))
 const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS_SHOWN))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .chain-reveal {
   gap: 0.9rem;
   display: flex;
@@ -157,7 +158,7 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
   padding: 0.3rem 0.9rem;
   font-size: 1.15rem;
   align-items: center;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+  border: 0.1rem solid ink(0.3);
   border-radius: 1.2rem;
 
   &.more {
@@ -169,6 +170,6 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
 .door-flag {
   width: 1.8rem;
   height: 1.25rem;
-  border: 0.05rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.05rem solid ink(0.25);
 }
 </style>

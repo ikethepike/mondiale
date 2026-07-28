@@ -290,6 +290,7 @@ const submitTyped = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .name-that-water {
   top: 0;
@@ -365,7 +366,7 @@ header {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 
   .hint-icon {
@@ -413,7 +414,7 @@ header {
     border-radius: 0.9rem;
     backdrop-filter: blur(0.5rem);
     background: hsla(36, 100%, 98%, 0.94);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
 
     li {
       cursor: pointer;
@@ -423,7 +424,7 @@ header {
 
       &.highlighted,
       &:hover {
-        background: hsla(215.7, 76.4%, 21.6%, 0.08);
+        background: ink(0.08);
       }
     }
   }

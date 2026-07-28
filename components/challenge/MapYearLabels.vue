@@ -90,16 +90,7 @@ const chips = computed(() => {
   }
 }
 
-@keyframes chip-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -20%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
+// chip-in comes from rules/_animations.scss
 
 @media (prefers-reduced-motion: reduce) {
   .chip {

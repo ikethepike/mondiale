@@ -720,6 +720,7 @@ watch(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .manhunt {
   top: 0;
@@ -760,14 +761,14 @@ header {
     font-weight: bold;
     padding: 0.8rem 2rem;
     border-width: 0.15rem;
-    border-color: hsla(215.7, 76.4%, 41%, 0.55);
-    box-shadow: 0 0.3rem 1.2rem hsla(215.7, 76.4%, 21.6%, 0.18);
+    border-color: ink(0.55, 41%);
+    box-shadow: 0 0.3rem 1.2rem ink(0.18);
   }
 
   .sea-banner {
     font-weight: bold;
-    color: hsl(215.7, 76.4%, 41%);
-    border-color: hsla(215.7, 76.4%, 41%, 0.55);
+    color: ink(1, 41%);
+    border-color: ink(0.55, 41%);
   }
 }
 
@@ -802,7 +803,7 @@ header {
     width: 0.7rem;
     height: 0.7rem;
     border-radius: 50%;
-    background: hsl(215.7, 76.4%, 41%);
+    background: ink(1, 41%);
 
     &.spent {
       opacity: 0.25;
@@ -812,7 +813,7 @@ header {
   .dock-divider {
     width: 0.1rem;
     height: 1.8rem;
-    background: hsla(215.7, 76.4%, 21.6%, 0.25);
+    background: ink(0.25);
   }
 
   .topic-chip {
@@ -824,7 +825,7 @@ header {
     color: var(--dark-blue);
     padding: 0.3rem 0.9rem;
     border-radius: 1rem;
-    border: 0.1rem solid hsla(215.7, 76.4%, 41%, 0.35);
+    border: 0.1rem solid ink(0.35, 41%);
     background: none;
 
     .chip-icon {
@@ -923,7 +924,7 @@ header .prompt {
     background: none;
 
     &.open {
-      border-color: hsla(215.7, 76.4%, 41%, 0.55);
+      border-color: ink(0.55, 41%);
       background: hsla(212, 58%, 62%, 0.18);
     }
 
@@ -935,7 +936,7 @@ header .prompt {
 
   .passage-pip {
     font-size: 1.5rem;
-    color: hsl(215.7, 76.4%, 41%);
+    color: ink(1, 41%);
 
     &.spent {
       opacity: 0.25;

@@ -59,9 +59,8 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { MapTint } from '~~/store/game.store'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 // Full world map with the feature drawn on top; guesses tint as they land — so
 // this mode opts out of the composable's shapes-only default.
@@ -107,11 +106,7 @@ const copy = computed(() => {
   }
 })
 
-const guesses = ref<ISOCountryCode[]>([])
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-
-const answerSet = computed(() => new Set(challenge.value?.countries ?? []))
-const found = computed(() => guesses.value.filter(isoCode => answerSet.value.has(isoCode)))
 
 onMounted(async () => {
   const active = challenge.value
@@ -127,57 +122,17 @@ onMounted(async () => {
   }
 })
 
-watch(
-  [guesses, challenge],
-  () => {
-    const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
-    for (const isoCode of guesses.value) {
-      tints[isoCode] = answerSet.value.has(isoCode) ? 'optimal' : 'stray'
-    }
-    gameStore.map.tints = tints
-  },
-  { deep: true, immediate: true }
+const { guesses, answerSet, found, start: begin, onGuess } = useCollectSetRound(
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  {
+    answers: () => challenge.value?.countries ?? [],
+    wrongHint: country => `${countryName(country)} isn't one of them`,
+    focusInput: () => guessInput.value?.focus(),
+  }
 )
-
-const submitRound = () => {
-  if (submitted.value) return
-  gameStore.map.status =
-    found.value.length >= (challenge.value?.countries.length ?? Infinity) ? 'correct' : undefined
-  submitOnce([...guesses.value])
-}
-
-const begin = () => {
-  beginRound({ onTimeout: submitRound })
-  nextTick(() => guessInput.value?.focus())
-}
-
-const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || !started.value) return
-
-  if (guesses.value.includes(country.isoCode)) {
-    return announce({ hint: `${countryName(country)} is already on the board` })
-  }
-
-  guesses.value.push(country.isoCode)
-  const correct = answerSet.value.has(country.isoCode)
-  // Everyone races the same list, so a right name would be a free answer. Only
-  // the misses are named; a hit says just that somebody found one.
-  announce({
-    kind: correct ? 'correct' : 'wrong',
-    ...(correct
-      ? {}
-      : { isoCode: country.isoCode, hint: `${countryName(country)} isn't one of them` }),
-  })
-
-  // Everything found — no reason to run out the clock
-  if (found.value.length === active.countries.length) {
-    gameStore.map.status = 'correct'
-    submitRound()
-  }
-}
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 .water-blitz {
   top: 0;
@@ -255,7 +210,7 @@ footer {
 .stop-flag {
   width: 2.6rem;
   height: 1.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .chain-enter-from {

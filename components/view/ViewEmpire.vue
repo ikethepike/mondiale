@@ -469,6 +469,7 @@ const submitRound = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .empire {
@@ -524,14 +525,14 @@ header {
     border-left: 0.4rem solid hsl(150, 45%, 36%);
 
     &.missed {
-      border-left-color: hsla(215.7, 76.4%, 21.6%, 0.45);
+      border-left-color: ink(0.45);
     }
 
     .verdict-flag {
       width: 6.4rem;
       height: 4.2rem;
       flex-shrink: 0;
-      filter: drop-shadow(0 0.1rem 0.3rem hsla(215.7, 76.4%, 21.6%, 0.25));
+      filter: drop-shadow(0 0.1rem 0.3rem ink(0.25));
     }
 
     .verdict-copy {
@@ -557,7 +558,7 @@ header {
     }
 
     &.missed .verdict-copy small {
-      color: hsla(215.7, 76.4%, 21.6%, 0.75);
+      color: ink(0.75);
     }
   }
 
@@ -633,7 +634,7 @@ footer {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
   background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
@@ -660,7 +661,7 @@ footer {
   .option-flag {
     width: 100%;
     height: 4.2rem;
-    filter: drop-shadow(0 0.1rem 0.3rem hsla(215.7, 76.4%, 21.6%, 0.25));
+    filter: drop-shadow(0 0.1rem 0.3rem ink(0.25));
   }
 }
 
@@ -736,7 +737,7 @@ footer {
     width: 2.2rem;
     height: 1.5rem;
     border-radius: 0.2rem;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    border: 0.1rem solid ink(0.25);
   }
 
   .remove {
@@ -757,7 +758,7 @@ footer {
   padding: 0.5rem 1.2rem;
   border-radius: 999px;
   background: hsla(0, 0%, 100%, 0.55);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 
   @media (hover: hover) {
