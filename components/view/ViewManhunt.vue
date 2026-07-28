@@ -210,7 +210,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ManhuntReveal from '~/components/challenge/ManhuntReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { isStraitHop } from '~~/lib/chain'
+import { isStraitHop, walkColor } from '~~/lib/chain'
 import {
   legalManhuntMoves,
   MANHUNT_SUBPOENA_TOPICS,
@@ -546,11 +546,7 @@ watch(
 // --- Painting the map --------------------------------------------------------
 /** Candidates in one quiet blue; the despot's trail deepens along the walk. */
 const CANDIDATE_FILL = 'hsla(212, 58%, 62%, 0.4)'
-const trailColor = (index: number, count: number, head: boolean): string => {
-  if (head) return 'hsla(24, 80%, 55%, 0.92)'
-  const t = count <= 1 ? 1 : index / (count - 1)
-  return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
-}
+const trailColor = walkColor
 
 const lastDragnet = computed(() => state.value.dragnets[state.value.dragnets.length - 1])
 

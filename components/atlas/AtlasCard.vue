@@ -222,7 +222,7 @@ const neighbours = computed(() =>
     border-radius: 50%;
     background-size: cover;
     background-position: center top;
-    border: 0.15rem solid hsla(36, 100%, 98%, 0.9);
+    border: 0.15rem solid milk(0.9);
   }
   .leader-ident {
     display: flex;

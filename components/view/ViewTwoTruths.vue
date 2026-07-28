@@ -213,7 +213,7 @@ header .verdict.incorrect {
   padding: 1rem;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
+  background: milk(0.85);
   border: 0.1rem solid ink(0.2);
 
   .flag {
@@ -282,7 +282,7 @@ header .verdict.incorrect {
   // Reveal: the lie glows coral, truths settle to mint
   &.is-lie {
     border-color: var(--hior-ange);
-    background: hsla(9.8, 81.3%, 60.2%, 0.18);
+    background: flame(0.18);
   }
   &.is-truth {
     border-color: hsla(170.5, 34.7%, 45%, 0.7);

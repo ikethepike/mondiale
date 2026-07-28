@@ -228,7 +228,7 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
   }
 
   &.hot {
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.6);
+    border-color: flame(0.6);
   }
   &.warm {
     border-color: hsla(29.7, 79.9%, 60%, 0.6);

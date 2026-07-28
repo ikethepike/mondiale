@@ -239,7 +239,7 @@ header .corridor {
   font-weight: bold;
   padding: 0.4rem 1.4rem;
   color: var(--hior-ange);
-  border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
+  border-color: flame(0.35);
 }
 
 // Chip and route-list recipes come from templates/_country-chip.scss;

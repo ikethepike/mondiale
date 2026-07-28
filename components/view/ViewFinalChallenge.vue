@@ -580,6 +580,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // The gauntlet stacks its beats from the top (the result follows the
 // question), not against both edges.
 .view-final-challenge {
@@ -624,7 +625,7 @@ header .prompt {
   }
 
   .heart {
-    color: hsla(9.8, 81.3%, 60.2%, 1);
+    color: flame();
     margin-right: 0.2rem;
 
     &:last-child {

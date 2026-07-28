@@ -20,6 +20,18 @@ export const connectionsOf = (isoCode: ISOCountryCode): ISOCountryCode[] => [
 export const isStraitHop = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
   STRAITS[a]?.includes(b) ?? false
 
+/**
+ * The walk ramp — one blue, deepening along the journey (a ramp reads as
+ * sequence where a rainbow reads as categories); the live head alone burns
+ * ember. Border chain and the manhunt trail share this by construction.
+ * JS needs the literal colors; the ember hue is `ember()` in rules/_ink.scss.
+ */
+export const walkColor = (index: number, count: number, head = false): string => {
+  if (head) return 'hsla(24, 80%, 55%, 0.92)'
+  const t = count <= 1 ? 1 : index / (count - 1)
+  return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
+}
+
 export const liveChain = (state: BorderChainState): ISOCountryCode[] =>
   state.chains[state.chains.length - 1] ?? []
 

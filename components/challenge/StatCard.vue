@@ -40,7 +40,7 @@ withDefaults(
   flex-flow: column nowrap;
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.25);
 }
 

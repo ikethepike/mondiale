@@ -34,7 +34,7 @@ const low = computed(
   border-radius: 1.2rem;
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
+  background: milk(0.85);
   border: 0.1rem solid ink(0.2);
   // Slow on purpose: the warming border is a tide, not an alarm.
   transition: border-color 2s var(--ease-smooth);

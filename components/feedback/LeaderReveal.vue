@@ -74,7 +74,7 @@ const otherRole = computed(() =>
   border-radius: 50%;
   background-size: cover;
   background-position: center top;
-  border: 0.2rem solid hsla(36, 100%, 98%, 0.9);
+  border: 0.2rem solid milk(0.9);
   box-shadow: 0 2px 8px ink(0.3);
 }
 

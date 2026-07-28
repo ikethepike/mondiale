@@ -182,6 +182,7 @@ watch(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .final-scales {
   gap: 1rem;
   left: 50%;
@@ -194,7 +195,7 @@ watch(
   align-items: center;
   flex-flow: column nowrap;
   border-radius: 1.2rem;
-  background: hsla(36, 100%, 98%, 0.92);
+  background: milk(0.92);
   backdrop-filter: blur(0.6rem);
   box-shadow: 0 0.4rem 2.4rem hsla(216, 58%, 10%, 0.18);
   max-width: min(56rem, calc(100vw - 3.2rem));
@@ -263,7 +264,7 @@ watch(
 
   &.off .verdict {
     color: var(--hior-ange);
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
+    border-color: flame(0.35);
   }
 }
 

@@ -161,7 +161,7 @@ header .region-hint {
   // Six swatches must fit a 360px screen inside the frame's own padding.
   max-width: calc(100vw - 3.2rem);
   border-radius: 1.4rem;
-  background: hsla(36, 100%, 98%, 0.85);
+  background: milk(0.85);
   border: 0.1rem solid ink(0.2);
 }
 

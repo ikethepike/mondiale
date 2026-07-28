@@ -96,7 +96,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
   overflow: hidden;
   place-items: center;
   border-radius: 50%;
-  background: hsla(36, 100%, 98%, 0.7);
+  background: milk(0.7);
   border: 0.2rem solid ink(0.16);
   transition:
     transform var(--motion-base) var(--ease-out-expressive),
@@ -135,7 +135,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
 
 .orb.active .orb-face {
   // Landmass flips to a light cream ink so it reads on the dark globe
-  --orb-ink: hsl(36, 100%, 98%);
+  --orb-ink: #{milk()};
   transform: scale(1.08);
   border-color: var(--dark-blue);
   background: var(--dark-blue);

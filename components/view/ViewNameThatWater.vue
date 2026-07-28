@@ -319,7 +319,7 @@ header .clue {
   pointer-events: auto;
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 
@@ -367,7 +367,7 @@ header .clue {
     position: absolute;
     border-radius: 0.9rem;
     backdrop-filter: blur(0.5rem);
-    background: hsla(36, 100%, 98%, 0.94);
+    background: milk(0.94);
     border: 0.1rem solid ink(0.25);
 
     li {

@@ -15,13 +15,12 @@
       </h1>
       <span class="map-caption sub beat-line">
         <span>Photo {{ state!.beat + 1 }} of {{ challenge.slugs.length }}</span>
-        <span
+        <ChallengeTimerRadial
           v-if="!state!.revealing && !state!.finished"
-          class="clock"
-          :class="{ urgent: secondsOnClock <= 5 }"
-        >
-          {{ secondsOnClock }}s
-        </span>
+          class="beat-clock"
+          :value="secondsOnClock"
+          :total="challenge.beatSeconds"
+        />
       </span>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
@@ -56,6 +55,7 @@
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import MediaDock from '~/components/challenge/MediaDock.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
@@ -190,13 +190,10 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
 
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-
-    &.urgent {
-      color: var(--hior-ange);
-    }
+  // The shared radial dial at subline scale — no bespoke text clocks.
+  .beat-clock {
+    --clock-size: 2.8rem;
+    --clock-seconds-size: 1.1rem;
   }
 }
 

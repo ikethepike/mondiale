@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
   border-radius: 1.2rem;
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.9);
+  background: milk(0.9);
   border: 0.1rem solid ink(0.25);
 
   canvas {

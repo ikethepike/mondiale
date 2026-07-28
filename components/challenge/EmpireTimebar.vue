@@ -113,7 +113,7 @@ defineExpose({ setT })
   border-radius: 1.4rem;
   pointer-events: auto;
   backdrop-filter: blur(0.6rem);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.2);
   box-shadow: 0 0.4rem 2.4rem ink(0.15);
   width: min(44rem, calc(100vw - 3.2rem));
@@ -251,7 +251,7 @@ input[type='range'] {
     height: 1.6rem;
     border-radius: 999px;
     background: var(--dark-blue);
-    border: 0.25rem solid hsla(36, 100%, 98%, 0.95);
+    border: 0.25rem solid milk(0.95);
     box-shadow: 0 0 0 0.1rem ink(0.35);
   }
   &::-moz-range-thumb {
@@ -259,7 +259,7 @@ input[type='range'] {
     height: 1.1rem;
     border-radius: 999px;
     background: var(--dark-blue);
-    border: 0.25rem solid hsla(36, 100%, 98%, 0.95);
+    border: 0.25rem solid milk(0.95);
     box-shadow: 0 0 0 0.1rem ink(0.35);
   }
 }

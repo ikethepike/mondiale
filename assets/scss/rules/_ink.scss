@@ -8,5 +8,22 @@
   @return hsla(215.7, 76.4%, $lightness, $alpha);
 }
 
+// The paper the game is printed on — every cream scrim, chip face and card
+// surface is a wash of --sour-milk. One hue declaration, like ink().
+@function milk($alpha: 1) {
+  @return hsla(36, 100%, 98%, $alpha);
+}
+
+// The alert orange-red (--hior-ange): wrong guesses, hot borders, alarms.
+@function flame($alpha: 1, $lightness: 60.2%) {
+  @return hsla(9.8, 81.3%, $lightness, $alpha);
+}
+
+// The clock ember: deadlines, shot-clock warmth and walk heads burning down.
+// JS mirrors (walk heads) live in lib/chain.ts — keep the hue in step.
+@function ember($alpha: 1, $lightness: 55%) {
+  @return hsla(24, 80%, $lightness, $alpha);
+}
+
 // The hairline divider under card headers — near-black at 12%, one token.
 $hairline: hsla(0, 0%, 7.5%, 0.12);

@@ -239,7 +239,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   position: absolute;
   pointer-events: none;
   border-radius: 0.1rem;
-  background: hsl(24, 80%, 45%);
+  background: ember(1, 45%);
 }
 
 .axis {
@@ -264,7 +264,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   padding: 0.2rem 0.9rem;
   border-radius: 1rem;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.9);
+  background: milk(0.9);
   border: 0.1rem solid ink(0.25);
 }
 
@@ -307,7 +307,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   &::before {
     width: 0.8rem;
     height: 0.8rem;
-    box-shadow: 0 0 0 0.3rem hsla(36, 100%, 98%, 0.9);
+    box-shadow: 0 0 0 0.3rem milk(0.9);
   }
 
   // The ring, clear of the dot like the old SVG halo.
@@ -371,7 +371,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   &::after {
     inset: -0.35rem;
     border-radius: 0.4rem;
-    box-shadow: 0 0 0 0.35rem hsla(36, 100%, 98%, 0.85);
+    box-shadow: 0 0 0 0.35rem milk(0.85);
   }
 }
 
@@ -385,7 +385,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   border-radius: 0.8rem;
   color: var(--dark-blue);
   transform: translate(-50%, calc(-100% - 1.2rem));
-  background: hsla(36, 100%, 98%, 0.96);
+  background: milk(0.96);
   border: 0.1rem solid ink(0.25);
   box-shadow: 0 2px 8px ink(0.15);
 }

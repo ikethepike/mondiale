@@ -1663,7 +1663,7 @@ path[id],
 // for the map's dark border ink.
 path.ringed-country,
 .micro-marker.ringed-country {
-  stroke: hsl(24, 80%, 45%);
+  stroke: ember(1, 45%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-linejoin: round;
 }
@@ -1714,7 +1714,7 @@ path.sea-glow-country {
 }
 
 .chip-disc {
-  fill: hsla(36, 100%, 98%, 0.95);
+  fill: milk(0.95);
   stroke: ink(0.6, 41%);
   stroke-width: 1;
 }

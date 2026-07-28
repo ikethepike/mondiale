@@ -11,13 +11,13 @@
   --map-filled-normal: var(--soft-blue);
   --map-not-highlight: hsla(197.6, 51.2%, 41.8%, 0.1);
 
-  --sour-milk: hsl(36, 100%, 98%);
+  --sour-milk: #{milk()};
 
   --dark-blue: #{ink()};
   --soft-blue: hsla(197.6, 51.2%, 41.8%, 1);
   --soft-mint: hsl(170.5, 24.7%, 65.1%);
   --warm-sand: hsl(29.7, 79.9%, 72.7%);
-  --hior-ange: hsl(9.8, 81.3%, 60.2%);
+  --hior-ange: #{flame()};
 
   // The night modes (City Nocturne, Sunset Blitz) share one darkness — their
   // page, land and stroke inks echo by design, so they are tokens, not copies.

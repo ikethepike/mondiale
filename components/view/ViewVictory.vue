@@ -355,8 +355,8 @@ onBeforeUnmount(() => {
     position: absolute;
     background: radial-gradient(
       ellipse 62% 48% at center,
-      hsla(36, 100%, 98%, 0.96) 0%,
-      hsla(36, 100%, 98%, 0.82) 55%,
+      milk(0.96) 0%,
+      milk(0.82) 55%,
       transparent 78%
     );
   }
@@ -537,7 +537,7 @@ onBeforeUnmount(() => {
   color: var(--dark-blue);
   transform: translateX(-50%);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.92);
+  background: milk(0.92);
   border: 0.1rem solid ink(0.35);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),

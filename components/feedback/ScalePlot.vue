@@ -71,7 +71,7 @@ const plotted = computed<ScaleMarker[]>(
   // A muted gradient from the "least" to the "most" pole hue.
   background: linear-gradient(
     to right,
-    hsla(9.8, 81.3%, 60.2%, 0.35),
+    flame(0.35),
     hsla(36, 60%, 85%, 0.5) 50%,
     hsla(170.5, 24.7%, 55%, 0.55)
   );

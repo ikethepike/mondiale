@@ -1152,7 +1152,7 @@ header .flag-frame {
   margin-top: 0.6rem;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
+  background: milk(0.85);
   border: 0.1rem solid ink(0.2);
   animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
 }
@@ -1182,7 +1182,7 @@ header .flag {
   border-radius: 1.2rem;
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
@@ -1266,7 +1266,7 @@ header .flag {
   font-weight: 700;
   color: ink(0.35);
   border: 0.2rem dashed ink(0.3);
-  background: hsla(36, 100%, 98%, 0.6);
+  background: milk(0.6);
 }
 
 .ring-flag {
@@ -1315,7 +1315,7 @@ header .flag {
   padding: 0.2rem 0.9rem 0.2rem 1.08rem; // optical: balance the tracking's tail
   border-radius: 1rem;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.92);
+  background: milk(0.92);
   border: 0.1rem solid ink(0.3);
 }
 
@@ -1336,7 +1336,7 @@ header .flag {
   }
   &.was-wrong {
     border-color: var(--hior-ange);
-    background: hsla(9.8, 81.3%, 60.2%, 0.18);
+    background: flame(0.18);
   }
 }
 

@@ -58,9 +58,10 @@ const { skip } = useIntroBeat(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // Shell geometry comes from templates/_intro-overlay.scss
 .interstitial {
-  background: hsla(36, 100%, 98%, 0.75);
+  background: milk(0.75);
 }
 
 .ripple {
@@ -98,7 +99,7 @@ const { skip } = useIntroBeat(
 
 .alert .kicker {
   color: var(--hior-ange);
-  border-color: hsla(9.8, 81.3%, 60.2%, 0.35);
+  border-color: flame(0.35);
 }
 
 .info .kicker {

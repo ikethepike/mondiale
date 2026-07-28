@@ -234,7 +234,7 @@ onMounted(randomize)
   flex-flow: column nowrap;
   border-radius: 1.2rem;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.25);
 
   &:hover {

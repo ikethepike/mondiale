@@ -20,7 +20,7 @@
   // The shared miss look: a wrong pick fades and its border runs hot.
   &.stray {
     opacity: 0.65;
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.6);
+    border-color: flame(0.6);
   }
 
   &.compact {

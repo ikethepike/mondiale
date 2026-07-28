@@ -153,7 +153,7 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 }
 
 .disc {
-  fill: var(--clock-disc-fill, hsla(36, 100%, 98%, 0.88));
+  fill: var(--clock-disc-fill, milk(0.88));
   stroke: var(--clock-disc-stroke, ink(0.25));
   stroke-width: 1;
 }

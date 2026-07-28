@@ -154,7 +154,7 @@ const formatLabel = (option: string) => titleCase(option)
   transition: color var(--motion-base) var(--ease-out-expressive);
 
   &.active {
-    color: hsl(36, 100%, 98%);
+    color: milk();
   }
 
   &:not(.active):hover {

@@ -17,14 +17,14 @@
       <h1 class="map-caption">
         {{ headline }}
       </h1>
-      <span
-        v-if="!finished"
-        class="map-caption sub turn-line"
-        :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
-      >
+      <span v-if="!finished" class="map-caption sub turn-line">
         <span class="chip" :style="{ background: activePlayer?.color }" />
         <span>{{ turnLabel }}</span>
-        <span class="clock">{{ secondsOnClock }}s</span>
+        <ChallengeTimerRadial
+          class="turn-clock"
+          :value="secondsOnClock"
+          :total="challenge.turnSeconds"
+        />
       </span>
       <span v-if="!finished && iAmOut" class="map-caption sub out">
         You're out — spectating
@@ -71,12 +71,13 @@
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { activePlayerId, isStraitHop, liveChain, openMoves } from '~~/lib/chain'
+import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -161,13 +162,10 @@ const turnLabel = computed(() => {
   return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
-const { secondsOnClock, fractionLeft } = useDeadlineClock(
+const { secondsOnClock } = useDeadlineClock(
   () => state.value?.deadline,
   () => challenge.value?.turnSeconds
 )
-
-/** 0 (calm ink) through the turn's first half, 100 (ember) as the clock dies. */
-const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))
 
 // --- Submitting a move -------------------------------------------------------
 const pending = ref(false)
@@ -208,13 +206,8 @@ watch(
 )
 
 // --- Painting the map --------------------------------------------------------
-/** One blue, deepening along the walk — a ramp reads as sequence where a
- *  rainbow reads as categories. The head alone burns ember. */
-const stopColor = (index: number, count = chain.value.length, head = false): string => {
-  if (head) return 'hsla(24, 80%, 55%, 0.92)'
-  const t = count <= 1 ? 1 : index / (count - 1)
-  return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
-}
+const stopColor = (index: number, count = chain.value.length, head = false): string =>
+  walkColor(index, count, head)
 const RETIRED_FILL = 'hsla(215.7, 15%, 55%, 0.32)'
 
 const seaLinkKeys = (): string[] => {
@@ -284,33 +277,13 @@ watch(
   .chip {
     width: 0.75rem;
     height: 0.75rem;
-    position: relative;
     border-radius: 50%;
-
-    // The shot clock as a sweeping ring — full at the deal, gone at zero.
-    &::before {
-      content: '';
-      inset: -0.35rem;
-      position: absolute;
-      border-radius: 50%;
-      background: conic-gradient(hsl(24, 80%, 55%) var(--ring, 360deg), transparent 0);
-      mask: radial-gradient(
-        farthest-side,
-        transparent calc(100% - 0.2rem),
-        #000 calc(100% - 0.18rem)
-      );
-    }
   }
 
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    // Ink through the calm half, warming to the chain head's ember as it dies.
-    color: color-mix(
-      in oklab,
-      hsl(24, 80%, 55%) calc(var(--clock-warmth, 0) * 1%),
-      var(--dark-blue)
-    );
+  // The shared radial dial at subline scale — no bespoke text clocks.
+  .turn-clock {
+    --clock-size: 2.8rem;
+    --clock-seconds-size: 1.1rem;
   }
 }
 

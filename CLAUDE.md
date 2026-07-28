@@ -34,7 +34,8 @@ and wire every caller through it. Never inline a second copy "just for this view
 | Outline geometry (rings, area, centroid, resampling) | `lib/outline.ts` (`ringArea`, `ringCentroid`, …) |
 | Small-option-table guess rounds (spent picks, attempt cap, per-attempt pay) | `lib/use-attempt-options.ts` |
 | Collect-a-set blitz rounds (guess list, tinting, dupe bounce, early finish) | `lib/use-collect-set-round.ts` |
-| The dark-blue ink and its washes | `ink($alpha, $lightness?)` in `assets/scss/rules/_ink.scss` — never a raw `hsla(215.7, …)`. NOTE: Sass does not evaluate functions inside custom-property values; write `--token: #{ink()}`, and JS strings need the literal color |
+| The brand hues and their washes (dark-blue ink, cream surface, alert red, clock ember) | `ink()`, `milk()`, `flame()`, `ember()` in `assets/scss/rules/_ink.scss` — never a raw `hsla(215.7/36/9.8/24, …)`. NOTE: Sass does not evaluate functions inside custom-property values; write `--token: #{ink()}`, and JS strings need the literal color (walk-head ember lives in `walkColor` in `lib/chain.ts`) |
+| Round countdowns in view chrome | `components/challenge/ChallengeTimerRadial.vue` (scale via `--clock-size`/`--clock-seconds-size`) — never a raw `{{ seconds }}s` text clock |
 | Night-mode palette (City Nocturne / Sunset Blitz) | `--night-page`, `--night-land`, `--night-stroke`, `--night-amber` in `_palette.scss` |
 | Shared keyframes (`chip-in`, `row-land`, `bar-grow`, `stroke-draw`, …) | `assets/scss/rules/_animations.scss` — scoped blocks reference them by name |
 | Player identity edge (colour border on owned rows/cards) | `.player-accent` in `assets/scss/templates/_player-accent.scss` + inline `--player-color` |

@@ -67,6 +67,7 @@ const { skip } = useIntroBeat(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // Shell geometry comes from templates/_intro-overlay.scss
 .gauntlet-intro {
   overflow: hidden;
@@ -126,7 +127,7 @@ hr {
 }
 
 .heart {
-  color: hsla(9.8, 81.3%, 64%, 1);
+  color: flame(1, 64%);
   margin-right: 0.2rem;
 }
 

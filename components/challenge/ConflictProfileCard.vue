@@ -210,7 +210,7 @@ const ucdpNote = computed(() => {
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.88);
+  background: milk(0.88);
   border: 0.1rem solid ink(0.25);
 }
 
