@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { STRAITS } from '~~/data/straits.gen'
-import type {
-  BorderChainChallenge,
-  BorderChainState,
-} from '~~/types/challenges/group-modes.type'
+import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -142,7 +139,12 @@ describe('standingPlayers / chain accessors', () => {
   })
 
   it('exposes the live chain and its head', () => {
-    const s = state({ chains: [['PT', 'ES'], ['NO', 'SE']] })
+    const s = state({
+      chains: [
+        ['PT', 'ES'],
+        ['NO', 'SE'],
+      ],
+    })
     expect(liveChain(s)).toEqual(['NO', 'SE'])
     expect(chainHead(s)).toBe('SE')
   })

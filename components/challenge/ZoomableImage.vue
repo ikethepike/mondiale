@@ -325,9 +325,7 @@ const pinchDistance = (): number => {
   border: 0.1rem solid var(--text-color);
   border-bottom: 0.6rem solid var(--text-color);
   // Letterbox mat: sour-milk under a faint dark-blue wash — paper, not glass.
-  background:
-    linear-gradient(ink(0.06), ink(0.06)),
-    var(--background-color);
+  background: linear-gradient(ink(0.06), ink(0.06)), var(--background-color);
   touch-action: none; // we handle pinch/pan ourselves
   // Host views (e.g. .main-board) are pointer-events:none by default; the
   // interactive photo must re-assert its own so zoom/pan gestures land.

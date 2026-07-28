@@ -101,11 +101,7 @@
           </span>
         </li>
       </ul>
-      <ChallengeConsole
-        class="console"
-        :value="secondsOnClock"
-        :total="challenge.durationSeconds"
-      >
+      <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.durationSeconds">
         <SuggestInput
           v-if="!allMineLocked"
           ref="input"
@@ -259,8 +255,7 @@ const ownCountryPick = (category: UniqueCategoryId) => {
 
 const rivalsLocked = (category: UniqueCategoryId) =>
   state.value.order.filter(
-    playerId =>
-      playerId !== gameStore.playerId && state.value.locked[playerId]?.includes(category)
+    playerId => playerId !== gameStore.playerId && state.value.locked[playerId]?.includes(category)
   )
 
 const input = ref<InstanceType<typeof SuggestInput>>()

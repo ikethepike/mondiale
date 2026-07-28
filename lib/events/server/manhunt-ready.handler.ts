@@ -11,6 +11,11 @@ export const manhuntReadyHandler = defineGameHandler(
       challenge.state.detectives.includes(eventTarget.playerId)
     if (!participant) return
 
-    await applyManhuntReady({ io, redis, socket, eventTarget }, game, challenge, eventTarget.playerId)
+    await applyManhuntReady(
+      { io, redis, socket, eventTarget },
+      game,
+      challenge,
+      eventTarget.playerId
+    )
   }
 )

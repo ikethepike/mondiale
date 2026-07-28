@@ -198,7 +198,14 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { WORLD_BOX, countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
+import {
+  WORLD_BOX,
+  countryLatLng,
+  invertRobinson,
+  mainlandBox,
+  projectRobinson,
+  type LatLng,
+} from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'

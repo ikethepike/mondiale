@@ -3,7 +3,9 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "Maurya Empire 250 BCE (Ashoka, subcontinent minus the Tamil south)" },
+      "properties": {
+        "name": "Maurya Empire 250 BCE (Ashoka, subcontinent minus the Tamil south)"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [

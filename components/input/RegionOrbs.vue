@@ -50,7 +50,6 @@ watch(
   value => (selected.value = value)
 )
 
-
 const select = (variant: GameVariant) => {
   selected.value = variant
   emit('update:modelValue', variant)
@@ -112,7 +111,6 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
 }
 
 .orb-map {
-
   // The maps carry their own square background and globe outline — the orb
   // provides both, so strip them and keep only the landmass strokes.
   :deep(rect),

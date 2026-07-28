@@ -104,7 +104,6 @@ const chips = computed(() => {
   if (left < 4 || left > 96 || top < 6 || top > 94) return []
   return [{ label: CONFLICT_ERAS[era.era] ?? '', left, top }]
 })
-
 </script>
 <style lang="scss" scoped>
 .conflict-dot-field {

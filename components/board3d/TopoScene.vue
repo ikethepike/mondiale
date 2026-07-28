@@ -181,10 +181,7 @@ const acquirePathMarker = (radius: number): Mesh<RingGeometry, MeshBasicMaterial
 
   const marker =
     markerPool.pop() ??
-    new Mesh(
-      markerGeometry,
-      new MeshBasicMaterial({ transparent: true, depthWrite: false })
-    )
+    new Mesh(markerGeometry, new MeshBasicMaterial({ transparent: true, depthWrite: false }))
   gsap.killTweensOf(marker.material)
   marker.geometry = markerGeometry
   marker.material.opacity = 0.85

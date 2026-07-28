@@ -303,7 +303,9 @@ const report = [
   ),
   '',
   `Dropped — crossing runs through or past a third country (${blocked.length}):`,
-  ...blocked.map(({ pair, km, by }) => `  ${pairId(pair)}  ${km.toFixed(1).padStart(7)} km  via ${by}`),
+  ...blocked.map(
+    ({ pair, km, by }) => `  ${pairId(pair)}  ${km.toFixed(1).padStart(7)} km  via ${by}`
+  ),
   '',
   `Islands now reachable (${connected.length}): ${connected.join(' ')}`,
   `Still isolated (${isolated.length}): ${isolated.join(' ')}`,

@@ -1,6 +1,8 @@
 <template>
   <div class="night-console" :class="{ low }">
-    <div class="tally"><span class="lit">{{ lit }} lit</span> · {{ quota }} to pass</div>
+    <div class="tally">
+      <span class="lit">{{ lit }} lit</span> · {{ quota }} to pass
+    </div>
     <div class="console-row">
       <div class="console-input"><slot /></div>
       <ChallengeTimerRadial :value="secondsLeft" :total="durationSeconds" />

@@ -116,7 +116,13 @@ onMounted(async () => {
   }
 })
 
-const { guesses, answerSet, found, start: begin, onGuess } = useCollectSetRound(
+const {
+  guesses,
+  answerSet,
+  found,
+  start: begin,
+  onGuess,
+} = useCollectSetRound(
   { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
   {
     answers: () => challenge.value?.countries ?? [],

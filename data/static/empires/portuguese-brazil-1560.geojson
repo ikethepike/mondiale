@@ -3,7 +3,9 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "Portuguese Brazil 1560 (coastal captaincies, Paraíba to São Vicente)" },
+      "properties": {
+        "name": "Portuguese Brazil 1560 (coastal captaincies, Paraíba to São Vicente)"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [

@@ -93,9 +93,7 @@ const frame = () => {
   frameHandle = requestAnimationFrame(frame)
 }
 
-const fraction = computed(() =>
-  props.total ? clamp01(smoothSeconds.value / props.total) : 0
-)
+const fraction = computed(() => (props.total ? clamp01(smoothSeconds.value / props.total) : 0))
 
 // Entrance: the arc sweeps in from empty to the current fraction, pulling the
 // eye to the clock as the round settles; after the sweep it drains linearly,

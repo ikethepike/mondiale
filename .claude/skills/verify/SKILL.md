@@ -13,7 +13,7 @@ bun run build
 REDIS_PASSWORD=dev PORT=3000 node .output/server/index.mjs &
 ```
 
-- The socket middleware only needs *a* redis token to boot (`REDIS_PASSWORD=dev`
+- The socket middleware only needs _a_ redis token to boot (`REDIS_PASSWORD=dev`
   works); Upstash is only actually called on multiplayer game events
   (`redis.set/get/expire` in `lib/events/server-side.ts`).
 - After a rebuild, KILL the old server first — a stale process on :3000 serves

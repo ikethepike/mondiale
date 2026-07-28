@@ -65,11 +65,7 @@
               :disabled="lockedOut || spent.includes(option) || !started"
               @click="onOptionPick(option)"
             >
-              <EmpireFlag
-                v-if="optionsAllFlagged"
-                class="option-flag"
-                :svg="flags[option] ?? ''"
-              />
+              <EmpireFlag v-if="optionsAllFlagged" class="option-flag" :svg="flags[option] ?? ''" />
               <span>{{ EMPIRES[option]?.name ?? option }}</span>
             </button>
           </div>

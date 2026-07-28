@@ -3944,7 +3944,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'engineering',
     year: 1863,
     description:
-      'The Metropolitan Railway carried some 38,000 Londoners underground on its opening day, behind steam engines that filled the tunnels with smoke — the world\'s first metro, and the reason many still call it the Tube.',
+      "The Metropolitan Railway carried some 38,000 Londoners underground on its opening day, behind steam engines that filled the tunnels with smoke — the world's first metro, and the reason many still call it the Tube.",
   },
   {
     name: 'Telephone',
@@ -4114,7 +4114,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'culture',
     year: 1929,
     description:
-      'Hollywood\'s first Academy Awards took fifteen minutes to hand out, at a private dinner where the winners had been announced three months in advance. The statuette\'s nickname — Oscar — came later.',
+      "Hollywood's first Academy Awards took fifteen minutes to hand out, at a private dinner where the winners had been announced three months in advance. The statuette's nickname — Oscar — came later.",
   },
   {
     name: 'Snow White and the Seven Dwarfs (1937 film)',
@@ -4132,7 +4132,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'culture',
     year: 1937,
     description:
-      'Weeks after German bombers flattened the Basque town of Gernika, Picasso answered with a canvas eight metres wide of screaming horses and grieving mothers — the century\'s defining image of war.',
+      "Weeks after German bombers flattened the Basque town of Gernika, Picasso answered with a canvas eight metres wide of screaming horses and grieving mothers — the century's defining image of war.",
   },
   {
     name: 'The Lord of the Rings',

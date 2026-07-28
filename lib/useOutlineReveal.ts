@@ -1,6 +1,11 @@
 import { nextTick, ref } from 'vue'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { DRAW_COMPLETE_AT, drawnFraction, mainlandOutline, previewSweepSeconds } from '~~/lib/outline'
+import {
+  DRAW_COMPLETE_AT,
+  drawnFraction,
+  mainlandOutline,
+  previewSweepSeconds,
+} from '~~/lib/outline'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** How long the whole border holds on screen before sweeping away. */

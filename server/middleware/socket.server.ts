@@ -23,10 +23,7 @@ import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-
 import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
 import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
 import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
-import {
-  forgetTauntBucket,
-  manhuntTauntHandler,
-} from '~~/lib/events/server/manhunt-taunt.handler'
+import { forgetTauntBucket, manhuntTauntHandler } from '~~/lib/events/server/manhunt-taunt.handler'
 import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
 import { submitTimelinePlacementHandler } from '~~/lib/events/server/submit-timeline-placement.handler'
 import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'

@@ -48,7 +48,12 @@
           </button>
         </div>
       </template>
-      <ChallengeConsole v-else class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+      <ChallengeConsole
+        v-else
+        class="console"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      >
         <CountryGuessInput
           ref="guessInput"
           :disabled="submitted || !started"
@@ -95,7 +100,6 @@ const stakes = computed(() =>
     ? `Name the country from its capital's skyline. You get ${challenge.value.maximumGuesses} guesses — each one you spend is worth less.`
     : "Name the country from its capital's skyline before the clock runs out. The sooner you name it, the more it's worth."
 )
-
 
 const submitRound = (score: number) => {
   if (submitted.value) return

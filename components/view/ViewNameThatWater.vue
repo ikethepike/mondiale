@@ -112,7 +112,8 @@ const attemptsLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - att
 /** Candidate names for suggestions, loaded with the geometry chunk. */
 const options = ref<SuggestOption[]>([])
 
-const normalizeName = (name: string) => normalizeAnswer(name, { articles: ['the', 'el', 'la', 'il'] })
+const normalizeName = (name: string) =>
+  normalizeAnswer(name, { articles: ['the', 'el', 'la', 'il'] })
 
 // Immediate watch, not onMounted: the challenge can land a beat after mount,
 // and an early return then would leave the suggestion list empty all round.

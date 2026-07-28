@@ -100,8 +100,8 @@
             />
           </div>
           <span class="gauntlet-label">
-            {{ gauntlet.answeredCorrect }}/{{ gauntlet.totalCount }} cleared ·
-            {{ gauntlet.lives }} {{ gauntlet.lives === 1 ? 'life' : 'lives' }} left
+            {{ gauntlet.answeredCorrect }}/{{ gauntlet.totalCount }} cleared · {{ gauntlet.lives }}
+            {{ gauntlet.lives === 1 ? 'life' : 'lives' }} left
           </span>
         </div>
 

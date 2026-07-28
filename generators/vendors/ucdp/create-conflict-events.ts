@@ -83,7 +83,13 @@ const main = async () => {
   // Same shape for the reveal's "engagements abroad" layer: events of a
   // country's conflicts located on someone else's soil.
   const abroadCells: CellStore = new Map()
-  const accumulate = (store: CellStore, iso: ISOCountryCode, era: number, key: string, weight: number) => {
+  const accumulate = (
+    store: CellStore,
+    iso: ISOCountryCode,
+    era: number,
+    key: string,
+    weight: number
+  ) => {
     const eras = store.get(iso) ?? new Map<number, Map<string, number>>()
     const eraCells = eras.get(era) ?? new Map<string, number>()
     eraCells.set(key, (eraCells.get(key) ?? 0) + weight)
@@ -125,10 +131,7 @@ const main = async () => {
         const seen = new Set<string>()
         for (const [key] of weighted) {
           const [cellX, cellY] = key.split(':').map(Number)
-          const projected = projection([
-            (cellX + 0.5) * CELL_DEGREES,
-            (cellY + 0.5) * CELL_DEGREES,
-          ])
+          const projected = projection([(cellX + 0.5) * CELL_DEGREES, (cellY + 0.5) * CELL_DEGREES])
           if (!projected) continue
           const point: [number, number] = [Math.round(projected[0]), Math.round(projected[1])]
           const pointKey = `${point[0]}:${point[1]}`
@@ -162,7 +165,9 @@ export const CONFLICT_FIELDS_ABROAD: ConflictFieldMapping = ${JSON.stringify(abr
   console.info(
     `Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(Bun.gzipSync(Buffer.from(output)).byteLength / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`
   )
-  const rich = Object.entries(fields).filter(([, field]) => field!.total >= 40 && field!.eras.length >= 2)
+  const rich = Object.entries(fields).filter(
+    ([, field]) => field!.total >= 40 && field!.eras.length >= 2
+  )
   console.info(`Countries: ${Object.keys(fields).length} total, ${rich.length} flashpoint-viable`)
 }
 

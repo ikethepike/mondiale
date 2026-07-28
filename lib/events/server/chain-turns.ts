@@ -169,11 +169,7 @@ const commitChainTurn = async (ctx: ChainContext, game: Game, challenge: BorderC
  * everyone and hand out board moves through the same conversion the submit
  * path uses.
  */
-const finishChainRound = async (
-  ctx: ChainContext,
-  game: Game,
-  challenge: BorderChainChallenge
-) => {
+const finishChainRound = async (ctx: ChainContext, game: Game, challenge: BorderChainChallenge) => {
   const { state } = challenge
   const server = useServerSideEvents(ctx)
 

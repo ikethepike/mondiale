@@ -24,8 +24,7 @@ import { REGION_LABELS } from './variant'
  * that never enters a broadcast (the player-secret pattern), while everything
  * on the challenge state is safe for the whole table to read.
  */
-export const manhuntKey = (gameId: string, roundIndex: number) =>
-  `${gameId}:manhunt:${roundIndex}`
+export const manhuntKey = (gameId: string, roundIndex: number) => `${gameId}:manhunt:${roundIndex}`
 
 export interface ManhuntSecret {
   /** Countries the despot has passed through; last is the current position. */

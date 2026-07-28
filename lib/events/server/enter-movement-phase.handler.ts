@@ -1,25 +1,13 @@
 import { getRoundChallenge } from '~~/lib/challenges'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
-import {
-  isBorderChainChallenge,
-  scheduleChainTimeout,
-  startChainClock,
-} from './chain-turns'
+import { isBorderChainChallenge, scheduleChainTimeout, startChainClock } from './chain-turns'
 import {
   isHeritageHuntChallenge,
   scheduleHeritageTimeout,
   startHeritageClock,
 } from './heritage-beats'
-import {
-  isTimelineChallenge,
-  scheduleTimelineTimeout,
-  startTimelineClock,
-} from './timeline-turns'
-import {
-  isManhuntChallenge,
-  scheduleManhuntTimeout,
-  startManhunt,
-} from './manhunt-beats'
+import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
+import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 
 import type { GameServer, GameSocket } from '../server-side'
@@ -109,7 +97,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
         await server.updateGameState(game)
         server.emit({ event: 'update', game }, eventTarget)
 
-        scheduleMovementPhase(STEP_INTERVAL, { io, redis, socket, eventTarget }, { continuation: true })
+        scheduleMovementPhase(
+          STEP_INTERVAL,
+          { io, redis, socket, eventTarget },
+          { continuation: true }
+        )
         return
       }
 
@@ -148,7 +140,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
       game.pendingRoundStart = true
       await server.updateGameState(game)
 
-      scheduleMovementPhase(NEW_ROUND_PAUSE, { io, redis, socket, eventTarget }, { continuation: true })
+      scheduleMovementPhase(
+        NEW_ROUND_PAUSE,
+        { io, redis, socket, eventTarget },
+        { continuation: true }
+      )
       return
     }
 

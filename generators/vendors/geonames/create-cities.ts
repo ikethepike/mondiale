@@ -144,10 +144,7 @@ const nativeNames = async (
 
 /** Mirror of the client's matcher normalization: case + diacritics folded. */
 const normalized = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
 const typeableVariants = (alternatenames: string, canonical: string, ascii: string): string[] => {
   // Dedupe on the normalized form — a variant that folds to an already-kept
@@ -208,10 +205,10 @@ export const createCitiesFile = async () => {
     const endonyms = CITY_ENDONYMS[countryCode]?.[name] ?? []
     const ranked = typeableVariants(alternatenames ?? '', name, ascii ?? '')
     const seen = new Set(endonyms.map(variant => variant.toLowerCase()))
-    const alt = [
-      ...endonyms,
-      ...ranked.filter(variant => !seen.has(variant.toLowerCase())),
-    ].slice(0, MAX_ALT_NAMES)
+    const alt = [...endonyms, ...ranked.filter(variant => !seen.has(variant.toLowerCase()))].slice(
+      0,
+      MAX_ALT_NAMES
+    )
 
     const cities = byCountry.get(countryCode) ?? []
     cities.push({
@@ -253,9 +250,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 export const CITY_LIGHTS: { [isoCode in ISOCountryCode]?: CityLight[] } = ${JSON.stringify(output)}
 `
   )
-  console.info(
-    `Finished creating file: ${OUTPUT_FILE} (${Object.keys(output).length} countries)`
-  )
+  console.info(`Finished creating file: ${OUTPUT_FILE} (${Object.keys(output).length} countries)`)
 }
 
 createCitiesFile()

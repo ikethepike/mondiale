@@ -26,9 +26,7 @@
           :total="challenge.turnSeconds"
         />
       </span>
-      <span v-if="!finished && iAmOut" class="map-caption sub out">
-        You're out — spectating
-      </span>
+      <span v-if="!finished && iAmOut" class="map-caption sub out"> You're out — spectating </span>
     </ChallengePrompt>
 
     <!-- On your turn the shot clock lives inside the guess console; between

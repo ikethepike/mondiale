@@ -90,9 +90,7 @@ const sweepElapsed = ref(0)
 const fraction = computed(() =>
   boundsLocked.value ? Math.min(1, sweepElapsed.value / durationMs) : 0
 )
-const secondsLeft = computed(() =>
-  Math.max(0, Math.ceil((durationMs - sweepElapsed.value) / 1000))
-)
+const secondsLeft = computed(() => Math.max(0, Math.ceil((durationMs - sweepElapsed.value) / 1000)))
 // The sweep in dusk-coordinate space: seeded from the window, then widened
 // to the locked camera's true edges so the night ENTERS from off-screen east
 // and has fully crossed the screen when time runs out
@@ -168,10 +166,7 @@ const positionSeaNight = () => {
   const height = window.innerHeight
   const midPx = (((top + bottom) / 2) * width) / 100
   const angle = (-Math.atan2(((bottom - top) / 100) * width, height) * 180) / Math.PI
-  document.body.style.setProperty(
-    '--sunset-veil',
-    `translateX(${midPx}px) rotate(${angle}deg)`
-  )
+  document.body.style.setProperty('--sunset-veil', `translateX(${midPx}px) rotate(${angle}deg)`)
 }
 
 let ticker: ReturnType<typeof setInterval> | undefined
@@ -455,5 +450,4 @@ body.sunset-settled {
     );
   }
 }
-
 </style>

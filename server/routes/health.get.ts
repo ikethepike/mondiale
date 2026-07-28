@@ -1,1 +1,1 @@
-export default defineEventHandler((event) => getDeploymentInfo(event))
+export default defineEventHandler(event => getDeploymentInfo(event))

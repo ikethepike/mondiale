@@ -57,7 +57,7 @@ onMounted(reroll)
 
 const custom = ref('')
 const customFlag = computed(() => (custom.value ? forgeFlag(custom.value) : null))
-const flags = computed(() => hashes.value.map((h) => forgeFlag(h)))
+const flags = computed(() => hashes.value.map(h => forgeFlag(h)))
 </script>
 
 <style scoped lang="scss">

@@ -47,7 +47,8 @@
           :key="index"
           class="passage-pip"
           :class="{ spent: index > state.seaPassagesLeft }"
-        >⚓</span>
+          >⚓</span
+        >
       </button>
       <span class="dock-caption">
         {{
@@ -100,18 +101,36 @@
       <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
       <ul class="briefing-points">
         <template v-if="isDespot">
-          <li>The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border, a strait, anywhere but here.</li>
-          <li>⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its movements will be… reported.</li>
+          <li>
+            The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border,
+            a strait, anywhere but here.
+          </li>
+          <li>
+            ⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its
+            movements will be… reported.
+          </li>
           <li>Interpol leaks one true fact about your location every turn.</li>
-          <li>Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally — sails with you.</li>
-          <li>Every turn at large banks its share of the pot; captured early, you keep only what you had banked.</li>
+          <li>
+            Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally —
+            sails with you.
+          </li>
+          <li>
+            Every turn at large banks its share of the pot; captured early, you keep only what you
+            had banked.
+          </li>
         </template>
         <template v-else>
           <li>Each turn brings one true intel report on the Despot's hideout.</li>
           <li>Click the map to drop your marker — land on the Despot to capture.</li>
           <li>⚖ Subpoenas force the next clue onto a topic of your choosing.</li>
-          <li>On a capture, the bounty splits by how close each final marker sits — and whoever lands the cuff takes a bonus.</li>
-          <li>If the Despot slips away, only a thin consolation splits by proximity — so close the net.</li>
+          <li>
+            On a capture, the bounty splits by how close each final marker sits — and whoever lands
+            the cuff takes a bonus.
+          </li>
+          <li>
+            If the Despot slips away, only a thin consolation splits by proximity — so close the
+            net.
+          </li>
         </template>
       </ul>
       <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
@@ -188,7 +207,9 @@
             class="intel-row"
             :accessor="clue.accessorId"
             :topic="clue.topic"
-            :label="clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`"
+            :label="
+              clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`
+            "
           >
             <span class="intel-text">{{ clue.text }}</span>
           </StatCard>
@@ -383,8 +404,11 @@ const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
 
-const briefing = computed(() => !!state.value.briefing && !finished.value && !showInterstitial.value)
-const seatName = (playerId: string) => seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+const briefing = computed(
+  () => !!state.value.briefing && !finished.value && !showInterstitial.value
+)
+const seatName = (playerId: string) =>
+  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
 
 const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
@@ -592,7 +616,9 @@ const paintPursuit = () => {
   // staggered wash, one country after another — the net visibly blowing open.
   // Once per beat: mid-beat repaints (marker commits) must not re-run it.
   const washing =
-    seaPassageAnnounced.value && state.value.candidates.length > 0 && washedTurn !== state.value.turn
+    seaPassageAnnounced.value &&
+    state.value.candidates.length > 0 &&
+    washedTurn !== state.value.turn
   if (washing) washedTurn = state.value.turn
   if (washing) {
     for (const isoCode of state.value.candidates) {
@@ -830,7 +856,6 @@ header .sea-banner {
   .intel-text {
     display: block;
   }
-
 }
 
 .rail-label {
@@ -1014,5 +1039,4 @@ header .headline-line {
   margin: 0 auto;
   max-width: min(34rem, calc(100% - 2.4rem));
 }
-
 </style>

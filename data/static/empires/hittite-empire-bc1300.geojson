@@ -3,7 +3,9 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "Hittite Empire 1300 BCE (peak after Qadesh, Anatolia and north Syria)" },
+      "properties": {
+        "name": "Hittite Empire 1300 BCE (peak after Qadesh, Anatolia and north Syria)"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [

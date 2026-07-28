@@ -96,7 +96,9 @@ test('Continue click during a disconnect gap still advances the round', async ({
   // Generous window: setOffline doesn't reset the established WebSocket, so
   // socket.io only notices the dead transport after ping timeout (~45s); a
   // real server restart resets TCP and reconnects in ~1s.
-  await expect(host.locator('.individual-challenge, .board3d, .board-fallback').first()).toBeVisible({
+  await expect(
+    host.locator('.individual-challenge, .board3d, .board-fallback').first()
+  ).toBeVisible({
     timeout: 90_000,
   })
   await expect(host.getByRole('button', { name: 'Close Scores' })).toHaveCount(0)

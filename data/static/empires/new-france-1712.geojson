@@ -3,7 +3,9 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "New France 1712 (Canada, Acadia, pays d'en haut and Louisiana, eve of Utrecht)" },
+      "properties": {
+        "name": "New France 1712 (Canada, Acadia, pays d'en haut and Louisiana, eve of Utrecht)"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [

@@ -149,7 +149,6 @@ const lateHint = computed(() => {
   return active.durationSeconds - secondsLeft.value >= wavesDone + 2 ? active.hint : ''
 })
 
-
 const start = async () => {
   const active = challenge.value
   if (!active) return
@@ -192,9 +191,7 @@ const submitRound = (score: number) => {
   // pulls out to frame the country — widened to the amber abroad layer when
   // one exists, so an intervener's reveal shows its whole footprint.
   shownWaves.value = active.eras.length
-  const revealBounds = abroadField.value
-    ? fieldBounds([field.value, abroadField.value])
-    : undefined
+  const revealBounds = abroadField.value ? fieldBounds([field.value, abroadField.value]) : undefined
   gameStore.map.feature = revealBounds ? { d: '', kind: 'area', bounds: revealBounds } : undefined
   gameStore.map.solo = false
   gameStore.map.highlighted = new Set([active.country])

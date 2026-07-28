@@ -52,10 +52,10 @@ const REPORT_FILE = 'generators/data/empires-report.txt'
 
 /** The snapshot menu the repo actually ships — seed years must come from it. */
 const AVAILABLE_BASEMAP_YEARS = new Set([
-  -123000, -10000, -8000, -5000, -4000, -3000, -2000, -1500, -1000, -700, -500, -400, -323,
-  -300, -200, -100, -1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1279,
-  1300, 1400, 1492, 1500, 1530, 1600, 1650, 1700, 1715, 1783, 1800, 1815, 1880, 1900, 1914,
-  1920, 1930, 1938, 1945, 1960, 1994, 2000, 2010,
+  -123000, -10000, -8000, -5000, -4000, -3000, -2000, -1500, -1000, -700, -500, -400, -323, -300,
+  -200, -100, -1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1279, 1300, 1400,
+  1492, 1500, 1530, 1600, 1650, 1700, 1715, 1783, 1800, 1815, 1880, 1900, 1914, 1920, 1930, 1938,
+  1945, 1960, 1994, 2000, 2010,
 ])
 
 /** Simplification targets a point BUDGET per empire rather than a fraction:
@@ -137,7 +137,9 @@ const fetchCShapes = async (): Promise<CShapesFeature[]> => {
   const text = await fetchCached('CShapes-2.0.geojson', CSHAPES_URL)
   const collection = JSON.parse(text) as FeatureCollection
   cshapesFeatures = collection.features
-    .filter(feature => feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon')
+    .filter(
+      feature => feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon'
+    )
     .map(feature => {
       const properties = (feature.properties ?? {}) as Record<string, unknown>
       // The date strings are locale-formatted; the numeric y/m/d fields are not.
@@ -232,9 +234,10 @@ const splitAtAntimeridian = (ring: Point[]): Point[][] => {
   }
 
   const west = clipHalfPlane(continuous, true)
-  const east = clipHalfPlane(continuous, false).map(
-    ([lon, lat]): Point => [lon === 180 ? -180 : lon - 360, lat]
-  )
+  const east = clipHalfPlane(continuous, false).map(([lon, lat]): Point => [
+    lon === 180 ? -180 : lon - 360,
+    lat,
+  ])
   return [west, east].filter(part => part.length >= 3)
 }
 
@@ -347,7 +350,12 @@ const validateSeeds = (seeds: EmpireSeed[]) => {
       }
       if (keyframe.source === 'handmade' && !existsSync(`${HANDMADE_DIR}/${keyframe.file}`))
         problems.push(`${where}: missing ${HANDMADE_DIR}/${keyframe.file}`)
-      if (keyframe.source === 'basemaps' && !keyframe.name?.length && !keyframe.subjecto?.length && !keyframe.partof?.length)
+      if (
+        keyframe.source === 'basemaps' &&
+        !keyframe.name?.length &&
+        !keyframe.subjecto?.length &&
+        !keyframe.partof?.length
+      )
         problems.push(`${where}: basemaps keyframe ${keyframe.year} selects nothing`)
     }
 
@@ -402,10 +410,8 @@ const selectBasemapFeatures = (
   matchField('SUBJECTO', spec.subjecto)
   matchField('PARTOF', spec.partof)
 
-  if (misses.length)
-    throw new Error(`${seedId} @ ${spec.year}:\n    ${misses.join('\n    ')}`)
-  if (!selected.size)
-    throw new Error(`${seedId} @ ${spec.year}: keyframe selected zero features`)
+  if (misses.length) throw new Error(`${seedId} @ ${spec.year}:\n    ${misses.join('\n    ')}`)
+  if (!selected.size) throw new Error(`${seedId} @ ${spec.year}: keyframe selected zero features`)
   return [...selected]
 }
 
@@ -425,7 +431,10 @@ const selectCShapesFeatures = (
     const hits = active.filter(entry => entry.name === name)
     if (!hits.length) {
       misses.push(
-        `cntry_name '${name}' inactive at ${spec.date} — nearest active: ${nearestValues(name, active.map(entry => entry.name)).join(' | ')}`
+        `cntry_name '${name}' inactive at ${spec.date} — nearest active: ${nearestValues(
+          name,
+          active.map(entry => entry.name)
+        ).join(' | ')}`
       )
       continue
     }
@@ -441,13 +450,14 @@ const selectCShapesFeatures = (
   }
 
   if (misses.length) throw new Error(`${seedId} @ ${spec.year}:\n    ${misses.join('\n    ')}`)
-  if (!selected.size)
-    throw new Error(`${seedId} @ ${spec.year}: keyframe selected zero features`)
+  if (!selected.size) throw new Error(`${seedId} @ ${spec.year}: keyframe selected zero features`)
   return [...selected]
 }
 
 const loadHandmade = (file: string): Feature<Polygon | MultiPolygon>[] => {
-  const collection = JSON.parse(readFileSync(`${HANDMADE_DIR}/${file}`, 'utf-8')) as FeatureCollection
+  const collection = JSON.parse(
+    readFileSync(`${HANDMADE_DIR}/${file}`, 'utf-8')
+  ) as FeatureCollection
   return collection.features.filter(
     (feature): feature is Feature<Polygon | MultiPolygon> =>
       feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon'
@@ -520,7 +530,9 @@ const vendorFlag = async (seed: EmpireSeed): Promise<string | undefined> => {
   if (/<script|\son\w+\s*=|javascript:/i.test(raw))
     throw new Error(`${seed.id}: flag SVG contains active content — refuse to ship`)
   if (raw.length > 60 * 1024)
-    console.warn(`  ${seed.id}: flag is ${(raw.length / 1024).toFixed(0)} KB — consider a simpler file`)
+    console.warn(
+      `  ${seed.id}: flag is ${(raw.length / 1024).toFixed(0)} KB — consider a simpler file`
+    )
 
   // Strip prolog + comments so the client's DOMParser sees <svg> as the root.
   return raw
@@ -555,8 +567,7 @@ interface EmpireOutput {
 
 const buildEmpire = async (seed: EmpireSeed): Promise<EmpireOutput> => {
   // Select per-keyframe features, split at the antimeridian before topology.
-  const selections: { spec: EmpireKeyframeSpec; features: Feature<Polygon | MultiPolygon>[] }[] =
-    []
+  const selections: { spec: EmpireKeyframeSpec; features: Feature<Polygon | MultiPolygon>[] }[] = []
   for (const spec of seed.keyframes) {
     const features =
       spec.source === 'basemaps'
@@ -609,9 +620,7 @@ const buildEmpire = async (seed: EmpireSeed): Promise<EmpireOutput> => {
 
   for (let index = 0; index < selections.length; index++) {
     const { spec, features } = selections[index]
-    let rings = rawRings[index]
-      .map(ring => decimate(ring, gap))
-      .filter(ring => ring.length >= 3)
+    let rings = rawRings[index].map(ring => decimate(ring, gap)).filter(ring => ring.length >= 3)
 
     const largest = rings.reduce((a, b) => (ringArea(a) >= ringArea(b) ? a : b), rings[0] ?? [])
     rings = rings.filter(ring => ring === largest || ringArea(ring) >= ringAreaFloor)
@@ -800,7 +809,10 @@ export const EMPIRE_FLAGS: Record<string, string> = ${JSON.stringify(sortRecord(
   reportLines.push(`capitals outside their peak extent (${capitalAdvisories.length}):`)
   reportLines.push(...capitalAdvisories.map(line => `  ${line}`), '')
   reportLines.push('membership aid (geometry vs curated lists — curator judgment wins):')
-  reportLines.push(...(membershipLines.length ? membershipLines.map(line => `  ${line}`) : ['  all clear']), '')
+  reportLines.push(
+    ...(membershipLines.length ? membershipLines.map(line => `  ${line}`) : ['  all clear']),
+    ''
+  )
   const heaviest = weights.sort((a, b) => b.bytes - a.bytes).slice(0, 10)
   reportLines.push('heaviest empires by path bytes:')
   reportLines.push(...heaviest.map(({ id, bytes }) => `  ${id}\t${(bytes / 1024).toFixed(1)} KB`))

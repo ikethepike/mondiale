@@ -93,8 +93,7 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const sampler = pondSite ? withPondBasin(shelved, pondSite) : shelved
 
   // --- Terrain -------------------------------------------------------------
-  const segments =
-    typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
+  const segments = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
   const terrainSize = BOARD_SIZE * TERRAIN_OVERHANG
   const terrainGeometry = new PlaneGeometry(terrainSize, terrainSize, segments, segments)
   terrainGeometry.rotateX(-Math.PI / 2)

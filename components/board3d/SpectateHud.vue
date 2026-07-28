@@ -1,5 +1,9 @@
 <template>
-  <div v-if="target" class="pane spectate-hud player-accent" :style="`--player-color: ${target.color}`">
+  <div
+    v-if="target"
+    class="pane spectate-hud player-accent"
+    :style="`--player-color: ${target.color}`"
+  >
     <PlayerPawn class="pawn" :player="target" />
     <span class="who">
       <span class="name">Watching {{ target.name || 'Player' }}</span>

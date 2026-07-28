@@ -55,7 +55,6 @@ const events = computed(() =>
       Boolean(event.name && event.year !== undefined)
     )
 )
-
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;

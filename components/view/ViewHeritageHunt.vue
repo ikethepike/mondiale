@@ -110,24 +110,23 @@ const headline = computed(() => {
 const beatStandings = computed(() => {
   const current = state.value
   if (!current) return []
-  return current.order
-    .map(playerId => {
-      const entry = current.pins[playerId]?.[current.beat]
-      return {
-        playerId,
-        name: seatLabel(gameStore.game?.players, playerId, gameStore.playerId),
-        distanceKm: entry?.distanceKm,
-        tail:
-          entry?.distanceKm !== undefined
-            ? formatKm(entry.distanceKm)
-            : 'no pin',
-      }
-    })
-    .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
-    // The closest pin wears the crown — through the shared fate slot.
-    .map((row, index, rows) =>
-      index === 0 && rows.length > 1 ? { ...row, fate: 'nails it' } : row
-    )
+  return (
+    current.order
+      .map(playerId => {
+        const entry = current.pins[playerId]?.[current.beat]
+        return {
+          playerId,
+          name: seatLabel(gameStore.game?.players, playerId, gameStore.playerId),
+          distanceKm: entry?.distanceKm,
+          tail: entry?.distanceKm !== undefined ? formatKm(entry.distanceKm) : 'no pin',
+        }
+      })
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      // The closest pin wears the crown — through the shared fate slot.
+      .map((row, index, rows) =>
+        index === 0 && rows.length > 1 ? { ...row, fate: 'nails it' } : row
+      )
+  )
 })
 
 const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)

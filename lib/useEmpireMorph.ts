@@ -108,7 +108,10 @@ export const useEmpireMorph = (hooks: EmpireMorphHooks) => {
 
   /** Piecewise ink level over global t: rise into the peak, drain after it. */
   const inkAt = (t: number): number => {
-    if (peakIndex <= 0) return t <= 0 ? INK.peak : gsap.utils.mapRange(0, Math.max(1, years.length - 1), INK.peak, INK.decline, t)
+    if (peakIndex <= 0)
+      return t <= 0
+        ? INK.peak
+        : gsap.utils.mapRange(0, Math.max(1, years.length - 1), INK.peak, INK.decline, t)
     if (t <= peakIndex) return INK.rise + (INK.peak - INK.rise) * (t / peakIndex)
     const tail = Math.max(1, years.length - 1 - peakIndex)
     return INK.peak + (INK.decline - INK.peak) * ((t - peakIndex) / tail)
@@ -144,9 +147,9 @@ export const useEmpireMorph = (hooks: EmpireMorphHooks) => {
       const rings = (parsePolygons(d) as Ring[]).filter(ring => ring.length >= 3)
       return rings.sort((a, b) => ringArea(b) - ringArea(a))
     })
-    const span = Math.max(
-      ...frames.flatMap(rings => rings.flatMap(ring => ring.map(([x]) => x)))
-    ) - Math.min(...frames.flatMap(rings => rings.flatMap(ring => ring.map(([x]) => x))))
+    const span =
+      Math.max(...frames.flatMap(rings => rings.flatMap(ring => ring.map(([x]) => x)))) -
+      Math.min(...frames.flatMap(rings => rings.flatMap(ring => ring.map(([x]) => x))))
     // Densification floor: enough added vertices for fluid curves without
     // drowning small empires in points.
     const maxSegmentLength = Math.max(1, span / 150)
@@ -161,9 +164,7 @@ export const useEmpireMorph = (hooks: EmpireMorphHooks) => {
           return flubber.separate(group.from[0], group.to, { maxSegmentLength, single: true })
         return flubber.combine(group.from, group.to[0], { maxSegmentLength, single: true })
       })
-      segments.push(
-        parts.length === 1 ? parts[0] : t => parts.map(part => part(t)).join(' ')
-      )
+      segments.push(parts.length === 1 ? parts[0] : t => parts.map(part => part(t)).join(' '))
       await Promise.resolve()
     }
     lastYear = Number.NaN
@@ -232,5 +233,15 @@ export const useEmpireMorph = (hooks: EmpireMorphHooks) => {
     segments = []
   }
 
-  return { build, play, freezeAtPeak, seek, stop, dispose, get segmentCount() { return segments.length } }
+  return {
+    build,
+    play,
+    freezeAtPeak,
+    seek,
+    stop,
+    dispose,
+    get segmentCount() {
+      return segments.length
+    },
+  }
 }

@@ -6,7 +6,9 @@
       <span class="place">
         {{ countryName(getCountry(site.country)) }}
         <template v-if="site.kind"> · {{ KIND_LABELS[site.kind] }}</template>
-        <template v-if="site.inscribedYear"> · World Heritage since {{ site.inscribedYear }}</template>
+        <template v-if="site.inscribedYear">
+          · World Heritage since {{ site.inscribedYear }}</template
+        >
       </span>
       <span v-if="site.description" class="description">{{ capitalize(site.description) }}</span>
     </span>
