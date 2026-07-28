@@ -8,7 +8,7 @@
         <li
           v-for="seat in standings"
           :key="seat.playerId"
-          class="take-seat"
+          class="take-seat chip"
           :class="{ mine: seat.playerId === playerId }"
         >
           <PlayerPawn class="take-pawn" :player="players[seat.playerId]" />
@@ -24,7 +24,10 @@
       class="panel pane"
       :style="{ '--panel-index': panelIndex }"
     >
-      <span class="eyebrow">{{ UNIQUE_CATEGORIES[panel.category].prompt }}</span>
+      <header class="panel-head">
+        <StatTopicIcon class="panel-icon" v-bind="UNIQUE_CATEGORIES[panel.category].icon" />
+        <span class="eyebrow">{{ UNIQUE_CATEGORIES[panel.category].prompt }}</span>
+      </header>
       <p v-if="!panel.cells.length" class="panel-empty">Nobody found one.</p>
       <ul v-else class="cell-list">
         <li
@@ -60,6 +63,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { UNIQUE_CATEGORIES } from '~~/lib/unique-or-bust'
@@ -168,7 +172,7 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   }
 
   .take-points {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--dark-blue);
   }
@@ -178,6 +182,27 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   padding: 1.2rem 1.4rem;
   animation: fade-in var(--motion-base) var(--ease-out-expressive) both;
   animation-delay: calc((var(--panel-index) + 1) * 0.1s);
+}
+
+// The category masthead: subtle emblem + small-caps label over the hairline.
+.panel-head {
+  gap: 0.7rem;
+  display: flex;
+  align-items: center;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  .eyebrow {
+    margin-bottom: 0;
+  }
+
+  .panel-icon {
+    width: 1.9rem;
+    height: 1.9rem;
+    opacity: 0.55;
+    color: var(--dark-blue);
+  }
 }
 
 .panel-empty {
@@ -195,8 +220,8 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   flex-flow: column nowrap;
 }
 
-// The verdict is the row: mint edge and firm ink for a paid answer, a struck
-// name over a faint ember wash for a collision. No other chrome needed.
+// The verdict is the row: firm ink and a mint pill for a paid answer, a
+// struck name over a faint ember wash for a collision. No other chrome.
 .cell {
   gap: 0.7rem;
   display: flex;
@@ -206,8 +231,7 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   padding: 0.45rem 0.8rem;
   border-radius: 0.8rem;
   color: var(--dark-blue);
-  background: flame(0.07);
-  border-left: 0.3rem solid var(--hior-ange);
+  background: flame(0.06);
   animation: row-land var(--motion-base) var(--ease-out-expressive) both;
   animation-delay: var(--land-delay);
 
@@ -218,7 +242,6 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
 
   &.paid {
     background: milk(0.7);
-    border-left-color: var(--soft-mint);
 
     .cell-name {
       opacity: 1;
@@ -258,15 +281,21 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   }
 }
 
+// The verdict pill: the row's one loud element — mint for a payout, ember
+// wash for the crowd that cancelled each other.
 .cell-verdict {
   flex: none;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   white-space: nowrap;
+  padding: 0.15rem 0.7rem;
+  border-radius: 1rem;
   color: var(--hior-ange);
+  background: flame(0.14);
 
   .paid & {
-    color: var(--soft-mint);
+    color: var(--dark-blue);
+    background: var(--soft-mint);
   }
 }
 

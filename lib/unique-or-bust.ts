@@ -3,6 +3,7 @@ import { normalizeAnswer } from './strings'
 import { clampScore } from './scoring'
 import { playableWorldCountries } from './game-rules'
 import { countryName } from './country'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type {
   UniqueBoardCell,
   UniqueCategoryId,
@@ -25,12 +26,21 @@ export const MEGACITY_MINIMUM_POPULATION = 1_000_000
 export const UNIQUE_BOARD: UniqueCategoryId[] = ['country', 'capital', 'river', 'megacity']
 
 export const UNIQUE_CATEGORIES: {
-  [id in UniqueCategoryId]: { label: string; prompt: string }
+  [id in UniqueCategoryId]: {
+    label: string
+    prompt: string
+    /** The category's subtle emblem, through StatTopicIcon's two channels. */
+    icon: { topic?: string; accessor?: GroupChallengeAccessorId }
+  }
 } = {
-  country: { label: 'Country', prompt: 'A country' },
-  capital: { label: 'Capital', prompt: 'A capital city' },
-  river: { label: 'River', prompt: 'A river' },
-  megacity: { label: 'Million-city', prompt: 'A city over a million' },
+  country: { label: 'Country', prompt: 'A country', icon: { topic: 'geography' } },
+  capital: { label: 'Capital', prompt: 'A capital city', icon: { topic: 'relations.embassy' } },
+  river: { label: 'River', prompt: 'A river', icon: { accessor: 'geography.area.water' } },
+  megacity: {
+    label: 'Million-city',
+    prompt: 'A city over a million',
+    icon: { accessor: 'people.urbanization' },
+  },
 }
 
 export const UNIQUE_TUNING: {

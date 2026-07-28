@@ -74,6 +74,7 @@
             :disabled="isMineLocked(category)"
             @click="activeCategory = category"
           >
+            <StatTopicIcon class="slot-icon" v-bind="UNIQUE_CATEGORIES[category].icon" />
             <span class="slot-prompt">{{ UNIQUE_CATEGORIES[category].prompt }}</span>
             <span v-if="ownPick(category)" class="slot-answer">{{ ownPick(category) }}</span>
             <span v-else-if="isMineLocked(category)" class="slot-answer">Locked in</span>
@@ -119,6 +120,7 @@
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
 import UniqueRevealGrid from '~/components/challenge/UniqueRevealGrid.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
@@ -416,7 +418,7 @@ const verdictLine = computed(() => {
   min-width: 0;
   cursor: pointer;
   text-align: left;
-  align-items: baseline;
+  align-items: center;
   font-family: inherit;
   font-size: 1.5rem;
   padding: 0.7rem 1.2rem;
@@ -431,12 +433,21 @@ const verdictLine = computed(() => {
   }
 }
 
+.slot-icon {
+  flex: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  opacity: 0.5;
+  color: var(--dark-blue);
+}
+
 .slot-prompt {
   flex: none;
   opacity: 0.7;
   font-size: 1.25rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin-right: auto;
 }
 
 .slot-answer {
