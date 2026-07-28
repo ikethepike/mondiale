@@ -145,3 +145,34 @@ describe('round narrowing', () => {
     )
   })
 })
+
+describe('monotoneCurvePath', () => {
+  it('passes through both endpoints with cubic segments between', async () => {
+    const { monotoneCurvePath } = await import('./charts')
+    const path = monotoneCurvePath([
+      { x: 0, y: 10 },
+      { x: 50, y: 40 },
+      { x: 100, y: 20 },
+    ])
+    expect(path.startsWith('M 0.00,10.00')).toBe(true)
+    expect(path.endsWith('100.00,20.00')).toBe(true)
+    expect(path.match(/C /g)).toHaveLength(2)
+  })
+
+  it('keeps a monotone run inside the data (no overshoot at the peak)', async () => {
+    const { monotoneCurvePath } = await import('./charts')
+    const path = monotoneCurvePath([
+      { x: 0, y: 0 },
+      { x: 10, y: 30 },
+      { x: 20, y: 30 },
+    ])
+    const ys = [...path.matchAll(/[\s,](\d+\.\d+)(?=[\s]|$)/g)].map(m => Number(m[1]))
+    for (const y of ys) expect(y).toBeLessThanOrEqual(30.001)
+  })
+
+  it('handles degenerate inputs', async () => {
+    const { monotoneCurvePath } = await import('./charts')
+    expect(monotoneCurvePath([])).toBe('')
+    expect(monotoneCurvePath([{ x: 4, y: 5 }])).toBe('M 4.00,5.00')
+  })
+})

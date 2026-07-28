@@ -52,3 +52,10 @@
     stroke-dashoffset: 0;
   }
 }
+
+// Plain fade for elements whose transform is layout, not motion
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

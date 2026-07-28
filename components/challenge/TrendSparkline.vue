@@ -1,9 +1,23 @@
 <template>
   <figure class="trend-sparkline">
-    <svg :viewBox="`0 0 ${WIDTH} ${HEIGHT}`" preserveAspectRatio="none" aria-hidden="true">
-      <polyline :points="points" pathLength="1" :class="{ draw: animateIn }" />
-    </svg>
-    <span v-if="!hideValues" class="delta-chip">{{ delta }}</span>
+    <div class="plot">
+      <svg :viewBox="`0 0 ${WIDTH} ${HEIGHT}`" preserveAspectRatio="none" aria-hidden="true">
+        <path :d="path" pathLength="1" :class="{ draw: animateIn }" />
+      </svg>
+      <span
+        class="end-dot"
+        :class="{ draw: animateIn }"
+        :style="{ left: `${endPoint.x}%`, top: `${endPoint.y}%` }"
+      />
+      <span
+        v-if="!hideValues"
+        class="delta-chip"
+        :class="{ draw: animateIn, below: chipBelow }"
+        :style="{ top: `${chipTop}%` }"
+      >
+        {{ delta }}
+      </span>
+    </div>
     <figcaption>
       <span class="endpoint">
         <strong v-if="!hideValues" class="value">{{ formatNumber(first[1]) }}</strong>
@@ -19,15 +33,17 @@
   </figure>
 </template>
 <script lang="ts" setup>
-import { formatNumber, clamp  } from '~~/lib/number'
+import { monotoneCurvePath, type ChartPoint } from '~~/lib/charts'
+import { clamp, formatNumber } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId, type TrendSeries } from '~~/lib/trends'
 
 /**
- * One country's history as a single-hue polyline: endpoints labelled
- * `year` + value, a signed delta chip, y-domain pinned to the metric's scale
- * when bounded (the same context the ScalePlot tracks give bare indices).
- * `hideValues` is trajectory-match's shape-only state; `animateIn` draws the
- * line in on reveal — never ambient.
+ * One country's history as a single-hue curve: endpoints labelled
+ * `year` + value, a signed delta chip that gives way to the line (below the
+ * endpoint when the series finishes high, above when it finishes low), and
+ * an end marker ringed in the surface colour. Y-domain pins to the metric's
+ * scale when bounded. `hideValues` is trajectory-match's shape-only state;
+ * `animateIn` draws the line in on reveal — never ambient.
  */
 const props = withDefaults(
   defineProps<{
@@ -39,9 +55,12 @@ const props = withDefaults(
   { hideValues: false, animateIn: false }
 )
 
+// The viewBox doubles as a percentage space (0–100 wide) so the HTML end-dot
+// and chip can share the svg's coordinates without measuring anything.
 const WIDTH = 100
-const HEIGHT = 42
-const PAD = 3
+const HEIGHT = 100
+const PAD_X = 3
+const PAD_Y = 8
 
 const first = computed(() => props.series[0] ?? [0, 0])
 const last = computed(() => props.series[props.series.length - 1] ?? [0, 0])
@@ -56,20 +75,27 @@ const domain = computed(() => {
   return max > min ? { min, max } : { min: min - 1, max: max + 1 }
 })
 
-const points = computed(() => {
+const chartPoints = computed<ChartPoint[]>(() => {
   const { min, max } = domain.value
   const [firstYear] = first.value
   const [lastYear] = last.value
   const yearSpan = Math.max(1, lastYear - firstYear)
-  return props.series
-    .map(([year, amount]) => {
-      const x = PAD + ((year - firstYear) / yearSpan) * (WIDTH - PAD * 2)
-      const clamped = clamp(amount, min, max)
-      const y = PAD + (1 - (clamped - min) / (max - min)) * (HEIGHT - PAD * 2)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
+  return props.series.map(([year, amount]) => ({
+    x: PAD_X + ((year - firstYear) / yearSpan) * (WIDTH - PAD_X * 2),
+    y: PAD_Y + (1 - (clamp(amount, min, max) - min) / (max - min)) * (HEIGHT - PAD_Y * 2),
+  }))
 })
+
+const path = computed(() => monotoneCurvePath(chartPoints.value))
+
+const endPoint = computed(() => chartPoints.value[chartPoints.value.length - 1] ?? { x: 0, y: 0 })
+
+// The chip yields to the line: under the endpoint when the series finishes
+// in the top half, over it when it finishes low — never struck through.
+const chipBelow = computed(() => endPoint.value.y < 50)
+const chipTop = computed(() =>
+  chipBelow.value ? Math.min(endPoint.value.y + 14, 70) : Math.max(endPoint.value.y - 44, 0)
+)
 
 const unitSuffix = computed(() => {
   const { unit } = TREND_METRICS[props.metric]
@@ -82,25 +108,29 @@ const delta = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
 .trend-sparkline {
   gap: 0.4rem;
   margin: 0;
   width: 100%;
   display: flex;
-  position: relative;
   flex-flow: column nowrap;
+}
+
+.plot {
+  position: relative;
 }
 
 svg {
   width: 100%;
   height: 6rem;
   display: block;
+  // The end marker's surface ring may kiss the edges of the plot box.
+  overflow: visible;
 
-  polyline {
+  path {
     fill: none;
     stroke: var(--dark-blue);
-    stroke-width: 0.25rem;
+    stroke-width: 2px;
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
@@ -115,8 +145,24 @@ svg {
 
 // stroke-draw comes from rules/_animations.scss
 
+// The series' end marker: ≥8px dot ringed in the surface colour so it stays
+// legible over the line it terminates.
+.end-dot {
+  width: 0.9rem;
+  height: 0.9rem;
+  position: absolute;
+  border-radius: 50%;
+  background: var(--dark-blue);
+  border: 0.2rem solid var(--background-color);
+  transform: translate(-50%, -50%);
+
+  &.draw {
+    opacity: 0;
+    animation: fade-in 0.3s var(--ease-out-expressive) 0.75s forwards;
+  }
+}
+
 .delta-chip {
-  top: 0;
   right: 0;
   position: absolute;
   font-size: 1.2rem;
@@ -124,7 +170,14 @@ svg {
   padding: 0.2rem 0.6rem;
   border-radius: 0.8rem;
   color: var(--dark-blue);
-  background: ink(0.08);
+  // Opaque: the ink wash composited onto the surface, so the line can pass
+  // beneath the chip without striking through its text.
+  background: color-mix(in srgb, var(--dark-blue) 8%, var(--background-color));
+
+  &.draw {
+    opacity: 0;
+    animation: row-land 0.3s var(--ease-out-expressive) 0.85s forwards;
+  }
 }
 
 figcaption {
