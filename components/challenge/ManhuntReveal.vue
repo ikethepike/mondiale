@@ -5,15 +5,17 @@
       {{ headline }}
     </h2>
     <p class="escape-line">{{ escapeLine }}</p>
-    <ol class="trail">
+    <ol class="trail country-chip-list">
       <template v-for="(isoCode, index) in walk" :key="`${index}-${isoCode}`">
         <li v-if="index > 0" class="hop-mark" :class="{ sea: isSeaHop(index) }">
           {{ isSeaHop(index) ? '〜' : '→' }}
         </li>
-        <li class="stop map-caption" :class="{ last: index === walk.length - 1 }">
-          <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-          <span>{{ countryName(getCountry(isoCode)) }}</span>
-        </li>
+        <CountryChip
+          compact
+          class="map-caption"
+          :class="{ last: index === walk.length - 1 }"
+          :country="getCountry(isoCode)"
+        />
       </template>
     </ol>
     <div v-if="capturerNames.length" class="capturers">
@@ -35,9 +37,10 @@
   </section>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import { isStraitHop } from '~~/lib/chain'
+import { seatLabel } from '~~/lib/player'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -48,8 +51,7 @@ const props = defineProps<{
   playerId: string
 }>()
 
-const nameOf = (playerId: string) =>
-  playerId === props.playerId ? 'You' : props.players[playerId]?.name || 'Anonymous'
+const nameOf = (playerId: string) => seatLabel(props.players, playerId, props.playerId)
 
 const outcome = computed(() => props.challenge.state.outcome)
 const walk = computed(() => outcome.value?.trail ?? [])
@@ -96,6 +98,7 @@ const isSeaHop = (index: number): boolean =>
   seaHopNumbers.value.has(index) || isStraitHop(walk.value[index - 1], walk.value[index])
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .manhunt-reveal {
   gap: 1rem;
   display: flex;
@@ -120,33 +123,14 @@ const isSeaHop = (index: number): boolean =>
   opacity: 0.75;
 }
 
+// Chip and trail-list recipes come from templates/_country-chip.scss.
 .trail {
   gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
 }
 
-.stop {
-  gap: 0.5rem;
-  display: flex;
-  align-items: center;
-  padding: 0.3rem 0.9rem;
-
-  &.last {
-    font-weight: bold;
-    border-width: 0.15rem;
-  }
-}
-
-.stop-flag {
-  width: 2.2rem;
-  height: 1.5rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+.last {
+  font-weight: bold;
+  border-width: 0.15rem;
 }
 
 .hop-mark {
@@ -154,7 +138,7 @@ const isSeaHop = (index: number): boolean =>
   font-weight: bold;
 
   &.sea {
-    color: hsl(215.7, 76.4%, 41%);
+    color: ink(1, 41%);
   }
 }
 

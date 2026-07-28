@@ -1,8 +1,8 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
-import { shuffleArray } from './arrays'
-import { baseEncode } from './strings'
+import { sample, shuffleArray } from './arrays'
+import { baseEncode, editDistance, normalizeAnswer } from './strings'
 
 export const getCountry = (isoCode: ISOCountryCode): Country => COUNTRIES[isoCode]
 
@@ -43,15 +43,7 @@ export const flagWideDataUri = (country: Country): string | null => {
  * ("Côte d'Ivoire" → "cote divoire"), punctuation and a leading "the".
  */
 export const normalizeCountryName = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/['’]/g, '')
-    .replace(/[^a-z]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^the /, '')
+  normalizeAnswer(value, { digits: false })
 
 /**
  * The data's `name.local` packs co-official variants into one string
@@ -151,40 +143,6 @@ export const findCountryByName = (input: string): Country | undefined => {
   return isoCode ? COUNTRIES[isoCode] : undefined
 }
 
-/**
- * Damerau–Levenshtein distance (adjacent transpositions count as one edit —
- * the typo dyslexic and fast typists actually make), capped at `max`:
- * anything beyond returns `max + 1`.
- */
-const editDistance = (a: string, b: string, max: number): number => {
-  if (a === b) return 0
-  if (Math.abs(a.length - b.length) > max) return max + 1
-
-  let twoAgo: number[] = []
-  let oneAgo = Array.from({ length: b.length + 1 }, (_, j) => j)
-  for (let i = 1; i <= a.length; i++) {
-    const row = [i]
-    let rowMinimum = i
-    for (let j = 1; j <= b.length; j++) {
-      let cost = Math.min(
-        oneAgo[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-        oneAgo[j] + 1,
-        row[j - 1] + 1
-      )
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        cost = Math.min(cost, twoAgo[j - 2] + 1)
-      }
-      row.push(cost)
-      if (cost < rowMinimum) rowMinimum = cost
-    }
-    if (rowMinimum > max) return max + 1
-    twoAgo = oneAgo
-    oneAgo = row
-  }
-
-  return oneAgo[b.length]
-}
-
 /** How a candidate name matched: tier, edits spent, name length — lower wins. */
 type MatchRank = [tier: number, edits: number, length: number]
 
@@ -237,33 +195,32 @@ export const searchCountriesByName = (
     .map(([isoCode]) => COUNTRIES[isoCode])
 }
 
-export const getRandomISOCountryCode = (modifier?: 'large' | 'small'): ISOCountryCode => {
-  switch (modifier) {
-    // Find larger countries to avoid users having to find tiny island nations
-    case 'large': {
-      const shuffledISOCodes = shuffleArray([...ISOCountryCodes])
-      return (
-        shuffledISOCodes.find(isoCode => {
-          const country = COUNTRIES[isoCode]
-          if (!country.geography.area.total) return false
-          return country.geography.area.total.amount > 400
-        }) || shuffledISOCodes[0]
-      )
-    }
-    case 'small': {
-      const shuffledISOCodes = shuffleArray([...ISOCountryCodes])
-      return (
-        shuffledISOCodes.find(isoCode => {
-          const country = COUNTRIES[isoCode]
-          if (!country.geography.area.total) return false
-          return country.geography.area.total.amount < 400
-        }) || shuffledISOCodes[0]
-      )
-    }
-    default:
-      return ISOCountryCodes[Math.floor(Math.random() * ISOCountryCodes.length)]
-  }
+/** The area line (thousand km²) between "findable on a map" and "tiny island nation". */
+const LARGE_COUNTRY_AREA = 400
+
+/**
+ * A random member of `pool` biased toward ('large') or away from ('small')
+ * map-findable landmasses; any pool member when none qualifies. The one
+ * "pick a large country" — dealers must not re-derive the area gate.
+ */
+export const pickSizedCountry = (
+  pool: readonly ISOCountryCode[],
+  modifier: 'large' | 'small'
+): ISOCountryCode | undefined => {
+  const shuffled = shuffleArray([...pool])
+  return (
+    shuffled.find(isoCode => {
+      const total = COUNTRIES[isoCode].geography.area.total
+      if (!total) return false
+      return modifier === 'large'
+        ? total.amount > LARGE_COUNTRY_AREA
+        : total.amount < LARGE_COUNTRY_AREA
+    }) ?? shuffled[0]
+  )
 }
+
+export const getRandomISOCountryCode = (modifier?: 'large' | 'small'): ISOCountryCode =>
+  modifier ? pickSizedCountry(ISOCountryCodes, modifier)! : sample(ISOCountryCodes)!
 
 export const getRandomCountry = (): Country => {
   const isoCode = getRandomISOCountryCode()

@@ -5,6 +5,7 @@ import { isValidISOCode } from '~~/types/geography.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createTokenBucket } from './rate-limit'
 import { useServerSideEvents } from '../server-side'
+import { latestRound } from '~~/lib/rounds'
 
 const guessBucket = createTokenBucket(5, 2)
 
@@ -39,7 +40,7 @@ export const playerGuessingHandler: EventHandler = async ({
   const game = await server.fetchGame(eventTarget.gameId)
   if (!game) return
 
-  const challenge = game.rounds[game.rounds.length - 1]?.groupChallenge
+  const challenge = latestRound(game)?.groupChallenge
   const policy = guessPolicyFor(game, challenge)
   if (policy === 'none') return
 

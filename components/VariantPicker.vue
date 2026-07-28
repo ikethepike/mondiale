@@ -11,7 +11,7 @@
           :data-variant="variant"
           :class="{ active: selectedVariant === variant }"
         >
-          <component :is="components[variant]"></component>
+          <RegionMap :variant="variant" />
           <p class="variant-title">{{ variant.replace('-', ' ') }}</p>
         </li>
       </ul>
@@ -31,6 +31,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import RegionMap from '~/components/map/RegionMap.vue'
 import { type GameVariant, gameVariants } from '~~/types/game.types'
 
 const slider = ref<HTMLUListElement>()
@@ -38,14 +39,6 @@ const selectedVariant = ref<GameVariant>(gameVariants[0])
 const atEnd = ref(false)
 const atStart = ref(true)
 
-const components: { [component in GameVariant]: ReturnType<typeof resolveComponent> } = {
-  africa: resolveComponent('MapAfrica'),
-  world: resolveComponent('MapWorld'),
-  asia: resolveComponent('MapAsia'),
-  europe: resolveComponent('MapEurope'),
-  'south-america': resolveComponent('MapSouthAmerica'),
-  'north-america': resolveComponent('MapNorthAmerica'),
-}
 
 const scroll = (direction: 'left' | 'right') => {
   if (!slider.value) throw new ReferenceError('Slider is not defined')

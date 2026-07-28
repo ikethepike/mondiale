@@ -34,6 +34,7 @@ const low = computed(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .night-console {
   gap: 0.6rem;
   left: 50%;
@@ -55,7 +56,7 @@ const low = computed(
   transition: border-color 2s var(--ease-smooth);
 
   &.low {
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.7);
+    border-color: flame(0.7);
   }
 
   // The dial wears the night: dark glass disc, moonlit ink, the arc in the
@@ -63,7 +64,7 @@ const low = computed(
   --clock-size: 5.2rem;
   --clock-seconds-size: 1.7rem;
   --clock-ink: hsla(216, 30%, 78%, 1);
-  --clock-arc: hsla(45, 96%, 72%, 1);
+  --clock-arc: var(--night-amber);
   --clock-disc-fill: hsla(216, 45%, 16%, 0.75);
   --clock-disc-stroke: hsla(216, 30%, 50%, 0.35);
 }
@@ -87,7 +88,7 @@ const low = computed(
   text-transform: uppercase;
 
   .lit {
-    color: hsla(45, 96%, 72%, 1);
+    color: var(--night-amber);
     font-weight: bold;
   }
 }

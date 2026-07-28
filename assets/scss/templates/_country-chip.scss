@@ -1,0 +1,78 @@
+@use '../rules/ink' as *;
+@use '../rules/breakpoints' as *;
+
+// The chosen-country chip (components/country/CountryChip.vue): flag + name.
+// Two sizes only — the default for chips floating over the map, `compact` for
+// in-pane reveals and removable picks. Views never re-declare flag boxes.
+.country-chip {
+  gap: 0.7rem;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 1.2rem;
+
+  .chip-flag {
+    width: 2.6rem;
+    height: 1.8rem;
+    flex-shrink: 0;
+    border: 0.1rem solid ink(0.25);
+  }
+
+  // The shared miss look: a wrong pick fades and its border runs hot.
+  &.stray {
+    opacity: 0.65;
+    border-color: flame(0.6);
+  }
+
+  &.compact {
+    gap: 0.55rem;
+    padding: 0.3rem 0.9rem;
+
+    .chip-flag {
+      width: 2.2rem;
+      height: 1.5rem;
+      border-radius: 0.2rem;
+    }
+  }
+}
+
+// The list the chips land in: wrapping, centered, list-reset. On phones a
+// long list scrolls instead of swallowing the map — vertically by default,
+// or as one horizontal snap rail with `rail`.
+.country-chip-list {
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  align-items: center;
+  justify-content: center;
+  // The passthrough shell is pointer-events: none — the list opts back in so
+  // its chips can be tapped (removable picks) and the overflow scrolled.
+  pointer-events: auto;
+}
+
+@media screen and (max-width: $tablet) {
+  .country-chip-list {
+    max-height: 22dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    &.rail {
+      flex-wrap: nowrap;
+      max-width: 100%;
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+      justify-content: flex-start;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+
+      .country-chip {
+        flex-shrink: 0;
+        white-space: nowrap;
+        scroll-snap-align: end;
+      }
+    }
+  }
+}

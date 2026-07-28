@@ -172,6 +172,7 @@ const closeTutorial = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .tutorial-card {
@@ -184,12 +185,6 @@ const closeTutorial = () => {
 }
 
 .eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
   margin-bottom: 0.6rem;
 }
 
@@ -244,8 +239,8 @@ h1 {
   }
   &.gate {
     --phase-ink: hsl(9.8, 68%, 50%);
-    --phase-disc: hsla(9.8, 81.3%, 60.2%, 0.18);
-    --phase-tint: hsla(9.8, 81.3%, 60.2%, 0.45);
+    --phase-disc: #{flame(0.18)};
+    --phase-tint: #{flame(0.45)};
     --phase-wash: hsla(20, 82%, 66%, 0.16);
   }
 

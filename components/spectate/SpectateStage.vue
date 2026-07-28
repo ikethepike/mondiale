@@ -9,7 +9,7 @@
           <li
             v-for="(card, index) in scorecards"
             :key="card.player.id"
-            class="score-row"
+            class="score-row player-accent"
             :style="`--player-color: ${card.player.color}`"
           >
             <span class="rank">{{ index + 1 }}</span>
@@ -233,8 +233,9 @@ const answerChips = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
+$hairline: ink(0.12);
 
 // A broadcast lower-third: centre-bottom, wide but never in the rail's lane.
 .stage-card {
@@ -248,12 +249,6 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
 }
 
 .eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
   margin-bottom: 0.6rem;
 }
 
@@ -467,7 +462,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   height: 0.6rem;
   border-radius: 0.3rem;
   overflow: hidden;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 .gauntlet-fill {
@@ -499,7 +494,7 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   width: 3.2rem;
   height: 3.2rem;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.06);
+  background: ink(0.06);
   border: 1px solid $hairline;
   opacity: 0.55;
 
@@ -552,7 +547,6 @@ $hairline: hsla(215.7, 76.4%, 21.6%, 0.12);
   padding: 0.5rem 0.8rem;
   border-radius: 0.8rem;
   background: hsla(0, 0%, 100%, 0.5);
-  border-left: 0.3rem solid var(--player-color);
 
   .rank {
     opacity: 0.45;

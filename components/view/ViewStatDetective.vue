@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="stat-detective">
+  <div v-if="challenge" class="stat-detective challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,24 +9,19 @@
       @done="begin"
     />
 
-    <header>
-      <div class="prompt">
-        <template v-if="!resolved">
-          <h1 class="map-caption">Which country is this?</h1>
-          <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
-          <span v-if="challenge.region" class="map-caption region-hint">
-            Region: {{ challenge.region }}
-          </span>
-        </template>
-        <template v-else>
-          <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
-          <span class="map-caption sub">Here it is among its neighbours</span>
-        </template>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <template v-if="!resolved">
+        <h1 class="map-caption">Which country is this?</h1>
+        <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
+        <span v-if="challenge.region" class="map-caption region-hint">
+          Region: {{ challenge.region }}
+        </span>
+      </template>
+      <template v-else>
+        <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
+        <span class="map-caption sub">Here it is among its neighbours</span>
+      </template>
+    </ChallengePrompt>
 
     <!-- The input sits ABOVE the clues: its suggestion list opens downward,
          and at the bottom of the screen it would fall right off it. Over the
@@ -85,6 +80,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -96,7 +92,7 @@ import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/c
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -139,7 +135,7 @@ const revealedClues = computed(() => {
       accessorId,
       label: clueLabel(accessorId),
       topic: details?.topic,
-      value: value ? `${formatNumber(value.amount)}${value.unit ? ` ${value.unit}` : ''}` : '—',
+      value: value ? formatAmount(value) : '—',
       scale,
     }
   })
@@ -256,44 +252,11 @@ const onGuess = (country: Country) => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-.stat-detective {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
 
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .region-hint {
-    padding: 0.4rem 1.4rem;
-    color: var(--soft-blue);
-    font-weight: 600;
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .region-hint {
+  padding: 0.4rem 1.4rem;
+  color: var(--soft-blue);
+  font-weight: 600;
 }
 
 .clue-stage {
@@ -350,23 +313,7 @@ header {
   transform: translateY(1.4rem) scale(0.94);
 }
 
-.guess-box {
-  gap: 1.2rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
-}
-
-// Compact phone chrome: tighter prompt padding.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   // Compact single-column clue cards: three or four visible before the
   // clue stage needs to scroll.
   .clue-stage {
@@ -414,21 +361,5 @@ header {
     width: 100%;
     height: min(34dvh, 30rem);
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="capital-guess">
+  <div v-if="challenge" class="capital-guess challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,14 +9,9 @@
       @done="start"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Which country's capital is this?</h1>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">Which country's capital is this?</h1>
+    </ChallengePrompt>
 
     <section class="stage">
       <!-- Adaptive photo stage — any aspect ratio, never cropped; zoom + pan. -->
@@ -68,15 +63,14 @@
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import { useAttemptOptions } from '~~/lib/use-attempt-options'
 
 const {
   challenge,
@@ -85,6 +79,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   hint,
   announce,
@@ -101,14 +96,6 @@ const stakes = computed(() =>
     : "Name the country from its capital's skyline before the clock runs out. The sooner you name it, the more it's worth."
 )
 
-/** Options already picked and wrong — greyed out, and counted against the cap. */
-const spent = ref<ISOCountryCode[]>([])
-const attemptsUsed = computed(() => spent.value.length)
-const attemptsLeft = computed(() =>
-  challenge.value?.maximumGuesses
-    ? challenge.value.maximumGuesses - attemptsUsed.value
-    : Number.POSITIVE_INFINITY
-)
 
 const submitRound = (score: number) => {
   if (submitted.value) return
@@ -121,79 +108,19 @@ const start = () => {
   nextTick(() => guessInput.value?.focus())
 }
 
-/**
- * The option variants pay by which attempt landed it; hard mode free-types
- * against the clock, so an early answer is worth more than a late one.
- */
-const scoreFor = (active: NonNullable<typeof challenge.value>) =>
-  active.maximumGuesses
-    ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
-    : buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
-
-const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || !started.value) return
-
-  // The winning guess is never broadcast — it would hand opponents the answer.
-  // Outside hard mode the options make even a wrong name too strong a clue, so
-  // the policy drops that variant to presence.
-  if (country.isoCode === active.country) return submitRound(scoreFor(active))
-
-  if (active.maximumGuesses) {
-    if (spent.value.includes(country.isoCode)) return
-    spent.value = [...spent.value, country.isoCode]
-    if (attemptsLeft.value <= 0) {
-      announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses' })
-      return submitRound(0)
-    }
-  }
-
-  const left = attemptsLeft.value
-  announce({
-    kind: 'wrong',
-    isoCode: country.isoCode,
-    hint: Number.isFinite(left)
-      ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
-      : `${countryName(country)} — not it`,
-  })
-}
+// The winning guess is never broadcast — outside hard mode the small option
+// table makes even a wrong name too strong a clue (policy drops to presence).
+const { spent, onGuess } = useAttemptOptions({
+  challenge,
+  submitted,
+  started,
+  remainingFraction,
+  announce,
+  submitRound,
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-.capital-guess {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
 
 .stage {
   z-index: 2;
@@ -211,9 +138,6 @@ header {
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
   // The photo absorbs whatever the prompt and the option grid leave over —
   // fewer options mean a taller hero, more options shrink it — instead of
   // the fixed height leaving a band of dead space above the footer.
@@ -231,10 +155,6 @@ header {
   }
 }
 
-.console {
-  width: min(42rem, 100%);
-}
-
 // The options variant's round clock, centred above the flag grid.
 .footer-clock {
   --clock-size: 5.6rem;
@@ -242,8 +162,6 @@ header {
 }
 
 footer {
-  z-index: 2;
-  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -258,80 +176,15 @@ footer {
 }
 
 .card-options {
-  gap: 1.4rem;
-  display: grid;
-  pointer-events: auto;
   grid-template-columns: repeat(2, minmax(14rem, 20rem));
-}
-.card-option {
-  cursor: pointer;
-  padding: 1rem;
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-  border-radius: 1.2rem;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  transition:
-    transform var(--motion-quick) var(--ease-out-expressive),
-    border-color var(--motion-quick) var(--ease-out-expressive);
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      transform: translateY(-0.3rem);
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active:not(:disabled) {
-    border-color: var(--dark-blue);
-  }
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-  &.is-spent {
-    opacity: 0.35;
-    border-color: var(--hior-ange);
-  }
-
-  .option-flag {
-    width: 100%;
-    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
-    height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  }
 }
 @media (max-width: $tablet) {
   .card-options {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  footer {
-    width: 100%;
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-
-    &.has-input {
-      padding-bottom: clamp(8rem, 24dvh, 20rem);
-    }
+  footer.has-input {
+    padding-bottom: clamp(8rem, 24dvh, 20rem);
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

@@ -1,5 +1,6 @@
 import type { BBox } from './geometry'
 import { TARGET_HEIGHT, TARGET_WIDTH, type Anchor, type ViewBox } from './types'
+import { clamp } from '../number'
 
 /** Parse a `viewBox` string into an explicit basis. Falls back to 0,0 origin. */
 export const parseViewBox = (value: string | undefined): ViewBox => {
@@ -100,7 +101,7 @@ export const preservedAnchor = (
   const x = centrality * centreX + (1 - centrality) * edgeX
 
   // Guard: keep the anchor inside the flag.
-  return [Math.max(0, Math.min(TARGET_WIDTH, x)), Math.max(0, Math.min(TARGET_HEIGHT, y))]
+  return [clamp(x, 0, TARGET_WIDTH), clamp(y, 0, TARGET_HEIGHT)]
 }
 
 /**

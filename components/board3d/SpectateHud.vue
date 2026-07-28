@@ -1,5 +1,5 @@
 <template>
-  <div v-if="target" class="pane spectate-hud" :style="`--player-color: ${target.color}`">
+  <div v-if="target" class="pane spectate-hud player-accent" :style="`--player-color: ${target.color}`">
     <PlayerPawn class="pawn" :player="target" />
     <span class="who">
       <span class="name">Watching {{ target.name || 'Player' }}</span>
@@ -32,6 +32,7 @@ const release = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .spectate-hud {
   position: absolute;
   left: 50%;
@@ -43,7 +44,6 @@ const release = () => {
   gap: 0.9rem;
   padding: 0.6rem 0.8rem;
   max-width: min(36rem, calc(100vw - 2rem));
-  border-left: 0.3rem solid var(--player-color);
 }
 
 .pawn {
@@ -80,7 +80,7 @@ const release = () => {
   padding: 0 0 0.25rem;
   border: none;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   color: inherit;
   font-size: 1.8rem;
   line-height: 1;

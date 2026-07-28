@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="two-truths">
+  <div v-if="challenge" class="two-truths challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,23 +9,21 @@
       @done="begin"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-        <span v-if="picked === undefined" class="map-caption sub">
-          Tap the claim that doesn't belong
-        </span>
-        <span v-else-if="foundLie" class="map-caption sub verdict correct">
-          Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
-          {{ truthDisplay }}
-        </span>
-        <span v-else class="map-caption sub verdict incorrect">
-          That one was true — the lie was {{ lieLabel }}, which belongs to
-          {{ countryName(challenge.lieSource) }}
-        </span>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
+      <span v-if="picked === undefined" class="map-caption sub">
+        Tap the claim that doesn't belong
+      </span>
+      <span v-else-if="foundLie" class="map-caption sub verdict correct">
+        Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
+        {{ truthDisplay }}
+      </span>
+      <span v-else class="map-caption sub verdict incorrect">
+        That one was true — the lie was {{ lieLabel }}, which belongs to
+        {{ countryName(challenge.lieSource) }}
+      </span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <section class="claim-stage">
       <ContourRipple v-if="foundLie" class="stage-ripple" tone="success" :delay="0.15" />
@@ -63,7 +61,7 @@
             @click="pick(index)"
           >
             <strong class="claim-value">
-              {{ formatNumber(statement.amount) }}{{ statement.unit ? ` ${statement.unit}` : '' }}
+              {{ formatAmount(statement) }}
             </strong>
             <ScalePlot v-if="statementScales[index]" v-bind="statementScales[index]" />
             <Transition name="caption">
@@ -86,6 +84,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
@@ -96,7 +95,7 @@ import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
@@ -147,7 +146,7 @@ const truthDisplay = computed(() => {
   const active = challenge.value
   if (!active) return ''
   const real = getValueByAccessorID(active.country, active.statements[active.lieIndex].accessorId)
-  return real ? `${formatNumber(real.amount)}${real.unit ? ` ${real.unit}` : ''}` : '—'
+  return real ? formatAmount(real) : '—'
 })
 
 const claimClass = (index: number) => {
@@ -174,41 +173,14 @@ const pick = (index: number) => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.two-truths {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
+
+header .verdict.correct {
+  color: var(--dark-blue);
 }
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .verdict.correct {
-    color: var(--dark-blue);
-  }
-  .verdict.incorrect {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .verdict.incorrect {
+  color: var(--hior-ange);
 }
 
 .claim-stage {
@@ -241,8 +213,8 @@ header {
   padding: 1rem;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.85);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
 
   .flag {
     width: 16rem;
@@ -310,7 +282,7 @@ header {
   // Reveal: the lie glows coral, truths settle to mint
   &.is-lie {
     border-color: var(--hior-ange);
-    background: hsla(9.8, 81.3%, 60.2%, 0.18);
+    background: flame(0.18);
   }
   &.is-truth {
     border-color: hsla(170.5, 34.7%, 45%, 0.7);
@@ -322,13 +294,7 @@ header {
   }
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   // Three 20rem columns overflow any phone: stack the claims full-width and
   // compact them so flag + all three cards share one screen.
   .claim-stage {

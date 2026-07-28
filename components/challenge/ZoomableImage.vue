@@ -62,6 +62,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { clamp } from '~~/lib/number'
 withDefaults(defineProps<{ src: string; alt?: string }>(), { alt: 'A photo to identify' })
 
 const MIN_SCALE = 1
@@ -107,8 +108,8 @@ const clampPan = () => {
   const { width, height } = element.getBoundingClientRect()
   const maxX = (Math.max(scale.value, 1) - 1) * width * 0.5
   const maxY = (Math.max(scale.value, 1) - 1) * height * 0.5
-  tx.value = Math.min(maxX, Math.max(-maxX, tx.value))
-  ty.value = Math.min(maxY, Math.max(-maxY, ty.value))
+  tx.value = clamp(tx.value, -maxX, maxX)
+  ty.value = clamp(ty.value, -maxY, maxY)
 }
 
 const reset = () => {
@@ -118,7 +119,7 @@ const reset = () => {
 }
 
 const setScale = (next: number) => {
-  scale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next))
+  scale.value = clamp(next, MIN_SCALE, MAX_SCALE)
   if (scale.value === 1) reset()
   else clampPan()
 }
@@ -132,7 +133,7 @@ const zoomBy = (delta: number) => setScale(scale.value + delta)
 const zoomToward = (nextScale: number, fx: number, fy: number) => {
   const element = viewport.value
   if (!element) return
-  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  const clamped = clamp(nextScale, MIN_SCALE, MAX_SCALE)
   if (clamped === scale.value) return
   const rect = element.getBoundingClientRect()
   const originX = fx - rect.width / 2 - tx.value
@@ -154,7 +155,7 @@ const zoomToward = (nextScale: number, fx: number, fy: number) => {
 const zoomInto = (nextScale: number, fx: number, fy: number) => {
   const element = viewport.value
   if (!element) return
-  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale))
+  const clamped = clamp(nextScale, MIN_SCALE, MAX_SCALE)
   const rect = element.getBoundingClientRect()
   // The clicked point in untransformed content space, relative to centre.
   const contentX = (fx - rect.width / 2 - tx.value) / scale.value
@@ -309,6 +310,7 @@ const pinchDistance = (): number => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // An atlas figure plate: the pane grammar (ink hairline, thick bottom rule)
 // around a photo mounted on a parchment mat. Square corners — a photo plate,
 // not a card.
@@ -324,7 +326,7 @@ const pinchDistance = (): number => {
   border-bottom: 0.6rem solid var(--text-color);
   // Letterbox mat: sour-milk under a faint dark-blue wash — paper, not glass.
   background:
-    linear-gradient(hsla(215.7, 76.4%, 21.6%, 0.06), hsla(215.7, 76.4%, 21.6%, 0.06)),
+    linear-gradient(ink(0.06), ink(0.06)),
     var(--background-color);
   touch-action: none; // we handle pinch/pan ourselves
   // Host views (e.g. .main-board) are pointer-events:none by default; the
@@ -370,7 +372,7 @@ const pinchDistance = (): number => {
   align-items: center;
   justify-content: center;
   font-size: 5rem;
-  color: hsla(215.7, 76.4%, 21.6%, 0.3);
+  color: ink(0.3);
 }
 
 // One chip-language pill holding the three zoom actions, hairline-divided.
@@ -385,7 +387,7 @@ const pinchDistance = (): number => {
   border-radius: 999px;
   backdrop-filter: blur(0.5rem);
   background: hsla(0, 0%, 100%, 0.55);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  border: 0.1rem solid ink(0.2);
 }
 .zoom-btn {
   width: 3.2rem;
@@ -402,7 +404,7 @@ const pinchDistance = (): number => {
   color: var(--dark-blue);
 
   & + & {
-    border-left: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.15);
+    border-left: 0.1rem solid ink(0.15);
   }
 
   &:disabled {

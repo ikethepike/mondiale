@@ -120,6 +120,7 @@ const neighbours = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .atlas-card {
@@ -165,7 +166,7 @@ const neighbours = computed(() =>
     width: 6rem;
     height: 4rem;
     border-radius: 0.4rem;
-    box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.15);
+    box-shadow: 0 0 0 1px ink(0.15);
   }
 
   h2 {
@@ -221,7 +222,7 @@ const neighbours = computed(() =>
     border-radius: 50%;
     background-size: cover;
     background-position: center top;
-    border: 0.15rem solid hsla(36, 100%, 98%, 0.9);
+    border: 0.15rem solid milk(0.9);
   }
   .leader-ident {
     display: flex;
@@ -274,7 +275,7 @@ const neighbours = computed(() =>
     gap: 0.4rem 1rem;
     font-size: 1.4rem;
     padding-bottom: 0.4rem;
-    border-bottom: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
+    border-bottom: 1px solid ink(0.08);
   }
   .fact-label {
     opacity: 0.7;
@@ -313,7 +314,7 @@ const neighbours = computed(() =>
     border-radius: 999px;
     color: var(--dark-blue);
     background: hsla(0, 0%, 100%, 0.5);
-    border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.18);
+    border: 1px solid ink(0.18);
     transition: border-color 0.15s ease;
 
     &:hover {

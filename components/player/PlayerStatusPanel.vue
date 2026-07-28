@@ -19,7 +19,7 @@
       <li
         v-for="entry in entries"
         :key="entry.player.id"
-        class="row"
+        class="row player-accent"
         :class="{
           you: entry.you,
           busy: entry.status.busy,
@@ -82,6 +82,8 @@ import { useGameStore } from '~~/store/game.store'
 import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
 import type { Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { boardProgress } from '~~/lib/player'
+import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 
 const props = defineProps<{
   players: Player[]
@@ -100,7 +102,7 @@ const gameStore = useGameStore()
 // the full panel would cover most of the board; the toggle overrides per session.
 const isSmallScreen = ref(false)
 onMounted(() => {
-  isSmallScreen.value = window.matchMedia('(max-width: 640px)').matches
+  isSmallScreen.value = window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
 })
 const folded = computed(() => gameStore.board.panelFolded ?? isSmallScreen.value)
 const toggleFold = () => {
@@ -152,7 +154,7 @@ const entries = computed(() =>
         you: player.id === props.currentPlayerId,
         status,
         points: props.points?.[player.id]?.points.scored,
-        progress: props.boardLength ? player.currentPosition / span : 0,
+        progress: props.boardLength ? boardProgress(player.currentPosition, props.boardLength) : 0,
         // Ghost tail: steps still queued this turn, drawn past the solid fill
         pending: props.boardLength && status.steps ? status.steps / span : 0,
       }
@@ -166,6 +168,7 @@ const entries = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .status-panel {
@@ -196,7 +199,7 @@ const entries = computed(() =>
 
 .history-button {
   padding: 0.2rem 0.7rem;
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.15);
+  border: 1px solid ink(0.15);
   border-radius: 1rem;
   background: none;
   color: inherit;
@@ -259,8 +262,7 @@ const entries = computed(() =>
   padding: 0.55rem 0.7rem;
   border-radius: 0.9rem;
   background: hsla(0, 0%, 100%, 0.5);
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.08);
-  border-left: 0.3rem solid var(--player-color);
+  border: 1px solid ink(0.08);
 
   // Board progress: a static hairline along the bottom edge — reads at a
   // glance without costing the row any height.
@@ -308,7 +310,7 @@ const entries = computed(() =>
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
@@ -333,7 +335,7 @@ const entries = computed(() =>
   padding: 0;
   border: none;
   border-radius: 0.7rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
   font-size: 1.6rem;
   line-height: 1;
   cursor: pointer;
@@ -378,7 +380,7 @@ const entries = computed(() =>
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--dark-blue);
-  background: hsla(215.7, 76.4%, 21.6%, 0.08);
+  background: ink(0.08);
 }
 
 .steps-badge {

@@ -52,6 +52,7 @@ const otherRole = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .leader-reveal {
   display: grid;
   gap: 0.8rem;
@@ -73,8 +74,8 @@ const otherRole = computed(() =>
   border-radius: 50%;
   background-size: cover;
   background-position: center top;
-  border: 0.2rem solid hsla(36, 100%, 98%, 0.9);
-  box-shadow: 0 2px 8px hsla(215.7, 76.4%, 21.6%, 0.3);
+  border: 0.2rem solid milk(0.9);
+  box-shadow: 0 2px 8px ink(0.3);
 }
 
 .ident {

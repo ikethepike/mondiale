@@ -1,0 +1,69 @@
+// The ranked-bar scorecard skeleton (Made In, City Nocturne): a scrollable
+// column of rows landing on their own beats (--i), each with a shared-scale
+// bar that grows after its row settles. Skins colour the fills and provide
+// the row content; the geometry and choreography live here once.
+.ranked-bars {
+  gap: 1.2rem;
+  display: flex;
+  flex-flow: column nowrap;
+  padding: 0.8rem 0.6rem;
+  min-width: min(42rem, 100%);
+  // Tall runs must scroll inside the card, not off the screen
+  max-height: min(52vh, 46rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  .rows {
+    gap: 0.45rem;
+    display: flex;
+    flex-flow: column nowrap;
+  }
+
+  .row {
+    gap: 0.8rem;
+    display: flex;
+    opacity: 0;
+    align-items: center;
+    font-size: 1.4rem;
+    animation: row-land 0.4s var(--ease-smooth) forwards;
+    animation-delay: calc(var(--i) * 110ms);
+  }
+
+  .bar {
+    flex: 1;
+    height: 0.7rem;
+    overflow: hidden;
+    border-radius: 0.35rem;
+    background: hsla(216, 40%, 25%, 0.1);
+
+    .fill {
+      height: 100%;
+      display: block;
+      border-radius: 0.35rem;
+      transform-origin: left center;
+      animation: bar-grow 0.5s var(--ease-smooth) backwards;
+      animation-delay: calc(var(--i) * 110ms + 200ms);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .row {
+      animation: none;
+      opacity: 1;
+    }
+
+    .bar .fill {
+      animation: none;
+    }
+  }
+
+  // Phone pass: tighter columns so the bars keep real length
+  @media screen and (max-width: 480px) {
+    padding: 0.4rem 0;
+
+    .row {
+      gap: 0.6rem;
+      font-size: 1.3rem;
+    }
+  }
+}

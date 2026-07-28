@@ -1,5 +1,5 @@
 <template>
-  <section class="ghost-state">
+  <section class="ghost-state challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -16,22 +16,20 @@
         :total="challenge.durationSeconds"
       />
 
-      <header>
+      <ChallengePrompt>
         <div ref="flagHost" class="flag" />
 
-        <div class="prompt">
-          <!-- Before the answer, never the name or the claimant: both hand the
-               round over. A population says what kind of place it is. -->
-          <template v-if="!submitted">
-            <h1 class="map-caption">Where on Earth is this?</h1>
-            <span class="map-caption sub">{{ teaser }}</span>
-          </template>
-          <template v-else-if="territory">
-            <h1 class="map-caption">{{ verdictHeadline }} — {{ territory.name }}</h1>
-            <span class="map-caption sub">{{ statusLine }}</span>
-          </template>
-        </div>
-      </header>
+        <!-- Before the answer, never the name or the claimant: both hand the
+             round over. A population says what kind of place it is. -->
+        <template v-if="!submitted">
+          <h1 class="map-caption">Where on Earth is this?</h1>
+          <span class="map-caption sub">{{ teaser }}</span>
+        </template>
+        <template v-else-if="territory">
+          <h1 class="map-caption">{{ verdictHeadline }} — {{ territory.name }}</h1>
+          <span class="map-caption sub">{{ statusLine }}</span>
+        </template>
+      </ChallengePrompt>
 
       <footer v-if="submitted && territory" class="dossier">
         <p class="map-caption facts">
@@ -47,6 +45,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
@@ -54,6 +53,7 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import type { RecognitionTerritory } from '~~/data/recognition.gen'
+import { sanitizeSvg } from '~~/lib/svg'
 
 // The whole world must stay tappable — the answer is a place, not a shape.
 const {
@@ -85,22 +85,10 @@ const verdictHeadline = ref('')
 watchEffect(() => {
   if (!flagHost.value || !flagSvg.value) return
 
-  const parsed = new DOMParser().parseFromString(flagSvg.value, 'image/svg+xml')
-  const svg = parsed.documentElement
-  if (svg.nodeName.toLowerCase() !== 'svg') return
-
-  svg.querySelectorAll('script, foreignObject').forEach(node => node.remove())
-  for (const element of [svg, ...svg.querySelectorAll('*')]) {
-    for (const attribute of [...element.attributes]) {
-      if (attribute.name.toLowerCase().startsWith('on')) element.removeAttribute(attribute.name)
-    }
-  }
-
   // These flags run 2:1 and 3:2, unlike the 4:3 country set. Let the SVG keep
   // its own ratio inside the host box.
-  svg.removeAttribute('width')
-  svg.removeAttribute('height')
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  const svg = sanitizeSvg(flagSvg.value)
+  if (!svg) return
 
   flagHost.value.replaceChildren(svg)
 })
@@ -272,52 +260,18 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.ghost-state {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  pointer-events: none;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
 
-header {
-  gap: 1rem;
-  z-index: 2;
-  width: 100%;
-  display: flex;
-  padding: 2rem 4rem;
-  text-align: center;
-  align-items: center;
-  flex-flow: column nowrap;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-    max-width: min(80vw, 40rem);
-  }
-
-  // Question, then teaser, stacked — never side by side.
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .sub {
+  max-width: min(80vw, 40rem);
 }
 
 // The whole prompt: a flag, and nothing that names the place.
 .flag {
   width: min(34vw, 220px);
   border-radius: 0.4rem;
-  box-shadow: 0 0.6rem 2rem hsla(215.7, 76.4%, 21.6%, 0.35);
+  box-shadow: 0 0.6rem 2rem ink(0.35);
 
   :deep(svg) {
     width: 100%;
@@ -329,7 +283,6 @@ header {
 // The reveal dossier's berth; while guessing, the round clock floats in the
 // shared .round-clock corner instead.
 footer {
-  z-index: 2;
   display: flex;
   padding: 0 2rem 2rem;
   align-items: center;
@@ -367,12 +320,9 @@ footer {
   padding: 0.6rem 1.6rem;
 }
 
-// Compact phone chrome: tighter prompt padding, footer clear of the home
-// indicator.
+// Phone: the dossier's bespoke desktop padding above would otherwise beat the
+// shell's safe-area rule — restate it clear of the home indicator.
 @media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
   footer {
     padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }

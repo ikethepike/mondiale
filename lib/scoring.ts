@@ -2,13 +2,33 @@
  * Scoring shapes shared by more than one mode. Client-safe: nothing here
  * imports the generated geometry, which must stay out of the client bundle.
  */
+import { clamp01 } from './number'
+
+/** A score folded into 0..maximum — the one guard between a scorer and the wire. */
+export const clampScore = (scored: number, maximum: number): number =>
+  Math.max(0, Math.min(Math.round(scored), maximum))
+
+/**
+ * Set-overlap fraction (Jaccard): |guess ∩ truth| / |guess ∪ truth|, with the
+ * both-empty case counting as a perfect match. Extent taps, claimant picks —
+ * every "tap the right set" mode scores through this.
+ */
+export const jaccardFraction = (
+  guess: ReadonlySet<string>,
+  truth: ReadonlySet<string>
+): number => {
+  if (guess.size === 0 && truth.size === 0) return 1
+  const intersection = [...guess].filter(member => truth.has(member)).length
+  const union = new Set([...guess, ...truth]).size
+  return union ? intersection / union : 0
+}
 
 /** A correct-but-late answer still pays this fraction of the pot. */
 export const BUZZ_FLOOR = 0.35
 
 /** Earlier answer, bigger score. */
 export const buzzFraction = (remainingFraction: number): number =>
-  BUZZ_FLOOR + (1 - BUZZ_FLOOR) * Math.max(0, Math.min(1, remainingFraction))
+  BUZZ_FLOOR + (1 - BUZZ_FLOOR) * clamp01(remainingFraction)
 
 /** Points for buzzing in with `remainingFraction` of the clock left. */
 export const buzzScore = (maximumPoints: number, remainingFraction: number): number =>
@@ -67,7 +87,7 @@ export const blitzScore = (
   const wrong = unique.length - correct
 
   const raw = answerSet.size ? Math.round((maximumPoints * correct) / answerSet.size) - wrong : 0
-  return { scored: Math.max(0, Math.min(raw, maximumPoints)), maximum: maximumPoints }
+  return { scored: clampScore(raw, maximumPoints), maximum: maximumPoints }
 }
 
 /**
@@ -91,7 +111,7 @@ export const scorePinDistance = ({
   const span = zeroDistanceKm - perfectDistanceKm
   const missed = distanceKm - perfectDistanceKm
   const scored = Math.round(maximumPoints * (1 - missed / span))
-  return Math.max(0, Math.min(scored, maximumPoints))
+  return clampScore(scored, maximumPoints)
 }
 
 /** A found answer worth `maximum`, docked per wasted attempt, never below `floor`. */

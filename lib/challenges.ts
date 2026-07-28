@@ -5,7 +5,6 @@ import { CURRENCIES } from '~~/data/currencies.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { LEADERS } from '~~/data/leaders.gen'
 import { TRENDS } from '~~/data/trends.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
@@ -63,9 +62,11 @@ import {
   INCOMPATIBILITY_LABELS,
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
-import { shuffleArray } from './arrays'
+import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
+import { titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
-import { countryLedBy } from './leaders'
+import { pickSizedCountry } from './country'
+import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -75,10 +76,10 @@ import {
 import { pickChainSeed } from './chain'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
-import { attemptDecayScore, attemptFraction, scorePinDistance } from './scoring'
+import { attemptDecayScore, attemptFraction, clampScore, jaccardFraction, scorePinDistance } from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
 import { isRouteComplete, pickTraversal } from './traversal'
-import { dramaScore, isDecisiveGap, readTrend, TREND_METRIC_IDS, TREND_METRICS } from './trends'
+import { dramaScore, isDecisiveGap, readTrend, relativeGap, TREND_METRIC_IDS, TREND_METRICS } from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { REGION_LABELS } from './variant'
@@ -151,16 +152,8 @@ const forcedRoundKind = (): RoundChallengeKind | undefined => {
 
 // Difficulty gates and the lobby's tri-state group toggles resolve in one
 // place (challenge-groups.type) — the dealer only ever asks isKindEnabled.
-const pickRoundKind = (game: gameTypes.Game): RoundChallengeKind => {
-  const weights = ROUND_WEIGHTS.filter(([kind]) => isKindEnabled(game, kind))
-  const total = weights.reduce((sum, [, weight]) => sum + weight, 0)
-  let roll = Math.random() * total
-  for (const [kind, weight] of weights) {
-    roll -= weight
-    if (roll <= 0) return kind
-  }
-  return 'ranking'
-}
+const pickRoundKind = (game: gameTypes.Game): RoundChallengeKind =>
+  weightedPick(ROUND_WEIGHTS.filter(([kind]) => isKindEnabled(game, kind))) ?? 'ranking'
 
 /** Countries whose outlines are dominated by scattered islands — no fun to
  * draw or to watch materialize; excluded from shape-centric modes. */
@@ -218,19 +211,10 @@ const pickShapeFriendlyCountry = (
   // A variant pool that filters down to nothing falls back to the world
   const pool = filter(candidates)
   const viable = pool.length ? pool : filter(world)
-  return viable[Math.floor(Math.random() * viable.length)]
+  return sample(viable)!
 }
 
-/** Mirror of getRandomISOCountryCode('large'), scoped to a country pool. */
-const pickLargeCountry = (pool: ISOCountryCode[]): ISOCountryCode => {
-  const shuffled = shuffleArray([...pool])
-  return (
-    shuffled.find(isoCode => {
-      const area = COUNTRIES[isoCode].geography.area.total
-      return !!area && area.amount > 400
-    }) ?? shuffled[0]
-  )
-}
+
 
 /** Everyone still competing when the round is dealt takes a chain seat. */
 const chainContenders = (game: gameTypes.Game): string[] =>
@@ -290,7 +274,7 @@ const getManhuntChallenge = ({
   if (initialManhuntCandidates(game).length < MINIMUM_MANHUNT_POOL) return undefined
 
   const tuning = MANHUNT_TUNING[game.difficulty]
-  const despotId = contenders[Math.floor(Math.random() * contenders.length)]
+  const despotId = sample(contenders)!
   const detectives = shuffleArray(contenders.filter(playerId => playerId !== despotId))
   return {
     _type: 'manhunt-challenge',
@@ -457,7 +441,7 @@ const getHotColdChallenge = ({ game }: { game: gameTypes.Game }): HotColdChallen
     : playableWorldCountries(game).filter(isoCode => !HOT_COLD_EXCLUDED.has(isoCode))
   return {
     _type: 'hot-cold-challenge',
-    country: pool[Math.floor(Math.random() * pool.length)],
+    country: sample(pool)!,
     maximumGuesses: 8,
     maximumPoints: maximumRoundPoints(game),
   }
@@ -534,7 +518,7 @@ const getTwoTruthsChallenge = ({
 }): TwoTruthsChallenge | undefined => {
   const pool = playableCountries(game)
 
-  for (const country of shuffleArray([...pool]).slice(0, 40)) {
+  for (const country of sampleMany(pool, 40)) {
     const accessors = shuffleArray(
       Object.values(GROUP_CHALLENGES)
         .map(challenge => challenge.id)
@@ -557,8 +541,7 @@ const getTwoTruthsChallenge = ({
       if (candidate.unit === 'year') {
         return Math.abs(candidate.amount - truth.amount) >= LIE_MINIMUM_YEAR_GAP
       }
-      const scale = Math.max(Math.abs(candidate.amount), Math.abs(truth.amount))
-      return scale > 0 && Math.abs(candidate.amount - truth.amount) / scale >= LIE_MINIMUM_GAP
+      return relativeGap(candidate.amount, truth.amount) >= LIE_MINIMUM_GAP
     })
     if (!lieSource) continue
 
@@ -596,7 +579,7 @@ const getTraversalChallenge = ({
   // Hard games sometimes restrict the run to an alliance corridor
   if (game.difficulty === 'hard' && Math.random() < CORRIDOR_CHANCE_ON_HARD) {
     const organizationId =
-      CORRIDOR_ORGANIZATIONS[Math.floor(Math.random() * CORRIDOR_ORGANIZATIONS.length)]
+      sample(CORRIDOR_ORGANIZATIONS)!
 
     let organizationName = organizationId.toUpperCase()
     const variantPool = new Set(playableCountries(game))
@@ -672,7 +655,7 @@ const getWaterBlitzChallenge = async (
   const candidates = (await waterFeaturePool(game, kinds)).filter(
     feature => feature.countries.length >= 3
   )
-  const feature = candidates[Math.floor(Math.random() * candidates.length)]
+  const feature = sample(candidates)
   if (!feature) return undefined
 
   return {
@@ -729,7 +712,7 @@ const getNameWaterChallenge = async (
 ): Promise<NameWaterChallenge | undefined> => {
   const pool = await waterFeaturePool(game, NAME_WATER_TIERS[game.difficulty].kinds)
   const candidates = nameWaterCandidates(pool, game.difficulty)
-  const feature = candidates[Math.floor(Math.random() * candidates.length)]
+  const feature = sample(candidates)
   if (!feature) return undefined
 
   return {
@@ -767,7 +750,7 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
   )
   if (!viable.length) return undefined
 
-  const [language, countries] = viable[Math.floor(Math.random() * viable.length)]
+  const [language, countries] = sample(viable)!
   return {
     _type: 'mother-tongue-challenge',
     language,
@@ -1023,16 +1006,7 @@ const getGhostStateChallenge = async (
     return Math.max(0.05, ghostStateOddity(drawnApart, povs.length || 1))
   })
 
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
-  let roll = Math.random() * total
-  let territory = pool[pool.length - 1]
-  for (let index = 0; index < pool.length; index++) {
-    roll -= weights[index]
-    if (roll <= 0) {
-      territory = pool[index]
-      break
-    }
-  }
+  const territory = weightedPick(pool.map((candidate, index) => [candidate, weights[index]] as const))
   if (!territory?.parent) return undefined
 
   return {
@@ -1049,7 +1023,7 @@ const getNoMansLandChallenge = async (
   game: gameTypes.Game
 ): Promise<NoMansLandChallenge | undefined> => {
   const pool = await recognitionPool('no-mans-land')
-  const territory = pool[Math.floor(Math.random() * pool.length)]
+  const territory = sample(pool)
   if (!territory) return undefined
 
   return {
@@ -1118,20 +1092,10 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   }
   const fresh = [...byRegion.keys()].filter(region => !dealtRegions.has(region))
   const regions = fresh.length ? fresh : [...byRegion.keys()]
-  const region = regions[Math.floor(Math.random() * regions.length)]
+  const region = sample(regions)!
   const pool = byRegion.get(region) ?? []
 
-  const weights = pool.map(empire => tuning.tierWeights[empire.tier])
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
-  let roll = Math.random() * total
-  let empire = pool[pool.length - 1]
-  for (let index = 0; index < pool.length; index++) {
-    roll -= weights[index]
-    if (roll <= 0) {
-      empire = pool[index]
-      break
-    }
-  }
+  const empire = weightedPick(pool.map(candidate => [candidate, tuning.tierWeights[candidate.tier]] as const))
   if (!empire) return undefined
 
   // Non-hard helper: 3 name options (same-region icons preferred, so the
@@ -1215,7 +1179,7 @@ export const scoreGhostState = async ({
   const fraction = 1 - boxDistance(tappedCentre, parentCentre) / GHOST_STATE_FALLOFF
   // `scored` feeds board movement 1:1 — never emit NaN or a negative.
   const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
-  return { scored: Math.min(scored, maximum), maximum }
+  return { scored: clampScore(scored, maximum), maximum }
 }
 
 /**
@@ -1235,13 +1199,7 @@ export const scoreNoMansLand = ({
   const maximum = challenge.maximumPoints
   const truth = new Set(challenge.claimants)
   const guess = new Set(submittedGuesses)
-
-  if (truth.size === 0 && guess.size === 0) return { scored: maximum, maximum }
-
-  // Union is never zero past the both-empty case above.
-  const intersection = [...guess].filter(isoCode => truth.has(isoCode)).length
-  const union = new Set([...guess, ...truth]).size
-  return { scored: Math.max(0, Math.round(maximum * (intersection / union))), maximum }
+  return { scored: clampScore(maximum * jaccardFraction(guess, truth), maximum), maximum }
 }
 
 /**
@@ -1273,7 +1231,7 @@ const getTrendRaceChallenge = ({
     const seek = candidates === risers ? 'rising' : 'falling'
 
     for (let attempt = 0; attempt < 2; attempt++) {
-      const picked = shuffleArray([...candidates]).slice(0, optionCount)
+      const picked = sampleMany(candidates, optionCount)
       const sharedStart = Math.max(...picked.map(({ isoCode }) => TRENDS[isoCode]![metric]![0][0]))
       const standings = picked
         .flatMap(({ isoCode }) => {
@@ -1556,7 +1514,7 @@ export const clampClientScore = (
 ): { scored: number; maximum: number } => {
   if (!correct) return { scored: 0, maximum }
   const scored = Math.round(clientScore ?? 0)
-  return { scored: Math.max(0, Math.min(scored, maximum)), maximum }
+  return { scored: clampScore(scored, maximum), maximum }
 }
 
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
@@ -1592,7 +1550,7 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
     throw new EvalError('No group challenge has enough country data to fill a round')
   }
 
-  const base = viable[Math.floor(Math.random() * viable.length)]
+  const base = sample(viable)!
 
   const isoCodes = shuffleArray<ISOCountryCode>([...pool]).filter(
     isoCode => !!getValueByAccessorID(isoCode, base.id)
@@ -1907,7 +1865,7 @@ const dealOddOneOut = (
     ? ['region', 'language']
     : ['language']
   if (difficulty === 'hard') kinds.push('organization')
-  const kind = kinds[Math.floor(Math.random() * kinds.length)]
+  const kind = sample(kinds)!
 
   const attempt = (): ReturnType<typeof dealOddOneOut> => {
     switch (kind) {
@@ -1917,7 +1875,7 @@ const dealOddOneOut = (
         const same = pool.filter(isoCode => COUNTRIES[isoCode].region === region).slice(0, 3)
         const odd = pool.find(isoCode => COUNTRIES[isoCode].region !== region)
         if (same.length < 3 || !odd) return undefined
-        const label = region.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())
+        const label = titleCase(region)
         return {
           country: odd,
           oddOneOut: {
@@ -1937,7 +1895,7 @@ const dealOddOneOut = (
         const entry = candidates[0]
         if (!entry) return undefined
         const [language, speakers] = entry
-        const same = shuffleArray([...speakers]).slice(0, 3)
+        const same = sampleMany(speakers, 3)
         const odd = shuffleArray([...countryPool]).find(
           isoCode => !(COUNTRIES[isoCode].languages ?? []).includes(language)
         )
@@ -1969,7 +1927,7 @@ const dealOddOneOut = (
         if (!entry) return undefined
         const [organizationId, { name, members }] = entry
         const memberSet = new Set(members)
-        const same = shuffleArray([...members]).slice(0, 3)
+        const same = sampleMany(members, 3)
         const odd = shuffleArray([...countryPool]).find(isoCode => !memberSet.has(isoCode))
         if (!odd) return undefined
         void organizationId
@@ -2120,7 +2078,7 @@ const dealTrajectoryMatch = (
 
       scored.sort((x, y) => y.drama - x.drama)
       const topDecile = scored.slice(0, Math.max(2, Math.ceil(scored.length / 10)))
-      const country = topDecile[Math.floor(Math.random() * topDecile.length)].isoCode
+      const country = sample(topDecile)!.isoCode
       const answer = readings.get(country)!
 
       const decoys = pickDecoys(country, candidates, optionCount - 1, {
@@ -2162,7 +2120,7 @@ const dealLeaderPick = (
       : world.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
   if (withLeaders.length < 4) return undefined
 
-  const country = withLeaders[Math.floor(Math.random() * withLeaders.length)]
+  const country = sample(withLeaders)!
   const decoys = pickDecoys(country, withLeaders, 3, {
     preferRegion: true,
     eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
@@ -2173,91 +2131,9 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
-const LEADER_TITLE_NOISE = new Set([
-  'the',
-  'king',
-  'queen',
-  'president',
-  'prime',
-  'minister',
-  'chancellor',
-  'taoiseach',
-  'interim',
-  'caretaker',
-  'transition',
-  'transitional',
-  'general',
-  'leader',
-])
-
-/** Name tokens robust to titles, diacritics and punctuation. */
-const leaderNameTokens = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .split(/[^a-z]+/)
-    .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
-
-/** Small-budget edit distance — enough to catch transliteration drift. */
-const editDistance = (a: string, b: string, budget: number): number => {
-  if (Math.abs(a.length - b.length) > budget) return budget + 1
-  let previous = Array.from({ length: b.length + 1 }, (_, i) => i)
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i]
-    for (let j = 1; j <= b.length; j++) {
-      current[j] = Math.min(
-        previous[j] + 1,
-        current[j - 1] + 1,
-        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      )
-    }
-    previous = current
-  }
-  return previous[b.length]
-}
-
-/** Same name? Tokens match fuzzily: Christodoulidis≈Christodoulides, Tiani≈Tchiani. */
-const namesOverlap = (a: string, b: string): boolean => {
-  const aTokens = leaderNameTokens(a)
-  const bTokens = leaderNameTokens(b)
-  return aTokens.some(tokenA =>
-    bTokens.some(tokenB => {
-      const budget = Math.min(tokenA.length, tokenB.length) >= 6 ? 2 : 1
-      return editDistance(tokenA, tokenB, budget) <= budget
-    })
-  )
-}
-
-/**
- * The face to quiz on — always the POLITICAL leader, never a ceremonial
- * figurehead by accident. Selection order:
- *  1. The role whose name matches the factbook's `government.leader`
- *     (fuzzy — transliterations drift between sources).
- *  2. The role the factbook's TITLE names ("Prime Minister…" → government,
- *     "President/King…" → state) — covers elections the factbook snapshot
- *     already reflects but Wikidata phrases differently.
- *  3. Head of government. When the sources disagree entirely (a fresh
- *     election one of them missed), the head of government is the political
- *     office by construction; defaulting to head of state was how Thailand
- *     dealt its king and Tuvalu dealt Charles III.
- */
+/** The face to quiz on: the one political-leader selector, portrait required. */
 const portraitFor = (isoCode: ISOCountryCode) => {
-  const entry = LEADERS[isoCode]
-  const state = entry?.headOfState?.image ? entry.headOfState : undefined
-  const government = entry?.headOfGovernment?.image ? entry.headOfGovernment : undefined
-  if (!state && !government) return undefined
-
-  const factbookLeader = COUNTRIES[isoCode].government?.leader ?? ''
-
-  const named = [state, government].find(role => role && namesOverlap(role.name, factbookLeader))
-  const byTitle = /prime minister|chancellor|taoiseach|premier/i.test(factbookLeader)
-    ? government
-    : /president|king|queen|emir|sultan|emperor|pope/i.test(factbookLeader)
-      ? state
-      : undefined
-
-  const leader = named ?? byTitle ?? government ?? state
+  const leader = politicalLeader(isoCode, { requireImage: true })
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
@@ -2311,7 +2187,7 @@ const pickThemedFindCountry = (
 ): ISOCountryCode => {
   const withProperty = (predicate: (isoCode: ISOCountryCode) => boolean) => {
     const themed = pool.filter(predicate)
-    return pickLargeCountry(themed.length ? themed : pool)
+    return pickSizedCountry(themed.length ? themed : pool, 'large')!
   }
   switch (accessorId) {
     case 'government.leader':
@@ -2319,7 +2195,7 @@ const pickThemedFindCountry = (
     case 'currency':
       return withProperty(isoCode => !!COUNTRIES[isoCode].currency)
     default:
-      return pickLargeCountry(pool)
+      return pickSizedCountry(pool, 'large')!
   }
 }
 
@@ -2545,15 +2421,11 @@ export const accessorTopicLabel = (
     .trim()
 }
 
-/**
- * Returns client side challenge details like question copy and presentational attributes
- */
-export const getChallengeDetails = (
-  accessorID: IndividualChallengeAccessorId | GroupChallengeAccessorId
-): ChallengeConfiguration => {
-  const challenges: {
-    [key in IndividualChallengeAccessorId | GroupChallengeAccessorId]: ChallengeConfiguration
-  } = {
+// Module-scope constant: the details table is pure copy, and rebuilding a
+// ~500-line literal on every call (dealers loop over it) was pure waste.
+const CHALLENGE_DETAILS: {
+  [key in IndividualChallengeAccessorId | GroupChallengeAccessorId]: ChallengeConfiguration
+} = {
     'economics.gdpPerCapita': {
       topic: 'economics',
       phrasing: 'Rank the following countries by GDP per capita',
@@ -3047,10 +2919,14 @@ export const getChallengeDetails = (
         least: 'fewest emissions',
       },
     },
-  }
-
-  return challenges[accessorID]
 }
+
+/**
+ * Returns client side challenge details like question copy and presentational attributes
+ */
+export const getChallengeDetails = (
+  accessorID: IndividualChallengeAccessorId | GroupChallengeAccessorId
+): ChallengeConfiguration => CHALLENGE_DETAILS[accessorID]
 
 /** ScalePlot's prop object, flattened from a stat's ChallengeScale + ChallengeMarkers. */
 export interface ScalePlotProps {

@@ -147,8 +147,8 @@ const rows = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .ranking-reveal {
   display: flex;

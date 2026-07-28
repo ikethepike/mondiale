@@ -42,6 +42,7 @@ import {
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -80,7 +81,7 @@ const named = ref(new Set<ISOCountryCode>())
 const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
+const { viewBox } = useMapViewBox()
 
 const durationMs = props.challenge.durationSeconds * 1000
 // The sweep clock starts once the camera has settled and the bounds are
@@ -175,15 +176,6 @@ const positionSeaNight = () => {
 
 let ticker: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
-let mapSvg: SVGSVGElement | null = null
-
-const readViewBox = () => {
-  mapSvg ??= document.querySelector('.game-map svg')
-  const raw = mapSvg?.getAttribute('viewBox')?.split(/\s+/).map(Number)
-  if (raw?.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
 
 const finish = () => {
   if (finished.value) return
@@ -238,7 +230,6 @@ const start = () => {
   guessInput.value?.focus()
   ticker = setInterval(() => {
     elapsedMs.value = performance.now() - startedAt
-    readViewBox()
     lockSweepBounds()
     // Until the camera settles and the bounds lock, the night stays entirely
     // off-screen (the --sunset-veil fallback) and takes no land — positioning
@@ -340,7 +331,7 @@ body.sunset-blitz {
       hsla(35, 95%, 58%, 0.55) 2vw,
       hsla(2, 65%, 45%, 0.55) 8vw,
       hsla(216, 50%, 7%, 0.85) 20vw,
-      hsl(216, 50%, 7%) 38vw
+      var(--night-page) 38vw
     );
     transition: transform 0.12s linear;
     will-change: transform;
@@ -352,7 +343,7 @@ body.sunset-blitz {
 // outranks the engine's inline fill writes without needing !important —
 // which would kill the dusk roll entirely.
 .game-map path[data-id].sunset-dark {
-  stroke: hsla(216, 24%, 52%, 0.65) !important;
+  stroke: var(--night-stroke) !important;
   stroke-width: 1.1px !important;
   vector-effect: non-scaling-stroke;
   animation: country-dusk 3.6s var(--ease-smooth) forwards;
@@ -366,7 +357,7 @@ body.sunset-blitz {
     fill: hsl(30, 62%, 60%);
   }
   100% {
-    fill: hsl(216, 42%, 15%);
+    fill: var(--night-land);
   }
 }
 
@@ -375,12 +366,12 @@ body.sunset-blitz {
 // dark. The blanket excludes the animated/lit paths so it can't fight them,
 // and outranks the correct/incorrect map wash at the reveal.
 body.sunset-settled {
-  background: hsl(216, 50%, 7%);
+  background: var(--night-page);
   transition: background 1.4s var(--ease-smooth);
 
   .game-map path[data-id]:not(.sunset-lit):not(.sunset-dark) {
-    fill: hsl(216, 42%, 15%) !important;
-    stroke: hsla(216, 24%, 52%, 0.65) !important;
+    fill: var(--night-land) !important;
+    stroke: var(--night-stroke) !important;
     stroke-width: 1.1px !important;
     vector-effect: non-scaling-stroke;
     transition:
@@ -412,7 +403,7 @@ body.sunset-settled {
   // Without the dusk animation the night fill must land directly
   .game-map path[data-id].sunset-dark {
     animation: none;
-    fill: hsl(216, 42%, 15%) !important;
+    fill: var(--night-land) !important;
   }
 }
 </style>

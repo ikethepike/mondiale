@@ -3,31 +3,28 @@
     <h2 class="headline">
       {{ headline }}
     </h2>
-    <ol class="placements">
-      <li v-for="row in rows" :key="row.playerId" class="placement">
-        <PlayerPawn class="pawn" :player="players[row.playerId]" />
-        <span class="name">{{ row.name }}</span>
-        <span class="fate">{{ row.fate }}</span>
-        <span class="links">{{ row.links }} {{ row.links === 1 ? 'link' : 'links' }}</span>
-      </li>
-    </ol>
+    <PlacementList :rows="rows" :players="players" />
     <div v-if="myOuts.length" class="outs">
       <p class="outs-lead">You had {{ myOuts.length === 1 ? 'an open door' : 'open doors' }}:</p>
-      <ul class="doors">
-        <li v-for="isoCode in shownOuts" :key="isoCode" class="door">
-          <CountryFlag class="door-flag" :country="getCountry(isoCode)" mode="background" />
-          <span>{{ countryName(getCountry(isoCode)) }}</span>
-        </li>
+      <ul class="doors country-chip-list">
+        <CountryChip
+          v-for="isoCode in shownOuts"
+          :key="isoCode"
+          compact
+          class="door"
+          :country="getCountry(isoCode)"
+        />
         <li v-if="overflowCount" class="door more">+ {{ overflowCount }} others</li>
       </ul>
     </div>
   </section>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
-import { countryName, getCountry } from '~~/lib/country'
+import CountryChip from '~/components/country/CountryChip.vue'
+import PlacementList from '~/components/challenge/PlacementList.vue'
+import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
@@ -39,7 +36,7 @@ const props = defineProps<{
   playerId: string
 }>()
 
-const nameOf = (playerId: string) => props.players[playerId]?.name || 'Anonymous'
+const nameOf = (playerId: string) => playerDisplayName(props.players[playerId])
 
 const headline = computed(() => {
   const winnerId = standingPlayers(props.state)[0]
@@ -65,11 +62,12 @@ const rows = computed(() => {
           : outcome === 'timeout'
             ? 'ran out of clock'
             : 'stepped off the map'
+    const links = props.state.named[playerId]?.length ?? 0
     return {
       playerId,
-      name: playerId === props.playerId ? 'You' : nameOf(playerId),
+      name: seatLabel(props.players, playerId, props.playerId),
       fate,
-      links: props.state.named[playerId]?.length ?? 0,
+      tail: `${links} ${links === 1 ? 'link' : 'links'}`,
     }
   })
 })
@@ -80,6 +78,7 @@ const shownOuts = computed(() => myOuts.value.slice(0, MAX_DOORS_SHOWN))
 const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS_SHOWN))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .chain-reveal {
   gap: 0.9rem;
   display: flex;
@@ -91,42 +90,6 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
 .headline {
   margin: 0;
   font-size: 1.8rem;
-}
-
-.placements {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: column nowrap;
-}
-
-.placement {
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
-  font-size: 1.3rem;
-
-  .pawn {
-    width: 1.2rem;
-    height: 1.85rem;
-    flex: none;
-  }
-
-  .name {
-    font-weight: bold;
-  }
-
-  .fate {
-    opacity: 0.75;
-  }
-
-  .links {
-    opacity: 0.6;
-    margin-left: auto;
-    white-space: nowrap;
-  }
 }
 
 .outs {
@@ -141,33 +104,24 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
   }
 }
 
+// Chip and list recipes come from templates/_country-chip.scss;
+// doors only add their hairline pill.
 .doors {
   gap: 0.45rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
+  justify-content: flex-start;
 }
 
 .door {
-  gap: 0.55rem;
-  display: flex;
-  padding: 0.3rem 0.9rem;
   font-size: 1.15rem;
-  align-items: center;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+  border: 0.1rem solid ink(0.3);
   border-radius: 1.2rem;
 
   &.more {
     opacity: 0.65;
+    display: flex;
+    align-items: center;
+    padding: 0.3rem 0.9rem;
     border-style: dashed;
   }
-}
-
-.door-flag {
-  width: 1.8rem;
-  height: 1.25rem;
-  border: 0.05rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
 }
 </style>

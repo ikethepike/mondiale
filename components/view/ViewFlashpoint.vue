@@ -1,5 +1,5 @@
 <template>
-  <section v-if="challenge" class="flashpoint">
+  <section v-if="challenge" class="flashpoint challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -17,25 +17,20 @@
         :abroad="submitted ? abroadField : undefined"
       />
 
-      <header>
-        <div class="prompt">
-          <h1 class="map-caption">
-            {{ submitted ? verdictHeadline : 'Where did this happen?' }}
-          </h1>
-          <span v-if="submitted && abroadField" class="map-caption sub"
-            >Amber dots — recorded clashes abroad, in conflicts it joined.</span
-          >
-          <span v-if="!submitted" class="map-caption sub"
-            >One dot, one recorded clash since 1989 — where it happened, not how many died.</span
-          >
-          <Transition name="caption">
-            <span v-if="lateHint" class="map-caption late-hint">{{ lateHint }}</span>
-          </Transition>
-          <Transition name="caption">
-            <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-          </Transition>
-        </div>
-      </header>
+      <ChallengePrompt :hint="hint">
+        <h1 class="map-caption">
+          {{ submitted ? verdictHeadline : 'Where did this happen?' }}
+        </h1>
+        <span v-if="submitted && abroadField" class="map-caption sub"
+          >Amber dots — recorded clashes abroad, in conflicts it joined.</span
+        >
+        <span v-if="!submitted" class="map-caption sub"
+          >One dot, one recorded clash since 1989 — where it happened, not how many died.</span
+        >
+        <Transition name="caption">
+          <span v-if="lateHint" class="map-caption late-hint">{{ lateHint }}</span>
+        </Transition>
+      </ChallengePrompt>
 
       <section class="stage">
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -88,17 +83,16 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ConflictDotField from '~/components/challenge/ConflictDotField.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import type { ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
 
 const {
@@ -108,6 +102,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   stopCountdown,
   hint,
@@ -154,14 +149,6 @@ const lateHint = computed(() => {
   return active.durationSeconds - secondsLeft.value >= wavesDone + 2 ? active.hint : ''
 })
 
-/** Options already picked and wrong — greyed out, and counted against the cap. */
-const spent = ref<ISOCountryCode[]>([])
-const attemptsUsed = computed(() => spent.value.length)
-const attemptsLeft = computed(() =>
-  challenge.value?.maximumGuesses
-    ? challenge.value.maximumGuesses - attemptsUsed.value
-    : Number.POSITIVE_INFINITY
-)
 
 const start = async () => {
   const active = challenge.value
@@ -219,92 +206,27 @@ const submitRound = (score: number) => {
   submitOnce(correct ? [active.country] : [], score)
 }
 
-/** Option variants pay by attempt; hard mode free-types against the clock. */
-const scoreFor = (active: NonNullable<typeof challenge.value>) =>
-  active.maximumGuesses
-    ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
-    : buzzScore(active.maximumPoints, secondsLeft.value / active.durationSeconds)
-
-const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || !started.value) return
-
-  // The winning guess is never broadcast — it would hand opponents the answer.
-  if (country.isoCode === active.country) return submitRound(scoreFor(active))
-
-  if (active.maximumGuesses) {
-    if (spent.value.includes(country.isoCode)) return
-    spent.value = [...spent.value, country.isoCode]
-    if (attemptsLeft.value <= 0) {
-      announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses' })
-      return submitRound(0)
-    }
-  }
-
-  const left = attemptsLeft.value
-  announce({
-    kind: 'wrong',
-    isoCode: country.isoCode,
-    hint: Number.isFinite(left)
-      ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
-      : `${countryName(country)} — not it`,
-  })
-}
+// The winning guess is never broadcast — outside hard mode the small option
+// table makes even a wrong name too strong a clue (policy drops to presence).
+const { spent, onGuess } = useAttemptOptions({
+  challenge,
+  submitted,
+  started,
+  remainingFraction,
+  announce,
+  submitRound,
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-.flashpoint {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  pointer-events: none;
-  flex-flow: column nowrap;
-  justify-content: space-between;
+
+header .sub,
+header .late-hint {
+  max-width: min(80vw, 44rem);
 }
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint,
-  .late-hint {
-    padding: 0.4rem 1.4rem;
-    max-width: min(80vw, 44rem);
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .late-hint {
-    font-weight: 600;
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow.
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
+header .late-hint {
+  padding: 0.4rem 1.4rem;
+  font-weight: 600;
 }
 
 .stage {
@@ -314,10 +236,6 @@ header .prompt .hint {
   flex-flow: column nowrap;
 }
 
-.console {
-  width: min(42rem, 100%);
-}
-
 // The options variant's round clock, centred above the flag grid.
 .footer-clock {
   --clock-size: 5.6rem;
@@ -325,8 +243,6 @@ header .prompt .hint {
 }
 
 footer {
-  z-index: 2;
-  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -343,67 +259,16 @@ footer {
 }
 
 .card-options {
-  gap: 1.4rem;
-  display: grid;
-  pointer-events: auto;
   grid-template-columns: repeat(2, minmax(14rem, 20rem));
-}
-.card-option {
-  cursor: pointer;
-  padding: 1rem;
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-  border-radius: 1.2rem;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  transition:
-    transform var(--motion-quick) var(--ease-out-expressive),
-    border-color var(--motion-quick) var(--ease-out-expressive);
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      transform: translateY(-0.3rem);
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active:not(:disabled) {
-    border-color: var(--dark-blue);
-  }
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-  &.is-spent {
-    opacity: 0.35;
-    border-color: var(--hior-ange);
-  }
-
-  .option-flag {
-    width: 100%;
-    height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  }
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
   .card-options {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  footer {
-    width: 100%;
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-
-    &.has-input {
-      padding-bottom: clamp(8rem, 24dvh, 20rem);
-    }
+  footer.has-input {
+    padding-bottom: clamp(8rem, 24dvh, 20rem);
   }
 }
 </style>

@@ -35,6 +35,8 @@
 </template>
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { clamp01 } from '~~/lib/number'
+import { prefersReducedMotion } from '~~/lib/motion'
 
 /**
  * The round clock: one radial element carrying both the draining arc and the
@@ -92,7 +94,7 @@ const frame = () => {
 }
 
 const fraction = computed(() =>
-  props.total ? Math.min(1, Math.max(0, smoothSeconds.value / props.total)) : 0
+  props.total ? clamp01(smoothSeconds.value / props.total) : 0
 )
 
 // Entrance: the arc sweeps in from empty to the current fraction, pulling the
@@ -109,7 +111,7 @@ onMounted(() => {
     sweeping.value = false
   }, 1000)
   // Reduced motion keeps the arc stepping in whole seconds.
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!prefersReducedMotion()) {
     frameHandle = requestAnimationFrame(frame)
   }
 })
@@ -128,6 +130,7 @@ const low = computed(() => seconds.value <= 10 && fraction.value < 1)
 const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 // Sized through custom properties so the shared .round-clock placement rules
 // (and future hosts) can scale the dial without fighting scoped specificity.
 // No `position` of its own: the dial stacks svg and numeral in one grid cell,
@@ -150,8 +153,8 @@ const critical = computed(() => seconds.value <= 5 && fraction.value < 1)
 }
 
 .disc {
-  fill: var(--clock-disc-fill, hsla(36, 100%, 98%, 0.88));
-  stroke: var(--clock-disc-stroke, hsla(215.7, 76.4%, 21.6%, 0.25));
+  fill: var(--clock-disc-fill, milk(0.88));
+  stroke: var(--clock-disc-stroke, ink(0.25));
   stroke-width: 1;
 }
 

@@ -5,6 +5,7 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { formatAmount } from '~~/lib/number'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { politicalLeader } from '~~/lib/leaders'
 import { processReplacements } from '~~/lib/values'
@@ -274,7 +275,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
         )} claim — really ${countryName(challenge.lieSource)}'s`,
         facts: challenge.statements.map(statement => ({
           label: accessorTopicLabel(statement.accessorId),
-          value: `${statement.amount.toLocaleString()} ${statement.unit}`.trim(),
+          value: formatAmount(statement),
         })),
         focus: [challenge.country],
       }

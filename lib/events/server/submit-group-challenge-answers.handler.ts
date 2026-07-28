@@ -12,9 +12,11 @@ import {
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
+import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { blitzScore } from '~~/lib/scoring'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { GroupChallengeAnswer } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import { defineGameHandler } from '../server-side'
 import { movesForScoredPoints } from './moves'
 
@@ -22,9 +24,8 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
   'submit-group-challenge-answers',
   async ({ game, player, server, eventData, eventTarget }) => {
     const { playerId } = eventTarget
-    const { length } = game.rounds
-    const currentRound = game.rounds[length - 1]
-    if (!currentRound) throw new ReferenceError(`Unable to find round by index: ${length - 1}`)
+    const currentRound = latestRound(game)
+    if (!currentRound) throw new ReferenceError('No round in play to submit answers for')
 
     // A repeat submission (double-click, reconnect replay) would re-score the
     // round and rebuild the player's moves — possibly mid-walk
@@ -36,168 +37,137 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     // ranking, a traversal guess set, named neighbours, a probe trail…
     const roundChallenge = currentRound.groupChallenge
     const kind = roundChallengeKind(roundChallenge)
-    let scoring: { scored: number; maximum: number }
-    let answer: GroupChallengeAnswer
+    // Definite-assignment asserted: every switch arm assigns, some through
+    // the buzzOn/blitzOn closures TypeScript's flow analysis can't follow.
+    let scoring!: { scored: number; maximum: number }
+    let answer!: GroupChallengeAnswer
+
+    /** Buzz modes are all-or-nothing: one target country, a client-claimed
+     *  score the server clamps to the pot when the pick was right. */
+    const buzzOn = (
+      challenge: { country: ISOCountryCode; maximumPoints: number },
+      correct = eventData.ranking[0] === challenge.country
+    ) => {
+      answer = { submitted: eventData.ranking, correct: [challenge.country] }
+      scoring = clampClientScore(eventData.clientScore, challenge.maximumPoints, correct)
+    }
+
+    /** Blitz modes: name as many of the answer set as the clock allows. */
+    const blitzOn = (challenge: { countries: ISOCountryCode[]; maximumPoints: number }) => {
+      answer = { submitted: eventData.ranking, correct: challenge.countries }
+      scoring = blitzScore(challenge.countries, eventData.ranking, challenge.maximumPoints)
+    }
 
     switch (kind) {
       case 'traversal': {
-        if (roundChallenge._type !== 'traversal-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: roundChallenge.optimalPath }
+        const challenge = expectChallengeType(roundChallenge, 'traversal-challenge')
+        answer = { submitted: eventData.ranking, correct: challenge.optimalPath }
         scoring = scoreTraversalSubmission({
-          challenge: roundChallenge,
+          challenge,
           submittedGuesses: eventData.ranking,
         })
         break
       }
       case 'neighbour-blitz': {
-        if (roundChallenge._type !== 'neighbour-blitz-challenge') {
-          throw new TypeError('kind mismatch')
-        }
-        answer = { submitted: eventData.ranking, correct: roundChallenge.neighbours }
-        scoring = blitzScore(
-          roundChallenge.neighbours,
-          eventData.ranking,
-          roundChallenge.maximumPoints
-        )
+        const challenge = expectChallengeType(roundChallenge, 'neighbour-blitz-challenge')
+        answer = { submitted: eventData.ranking, correct: challenge.neighbours }
+        scoring = blitzScore(challenge.neighbours, eventData.ranking, challenge.maximumPoints)
         break
       }
       case 'hot-cold': {
-        if (roundChallenge._type !== 'hot-cold-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = scoreHotCold({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        const challenge = expectChallengeType(roundChallenge, 'hot-cold-challenge')
+        answer = { submitted: eventData.ranking, correct: [challenge.country] }
+        scoring = scoreHotCold({ challenge, submittedGuesses: eventData.ranking })
         break
       }
       case 'silhouette': {
-        if (roundChallenge._type !== 'silhouette-challenge') throw new TypeError('kind mismatch')
-        const correct = eventData.ranking[0] === roundChallenge.country
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        buzzOn(expectChallengeType(roundChallenge, 'silhouette-challenge'))
         break
       }
       case 'stat-detective': {
-        if (roundChallenge._type !== 'stat-detective-challenge') {
-          throw new TypeError('kind mismatch')
-        }
-        const correct = eventData.ranking[0] === roundChallenge.country
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        buzzOn(expectChallengeType(roundChallenge, 'stat-detective-challenge'))
         break
       }
       case 'two-truths': {
-        if (roundChallenge._type !== 'two-truths-challenge') throw new TypeError('kind mismatch')
         // Spotting the lie is all-or-nothing; the client reports the pick as
         // the mystery country when the lie was found
-        const correct = eventData.ranking[0] === roundChallenge.country
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        buzzOn(expectChallengeType(roundChallenge, 'two-truths-challenge'))
         break
       }
       case 'river-run':
       case 'shared-shores':
       case 'highlands': {
-        if (roundChallenge._type !== 'water-blitz-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
-        scoring = blitzScore(
-          roundChallenge.countries,
-          eventData.ranking,
-          roundChallenge.maximumPoints
-        )
+        blitzOn(expectChallengeType(roundChallenge, 'water-blitz-challenge'))
         break
       }
       case 'mother-tongue': {
-        if (roundChallenge._type !== 'mother-tongue-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
-        scoring = blitzScore(
-          roundChallenge.countries,
-          eventData.ranking,
-          roundChallenge.maximumPoints
-        )
+        blitzOn(expectChallengeType(roundChallenge, 'mother-tongue-challenge'))
         break
       }
       case 'flag-palette': {
-        if (roundChallenge._type !== 'flag-palette-challenge') throw new TypeError('kind mismatch')
         // Palette twins (Chile/Russia) are indistinguishable from the swatches
         // alone — the shared verdict accepts any exact colour match.
-        const correct = isFlagPaletteMatch(roundChallenge, eventData.ranking[0])
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        const challenge = expectChallengeType(roundChallenge, 'flag-palette-challenge')
+        buzzOn(challenge, isFlagPaletteMatch(challenge, eventData.ranking[0]))
         break
       }
       case 'capital-guess': {
-        if (roundChallenge._type !== 'capital-guess-challenge') throw new TypeError('kind mismatch')
-        const correct = eventData.ranking[0] === roundChallenge.country
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        buzzOn(expectChallengeType(roundChallenge, 'capital-guess-challenge'))
         break
       }
       case 'flashpoint': {
-        if (roundChallenge._type !== 'flashpoint-challenge') throw new TypeError('kind mismatch')
-        const correct = eventData.ranking[0] === roundChallenge.country
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.country] }
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, correct)
+        buzzOn(expectChallengeType(roundChallenge, 'flashpoint-challenge'))
         break
       }
       case 'ghost-state': {
-        if (roundChallenge._type !== 'ghost-state-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.parent] }
-        scoring = await scoreGhostState({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        const challenge = expectChallengeType(roundChallenge, 'ghost-state-challenge')
+        answer = { submitted: eventData.ranking, correct: [challenge.parent] }
+        scoring = await scoreGhostState({ challenge, submittedGuesses: eventData.ranking })
         break
       }
       case 'no-mans-land': {
-        if (roundChallenge._type !== 'no-mans-land-challenge') throw new TypeError('kind mismatch')
+        const challenge = expectChallengeType(roundChallenge, 'no-mans-land-challenge')
         // An empty submission is a real answer here, not a non-answer: for
         // Bir Tawil, which nobody claims, naming nobody is the correct play.
-        answer = { submitted: eventData.ranking, correct: roundChallenge.claimants }
-        scoring = scoreNoMansLand({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        answer = { submitted: eventData.ranking, correct: challenge.claimants }
+        scoring = scoreNoMansLand({ challenge, submittedGuesses: eventData.ranking })
         break
       }
       case 'empire': {
-        if (roundChallenge._type !== 'empire-challenge') throw new TypeError('kind mismatch')
-        const pots = empirePots(roundChallenge.maximumPoints)
+        const challenge = expectChallengeType(roundChallenge, 'empire-challenge')
+        const pots = empirePots(challenge.maximumPoints)
         // Beat 1: the server re-derives correctness from the id and clamps the
         // claimed buzz points to beat 1's share — a wrong or absent buzz pays
         // nothing there, but beat 2 still scores in full.
         const guessedId = eventData.empire?.guessedId
-        const named = guessedId === roundChallenge.empireId
+        const named = guessedId === challenge.empireId
         const beat1 = clampClientScore(eventData.empire?.clientScore, pots.name, named)
         // Beat 2: server-derived Jaccard over the pinned core; partials forgiven.
         const beat2 = scoreEmpireExtent({
-          challenge: roundChallenge,
+          challenge,
           taps: eventData.ranking,
           maximumPoints: pots.extent,
         })
         answer = {
           submitted: eventData.ranking,
-          correct: roundChallenge.members,
+          correct: challenge.members,
           ...(guessedId !== undefined ? { empireGuess: { id: guessedId, correct: named } } : {}),
         }
-        scoring = { scored: beat1.scored + beat2.scored, maximum: roundChallenge.maximumPoints }
+        scoring = { scored: beat1.scored + beat2.scored, maximum: challenge.maximumPoints }
         break
       }
       case 'trend-race': {
-        if (roundChallenge._type !== 'trend-race-challenge') throw new TypeError('kind mismatch')
-        answer = { submitted: eventData.ranking, correct: [roundChallenge.standings[0]] }
-        scoring = scoreTrendRace({
-          challenge: roundChallenge,
-          submittedGuesses: eventData.ranking,
-        })
+        const challenge = expectChallengeType(roundChallenge, 'trend-race-challenge')
+        answer = { submitted: eventData.ranking, correct: [challenge.standings[0]] }
+        scoring = scoreTrendRace({ challenge, submittedGuesses: eventData.ranking })
         break
       }
       case 'pin-landmark': {
-        if (roundChallenge._type !== 'pin-landmark-challenge') throw new TypeError('kind mismatch')
+        const challenge = expectChallengeType(roundChallenge, 'pin-landmark-challenge')
         // The pin IS the answer — there's no country to submit, and the server
         // resolves the landmark's real point from the slug rather than trusting
         // any distance the client claims.
-        const result = scorePinLandmark({ challenge: roundChallenge, pin: eventData.pin })
+        const result = scorePinLandmark({ challenge, pin: eventData.pin })
         answer = {
           submitted: [],
           correct: [],
@@ -208,26 +178,26 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         break
       }
       case 'name-that-water': {
-        if (roundChallenge._type !== 'name-water-challenge') throw new TypeError('kind mismatch')
+        const challenge = expectChallengeType(roundChallenge, 'name-water-challenge')
         // The guessed NAME is validated client-side (it isn't an ISO code);
         // the scorecard shows the feature's shore countries as the answer
-        answer = { submitted: eventData.ranking, correct: roundChallenge.countries }
+        answer = { submitted: eventData.ranking, correct: challenge.countries }
         scoring = clampClientScore(
           eventData.clientScore,
-          roundChallenge.maximumPoints,
+          challenge.maximumPoints,
           (eventData.clientScore ?? 0) > 0
         )
         break
       }
       case 'sketch': {
-        if (roundChallenge._type !== 'sketch-challenge') throw new TypeError('kind mismatch')
+        const challenge = expectChallengeType(roundChallenge, 'sketch-challenge')
         answer = {
-          submitted: [roundChallenge.country],
-          correct: [roundChallenge.country],
+          submitted: [challenge.country],
+          correct: [challenge.country],
           sketch: eventData.sketch,
         }
         // Sketches always "count" — the client-computed similarity IS the score
-        scoring = clampClientScore(eventData.clientScore, roundChallenge.maximumPoints, true)
+        scoring = clampClientScore(eventData.clientScore, challenge.maximumPoints, true)
         break
       }
       default: {
@@ -251,13 +221,13 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       }
     }
 
-    game.rounds[length - 1].groupAnswers[playerId] = answer
+    currentRound.groupAnswers[playerId] = answer
 
     // Test hook: FORCE_FINAL_CHALLENGE=1 teleports every player next to the
     // final tile after this round, so its gauntlet starts within seconds
     if (typeof process !== 'undefined' && process.env?.FORCE_FINAL_CHALLENGE === '1') {
       const finalTile = game.tiles[game.tiles.length - 1]
-      game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
+      currentRound.playerTurns[playerId] = { points: scoring }
       player.phase = 'group-scores'
       player.currentPosition = finalTile.position - 1
       player.moves = [
@@ -271,7 +241,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       return
     }
 
-    game.rounds[length - 1].playerTurns[playerId] = { points: scoring }
+    currentRound.playerTurns[playerId] = { points: scoring }
 
     player.phase = 'group-scores'
     player.moves = movesForScoredPoints({ game, player, scored: scoring.scored })

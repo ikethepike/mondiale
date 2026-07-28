@@ -1,7 +1,7 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { gateLeapSteps } from '~~/lib/scoring'
-import { defineGameHandler, enqueueGameTask } from '../server-side'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
+import { defineGameHandler } from '../server-side'
+import { scheduleMovementPhase } from './enter-movement-phase.handler'
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
@@ -48,18 +48,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // The pause runs OUTSIDE the per-game queue — holding the lock for five
     // seconds would stall every other player's events — and the follow-up
     // re-enters through the queue with a fresh game fetch.
-    setTimeout(() => {
-      enqueueGameTask(eventTarget.gameId, () =>
-        enterMovementPhaseHandler({
-          io,
-          redis,
-          socket,
-          eventTarget,
-          eventKey: 'enter-movement-phase',
-          eventData: { event: 'enter-movement-phase' },
-        })
-      )
-    }, 5000)
+    scheduleMovementPhase(5000, { io, redis, socket, eventTarget })
   },
   { player: 'warn' }
 )

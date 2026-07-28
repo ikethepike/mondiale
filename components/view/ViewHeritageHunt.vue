@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge && site" class="heritage-hunt">
+  <div v-if="challenge && site" class="heritage-hunt challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,44 +9,27 @@
       @done="begin()"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">
-          {{ headline }}
-        </h1>
-        <span class="map-caption sub beat-line">
-          <span>Photo {{ state!.beat + 1 }} of {{ challenge.slugs.length }}</span>
-          <span
-            v-if="!state!.revealing && !state!.finished"
-            class="clock"
-            :class="{ urgent: secondsOnClock <= 5 }"
-          >
-            {{ secondsOnClock }}s
-          </span>
-        </span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">
+        {{ headline }}
+      </h1>
+      <span class="map-caption sub beat-line">
+        <span>Photo {{ state!.beat + 1 }} of {{ challenge.slugs.length }}</span>
+        <ChallengeTimerRadial
+          v-if="!state!.revealing && !state!.finished"
+          class="beat-clock"
+          :value="secondsOnClock"
+          :total="challenge.beatSeconds"
+        />
+      </span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <Transition name="dossier">
       <article v-if="state!.revealing || state!.finished" class="pane dossier tr decorator-bottom">
         <div class="pane-content">
           <HeritageReveal :site="site" />
-          <ol class="standings">
-            <li
-              v-for="(row, index) in beatStandings"
-              :key="row.playerId"
-              :class="{ best: index === 0 && beatStandings.length > 1 }"
-            >
-              <PlayerPawn class="pawn" :player="gameStore.game?.players[row.playerId]" />
-              <span class="name">{{ row.name }}</span>
-              <span v-if="index === 0 && beatStandings.length > 1" class="crown">nails it</span>
-              <span class="distance">{{ row.distance }}</span>
-            </li>
-          </ol>
+          <PlacementList :rows="beatStandings" :players="gameStore.game?.players ?? {}" />
         </div>
       </article>
     </Transition>
@@ -71,16 +54,21 @@
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import MediaDock from '~/components/challenge/MediaDock.vue'
+import PlacementList from '~/components/challenge/PlacementList.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import HeritageReveal from '~/components/feedback/HeritageReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { HERITAGE } from '~~/data/heritage.gen'
 import type { LatLng } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
+import { seatLabel } from '~~/lib/player'
 import { isMapClickEvent } from '~~/types/events.types'
 
 const {
@@ -127,27 +115,22 @@ const beatStandings = computed(() => {
       const entry = current.pins[playerId]?.[current.beat]
       return {
         playerId,
-        name:
-          playerId === gameStore.playerId
-            ? 'You'
-            : gameStore.game?.players[playerId]?.name || 'Anonymous',
+        name: seatLabel(gameStore.game?.players, playerId, gameStore.playerId),
         distanceKm: entry?.distanceKm,
-        distance:
+        tail:
           entry?.distanceKm !== undefined
-            ? `${Math.round(entry.distanceKm).toLocaleString()} km`
+            ? formatKm(entry.distanceKm)
             : 'no pin',
       }
     })
     .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+    // The closest pin wears the crown — through the shared fate slot.
+    .map((row, index, rows) =>
+      index === 0 && rows.length > 1 ? { ...row, fate: 'nails it' } : row
+    )
 })
 
-// --- Beat clock (server-owned deadline) --------------------------------------
-const secondsOnClock = ref(0)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
+const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 // --- Pinning ------------------------------------------------------------------
 const lockIn = () => {
@@ -202,65 +185,15 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.heritage-hunt {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-  .prompt .hint {
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 3;
-    width: max-content;
-    max-width: 100%;
-    position: absolute;
-    margin: 0.4rem auto 0;
-  }
-}
-
 .beat-line {
   gap: 0.8rem;
   display: inline-flex;
   align-items: center;
 
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-
-    &.urgent {
-      color: var(--hior-ange);
-    }
+  // The shared radial dial at subline scale — no bespoke text clocks.
+  .beat-clock {
+    --clock-size: 2.8rem;
+    --clock-seconds-size: 1.1rem;
   }
 }
 
@@ -300,46 +233,7 @@ header {
   transform: translateY(1.5rem);
 }
 
-.standings {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: column nowrap;
-
-  li {
-    gap: 0.8rem;
-    display: flex;
-    align-items: center;
-    font-size: 1.25rem;
-
-    &.best .name {
-      font-weight: bold;
-    }
-  }
-
-  .pawn {
-    width: 1.2rem;
-    height: 1.85rem;
-    flex: none;
-  }
-
-  .crown {
-    color: var(--hior-ange);
-    font-weight: bold;
-  }
-
-  .distance {
-    opacity: 0.75;
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
 footer {
-  z-index: 2;
-  padding: 2rem;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -368,10 +262,6 @@ footer {
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   .photo-dock {
     left: 1.2rem;
     z-index: 2;
@@ -380,9 +270,6 @@ footer {
   }
 
   footer {
-    width: 100%;
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-
     :deep(.button) {
       width: 100%;
     }

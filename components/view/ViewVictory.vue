@@ -309,8 +309,8 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .victory-stage {
   top: 0;
@@ -355,8 +355,8 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
     position: absolute;
     background: radial-gradient(
       ellipse 62% 48% at center,
-      hsla(36, 100%, 98%, 0.96) 0%,
-      hsla(36, 100%, 98%, 0.82) 55%,
+      milk(0.96) 0%,
+      milk(0.82) 55%,
       transparent 78%
     );
   }
@@ -397,16 +397,6 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   display: grid;
   max-width: 110rem;
   grid-template-columns: 68% 32%;
-}
-
-.eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
-  margin-bottom: 0.8rem;
 }
 
 .report-header {
@@ -547,8 +537,8 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
   color: var(--dark-blue);
   transform: translateX(-50%);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.92);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.35);
+  background: milk(0.92);
+  border: 0.1rem solid ink(0.35);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);

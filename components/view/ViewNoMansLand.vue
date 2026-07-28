@@ -1,5 +1,5 @@
 <template>
-  <section class="no-mans-land">
+  <section class="no-mans-land challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,28 +9,35 @@
       @done="start"
     />
     <template v-else>
-      <header>
-        <div class="prompt">
-          <!-- The NE status line reads "Administered by Eritrea. Claimed by
-               Djibouti" — administrator ∪ claimants IS the answer set, so it
-               cannot be shown until the round is over. -->
-          <template v-if="!submitted">
-            <h1 class="map-caption">{{ territory?.name }}</h1>
-            <span class="map-caption sub">{{ teaser }}</span>
-          </template>
-          <template v-else-if="territory">
-            <h1 class="map-caption">{{ verdictHeadline }}</h1>
-            <span class="map-caption sub">{{ statusLine }}</span>
-          </template>
-        </div>
-      </header>
+      <ChallengePrompt>
+        <!-- The NE status line reads "Administered by Eritrea. Claimed by
+             Djibouti" — administrator ∪ claimants IS the answer set, so it
+             cannot be shown until the round is over. -->
+        <template v-if="!submitted">
+          <h1 class="map-caption">{{ territory?.name }}</h1>
+          <span class="map-caption sub">{{ teaser }}</span>
+        </template>
+        <template v-else-if="territory">
+          <h1 class="map-caption">{{ verdictHeadline }}</h1>
+          <span class="map-caption sub">{{ statusLine }}</span>
+        </template>
+      </ChallengePrompt>
 
       <footer>
         <template v-if="!submitted">
           <p class="map-caption ask">Who claims it?</p>
-          <ul v-if="picks.length" class="chips">
+          <ul v-if="picks.length" class="chips country-chip-list">
             <li v-for="isoCode in picks" :key="isoCode">
-              <button type="button" @click="toggle(isoCode)">{{ countryName(isoCode) }}</button>
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="pick map-caption"
+                :country="getCountry(isoCode)"
+                @click="toggle(isoCode)"
+              >
+                <span class="remove">×</span>
+              </CountryChip>
             </li>
           </ul>
           <!-- The round clock docks beside the lock — the action and the time
@@ -63,9 +70,11 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount, ref } from 'vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { countryName } from '~~/lib/country'
+import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -234,49 +243,15 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.no-mans-land {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  pointer-events: none;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  display: flex;
-  padding: 2rem 4rem;
-  text-align: center;
-  justify-content: center;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-    max-width: min(80vw, 40rem);
-  }
-
-  // Title, then status, stacked — never side by side.
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+header .sub {
+  max-width: min(80vw, 40rem);
 }
 
 footer {
   gap: 1rem;
-  z-index: 2;
   display: flex;
   padding: 0 2rem 2rem;
   align-items: center;
@@ -289,59 +264,31 @@ footer {
   }
 }
 
-// The countries picked so far. Tapping one takes it back off the list.
+// The countries picked so far, as shared country chips — tap one to unpick it.
 .chips {
   gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
   max-width: min(90vw, 46rem);
-  flex-wrap: wrap;
-  list-style: none;
-  justify-content: center;
-  pointer-events: auto;
-
-  button {
-    color: var(--dark-blue);
-    cursor: pointer;
-    padding: 0.35rem 0.9rem;
-    font-size: 0.95rem;
-    font-family: inherit;
-    background: hsla(36, 100%, 98%, 0.85);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-    border-radius: 999px;
-    backdrop-filter: blur(0.5rem);
-  }
 }
 
-.lock-row {
-  gap: 1rem;
-  display: flex;
-  align-items: center;
-
-  .lock-clock {
-    flex: none;
-    --clock-size: 4.6rem;
-    --clock-seconds-size: 1.5rem;
-  }
+.pick {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--dark-blue);
+  border-radius: 999px;
 }
 
-.lock {
-  pointer-events: auto;
+.remove {
+  opacity: 0.6;
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   footer {
-    width: 100%;
     padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
   // Finger-sized picked-country chips, and a full-width lock row.
-  .chips button {
+  .pick {
     font-size: 1.2rem;
     min-height: 3.2rem;
     padding: 0.4rem 1.2rem;

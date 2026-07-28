@@ -50,6 +50,7 @@ import { excludedMicroNations } from '~~/lib/game-rules'
 import { useGameStore } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
+import { clamp } from '~~/lib/number'
 
 /**
  * The typed country guess box: live suggestions with local-language names,
@@ -119,7 +120,7 @@ const highlighted = computed<Country | undefined>(() => suggestions.value[highli
 const moveHighlight = (delta: number) => {
   const options = suggestions.value
   if (!options.length) return
-  const index = Math.max(0, Math.min(highlightedIndex.value + delta, options.length - 1))
+  const index = clamp(highlightedIndex.value + delta, 0, options.length - 1)
   chosenIso.value = options[index].isoCode
 }
 
@@ -153,6 +154,7 @@ const submitTyped = () => {
 defineExpose({ focus: () => input.value?.focus() })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .guess-form {
   width: 34rem;
   max-width: 84vw;
@@ -196,8 +198,8 @@ defineExpose({ focus: () => input.value?.focus() })
   overflow-y: auto;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.94);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+  background: milk(0.94);
+  border: 0.1rem solid ink(0.2);
 
   li {
     gap: 1rem;
@@ -224,7 +226,7 @@ defineExpose({ focus: () => input.value?.focus() })
   width: 2.8rem;
   height: 1.9rem;
   flex-shrink: 0;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 .suggestion-name {

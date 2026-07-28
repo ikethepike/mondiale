@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="timeline-round">
+  <div v-if="challenge" class="timeline-round challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -18,18 +18,16 @@
       :total="challenge.turnSeconds"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">{{ headline }}</h1>
-        <!-- The handoff beat: the old name lifts away, the next settles in. -->
-        <Transition name="caption" mode="out-in">
-          <span v-if="!finished && !revealing" :key="activeId" class="map-caption sub turn-line">
-            <span class="chip" :style="{ background: activePlayer?.color }" />
-            <span>{{ turnLabel }}</span>
-          </span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt>
+      <h1 class="map-caption">{{ headline }}</h1>
+      <!-- The handoff beat: the old name lifts away, the next settles in. -->
+      <Transition name="caption" mode="out-in">
+        <span v-if="!finished && !revealing" :key="activeId" class="map-caption sub turn-line">
+          <span class="chip" :style="{ background: activePlayer?.color }" />
+          <span>{{ turnLabel }}</span>
+        </span>
+      </Transition>
+    </ChallengePrompt>
 
     <!-- Centre stage: the drawn card, its post-placement story, or the scorecard. -->
     <section class="stage">
@@ -143,6 +141,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -156,8 +155,10 @@ import {
   slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
+import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { EventEntry } from '~~/generators/create-events-file'
 
 // A card table, not a map question — the board blanks out underneath.
@@ -210,7 +211,7 @@ const headline = computed(() => {
 
 const turnLabel = computed(() => {
   if (myTurn.value) return 'Your call'
-  return `${activePlayer.value?.name || 'Anonymous'} is on the clock`
+  return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
 /** What a correct call on the current line pays — the density economy, shown. */
@@ -225,7 +226,7 @@ const stakePoints = computed(() => {
 const askLine = computed(() =>
   myTurn.value
     ? `Tap the slot on the line where this belongs — a correct call banks ${stakePoints.value} pts`
-    : `${activePlayer.value?.name || 'Anonymous'} is weighing the line`
+    : `${playerDisplayName(activePlayer.value)} is weighing the line`
 )
 
 /** "Photo: name · licence" — Commons authors earn their line on the card. */
@@ -241,10 +242,7 @@ const story = computed(() => {
   const event = timelineEvent(placement.slug)
   if (!event) return undefined
 
-  const who =
-    placement.playerId === gameStore.playerId
-      ? 'You'
-      : gameStore.game?.players[placement.playerId]?.name || 'Anonymous'
+  const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.playerId)
   const verdict = placement.correct
     ? `${who === 'You' ? 'You nail it' : `${who} nails it`} — +${placement.scored} pts`
     : placement.kind === 'timeout'
@@ -253,13 +251,7 @@ const story = computed(() => {
   return { event, correct: placement.correct, verdict }
 })
 
-// --- Shot clock (server-owned deadline; local repaint only) ------------------
-const secondsOnClock = ref(0)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  secondsOnClock.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
+const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 const clockRunning = computed(() => !showInterstitial.value && !finished.value && !revealing.value)
 
@@ -348,40 +340,8 @@ watch(freshSlug, slug => slug && scrollLineTo(`[data-stop="${CSS.escape(slug)}"]
 watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${slot}"]`))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-
-.timeline-round {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
 
 .turn-line {
   gap: 0.6rem;
@@ -438,7 +398,7 @@ header {
       position: absolute;
       padding: 0.15rem 0.6rem;
       color: var(--sour-milk);
-      background: hsla(215.7, 76.4%, 12%, 0.55);
+      background: ink(0.55, 12%);
       border-top-left-radius: 0.4rem;
     }
   }
@@ -486,7 +446,7 @@ header {
     border-radius: 50%;
     justify-content: center;
     color: var(--sour-milk);
-    background: hsla(24, 80%, 45%, 0.92);
+    background: ember(0.92, 45%);
     border: 0.15rem solid var(--sour-milk);
   }
 }
@@ -514,7 +474,7 @@ header {
   }
 
   &.lost {
-    border-color: hsla(9.8, 81.3%, 60.2%, 0.7);
+    border-color: flame(0.7);
   }
 }
 
@@ -545,7 +505,6 @@ header {
 
 // --- The line --------------------------------------------------------------------
 footer {
-  z-index: 2;
   padding: 1.4rem 2rem 2rem;
 }
 
@@ -591,8 +550,8 @@ footer {
   overflow: hidden;
   border-radius: 0.7rem;
   flex-flow: column nowrap;
-  background: hsla(36, 100%, 98%, 0.9);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: milk(0.9);
+  border: 0.1rem solid ink(0.25);
   border-bottom-width: 0.3rem;
   transition: border-color var(--motion-base) var(--ease-out-expressive);
 
@@ -632,7 +591,7 @@ footer {
 
   &.lost {
     border-color: var(--hior-ange);
-    background: hsla(9.8, 81.3%, 60.2%, 0.14);
+    background: flame(0.14);
   }
 }
 
@@ -660,7 +619,7 @@ footer {
   .tick {
     width: 0.9rem;
     height: 0.1rem;
-    background: hsla(215.7, 76.4%, 21.6%, 0.3);
+    background: ink(0.3);
   }
 
   .slot {
@@ -670,8 +629,8 @@ footer {
     border-radius: 50%;
     position: relative;
     color: var(--dark-blue);
-    background: hsla(36, 100%, 98%, 0.92);
-    border: 0.15rem dashed hsla(215.7, 76.4%, 41%, 0.65);
+    background: milk(0.92);
+    border: 0.15rem dashed ink(0.65, 41%);
     transition:
       transform var(--motion-quick) var(--ease-out-expressive),
       border-color var(--motion-quick) var(--ease-out-expressive),
@@ -764,7 +723,7 @@ footer {
 @keyframes slot-beckon {
   0%,
   100% {
-    border-color: hsla(215.7, 76.4%, 41%, 0.65);
+    border-color: ink(0.65, 41%);
     box-shadow: 0 0 0 0 hsla(197.6, 51.2%, 41.8%, 0);
   }
   50% {

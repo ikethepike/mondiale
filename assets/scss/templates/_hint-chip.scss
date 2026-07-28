@@ -1,0 +1,41 @@
+@use '../rules/ink' as *;
+
+// The paid-hint surface: a row of buyable hint chips, each an icon + label +
+// price. One recipe, so every mode's hint economy looks like the same shop.
+.hint-row {
+  gap: 1rem;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+}
+
+.hint-button {
+  gap: 0.7rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.4rem;
+  font-family: inherit;
+  padding: 0.6rem 1.4rem;
+  border-radius: 1.2rem;
+  pointer-events: auto;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.88);
+  border: 0.1rem solid ink(0.25);
+  transition: border-color var(--motion-quick) var(--ease-out-expressive);
+
+  .hint-icon {
+    flex-shrink: 0;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--dark-blue);
+    }
+  }
+
+  &:active {
+    border-color: var(--dark-blue);
+  }
+}

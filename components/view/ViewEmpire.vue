@@ -1,5 +1,5 @@
 <template>
-  <section v-if="challenge" class="empire">
+  <section v-if="challenge" class="empire challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -22,30 +22,25 @@
         @progress="onProgress"
       />
 
-      <header>
-        <div class="prompt">
-          <span ref="yearEl" class="map-caption year">&nbsp;</span>
-          <h1 class="map-caption">{{ headline }}</h1>
-          <Transition name="verdict">
-            <div v-if="verdict" class="verdict-banner map-caption" :class="verdict.tone">
-              <EmpireFlag
-                v-if="challenge && flags[challenge.empireId]"
-                class="verdict-flag"
-                :svg="flags[challenge.empireId]"
-              />
-              <div class="verdict-copy">
-                <small>{{ verdict.eyebrow }}</small>
-                <strong>{{ verdict.name }}</strong>
-                <span>greatest extent, {{ formatEventYear(challenge.peakYear) }}</span>
-              </div>
+      <ChallengePrompt :hint="hint">
+        <span ref="yearEl" class="map-caption year">&nbsp;</span>
+        <h1 class="map-caption">{{ headline }}</h1>
+        <Transition name="verdict">
+          <div v-if="verdict" class="verdict-banner map-caption" :class="verdict.tone">
+            <EmpireFlag
+              v-if="challenge && flags[challenge.empireId]"
+              class="verdict-flag"
+              :svg="flags[challenge.empireId]"
+            />
+            <div class="verdict-copy">
+              <small>{{ verdict.eyebrow }}</small>
+              <strong>{{ verdict.name }}</strong>
+              <span>greatest extent, {{ formatEventYear(challenge.peakYear) }}</span>
             </div>
-          </Transition>
-          <span v-if="subline" class="map-caption sub">{{ subline }}</span>
-          <Transition name="caption">
-            <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-          </Transition>
-        </div>
-      </header>
+          </div>
+        </Transition>
+        <span v-if="subline" class="map-caption sub">{{ subline }}</span>
+      </ChallengePrompt>
 
       <section class="stage">
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -104,13 +99,18 @@
         <!-- Beat 2: name the modern countries inside the frozen peak — the
              blitz-modes' skill, typed against the same bar. -->
         <template v-else-if="beat === 'tap'">
-          <ul v-if="picks.length" class="picks">
-            <li v-for="isoCode in picks" :key="isoCode" class="stop map-caption">
-              <button type="button" @click="toggle(isoCode)">
-                <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-                <span>{{ countryName(isoCode) }}</span>
+          <ul v-if="picks.length" class="picks country-chip-list">
+            <li v-for="isoCode in picks" :key="isoCode">
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="pick map-caption"
+                :country="getCountry(isoCode)"
+                @click="toggle(isoCode)"
+              >
                 <span class="remove">×</span>
-              </button>
+              </CountryChip>
             </li>
           </ul>
           <EmpireTimebar
@@ -152,7 +152,8 @@
   </section>
 </template>
 <script lang="ts" setup>
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import EmpireFlag from '~/components/challenge/EmpireFlag.vue'
 import EmpireGhostField from '~/components/challenge/EmpireGhostField.vue'
@@ -172,6 +173,7 @@ import { prefersReducedMotion } from '~~/lib/motion'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const {
@@ -181,6 +183,7 @@ const {
   started,
   submitted,
   secondsLeft,
+  remainingFraction,
   begin,
   stopCountdown,
   hint,
@@ -251,7 +254,7 @@ const headline = computed(() => {
   if (beat.value === 'guess') return 'What power is this?'
   if (beat.value === 'tap') return 'Name every modern country inside it'
   const display = empireDisplayName(empire.value?.name ?? 'the empire')
-  return `${display[0].toUpperCase()}${display.slice(1)} — greatest extent, ${formatEventYear(challenge.value?.peakYear ?? 0)}`
+  return `${sentenceCase(display)} — greatest extent, ${formatEventYear(challenge.value?.peakYear ?? 0)}`
 })
 
 const subline = computed(() => {
@@ -328,8 +331,7 @@ const lockOut = (message: string) => {
 const buzz = (guessedId: string) => {
   const active = challenge.value
   if (!active || beat.value !== 'guess') return
-  const remainingFraction = Math.max(0, secondsLeft.value / active.durationSeconds)
-  resolveBeat1(guessedId, buzzScore(pots.value.name, remainingFraction))
+  resolveBeat1(guessedId, buzzScore(pots.value.name, remainingFraction.value))
 }
 
 const onOptionPick = (option: string) => {
@@ -468,117 +470,74 @@ const submitRound = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.empire {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  pointer-events: none;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
 header {
-  z-index: 2;
-  width: 100%;
   display: flex;
-  text-align: center;
-  padding: 2rem 4rem;
   align-items: center;
   flex-flow: column nowrap;
   gap: 1rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .year {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    font-size: clamp(1.6rem, 5vw, 2.4rem);
-    padding: 0.3rem 1.6rem;
-    min-width: 9ch;
-  }
-
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-    max-width: min(80vw, 44rem);
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-
-  // The beat-1 verdict: the ghost's banner, name and worth land as one card.
-  .verdict-banner {
-    gap: 1.2rem;
-    display: flex;
-    align-items: center;
-    text-align: left;
-    padding: 0.8rem 1.6rem 0.8rem 1rem;
-    border-left: 0.4rem solid hsl(150, 45%, 36%);
-
-    &.missed {
-      border-left-color: hsla(215.7, 76.4%, 21.6%, 0.45);
-    }
-
-    .verdict-flag {
-      width: 6.4rem;
-      height: 4.2rem;
-      flex-shrink: 0;
-      filter: drop-shadow(0 0.1rem 0.3rem hsla(215.7, 76.4%, 21.6%, 0.25));
-    }
-
-    .verdict-copy {
-      display: flex;
-      flex-flow: column nowrap;
-
-      small {
-        font-size: 1.05rem;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: hsl(150, 45%, 28%);
-      }
-      strong {
-        font-size: 2rem;
-        line-height: 1.2;
-      }
-      span {
-        opacity: 0.7;
-        font-size: 1.25rem;
-        font-variant-numeric: tabular-nums;
-      }
-    }
-
-    &.missed .verdict-copy small {
-      color: hsla(215.7, 76.4%, 21.6%, 0.75);
-    }
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-
 }
 
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
+header .year {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  padding: 0.3rem 1.6rem;
+  min-width: 9ch;
+}
+
+header .sub,
+header :deep(.hint) {
+  max-width: min(80vw, 44rem);
+}
+
+// The beat-1 verdict: the ghost's banner, name and worth land as one card.
+header .verdict-banner {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 0.8rem 1.6rem 0.8rem 1rem;
+  border-left: 0.4rem solid hsl(150, 45%, 36%);
+
+  &.missed {
+    border-left-color: ink(0.45);
+  }
+
+  .verdict-flag {
+    width: 6.4rem;
+    height: 4.2rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0.1rem 0.3rem ink(0.25));
+  }
+
+  .verdict-copy {
+    display: flex;
+    flex-flow: column nowrap;
+
+    small {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(150, 45%, 28%);
+    }
+    strong {
+      font-size: 2rem;
+      line-height: 1.2;
+    }
+    span {
+      opacity: 0.7;
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &.missed .verdict-copy small {
+    color: ink(0.75);
+  }
 }
 
 .stage {
@@ -589,8 +548,6 @@ header .prompt .hint {
 }
 
 footer {
-  z-index: 2;
-  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -605,12 +562,7 @@ footer {
   }
 }
 
-// The house multiple-choice recipe (flashpoint/capital-guess card-options),
-// text-only when the round's flags aren't all-or-none honest.
 .card-options {
-  gap: 1.4rem;
-  display: grid;
-  pointer-events: auto;
   width: min(44rem, calc(100vw - 3.2rem));
   grid-template-columns: 1fr;
 
@@ -619,47 +571,18 @@ footer {
   }
 }
 .card-option {
-  cursor: pointer;
-  padding: 1rem;
-  gap: 0.8rem;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  flex-flow: column nowrap;
   font-size: 1.5rem;
   font-weight: 600;
-  border-radius: 1.2rem;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  transition:
-    transform var(--motion-quick) var(--ease-out-expressive),
-    border-color var(--motion-quick) var(--ease-out-expressive);
 
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      transform: translateY(-0.3rem);
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active:not(:disabled) {
-    border-color: var(--dark-blue);
-  }
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
   &.is-spent {
-    opacity: 0.35;
-    border-color: var(--hior-ange);
     animation: spent-shake 0.4s var(--ease-smooth);
   }
 
   .option-flag {
-    width: 100%;
     height: 4.2rem;
-    filter: drop-shadow(0 0.1rem 0.3rem hsla(215.7, 76.4%, 21.6%, 0.25));
+    border: none;
+    filter: drop-shadow(0 0.1rem 0.3rem ink(0.25));
   }
 }
 
@@ -702,45 +625,21 @@ footer {
   }
 }
 
-// Named countries, in the house flag-chip recipe (neighbour-blitz found-list).
+// Named countries as shared country chips — tap one to unpick it.
 .picks {
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  flex-flow: row wrap;
-  justify-content: center;
   max-width: min(52rem, 100%);
+}
 
-  .stop {
-    padding: 0;
+.pick {
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--dark-blue);
+}
 
-    button {
-      gap: 0.6rem;
-      border: none;
-      display: flex;
-      cursor: pointer;
-      background: none;
-      font: inherit;
-      font-size: 1.2rem;
-      font-weight: 600;
-      align-items: center;
-      color: var(--dark-blue);
-      padding: 0.3rem 0.9rem;
-    }
-  }
-
-  .stop-flag {
-    width: 2.2rem;
-    height: 1.5rem;
-    border-radius: 0.2rem;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  }
-
-  .remove {
-    opacity: 0.6;
-  }
+.remove {
+  opacity: 0.6;
 }
 
 // The timebar's lock: a quiet chip-weight action docked in the console row,
@@ -756,7 +655,7 @@ footer {
   padding: 0.5rem 1.2rem;
   border-radius: 999px;
   background: hsla(0, 0%, 100%, 0.55);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 
   @media (hover: hover) {
@@ -767,16 +666,8 @@ footer {
 }
 
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    width: 100%;
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-
-    &.has-input {
-      padding-bottom: clamp(6rem, 18dvh, 14rem);
-    }
+  footer.has-input {
+    padding-bottom: clamp(6rem, 18dvh, 14rem);
   }
   .card-options.with-flags {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -347,8 +347,8 @@ const closeScores = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-$hairline: hsla(0, 0%, 7.5%, 0.12);
 
 .group-scores {
   width: 100%;
@@ -359,16 +359,6 @@ $hairline: hsla(0, 0%, 7.5%, 0.12);
 }
 
 // Small-caps section labels carry the hierarchy
-.eyebrow {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
-  margin-bottom: 0.8rem;
-}
-
 .step-track .eyebrow {
   margin-bottom: 0.6rem;
 }

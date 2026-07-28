@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="pin-landmark">
+  <div v-if="challenge" class="pin-landmark challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,21 +9,16 @@
       @done="begin()"
     />
 
-    <header>
-      <div class="prompt">
-        <h1 v-if="!result" class="map-caption">Where in the world is this?</h1>
-        <h1 v-else class="map-caption">{{ verdict }}</h1>
-        <span v-if="result" class="map-caption sub">
-          {{ Math.round(result.distanceKm).toLocaleString() }} km from the mark
-        </span>
-        <span v-else-if="pin" class="map-caption sub pinned">{{ formatLatLng(pin) }}</span>
-        <span v-else class="map-caption sub">Click the map to drop your pin</span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 v-if="!result" class="map-caption">Where in the world is this?</h1>
+      <h1 v-else class="map-caption">{{ verdict }}</h1>
+      <span v-if="result" class="map-caption sub">
+        {{ formatKm(result.distanceKm) }} from the mark
+      </span>
+      <span v-else-if="pin" class="map-caption sub pinned">{{ formatLatLng(pin) }}</span>
+      <span v-else class="map-caption sub">Click the map to drop your pin</span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
 
     <Transition name="dossier">
       <article v-if="landmark && result" class="pane dossier tr">
@@ -45,8 +40,6 @@
     />
 
     <footer v-if="!result">
-      <!-- The round clock docks beside the lock — the action and the time
-           to act read as one row, as in the guess consoles. -->
       <div class="lock-row">
         <ButtonFilled :disabled="!pin || submitted || !started" @click="lockIn">
           {{ submitted ? 'Locked in' : 'Lock in my pin' }}
@@ -62,6 +55,7 @@
 </template>
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import MediaDock from '~/components/challenge/MediaDock.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
@@ -70,6 +64,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { haversineKm, type LatLng } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -176,42 +171,6 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.pin-landmark {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-}
-
 // The map is the answer surface, so the photo lives off to one side.
 .photo-stage {
   top: 50%;
@@ -288,25 +247,11 @@ header {
 }
 
 footer {
-  z-index: 2;
-  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
   pointer-events: auto;
-}
-
-.lock-row {
-  gap: 1rem;
-  display: flex;
-  align-items: center;
-
-  .lock-clock {
-    flex: none;
-    --clock-size: 4.6rem;
-    --clock-seconds-size: 1.5rem;
-  }
 }
 
 .pinned {
@@ -316,20 +261,11 @@ footer {
 // Phones use the MediaDock (study-then-dock) instead of the pinned photo
 // stage; the collapsed thumbnail parks bottom-left, clear of the footer.
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-
   .photo-dock {
     left: 1.2rem;
     z-index: 2;
     position: absolute;
     bottom: calc(12rem + var(--safe-bottom));
-  }
-
-  footer {
-    width: 100%;
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
   }
 
   .lock-row {
@@ -347,21 +283,5 @@ footer {
       overflow-y: auto;
     }
   }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

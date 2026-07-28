@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
+import { clamp01 } from '~~/lib/number'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { GuessKind } from '~~/types/events.types'
@@ -57,6 +58,14 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const secondsLeft = ref(duration.value ?? 0)
   let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
+
+  /** Clock left as a 0..1 fraction — what buzz scoring and staged reveals key
+   *  off. The one place the division lives; views must not re-derive it. */
+  const remainingFraction = computed(() =>
+    duration.value ? clamp01(secondsLeft.value / duration.value) : 0
+  )
+  /** 1 − remaining, for reveals that unlock as time passes. */
+  const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
   /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op. */
   const submitOnce = (ranking: ISOCountryCode[], clientScore?: number) => {
@@ -186,6 +195,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     started,
     submitted,
     secondsLeft,
+    remainingFraction,
+    elapsedFraction,
     begin,
     hint,
     announce,

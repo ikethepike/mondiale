@@ -1,6 +1,5 @@
 <template>
   <svg
-    ref="map"
     xmlns="http://www.w3.org/2000/svg"
     xml:space="preserve"
     style="
@@ -35,18 +34,3 @@
     </g>
   </svg>
 </template>
-<script lang="ts" setup>
-import { useAnimatedGameMap } from '~~/lib/animations'
-
-const { map } = useAnimatedGameMap()
-</script>
-<style scoped>
-svg {
-  width: 100%;
-  display: block;
-  max-height: 100%;
-}
-svg > * {
-  pointer-events: none;
-}
-</style>

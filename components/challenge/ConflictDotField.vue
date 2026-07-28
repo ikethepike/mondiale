@@ -39,6 +39,7 @@
 </template>
 <script lang="ts" setup>
 import { CONFLICT_ERAS, type ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
+import { useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
 
 /**
  * A country's recorded conflict history as dots in map space, arriving one era
@@ -57,25 +58,10 @@ const props = defineProps<{
   abroad?: ConflictField
 }>()
 
-const viewBox = ref<{ x: number; y: number; w: number; h: number }>()
-let frame: number | undefined
-let mapSvg: SVGSVGElement | null = null
-let lastRaw = ''
-
-const readViewBox = () => {
-  frame = requestAnimationFrame(readViewBox)
-  mapSvg ??= document.querySelector('.game-map svg')
-  const attribute = mapSvg?.getAttribute('viewBox') ?? ''
-  if (attribute === lastRaw) return
-  lastRaw = attribute
-  const raw = attribute.split(/\s+/).map(Number)
-  if (raw.length === 4 && raw.every(Number.isFinite)) {
-    viewBox.value = { x: raw[0]!, y: raw[1]!, w: raw[2]!, h: raw[3]! }
-  }
-}
+const { viewBox } = useMapViewBox()
 
 /** ~0.16% of the visible width — reads as a pinpoint at any camera height. */
-const dotRadius = computed(() => (viewBox.value?.w ?? 2000) * 0.0016)
+const dotRadius = computed(() => (viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0016)
 
 /** Older waves sit back; the newest carries the ink. */
 const waveOpacity = (wave: number) => {
@@ -119,11 +105,6 @@ const chips = computed(() => {
   return [{ label: CONFLICT_ERAS[era.era] ?? '', left, top }]
 })
 
-onMounted(readViewBox)
-
-onBeforeUnmount(() => {
-  if (frame !== undefined) cancelAnimationFrame(frame)
-})
 </script>
 <style lang="scss" scoped>
 .conflict-dot-field {
@@ -168,16 +149,7 @@ onBeforeUnmount(() => {
   animation-delay: 300ms;
 }
 
-@keyframes chip-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -20%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
+// chip-in comes from rules/_animations.scss
 
 @media (prefers-reduced-motion: reduce) {
   .dot,

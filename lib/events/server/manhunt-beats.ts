@@ -16,10 +16,16 @@ import {
 import type { ManhuntChallenge, ManhuntMoveKind } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { enqueueGameTask, useServerSideEvents } from '../server-side'
+import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { movesForScoredPoints } from './moves'
-import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
+import { FIRST_TURN_GRACE_MS } from './turn-timing'
+import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import {
+  scheduleDeadlineTask,
+  scheduleEngineTask,
+  scheduleRevealTask,
+  settleRoundScores,
+} from './round-engine'
 
 /**
  * Manhunt's beat engine: chain-turns' single-actor clock (the despot's move
@@ -37,19 +43,12 @@ import { FIRST_TURN_GRACE_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-ti
  * learns its position over a single-socket 'manhunt-position' emit.
  */
 
-const TWO_DAYS_IN_SECONDS = 172800
-
 export const isManhuntChallenge = (challenge: unknown): challenge is ManhuntChallenge =>
-  !!challenge &&
-  typeof challenge === 'object' &&
-  '_type' in challenge &&
-  challenge._type === 'manhunt-challenge'
+  isChallengeOfType(challenge, 'manhunt-challenge')
 
 /** The live round's manhunt challenge, when the live round is one. */
-export const currentManhunt = (game: Game): ManhuntChallenge | undefined => {
-  const challenge = game.rounds[game.rounds.length - 1]?.groupChallenge
-  return isManhuntChallenge(challenge) ? challenge : undefined
-}
+export const currentManhunt = (game: Game): ManhuntChallenge | undefined =>
+  latestChallengeOfType(game, 'manhunt-challenge')
 
 const roundIndexOf = (game: Game): number => game.rounds.length - 1
 
@@ -66,8 +65,7 @@ const saveManhuntSecret = async (
   roundIndex: number,
   secret: ManhuntSecret
 ): Promise<void> => {
-  await redis.set(manhuntKey(gameId, roundIndex), secret)
-  await redis.expire(manhuntKey(gameId, roundIndex), TWO_DAYS_IN_SECONDS)
+  await setWithGameTtl(redis, manhuntKey(gameId, roundIndex), secret)
 }
 
 const stampDeadline = (challenge: ManhuntChallenge, extraMs = 0) => {
@@ -174,42 +172,31 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
   // During the briefing there is no beat clock — arm the reading cap instead;
   // it force-starts the pursuit for a table that never all clicks ready.
   if (challenge.state.briefing) {
-    setTimeout(() => {
-      enqueueGameTask(ctx.eventTarget.gameId, async () => {
-        const server = useServerSideEvents(ctx)
-        const game = await server.fetchGame(ctx.eventTarget.gameId)
-        if (!game) return
-        const current = currentManhunt(game)
-        if (!current || current.state.finished || !current.state.briefing) return
-        await beginPursuit(ctx, game, current)
-      })
-    }, BRIEFING_CAP_MS)
+    scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
+      const current = currentManhunt(game)
+      if (!current || current.state.finished || !current.state.briefing) return
+      await beginPursuit(ctx, game, current)
+    })
     return
   }
   const { turn, deadline } = challenge.state
-  const delay = Math.max(0, deadline - Date.now()) + TIMEOUT_SLACK_MS
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!game) return
-      const current = currentManhunt(game)
-      // A move, a full dragnet, or the finish advanced the state — stale.
-      if (!current || current.state.finished || current.state.turn !== turn) return
+  scheduleDeadlineTask(ctx, deadline, async game => {
+    const current = currentManhunt(game)
+    // A move, a full dragnet, or the finish advanced the state — stale.
+    if (!current || current.state.finished || current.state.turn !== turn) return
 
-      if (current.state.beat === 'move') {
-        const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-        if (!secret) return
-        const from = secret.trail[secret.trail.length - 1]
-        // The free hop: random, ground where possible — a charge burns only
-        // when the despot idles somewhere ground can't leave.
-        const move = randomManhuntMove(from, current.state.seaPassagesLeft, game)
-        await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
-      } else {
-        await resolveHuntBeat(ctx, game, current)
-      }
-    })
-  }, delay)
+    if (current.state.beat === 'move') {
+      const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
+      if (!secret) return
+      const from = secret.trail[secret.trail.length - 1]
+      // The free hop: random, ground where possible — a charge burns only
+      // when the despot idles somewhere ground can't leave.
+      const move = randomManhuntMove(from, current.state.seaPassagesLeft, game)
+      await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
+    } else {
+      await resolveHuntBeat(ctx, game, current)
+    }
+  })
 }
 
 /** The despot chose a hop. Illegal picks are a silent no-op — the client
@@ -395,40 +382,31 @@ const finishManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntCh
   await server.updateGameState(game)
   server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
 
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const fresh = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!fresh) return
-      // No outcome check: the degenerate no-seed finish scores zeros through
-      // the same ritual (scoreManhunt returns {} without an outcome).
-      const current = currentManhunt(fresh)
-      if (!current?.state.finished) return
+  scheduleRevealTask(ctx, async (fresh, freshServer) => {
+    // No outcome check: the degenerate no-seed finish scores zeros through
+    // the same ritual (scoreManhunt returns {} without an outcome).
+    const current = currentManhunt(fresh)
+    if (!current?.state.finished) return
 
-      const round = fresh.rounds[fresh.rounds.length - 1]
-      // The reveal follow-up fires exactly once: scoring marks the round.
-      if (Object.keys(round.groupAnswers).length) return
+    const round = latestRound(fresh)
+    // The reveal follow-up fires exactly once: scoring marks the round.
+    if (!round || Object.keys(round.groupAnswers).length) return
 
-      // The final beat's markers are still in the blob — they price proximity.
-      const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
-      const scores = scoreManhunt(current, secret?.markers ?? {})
-
-      for (const playerId of [...current.state.detectives, current.despotId]) {
-        const player = fresh.players[playerId]
-        const scoring = scores[playerId] ?? { scored: 0, maximum: current.maximumPoints }
-        round.groupAnswers[playerId] = { submitted: [], correct: [] }
-        round.playerTurns[playerId] = { points: scoring }
-        if (player && player.phase === 'group-challenge') {
-          player.phase = 'group-scores'
-          player.moves = movesForScoredPoints({ game: fresh, player, scored: scoring.scored })
-        }
-      }
-
-      await server.updateGameState(fresh)
-      // Not 'group-challenge-scored': its client handler applies only the
-      // target player's slice, and this scoring lands for the whole table.
-      server.emit({ event: 'manhunt-updated', game: fresh }, ctx.eventTarget)
-      // The secret has served its round; the trail lives on in the outcome.
-      await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
+    // The final beat's markers are still in the blob — they price proximity.
+    const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
+    settleRoundScores({
+      game: fresh,
+      round,
+      order: [...current.state.detectives, current.despotId],
+      scores: scoreManhunt(current, secret?.markers ?? {}),
+      maximumPoints: current.maximumPoints,
     })
-  }, REVEAL_HOLD_MS)
+
+    await freshServer.updateGameState(fresh)
+    // Not 'group-challenge-scored': its client handler applies only the
+    // target player's slice, and this scoring lands for the whole table.
+    freshServer.emit({ event: 'manhunt-updated', game: fresh }, ctx.eventTarget)
+    // The secret has served its round; the trail lives on in the outcome.
+    await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
+  })
 }

@@ -74,7 +74,7 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { TRENDS } from '~~/data/trends.gen'
 import { countryName, getCountry } from '~~/lib/country'
-import { formatNumber } from '~~/lib/number'
+import { formatAmount, clamp  } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -166,11 +166,10 @@ const scale = computed(() => {
 /** The cut rule's x, through the same (possibly log) scale as the swarm. */
 const cutX = computed(() => {
   if (props.cutAt === undefined || !entries.value.length) return undefined
-  return Math.min(97, Math.max(3, scale.value(props.cutAt)))
+  return clamp(scale.value(props.cutAt), 3, 97)
 })
 
-const display = (amount: number, unit: string | undefined) =>
-  `${formatNumber(amount)}${unit ? ` ${unit}` : ''}`
+const display = (amount: number, unit: string | undefined) => formatAmount({ amount, unit: unit ?? '' })
 
 /** Marked countries with their verdict role, protagonists last (drawn on top). */
 const marked = computed<{ iso: ISOCountryCode; kind: 'truth' | 'lie' | 'noted' }[]>(() => [
@@ -213,6 +212,7 @@ const marks = computed(() =>
 const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .stat-strip-plot {
   margin: 0;
   width: 100%;
@@ -239,7 +239,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   position: absolute;
   pointer-events: none;
   border-radius: 0.1rem;
-  background: hsl(24, 80%, 45%);
+  background: ember(1, 45%);
 }
 
 .axis {
@@ -248,7 +248,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   bottom: 0;
   height: 1px;
   position: absolute;
-  background: hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: ink(0.25);
 }
 
 .mode-toggle {
@@ -264,8 +264,8 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   padding: 0.2rem 0.9rem;
   border-radius: 1rem;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.9);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: milk(0.9);
+  border: 0.1rem solid ink(0.25);
 }
 
 // A comfortable hit area around a small visual dot.
@@ -292,7 +292,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
 .dot::before {
   width: 0.55rem;
   height: 0.55rem;
-  background: hsla(215.7, 76.4%, 21.6%, 0.18);
+  background: ink(0.18);
   transition: transform var(--motion-quick) var(--ease-out-expressive);
 }
 
@@ -307,7 +307,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   &::before {
     width: 0.8rem;
     height: 0.8rem;
-    box-shadow: 0 0 0 0.3rem hsla(36, 100%, 98%, 0.9);
+    box-shadow: 0 0 0 0.3rem milk(0.9);
   }
 
   // The ring, clear of the dot like the old SVG halo.
@@ -332,10 +332,10 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
     border-color: var(--hior-ange);
   }
   &.noted::before {
-    background: hsla(215.7, 76.4%, 21.6%, 0.55);
+    background: ink(0.55);
   }
   &.noted::after {
-    border-color: hsla(215.7, 76.4%, 21.6%, 0.35);
+    border-color: ink(0.35);
   }
 }
 
@@ -353,7 +353,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
     width: 100%;
     height: 100%;
     border-radius: 0.2rem;
-    box-shadow: 0 1px 2px hsla(215.7, 76.4%, 21.6%, 0.3);
+    box-shadow: 0 1px 2px ink(0.3);
     transition: transform var(--motion-quick) var(--ease-out-expressive);
   }
 
@@ -371,7 +371,7 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   &::after {
     inset: -0.35rem;
     border-radius: 0.4rem;
-    box-shadow: 0 0 0 0.35rem hsla(36, 100%, 98%, 0.85);
+    box-shadow: 0 0 0 0.35rem milk(0.85);
   }
 }
 
@@ -385,9 +385,9 @@ const legend = computed(() => marks.value.filter(mark => mark.kind !== 'noted'))
   border-radius: 0.8rem;
   color: var(--dark-blue);
   transform: translate(-50%, calc(-100% - 1.2rem));
-  background: hsla(36, 100%, 98%, 0.96);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  box-shadow: 0 2px 8px hsla(215.7, 76.4%, 21.6%, 0.15);
+  background: milk(0.96);
+  border: 0.1rem solid ink(0.25);
+  box-shadow: 0 2px 8px ink(0.15);
 }
 
 .legend {

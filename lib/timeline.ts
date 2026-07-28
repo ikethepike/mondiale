@@ -6,7 +6,7 @@ import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import { shuffleArray } from './arrays'
 import { isCountryPlayable } from './game-rules'
-import { attemptFraction } from './scoring'
+import { attemptFraction, clampScore } from './scoring'
 
 /**
  * Timeline's pure logic: slot arithmetic over the growing line, the
@@ -121,7 +121,7 @@ export const scoreTimeline = (
   const scores: { [playerId: string]: { scored: number; maximum: number } } = {}
   for (const playerId of challenge.state.order) {
     scores[playerId] = {
-      scored: Math.min(Math.round(challenge.state.banked[playerId] ?? 0), challenge.maximumPoints),
+      scored: clampScore(challenge.state.banked[playerId] ?? 0, challenge.maximumPoints),
       maximum: challenge.maximumPoints,
     }
   }

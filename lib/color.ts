@@ -1,3 +1,4 @@
+import { sample } from './arrays'
 import { PLAYER_COLORS } from '../data/palette'
 import type { PlayerColor } from '../types/game.types'
 
@@ -5,5 +6,5 @@ import type { PlayerColor } from '../types/game.types'
 export const getRandomPlayerColor = (takenColors: string[] = []): PlayerColor => {
   const available = PLAYER_COLORS.filter(color => !takenColors.includes(color))
   const pool = available.length ? available : PLAYER_COLORS
-  return pool[Math.floor(Math.random() * pool.length)]
+  return sample(pool)!
 }

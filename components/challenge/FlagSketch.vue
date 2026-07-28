@@ -5,6 +5,7 @@
   <div class="flag-sketch" :style="{ '--draw-seconds': `${drawSeconds}s` }" v-html="sketch" />
 </template>
 <script lang="ts" setup>
+import { sanitizeSvg } from '~~/lib/svg'
 /**
  * The flag as a drawing lesson: every shape stripped of its fill and drawn on
  * as a single ink line, all shapes in step (pathLength normalizes them), the
@@ -21,10 +22,8 @@ const props = defineProps<{
 const SHAPES = 'path, rect, circle, ellipse, polygon, polyline, line'
 
 const sketch = computed(() => {
-  if (typeof window === 'undefined') return ''
-  const doc = new DOMParser().parseFromString(props.flag, 'image/svg+xml')
-  const svg = doc.documentElement
-  if (svg.nodeName !== 'svg') return ''
+  const svg = sanitizeSvg(props.flag, { sizing: 'keep' })
+  if (!svg) return ''
 
   svg.setAttribute('width', '100%')
   svg.setAttribute('height', '100%')
@@ -50,26 +49,23 @@ const sketch = computed(() => {
 })
 </script>
 <style lang="scss">
+@use '~/assets/scss/rules/ink' as *;
 // Unscoped: the svg arrives via v-html, outside the scoped-attr reach
 .flag-sketch {
   inset: 0;
   position: absolute;
-  color: hsla(215.7, 76.4%, 21.6%, 0.4);
+  color: ink(0.4);
   pointer-events: none;
 
   .sketch-line {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: sketch-draw linear forwards;
+    animation: stroke-draw linear forwards;
     animation-duration: var(--draw-seconds, 20s);
   }
 }
 
-@keyframes sketch-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
+// stroke-draw comes from rules/_animations.scss
 
 // A landscape flag letterboxes small on a phone — portrait screens get it
 // rotated to fill the tall canvas instead

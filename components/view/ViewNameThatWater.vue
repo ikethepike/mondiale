@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="name-that-water">
+  <div v-if="challenge" class="name-that-water challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -9,31 +9,26 @@
       @done="begin"
     />
 
-    <header>
-      <div class="prompt">
-        <template v-if="!resolved">
-          <h1 class="map-caption">{{ promptTitle }}</h1>
-          <span class="map-caption sub">
-            {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left
-          </span>
-          <Transition name="caption">
-            <span v-if="shoreHint" class="map-caption sub clue">{{ shoreHint }}</span>
-          </Transition>
-          <Transition name="caption">
-            <span v-if="letterHint" class="map-caption sub clue">{{ letterHint }}</span>
-          </Transition>
-        </template>
-        <template v-else>
-          <h1 class="map-caption">
-            {{ resolvedCorrectly ? 'Well spotted' : 'It was' }} — the {{ challenge.featureName }}
-          </h1>
-          <span class="map-caption sub">{{ shoreLine }}</span>
-        </template>
+    <ChallengePrompt :hint="hint">
+      <template v-if="!resolved">
+        <h1 class="map-caption">{{ promptTitle }}</h1>
+        <span class="map-caption sub">
+          {{ attemptsLeft }} {{ attemptsLeft === 1 ? 'guess' : 'guesses' }} left
+        </span>
         <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
+          <span v-if="shoreHint" class="map-caption sub clue">{{ shoreHint }}</span>
         </Transition>
-      </div>
-    </header>
+        <Transition name="caption">
+          <span v-if="letterHint" class="map-caption sub clue">{{ letterHint }}</span>
+        </Transition>
+      </template>
+      <template v-else>
+        <h1 class="map-caption">
+          {{ resolvedCorrectly ? 'Well spotted' : 'It was' }} — the {{ challenge.featureName }}
+        </h1>
+        <span class="map-caption sub">{{ shoreLine }}</span>
+      </template>
+    </ChallengePrompt>
 
     <section v-if="!resolved" class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -92,10 +87,12 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
+import { normalizeAnswer } from '~~/lib/strings'
 import { attemptFraction, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
@@ -108,6 +105,7 @@ const {
   currentRound,
   showInterstitial,
   started,
+  elapsedFraction,
   hint,
   announce,
   entries,
@@ -132,14 +130,7 @@ interface WaterOption {
 }
 const options = ref<WaterOption[]>([])
 
-const normalizeName = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/^(the|el|la|il)\s+/i, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
+const normalizeName = (name: string) => normalizeAnswer(name, { articles: ['the', 'el', 'la', 'il'] })
 
 onMounted(async () => {
   const active = challenge.value
@@ -188,11 +179,6 @@ const LETTER_HINT_UNLOCK_ELAPSED = 2 / 3
 const shoreHint = ref<string>()
 const letterHint = ref<string>()
 
-const elapsedFraction = computed(() => {
-  const total = challenge.value?.durationSeconds
-  if (!total || !started.value) return 0
-  return 1 - secondsLeft.value / total
-})
 const shoreHintUnlocked = computed(
   () => !resolved.value && elapsedFraction.value >= SHORE_HINT_UNLOCK_ELAPSED
 )
@@ -300,103 +286,25 @@ const submitTyped = () => {
 }
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/breakpoints' as *;
-.name-that-water {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
+@use '~/assets/scss/rules/ink' as *;
 
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    color: var(--hior-ange);
-  }
-  // Bought clues persist under the guess counter, unlike the transient miss toast.
-  .clue {
-    color: var(--hior-ange);
-  }
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
+// Bought clues persist under the guess counter, unlike the transient miss toast.
+header .clue {
+  color: var(--hior-ange);
 }
 
 .guess-box {
-  gap: 1.2rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
   // Centred in the space under the prompt (the old footer used to hold the
   // bottom): the suggestion list opens downward and needs the room below.
   margin: auto 0;
 }
 
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
-}
-
-// Mirrors the gate challenges' hint buttons for a consistent paid-hint surface.
-.hint-row {
-  gap: 1rem;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: center;
-}
-
-.hint-button {
-  cursor: pointer;
-  gap: 0.7rem;
-  display: inline-flex;
-  align-items: center;
-  font-size: 1.4rem;
-  font-family: inherit;
-  padding: 0.6rem 1.4rem;
-  border-radius: 1.2rem;
-  pointer-events: auto;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  transition: border-color var(--motion-quick) var(--ease-out-expressive);
-
-  .hint-icon {
-    flex-shrink: 0;
-  }
-
-  @media (hover: hover) {
-    &:hover {
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active {
-    border-color: var(--dark-blue);
-  }
-}
+// Hint chips come from templates/_hint-chip.scss.
 
 // Mirrors CountryGuessInput's look for a consistent typing surface (the
 // console strips the pill and owns the width).
 .guess-form {
   position: relative;
-  pointer-events: auto;
 
   input {
     width: 100%;
@@ -422,8 +330,8 @@ header {
     position: absolute;
     border-radius: 0.9rem;
     backdrop-filter: blur(0.5rem);
-    background: hsla(36, 100%, 98%, 0.94);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+    background: milk(0.94);
+    border: 0.1rem solid ink(0.25);
 
     li {
       cursor: pointer;
@@ -433,32 +341,9 @@ header {
 
       &.highlighted,
       &:hover {
-        background: hsla(215.7, 76.4%, 21.6%, 0.08);
+        background: ink(0.08);
       }
     }
   }
-}
-
-// Compact phone chrome: tighter prompt padding.
-@media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-}
-
-// The miss hint floats below the prompt instead of joining its flex flow —
-// popping in and out must not reflow the header (or the view under it).
-header .prompt {
-  position: relative;
-}
-header .prompt .hint {
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  width: max-content;
-  max-width: 100%;
-  position: absolute;
-  margin: 0.4rem auto 0;
 }
 </style>

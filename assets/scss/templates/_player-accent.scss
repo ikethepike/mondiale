@@ -1,0 +1,6 @@
+// The identity edge: a row or card owned by a player carries their colour on
+// its left border via the --player-color custom property (set inline where
+// the player is known). Seven surfaces had grown their own copy of this rule.
+.player-accent {
+  border-left: 0.3rem solid var(--player-color, var(--dark-blue));
+}

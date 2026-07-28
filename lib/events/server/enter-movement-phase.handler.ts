@@ -24,6 +24,7 @@ import {
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
+import { latestRound } from '~~/lib/rounds'
 
 /** Phases that no longer take part in a round's movement. */
 const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
@@ -32,15 +33,18 @@ const STEP_INTERVAL = 500
 const NEW_ROUND_PAUSE = 2000
 
 /**
- * Re-enter this handler through the per-game queue after `delay` ms. The timer
- * runs OUTSIDE the queue so the pause never holds the lock; the follow-up then
- * takes the lock, re-fetches fresh game state, and continues. `continuation`
- * marks the re-entry as the walk's own so it is not mistaken for a duplicate
- * external event and rejected. Mirrors the challenge handlers' pacing pattern.
+ * Enter (or re-enter) the movement phase through the per-game queue after
+ * `delay` ms. The timer runs OUTSIDE the queue so the pause never holds the
+ * lock; the follow-up then takes the lock, re-fetches fresh game state, and
+ * continues. `continuation` marks a re-entry as the walk's own so it is not
+ * mistaken for a duplicate external event and rejected. The ONE way any
+ * handler resumes movement — result beats, victory checks and rejoin healing
+ * must not rebuild this call.
  */
-const rescheduleMovement = (
+export const scheduleMovementPhase = (
   delay: number,
-  ctx: { io: GameServer; redis: Redis; socket: GameSocket; eventTarget: ClientEventTarget }
+  ctx: { io: GameServer; redis: Redis; socket: GameSocket; eventTarget: ClientEventTarget },
+  options: { continuation?: boolean } = {}
 ) => {
   setTimeout(() => {
     enqueueGameTask(ctx.eventTarget.gameId, () =>
@@ -50,7 +54,10 @@ const rescheduleMovement = (
         socket: ctx.socket,
         eventTarget: ctx.eventTarget,
         eventKey: 'enter-movement-phase',
-        eventData: { event: 'enter-movement-phase', continuation: true },
+        eventData: {
+          event: 'enter-movement-phase',
+          ...(options.continuation ? { continuation: true } : {}),
+        },
       })
     )
   }, delay)
@@ -101,7 +108,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
         await server.updateGameState(game)
         server.emit({ event: 'update', game }, eventTarget)
 
-        rescheduleMovement(STEP_INTERVAL, { io, redis, socket, eventTarget })
+        scheduleMovementPhase(STEP_INTERVAL, { io, redis, socket, eventTarget }, { continuation: true })
         return
       }
 
@@ -140,7 +147,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       game.pendingRoundStart = true
       await server.updateGameState(game)
 
-      rescheduleMovement(NEW_ROUND_PAUSE, { io, redis, socket, eventTarget })
+      scheduleMovementPhase(NEW_ROUND_PAUSE, { io, redis, socket, eventTarget }, { continuation: true })
       return
     }
 
@@ -155,7 +162,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // The clocked rounds (Border Chain's shot clock, Heritage Hunt's beat
       // clock): stamp the first deadline into the snapshot being revealed,
       // and arm the timeout after the save.
-      const revealed = game.rounds[game.rounds.length - 1]?.groupChallenge
+      const revealed = latestRound(game)?.groupChallenge
       if (isBorderChainChallenge(revealed)) startChainClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)

@@ -1,0 +1,61 @@
+@use '../rules/breakpoints' as *;
+
+// The full-viewport column every challenge view stands in: header up top,
+// stage in the middle, footer against the bottom edge. 22 views carried this
+// block each; the root element takes `challenge-shell` (plus `passthrough`
+// when the map underneath must stay interactive) and keeps only its own
+// mode-specific rules.
+.challenge-shell {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--viewport-height);
+  display: flex;
+  position: absolute;
+  flex-flow: column nowrap;
+  justify-content: space-between;
+
+  &.passthrough {
+    pointer-events: none;
+  }
+
+  // The action strip against the bottom edge. Views add their own layout;
+  // the berth and the phone safe-area clearance live here.
+  > footer {
+    z-index: 2;
+    padding: 2rem;
+  }
+
+  // The typing consoles' column: input pill over its helpers. Interactive by
+  // right — the passthrough shell is pointer-events: none for the map's sake,
+  // and the shared strips opt back in HERE, never per view.
+  .guess-box {
+    gap: 1.2rem;
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+    pointer-events: auto;
+  }
+
+  // An action button with the round clock docked beside it — the action and
+  // the time to act read as one row, as in the guess consoles.
+  .lock-row {
+    gap: 1rem;
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+
+    .lock-clock {
+      flex: none;
+      --clock-size: 4.6rem;
+      --clock-seconds-size: 1.5rem;
+    }
+  }
+
+  @media screen and (max-width: $tablet) {
+    > footer {
+      width: 100%;
+      padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+    }
+  }
+}

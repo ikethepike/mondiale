@@ -67,6 +67,7 @@ import { gsap } from 'gsap'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { prefersReducedMotion } from '~~/lib/motion'
 import type { MapInset } from '~~/types/map.type'
+import { WORLD_BOX } from '~~/lib/geo'
 
 const props = defineProps<{
   inset: MapInset
@@ -85,8 +86,8 @@ const emit = defineEmits<{
 
 /** Default zoom past which the subject is legible unaided. */
 const DEFAULT_HIDE_AT_ZOOM = 6
-const WORLD_WIDTH = 2000
-const WORLD_HEIGHT = 1001
+const WORLD_WIDTH = WORLD_BOX.width
+const WORLD_HEIGHT = WORLD_BOX.height
 /** The box, as a fraction of the current view — so it holds its screen size.
  *  Compact (phone) screens get a much larger share: 20% of 360px is a stamp. */
 const BOX_WIDTH_FRACTION = 0.2
@@ -286,9 +287,10 @@ const labelOffset = computed(() => 22 * unitsPerPixel.value)
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .map-inset {
   pointer-events: none;
-  color: hsl(215.7, 76.4%, 41%);
+  color: ink(1, 41%);
   transition: opacity var(--motion-base) var(--ease-out-expressive);
 
   &.is-entering {
@@ -330,7 +332,7 @@ const labelOffset = computed(() => 22 * unitsPerPixel.value)
   stroke: currentColor;
   pointer-events: all;
   stroke-width: calc(2px * var(--inset-px, 1));
-  filter: drop-shadow(0 0 calc(3px * var(--inset-px, 1)) hsla(215.7, 76.4%, 21.6%, 0.35));
+  filter: drop-shadow(0 0 calc(3px * var(--inset-px, 1)) ink(0.35));
   transition: stroke-width var(--motion-base) var(--ease-out-expressive);
 
   &:hover {

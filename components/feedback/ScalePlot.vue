@@ -19,6 +19,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { clamp } from '~~/lib/number'
 interface ScaleMarker {
   amount: number
   display?: string
@@ -45,7 +46,7 @@ const positionOf = (amount: number) => {
   const span = props.max - props.min
   if (span <= 0) return 50
   const raw = ((amount - props.min) / span) * 100
-  const clamped = Math.max(0, Math.min(100, raw))
+  const clamped = clamp(raw, 0, 100)
   return props.invert ? 100 - clamped : clamped
 }
 
@@ -56,6 +57,7 @@ const plotted = computed<ScaleMarker[]>(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .scale-plot {
   width: 100%;
   max-width: 32rem;
@@ -69,11 +71,11 @@ const plotted = computed<ScaleMarker[]>(
   // A muted gradient from the "least" to the "most" pole hue.
   background: linear-gradient(
     to right,
-    hsla(9.8, 81.3%, 60.2%, 0.35),
+    flame(0.35),
     hsla(36, 60%, 85%, 0.5) 50%,
     hsla(170.5, 24.7%, 55%, 0.55)
   );
-  border: 1px solid hsla(215.7, 76.4%, 21.6%, 0.12);
+  border: 1px solid ink(0.12);
 }
 
 .marker {
@@ -101,7 +103,7 @@ const plotted = computed<ScaleMarker[]>(
   border-radius: 50%;
   background: var(--soft-blue);
   border: 2px solid var(--sour-milk);
-  box-shadow: 0 1px 4px hsla(215.7, 76.4%, 21.6%, 0.35);
+  box-shadow: 0 1px 4px ink(0.35);
 }
 
 .marker.muted {

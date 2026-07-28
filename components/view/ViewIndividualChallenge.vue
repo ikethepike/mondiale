@@ -1,12 +1,12 @@
 <template>
-  <div v-if="challenge" class="individual-challenge">
+  <div v-if="challenge" class="individual-challenge challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       :title="interstitialTitle"
       :stakes="'Answer correctly to leap ahead — get it wrong and you\'re knocked back.'"
       @done="showInterstitial = false"
     />
-    <header v-else>
+    <ChallengePrompt v-else ref="promptHost">
       <Transition name="caption" mode="out-in">
         <div
           v-if="!status"
@@ -27,6 +27,9 @@
                 fit="contain"
               />
             </div>
+            <span v-if="challenge.id === 'flag'" class="map-caption sub">
+              Find it on the map — tap twice to lock in
+            </span>
             <span class="hint map-caption" :class="{ visible: showDoubleTapHint }">
               Press again to confirm
             </span>
@@ -395,10 +398,11 @@
           />
         </ChallengeResult>
       </Transition>
-    </header>
+    </ChallengePrompt>
   </div>
 </template>
 <script lang="ts" setup>
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
@@ -426,7 +430,9 @@ import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { GATE_HINT_BITE_STEPS, gateLeapSteps } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
+import { useIsPhone } from '~~/lib/use-viewport'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
+import type { DuelOutcome } from '~~/types/challenges/individual-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -439,6 +445,24 @@ const challenge = ref(
 )
 
 const variant = computed(() => challenge.value?.variant ?? 'find')
+
+// The flag gate's hero card floats over the map; on phones the world-fit
+// camera parks the subject band right beneath it. Measure the prompt and
+// hand the camera a berth so the world drops into the clear space instead.
+const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
+const isPhone = useIsPhone()
+const placeMapBerth = () => {
+  if (!isPhone.value || variant.value !== 'find' || challenge.value?.id !== 'flag') {
+    gameStore.map.berth = undefined
+    return
+  }
+  nextTick(() => {
+    const prompt = promptHost.value?.$el as HTMLElement | undefined
+    const bottom = prompt?.getBoundingClientRect().bottom
+    gameStore.map.berth = bottom ? { top: Math.round(bottom) + 12, bottom: 24 } : undefined
+  })
+}
+
 /** Variants that guess via CountryGuessInput need `.question` left un-clipped
     so the downward-opening suggestion list stays visible. */
 const textGuessVariant = computed(() =>
@@ -694,13 +718,6 @@ const duelTopic = computed(() => {
 
 const failedDuelAnswer = ref<ISOCountryCode>()
 
-/** Each duel the player actually faced, kept for the educational reveal. */
-export interface DuelOutcome {
-  picked: ISOCountryCode
-  higher: ISOCountryCode
-  lower: ISOCountryCode
-  correct: boolean
-}
 const duelOutcomes = ref<DuelOutcome[]>([])
 
 // Distinct wash per pair, so the reveal's map highlight matches its cards.
@@ -961,6 +978,9 @@ const submitAnswer = (
 }
 
 const showInterstitial = ref(true)
+watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapBerth, {
+  immediate: true,
+})
 
 // The reveal race starts the moment the interstitial clears
 watch(showInterstitial, value => {
@@ -1075,88 +1095,74 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.individual-challenge {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  position: absolute;
-}
-
 header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
   position: absolute;
   justify-content: center;
-  h1 {
-    margin: 0;
-  }
-  .sub {
-    padding: 0.4rem 1.4rem;
-  }
-  .hint {
-    opacity: 0;
-    display: inline-block;
-    padding: 0.4rem 1.4rem;
-    transform: translateY(-0.4rem);
-    transition:
-      opacity var(--motion-base) var(--ease-out-expressive),
-      transform var(--motion-base) var(--ease-out-expressive);
+}
 
-    &.visible {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  .question,
-  .result {
-    gap: 1rem;
-    display: flex;
-    align-items: center;
-    flex-flow: column nowrap;
-    // Fallback: scroll to the options if a tall hero + cards overflow.
-    max-height: var(--viewport-height);
-    overflow-y: auto;
+header .hint {
+  opacity: 0;
+  display: inline-block;
+  padding: 0.4rem 1.4rem;
+  transform: translateY(-0.4rem);
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
 
-    // Text-guess variants have bounded content and must not clip the
-    // guess input's downward-opening suggestion list.
-    &.text-guess {
-      max-height: none;
-      overflow-y: visible;
-    }
+  &.visible {
+    opacity: 1;
+    transform: none;
   }
+}
 
-  // The round is resolved — nothing behind the reveal needs taps, and the
-  // scroll container must take touches itself under .main-board's
-  // pointer-events: none. The play-state .question stays pass-through so
-  // map-tap variants keep working.
-  .result {
-    pointer-events: auto;
-    overscroll-behavior: contain;
-  }
+header .question,
+header .result {
+  gap: 1rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+  // Fallback: scroll to the options if a tall hero + cards overflow.
+  max-height: var(--viewport-height);
+  overflow-y: auto;
 
-  // The flag is the question — present it as the hero, framed like the
-  // caption scrim, arriving with a settle and idling on a gentle float
-  .flag-frame {
-    padding: 1.2rem;
-    margin-top: 0.6rem;
-    border-radius: 1.2rem;
-    backdrop-filter: blur(0.5rem);
-    background: hsla(36, 100%, 98%, 0.85);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
-    animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
+  // Text-guess variants have bounded content and must not clip the
+  // guess input's downward-opening suggestion list.
+  &.text-guess {
+    max-height: none;
+    overflow-y: visible;
   }
-  .flag {
-    width: 26rem;
-    height: 15rem;
-    display: block;
-    max-width: 70vw;
-    filter: drop-shadow(0 0.4rem 0.8rem hsla(215.7, 76.4%, 21.6%, 0.18));
-    animation: flag-float calc(var(--motion-ambient) * 0.7) ease-in-out infinite;
-  }
+}
+
+// The round is resolved — nothing behind the reveal needs taps, and the
+// scroll container must take touches itself under .main-board's
+// pointer-events: none. The play-state .question stays pass-through so
+// map-tap variants keep working.
+header .result {
+  pointer-events: auto;
+  overscroll-behavior: contain;
+}
+
+// The flag is the question — present it as the hero, framed like the
+// caption scrim, arriving with a settle and idling on a gentle float
+header .flag-frame {
+  padding: 1.2rem;
+  margin-top: 0.6rem;
+  border-radius: 1.2rem;
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
+  animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
+}
+header .flag {
+  width: 26rem;
+  height: 15rem;
+  display: block;
+  max-width: 70vw;
+  filter: drop-shadow(0 0.4rem 0.8rem ink(0.18));
+  animation: flag-float calc(var(--motion-ambient) * 0.7) ease-in-out infinite;
 }
 
 // --- Variant option panels ---------------------------------------------------
@@ -1176,8 +1182,8 @@ header {
   border-radius: 1.2rem;
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  background: milk(0.88);
+  border: 0.1rem solid ink(0.25);
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
     border-color var(--motion-quick) var(--ease-out-expressive);
@@ -1203,7 +1209,7 @@ header {
 
 .flag-option .option-flag {
   height: 11rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
+  border: 0.1rem solid ink(0.25);
 }
 
 // Palette twins: large inline flags so the subtle differences (stripe order, a
@@ -1219,7 +1225,7 @@ header {
     width: 100%;
     aspect-ratio: 3 / 2;
     border-radius: 0.4rem;
-    box-shadow: 0 0 0 1px hsla(215.7, 76.4%, 21.6%, 0.2);
+    box-shadow: 0 0 0 1px ink(0.2);
   }
 }
 
@@ -1258,9 +1264,9 @@ header {
   border-radius: 50%;
   font-size: 4rem;
   font-weight: 700;
-  color: hsla(215.7, 76.4%, 21.6%, 0.35);
-  border: 0.2rem dashed hsla(215.7, 76.4%, 21.6%, 0.3);
-  background: hsla(36, 100%, 98%, 0.6);
+  color: ink(0.35);
+  border: 0.2rem dashed ink(0.3);
+  background: milk(0.6);
 }
 
 .ring-flag {
@@ -1278,7 +1284,7 @@ header {
     width: 100%;
     height: auto;
     border-radius: 0.3rem;
-    filter: drop-shadow(0 1px 3px hsla(215.7, 76.4%, 21.6%, 0.25));
+    filter: drop-shadow(0 1px 3px ink(0.25));
   }
 }
 
@@ -1309,8 +1315,8 @@ header {
   padding: 0.2rem 0.9rem 0.2rem 1.08rem; // optical: balance the tracking's tail
   border-radius: 1rem;
   color: var(--dark-blue);
-  background: hsla(36, 100%, 98%, 0.92);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.3);
+  background: milk(0.92);
+  border: 0.1rem solid ink(0.3);
 }
 
 // Trend duel: the pow reveal flips both cards to sparklines; the picked card
@@ -1320,13 +1326,17 @@ header {
     width: 100%;
     margin-top: 0.4rem;
   }
+  // The pow reveal disables both cards for its hold — no disabled fade.
+  &:disabled {
+    opacity: 1;
+  }
   &.was-right {
     border-color: hsla(170.5, 34.7%, 45%, 0.7);
     background: hsla(170.5, 34.7%, 55.1%, 0.14);
   }
   &.was-wrong {
     border-color: var(--hior-ange);
-    background: hsla(9.8, 81.3%, 60.2%, 0.18);
+    background: flame(0.18);
   }
 }
 
@@ -1357,7 +1367,7 @@ header {
 
   @media (hover: hover) {
     &:hover:not(:disabled) :deep(svg) {
-      filter: drop-shadow(0 2px 5px hsla(215.7, 76.4%, 21.6%, 0.4));
+      filter: drop-shadow(0 2px 5px ink(0.4));
     }
   }
 
@@ -1371,43 +1381,6 @@ header {
 .result-sparkline {
   width: min(30rem, 80vw);
   margin: 0.8rem auto 0;
-}
-
-.hint-row {
-  gap: 1rem;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: center;
-}
-
-.hint-button {
-  cursor: pointer;
-  gap: 0.7rem;
-  display: inline-flex;
-  align-items: center;
-  font-size: 1.4rem;
-  font-family: inherit;
-  padding: 0.6rem 1.4rem;
-
-  .hint-icon {
-    flex-shrink: 0;
-  }
-  border-radius: 1.2rem;
-  pointer-events: auto;
-  color: var(--dark-blue);
-  backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.88);
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  transition: border-color var(--motion-quick) var(--ease-out-expressive);
-
-  @media (hover: hover) {
-    &:hover {
-      border-color: var(--dark-blue);
-    }
-  }
-  &:active {
-    border-color: var(--dark-blue);
-  }
 }
 
 .ring-name {
@@ -1462,7 +1435,7 @@ header {
     max-height: 42vh;
     object-fit: contain;
     border-radius: 0.6rem;
-    box-shadow: 0 0.6rem 1.8rem hsla(215.7, 76.4%, 21.6%, 0.28);
+    box-shadow: 0 0.6rem 1.8rem ink(0.28);
   }
 }
 
@@ -1480,20 +1453,6 @@ header {
 
 .card-option {
   gap: 1rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-
-  .option-flag {
-    width: 100%;
-    // 3:1 via the wide tile's own aspect-ratio — a fixed height crops the hoist.
-    height: auto;
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-  }
-}
-
-.text-options {
-  grid-template-columns: minmax(28rem, 44rem);
 }
 
 // The self-drawing border race
@@ -1514,12 +1473,8 @@ header {
 
 .guess-box {
   margin-top: 1rem;
-  pointer-events: auto;
 }
 
-.text-option {
-  text-align: center;
-}
 
 .leader-options {
   grid-template-columns: minmax(28rem, 44rem);
@@ -1539,14 +1494,14 @@ header {
     border-radius: 50%;
     background-size: cover;
     background-position: center top;
-    background-color: hsla(215.7, 76.4%, 21.6%, 0.08);
-    border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.2);
+    background-color: ink(0.08);
+    border: 0.1rem solid ink(0.2);
 
     &.placeholder {
       // A subtle silhouette stand-in when no portrait exists.
       background-image: radial-gradient(
         circle at 50% 38%,
-        hsla(215.7, 76.4%, 21.6%, 0.25) 0 1.1rem,
+        ink(0.25) 0 1.1rem,
         transparent 1.2rem
       );
     }
@@ -1574,14 +1529,10 @@ header {
 // Compact phone chrome for the 13 gate variants: full-width option grids,
 // a fluid flag hero, and tighter prompt padding.
 @media (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-
-    .flag {
-      width: min(26rem, 78vw);
-      height: auto;
-      aspect-ratio: 26 / 15;
-    }
+  header .flag {
+    width: min(26rem, 78vw);
+    height: auto;
+    aspect-ratio: 26 / 15;
   }
 
   .options {
@@ -1593,7 +1544,6 @@ header {
     height: 9rem;
   }
 
-  .text-options,
   .leader-options {
     width: min(44rem, 100%);
     grid-template-columns: minmax(0, 1fr);

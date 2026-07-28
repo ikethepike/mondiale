@@ -9,7 +9,8 @@ import { isAccessorEnabled } from '~~/types/challenges/challenge-groups.type'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { OrganizationVector } from '~~/types/organization.type'
-import { shuffleArray } from './arrays'
+import { sample, shuffleArray } from './arrays'
+import { clampScore } from './scoring'
 import { connectionsOf } from './chain'
 import { getCountry } from './country'
 import { distancesFrom } from './traversal'
@@ -114,10 +115,10 @@ export const randomManhuntMove = (
 ): { isoCode: ISOCountryCode; kind: ManhuntMoveKind } => {
   const { ground, sea } = legalManhuntMoves(from, seaPassagesLeft, rules)
   if (ground.length) {
-    return { isoCode: ground[Math.floor(Math.random() * ground.length)], kind: 'ground' }
+    return { isoCode: sample(ground)!, kind: 'ground' }
   }
   if (sea.length) {
-    return { isoCode: sea[Math.floor(Math.random() * sea.length)], kind: 'sea' }
+    return { isoCode: sample(sea)!, kind: 'sea' }
   }
   return { isoCode: from, kind: 'ground' }
 }
@@ -612,7 +613,7 @@ export const scoreManhunt = (
   for (const { playerId, weight } of weights) {
     const share = totalWeight > 0 ? (pot * weight) / totalWeight : 0
     const scored = Math.round(share + (capturers.has(playerId) ? bonus : 0))
-    scores[playerId] = { scored: Math.min(scored, maximumPoints), maximum: maximumPoints }
+    scores[playerId] = { scored: clampScore(scored, maximumPoints), maximum: maximumPoints }
   }
 
   const survivedHops = captured ? Math.max(0, outcome.hop - 1) : turnCount

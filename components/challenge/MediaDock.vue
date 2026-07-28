@@ -40,6 +40,7 @@ withDefaults(defineProps<{ src: string; alt?: string }>(), { alt: 'A photo to id
 const expanded = defineModel<boolean>('expanded', { default: true })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .media-dock {
   pointer-events: none;
 }
@@ -58,7 +59,7 @@ const expanded = defineModel<boolean>('expanded', { default: true })
   position: absolute;
   inset: 0;
   backdrop-filter: blur(0.5rem);
-  background: hsla(36, 100%, 98%, 0.55);
+  background: milk(0.55);
 }
 
 .dock-frame {

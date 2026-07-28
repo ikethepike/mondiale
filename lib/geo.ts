@@ -68,6 +68,15 @@ export const compassArrow = (bearing: number): string =>
 /** An axis-aligned box in the map's projected SVG space: [x, y, width, height]. */
 export type MapBox = [number, number, number, number]
 
+/** The world map's design frame (the parsed MAP_VIEWBOX from data/map.gen) —
+ *  the one place its 2000×1001 dimensions live outside generated data. */
+export const WORLD_BOX: { x: number; y: number; width: number; height: number } = {
+  x: 0,
+  y: 0,
+  width: 2000,
+  height: 1001,
+}
+
 /**
  * A country's mainland box. The whole-country bbox lies for RU/US-class
  * countries — antimeridian fragments stretch it across the map, putting the

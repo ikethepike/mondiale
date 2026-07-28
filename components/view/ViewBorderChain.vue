@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="border-chain">
+  <div v-if="challenge" class="border-chain challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -13,28 +13,23 @@
          journey's age, the numbers make the sequence unambiguous. -->
     <MapYearLabels v-if="!showInterstitial" :entries="sequenceEntries" :min-gap-px="26" />
 
-    <header>
-      <div class="prompt">
-        <h1 class="map-caption">
-          {{ headline }}
-        </h1>
-        <span
-          v-if="!finished"
-          class="map-caption sub turn-line"
-          :style="{ '--ring': `${fractionLeft * 360}deg`, '--clock-warmth': clockWarmth }"
-        >
-          <span class="chip" :style="{ background: activePlayer?.color }" />
-          <span>{{ turnLabel }}</span>
-          <span class="clock">{{ secondsOnClock }}s</span>
-        </span>
-        <span v-if="!finished && iAmOut" class="map-caption sub out">
-          You're out — spectating
-        </span>
-        <Transition name="caption">
-          <span v-if="hint" class="map-caption hint">{{ hint }}</span>
-        </Transition>
-      </div>
-    </header>
+    <ChallengePrompt :hint="hint">
+      <h1 class="map-caption">
+        {{ headline }}
+      </h1>
+      <span v-if="!finished" class="map-caption sub turn-line">
+        <span class="chip" :style="{ background: activePlayer?.color }" />
+        <span>{{ turnLabel }}</span>
+        <ChallengeTimerRadial
+          class="turn-clock"
+          :value="secondsOnClock"
+          :total="challenge.turnSeconds"
+        />
+      </span>
+      <span v-if="!finished && iAmOut" class="map-caption sub out">
+        You're out — spectating
+      </span>
+    </ChallengePrompt>
 
     <!-- On your turn the shot clock lives inside the guess console; between
          turns the header's turn-line chip carries the countdown. -->
@@ -59,17 +54,15 @@
     />
 
     <footer>
-      <ol class="route">
+      <ol class="route country-chip-list">
         <template v-for="(isoCode, index) in chain" :key="`${chainCount}-${isoCode}`">
           <li v-if="index > 0 && isStraitHop(chain[index - 1], isoCode)" class="sea-hop">〜</li>
-          <li
-            class="stop map-caption"
+          <CountryChip
+            class="walked map-caption"
             :class="{ head: index === chain.length - 1 && !finished }"
             :style="{ '--stop-color': stopColor(index) }"
-          >
-            <CountryFlag class="stop-flag" :country="getCountry(isoCode)" mode="background" />
-            <span>{{ countryName(getCountry(isoCode)) }}</span>
-          </li>
+            :country="getCountry(isoCode)"
+          />
         </template>
       </ol>
     </footer>
@@ -77,17 +70,20 @@
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
-import CountryFlag from '~/components/country/CountryFlag.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { activePlayerId, isStraitHop, liveChain, openMoves } from '~~/lib/chain'
+import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
-import { isCountryPlayable } from '~~/lib/game-rules'
+import { unplayableCountries } from '~~/lib/game-rules'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { playerDisplayName } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -120,7 +116,7 @@ const walked = computed(() => chain.value)
 // micro-nations — are illegal moves; fade them so the rule is visible
 // before someone walks Spain → Morocco into it.
 const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
-gameStore.map.dimmed = ISOCountryCodes.filter(isoCode => !isCountryPlayable(rules, isoCode))
+gameStore.map.dimmed = unplayableCountries(rules)
 
 /** Walk-order badges over the live chain (1 = seed). On easy, the head's open
  *  connections also carry their ISO code — the legal moves, spelled out. */
@@ -163,23 +159,13 @@ const headline = computed(() => {
 
 const turnLabel = computed(() => {
   if (myTurn.value) return 'Your move'
-  return `${activePlayer.value?.name || 'Anonymous'} is on the clock`
+  return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
-// --- Shot clock (server-owned deadline; local repaint only) ------------------
-const secondsOnClock = ref(0)
-const fractionLeft = ref(1)
-const clock = setInterval(() => {
-  const deadline = state.value?.deadline ?? 0
-  const remaining = deadline - Date.now()
-  secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
-  const total = (challenge.value?.turnSeconds ?? 0) * 1000
-  fractionLeft.value = total ? Math.min(1, Math.max(0, remaining / total)) : 1
-}, 200)
-onBeforeUnmount(() => clearInterval(clock))
-
-/** 0 (calm ink) through the turn's first half, 100 (ember) as the clock dies. */
-const clockWarmth = computed(() => Math.round(Math.max(0, 0.5 - fractionLeft.value) * 200))
+const { secondsOnClock } = useDeadlineClock(
+  () => state.value?.deadline,
+  () => challenge.value?.turnSeconds
+)
 
 // --- Submitting a move -------------------------------------------------------
 const pending = ref(false)
@@ -220,13 +206,8 @@ watch(
 )
 
 // --- Painting the map --------------------------------------------------------
-/** One blue, deepening along the walk — a ramp reads as sequence where a
- *  rainbow reads as categories. The head alone burns ember. */
-const stopColor = (index: number, count = chain.value.length, head = false): string => {
-  if (head) return 'hsla(24, 80%, 55%, 0.92)'
-  const t = count <= 1 ? 1 : index / (count - 1)
-  return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
-}
+const stopColor = (index: number, count = chain.value.length, head = false): string =>
+  walkColor(index, count, head)
 const RETIRED_FILL = 'hsla(215.7, 15%, 55%, 0.32)'
 
 const seaLinkKeys = (): string[] => {
@@ -286,57 +267,8 @@ watch(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
-.border-chain {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--viewport-height);
-  display: flex;
-  position: absolute;
-  flex-flow: column nowrap;
-  justify-content: space-between;
-}
-
-header {
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  padding: 2rem 4rem;
-
-  h1 {
-    margin: 0;
-  }
-
-  .sub,
-  .hint {
-    padding: 0.4rem 1.4rem;
-  }
-
-  .hint {
-    color: var(--hior-ange);
-  }
-
-  .prompt {
-    gap: 1rem;
-    display: flex;
-    position: relative;
-    align-items: center;
-    flex-flow: column nowrap;
-  }
-
-  .prompt .hint {
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 3;
-    width: max-content;
-    max-width: 100%;
-    position: absolute;
-    margin: 0.4rem auto 0;
-  }
-}
-
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;
@@ -345,33 +277,13 @@ header {
   .chip {
     width: 0.75rem;
     height: 0.75rem;
-    position: relative;
     border-radius: 50%;
-
-    // The shot clock as a sweeping ring — full at the deal, gone at zero.
-    &::before {
-      content: '';
-      inset: -0.35rem;
-      position: absolute;
-      border-radius: 50%;
-      background: conic-gradient(hsl(24, 80%, 55%) var(--ring, 360deg), transparent 0);
-      mask: radial-gradient(
-        farthest-side,
-        transparent calc(100% - 0.2rem),
-        #000 calc(100% - 0.18rem)
-      );
-    }
   }
 
-  .clock {
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    // Ink through the calm half, warming to the chain head's ember as it dies.
-    color: color-mix(
-      in oklab,
-      hsl(24, 80%, 55%) calc(var(--clock-warmth, 0) * 1%),
-      var(--dark-blue)
-    );
+  // The shared radial dial at subline scale — no bespoke text clocks.
+  .turn-clock {
+    --clock-size: 2.8rem;
+    --clock-seconds-size: 1.1rem;
   }
 }
 
@@ -381,13 +293,6 @@ header {
 
 .guess-box {
   z-index: 2;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-.console {
-  width: min(42rem, calc(100vw - 3.2rem));
 }
 
 .reveal {
@@ -396,27 +301,9 @@ header {
   max-width: min(34rem, calc(100% - 2.4rem));
 }
 
-footer {
-  z-index: 2;
-  padding: 2rem;
-}
-
-.route {
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.stop {
-  gap: 0.7rem;
-  display: flex;
-  align-items: center;
-  padding: 0.4rem 1.2rem;
+// Chip and route-list recipes come from templates/_country-chip.scss;
+// only the walk's own accents live here.
+.walked {
   border-color: var(--stop-color);
 
   &.head {
@@ -428,30 +315,6 @@ footer {
 .sea-hop {
   opacity: 0.6;
   font-weight: bold;
-  color: hsl(215.7, 76.4%, 41%);
-}
-
-.stop-flag {
-  width: 2.6rem;
-  height: 1.8rem;
-  border: 0.1rem solid hsla(215.7, 76.4%, 21.6%, 0.25);
-}
-
-@media screen and (max-width: $tablet) {
-  header {
-    padding: 1.2rem 1.6rem;
-  }
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
-  // Long chains scroll instead of swallowing the map and input.
-  .route {
-    max-height: 22dvh;
-    overflow-y: auto;
-    // .main-board kills pointer events — restore them or the chain can't be
-    // touch-scrolled at all.
-    pointer-events: auto;
-    overscroll-behavior: contain;
-  }
+  color: ink(1, 41%);
 }
 </style>

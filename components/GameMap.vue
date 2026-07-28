@@ -198,7 +198,7 @@ import {
   type MapCode,
 } from '~~/data/map.gen'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
+import { WORLD_BOX, countryLatLng, invertRobinson, mainlandBox, projectRobinson, type LatLng } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { type MapTint, useGameStore } from '~~/store/game.store'
@@ -247,6 +247,13 @@ const props = defineProps({
   solo: {
     type: Boolean,
     default: false,
+  },
+  /** Chrome berth in CSS px: the camera fits its subject into the band
+   *  between `top` and `bottom` instead of the full viewport, so a view's
+   *  header card (a flag, a photo) never sits on the subject. */
+  berth: {
+    type: Object as PropType<{ top?: number; bottom?: number }>,
+    default: undefined,
   },
   /** With solo: continents stay as one silhouette — uniform fill, no strokes,
    *  so internal borders vanish and an overlay reads against real coastlines. */
@@ -543,7 +550,7 @@ const pinAnswerPoint = computed(() =>
 // zoom of a cached raster layer) breaks down at map scale: the browser
 // endlessly re-rasterizes tiles of a giant layer, which reads as shimmer and
 // stutter. Nothing here is reactive — Vue must never diff 220 paths a frame.
-const WORLD_VIEW = { x: 0, y: 0, width: 2000, height: 1001 }
+const WORLD_VIEW = { ...WORLD_BOX }
 const MAX_ZOOM = 40
 /**
  * How far past a world edge the camera may be dragged, as a fraction of the
@@ -577,6 +584,45 @@ const worldFitView = () => {
     height,
   }
 }
+
+/** The berth as a zoom-out factor plus where the clear band's centre sits
+ *  (as a fraction of viewport height). No berth → identity. Nonsense berths
+ *  (band under 35% of the screen) are ignored rather than obeyed. */
+const berthMetrics = () => {
+  const top = props.berth?.top ?? 0
+  const bottom = props.berth?.bottom ?? 0
+  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const band = viewportHeight - top - bottom
+  if (!top && !bottom) return { scale: 1, centerFraction: 0.5 }
+  if (!viewportHeight || band < viewportHeight * 0.35) return { scale: 1, centerFraction: 0.5 }
+  return { scale: viewportHeight / band, centerFraction: (top + band / 2) / viewportHeight }
+}
+
+/**
+ * Re-aim a fitted view so its `content` box lands inside the berth band:
+ * recentred on the band's centre, and zoomed out ONLY when the content's
+ * projected height genuinely overflows the band (a wide world on a tall
+ * phone already fits — it just needs to move).
+ */
+const berthedView = (view: typeof WORLD_VIEW, content: { y: number; height: number }) => {
+  const { scale: bandScale, centerFraction } = berthMetrics()
+  if (bandScale === 1 && centerFraction === 0.5) return view
+  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const bandHeightPx = viewportHeight / bandScale
+  const contentHeightPx = viewportHeight * (content.height / view.height)
+  const scale = Math.max(1, contentHeightPx / bandHeightPx)
+  const width = view.width * scale
+  const height = view.height * scale
+  return {
+    x: view.x + view.width / 2 - width / 2,
+    y: content.y + content.height / 2 - centerFraction * height,
+    width,
+    height,
+  }
+}
+
+/** The resting camera: the world fit, honouring any berth. */
+const restView = () => berthedView(worldFitView(), WORLD_VIEW)
 
 /**
  * A reactive echo of the camera, for the few overlays that must lay themselves
@@ -615,9 +661,18 @@ const writeViewBox = () => {
 }
 
 const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZOOM) => {
-  view.width = Math.min(WORLD_VIEW.width, Math.max(minWidth, view.width))
+  // A berth may rest the camera wider than the world so the subject can sit
+  // inside the clear band — the zoom-out ceiling follows the actual rest.
+  const { centerFraction } = berthMetrics()
+  const maxWidth = Math.max(WORLD_VIEW.width, restView().width)
+  view.width = Math.min(maxWidth, Math.max(minWidth, view.width))
   view.height = view.width / viewAspect
-  view.x = Math.min(WORLD_VIEW.width - view.width, Math.max(0, view.x))
+  // Wider than the world (berth rest): the only legal x is dead centre.
+  const overhang = (WORLD_VIEW.width - view.width) / 2
+  view.x = Math.min(
+    Math.max(WORLD_VIEW.width - view.width, overhang),
+    Math.max(Math.min(0, overhang), view.x)
+  )
 
   // Vertical headroom: a strict [0, world-height] clamp pins the far north
   // (Svalbard, Hans Island at y≈87 of 1001) and the far south to the screen
@@ -637,8 +692,9 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   if (view.height >= WORLD_VIEW.height) {
     // View taller than the world. Hard-centring here (the old behaviour) killed
     // vertical panning outright on any wide screen, which is precisely where
-    // the caption overlaps the Arctic.
-    const centred = WORLD_VIEW.height / 2 - view.height / 2
+    // the caption overlaps the Arctic. A berth shifts the resting centre so
+    // the world hangs in the clear band.
+    const centred = WORLD_VIEW.height / 2 - centerFraction * view.height
     view.y = Math.min(centred + margin, Math.max(centred - margin, view.y))
   } else {
     view.y = Math.min(WORLD_VIEW.height - view.height + margin, Math.max(-margin, view.y))
@@ -695,7 +751,7 @@ const frameForBoxes = (
     maxX = Math.max(maxX, x + width / 2)
     maxY = Math.max(maxY, y + height / 2)
   }
-  if (minX === Infinity) return worldFitView()
+  if (minX === Infinity) return restView()
 
   const pad = Math.max((maxX - minX) * 0.35, (maxY - minY) * 0.35, 60)
   let x = minX - pad
@@ -713,7 +769,7 @@ const frameForBoxes = (
     x -= grow / 2
     width += grow
   }
-  return { x, y, width, height }
+  return berthedView({ x, y, width, height }, { y: minY - pad, height: maxY - minY + pad * 2 })
 }
 
 /**
@@ -740,12 +796,18 @@ const frameFocus = () => {
   ]
   const target = boxes.length
     ? frameForBoxes(boxes, props.focusContext.map(frameBoxFor).filter(Boolean))
-    : worldFitView()
+    : restView()
   tweenToView(target)
 }
 
 watch(
   () => [props.focusCountries, props.focusContext, props.feature],
+  () => nextTick(frameFocus)
+)
+
+// A berth arriving or leaving re-aims the camera the same way a focus does.
+watch(
+  () => [props.berth?.top, props.berth?.bottom],
   () => nextTick(frameFocus)
 )
 
@@ -1266,7 +1328,7 @@ onMounted(async () => {
   // Adopt the screen's aspect ratio (edgeless full-bleed map) and keep it
   // across window resizes, preserving the camera's center point.
   measureViewAspect()
-  Object.assign(viewState, worldFitView())
+  Object.assign(viewState, restView())
   Object.assign(targetView, viewState)
   writeViewBox()
   window.addEventListener('resize', () => {
@@ -1468,12 +1530,13 @@ watch(
   () => gameStore.map.reveal,
   reveal => {
     // Reveal cleared between rounds: return the camera to the world view.
-    if (!reveal) tweenToView(worldFitView())
+    if (!reveal) tweenToView(restView())
   }
 )
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
 .game-map {
   height: var(--viewport-height);
   overflow: hidden;
@@ -1569,7 +1632,7 @@ path[id],
   color: var(--hior-ange);
 
   &.answer {
-    color: hsl(215.7, 76.4%, 41%);
+    color: ink(1, 41%);
   }
 }
 
@@ -1590,7 +1653,7 @@ path[id],
 .map-pin-link {
   fill: none;
   pointer-events: none;
-  stroke: hsl(215.7, 76.4%, 41%);
+  stroke: ink(1, 41%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
@@ -1600,7 +1663,7 @@ path[id],
 // for the map's dark border ink.
 path.ringed-country,
 .micro-marker.ringed-country {
-  stroke: hsl(24, 80%, 45%);
+  stroke: ember(1, 45%);
   stroke-width: calc(2.5px * var(--stroke-zoom, 1));
   stroke-linejoin: round;
 }
@@ -1608,7 +1671,7 @@ path.ringed-country,
 // The sailing whisper: the hideout's coast hums sea-blue while passages
 // remain — a signal that boats exist, never a list of where they go.
 path.sea-glow-country {
-  stroke: hsl(215.7, 76.4%, 41%);
+  stroke: ink(1, 41%);
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-dasharray: calc(1.5px * var(--stroke-zoom, 1)) calc(3px * var(--stroke-zoom, 1));
   stroke-linecap: round;
@@ -1625,7 +1688,7 @@ path.sea-glow-country {
 .map-sea-link {
   fill: none;
   pointer-events: none;
-  stroke: hsla(215.7, 76.4%, 41%, 0.75);
+  stroke: ink(0.75, 41%);
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-linecap: round;
   stroke-dasharray: calc(5px * var(--stroke-zoom, 1)) calc(6px * var(--stroke-zoom, 1));
@@ -1651,14 +1714,14 @@ path.sea-glow-country {
 }
 
 .chip-disc {
-  fill: hsla(36, 100%, 98%, 0.95);
-  stroke: hsla(215.7, 76.4%, 41%, 0.6);
+  fill: milk(0.95);
+  stroke: ink(0.6, 41%);
   stroke-width: 1;
 }
 
 .chip-ship {
   fill: none;
-  stroke: hsl(215.7, 76.4%, 30%);
+  stroke: ink(1, 30%);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1675,7 +1738,7 @@ path.sea-glow-country {
 // deep zoom on a nine-metre rock.
 .feature-marker {
   pointer-events: none;
-  color: hsl(215.7, 76.4%, 41%);
+  color: ink(1, 41%);
 }
 
 .feature-marker-scale {
@@ -1686,7 +1749,7 @@ path.sea-glow-country {
   fill: hsla(199, 68%, 62%, 0.45);
   stroke: currentColor;
   stroke-width: 2px;
-  filter: drop-shadow(0 0 3px hsla(215.7, 76.4%, 60%, 0.6));
+  filter: drop-shadow(0 0 3px ink(0.6, 60%));
 }
 
 .feature-marker-dot {
@@ -1722,15 +1785,15 @@ path.sea-glow-country {
 
   &.line {
     fill: none;
-    stroke: hsl(215.7, 76.4%, 41%);
+    stroke: ink(1, 41%);
     stroke-width: calc(2.4px * var(--stroke-zoom, 1));
     stroke-linecap: round;
     stroke-linejoin: round;
-    filter: drop-shadow(0 0 calc(1.5px * var(--stroke-zoom, 1)) hsla(215.7, 76.4%, 60%, 0.5));
+    filter: drop-shadow(0 0 calc(1.5px * var(--stroke-zoom, 1)) ink(0.5, 60%));
   }
 
   &.area {
-    stroke: hsl(215.7, 76.4%, 35%);
+    stroke: ink(1, 35%);
     stroke-width: calc(1.2px * var(--stroke-zoom, 1));
     fill: hsla(199, 68%, 62%, 0.38);
     animation: feature-wash var(--motion-slow) var(--ease-out-expressive) 1;
@@ -1823,7 +1886,7 @@ path[id]:hover,
   stroke: transparent;
 }
 .solo path.highlighted-country {
-  stroke: hsla(215.7, 76.4%, 21.6%, 0.55);
+  stroke: ink(0.55);
 }
 // Solo + landmass: the continents stay as one quiet silhouette. A uniform
 // fill with no strokes makes internal borders vanish — adjacent countries

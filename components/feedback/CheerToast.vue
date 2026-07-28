@@ -5,7 +5,7 @@
     <li
       v-for="(group, index) in visible"
       :key="group.key"
-      class="pane chip"
+      class="pane chip player-accent"
       :style="`--depth: ${visible.length - 1 - index}; z-index: ${index + 1}; ${
         senderFor(group) ? `--player-color: ${senderFor(group)?.color}` : ''
       }`"
@@ -114,7 +114,6 @@ const senderFallback = (group: CheerChip) =>
   align-items: center;
   gap: 0.6rem;
   padding: 0.5rem 0.8rem;
-  border-left: 0.3rem solid var(--player-color, var(--dark-blue));
   transform-origin: top right;
   transform: translate(calc(var(--depth, 0) * -0.6rem), calc(var(--depth, 0) * -0.9rem))
     scale(calc(1 - var(--depth, 0) * 0.05));

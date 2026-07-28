@@ -1,6 +1,6 @@
 <template>
   <!-- Spans throughout: renders inside ChallengeResult's lesson <p>. -->
-  <span class="nocturne-reveal">
+  <span class="ranked-bars nocturne-reveal">
     <span class="header">
       <CountryFlag class="flag" :country="country" mode="background" />
       <strong class="country">{{ countryName(country) }}</strong>
@@ -42,6 +42,7 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
+import { formatCompact } from '~~/lib/number'
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
 
 /**
@@ -56,8 +57,6 @@ const props = defineProps<{
 }>()
 
 const country = computed(() => COUNTRIES[props.challenge.country])
-
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 
 const rows = computed(() => {
   const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
@@ -74,7 +73,7 @@ const rows = computed(() => {
       secondary,
       lit: named.has(city.name),
       width: Math.max(3, (city.population / largest) * 100),
-      display: compact.format(city.population),
+      display: formatCompact(city.population),
     }
   })
 })
@@ -83,17 +82,9 @@ const litCount = computed(() => rows.value.filter(row => row.lit).length)
 const urbanization = computed(() => country.value.people.urbanization)
 </script>
 <style lang="scss" scoped>
+// Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
 .nocturne-reveal {
-  gap: 1.2rem;
-  display: flex;
   position: relative;
-  flex-flow: column nowrap;
-  padding: 0.8rem 0.6rem;
-  min-width: min(42rem, 100%);
-  // Tall runs must scroll inside the card, not off the screen
-  max-height: min(52vh, 46rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 // Flag over country over tally, all centred — the card opens like a dossier
@@ -120,22 +111,8 @@ const urbanization = computed(() => country.value.people.urbanization)
   font-size: 1.4rem;
 }
 
-.rows {
-  gap: 0.45rem;
-  display: flex;
-  flex-flow: column nowrap;
-}
-
 // Each city lands on its own beat; bars grow after the row settles
 .row {
-  gap: 0.8rem;
-  display: flex;
-  opacity: 0;
-  align-items: center;
-  font-size: 1.4rem;
-  animation: row-land 0.4s var(--ease-smooth) forwards;
-  animation-delay: calc(var(--i) * 110ms);
-
   .marker {
     color: hsl(38, 90%, 45%);
     font-size: 1.1rem;
@@ -188,22 +165,8 @@ const urbanization = computed(() => country.value.people.urbanization)
   }
 }
 
-.bar {
-  flex: 1;
-  height: 0.7rem;
-  overflow: hidden;
-  border-radius: 0.35rem;
-  background: hsla(216, 40%, 25%, 0.1);
-
-  .fill {
-    height: 100%;
-    display: block;
-    border-radius: 0.35rem;
-    background: hsl(38, 90%, 55%);
-    transform-origin: left center;
-    animation: bar-grow 0.5s var(--ease-smooth) backwards;
-    animation-delay: calc(var(--i) * 110ms + 200ms);
-  }
+.bar .fill {
+  background: hsl(38, 90%, 55%);
 }
 
 .urban {
@@ -226,45 +189,15 @@ const urbanization = computed(() => country.value.people.urbanization)
   }
 }
 
-@keyframes row-land {
-  from {
-    opacity: 0;
-    transform: translateY(0.8rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bar-grow {
-  from {
-    transform: scaleX(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .row,
   .urban {
     animation: none;
     opacity: 1;
   }
-
-  .bar .fill {
-    animation: none;
-  }
 }
 
-// Phone pass: tighter columns so the bars keep real length
 @media screen and (max-width: 480px) {
-  .nocturne-reveal {
-    padding: 0.4rem 0;
-  }
-
   .row {
-    gap: 0.6rem;
-    font-size: 1.3rem;
-
     .city {
       width: 8.5rem;
     }

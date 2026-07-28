@@ -1,3 +1,10 @@
+/** The one two-sided clamp — call sites must not hand-roll Math.min/Math.max chains. */
+export const clamp = (value: number, minimum: number, maximum: number): number =>
+  Math.min(maximum, Math.max(minimum, value))
+
+/** Clamp to the unit interval — fractions of a clock, a track, a pot. */
+export const clamp01 = (value: number): number => clamp(value, 0, 1)
+
 const NUMBER_BREAKPOINTS = {
   MILLION: 1000000,
   BILLION: 1000000000,
@@ -37,3 +44,19 @@ export const formatAmount = (amount: { amount: number; unit: string }): string =
   const unit = String(amount.unit ?? '').trim()
   return unit ? `${formatNumber(amount.amount)} ${unit}` : formatNumber(amount.amount)
 }
+
+const COMPACT = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+const COMPACT_USD = new Intl.NumberFormat('en', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
+/** "1.4M" / "$1.4B" — the one compact formatter for tight scorecard columns. */
+export const formatCompact = (amount: number, options: { currency?: boolean } = {}): string =>
+  (options.currency ? COMPACT_USD : COMPACT).format(amount)
+
+/** "1,234 km" — the one distance formatter for pin drops, probes and standings. */
+export const formatKm = (distanceKm: number): string =>
+  `${Math.round(distanceKm).toLocaleString()} km`

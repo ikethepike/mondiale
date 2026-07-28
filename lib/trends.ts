@@ -21,10 +21,15 @@ export const MIN_TREND_SPAN_YEARS = 15
  * range; unbounded values a 15% relative gap.
  */
 export const isDecisiveGap = (a: number, b: number, scale?: ChallengeScale): boolean => {
-  const gap = Math.abs(a - b)
-  if (scale) return gap >= (scale.max - scale.min) * 0.08
+  if (scale) return Math.abs(a - b) >= (scale.max - scale.min) * 0.08
+  return relativeGap(a, b) >= 0.15
+}
+
+/** |a − b| relative to the larger magnitude — the one relative-gap measure
+ *  (0 when both are 0). Thresholds live at the call sites. */
+export const relativeGap = (a: number, b: number): number => {
   const reference = Math.max(Math.abs(a), Math.abs(b))
-  return reference > 0 && gap / reference >= 0.15
+  return reference > 0 ? Math.abs(a - b) / reference : 0
 }
 
 /**
