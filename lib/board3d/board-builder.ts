@@ -227,8 +227,8 @@ interface MarkerPart {
  * +z pointing along the path). Chunky low-poly forms in the toon language:
  * a flag for flag challenges, an obelisk for capitals, a signpost for ISO
  * codes, a statue for leaders, a standing coin for currencies, a pyramid for
- * landmarks and a full arch spanning the final tile — physical gates that
- * read as a hard border to pass.
+ * landmarks and a triumphal gate crowning the final tile — physical gates
+ * that read as a hard border to pass.
  */
 const markerPartsFor = (
   type: IndividualChallengeAccessorId | 'final',
@@ -303,40 +303,37 @@ const markerPartsFor = (
       ]
     }
     case 'final': {
+      // A triumphal gate rather than a bare doorframe: plinths, capitals, a
+      // heavy orange lintel and a stepped crown topped by a beacon finial.
       const parts: MarkerPart[] = []
       for (const side of [-1, 1]) {
-        const pillar = new BoxGeometry(0.16 * s, 1.15 * s, 0.16 * s)
-        pillar.translate(side * 0.5 * s, 0.575 * s, 0)
+        const plinth = new BoxGeometry(0.32 * s, 0.16 * s, 0.32 * s)
+        plinth.translate(side * 0.55 * s, 0.08 * s, 0)
+        parts.push({ geometry: plinth, color: BOARD_COLORS.warmSand })
+
+        const pillar = new BoxGeometry(0.19 * s, 1.2 * s, 0.19 * s)
+        pillar.translate(side * 0.55 * s, 0.76 * s, 0)
         parts.push({ geometry: pillar, color: BOARD_COLORS.darkBlue })
+
+        const capital = new BoxGeometry(0.27 * s, 0.12 * s, 0.27 * s)
+        capital.translate(side * 0.55 * s, 1.42 * s, 0)
+        parts.push({ geometry: capital, color: BOARD_COLORS.warmSand })
       }
-      const lintel = new BoxGeometry(1.25 * s, 0.16 * s, 0.2 * s)
-      lintel.translate(0, 1.2 * s, 0)
+      const lintel = new BoxGeometry(1.5 * s, 0.18 * s, 0.24 * s)
+      lintel.translate(0, 1.57 * s, 0)
       parts.push({ geometry: lintel, color: BOARD_COLORS.hiorAnge })
+
+      const crown = new BoxGeometry(1.1 * s, 0.13 * s, 0.2 * s)
+      crown.translate(0, 1.72 * s, 0)
+      parts.push({ geometry: crown, color: BOARD_COLORS.darkBlue })
+
+      const finial = new ConeGeometry(0.15 * s, 0.26 * s, 4)
+      finial.rotateY(Math.PI / 4)
+      finial.translate(0, 1.91 * s, 0)
+      parts.push({ geometry: finial, color: BOARD_COLORS.hiorAnge })
       return parts
     }
   }
-}
-
-/** Tiles before the final arch that get their own gauntlet arch. */
-const GAUNTLET_APPROACH_TILES = 3
-
-/**
- * A smaller echo of the final arch, spanning a gauntlet-approach tile — the
- * run-in reads as a colonnade of gates funnelling into the big one. Sand
- * lintels keep the alert orange reserved for the final arch itself.
- */
-const gauntletArchParts = (spacing: number): MarkerPart[] => {
-  const s = spacing
-  const parts: MarkerPart[] = []
-  for (const side of [-1, 1]) {
-    const pillar = new BoxGeometry(0.13 * s, 0.85 * s, 0.13 * s)
-    pillar.translate(side * 0.48 * s, 0.425 * s, 0)
-    parts.push({ geometry: pillar, color: BOARD_COLORS.darkBlue })
-  }
-  const lintel = new BoxGeometry(1.12 * s, 0.13 * s, 0.16 * s)
-  lintel.translate(0, 0.9 * s, 0)
-  parts.push({ geometry: lintel, color: BOARD_COLORS.warmSand })
-  return parts
 }
 
 /** Inverted-hull copy of a part, inflated about its own local center. */
@@ -353,8 +350,7 @@ const outlineOf = (geometry: BufferGeometry): BufferGeometry => {
 
 /**
  * All challenge markers merged by color (a handful of draw calls total):
- * toon-shaded structures plus one ink inverted-hull outline mesh. The final
- * arch gets a gauntlet run-in — echo arches over the last approach tiles.
+ * toon-shaded structures plus one ink inverted-hull outline mesh.
  */
 const buildChallengeMarkers = (
   tiles: Tile[],
@@ -398,15 +394,6 @@ const buildChallengeMarkers = (
     placeParts(markerPartsFor(isFinal ? 'final' : tile.type, spacing), anchor, tangent)
   }
 
-  // --- The gauntlet approach: echo arches lining the final run-in -----------
-  const finalIndex = tiles.findIndex(tile => tile.type === 'final')
-  for (let back = GAUNTLET_APPROACH_TILES; finalIndex !== -1 && back >= 1; back--) {
-    const index = finalIndex - back
-    // Never crowd the start tile or another gate's own marker
-    if (index <= 0 || tiles[index].type !== 'normal') continue
-    const { position, tangent } = transforms[index]
-    placeParts(gauntletArchParts(spacing), position, tangent)
-  }
 
   const meshes: Mesh[] = []
   if (outlines.length) {
