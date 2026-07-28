@@ -80,18 +80,15 @@
             :clock-total="challenge.durationSeconds"
           >
             <template v-if="!challenge.options" #default>
-              <form class="guess-form" @submit.prevent="onTypedGuess">
-                <input
-                  ref="nameInput"
-                  v-model="typedName"
-                  type="text"
-                  placeholder="Name the power…"
-                  autocomplete="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  :disabled="lockedOut || !started"
-                />
-              </form>
+              <SuggestInput
+                ref="nameInput"
+                :options="registerOptions"
+                :normalize="normalizeEmpireAnswer"
+                placeholder="Name the power…"
+                :disabled="lockedOut || !started"
+                @pick="onNamePick"
+                @miss="onNameMiss"
+              />
             </template>
           </EmpireTimebar>
         </template>
@@ -161,6 +158,7 @@ import EmpireRevealCard from '~/components/challenge/EmpireRevealCard.vue'
 import EmpireTimebar from '~/components/challenge/EmpireTimebar.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { countryName, getCountry } from '~~/lib/country'
 import {
@@ -204,13 +202,12 @@ gameStore.map.landmass = true
 const ghostField = ref<InstanceType<typeof EmpireGhostField>>()
 const timebar = ref<InstanceType<typeof EmpireTimebar>>()
 const yearEl = ref<HTMLElement>()
-const nameInput = ref<HTMLInputElement>()
+const nameInput = ref<InstanceType<typeof SuggestInput>>()
 const countryInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const paths = ref<string[]>([])
 const precisions = ref<number[]>()
 const flags = ref<Record<string, string>>({})
-const typedName = ref('')
 const lockedOut = ref(false)
 const spent = ref<string[]>([])
 const picks = ref<ISOCountryCode[]>([])
@@ -342,20 +339,35 @@ const onOptionPick = (option: string) => {
   lockOut(`Not ${empireDisplayName(EMPIRES[option]?.name ?? option)} — locked out for 3 seconds`)
 }
 
-const onTypedGuess = () => {
+/** Hard mode types against the whole register — every polity is suggestible. */
+const registerOptions = computed<SuggestOption[]>(() =>
+  Object.values(EMPIRES).map(({ id, name, answerAliases }) => ({
+    id,
+    name,
+    aliases: answerAliases,
+  }))
+)
+
+const onNamePick = (option: SuggestOption) => {
   const active = challenge.value
-  const typed = normalizeEmpireAnswer(typedName.value)
-  if (!active || !typed || lockedOut.value || beat.value !== 'guess') return
+  if (!active || lockedOut.value || beat.value !== 'guess') return
+  if (option.id === active.empireId) return buzz(option.id)
+  lockOut(`Not ${empireDisplayName(option.name)} — locked out for 3 seconds`)
+}
+
+/** Typos the suggestion filter can't place still get the forgiving match. */
+const onNameMiss = (typed: string) => {
+  const active = challenge.value
+  if (!active || lockedOut.value || beat.value !== 'guess') return
 
   const matches = (id: string) => {
     const candidate = EMPIRES[id]
-    return Boolean(candidate && empireAnswerMatches(typedName.value, candidate))
+    return Boolean(candidate && empireAnswerMatches(typed, candidate))
   }
 
   if (matches(active.empireId)) return buzz(active.empireId)
 
   const other = Object.keys(EMPIRES).find(matches)
-  typedName.value = ''
   if (other) {
     lockOut(`Not ${empireDisplayName(EMPIRES[other].name)} — locked out for 3 seconds`)
   } else {
