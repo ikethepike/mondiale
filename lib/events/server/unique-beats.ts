@@ -94,8 +94,7 @@ export const applyUniqueReady = async (
 /** Briefing over: the one writing clock starts for the whole table. */
 const beginBoard = async (ctx: ChainContext, game: Game, challenge: UniqueOrBustChallenge) => {
   challenge.state.briefing = false
-  challenge.state.deadline =
-    Date.now() + challenge.durationSeconds * 1000 + FIRST_TURN_GRACE_MS
+  challenge.state.deadline = Date.now() + challenge.durationSeconds * 1000 + FIRST_TURN_GRACE_MS
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
   server.emit({ event: 'unique-updated', game }, ctx.eventTarget)

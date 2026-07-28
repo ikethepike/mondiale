@@ -55,7 +55,7 @@ import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EMPIRES } from '~~/data/empires.gen'
-import { TRENDS } from '~~/data/trends.gen'
+import { TRENDS } from '~~/lib/trends'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
@@ -978,6 +978,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           strikes: 0,
           state: {
+            ready: [RIVAL, ME, THIRD],
             // Øresund and Bering hops on one chain — the dashed-arc test.
             chains: [['DK', 'SE', 'FI', 'RU', 'US']],
             order: [RIVAL, ME, THIRD],
@@ -986,6 +987,34 @@ const scenarios: Scenario[] = [
             deadline: Date.now() + 12000,
             named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['US'] },
             strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-briefing',
+    label: 'Border chain (briefing — rules card, one rival ready)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          state: {
+            briefing: true,
+            ready: [RIVAL],
+            chains: [['DK']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 0,
+            deadline: 0,
+            named: {},
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
             eliminated: [],
             outcomes: {},
             missedOuts: {},
@@ -1005,6 +1034,7 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
           strikes: 1,
           state: {
+            ready: [RIVAL, ME, THIRD],
             chains: [['DK', 'SE', 'FI']],
             order: [RIVAL, ME, THIRD],
             activeIndex: 1,
@@ -1101,7 +1131,12 @@ const scenarios: Scenario[] = [
             deadline: Date.now() + 25000,
             detectives: [ME, THIRD],
             clues: [
-              { hop: 1, kind: 'region', topic: 'geography', text: 'The despot is hiding in Europe' },
+              {
+                hop: 1,
+                kind: 'region',
+                topic: 'geography',
+                text: 'The despot is hiding in Europe',
+              },
               {
                 hop: 2,
                 kind: 'threshold',
@@ -1280,7 +1315,11 @@ const scenarios: Scenario[] = [
               { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
               { hop: 2, kind: 'threshold', text: 'Its urbanization is below 68%' },
               { hop: 3, kind: 'language', text: 'Official languages there include Italian' },
-              { hop: 4, kind: 'flag-colors', text: 'The flag flying over the hideout carries green' },
+              {
+                hop: 4,
+                kind: 'flag-colors',
+                text: 'The flag flying over the hideout carries green',
+              },
               { hop: 5, kind: 'threshold', text: 'Its population is below 11,000,000' },
             ],
             moves: [

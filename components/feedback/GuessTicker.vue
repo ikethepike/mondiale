@@ -41,9 +41,7 @@ const guessText = (entry: GuessTickerEntry) => {
     case 'probe':
       // The server sends a distance but never the country — a radius that
       // raises tension without pointing at the answer.
-      return entry.distanceKm !== undefined
-        ? `${formatKm(entry.distanceKm)} away`
-        : 'probed…'
+      return entry.distanceKm !== undefined ? `${formatKm(entry.distanceKm)} away` : 'probed…'
     case 'locked':
       return 'buzzed ✗'
     case 'correct':

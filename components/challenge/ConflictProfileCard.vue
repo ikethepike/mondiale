@@ -74,9 +74,8 @@ const overflow = ref(0)
 const supportLine = ref('')
 
 onMounted(async () => {
-  const { CONFLICTS, CONFLICTS_BY_COUNTRY, CONFLICTS_SUPPORTED_BY_COUNTRY } = await import(
-    '~~/data/conflict-profiles.gen'
-  )
+  const { CONFLICTS, CONFLICTS_BY_COUNTRY, CONFLICTS_SUPPORTED_BY_COUNTRY } =
+    await import('~~/data/conflict-profiles.gen')
   const ids = CONFLICTS_BY_COUNTRY[props.country] ?? []
   const profiles = ids.flatMap(id => CONFLICTS[id] ?? [])
   conflict.value = dominantConflict(profiles)
@@ -118,9 +117,7 @@ const yearsLabel = computed(() => {
   return `${episodes[0][0]}–${episodes[episodes.length - 1][1]}, on and off`
 })
 
-const typeLabel = computed(() =>
-  conflict.value ? CONFLICT_TYPE_LABELS[conflict.value.type] : ''
-)
+const typeLabel = computed(() => (conflict.value ? CONFLICT_TYPE_LABELS[conflict.value.type] : ''))
 
 const incompatibilityLabel = computed(() => {
   switch (conflict.value?.incompatibility) {
@@ -193,7 +190,6 @@ const ucdpNote = computed(() => {
   align-items: center;
   justify-content: center;
 }
-
 
 .versus {
   opacity: 0.45;

@@ -6,7 +6,7 @@ import {
   autoEnabledKinds,
   CHALLENGE_GROUP_ACCESSORS,
   CHALLENGE_GROUP_BY_KIND,
-  GROUPED_ACCESSORS,
+  HEAVY_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
@@ -78,13 +78,23 @@ describe('isAccessorEnabled', () => {
     expect(isAccessorEnabled(off, 'government.yearsAtWar')).toBe(false)
   })
 
-  it('never touches ungrouped accessors', () => {
+  it('deals non-heavy topic stats on every difficulty in auto', () => {
+    expect(isAccessorEnabled({ difficulty: 'easy' }, 'economics.gdpPerCapita')).toBe(true)
+    expect(isAccessorEnabled({ difficulty: 'normal' }, 'government.democracyIndex')).toBe(true)
+    expect(isAccessorEnabled({ difficulty: 'easy' }, 'health.obesity')).toBe(true)
+    expect(isAccessorEnabled({ difficulty: 'normal' }, 'geography.area.total')).toBe(true)
+  })
+
+  it('lets a topic override switch its stats off, others untouched', () => {
     const off = {
-      difficulty: 'easy',
-      challengeOverrides: { conflicts: false, water: false },
+      difficulty: 'hard',
+      challengeOverrides: { economy: false, society: false },
     } as const
-    expect(isAccessorEnabled(off, 'economics.gdpPerCapita')).toBe(true)
-    expect(isAccessorEnabled(off, 'government.democracyIndex')).toBe(true)
+    expect(isAccessorEnabled(off, 'economics.gdpPerCapita')).toBe(false)
+    expect(isAccessorEnabled(off, 'infrastructure.airports')).toBe(false)
+    expect(isAccessorEnabled(off, 'government.democracyIndex')).toBe(false)
+    expect(isAccessorEnabled(off, 'health.obesity')).toBe(true)
+    expect(isAccessorEnabled(off, 'environment.CO2Emissions')).toBe(true)
   })
 })
 
@@ -113,15 +123,15 @@ describe('taxonomy shape', () => {
 
 describe('isGroupEnabled', () => {
   it('lets an explicit override beat the auto gate both ways', () => {
-    expect(isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: false } }, 'trends')).toBe(
-      false
-    )
-    expect(isGroupEnabled({ difficulty: 'hard', challengeOverrides: { trends: false } }, 'trends')).toBe(
-      false
-    )
-    expect(isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: true } }, 'trends', false)).toBe(
-      true
-    )
+    expect(
+      isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: false } }, 'trends')
+    ).toBe(false)
+    expect(
+      isGroupEnabled({ difficulty: 'hard', challengeOverrides: { trends: false } }, 'trends')
+    ).toBe(false)
+    expect(
+      isGroupEnabled({ difficulty: 'easy', challengeOverrides: { trends: true } }, 'trends', false)
+    ).toBe(true)
   })
 
   it('follows the auto gate when unset', () => {
@@ -140,8 +150,16 @@ describe('conflicts stay a rare find', () => {
     } as unknown as Parameters<typeof getGroupChallenge>[0]['game']
     for (let deal = 0; deal < 30; deal++) {
       const challenge = getGroupChallenge({ game })
-      expect(GROUPED_ACCESSORS.has(challenge.id)).toBe(false)
+      expect(HEAVY_ACCESSORS.has(challenge.id)).toBe(false)
     }
+  })
+
+  it('marks only heavy-group accessors, so the opener pool stays full', () => {
+    expect(HEAVY_ACCESSORS.has('government.conflictsFought')).toBe(true)
+    expect(HEAVY_ACCESSORS.has('economics.gdpPerCapita')).toBe(false)
+    expect(HEAVY_ACCESSORS.has('people.population')).toBe(false)
+    // Everything-grouped must not mean everything-heavy.
+    expect(HEAVY_ACCESSORS.size).toBe(CHALLENGE_GROUP_ACCESSORS.conflicts.length)
   })
 })
 
@@ -149,6 +167,8 @@ describe('isValidChallengeOverrides', () => {
   it('accepts empty and well-formed override maps', () => {
     expect(isValidChallengeOverrides({})).toBe(true)
     expect(isValidChallengeOverrides({ conflicts: false, water: true })).toBe(true)
+    // Hidden stat-topic groups are real groups — overrides validate today.
+    expect(isValidChallengeOverrides({ economy: false, nature: true })).toBe(true)
   })
 
   it('rejects unknown groups, non-boolean values, and non-objects', () => {

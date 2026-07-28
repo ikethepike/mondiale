@@ -133,6 +133,11 @@ export type ClientEventData =
       event: 'unique-ready'
     }
   | {
+      /** Border Chain: a player dismissed their briefing card. The first shot
+       *  clock starts when everyone has (or the briefing cap forces it). */
+      event: 'chain-ready'
+    }
+  | {
       /** Unique or Bust: lock one board slot to a register entry. The pick
        *  stays off the broadcast (presence-only) — it lands in the round's
        *  secret blob until the reveal. A repeat on a locked slot is a no-op. */
@@ -213,6 +218,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-manhunt-subpoena',
   'manhunt-ready',
   'unique-ready',
+  'chain-ready',
   'submit-unique-answer',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]

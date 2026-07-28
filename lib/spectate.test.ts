@@ -251,11 +251,23 @@ const ROUND_FIXTURES: RoundChallenge[] = [
     maximumClicks: 5,
     maximumPoints: 8,
   },
-  { _type: 'neighbour-blitz-challenge', country: 'FR', neighbours: ['DE', 'ES'], durationSeconds: 30, maximumPoints: 8 },
+  {
+    _type: 'neighbour-blitz-challenge',
+    country: 'FR',
+    neighbours: ['DE', 'ES'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
   { _type: 'silhouette-challenge', country: 'TD', durationSeconds: 30, maximumPoints: 8 },
   { _type: 'hot-cold-challenge', country: 'TD', maximumGuesses: 5, maximumPoints: 8 },
   { _type: 'sketch-challenge', country: 'FR', maximumPoints: 8 },
-  { _type: 'stat-detective-challenge', country: 'TD', clues: ['people.population'], secondsPerClue: 5, maximumPoints: 8 },
+  {
+    _type: 'stat-detective-challenge',
+    country: 'TD',
+    clues: ['people.population'],
+    secondsPerClue: 5,
+    maximumPoints: 8,
+  },
   {
     _type: 'two-truths-challenge',
     country: 'FR',
@@ -268,24 +280,122 @@ const ROUND_FIXTURES: RoundChallenge[] = [
     lieSource: 'DE',
     maximumPoints: 8,
   },
-  { _type: 'water-blitz-challenge', featureId: 'a', featureName: 'Nile', kind: 'river', countries: ['EG'], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'water-blitz-challenge', featureId: 'b', featureName: 'Baltic Sea', kind: 'sea', countries: ['SE'], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'water-blitz-challenge', featureId: 'c', featureName: 'Alps', kind: 'range', countries: ['CH'], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'name-water-challenge', featureId: 'd', featureName: 'Baltic Sea', kind: 'sea', countries: ['SE'], maximumGuesses: 3, durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'mother-tongue-challenge', language: 'Swahili', countries: ['KE', 'TZ'], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'flag-palette-challenge', country: 'SE', swatches: ['#006aa7', '#fecc00'], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'capital-guess-challenge', country: 'FR', image: '/x.webp', durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'flashpoint-challenge', country: 'TD', eras: [0], secondsPerEra: 5, durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'ghost-state-challenge', territoryId, parent: 'MA', durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'no-mans-land-challenge', territoryId, claimants: [], durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'pin-landmark-challenge', slug: landmarkSlug, image: '/x.webp', perfectDistanceKm: 10, zeroDistanceKm: 100, durationSeconds: 30, maximumPoints: 8 },
-  { _type: 'trend-race-challenge', metric: 'hdi', direction: 'risen', options: ['SE', 'NO'], standings: ['SE', 'NO'], windowStartYear: 2000, durationSeconds: 30, maximumPoints: 8 },
+  {
+    _type: 'water-blitz-challenge',
+    featureId: 'a',
+    featureName: 'Nile',
+    kind: 'river',
+    countries: ['EG'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'water-blitz-challenge',
+    featureId: 'b',
+    featureName: 'Baltic Sea',
+    kind: 'sea',
+    countries: ['SE'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'water-blitz-challenge',
+    featureId: 'c',
+    featureName: 'Alps',
+    kind: 'range',
+    countries: ['CH'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'name-water-challenge',
+    featureId: 'd',
+    featureName: 'Baltic Sea',
+    kind: 'sea',
+    countries: ['SE'],
+    maximumGuesses: 3,
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'mother-tongue-challenge',
+    language: 'Swahili',
+    countries: ['KE', 'TZ'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'flag-palette-challenge',
+    country: 'SE',
+    swatches: ['#006aa7', '#fecc00'],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'capital-guess-challenge',
+    country: 'FR',
+    image: '/x.webp',
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'flashpoint-challenge',
+    country: 'TD',
+    eras: [0],
+    secondsPerEra: 5,
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'ghost-state-challenge',
+    territoryId,
+    parent: 'MA',
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'no-mans-land-challenge',
+    territoryId,
+    claimants: [],
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'pin-landmark-challenge',
+    slug: landmarkSlug,
+    image: '/x.webp',
+    perfectDistanceKm: 10,
+    zeroDistanceKm: 100,
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
+  {
+    _type: 'trend-race-challenge',
+    metric: 'hdi',
+    direction: 'risen',
+    options: ['SE', 'NO'],
+    standings: ['SE', 'NO'],
+    windowStartYear: 2000,
+    durationSeconds: 30,
+    maximumPoints: 8,
+  },
   {
     _type: 'border-chain-challenge',
     turnSeconds: 15,
     maximumPoints: 8,
     strikes: 1,
-    state: { chains: [['FR']], order: [], activeIndex: 0, turn: 0, deadline: 0, named: {}, strikesLeft: {}, eliminated: [], outcomes: {}, missedOuts: {} },
+    state: {
+      chains: [['FR']],
+      order: [],
+      activeIndex: 0,
+      turn: 0,
+      deadline: 0,
+      named: {},
+      strikesLeft: {},
+      eliminated: [],
+      outcomes: {},
+      missedOuts: {},
+    },
   },
   {
     _type: 'heritage-hunt-challenge',
@@ -334,7 +444,13 @@ const FINAL_FIXTURES: FinalChallengeItem[] = [
   { _type: 'language-challenge', language: 'French' },
   { _type: 'membership-challenge', organization: 'nato', exception: 'SE' },
   { _type: 'sunset-blitz-challenge', countries: ['FR'], quotaRatio: 0.5, durationSeconds: 30 },
-  { _type: 'scales-challenge', accessorId: 'people.population', target: 'FR', maxPicks: 3, tolerance: 0.2 },
+  {
+    _type: 'scales-challenge',
+    accessorId: 'people.population',
+    target: 'FR',
+    maxPicks: 3,
+    tolerance: 0.2,
+  },
   { _type: 'born-challenge', year: 1990, quota: 3 },
   { _type: 'made-challenge', commodity: 'oil' },
   { _type: 'city-nocturne-challenge', country: 'FR', cityCount: 5, quota: 3, durationSeconds: 30 },
@@ -350,13 +466,33 @@ describe('no spectator card dangles an unshown asset', () => {
     }
     // Every kind the game can deal is exercised above.
     const ALL_KINDS: RoundChallengeKind[] = [
-      'ranking', 'traversal', 'border-chain', 'heritage-hunt', 'neighbour-blitz',
-      'silhouette', 'hot-cold', 'sketch', 'stat-detective', 'two-truths',
-      'river-run', 'shared-shores', 'highlands', 'name-that-water', 'mother-tongue',
-      'flag-palette', 'capital-guess', 'flashpoint', 'ghost-state', 'no-mans-land',
-      'pin-landmark', 'trend-race', 'timeline', 'empire',
+      'ranking',
+      'traversal',
+      'border-chain',
+      'heritage-hunt',
+      'neighbour-blitz',
+      'silhouette',
+      'hot-cold',
+      'sketch',
+      'stat-detective',
+      'two-truths',
+      'river-run',
+      'shared-shores',
+      'highlands',
+      'name-that-water',
+      'mother-tongue',
+      'flag-palette',
+      'capital-guess',
+      'flashpoint',
+      'ghost-state',
+      'no-mans-land',
+      'pin-landmark',
+      'trend-race',
+      'timeline',
+      'empire',
     ]
-    for (const kind of ALL_KINDS) expect(covered.has(kind), `missing round kind: ${kind}`).toBe(true)
+    for (const kind of ALL_KINDS)
+      expect(covered.has(kind), `missing round kind: ${kind}`).toBe(true)
   })
 
   it('covers every individual gate variant', () => {
@@ -386,7 +522,10 @@ describe('no spectator card dangles an unshown asset', () => {
 
 describe('asset-driven cards actually carry their asset', () => {
   const round = (fixture: RoundChallenge) => roundStory(fixture)
-  const find = (type: string) => ROUND_FIXTURES.find(f => roundChallengeKind(f) !== undefined && (f as { _type: string })._type === type)!
+  const find = (type: string) =>
+    ROUND_FIXTURES.find(
+      f => roundChallengeKind(f) !== undefined && (f as { _type: string })._type === type
+    )!
 
   it('silhouette carries an outline', () => {
     expect(round(find('silhouette-challenge')).outline).toBe('TD')

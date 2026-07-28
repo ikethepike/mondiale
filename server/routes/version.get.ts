@@ -7,7 +7,7 @@ const humanUptime = (s: number) => {
   return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m ${Math.floor(s % 60)}s`
 }
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(event => {
   const info = getDeploymentInfo(event)
   const flag = forgeFlag(info.commit)
   const rows = [

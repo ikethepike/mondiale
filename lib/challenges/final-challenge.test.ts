@@ -13,9 +13,7 @@ const gameFor = (variant: Game['variant'], difficulty: GameDifficulty) =>
   ({ variant, difficulty }) as Game
 
 const isMember = (isoCode: string, organization: string) =>
-  COUNTRIES[isoCode as keyof typeof COUNTRIES].membership.some(
-    entry => entry.id === organization
-  )
+  COUNTRIES[isoCode as keyof typeof COUNTRIES].membership.some(entry => entry.id === organization)
 
 const DEAL_ROUNDS = 200
 
@@ -27,7 +25,9 @@ describe('getFinalChallenges', () => {
       expect(gauntlet.totalCount).toBe(gauntlet.challenges.length)
       expect(gauntlet.answeredCorrect).toBe(0)
       expect(gauntlet.challenges.length).toBeGreaterThan(0)
-      expect(gauntlet.challenges.length).toBeLessThanOrEqual({ easy: 2, normal: 3, hard: 5 }[difficulty])
+      expect(gauntlet.challenges.length).toBeLessThanOrEqual(
+        { easy: 2, normal: 3, hard: 5 }[difficulty]
+      )
     }
   })
 
@@ -54,9 +54,11 @@ describe('getFinalChallenges', () => {
 
       const easy = getFinalChallenges({ game: gameFor('world', 'easy') })
       for (const challenge of easy.challenges) {
-        expect(['membership-challenge', 'scales-challenge', 'sunset-blitz-challenge']).not.toContain(
-          challenge._type
-        )
+        expect([
+          'membership-challenge',
+          'scales-challenge',
+          'sunset-blitz-challenge',
+        ]).not.toContain(challenge._type)
       }
     }
   })

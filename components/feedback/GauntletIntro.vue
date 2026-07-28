@@ -52,8 +52,18 @@ const { skip } = useIntroBeat(
         { opacity: 1, y: 0, duration: 0.7, ease: EASE.enter },
         '<0.1'
       )
-      timeline.fromTo(left, { rotation: 20 }, { rotation: -16, duration: 2.4, ease: EASE.cross }, '<')
-      timeline.fromTo(right, { rotation: -20 }, { rotation: 16, duration: 2.4, ease: EASE.cross }, '<')
+      timeline.fromTo(
+        left,
+        { rotation: 20 },
+        { rotation: -16, duration: 2.4, ease: EASE.cross },
+        '<'
+      )
+      timeline.fromTo(
+        right,
+        { rotation: -20 },
+        { rotation: 16, duration: 2.4, ease: EASE.cross },
+        '<'
+      )
     },
     reducedMotionHoldMs: 2400,
     onReducedMotion: shell => {

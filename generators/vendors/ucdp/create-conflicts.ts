@@ -128,7 +128,8 @@ export const createConflictsMapping = async () => {
 
     for (const row of conflictRows) {
       const lastEpisode = episodes[episodes.length - 1]
-      if (lastEpisode && row.year <= lastEpisode[1] + 1) lastEpisode[1] = Math.max(lastEpisode[1], row.year)
+      if (lastEpisode && row.year <= lastEpisode[1] + 1)
+        lastEpisode[1] = Math.max(lastEpisode[1], row.year)
       else episodes.push([row.year, row.year])
       if (row.intensity === WAR_INTENSITY) reachedWar = true
 
@@ -161,7 +162,10 @@ export const createConflictsMapping = async () => {
     const territorial = fought !== 'government' && latest.territory
     conflicts[id] = {
       id,
-      name: territorial && latest.territory !== latest.location ? `${latest.location}: ${latest.territory}` : latest.location,
+      name:
+        territorial && latest.territory !== latest.location
+          ? `${latest.location}: ${latest.territory}`
+          : latest.location,
       sideA: latest.sideA,
       sideB: latest.sideB,
       episodes,
@@ -189,7 +193,9 @@ export const createConflictsMapping = async () => {
       export const conflictMapping: ConflictMapping = ${JSON.stringify(conflictMapping)}
     `
   )
-  console.info(`Wrote ${METRICS_FILE} (${Object.keys(conflictMapping).length} countries, data through ${maxYear})`)
+  console.info(
+    `Wrote ${METRICS_FILE} (${Object.keys(conflictMapping).length} countries, data through ${maxYear})`
+  )
 
   writeFileSync(
     PROFILES_FILE,

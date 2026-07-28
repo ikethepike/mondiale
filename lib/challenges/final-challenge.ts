@@ -267,9 +267,7 @@ const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge | u
   const organization = sample(eligibleOrganizations(pool))
   if (!organization) return undefined
 
-  const exception = shuffleArray(
-    pool.filter(isoCode => !isMemberOf(isoCode, organization))
-  ).shift()
+  const exception = shuffleArray(pool.filter(isoCode => !isMemberOf(isoCode, organization))).shift()
   if (!exception) return undefined
 
   return {
@@ -527,9 +525,7 @@ const getSunsetBlitzChallenge = (pool: ISOCountryCode[]): SunsetBlitzChallenge |
       .slice(0, NIGHT_WINDOW_HARD_CAP)
 
     // Night falls east→west along the tilted terminator
-    const countries = windowed.sort(
-      (a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a)
-    )
+    const countries = windowed.sort((a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a))
     return {
       _type: 'sunset-blitz-challenge',
       countries,
@@ -632,7 +628,9 @@ export const isCorrectFinalAnswer = ({
     }
     case 'leadership-challenge': {
       if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
-      return isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.country
+      return (
+        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.country
+      )
     }
     case 'language-challenge': {
       if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
@@ -641,7 +639,9 @@ export const isCorrectFinalAnswer = ({
     }
     case 'membership-challenge': {
       if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
-      return isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
+      return (
+        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
+      )
     }
     case 'born-challenge': {
       if (submittedAnswer._type !== 'born-challenge') return throwTypeMismatch()

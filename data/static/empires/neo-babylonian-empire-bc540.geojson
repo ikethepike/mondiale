@@ -3,7 +3,9 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "Neo-Babylonian Empire 540 BCE (eve of Cyrus, with the Arabian oases)" },
+      "properties": {
+        "name": "Neo-Babylonian Empire 540 BCE (eve of Cyrus, with the Arabian oases)"
+      },
       "geometry": {
         "type": "Polygon",
         "coordinates": [

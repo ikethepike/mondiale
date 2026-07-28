@@ -6,11 +6,7 @@ import type { HeritageHuntChallenge } from '~~/types/challenges/group-modes.type
 import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import {
-  scheduleDeadlineTask,
-  scheduleRevealTask,
-  settleRoundScores,
-} from './round-engine'
+import { scheduleDeadlineTask, scheduleRevealTask, settleRoundScores } from './round-engine'
 import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from './turn-timing'
 
 /**

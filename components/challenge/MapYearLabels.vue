@@ -5,7 +5,12 @@
       :key="chip.isoCode"
       class="chip map-caption"
       :class="{ accented: chip.color }"
-      :style="{ left: `${chip.left}%`, top: `${chip.top}%`, '--i': chip.index, '--chip-accent': chip.color }"
+      :style="{
+        left: `${chip.left}%`,
+        top: `${chip.top}%`,
+        '--i': chip.index,
+        '--chip-accent': chip.color,
+      }"
     >
       {{ chip.label }}
     </span>
@@ -48,8 +53,7 @@ const chips = computed(() => {
     left: number
     top: number
     index: number
-  }[] =
-    []
+  }[] = []
   for (const entry of props.entries) {
     const centre = mapRegionCentre(entry.isoCode)
     const left = ((centre.x - vb.x) / vb.w) * 100
@@ -63,7 +67,6 @@ const chips = computed(() => {
   }
   return result
 })
-
 </script>
 <style lang="scss" scoped>
 .map-year-labels {

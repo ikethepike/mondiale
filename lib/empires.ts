@@ -121,8 +121,21 @@ export const normalizeEmpireAnswer = (value: string): string => normalizeAnswer(
 /** Polity-type words that carry no identity — "Abbasid" IS the Abbasid
  *  Caliphate; "Union of Soviet Socialist Republics" is the Soviet Union. */
 const GENERIC_WORDS = new Set([
-  'empire', 'caliphate', 'dynasty', 'kingdom', 'union', 'sultanate', 'khanate',
-  'republic', 'republics', 'state', 'states', 'commonwealth', 'monarchy', 'of', 'the',
+  'empire',
+  'caliphate',
+  'dynasty',
+  'kingdom',
+  'union',
+  'sultanate',
+  'khanate',
+  'republic',
+  'republics',
+  'state',
+  'states',
+  'commonwealth',
+  'monarchy',
+  'of',
+  'the',
 ])
 
 const coreWords = (value: string): string =>

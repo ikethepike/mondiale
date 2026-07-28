@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { TRENDS } from '~~/data/trends.gen'
 import { getIndividualChallenge, getRoundChallenge, scoreTrendRace } from '~~/lib/challenges'
-import { readTrend } from '~~/lib/trends'
+import { readTrend, TRENDS } from '~~/lib/trends'
 import type { TrendRaceChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 
@@ -120,9 +119,7 @@ describe('getTrendRaceChallenge (via getRoundChallenge)', () => {
   it('never deals when the trends group is toggled off (unforced weights)', async () => {
     for (let i = 0; i < 40; i++) {
       const challenge = await getRoundChallenge({ game: game('normal', { trends: false }) })
-      expect(
-        '_type' in challenge && challenge._type === 'trend-race-challenge'
-      ).toBe(false)
+      expect('_type' in challenge && challenge._type === 'trend-race-challenge').toBe(false)
     }
   })
 })

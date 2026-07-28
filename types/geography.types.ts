@@ -74,6 +74,10 @@ export interface Country {
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
     equality?: Amount<'Gini Coefficient'>
+    /** International tourist arrivals per year (UNWTO via OWID). */
+    touristArrivals?: Amount<'tourists'>
+    /** Annual working hours per worker (Penn World Table via OWID). */
+    workingHours?: Amount<'hours'>
     /** Top export commodities, in the Factbook's order (rank = value). */
     exports?: string[]
     /** Total exports of goods and services, current dollars. */
@@ -109,6 +113,8 @@ export interface Country {
     electricityAccess?: Amount<'%'>
     /** Share of electricity generated from fossil fuels. */
     fossilFuels?: Amount<'%'>
+    /** Primary energy consumption per person (Energy Institute via OWID). */
+    consumptionPerCapita?: Amount<'kWh'>
   }
   gender: {
     womenInParliament?: Amount<'%'>
@@ -125,6 +131,13 @@ export interface Country {
     birthRate?: Amount<'per 1000 people'>
     /** Share of population living in urban areas. */
     urbanization?: Amount<'%'>
+    deathRate?: Amount<'per 1000 people'>
+    density?: Amount<'per km²'>
+    /** Share of the population aged 65 and over. */
+    share65Plus?: Amount<'%'>
+    /** Males per 100 females across the whole population — Gulf labor
+     *  migration pushes this past 200. */
+    sexRatio?: Amount<'males per 100 females'>
   }
   education: {
     literacy?: Amount<'%'>
@@ -135,9 +148,14 @@ export interface Country {
     doctors?: Amount<'per 1000 people'>
     hospitalBeds?: Amount<'per 1000 people'>
     accessToContraceptives?: Amount<'%'>
-    lifeExpectancy?: Amount<'years'>
     alcoholConsumption?: Amount<'liters of pure alcohol'>
     tobaccoUse?: Amount<'%'>
+    /** Meat supply per person per year (FAO via OWID). */
+    meatConsumption?: Amount<'kg'>
+    /** Mean adult male height by latest birth cohort (~1996, NCD-RisC). */
+    maleHeight?: Amount<'cm'>
+    /** Road-traffic death rate (WHO SDG 3.6.1, via OWID). */
+    roadDeaths?: Amount<'per 100k people'>
   }
   religion: {
     atheism?: Amount<'%'>
@@ -148,6 +166,17 @@ export interface Country {
     methaneEmissions?: Amount<'megatons'>
     renewables?: Amount<'%'>
     parisAgreement?: boolean
+    /** Population-weighted outdoor PM2.5 exposure. */
+    airPollution?: Amount<'µg/m³'>
+    /** IUCN Red List Index, 0–1 (1 = all species safe; declines ≈ everywhere). */
+    redListIndex?: Amount<'index'>
+    threatenedMammals?: Amount<'species'>
+    /** Terrestrial protected areas as a share of land. */
+    protectedLand?: Amount<'%'>
+    /** Renewable internal freshwater resources per person. */
+    freshwaterPerCapita?: Amount<'m³'>
+    /** Share of new cars sold that are electric (IEA via OWID). */
+    evSalesShare?: Amount<'%'>
   }
   humanRights: {
     gayMarriageLegalized?: Amount<'year'>

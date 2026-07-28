@@ -1,4 +1,5 @@
 import { defineGameHandler } from '../server-side'
+import { currentBorderChain, scheduleChainTimeout } from './chain-turns'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
@@ -31,6 +32,13 @@ export const closeTutorialHandler = defineGameHandler(
     const unique = currentUniqueOrBust(game)
     if (unique && !unique.state.finished && unique.state.briefing) {
       scheduleUniqueTimeout({ io, redis, socket, eventTarget }, unique)
+    }
+
+    // And for Border Chain's briefing, which holds its first shot clock the
+    // same way (deadline 0 until the table is ready).
+    const chain = currentBorderChain(game)
+    if (chain && !chain.state.finished && chain.state.briefing) {
+      scheduleChainTimeout({ io, redis, socket, eventTarget }, chain)
     }
   }
 )

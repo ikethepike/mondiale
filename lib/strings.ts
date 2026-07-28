@@ -18,7 +18,9 @@ export const normalizeAnswer = (
     .replace(/['’]/g, '')
     .replace(keep, ' ')
     .trim()
-  return articles.length ? flattened.replace(new RegExp(`^(?:${articles.join('|')}) `), '') : flattened
+  return articles.length
+    ? flattened.replace(new RegExp(`^(?:${articles.join('|')}) `), '')
+    : flattened
 }
 
 /**

@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs'
 import { getCountryDataList } from 'countries-list'
 import { type ISOCountryCode, isValidISOCode } from '../../../types/geography.types'
-import { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS } from '../../../lib/trends'
+import { toTrendSeries, type TrendMapping, type TrendPoint } from '../../lib/trend-series'
 import { parseCSV } from '../../lib/csv'
 
 const OUTPUT_FILE = `data/owid.gen.ts`
@@ -99,6 +99,111 @@ const METRICS = {
     column: 'Gini coefficient',
     decimals: 3,
   },
+  // Lifestyle/health — these feed EXISTING Country accessors (fresher, dated
+  // values with history) rather than new stats; countries generator prefers
+  // them over the undated Factbook nodes.
+  alcoholConsumption: {
+    slug: 'total-alcohol-consumption-per-capita-litres-of-pure-alcohol',
+    column: 'Alcohol consumption',
+    decimals: 2,
+  },
+  obesity: {
+    slug: 'share-of-adults-defined-as-obese',
+    column:
+      'Obesity among adults, BMI >= 30 kg/m2 (crude estimate) (%) - Sex: both sexes - Age group: 18+  years of age',
+    decimals: 1,
+  },
+  tobaccoUse: {
+    slug: 'share-of-adults-who-smoke',
+    column: 'Share of adults who smoke or use tobacco (age-standardized)',
+    decimals: 1,
+  },
+  militarySpending: {
+    slug: 'military-expenditure-share-gdp',
+    column: 'Military expenditure (% of GDP)',
+    decimals: 2,
+  },
+  renewables: {
+    slug: 'share-electricity-renewables',
+    column: 'Renewables',
+    decimals: 1,
+  },
+  urbanization: {
+    slug: 'share-of-population-urban',
+    column: 'Urban',
+    decimals: 1,
+  },
+  forested: {
+    slug: 'forest-area-as-share-of-land-area',
+    column: 'Share of land covered by forest',
+    decimals: 1,
+  },
+  // New stats (new accessors on Country).
+  meatConsumption: {
+    slug: 'meat-supply-per-person',
+    column: 'Per capita consumption of meat',
+    decimals: 1,
+  },
+  touristArrivals: {
+    slug: 'international-tourist-arrivals',
+    column: 'Arrivals of tourists from abroad',
+  },
+  energyUse: {
+    slug: 'per-capita-energy-use',
+    column: 'Per capita energy consumption',
+  },
+  workingHours: {
+    slug: 'annual-working-hours-per-worker',
+    column: 'Working hours per worker',
+    decimals: 0,
+  },
+  airPollution: {
+    slug: 'pm25-air-pollution',
+    column: 'Outdoor air pollution exposure (population-weighted PM2.5)',
+    decimals: 1,
+  },
+  roadDeaths: {
+    slug: 'death-rate-road-traffic-injuries',
+    column:
+      '3.6.1 - Death rate due to road traffic injuries, by sex (per 100,000 population) - SH_STA_TRAF - Both sexes',
+    decimals: 1,
+  },
+  redListIndex: {
+    slug: 'red-list-index',
+    column: 'Red List Index',
+    decimals: 3,
+  },
+  freshwaterPerCapita: {
+    slug: 'renewable-water-resources-per-capita',
+    column: 'Renewable internal freshwater resources per capita (cubic meters)',
+  },
+  // Scalar-only: the height series is indexed by birth cohort (ends ~1996),
+  // EV sales cover only ~60 countries, and the two conservation counts are
+  // essentially single-vintage snapshots.
+  maleHeight: {
+    slug: 'average-height-of-men',
+    column: 'Mean male height (cm)',
+    decimals: 1,
+    trend: false,
+  },
+  evSalesShare: {
+    slug: 'electric-car-sales-share',
+    column: 'Share of new cars that are electric',
+    decimals: 1,
+    trend: false,
+  },
+  threatenedMammals: {
+    slug: 'threatened-mammal-species',
+    column: 'Mammal species, threatened',
+    decimals: 0,
+    trend: false,
+  },
+  protectedLand: {
+    slug: 'terrestrial-protected-areas',
+    column: 'Terrestrial protected areas (% of total land area)',
+    decimals: 1,
+    trend: false,
+  },
 } as const
 
 type MetricId = keyof typeof METRICS
@@ -110,22 +215,10 @@ export type OwidMapping = {
   }
 }
 
-export type TrendPoint = [year: number, amount: number]
-/** Ascending years. */
-export type TrendSeries = TrendPoint[]
 export type TrendMetricId = {
   [K in MetricId]: (typeof METRICS)[K] extends { trend: false } ? never : K
 }[MetricId]
-export type TrendMapping = {
-  [country in ISOCountryCode]?: {
-    [metric in TrendMetricId]?: TrendSeries
-  }
-}
-
-/** History older than this never reaches the game. */
-const TREND_WINDOW_YEARS = 60
-/** Cap per series; sampling keeps the true first and last points. */
-const TREND_MAX_POINTS = 16
+export type OwidTrendMapping = TrendMapping<TrendMetricId>
 
 /** OWID keys by ISO-3; build an ISO-3 -> ISO-2 lookup from countries-list. */
 const iso3ToIso2 = (): Map<string, ISOCountryCode> => {
@@ -134,31 +227,6 @@ const iso3ToIso2 = (): Map<string, ISOCountryCode> => {
     if (iso3 && isValidISOCode(iso2)) map.set(iso3, iso2)
   }
   return map
-}
-
-const roundAmount = (amount: number, decimals?: number): number =>
-  decimals === undefined ? Number(amount.toPrecision(4)) : Number(amount.toFixed(decimals))
-
-/** Window, gate on density/span, downsample and round one country's history. */
-const toTrendSeries = (points: TrendPoint[], decimals?: number): TrendSeries | undefined => {
-  const sorted = [...points].sort((a, b) => a[0] - b[0])
-  const lastYear = sorted.at(-1)?.[0]
-  if (lastYear === undefined) return undefined
-
-  const windowed = sorted.filter(([year]) => year >= lastYear - TREND_WINDOW_YEARS)
-  if (windowed.length < MIN_TREND_POINTS) return undefined
-  if (lastYear - windowed[0][0] < MIN_TREND_SPAN_YEARS) return undefined
-
-  const step = (windowed.length - 1) / (TREND_MAX_POINTS - 1)
-  const indices =
-    windowed.length <= TREND_MAX_POINTS
-      ? windowed.map((_, index) => index)
-      : [...new Set(Array.from({ length: TREND_MAX_POINTS }, (_, i) => Math.round(i * step)))]
-
-  return indices.map(index => {
-    const [year, amount] = windowed[index]
-    return [year, roundAmount(amount, decimals)] as TrendPoint
-  })
 }
 
 const fetchMetric = async (
@@ -204,7 +272,7 @@ const fetchMetric = async (
 export const createOwidMapping = async () => {
   const lookup = iso3ToIso2()
   const mapping: OwidMapping = {}
-  const trends: TrendMapping = {}
+  const trends: OwidTrendMapping = {}
 
   for (const [metric, config] of Object.entries(METRICS)) {
     console.info(`Fetching OWID metric ${metric} (${config.slug})`)
@@ -240,8 +308,8 @@ export const createOwidMapping = async () => {
   writeFileSync(
     TRENDS_OUTPUT_FILE,
     `
-      import type { TrendMapping } from '../generators/vendors/owid/create-owid'
-      export const TRENDS: TrendMapping = ${JSON.stringify(trends)}
+      import type { OwidTrendMapping } from '../generators/vendors/owid/create-owid'
+      export const TRENDS: OwidTrendMapping = ${JSON.stringify(trends)}
     `
   )
   console.info(`Wrote ${TRENDS_OUTPUT_FILE} (${Object.keys(trends).length} countries)`)

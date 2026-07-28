@@ -170,7 +170,9 @@ for (let index = 0; index < siteQids.length; index += 20) {
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const name = entity.labels?.en?.value
-    const country = isoOfQid.get(entityId(ranked(entity.claims?.P17)[0]?.mainsnak?.datavalue?.value) ?? '')
+    const country = isoOfQid.get(
+      entityId(ranked(entity.claims?.P17)[0]?.mainsnak?.datavalue?.value) ?? ''
+    )
     const point = ranked(entity.claims?.P625)[0]?.mainsnak?.datavalue?.value
     if (!name || !country || !isGlobeCoordinate(point)) {
       skipped++

@@ -5,8 +5,7 @@
       <span class="copy">
         <strong class="name">{{ landmark.name }}</strong>
         <span
-          >{{ landmark.city ? `${landmark.city}, ` : ''
-          }}{{ countryName(landmark.country) }}</span
+          >{{ landmark.city ? `${landmark.city}, ` : '' }}{{ countryName(landmark.country) }}</span
         >
         <span class="kind">{{ KIND_COPY[landmark.kind] }}</span>
       </span>

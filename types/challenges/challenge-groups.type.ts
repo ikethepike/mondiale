@@ -11,9 +11,22 @@ import type { GameDifficulty } from '../game.types'
  * Ranking and the stat modes are 'core' and never toggleable: ranking is the
  * tutorial opener and the universal dealer fallback, so the game stays
  * playable whatever the toggles say.
+ *
+ * `statGate: 'hard-only'` marks a heavy group: its accessors deal only on
+ * hard in AUTO, and the tutorial opener never picks them. Groups without it
+ * deal their accessors on every difficulty.
+ *
+ * `hidden` groups own accessors but no lobby row yet — the gates work, the
+ * toggle ships later by deleting the flag.
  */
+export type ChallengeGroup = {
+  label: string
+  hidden?: boolean
+  statGate?: 'hard-only'
+}
+
 export const CHALLENGE_GROUPS = {
-  conflicts: { label: 'Conflicts & war' },
+  conflicts: { label: 'Conflicts & war', statGate: 'hard-only' },
   navigation: { label: 'Borders & routes' },
   water: { label: 'Water & terrain' },
   flags: { label: 'Flags & shapes' },
@@ -21,9 +34,16 @@ export const CHALLENGE_GROUPS = {
   disputed: { label: 'Disputed places' },
   trends: { label: 'Trends & history' },
   empires: { label: 'Empires & colonies' },
-} as const
+  economy: { label: 'Economy & work', hidden: true },
+  society: { label: 'People & society', hidden: true },
+  health: { label: 'Health & lifestyle', hidden: true },
+  nature: { label: 'Nature & environment', hidden: true },
+} as const satisfies Record<string, ChallengeGroup>
 
 export type ChallengeGroupId = keyof typeof CHALLENGE_GROUPS
+
+/** Widened view for property reads — the const's entries have narrowed shapes. */
+const GROUPS: Record<ChallengeGroupId, ChallengeGroup> = CHALLENGE_GROUPS
 
 export type ChallengeOverrides = Partial<Record<ChallengeGroupId, boolean>>
 
@@ -103,18 +123,115 @@ export const MINIMUM_TABLE_BY_KIND: Partial<Record<RoundChallengeKind, number>> 
 
 /** Accessors pulled from the stat pool (ranking, stat detective, two truths,
  *  higher/lower) with their group. Keys are compile-checked against the real
- *  accessor union, so a renamed accessor fails loudly. */
+ *  accessor union, so a renamed accessor fails loudly. Every accessor is
+ *  sorted here; a new accessor without a topic is a compile error via
+ *  `SORTED_ACCESSOR` below. */
 export const CHALLENGE_GROUP_ACCESSORS = {
-  conflicts: ['government.conflictsFought', 'government.yearsAtWar', 'government.recentConflicts'],
+  conflicts: [
+    'government.conflictsFought',
+    'government.yearsAtWar',
+    'government.recentConflicts',
+    'government.amountOfMilitaryConflicts',
+  ],
+  economy: [
+    'economics.gdpPerCapita',
+    'economics.gdpTotal',
+    'economics.gdpGrowth',
+    'economics.inflation',
+    'economics.publicDebt',
+    'economics.militarySpending',
+    'economics.populationBelowPovertyLine',
+    'economics.equality',
+    'unemployment.youth',
+    'unemployment.total',
+    'infrastructure.rail',
+    'infrastructure.internetAccess',
+    'infrastructure.mobileSubscriptions',
+    'infrastructure.airports',
+    'economics.touristArrivals',
+    'economics.workingHours',
+  ],
+  society: [
+    'people.population',
+    'people.populationGrowthRate',
+    'people.medianAge',
+    'people.lifeExpectancy',
+    'people.childrenPerWoman',
+    'people.birthRate',
+    'people.netMigration',
+    'people.urbanization',
+    'people.deathRate',
+    'people.density',
+    'people.share65Plus',
+    'people.sexRatio',
+    'gender.womenInParliament',
+    'gender.motherMeanAgeAtBirth',
+    'religion.atheism',
+    'religion.believers',
+    'humanRights.gayMarriageLegalized',
+    'humanRights.refugees',
+    'education.literacy',
+    'education.averageYearsOfStudy',
+    'government.democracyIndex',
+    'government.corruptionIndex',
+    'government.humanDevelopmentIndex',
+    'government.happiness',
+  ],
+  health: [
+    'health.obesity',
+    'health.doctors',
+    'health.hospitalBeds',
+    'health.accessToContraceptives',
+    'health.tobaccoUse',
+    'health.alcoholConsumption',
+    'health.meatConsumption',
+    'health.maleHeight',
+    'health.roadDeaths',
+  ],
+  nature: [
+    'geography.area.land',
+    'geography.area.water',
+    'geography.area.total',
+    'geography.area.arable',
+    'geography.area.forested',
+    'geography.highestPeak',
+    'environment.CO2Emissions',
+    'environment.methaneEmissions',
+    'environment.renewables',
+    'environment.airPollution',
+    'environment.redListIndex',
+    'environment.threatenedMammals',
+    'environment.protectedLand',
+    'environment.freshwaterPerCapita',
+    'environment.evSalesShare',
+    'energy.electricityAccess',
+    'energy.fossilFuels',
+    'energy.consumptionPerCapita',
+  ],
 } as const satisfies Partial<Record<ChallengeGroupId, readonly GroupChallengeAccessorId[]>>
 
 const groupAccessors: Partial<Record<ChallengeGroupId, readonly GroupChallengeAccessorId[]>> =
   CHALLENGE_GROUP_ACCESSORS
 
-/** Every group-owned accessor. The opening (tutorial) ranking round skips
- *  these — a heavy topic must never be a player's first impression. */
-export const GROUPED_ACCESSORS: ReadonlySet<GroupChallengeAccessorId> = new Set(
-  Object.values(CHALLENGE_GROUP_ACCESSORS).flat()
+/** Compile guard: an accessor missing from the sort above turns this alias
+ *  into a narrower union than GroupChallengeAccessorId and the assignment
+ *  below fails. */
+type SortedAccessor =
+  (typeof CHALLENGE_GROUP_ACCESSORS)[keyof typeof CHALLENGE_GROUP_ACCESSORS][number]
+const _everyAccessorIsSorted: SortedAccessor extends GroupChallengeAccessorId
+  ? GroupChallengeAccessorId extends SortedAccessor
+    ? true
+    : never
+  : never = true
+void _everyAccessorIsSorted
+
+/** Accessors of heavy (`statGate: 'hard-only'`) groups. The opening
+ *  (tutorial) ranking round skips these — a heavy topic must never be a
+ *  player's first impression. */
+export const HEAVY_ACCESSORS: ReadonlySet<GroupChallengeAccessorId> = new Set(
+  (Object.keys(groupAccessors) as ChallengeGroupId[])
+    .filter(group => GROUPS[group].statGate === 'hard-only')
+    .flatMap(group => [...(groupAccessors[group] ?? [])])
 )
 
 type ChallengeSettings = {
@@ -138,15 +255,12 @@ export const isGroupEnabled = (
 export const isKindEnabled = (game: ChallengeSettings, kind: RoundChallengeKind): boolean => {
   const group = CHALLENGE_GROUP_BY_KIND[kind]
   if (group === 'core') return true
-  return isGroupEnabled(
-    game,
-    group,
-    game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
-  )
+  return isGroupEnabled(game, group, game.difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind))
 }
 
-/** Grouped accessors ride their group's state. In auto they follow the
- *  group's strictest gate — conflict stats are hard-only, like flashpoint. */
+/** Grouped accessors ride their group's state. In auto, heavy groups
+ *  (`statGate: 'hard-only'`) deal only on hard — conflict stats, like
+ *  flashpoint — while every other group's stats deal on all difficulties. */
 export const isAccessorEnabled = (
   game: ChallengeSettings,
   accessor: GroupChallengeAccessorId
@@ -155,7 +269,8 @@ export const isAccessorEnabled = (
     groupAccessors[group]?.includes(accessor)
   )
   if (!owner) return true
-  return isGroupEnabled(game, owner, game.difficulty === 'hard')
+  const autoEnabled = GROUPS[owner].statGate !== 'hard-only' || game.difficulty === 'hard'
+  return isGroupEnabled(game, owner, autoEnabled)
 }
 
 /** The lobby caption for a group's AUTO state at a given difficulty. */
@@ -168,8 +283,6 @@ export const autoEnabledKinds = (
   )
     .filter(([, owner]) => owner === group)
     .map(([kind]) => kind)
-  const enabled = total.filter(
-    kind => difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind)
-  )
+  const enabled = total.filter(kind => difficulty === 'hard' || !HARD_ONLY_ROUND_KINDS.has(kind))
   return { enabled, total }
 }

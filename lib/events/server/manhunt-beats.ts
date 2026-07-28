@@ -276,7 +276,14 @@ export const applyManhuntSubpoena = async (
   if (!secret) return
 
   const despotAt = secret.trail[secret.trail.length - 1]
-  const pick = answerManhuntSubpoena(game, despotAt, secret.candidates, state.hop, state.clues, topicId)
+  const pick = answerManhuntSubpoena(
+    game,
+    despotAt,
+    secret.candidates,
+    state.hop,
+    state.clues,
+    topicId
+  )
   secret.candidates = pick.matches
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
 

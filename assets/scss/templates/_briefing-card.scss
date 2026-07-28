@@ -1,0 +1,73 @@
+// The dismissible rules card fronting tutorial-style rounds (The Despot's
+// role cards, Unique or Bust). One scroll recipe for every host: the card
+// centers itself in the shell's column, caps below the viewport and scrolls
+// its own overflow — a phone-height card must never trap its dismiss button
+// off-screen. Views keep only their flavor (palettes, hats, point lists).
+.briefing-card {
+  gap: 1rem;
+  z-index: 3;
+  display: flex;
+  // Auto on both axes: the shell is a space-between column, and with no
+  // footer in this phase the card would otherwise pin to an edge.
+  margin: auto;
+  overflow-y: auto;
+  // A scroll that hits the card's end must not chain into the map behind it.
+  overscroll-behavior: contain;
+  max-height: calc(var(--viewport-height) - 10rem);
+  padding: 1.8rem 2.2rem;
+  text-align: center;
+  align-items: center;
+  flex-flow: column nowrap;
+  pointer-events: auto;
+  max-width: min(34rem, calc(100% - 2.4rem));
+
+  // The card's standard furniture: the rules list, and the table pawn by
+  // pawn — colour = briefed and ready, faded = still reading. The gate's
+  // state at a glance, no counting required.
+  .briefing-points {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    list-style: none;
+    text-align: left;
+    gap: 0.55rem;
+    flex-flow: column nowrap;
+  }
+
+  .ready-row {
+    gap: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .ready-seat {
+    gap: 0.25rem;
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+    transition:
+      opacity var(--motion-base) var(--ease-smooth),
+      filter var(--motion-base) var(--ease-smooth);
+
+    &.waiting {
+      opacity: 0.35;
+      filter: grayscale(1);
+    }
+
+    .ready-pawn {
+      width: 2.6rem;
+    }
+
+    .seat-name {
+      font-size: 1.15rem;
+      color: var(--dark-blue);
+    }
+  }
+
+  .briefing-waiting {
+    margin: 0;
+    opacity: 0.75;
+  }
+}

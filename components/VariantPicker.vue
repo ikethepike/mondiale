@@ -39,7 +39,6 @@ const selectedVariant = ref<GameVariant>(gameVariants[0])
 const atEnd = ref(false)
 const atStart = ref(true)
 
-
 const scroll = (direction: 'left' | 'right') => {
   if (!slider.value) throw new ReferenceError('Slider is not defined')
   const { scrollWidth } = slider.value

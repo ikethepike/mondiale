@@ -4,8 +4,8 @@
     <span class="header">
       <strong class="commodity">{{ challenge.commodity }}</strong>
       <span class="subtitle">
-        a top export of {{ rows.length }}
-        {{ rows.length === 1 ? 'country' : 'countries' }} — ranked by total goods exports
+        a top export of {{ rows.length }} {{ rows.length === 1 ? 'country' : 'countries' }} — ranked
+        by total goods exports
       </span>
     </span>
     <span class="rows">

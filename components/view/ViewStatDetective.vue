@@ -75,7 +75,6 @@
         </StatCard>
       </TransitionGroup>
     </section>
-
   </div>
 </template>
 <script lang="ts" setup>

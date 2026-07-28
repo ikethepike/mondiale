@@ -11,6 +11,12 @@ export const manhuntTauntEvent: ClientSideEventHandler = async ({ gameStore, pay
   if (!line) return
   gameStore.map.liveGuesses = [
     ...gameStore.map.liveGuesses.slice(-11),
-    { entryId: payload.entryId, playerId: payload.playerId, kind: 'taunt', label: line, at: payload.at },
+    {
+      entryId: payload.entryId,
+      playerId: payload.playerId,
+      kind: 'taunt',
+      label: line,
+      at: payload.at,
+    },
   ]
 }

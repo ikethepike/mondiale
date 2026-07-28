@@ -44,7 +44,10 @@ describe('subsampleKeyframes', () => {
 })
 
 describe('scoreEmpireExtent', () => {
-  const challenge = { members: ['FR', 'DE', 'IT'] as ISOCountryCode[], partialMembers: ['ES'] as ISOCountryCode[] }
+  const challenge = {
+    members: ['FR', 'DE', 'IT'] as ISOCountryCode[],
+    partialMembers: ['ES'] as ISOCountryCode[],
+  }
 
   it('pays the full pot for the exact core', () => {
     expect(scoreEmpireExtent({ challenge, taps: ['FR', 'DE', 'IT'], maximumPoints: 9 })).toEqual({
@@ -83,7 +86,10 @@ describe('the handler composition (beat 1 clamp + beat 2 jaccard)', () => {
     maximumPoints: 15,
   }
 
-  const settle = (empire: { guessedId?: string; clientScore: number } | undefined, taps: ISOCountryCode[]) => {
+  const settle = (
+    empire: { guessedId?: string; clientScore: number } | undefined,
+    taps: ISOCountryCode[]
+  ) => {
     const pots = empirePots(challenge.maximumPoints)
     const named = empire?.guessedId === challenge.empireId
     const beat1 = clampClientScore(empire?.clientScore, pots.name, named)
@@ -135,7 +141,9 @@ describe('empireAnswerMatches', () => {
 
   it('accepts the identity word without its polity type', () => {
     expect(empireAnswerMatches('abbasid', { name: 'Abbasid Caliphate' })).toBe(true)
-    expect(empireAnswerMatches('abbasids', { name: 'Abbasid Caliphate', answerAliases: ['Abbasids'] })).toBe(true)
+    expect(
+      empireAnswerMatches('abbasids', { name: 'Abbasid Caliphate', answerAliases: ['Abbasids'] })
+    ).toBe(true)
   })
 
   it('never lets lookalikes or fragments through', () => {

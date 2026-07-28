@@ -93,7 +93,9 @@ watchEffect(() => {
   // Flags carry all aspect ratios (2:1, 3:2, 1:1, Nepal's pennon, Switzerland's
   // square). Sizing scales to the container; the host box uses `fit` (contain
   // = whole flag with letterboxing, cover = fill+crop) to decide how.
-  const svg = sanitizeSvg(namespacedMarkup.value, { fit: props.fit === 'cover' ? 'cover' : 'contain' })
+  const svg = sanitizeSvg(namespacedMarkup.value, {
+    fit: props.fit === 'cover' ? 'cover' : 'contain',
+  })
   if (!svg) return
 
   inlineHost.value.replaceChildren(svg)

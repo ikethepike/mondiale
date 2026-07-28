@@ -85,10 +85,7 @@ import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { UNIQUE_CATEGORIES } from '~~/lib/unique-or-bust'
-import type {
-  UniqueBoardCell,
-  UniqueOrBustChallenge,
-} from '~~/types/challenges/group-modes.type'
+import type { UniqueBoardCell, UniqueOrBustChallenge } from '~~/types/challenges/group-modes.type'
 import { isValidISOCode, type Country } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
 

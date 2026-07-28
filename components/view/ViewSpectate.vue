@@ -185,9 +185,7 @@ const followed = computed(() => {
   return pickDirectorTarget(racers.value)
 })
 
-const followedStatus = computed(() =>
-  followed.value ? getPlayerStatus(followed.value).label : ''
-)
+const followedStatus = computed(() => (followed.value ? getPlayerStatus(followed.value).label : ''))
 
 const toggleFollow = (playerId: string) => {
   strip.value = undefined
@@ -295,8 +293,7 @@ const paintMap = () => {
 // re-fit the map camera on identical focus sets. The spoiler flag is in the
 // key so toggling it repaints immediately.
 const paintKey = computed(
-  () =>
-    `${stage.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
+  () => `${stage.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
 )
 onMounted(paintMap)
 watch(paintKey, paintMap)

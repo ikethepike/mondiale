@@ -102,9 +102,7 @@ describe('dramaScore', () => {
       [2018, 45],
       [2024, 50],
     ]
-    expect(dramaScore(vShape, 'lifeExpectancy')).toBeGreaterThan(
-      dramaScore(flat, 'lifeExpectancy')
-    )
+    expect(dramaScore(vShape, 'lifeExpectancy')).toBeGreaterThan(dramaScore(flat, 'lifeExpectancy'))
   })
 
   it('scores a late take-off above a steady rise', () => {
@@ -117,9 +115,7 @@ describe('dramaScore', () => {
       [2018, 45],
       [2024, 80],
     ]
-    expect(dramaScore(takeOff, 'internetUse')).toBeGreaterThan(
-      dramaScore(steady, 'internetUse')
-    )
+    expect(dramaScore(takeOff, 'internetUse')).toBeGreaterThan(dramaScore(steady, 'internetUse'))
   })
 
   it('is safe on degenerate series', () => {

@@ -11,12 +11,7 @@
         {{ group.topic }}
       </h2>
       <div class="grid">
-        <StatCard
-          v-for="id in group.ids"
-          :key="id"
-          :accessor="id"
-          :label="accessorTopicLabel(id)"
-        >
+        <StatCard v-for="id in group.ids" :key="id" :accessor="id" :label="accessorTopicLabel(id)">
           <code class="accessor">{{ id }}</code>
         </StatCard>
       </div>

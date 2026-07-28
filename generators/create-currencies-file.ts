@@ -35,7 +35,6 @@ const OUTPUT_DIRECTORY = 'public/currencies'
 const CURRENCY_WIDTH = 1280
 const REVIEW_PATH = 'generators/data/currency-coin-review.txt'
 
-
 /**
  * Pin the Wikidata Q-id for codes where the P498 search is ambiguous — shared
  * union currencies resolve to multi-country monetary-union items.

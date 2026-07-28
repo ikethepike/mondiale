@@ -1,7 +1,4 @@
-import {
-  dealReplacementChallenge,
-  isCorrectFinalAnswer,
-} from '~~/lib/challenges/final-challenge'
+import { dealReplacementChallenge, isCorrectFinalAnswer } from '~~/lib/challenges/final-challenge'
 import { playableCountries } from '~~/lib/game-rules'
 import { defineGameHandler, enqueueGameTask } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'

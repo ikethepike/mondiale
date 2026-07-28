@@ -44,7 +44,7 @@ interface Game {
 ```
 
 Both fields are optional, so every game stored before this feature stays valid
-(`isValidGame` untouched) and the default is genuinely *off*.
+(`isValidGame` untouched) and the default is genuinely _off_.
 
 Being in the socket room is what makes spectating live: every broadcast is a
 room broadcast, so spectators receive the same whole-game snapshots, live
@@ -114,7 +114,7 @@ object, so they cannot ride a broadcast. Both bind points verify it:
 record it), `ok` (match — bind), `reject` (a secret is on file and the
 presented one is missing or wrong — an impersonation attempt), or `open` (no
 secret either side — a cached pre-secret client; bind unverified so it keeps
-working). Critically, once a secret is on file, *omitting* one rejects — an
+working). Critically, once a secret is on file, _omitting_ one rejects — an
 attacker can't sidestep the check by sending nothing.
 
 **Migration.** Games already in flight at deploy have no secrets on file, so
@@ -195,7 +195,7 @@ holds the logic, `components/spectate/` the two surfaces:
 
 ### Every card shows its real prompt
 
-A spectator card must never *describe* an asset it doesn't *show* — a flag gate
+A spectator card must never _describe_ an asset it doesn't _show_ — a flag gate
 that says "which flag?" with no flag, a silhouette round that says "name the
 outline" with no outline. Every challenge type now mirrors what the racer
 actually sees:
@@ -224,7 +224,7 @@ The secrets, pre-settle reveal headlines and answer-focus map glow are the
 spectator's dramatic irony — but a watcher's screen might be glanced at by
 someone in the room, and a pinned fast player reaches the scores stage while
 others are still answering. A **"Spoilers shown / hidden"** toggle in the
-booth (`spectateHideSpoilers`, default *shown* — the engaging default) hides
+booth (`spectateHideSpoilers`, default _shown_ — the engaging default) hides
 all three at once: the secret card, the pre-race scores headline, and the map
 focus glow (which falls back to the atlas). Prompts, dealt hands, answered
 ticks and the board are never spoilers, so they stay.
@@ -237,20 +237,20 @@ Client plumbing is deliberately thin: an `isSpectator` getter
 
 ## Edge cases
 
-| Case | Behaviour |
-| --- | --- |
-| Latecomer, door closed | Unchanged: `game-already-started` dead end |
-| Latecomer, door open, under cap | Admitted as spectator, room notified |
-| Latecomer, door open, at cap (20) | Refused: `game-already-started` dead end |
-| Spectator reconnects | Idempotent re-join (same upsert path); prune + re-add blips the count |
-| Spectator disconnects | Pruned from `game.spectators`, count rebroadcast (players never pruned) |
-| Door closed mid-watch | Spectators ejected: state dropped, sockets leave the room, dead-end screen |
-| Spectator forges another id | Rejected at bind: secret mismatch → `game-already-started`, disconnect |
-| Spectator sends its own gameplay events | No-op: not in `players`, handlers resolve sender via `players` |
-| Finisher spectates, race ends | Rail shows final order; return button back to the report |
-| Pre-feature games in Redis | `allowSpectators`/`spectators` absent ⇒ off/empty — old snapshots stay valid |
-| In-flight game at deploy | No secrets on file yet — first presented secret is claimed (see Migration) |
-| Host quits after finishing | Door state persists in the snapshot; toggle needs the host present (future: transferable host) |
+| Case                                    | Behaviour                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Latecomer, door closed                  | Unchanged: `game-already-started` dead end                                                     |
+| Latecomer, door open, under cap         | Admitted as spectator, room notified                                                           |
+| Latecomer, door open, at cap (20)       | Refused: `game-already-started` dead end                                                       |
+| Spectator reconnects                    | Idempotent re-join (same upsert path); prune + re-add blips the count                          |
+| Spectator disconnects                   | Pruned from `game.spectators`, count rebroadcast (players never pruned)                        |
+| Door closed mid-watch                   | Spectators ejected: state dropped, sockets leave the room, dead-end screen                     |
+| Spectator forges another id             | Rejected at bind: secret mismatch → `game-already-started`, disconnect                         |
+| Spectator sends its own gameplay events | No-op: not in `players`, handlers resolve sender via `players`                                 |
+| Finisher spectates, race ends           | Rail shows final order; return button back to the report                                       |
+| Pre-feature games in Redis              | `allowSpectators`/`spectators` absent ⇒ off/empty — old snapshots stay valid                   |
+| In-flight game at deploy                | No secrets on file yet — first presented secret is claimed (see Migration)                     |
+| Host quits after finishing              | Door state persists in the snapshot; toggle needs the host present (future: transferable host) |
 
 ## Future directions
 
@@ -261,13 +261,13 @@ Client plumbing is deliberately thin: an `isSpectator` getter
 - **Spectator link**: a `?spectate` URL that skips the player path even in the
   lobby (stream overlays, projectors).
 - **Mounting the real challenge views read-only**: rejected for now. The
-  challenge components (`View*.vue`) read the *local* player via
-  `useGroupChallenge`, run *local countdown timers started at mount*, own the
+  challenge components (`View*.vue`) read the _local_ player via
+  `useGroupChallenge`, run _local countdown timers started at mount_, own the
   shared `gameStore.map.*`, and submit on their own timers. A `readonly` flag
   would mean threading a followed-player override + emit/timer suppression
   through ~25 gameplay components (high regression risk), and — because the
   reveal timing isn't in the snapshot for most modes — it would still only
-  produce a *desynced local replay*, not the racer's real progress. The
+  produce a _desynced local replay_, not the racer's real progress. The
   isolated card (spectator code that can't touch gameplay or emit) is the safer
   architecture; the fidelity gap was motion, addressed below. The two
   snapshot-driven modes (border-chain, heritage-hunt) are the only ones a

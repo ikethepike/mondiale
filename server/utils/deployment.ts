@@ -20,6 +20,9 @@ export const getDeploymentInfo = (event: H3Event): DeploymentInfo => {
     uptimeSeconds: Math.round(process.uptime()),
     node: process.version,
     env: process.env.NODE_ENV ?? 'development',
-    ...(process.env.FLY_REGION && { region: process.env.FLY_REGION, machine: process.env.FLY_MACHINE_ID }),
+    ...(process.env.FLY_REGION && {
+      region: process.env.FLY_REGION,
+      machine: process.env.FLY_MACHINE_ID,
+    }),
   }
 }

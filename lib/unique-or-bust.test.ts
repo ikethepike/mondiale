@@ -13,10 +13,7 @@ import {
   type UniqueAnswerSheet,
   type UniqueEntry,
 } from '~~/lib/unique-or-bust'
-import type {
-  UniqueCategoryId,
-  UniqueOrBustChallenge,
-} from '~~/types/challenges/group-modes.type'
+import type { UniqueCategoryId, UniqueOrBustChallenge } from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
 
 const RULES: GameRules = { variant: 'world', difficulty: 'normal' }

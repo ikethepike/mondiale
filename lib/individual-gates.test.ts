@@ -41,7 +41,10 @@ describe('getIndividualChallenge (gate accessors)', () => {
   it('fills the {leader} and {currency} phrasing tokens', () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'find'
     const leaderGate = getIndividualChallenge({ accessorId: 'government.leader' })
-    const leaderQuestion = processReplacements('Which country is led by {leader}?', leaderGate.country)
+    const leaderQuestion = processReplacements(
+      'Which country is led by {leader}?',
+      leaderGate.country
+    )
     expect(leaderQuestion).not.toContain('{leader}')
     expect(leaderQuestion.length).toBeGreaterThan('Which country is led by ?'.length)
 

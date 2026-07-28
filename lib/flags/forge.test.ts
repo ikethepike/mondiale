@@ -17,7 +17,7 @@ describe('forgeFlag', () => {
   })
 
   it('produces distinct flags for distinct seeds (no seed collapse)', () => {
-    const svgs = new Set(hashes.map((h) => forgeFlag(h).svg))
+    const svgs = new Set(hashes.map(h => forgeFlag(h).svg))
     expect(svgs.size).toBeGreaterThan(hashes.length * 0.95)
   })
 
@@ -33,7 +33,7 @@ describe('forgeFlag', () => {
   })
 
   it('reaches every composition family across many seeds', () => {
-    const families = new Set(hashes.map((h) => forgeFlag(h).family))
+    const families = new Set(hashes.map(h => forgeFlag(h).family))
     const all: ForgeFamily[] = [
       'h-stripes',
       'v-stripes',

@@ -13,10 +13,7 @@ export const clampScore = (scored: number, maximum: number): number =>
  * both-empty case counting as a perfect match. Extent taps, claimant picks —
  * every "tap the right set" mode scores through this.
  */
-export const jaccardFraction = (
-  guess: ReadonlySet<string>,
-  truth: ReadonlySet<string>
-): number => {
+export const jaccardFraction = (guess: ReadonlySet<string>, truth: ReadonlySet<string>): number => {
   if (guess.size === 0 && truth.size === 0) return 1
   const intersection = [...guess].filter(member => truth.has(member)).length
   const union = new Set([...guess, ...truth]).size

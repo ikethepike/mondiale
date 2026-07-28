@@ -2,6 +2,16 @@
   <header class="challenge-result" :class="status">
     <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
     <h1 ref="heading" class="map-caption">{{ message }}</h1>
+    <!-- The prize, shown not counted: one dot lands per board step the win
+         earned, hopping in ahead of the pawn animation they preview. -->
+    <div v-if="status === 'correct' && leapSteps" class="leap-track" aria-hidden="true">
+      <span
+        v-for="step in leapSteps"
+        :key="step"
+        class="hop"
+        :style="{ '--hop-index': step - 1 }"
+      />
+    </div>
     <!-- The teachable moment: the actual facts behind the verdict. Gate on
          rendered content, not just slot presence — the slotted reveals are
          themselves v-if'd, so $slots.default is truthy even when it renders
@@ -35,6 +45,11 @@ const props = defineProps({
   correctMessage: {
     type: String,
     default: 'Correct!',
+  },
+  /** Board steps this win earned — rendered as landing hop dots, never text. */
+  leapSteps: {
+    type: Number,
+    default: 0,
   },
 })
 
@@ -119,6 +134,47 @@ onUnmounted(() => {
     height: 22rem;
     position: absolute;
     transform: translate(-50%, -50%);
+  }
+
+  .leap-track {
+    gap: 0.8rem;
+    display: flex;
+    position: relative;
+    margin-top: 1.2rem;
+    justify-content: center;
+  }
+
+  // Each earned step arcs in and settles, left to right — the same forward
+  // rhythm the pawn is about to walk on the board. Slots into the shared
+  // choreography after the ripple (heading 0.15s, card 0.3s, ripple 0.45s).
+  .hop {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: var(--dark-blue);
+    animation: hop-land 0.5s var(--ease-out-expressive) both;
+    animation-delay: calc(0.55s + var(--hop-index) * 0.16s);
+  }
+}
+
+@keyframes hop-land {
+  from {
+    opacity: 0;
+    transform: translateY(-1.6rem) scale(0.6);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0.2rem) scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .challenge-result .hop {
+    animation: none;
   }
 }
 </style>

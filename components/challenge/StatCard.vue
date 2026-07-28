@@ -1,6 +1,11 @@
 <template>
   <component :is="tag" class="stat-card">
-    <StatTopicIcon v-if="topic || accessor" class="topic-icon" :topic="topic" :accessor="accessor" />
+    <StatTopicIcon
+      v-if="topic || accessor"
+      class="topic-icon"
+      :topic="topic"
+      :accessor="accessor"
+    />
     <span v-if="label" class="stat-label">{{ label }}</span>
     <slot />
   </component>
@@ -16,7 +21,12 @@ import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challen
  * verdict washes, stack positioning) stays with the host view.
  */
 withDefaults(
-  defineProps<{ label?: string; topic?: string; accessor?: GroupChallengeAccessorId; tag?: string }>(),
+  defineProps<{
+    label?: string
+    topic?: string
+    accessor?: GroupChallengeAccessorId
+    tag?: string
+  }>(),
   {
     label: undefined,
     topic: undefined,

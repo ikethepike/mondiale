@@ -7,6 +7,11 @@ export const uniqueReadyHandler = defineGameHandler(
     const challenge = currentUniqueOrBust(game)
     if (!challenge || challenge.state.finished) return
 
-    await applyUniqueReady({ io, redis, socket, eventTarget }, game, challenge, eventTarget.playerId)
+    await applyUniqueReady(
+      { io, redis, socket, eventTarget },
+      game,
+      challenge,
+      eventTarget.playerId
+    )
   }
 )

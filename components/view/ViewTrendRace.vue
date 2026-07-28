@@ -90,7 +90,6 @@
         </ButtonFilled>
       </Transition>
     </section>
-
   </div>
 </template>
 <script lang="ts" setup>
@@ -104,9 +103,8 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
-import { TRENDS } from '~~/data/trends.gen'
 import { countryName, getCountry } from '~~/lib/country'
-import { TREND_METRICS } from '~~/lib/trends'
+import { TREND_METRICS, TRENDS } from '~~/lib/trends'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -248,7 +246,6 @@ header .verdict.incorrect {
   align-self: center;
   pointer-events: auto;
 }
-
 
 .race-card {
   cursor: pointer;

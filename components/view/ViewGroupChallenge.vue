@@ -198,9 +198,8 @@ const options = ref({
   }
 }
 
-h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
-}
+// No h1 font-size here: caption headings scale through the shared clamp in
+// templates/_map-caption.scss — a view override forks the type scale.
 
 .peek-button {
   top: 5vh;
@@ -378,6 +377,28 @@ footer {
 @media screen and (min-width: $tablet) {
   #active-round {
     padding: 0;
+  }
+
+  // The hand's air scales with the footer, and each tile scales with its own
+  // track (see CountryTile's container) — 7-tile hands at intermediate
+  // widths tighten instead of clipping names.
+  footer {
+    container: rank-hand / inline-size;
+  }
+  .countries {
+    gap: clamp(0.5rem, 1cqw, 1.6rem);
+  }
+  .countries.dense {
+    gap: clamp(0.4rem, 0.7cqw, 1.2rem);
+  }
+
+  // The poles shrink with the hand too — long markers ("largest population")
+  // must never crowd the submit button between them.
+  .indicators {
+    gap: clamp(0.8rem, 2cqw, 2.4rem);
+  }
+  .pole-label {
+    font-size: clamp(1.1rem, 0.5rem + 0.9cqw, 1.6rem);
   }
 }
 

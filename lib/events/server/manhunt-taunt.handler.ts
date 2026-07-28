@@ -44,7 +44,11 @@ export const manhuntTauntHandler: EventHandler = async ({
   if (!role) return
 
   const lines = MANHUNT_TAUNTS[role]
-  if (!Number.isInteger(eventData.index) || eventData.index < 0 || eventData.index >= lines.length) {
+  if (
+    !Number.isInteger(eventData.index) ||
+    eventData.index < 0 ||
+    eventData.index >= lines.length
+  ) {
     return
   }
 

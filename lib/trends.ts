@@ -1,19 +1,35 @@
-// Type-only imports: a value import would execute the generator, which
-// self-invokes at module bottom.
-import type { TrendMetricId, TrendSeries } from '~~/generators/vendors/owid/create-owid'
+// Type-only generator imports: a value import would execute the generator,
+// which self-invokes at module bottom.
+import type { TrendMetricId as OwidTrendMetricId } from '~~/generators/vendors/owid/create-owid'
+import type { WppTrendMetricId } from '~~/generators/vendors/unwpp/create-wpp'
+import type {
+  TrendMapping as GenericTrendMapping,
+  TrendSeries,
+} from '~~/generators/lib/trend-series'
+import { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS } from '~~/generators/lib/trend-series'
+import { TRENDS as OWID_TRENDS } from '~~/data/trends.gen'
+import { WPP_TRENDS } from '~~/data/wpp-trends.gen'
 import type { ChallengeScale, ChallengeTopic } from '~~/types/challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
-export type {
-  TrendMapping,
-  TrendMetricId,
-  TrendPoint,
-  TrendSeries,
-} from '~~/generators/vendors/owid/create-owid'
+/** Every stored series id, across vendors (OWID + UN WPP). */
+export type TrendMetricId = OwidTrendMetricId | WppTrendMetricId
+export type TrendMapping = GenericTrendMapping<TrendMetricId>
+export type { TrendPoint, TrendSeries } from '~~/generators/lib/trend-series'
+export { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS }
 
-/** Series with fewer points, or spanning fewer years, are never dealt. */
-export const MIN_TREND_POINTS = 5
-export const MIN_TREND_SPAN_YEARS = 15
+/** The one merged per-country series table — game code reads this, never a
+ *  vendor's gen file directly. */
+export const TRENDS: TrendMapping = (() => {
+  const merged: TrendMapping = {}
+  const sources: TrendMapping[] = [OWID_TRENDS, WPP_TRENDS]
+  for (const source of sources) {
+    for (const isoCode of Object.keys(source) as (keyof TrendMapping)[]) {
+      merged[isoCode] = { ...merged[isoCode], ...source[isoCode] }
+    }
+  }
+  return merged
+})()
 
 /**
  * Shared decisiveness convention (same as the higher-lower duel gap): bounded
@@ -92,7 +108,7 @@ export const TREND_METRICS: Record<
     label: 'life expectancy',
     unit: 'years',
     topic: 'health',
-    glyph: 'health.lifeExpectancy',
+    glyph: 'people.lifeExpectancy',
     mixed: false,
     race: true,
   },
@@ -151,6 +167,173 @@ export const TREND_METRICS: Record<
     // Real-world Gini coefficients span ~0.2–0.6; a 0–1 track would bury every
     // country in the middle and make the 8% decisiveness gap unreachable.
     scale: { min: 0.2, max: 0.6, invert: true },
+    mixed: true,
+    race: true,
+  },
+  alcoholConsumption: {
+    label: 'alcohol consumption per person',
+    unit: 'L',
+    topic: 'health',
+    glyph: 'health.alcoholConsumption',
+    mixed: true,
+    race: true,
+  },
+  obesity: {
+    label: 'adult obesity',
+    unit: '%',
+    topic: 'health',
+    glyph: 'health.obesity',
+    // Prevalence spans ~2–60%; a 0–100 track would mute every move.
+    scale: { min: 0, max: 60 },
+    mixed: false,
+    race: true,
+  },
+  tobaccoUse: {
+    label: 'adult smoking',
+    unit: '%',
+    topic: 'health',
+    glyph: 'health.tobaccoUse',
+    scale: { min: 0, max: 60 },
+    mixed: false,
+    race: true,
+  },
+  militarySpending: {
+    label: 'military spending share of GDP',
+    unit: '% of GDP',
+    topic: 'economics',
+    glyph: 'economics.militarySpending',
+    mixed: true,
+    race: true,
+  },
+  renewables: {
+    label: 'renewable share of electricity',
+    unit: '%',
+    topic: 'energy',
+    glyph: 'environment.renewables',
+    scale: { min: 0, max: 100 },
+    mixed: true,
+    race: true,
+  },
+  urbanization: {
+    label: 'urban share of population',
+    unit: '%',
+    topic: 'people',
+    glyph: 'people.urbanization',
+    scale: { min: 0, max: 100 },
+    mixed: false,
+    race: true,
+  },
+  forested: {
+    label: 'forest cover',
+    unit: '%',
+    topic: 'geography',
+    glyph: 'geography.area.forested',
+    scale: { min: 0, max: 100 },
+    mixed: true,
+    race: true,
+  },
+  meatConsumption: {
+    label: 'meat consumption per person',
+    unit: 'kg',
+    topic: 'health',
+    mixed: true,
+    race: true,
+  },
+  touristArrivals: {
+    label: 'international tourist arrivals',
+    unit: 'tourists',
+    topic: 'economics',
+    mixed: false,
+    race: true,
+  },
+  energyUse: {
+    label: 'energy use per person',
+    unit: 'kWh',
+    topic: 'energy',
+    mixed: true,
+    race: true,
+  },
+  workingHours: {
+    label: 'working hours per worker',
+    unit: 'hours',
+    topic: 'economics',
+    mixed: false,
+    race: true,
+  },
+  airPollution: {
+    label: 'air pollution (PM2.5)',
+    unit: 'µg/m³',
+    topic: 'environment',
+    mixed: true,
+    race: true,
+  },
+  roadDeaths: {
+    label: 'road deaths',
+    unit: 'per 100k',
+    topic: 'health',
+    mixed: true,
+    race: true,
+  },
+  redListIndex: {
+    label: 'wildlife safety (Red List Index)',
+    unit: 'index',
+    topic: 'environment',
+    // Real countries sit ~0.4–1 on the 0–1 index.
+    scale: { min: 0.4, max: 1 },
+    mixed: false,
+    race: true,
+  },
+  freshwaterPerCapita: {
+    label: 'freshwater per person',
+    unit: 'm³',
+    topic: 'environment',
+    mixed: false,
+    race: true,
+  },
+  population: {
+    label: 'population',
+    unit: 'people',
+    topic: 'people',
+    glyph: 'people.population',
+    mixed: true,
+    race: true,
+  },
+  medianAge: {
+    label: 'median age',
+    unit: 'years',
+    topic: 'people',
+    glyph: 'people.medianAge',
+    // Country medians span ~15–52 years; a wider track would mute every move.
+    scale: { min: 15, max: 55 },
+    mixed: false,
+    race: true,
+  },
+  birthRate: {
+    label: 'birth rate',
+    unit: 'per 1000',
+    topic: 'people',
+    glyph: 'people.birthRate',
+    mixed: false,
+    race: true,
+  },
+  netMigration: {
+    label: 'net migration rate',
+    unit: 'per 1000',
+    topic: 'people',
+    glyph: 'people.netMigration',
+    // Crosses zero, so relative gaps misread near-balanced flows; real rates
+    // sit within ±15 per 1000 outside war-and-boom outliers.
+    scale: { min: -15, max: 15 },
+    mixed: true,
+    race: true,
+  },
+  populationGrowthRate: {
+    label: 'population growth rate',
+    unit: '%',
+    topic: 'people',
+    glyph: 'people.populationGrowthRate',
+    // Also zero-crossing: shrinking Europe vs booming Gulf and Sahel.
+    scale: { min: -2, max: 4 },
     mixed: true,
     race: true,
   },

@@ -11,10 +11,11 @@ import type { BorderChainChallenge, BorderChainOutcome } from '~~/types/challeng
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
-import { FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,
+  scheduleEngineTask,
   scheduleRevealTask,
   settleRoundScores,
   type EngineContext,
@@ -72,15 +73,27 @@ const eliminate = (
 
 /**
  * Kick off the revealed round: stamp the first deadline (call BEFORE the
- * caller saves/emits so clients see a live clock) …
+ * caller saves/emits so clients see a live clock). While the briefing holds,
+ * the deadline stays 0 — the first shot clock stamps when the table is ready.
  */
 export const startChainClock = (challenge: BorderChainChallenge) => {
+  if (challenge.state.briefing) return
   stampDeadline(challenge)
   challenge.state.deadline += FIRST_TURN_GRACE_MS
 }
 
-/** … then arm the shot clock (call AFTER the save — it re-reads fresh state). */
+/** … then arm the clock (call AFTER the save — the fired task re-reads fresh
+ *  state). During the briefing that clock is the reading cap; after it, the
+ *  active player's shot clock. */
 export const scheduleChainTimeout = (ctx: ChainContext, challenge: BorderChainChallenge) => {
+  if (challenge.state.briefing) {
+    scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
+      const current = currentBorderChain(game)
+      if (!current || current.state.finished || !current.state.briefing) return
+      await beginChain(ctx, game, current)
+    })
+    return
+  }
   const { turn, deadline } = challenge.state
   scheduleDeadlineTask(ctx, deadline, async game => {
     const current = currentBorderChain(game)
@@ -88,6 +101,38 @@ export const scheduleChainTimeout = (ctx: ChainContext, challenge: BorderChainCh
     if (!current || current.state.finished || current.state.turn !== turn) return
     await resolveChainMiss(ctx, game, current, 'timeout')
   })
+}
+
+/** A player dismissed their briefing card. Idempotent; the last ready (or
+ *  the cap) starts the opening shot clock. */
+export const applyChainReady = async (
+  ctx: ChainContext,
+  game: Game,
+  challenge: BorderChainChallenge,
+  playerId: string
+) => {
+  const { state } = challenge
+  if (!state.briefing || state.ready.includes(playerId)) return
+  if (!state.order.includes(playerId)) return
+  state.ready.push(playerId)
+
+  if (state.order.every(id => state.ready.includes(id))) {
+    return beginChain(ctx, game, challenge)
+  }
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
+}
+
+/** Briefing over: the opening player's shot clock starts. */
+const beginChain = async (ctx: ChainContext, game: Game, challenge: BorderChainChallenge) => {
+  challenge.state.briefing = false
+  stampDeadline(challenge)
+  challenge.state.deadline += FIRST_TURN_GRACE_MS
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
+  scheduleChainTimeout(ctx, challenge)
 }
 
 /**
@@ -169,11 +214,7 @@ const commitChainTurn = async (ctx: ChainContext, game: Game, challenge: BorderC
  * everyone and hand out board moves through the same conversion the submit
  * path uses.
  */
-const finishChainRound = async (
-  ctx: ChainContext,
-  game: Game,
-  challenge: BorderChainChallenge
-) => {
+const finishChainRound = async (ctx: ChainContext, game: Game, challenge: BorderChainChallenge) => {
   const { state } = challenge
   const server = useServerSideEvents(ctx)
 

@@ -47,7 +47,8 @@
           :key="index"
           class="passage-pip"
           :class="{ spent: index > state.seaPassagesLeft }"
-        >⚓</span>
+          >⚓</span
+        >
       </button>
       <span class="dock-caption">
         {{
@@ -60,7 +61,9 @@
       </span>
     </aside>
 
-    <ChallengePrompt>
+    <!-- No prompt while the briefing is up: "Your move" belongs to a round
+         that has actually started, not to the card explaining it. -->
+    <ChallengePrompt v-if="!briefing">
       <h1 class="map-caption headline-line">
         <DespotHat class="despot-hat" />
         <span>{{ headline }}</span>
@@ -93,25 +96,43 @@
          runs until the whole table is ready (or the server's cap forces it). -->
     <section
       v-if="briefing"
-      class="briefing pane tr decorator-bottom"
+      class="briefing briefing-card pane tr decorator-bottom"
       :class="{ despotic: isDespot }"
     >
       <DespotHat class="briefing-hat" />
       <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
       <ul class="briefing-points">
         <template v-if="isDespot">
-          <li>The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border, a strait, anywhere but here.</li>
-          <li>⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its movements will be… reported.</li>
+          <li>
+            The ungrateful masses have risen. Each turn, slip to a neighbouring country — a border,
+            a strait, anywhere but here.
+          </li>
+          <li>
+            ⚓ Your loyal fleet stands ready: a sea passage leaps an entire sea. Regrettably, its
+            movements will be… reported.
+          </li>
           <li>Interpol leaks one true fact about your location every turn.</li>
-          <li>Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally — sails with you.</li>
-          <li>Every turn at large banks its share of the pot; captured early, you keep only what you had banked.</li>
+          <li>
+            Endure {{ challenge.turnCount }} turns and the treasury — your treasury, naturally —
+            sails with you.
+          </li>
+          <li>
+            Every turn at large banks its share of the pot; captured early, you keep only what you
+            had banked.
+          </li>
         </template>
         <template v-else>
           <li>Each turn brings one true intel report on the Despot's hideout.</li>
           <li>Click the map to drop your marker — land on the Despot to capture.</li>
           <li>⚖ Subpoenas force the next clue onto a topic of your choosing.</li>
-          <li>On a capture, the bounty splits by how close each final marker sits — and whoever lands the cuff takes a bonus.</li>
-          <li>If the Despot slips away, only a thin consolation splits by proximity — so close the net.</li>
+          <li>
+            On a capture, the bounty splits by how close each final marker sits — and whoever lands
+            the cuff takes a bonus.
+          </li>
+          <li>
+            If the Despot slips away, only a thin consolation splits by proximity — so close the
+            net.
+          </li>
         </template>
       </ul>
       <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
@@ -188,7 +209,9 @@
             class="intel-row"
             :accessor="clue.accessorId"
             :topic="clue.topic"
-            :label="clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`"
+            :label="
+              clue.askedBy ? `Turn ${clue.hop} · ⚖ ${nameOf(clue.askedBy)}` : `Turn ${clue.hop}`
+            "
           >
             <span class="intel-text">{{ clue.text }}</span>
           </StatCard>
@@ -383,8 +406,11 @@ const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
 const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
 
-const briefing = computed(() => !!state.value.briefing && !finished.value && !showInterstitial.value)
-const seatName = (playerId: string) => seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+const briefing = computed(
+  () => !!state.value.briefing && !finished.value && !showInterstitial.value
+)
+const seatName = (playerId: string) =>
+  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
 
 const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
@@ -592,7 +618,9 @@ const paintPursuit = () => {
   // staggered wash, one country after another — the net visibly blowing open.
   // Once per beat: mid-beat repaints (marker commits) must not re-run it.
   const washing =
-    seaPassageAnnounced.value && state.value.candidates.length > 0 && washedTurn !== state.value.turn
+    seaPassageAnnounced.value &&
+    state.value.candidates.length > 0 &&
+    washedTurn !== state.value.turn
   if (washing) washedTurn = state.value.turn
   if (washing) {
     for (const isoCode of state.value.candidates) {
@@ -830,7 +858,6 @@ header .sea-banner {
   .intel-text {
     display: block;
   }
-
 }
 
 .rail-label {
@@ -917,18 +944,9 @@ header .headline-line {
   }
 }
 
+// Layout and scrolling come from the shared .briefing-card template; only
+// the Despot flavor lives here.
 .briefing {
-  gap: 1rem;
-  z-index: 3;
-  display: flex;
-  margin: 0 auto;
-  padding: 1.8rem 2.2rem;
-  text-align: center;
-  align-items: center;
-  flex-flow: column nowrap;
-  pointer-events: auto;
-  max-width: min(34rem, calc(100% - 2.4rem));
-
   // Glorious Leader gets the ember treatment: the accent that marks "you"
   // on the map becomes the whole room, white ink on top.
   &.despotic {
@@ -955,58 +973,14 @@ header .headline-line {
   }
 }
 
-.briefing-points {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  text-align: left;
-  gap: 0.55rem;
-  flex-flow: column nowrap;
-}
-
-.ready-row {
-  gap: 1.2rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.ready-seat {
-  gap: 0.25rem;
-  display: flex;
-  align-items: center;
-  flex-flow: column nowrap;
-  transition:
-    opacity var(--motion-base) var(--ease-smooth),
-    filter var(--motion-base) var(--ease-smooth);
-
-  &.waiting {
-    opacity: 0.35;
-    filter: grayscale(1);
-  }
-
-  .seat-hat {
-    width: 2.4rem;
-    z-index: 1;
-    // Seated ON the pawn's head, tipped — not hovering in the air above it.
-    margin-bottom: -1.15rem;
-    transform: rotate(-10deg);
-  }
-
-  .ready-pawn {
-    width: 2.6rem;
-  }
-
-  .seat-name {
-    font-size: 1.15rem;
-    color: var(--dark-blue);
-  }
-}
-
-.briefing-waiting {
-  margin: 0;
-  opacity: 0.75;
+// The points list and ready row come from the shared .briefing-card
+// template; only the despot's hat placement is local.
+.ready-seat .seat-hat {
+  width: 2.4rem;
+  z-index: 1;
+  // Seated ON the pawn's head, tipped — not hovering in the air above it.
+  margin-bottom: -1.15rem;
+  transform: rotate(-10deg);
 }
 
 .reveal {
@@ -1014,5 +988,4 @@ header .headline-line {
   margin: 0 auto;
   max-width: min(34rem, calc(100% - 2.4rem));
 }
-
 </style>

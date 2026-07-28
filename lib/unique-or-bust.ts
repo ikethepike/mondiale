@@ -144,9 +144,7 @@ export const uniqueEntryForAnswer = (
 /** True once every seated player has locked every slot — the early finish. */
 export const uniqueBoardComplete = (challenge: UniqueOrBustChallenge): boolean =>
   challenge.state.order.every(playerId =>
-    challenge.categories.every(category =>
-      challenge.state.locked[playerId]?.includes(category)
-    )
+    challenge.categories.every(category => challenge.state.locked[playerId]?.includes(category))
   )
 
 /**

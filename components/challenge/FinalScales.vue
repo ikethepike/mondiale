@@ -8,12 +8,20 @@
         <g class="beam" :style="{ transform: `rotate(${angle}deg)` }">
           <rect class="bar" x="28" y="56" width="144" height="4" rx="2" />
           <circle class="hub" cx="100" cy="58" r="4.5" />
-          <g class="pan" :style="{ transform: `rotate(${-angle}deg)` }" style="transform-origin: 30px 58px">
+          <g
+            class="pan"
+            :style="{ transform: `rotate(${-angle}deg)` }"
+            style="transform-origin: 30px 58px"
+          >
             <line x1="30" y1="58" x2="20" y2="86" />
             <line x1="30" y1="58" x2="40" y2="86" />
             <path d="M 16 86 Q 30 102 44 86 Z" />
           </g>
-          <g class="pan" :style="{ transform: `rotate(${-angle}deg)` }" style="transform-origin: 170px 58px">
+          <g
+            class="pan"
+            :style="{ transform: `rotate(${-angle}deg)` }"
+            style="transform-origin: 170px 58px"
+          >
             <line x1="170" y1="58" x2="160" y2="86" />
             <line x1="170" y1="58" x2="180" y2="86" />
             <path d="M 156 86 Q 170 102 184 86 Z" />
@@ -96,7 +104,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ButtonLine from '~/components/button/ButtonLine.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
-import { formatAmount, clamp  } from '~~/lib/number'
+import { formatAmount, clamp } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { ScalesChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'

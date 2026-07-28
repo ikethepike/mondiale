@@ -292,5 +292,4 @@ body.nocturne-night {
     animation: none;
   }
 }
-
 </style>

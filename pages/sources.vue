@@ -2,8 +2,8 @@
   <StaticPage>
     <h1>Sources</h1>
     <p class="lead">
-      Mondiale is built on open data. The facts, maps and imagery in the game
-      come from these sources.
+      Mondiale is built on open data. The facts, maps and imagery in the game come from these
+      sources.
     </p>
 
     <ul class="sources">
@@ -32,6 +32,7 @@ import logoWikidata from '~/assets/logos/sources/wikidata.svg'
 import logoCommons from '~/assets/logos/sources/commons.svg'
 import logoWikipedia from '~/assets/logos/sources/wikipedia.svg'
 import logoWorldBank from '~/assets/logos/sources/worldbank.svg'
+import logoUnWpp from '~/assets/logos/sources/un-wpp.svg'
 import logoOwid from '~/assets/logos/sources/owid.png'
 import logoUppsala from '~/assets/logos/sources/uppsala.svg'
 import logoUnsplash from '~/assets/logos/sources/unsplash.svg'
@@ -49,23 +50,20 @@ const sources: Array<{
     name: 'CIA World Factbook',
     url: 'https://www.cia.gov/the-world-factbook/',
     logo: logoCia,
-    description:
-      'Country profiles and world leaders: geography, people, government and economy.',
+    description: 'Country profiles and world leaders: geography, people, government and economy.',
   },
   {
     name: 'Natural Earth',
     url: 'https://www.naturalearthdata.com',
     logo: logoNaturalEarth,
     dim: true,
-    description:
-      'Public-domain map data: country shapes, seas, lakes and rivers.',
+    description: 'Public-domain map data: country shapes, seas, lakes and rivers.',
   },
   {
     name: 'Wikidata',
     url: 'https://www.wikidata.org',
     logo: logoWikidata,
-    description:
-      'Structured data on leaders, capitals, currencies and landmarks.',
+    description: 'Structured data on leaders, capitals, currencies and landmarks.',
   },
   {
     name: 'Wikimedia Commons',
@@ -87,11 +85,18 @@ const sources: Array<{
     description: 'Development indicators.',
   },
   {
+    name: 'UN World Population Prospects',
+    url: 'https://population.un.org/wpp/',
+    logo: logoUnWpp,
+    description:
+      'Population estimates and projections 1950–2100 from the UN Population Division: age structures, fertility, mortality and migration.',
+  },
+  {
     name: 'Our World in Data',
     url: 'https://ourworldindata.org',
     logo: logoOwid,
     description:
-      'Indices and historical series on democracy, corruption, human development, happiness, health, emissions, crime and the economy — aggregating V-Dem, Transparency International, UNDP, the World Happiness Report, the World Bank, UNODC, the UN and the Global Carbon Budget.',
+      'Indices and historical series on democracy, human development, health and lifestyle, environment and biodiversity, energy, tourism and the economy — aggregating V-Dem, Transparency International, UNDP, the WHO, the FAO, SIPRI, the IUCN, the World Bank, UNODC, UN agencies, NCD-RisC, the IEA and the Energy Institute.',
   },
   {
     name: 'Uppsala Conflict Data Program',
@@ -158,7 +163,9 @@ const sources: Array<{
     object-fit: contain;
     filter: grayscale(1);
     opacity: 0.8;
-    transition: filter var(--motion-quick), opacity var(--motion-quick);
+    transition:
+      filter var(--motion-quick),
+      opacity var(--motion-quick);
 
     // Pale logos vanish under plain grayscale — pull them toward mid-gray
     &.dim {

@@ -42,9 +42,7 @@ describe('generateTiles', () => {
           expect(gap).toBeGreaterThanOrEqual(3)
           expect(gap).toBeLessThanOrEqual(7)
         }
-        expect(positions[positions.length - 1]).toBeLessThanOrEqual(
-          tiles.length - 1 - FINAL_BUFFER
-        )
+        expect(positions[positions.length - 1]).toBeLessThanOrEqual(tiles.length - 1 - FINAL_BUFFER)
       }
     }
   })

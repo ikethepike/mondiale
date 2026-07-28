@@ -7,9 +7,8 @@
       <li>No accounts, no analytics, no ads, no tracking cookies.</li>
       <li>No personal data is collected, profiled or shared with anyone.</li>
       <li>
-        Games live under their random room name. The nickname and answers you
-        enter exist only to run that game and are deleted automatically within
-        two days.
+        Games live under their random room name. The nickname and answers you enter exist only to
+        run that game and are deleted automatically within two days.
       </li>
     </ul>
 

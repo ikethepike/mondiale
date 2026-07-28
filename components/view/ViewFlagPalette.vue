@@ -40,11 +40,7 @@
     <footer>
       <!-- This mode's lower edge belongs to the guess box, so the round
            clock lives inside the console pill instead of the corner berth. -->
-      <ChallengeConsole
-        class="console"
-        :value="secondsLeft"
-        :total="challenge.durationSeconds"
-      >
+      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
         <CountryGuessInput
           ref="guessInput"
           :disabled="submitted || !started"
@@ -102,10 +98,7 @@ const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   const active = challenge.value
   gameStore.map.status = correct ? 'correct' : undefined
   // Name it sooner, keep more of the pot.
-  const score =
-    correct && active
-      ? buzzScore(active.maximumPoints, remainingFraction.value)
-      : 0
+  const score = correct && active ? buzzScore(active.maximumPoints, remainingFraction.value) : 0
   submitOnce(correct && active ? [guessed ?? active.country] : [], score)
 }
 
@@ -171,7 +164,6 @@ header .region-hint {
   border-radius: 1rem;
   box-shadow: inset 0 0 0 1px ink(0.15);
 }
-
 
 footer {
   // Lift clear of the viewport edge so the guess input's suggestion list

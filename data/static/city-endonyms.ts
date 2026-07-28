@@ -16,7 +16,7 @@ export const CITY_ENDONYMS: { [isoCode: string]: { [canonicalName: string]: stri
   EG: { Cairo: ['Al Qahirah'], Alexandria: ['Al Iskandariyah'] },
   ES: { Seville: ['Sevilla'] },
   FI: { Helsinki: ['Helsingfors'], Tampere: ['Tammerfors'] },
-  GR: { Athens: ['Athina'], 'Thessaloníki': ['Saloniki'] },
+  GR: { Athens: ['Athina'], Thessaloníki: ['Saloniki'] },
   IT: {
     Rome: ['Roma'],
     Milan: ['Milano'],
