@@ -16,7 +16,7 @@
         <h1 v-if="briefing" class="map-caption">Unique or Bust</h1>
         <h1 v-else class="map-caption headline-line">
           <span>The letter is</span>
-          <span class="letter-badge">{{ challenge.letter }}</span>
+          <UniqueLetterBadge :letter="challenge.letter" />
         </h1>
         <span v-if="!briefing" class="map-caption sub">{{ statusLine }}</span>
       </template>
@@ -35,7 +35,7 @@
          Despot's gate). No clock runs until the whole table is ready — or the
          server's reading cap forces it. -->
     <section v-if="briefing" class="briefing pane tr decorator-bottom">
-      <span class="letter-badge banner">?</span>
+      <UniqueLetterBadge class="banner" letter="?" />
       <h2>Unique or Bust</h2>
       <ul class="briefing-points">
         <li>A letter drops when everyone's ready. Four blanks start with it: {{ boardLine }}.</li>
@@ -122,6 +122,7 @@ import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
+import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
 import UniqueRevealGrid from '~/components/challenge/UniqueRevealGrid.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
@@ -288,26 +289,6 @@ const verdictLine = computed(() => {
   gap: 1rem;
   display: inline-flex;
   align-items: center;
-}
-
-.letter-badge {
-  width: 4.2rem;
-  height: 4.2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.6rem;
-  font-weight: 700;
-  border-radius: 1rem;
-  color: var(--sour-milk);
-  background: var(--dark-blue);
-
-  // Straight on purpose — the tilt is The Despot's hat flourish, not ours.
-  &.banner {
-    width: 6.4rem;
-    height: 6.4rem;
-    font-size: 4.2rem;
-  }
 }
 
 // The rules card wears The Despot's briefing recipe — same pane classes, same
@@ -497,12 +478,6 @@ const verdictLine = computed(() => {
   .slot-face {
     font-size: 1.35rem;
     padding: 0.55rem 1rem;
-  }
-
-  .letter-badge {
-    width: 3.4rem;
-    height: 3.4rem;
-    font-size: 2.2rem;
   }
 
   .reveal {

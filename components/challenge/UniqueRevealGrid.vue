@@ -2,8 +2,12 @@
   <section class="unique-reveal">
     <!-- The take: who walked away with what, ranked. The grid below is the
          why; this is the outcome at a glance. -->
+    <!-- The briefing's sealed '?' pays off here: the letter tile itself
+         crowns the masthead, half over the card's top edge. -->
     <header class="take card">
-      <span class="eyebrow">The take — letter {{ challenge.letter }}</span>
+      <UniqueLetterBadge class="banner take-mark" :letter="challenge.letter" />
+      <h2 class="take-title">The take</h2>
+      <span class="take-sub">Only unshared answers paid</span>
       <ul class="take-row">
         <li
           v-for="seat in standings"
@@ -64,6 +68,7 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { UNIQUE_CATEGORIES } from '~~/lib/unique-or-bust'
@@ -130,6 +135,9 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
   display: grid;
   align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  // Headroom for the masthead tile that breaks the take card's top edge —
+  // the view scrolls this element, and a bare negative margin would clip.
+  padding-top: 3.4rem;
 
   // StatCard's surface, as a cluster: cream wash, ink hairline, soft radius.
   // The small-caps labels wear muted ink here, not the section-label blue —
@@ -150,13 +158,31 @@ const flagFor = (category: UniqueCategoryId, cell: UniqueBoardCell): Country | u
 }
 
 .take {
+  gap: 0.4rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
   grid-column: 1 / -1;
-  padding: 1.2rem 1.4rem;
+  padding: 1.2rem 1.4rem 1.6rem;
   animation: fade-in var(--motion-base) var(--ease-out-expressive) both;
 
-  .eyebrow {
-    text-align: center;
+  .take-mark {
+    margin-top: -4.4rem;
   }
+}
+
+.take-title {
+  margin: 0.4rem 0 0;
+  color: var(--dark-blue);
+}
+
+.take-sub {
+  opacity: 0.65;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dark-blue);
+  margin-bottom: 0.6rem;
 }
 
 .take-row {
