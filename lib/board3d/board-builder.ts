@@ -317,29 +317,25 @@ const markerPartsFor = (
   }
 }
 
-/** Tiles before the final arch that get flanking gauntlet pylons. */
+/** Tiles before the final arch that get their own gauntlet arch. */
 const GAUNTLET_APPROACH_TILES = 3
 
 /**
- * A pair of pennant pylons flanking the track on a gauntlet-approach tile.
- * `tier` counts up toward the final arch (1 = furthest out) and raises the
- * pylons as they close in, so the run-in reads as a funnel into the gate.
+ * A smaller echo of the final arch, spanning a gauntlet-approach tile — the
+ * run-in reads as a colonnade of gates funnelling into the big one. Sand
+ * lintels keep the alert orange reserved for the final arch itself.
  */
-const gauntletPylonParts = (spacing: number, tier: number): MarkerPart[] => {
+const gauntletArchParts = (spacing: number): MarkerPart[] => {
   const s = spacing
   const parts: MarkerPart[] = []
-  const height = (0.5 + tier * 0.14) * s
-
   for (const side of [-1, 1]) {
-    const shaft = new CylinderGeometry(0.045 * s, 0.08 * s, height, 8)
-    shaft.translate(side * 0.62 * s, height / 2, 0)
-    parts.push({ geometry: shaft, color: BOARD_COLORS.darkBlue })
-
-    // Streams along the walk direction (local +z points along the path)
-    const pennant = new BoxGeometry(0.05 * s, 0.16 * s, 0.3 * s)
-    pennant.translate(side * 0.62 * s, height - 0.09 * s, 0.18 * s)
-    parts.push({ geometry: pennant, color: BOARD_COLORS.hiorAnge })
+    const pillar = new BoxGeometry(0.13 * s, 0.85 * s, 0.13 * s)
+    pillar.translate(side * 0.48 * s, 0.425 * s, 0)
+    parts.push({ geometry: pillar, color: BOARD_COLORS.darkBlue })
   }
+  const lintel = new BoxGeometry(1.12 * s, 0.13 * s, 0.16 * s)
+  lintel.translate(0, 0.9 * s, 0)
+  parts.push({ geometry: lintel, color: BOARD_COLORS.warmSand })
   return parts
 }
 
@@ -358,7 +354,7 @@ const outlineOf = (geometry: BufferGeometry): BufferGeometry => {
 /**
  * All challenge markers merged by color (a handful of draw calls total):
  * toon-shaded structures plus one ink inverted-hull outline mesh. The final
- * arch gets a gauntlet run-in — pylon pairs lining the last approach tiles.
+ * arch gets a gauntlet run-in — echo arches over the last approach tiles.
  */
 const buildChallengeMarkers = (
   tiles: Tile[],
@@ -402,14 +398,14 @@ const buildChallengeMarkers = (
     placeParts(markerPartsFor(isFinal ? 'final' : tile.type, spacing), anchor, tangent)
   }
 
-  // --- The gauntlet approach: pennant pylons lining the final run-in --------
+  // --- The gauntlet approach: echo arches lining the final run-in -----------
   const finalIndex = tiles.findIndex(tile => tile.type === 'final')
   for (let back = GAUNTLET_APPROACH_TILES; finalIndex !== -1 && back >= 1; back--) {
     const index = finalIndex - back
     // Never crowd the start tile or another gate's own marker
     if (index <= 0 || tiles[index].type !== 'normal') continue
     const { position, tangent } = transforms[index]
-    placeParts(gauntletPylonParts(spacing, GAUNTLET_APPROACH_TILES - back + 1), position, tangent)
+    placeParts(gauntletArchParts(spacing), position, tangent)
   }
 
   const meshes: Mesh[] = []
