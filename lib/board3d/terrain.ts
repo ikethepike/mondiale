@@ -8,6 +8,12 @@ export const BOARD_SIZE = 100
 /** Peak terrain elevation — kept gentle so contour lines stay sparse. */
 export const MAX_ELEVATION = BOARD_SIZE * 0.07
 
+/** Radial band over which the world melts into the page: contour lines fade
+ *  (shader), hills subside and the warm tint drains (geometry + shader) —
+ *  one shared pair so the two treatments can never drift apart. */
+export const EDGE_FADE_START = 85
+export const EDGE_FADE_END = 130
+
 export type HeightSampler = (x: number, z: number) => number
 
 /**
@@ -41,6 +47,23 @@ export const createHeightSampler = (seed: string): HeightSampler => {
 }
 
 export const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
+/**
+ * Subside the hills toward the fBm mean across the edge-fade band, so the
+ * terrain's silhouette flattens into a plain instead of ending in a hard
+ * sliced-off horizon at the plane border.
+ */
+export const withEdgeFalloff = (sampler: HeightSampler): HeightSampler => {
+  const restY = MAX_ELEVATION * 0.5
+  return (x, z) => {
+    const distance = Math.hypot(x, z)
+    if (distance <= EDGE_FADE_START) return sampler(x, z)
+    if (distance >= EDGE_FADE_END) return restY
+
+    const t = smoothstep((distance - EDGE_FADE_START) / (EDGE_FADE_END - EDGE_FADE_START))
+    return sampler(x, z) * (1 - t) + restY * t
+  }
+}
 
 /**
  * Blend the terrain toward the tile path's elevation within a falloff radius,

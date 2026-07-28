@@ -33,7 +33,7 @@ import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { outlineOf } from './ink-outline'
 import { createTilePath, type TileTransform } from './path'
-import { BOARD_SIZE, createHeightSampler, withPathShelf } from './terrain'
+import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
 import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
 
 export interface BoardBuild {
@@ -79,7 +79,9 @@ const TERRAIN_OVERHANG = 2.6
 export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const group = new Group()
 
-  const rawSampler = createHeightSampler(seed)
+  // Edge falloff wraps the base field so hills subside into the page at the
+  // horizon; the track (radius < EDGE_FADE_START) never feels it.
+  const rawSampler = withEdgeFalloff(createHeightSampler(seed))
   const tilePath = createTilePath(seed, tiles, rawSampler)
   const { transforms, shelfPoints, spacing } = tilePath
 

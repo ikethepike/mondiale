@@ -1,6 +1,6 @@
 import { Color, ShaderMaterial, Vector2 } from 'three'
 import { BOARD_COLORS } from './colors'
-import { MAX_ELEVATION } from './terrain'
+import { EDGE_FADE_END, EDGE_FADE_START, MAX_ELEVATION } from './terrain'
 
 export interface ContourMaterial extends ShaderMaterial {
   uniforms: ShaderMaterial['uniforms'] & {
@@ -36,8 +36,9 @@ export const createContourMaterial = (rippleRadius: number): ContourMaterial => 
       uRippleRadius: { value: rippleRadius },
       // Mint for landings, swapped to coral when a pawn slams into a challenge
       uRippleColor: { value: new Color(BOARD_COLORS.softMint) },
-      uFadeStart: { value: 85 },
-      uFadeEnd: { value: 130 },
+      // Matches withEdgeFalloff's band, so lines, hills and tint melt together
+      uFadeStart: { value: EDGE_FADE_START },
+      uFadeEnd: { value: EDGE_FADE_END },
     },
     vertexShader: /* glsl */ `
       attribute float aSlope;
@@ -91,8 +92,9 @@ export const createContourMaterial = (rippleRadius: number): ContourMaterial => 
         float minor = lineMask(vElevation, uStep, uLineWidth) * strength;
         float major = lineMask(vElevation, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
 
-        // Near-imperceptible warm tint toward peaks for depth without shading
-        vec3 color = mix(uBase, uSand, (vElevation / uMaxElevation) * 0.08);
+        // Near-imperceptible warm tint toward peaks for depth without shading;
+        // it drains with edgeFade so the rim lands on exactly the page color
+        vec3 color = mix(uBase, uSand, (vElevation / uMaxElevation) * 0.08 * edgeFade);
         color = mix(color, uMinor, minor * 0.95);
         color = mix(color, uMajor, major);
 

@@ -1,6 +1,14 @@
 import { Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
-import { createHeightSampler, type HeightSampler, withPathShelf } from './terrain'
+import {
+  createHeightSampler,
+  EDGE_FADE_END,
+  EDGE_FADE_START,
+  type HeightSampler,
+  MAX_ELEVATION,
+  withEdgeFalloff,
+  withPathShelf,
+} from './terrain'
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t)
 
@@ -58,5 +66,36 @@ describe('withPathShelf', () => {
   it('falls back to the raw sampler far from the path', () => {
     const gridded = withPathShelf(sampler, pathPoints, radius)
     expect(gridded(500, 500)).toBe(sampler(500, 500))
+  })
+})
+
+describe('withEdgeFalloff', () => {
+  const sampler = createHeightSampler('edge-test')
+  const faded = withEdgeFalloff(sampler)
+  const restY = MAX_ELEVATION * 0.5
+
+  it('leaves the playfield untouched', () => {
+    for (const [x, z] of [
+      [0, 0],
+      [40, -30],
+      [-60, 50],
+      [EDGE_FADE_START - 1, 0],
+    ]) {
+      expect(faded(x, z)).toBe(sampler(x, z))
+    }
+  })
+
+  it('rests at the fBm mean beyond the band', () => {
+    expect(faded(EDGE_FADE_END, 0)).toBe(restY)
+    expect(faded(-120, 90)).toBe(restY)
+  })
+
+  it('blends between height and rest inside the band', () => {
+    const mid = (EDGE_FADE_START + EDGE_FADE_END) / 2
+    const value = faded(mid, 0)
+    const base = sampler(mid, 0)
+    const [low, high] = base < restY ? [base, restY] : [restY, base]
+    expect(value).toBeGreaterThanOrEqual(low)
+    expect(value).toBeLessThanOrEqual(high)
   })
 })
