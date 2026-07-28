@@ -6,7 +6,7 @@
       :stakes="'Answer correctly to leap ahead — get it wrong and you\'re knocked back.'"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt v-else>
+    <ChallengePrompt v-else ref="promptHost">
       <Transition name="caption" mode="out-in">
         <div
           v-if="!status"
@@ -27,6 +27,9 @@
                 fit="contain"
               />
             </div>
+            <span v-if="challenge.id === 'flag'" class="map-caption sub">
+              Find it on the map — tap twice to lock in
+            </span>
             <span class="hint map-caption" :class="{ visible: showDoubleTapHint }">
               Press again to confirm
             </span>
@@ -427,6 +430,7 @@ import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { GATE_HINT_BITE_STEPS, gateLeapSteps } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
+import { useIsPhone } from '~~/lib/use-viewport'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import type { DuelOutcome } from '~~/types/challenges/individual-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -441,6 +445,24 @@ const challenge = ref(
 )
 
 const variant = computed(() => challenge.value?.variant ?? 'find')
+
+// The flag gate's hero card floats over the map; on phones the world-fit
+// camera parks the subject band right beneath it. Measure the prompt and
+// hand the camera a berth so the world drops into the clear space instead.
+const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
+const isPhone = useIsPhone()
+const placeMapBerth = () => {
+  if (!isPhone.value || variant.value !== 'find' || challenge.value?.id !== 'flag') {
+    gameStore.map.berth = undefined
+    return
+  }
+  nextTick(() => {
+    const prompt = promptHost.value?.$el as HTMLElement | undefined
+    const bottom = prompt?.getBoundingClientRect().bottom
+    gameStore.map.berth = bottom ? { top: Math.round(bottom) + 12, bottom: 24 } : undefined
+  })
+}
+
 /** Variants that guess via CountryGuessInput need `.question` left un-clipped
     so the downward-opening suggestion list stays visible. */
 const textGuessVariant = computed(() =>
@@ -956,6 +978,9 @@ const submitAnswer = (
 }
 
 const showInterstitial = ref(true)
+watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapBerth, {
+  immediate: true,
+})
 
 // The reveal race starts the moment the interstitial clears
 watch(showInterstitial, value => {

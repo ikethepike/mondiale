@@ -1,8 +1,13 @@
 <template>
   <figure class="trend-sparkline">
     <div class="plot">
-      <svg :viewBox="`0 0 ${WIDTH} ${HEIGHT}`" preserveAspectRatio="none" aria-hidden="true">
-        <path :d="path" pathLength="1" :class="{ draw: animateIn }" />
+      <svg
+        :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        :class="{ draw: animateIn }"
+      >
+        <path :d="path" />
       </svg>
       <span
         class="end-dot"
@@ -127,6 +132,16 @@ svg {
   // The end marker's surface ring may kiss the edges of the plot box.
   overflow: visible;
 
+  // Draw-in is a clip wipe, NOT stroke-dasharray: pathLength dashes interact
+  // with non-scaling-stroke under this svg's non-uniform scaling — browsers
+  // scale the dash pattern per segment, and the pattern's gap ate the middle
+  // of the line. The wipe clips the css box, immune to all stroke math.
+  // The -1rem slack keeps the round caps and edge-kissing dot unclipped.
+  &.draw {
+    clip-path: inset(-1rem 100% -1rem -1rem);
+    animation: sparkline-wipe 0.9s var(--ease-out-expressive) forwards;
+  }
+
   path {
     fill: none;
     stroke: var(--dark-blue);
@@ -134,16 +149,27 @@ svg {
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
-
-    &.draw {
-      stroke-dasharray: 1;
-      stroke-dashoffset: 1;
-      animation: stroke-draw 0.9s var(--ease-out-expressive) forwards;
-    }
   }
 }
 
-// stroke-draw comes from rules/_animations.scss
+@keyframes sparkline-wipe {
+  to {
+    clip-path: inset(-1rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  svg.draw {
+    animation: none;
+    clip-path: none;
+  }
+
+  .end-dot.draw,
+  .delta-chip.draw {
+    animation: none;
+    opacity: 1;
+  }
+}
 
 // The series' end marker: ≥8px dot ringed in the surface colour so it stays
 // legible over the line it terminates.

@@ -60,6 +60,7 @@ export const useClientEvents = () => {
     gameStore.map.solo = false
     gameStore.map.landmass = false
     gameStore.map.labels = false
+    gameStore.map.berth = undefined
     gameStore.map.focus = []
     gameStore.map.focusContext = []
     gameStore.map.tints = {}

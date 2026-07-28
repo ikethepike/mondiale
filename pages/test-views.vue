@@ -1393,6 +1393,12 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'individual-find-flag',
+    label: 'Individual: find the flag country (map tap)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'find', id: 'flag', country: 'SY' }),
+  },
+  {
     id: 'individual-flag-pick',
     label: 'Individual: flag pick',
     component: ViewIndividualChallenge,

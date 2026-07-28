@@ -58,6 +58,9 @@ interface GameStoreState {
     landmass: boolean
     /** Show ISO acronym labels on countries (easy traversal aid). */
     labels: boolean
+    /** Chrome berth (CSS px): the camera frames its subject between these
+     *  insets so a header card never covers it. */
+    berth?: { top?: number; bottom?: number }
     /** Countries the map camera should frame together. */
     focus: ISOCountryCode[]
     /** Context countries whose centers stay in frame (soft inclusion). */

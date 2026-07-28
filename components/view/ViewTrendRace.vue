@@ -336,23 +336,23 @@ header .verdict.incorrect {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  // Phone cards read as rows: flag and name lead, the stat emblem holds the
-  // far edge in flow — as a corner overlay it sat underneath the flag.
+  // Phone cards read as rows: flag and name lead. The stat emblem stays a
+  // top-left corner badge (never in flow — it forced a second row); the
+  // content indents past it instead.
   .race-card {
     gap: 0.8rem 1rem;
-    padding: 1.2rem 1.4rem;
+    padding: 1.2rem 1.4rem 1.2rem 4.2rem;
     flex-flow: row wrap;
     text-align: left;
 
     .race-country {
       flex: 1;
-      order: -2;
       min-width: 0;
     }
 
     :deep(.topic-icon) {
-      order: -1;
-      position: static;
+      top: 1.3rem;
+      left: 1.2rem;
     }
 
     :deep(.trend-sparkline) {

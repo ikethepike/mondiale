@@ -23,6 +23,7 @@
       :solo="gameStore.map.solo"
       :landmass="gameStore.map.landmass"
       :labels="gameStore.map.labels"
+      :berth="gameStore.map.berth"
       :focus-countries="gameStore.map.focus"
       :focus-context="gameStore.map.focusContext"
       :tints="gameStore.map.tints"
