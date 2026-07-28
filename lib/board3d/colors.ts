@@ -12,6 +12,8 @@ export const BOARD_COLORS = {
   ink: '#131313',
   // Scene-only, no SCSS counterpart: the runner-up crown metal
   silver: '#c9ccd1',
+  // Scene-only: still water in the decorative ponds
+  pondBlue: '#4d92b3',
 } as const
 
 // Scene-only gate-top washes: each brand hue mixed toward sourMilk so a

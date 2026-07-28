@@ -31,8 +31,10 @@ import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
+import { outlineOf } from './ink-outline'
 import { createTilePath, type TileTransform } from './path'
 import { BOARD_SIZE, createHeightSampler, withPathShelf } from './terrain'
+import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
 
 export interface BoardBuild {
   group: Group
@@ -78,8 +80,15 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const group = new Group()
 
   const rawSampler = createHeightSampler(seed)
-  const { transforms, shelfPoints, spacing } = createTilePath(seed, tiles, rawSampler)
-  const sampler = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
+  const tilePath = createTilePath(seed, tiles, rawSampler)
+  const { transforms, shelfPoints, spacing } = tilePath
+
+  // A rare decorative pond: one plain tile trades its disc for a plank
+  // bridge over basin-carved water. Purely visual — the tile stays 'normal'.
+  const pondSite = pickPondSite(seed, tiles, tilePath)
+
+  const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
+  const sampler = pondSite ? withPondBasin(shelved, pondSite) : shelved
 
   // --- Terrain -------------------------------------------------------------
   const segments =
@@ -163,6 +172,14 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
     const { position } = transforms[index]
     const emphasis = tile.type === 'final' || tile.type === 'start' ? 1.18 : 1
 
+    // The pond tile's discs collapse to nothing — the bridge deck stands in
+    if (index === pondSite?.tileIndex) {
+      matrix.compose(position, quaternion, new Vector3(0, 0, 0))
+      rimMesh.setMatrixAt(index, matrix)
+      topMesh.setMatrixAt(index, matrix)
+      return
+    }
+
     matrix.compose(
       new Vector3(position.x, position.y + rimHeight / 2, position.z),
       quaternion,
@@ -207,7 +224,7 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const atlas = createNumberAtlas(tiles.length, BOARD_COLORS.darkBlue)
   const labelSize = tileRadius * 1.1
   const labelGeometries = tiles
-    .filter(tile => tile.type === 'normal')
+    .filter(tile => tile.type === 'normal' && tile.position !== pondSite?.tileIndex)
     .map(tile => {
       const { position } = transforms[tile.position]
       const quad = new PlaneGeometry(labelSize, labelSize)
@@ -232,6 +249,12 @@ export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
 
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
   buildChallengeMarkers(tiles, transforms, spacing, tileRadius).forEach(mesh => group.add(mesh))
+
+  // --- Pond + bridge (when this board drew one) ------------------------------
+  if (pondSite) {
+    const tileTopY = pondSite.center.y + rimHeight + 0.09
+    buildPondMeshes(pondSite, spacing, tileTopY).forEach(mesh => group.add(mesh))
+  }
 
   const dispose = () => {
     group.traverse(child => {
@@ -347,18 +370,6 @@ const markerPartsFor = (
       return parts
     }
   }
-}
-
-/** Inverted-hull copy of a part, inflated about its own local center. */
-const outlineOf = (geometry: BufferGeometry): BufferGeometry => {
-  const outline = geometry.clone()
-  outline.computeBoundingBox()
-  const center = new Vector3()
-  outline.boundingBox?.getCenter(center)
-  outline.translate(-center.x, -center.y, -center.z)
-  outline.scale(1.07, 1.07, 1.07)
-  outline.translate(center.x, center.y, center.z)
-  return outline
 }
 
 /**

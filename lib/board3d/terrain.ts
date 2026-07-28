@@ -40,7 +40,7 @@ export const createHeightSampler = (seed: string): HeightSampler => {
   }
 }
 
-const smoothstep = (t: number) => t * t * (3 - 2 * t)
+export const smoothstep = (t: number) => t * t * (3 - 2 * t)
 
 /**
  * Blend the terrain toward the tile path's elevation within a falloff radius,
