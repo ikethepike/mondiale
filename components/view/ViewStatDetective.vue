@@ -58,8 +58,8 @@
                scale context, so suppress the marker's own value label. -->
           <ScalePlot v-if="clue.scale" v-bind="clue.scale" />
         </StatCard>
-        <!-- Non-hard mode's final clue: a photo from the country (capital or
-             landmark), revealed once every stat has been shown. -->
+        <!-- The final clue: a photo from the country (capital or landmark),
+             revealed once every stat has been shown. -->
         <StatCard
           v-if="photoRevealed && challenge.photo"
           key="photo-clue"
@@ -141,7 +141,7 @@ const revealedClues = computed(() => {
   })
 })
 
-// Non-hard mode adds a photo as one extra clue after every stat has shown.
+// The photo lands as one extra clue after every stat has shown.
 const hasPhotoClue = computed(() => !!challenge.value?.photo)
 const statClueCount = computed(() => challenge.value?.clues.length ?? 0)
 const totalClues = computed(() => statClueCount.value + (hasPhotoClue.value ? 1 : 0))

@@ -2,14 +2,14 @@ import type { IndividualChallengeAccessorId } from '~~/types/challenges/individu
 import type { GameLength, Tile } from '~~/types/game.types'
 import { weightedPick } from './arrays'
 
-/** Relative deal weights for gate tiles — currency runs at half rate so money
- *  questions surface a little less often than the other themes. */
+/** Relative deal weights for gate tiles — currency runs at a quarter rate so
+ *  money questions surface noticeably less often than the other themes. */
 const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
   flag: 1,
   isoCode: 1,
   'capital.name': 1,
   'government.leader': 1,
-  currency: 0.5,
+  currency: 0.25,
   landmarks: 1,
 }
 

@@ -101,9 +101,9 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['heritage-hunt', 0.07],
   ['neighbour-blitz', 0.1],
   ['silhouette', 0.09],
-  ['hot-cold', 0.09],
+  ['hot-cold', 0.06],
   ['sketch', 0.07],
-  ['stat-detective', 0.1],
+  ['stat-detective', 0.06],
   ['two-truths', 0.07],
   ['river-run', 0.06],
   ['shared-shores', 0.05],
@@ -487,19 +487,17 @@ const getStatDetectiveChallenge = ({
     )
     if (viable.length < CLUE_COUNT) continue
 
+    const photo = photoClueFor(country)
     return {
       _type: 'stat-detective-challenge',
       country,
       clues: viable.slice(0, CLUE_COUNT),
       secondsPerClue: 8,
       maximumPoints: maximumRoundPoints(game),
-      // Non-hard mode gets a region hint from the start and a photo last.
-      ...(assisted
-        ? {
-            region: REGION_LABELS[COUNTRIES[country].region],
-            photo: photoClueFor(country),
-          }
-        : {}),
+      // The region hint from the start stays a non-hard helper; the final
+      // photo clue deals on every difficulty (when the country has one).
+      ...(assisted ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
+      ...(photo ? { photo } : {}),
     }
   }
 
