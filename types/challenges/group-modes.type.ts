@@ -55,9 +55,11 @@ export interface StatDetectiveChallenge {
   clues: GroupChallengeAccessorId[]
   secondsPerClue: number
   maximumPoints: number
-  /** Non-hard mode helpers. `region` is shown from the start; `photo` (a capital
-   *  skyline or landmark) reveals as the final visual clue. Absent in hard mode. */
+  /** Non-hard helper: the country's region, shown from the start. Absent in
+   *  hard mode. */
   region?: string
+  /** A capital skyline or landmark, revealed as the final visual clue on every
+   *  difficulty — absent only when the country has no photo. */
   photo?: string
 }
 
