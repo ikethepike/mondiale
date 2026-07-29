@@ -207,6 +207,20 @@ onBeforeUnmount(() => {
   border-radius: 0.6rem;
   width: clamp(18rem, 24vw, 24rem);
   height: clamp(13rem, 22vh, 18rem);
+  transition:
+    width var(--motion-base) var(--ease-out-expressive),
+    height var(--motion-base) var(--ease-out-expressive);
+
+  // Desktop: the stage swells under the cursor for studying detail, then
+  // shrinks out of the map's way on leave — pin-landmark's recipe. Width/
+  // height, not scale — the photo re-lays out and stays sharp.
+  @media (hover: hover) and (min-width: 901px) {
+    &:hover {
+      z-index: 3;
+      width: clamp(28rem, 44vw, 52rem);
+      height: clamp(20rem, 44vh, 38rem);
+    }
+  }
 }
 
 .dossier {
