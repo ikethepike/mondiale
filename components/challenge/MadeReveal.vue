@@ -5,7 +5,7 @@
       <strong class="commodity">{{ challenge.commodity }}</strong>
       <span class="subtitle">
         a top export of {{ rows.length }} {{ rows.length === 1 ? 'country' : 'countries' }} — ranked
-        by total goods exports
+        by total exports
       </span>
     </span>
     <span class="rows">
@@ -39,7 +39,8 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * The Made In scorecard: every country shipping the commodity, ranked by
- * total goods exports (the Factbook gives no per-commodity values), each
+ * total exports of goods and services (the Factbook gives no per-commodity
+ * values), each
  * landing on its own beat with a shared-scale bar. A wrong pick gets its own
  * teaching line instead of vanishing.
  */

@@ -853,6 +853,13 @@ const getIndependence = (data: FactbookResponse): Country['government']['indepen
   return { amount: Number(match[1]), unit: 'year' }
 }
 
+/** The Factbook drifts between spellings of the same commodity across pages;
+ *  the Made In challenge matches strings exactly across countries, so strays
+ *  map to the dominant variant (check-exports flags new ones). */
+const COMMODITY_ALIASES: { [variant: string]: string } = {
+  'packaged medicines': 'packaged medicine',
+}
+
 /** Top export commodities, stripped of year notes and parentheticals. */
 const getExports = (data: FactbookResponse): string[] | undefined => {
   const text = data.Economy?.['Exports - commodities']?.text
@@ -860,7 +867,7 @@ const getExports = (data: FactbookResponse): string[] | undefined => {
   const items = text
     .replace(/\([^)]*\)/g, '')
     .split(',')
-    .map(item => item.trim())
+    .map(item => COMMODITY_ALIASES[item.trim()] ?? item.trim())
     .filter(Boolean)
     .slice(0, 8)
   return items.length ? items : undefined
