@@ -36,7 +36,7 @@
           v-if="finished"
           key="reveal"
           class="reveal"
-          :state="state!"
+          :challenge="challenge"
           :players="gameStore.game?.players ?? {}"
           :player-id="gameStore.playerId"
         />
