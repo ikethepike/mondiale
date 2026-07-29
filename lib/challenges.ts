@@ -533,7 +533,6 @@ const getStatDetectiveChallenge = ({
 }): StatDetectiveChallenge | undefined => {
   const CLUE_COUNT = 6
   const pool = shuffleArray(playableCountries(game))
-  const assisted = game.difficulty !== 'hard'
 
   for (const country of pool.slice(0, 40)) {
     const viable = shuffleArray(
@@ -551,9 +550,9 @@ const getStatDetectiveChallenge = ({
       clues: viable.slice(0, CLUE_COUNT),
       secondsPerClue: 8,
       maximumPoints: maximumRoundPoints(game),
-      // The region hint from the start stays a non-hard helper; the final
-      // photo clue deals on every difficulty (when the country has one).
-      ...(assisted ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
+      // The region is table stakes on every difficulty — the numbers are the
+      // puzzle; the photo clue stays the finale (when the country has one).
+      region: REGION_LABELS[COUNTRIES[country].region],
       ...(photo ? { photo } : {}),
     }
   }
