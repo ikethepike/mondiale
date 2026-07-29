@@ -46,7 +46,7 @@
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </section>
 
-      <footer :class="{ 'has-input': beat === 'guess' && !challenge.options }">
+      <footer :class="{ 'suggest-berth': beat === 'guess' && !challenge.options }">
         <!-- Beat 1: buzz with the empire's name — option cards outside hard
              (flag tiles only when every option has an honest one), free-typed
              inside the bar on hard. -->
@@ -565,8 +565,10 @@ footer {
     pointer-events: auto;
   }
 
-  &.has-input {
-    padding-bottom: clamp(6rem, 18vh, 14rem);
+  // Compact reserve: the empire register's list is shorter than the
+  // country one. The property, never padding-bottom — see the template.
+  &.suggest-berth {
+    --suggest-berth: clamp(6rem, 18vh, 14rem);
   }
 }
 
@@ -674,8 +676,8 @@ footer {
 }
 
 @media (max-width: $tablet) {
-  footer.has-input {
-    padding-bottom: clamp(6rem, 18dvh, 14rem);
+  footer.suggest-berth {
+    --suggest-berth: clamp(6rem, 18dvh, 14rem);
   }
   .card-options.with-flags {
     grid-template-columns: repeat(3, minmax(0, 1fr));

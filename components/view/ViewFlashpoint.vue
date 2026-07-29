@@ -36,7 +36,7 @@
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </section>
 
-      <footer :class="{ 'has-input': !challenge.options && !submitted }">
+      <footer :class="{ 'suggest-berth': !challenge.options && !submitted }">
         <template v-if="!submitted">
           <!-- Non-hard mode: pick from flag options, the round clock above
                them. Hard mode: the clock lives inside the guess console. -->
@@ -249,10 +249,6 @@ footer {
   > * {
     pointer-events: auto;
   }
-
-  &.has-input {
-    padding-bottom: clamp(8rem, 24vh, 20rem);
-  }
 }
 
 .card-options {
@@ -263,9 +259,6 @@ footer {
   .card-options {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  footer.has-input {
-    padding-bottom: clamp(8rem, 24dvh, 20rem);
   }
 }
 </style>

@@ -10,22 +10,24 @@
     <div class="terminator" :class="{ settled: finished }" aria-hidden="true">
       <span class="band" />
     </div>
-    <NightConsole
-      v-show="!finished"
-      :lit="named.size"
-      :quota="quota"
-      :seconds-left="secondsLeft"
-      :duration-seconds="challenge.durationSeconds"
-      :feedback="feedback"
-    >
-      <CountryGuessInput
-        ref="guessInput"
-        placeholder="Type a country before it goes dark…"
-        :disabled="paused || finished"
-        :excluded="excluded"
-        @guess="onGuess"
-      />
-    </NightConsole>
+    <footer class="shell-footer">
+      <NightConsole
+        v-show="!finished"
+        :lit="named.size"
+        :quota="quota"
+        :seconds-left="secondsLeft"
+        :duration-seconds="challenge.durationSeconds"
+        :feedback="feedback"
+      >
+        <CountryGuessInput
+          ref="guessInput"
+          placeholder="Type a country before it goes dark…"
+          :disabled="paused || finished"
+          :excluded="excluded"
+          @guess="onGuess"
+        />
+      </NightConsole>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -39,6 +41,7 @@ import {
   sunsetDuskCoordinate,
   sunsetQuota,
 } from '~~/lib/challenges/final-challenge'
+import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
@@ -183,6 +186,9 @@ const finish = () => {
     if (!named.value.has(isoCode)) darken(isoCode)
   }
   document.body.classList.add('sunset-settled')
+  // Only now: mid-sweep the body abutting the browser chrome is still day —
+  // the rolling night is the clipped .layout::before plane, never the bar
+  setChromeTint(NIGHT_CHROME)
   // Everything that could have scored: the window plus whatever the screen
   // showed — the reveal owes the player the full field, not just the window
   const inPlay = pool.value.filter(
@@ -292,6 +298,7 @@ onBeforeUnmount(() => {
   document.body.classList.remove('sunset-blitz')
   document.body.classList.remove('sunset-settled')
   document.body.style.removeProperty('--sunset-veil')
+  setChromeTint()
 })
 </script>
 <style lang="scss">
@@ -403,10 +410,16 @@ body.sunset-settled {
 }
 </style>
 <style lang="scss" scoped>
+// Scenic overlay per the challenge-shell contract: the terminator stays
+// pointer-inert; the console stands in a .shell-footer at the column's foot
+// and inherits the shared berth + bottom clearance.
 .final-sunset-blitz {
   inset: 0;
+  display: flex;
   position: absolute;
   pointer-events: none;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
 }
 
 // The visible front: a slim glowing band riding the same transform as the

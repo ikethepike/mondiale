@@ -940,7 +940,7 @@ header .headline-line {
   @media screen and (max-width: $tablet) {
     top: auto;
     right: calc(1.2rem + var(--safe-right));
-    bottom: calc(1.6rem + var(--safe-bottom) + 6rem);
+    bottom: calc(1.6rem + var(--bottom-clearance) + 6rem);
   }
 }
 

@@ -5,6 +5,13 @@
 // block each; the root element takes `challenge-shell` (plus `passthrough`
 // when the map underneath must stay interactive) and keeps only its own
 // mode-specific rules.
+//
+// The three-layer contract every mode follows: scenic layers (night skies,
+// dot fields, terminators) are `inset: 0; pointer-events: none` and never
+// hold controls; info chrome lives in the header via ChallengePrompt; every
+// interactive strip stands in the footer — `> footer` in the shell's own
+// column, or `.shell-footer` from inside a scenic overlay — and inherits
+// the berth below. Views never hand-roll `bottom:`/safe-area/keyboard math.
 .challenge-shell {
   top: 0;
   left: 0;
@@ -20,11 +27,25 @@
   }
 
   // The action strip against the bottom edge. Views add their own layout;
-  // the berth, the phone safe-area clearance and the software-keyboard lift
-  // (--keyboard-inset, 0 while it's down) live here.
-  > footer {
+  // the berth and the bottom clearance (home indicator or software keyboard,
+  // via --bottom-clearance) live here. The padding transition is the
+  // keyboard lift easing — one tide for every console.
+  > footer,
+  .shell-footer {
     z-index: 2;
-    padding: 2rem 2rem calc(2rem + var(--keyboard-inset, 0px));
+    padding: 2rem 2rem calc(2rem + var(--bottom-clearance));
+    transition: padding var(--motion-base) var(--ease-smooth);
+  }
+
+  // Typed-guess footers whose suggestion list opens DOWNWARD: reserve room
+  // beneath the input so the list isn't clipped, with the keyboard inset on
+  // top so the reserve floats above the software keyboard. Views resize the
+  // reserve via --suggest-berth only — re-declaring padding-bottom severs
+  // the keyboard lift.
+  > footer.suggest-berth,
+  .shell-footer.suggest-berth {
+    --suggest-berth: clamp(8rem, 24vh, 20rem);
+    padding-bottom: calc(var(--suggest-berth) + var(--keyboard-inset, 0px));
   }
 
   // The typing consoles' column: input pill over its helpers. Interactive by
@@ -60,11 +81,16 @@
   }
 
   @media screen and (max-width: $tablet) {
-    > footer {
+    > footer,
+    .shell-footer {
       width: 100%;
-      // The keyboard covers the home-indicator band, so the larger of the
-      // two clearances wins — never both.
-      padding: 1.2rem 1.6rem calc(1.2rem + max(var(--safe-bottom), var(--keyboard-inset, 0px)));
+      padding: 1.2rem 1.6rem calc(1.2rem + var(--bottom-clearance));
+    }
+
+    // dvh tracks the visual viewport when the browser chrome moves
+    > footer.suggest-berth,
+    .shell-footer.suggest-berth {
+      --suggest-berth: clamp(8rem, 24dvh, 20rem);
     }
   }
 }
