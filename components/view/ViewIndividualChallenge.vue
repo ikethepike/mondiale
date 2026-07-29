@@ -8,12 +8,7 @@
     />
     <ChallengePrompt v-else ref="promptHost">
       <Transition name="caption" mode="out-in">
-        <div
-          v-if="!status"
-          key="question"
-          class="question"
-          :class="{ 'text-guess': textGuessVariant }"
-        >
+        <div v-if="!status" key="question" class="question">
           <!-- Classic find-on-the-map -->
           <template v-if="variant === 'find'">
             <h1 class="map-caption">
@@ -120,26 +115,12 @@
                 </button>
               </Transition>
             </div>
-            <div class="guess-box">
-              <CountryGuessInput
-                :disabled="!!status"
-                placeholder="Type the country in the middle"
-                @guess="onBorderGuess"
-              />
-            </div>
           </template>
 
           <!-- Zoom-out: the map eases out from a coastline — name it early -->
           <template v-else-if="variant === 'zoom-out'">
             <h1 class="map-caption">Name it before the map zooms out</h1>
             <span class="map-caption sub">The longer you wait, the more you'll see.</span>
-            <div class="guess-box">
-              <CountryGuessInput
-                :disabled="!!status"
-                placeholder="Type the country you recognise"
-                @guess="onZoomOutGuess"
-              />
-            </div>
           </template>
 
           <!-- Money match (hard): which country spends this currency? -->
@@ -258,13 +239,6 @@
                 :stroke-width="outlineReveal.strokeWidth"
               />
             </svg>
-            <div class="guess-box">
-              <CountryGuessInput
-                :disabled="!!status"
-                placeholder="Type the country — one shot"
-                @guess="onOutlineGuess"
-              />
-            </div>
           </template>
 
           <!-- Higher or lower: win every duel in the streak -->
@@ -397,6 +371,18 @@
         </ChallengeResult>
       </Transition>
     </ChallengePrompt>
+    <!-- The typed gates' console stands in the shell footer per the layer
+         contract — mid-column it falls under the software keyboard and iOS
+         chases the caret on every keystroke -->
+    <footer v-if="!showInterstitial && textGuessVariant && !status" class="suggest-berth">
+      <div class="guess-box">
+        <CountryGuessInput
+          :disabled="!!status"
+          :placeholder="textGuessPlaceholder"
+          @guess="onTextGuess"
+        />
+      </div>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -461,11 +447,23 @@ const placeMapBerth = () => {
   })
 }
 
-/** Variants that guess via CountryGuessInput need `.question` left un-clipped
-    so the downward-opening suggestion list stays visible. */
+/** Variants that guess via CountryGuessInput — their console stands in the
+    shell footer (suggest-berth) instead of the question column. */
 const textGuessVariant = computed(() =>
   ['zoom-out', 'border-detective', 'outline-reveal'].includes(variant.value)
 )
+
+const textGuessPlaceholder = computed(() => {
+  if (variant.value === 'border-detective') return 'Type the country in the middle'
+  if (variant.value === 'zoom-out') return 'Type the country you recognise'
+  return 'Type the country — one shot'
+})
+
+const onTextGuess = (country: Country) => {
+  if (variant.value === 'border-detective') return onBorderGuess(country)
+  if (variant.value === 'zoom-out') return onZoomOutGuess(country)
+  onOutlineGuess(country)
+}
 const status = toRef(gameStore.map, 'status')
 /** Hard mode hides the helper labels (e.g. neighbour names in Border Detective). */
 const isHard = computed(() => gameStore.game?.difficulty === 'hard')
@@ -1094,6 +1092,12 @@ header {
   justify-content: center;
 }
 
+// With the prompt header absolute, the typed gates' footer is the shell's
+// only in-flow child — space-between alone would park it at the top.
+footer {
+  margin-top: auto;
+}
+
 header .hint {
   opacity: 0;
   display: inline-block;
@@ -1119,13 +1123,6 @@ header .result {
   // Fallback: scroll to the options if a tall hero + cards overflow.
   max-height: var(--viewport-height);
   overflow-y: auto;
-
-  // Text-guess variants have bounded content and must not clip the
-  // guess input's downward-opening suggestion list.
-  &.text-guess {
-    max-height: none;
-    overflow-y: visible;
-  }
 }
 
 // The round is resolved — nothing behind the reveal needs taps, and the
@@ -1463,9 +1460,6 @@ header .flag {
   }
 }
 
-.guess-box {
-  margin-top: 1rem;
-}
 
 .leader-options {
   grid-template-columns: minmax(28rem, 44rem);
