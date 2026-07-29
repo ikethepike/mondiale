@@ -89,10 +89,16 @@ import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { excludedMicroNations } from '~~/lib/game-rules'
 import { formatNumber } from '~~/lib/number'
+import { useKeyboardInset } from '~~/lib/use-viewport'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { BOARD_PHASES } from '~~/types/player.type'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
+
+// Keeps --keyboard-inset live for every bottom-anchored console (night
+// consoles, guess-box footers) and pins the fixed shell against the
+// software keyboard's caret-chasing scroll.
+useKeyboardInset()
 
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')

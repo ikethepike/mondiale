@@ -20,10 +20,11 @@
   }
 
   // The action strip against the bottom edge. Views add their own layout;
-  // the berth and the phone safe-area clearance live here.
+  // the berth, the phone safe-area clearance and the software-keyboard lift
+  // (--keyboard-inset, 0 while it's down) live here.
   > footer {
     z-index: 2;
-    padding: 2rem;
+    padding: 2rem 2rem calc(2rem + var(--keyboard-inset, 0px));
   }
 
   // The typing consoles' column: input pill over its helpers. Interactive by
@@ -61,7 +62,9 @@
   @media screen and (max-width: $tablet) {
     > footer {
       width: 100%;
-      padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
+      // The keyboard covers the home-indicator band, so the larger of the
+      // two clearances wins — never both.
+      padding: 1.2rem 1.6rem calc(1.2rem + max(var(--safe-bottom), var(--keyboard-inset, 0px)));
     }
   }
 }

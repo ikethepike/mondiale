@@ -40,7 +40,10 @@ const low = computed(
 .night-console {
   gap: 0.6rem;
   left: 50%;
-  bottom: 1.6rem;
+  // Rides the software keyboard's top edge on phones (--keyboard-inset is 0
+  // when it's down) — anchored under it, iOS scrolls the whole night out of
+  // frame chasing the caret.
+  bottom: calc(1.6rem + var(--keyboard-inset, 0px));
   display: flex;
   padding: 1.2rem 1.6rem;
   position: absolute;
@@ -55,7 +58,9 @@ const low = computed(
   backdrop-filter: blur(0.6rem);
   box-shadow: 0 0.4rem 2.4rem hsla(216, 58%, 4%, 0.5);
   width: min(44rem, calc(100vw - 3.2rem));
-  transition: border-color 2s var(--ease-smooth);
+  transition:
+    border-color 2s var(--ease-smooth),
+    bottom var(--motion-base) var(--ease-smooth);
 
   &.low {
     border-color: flame(0.7);
