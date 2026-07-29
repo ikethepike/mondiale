@@ -20,8 +20,9 @@ COPY . .
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 # Bundling the generated country/water data needs more heap than the container
-# default; 1536 started OOMing as the data grew, so give the Nitro build room.
-ENV NODE_OPTIONS="--max-old-space-size=3584"
+# default; 1536 started OOMing as the data grew, then 3584 did too when the
+# WPP/pyramid gen files landed (2026-07-29) — the ceiling tracks data growth.
+ENV NODE_OPTIONS="--max-old-space-size=5120"
 RUN bun run build
 
 # ---- Runtime stage ----
