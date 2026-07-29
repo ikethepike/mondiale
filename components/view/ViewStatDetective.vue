@@ -277,6 +277,32 @@ header .region-hint {
   display: flex;
   min-height: 0;
   overflow-y: auto;
+  // Soft edges: clues slide under a fade instead of guillotining at the
+  // scroller's bounds.
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 1.6rem,
+    black calc(100% - 1.6rem),
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 1.6rem,
+    black calc(100% - 1.6rem),
+    transparent
+  );
+}
+
+// The ticker's empty line and the roomy footer paddings read as a dead band
+// between the clues and the input — collapse them until content earns them.
+.guess-box :deep(.guess-ticker) {
+  min-height: 0;
+}
+
+footer {
+  padding-top: 0.4rem;
 }
 
 .clue-list {
@@ -365,11 +391,10 @@ header .region-hint {
   .photo-clue {
     order: -1;
   }
-  // Contained by its card — a viewport-relative width breaks out of the
-  // card's border on narrow screens. Nested to match the base rule's
-  // specificity, which otherwise wins and lets the 84vw plate escape.
+  // The finale goes full-bleed on phones — the 84vw plate deliberately
+  // breaks past the card's border for the reveal-scale moment; only the
+  // height compacts for the shorter viewport.
   .photo-clue .photo-clue-stage {
-    width: 100%;
     height: min(34dvh, 30rem);
   }
 }
