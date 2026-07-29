@@ -24,6 +24,24 @@ export const useIsPhone = () => useMediaMatch(`(max-width: ${PHONE_MAX_PX}px)`)
 export const useIsCoarsePointer = () => useMediaMatch('(pointer: coarse)')
 
 /**
+ * Nearest-edge scrollTop that keeps an item inside its own list — never
+ * touches ancestors. The suggestion lists use this instead of scrollIntoView,
+ * whose ancestor walk can scroll the DOCUMENT and fight the pan clamp below.
+ */
+export const listScrollTop = (
+  scrollTop: number,
+  viewHeight: number,
+  itemTop: number,
+  itemHeight: number
+): number => {
+  if (itemTop < scrollTop) return itemTop
+  const itemBottom = itemTop + itemHeight
+  // Taller-than-view items pin to their top edge, like scrollIntoView 'nearest'
+  if (itemBottom > scrollTop + viewHeight) return Math.min(itemTop, itemBottom - viewHeight)
+  return scrollTop
+}
+
+/**
  * The keyboard's occlusion of the layout viewport. Pure so the platform
  * shapes are unit-testable: iOS Safari keeps the layout viewport at full
  * height under the keyboard; Android (`interactive-widget=resizes-content`)
@@ -34,6 +52,16 @@ export const useIsCoarsePointer = () => useMediaMatch('(pointer: coarse)')
 export const keyboardOverlap = (layoutHeight: number, viewportHeight: number, scale = 1): number =>
   Math.max(0, Math.round(layoutHeight - viewportHeight * scale))
 
+// Settle contract: geometry identical for STABLE_FRAMES consecutive frames,
+// hard cap SETTLE_MAX_MS — the loop must outlive the keyboard slide and any
+// delayed caret pan, because visualViewport goes silent after its last event
+// (the exact hole that once left the shell stuck panned off-screen).
+const STABLE_FRAMES = 10
+const SETTLE_MAX_MS = 1500
+
+/** Pan clamps this session — the KeyboardLab HUD's tell that the engine acted. */
+export const keyboardClampCount = ref(0)
+
 /**
  * The software keyboard's overlap with the layout viewport, published as
  * `--keyboard-inset` (px) on :root. Android resizes the layout for its
@@ -41,8 +69,9 @@ export const keyboardOverlap = (layoutHeight: number, viewportHeight: number, sc
  * iOS resizes nothing — dvh ignores the keyboard — so a bottom-anchored
  * console lands underneath it and Safari pans the whole fixed shell out of
  * frame to chase the caret. Bottom chrome adds the token to its offset to
- * sit on the keyboard's top edge instead; with the caret visible, the clamp
- * below can hold the shell at rest. Mounted once in the layout.
+ * sit on the keyboard's top edge instead (instantly — the shell contract
+ * forbids easing the lift), and the clamp holds the shell at rest.
+ * Mounted once in the layout.
  *
  * Everything measures against documentElement.clientHeight: innerHeight is
  * not keyboard-stable on iOS, and the caret pan must NOT be subtracted
@@ -51,6 +80,21 @@ export const keyboardOverlap = (layoutHeight: number, viewportHeight: number, sc
  */
 export const useKeyboardInset = () => {
   const inset = ref(0)
+  let frame = 0
+  let stable = 0
+  let deadline = 0
+  let lastGeometry = ''
+
+  const geometry = () => {
+    const viewport = window.visualViewport
+    return [
+      document.documentElement.clientHeight,
+      viewport?.height,
+      viewport?.offsetTop,
+      viewport?.scale,
+      window.scrollY,
+    ].join('|')
+  }
 
   const sync = () => {
     const viewport = window.visualViewport
@@ -61,34 +105,53 @@ export const useKeyboardInset = () => {
       inset.value = overlap
       document.documentElement.style.setProperty('--keyboard-inset', `${overlap}px`)
     }
-    // The game shell never scrolls by design (see main.scss) — while the
-    // keyboard is up, any scroll offset on an intrinsically non-scrollable
-    // document is the browser's caret-chasing pan (iOS grants a temporary
-    // scroll allowance under the keyboard). Undo it; the lifted chrome keeps
-    // the caret visible, so the browser doesn't pan again. Genuinely
-    // scrollable pages are left alone — and so is a pan the caret actually
-    // needs: if the focused field would sit under the keyboard at rest,
-    // clamping just triggers another chase and the view judders on every
-    // keystroke. (No field should end up there — that's what the footer's
-    // keyboard lift is for — but the clamp must not amplify the bug.)
+    // Every typed input stands in an inset-consuming footer (the shell
+    // contract), so with the keyboard up, any scroll offset on this
+    // intrinsically non-scrollable document is a caret-chasing pan — always
+    // wrong, always undone (iOS grants a temporary scroll allowance under
+    // the keyboard). Genuinely scrollable pages are left alone.
     const panned = window.scrollY || viewport.offsetTop
-    const field = document.activeElement
-    const fieldBottom =
-      field instanceof HTMLElement ? field.getBoundingClientRect().bottom + window.scrollY : 0
-    const clampSafe = fieldBottom <= layoutHeight - overlap
-    if (overlap > 0 && panned && clampSafe && document.documentElement.scrollHeight <= layoutHeight) {
+    if (overlap > 0 && panned && document.documentElement.scrollHeight <= layoutHeight) {
+      keyboardClampCount.value++
       window.scrollTo(0, 0)
     }
   }
 
-  onMounted(() => {
-    window.visualViewport?.addEventListener('resize', sync)
-    window.visualViewport?.addEventListener('scroll', sync)
+  const step = () => {
     sync()
+    const now = geometry()
+    stable = now === lastGeometry ? stable + 1 : 0
+    lastGeometry = now
+    if (stable >= STABLE_FRAMES || performance.now() >= deadline) {
+      frame = 0
+      return
+    }
+    frame = requestAnimationFrame(step)
+  }
+
+  // Restarted by every event: sync now, then chase per frame until still.
+  const settle = () => {
+    stable = 0
+    deadline = performance.now() + SETTLE_MAX_MS
+    sync()
+    if (!frame) frame = requestAnimationFrame(step)
+  }
+
+  onMounted(() => {
+    window.visualViewport?.addEventListener('resize', settle)
+    window.visualViewport?.addEventListener('scroll', settle)
+    // visualViewport never reports focus moves — these wake the loop for
+    // the keyboard transitions its events arrive too early (or never) for.
+    window.addEventListener('focusin', settle)
+    window.addEventListener('focusout', settle)
+    settle()
   })
   onBeforeUnmount(() => {
-    window.visualViewport?.removeEventListener('resize', sync)
-    window.visualViewport?.removeEventListener('scroll', sync)
+    window.visualViewport?.removeEventListener('resize', settle)
+    window.visualViewport?.removeEventListener('scroll', settle)
+    window.removeEventListener('focusin', settle)
+    window.removeEventListener('focusout', settle)
+    if (frame) cancelAnimationFrame(frame)
     document.documentElement.style.removeProperty('--keyboard-inset')
   })
 

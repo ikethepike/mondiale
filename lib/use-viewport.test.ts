@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { keyboardOverlap } from './use-viewport'
+import { keyboardOverlap, listScrollTop } from './use-viewport'
+
+describe('listScrollTop', () => {
+  it('scrolls up to an item above the view', () => {
+    expect(listScrollTop(100, 200, 40, 30)).toBe(40)
+  })
+
+  it('scrolls down just enough for an item below the view', () => {
+    expect(listScrollTop(0, 200, 250, 30)).toBe(80)
+  })
+
+  it('leaves the scroll alone when the item is already visible', () => {
+    expect(listScrollTop(50, 200, 100, 30)).toBe(50)
+  })
+
+  it('pins a taller-than-view item to its top edge', () => {
+    expect(listScrollTop(0, 100, 150, 300)).toBe(150)
+  })
+})
 
 describe('keyboardOverlap', () => {
   it('reads the keyboard on iOS Safari, where the layout viewport keeps its height', () => {

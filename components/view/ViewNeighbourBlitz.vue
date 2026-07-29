@@ -16,21 +16,20 @@
       </span>
     </ChallengePrompt>
 
-    <section class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted || !started"
-          :excluded="[challenge.country, ...guesses]"
-          placeholder="Type a neighbour…"
-          @guess="onGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
-
-    <footer>
+    <footer class="suggest-berth">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="submitted || !started"
+            :excluded="[challenge.country, ...guesses]"
+            placeholder="Type a neighbour…"
+            @guess="onGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
       <TransitionGroup tag="ol" name="chain" class="country-chip-list">
         <CountryChip
           v-for="isoCode in guesses"
@@ -99,8 +98,17 @@ const {
       }
       gameStore.map.focus = active ? [active.country, ...guessed] : []
     },
-    focusInput: () => guessInput.value?.focus(),
+    focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
+<style lang="scss" scoped>
+// Console over the caught chips, both in the shell footer's berth.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+</style>

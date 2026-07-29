@@ -30,7 +30,8 @@
       </template>
     </ChallengePrompt>
 
-    <section v-if="!resolved" class="guess-box">
+    <footer v-if="!resolved" class="suggest-berth">
+      <div class="guess-box">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <div class="hint-row">
         <Transition name="caption">
@@ -66,8 +67,9 @@
           @pick="pick"
           @miss="announce({ hint: 'No water by that name' })"
         />
-      </ChallengeConsole>
-    </section>
+        </ChallengeConsole>
+      </div>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -228,7 +230,7 @@ const begin = () => {
   showInterstitial.value = false
   started.value = true
   secondsLeft.value = challenge.value?.durationSeconds ?? 0
-  nextTick(() => input.value?.focus())
+  nextTick(() => input.value?.focus({ auto: true }))
 
   countdown = setInterval(() => {
     secondsLeft.value--
@@ -259,11 +261,6 @@ header .clue {
   color: var(--hior-ange);
 }
 
-.guess-box {
-  // Centred in the space under the prompt (the old footer used to hold the
-  // bottom): the suggestion list opens downward and needs the room below.
-  margin: auto 0;
-}
 
 // Hint chips come from templates/_hint-chip.scss; the typing surface and its
 // suggestion list are SuggestInput's own (the console strips the pill).

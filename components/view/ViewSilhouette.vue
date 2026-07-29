@@ -146,7 +146,7 @@ const begin = () => {
     onTick: tickOutlineReveal,
     onTimeout: () => resolve(undefined, 0),
   })
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 const onGuess = (country: Country) => {

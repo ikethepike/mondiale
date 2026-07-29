@@ -28,13 +28,14 @@
 
   // The action strip against the bottom edge. Views add their own layout;
   // the berth and the bottom clearance (home indicator or software keyboard,
-  // via --bottom-clearance) live here. The padding transition is the
-  // keyboard lift easing — one tide for every console.
+  // via --bottom-clearance) live here. The keyboard lift is INSTANT by
+  // design — the keyboard's own slide masks it, and an eased lift leaves
+  // the field under the keyboard for the whole transient, inviting iOS's
+  // caret-chasing pan.
   > footer,
   .shell-footer {
     z-index: 2;
     padding: 2rem 2rem calc(2rem + var(--bottom-clearance));
-    transition: padding var(--motion-base) var(--ease-smooth);
   }
 
   // Typed-guess footers whose suggestion list opens DOWNWARD: reserve room

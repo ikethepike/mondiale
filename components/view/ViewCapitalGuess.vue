@@ -109,7 +109,7 @@ const submitRound = (score: number) => {
 
 const start = () => {
   begin({ onTimeout: () => submitRound(0) })
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 // The winning guess is never broadcast — outside hard mode the small option

@@ -174,7 +174,7 @@ const start = async () => {
       )
     },
   })
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 const submitRound = (score: number) => {

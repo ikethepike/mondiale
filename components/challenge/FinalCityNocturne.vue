@@ -61,6 +61,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { projectRobinson } from '~~/lib/geo'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useMapViewBox } from '~~/lib/use-map-viewbox'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
 
@@ -92,6 +93,7 @@ const { viewBox } = useMapViewBox()
 // The framed country stays visible above the console (and the keyboard)
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
+const isCoarsePointer = useIsCoarsePointer()
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
@@ -153,7 +155,8 @@ const start = () => {
   gameStore.map.focus = [props.challenge.country]
   nightfall()
   startedAt = performance.now()
-  field.value?.focus()
+  // Round-start autofocus is desktop-only, same policy as the input homes
+  if (!isCoarsePointer.value) field.value?.focus()
   ticker = setInterval(() => {
     elapsedMs.value = performance.now() - startedAt
     if (elapsedMs.value >= durationMs) finish()

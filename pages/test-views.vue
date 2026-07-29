@@ -13,6 +13,9 @@
     </nav>
 
     <component :is="activeComponent" v-if="ready" :key="renderKey" />
+
+    <!-- ?diagnostics: the keyboard engine's live vitals for on-device runs -->
+    <KeyboardLab v-if="diagnostics" />
   </div>
 </template>
 
@@ -40,6 +43,9 @@ import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
 import ViewHotCold from '~/components/view/ViewHotCold.vue'
 import ViewManhunt from '~/components/view/ViewManhunt.vue'
 import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
+import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
+import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
+import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
@@ -47,6 +53,7 @@ import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
+import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
 import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
@@ -83,6 +90,7 @@ const scenarioId = ref('ranking')
 const ready = ref(false)
 const renderKey = ref(0)
 const lastEvent = ref('')
+const diagnostics = ref(false)
 
 const installStubSocket = () => {
   gameStore.playerId = ME
@@ -890,6 +898,71 @@ const scenarios: Scenario[] = [
           kind: 'sea',
           countries: ['AL', 'BA', 'GR', 'HR', 'IT', 'ME', 'SI'],
           durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'mother-tongue',
+    label: 'Mother tongue (typed, collect set)',
+    component: ViewMotherTongue,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'mother-tongue-challenge',
+          language: 'Portuguese',
+          countries: ['PT', 'BR', 'AO', 'MZ', 'GW', 'CV', 'ST', 'TL', 'GQ'],
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'neighbour-blitz',
+    label: 'Neighbour blitz (typed)',
+    component: ViewNeighbourBlitz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'neighbour-blitz-challenge',
+          country: 'DE',
+          neighbours: ['DK', 'NL', 'BE', 'LU', 'FR', 'CH', 'AT', 'CZ', 'PL'],
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'name-that-water',
+    label: 'Name that water (typed, hints)',
+    component: ViewNameThatWater,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'name-water-challenge',
+          featureId: 'adriatic-sea',
+          featureName: 'Adriatic Sea',
+          kind: 'sea',
+          countries: ['AL', 'BA', 'GR', 'HR', 'IT', 'ME', 'SI'],
+          maximumGuesses: 3,
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'traversal',
+    label: 'Traversal (typed route)',
+    component: ViewTraversalChallenge,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'traversal-challenge',
+          start: 'PT',
+          target: 'PL',
+          optimalHops: 4,
+          optimalPath: ['PT', 'ES', 'FR', 'DE', 'PL'],
+          maximumClicks: 8,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1885,6 +1958,7 @@ onMounted(() => {
   installStubSocket()
   const requested = String(route.query.scenario ?? '')
   if (scenarios.some(s => s.id === requested)) scenarioId.value = requested
+  diagnostics.value = route.query.diagnostics !== undefined
   deal()
 })
 </script>

@@ -16,21 +16,20 @@
       </span>
     </ChallengePrompt>
 
-    <section class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted || !started"
-          :excluded="guesses"
-          placeholder="Type a country that speaks it…"
-          @guess="onGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
-
-    <footer>
+    <footer class="suggest-berth">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="submitted || !started"
+            :excluded="guesses"
+            placeholder="Type a country that speaks it…"
+            @guess="onGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
       <TransitionGroup tag="ol" name="chain" class="country-chip-list">
         <CountryChip
           v-for="isoCode in guesses"
@@ -77,8 +76,17 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country =>
       `${countryName(country)} doesn't speak ${challenge.value?.language ?? 'it'}`,
-    focusInput: () => guessInput.value?.focus(),
+    focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
+<style lang="scss" scoped>
+// Console over the caught chips, both in the shell footer's berth.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+</style>

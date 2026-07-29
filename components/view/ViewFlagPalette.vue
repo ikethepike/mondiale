@@ -104,7 +104,7 @@ const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
 
 const start = () => {
   begin({ onTimeout: () => submitRound(false) })
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 const onGuess = (country: Country) => {

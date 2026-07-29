@@ -29,18 +29,17 @@
       </span>
     </ChallengePrompt>
 
-    <section class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted"
-        :excluded="excluded"
-        @guess="submitGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
-    </section>
-
-    <footer>
+    <footer :class="{ 'suggest-berth': !submitted }">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted"
+          :excluded="excluded"
+          @guess="submitGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </div>
       <ol class="route country-chip-list">
         <CountryChip class="endpoint map-caption" :country="getCountry(challenge.start)" />
         <TransitionGroup name="chain">
@@ -229,7 +228,7 @@ const submitGuess = (country: Country) => {
 
 const onInterstitialDone = () => {
   begin()
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 </script>
 <style lang="scss" scoped>
@@ -240,6 +239,14 @@ header .corridor {
   padding: 0.4rem 1.4rem;
   color: var(--hior-ange);
   border-color: flame(0.35);
+}
+
+// Console over the route, both in the footer's berth.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 // Chip and route-list recipes come from templates/_country-chip.scss;

@@ -23,24 +23,6 @@
       </template>
     </ChallengePrompt>
 
-    <!-- The input sits ABOVE the clues: its suggestion list opens downward,
-         and at the bottom of the screen it would fall right off it. Over the
-         clue cards there is always room. -->
-    <section v-if="!resolved" class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <!-- The console drains with the round clock; the "Clue N of M" caption
-           carries the clue pacing. -->
-      <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted || !started || lockedOut"
-          :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
-          @guess="onGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
-
     <section v-if="!resolved" ref="clueStage" class="clue-stage">
       <TransitionGroup name="clue" tag="ul" class="clue-list">
         <StatCard
@@ -75,6 +57,25 @@
         </StatCard>
       </TransitionGroup>
     </section>
+
+    <!-- Clues read above, the answer goes below — the standard footer berth
+         keeps the downward suggestion list clear and rides the keyboard. -->
+    <footer v-if="!resolved" class="suggest-berth">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <!-- The console drains with the round clock; the "Clue N of M" caption
+             carries the clue pacing. -->
+        <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="submitted || !started || lockedOut"
+            :placeholder="lockedOut ? 'Locked out…' : 'Buzz in — type the country'"
+            @guess="onGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -202,7 +203,7 @@ const begin = () => {
   beginRound()
   revealedCount.value = 1
   secondsLeft.value = totalSeconds.value
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 
   const active = challenge.value
   if (!active) return

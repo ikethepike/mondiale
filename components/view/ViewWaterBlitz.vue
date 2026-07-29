@@ -16,23 +16,22 @@
       </span>
     </ChallengePrompt>
 
-    <section class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <!-- The round clock lives inside the console pill — this mode's lower
-           half belongs to the guess box and the found list. -->
-      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted || !started"
-          :excluded="guesses"
-          :placeholder="copy.placeholder"
-          @guess="onGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
-
-    <footer>
+    <footer class="suggest-berth">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <!-- The round clock lives inside the console pill — this mode's lower
+             half belongs to the guess box and the found list. -->
+        <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="submitted || !started"
+            :excluded="guesses"
+            :placeholder="copy.placeholder"
+            @guess="onGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
       <TransitionGroup tag="ol" name="chain" class="country-chip-list">
         <CountryChip
           v-for="isoCode in guesses"
@@ -127,8 +126,17 @@ const {
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country => `${countryName(country)} isn't one of them`,
-    focusInput: () => guessInput.value?.focus(),
+    focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
+<style lang="scss" scoped>
+// Console over the caught chips, both in the shell footer's berth.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+</style>
