@@ -244,10 +244,14 @@ const story = computed(() => {
 
   const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.playerId)
   const verdict = placement.correct
-    ? `${who === 'You' ? 'You nail it' : `${who} nails it`} — +${placement.scored} pts`
+    ? who === 'You'
+      ? `Correct — placed exactly right, +${placement.scored} pts`
+      : `Correct — ${who} places it exactly right, +${placement.scored} pts`
     : placement.kind === 'timeout'
       ? `${who === 'You' ? 'Your' : `${who}'s`} clock ran out — the card files itself`
-      : `${who === 'You' ? 'You miss' : `${who} misses`} — it belongs here instead`
+      : who === 'You'
+        ? 'Missed — it snaps to where it belongs'
+        : `${who} missed — it snaps to where it belongs`
   return { event, correct: placement.correct, verdict }
 })
 
