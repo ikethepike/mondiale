@@ -35,6 +35,12 @@
     align-items: center;
     flex-flow: column nowrap;
     pointer-events: auto;
+    // Above the stage content that follows it in the shell: the console's
+    // backdrop-filter caps the dropdown's own z-index inside a stacking
+    // context, so without this the suggestions open BEHIND later positioned
+    // siblings (stat detective's sticky clue cards).
+    position: relative;
+    z-index: 3;
   }
 
   // An action button with the round clock docked beside it — the action and
