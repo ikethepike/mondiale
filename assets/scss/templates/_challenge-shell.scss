@@ -28,13 +28,27 @@
 
   // The action strip against the bottom edge. Views add their own layout;
   // the berth and the bottom clearance (home indicator or software keyboard,
-  // via --bottom-clearance) live here. The padding transition is the
-  // keyboard lift easing — one tide for every console.
+  // via --bottom-clearance) live here. The lift wears a FAST ease for feel —
+  // the engine's settle loop owns correctness, clamping any caret pan the
+  // transient invites within a frame (lib/use-viewport.ts).
   > footer,
   .shell-footer {
     z-index: 2;
     padding: 2rem 2rem calc(2rem + var(--bottom-clearance));
-    transition: padding var(--motion-base) var(--ease-smooth);
+    transition: padding 0.22s var(--ease-smooth);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  // With the keyboard up, every console dropdown opens UPWARD over the
+  // stage — the berth collapse above took the downward room. Idempotent over
+  // the night console and the empire timebar, which flip statically.
+  :root.keyboard-up & .guess-form .suggestions {
+    top: auto;
+    bottom: 100%;
+    margin: 0 0 0.6rem;
   }
 
   // Typed-guess footers whose suggestion list opens DOWNWARD: reserve room
@@ -46,6 +60,15 @@
   .shell-footer.suggest-berth {
     --suggest-berth: clamp(8rem, 24vh, 20rem);
     padding-bottom: calc(var(--suggest-berth) + var(--keyboard-inset, 0px));
+  }
+
+  // The keyboard has eaten the bottom: the downward reserve would starve the
+  // stage (Silhouette's outline, the detective's clues), so it collapses and
+  // the dropdown opens UPWARD instead (rule below) — the stage gets the room
+  // back while the keyboard is the floor.
+  :root.keyboard-up & > footer.suggest-berth,
+  :root.keyboard-up & .shell-footer.suggest-berth {
+    --suggest-berth: 1.2rem;
   }
 
   // The typing consoles' column: input pill over its helpers. Interactive by

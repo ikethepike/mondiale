@@ -29,18 +29,7 @@
       </span>
     </ChallengePrompt>
 
-    <section class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <CountryGuessInput
-        ref="guessInput"
-        :disabled="submitted"
-        :excluded="excluded"
-        @guess="submitGuess"
-        @miss="announce({ hint: 'No country by that name' })"
-      />
-    </section>
-
-    <footer>
+    <footer ref="consoleFooter" :class="{ 'suggest-berth': !submitted }">
       <ol class="route country-chip-list">
         <CountryChip class="endpoint map-caption" :country="getCountry(challenge.start)" />
         <TransitionGroup name="chain">
@@ -54,6 +43,16 @@
         </TransitionGroup>
         <CountryChip class="endpoint target map-caption" :country="getCountry(challenge.target)" />
       </ol>
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted"
+          :excluded="excluded"
+          @guess="submitGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </div>
     </footer>
   </div>
 </template>
@@ -65,6 +64,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -86,6 +86,10 @@ const {
 
 const guesses = ref<ISOCountryCode[]>([])
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The camera frames the route corridor above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const guessesLeft = computed(() => (challenge.value?.maximumClicks ?? 0) - guesses.value.length)
 
@@ -229,7 +233,7 @@ const submitGuess = (country: Country) => {
 
 const onInterstitialDone = () => {
   begin()
-  nextTick(() => guessInput.value?.focus())
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 </script>
 <style lang="scss" scoped>
@@ -240,6 +244,14 @@ header .corridor {
   padding: 0.4rem 1.4rem;
   color: var(--hior-ange);
   border-color: flame(0.35);
+}
+
+// Route over the console — the input holds the bottom edge.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 // Chip and route-list recipes come from templates/_country-chip.scss;

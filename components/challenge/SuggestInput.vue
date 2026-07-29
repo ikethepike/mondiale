@@ -41,6 +41,7 @@
 <script lang="ts" setup>
 import { clamp } from '~~/lib/number'
 import { editDistance, normalizeAnswer } from '~~/lib/strings'
+import { listScrollTop, useIsCoarsePointer } from '~~/lib/use-viewport'
 
 /**
  * CountryGuessInput's sibling for every other register: a typed guess box
@@ -145,8 +146,19 @@ const moveHighlight = (delta: number) => {
   chosenId.value = current[index].id
 }
 
+// Scrolls the LIST only (lib/use-viewport's listScrollTop): scrollIntoView
+// walks ancestors and can pan the document against the keyboard clamp.
 watch(highlightedIndex, index =>
-  nextTick(() => list.value?.children[index]?.scrollIntoView({ block: 'nearest' }))
+  nextTick(() => {
+    const item = list.value?.children[index] as HTMLElement | undefined
+    if (!item || !list.value) return
+    list.value.scrollTop = listScrollTop(
+      list.value.scrollTop,
+      list.value.clientHeight,
+      item.offsetTop,
+      item.offsetHeight
+    )
+  })
 )
 
 const pick = (option: SuggestOption) => {
@@ -184,7 +196,16 @@ const submitTyped = () => {
   pick(choice)
 }
 
-defineExpose({ focus: () => input.value?.focus() })
+// Round-start autofocus (`auto: true`) is desktop-only: on touch, a
+// self-raising keyboard buries the map mid-transition. Bare focus() stays
+// unconditional for mid-round refocus, where the keyboard is already up.
+const isCoarsePointer = useIsCoarsePointer()
+defineExpose({
+  focus: (options?: { auto?: boolean }) => {
+    if (options?.auto && isCoarsePointer.value) return
+    input.value?.focus()
+  },
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

@@ -1460,7 +1460,6 @@ header .flag {
   }
 }
 
-
 .leader-options {
   grid-template-columns: minmax(28rem, 44rem);
 }

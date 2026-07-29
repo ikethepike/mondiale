@@ -16,7 +16,11 @@ export const useFooterBerth = (footer: Ref<HTMLElement | undefined>) => {
 
   const reserve = () => {
     const height = footer.value?.getBoundingClientRect().height
-    gameStore.map.berth = height ? { bottom: Math.round(height) + 12 } : undefined
+    // Capped: a keyboard-era footer can swallow most of the viewport, and an
+    // uncapped reservation would trip the camera's minimum-band guard —
+    // silently ignored exactly when the subject most needs lifting.
+    const cap = Math.round(document.documentElement.clientHeight * 0.6)
+    gameStore.map.berth = height ? { bottom: Math.min(Math.round(height) + 12, cap) } : undefined
   }
 
   onMounted(() => {

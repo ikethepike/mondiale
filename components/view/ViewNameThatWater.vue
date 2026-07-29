@@ -30,44 +30,46 @@
       </template>
     </ChallengePrompt>
 
-    <section v-if="!resolved" class="guess-box">
-      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-      <div class="hint-row">
-        <Transition name="caption">
-          <button
-            v-if="!shoreHint && shoreHintUnlocked"
-            class="hint-button"
-            type="button"
-            @click="showShoreHint"
-          >
-            <StatTopicIcon class="hint-icon" topic="reveal" />
-            Shores (−{{ hintBitePoints }} pts)
-          </button>
-        </Transition>
-        <Transition name="caption">
-          <button
-            v-if="!letterHint && letterHintUnlocked"
-            class="hint-button"
-            type="button"
-            @click="showLetterHint"
-          >
-            <StatTopicIcon class="hint-icon" topic="question" />
-            Initials (−{{ hintBitePoints }} pts)
-          </button>
-        </Transition>
+    <footer v-if="!resolved" ref="consoleFooter" class="suggest-berth">
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <div class="hint-row">
+          <Transition name="caption">
+            <button
+              v-if="!shoreHint && shoreHintUnlocked"
+              class="hint-button"
+              type="button"
+              @click="showShoreHint"
+            >
+              <StatTopicIcon class="hint-icon" topic="reveal" />
+              Shores (−{{ hintBitePoints }} pts)
+            </button>
+          </Transition>
+          <Transition name="caption">
+            <button
+              v-if="!letterHint && letterHintUnlocked"
+              class="hint-button"
+              type="button"
+              @click="showLetterHint"
+            >
+              <StatTopicIcon class="hint-icon" topic="question" />
+              Initials (−{{ hintBitePoints }} pts)
+            </button>
+          </Transition>
+        </div>
+        <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
+          <SuggestInput
+            ref="input"
+            :options="options"
+            :normalize="normalizeName"
+            placeholder="Type its name…"
+            :disabled="!started"
+            @pick="pick"
+            @miss="announce({ hint: 'No water by that name' })"
+          />
+        </ChallengeConsole>
       </div>
-      <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
-        <SuggestInput
-          ref="input"
-          :options="options"
-          :normalize="normalizeName"
-          placeholder="Type its name…"
-          :disabled="!started"
-          @pick="pick"
-          @miss="announce({ hint: 'No water by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -80,6 +82,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { normalizeAnswer } from '~~/lib/strings'
 import { attemptFraction, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -149,6 +152,10 @@ const promptTitle = computed(() => {
 })
 
 const input = ref<InstanceType<typeof SuggestInput>>()
+
+// The camera frames the lit feature above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 // Buyable hints unlock in waves: shores a third in, initials two thirds in.
 // Each bought hint bites HINT_BITE_FRACTION of the pot off the final score.
@@ -228,7 +235,7 @@ const begin = () => {
   showInterstitial.value = false
   started.value = true
   secondsLeft.value = challenge.value?.durationSeconds ?? 0
-  nextTick(() => input.value?.focus())
+  nextTick(() => input.value?.focus({ auto: true }))
 
   countdown = setInterval(() => {
     secondsLeft.value--
@@ -257,12 +264,6 @@ const pick = (option: SuggestOption) => {
 // Bought clues persist under the guess counter, unlike the transient miss toast.
 header .clue {
   color: var(--hior-ange);
-}
-
-.guess-box {
-  // Centred in the space under the prompt (the old footer used to hold the
-  // bottom): the suggestion list opens downward and needs the room below.
-  margin: auto 0;
 }
 
 // Hint chips come from templates/_hint-chip.scss; the typing surface and its

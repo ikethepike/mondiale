@@ -101,21 +101,32 @@
           </span>
         </li>
       </ul>
-      <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.durationSeconds">
-        <!-- Blind box: a recall round with a browsable dropdown is a menu.
-             Typos still land through the submit-time fuzzy match. -->
-        <SuggestInput
-          v-if="!allMineLocked"
-          ref="input"
-          :options="activeOptions"
-          :suggest="false"
-          placeholder="Type your answer…"
-          @pick="pick"
-          @miss="announce({ hint: `Nothing on the ${categoryLabel} list by that name` })"
-        />
-        <p v-else class="all-in map-caption">All in — waiting for the table…</p>
-      </ChallengeConsole>
     </section>
+
+    <!-- Plain footer, no suggest-berth: the box is blind (no dropdown) — it
+         only needs the keyboard lift. -->
+    <footer v-if="!briefing && !finished && !showInterstitial">
+      <div class="guess-box">
+        <ChallengeConsole
+          class="console"
+          :value="secondsOnClock"
+          :total="challenge.durationSeconds"
+        >
+          <!-- Blind box: a recall round with a browsable dropdown is a menu.
+               Typos still land through the submit-time fuzzy match. -->
+          <SuggestInput
+            v-if="!allMineLocked"
+            ref="input"
+            :options="activeOptions"
+            :suggest="false"
+            placeholder="Type your answer…"
+            @pick="pick"
+            @miss="announce({ hint: `Nothing on the ${categoryLabel} list by that name` })"
+          />
+          <p v-else class="all-in map-caption">All in — waiting for the table…</p>
+        </ChallengeConsole>
+      </div>
+    </footer>
 
     <UniqueRevealGrid
       v-if="finished"

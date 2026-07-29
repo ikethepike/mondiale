@@ -46,7 +46,9 @@
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </section>
 
-      <footer :class="{ 'suggest-berth': beat === 'guess' && !challenge.options }">
+      <!-- Plain footer, no suggest-berth: the timebar flips suggestions to
+           open UPWARD, so no downward reserve — only the keyboard lift. -->
+      <footer ref="consoleFooter">
         <!-- Beat 1: buzz with the empire's name — option cards outside hard
              (flag tiles only when every option has an honest one), free-typed
              inside the bar on hard. -->
@@ -166,6 +168,7 @@ import {
 import { prefersReducedMotion } from '~~/lib/motion'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -187,6 +190,10 @@ const {
   update,
   registerCleanup,
 } = useGroupChallenge('empire-challenge')
+
+// The camera frames the empire's extent above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 type Beat = 'guess' | 'tap' | 'reveal'
 const beat = ref<Beat>('guess')
@@ -307,7 +314,7 @@ const start = async () => {
   await nextTick()
   await ghostField.value?.build()
   ghostField.value?.play()
-  nextTick(() => nameInput.value?.focus())
+  nextTick(() => nameInput.value?.focus({ auto: true }))
 }
 
 /** A wrong buzz costs three seconds, not points — the silhouette contract. */
@@ -402,7 +409,7 @@ const resolveBeat1 = (guessedId: string | undefined, clientScore: number) => {
       tapSecondsLeft.value--
       if (tapSecondsLeft.value <= 0) lockIn()
     }, 1000)
-    nextTick(() => countryInput.value?.focus())
+    nextTick(() => countryInput.value?.focus({ auto: true }))
   }, hold)
 }
 
@@ -564,12 +571,6 @@ footer {
   > * {
     pointer-events: auto;
   }
-
-  // Compact reserve: the empire register's list is shorter than the
-  // country one. The property, never padding-bottom — see the template.
-  &.suggest-berth {
-    --suggest-berth: clamp(6rem, 18vh, 14rem);
-  }
 }
 
 .card-options {
@@ -676,9 +677,6 @@ footer {
 }
 
 @media (max-width: $tablet) {
-  footer.suggest-berth {
-    --suggest-berth: clamp(6rem, 18dvh, 14rem);
-  }
   .card-options.with-flags {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 

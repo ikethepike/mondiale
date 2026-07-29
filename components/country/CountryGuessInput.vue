@@ -54,6 +54,7 @@ import { useGameStore } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
 import { clamp } from '~~/lib/number'
+import { listScrollTop, useIsCoarsePointer } from '~~/lib/use-viewport'
 
 /**
  * The typed country guess box: live suggestions with local-language names,
@@ -127,9 +128,20 @@ const moveHighlight = (delta: number) => {
   chosenIso.value = options[index].isoCode
 }
 
-// The list scrolls once it caps out at 40vh — keep the highlight in view
+// The list scrolls once it caps out — keep the highlight in view. Scrolls
+// the LIST only (lib/use-viewport's listScrollTop): scrollIntoView walks
+// ancestors and can pan the document against the keyboard clamp.
 watch(highlightedIndex, index =>
-  nextTick(() => list.value?.children[index]?.scrollIntoView({ block: 'nearest' }))
+  nextTick(() => {
+    const item = list.value?.children[index] as HTMLElement | undefined
+    if (!item || !list.value) return
+    list.value.scrollTop = listScrollTop(
+      list.value.scrollTop,
+      list.value.clientHeight,
+      item.offsetTop,
+      item.offsetHeight
+    )
+  })
 )
 
 const pick = (country: Country) => {
@@ -154,7 +166,16 @@ const submitTyped = () => {
   pick(country)
 }
 
-defineExpose({ focus: () => input.value?.focus() })
+// Round-start autofocus (`auto: true`) is desktop-only: on touch, a
+// self-raising keyboard buries the map mid-transition. Bare focus() stays
+// unconditional for mid-round refocus, where the keyboard is already up.
+const isCoarsePointer = useIsCoarsePointer()
+defineExpose({
+  focus: (options?: { auto?: boolean }) => {
+    if (options?.auto && isCoarsePointer.value) return
+    input.value?.focus()
+  },
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

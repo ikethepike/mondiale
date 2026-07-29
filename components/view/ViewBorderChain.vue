@@ -69,20 +69,6 @@
       <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
     </section>
 
-    <!-- On your turn the shot clock lives inside the guess console; between
-         turns the header's turn-line chip carries the countdown. -->
-    <section v-if="myTurn && !finished && !briefing" class="guess-box">
-      <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="pending"
-          :excluded="walked"
-          @guess="submitGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </ChallengeConsole>
-    </section>
-
     <ChainReveal
       v-if="finished"
       class="reveal"
@@ -91,7 +77,9 @@
       :player-id="gameStore.playerId"
     />
 
-    <footer>
+    <!-- Berth only while the console stands — the reserve would shove the
+         spectators' route chips up a hand's width between turns. -->
+    <footer ref="consoleFooter" :class="{ 'suggest-berth': myTurn && !finished && !briefing }">
       <ol class="route country-chip-list">
         <template v-for="(isoCode, index) in chain" :key="`${chainCount}-${isoCode}`">
           <li v-if="index > 0 && isStraitHop(chain[index - 1], isoCode)" class="sea-hop">〜</li>
@@ -103,6 +91,19 @@
           />
         </template>
       </ol>
+      <!-- On your turn the shot clock lives inside the guess console; between
+           turns the header's turn-line chip carries the countdown. -->
+      <div v-if="myTurn && !finished && !briefing" class="guess-box">
+        <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="pending"
+            :excluded="walked"
+            @guess="submitGuess"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
     </footer>
   </div>
 </template>
@@ -121,8 +122,8 @@ import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -221,12 +222,14 @@ const { secondsOnClock } = useDeadlineClock(
 // --- Submitting a move -------------------------------------------------------
 const pending = ref(false)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-const isCoarsePointer = useIsCoarsePointer()
 
-// Touch devices skip autofocus — a self-raising keyboard would bury the map.
+// The camera frames the walked chain above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
+// The input home owns the touch gate: auto focus is desktop-only.
 const focusMyTurn = () => {
-  if (!myTurn.value || isCoarsePointer.value) return
-  nextTick(() => guessInput.value?.focus())
+  if (!myTurn.value) return
+  nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 // The turn watcher never fires for the round's opener (turn stays 0), so the
@@ -354,8 +357,12 @@ watch(
   opacity: 0.75;
 }
 
-.guess-box {
-  z-index: 2;
+// Walked route over the console — the input holds the bottom edge.
+footer {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
 }
 
 .reveal {

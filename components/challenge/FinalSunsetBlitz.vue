@@ -234,7 +234,7 @@ const start = () => {
   gameStore.map.focusContext = context
   document.body.classList.add('sunset-blitz')
   startedAt = performance.now()
-  guessInput.value?.focus()
+  guessInput.value?.focus({ auto: true })
   ticker = setInterval(() => {
     elapsedMs.value = performance.now() - startedAt
     lockSweepBounds()
