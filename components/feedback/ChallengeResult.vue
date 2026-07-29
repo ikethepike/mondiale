@@ -1,7 +1,10 @@
 <template>
   <header class="challenge-result" :class="status">
     <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
-    <h1 ref="heading" class="map-caption">{{ message }}</h1>
+    <div class="verdict-row">
+      <VerdictStamp :key="status" class="stamp" :status="status" />
+      <h1 ref="heading" class="map-caption">{{ message }}</h1>
+    </div>
     <!-- The prize, shown not counted: one dot lands per board step the win
          earned, hopping in ahead of the pawn animation they preview. -->
     <div v-if="status === 'correct' && leapSteps" class="leap-track" aria-hidden="true">
@@ -26,6 +29,7 @@ import { Comment, Text } from 'vue'
 import { gsap } from 'gsap'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import ContourRipple from './ContourRipple.vue'
+import VerdictStamp from './VerdictStamp.vue'
 
 /**
  * Shared correct/incorrect result moment. The choreography around it:
@@ -99,6 +103,18 @@ onUnmounted(() => {
 .challenge-result {
   position: relative;
   text-align: center;
+
+  // Stamp beside the heading pill, one centred row that wraps on phones.
+  // The stamp lands in the shared choreography between the heading (0.15s)
+  // and the ripple (0.45s).
+  .verdict-row {
+    gap: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+  }
 
   h1 {
     margin: 0;
