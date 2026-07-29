@@ -66,9 +66,17 @@ export const useKeyboardInset = () => {
     // document is the browser's caret-chasing pan (iOS grants a temporary
     // scroll allowance under the keyboard). Undo it; the lifted chrome keeps
     // the caret visible, so the browser doesn't pan again. Genuinely
-    // scrollable pages are left alone.
+    // scrollable pages are left alone — and so is a pan the caret actually
+    // needs: if the focused field would sit under the keyboard at rest,
+    // clamping just triggers another chase and the view judders on every
+    // keystroke. (No field should end up there — that's what the footer's
+    // keyboard lift is for — but the clamp must not amplify the bug.)
     const panned = window.scrollY || viewport.offsetTop
-    if (overlap > 0 && panned && document.documentElement.scrollHeight <= layoutHeight) {
+    const field = document.activeElement
+    const fieldBottom =
+      field instanceof HTMLElement ? field.getBoundingClientRect().bottom + window.scrollY : 0
+    const clampSafe = fieldBottom <= layoutHeight - overlap
+    if (overlap > 0 && panned && clampSafe && document.documentElement.scrollHeight <= layoutHeight) {
       window.scrollTo(0, 0)
     }
   }
