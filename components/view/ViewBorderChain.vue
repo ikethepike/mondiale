@@ -79,7 +79,18 @@
 
     <!-- Berth only while the console stands — the reserve would shove the
          spectators' route chips up a hand's width between turns. -->
-    <footer :class="{ 'suggest-berth': myTurn && !finished && !briefing }">
+    <footer ref="consoleFooter" :class="{ 'suggest-berth': myTurn && !finished && !briefing }">
+      <ol class="route country-chip-list">
+        <template v-for="(isoCode, index) in chain" :key="`${chainCount}-${isoCode}`">
+          <li v-if="index > 0 && isStraitHop(chain[index - 1], isoCode)" class="sea-hop">〜</li>
+          <CountryChip
+            class="walked map-caption"
+            :class="{ head: index === chain.length - 1 && !finished }"
+            :style="{ '--stop-color': stopColor(index) }"
+            :country="getCountry(isoCode)"
+          />
+        </template>
+      </ol>
       <!-- On your turn the shot clock lives inside the guess console; between
            turns the header's turn-line chip carries the countdown. -->
       <div v-if="myTurn && !finished && !briefing" class="guess-box">
@@ -93,17 +104,6 @@
           />
         </ChallengeConsole>
       </div>
-      <ol class="route country-chip-list">
-        <template v-for="(isoCode, index) in chain" :key="`${chainCount}-${isoCode}`">
-          <li v-if="index > 0 && isStraitHop(chain[index - 1], isoCode)" class="sea-hop">〜</li>
-          <CountryChip
-            class="walked map-caption"
-            :class="{ head: index === chain.length - 1 && !finished }"
-            :style="{ '--stop-color': stopColor(index) }"
-            :country="getCountry(isoCode)"
-          />
-        </template>
-      </ol>
     </footer>
   </div>
 </template>
@@ -122,6 +122,7 @@ import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
@@ -221,6 +222,10 @@ const { secondsOnClock } = useDeadlineClock(
 // --- Submitting a move -------------------------------------------------------
 const pending = ref(false)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The camera frames the walked chain above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 // The input home owns the touch gate: auto focus is desktop-only.
 const focusMyTurn = () => {
   if (!myTurn.value) return
@@ -352,7 +357,7 @@ watch(
   opacity: 0.75;
 }
 
-// Console over the walked route, both in the footer's berth.
+// Walked route over the console — the input holds the bottom edge.
 footer {
   gap: 1.2rem;
   display: flex;

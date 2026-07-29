@@ -107,7 +107,11 @@
          only needs the keyboard lift. -->
     <footer v-if="!briefing && !finished && !showInterstitial">
       <div class="guess-box">
-        <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.durationSeconds">
+        <ChallengeConsole
+          class="console"
+          :value="secondsOnClock"
+          :total="challenge.durationSeconds"
+        >
           <!-- Blind box: a recall round with a browsable dropdown is a menu.
                Typos still land through the submit-time fuzzy match. -->
           <SuggestInput

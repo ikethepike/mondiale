@@ -29,17 +29,7 @@
       </span>
     </ChallengePrompt>
 
-    <footer :class="{ 'suggest-berth': !submitted }">
-      <div class="guess-box">
-        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
-        <CountryGuessInput
-          ref="guessInput"
-          :disabled="submitted"
-          :excluded="excluded"
-          @guess="submitGuess"
-          @miss="announce({ hint: 'No country by that name' })"
-        />
-      </div>
+    <footer ref="consoleFooter" :class="{ 'suggest-berth': !submitted }">
       <ol class="route country-chip-list">
         <CountryChip class="endpoint map-caption" :country="getCountry(challenge.start)" />
         <TransitionGroup name="chain">
@@ -53,6 +43,16 @@
         </TransitionGroup>
         <CountryChip class="endpoint target map-caption" :country="getCountry(challenge.target)" />
       </ol>
+      <div class="guess-box">
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+        <CountryGuessInput
+          ref="guessInput"
+          :disabled="submitted"
+          :excluded="excluded"
+          @guess="submitGuess"
+          @miss="announce({ hint: 'No country by that name' })"
+        />
+      </div>
     </footer>
   </div>
 </template>
@@ -64,6 +64,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -85,6 +86,10 @@ const {
 
 const guesses = ref<ISOCountryCode[]>([])
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The camera frames the route corridor above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const guessesLeft = computed(() => (challenge.value?.maximumClicks ?? 0) - guesses.value.length)
 
@@ -241,7 +246,7 @@ header .corridor {
   border-color: flame(0.35);
 }
 
-// Console over the route, both in the footer's berth.
+// Route over the console — the input holds the bottom edge.
 footer {
   gap: 1.2rem;
   display: flex;

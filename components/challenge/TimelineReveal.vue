@@ -132,10 +132,7 @@ const chronicle = computed(() =>
 const lesson = computed(() => {
   const misses = state.value.placements
     .filter(entry => !entry.correct && entry.kind === 'placed')
-    .sort(
-      (a, b) =>
-        Math.abs(b.chosenSlot - b.correctSlot) - Math.abs(a.chosenSlot - a.correctSlot)
-    )
+    .sort((a, b) => Math.abs(b.chosenSlot - b.correctSlot) - Math.abs(a.chosenSlot - a.correctSlot))
   const worst = misses[0]
   if (worst) {
     const event = timelineEvent(worst.slug)

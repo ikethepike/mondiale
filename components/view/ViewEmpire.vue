@@ -48,7 +48,7 @@
 
       <!-- Plain footer, no suggest-berth: the timebar flips suggestions to
            open UPWARD, so no downward reserve — only the keyboard lift. -->
-      <footer>
+      <footer ref="consoleFooter">
         <!-- Beat 1: buzz with the empire's name — option cards outside hard
              (flag tiles only when every option has an honest one), free-typed
              inside the bar on hard. -->
@@ -168,6 +168,7 @@ import {
 import { prefersReducedMotion } from '~~/lib/motion'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -189,6 +190,10 @@ const {
   update,
   registerCleanup,
 } = useGroupChallenge('empire-challenge')
+
+// The camera frames the empire's extent above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 type Beat = 'guess' | 'tap' | 'reveal'
 const beat = ref<Beat>('guess')
@@ -566,7 +571,6 @@ footer {
   > * {
     pointer-events: auto;
   }
-
 }
 
 .card-options {

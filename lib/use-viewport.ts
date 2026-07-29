@@ -62,6 +62,10 @@ const SETTLE_MAX_MS = 1500
 /** Pan clamps this session — the KeyboardLab HUD's tell that the engine acted. */
 export const keyboardClampCount = ref(0)
 
+/** The live inset, shared: components react to the keyboard through THIS
+ *  (never their own visualViewport listeners). The engine below writes it. */
+export const keyboardInset = ref(0)
+
 /**
  * The software keyboard's overlap with the layout viewport, published as
  * `--keyboard-inset` (px) on :root. Android resizes the layout for its
@@ -79,7 +83,7 @@ export const keyboardClampCount = ref(0)
  * on exactly the frames that need it and deadlock the recovery).
  */
 export const useKeyboardInset = () => {
-  const inset = ref(0)
+  const inset = keyboardInset
   let frame = 0
   let stable = 0
   let deadline = 0
@@ -104,6 +108,9 @@ export const useKeyboardInset = () => {
     if (overlap !== inset.value) {
       inset.value = overlap
       document.documentElement.style.setProperty('--keyboard-inset', `${overlap}px`)
+      // The one CSS-side keyboard-state signal: suggest-berth collapse and
+      // the upward dropdown flip key off this class, never their own probes
+      document.documentElement.classList.toggle('keyboard-up', overlap > 0)
     }
     // Every typed input stands in an inset-consuming footer (the shell
     // contract), so with the keyboard up, any scroll offset on this
@@ -153,6 +160,7 @@ export const useKeyboardInset = () => {
     window.removeEventListener('focusout', settle)
     if (frame) cancelAnimationFrame(frame)
     document.documentElement.style.removeProperty('--keyboard-inset')
+    document.documentElement.classList.remove('keyboard-up')
   })
 
   return inset

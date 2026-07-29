@@ -16,7 +16,16 @@
       </span>
     </ChallengePrompt>
 
-    <footer class="suggest-berth">
+    <footer ref="consoleFooter" class="suggest-berth">
+      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
+        <CountryChip
+          v-for="isoCode in guesses"
+          :key="isoCode"
+          class="map-caption"
+          :class="{ stray: !answerSet.has(isoCode) }"
+          :country="getCountry(isoCode)"
+        />
+      </TransitionGroup>
       <div class="guess-box">
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
         <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
@@ -30,15 +39,6 @@
           />
         </ChallengeConsole>
       </div>
-      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
-        <CountryChip
-          v-for="isoCode in guesses"
-          :key="isoCode"
-          class="map-caption"
-          :class="{ stray: !answerSet.has(isoCode) }"
-          :country="getCountry(isoCode)"
-        />
-      </TransitionGroup>
     </footer>
   </div>
 </template>
@@ -51,6 +51,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 
 const {
@@ -70,6 +71,10 @@ const {
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
+// The camera frames the found countries above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
+
 const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
   { submitted, started, announce, submitOnce, begin, gameStore },
   {
@@ -82,7 +87,7 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
 <style lang="scss" scoped>
-// Console over the caught chips, both in the shell footer's berth.
+// Caught chips over the console — the input holds the bottom edge.
 footer {
   gap: 1.2rem;
   display: flex;
