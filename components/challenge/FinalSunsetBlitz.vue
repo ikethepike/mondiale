@@ -10,7 +10,7 @@
     <div class="terminator" :class="{ settled: finished }" aria-hidden="true">
       <span class="band" />
     </div>
-    <footer class="shell-footer">
+    <footer ref="consoleFooter" class="shell-footer">
       <NightConsole
         v-show="!finished"
         :lit="named.size"
@@ -45,6 +45,7 @@ import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -85,6 +86,11 @@ const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
 const { viewBox } = useMapViewBox()
+
+// The dealt window stays visible above the console (and the keyboard); the
+// sweep bounds lock against the berthed camera, so line and window agree
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const durationMs = props.challenge.durationSeconds * 1000
 // The sweep clock starts once the camera has settled and the bounds are

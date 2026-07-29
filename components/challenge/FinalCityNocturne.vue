@@ -18,7 +18,7 @@
         </span>
       </div>
     </div>
-    <footer class="shell-footer">
+    <footer ref="consoleFooter" class="shell-footer">
       <NightConsole
         v-show="!finished"
         :lit="named.size"
@@ -53,6 +53,7 @@ import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { projectRobinson } from '~~/lib/geo'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useMapViewBox } from '~~/lib/use-map-viewbox'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
@@ -81,6 +82,10 @@ const named = ref(new Set<string>())
 const elapsedMs = ref(0)
 const finished = ref(false)
 const { viewBox } = useMapViewBox()
+
+// The framed country stays visible above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
