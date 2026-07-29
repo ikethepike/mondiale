@@ -1,19 +1,20 @@
 <template>
   <header class="challenge-result" :class="status">
     <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
-    <div class="verdict-row">
+    <!-- One stamped document: the heading pill is the paper, the stamp inks
+         its corner, and the earned steps (one dot per board step, shown not
+         counted) trim its bottom edge. Rises as a single element. -->
+    <div ref="heading" class="verdict-card">
+      <h1 class="map-caption">{{ message }}</h1>
       <VerdictStamp :key="status" class="stamp" :status="status" />
-      <h1 ref="heading" class="map-caption">{{ message }}</h1>
-    </div>
-    <!-- The prize, shown not counted: one dot lands per board step the win
-         earned, hopping in ahead of the pawn animation they preview. -->
-    <div v-if="status === 'correct' && leapSteps" class="leap-track" aria-hidden="true">
-      <span
-        v-for="step in leapSteps"
-        :key="step"
-        class="hop"
-        :style="{ '--hop-index': step - 1 }"
-      />
+      <div v-if="status === 'correct' && leapSteps" class="leap-track" aria-hidden="true">
+        <span
+          v-for="step in leapSteps"
+          :key="step"
+          class="hop"
+          :style="{ '--hop-index': step - 1 }"
+        />
+      </div>
     </div>
     <!-- The teachable moment: the actual facts behind the verdict. Gate on
          rendered content, not just slot presence — the slotted reveals are
@@ -104,16 +105,19 @@ onUnmounted(() => {
   position: relative;
   text-align: center;
 
-  // Stamp beside the heading pill, one centred row that wraps on phones.
-  // The stamp lands in the shared choreography between the heading (0.15s)
-  // and the ripple (0.45s).
-  .verdict-row {
-    gap: 1.2rem;
-    display: flex;
-    flex-wrap: wrap;
+  // The stamped document. The card is the animated unit (gsap rises it as
+  // one); the stamp thumps onto its corner in the shared choreography
+  // between the rise (0.15s) and the ripple (0.45s).
+  .verdict-card {
     position: relative;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
+
+    .stamp {
+      top: -1.9rem;
+      left: -2.4rem;
+      z-index: 1;
+      position: absolute;
+    }
   }
 
   h1 {
@@ -154,10 +158,11 @@ onUnmounted(() => {
 
   .leap-track {
     gap: 0.8rem;
+    left: 50%;
+    bottom: -0.65rem;
     display: flex;
-    position: relative;
-    margin-top: 1.2rem;
-    justify-content: center;
+    position: absolute;
+    transform: translateX(-50%);
   }
 
   // Each earned step arcs in and settles, left to right — the same forward
