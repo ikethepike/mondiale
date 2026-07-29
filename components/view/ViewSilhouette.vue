@@ -187,6 +187,36 @@ header .region-hint {
   justify-content: center;
 }
 
+// The outline IS this mode's map. With the keyboard up, stacking prompt +
+// stage + console leaves no stage on short viewports (~80px in a 650px
+// in-app browser) — so the stage stops competing in the column and becomes
+// an absolute backdrop spanning the visible band, the h1 pill floating over
+// its top and the console over its foot, both wearing their scrims (the
+// sanctioned bespoke positioned stage).
+:root.keyboard-up .silhouette-challenge {
+  .outline-stage {
+    inset: 1rem 0 calc(var(--keyboard-inset, 0px) + 11rem);
+    padding: 0;
+    z-index: 0;
+    position: absolute;
+  }
+
+  .outline {
+    max-height: none; // the band is the cap
+  }
+
+  // The prompt pills paint above the positioned stage; the subs give their
+  // space back to the drawing while typing — the h1 carries the question.
+  header {
+    z-index: 1;
+    position: relative;
+
+    .sub {
+      display: none;
+    }
+  }
+}
+
 .outline {
   height: 100%;
   max-height: 44vh;
