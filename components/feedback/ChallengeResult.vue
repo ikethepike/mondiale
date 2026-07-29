@@ -107,14 +107,17 @@ onUnmounted(() => {
 
   // The stamped document. The card is the animated unit (gsap rises it as
   // one); the stamp thumps onto its corner in the shared choreography
-  // between the rise (0.15s) and the ripple (0.45s).
+  // between the rise (0.15s) and the ripple (0.45s). The overlaps live
+  // INSIDE the card's padding box — negative offsets would clip against the
+  // viewport when the prompt sits at the top edge.
   .verdict-card {
     position: relative;
     display: inline-block;
+    padding: 1.9rem 0 0.65rem 2.4rem;
 
     .stamp {
-      top: -1.9rem;
-      left: -2.4rem;
+      top: 0;
+      left: 0;
       z-index: 1;
       position: absolute;
     }
@@ -158,8 +161,10 @@ onUnmounted(() => {
 
   .leap-track {
     gap: 0.8rem;
-    left: 50%;
-    bottom: -0.65rem;
+    // Centred on the pill (the card's left padding hosts the stamp), sitting
+    // half over the pill's bottom border inside the card's padding box.
+    left: calc(50% + 1.2rem);
+    bottom: 0;
     display: flex;
     position: absolute;
     transform: translateX(-50%);
