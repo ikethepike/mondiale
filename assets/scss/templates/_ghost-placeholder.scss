@@ -1,0 +1,18 @@
+// The prompt a guess field shows while empty — visually the placeholder,
+// deliberately NOT the placeholder attribute. Safari classifies fields for
+// contact AutoFill by reading their machine text (placeholder, name, label),
+// and game prompts are full of its trigger words ("country", "cities",
+// "name…") — every console grew an "AutoFill Contact" button. An inert twin
+// gives the heuristic nothing to read; the input itself carries only a
+// neutral aria-label. Geometry lives here; each console colours and sizes
+// the twin beside its own input rules.
+.ghost-placeholder {
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  align-items: center;
+  pointer-events: none;
+  justify-content: center;
+}

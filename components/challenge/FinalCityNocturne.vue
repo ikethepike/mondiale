@@ -30,16 +30,22 @@
           ref="field"
           v-model="entry"
           type="text"
+          aria-label="Your guess"
           autocomplete="off"
           autocapitalize="off"
           autocorrect="off"
           spellcheck="false"
           enterkeyhint="go"
-          :placeholder="`Type ${countryLabel}'s big cities…`"
           :disabled="paused || finished"
           @input="onEntry"
           @keydown.enter.prevent="onEntry"
         />
+        <!-- The prompt as an inert twin, never the placeholder attribute —
+             its words ("cities…") put Safari's AutoFill Contact over the
+             console (see templates/_ghost-placeholder.scss) -->
+        <span v-if="!entry" class="ghost-placeholder" aria-hidden="true"
+          >Type {{ countryLabel }}'s big cities…</span
+        >
       </NightConsole>
     </footer>
   </div>

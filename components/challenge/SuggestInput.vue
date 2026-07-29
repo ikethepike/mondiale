@@ -5,7 +5,7 @@
       v-model="query"
       type="text"
       :role="suggest ? 'combobox' : undefined"
-      :placeholder="placeholder"
+      aria-label="Your guess"
       autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
@@ -20,6 +20,9 @@
       @keydown.up.prevent="moveHighlight(-1)"
       @keydown.esc="query = ''"
     />
+    <!-- The prompt as an inert twin, never the placeholder attribute — its
+         words ("name…") put Safari's AutoFill Contact over the console -->
+    <span v-if="!query" class="ghost-placeholder" aria-hidden="true">{{ placeholder }}</span>
     <ul v-if="suggestions.length" :id="listId" ref="list" class="suggestions" role="listbox">
       <li
         v-for="(suggestion, index) in suggestions"
@@ -204,11 +207,14 @@ defineExpose({ focus: () => input.value?.focus() })
     text-align: center;
     font-family: inherit;
     color: var(--dark-blue);
+  }
 
-    &::placeholder {
-      opacity: 0.45;
-      color: var(--dark-blue);
-    }
+  // Geometry from templates/_ghost-placeholder.scss; the day console's
+  // placeholder dress lives here.
+  .ghost-placeholder {
+    opacity: 0.45;
+    font-size: 2.2rem;
+    color: var(--dark-blue);
   }
 }
 

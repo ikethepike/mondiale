@@ -80,6 +80,7 @@ const low = computed(
 .console-input {
   flex: 1;
   min-width: 0;
+  position: relative; // anchors a slotted bare input's ghost placeholder
 }
 
 .tally {
@@ -106,10 +107,6 @@ const low = computed(
   color: hsla(36, 100%, 94%, 0.95);
   background: none;
 
-  &::placeholder {
-    color: hsla(216, 30%, 65%, 0.6);
-  }
-
   &:focus {
     outline: none;
   }
@@ -117,6 +114,13 @@ const low = computed(
   &:disabled {
     opacity: 0.6;
   }
+}
+
+// The prompt's inert twin (templates/_ghost-placeholder.scss) wears the
+// night in place of ::placeholder — bare inputs and CountryGuessInput alike.
+.night-console.night-console :deep(.ghost-placeholder) {
+  font-size: 2rem;
+  color: hsla(216, 30%, 65%, 0.6);
 }
 
 // CountryGuessInput's form wears the parchment .map-caption pill by default —
