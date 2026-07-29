@@ -1,5 +1,10 @@
 <template>
   <svg class="verdict-stamp" :class="status" viewBox="0 0 48 48" aria-hidden="true">
+    <!-- The stamp's own paper: the verdict washes the whole map in the
+         stamp's ink hue (soft-mint / hi-orange), so bare strokes vanish into
+         the ground wherever they overhang the heading pill — same guaranteed
+         contrast rule as .map-caption -->
+    <circle class="paper" cx="24" cy="24" r="23" />
     <circle cx="24" cy="24" r="21" />
     <circle cx="24" cy="24" r="16.5" />
     <path v-if="status === 'correct'" d="M15.5 24.5l6 6 11-12" />
@@ -34,6 +39,11 @@ defineProps({
   transform: rotate(-8deg);
   animation: stamp-thump 0.45s var(--ease-out-expressive) both;
   animation-delay: 0.3s;
+
+  .paper {
+    stroke: none;
+    fill: milk(0.85);
+  }
 
   &.correct {
     color: hsl(170.5, 44%, 32%);
