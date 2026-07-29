@@ -356,6 +356,76 @@ const getBornChallenge = (
   return undefined
 }
 
+/** Commodities familiar enough to quiz on. The Factbook's full vocabulary runs
+ *  to HS-code obscurities ("reaction and catalytic products", "orthopedic
+ *  appliances") that test parsing, not geography — the dealer draws from this
+ *  set only. Reveals and stat lines still show every country's real list. */
+export const MADE_COMMODITIES = new Set([
+  'aircraft',
+  'aluminum',
+  'bananas',
+  'beef',
+  'beer',
+  'cars',
+  'cement',
+  'cloves',
+  'coal',
+  'cobalt',
+  'cocoa beans',
+  'coconuts/brazil nuts/cashews',
+  'coffee',
+  'computers',
+  'copper ore',
+  'corn',
+  'cotton',
+  'crude petroleum',
+  'cut flowers',
+  'diamonds',
+  'electricity',
+  'fertilizers',
+  'fish',
+  'footwear',
+  'furniture',
+  'garments',
+  'gold',
+  'integrated circuits',
+  'iron ore',
+  'jewelry',
+  'liquor',
+  'milk',
+  'natural gas',
+  'nickel',
+  'olive oil',
+  'packaged medicine',
+  'palm oil',
+  'perfumes',
+  'platinum',
+  'plastics',
+  'raw sugar',
+  'refined copper',
+  'refined petroleum',
+  'rice',
+  'rubber',
+  'semiconductors',
+  'shellfish',
+  'ships',
+  'soybeans',
+  'steel',
+  'tea',
+  'telephones',
+  'tobacco',
+  'tropical fruits',
+  'trucks',
+  'uranium and thorium ore',
+  'vaccines',
+  'vanilla',
+  'watches',
+  'wheat',
+  'wine',
+  'wood',
+  'wool',
+])
+
 const getMadeChallenge = (pool: ISOCountryCode[]): MadeChallenge | undefined => {
   const exporterCounts = new Map<string, number>()
   for (const isoCode of pool) {
@@ -364,7 +434,9 @@ const getMadeChallenge = (pool: ISOCountryCode[]): MadeChallenge | undefined => 
     }
   }
   const commodity = shuffleArray(
-    [...exporterCounts.entries()].filter(([, count]) => count >= 2 && count <= 8).map(([c]) => c)
+    [...exporterCounts.entries()]
+      .filter(([item, count]) => MADE_COMMODITIES.has(item) && count >= 2 && count <= 8)
+      .map(([item]) => item)
   ).shift()
   return commodity ? { _type: 'made-challenge', commodity } : undefined
 }

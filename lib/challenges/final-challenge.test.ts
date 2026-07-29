@@ -7,6 +7,7 @@ import {
   GAUNTLET_LIVES,
   getFinalChallenges,
   isCorrectFinalAnswer,
+  MADE_COMMODITIES,
 } from './final-challenge'
 
 const gameFor = (variant: Game['variant'], difficulty: GameDifficulty) =>
@@ -243,5 +244,24 @@ describe('isCorrectFinalAnswer', () => {
         pool,
       })
     ).toThrow(TypeError)
+  })
+})
+
+describe('MADE_COMMODITIES', () => {
+  it('curates only commodities the data still ships', () => {
+    const shipped = new Set(
+      Object.values(COUNTRIES).flatMap(country => country.economics.exports ?? [])
+    )
+    for (const commodity of MADE_COMMODITIES) expect(shipped).toContain(commodity)
+  })
+
+  it('deals only curated commodities', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type === 'made-challenge')
+          expect(MADE_COMMODITIES.has(challenge.commodity)).toBe(true)
+      }
+    }
   })
 })

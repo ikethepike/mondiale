@@ -10,6 +10,7 @@
  *   bun run generators/check-exports.ts
  */
 import { COUNTRIES } from '../data/countries.gen'
+import { MADE_COMMODITIES } from '../lib/challenges/final-challenge'
 
 const findings: string[] = []
 const flag = (id: string, message: string) => findings.push(`✗ ${id}: ${message}`)
@@ -100,17 +101,25 @@ for (const country of withTotal) {
     flag(country.isoCode, `exportsTotal is ${(total / gdp).toFixed(1)}x GDP (PPP)`)
 }
 
-// --- Dealability: the Made In challenge needs a healthy 2–8 exporter band ------
+// --- Dealability: the Made In dealer draws curated commodities with 2–8 pool --
+// exporters. Regens can rename or drop a commodity out from under the curated
+// set, and a thin curated band makes deals repetitive.
 const worldCounts = new Map<string, number>()
 for (const country of withList) {
   for (const item of country.economics.exports!) {
     worldCounts.set(item, (worldCounts.get(item) ?? 0) + 1)
   }
 }
-const dealable = [...worldCounts.values()].filter(count => count >= 2 && count <= 8).length
-if (dealable < 30)
+for (const commodity of MADE_COMMODITIES) {
+  if (!worldCounts.has(commodity))
+    flag(commodity, 'curated in MADE_COMMODITIES but no country exports it — curation went stale')
+}
+const dealable = [...worldCounts.entries()].filter(
+  ([item, count]) => MADE_COMMODITIES.has(item) && count >= 2 && count <= 8
+).length
+if (dealable < 20)
   findings.push(
-    `✗ only ${dealable} commodities have 2–8 world exporters — Made In deals get repetitive`
+    `✗ only ${dealable} curated commodities have 2–8 world exporters — Made In deals get repetitive`
   )
 
 // --- Report --------------------------------------------------------------------
@@ -120,5 +129,5 @@ if (findings.length) {
   console.info('✓ all clear')
 }
 console.info(
-  `\n${countries.length} countries · ${withList.length} with commodity lists · ${withTotal.length} with totals · ${worldCounts.size} distinct commodities (${dealable} dealable world-wide)`
+  `\n${countries.length} countries · ${withList.length} with commodity lists · ${withTotal.length} with totals · ${worldCounts.size} distinct commodities · ${MADE_COMMODITIES.size} curated (${dealable} dealable world-wide)`
 )
