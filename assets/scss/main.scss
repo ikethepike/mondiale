@@ -41,6 +41,11 @@ body {
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  // The one spelling of "clear of the bottom edge": home indicator or the
+  // software keyboard (--keyboard-inset, lib/use-viewport.ts), whichever
+  // bites. Bottom-anchored chrome adds this to its offset — never raw
+  // safe-bottom/keyboard math per view.
+  --bottom-clearance: max(var(--safe-bottom), var(--keyboard-inset, 0px));
 }
 @supports (height: 100dvh) {
   :root {
@@ -48,6 +53,9 @@ body {
   }
 }
 
+// On body, not html, and load-bearing: Safari propagates BODY's background
+// to the canvas (the band under its URL bar) only while html has none — the
+// night modes recolor body so the bar joins the dark (see lib/chrome-tint.ts).
 body {
   background-color: var(--background-color);
 }

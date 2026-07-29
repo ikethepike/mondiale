@@ -16,6 +16,6 @@
     --clock-seconds-size: 1.7rem;
     top: auto;
     right: calc(1.2rem + var(--safe-right));
-    bottom: calc(1.6rem + var(--safe-bottom));
+    bottom: calc(1.6rem + var(--bottom-clearance));
   }
 }

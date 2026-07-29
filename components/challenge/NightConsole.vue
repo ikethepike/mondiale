@@ -37,15 +37,14 @@ const low = computed(
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+// Stands in a .shell-footer — the footer owns the berth and the keyboard
+// lift; the console only centers itself and dresses the glass.
 .night-console {
   gap: 0.6rem;
-  left: 50%;
-  bottom: 1.6rem;
+  margin: 0 auto;
   display: flex;
   padding: 1.2rem 1.6rem;
-  position: absolute;
-  overflow: visible; // suggestions open upward, past the card
-  transform: translateX(-50%);
+  overflow: visible; // suggestions open upward, past the card (anchored to .guess-form)
   align-items: center;
   flex-flow: column nowrap;
   border-radius: 1.4rem;

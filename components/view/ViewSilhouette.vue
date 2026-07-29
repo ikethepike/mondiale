@@ -29,7 +29,7 @@
       </svg>
     </section>
 
-    <footer v-if="!resolved">
+    <footer v-if="!resolved" class="suggest-berth">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       <div class="guess-box">
         <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
@@ -209,21 +209,10 @@ header .region-hint {
 }
 
 footer {
-  // Reserve room below the guess input so its suggestion list (which opens
-  // downward) isn't clipped off the bottom of the screen. Scales with viewport
-  // height so it never steals too much room on short screens.
-  padding-bottom: clamp(8rem, 24vh, 20rem);
   // Ticker stacked above the input, both centred.
   gap: 1.4rem;
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
-}
-
-// Compact phone chrome: footer clear of the home indicator.
-@media screen and (max-width: $tablet) {
-  footer {
-    padding: 1.2rem 1.6rem clamp(8rem, 24dvh, 20rem);
-  }
 }
 </style>

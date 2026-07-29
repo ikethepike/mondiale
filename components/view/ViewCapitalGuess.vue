@@ -24,7 +24,7 @@
 
     <!-- The free-type input opens a suggestion list downward, so that variant
          reserves extra room below; the flag-options grid needs none. -->
-    <footer :class="{ 'has-input': !challenge.options }">
+    <footer :class="{ 'suggest-berth': !challenge.options }">
       <!-- Non-hard mode: pick from flag options, the round clock above them.
            Hard mode: the clock lives inside the guess console. -->
       <template v-if="challenge.options">
@@ -170,13 +170,6 @@ footer {
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
-
-  // Free-type variant: lift clear of the viewport edge so the guess input's
-  // suggestion list (which opens downward) isn't clipped off the bottom. Scales
-  // with viewport height so it never steals too much room on short screens.
-  &.has-input {
-    padding-bottom: clamp(8rem, 24vh, 20rem);
-  }
 }
 
 .card-options {
@@ -186,9 +179,6 @@ footer {
   .card-options {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  footer.has-input {
-    padding-bottom: clamp(8rem, 24dvh, 20rem);
   }
 }
 </style>

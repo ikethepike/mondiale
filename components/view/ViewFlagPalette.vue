@@ -37,7 +37,7 @@
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </section>
 
-    <footer>
+    <footer class="suggest-berth">
       <!-- This mode's lower edge belongs to the guess box, so the round
            clock lives inside the console pill instead of the corner berth. -->
       <ChallengeConsole class="console" :value="secondsLeft" :total="challenge.durationSeconds">
@@ -166,21 +166,9 @@ header .region-hint {
 }
 
 footer {
-  // Lift clear of the viewport edge so the guess input's suggestion list
-  // (which opens downward) isn't clipped off the bottom of the screen.
-  // Scales with viewport height so it never steals too much room on short
-  // screens, but always reserves enough on tall ones.
-  padding-bottom: clamp(8rem, 24vh, 20rem);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
-}
-
-// Compact phone chrome: footer clear of the home indicator.
-@media screen and (max-width: $tablet) {
-  footer {
-    padding: 1.2rem 1.6rem clamp(8rem, 24dvh, 20rem);
-  }
 }
 </style>

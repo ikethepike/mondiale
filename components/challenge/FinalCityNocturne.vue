@@ -18,28 +18,30 @@
         </span>
       </div>
     </div>
-    <NightConsole
-      v-show="!finished"
-      :lit="named.size"
-      :quota="challenge.quota"
-      :seconds-left="secondsLeft"
-      :duration-seconds="challenge.durationSeconds"
-    >
-      <input
-        ref="field"
-        v-model="entry"
-        type="text"
-        autocomplete="off"
-        autocapitalize="off"
-        autocorrect="off"
-        spellcheck="false"
-        enterkeyhint="go"
-        :placeholder="`Type ${countryLabel}'s big cities…`"
-        :disabled="paused || finished"
-        @input="onEntry"
-        @keydown.enter.prevent="onEntry"
-      />
-    </NightConsole>
+    <footer ref="consoleFooter" class="shell-footer">
+      <NightConsole
+        v-show="!finished"
+        :lit="named.size"
+        :quota="challenge.quota"
+        :seconds-left="secondsLeft"
+        :duration-seconds="challenge.durationSeconds"
+      >
+        <input
+          ref="field"
+          v-model="entry"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="go"
+          :placeholder="`Type ${countryLabel}'s big cities…`"
+          :disabled="paused || finished"
+          @input="onEntry"
+          @keydown.enter.prevent="onEntry"
+        />
+      </NightConsole>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -47,9 +49,11 @@ import NightConsole from '~/components/challenge/NightConsole.vue'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { MAP_PROJECTION } from '~~/data/map.gen'
+import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { projectRobinson } from '~~/lib/geo'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useMapViewBox } from '~~/lib/use-map-viewbox'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
@@ -78,6 +82,10 @@ const named = ref(new Set<string>())
 const elapsedMs = ref(0)
 const finished = ref(false)
 const { viewBox } = useMapViewBox()
+
+// The framed country stays visible above the console (and the keyboard)
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
@@ -116,12 +124,14 @@ let targetPath: Element | null = null
 
 const nightfall = () => {
   document.body.classList.add('nocturne-night')
+  setChromeTint(NIGHT_CHROME)
   targetPath = document.querySelector(`.game-map path[data-id][id="${props.challenge.country}"]`)
   targetPath?.classList.add('nocturne-target')
 }
 
 const daybreak = () => {
   document.body.classList.remove('nocturne-night')
+  setChromeTint()
   targetPath?.classList.remove('nocturne-target')
 }
 
@@ -215,10 +225,16 @@ body.nocturne-night {
 }
 </style>
 <style lang="scss" scoped>
+// Scenic overlay per the challenge-shell contract: the lights stay
+// pointer-inert behind everything; the console stands in a .shell-footer at
+// the column's foot and inherits the shared berth + bottom clearance.
 .final-city-nocturne {
   inset: 0;
+  display: flex;
   position: absolute;
   pointer-events: none;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
 }
 
 .lights {

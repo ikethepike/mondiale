@@ -85,14 +85,25 @@ import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import CheerToast from '~/components/feedback/CheerToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
+import { useChromeTint } from '~~/lib/chrome-tint'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { excludedMicroNations } from '~~/lib/game-rules'
 import { formatNumber } from '~~/lib/number'
+import { useKeyboardInset } from '~~/lib/use-viewport'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { BOARD_PHASES } from '~~/types/player.type'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
+
+// Keeps --keyboard-inset live for every bottom-anchored console (night
+// consoles, guess-box footers) and pins the fixed shell against the
+// software keyboard's caret-chasing scroll.
+useKeyboardInset()
+
+// The layout is the sole theme-color writer — scenes only call the setter
+// (lib/chrome-tint.ts), and Safari's bar joins the day or the night.
+useHead({ meta: [{ name: 'theme-color', content: useChromeTint() }] })
 
 const reveal = toRef(gameStore.map, 'reveal')
 const status = toRef(gameStore.map, 'status')
@@ -300,9 +311,14 @@ onMounted(() => {
     border: none;
     max-width: min(26rem, calc(100% - 6rem));
     font-size: 0.95em;
-    padding: 0 0 var(--safe-bottom);
+    padding: 0 0 var(--bottom-clearance);
     .flag {
       margin-bottom: 1rem;
+    }
+    // The pane's decorator rule would sit right on the URL bar / home
+    // indicator — let the card's edge read soft instead of ruled off.
+    .pane {
+      border-bottom: none;
     }
   }
 

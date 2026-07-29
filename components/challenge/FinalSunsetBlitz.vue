@@ -10,22 +10,24 @@
     <div class="terminator" :class="{ settled: finished }" aria-hidden="true">
       <span class="band" />
     </div>
-    <NightConsole
-      v-show="!finished"
-      :lit="named.size"
-      :quota="quota"
-      :seconds-left="secondsLeft"
-      :duration-seconds="challenge.durationSeconds"
-      :feedback="feedback"
-    >
-      <CountryGuessInput
-        ref="guessInput"
-        placeholder="Type a country before it goes dark…"
-        :disabled="paused || finished"
-        :excluded="excluded"
-        @guess="onGuess"
-      />
-    </NightConsole>
+    <footer ref="consoleFooter" class="shell-footer">
+      <NightConsole
+        v-show="!finished"
+        :lit="named.size"
+        :quota="quota"
+        :seconds-left="secondsLeft"
+        :duration-seconds="challenge.durationSeconds"
+        :feedback="feedback"
+      >
+        <CountryGuessInput
+          ref="guessInput"
+          placeholder="Type a country before it goes dark…"
+          :disabled="paused || finished"
+          :excluded="excluded"
+          @guess="onGuess"
+        />
+      </NightConsole>
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
@@ -39,9 +41,11 @@ import {
   sunsetDuskCoordinate,
   sunsetQuota,
 } from '~~/lib/challenges/final-challenge'
+import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -82,6 +86,11 @@ const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
 const { viewBox } = useMapViewBox()
+
+// The dealt window stays visible above the console (and the keyboard); the
+// sweep bounds lock against the berthed camera, so line and window agree
+const consoleFooter = ref<HTMLElement>()
+useFooterBerth(consoleFooter)
 
 const durationMs = props.challenge.durationSeconds * 1000
 // The sweep clock starts once the camera has settled and the bounds are
@@ -183,6 +192,9 @@ const finish = () => {
     if (!named.value.has(isoCode)) darken(isoCode)
   }
   document.body.classList.add('sunset-settled')
+  // Only now: mid-sweep the body abutting the browser chrome is still day —
+  // the rolling night is the clipped .layout::before plane, never the bar
+  setChromeTint(NIGHT_CHROME)
   // Everything that could have scored: the window plus whatever the screen
   // showed — the reveal owes the player the full field, not just the window
   const inPlay = pool.value.filter(
@@ -292,6 +304,7 @@ onBeforeUnmount(() => {
   document.body.classList.remove('sunset-blitz')
   document.body.classList.remove('sunset-settled')
   document.body.style.removeProperty('--sunset-veil')
+  setChromeTint()
 })
 </script>
 <style lang="scss">
@@ -403,10 +416,16 @@ body.sunset-settled {
 }
 </style>
 <style lang="scss" scoped>
+// Scenic overlay per the challenge-shell contract: the terminator stays
+// pointer-inert; the console stands in a .shell-footer at the column's foot
+// and inherits the shared berth + bottom clearance.
 .final-sunset-blitz {
   inset: 0;
+  display: flex;
   position: absolute;
   pointer-events: none;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
 }
 
 // The visible front: a slim glowing band riding the same transform as the

@@ -544,7 +544,8 @@ const closeScores = () => {
 @media screen and (max-width: $tablet) {
   .group-scores {
     grid-template-columns: 100%;
-    // Clear of the URL bar the lvh ModalWrapper now runs beneath.
+    // Bottom breathing room inside the ModalWrapper scroller, past the
+    // home indicator.
     margin-bottom: calc(var(--safe-bottom) + 2rem);
   }
 
