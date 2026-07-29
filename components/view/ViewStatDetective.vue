@@ -366,9 +366,9 @@ header .region-hint {
     order: -1;
   }
   // Contained by its card — a viewport-relative width breaks out of the
-  // card's border on narrow screens. The stack frees room, so the peek at
-  // the place gets to breathe.
-  .photo-clue-stage {
+  // card's border on narrow screens. Nested to match the base rule's
+  // specificity, which otherwise wins and lets the 84vw plate escape.
+  .photo-clue .photo-clue-stage {
     width: 100%;
     height: min(34dvh, 30rem);
   }
