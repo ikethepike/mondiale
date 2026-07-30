@@ -4,6 +4,7 @@ import { LANDMARK_FACTS } from './data/landmark-facts'
 import { LANDMARK_SEEDS, type LandmarkKind } from './data/landmark-seeds'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
+  captureImageCredit,
   existingImagePath,
   fetchImageDimensions,
   fetchJson,
@@ -13,6 +14,7 @@ import {
   saveImageUrl,
   wait,
 } from './vendors/wikidata/commons'
+import { pickMediaCredit, type MediaCredit } from '../lib/attribution'
 import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/unsplash/unsplash'
 
 /**
@@ -39,7 +41,7 @@ export interface LandmarkCoordinates {
   lng: number
 }
 
-export interface LandmarkEntry {
+export interface LandmarkEntry extends MediaCredit {
   name: string
   country: ISOCountryCode
   kind: LandmarkKind
@@ -281,6 +283,13 @@ let rejected = 0
 for (const { seed, qid } of resolved) {
   const slug = slugify(seed.name)
   let publicPath: string | undefined
+  // Landmarks are the one dataset that mixes photo sources, so each entry
+  // records which one its file came from alongside the photographer.
+  let media: MediaCredit | undefined
+  // The Commons file behind the shipped photo, when Commons is what won.
+  let commonsFile: string | undefined
+  // Set once we know which source the shipped file came from.
+  let credited = false
 
   // 1) Override: direct URL → Unsplash (preferred, when keyed) → explicit
   //    Commons filename. Overrides bypass the viability pass — they were
@@ -293,24 +302,42 @@ for (const { seed, qid } of resolved) {
       `/landmarks/${slug}`,
       { width: LANDMARK_WIDTH, force }
     )
+    // A hand-pinned URL names no author; keep whatever a past run captured
+    // rather than crediting it to the Wikidata photo it replaced.
+    if (publicPath) {
+      credited = true
+      media = pickMediaCredit(previousMapping[slug])
+    }
   }
   if (!publicPath && seed.unsplashPhotoId && hasUnsplashKey()) {
-    publicPath = await saveUnsplashPhoto(
+    const photo = await saveUnsplashPhoto(
       seed.unsplashPhotoId,
       `${OUTPUT_DIRECTORY}/${slug}`,
       `/landmarks/${slug}`,
       LANDMARK_WIDTH,
       force
     )
+    if (photo) {
+      const { image, ...credit } = photo
+      publicPath = image
+      media = credit
+      credited = true
+    }
   }
   if (!publicPath && seed.unsplash && hasUnsplashKey()) {
-    publicPath = await saveUnsplashImage(
+    const photo = await saveUnsplashImage(
       seed.unsplash,
       `${OUTPUT_DIRECTORY}/${slug}`,
       `/landmarks/${slug}`,
       LANDMARK_WIDTH,
       force
     )
+    if (photo) {
+      const { image, ...credit } = photo
+      publicPath = image
+      media = credit
+      credited = true
+    }
   }
   if (!publicPath && seed.commons) {
     publicPath = await saveCommonsImage(
@@ -319,6 +346,10 @@ for (const { seed, qid } of resolved) {
       `/landmarks/${slug}`,
       { width: LANDMARK_WIDTH, force }
     )
+    if (publicPath) {
+      commonsFile = seed.commons
+      credited = true
+    }
   }
 
   // 2) Otherwise the Wikidata default photo, viability-checked.
@@ -329,25 +360,36 @@ for (const { seed, qid } of resolved) {
       ? undefined
       : existingImagePath(`${OUTPUT_DIRECTORY}/${slug}`, `/landmarks/${slug}`)
   }
-  if (!publicPath) {
+  if (!publicPath || !credited) {
     const file = photoFiles.get(qid)
     if (!file) {
-      console.warn(`  no photo for "${seed.name}"`)
-      failed++
-      continue
+      if (!publicPath) {
+        console.warn(`  no photo for "${seed.name}"`)
+        failed++
+        continue
+      }
+      media = pickMediaCredit(previousMapping[slug])
+    } else if (publicPath) {
+      // The Wikidata photo is already on disk from an earlier run: no download,
+      // but the file is known, so it can still be credited.
+      commonsFile = file
+    } else {
+      // Reject a low-resolution source — it looks bad upscaled in a photo quiz.
+      const dimensions = await fetchImageDimensions(file)
+      if (dimensions && dimensions.width < MIN_IMAGE_WIDTH) {
+        console.warn(`  rejected "${seed.name}" — source only ${dimensions.width}px wide`)
+        rejected++
+        await wait(120)
+        continue
+      }
+      publicPath = await saveCommonsImage(
+        file,
+        `${OUTPUT_DIRECTORY}/${slug}`,
+        `/landmarks/${slug}`,
+        { width: LANDMARK_WIDTH, force }
+      )
+      if (publicPath) commonsFile = file
     }
-    // Reject a low-resolution source — it looks bad upscaled in a photo quiz.
-    const dimensions = await fetchImageDimensions(file)
-    if (dimensions && dimensions.width < MIN_IMAGE_WIDTH) {
-      console.warn(`  rejected "${seed.name}" — source only ${dimensions.width}px wide`)
-      rejected++
-      await wait(120)
-      continue
-    }
-    publicPath = await saveCommonsImage(file, `${OUTPUT_DIRECTORY}/${slug}`, `/landmarks/${slug}`, {
-      width: LANDMARK_WIDTH,
-      force,
-    })
   }
 
   if (!publicPath) {
@@ -359,11 +401,17 @@ for (const { seed, qid } of resolved) {
   const city = locationQid ? locationLabels.get(locationQid) : undefined
   const coordinates = coordinateOf.get(qid)
   const description = LANDMARK_FACTS[slug]
+  if (commonsFile) {
+    const credit = await captureImageCredit(commonsFile, previousMapping[slug], force)
+    media = pickMediaCredit({ ...credit, imageSource: 'commons-media' })
+  }
+
   mapping[slug] = {
     name: seed.name,
     country: seed.country,
     kind: seed.kind,
     image: publicPath,
+    ...(media ?? {}),
     ...(city ? { city } : {}),
     ...(coordinates ? { coordinates } : {}),
     ...(description ? { description } : {}),

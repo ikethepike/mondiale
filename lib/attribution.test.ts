@@ -10,6 +10,8 @@ import {
   attributionFor,
   attributionLine,
   datasetAttribution,
+  mediaCreditLine,
+  pickMediaCredit,
   trendAttribution,
   type DataOrigin,
   type DataSetId,
@@ -132,6 +134,34 @@ describe('trendAttribution', () => {
       credit: 'World Bank via Our World in Data',
       year: 2023,
     })
+  })
+})
+
+describe('media credits', () => {
+  it('names the photographer, the licence and where the file came from', () => {
+    expect(mediaCreditLine({ credit: 'Jane Doe', license: 'CC BY-SA 4.0' }, 'commons-media')).toBe(
+      'Jane Doe · CC BY-SA 4.0 · Wikimedia Commons'
+    )
+  })
+
+  it("lets an entry's own source win the dataset's", () => {
+    expect(
+      mediaCreditLine(
+        { credit: 'Sam Reed', license: 'Unsplash Licence', imageSource: 'unsplash-photos' },
+        'commons-media'
+      )
+    ).toBe('Sam Reed · Unsplash Licence · Unsplash')
+  })
+
+  it('stays undefined when nothing was captured, so no empty rule renders', () => {
+    expect(mediaCreditLine(undefined, 'commons-media')).toBeUndefined()
+    expect(mediaCreditLine({}, 'commons-media')).toBeUndefined()
+  })
+
+  it('carries only the credit fields between generator runs', () => {
+    const entry = { name: 'Petra', image: '/landmarks/petra.webp', credit: 'Jane Doe' }
+    expect(pickMediaCredit(entry)).toEqual({ credit: 'Jane Doe' })
+    expect(pickMediaCredit({ name: 'Petra' })).toBeUndefined()
   })
 })
 

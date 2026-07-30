@@ -776,3 +776,42 @@ export const statSourceLine = (
   accessorId: GroupChallengeAccessorId | IndividualChallengeAccessorId,
   value?: Pick<Amount<unknown>, 'year' | 'source'>
 ): string => attributionLine(attributionFor(accessorId, value))
+
+/**
+ * Per-file credit for a shipped photo. Commons and Unsplash both licence under
+ * attribution terms, so the photographer travels with the image rather than
+ * with its dataset — every generated entry that carries an `image` carries
+ * these too.
+ */
+export interface MediaCredit {
+  /** Author/photographer, as the source publishes it. */
+  credit?: string
+  /** Licence short name, e.g. "CC BY-SA 4.0". */
+  license?: string
+  /** Only where a dataset mixes sources (landmarks pull from both); otherwise
+   *  the dataset's own origins say where the file came from. */
+  imageSource?: SourceId
+}
+
+/** Just the credit fields of an entry that also holds game data — the one way
+ *  to carry a photo's credit from one generator run to the next. */
+export const pickMediaCredit = (entry: MediaCredit | undefined): MediaCredit | undefined => {
+  if (!entry?.credit && !entry?.license) return undefined
+  return {
+    ...(entry.credit ? { credit: entry.credit } : {}),
+    ...(entry.license ? { license: entry.license } : {}),
+    ...(entry.imageSource ? { imageSource: entry.imageSource } : {}),
+  }
+}
+
+/** The line a view prints under a photo: "Jane Doe · CC BY-SA 4.0 · Wikimedia
+ *  Commons". Undefined when nothing was captured — never render an empty rule. */
+export const mediaCreditLine = (
+  media: MediaCredit | undefined,
+  fallbackSource?: SourceId
+): string | undefined => {
+  if (!media?.credit && !media?.license) return undefined
+  const sourceId = media.imageSource ?? fallbackSource
+  const provider = sourceId ? PROVIDERS[SOURCES[sourceId].provider].name : undefined
+  return [media.credit, media.license, provider].filter(Boolean).join(' · ')
+}

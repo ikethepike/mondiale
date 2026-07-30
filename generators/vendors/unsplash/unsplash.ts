@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { writeWebp } from '../wikidata/commons'
+import type { MediaCredit } from '../../../lib/attribution'
 
 /**
  * Minimal Unsplash image fetcher for landmark overrides where Wikidata's
@@ -19,16 +20,31 @@ import { writeWebp } from '../wikidata/commons'
 const ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 let warnedNoKey = false
 
-// --- URL cache (query/photoId → resolved raw url) ---------------------------
+// --- URL cache (query/photoId → resolved raw url + photographer) ------------
 const CACHE_FILE = 'generators/vendors/unsplash/.cache/urls.json'
-let urlCache: Record<string, string> = {}
+interface CachedPhoto {
+  raw: string
+  /** The photographer, whom the Unsplash licence requires us to name. */
+  credit?: string
+}
+let urlCache: Record<string, CachedPhoto> = {}
 try {
-  urlCache = JSON.parse(readFileSync(CACHE_FILE, 'utf-8'))
+  const stored = JSON.parse(readFileSync(CACHE_FILE, 'utf-8')) as Record<
+    string,
+    string | CachedPhoto
+  >
+  // Entries cached before credits were captured are bare urls.
+  urlCache = Object.fromEntries(
+    Object.entries(stored).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? { raw: value } : value,
+    ])
+  )
 } catch {
   // no cache yet
 }
-const rememberUrl = (key: string, url: string) => {
-  urlCache[key] = url
+const rememberPhoto = (key: string, photo: CachedPhoto) => {
+  urlCache[key] = photo
   mkdirSync(dirname(CACHE_FILE), { recursive: true })
   writeFileSync(CACHE_FILE, JSON.stringify(urlCache, null, 2))
 }
@@ -45,7 +61,22 @@ export const hasUnsplashKey = (): boolean => {
 
 interface UnsplashPhoto {
   urls?: { raw?: string; regular?: string }
+  user?: { name?: string }
 }
+
+/** What a saved photo hands back: the public path plus its credit. */
+export interface SavedPhoto extends MediaCredit {
+  image: string
+}
+
+const UNSPLASH_LICENSE = 'Unsplash Licence'
+
+const credited = (image: string, credit?: string): SavedPhoto => ({
+  image,
+  ...(credit ? { credit } : {}),
+  license: UNSPLASH_LICENSE,
+  imageSource: 'unsplash-photos',
+})
 interface SearchResponse {
   results?: UnsplashPhoto[]
 }
@@ -78,29 +109,31 @@ export const saveUnsplashPhoto = async (
   publicBase: string,
   width: number,
   force = false
-): Promise<string | undefined> => {
+): Promise<SavedPhoto | undefined> => {
   if (!ACCESS_KEY) return undefined
+  const key = `photo:${photoId}`
   if (!force) {
     const existing = existingImage(baseName, publicBase)
-    if (existing) return existing
+    if (existing) return credited(existing, urlCache[key]?.credit)
   }
 
-  const key = `photo:${photoId}`
-  let raw = urlCache[key]
-  if (!raw) {
+  let cached = urlCache[key]
+  if (!cached) {
     const photo = await fetch(`https://api.unsplash.com/photos/${photoId}`, {
       headers: { Authorization: `Client-ID ${ACCESS_KEY}` },
     })
       .then(response => (response.ok ? (response.json() as Promise<UnsplashPhoto>) : undefined))
       .catch(() => undefined)
-    raw = photo?.urls?.raw ?? photo?.urls?.regular ?? ''
+    const raw = photo?.urls?.raw ?? photo?.urls?.regular
     if (!raw) {
       console.warn(`  no Unsplash photo for id "${photoId}"`)
       return undefined
     }
-    rememberUrl(key, raw)
+    cached = { raw, ...(photo?.user?.name ? { credit: photo.user.name } : {}) }
+    rememberPhoto(key, cached)
   }
-  return downloadSized(raw, baseName, publicBase, width)
+  const image = await downloadSized(cached.raw, baseName, publicBase, width)
+  return image ? credited(image, cached.credit) : undefined
 }
 
 /**
@@ -114,16 +147,19 @@ export const saveUnsplashImage = async (
   publicBase: string,
   width: number,
   force = false
-): Promise<string | undefined> => {
+): Promise<SavedPhoto | undefined> => {
   if (!ACCESS_KEY) return undefined
+  const key = `search:${query}`
   if (!force) {
     const existing = existingImage(baseName, publicBase)
-    if (existing) return existing
+    if (existing) return credited(existing, urlCache[key]?.credit)
   }
 
-  const key = `search:${query}`
   const cached = urlCache[key]
-  if (cached) return downloadSized(cached, baseName, publicBase, width)
+  if (cached) {
+    const image = await downloadSized(cached.raw, baseName, publicBase, width)
+    return image ? credited(image, cached.credit) : undefined
+  }
 
   const search = await fetch(
     `https://api.unsplash.com/search/photos?query=${encodeURIComponent(
@@ -134,11 +170,14 @@ export const saveUnsplashImage = async (
     .then(response => (response.ok ? (response.json() as Promise<SearchResponse>) : undefined))
     .catch(() => undefined)
 
-  const raw = search?.results?.[0]?.urls?.raw ?? search?.results?.[0]?.urls?.regular
+  const result = search?.results?.[0]
+  const raw = result?.urls?.raw ?? result?.urls?.regular
   if (!raw) {
     console.warn(`  no Unsplash result for "${query}"`)
     return undefined
   }
-  rememberUrl(key, raw)
-  return downloadSized(raw, baseName, publicBase, width)
+  const photo = { raw, ...(result?.user?.name ? { credit: result.user.name } : {}) }
+  rememberPhoto(key, photo)
+  const image = await downloadSized(raw, baseName, publicBase, width)
+  return image ? credited(image, photo.credit) : undefined
 }

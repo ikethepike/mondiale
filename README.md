@@ -56,6 +56,12 @@ until it is. Views resolve credits through `attributionFor(accessorId, amount)`
 (or `datasetAttribution(datasetId)`) rather than naming a source in copy, and
 `pages/sources.vue` is rendered straight from the registry.
 
+Photos carry their own credit: every media generator writes `credit` and
+`license` beside the image (Commons extmetadata, or the Unsplash photographer),
+so a view can name whoever the licence requires it to name via
+`mediaCreditLine`. Landmarks mix sources, so their entries also record which one
+the file came from.
+
 Per-value provenance rides along on `Amount.source`, stamped by the generators
 where a stat has a fallback chain (military spending prefers SIPRI via OWID and
 backstops with the Factbook), so a figure is credited to the source it actually
