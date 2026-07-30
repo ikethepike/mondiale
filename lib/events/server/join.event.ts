@@ -4,7 +4,7 @@ import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
-import { scheduleMovementPhase } from './enter-movement-phase.handler'
+import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
 
 /** A room stops admitting watchers past this — a bound on the "N watching"
  *  count and, more importantly, on the spectator records that ride every
@@ -112,10 +112,14 @@ export const joinEventHandler: EventHandler = async ({
     return
   }
 
-  // Safety logic for returning players
+  // Safety logic for returning players: someone who left before answering owes
+  // the live round an answer, so hand them back the challenge. Guarded on the
+  // answer being ABSENT — a player whose answer is already banked has finished
+  // the round, and demoting them would strand the table on a seat that can
+  // never submit again (the duplicate guard heals that case, but this must not
+  // manufacture it).
   const index = game.rounds.length - 1
   if (index !== -1) {
-    console.log('There are rounds')
     const latestRound = game.rounds[index]
     if (
       game.players[playerId].phase === 'movement-summary' &&
@@ -135,7 +139,15 @@ export const joinEventHandler: EventHandler = async ({
     rejoining.moves.length === 0
   const wedgedMoving = rejoining.phase === 'moving'
 
-  if (game.started && (orphanedInChallenge || wedgedMoving)) {
+  // Every seat settled but the round never staged: the advance is driven by a
+  // client flag held in browser memory, so a refresh (or a board chunk that
+  // failed to load) can leave the whole table parked on "Finished this turn"
+  // with nobody able to ask the server to move on. Rejoining is the recovery
+  // moment — re-entering is idempotent, so make the refresh the escape hatch.
+  const tableSettledButStuck =
+    rejoining.phase === 'movement-summary' && tableIsSettled(Object.values(game.players))
+
+  if (game.started && (orphanedInChallenge || wedgedMoving || tableSettledButStuck)) {
     console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)
     // The walk guard rejects 'moving' re-entry; hand the phase back first
     if (wedgedMoving) rejoining.phase = 'group-scores'

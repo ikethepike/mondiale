@@ -13,13 +13,58 @@ import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
+import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
 
 /** Phases that no longer take part in a round's movement. */
-const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
+export const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
 
 const STEP_INTERVAL = 500
 const NEW_ROUND_PAUSE = 2000
+
+/**
+ * Backstop for a table that is ready to advance but has nobody left to ask.
+ *
+ * Round staging only happens inside this handler, and the only thing that
+ * calls it after a scorecard is a CLIENT flag (`pendingMovementRequest`, set
+ * in browser memory when the group-scores modal closes). A player who
+ * refreshes, whose board chunk fails to load, or who closes scores at the
+ * wrong moment drops that flag — and if they were the last seat the table
+ * needed, the round never stages and the room freezes on "Finished this
+ * turn" with every seat settled and no client willing to speak.
+ *
+ * So: whenever a seat settles without the table being ready, arm a
+ * server-owned re-check. It re-enters this handler as a continuation, which
+ * is idempotent — if a client got there first, `readyForNextTurn` and the
+ * `pendingRoundStart` latch simply make it a no-op.
+ *
+ * Re-entry lands on the `alreadySettled` path, so each tick re-arms the next
+ * one: a self-sustaining poll that survives every client going quiet. It is
+ * bounded so a seat that is never coming back (closed tab, dead network)
+ * cannot spin a timer for the life of the room.
+ */
+export const ADVANCE_WATCHDOG_MS = 8000
+export const ADVANCE_WATCHDOG_MAX_TICKS = 40
+
+/** Every seat has finished its turn — the table can stage the next round. */
+export const tableIsSettled = (players: Pick<Player, 'phase'>[]): boolean =>
+  players.every(entry => SETTLED_PHASES.includes(entry.phase))
+
+/**
+ * Should a settled seat arm the server-owned advance re-check? Only when the
+ * seat itself is done but the table is not, and no round is already staged —
+ * i.e. exactly the window where the missing client flag freezes the room.
+ */
+export const shouldArmAdvanceWatchdog = ({
+  players,
+  playerPhase,
+  pendingRoundStart,
+}: {
+  players: Pick<Player, 'phase'>[]
+  playerPhase: Player['phase']
+  pendingRoundStart?: boolean
+}): boolean =>
+  SETTLED_PHASES.includes(playerPhase) && !tableIsSettled(players) && !pendingRoundStart
 
 /**
  * Enter (or re-enter) the movement phase through the per-game queue after
@@ -33,7 +78,7 @@ const NEW_ROUND_PAUSE = 2000
 export const scheduleMovementPhase = (
   delay: number,
   ctx: { io: GameServer; redis: Redis; socket: GameSocket; eventTarget: ClientEventTarget },
-  options: { continuation?: boolean } = {}
+  options: { continuation?: boolean; watchdogTick?: number } = {}
 ) => {
   setTimeout(() => {
     enqueueGameTask(ctx.eventTarget.gameId, () =>
@@ -46,6 +91,7 @@ export const scheduleMovementPhase = (
         eventData: {
           event: 'enter-movement-phase',
           ...(options.continuation ? { continuation: true } : {}),
+          ...(options.watchdogTick ? { watchdogTick: options.watchdogTick } : {}),
         },
       })
     )
@@ -125,7 +171,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // Players who already won (or were kicked) can't reach movement-summary —
     // counting them as settled keeps the game moving for everyone else
     const players = Object.values(game.players)
-    const readyForNextTurn = players.every(entry => SETTLED_PHASES.includes(entry.phase))
+    const readyForNextTurn = tableIsSettled(players)
     const stillCompeting = players.some(entry => entry.phase === 'movement-summary')
 
     // Stage the next round, then reveal it after a settle pause. The pause runs
@@ -146,6 +192,36 @@ export const enterMovementPhaseHandler = defineGameHandler(
         { continuation: true }
       )
       return
+    }
+
+    // Settled, but the table isn't ready — the seats we're waiting on each owe
+    // a client-flag-driven request that may never come (see
+    // ADVANCE_WATCHDOG_MS). Arm a server-owned re-check so the round can stage
+    // without one. Harmless when a client beats us here: re-entry is a
+    // continuation and the checks above are already idempotent.
+    if (
+      shouldArmAdvanceWatchdog({
+        players,
+        playerPhase: player.phase,
+        pendingRoundStart: game.pendingRoundStart,
+      })
+    ) {
+      const tick = (eventData.watchdogTick ?? 0) + 1
+      if (tick <= ADVANCE_WATCHDOG_MAX_TICKS) {
+        scheduleMovementPhase(
+          ADVANCE_WATCHDOG_MS,
+          { io, redis, socket, eventTarget },
+          { continuation: true, watchdogTick: tick }
+        )
+      } else {
+        console.warn(
+          `Round-advance watchdog gave up for ${eventTarget.gameId} after ${tick - 1} ticks; ` +
+            `unsettled seats: ${players
+              .filter(entry => !SETTLED_PHASES.includes(entry.phase))
+              .map(entry => `${entry.name}:${entry.phase}`)
+              .join(', ')}`
+        )
+      }
     }
 
     // The staged round's settle pause has elapsed: flip the waiting players in

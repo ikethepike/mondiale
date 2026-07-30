@@ -40,6 +40,10 @@ export type ClientEventData =
        * itself is still validated server-side where possible.
        */
       clientScore?: number
+      /** Buzz rounds: the clock fraction left at the moment of the buzz, for
+       *  the reveal's buzz race. Reveal-only — the score is already clamped
+       *  above, and `buzzScore` can't be inverted back to this. */
+      buzzAt?: number
       /** Sketch rounds: the normalized drawn outline, for the reveal overlay. */
       sketch?: [number, number][]
       /** Pin-landmark rounds: where on the globe the player dropped their pin.
@@ -154,6 +158,10 @@ export type ClientEventData =
        *  guard lets it through. Never sent by clients (they bypass no guard by
        *  setting it — Fix #1 binds the socket to its own playerId). */
       continuation?: boolean
+      /** Server-only: how many round-advance watchdog re-checks have fired for
+       *  this settle. Bounds the self-sustaining poll so a seat that never
+       *  returns cannot spin a timer for the life of the room. */
+      watchdogTick?: number
     }
   | {
       event: 'update-by-index'

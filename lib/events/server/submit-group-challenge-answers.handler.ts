@@ -28,8 +28,23 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     if (!currentRound) throw new ReferenceError('No round in play to submit answers for')
 
     // A repeat submission (double-click, reconnect replay) would re-score the
-    // round and rebuild the player's moves — possibly mid-walk
+    // round and rebuild the player's moves — possibly mid-walk.
     if (currentRound.groupAnswers[playerId]) {
+      // …but an answer banked while the phase advance was LOST leaves the seat
+      // parked in 'group-challenge' forever, and `readyForNextTurn` in
+      // enter-movement-phase requires every seat settled — one such seat
+      // freezes the whole table. Re-derive the advance from the already-banked
+      // score instead of bailing, so the retry the client is already sending
+      // becomes the cure. Idempotent: the score is read, never recomputed.
+      if (player.phase === 'group-challenge') {
+        const banked = currentRound.playerTurns[playerId]?.points
+        console.warn(`Healing stranded submitter ${playerId} (answer banked, phase was not)`)
+        player.phase = 'group-scores'
+        player.moves = movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 })
+        await server.updateGameState(game)
+        server.emit({ event: 'group-challenge-scored', game }, eventTarget)
+        return
+      }
       return console.warn(`Duplicate round submission ignored for player: ${playerId}`)
     }
 
