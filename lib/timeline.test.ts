@@ -28,6 +28,21 @@ const state = (overrides: Partial<TimelineState> = {}): TimelineState => ({
   ...overrides,
 })
 
+describe('event card titles', () => {
+  // The whole round is "when did this happen?" — a title that prints the year
+  // answers its own card. Model numbers (the 747) are fine; the card's own date
+  // is not, so only digits at or near `year` count as a leak.
+  it('never gives away the year they ask the table to place', () => {
+    const leaks = Object.entries(EVENTS).filter(([, event]) =>
+      [...event.name.matchAll(/\d{3,4}/g)].some(
+        match => Math.abs(Number(match[0]) - Math.abs(event.year)) <= 5
+      )
+    )
+
+    expect(leaks.map(([slug, event]) => `${slug}: ${event.name}`)).toEqual([])
+  })
+})
+
 const challenge = (
   stateOverrides: Partial<TimelineState> = {},
   maximumPoints = 15

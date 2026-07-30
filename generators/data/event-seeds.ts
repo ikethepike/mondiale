@@ -525,6 +525,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1755 Lisbon earthquake',
+    title: 'An earthquake destroys Lisbon',
     country: 'PT',
     kind: 'disaster',
     year: 1755,
@@ -801,6 +802,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Indian Rebellion of 1857',
+    title: 'The sepoys rise against the East India Company',
     country: 'IN',
     kind: 'revolution',
     year: 1857,
@@ -922,6 +924,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1883 eruption of Krakatoa',
+    title: 'Krakatoa blows itself apart',
     country: 'ID',
     kind: 'disaster',
     year: 1883,
@@ -1052,6 +1055,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1906 San Francisco earthquake',
+    title: 'San Francisco burns after the earthquake',
     country: 'US',
     kind: 'disaster',
     year: 1906,
@@ -1170,7 +1174,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Spanish flu',
-    title: 'The 1918 flu pandemic',
+    title: 'The great flu pandemic sweeps the world',
     country: 'US',
     kind: 'disaster',
     year: 1918,
@@ -1240,6 +1244,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1923 Great Kantō earthquake',
+    title: 'The Great Kantō earthquake levels Tokyo',
     country: 'JP',
     kind: 'disaster',
     year: 1923,
@@ -1268,6 +1273,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Wall Street Crash of 1929',
+    title: 'Wall Street crashes',
     country: 'US',
     kind: 'disaster',
     year: 1929,
@@ -1614,6 +1620,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Hungarian Revolution of 1956',
+    title: 'Budapest rises against Soviet rule',
     country: 'HU',
     kind: 'revolution',
     year: 1956,
@@ -1892,6 +1899,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1973 oil crisis',
+    title: 'The oil embargo quadruples the price of crude',
     country: 'SA',
     kind: 'politics',
     year: 1973,
@@ -1953,6 +1961,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1976 Tangshan earthquake',
+    title: 'An earthquake flattens Tangshan',
     country: 'CN',
     kind: 'disaster',
     year: 1976,
@@ -2045,6 +2054,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1985 Mexico City earthquake',
+    title: 'An earthquake collapses Mexico City',
     country: 'MX',
     kind: 'disaster',
     year: 1985,
@@ -2282,6 +2292,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '1997 Asian financial crisis',
+    title: 'The Asian financial crisis breaks the tigers',
     country: 'TH',
     kind: 'disaster',
     year: 1997,
@@ -2376,6 +2387,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '2004 Indian Ocean earthquake and tsunami',
+    title: 'A tsunami crosses the Indian Ocean',
     country: 'ID',
     kind: 'disaster',
     year: 2004,
@@ -2466,6 +2478,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '2010 Haiti earthquake',
+    title: 'An earthquake devastates Port-au-Prince',
     country: 'HT',
     kind: 'disaster',
     year: 2010,
@@ -2652,6 +2665,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: '2023 Turkey–Syria earthquakes',
+    title: 'Earthquakes flatten cities across Türkiye and Syria',
     country: 'TR',
     kind: 'disaster',
     year: 2023,
