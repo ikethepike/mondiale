@@ -19,6 +19,7 @@ import {
   hintDockedScore,
   scorePinDistance,
 } from './scoring'
+import { getValueByAccessorID } from './values'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -291,9 +292,88 @@ describe('scoreChallengeSubmission', () => {
   // pin that the two can never disagree.
   it('pays exactly what the per-country breakdown adds up to', () => {
     for (const submitted of [correct, [...correct].reverse(), correct.slice(1)]) {
-      const rows = rankingBreakdown({ submitted, correct })
+      const rows = rankingBreakdown({ submitted, correct, groupChallengeAccessorId })
       expect(score(submitted).scored).toBe(rows.reduce((sum, row) => sum + row.points, 0))
     }
+  })
+
+  // Five countries on exactly 100 % electricity access: the sort that produced
+  // the "correct" order broke that tie by nothing at all, so any order inside
+  // the band has to pay full marks.
+  describe('countries sharing a value', () => {
+    const accessorId = 'energy.electricityAccess'
+    const tied: ISOCountryCode[] = ['TT', 'IQ', 'AR', 'SV', 'NR']
+    const dealt: ISOCountryCode[] = [...tied, 'KH']
+    const order = getCorrectRanking({ groupChallengeAccessorId: accessorId, isoCodes: dealt })
+
+    const scoreTied = (submittedRanking: ISOCountryCode[]) =>
+      scoreChallengeSubmission({
+        groupChallengeAccessorId: accessorId,
+        submittedRanking,
+        dealtCountries: dealt,
+      })
+
+    it('confirms the fixture really is a five-way tie above a lone value', () => {
+      const amounts = order.map(isoCode => getValueByAccessorID(isoCode, accessorId)?.amount)
+      expect(amounts).toEqual([100, 100, 100, 100, 100, 92.3])
+    })
+
+    it('pays full marks for any order within the tie band', () => {
+      // Every rotation of the tied five keeps them inside slots 1–5.
+      for (let rotation = 0; rotation < tied.length; rotation++) {
+        const rotated = [...tied.slice(rotation), ...tied.slice(0, rotation)]
+        expect(scoreTied([...rotated, 'KH'])).toEqual({ scored: 18, maximum: 18 })
+      }
+    })
+
+    it('still charges for leaving the band', () => {
+      // KH (92.3 %, slot 6) hoisted to the top pushes one tied country out to
+      // slot 6 — one slot past the band's edge — and lands KH five slots high.
+      const rows = rankingBreakdown({
+        submitted: ['KH', ...tied],
+        correct: order,
+        groupChallengeAccessorId: accessorId,
+      })
+      expect(rows.map(row => row.points)).toEqual([3, 3, 3, 3, 2, 0])
+      expect(scoreTied(['KH', ...tied])).toEqual({ scored: 14, maximum: 18 })
+    })
+
+    it('gives every tied country the same competition rank', () => {
+      const rows = rankingBreakdown({
+        submitted: dealt,
+        correct: order,
+        groupChallengeAccessorId: accessorId,
+      })
+      expect(rows.map(row => row.tieStart)).toEqual([1, 1, 1, 1, 1, 6])
+      expect(rows.map(row => row.tied)).toEqual([true, true, true, true, true, false])
+    })
+
+    it('lists a tie band in the order the player chose', () => {
+      const shuffled: ISOCountryCode[] = ['NR', 'SV', 'AR', 'IQ', 'TT', 'KH']
+      const rows = rankingBreakdown({
+        submitted: shuffled,
+        correct: order,
+        groupChallengeAccessorId: accessorId,
+      })
+      expect(rows.map(row => row.isoCode)).toEqual(shuffled)
+      expect(rows.map(row => row.submittedPosition)).toEqual([1, 2, 3, 4, 5, 6])
+    })
+
+    it('sinks an unplaced tied country to the tail of its band', () => {
+      const rows = rankingBreakdown({
+        submitted: ['TT', 'IQ', 'AR', 'SV', 'KH'],
+        correct: order,
+        groupChallengeAccessorId: accessorId,
+      })
+      expect(rows[4]).toEqual({
+        isoCode: 'NR',
+        correctPosition: 5,
+        tieStart: 1,
+        tiedCount: 5,
+        tied: true,
+        points: 0,
+      })
+    })
   })
 })
 
@@ -301,14 +381,15 @@ describe('rankingBreakdown', () => {
   const correct: ISOCountryCode[] = ['RU', 'US', 'FR', 'PT', 'LU']
 
   it('walks the correct order with 1-based positions and per-slot points', () => {
-    // US and FR swapped: both one off, everything else exact.
+    // US and FR swapped: both one off, everything else exact. Without an
+    // accessor there are no values to tie on, so every slot stands alone.
     const rows = rankingBreakdown({ submitted: ['RU', 'FR', 'US', 'PT', 'LU'], correct })
     expect(rows).toEqual([
-      { isoCode: 'RU', correctPosition: 1, submittedPosition: 1, points: 3 },
-      { isoCode: 'US', correctPosition: 2, submittedPosition: 3, points: 2 },
-      { isoCode: 'FR', correctPosition: 3, submittedPosition: 2, points: 2 },
-      { isoCode: 'PT', correctPosition: 4, submittedPosition: 4, points: 3 },
-      { isoCode: 'LU', correctPosition: 5, submittedPosition: 5, points: 3 },
+      { isoCode: 'RU', correctPosition: 1, tieStart: 1, tiedCount: 1, tied: false, submittedPosition: 1, offBy: 0, points: 3 }, // prettier-ignore
+      { isoCode: 'US', correctPosition: 2, tieStart: 2, tiedCount: 1, tied: false, submittedPosition: 3, offBy: 1, points: 2 }, // prettier-ignore
+      { isoCode: 'FR', correctPosition: 3, tieStart: 3, tiedCount: 1, tied: false, submittedPosition: 2, offBy: 1, points: 2 }, // prettier-ignore
+      { isoCode: 'PT', correctPosition: 4, tieStart: 4, tiedCount: 1, tied: false, submittedPosition: 4, offBy: 0, points: 3 }, // prettier-ignore
+      { isoCode: 'LU', correctPosition: 5, tieStart: 5, tiedCount: 1, tied: false, submittedPosition: 5, offBy: 0, points: 3 }, // prettier-ignore
     ])
   })
 
@@ -317,7 +398,9 @@ describe('rankingBreakdown', () => {
     expect(rows[2]).toEqual({
       isoCode: 'FR',
       correctPosition: 3,
-      submittedPosition: undefined,
+      tieStart: 3,
+      tiedCount: 1,
+      tied: false,
       points: 0,
     })
   })
