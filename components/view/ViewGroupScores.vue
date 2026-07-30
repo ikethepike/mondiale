@@ -133,11 +133,13 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
+import { rankingTieBands } from '~~/lib/challenges'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
 import {
+  isGroupChallenge,
   isTraversalChallenge,
   roundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
@@ -227,9 +229,14 @@ const explainer = computed(() => {
     case 'empire':
       return 'Naming the ghost pays the smaller share — the earlier the buzz, the more of it. The rest is for tracing its lands: points scale with how closely your taps match its core.'
     default: {
-      const base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
-      // Conflict rankings carry the one UCDP fact the numbers alone would hide.
       const challenge = roundChallenge.value
+      let base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
+      // Countries sharing a value have no order between them, so the round can't
+      // charge for one — say so before the repeated rank numbers read as a bug.
+      if (rankingTies.value)
+        base += ' Countries on the same value share a place — any order among them is spot on.'
+
+      // Conflict rankings carry the one UCDP fact the numbers alone would hide.
       const isConflictStat =
         challenge &&
         'id' in challenge &&
@@ -284,6 +291,17 @@ const selectedScorecard = computed(() => {
   return (
     gameStore.rankedScores.find(({ player }) => player.id === selectedPlayer.value) ??
     gameStore.rankedScores[0]
+  )
+})
+
+// Does the revealed order contain countries that share a value? The explainer
+// only teaches the tie rule when the round actually leaned on it.
+const rankingTies = computed(() => {
+  const challenge = roundChallenge.value
+  const correct = selectedScorecard.value?.answers?.correct
+  if (!correct || !isGroupChallenge(challenge)) return false
+  return rankingTieBands({ correct, groupChallengeAccessorId: challenge.id }).some(
+    band => band.end > band.start
   )
 })
 

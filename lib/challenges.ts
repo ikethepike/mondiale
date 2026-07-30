@@ -3187,43 +3187,122 @@ export interface RankingBreakdownRow {
   isoCode: ISOCountryCode
   /** 1-based slot in the correct order. */
   correctPosition: number
+  /**
+   * 1-based first slot of this row's tie band — the competition rank every
+   * country sharing the value gets, so five countries on 100 % all read "1".
+   */
+  tieStart: number
+  /** 1-based last slot of the tie band; equal to `tieStart` for a lone value. */
+  tieEnd: number
+  /** True when at least one other country shares this exact value. */
+  tied: boolean
   /** 1-based slot the player put it in; undefined when it was never placed. */
   submittedPosition?: number
+  /** Slots between the submitted slot and the nearest slot of the tie band. */
+  offBy?: number
   points: number
+}
+
+/**
+ * Tie bands of a correct ranking: for each slot, the inclusive 1-based range of
+ * slots its value occupies. Countries sharing a value are interchangeable — the
+ * sort that produced the order broke that tie arbitrarily, so scoring must not
+ * hold the player to it.
+ */
+export const rankingTieBands = ({
+  correct,
+  groupChallengeAccessorId,
+}: {
+  correct: ISOCountryCode[]
+  groupChallengeAccessorId?: GroupChallengeAccessorId
+}): { start: number; end: number }[] => {
+  // No accessor (or a missing amount) means no value to compare: every slot
+  // stands alone, exactly as before ties were understood.
+  const amounts = correct.map(isoCode =>
+    groupChallengeAccessorId
+      ? getValueByAccessorID(isoCode, groupChallengeAccessorId)?.amount
+      : undefined
+  )
+
+  const bands: { start: number; end: number }[] = new Array(correct.length)
+  let index = 0
+  while (index < correct.length) {
+    const amount = amounts[index]
+    let end = index
+    while (amount !== undefined && amounts[end + 1] === amount) end++
+
+    for (let slot = index; slot <= end; slot++) bands[slot] = { start: index + 1, end: end + 1 }
+    index = end + 1
+  }
+
+  return bands
 }
 
 /**
  * Per-country ledger of a ranking round, in correct order. The scorer and the
  * scorecard's reveal both read from this, so the taught breakdown can never
  * drift from the points actually paid.
+ *
+ * Countries that share a value form one tie band: any slot inside the band is
+ * spot on, and displacement is measured from the band's nearest edge. Rows
+ * inside a band are ordered by where the player put them — the data's own order
+ * within a tie is meaningless, theirs at least reads.
  */
 export const rankingBreakdown = ({
   submitted,
   correct,
+  groupChallengeAccessorId,
 }: {
   submitted: ISOCountryCode[]
   correct: ISOCountryCode[]
+  groupChallengeAccessorId?: GroupChallengeAccessorId
 }): RankingBreakdownRow[] => {
   const ranked = new Set(correct)
   const placed = [...new Set(submitted)].filter(isoCode => ranked.has(isoCode))
+  const bands = rankingTieBands({ correct, groupChallengeAccessorId })
 
-  return correct.map((isoCode, index) => {
+  const rows = correct.map((isoCode, index): RankingBreakdownRow => {
+    const { start, end } = bands[index]
     const submittedIndex = placed.indexOf(isoCode)
+    if (submittedIndex === -1) {
+      return {
+        isoCode,
+        correctPosition: index + 1,
+        tieStart: start,
+        tieEnd: end,
+        tied: end > start,
+        points: 0,
+      }
+    }
+
+    const submittedPosition = submittedIndex + 1
+    const offBy = Math.max(0, start - submittedPosition, submittedPosition - end)
     return {
       isoCode,
       correctPosition: index + 1,
-      submittedPosition: submittedIndex === -1 ? undefined : submittedIndex + 1,
-      points:
-        submittedIndex === -1
-          ? 0
-          : Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - Math.abs(submittedIndex - index)),
+      tieStart: start,
+      tieEnd: end,
+      tied: end > start,
+      submittedPosition,
+      offBy,
+      points: Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - offBy),
     }
   })
+
+  // Re-order within each band by the player's own slot; unplaced countries sink
+  // to the band's tail. Bands themselves keep the correct order.
+  return rows.sort(
+    (a, b) =>
+      a.tieStart - b.tieStart ||
+      (a.submittedPosition ?? Infinity) - (b.submittedPosition ?? Infinity) ||
+      a.correctPosition - b.correctPosition
+  )
 }
 
 /**
- * Score a ranking round: full marks per country in its exact slot, one point
- * less per slot of displacement in either direction, nothing beyond that.
+ * Score a ranking round: full marks per country in its exact slot — or anywhere
+ * inside the band of countries sharing its value — one point less per slot of
+ * displacement in either direction, nothing beyond that.
  *
  * Server-authoritative: only the player's dealt hand counts, each country
  * once — a padded or foreign submission can't inflate the score (which feeds
@@ -3242,7 +3321,11 @@ export const scoreChallengeSubmission = ({
   maximum: number
 } => {
   const correctRanking = getCorrectRanking({ groupChallengeAccessorId, isoCodes: dealtCountries })
-  const rows = rankingBreakdown({ submitted: submittedRanking, correct: correctRanking })
+  const rows = rankingBreakdown({
+    submitted: submittedRanking,
+    correct: correctRanking,
+    groupChallengeAccessorId,
+  })
 
   return {
     scored: rows.reduce((sum, row) => sum + row.points, 0),

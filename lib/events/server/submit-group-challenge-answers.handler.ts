@@ -206,7 +206,6 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         if (!originalRanking)
           throw new ReferenceError(`Unable to retrieve original order for player: ${playerId}`)
 
-        // ! Todo, fix to allow identical values
         const correctRanking = getCorrectRanking({
           groupChallengeAccessorId: roundChallenge.id,
           isoCodes: originalRanking,

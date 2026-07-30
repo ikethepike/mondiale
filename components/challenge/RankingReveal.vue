@@ -21,7 +21,7 @@
         class="row"
         :class="{ exact: row.points === MAXIMUM_SCORE_PER_COUNTRY, blank: row.points === 0 }"
       >
-        <span class="place">{{ row.correctPosition }}</span>
+        <span class="place">{{ row.tieStart }}</span>
         <div v-if="row.country" class="flag-stage">
           <CountryFlag v-if="isPhone" class="flag" :country="row.country" />
           <CountryTileFlag v-else class="flag" :country="row.country" />
@@ -30,6 +30,9 @@
           <strong class="name">{{ row.name }}</strong>
           <div v-if="row.amount" class="measure">
             <span class="amount">{{ formatAmount(row.amount) }}</span>
+            <!-- A shared value has no true order: say so, so a "1" repeated
+                 five times reads as a tie rather than a rendering bug -->
+            <span v-if="row.tied" class="tied">tied ×{{ row.tieEnd - row.tieStart + 1 }}</span>
             <span class="scale" aria-hidden="true">
               <span class="fill" :style="{ width: `${row.share * 100}%` }" />
             </span>
@@ -51,10 +54,7 @@
               <span>Spot on</span>
             </template>
             <template v-else-if="row.submittedPosition">
-              <span>
-                You said {{ formatOrdinal(row.submittedPosition) }} ·
-                {{ Math.abs(row.submittedPosition - row.correctPosition) }} off
-              </span>
+              <span>You said {{ formatOrdinal(row.submittedPosition) }} · {{ row.offBy }} off</span>
             </template>
             <template v-else>
               <span>Left out</span>
@@ -126,7 +126,11 @@ const markers = computed(() =>
 )
 
 const rows = computed(() => {
-  const breakdown = rankingBreakdown({ submitted: props.submitted, correct: props.correct })
+  const breakdown = rankingBreakdown({
+    submitted: props.submitted,
+    correct: props.correct,
+    groupChallengeAccessorId: accessorId.value,
+  })
   const amounts = breakdown.map(({ isoCode }) =>
     accessorId.value ? getValueByAccessorID(isoCode, accessorId.value) : undefined
   )
@@ -262,6 +266,16 @@ const rows = computed(() => {
     min-width: 8rem;
     font-size: 1.3rem;
     white-space: nowrap;
+  }
+
+  .tied {
+    opacity: 0.6;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--soft-blue);
   }
 
   .scale {
