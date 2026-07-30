@@ -2109,23 +2109,32 @@ const dealTrendDuels = (
   return undefined
 }
 
-const TRAJECTORY_OPTIONS: { [difficulty in gameTypes.GameDifficulty]: number } = {
-  easy: 4,
-  normal: 5,
-  hard: 6,
+/** Trajectory-match scales two ways: how many charts sit on the board, and how
+ *  far a decoy's endpoint must sit from the answer's. Easy deals few options
+ *  that are obviously wrong; hard deals more that ask for a real read. */
+const TRAJECTORY_TUNING: {
+  [difficulty in gameTypes.GameDifficulty]: {
+    optionCount: number
+    /** Minimum endpoint separation from the answer, as a relative gap. */
+    minSeparation: number
+  }
+} = {
+  easy: { optionCount: 3, minSeparation: 0.45 },
+  normal: { optionCount: 4, minSeparation: 0.3 },
+  hard: { optionCount: 5, minSeparation: 0.15 },
 }
 
 /** Trajectory-match: whose chart is this? The answer comes from the pool's
  *  drama-score top decile so generic diagonals never appear; decoys prefer the
- *  answer's region but their own series must be visibly distinct, so the
- *  right pick is never a coin flip. */
+ *  answer's region but must run the opposite direction AND end a difficulty-
+ *  scaled gap away, so the right pick is never a coin flip. */
 const dealTrajectoryMatch = (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'trajectory'> | undefined => {
   if (!isGroupEnabled(settings, 'trends')) return undefined
-  const optionCount = TRAJECTORY_OPTIONS[settings.difficulty]
+  const { optionCount, minSeparation } = TRAJECTORY_TUNING[settings.difficulty]
 
   for (const candidates of [countryPool, world]) {
     for (const metric of shuffleArray([...TREND_METRIC_IDS])) {
@@ -2151,9 +2160,12 @@ const dealTrajectoryMatch = (
         eligible: isoCode => {
           const reading = readings.get(isoCode)
           if (!reading) return false
+          // Flat decoys read as filler next to a dramatic answer, so a decoy
+          // must trend decisively the OTHER way, not merely "not the same way".
+          if (reading.direction === 'flat') return false
           return (
-            reading.direction !== answer.direction ||
-            isDecisiveGap(reading.endAmount, answer.endAmount, TREND_METRICS[metric].scale)
+            reading.direction !== answer.direction &&
+            relativeGap(reading.endAmount, answer.endAmount) >= minSeparation
           )
         },
       })

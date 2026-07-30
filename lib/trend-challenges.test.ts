@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { getIndividualChallenge, getRoundChallenge, scoreTrendRace } from '~~/lib/challenges'
-import { readTrend, TRENDS } from '~~/lib/trends'
+import { readTrend, relativeGap, TRENDS } from '~~/lib/trends'
 import type { TrendRaceChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 
@@ -64,7 +64,7 @@ describe('dealTrendDuels (via getIndividualChallenge)', () => {
 describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
   it('deals a decisive mystery country among its options, sized by difficulty', () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
-    const optionCounts: { [difficulty in GameDifficulty]: number } = { easy: 4, normal: 5, hard: 6 }
+    const optionCounts: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 4, hard: 5 }
 
     for (const [difficulty, expected] of Object.entries(optionCounts)) {
       const dealt = getIndividualChallenge({
@@ -81,6 +81,54 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
       const reading = readTrend(TRENDS[dealt.country]?.[trajectory!.metric], trajectory!.metric)
       expect(reading).toBeDefined()
       expect(reading!.direction).not.toBe('flat')
+    }
+  })
+
+  it('deals decoys that run the other way and end a difficulty-scaled gap apart', () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
+    const separations: { [difficulty in GameDifficulty]: number } = {
+      easy: 0.45,
+      normal: 0.3,
+      hard: 0.15,
+    }
+
+    for (const [difficulty, minSeparation] of Object.entries(separations)) {
+      for (let deal = 0; deal < 40; deal++) {
+        const dealt = getIndividualChallenge({
+          accessorId: 'isoCode',
+          difficulty: difficulty as GameDifficulty,
+          variant: 'world',
+        })
+        const trajectory = dealt.trajectory
+        if (!trajectory) continue
+
+        const metric = trajectory.metric
+        const answer = readTrend(TRENDS[dealt.country]?.[metric], metric)!
+        for (const option of trajectory.options) {
+          if (option === dealt.country) continue
+          const decoy = readTrend(TRENDS[option]?.[metric], metric)
+          expect(decoy).toBeDefined()
+          // Decisively the other way — never 'flat', which would read as filler.
+          expect(decoy!.direction).not.toBe('flat')
+          expect(decoy!.direction).not.toBe(answer.direction)
+          expect(relativeGap(decoy!.endAmount, answer.endAmount)).toBeGreaterThanOrEqual(
+            minSeparation
+          )
+        }
+      }
+    }
+  })
+
+  it('still fills a board often enough to keep dealing at every difficulty', () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
+
+    for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
+      let dealtCount = 0
+      for (let deal = 0; deal < 60; deal++) {
+        const dealt = getIndividualChallenge({ accessorId: 'isoCode', difficulty, variant: 'world' })
+        if (dealt.trajectory) dealtCount++
+      }
+      expect(dealtCount).toBeGreaterThan(30)
     }
   })
 
