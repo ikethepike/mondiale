@@ -47,6 +47,21 @@ Game data is fetched-and-committed by the `generate:*` scripts in `package.json`
 (`bun run generate:owid`, `generate:wpp`, `generate:countries`, …). Sources are
 open CSV/JSON downloads; regenerate, eyeball the diff, commit.
 
+### Attribution
+
+Every dataset is credited in `lib/attribution.ts`: the provider, the release it
+came from, its licence and the year its figures are for. A new `data/*.gen.ts`
+must be claimed by a `DATASETS` entry there — `lib/attribution.test.ts` fails
+until it is. Views resolve credits through `attributionFor(accessorId, amount)`
+(or `datasetAttribution(datasetId)`) rather than naming a source in copy, and
+`pages/sources.vue` is rendered straight from the registry.
+
+Per-value provenance rides along on `Amount.source`, stamped by the generators
+where a stat has a fallback chain (military spending prefers SIPRI via OWID and
+backstops with the Factbook), so a figure is credited to the source it actually
+came from. Values generated before the stamp existed fall back to the primary
+source named in `STAT_ORIGINS`; re-run `generate:countries` to fill them in.
+
 ### UN World Population Prospects
 
 `generate:wpp` reads the open **bulk CSVs** (no auth) — the primary source for

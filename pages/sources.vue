@@ -3,128 +3,82 @@
     <h1>Sources</h1>
     <p class="lead">
       Mondiale is built on open data. The facts, maps and imagery in the game come from these
-      sources.
+      sources — every figure in a round is traceable back to one of them.
     </p>
 
     <ul class="sources">
-      <li v-for="source in sources" :key="source.name" class="source">
-        <a class="logo-cell" :href="source.url" target="_blank" rel="noopener">
-          <img :src="source.logo" :class="{ dim: source.dim }" :alt="`${source.name} logo`" />
+      <li v-for="source in sources" :key="source.id" class="source">
+        <a class="logo-cell" :href="source.provider.url" target="_blank" rel="noopener">
+          <img
+            v-if="source.logo"
+            :src="source.logo"
+            :class="{ dim: source.provider.dimLogo }"
+            :alt="`${source.provider.name} logo`"
+          />
+          <span v-else class="wordmark">{{ source.provider.name }}</span>
         </a>
         <div class="details">
-          <a :href="source.url" target="_blank" rel="noopener">{{ source.name }}</a>
-          <p>{{ source.description }}</p>
+          <a :href="source.provider.url" target="_blank" rel="noopener">
+            {{ source.provider.name }}
+          </a>
+          <p>{{ source.provider.description }}</p>
+          <p class="provenance">
+            <span v-for="release in source.releases" :key="release" class="release">
+              {{ release }}
+            </span>
+          </p>
+          <p class="feeds">{{ source.feeds.join(' · ') }}</p>
         </div>
       </li>
     </ul>
-
-    <p class="aside">
-      Country flags come from the open-source
-      <a href="https://github.com/lipis/flag-icons" target="_blank" rel="noopener">flag-icons</a>
-      project.
-    </p>
   </StaticPage>
 </template>
 <script lang="ts" setup>
-import logoCia from '~/assets/logos/sources/cia.svg'
-import logoNaturalEarth from '~/assets/logos/sources/naturalearth.png'
-import logoWikidata from '~/assets/logos/sources/wikidata.svg'
-import logoCommons from '~/assets/logos/sources/commons.svg'
-import logoWikipedia from '~/assets/logos/sources/wikipedia.svg'
-import logoWorldBank from '~/assets/logos/sources/worldbank.svg'
-import logoUnWpp from '~/assets/logos/sources/un-wpp.svg'
-import logoOwid from '~/assets/logos/sources/owid.png'
-import logoUppsala from '~/assets/logos/sources/uppsala.svg'
-import logoUnsplash from '~/assets/logos/sources/unsplash.svg'
-import logoBasemaps from '~/assets/logos/sources/historical-basemaps.svg'
-import logoCshapes from '~/assets/logos/sources/cshapes.svg'
+import {
+  DATASETS,
+  PROVIDERS,
+  SOURCES,
+  type DataSetId,
+  type ProviderId,
+  type SourceId,
+} from '~~/lib/attribution'
 
-const sources: Array<{
-  name: string
-  url: string
-  logo: string
-  description: string
-  dim?: boolean
-}> = [
-  {
-    name: 'CIA World Factbook',
-    url: 'https://www.cia.gov/the-world-factbook/',
-    logo: logoCia,
-    description: 'Country profiles and world leaders: geography, people, government and economy.',
-  },
-  {
-    name: 'Natural Earth',
-    url: 'https://www.naturalearthdata.com',
-    logo: logoNaturalEarth,
-    dim: true,
-    description: 'Public-domain map data: country shapes, seas, lakes and rivers.',
-  },
-  {
-    name: 'Wikidata',
-    url: 'https://www.wikidata.org',
-    logo: logoWikidata,
-    description: 'Structured data on leaders, capitals, currencies and landmarks.',
-  },
-  {
-    name: 'Wikimedia Commons',
-    url: 'https://commons.wikimedia.org',
-    logo: logoCommons,
-    description:
-      'Photography of leaders, capitals, banknotes, landmarks and flags, plus emblems of international organizations.',
-  },
-  {
-    name: 'Wikipedia',
-    url: 'https://www.wikipedia.org',
-    logo: logoWikipedia,
-    description: 'Supplementary facts and figures.',
-  },
-  {
-    name: 'World Bank Open Data',
-    url: 'https://data.worldbank.org',
-    logo: logoWorldBank,
-    description: 'Development indicators.',
-  },
-  {
-    name: 'UN World Population Prospects',
-    url: 'https://population.un.org/wpp/',
-    logo: logoUnWpp,
-    description:
-      'Population estimates and projections 1950–2100 from the UN Population Division: age structures, fertility, mortality and migration.',
-  },
-  {
-    name: 'Our World in Data',
-    url: 'https://ourworldindata.org',
-    logo: logoOwid,
-    description:
-      'Indices and historical series on democracy, human development, health and lifestyle, environment and biodiversity, energy, tourism and the economy — aggregating V-Dem, Transparency International, UNDP, the WHO, the FAO, SIPRI, the IUCN, the World Bank, UNODC, UN agencies, NCD-RisC, the IEA and the Energy Institute.',
-  },
-  {
-    name: 'Uppsala Conflict Data Program',
-    url: 'https://ucdp.uu.se',
-    logo: logoUppsala,
-    description: 'Armed-conflict data from Uppsala University.',
-  },
-  {
-    name: 'historical-basemaps',
-    url: 'https://github.com/aourednik/historical-basemaps',
-    logo: logoBasemaps,
-    description:
-      'World country borders across five millennia of snapshots, for the empire extents. GPL-3.0.',
-  },
-  {
-    name: 'CShapes 2.0',
-    url: 'https://icr.ethz.ch/data/cshapes/',
-    logo: logoCshapes,
-    description:
-      'State borders and capitals 1886–2019, dated to the day — Schvitz et al. 2022, Journal of Conflict Resolution. CC BY-NC-SA 4.0.',
-  },
-  {
-    name: 'Unsplash',
-    url: 'https://unsplash.com',
-    logo: logoUnsplash,
-    description: 'Selected landmark photography.',
-  },
-]
+// Logos live beside each other; the registry names the file, the bundler
+// resolves it — so a new provider needs no edit here.
+const logos = import.meta.glob('~/assets/logos/sources/*', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>
+
+const logoFor = (file?: string): string | undefined => {
+  if (!file) return undefined
+  const path = Object.keys(logos).find(key => key.endsWith(`/${file}`))
+  return path ? logos[path] : undefined
+}
+
+const sourceIds = Object.keys(SOURCES) as SourceId[]
+const datasetIds = Object.keys(DATASETS) as DataSetId[]
+
+const sources = (Object.keys(PROVIDERS) as ProviderId[]).map(id => {
+  const owned = sourceIds.filter(sourceId => SOURCES[sourceId].provider === id)
+
+  return {
+    id,
+    provider: PROVIDERS[id],
+    logo: logoFor(PROVIDERS[id].logo),
+    // Release + licence per dataset the provider publishes.
+    releases: owned.map(sourceId => {
+      const { title, edition, license } = SOURCES[sourceId]
+      return [edition ? `${title} (${edition})` : title, license].filter(Boolean).join(' — ')
+    }),
+    // What it puts on the table.
+    feeds: datasetIds
+      .filter(datasetId =>
+        DATASETS[datasetId].origins.some(origin => owned.includes(origin.source))
+      )
+      .map(datasetId => DATASETS[datasetId].label),
+  }
+})
 </script>
 <style lang="scss" scoped>
 .lead {
@@ -155,6 +109,7 @@ const sources: Array<{
   height: 4rem;
   display: flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
 
   img {
@@ -174,6 +129,22 @@ const sources: Array<{
   }
 }
 
+// Providers without a logo file stand as their own wordmark.
+.wordmark {
+  opacity: 0.6;
+  font-size: 1.2rem;
+  line-height: 1.2;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: var(--text-color);
+  text-decoration: none;
+  transition: opacity var(--motion-quick);
+}
+
+.source:hover .wordmark {
+  opacity: 1;
+}
+
 .source:hover .logo-cell img {
   filter: none;
   opacity: 1;
@@ -191,15 +162,19 @@ const sources: Array<{
     font-size: 1.35rem;
     opacity: 0.7;
   }
-}
 
-.aside {
-  margin-top: 2.4rem;
-  font-size: 1.35rem;
-  opacity: 0.7;
+  .provenance {
+    opacity: 0.55;
+    display: flex;
+    font-size: 1.2rem;
+    flex-flow: column nowrap;
+  }
 
-  a {
-    color: var(--text-color);
+  .feeds {
+    opacity: 0.55;
+    font-size: 1.2rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 }
 </style>

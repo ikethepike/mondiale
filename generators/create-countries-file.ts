@@ -134,6 +134,11 @@ export const createCountriesFile = async (): Promise<{
   return Promise.resolve({})
 }
 
+/**
+ * Every Amount is stamped with the SourceId it was read from (lib/attribution)
+ * — several stats prefer a vendor and backstop with the Factbook, so only the
+ * value itself knows which source actually won.
+ */
 const normalizeCountry = ({
   data,
   isoCode,
@@ -176,9 +181,21 @@ const normalizeCountry = ({
         const metrics = conflictMapping[isoCode as unknown as ISOCountryCode]
         if (!metrics) return {}
         return {
-          conflictsFought: { amount: metrics.total, unit: 'conflicts' as const },
-          yearsAtWar: { amount: metrics.yearsAtWar, unit: 'years' as const },
-          recentConflicts: { amount: metrics.recent, unit: 'conflicts' as const },
+          conflictsFought: {
+            amount: metrics.total,
+            unit: 'conflicts' as const,
+            source: 'ucdp-acd' as const,
+          },
+          yearsAtWar: {
+            amount: metrics.yearsAtWar,
+            unit: 'years' as const,
+            source: 'ucdp-acd' as const,
+          },
+          recentConflicts: {
+            amount: metrics.recent,
+            unit: 'conflicts' as const,
+            source: 'ucdp-acd' as const,
+          },
         }
       })(),
       // Governance indices from Our World in Data (V-Dem, Transparency Intl).
@@ -397,6 +414,7 @@ const normalizeCountry = ({
         ? {
             amount: MARRIAGE_RIGHTS[isoCode].yearAllowed,
             unit: 'year',
+            source: 'mondiale-editorial',
           }
         : undefined,
     },
@@ -427,18 +445,11 @@ const getYearlyIndex = <Unit>(
     unit,
     year,
     amount: numbers[0],
+    source: 'cia-factbook',
   }
 }
 
-const getRefugees = (
-  data: FactbookResponse,
-  _isoCode: string
-):
-  | {
-      amount: number
-      unit: 'people'
-    }
-  | undefined => {
+const getRefugees = (data: FactbookResponse, _isoCode: string): Amount<'people'> | undefined => {
   // Factbook renamed 'refugees (country of origin)' to 'refugees' AND flipped
   // its meaning to refugees *hosted* (country of asylum): Syria now reads 16k,
   // not its ~6M origin figure. The challenge copy reflects the hosted sense.
@@ -459,6 +470,7 @@ const getRefugees = (
   return {
     unit: 'people',
     amount: numbers.reduce((a, b) => a + b),
+    source: 'cia-factbook',
   }
 }
 
@@ -476,6 +488,7 @@ const getTextNode = <Unit>(data: TextNode | undefined, unit: Unit): Amount<Unit>
     unit,
     year,
     amount: numbers[0],
+    source: 'cia-factbook',
   }
 }
 
@@ -502,6 +515,7 @@ const getHighestPeak = (data: FactbookResponse): (Amount<'m'> & { name: string }
     unit: 'm',
     amount,
     name: match[1].trim(),
+    source: 'cia-factbook',
   }
 }
 
@@ -517,6 +531,7 @@ const worldBankAmount = <Unit>(
     unit,
     year: value.year,
     amount: Math.round(value.amount * 10) / 10,
+    source: 'worldbank-wdi',
   }
 }
 
@@ -528,7 +543,7 @@ const wppAmount = <Unit>(
 ): Amount<Unit> | undefined => {
   const value = wppMapping[isoCode as ISOCountryCode]?.[metric]
   if (!value) return undefined
-  return { unit, year: value.year, amount: value.amount }
+  return { unit, year: value.year, amount: value.amount, source: 'un-wpp-2024' }
 }
 
 /** Pull an OWID metric for a country and wrap it as an Amount. */
@@ -539,7 +554,7 @@ const owidAmount = <Unit>(
 ): Amount<Unit> | undefined => {
   const value = owidMapping[isoCode as ISOCountryCode]?.[metric]
   if (!value) return undefined
-  return { unit, year: value.year, amount: value.amount }
+  return { unit, year: value.year, amount: value.amount, source: 'owid-grapher' }
 }
 
 /** Whether a country is party to the Paris Agreement (Factbook treaty list). */
@@ -584,10 +599,12 @@ const getReligion = (
     atheism: {
       amount: atheists,
       unit: '%',
+      source: 'cia-factbook',
     },
     believers: {
       amount: 100 - atheists,
       unit: '%',
+      source: 'cia-factbook',
     },
   }
 }
@@ -616,6 +633,7 @@ const getCarbonDioxideEmissions = (data: FactbookResponse): Amount<'megatons'> |
     unit: 'megatons',
     year,
     amount: Math.round(numbers[0] * scale * 1000) / 1000,
+    source: 'cia-factbook',
   }
 }
 
@@ -653,6 +671,7 @@ const getScaledDollarIndex = (node: unknown): Amount<'$'> | undefined => {
     unit: '$',
     year: bestYear === -Infinity ? undefined : bestYear,
     amount: Math.round(numbers[0] * scale),
+    source: 'cia-factbook',
   }
 }
 
@@ -687,6 +706,7 @@ const getMethaneEmissions = (data: FactbookResponse): Amount<'megatons'> | undef
     unit: 'megatons',
     year,
     amount: Math.round((kilotonnes / 1000) * 1000) / 1000,
+    source: 'cia-factbook',
   }
 }
 
@@ -723,6 +743,7 @@ const getRenewablesProduction = (data: FactbookResponse): Amount<'%'> | undefine
   return {
     unit: '%',
     amount: Math.round(renewablePercentage),
+    source: 'cia-factbook',
   }
 }
 
@@ -850,7 +871,7 @@ const getIndependence = (data: FactbookResponse): Country['government']['indepen
   if (!text) return undefined
   const match = /\b(1[0-9]{3}|20[0-2][0-9])\b/.exec(text)
   if (!match) return undefined
-  return { amount: Number(match[1]), unit: 'year' }
+  return { amount: Number(match[1]), unit: 'year', source: 'cia-factbook' }
 }
 
 /** The Factbook drifts between spellings of the same commodity across pages;
