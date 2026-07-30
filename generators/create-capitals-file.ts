@@ -1,7 +1,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
-import { fetchJson, fetchPageImages, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import {
+  captureImageCredit,
+  fetchJson,
+  fetchPageImages,
+  saveCommonsImage,
+  wait,
+} from './vendors/wikidata/commons'
+import type { MediaCredit } from '../lib/attribution'
 
 /**
  * Pulls a representative photo for each country's CAPITAL city from Wikimedia
@@ -21,7 +28,7 @@ const OUTPUT_DIRECTORY = 'public/capitals'
 /** Capital photos are zoomable too (ViewCapitalGuess → ZoomableImage). */
 const CAPITAL_WIDTH = 1280
 
-export interface CapitalEntry {
+export interface CapitalEntry extends MediaCredit {
   /** Capital city name (from Wikidata labels). */
   name: string
   /** Public path of the photo, when one exists on Commons. */
@@ -168,7 +175,11 @@ for (const { isoCode, capitalQid } of capitals) {
     failed++
     continue
   }
-  mapping[isoCode]!.image = publicPath
+  mapping[isoCode] = {
+    ...mapping[isoCode]!,
+    image: publicPath,
+    ...(await captureImageCredit(file, previousMapping[isoCode], force)),
+  }
   done++
   process.stdout.write(`\r  ${done + failed}/${capitals.length} photos`)
   await wait(250)

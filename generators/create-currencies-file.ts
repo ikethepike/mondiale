@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { COUNTRIES } from '../data/countries.gen'
 import type { CurrencyCode, CurrencyMapping } from '../types/currency.type'
 import {
+  captureImageCredit,
   fetchImageDimensions,
   fetchJson,
   fetchPageImages,
@@ -197,7 +198,11 @@ for (const code of codes) {
     failed++
     continue
   }
-  mapping[code] = { name: mapping[code]?.name ?? code, image: publicPath }
+  mapping[code] = {
+    name: mapping[code]?.name ?? code,
+    image: publicPath,
+    ...(await captureImageCredit(file, previousMapping[code], redownloadImages)),
+  }
   done++
 
   // Skip the coin heuristic for codes we've already hand-pinned.

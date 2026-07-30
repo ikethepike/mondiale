@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { isValidISOCode, type ISOCountryCode } from '../types/geography.types'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
+  captureImageCredit,
   existingImagePath,
   fetchImageDimensions,
   fetchJson,
@@ -10,6 +11,7 @@ import {
   saveCommonsImage,
   wait,
 } from './vendors/wikidata/commons'
+import type { MediaCredit } from '../lib/attribution'
 
 /**
  * Every UNESCO World Heritage Site on Wikidata (haswbstatement:P1435=Q9259),
@@ -35,7 +37,7 @@ const MAX_SITES_PER_COUNTRY = 4
 const MAX_KM_OUTSIDE_COUNTRY = 100
 const UNESCO_SITE_QID = 'Q9259'
 
-export interface HeritageEntry {
+export interface HeritageEntry extends MediaCredit {
   name: string
   country: ISOCountryCode
   image: string
@@ -279,8 +281,11 @@ for (const site of chosen) {
     ? undefined
     : existingImagePath(`${OUTPUT_DIRECTORY}/${slug}`, `/heritage/${slug}`)
 
+  // Resolved up front (no network — the batch lookup already ran) so a site
+  // whose photo is already on disk still gets its Commons credit.
+  const file = photoFiles.get(site.qid)
+
   if (!publicPath) {
-    const file = photoFiles.get(site.qid)
     if (!file) {
       missing++
       continue
@@ -307,6 +312,7 @@ for (const site of chosen) {
     name: site.name,
     country: site.country,
     image: publicPath,
+    ...(await captureImageCredit(file, previousMapping[slug], force)),
     coordinates: {
       lat: Math.round(site.coordinates.lat * 10000) / 10000,
       lng: Math.round(site.coordinates.lng * 10000) / 10000,

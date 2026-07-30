@@ -1,6 +1,7 @@
 import type { CURRENCIES } from '~~/data/currencies.gen'
+import type { MediaCredit } from '~~/lib/attribution'
 
-export interface CurrencyEntry {
+export interface CurrencyEntry extends MediaCredit {
   /** Currency name (from Wikidata labels), e.g. "United States dollar". */
   name: string
   /** Public path of the banknote image, when one exists on Commons. */

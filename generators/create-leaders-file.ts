@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
-import { fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import type { MediaCredit } from '../lib/attribution'
 
 /**
  * Pulls every country's CURRENT head of state (P35) and head of government
@@ -36,7 +37,7 @@ const LEADER_PROPERTIES: { [property in 'P35' | 'P6']: LeaderRole } = {
   P6: 'headOfGovernment',
 }
 
-interface LeaderEntry {
+interface LeaderEntry extends MediaCredit {
   name: string
   /** Public path of the portrait file, when one exists on Commons. */
   image?: string
@@ -422,7 +423,11 @@ for (const { isoCode, role, file } of portraitQueue) {
     failed++
     continue
   }
-  mapping[isoCode]![role]!.image = publicPath
+  mapping[isoCode]![role] = {
+    ...mapping[isoCode]![role]!,
+    image: publicPath,
+    ...(await captureImageCredit(file, previousMapping[isoCode]?.[role], force)),
+  }
   done++
   process.stdout.write(`\r  ${done + failed}/${portraitQueue.length} portraits`)
   await wait(250)

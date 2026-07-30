@@ -1,5 +1,6 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import sharp from 'sharp'
+import type { MediaCredit } from '../../../lib/attribution'
 
 /**
  * Shared Wikidata / Wikimedia Commons fetch helpers — one implementation of the
@@ -170,6 +171,33 @@ export const fetchImageAttribution = async (
   if (!credit && !license) return undefined
   // Some "artist" fields are whole camera-club paragraphs — too long to credit.
   return { credit: credit && credit.length <= 80 ? credit : undefined, license }
+}
+
+/**
+ * The credit to store beside a shipped Commons photo, reusing whatever the
+ * previous run captured — one metadata call per newly credited image, none for
+ * the thousands already credited. Every media generator writes these fields, so
+ * a view can name the photographer the licence requires it to name.
+ */
+export const captureImageCredit = async (
+  file: string | undefined,
+  previous?: MediaCredit,
+  force = false
+): Promise<MediaCredit> => {
+  const kept: MediaCredit = {
+    ...(previous?.credit ? { credit: previous.credit } : {}),
+    ...(previous?.license ? { license: previous.license } : {}),
+  }
+  if (!file) return kept
+  if (!force && kept.license) return kept
+
+  const attribution = await fetchImageAttribution(file)
+  if (!attribution) return kept
+
+  return {
+    ...(attribution.credit ? { credit: attribution.credit } : {}),
+    ...(attribution.license ? { license: attribution.license } : {}),
+  }
 }
 
 export const EXTENSION_BY_CONTENT_TYPE: { [contentType: string]: string } = {

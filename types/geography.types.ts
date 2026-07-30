@@ -1,12 +1,17 @@
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { NamedColor } from '~~/lib/palette'
+import type { SourceId } from '~~/lib/attribution'
 import type { CurrencyCode } from './currency.type'
 import type { Organization } from './organization.type'
 
 export interface Amount<Unit> {
   amount: number
   unit: Unit
+  /** Year the figure is for; absent when the source publishes it undated. */
   year?: number
+  /** Which source won this value's fallback chain — stamped by the generator,
+   *  read back through `attributionFor` (lib/attribution.ts). */
+  source?: SourceId
 }
 
 export const worldRegions = [

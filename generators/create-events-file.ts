@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from 'node:fs'
 import { EVENT_SEEDS, type EventKind, type EventSeed } from './data/event-seeds'
 import {
-  fetchImageAttribution,
+  captureImageCredit,
   fetchImageDimensions,
   fetchJson,
   fetchPageImages,
@@ -10,6 +10,7 @@ import {
   wait,
 } from './vendors/wikidata/commons'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
+import type { MediaCredit } from '../lib/attribution'
 import type { ISOCountryCode } from '../types/geography.types'
 
 /**
@@ -68,7 +69,7 @@ const TIME_PROPERTIES = [
   'P570',
 ] as const
 
-export interface EventEntry {
+export interface EventEntry extends MediaCredit {
   /** Card title, e.g. "The Berlin Wall falls". */
   name: string
   /** Anchor country for the card's flag and variant filtering. */
@@ -80,10 +81,6 @@ export interface EventEntry {
   description: string
   /** Public path of the card photo, when one was captured. */
   image?: string
-  /** Commons author, for the reveal's credit line. */
-  credit?: string
-  /** Licence short name, e.g. "CC BY-SA 4.0". */
-  license?: string
 }
 
 /** Keyed by a slug of the event's seed name. */
@@ -305,13 +302,7 @@ for (const { seed, slug, qid } of verified) {
     }
   }
 
-  let credit = previous[slug]?.credit
-  let license = previous[slug]?.license
-  if (image && commonsFile) {
-    const attribution = await fetchImageAttribution(commonsFile)
-    credit = attribution?.credit
-    license = attribution?.license
-  }
+  const media = image ? await captureImageCredit(commonsFile, previous[slug], force) : {}
 
   if (!image) missingImages.push(slug)
 
@@ -322,8 +313,7 @@ for (const { seed, slug, qid } of verified) {
     year: seed.year,
     description: seed.description,
     ...(image ? { image } : {}),
-    ...(credit ? { credit } : {}),
-    ...(license ? { license } : {}),
+    ...media,
   }
   await wait(200)
 }
