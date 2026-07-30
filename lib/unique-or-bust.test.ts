@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MEGACITY_MINIMUM_POPULATION,
   UNIQUE_BOARD,
+  nextOpenCategory,
   resolveUniqueCollisions,
   uniqueBoardComplete,
   uniqueEntriesForLetter,
@@ -102,6 +103,31 @@ describe('uniqueBoardComplete', () => {
   })
 })
 
+describe('nextOpenCategory', () => {
+  // The regression this whole fix exists for: a rival locking a slot re-emits
+  // the snapshot, and the view re-runs this rule. An open slot must survive it
+  // untouched, or the player's next word lands in another register.
+  it('keeps focus on a slot that is still open', () => {
+    expect(nextOpenCategory(UNIQUE_BOARD, [], 'capital')).toBe('capital')
+    expect(nextOpenCategory(UNIQUE_BOARD, ['country', 'river'], 'capital')).toBe('capital')
+  })
+
+  it('steps to the next open blank once the current one is spent', () => {
+    expect(nextOpenCategory(UNIQUE_BOARD, ['capital'], 'capital')).toBe('country')
+    expect(nextOpenCategory(UNIQUE_BOARD, ['country', 'capital'], 'capital')).toBe('river')
+  })
+
+  it('never lands on a spent slot, including board order zero', () => {
+    const next = nextOpenCategory(UNIQUE_BOARD, ['country', 'capital'], 'country')
+    expect(next).toBe('river')
+    expect(next).not.toBe('country')
+  })
+
+  it('reports all-in when every blank is spent', () => {
+    expect(nextOpenCategory(UNIQUE_BOARD, [...UNIQUE_BOARD], 'river')).toBeUndefined()
+  })
+})
+
 describe('resolveUniqueCollisions', () => {
   it('pays lone holders their share and cancels duplicates to zero', () => {
     const challenge = boardChallenge(['a', 'b', 'c'])
@@ -179,5 +205,20 @@ describe('uniqueRegisters (generated data)', () => {
     const letters = uniqueViableLetters(registers, 8)
     expect(letters.length).toBeGreaterThanOrEqual(5)
     expect(letters).not.toContain('x')
+  })
+
+  // The reported round: on S, neither Stockholm nor Sanaa was accepted as a
+  // capital or a million-city. The registers were never the problem — the view
+  // was routing the answer to another category — so this pins the data down.
+  it('files Stockholm and Sanaa under S as both capital and million-city', async () => {
+    const registers = await uniqueRegisters(RULES)
+    for (const category of ['capital', 'megacity'] as const) {
+      const pool = uniqueEntriesForLetter(registers[category], 'S')
+      for (const name of ['Stockholm', 'Sanaa']) {
+        const entry = pool.find(candidate => candidate.name === name)
+        expect(entry, `${name} missing from ${category}`).toBeDefined()
+        expect(uniqueEntryForAnswer(registers, category, 'S', entry!.id)).toBeDefined()
+      }
+    }
   })
 })

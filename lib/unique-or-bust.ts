@@ -148,6 +148,24 @@ export const uniqueBoardComplete = (challenge: UniqueOrBustChallenge): boolean =
   )
 
 /**
+ * Which blank the console should be writing into, given the one it is on now.
+ * A still-open slot KEEPS focus — the caller re-runs this as snapshots land,
+ * and a rival's lock must never move a player's cursor mid-word (that reroutes
+ * the typed answer to another category's register). Focus only steps when the
+ * current slot is spent, and then to the next open blank in board order —
+ * never back to slot zero, which by mid-round is usually taken.
+ * `undefined` means the player is all in.
+ */
+export const nextOpenCategory = (
+  categories: UniqueCategoryId[],
+  locked: UniqueCategoryId[],
+  current: UniqueCategoryId
+): UniqueCategoryId | undefined => {
+  if (categories.includes(current) && !locked.includes(current)) return current
+  return categories.find(category => !locked.includes(category))
+}
+
+/**
  * The reveal's collision grid and the scores, in one pass. Cells group by
  * normalized name, not register id — Córdoba (AR) and Córdoba (ES) are the
  * same word at a Scattergories table and cancel each other. A slot pays its

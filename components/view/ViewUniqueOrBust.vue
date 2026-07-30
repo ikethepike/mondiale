@@ -153,6 +153,7 @@ import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import {
   UNIQUE_CATEGORIES,
+  nextOpenCategory,
   uniqueEntriesForLetter,
   uniqueRegisters,
   type UniqueEntry,
@@ -235,22 +236,38 @@ watch(
 )
 
 const activeCategory = ref<UniqueCategoryId>('country')
+
+// Keyed on the DEAL, not the snapshot. `challenge` is a computed over the game
+// object and the server re-emits it on every rival lock — re-seeding per
+// snapshot stole the focused slot mid-keystroke and sent the answer to another
+// category's register (a typed capital matched against the country list).
 watch(
-  challenge,
-  active => {
+  () => [challenge.value?.letter, currentRound.value?.number].join(':'),
+  () => {
+    const active = challenge.value
     if (active) activeCategory.value = active.categories[0]
   },
   { immediate: true }
 )
 
-const categoryLabel = computed(() => UNIQUE_CATEGORIES[activeCategory.value].label.toLowerCase())
+/** The category the live option list was built from. Submits resolve against
+ *  THIS, never a re-read of activeCategory, so a snapshot landing between the
+ *  keystroke and the emit can never reroute an answer to another register. */
+const optionsCategory = computed<UniqueCategoryId>(() => activeCategory.value)
+
+const categoryLabel = computed(() => UNIQUE_CATEGORIES[optionsCategory.value].label.toLowerCase())
 const activeOptions = computed<SuggestOption[]>(
-  () => optionsByCategory.value[activeCategory.value] ?? []
+  () => optionsByCategory.value[optionsCategory.value] ?? []
 )
 
 const myLocked = computed(() => state.value.locked[gameStore.playerId] ?? [])
 const isMineLocked = (category: UniqueCategoryId) =>
   myLocked.value.includes(category) || ownPicks.value[category] !== undefined
+/** Every blank of mine that is spent — the server's locks plus picks still in
+ *  flight, so focus never steps back onto a slot whose ack hasn't landed. */
+const minePicked = computed<UniqueCategoryId[]>(() =>
+  (challenge.value?.categories ?? []).filter(category => isMineLocked(category))
+)
 const allMineLocked = computed(() =>
   (challenge.value?.categories ?? []).every(category => isMineLocked(category))
 )
@@ -272,19 +289,38 @@ const rivalsLocked = (category: UniqueCategoryId) =>
     playerId => playerId !== gameStore.playerId && state.value.locked[playerId]?.includes(category)
   )
 
+// A slot that just locked must not keep focus — step to the next OPEN blank
+// through the shared rule (an open slot keeps focus, so this is inert while
+// the player is mid-word).
+watch(myLocked, () => {
+  const active = challenge.value
+  if (!active) return
+  const next = nextOpenCategory(active.categories, minePicked.value, activeCategory.value)
+  if (next) activeCategory.value = next
+})
+
 const input = ref<InstanceType<typeof SuggestInput>>()
 
 const pick = (option: SuggestOption) => {
-  const category = activeCategory.value
+  const category = optionsCategory.value
   if (!challenge.value || finished.value || isMineLocked(category)) return
+
+  // The option must belong to the register the list was built from. The server
+  // drops a mismatch silently by design, so without this a misrouted pick would
+  // vanish with no feedback at all.
+  const pool = optionsByCategory.value[category] ?? []
+  if (!pool.some(entry => entry.id === option.id)) {
+    announce({ hint: `That answer isn't on the ${categoryLabel.value} list` })
+    return
+  }
 
   ownPicks.value = { ...ownPicks.value, [category]: option }
   update({ event: 'submit-unique-answer', category, id: option.id })
   // Presence only — the room learns a blank was filled, never the word.
   announce({ kind: 'presence' })
 
-  const next = challenge.value.categories.find(candidate => !isMineLocked(candidate))
-  if (next) {
+  const next = nextOpenCategory(challenge.value.categories, minePicked.value, category)
+  if (next && next !== category) {
     activeCategory.value = next
     nextTick(() => input.value?.focus())
   }
@@ -352,8 +388,13 @@ const verdictLine = computed(() => {
   display: flex;
   align-items: center;
 
+  // The focused blank has to be unmistakable: the box is blind, so this row is
+  // the only thing telling you which register your next word lands in.
   &.active .slot-face {
+    border-style: solid;
     border-color: ink(0.55);
+    background: milk(0.97);
+    box-shadow: 0 0 0 0.25rem ink(0.12);
   }
 
   &.done .slot-face {
