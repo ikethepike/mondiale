@@ -1,4 +1,5 @@
-import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
+import { isGroupChallenge, type RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Game, Round } from '~~/types/game.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
@@ -34,6 +35,11 @@ export const latestChallengeOfType = <T extends TypedRoundChallenge['_type']>(
   const challenge = latestRound(game)?.groupChallenge
   return isChallengeOfType(challenge, typeName) ? challenge : undefined
 }
+
+/** The stat a ranking round measures — undefined for every other mode. */
+export const rankingAccessorId = (
+  challenge: RoundChallenge | undefined
+): GroupChallengeAccessorId | undefined => (isGroupChallenge(challenge) ? challenge.id : undefined)
 
 /** Narrow or throw — the answers handler's per-kind guard. */
 export const expectChallengeType = <T extends TypedRoundChallenge['_type']>(

@@ -3192,8 +3192,8 @@ export interface RankingBreakdownRow {
    * country sharing the value gets, so five countries on 100 % all read "1".
    */
   tieStart: number
-  /** 1-based last slot of the tie band; equal to `tieStart` for a lone value. */
-  tieEnd: number
+  /** How many countries share this value; 1 when it stands alone. */
+  tiedCount: number
   /** True when at least one other country shares this exact value. */
   tied: boolean
   /** 1-based slot the player put it in; undefined when it was never placed. */
@@ -3209,7 +3209,7 @@ export interface RankingBreakdownRow {
  * sort that produced the order broke that tie arbitrarily, so scoring must not
  * hold the player to it.
  */
-export const rankingTieBands = ({
+const rankingTieBands = ({
   correct,
   groupChallengeAccessorId,
 }: {
@@ -3238,6 +3238,16 @@ export const rankingTieBands = ({
   return bands
 }
 
+/** Does this ranking round hold countries the data can't tell apart? */
+export const rankingHasTies = ({
+  correct,
+  groupChallengeAccessorId,
+}: {
+  correct: ISOCountryCode[]
+  groupChallengeAccessorId?: GroupChallengeAccessorId
+}): boolean =>
+  rankingTieBands({ correct, groupChallengeAccessorId }).some(band => band.end > band.start)
+
 /**
  * Per-country ledger of a ranking round, in correct order. The scorer and the
  * scorecard's reveal both read from this, so the taught breakdown can never
@@ -3263,16 +3273,10 @@ export const rankingBreakdown = ({
 
   const rows = correct.map((isoCode, index): RankingBreakdownRow => {
     const { start, end } = bands[index]
+    const band = { tieStart: start, tiedCount: end - start + 1, tied: end > start }
     const submittedIndex = placed.indexOf(isoCode)
     if (submittedIndex === -1) {
-      return {
-        isoCode,
-        correctPosition: index + 1,
-        tieStart: start,
-        tieEnd: end,
-        tied: end > start,
-        points: 0,
-      }
+      return { isoCode, correctPosition: index + 1, ...band, points: 0 }
     }
 
     const submittedPosition = submittedIndex + 1
@@ -3280,12 +3284,10 @@ export const rankingBreakdown = ({
     return {
       isoCode,
       correctPosition: index + 1,
-      tieStart: start,
-      tieEnd: end,
-      tied: end > start,
+      ...band,
       submittedPosition,
       offBy,
-      points: Math.max(0, MAXIMUM_SCORE_PER_COUNTRY - offBy),
+      points: clampScore(MAXIMUM_SCORE_PER_COUNTRY - offBy, MAXIMUM_SCORE_PER_COUNTRY),
     }
   })
 

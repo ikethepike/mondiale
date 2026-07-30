@@ -80,7 +80,7 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
+import { rankingAccessorId } from '~~/lib/rounds'
 import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const { gameStore, update, currentRound } = useClientEvents()
@@ -105,12 +105,9 @@ watch(
   }
 )
 
-const accessorId = computed(() => {
-  const challenge = currentRound.value?.round.groupChallenge
-  // This view only mounts for ranking rounds — traversal and group-mode rounds
-  // render their own views — but the round data itself is a union.
-  return isGroupChallenge(challenge) ? challenge.id : undefined
-})
+// This view only mounts for ranking rounds — traversal and group-mode rounds
+// render their own views — but the round data itself is a union.
+const accessorId = computed(() => rankingAccessorId(currentRound.value?.round.groupChallenge))
 
 const details = computed(() =>
   accessorId.value ? getChallengeDetails(accessorId.value) : undefined

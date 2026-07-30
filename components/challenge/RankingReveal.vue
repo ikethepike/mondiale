@@ -30,9 +30,8 @@
           <strong class="name">{{ row.name }}</strong>
           <div v-if="row.amount" class="measure">
             <span class="amount">{{ formatAmount(row.amount) }}</span>
-            <!-- A shared value has no true order: say so, so a "1" repeated
-                 five times reads as a tie rather than a rendering bug -->
-            <span v-if="row.tied" class="tied">tied ×{{ row.tieEnd - row.tieStart + 1 }}</span>
+            <!-- Without this a "1" repeated five times reads as a bug -->
+            <span v-if="row.tied" class="tied">tied ×{{ row.tiedCount }}</span>
             <span class="scale" aria-hidden="true">
               <span class="fill" :style="{ width: `${row.share * 100}%` }" />
             </span>
@@ -99,7 +98,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { formatAmount, formatOrdinal } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
-import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
+import { rankingAccessorId } from '~~/lib/rounds'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const { currentRound } = useClientEvents()
@@ -116,10 +115,7 @@ const props = defineProps({
   },
 })
 
-const accessorId = computed(() => {
-  const challenge = currentRound.value?.round.groupChallenge
-  return isGroupChallenge(challenge) ? challenge.id : undefined
-})
+const accessorId = computed(() => rankingAccessorId(currentRound.value?.round.groupChallenge))
 
 const markers = computed(() =>
   accessorId.value ? getChallengeDetails(accessorId.value).markers : undefined

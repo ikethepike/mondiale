@@ -369,7 +369,7 @@ describe('scoreChallengeSubmission', () => {
         isoCode: 'NR',
         correctPosition: 5,
         tieStart: 1,
-        tieEnd: 5,
+        tiedCount: 5,
         tied: true,
         points: 0,
       })
@@ -385,11 +385,11 @@ describe('rankingBreakdown', () => {
     // accessor there are no values to tie on, so every slot stands alone.
     const rows = rankingBreakdown({ submitted: ['RU', 'FR', 'US', 'PT', 'LU'], correct })
     expect(rows).toEqual([
-      { isoCode: 'RU', correctPosition: 1, tieStart: 1, tieEnd: 1, tied: false, submittedPosition: 1, offBy: 0, points: 3 }, // prettier-ignore
-      { isoCode: 'US', correctPosition: 2, tieStart: 2, tieEnd: 2, tied: false, submittedPosition: 3, offBy: 1, points: 2 }, // prettier-ignore
-      { isoCode: 'FR', correctPosition: 3, tieStart: 3, tieEnd: 3, tied: false, submittedPosition: 2, offBy: 1, points: 2 }, // prettier-ignore
-      { isoCode: 'PT', correctPosition: 4, tieStart: 4, tieEnd: 4, tied: false, submittedPosition: 4, offBy: 0, points: 3 }, // prettier-ignore
-      { isoCode: 'LU', correctPosition: 5, tieStart: 5, tieEnd: 5, tied: false, submittedPosition: 5, offBy: 0, points: 3 }, // prettier-ignore
+      { isoCode: 'RU', correctPosition: 1, tieStart: 1, tiedCount: 1, tied: false, submittedPosition: 1, offBy: 0, points: 3 }, // prettier-ignore
+      { isoCode: 'US', correctPosition: 2, tieStart: 2, tiedCount: 1, tied: false, submittedPosition: 3, offBy: 1, points: 2 }, // prettier-ignore
+      { isoCode: 'FR', correctPosition: 3, tieStart: 3, tiedCount: 1, tied: false, submittedPosition: 2, offBy: 1, points: 2 }, // prettier-ignore
+      { isoCode: 'PT', correctPosition: 4, tieStart: 4, tiedCount: 1, tied: false, submittedPosition: 4, offBy: 0, points: 3 }, // prettier-ignore
+      { isoCode: 'LU', correctPosition: 5, tieStart: 5, tiedCount: 1, tied: false, submittedPosition: 5, offBy: 0, points: 3 }, // prettier-ignore
     ])
   })
 
@@ -399,7 +399,7 @@ describe('rankingBreakdown', () => {
       isoCode: 'FR',
       correctPosition: 3,
       tieStart: 3,
-      tieEnd: 3,
+      tiedCount: 1,
       tied: false,
       points: 0,
     })

@@ -133,13 +133,13 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
-import { rankingTieBands } from '~~/lib/challenges'
+import { rankingHasTies } from '~~/lib/challenges'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
+import { rankingAccessorId } from '~~/lib/rounds'
 import { useCountUp } from '~~/lib/use-count-up'
 import {
-  isGroupChallenge,
   isTraversalChallenge,
   roundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
@@ -148,6 +148,21 @@ const { currentRound, playerId, gameStore } = useClientEvents()
 
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
+const accessorId = computed(() => rankingAccessorId(roundChallenge.value))
+
+const selectedPlayer = ref(playerId.value)
+
+const selectedScorecard = computed(
+  () =>
+    gameStore.rankedScores.find(({ player }) => player.id === selectedPlayer.value) ??
+    gameStore.rankedScores[0]
+)
+
+// The explainer only teaches the tie rule on rounds that leaned on it.
+const rankingTies = computed(() => {
+  const correct = selectedScorecard.value?.answers?.correct
+  return !!correct && rankingHasTies({ correct, groupChallengeAccessorId: accessorId.value })
+})
 
 const traversalChallenge = computed(() => {
   const challenge = roundChallenge.value
@@ -283,26 +298,6 @@ const sectionLabels = computed(() => {
     default:
       return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
   }
-})
-
-const selectedPlayer = ref(playerId.value)
-
-const selectedScorecard = computed(() => {
-  return (
-    gameStore.rankedScores.find(({ player }) => player.id === selectedPlayer.value) ??
-    gameStore.rankedScores[0]
-  )
-})
-
-// Does the revealed order contain countries that share a value? The explainer
-// only teaches the tie rule when the round actually leaned on it.
-const rankingTies = computed(() => {
-  const challenge = roundChallenge.value
-  const correct = selectedScorecard.value?.answers?.correct
-  if (!correct || !isGroupChallenge(challenge)) return false
-  return rankingTieBands({ correct, groupChallengeAccessorId: challenge.id }).some(
-    band => band.end > band.start
-  )
 })
 
 const card = ref<HTMLElement>()
