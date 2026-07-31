@@ -827,7 +827,9 @@ export interface MediaCredit {
 }
 
 /** Just the credit fields of an entry that also holds game data — the one way
- *  to carry a photo's credit from one generator run to the next. */
+ *  to carry a photo's credit from one generator run to the next. Callers pass
+ *  a whole generator row (a landmark with its name, image and coordinates);
+ *  the extra fields are simply ignored. */
 export const pickMediaCredit = (entry: MediaCredit | undefined): MediaCredit | undefined => {
   if (!entry?.credit && !entry?.license) return undefined
   return {

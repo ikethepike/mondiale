@@ -1,4 +1,4 @@
-Anthem generator report — 183 countries shipped an anthem clip.
+Anthem generator report — 182 countries shipped an anthem clip.
 
 VOCAL RECORDINGS (91) — the sung language may give the answer away.
 Replace with an instrumental take on Commons where one exists.
@@ -93,6 +93,11 @@ Replace with an instrumental take on Commons where one exists.
   HN  National Anthem of Honduras  Honduras National Anthem.ogg
   GY  National anthem of Guyana  National Anthem of Guyana.ogg
   DO  National Anthem of the Dominican Republic  Dominican Republic National Anthem.ogg
+
+UNCREDITED UNDER AN ATTRIBUTION LICENCE (1)
+These need a named author to ship legally, and Commons published none.
+Add the Artist on Commons, or replace the file with a public-domain take.
+  SL  CC BY-SA 4.0  Sierra Leone's national anthem.ogg
 
 NO AUDIO (8)
   BA  National Anthem of Bosnia and Herzegovina  (no audio found)

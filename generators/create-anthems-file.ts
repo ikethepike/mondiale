@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { COUNTRIES } from '../data/countries.gen'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
@@ -113,6 +113,9 @@ const isInstrumental = (file: string): boolean => /instrumental|orchestr|band|or
  * recording is not what should play in a party game.
  */
 const UNUSABLE = /\b(midi|former|historic(al)?|francoist|nazi|soviet|colonial|1st version)\b/i
+
+/** Licences that need no named author. Everything else (CC BY, CC BY-SA) does. */
+const ATTRIBUTION_FREE = /public domain|^CC0|^PD/i
 
 const isPlayable = (file: string): boolean =>
   !/\.(mid|midi)$/i.test(file) && !UNUSABLE.test(file)
@@ -248,6 +251,7 @@ mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 
 const mapping: AnthemMapping = {}
 const vocalPicks: string[] = []
+const uncreditedPicks: string[] = []
 const missing: string[] = []
 let index = 0
 
@@ -279,6 +283,20 @@ for (const [isoCode, candidate] of candidates) {
   const instrumental = isInstrumental(file)
   if (!instrumental) vocalPicks.push(`${isoCode}  ${candidate.title}  ${file}`)
 
+  const credit = await captureImageCredit(file, previousMapping[isoCode], force)
+  // A CC BY / BY-SA file MUST name its author to be used at all. Commons
+  // sometimes carries the licence without an Artist field, and shipping that is
+  // a licence breach — so the country is DROPPED rather than served uncredited.
+  if (credit.license && !ATTRIBUTION_FREE.test(credit.license) && !credit.credit) {
+    uncreditedPicks.push(`${isoCode}  ${credit.license}  ${file}`)
+    for (const extension of ['webm', 'm4a']) {
+      const path = `${OUTPUT_DIRECTORY}/${isoCode}.${extension}`
+      if (existsSync(path)) rmSync(path)
+    }
+    await wait(250)
+    continue
+  }
+
   mapping[isoCode] = {
     title: candidate.title,
     webm: clip.webm,
@@ -288,7 +306,7 @@ for (const [isoCode, candidate] of candidates) {
     ...(candidate.adoptedYear ? { adoptedYear: candidate.adoptedYear } : {}),
     ...(candidate.composer ? { composer: candidate.composer } : {}),
     ...(instrumental ? { instrumental: true } : {}),
-    ...(await captureImageCredit(file, previousMapping[isoCode], force)),
+    ...credit,
   }
   await wait(250)
 }
@@ -296,7 +314,12 @@ for (const [isoCode, candidate] of candidates) {
 process.stdout.write('\r')
 
 // Merge with the previous run: fresh wins, gaps keep what an earlier run got.
+const droppedForCredit = new Set(uncreditedPicks.map(line => line.slice(0, 2)))
 for (const isoCode of ISOCountryCodes) {
+  // A country dropped for a missing author must not walk back in off the
+  // previous run — the merge would undo the licence check every time.
+  if (droppedForCredit.has(isoCode)) continue
+
   const merged = { ...previousMapping[isoCode], ...mapping[isoCode] }
   if (merged.title && merged.webm && merged.m4a) {
     mapping[isoCode] = { ...merged, title: merged.title, webm: merged.webm, m4a: merged.m4a }
@@ -322,6 +345,11 @@ writeFileSync(
     'Replace with an instrumental take on Commons where one exists.',
     ...vocalPicks.map(line => `  ${line}`),
     '',
+    `UNCREDITED UNDER AN ATTRIBUTION LICENCE (${uncreditedPicks.length})`,
+    'These need a named author to ship legally, and Commons published none.',
+    'Add the Artist on Commons, or replace the file with a public-domain take.',
+    ...uncreditedPicks.map(line => `  ${line}`),
+    '',
     `NO AUDIO (${missing.length})`,
     ...missing.map(line => `  ${line}`),
     '',
@@ -330,4 +358,7 @@ writeFileSync(
 
 console.log(`${shipped} countries have an anthem clip.`)
 console.log(`  ${vocalPicks.length} are vocal recordings — see ${REPORT_PATH}`)
+if (uncreditedPicks.length) {
+  console.warn(`  ${uncreditedPicks.length} lack a required author credit — see ${REPORT_PATH}`)
+}
 console.log(`  ${missing.length} have no usable audio`)

@@ -24,6 +24,22 @@ describe('anthem dataset', () => {
     expect(entries.filter(([, entry]) => !entry?.title?.trim()).map(([iso]) => iso)).toEqual([])
   })
 
+  it('names an author on every clip whose licence demands one', () => {
+    // Public-domain and CC0 files need no author. CC BY / CC BY-SA do — using
+    // one without attribution is a licence breach, not a cosmetic gap. Commons
+    // occasionally publishes the licence with no Artist field, so this catches
+    // the files that would ship uncredited.
+    const attributionFree = /public domain|^CC0|^PD/i
+    const uncredited = entries.filter(
+      ([, entry]) => entry?.license && !attributionFree.test(entry.license) && !entry.credit
+    )
+    expect(uncredited.map(([iso, entry]) => `${iso}: ${entry?.license}`)).toEqual([])
+  })
+
+  it('records a licence for every shipped clip', () => {
+    expect(entries.filter(([, entry]) => !entry?.license).map(([iso]) => iso)).toEqual([])
+  })
+
   it('never serves one country the clip of another', () => {
     // Two countries pointing at the same audio means a search fallback matched
     // the wrong nation — the exact shape of the Afghanistan/US bug.
