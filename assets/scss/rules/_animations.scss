@@ -62,12 +62,19 @@
 
 // The audio rounds' level meter: bars breathe while a clip plays. Decoration
 // only — driven by the round clock, never by audio analysis.
+// Animates HEIGHT rather than scaleY: scaling a 3px-wide bar stretches its
+// rasterised edges and the rounded caps go blocky. Height keeps the caps
+// perfectly round at every frame, and the eased midpoint reads as a breath
+// rather than a bounce.
 @keyframes audio-pulse {
-  from {
-    transform: scaleY(1);
+  0% {
+    height: 0.4rem;
   }
-  to {
-    transform: scaleY(3.4);
+  50% {
+    height: 1.6rem;
+  }
+  100% {
+    height: 0.7rem;
   }
 }
 

@@ -49,14 +49,17 @@
         </svg>
       </span>
 
-      <!-- Only while sound is actually coming out, so it reads as level, not
-           decoration. -->
-      <span v-if="playing" class="dial" aria-hidden="true">
-        <span v-for="bar in BAR_COUNT" :key="bar" class="bar" :style="barStyle(bar)" />
-      </span>
     </button>
 
-    <p class="caption">{{ caption }}</p>
+    <!-- The waveform takes the caption's place while sound is running: one
+         thing in that slot at a time, and the moving bars say "listening"
+         better than the word does. -->
+    <Transition name="dock-swap" mode="out-in">
+      <span v-if="playing" key="dial" class="dial" aria-hidden="true">
+        <span v-for="bar in BAR_COUNT" :key="bar" class="bar" :style="barStyle(bar)" />
+      </span>
+      <p v-else key="caption" class="caption">{{ caption }}</p>
+    </Transition>
   </div>
 </template>
 <script lang="ts" setup>
@@ -67,10 +70,11 @@ import { prefersReducedMotion } from '~~/lib/motion'
  * The sound stage for the audio rounds: one big play control, a ring that
  * tracks the recording, and a level dial while it runs.
  *
- * The round's clock does NOT start until `started` fires, so nobody loses buzz
- * time to a slow download or to Safari withholding autoplay. On a phone the
- * round simply waits, silent and stopped, until the player taps play — which
- * is the only way audio can ever begin there.
+ * NOTHING PLAYS ON ITS OWN. The player presses play; that press starts the clip
+ * and, through `started`, the round's clock. Autoplay is not attempted at all —
+ * Safari refuses it outright, and letting it succeed elsewhere would run the
+ * same round two different ways depending on the browser. A deliberate press
+ * also means nobody loses buzz time to a clip that is still downloading.
  *
  * The bars are decoration: they animate off the clock, never off real audio
  * analysis, so there is no AudioContext to unlock or tear down.
@@ -277,23 +281,36 @@ defineExpose({ play, pause, stop })
   animation: spin 0.8s linear infinite;
 }
 
-// Sits under the glyph inside the button, so the level reads as part of it.
+// Stands where the caption otherwise sits. A FIXED-height track with the bars
+// centred in it: the keyframes animate each bar's own height, so the row's
+// footprint never shifts and the caps stay round at every frame.
 .dial {
-  gap: 0.3rem;
-  left: 50%;
-  bottom: 1.5rem;
+  gap: 0.4rem;
+  height: 2.4rem;
   display: flex;
-  position: absolute;
+  padding: 0 1.2rem;
   align-items: center;
-  transform: translateX(-50%);
+  justify-content: center;
+  // Its own ground, exactly like the caption it replaces — bare bars over the
+  // map read as debris rather than a level meter.
+  border-radius: 2rem;
+  background: #{milk(0.92)};
 }
 
 .bar {
-  width: 0.28rem;
+  width: 0.3rem;
   height: 0.5rem;
-  border-radius: 0.2rem;
-  background: #{flame(0.75)};
-  animation: audio-pulse 0.9s ease-in-out infinite alternate;
+  // The keyframes drive height between these, so the row can never grow past
+  // its track — a percentage against an auto-height parent overflowed instead.
+  min-height: 0.4rem;
+  max-height: 1.6rem;
+  border-radius: 0.3rem;
+  background: #{flame()};
+  animation: audio-pulse 0.9s var(--ease-smooth) infinite alternate;
+  // Promotes each bar to its own layer so the rounded caps land on whole
+  // device pixels instead of being resampled every frame.
+  transform: translateZ(0);
+  will-change: height;
 }
 
 // Sits over the map, so it needs its own ground to stay legible against
@@ -307,6 +324,21 @@ defineExpose({ play, pause, stop })
   border-radius: 2rem;
   color: var(--soft-blue);
   background: #{milk(0.92)};
+}
+
+// Caption ⇄ waveform: they share one slot, so one fades out before the other
+// arrives (mode="out-in") rather than the two jostling.
+.dock-swap-enter-active,
+.dock-swap-leave-active {
+  transition:
+    opacity var(--motion-quick) var(--ease-smooth),
+    transform var(--motion-quick) var(--ease-out-expressive);
+}
+
+.dock-swap-enter-from,
+.dock-swap-leave-to {
+  opacity: 0;
+  transform: translateY(0.3rem);
 }
 
 @keyframes spin {

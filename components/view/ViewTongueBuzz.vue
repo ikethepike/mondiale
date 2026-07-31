@@ -34,9 +34,11 @@
         @started="onAudioStarted"
       />
 
-      <ul v-if="!resolved && unlocked.region && challenge.region" class="hints">
-        <li class="hint-chip">One of them is in {{ challenge.region }}</li>
-      </ul>
+      <TransitionGroup v-if="!resolved" tag="ul" name="chain" class="hints">
+        <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
+          One of them is in {{ challenge.region }}
+        </li>
+      </TransitionGroup>
 
       <ol v-if="resolved" class="country-chip-list answers" aria-label="Every correct answer">
         <CountryChip
@@ -115,14 +117,11 @@ const {
 const dock = ref<InstanceType<typeof AudioDock>>()
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
-/** Show the stage, then try to start the clip — the interstitial's own tap is
- *  a real gesture, so this usually works. If the browser refuses (iOS always
- *  does without one in flight), the dock waits on its play button, and the
- *  clock waits with it rather than burning the pot on silence. */
-const onInterstitialDone = () => {
-  revealStage()
-  nextTick(() => dock.value?.play())
-}
+/** Show the stage and stop. The round never plays on its own: the player
+ *  presses play, and only that starts the clip and the clock together. An
+ *  autoplay attempt here would start the countdown on desktop while iOS sat
+ *  silent — the same round running two different ways. */
+const onInterstitialDone = () => revealStage()
 
 /** The clock hangs off audio genuinely playing, never off a load event, so a
  *  slow download or a withheld autoplay can't eat anyone's buzz time. */
@@ -173,6 +172,7 @@ const onGuess = (country: Country) => {
   border-radius: 2rem;
   color: var(--soft-blue);
   background: #{milk(0.6)};
-  animation: chip-in var(--motion-quick) var(--ease-out-expressive) both;
+  // Entrance belongs to the TransitionGroup, not to the chip — a CSS animation
+  // here would replay on every re-render and fight the landing.
 }
 </style>

@@ -31,11 +31,17 @@
         @started="onAudioStarted"
       />
 
-      <ul v-if="!resolved" class="hints">
-        <li v-if="unlocked.region && challenge.region" class="hint-chip">
+      <!-- Chips land one at a time as the clock crosses each threshold, so
+           they arrive on the shared `chip-in` beat rather than blinking on. -->
+      <TransitionGroup v-if="!resolved" tag="ul" name="chain" class="hints">
+        <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
           Region: {{ challenge.region }}
         </li>
-        <li v-if="unlocked.swatches && challenge.swatches?.length" class="hint-chip swatch-chip">
+        <li
+          v-if="unlocked.swatches && challenge.swatches?.length"
+          key="swatches"
+          class="hint-chip swatch-chip"
+        >
           Flag:
           <span
             v-for="colour in challenge.swatches"
@@ -44,10 +50,10 @@
             :style="{ '--swatch': colour }"
           />
         </li>
-        <li v-if="unlocked.initial && challenge.initial" class="hint-chip">
+        <li v-if="unlocked.initial && challenge.initial" key="initial" class="hint-chip">
           Starts with “{{ challenge.initial }}”
         </li>
-      </ul>
+      </TransitionGroup>
     </section>
 
     <footer v-if="!resolved" class="suggest-berth">
@@ -123,14 +129,11 @@ const anthem = computed(() => (challenge.value ? ANTHEMS[challenge.value.country
 
 /** The interstitial tap IS the gesture that unblocks autoplay — start the clip
  *  and the clock together, from inside that same user event. */
-/** Show the stage, then try to start the clip — the interstitial's own tap is
- *  a real gesture, so this usually works. If the browser refuses (iOS always
- *  does without one in flight), the dock waits on its play button, and the
- *  clock waits with it rather than burning the pot on silence. */
-const onInterstitialDone = () => {
-  revealStage()
-  nextTick(() => dock.value?.play())
-}
+/** Show the stage and stop. The round never plays on its own: the player
+ *  presses play, and only that starts the clip and the clock together. An
+ *  autoplay attempt here would start the countdown on desktop while iOS sat
+ *  silent — the same round running two different ways. */
+const onInterstitialDone = () => revealStage()
 
 /** The clock hangs off audio genuinely playing, never off a load event, so a
  *  slow download or a withheld autoplay can't eat anyone's buzz time. */
@@ -178,10 +181,16 @@ const onGuess = (country: Country) => {
   font-size: 1.3rem;
   font-weight: 600;
   align-items: center;
+  // Chips arrive one at a time as the clock passes each threshold, so each one
+  // centres its own contents — a lone swatch row would otherwise sit left of
+  // the dock it hangs under.
+  text-align: center;
+  justify-content: center;
   border-radius: 2rem;
   color: var(--soft-blue);
   background: #{milk(0.6)};
-  animation: chip-in var(--motion-quick) var(--ease-out-expressive) both;
+  // Entrance belongs to the TransitionGroup, not to the chip — a CSS animation
+  // here would replay on every re-render and fight the landing.
 }
 
 .swatch {
