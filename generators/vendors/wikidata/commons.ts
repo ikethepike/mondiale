@@ -1,4 +1,5 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import sharp from 'sharp'
 import type { MediaCredit } from '../../../lib/attribution'
 
@@ -380,4 +381,128 @@ export const saveCommonsImage = async (
   if (!response) return undefined
 
   return writeWebp(Buffer.from(await response.arrayBuffer()), baseName, publicBase, width)
+}
+
+/**
+ * Audio ships in two encodings because no single one covers every browser:
+ * Opus/WebM for Chrome/Firefox/Android, AAC/M4A for Safari. Both are bounded
+ * the same way images are — one clip length and one bitrate budget for every
+ * generated sound, kept here so the anthem and language generators can't drift.
+ */
+export const AUDIO_CLIP_SECONDS = 30
+export const OPUS_BITRATE = '64k'
+export const AAC_BITRATE = '96k'
+
+/** Recordings arrive at wildly different levels — a quiet anthem after a loud
+ *  one is a bad round, not a hard one. Normalize every clip to the same target. */
+const LOUDNESS_FILTER = 'loudnorm=I=-16:TP=-1.5:LRA=11'
+
+/** Encode a trimmed, loudness-normalized clip. `codec` picks the container. */
+const encodeClip = (
+  input: Buffer,
+  outputPath: string,
+  { seconds, offset, codec }: { seconds: number; offset: number; codec: 'opus' | 'aac' }
+): Promise<boolean> =>
+  new Promise(resolve => {
+    const child = spawn(
+      'ffmpeg',
+      [
+        ...['-hide_banner', '-loglevel', 'error', '-y'],
+        ...['-i', 'pipe:0'],
+        ...['-ss', String(offset), '-t', String(seconds)],
+        ...['-af', LOUDNESS_FILTER],
+        '-vn', // some Commons audio carries cover art; never ship a video stream
+        ...(codec === 'opus'
+          ? ['-c:a', 'libopus', '-b:a', OPUS_BITRATE, '-f', 'webm']
+          : ['-c:a', 'aac', '-b:a', AAC_BITRATE, '-f', 'mp4', '-movflags', '+faststart']),
+        outputPath,
+      ],
+      { stdio: ['pipe', 'ignore', 'pipe'] }
+    )
+
+    let stderr = ''
+    child.stderr.on('data', (chunk: Buffer) => (stderr += chunk))
+    child.on('error', () => resolve(false))
+    child.on('close', (code: number | null) => {
+      if (code !== 0 && stderr.trim()) console.warn(`  ffmpeg: ${stderr.trim().slice(0, 120)}`)
+      resolve(code === 0)
+    })
+    child.stdin.on('error', () => {}) // ffmpeg can exit before the write drains
+    child.stdin.end(input)
+  })
+
+/** Both encodings of an already-generated clip, or undefined if either is missing. */
+export const existingAudioClip = (
+  baseName: string,
+  publicBase: string
+): { webm: string; m4a: string } | undefined =>
+  existsSync(`${baseName}.webm`) && existsSync(`${baseName}.m4a`)
+    ? { webm: `${publicBase}.webm`, m4a: `${publicBase}.m4a` }
+    : undefined
+
+/**
+ * Write `buffer` as both `${baseName}.webm` and `${baseName}.m4a`, trimmed to
+ * `seconds` from `offset`. Returns both public paths, or undefined if either
+ * encode fails — a half-encoded clip would play on one browser and not another.
+ */
+export const writeAudioClip = async (
+  buffer: Buffer,
+  baseName: string,
+  publicBase: string,
+  { seconds = AUDIO_CLIP_SECONDS, offset = 0 }: { seconds?: number; offset?: number } = {}
+): Promise<{ webm: string; m4a: string } | undefined> => {
+  const [opus, aac] = await Promise.all([
+    encodeClip(buffer, `${baseName}.webm`, { seconds, offset, codec: 'opus' }),
+    encodeClip(buffer, `${baseName}.m4a`, { seconds, offset, codec: 'aac' }),
+  ])
+
+  if (!opus || !aac) {
+    for (const extension of ['webm', 'm4a']) {
+      if (existsSync(`${baseName}.${extension}`)) rmSync(`${baseName}.${extension}`)
+    }
+    return undefined
+  }
+  return { webm: `${publicBase}.webm`, m4a: `${publicBase}.m4a` }
+}
+
+/**
+ * Download a Commons audio file and ship it as a trimmed clip in both
+ * encodings. Unlike images there is no `?width=` hint to shrink the transfer,
+ * so the whole recording comes down and ffmpeg does the trimming.
+ */
+export const saveCommonsAudio = async (
+  file: string,
+  baseName: string,
+  publicBase: string,
+  {
+    force,
+    seconds = AUDIO_CLIP_SECONDS,
+    offset = 0,
+  }: { force: boolean; seconds?: number; offset?: number }
+): Promise<{ webm: string; m4a: string } | undefined> => {
+  if (!force) {
+    const existing = existingAudioClip(baseName, publicBase)
+    if (existing) return existing
+  }
+
+  const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}`
+  let response: Response | undefined
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    response = await fetch(url, { headers: { 'User-Agent': WIKIDATA_USER_AGENT } }).catch(
+      () => undefined
+    )
+    if (response?.ok) break
+
+    const retryAfter = Number(response?.headers.get('retry-after'))
+    await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
+  }
+  if (!response?.ok) {
+    console.warn(`  audio fetch failed (${response?.status ?? 'network'}): ${file.slice(0, 90)}`)
+    return undefined
+  }
+
+  return writeAudioClip(Buffer.from(await response.arrayBuffer()), baseName, publicBase, {
+    seconds,
+    offset,
+  })
 }

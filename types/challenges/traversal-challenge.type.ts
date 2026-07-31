@@ -57,6 +57,8 @@ export type RoundChallengeKind =
   | 'heritage-hunt'
   | 'neighbour-blitz'
   | 'silhouette'
+  | 'anthem-buzz'
+  | 'tongue-buzz'
   | 'hot-cold'
   | 'sketch'
   | 'stat-detective'
@@ -92,6 +94,10 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'neighbour-blitz'
     case 'silhouette-challenge':
       return 'silhouette'
+    case 'anthem-buzz-challenge':
+      return 'anthem-buzz'
+    case 'tongue-buzz-challenge':
+      return 'tongue-buzz'
     case 'hot-cold-challenge':
       return 'hot-cold'
     case 'sketch-challenge':

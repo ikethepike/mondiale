@@ -60,6 +60,17 @@
   }
 }
 
+// The audio rounds' level meter: bars breathe while a clip plays. Decoration
+// only — driven by the round clock, never by audio analysis.
+@keyframes audio-pulse {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(3.4);
+  }
+}
+
 // The <TransitionGroup name="chain"> landing: a new chip pops in from below
 // and neighbours slide aside. One definition for every chosen-country list.
 .chain-enter-from {

@@ -45,6 +45,8 @@ import ViewHotCold from '~/components/view/ViewHotCold.vue'
 import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
+import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
+import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSpectate from '~/components/view/ViewSpectate.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
@@ -127,6 +129,8 @@ const activeView = computed<ActiveView | undefined>(() => {
         'heritage-hunt': ViewHeritageHunt,
         'neighbour-blitz': ViewNeighbourBlitz,
         silhouette: ViewSilhouette,
+        'anthem-buzz': ViewAnthemBuzz,
+        'tongue-buzz': ViewTongueBuzz,
         'hot-cold': ViewHotCold,
         sketch: ViewSketch,
         'stat-detective': ViewStatDetective,

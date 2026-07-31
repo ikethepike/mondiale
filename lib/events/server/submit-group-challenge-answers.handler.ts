@@ -9,11 +9,13 @@ import {
   scorePinLandmark,
   scoreTraversalSubmission,
   scoreTrendRace,
+  speaksTongue,
 } from '~~/lib/challenges'
 import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { blitzScore } from '~~/lib/scoring'
+import { clamp01 } from '~~/lib/number'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { GroupChallengeAnswer } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -97,6 +99,21 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       }
       case 'silhouette': {
         buzzOn(expectChallengeType(roundChallenge, 'silhouette-challenge'))
+        break
+      }
+      case 'anthem-buzz': {
+        buzzOn(expectChallengeType(roundChallenge, 'anthem-buzz-challenge'))
+        break
+      }
+      case 'tongue-buzz': {
+        // Every country speaking the language is a correct answer, so this is
+        // a membership test — through the same predicate the client paid out
+        // on — and the reveal lists the whole set as `correct`.
+        const challenge = expectChallengeType(roundChallenge, 'tongue-buzz-challenge')
+        const guess = eventData.ranking[0]
+        const correct = !!guess && speaksTongue(challenge, guess)
+        answer = { submitted: eventData.ranking, correct: challenge.countries }
+        scoring = clampClientScore(eventData.clientScore, challenge.maximumPoints, correct)
         break
       }
       case 'stat-detective': {
@@ -235,7 +252,13 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       }
     }
 
-    currentRound.groupAnswers[playerId] = answer
+    // Reveal-only, and only meaningful where a buzz happened: the score is
+    // already settled above, so this needs no trust — it just lets the buzz
+    // race show WHEN each player committed.
+    currentRound.groupAnswers[playerId] =
+      typeof eventData.buzzAt === 'number'
+        ? { ...answer, buzzAt: clamp01(eventData.buzzAt) }
+        : answer
 
     // Test hook: FORCE_FINAL_CHALLENGE=1 teleports every player next to the
     // final tile after this round, so its gauntlet starts within seconds

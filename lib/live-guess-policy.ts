@@ -27,6 +27,9 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   highlands: 'label',
   'mother-tongue': 'label',
   traversal: 'label',
+  // Dozens of countries share the language, so a named guess is colour rather
+  // than a clue — and seeing it is what makes the multi-answer rule legible.
+  'tongue-buzz': 'label',
 
   // ~195 candidates, free-typed: one wrong name is noise, not a clue.
   'flag-palette': 'label',
@@ -36,6 +39,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // One hidden target, shared by the room.
   'hot-cold': 'presence',
   silhouette: 'presence',
+  'anthem-buzz': 'presence',
   'stat-detective': 'presence',
   'two-truths': 'presence',
   'name-that-water': 'presence',

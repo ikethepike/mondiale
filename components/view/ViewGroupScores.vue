@@ -42,6 +42,20 @@
               />
             </section>
           </template>
+          <template v-else-if="audioReveal && currentRound">
+            <section class="pane-content ranking">
+              <span class="eyebrow">The Reveal</span>
+              <AnthemReveal
+                :subject="audioReveal.subject"
+                :subtitle="audioReveal.subtitle"
+                :credit="audioReveal.credit"
+                :replay-clip="audioReveal.clip"
+                :round="currentRound.round"
+                :players="gameStore.game?.players ?? {}"
+                :my-player-id="playerId"
+              />
+            </section>
+          </template>
           <!-- `right` restores the pane padding the tile rows give up to scroll
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
@@ -126,14 +140,18 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import AnthemReveal from '~/components/challenge/AnthemReveal.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
+import { ANTHEMS } from '~~/data/anthems.gen'
+import { mediaCreditLine } from '~~/lib/attribution'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { rankingHasTies } from '~~/lib/challenges'
+import { countryName } from '~~/lib/country'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
@@ -192,6 +210,37 @@ const flashpointChallenge = computed(() => {
 
 const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
 
+/** The audio rounds' dossier: what the clip was, plus the clip itself to hear
+ *  again. Both kinds share one reveal — they differ only in what the subject is. */
+const audioReveal = computed(() => {
+  const challenge = roundChallenge.value
+  if (!challenge || !('_type' in challenge)) return undefined
+
+  if (challenge._type === 'anthem-buzz-challenge') {
+    const anthem = ANTHEMS[challenge.country]
+    const era = anthem?.adoptedYear ? `adopted ${anthem.adoptedYear}` : undefined
+    return {
+      subject: countryName(challenge.country),
+      subtitle: [anthem?.title, anthem?.composer, era].filter(Boolean).join(' · '),
+      credit: mediaCreditLine(anthem, 'commons-media'),
+      clip: challenge.clip,
+    }
+  }
+
+  if (challenge._type === 'tongue-buzz-challenge') {
+    return {
+      subject: challenge.language,
+      subtitle: `Official in ${challenge.countries.length} ${
+        challenge.countries.length === 1 ? 'country' : 'countries'
+      } — any of them counted`,
+      credit: undefined,
+      clip: challenge.clip,
+    }
+  }
+
+  return undefined
+})
+
 /** Ghosts of empires: the beat-1 name verdict, above the tap ledger. */
 const empireVerdict = computed(() => {
   const challenge = roundChallenge.value
@@ -215,6 +264,10 @@ const explainer = computed(() => {
       return 'Points scale with neighbours found — wrong names each cost one.'
     case 'silhouette':
       return 'The earlier the buzz, the bigger the score.'
+    case 'anthem-buzz':
+      return 'The earlier the buzz, the bigger the score.'
+    case 'tongue-buzz':
+      return 'Any country with that official language counted — the earlier the buzz, the bigger the score.'
     case 'hot-cold':
       return 'Finding it is everything — every extra probe costs points.'
     case 'sketch':

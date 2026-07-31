@@ -2,7 +2,7 @@
   "name": "mondiale",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
+    "build": "NODE_OPTIONS=--max-old-space-size=5120 nuxt build",
     "deploy": "fly deploy --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
     "start": "node .output/server/index.mjs",
     "dev": "nuxt dev --host=0.0.0.0",
@@ -24,6 +24,8 @@
     "generate:wpp": "bun run generators/vendors/unwpp/create-wpp.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",
+    "generate:anthems": "bun run generators/create-anthems-file.ts",
+    "generate:tongues": "bun run generators/create-tongues-file.ts",
     "generate:currencies": "bun run generators/create-currencies-file.ts",
     "generate:landmarks": "bun run generators/create-landmarks-file.ts",
     "generate:events": "bun run generators/create-events-file.ts",

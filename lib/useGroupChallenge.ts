@@ -11,7 +11,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
  *  ranking `GroupChallenge` has none, so `Extract` drops it automatically. */
-type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
+export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
 
 /** Our own chips are capped separately from the store's incoming cap. */
 const MAX_OWN_ENTRIES = 6
@@ -68,10 +68,10 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
   /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op. */
-  const submitOnce = (ranking: ISOCountryCode[], clientScore?: number) => {
+  const submitOnce = (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
     if (submitted.value) return
     submitted.value = true
-    update({ event: 'submit-group-challenge-answers', ranking, clientScore })
+    update({ event: 'submit-group-challenge-answers', ranking, clientScore, buzzAt })
   }
 
   /**

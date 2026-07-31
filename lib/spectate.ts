@@ -253,6 +253,24 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
         focus: [challenge.country as ISOCountryCode],
       }
     }
+    case 'anthem-buzz': {
+      if (!('country' in challenge)) break
+      return {
+        kicker: 'Opening ceremony',
+        prompt: 'An anthem is playing — first to name the country takes the round',
+        secret: `It's ${countryName(challenge.country as ISOCountryCode)} — who knows the tune?`,
+        focus: [challenge.country as ISOCountryCode],
+      }
+    }
+    case 'tongue-buzz': {
+      if (!('language' in challenge) || !('countries' in challenge)) break
+      return {
+        kicker: 'Mother tongue',
+        prompt: 'Someone is speaking — name a country where that language is official',
+        secret: `${challenge.language} — any of ${challenge.countries.length} countries counts: ${listNames(challenge.countries)}`,
+        focus: challenge.countries,
+      }
+    }
     case 'hot-cold': {
       if (!('country' in challenge)) break
       return {
