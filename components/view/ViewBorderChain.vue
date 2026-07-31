@@ -1,12 +1,24 @@
 <template>
   <div v-if="challenge" class="border-chain challenge-shell">
+    <!-- A trap outranks the round's own opening sign: a client still holding
+         its interstitial when the dead end springs must see the newer beat,
+         not two overlays stacked on one another. -->
     <Interstitial
-      v-if="showInterstitial"
+      v-if="showInterstitial && !trap"
       tone="alert"
       :kicker="`Round ${currentRound?.number ?? 1} — Border Chain`"
       :title="`The chain starts in ${countryName(getCountry(seed))}`"
       :stakes="stakes"
       @done="begin()"
+    />
+
+    <!-- The dead-end hold. Server-timed: this only fades the sign, the next
+         chain-updated deals the fresh ground. -->
+    <TrapSprung
+      v-if="trap"
+      :trap="trap"
+      :players="gameStore.game?.players ?? {}"
+      :player-id="gameStore.playerId"
     />
 
     <!-- Walk-order numbers pinned over the chain — the gradient shows the
@@ -17,7 +29,7 @@
       <h1 class="map-caption">
         {{ headline }}
       </h1>
-      <span v-if="!finished && !briefing" class="map-caption sub turn-line">
+      <span v-if="!finished && !briefing && !trap" class="map-caption sub turn-line">
         <span class="chip" :style="{ background: activePlayer?.color }" />
         <span>{{ turnLabel }}</span>
         <ChallengeTimerRadial
@@ -117,6 +129,7 @@ import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
@@ -156,12 +169,17 @@ const chain = computed(() => (state.value ? liveChain(state.value) : []))
 const chainCount = computed(() => state.value?.chains.length ?? 0)
 const seed = computed(() => state.value?.chains[0]?.[0] as ISOCountryCode)
 const finished = computed(() => !!state.value?.finished)
+const trap = computed(() => state.value?.trap)
 const iAmOut = computed(() => !!state.value?.eliminated.includes(gameStore.playerId))
 const activeId = computed(() => (state.value ? activePlayerId(state.value) : undefined))
 const activePlayer = computed(() =>
   activeId.value ? gameStore.game?.players[activeId.value] : undefined
 )
-const myTurn = computed(() => !finished.value && activeId.value === gameStore.playerId)
+// Nobody is on the clock during a dead-end hold — the console stands down with
+// the turn line so no one types into a paused table.
+const myTurn = computed(
+  () => !finished.value && !trap.value && activeId.value === gameStore.playerId
+)
 const walked = computed(() => chain.value)
 
 // Countries out of this game — off a continental board, or benched
@@ -293,9 +311,23 @@ const paintChain = (staggered: boolean) => {
   gameStore.map.staggered = staggered
   gameStore.map.countryGroupings = groupings
   gameStore.map.seaLinks = seaLinkKeys()
-  gameStore.map.focus = current.chains.flat()
   const head = current.finished ? undefined : liveChain(current).at(-1)
   gameStore.map.pulsing = head ? [head] : []
+
+  // During the dead-end hold the map carries the proof: the shut doors take
+  // the miss wash and the camera frames them with the head that closed them,
+  // so the overlay's claim is visibly true behind it.
+  const sprung = current.trap
+  if (sprung) {
+    gameStore.map.tints = Object.fromEntries(
+      sprung.doors.map(door => [door.isoCode, 'stray' as const])
+    )
+    gameStore.map.focus = [sprung.head, ...sprung.doors.map(door => door.isoCode)]
+    gameStore.map.pulsing = [sprung.head]
+    return
+  }
+  gameStore.map.tints = {}
+  gameStore.map.focus = current.chains.flat()
 }
 
 watch(challenge, () => !finished.value && paintChain(false), { immediate: true, deep: true })

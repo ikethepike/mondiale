@@ -6,6 +6,7 @@ import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   chainHead,
+  closedDoors,
   connectionsOf,
   isStraitHop,
   liveChain,
@@ -112,6 +113,51 @@ describe('openMoves', () => {
     // Portugal's only connection is Spain — already walked.
     const trapped = state({ chains: [['ES', 'PT']] })
     expect(openMoves(trapped, WORLD)).toEqual([])
+  })
+})
+
+describe('closedDoors', () => {
+  it('names the walked country that shut the only door, with its step', () => {
+    const trapped = state({ chains: [['ES', 'PT']] })
+    expect(closedDoors(trapped, WORLD)).toEqual([{ isoCode: 'ES', reason: 'walked', step: 1 }])
+  })
+
+  it('marks a neighbour off the board when the variant excludes it', () => {
+    // Morocco borders Spain but is not on the European board.
+    const atSpain = state({ chains: [['FR', 'ES']] })
+    const doors = closedDoors(atSpain, EUROPE)
+    expect(doors).toContainEqual({ isoCode: 'MA', reason: 'off-board' })
+    expect(doors).toContainEqual({ isoCode: 'FR', reason: 'walked', step: 1 })
+  })
+
+  it('accounts for every connection when the head is a dead end', () => {
+    const trapped = state({ chains: [['ES', 'PT']] })
+    expect(openMoves(trapped, WORLD)).toEqual([])
+    // The proof must cover the whole neighbourhood, or the overlay lies.
+    const shut = new Set(closedDoors(trapped, WORLD).map(door => door.isoCode))
+    for (const connection of connectionsOf('PT')) expect(shut).toContain(connection)
+  })
+
+  it('is exactly the complement of openMoves', () => {
+    const mid = state({ chains: [['NO', 'SE', 'FI']] })
+    const open = new Set(openMoves(mid, WORLD))
+    const shut = new Set(closedDoors(mid, WORLD).map(door => door.isoCode))
+    for (const connection of connectionsOf('FI')) {
+      if (connection === 'FI') continue
+      expect(open.has(connection) || shut.has(connection)).toBe(true)
+      expect(open.has(connection) && shut.has(connection)).toBe(false)
+    }
+  })
+
+  it('lists a country reachable by both land and sea only once', () => {
+    // Denmark reaches Sweden by strait and Germany by land; no duplicates.
+    const atDenmark = state({ chains: [['DE', 'SE', 'DK']] })
+    const doors = closedDoors(atDenmark, WORLD).map(door => door.isoCode)
+    expect(new Set(doors).size).toBe(doors.length)
+  })
+
+  it('has nothing to prove without a head', () => {
+    expect(closedDoors(state({ chains: [[]] }), WORLD)).toEqual([])
   })
 })
 

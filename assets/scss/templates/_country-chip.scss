@@ -23,6 +23,16 @@
     border-color: flame(0.6);
   }
 
+  // Shut for good: a door already walked or off the board. The struck name is
+  // the house's eliminated-option language (UniqueRevealGrid's collisions).
+  &.spent {
+    opacity: 0.55;
+
+    .chip-name {
+      text-decoration: line-through;
+    }
+  }
+
   &.compact {
     gap: 0.55rem;
     padding: 0.3rem 0.9rem;

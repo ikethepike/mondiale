@@ -8,6 +8,13 @@ import type { ISOCountryCode } from '../geography.types'
  * player gets the same prompt and the earned points convert into board steps.
  */
 
+/** A shipped audio clip, in both encodings the round serves. Opus covers
+ *  Chrome/Firefox/Android; AAC covers Safari. */
+export interface AudioClip {
+  webm: string
+  m4a: string
+}
+
 /** Name as many of a country's land neighbours as you can before time runs out. */
 export interface NeighbourBlitzChallenge {
   _type: 'neighbour-blitz-challenge'
@@ -25,6 +32,37 @@ export interface SilhouetteChallenge {
   maximumPoints: number
   /** Non-hard mode helper: the country's region, revealed in the final stretch
    *  of the countdown. Absent in hard mode. */
+  region?: string
+}
+
+/** An anthem plays from the top — buzz early with the country for more points.
+ *  Hints unlock as the clip runs; all three are absent in hard mode. */
+export interface AnthemBuzzChallenge {
+  _type: 'anthem-buzz-challenge'
+  country: ISOCountryCode
+  clip: AudioClip
+  durationSeconds: number
+  maximumPoints: number
+  /** The country's region. */
+  region?: string
+  /** The flag's named colours, from `identity.simplifiedColors`. */
+  swatches?: string[]
+  /** First letter of the country's English name. */
+  initial?: string
+}
+
+/** A speech clip plays — name a country where that language is official.
+ *  Every country in `countries` is a correct answer, not just one. */
+export interface TongueBuzzChallenge {
+  _type: 'tongue-buzz-challenge'
+  language: string
+  clip: AudioClip
+  /** The answers: playable countries with this as an official language.
+   *  English is official in 55 of them, so the answer is a set by design. */
+  countries: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+  /** Non-hard mode helper: the region one speaker country sits in. */
   region?: string
 }
 
@@ -287,8 +325,33 @@ export interface BorderChainState {
   lastMoverId?: string
   /** trapped player → the opponent whose move dead-ended them. */
   trappedBy?: { [playerId: string]: string }
+  /** The dead-end pause: the whole table holds on the trap before the fresh
+   *  chain is dealt. Transient — set when the trap springs, cleared when the
+   *  hold elapses. The durable record stays in `outcomes`/`trappedBy`. */
+  trap?: BorderChainTrap
   /** Set when the round resolves; freezes the clock and starts the reveal. */
   finished?: boolean
+}
+
+/** Why a connection of the dead head was shut. */
+export type ClosedDoorReason = 'walked' | 'off-board'
+
+export interface ClosedDoor {
+  isoCode: ISOCountryCode
+  reason: ClosedDoorReason
+  /** 1-based step in the live chain the country was walked at; `walked` only. */
+  step?: number
+}
+
+export interface BorderChainTrap {
+  /** The player who never got a move. */
+  playerId: string
+  /** The head that had no way out. */
+  head: ISOCountryCode
+  /** Who closed it — absent when they walked into their own dead end. */
+  byPlayerId?: string
+  /** Every connection of `head`, with why it was shut. The proof. */
+  doors: ClosedDoor[]
 }
 
 /**
@@ -622,6 +685,8 @@ export type GroupModeChallenge =
   | HeritageHuntChallenge
   | NeighbourBlitzChallenge
   | SilhouetteChallenge
+  | AnthemBuzzChallenge
+  | TongueBuzzChallenge
   | HotColdChallenge
   | SketchChallenge
   | StatDetectiveChallenge

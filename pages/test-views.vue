@@ -50,6 +50,8 @@ import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
+import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
+import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
@@ -270,6 +272,34 @@ const scenarios: Scenario[] = [
     label: 'Group scores (reveal)',
     component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledRound()]),
+  },
+  {
+    id: 'anthem-scores',
+    label: 'Opening Ceremony scores (buzz race)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'anthem-buzz-challenge',
+            country: 'JP',
+            clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+            durationSeconds: 30,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          // An early buzz, a late one, and a player who never found it.
+          groupAnswers: {
+            [ME]: { submitted: ['JP'], correct: ['JP'], buzzAt: 0.82 },
+            [RIVAL]: { submitted: ['JP'], correct: ['JP'], buzzAt: 0.31 },
+            [THIRD]: { submitted: [], correct: ['JP'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 28, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 17, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        },
+      ]),
   },
   {
     id: 'two-truths',
@@ -1031,6 +1061,41 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'anthem-buzz',
+    label: 'Opening Ceremony (anthem audio)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          country: 'JP',
+          clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+          durationSeconds: 30,
+          region: 'Asia',
+          swatches: ['white', 'red'],
+          initial: 'J',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'tongue-buzz',
+    label: 'Mother Tongue (speech audio)',
+    component: ViewTongueBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'tongue-buzz-challenge',
+          language: 'Portuguese',
+          clip: { webm: '/tongues/pt-0.webm', m4a: '/tongues/pt-0.m4a' },
+          countries: ['PT', 'BR', 'AO', 'MZ', 'CV', 'GW', 'ST', 'TL'],
+          durationSeconds: 20,
+          region: 'Europe',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'sketch',
     label: 'Sketch (canvas)',
     component: ViewSketch,
@@ -1176,6 +1241,118 @@ const scenarios: Scenario[] = [
             eliminated: [ME],
             outcomes: { [ME]: 'wrong' },
             missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-trap',
+    label: 'Border chain (dead-end hold, someone else trapped)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            // Gibraltar's neighbours are Spain (walked) and the sea.
+            chains: [['FR', 'ES', 'PT']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 2,
+            turn: 3,
+            deadline: 0,
+            named: { [RIVAL]: ['ES'], [ME]: ['PT'] },
+            strikesLeft: {},
+            eliminated: [THIRD],
+            outcomes: { [THIRD]: 'trapped' },
+            missedOuts: { [THIRD]: [] },
+            lastMoverId: ME,
+            trappedBy: { [THIRD]: ME },
+            trap: {
+              playerId: THIRD,
+              head: 'PT',
+              byPlayerId: ME,
+              doors: [{ isoCode: 'ES', reason: 'walked', step: 2 }],
+            },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'border-chain-trapped-me',
+    label: 'Border chain (dead-end hold, you are the one trapped)',
+    component: ViewBorderChain,
+    build: () => {
+      // Europe: Morocco borders Spain but is off this board — the mixed
+      // walked/off-board proof, and the local player is the victim.
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            chains: [['DE', 'FR', 'ES']],
+            order: [RIVAL, THIRD, ME],
+            activeIndex: 2,
+            turn: 3,
+            deadline: 0,
+            named: { [RIVAL]: ['FR'], [THIRD]: ['ES'] },
+            strikesLeft: {},
+            eliminated: [ME],
+            outcomes: { [ME]: 'trapped' },
+            missedOuts: { [ME]: [] },
+            lastMoverId: THIRD,
+            trappedBy: { [ME]: THIRD },
+            trap: {
+              playerId: ME,
+              head: 'ES',
+              byPlayerId: THIRD,
+              doors: [
+                { isoCode: 'FR', reason: 'walked', step: 2 },
+                { isoCode: 'PT', reason: 'off-board' },
+                { isoCode: 'AD', reason: 'off-board' },
+                { isoCode: 'MA', reason: 'off-board' },
+              ],
+            },
+          },
+        }),
+      ])
+      game.variant = 'europe'
+      return game
+    },
+  },
+  {
+    id: 'border-chain-trap-reveal',
+    label: 'Border chain (reveal, trapped by a rival)',
+    component: ViewBorderChain,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'border-chain-challenge',
+          turnSeconds: 12,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          state: {
+            chains: [
+              ['FR', 'ES', 'PT'],
+              ['NO', 'SE', 'FI'],
+            ],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 8,
+            deadline: 0,
+            named: { [RIVAL]: ['ES', 'SE'], [ME]: ['PT'], [THIRD]: ['FI'] },
+            strikesLeft: {},
+            eliminated: [ME, THIRD],
+            // The fate line "walked into RIVAL's dead end" — never rendered
+            // before, because every earlier fixture left trappedBy empty.
+            outcomes: { [ME]: 'trapped', [THIRD]: 'timeout', [RIVAL]: 'won' },
+            missedOuts: { [ME]: [], [THIRD]: ['RU', 'NO'] },
+            trappedBy: { [ME]: RIVAL },
+            finished: true,
           },
         }),
       ]),

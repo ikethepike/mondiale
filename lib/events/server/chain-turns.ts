@@ -1,6 +1,7 @@
 import {
   activePlayerId,
   chainHead,
+  closedDoors,
   liveChain,
   openMoves,
   pickChainSeed,
@@ -11,7 +12,7 @@ import type { BorderChainChallenge, BorderChainOutcome } from '~~/types/challeng
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,
@@ -86,6 +87,8 @@ export const startChainClock = (challenge: BorderChainChallenge) => {
  *  state). During the briefing that clock is the reading cap; after it, the
  *  active player's shot clock. */
 export const scheduleChainTimeout = (ctx: ChainContext, challenge: BorderChainChallenge) => {
+  // A dead-end hold owns the table; the trap's own follow-up re-arms the clock.
+  if (challenge.state.trap) return
   if (challenge.state.briefing) {
     scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
       const current = currentBorderChain(game)
@@ -155,23 +158,70 @@ export const applyChainMove = async (
   state.lastMoverId = moverId
   advanceTurn(challenge)
 
-  while (openMoves(state, game).length === 0) {
-    const trappedId = activePlayerId(state)
-    eliminate(challenge, trappedId, 'trapped', [])
-    if (state.lastMoverId && state.lastMoverId !== trappedId) {
-      ;(state.trappedBy ??= {})[trappedId] = state.lastMoverId
-    }
+  if (openMoves(state, game).length === 0) {
+    return springTrap(ctx, game, challenge)
+  }
 
-    if (standingPlayers(state).length <= 1) {
-      return finishChainRound(ctx, game, challenge)
-    }
+  await commitChainTurn(ctx, game, challenge)
+}
 
-    // Fresh ground for the survivors — never a country already walked.
-    const walked = new Set(state.chains.flat())
-    const seed = pickChainSeed(game, walked) ?? pickChainSeed(game)
-    if (!seed) return finishChainRound(ctx, game, challenge)
-    state.chains.push([seed])
-    advanceTurn(challenge)
+/**
+ * A headless turn. The trapped player never held the clock, so nothing on their
+ * screen could explain the elimination — the whole table holds on the closed
+ * doors instead, and the fresh chain waits for the hold to elapse. Capturing
+ * `doors` here is the point: once a new chain is pushed, the dead head is no
+ * longer live and the proof is unrecoverable.
+ */
+const springTrap = async (ctx: ChainContext, game: Game, challenge: BorderChainChallenge) => {
+  const { state } = challenge
+  const trappedId = activePlayerId(state)
+  const head = chainHead(state)
+
+  eliminate(challenge, trappedId, 'trapped', [])
+  const byPlayerId =
+    state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
+  if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
+
+  state.trap = { playerId: trappedId, head: head!, byPlayerId, doors: closedDoors(state, game) }
+  // The hold is not a shot clock; no one is on the clock during it.
+  state.deadline = 0
+
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
+
+  const heldTurn = state.turn
+  scheduleEngineTask(ctx, TRAP_HOLD_MS + TIMEOUT_SLACK_MS, async fresh => {
+    const current = currentBorderChain(fresh)
+    if (!current?.state.trap || current.state.finished) return
+    if (current.state.turn !== heldTurn) return
+    await resumeFromTrap(ctx, fresh, current)
+  })
+}
+
+/**
+ * The dead-end hold elapsed: close the round if the trap left one player, else
+ * deal fresh ground. A seed guarantees MINIMUM_SEED_MOVES outs, so a second
+ * trap here is near-impossible — but the check the old inline loop provided is
+ * kept, and a chained trap simply holds again rather than slipping through.
+ */
+const resumeFromTrap = async (ctx: ChainContext, game: Game, challenge: BorderChainChallenge) => {
+  const { state } = challenge
+  state.trap = undefined
+
+  if (standingPlayers(state).length <= 1) {
+    return finishChainRound(ctx, game, challenge)
+  }
+
+  // Fresh ground for the survivors — never a country already walked.
+  const walked = new Set(state.chains.flat())
+  const seed = pickChainSeed(game, walked) ?? pickChainSeed(game)
+  if (!seed) return finishChainRound(ctx, game, challenge)
+  state.chains.push([seed])
+  advanceTurn(challenge)
+
+  if (openMoves(state, game).length === 0) {
+    return springTrap(ctx, game, challenge)
   }
 
   await commitChainTurn(ctx, game, challenge)

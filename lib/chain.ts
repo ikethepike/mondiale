@@ -1,6 +1,10 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { STRAITS } from '~~/data/straits.gen'
-import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
+import type {
+  BorderChainChallenge,
+  BorderChainState,
+  ClosedDoor,
+} from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
@@ -48,6 +52,30 @@ export const openMoves = (state: BorderChainState, rules: GameRules): ISOCountry
   return connectionsOf(head).filter(
     isoCode => !used.has(isoCode) && isCountryPlayable(rules, isoCode)
   )
+}
+
+/**
+ * The mirror of `openMoves`: every connection of the head that is NOT a legal
+ * move, and why. Same head, same two filters, opposite side — so a dead end the
+ * engine declares is a dead end the overlay can prove. When this covers every
+ * connection, `openMoves` is empty by construction.
+ */
+export const closedDoors = (state: BorderChainState, rules: GameRules): ClosedDoor[] => {
+  const head = chainHead(state)
+  if (!head) return []
+  const chain = liveChain(state)
+  const stepOf = new Map(chain.map((isoCode, index) => [isoCode, index + 1]))
+  const seen = new Set<ISOCountryCode>([head])
+
+  const doors: ClosedDoor[] = []
+  for (const isoCode of connectionsOf(head)) {
+    // A country can be both a land neighbour and a strait partner.
+    if (seen.has(isoCode)) continue
+    seen.add(isoCode)
+    if (stepOf.has(isoCode)) doors.push({ isoCode, reason: 'walked', step: stepOf.get(isoCode) })
+    else if (!isCountryPlayable(rules, isoCode)) doors.push({ isoCode, reason: 'off-board' })
+  }
+  return doors
 }
 
 export const activePlayerId = (state: BorderChainState): string => state.order[state.activeIndex]
