@@ -1,40 +1,62 @@
 <template>
-  <div class="audio-dock" :class="{ playing, waiting }">
-    <!-- Two sources: Opus/WebM covers Chrome/Firefox/Android, AAC/M4A Safari. -->
-    <!-- `loadedmetadata` as well as `canplaythrough`: iOS Safari downgrades
-         preload to metadata and withholds canplaythrough until a gesture, so
-         waiting on it alone would leave the dock stuck on "Loading…". -->
+  <div class="audio-dock" :class="{ playing, armed, loading }">
+    <!-- Two sources: Opus/WebM covers Chrome/Firefox/Android, AAC/M4A Safari.
+         `loadedmetadata` counts as ready as well as `canplaythrough`: iOS
+         downgrades preload to metadata and withholds canplaythrough until a
+         gesture, so waiting on it alone would stall on "Loading". -->
     <audio
       ref="element"
       preload="auto"
       @canplaythrough="onReady"
       @loadedmetadata="onReady"
-      @error="onReady"
-      @ended="playing = false"
+      @error="onError"
+      @timeupdate="onTimeUpdate"
+      @ended="onEnded"
     >
       <source :src="clip.webm" type="audio/webm" />
       <source :src="clip.m4a" type="audio/mp4" />
     </audio>
 
-    <div class="dial" aria-hidden="true">
-      <span v-for="bar in BAR_COUNT" :key="bar" class="bar" :style="barStyle(bar)" />
-    </div>
+    <button
+      type="button"
+      class="stage"
+      :disabled="loading"
+      :aria-label="playing ? 'Pause the clip' : armed ? 'Play the clip again' : 'Play the clip'"
+      @click="toggle"
+    >
+      <!-- The ring tracks the clip, not the round: it is the one place that
+           shows how much of the recording is left to hear. -->
+      <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="ring-track" cx="50" cy="50" :r="RING_RADIUS" />
+        <circle
+          class="ring-progress"
+          cx="50"
+          cy="50"
+          :r="RING_RADIUS"
+          :stroke-dasharray="RING_CIRCUMFERENCE"
+          :stroke-dashoffset="RING_CIRCUMFERENCE * (1 - heard)"
+        />
+      </svg>
 
-    <p class="caption">
-      <span v-if="playing">{{ label }}</span>
-      <span v-else-if="blocked">Tap to play — your browser held the sound</span>
-      <span v-else-if="waiting">Loading the clip…</span>
-      <span v-else>{{ endedLabel }}</span>
-    </p>
+      <span class="glyph" aria-hidden="true">
+        <span v-if="loading" class="spinner" />
+        <svg v-else-if="playing" class="icon" viewBox="0 0 24 24">
+          <rect x="7" y="5" width="3.5" height="14" rx="1.2" />
+          <rect x="13.5" y="5" width="3.5" height="14" rx="1.2" />
+        </svg>
+        <svg v-else class="icon" viewBox="0 0 24 24">
+          <path d="M8 5.5v13l11-6.5z" />
+        </svg>
+      </span>
 
-    <!-- Always reachable while the clip isn't playing. On iOS the only way to
-         start audio is a real tap, and the round's clock is already running —
-         so the button must be there whether or not a play() was refused.
-         A clip that has finished can be replayed: the clock is still going, so
-         a second listen costs points rather than being free. -->
-    <button v-if="!playing" type="button" class="replay" :class="{ unblock: blocked }" @click="play">
-      {{ blocked ? 'Play the clip' : hasPlayed ? 'Hear it again' : 'Play' }}
+      <!-- Only while sound is actually coming out, so it reads as level, not
+           decoration. -->
+      <span v-if="playing" class="dial" aria-hidden="true">
+        <span v-for="bar in BAR_COUNT" :key="bar" class="bar" :style="barStyle(bar)" />
+      </span>
     </button>
+
+    <p class="caption">{{ caption }}</p>
   </div>
 </template>
 <script lang="ts" setup>
@@ -42,93 +64,129 @@ import type { AudioClip } from '~~/types/challenges/group-modes.type'
 import { prefersReducedMotion } from '~~/lib/motion'
 
 /**
- * The sound stage for the audio rounds. Autoplay is blocked everywhere until a
- * real gesture, so the host view calls `play()` from the interstitial's tap —
- * the same one that starts the clock — and waits for `ready` before arming it,
- * so a slow connection can't eat the pot while the clip is still buffering.
+ * The sound stage for the audio rounds: one big play control, a ring that
+ * tracks the recording, and a level dial while it runs.
  *
- * The bars are decoration only: they animate off the clock, never off actual
- * audio analysis, so there is no AudioContext to unlock or tear down.
+ * The round's clock does NOT start until `started` fires, so nobody loses buzz
+ * time to a slow download or to Safari withholding autoplay. On a phone the
+ * round simply waits, silent and stopped, until the player taps play — which
+ * is the only way audio can ever begin there.
+ *
+ * The bars are decoration: they animate off the clock, never off real audio
+ * analysis, so there is no AudioContext to unlock or tear down.
  */
 const props = withDefaults(
   defineProps<{
     clip: AudioClip
-    /** 0..1 of the round clock left; drives the bar animation. */
+    /** 0..1 of the round clock left; sets the dial's tempo. */
     fraction?: number
-    label?: string
+    /** Copy before the first play — the round is waiting on this tap. */
+    idleLabel?: string
+    playingLabel?: string
     endedLabel?: string
-    replayable?: boolean
   }>(),
   {
     fraction: 1,
-    label: 'Listening…',
-    endedLabel: 'Clip finished',
-    replayable: false,
+    idleLabel: 'Tap to hear the clip',
+    playingLabel: 'Listening…',
+    endedLabel: 'Tap to hear it again',
   }
 )
 
-const emit = defineEmits<{ ready: []; blocked: [] }>()
+/** Fires the first time sound genuinely reaches the player — the round's clock
+ *  hangs off this, never off a load event. */
+const emit = defineEmits<{ started: [] }>()
 
-const BAR_COUNT = 9
+const BAR_COUNT = 7
+const RING_RADIUS = 44
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
 const element = ref<HTMLAudioElement>()
 const playing = ref(false)
-const waiting = ref(true)
-/** Set when the browser refused playback for want of a gesture — the view
- *  surfaces a tap-to-play button rather than running a silent round. */
-const blocked = ref(false)
-/** Whether the clip has been heard at least once, so the button can offer a
- *  replay rather than a first play. */
-const hasPlayed = ref(false)
+const loading = ref(true)
+/** True once the clip has played at all — the control becomes a replay. */
+const armed = ref(false)
+/** 0..1 of the RECORDING heard, for the ring. */
+const heard = ref(0)
+const failed = ref(false)
 
-/** Fires on canplaythrough OR error — a clip that 404s must not hang the round;
- *  the view starts anyway and the round plays out silent rather than frozen. */
+const caption = computed(() => {
+  if (failed.value) return 'This clip could not be loaded'
+  if (loading.value) return 'Loading the clip…'
+  if (playing.value) return props.playingLabel
+  return armed.value ? props.endedLabel : props.idleLabel
+})
+
 const onReady = () => {
-  if (!waiting.value) return
-  waiting.value = false
-  emit('ready')
+  loading.value = false
 }
 
-/**
- * The interstitial auto-advances on a timer as often as it is tapped, so the
- * `done` that starts the round frequently carries NO user gesture and the
- * browser refuses playback. That refusal is expected, not exceptional: catch
- * it, flag it, and let the view offer a tap — never let the round run silent
- * while the clock burns.
- */
+/** A clip that 404s must not strand the round behind a dead button. */
+const onError = () => {
+  loading.value = false
+  failed.value = true
+  if (!armed.value) {
+    armed.value = true
+    emit('started')
+  }
+}
+
+const onTimeUpdate = () => {
+  const audio = element.value
+  if (!audio?.duration) return
+  heard.value = Math.min(1, audio.currentTime / audio.duration)
+}
+
+const onEnded = () => {
+  playing.value = false
+  heard.value = 1
+}
+
 const play = async () => {
   const audio = element.value
   if (!audio) return
-  audio.currentTime = 0
+  // A finished clip restarts; a paused one resumes where it stopped.
+  if (audio.ended) audio.currentTime = 0
+
   await audio.play().then(
     () => {
       playing.value = true
-      hasPlayed.value = true
-      blocked.value = false
+      loading.value = false
+      // The clock starts on the FIRST confirmed play and never again, so a
+      // replay costs the player time rather than buying more.
+      if (!armed.value) {
+        armed.value = true
+        emit('started')
+      }
     },
     () => {
       playing.value = false
-      blocked.value = true
-      emit('blocked')
     }
   )
 }
 
-const stop = () => {
+const pause = () => {
   const audio = element.value
   if (!audio) return
   audio.pause()
   playing.value = false
 }
 
+const toggle = () => (playing.value ? pause() : play())
+
+const stop = () => {
+  pause()
+  heard.value = 0
+}
+
 // Never let audio bleed into the scorecard.
-onBeforeUnmount(stop)
+onBeforeUnmount(pause)
 
 /** Bars idle flat under reduced motion; the caption still carries the state. */
 const barStyle = (bar: number) => {
-  if (prefersReducedMotion() || !playing.value) return { animationPlayState: 'paused' }
-  // Each bar runs the same keyframe on its own offset and a length that varies
-  // with the clock, so the dial visibly tightens as time runs out.
+  if (prefersReducedMotion()) return { animationPlayState: 'paused' }
+  // Each bar runs the same keyframe on its own offset, and the whole dial
+  // tightens as the round's clock runs down.
   const spread = 0.45 + (bar % 3) * 0.12
   return {
     animationDelay: `${bar * 90}ms`,
@@ -136,7 +194,7 @@ const barStyle = (bar: number) => {
   }
 }
 
-defineExpose({ play, stop })
+defineExpose({ play, pause, stop })
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -144,53 +202,116 @@ defineExpose({ play, stop })
 .audio-dock {
   gap: 1.2rem;
   display: flex;
-  padding: 1.6rem;
   align-items: center;
   flex-flow: column nowrap;
   pointer-events: auto;
 }
 
+.stage {
+  padding: 0;
+  border: 0;
+  width: 9.6rem;
+  height: 9.6rem;
+  cursor: pointer;
+  display: grid;
+  position: relative;
+  border-radius: 50%;
+  place-items: center;
+  background: #{milk(0.9)};
+  box-shadow: 0 0.2rem 1.6rem #{ink(0.14)};
+  transition:
+    transform var(--motion-quick) var(--ease-out-expressive),
+    box-shadow var(--motion-quick) var(--ease-smooth);
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+// The whole ring lives under the glyph, so the button reads as one object.
+.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-track,
+.ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ring-track {
+  stroke: #{ink(0.1)};
+}
+
+.ring-progress {
+  stroke: #{flame()};
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.glyph {
+  display: grid;
+  place-items: center;
+}
+
+.icon {
+  width: 3.4rem;
+  height: 3.4rem;
+  fill: #{ink()};
+}
+
+.spinner {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 0.28rem solid #{ink(0.15)};
+  border-top-color: #{ink(0.6)};
+  animation: spin 0.8s linear infinite;
+}
+
+// Sits under the glyph inside the button, so the level reads as part of it.
 .dial {
-  gap: 0.5rem;
-  height: 7rem;
+  gap: 0.3rem;
+  left: 50%;
+  bottom: 1.5rem;
   display: flex;
+  position: absolute;
   align-items: center;
-  justify-content: center;
+  transform: translateX(-50%);
 }
 
 .bar {
-  width: 0.6rem;
-  height: 1.2rem;
-  border-radius: 0.3rem;
-  background: var(--soft-blue);
-  transform-origin: center;
+  width: 0.28rem;
+  height: 0.5rem;
+  border-radius: 0.2rem;
+  background: #{flame(0.75)};
   animation: audio-pulse 0.9s ease-in-out infinite alternate;
-  animation-play-state: paused;
 }
 
-.playing .bar {
-  animation-play-state: running;
-  background: #{flame()};
-}
-
-.waiting .bar {
-  opacity: 0.4;
-}
-
+// Sits over the map, so it needs its own ground to stay legible against
+// country borders and labels.
 .caption {
   margin: 0;
+  padding: 0.4rem 1.2rem;
   font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 2rem;
   color: var(--soft-blue);
+  background: #{milk(0.92)};
 }
 
-.replay {
-  border: 0;
-  cursor: pointer;
-  padding: 0.6rem 1.6rem;
-  font-size: 1.3rem;
-  font-weight: 600;
-  border-radius: 2rem;
-  color: #{milk()};
-  background: #{ink()};
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

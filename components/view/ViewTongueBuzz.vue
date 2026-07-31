@@ -28,9 +28,10 @@
         ref="dock"
         :clip="challenge.clip"
         :fraction="remainingFraction"
-        :label="resolved ? 'That was it' : 'Listening…'"
-        ended-label="Clip finished — the clock is still running"
-        @ready="audioReady = true"
+        idle-label="Tap play to start the round"
+        :playing-label="resolved ? 'That was it' : 'Listening…'"
+        ended-label="Tap to hear it again — the clock is still running"
+        @started="onAudioStarted"
       />
 
       <ul v-if="!resolved && unlocked.region && challenge.region" class="hints">
@@ -90,8 +91,8 @@ const {
   gameStore,
   resolved,
   lockedOut,
-  audioReady,
   unlocked,
+  revealStage,
   begin,
   guess,
 } = useBuzzRound('tongue-buzz-challenge', {
@@ -114,16 +115,20 @@ const {
 const dock = ref<InstanceType<typeof AudioDock>>()
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
+/** Show the stage, then try to start the clip — the interstitial's own tap is
+ *  a real gesture, so this usually works. If the browser refuses (iOS always
+ *  does without one in flight), the dock waits on its play button, and the
+ *  clock waits with it rather than burning the pot on silence. */
 const onInterstitialDone = () => {
-  begin(() => {
-    dock.value?.play()
-    nextTick(() => guessInput.value?.focus({ auto: true }))
-  })
+  revealStage()
+  nextTick(() => dock.value?.play())
 }
 
-watch(audioReady, ready => {
-  if (ready && !showInterstitial.value && !started.value) onInterstitialDone()
-})
+/** The clock hangs off audio genuinely playing, never off a load event, so a
+ *  slow download or a withheld autoplay can't eat anyone's buzz time. */
+const onAudioStarted = () => {
+  begin(() => nextTick(() => guessInput.value?.focus({ auto: true })))
+}
 
 const onGuess = (country: Country) => {
   const verdict = guess(country.isoCode, countryName(country.isoCode))

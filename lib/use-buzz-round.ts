@@ -43,6 +43,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   const round = useGroupChallenge(typeName, { solo: false })
   const {
     challenge,
+    showInterstitial,
     started,
     submitted,
     remainingFraction,
@@ -58,7 +59,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   const lockedOut = ref(false)
   /** Held for the reveal: what the player buzzed, and when. */
   const buzzedAt = ref<number | undefined>()
-  const audioReady = ref(false)
 
   const unlocked = computed(() => ({
     region: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.region,
@@ -85,16 +85,24 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   }
 
   /**
-   * Start the round. Deliberately NOT gated on the clip being playable: iOS
-   * Safari downgrades `preload` to metadata and withholds `canplaythrough`
-   * until a user gesture, so waiting for it deadlocks — the round never starts
-   * and no audio ever plays. The dock reports whether the browser let it play,
-   * and offers its own tap when it didn't.
+   * Leave the interstitial WITHOUT starting the clock. The two are one call in
+   * `useGroupChallenge`, but an audio round has a beat between them: the stage
+   * has to be on screen, showing its play button, while the round waits for the
+   * tap that iOS requires before any sound can happen.
    */
-  const begin = (onReady: () => void) => {
+  const revealStage = () => {
+    showInterstitial.value = false
+  }
+
+  /**
+   * Start the clock. Called only once the clip is genuinely playing, so nobody
+   * loses buzz time to a download or to Safari withholding autoplay — on a
+   * phone the round waits, silent and stopped, until the player taps Play.
+   */
+  const begin = (afterStart?: () => void) => {
     if (started.value) return
     beginRound({ onTimeout: () => resolve(undefined, 0) })
-    onReady()
+    afterStart?.()
   }
 
   const guess = (isoCode: ISOCountryCode, guessName: string): 'correct' | 'wrong' | 'ignored' => {
@@ -116,5 +124,5 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     return 'wrong'
   }
 
-  return { ...round, resolved, lockedOut, audioReady, unlocked, begin, guess, resolve }
+  return { ...round, resolved, lockedOut, unlocked, revealStage, begin, guess, resolve }
 }
