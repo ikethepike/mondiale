@@ -392,6 +392,9 @@ export const saveCommonsImage = async (
 export const AUDIO_CLIP_SECONDS = 30
 export const OPUS_BITRATE = '64k'
 export const AAC_BITRATE = '96k'
+/** Opus is 48kHz-only, so both encodes share it — and pinning it stops
+ *  `loudnorm`'s internal 192kHz resample leaking into the shipped file. */
+export const AUDIO_SAMPLE_RATE = 48000
 
 /** Recordings arrive at wildly different levels — a quiet anthem after a loud
  *  one is a bad round, not a hard one. Normalize every clip to the same target. */
@@ -412,6 +415,11 @@ const encodeClip = (
         ...['-ss', String(offset), '-t', String(seconds)],
         ...['-af', LOUDNESS_FILTER],
         '-vn', // some Commons audio carries cover art; never ship a video stream
+        // Pin the sample rate. `loudnorm` resamples to 192kHz internally and
+        // hands that on, so an unpinned AAC encode shipped 96kHz files that
+        // played back sped-up and chipmunked — the speech clips sounded like a
+        // rave. Opus only ever supports 48k, so both land on the same rate.
+        ...['-ar', String(AUDIO_SAMPLE_RATE)],
         ...(codec === 'opus'
           ? ['-c:a', 'libopus', '-b:a', OPUS_BITRATE, '-f', 'webm']
           : ['-c:a', 'aac', '-b:a', AAC_BITRATE, '-f', 'mp4', '-movflags', '+faststart']),

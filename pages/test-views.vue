@@ -1086,11 +1086,13 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'tongue-buzz-challenge',
-          language: 'Portuguese',
-          clip: { webm: '/tongues/pt-0.webm', m4a: '/tongues/pt-0.m4a' },
-          countries: ['PT', 'BR', 'AO', 'MZ', 'CV', 'GW', 'ST', 'TL'],
+          // Swahili: distinctive enough to be a fair listen, and official in
+          // four countries, so the any-speaker rule is visible in the reveal.
+          language: 'Swahili',
+          clip: { webm: '/tongues/sw-0.webm', m4a: '/tongues/sw-0.m4a' },
+          countries: ['TZ', 'KE', 'UG', 'RW'],
           durationSeconds: 20,
-          region: 'Europe',
+          region: 'Africa',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -2141,6 +2143,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+/** The floating scenario bar's footprint: its content plus its own top offset.
+ *  Used twice below to push the scene clear of it on a phone. */
+$harness-bar-height: 3.4rem;
+
 /** Mirrors `.main-board` in pages/room/[roomId].vue — see test-recognition. */
 .harness {
   height: var(--viewport-height);
@@ -2148,6 +2154,15 @@ onMounted(() => {
   position: relative;
   max-width: 100%;
   pointer-events: none;
+
+  // The scenario bar floats over the scene. On a desktop there is room above
+  // the title for it; on a phone it lands squarely on the challenge's header,
+  // hiding the very question the round is asking. Start the scene below it
+  // instead — the bar can't move to the bottom, where the guess console lives.
+  @media screen and (max-width: 480px) {
+    height: calc(var(--viewport-height) - #{$harness-bar-height});
+    margin-top: $harness-bar-height;
+  }
 }
 
 .controls {

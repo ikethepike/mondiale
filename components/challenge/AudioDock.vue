@@ -29,11 +29,12 @@
 
     <!-- Always reachable while the clip isn't playing. On iOS the only way to
          start audio is a real tap, and the round's clock is already running —
-         so the button must be there whether or not a play() was refused. -->
+         so the button must be there whether or not a play() was refused.
+         A clip that has finished can be replayed: the clock is still going, so
+         a second listen costs points rather than being free. -->
     <button v-if="!playing" type="button" class="replay" :class="{ unblock: blocked }" @click="play">
-      {{ blocked ? 'Play the clip' : 'Play' }}
+      {{ blocked ? 'Play the clip' : hasPlayed ? 'Hear it again' : 'Play' }}
     </button>
-    <button v-else-if="replayable" type="button" class="replay" @click="play">Playing…</button>
   </div>
 </template>
 <script lang="ts" setup>
@@ -76,6 +77,9 @@ const waiting = ref(true)
 /** Set when the browser refused playback for want of a gesture — the view
  *  surfaces a tap-to-play button rather than running a silent round. */
 const blocked = ref(false)
+/** Whether the clip has been heard at least once, so the button can offer a
+ *  replay rather than a first play. */
+const hasPlayed = ref(false)
 
 /** Fires on canplaythrough OR error — a clip that 404s must not hang the round;
  *  the view starts anyway and the round plays out silent rather than frozen. */
@@ -99,6 +103,7 @@ const play = async () => {
   await audio.play().then(
     () => {
       playing.value = true
+      hasPlayed.value = true
       blocked.value = false
     },
     () => {
