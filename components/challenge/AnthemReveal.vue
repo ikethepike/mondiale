@@ -145,9 +145,29 @@ const rows = computed(() => {
   margin-top: 0.4rem;
 }
 
+// The row wears .player-accent, whose colour edge is a border with no padding
+// of its own — without this the name sits flush against the player's colour.
+// The right inset is ours too: _ranked-bars.scss drops the shell's horizontal
+// padding under 480px, which would otherwise run the points to the card edge.
+.row {
+  padding-left: 0.8rem;
+  padding-right: 0.6rem;
+}
+
 .name {
-  min-width: 8rem;
+  min-width: 6rem;
   font-weight: 600;
+  // Long names shrink rather than shove the bar and points off the row.
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tail {
+  // "missed" is wider than "28 pts"; reserve for the longest so the right edge
+  // stays flush and nothing clips off the card.
+  min-width: 4.5rem;
+  text-align: right;
 }
 
 // The skin owns the fill colour; the template owns its geometry. Each bar is

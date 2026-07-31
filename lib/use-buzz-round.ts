@@ -84,10 +84,15 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     }, BUZZ_REVEAL_HOLD_MS)
   }
 
-  /** The round can't start until the clip is playable, or the buzz clock would
-   *  run while the audio is still loading. */
+  /**
+   * Start the round. Deliberately NOT gated on the clip being playable: iOS
+   * Safari downgrades `preload` to metadata and withholds `canplaythrough`
+   * until a user gesture, so waiting for it deadlocks — the round never starts
+   * and no audio ever plays. The dock reports whether the browser let it play,
+   * and offers its own tap when it didn't.
+   */
   const begin = (onReady: () => void) => {
-    if (!audioReady.value) return
+    if (started.value) return
     beginRound({ onTimeout: () => resolve(undefined, 0) })
     onReady()
   }

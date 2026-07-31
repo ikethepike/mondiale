@@ -1,10 +1,14 @@
 <template>
   <div class="audio-dock" :class="{ playing, waiting }">
     <!-- Two sources: Opus/WebM covers Chrome/Firefox/Android, AAC/M4A Safari. -->
+    <!-- `loadedmetadata` as well as `canplaythrough`: iOS Safari downgrades
+         preload to metadata and withholds canplaythrough until a gesture, so
+         waiting on it alone would leave the dock stuck on "Loading…". -->
     <audio
       ref="element"
       preload="auto"
       @canplaythrough="onReady"
+      @loadedmetadata="onReady"
       @error="onReady"
       @ended="playing = false"
     >
@@ -17,16 +21,19 @@
     </div>
 
     <p class="caption">
-      <span v-if="waiting">Loading the clip…</span>
+      <span v-if="playing">{{ label }}</span>
       <span v-else-if="blocked">Tap to play — your browser held the sound</span>
-      <span v-else-if="playing">{{ label }}</span>
+      <span v-else-if="waiting">Loading the clip…</span>
       <span v-else>{{ endedLabel }}</span>
     </p>
 
-    <button v-if="blocked" type="button" class="replay unblock" @click="play">Play the clip</button>
-    <button v-else-if="replayable" type="button" class="replay" @click="play">
-      {{ playing ? 'Playing…' : 'Play again' }}
+    <!-- Always reachable while the clip isn't playing. On iOS the only way to
+         start audio is a real tap, and the round's clock is already running —
+         so the button must be there whether or not a play() was refused. -->
+    <button v-if="!playing" type="button" class="replay" :class="{ unblock: blocked }" @click="play">
+      {{ blocked ? 'Play the clip' : 'Play' }}
     </button>
+    <button v-else-if="replayable" type="button" class="replay" @click="play">Playing…</button>
   </div>
 </template>
 <script lang="ts" setup>
