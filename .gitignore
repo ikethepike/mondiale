@@ -9,7 +9,6 @@ dist
 test-results
 playwright-report
 .DS_Store
-.DS_Store
 generators/vendors/gemini/.cache/
 
 # Regenerated report, not source of truth
