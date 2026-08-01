@@ -34,9 +34,20 @@
         @started="onAudioStarted"
       />
 
-      <TransitionGroup v-if="!resolved" tag="ul" name="chain" class="hints">
+      <!-- `hint` rather than `chain`: no -move rule, so an arriving chip can't
+           shove its neighbours. Same landing as the anthem round. -->
+      <!-- Same ladder as the anthem round: each chip lands as the clock crosses
+           its threshold, narrowing the field without naming a country. -->
+      <TransitionGroup v-if="!resolved" tag="ul" name="hint" class="hints">
         <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
           One of them is in {{ challenge.region }}
+        </li>
+        <li v-if="unlocked.swatches && challenge.speakerCount" key="count" class="hint-chip">
+          Official in {{ challenge.speakerCount }}
+          {{ challenge.speakerCount === 1 ? 'country' : 'countries' }}
+        </li>
+        <li v-if="unlocked.initial && challenge.initial" key="initial" class="hint-chip">
+          One starts with “{{ challenge.initial }}”
         </li>
       </TransitionGroup>
 
@@ -149,12 +160,16 @@ const onGuess = (country: Country) => {
   justify-content: center;
 }
 
+// Reserves a chip's height from the start, so the first arrival lands in space
+// already held rather than pushing the stage around it.
 .hints {
   gap: 0.8rem;
   margin: 0;
   padding: 0;
   display: flex;
+  min-height: 3rem;
   list-style: none;
+  align-items: center;
   flex-flow: row wrap;
   pointer-events: auto;
   justify-content: center;

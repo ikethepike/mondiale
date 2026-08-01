@@ -32,8 +32,14 @@ export const HINT_UNLOCK_AT = {
  *  the same round. Shared so the two views can't drift apart. */
 export const BUZZ_LOCKOUT_MS = 3000
 
-/** How long the answer stays on screen before the scorecard takes over. */
-export const BUZZ_REVEAL_HOLD_MS = 4000
+/**
+ * How long the answer stays on screen before the scorecard takes over.
+ *
+ * Generous because the anthem round spends the first 1.6s of it lifting masks
+ * and turning the verse to English — at 4s that left barely two seconds to
+ * read the translation, which is the beat the whole wall builds toward.
+ */
+export const BUZZ_REVEAL_HOLD_MS = 7000
 
 export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   typeName: T,

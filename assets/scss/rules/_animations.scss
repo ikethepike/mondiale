@@ -28,6 +28,40 @@
 }
 
 // A scorecard row settles into place
+// The <TransitionGroup name="hint"> landing for chips that appear mid-round.
+// Deliberately has NO -move rule, unlike `chain`: a chip animating its
+// neighbours aside is exactly the layout shift these reveals must not cause.
+// The row reserves its own height, so an arriving chip lands in place.
+.hint-enter-active {
+  animation: hint-pop var(--motion-base) var(--ease-out-expressive);
+}
+
+.hint-leave-active {
+  transition: opacity var(--motion-quick) var(--ease-smooth);
+}
+
+.hint-leave-to {
+  opacity: 0;
+}
+
+// A hint chip arriving mid-round: rises, overshoots a touch, settles. Reads as
+// something landing rather than blinking on, which matters when a chip appears
+// unprompted while the player is listening elsewhere.
+@keyframes hint-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.7rem) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes row-land {
   from {
     opacity: 0;

@@ -41,9 +41,10 @@
         @started="onAudioStarted"
       />
 
-      <!-- Chips land one at a time as the clock crosses each threshold, so
-           they arrive on the shared `chip-in` beat rather than blinking on. -->
-      <TransitionGroup v-if="!resolved" tag="ul" name="chain" class="hints">
+      <!-- Chips land one at a time as the clock crosses each threshold. `hint`
+           rather than the generic `chain`: no -move rule, so an arriving chip
+           cannot animate its neighbours sideways. -->
+      <TransitionGroup v-if="!resolved" tag="ul" name="hint" class="hints">
         <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
           Region: {{ challenge.region }}
         </li>
@@ -215,12 +216,17 @@ const onGuess = (country: Country) => {
   z-index: 1;
 }
 
+// Chips arrive one at a time as the clock passes each threshold. The row keeps
+// a chip's worth of height from the start, so the first arrival lands in space
+// already reserved rather than pushing the stage around it.
 .hints {
   gap: 0.8rem;
   margin: 0;
   padding: 0;
   display: flex;
+  min-height: 3rem;
   list-style: none;
+  align-items: center;
   flex-flow: row wrap;
   pointer-events: auto;
   justify-content: center;

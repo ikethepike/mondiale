@@ -572,8 +572,14 @@ const getTongueBuzzChallenge = ({
     countries,
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
+    // Non-hard mode unlocks these as the clip runs, mirroring the anthem
+    // round's ladder. Hard mode listens cold.
     ...(game.difficulty !== 'hard' && countries[0]
-      ? { region: REGION_LABELS[COUNTRIES[countries[0]].region] }
+      ? {
+          region: REGION_LABELS[COUNTRIES[countries[0]].region],
+          speakerCount: countries.length,
+          initial: countryName(countries[0]).slice(0, 1).toUpperCase(),
+        }
       : {}),
   }
 }

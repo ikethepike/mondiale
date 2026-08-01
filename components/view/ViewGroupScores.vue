@@ -50,6 +50,7 @@
                 :subtitle="audioReveal.subtitle"
                 :credit="audioReveal.credit"
                 :replay-clip="audioReveal.clip"
+                :lyrics="audioReveal.lyrics"
                 :round="currentRound.round"
                 :players="gameStore.game?.players ?? {}"
                 :my-player-id="playerId"
@@ -145,6 +146,7 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { mediaCreditLine } from '~~/lib/attribution'
+import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -212,6 +214,19 @@ const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.va
 
 /** The audio rounds' dossier: what the clip was, plus the clip itself to hear
  *  again. Both kinds share one reveal — they differ only in what the subject is. */
+/** The round's lyric wall, refetched for the scorecard's couplet. Cheap — the
+ *  file is already in the browser's cache from the round itself — and silent
+ *  on a miss, so a scorecard never fails over a missing quotation. */
+const lyrics = ref<AnthemLyrics>()
+watchEffect(async () => {
+  const challenge = roundChallenge.value
+  const url =
+    challenge && '_type' in challenge && challenge._type === 'anthem-buzz-challenge'
+      ? challenge.lyricsUrl
+      : undefined
+  lyrics.value = url ? await $fetch<AnthemLyrics>(url).catch(() => undefined) : undefined
+})
+
 const audioReveal = computed(() => {
   const challenge = roundChallenge.value
   if (!challenge || !('_type' in challenge)) return undefined
@@ -224,6 +239,7 @@ const audioReveal = computed(() => {
       subtitle: [anthem?.title, anthem?.composer, era].filter(Boolean).join(' · '),
       credit: mediaCreditLine(anthem, 'commons-media'),
       clip: challenge.clip,
+      lyrics: lyrics.value,
     }
   }
 

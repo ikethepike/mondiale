@@ -156,8 +156,20 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   overflow: hidden;
   place-items: center;
   pointer-events: none;
-  // Fades at both edges so the text dissolves rather than being cut off.
-  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  // Fades at both edges so the text dissolves rather than being cut off. The
+  // bottom fade starts early and runs long: the guess console and hint chips
+  // live down there, and lines running under them read as clutter rather than
+  // backdrop. The verse is gone before it reaches them.
+  // Measured against the console: the fade has to be fully out well above it,
+  // so the tail is pulled up rather than merely softened.
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 10%,
+    #000 40%,
+    #{rgba(#000, 0.3)} 56%,
+    transparent 66%
+  );
 }
 
 .verse {

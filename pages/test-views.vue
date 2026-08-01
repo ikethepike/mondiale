@@ -282,8 +282,11 @@ const scenarios: Scenario[] = [
         {
           groupChallenge: {
             _type: 'anthem-buzz-challenge',
-            country: 'JP',
-            clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+            // Sweden rather than Japan: it carries a curated lyric wall, so the
+            // scorecard's couplet and its language toggle are reachable here.
+            country: 'SE',
+            clip: { webm: '/anthems/SE.webm', m4a: '/anthems/SE.m4a' },
+            lyricsUrl: '/anthems/lyrics/SE-anthem.json',
             durationSeconds: 30,
             maximumPoints: MAXIMUM_POINTS,
           },
@@ -1096,6 +1099,8 @@ const scenarios: Scenario[] = [
           countries: ['TZ', 'KE', 'UG', 'RW'],
           durationSeconds: 20,
           region: 'Africa',
+          speakerCount: 4,
+          initial: 'T',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

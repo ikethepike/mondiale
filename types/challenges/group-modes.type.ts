@@ -87,6 +87,11 @@ export interface TongueBuzzChallenge {
   maximumPoints: number
   /** Non-hard mode helper: the region one speaker country sits in. */
   region?: string
+  /** How many playable countries have it official — "official in 8" narrows
+   *  the field hard without naming any of them. */
+  speakerCount?: number
+  /** First letter of one speaker country's name, the last-stretch nudge. */
+  initial?: string
 }
 
 /** A mystery country: every map click answers with distance and direction. */

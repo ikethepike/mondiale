@@ -94,14 +94,17 @@ describe('anthem lyric walls', () => {
 
       // Bantu and Romance forms glue the name to a prefix or suffix
       // ("weZimbabwe", "Abanyarwanda", "Congolais"), so the name is matched
-      // anywhere inside a word — but only where a letter boundary starts it, so
-      // "sireland" does not read as Ireland.
+      // anywhere inside a word rather than only on word boundaries.
+      //
+      // No lookbehind here. An earlier version skipped a match whose preceding
+      // character was lowercase, meaning to ignore "sireland" — but with the
+      // `i` flag that also swallowed every ordinary occurrence sitting after a
+      // lowercase letter, and Ireland's own anthem leaked past a green test.
+      // Over-reporting a prefixed word is a curation nudge; under-reporting is
+      // a spoiled round.
       return terms
         .filter(term =>
-          new RegExp(
-            `(?<![\\p{Ll}])${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
-            'iu'
-          ).test(exposed)
+          new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu').test(exposed)
         )
         .map(term => `${file}: "${term}" left unmasked`)
     })
