@@ -80,6 +80,7 @@ import {
   playableWorldCountries,
 } from './game-rules'
 import { pickChainSeed } from './chain'
+import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
@@ -578,6 +579,10 @@ const getTongueBuzzChallenge = ({
       ? {
           region: REGION_LABELS[COUNTRIES[countries[0]].region],
           speakerCount: countries.length,
+          // Seeded sample for languages no anthem is sung in. Languages that
+          // DO have one borrow it from the lyric wall in the view, which
+          // already fetches that file.
+          ...(seededTongueSample(language) ? { sample: seededTongueSample(language) } : {}),
           initial: countryName(countries[0]).slice(0, 1).toUpperCase(),
         }
       : {}),

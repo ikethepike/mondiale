@@ -69,6 +69,7 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import { seededTongueSample } from '~~/lib/tongue-samples'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
@@ -1101,6 +1102,28 @@ const scenarios: Scenario[] = [
           region: 'Africa',
           speakerCount: 4,
           initial: 'T',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'tongue-buzz-sample',
+    label: 'Mother Tongue (seeded writing sample)',
+    component: ViewTongueBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'tongue-buzz-challenge',
+          // Hindi has no anthem sung in it (India's is Bengali), so it falls
+          // back to a seeded sample — the path Swahili never exercises.
+          language: 'Hindi',
+          clip: { webm: '/tongues/hi-0.webm', m4a: '/tongues/hi-0.m4a' },
+          countries: ['IN'],
+          durationSeconds: 20,
+          region: 'Asia',
+          speakerCount: 1,
+          sample: seededTongueSample('Hindi'),
+          initial: 'I',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

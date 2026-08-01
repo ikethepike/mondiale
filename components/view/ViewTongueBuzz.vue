@@ -46,6 +46,14 @@
           Official in {{ challenge.speakerCount }}
           {{ challenge.speakerCount === 1 ? 'country' : 'countries' }}
         </li>
+        <!-- Seeing the language written is the strongest hint short of naming
+             a country: the script alone rules most of the world out. -->
+        <li v-if="unlocked.swatches && challenge.sample" key="sample" class="hint-chip sample-chip">
+          <span class="sample-script">Written in {{ challenge.sample.script }}</span>
+          <span class="sample-lines" :lang="challenge.sample.code">
+            <span v-for="(line, index) in challenge.sample.lines" :key="index">{{ line }}</span>
+          </span>
+        </li>
         <li v-if="unlocked.initial && challenge.initial" key="initial" class="hint-chip">
           One starts with “{{ challenge.initial }}”
         </li>
@@ -178,6 +186,29 @@ const onGuess = (country: Country) => {
 // The answer roll sits clear of the dock's caption rather than under it.
 .answers {
   margin-top: 1.6rem;
+}
+
+// The written sample is a block rather than a line: two lines of script need
+// room to be read, not squeezed onto a pill.
+.sample-chip {
+  gap: 0.4rem;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  padding: 0.7rem 1.2rem;
+}
+
+.sample-script {
+  font-size: 1.1rem;
+  opacity: 0.75;
+}
+
+.sample-lines {
+  gap: 0.15rem;
+  display: flex;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  flex-flow: column nowrap;
+  color: var(--dark-blue);
 }
 
 .hint-chip {

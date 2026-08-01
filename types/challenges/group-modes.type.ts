@@ -90,6 +90,11 @@ export interface TongueBuzzChallenge {
   /** How many playable countries have it official — "official in 8" narrows
    *  the field hard without naming any of them. */
   speakerCount?: number
+  /** A couple of lines of the language WRITTEN, with its script named. Seeing
+   *  Devanagari or Tamil narrows the field hard while naming nobody. `code` is
+   *  the BCP-47 tag for the `lang` attribute — a display name is not valid
+   *  there, and browsers pick fonts from it. */
+  sample?: { code: string; script: string; lines: string[] }
   /** First letter of one speaker country's name, the last-stretch nudge. */
   initial?: string
 }
