@@ -1,0 +1,63 @@
+{
+  "isoCode": "IE",
+  "title": "Amhrán na bhFiann",
+  "language": {
+    "code": "ga",
+    "name": "Irish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Peadar Kearney; Irish translation Liam Ó Rinn",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Amhrán_na_bhFiann"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Sinne Fianna [[Fáil]],",
+        "atá faoi gheall ag Éirinn,",
+        "Buíon dár slua",
+        "thar toinn do ráinig chugainn,"
+      ],
+      "english": [
+        "Soldiers are we,",
+        "whose lives are pledged to [[Ireland]],",
+        "Some have come",
+        "from a land beyond the wave,"
+      ]
+    },
+    {
+      "local": [
+        "Faoi mhóid bheith saor",
+        "Seantír ár sinsear feasta,",
+        "Ní fhágfar faoin tíorán ná faoin tráill.",
+        "Anocht a théam sa bhearna bhaoil,"
+      ],
+      "english": [
+        "Sworn to be free,",
+        "no more our ancient sireland,",
+        "Shall shelter the despot or the slave.",
+        "Tonight we man the bearna bhaoil,"
+      ]
+    },
+    {
+      "local": [
+        "Le gean ar Ghaeil, chun báis nó saoil,",
+        "Le gunna-scréach faoi lámhach na bpiléar,",
+        "Seo libh canaig' amhrán na bhFiann."
+      ],
+      "english": [
+        "In Erin's cause, come woe or weal,",
+        "'Mid cannons' roar and rifles' peal,",
+        "We'll chant a soldier's song."
+      ]
+    }
+  ]
+}

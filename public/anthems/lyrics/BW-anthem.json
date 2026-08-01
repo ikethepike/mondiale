@@ -1,0 +1,72 @@
+{
+  "isoCode": "BW",
+  "title": "Fatshe leno la rona",
+  "language": {
+    "code": "tn",
+    "name": "Setswana",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Fatshe_leno_la_rona"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Fatshe leno la rona",
+        "Ke mpho ya Modimo,",
+        "Ke boswa jwa borraetsho;",
+        "a le nne ka kagiso."
+      ],
+      "english": [
+        "This land of ours,",
+        "Is a gift from God,",
+        "An inheritance from our forefathers;",
+        "May it always be at peace."
+      ]
+    },
+    {
+      "local": [
+        "Tsogang, tsogang! Banna, tsogang!",
+        "Emang, basadi, emang, tlhagafalang!",
+        "Re kopanele go direla",
+        "Lefatshe la rona."
+      ],
+      "english": [
+        "Awake, awake, O men, awake!",
+        "Arise, O women, arise! Be energized,",
+        "Let us work together to serve,",
+        "Our land."
+      ]
+    },
+    {
+      "local": [
+        "'Ina lentle la tumo",
+        "la tshaba ya [[Botswana]],",
+        "Ka kutlwano le kagisano,",
+        "e bopagantswe mmogo."
+      ],
+      "english": [
+        "Beautiful name of fame",
+        "Of the nation of [[Botswana]]",
+        "Through harmonious relations and reconciliation",
+        "Bound together"
+      ]
+    },
+    {
+      "local": [
+        "Chorus (repeated)"
+      ],
+      "english": [
+        "Chorus (repeated)"
+      ]
+    }
+  ]
+}

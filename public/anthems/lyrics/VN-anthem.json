@@ -1,0 +1,92 @@
+{
+  "isoCode": "VN",
+  "title": "Tiến quân ca",
+  "language": {
+    "code": "vi",
+    "name": "Vietnamese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ti%E1%BA%BFn_qu%C3%A2n_ca"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Đoàn quân [[Việt Nam]] đi, chung lòng cứu quốc",
+        "Bước chân dồn vang trên đường gập ghềnh xa",
+        "Cờ in máu chiến thắng mang hồn nước,",
+        "Súng ngoài xa chen khúc quân hành ca"
+      ],
+      "english": [
+        "Soldiers of [[Vietnam]], we go forward, with the heart to save the nation.",
+        "Our hurried steps sound on the long and arduous road.",
+        "Our flag, red with the blood of victory, bears the spirit of our country.",
+        "The distant rumbling of gunfire mingles with our marching song."
+      ]
+    },
+    {
+      "local": [
+        "Đường vinh quang xây xác quân thù,",
+        "Thắng gian lao cùng nhau lập chiến khu.",
+        "Vì nhân dân chiến đấu không ngừng,",
+        "Tiến mau ra sa trường,"
+      ],
+      "english": [
+        "The path to glory is built upon the bodies of our foes.",
+        "Overcoming all hardships, together we build our resistance bases.",
+        "Ceaselessly for the people's cause we struggle.",
+        "Hasten to the battlefield!"
+      ]
+    },
+    {
+      "local": [
+        "Tiến lên, cùng tiến lên!",
+        "Nước non [[Việt Nam]] ta vững bền.",
+        "Đoàn quân [[Việt Nam]] đi, sao vàng phấp phới",
+        "Dắt giống nòi quê hương qua nơi lầm than"
+      ],
+      "english": [
+        "Advance! All advance!",
+        "Our [[Vietnam]] is eternally strong!",
+        "Soldiers of [[Vietnam]], we go forward, the gold star of our flag fluttering in the wind.",
+        "Leading our people, our native land, out of misery and suffering."
+      ]
+    },
+    {
+      "local": [
+        "Cùng chung sức phấn đấu xây đời mới,",
+        "Đứng đều lên gông xích ta đập tan.",
+        "Từ bao lâu ta nuốt căm hờn,",
+        "Quyết hy sinh đời ta tươi thắm hơn."
+      ],
+      "english": [
+        "Let us join our efforts in the fight for the building of a new life.",
+        "Let us stand up and break our chains.",
+        "For too long have we swallowed our hatred.",
+        "Let us keep ready for all sacrifices and our life will be radiant."
+      ]
+    },
+    {
+      "local": [
+        "Vì nhân dân chiến đấu không ngừng,",
+        "Tiến mau ra sa trường,",
+        "Tiến lên, cùng tiến lên!",
+        "Nước non [[Việt Nam]] ta vững bền."
+      ],
+      "english": [
+        "Ceaselessly for the people's cause we struggle.",
+        "Hasten to the battlefield!",
+        "Advance! All advance!",
+        "Our [[Vietnam]] is eternally strong!"
+      ]
+    }
+  ]
+}

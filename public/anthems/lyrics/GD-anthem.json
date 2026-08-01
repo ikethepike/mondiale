@@ -1,0 +1,61 @@
+{
+  "isoCode": "GD",
+  "title": "Hail Grenada",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Irva Merle Baptiste",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Save_the_King"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Hélé la Gwinad te annou",
+        "Nou pléjé ko an nou pou ou",
+        "Tet, tje e lanmen an younité",
+        "Pou wivé déstinasyon nou"
+      ],
+      "english": [
+        "Hail! [[Grenada]], land of ours,",
+        "We pledge ourselves to thee,",
+        "Heads, hearts and hands in unity",
+        "To reach our destiny."
+      ]
+    },
+    {
+      "local": [
+        "Toujou konésas an Djé",
+        "Pwéjé Héwitaj an Nou",
+        "Sé pou nou an lafwa eve kouwaj",
+        "Anspiwé, bati, avansé"
+      ],
+      "english": [
+        "Ever conscious of God,",
+        "Being proud of our heritage,",
+        "May we with faith and courage",
+        "Aspire, build, advance"
+      ]
+    },
+    {
+      "local": [
+        "Kon yonn sel moun, yonn sel fanmi",
+        "Djé benni nasyon annou"
+      ],
+      "english": [
+        "As one people, one family.",
+        "God bless our nation."
+      ]
+    }
+  ]
+}

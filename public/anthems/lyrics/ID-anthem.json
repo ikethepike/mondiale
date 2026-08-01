@@ -1,0 +1,171 @@
+{
+  "isoCode": "ID",
+  "title": "Indonesia Raya",
+  "language": {
+    "code": "id",
+    "name": "Indonesian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Wage Rudolf Supratman",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Indonesia_Raya"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Official [[Indonesian]] text",
+        "[[Indonesia]], tanah airku",
+        "Tanah tumpah darahku",
+        "Di sanalah aku berdiri"
+      ],
+      "english": [
+        "English translation",
+        "[[Indonesia]], my homeland",
+        "The land where I shed my blood",
+        "Right there, I stand"
+      ]
+    },
+    {
+      "local": [
+        "Jadi pandu ibuku",
+        "[[Indonesia]], kebangsaanku",
+        "Bangsa dan tanah airku",
+        "Marilah kita berseru"
+      ],
+      "english": [
+        "To be a guide of my motherland.",
+        "[[Indonesia]], my nationality",
+        "My nation and my homeland",
+        "Let us exclaim"
+      ]
+    },
+    {
+      "local": [
+        "[[Indonesia]] bersatu!",
+        "Hiduplah tanahku, hiduplah negeriku",
+        "Bangsaku, rakyatku, semuanya",
+        "Bangunlah jiwanya, bangunlah badannya"
+      ],
+      "english": [
+        "[[Indonesia]] unites.",
+        "Long live my land, long live my state",
+        "My nation, my people, entirely",
+        "Let us build its soul, let us build its body"
+      ]
+    },
+    {
+      "local": [
+        "Untuk [[Indonesia]] Raya",
+        "[[Indonesia]] Raya, merdeka! Merdeka!",
+        "Tanahku, negeriku yang kucinta",
+        "[[Indonesia]] Raya, merdeka! Merdeka!"
+      ],
+      "english": [
+        "For the Great [[Indonesia]].",
+        "Great [[Indonesia]], independent and sovereign,",
+        "My land, my country which I love",
+        "Great [[Indonesia]], independent and sovereign!"
+      ]
+    },
+    {
+      "local": [
+        "Hiduplah [[Indonesia]] Raya!",
+        "[[Indonesia]], tanah yang mulia",
+        "Tanah kita yang kaya",
+        "Di sanalah aku berdiri"
+      ],
+      "english": [
+        "Long live Great [[Indonesia]]!",
+        "[[Indonesia]], a noble land",
+        "Our wealthy land",
+        "Right there, I stand"
+      ]
+    },
+    {
+      "local": [
+        "Untuk selama-lamanya",
+        "[[Indonesia]], tanah pusaka",
+        "Pusaka kita semuanya",
+        "Marilah kita mendoa"
+      ],
+      "english": [
+        "Forever and ever.",
+        "[[Indonesia]], a hereditary land",
+        "A heritage of ours",
+        "Let us pray"
+      ]
+    },
+    {
+      "local": [
+        "\"[[Indonesia]] bahagia!\"",
+        "Suburlah tanahnya, suburlah jiwanya",
+        "Bangsanya, rakyatnya, semuanya",
+        "Sadarlah hatinya, sadarlah budinya"
+      ],
+      "english": [
+        "To [[Indonesians']] happiness.",
+        "Fertile may its soil, flourish may its soul",
+        "Its nation, its people, entirely,",
+        "Aware may its heart, aware may its mind,"
+      ]
+    },
+    {
+      "local": [
+        "Untuk [[Indonesia]] Raya",
+        "[[Indonesia]], tanah yang suci",
+        "Tanah kita yang sakti",
+        "Di sanalah aku berdiri"
+      ],
+      "english": [
+        "For Great [[Indonesia]].",
+        "[[Indonesia]], a sacred land,",
+        "Our victorious land,",
+        "Right there, I stand,"
+      ]
+    },
+    {
+      "local": [
+        "Menjaga ibu sejati",
+        "[[Indonesia]], tanah berseri",
+        "Tanah yang aku sayangi",
+        "Marilah kita berjanji"
+      ],
+      "english": [
+        "To guard the pure motherland.",
+        "[[Indonesia]], a radiant land,",
+        "A land which I adore,",
+        "Let us pledge,"
+      ]
+    },
+    {
+      "local": [
+        "\"[[Indonesia]] abadi!\"",
+        "Selamatlah rakyatnya, selamatlah putranya",
+        "Pulaunya, lautnya, semuanya",
+        "Majulah negerinya, majulah pandunya"
+      ],
+      "english": [
+        "[[Indonesia]] is eternal,",
+        "Safe may its people, safe may its children,",
+        "Its islands, its seas, entirely,",
+        "The state progresses, its scouts advance,"
+      ]
+    },
+    {
+      "local": [
+        "Untuk [[Indonesia]] Raya"
+      ],
+      "english": [
+        "For Great [[Indonesia]]."
+      ]
+    }
+  ]
+}

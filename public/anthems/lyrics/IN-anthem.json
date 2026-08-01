@@ -1,0 +1,49 @@
+{
+  "isoCode": "IN",
+  "title": "Jana Gana Mana",
+  "language": {
+    "code": "bn",
+    "name": "Bengali",
+    "script": "Devanagari"
+  },
+  "sources": {
+    "local": {
+      "author": "Rabindranath Tagore",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Jana_Gana_Mana"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "জনগণমন-অধিনায়ক জয় হে [[ভারত]]ভাগ্যবিধাতা!",
+        "পঞ্জাব সিন্ধু গুজরাট মরাঠা দ্রাবিড় উৎকল বঙ্গ",
+        "বিন্ধ্য হিমাচল যমুনা গঙ্গা উচ্ছলজলধিতরঙ্গ",
+        "তব শুভ নামে জাগে, তব শুভ আশিষ মাগে,"
+      ],
+      "english": [
+        "Victory to the Lord of the minds of all the people,",
+        "The dispenser of [[India's]] destiny!",
+        "Punjab, Sindh, Gujarat, Maratha,",
+        "Dravida, Utkala, Bengal;"
+      ]
+    },
+    {
+      "local": [
+        "গাহে তব জয়গাথা।",
+        "জনগণমঙ্গলদায়ক জয় হে [[ভারত]]ভাগ্যবিধাতা!",
+        "জয় হে, জয় হে, জয় হে, জয় জয় জয় জয় হে॥"
+      ],
+      "english": [
+        "The Vindhyas, Himalayas, Yamunas, the Ganges,",
+        "The wavering waves of the ocean all arise in your auspicious name,",
+        "Seek your auspicious blessings, sing your victory lore."
+      ]
+    }
+  ]
+}

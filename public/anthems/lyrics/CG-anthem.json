@@ -1,0 +1,116 @@
+{
+  "isoCode": "CG",
+  "title": "La Congolaise",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Congolaise"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "En ce jour le soleil se lève",
+        "Et notre [[Congo]] resplendit.",
+        "Une longue nuit s'achève,",
+        "Un grand bonheur a surgi."
+      ],
+      "english": [
+        "On this day the sun rises",
+        "And our [[Congo]] stands resplendent.",
+        "A long night is ended,",
+        "A great happiness has come."
+      ]
+    },
+    {
+      "local": [
+        "Chantons tous avec ivresse",
+        "Le chant de la liberté.",
+        "[[Congolais]], debout fièrement partout,",
+        "Proclamons l'union de notre nation,"
+      ],
+      "english": [
+        "Let us all, with wild joyfulness, sing",
+        "The song of freedom.",
+        "Arise, [[Congolese]], proud every man,",
+        "Proclaim the unity of our nation."
+      ]
+    },
+    {
+      "local": [
+        "Oublions ce qui nous divise,",
+        "Soyons plus unis que jamais,",
+        "Vivons pour notre devise:",
+        "Unité, travail, progrès,"
+      ],
+      "english": [
+        "Let us forget what divides us",
+        "And become more united than ever.",
+        "Let us live our motto:",
+        "Unity, work, progress."
+      ]
+    },
+    {
+      "local": [
+        "Vivons pour notre devise:",
+        "Unité, travail, progrès!",
+        "Des forêts jusqu'à la savanne,",
+        "Des savannes jusqu'à la mer,"
+      ],
+      "english": [
+        "Let us live our motto:",
+        "Unity, work, progress!",
+        "From the forest to the savannah,",
+        "From the savannah to the sea,"
+      ]
+    },
+    {
+      "local": [
+        "Un seul peuple, une seule âme,",
+        "Un seul cœur, ardent et fier,",
+        "Luttons tous, tant que nous sommes,",
+        "Pour notre vieux pays noir."
+      ],
+      "english": [
+        "One people, one soul,",
+        "One heart, ardent and proud.",
+        "Let us all fight, every one of us,",
+        "For our black country."
+      ]
+    },
+    {
+      "local": [
+        "Et s'il nous faut mourir, en somme",
+        "Qu'importe puisque nos enfants,",
+        "Partout, pourront dire comme",
+        "On triomphe en combattant,"
+      ],
+      "english": [
+        "And if we have to die,",
+        "What does it really matter? Our children",
+        "Everywhere will be able to say how",
+        "Triumph comes through battle,"
+      ]
+    },
+    {
+      "local": [
+        "Et dans le moindre village",
+        "Chantent sous nos trois couleurs."
+      ],
+      "english": [
+        "And in the smallest village",
+        "Sing beneath our three colours."
+      ]
+    }
+  ]
+}

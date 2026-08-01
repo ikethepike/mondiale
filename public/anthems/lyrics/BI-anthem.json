@@ -1,0 +1,90 @@
+{
+  "isoCode": "BI",
+  "title": "Burundi bwacu",
+  "language": {
+    "code": "rn",
+    "name": "Kirundi",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Burundi_Bwacu"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Burundi]] bwacu, [[Burundi]] buhire,",
+        "Shinga icumu mu mashinga,",
+        "Gaba intahe y'ubugabo ku bugingo.",
+        "Warapfunywe ntiwapfuye,"
+      ],
+      "english": [
+        "Our [[Burundi]], gentle country,",
+        "Take your place in the concert of nations,",
+        "Acceding to independence with honourable intentions.",
+        "Wounded and bruised, you have remained master of yourself."
+      ]
+    },
+    {
+      "local": [
+        "Warahabishijwe ntiwahababuka.",
+        "Uhagurukana, uhagurukana, uhagurukana ubugabo urikukira.",
+        "Komerwa amashi n'amakungu,",
+        "Uhabwe impundu n'abawe,"
+      ],
+      "english": [
+        "When the hour came, you arose,",
+        "Lifting yourself proudly into the ranks of free peoples.",
+        "Receive, then, the congratulations of the nations",
+        "And the homage of your sons and daughters."
+      ]
+    },
+    {
+      "local": [
+        "Isamirane mu mashinga,",
+        "isamirane mu mashinga.",
+        "[[Burundi]] bwacu, ragi rya ba sokuru,",
+        "Ramutswa intahe n'ibihugu,"
+      ],
+      "english": [
+        "May your name ring out through the universe,",
+        "May your name ring out through the universe.",
+        "Our [[Burundi]], sacred heritage from our forefathers,",
+        "Recognised as worthy of self-government,"
+      ]
+    },
+    {
+      "local": [
+        "Ufatanije ishaka n'ubuhizi;",
+        "Vuza impundu wiganzuye uwakuganza uwakuganza.",
+        "[[Burundi]] bwacu, mpora mutima kuri twese,",
+        "Tugutuye amaboko, umutima n'ubuzima,"
+      ],
+      "english": [
+        "With your courage you also have a sense of honour.",
+        "Sing the glory of liberty conquered again.",
+        "Our [[Burundi]], worthy of our tenderest love,",
+        "We vow to your noble service our hands and hearts and lives."
+      ]
+    },
+    {
+      "local": [
+        "Imana yakuduhaye ikudutungire.",
+        "Horana ubumwe n'abagabo n'itekane.",
+        "Sagwa n'urweze, sagwa n'amahoro meza."
+      ],
+      "english": [
+        "May God, who gave you to us, keep you for us to venerate,",
+        "Under the shield of unity,",
+        "In peace, joy and prosperity."
+      ]
+    }
+  ]
+}

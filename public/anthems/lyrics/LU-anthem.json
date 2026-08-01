@@ -1,0 +1,135 @@
+{
+  "isoCode": "LU",
+  "title": "Ons Heemecht",
+  "language": {
+    "code": "lb",
+    "name": "Luxembourgish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Michel Lentz",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ons_Heemecht"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Wou d'Uelzecht durech d'Wisen zéit,",
+        "Duerch d'Fielsen d'Sauer brécht,",
+        "Wou d'Rief laanscht d'Musel dofteg bléit,",
+        "Den Himmel Wäin ons mécht:"
+      ],
+      "english": [
+        "Where Alzette winds through meadows fair,",
+        "Through rocky cliffs the Sauer flows,",
+        "Where vineyards bloom along the Moselle,",
+        "And heaven’s wine bestows."
+      ]
+    },
+    {
+      "local": [
+        "Dat as onst Land, fir dat mir géif",
+        "Hei nidden alles won,",
+        "Ons Heemechtsland dat mir sou déif",
+        "An onsen Hierzer dron."
+      ],
+      "english": [
+        "This is our land, for which we’d dare",
+        "All things here down below,",
+        "Our homeland, dear, so deeply loved,",
+        "Within our hearts we know."
+      ]
+    },
+    {
+      "local": [
+        "An sengem donkle Bëscherkranz,",
+        "Vum Fridde stëll bewaacht,",
+        "Sou ouni Pronk an deire Glanz",
+        "Gemittlech léif et laacht;"
+      ],
+      "english": [
+        "Within her shady forest ring,",
+        "By peaceful watch kept still,",
+        "Without display or gilded gleam,",
+        "She smiles with gentle will;"
+      ]
+    },
+    {
+      "local": [
+        "Säi Vollek frou sech soë kann,",
+        "An 't si keng eidel Dreem:",
+        "Wéi wunnt et sech sou heemlech dran,",
+        "Wéi as 't sou gutt doheem!"
+      ],
+      "english": [
+        "Her people happy in their hearts,",
+        "No empty dreams they know:",
+        "How sweetly life is lived therein,",
+        "How good it is to go."
+      ]
+    },
+    {
+      "local": [
+        "Gesank, Gesank vu Bierg an Dall",
+        "Der Äärd, déi äis gedron;",
+        "D'Léift huet en treie Widderhall",
+        "A jidder Broschts gedon;"
+      ],
+      "english": [
+        "From hill to dale, the songs resound,",
+        "The earth that gave us birth;",
+        "Love echoes true in every breast,",
+        "A loyal, faithful mirth;"
+      ]
+    },
+    {
+      "local": [
+        "Fir, d'Hemecht ass keng Weis ze schéin;",
+        "All Wuert, dat vun er klénkt,",
+        "Gräift äis an d' Séil wéi Himmelstéin",
+        "An d'A wéi Feier blénkt."
+      ],
+      "english": [
+        "For homeland, none can sing too fair,",
+        "Each word that speaks her name",
+        "Touches our souls like heavenly stones,",
+        "And sparks our eyes like flame."
+      ]
+    },
+    {
+      "local": [
+        "O Du do uewen, deen seng Hand",
+        "Duerch d'Welt d'Natioune leet,",
+        "Behitt Du d'[[Lëtzebuerger]] Land",
+        "Vru friemem Joch a Leed;"
+      ],
+      "english": [
+        "O Thou on high, whose mighty hand",
+        "Guides nations near and far,",
+        "Protect our [[Luxembourgish]] land",
+        "From foreign yoke and war;"
+      ]
+    },
+    {
+      "local": [
+        "Du hues ons all als Kanner schon",
+        "De fräie Geescht jo ginn,",
+        "Looss viru blénken d'Fräiheetssonn,",
+        "Déi mir sou laang gesinn!"
+      ],
+      "english": [
+        "Give unto us, as once of old,",
+        "The spirit of the free;",
+        "Let liberty’s bright, glorious sun",
+        "Shine ever o’er our plea."
+      ]
+    }
+  ]
+}

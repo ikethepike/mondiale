@@ -1,0 +1,92 @@
+{
+  "isoCode": "TD",
+  "title": "La Tchadienne",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Tchadienne"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Peuple [[Tchadien]], debout et à l'ouvrage !",
+        "Tu as conquis ta terre et ton droit;",
+        "Ta liberté naîtra de ton courage.",
+        "Lève les yeux, l'avenir est à Toi."
+      ],
+      "english": [
+        "People of [[Chad]], arise and to work!",
+        "You have conquered your soil and won your rights;",
+        "Your freedom will be born of your courage.",
+        "Lift up your eyes, the future is yours."
+      ]
+    },
+    {
+      "local": [
+        "Ô mon Pays, que Dieu te prenne en garde,",
+        "Que tes voisins admirent tes enfants.",
+        "Joyeux, pacifique, avance en chantant,",
+        "Fidèle à tes anciens qui te regardent."
+      ],
+      "english": [
+        "O my Country, may God protect you,",
+        "May your neighbours admire your children.",
+        "Joyful, peaceful, advance as you sing,",
+        "Faithful to your fathers who are watching you."
+      ]
+    },
+    {
+      "local": [
+        "Race du Nord, et ses troupeaux immenses,",
+        "Race du Sud, qui cultive les champs.",
+        "Pasteurs, montagnards, pêcheurs, commerçants",
+        "Soyons un seul grand peuple qui s'avance."
+      ],
+      "english": [
+        "Race of the North, and its immense herds,",
+        "Race of the South, who cultivates the fields.",
+        "Shepherds, mountaineers, fishers and traders,",
+        "Let us be a single great people who advances."
+      ]
+    },
+    {
+      "local": [
+        "La houe en main, fais vaillamment ta corde,",
+        "Vois tes enfants que tourmente la faim",
+        "Les champs devant toi attendent ton grain",
+        "Que l'huile coule et tes greniers débordent."
+      ],
+      "english": [
+        "Hoe in hand, valiantly make your rope,",
+        "See your children who are tormented by hunger,",
+        "The fields before you wait for your grain.",
+        "Let oil flow and your granaries overflow."
+      ]
+    },
+    {
+      "local": [
+        "Tes ingénieurs te traceront des routes,",
+        "Tes médecins te rendront grand et fort,",
+        "À l'œuvre étudiant, sans craindre l'effort;",
+        "Mets l'ignorance et le mal en déroute."
+      ],
+      "english": [
+        "Your engineers will trace roads on you",
+        "Your physicians will make you big and strong",
+        "Student, to work, without worrying about the effort",
+        "Put ignorance and evil in debacle."
+      ]
+    }
+  ]
+}

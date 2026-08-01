@@ -22,6 +22,7 @@
       :status="status"
       :solo="gameStore.map.solo"
       :landmass="gameStore.map.landmass"
+      :recede="gameStore.map.recede"
       :labels="gameStore.map.labels"
       :berth="gameStore.map.berth"
       :focus-countries="gameStore.map.focus"

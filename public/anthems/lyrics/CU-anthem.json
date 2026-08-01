@@ -1,0 +1,107 @@
+{
+  "isoCode": "CU",
+  "title": "El Himno de Bayamo",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Perucho Figueredo",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Bayamesa"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡Al combate, corred, bayameses!,",
+        "Que la patria os contempla orgullosa;",
+        "No temáis una muerte gloriosa,",
+        "Que morir por la patria es vivir."
+      ],
+      "english": [
+        "To combat, run, people of Bayamo!",
+        "Because the Fatherland proudly looks at you;",
+        "Fear not a glorious death,",
+        "Because dying for the Fatherland is living."
+      ]
+    },
+    {
+      "local": [
+        "En cadenas vivir es vivir",
+        "En afrenta y oprobio sumido.",
+        "Del clarín escuchad el sonido:",
+        "¡A las armas, valientes, corred!"
+      ],
+      "english": [
+        "Living in chains is living",
+        "Plunged in affront and opprobrium.",
+        "Hear the sound of the bugle:",
+        "To arms, brave ones, run!"
+      ]
+    },
+    {
+      "local": [
+        "No temáis los feroces íberos,",
+        "Son cobardes cual todo tirano.",
+        "No resisten al bravo [[cubano]];",
+        "Para siempre su imperio cayó."
+      ],
+      "english": [
+        "Fear not the fierce Iberians,",
+        "They are cowards like every tyrant.",
+        "They cannot withstand the brave [[Cubans]];",
+        "Their empire has forever fallen."
+      ]
+    },
+    {
+      "local": [
+        "¡[[Cuba]] libre! Ya España murió,",
+        "Su poder y su orgullo ¿do es ido?",
+        "¡Del clarín escuchad el sonido:",
+        "¡A las armas, valientes, corred!"
+      ],
+      "english": [
+        "Free [[Cuba]]! Spain has already died,",
+        "Its power and pride, where did it go?",
+        "Hear the sound of the bugle:",
+        "To arms, brave ones, run!"
+      ]
+    },
+    {
+      "local": [
+        "Contemplad nuestras huestes triunfantes,",
+        "Contempladlos a ellos caídos.",
+        "Por cobardes huyeron vencidos;",
+        "¡Por valientes, sabemos triunfar!"
+      ],
+      "english": [
+        "Behold our triumphant troops,",
+        "And behold them fallen.",
+        "Because they were cowards, they flee defeated;",
+        "Because we were brave, we knew how to triumph."
+      ]
+    },
+    {
+      "local": [
+        "¡[[Cuba]] libre! podemos gritar",
+        "Del cañón al terrible estampido.",
+        "¡Del clarín escuchad el sonido:",
+        "¡A las armas, valientes, corred!"
+      ],
+      "english": [
+        "Free [[Cuba]]! we can shout",
+        "From the cannon's terrible boom.",
+        "Hear the sound of the bugle,",
+        "To arms, brave ones, run!"
+      ]
+    }
+  ]
+}

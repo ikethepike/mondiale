@@ -1,0 +1,65 @@
+{
+  "isoCode": "PE",
+  "title": "Himno Nacional del Perú",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "José de la Torre Ugarte",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Peru"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Gloria enhiesta en milenios de historia",
+        "fue moldeando el sentir nacional",
+        "y fue el grito de Túpac Amaru",
+        "el que alerta, el que exige"
+      ],
+      "english": [
+        "Glory erected in millennia of history",
+        "molded the national sentiment",
+        "and it was the yell of Túpac Amaru",
+        "which alerts, which demands"
+      ]
+    },
+    {
+      "local": [
+        "y el que impele, hacia la libertad.",
+        "Y el criollo y el indio se estrechan",
+        "anhelantes de un único ideal",
+        "y la entrega de su alma y su sangre"
+      ],
+      "english": [
+        "and which impels, towards liberty.",
+        "And the creole and the Indian embrace",
+        "yearning for a single ideal",
+        "and the sacrifice of their soul and blood"
+      ]
+    },
+    {
+      "local": [
+        "dio el blanco y los rojos",
+        "del emblema que al mundo anunció",
+        "que soberano se yergue el [[Perú]].",
+        "Para gloria de Dios."
+      ],
+      "english": [
+        "that gave the white and reds",
+        "of the emblem that announced to the world",
+        "that [[Peru]] rises sovereign.",
+        "For the glory of God."
+      ]
+    }
+  ]
+}

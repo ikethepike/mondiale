@@ -1,0 +1,149 @@
+{
+  "isoCode": "IS",
+  "title": "Lofsöngur",
+  "language": {
+    "code": "is",
+    "name": "Icelandic",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Matthías Jochumsson",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Lofsöngur"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ó, guð vors lands! Ó, lands vors guð!",
+        "Vér lofum þitt heilaga, heilaga nafn!",
+        "Úr sólkerfum himnanna hnýta þér krans",
+        "þínir herskarar, tímanna safn."
+      ],
+      "english": [
+        "Our country's God! Our country's God!",
+        "We worship Thy name in its wonder sublime.",
+        "The suns of the heavens are set in Thy crown",
+        "By Thy legions, the ages of time!"
+      ]
+    },
+    {
+      "local": [
+        "Fyrir þér er einn dagur sem þúsund ár",
+        "og þúsund ár dagur, ei meir:",
+        "eitt eilífðar smáblóm með titrandi tár,",
+        "sem tilbiður guð sinn og deyr."
+      ],
+      "english": [
+        "With Thee is each day as a thousand years,",
+        "Each thousand of years, but a day,",
+        "Eternity's flow'r, with its homage of tears,",
+        "That reverently passes away."
+      ]
+    },
+    {
+      "local": [
+        "[[Íslands]] þúsund ár,",
+        "[[Íslands]] þúsund ár,",
+        "eitt eilífðar smáblóm með titrandi tár,",
+        "sem tilbiður guð sinn og deyr."
+      ],
+      "english": [
+        "[[Iceland's]] thousand years,",
+        "[[Iceland's]] thousand years!",
+        "Eternity's flow'r, with its homage of tears,",
+        "That reverently passes away."
+      ]
+    },
+    {
+      "local": [
+        "Ó guð, ó guð! Vér föllum fram",
+        "og fórnum þér brennandi, brennandi sál,",
+        "guð faðir, vor drottinn frá kyni til kyns,",
+        "og vér kvökum vort helgasta mál."
+      ],
+      "english": [
+        "Our God, our God, we bow to Thee,",
+        "Our spirits most fervent we place in thy care.",
+        "Lord, God of our fathers from age unto age,",
+        "We are breathing our holiest prayer."
+      ]
+    },
+    {
+      "local": [
+        "Vér kvökum og þökkum í þúsund ár,",
+        "því þú ert vort einasta skjól.",
+        "Vér kvökum og þökkum með titrandi tár,",
+        "því þú tilbjóst vort forlagahjól."
+      ],
+      "english": [
+        "We pray and we thank Thee a thousand years",
+        "For safely protected we stand;",
+        "We pray and we bring Thee our homage of tears",
+        "Our destiny rest in Thy hand."
+      ]
+    },
+    {
+      "local": [
+        "[[Íslands]] þúsund ár,",
+        "[[Íslands]] þúsund ár!",
+        "Voru morgunsins húmköldu, hrynjandi tár,",
+        "sem hitna við skínandi sól."
+      ],
+      "english": [
+        "[[Iceland]]’s thousand years,",
+        "[[Iceland's]] thousand years!",
+        "The hoarfrost of morning which tinted those years,",
+        "Thy sun rising high, shall command!"
+      ]
+    },
+    {
+      "local": [
+        "Ó, guð vors lands! Ó, lands vors guð!",
+        "Vér lifum sem blaktandi, blaktandi strá.",
+        "Vér deyjum, ef þú ert ei ljós það og líf,",
+        "sem að lyftir oss duftinu frá."
+      ],
+      "english": [
+        "Our country’s God! Our country’s God!",
+        "Our life is a feeble and quivering reed;",
+        "We perish, deprived of Thy spirit and light",
+        "To redeem and uphold in our need."
+      ]
+    },
+    {
+      "local": [
+        "Ó, vert þú hvern morgun vort ljúfasta líf,",
+        "vor leiðtogi í daganna þraut",
+        "og á kvöldin vor himneska hvíld og vor hlíf",
+        "og vor hertogi á þjóðlífsins braut."
+      ],
+      "english": [
+        "Inspire us at morn with Thy courage and love,",
+        "And lead through the days of our strife!",
+        "At evening send peace from Thy heaven above,",
+        "And safeguard our nation through life."
+      ]
+    },
+    {
+      "local": [
+        "[[Íslands]] þúsund ár,",
+        "[[Íslands]] þúsund ár!",
+        "verði gróandi þjóðlíf með þverrandi tár,",
+        "sem þroskast á guðsríkis braut."
+      ],
+      "english": [
+        "[[Iceland]]’s thousand years,",
+        "[[Iceland's]] thousand years!",
+        "O, prosper our people, diminish our tears",
+        "And guide, in Thy wisdom, through life!"
+      ]
+    }
+  ]
+}

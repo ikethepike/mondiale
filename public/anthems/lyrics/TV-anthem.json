@@ -1,0 +1,106 @@
+{
+  "isoCode": "TV",
+  "title": "Tuvalu mo te Atua",
+  "language": {
+    "code": "tvl",
+    "name": "Tuvaluan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Tuvalu_mo_te_Atua"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Tuvalu]] mo te Atua,",
+        "Ko te Fakavae sili,",
+        "Ko te ala foki tena,",
+        "O te manuia katoa"
+      ],
+      "english": [
+        "[[Tuvalu]] for the Almighty",
+        "Are the words we hold most dear",
+        "For as people or as leaders",
+        "Of [[Tuvalu]] we all share"
+      ]
+    },
+    {
+      "local": [
+        "Loto lasi o fai,",
+        "Tou malo saoloto",
+        "Fusi ake katoa",
+        "Ki te loto alofa"
+      ],
+      "english": [
+        "In the knowledge that God",
+        "Ever rules in heav'n above,",
+        "And that we in this land",
+        "Are united in His love."
+      ]
+    },
+    {
+      "local": [
+        "Kae amo fakatasi",
+        "Ate atu fenua.",
+        "\"[[Tuvalu]] mo te Atua\"",
+        "Ki te se gata mai!"
+      ],
+      "english": [
+        "We build on a sure foundation",
+        "When we trust in God's great law",
+        "\"[[Tuvalu]] for the Almighty\"",
+        "Be our song for evermore!"
+      ]
+    },
+    {
+      "local": [
+        "Tuku atu tau pulega",
+        "Ki te pule mai luga,",
+        "Kilo tonu ki ou mua",
+        "Me ko ia e tautai."
+      ],
+      "english": [
+        "Let us trust our lives henceforward",
+        "To the King to whom we pray,",
+        "With our eyes fixed firmly on Him",
+        "He is showing us the way."
+      ]
+    },
+    {
+      "local": [
+        "\"Pule tasi mo ia\"",
+        "Ki te se gata mai,",
+        "Ko tena mana",
+        "Ko tou malosi tena."
+      ],
+      "english": [
+        "\"May we reign with Him in glory\"",
+        "Be our song for evermore,",
+        "for His almighty power",
+        "Is our strength from shore to shore."
+      ]
+    },
+    {
+      "local": [
+        "Pati lima kae kalaga",
+        "Ulufonu ki te tupu.",
+        "\"[[Tuvalu]] ko tu saoloto\"",
+        "Ki te se gata mai!"
+      ],
+      "english": [
+        "Shout aloud in jubilation",
+        "To the King whom we adore.",
+        "\"[[Tuvalu]] free and united\"",
+        "Be our song for evermore!"
+      ]
+    }
+  ]
+}

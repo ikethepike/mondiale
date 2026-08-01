@@ -1,0 +1,47 @@
+{
+  "isoCode": "UA",
+  "title": "Shche ne vmerla Ukrainy i slava, i volia",
+  "language": {
+    "code": "uk",
+    "name": "Ukrainian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "author": "Pavlo Chubynsky",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Ukraine"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ще не вмерла [[України]] і слава, і воля,",
+        "Ще нам, браття молодії, усміхнеться доля.",
+        "Згинуть наші воріженьки, як роса на сонці.",
+        "Запануєм і ми, браття, у своїй сторонці."
+      ],
+      "english": [
+        "The glory and will of [[Ukraine]] has not yet perished,",
+        "And yet still upon us, brothers, fate shall smile once more.",
+        "Our enemies shall melt away, like the dew in the sun.",
+        "And we too shall rule, O brethen, the homeland of our own."
+      ]
+    },
+    {
+      "local": [
+        "Душу й тіло ми положим за нашу свободу,",
+        "І покажем, що ми, браття, козацького роду."
+      ],
+      "english": [
+        "Soul and body shall we lay down for our liberty,",
+        "And we'll show, O brethen, that we're a Cossack family!"
+      ]
+    }
+  ]
+}

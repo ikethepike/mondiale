@@ -1,0 +1,51 @@
+{
+  "isoCode": "NZ",
+  "title": "God Defend New Zealand",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Thomas Bracken; Māori text Thomas Henry Smith",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Defend_New_Zealand"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "E Ihowā Atua,",
+        "O ngā iwi mātou rā",
+        "Āta whakarangona;",
+        "Me aroha noa."
+      ],
+      "english": [
+        "God of Nations at Thy feet,",
+        "In the bonds of love we meet,",
+        "Hear our voices, we entreat,",
+        "God defend our free land."
+      ]
+    },
+    {
+      "local": [
+        "Kia hua ko te pai;",
+        "Kia tau tō atawhai;",
+        "Manaakitia mai",
+        "[[Aotearoa]]"
+      ],
+      "english": [
+        "Guard Pacific's triple star",
+        "From the shafts of strife and war,",
+        "Make her praises heard afar,",
+        "God defend [[New Zealand]]."
+      ]
+    }
+  ]
+}

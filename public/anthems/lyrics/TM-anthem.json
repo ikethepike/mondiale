@@ -1,0 +1,64 @@
+{
+  "isoCode": "TM",
+  "title": "Garaşsyz, Bitarap Türkmenistanyň Döwlet Gimni",
+  "language": {
+    "code": "tk",
+    "name": "Turkmen",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Turkmenistan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Janym gurban saňa, erkana ýurdum",
+        "Mert pederleň ruhy bardyr köňülde.",
+        "Bitarap, Garaşsyz topragyň nurdur",
+        "Baýdagyň belentdir dünýäň öňünde."
+      ],
+      "english": [
+        "My soul is a sacrifice to you, my beloved country,",
+        "The spirit of a brave fathers is in my heart.",
+        "The light of a neutral and independent land",
+        "Your flag is raised high before the world."
+      ]
+    },
+    {
+      "local": [
+        "Halkyň guran baky beýik binasy",
+        "Berkarar döwletim, jigerim–janym.",
+        "Başlaryň täji sen, diller senasy",
+        "Dünýä dursun, sen dur, [[Türkmenistanym]]!"
+      ],
+      "english": [
+        "The great eternal creation of the people,",
+        "My sovereign state, my heart and soul.",
+        "You are the crown of heads, the praise of tongues.",
+        "Let the world stand still, let you be still, [[Turkmenistan]]!"
+      ]
+    },
+    {
+      "local": [
+        "Gardaşdyr tireler, amandyr iller",
+        "Owal–ahyr birdir biziň ganymyz.",
+        "Harasatlar almaz, syndyrmaz siller",
+        "Nesiller döş gerip gorar şanymyz."
+      ],
+      "english": [
+        "Tribes are brothers, countries are friends.",
+        "It is our blood, after all.",
+        "They shall not be harmed or broken.",
+        "It is our honor that generations cherish and protect it."
+      ]
+    }
+  ]
+}

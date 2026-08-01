@@ -1,0 +1,60 @@
+{
+  "isoCode": "TL",
+  "title": "Pátria",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/P%C3%A1tria"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Pátria, Pátria, [[Timor-Leste]], nossa Nação.",
+        "Glória ao povo e aos heróis da nossa libertação.",
+        "Vencemos o colonialismo, gritamos:",
+        "Abaixo o imperialismo."
+      ],
+      "english": [
+        "Fatherland, fatherland, [[Timor-Leste]] our Nation.",
+        "Glory to the people and to the heroes of our liberation.",
+        "We vanquish colonialism, we cry:",
+        "down with imperialism!"
+      ]
+    },
+    {
+      "local": [
+        "Terra livre, povo livre,",
+        "Não, não, não à exploração.",
+        "Avante unidos firmes e decididos.",
+        "Na luta contra o imperialismo"
+      ],
+      "english": [
+        "Free land, free people,",
+        "No, no, no to exploitation.",
+        "Let us go forward, united, firm, and determined",
+        "In the struggle against imperialism,"
+      ]
+    },
+    {
+      "local": [
+        "O inimigo dos povos, até à vitória final.",
+        "Pelo caminho da revolução."
+      ],
+      "english": [
+        "enemy of the people, until final victory,",
+        "onward to revolution."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "isoCode": "BH",
+  "title": "بحريننا",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Bahrain"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "بَحْرَيْنُنَا",
+        "مَلِيكُنَا",
+        "رَمْزُ الْوِئَامْ",
+        "دُسْتُورُهَا عَالِي الْمَكَانَةِ وَالْمَقَامْ"
+      ],
+      "english": [
+        "Our [[Bahrain]]",
+        "Our King",
+        "Symbol of harmony",
+        "Her Constitution is high and supreme"
+      ]
+    },
+    {
+      "local": [
+        "مِيثَاقُهَا نَهْجُ الشَّرِيعَةِ وَالْعُرُوبَةِ وَالْقِيَمْ",
+        "عَاشَتْ مَمْلَكَةُ الْبَحْرَيْن",
+        "بَلَدُ الْكِرَامْ",
+        "مَهْدُ السَّلَامْ"
+      ],
+      "english": [
+        "Her Charter is the way of Sharia and Arabism",
+        "Long live the Kingdom of [[Bahrain]]!",
+        "Country of nobles",
+        "Cradle of peace"
+      ]
+    }
+  ]
+}

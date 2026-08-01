@@ -1,0 +1,78 @@
+{
+  "isoCode": "MV",
+  "title": "ޤައުމީ ސަލާމް",
+  "language": {
+    "code": "dv",
+    "name": "Dhivehi",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Gaumee_Salaam"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "ކޯރަސް",
+        "ޤައުމީ މިއެކުވެރިކަން މަތީ ތިބެގެން ކުރީމެ ސަލާމް",
+        "ޤައުމީ ބަހުން ގިނަ ހެޔޮ ދުޢާ ކުރަމުން ކުރީމެ ސަލާމް",
+        "ޤައުމީ ނިޝާނަށް ޙުރުމަތާއެކު ބޯލަނބާ ތިބެގެން"
+      ],
+      "english": [
+        "We salute thee, O Motherland, in unity",
+        "In our own tongue with good wishes aplenty.",
+        "We bow our heads to thy crescent moon and star,",
+        "Our buoyant flag we hail, with bright colours streaming in air."
+      ]
+    },
+    {
+      "local": [
+        "އައުދާނަކަން ލިބިގެން އެވާ ދިދައަށް ކުރީމެ ސަލާމް",
+        "ކޯރަސް",
+        "ނަސްރާ ނަސީބާ ކާމިޔާބުގެ ރަމްޒަކަށް ހިމެނޭ",
+        "ފެއްސާއި ރަތާއި ހުދާ އެކީ ފެނުމުން ކުރީމެ ސަލާމް"
+      ],
+      "english": [
+        "Of victory and of good fortune are its symbols",
+        "We salute the mighty red, white and green.",
+        "To heroes who sought honour and pride for the nation",
+        "We salute today in auspicious verses of recollection."
+      ]
+    },
+    {
+      "local": [
+        "ކޯރަސް",
+        "ފަޚުރާ ޝަރަފު ޤައުމަށް އެހޯދައިދެއްވި ބަޠަލުންނަށް",
+        "ޒިކުރާގެ މަތިވެރި ޅެންތަކުން އަދުގައި ކުރީމެ ސަލާމް",
+        "ކޯރަސް"
+      ],
+      "english": [
+        "May there be fame and good wealth for [[Maldivian]] land",
+        "And may the name of fellow [[Maldivians]] become grand.",
+        "We wish for their freedom and progress in this world",
+        "And for their freedom from sorrows, and we thus salute."
+      ]
+    },
+    {
+      "local": [
+        "ދިވެހީންގެ އެންމެން ކުރިއަރައި ސިލްމާ ސަލާމަތުގާ",
+        "ދިވެހީންގެ ނަން މޮޅުވުން އަދައި ތިބެގެން ކުރީމެ ސަލާމް",
+        "ކޯރަސް",
+        "މިނިވަންކަމާ މަދަނިއްޔަތާ ލިބިގެން މި ޢާލަމުގާ"
+      ],
+      "english": [
+        "With full respect and heartfelt blessing towards religion and our leaders,",
+        "We salute thee in uprightness and in truth.",
+        "May the State always have auspicious honour and respect.",
+        "We salute thee, with good wishes for thy continuing might."
+      ]
+    }
+  ]
+}

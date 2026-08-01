@@ -1,0 +1,129 @@
+{
+  "isoCode": "PT",
+  "title": "A Portuguesa",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Henrique Lopes de Mendonça",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/A_Portuguesa"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Heróis do mar, nobre povo,",
+        "Nação valente, imortal,",
+        "Levantai hoje de novo",
+        "O esplendor de [[Portugal]]!"
+      ],
+      "english": [
+        "Heroes of the sea, noble people,",
+        "Brave, immortal nation,",
+        "Raise once again today",
+        "The splendor of [[Portugal]]!"
+      ]
+    },
+    {
+      "local": [
+        "Entre as brumas da memória,",
+        "Ó Pátria, sente-se a voz",
+        "Dos teus egrégios avós,",
+        "Que há-de guiar-te à vitória!"
+      ],
+      "english": [
+        "Among the mists of memory,",
+        "Oh Fatherland, one feels the voice",
+        "Of your illustrious forefathers,",
+        "That shall lead you on to victory!"
+      ]
+    },
+    {
+      "local": [
+        "Às armas, às armas!",
+        "Sobre a terra, sobre o mar,",
+        "Às armas, às armas!",
+        "Pela Pátria lutar!"
+      ],
+      "english": [
+        "To arms, to arms!",
+        "Over land, over sea,",
+        "To arms, to arms!",
+        "For the Fatherland, fight!"
+      ]
+    },
+    {
+      "local": [
+        "Contra os canhões, marchar, marchar!",
+        "Desfralda a invicta Bandeira,",
+        "À luz viva do teu céu!",
+        "Brade a Europa à terra inteira:"
+      ],
+      "english": [
+        "Against the cannons, march on, march on!",
+        "Unfurl the undefeated flag,",
+        "In the lively light of your sky!",
+        "May Europe cry out to the whole Earth:"
+      ]
+    },
+    {
+      "local": [
+        "[[Portugal]] não pereceu",
+        "Beija o solo teu jucundo",
+        "O Oceano, a rugir d'amor,",
+        "E teu braço vencedor"
+      ],
+      "english": [
+        "[[Portugal]] has not perished",
+        "Kiss your merry ground",
+        "The ocean, roaring with love,",
+        "And your victorious arm"
+      ]
+    },
+    {
+      "local": [
+        "Deu mundos novos ao Mundo!",
+        "Saudai o Sol que desponta",
+        "Sobre um ridente porvir;",
+        "Seja o eco de uma afronta"
+      ],
+      "english": [
+        "Gave new worlds to the world!",
+        "Salute the Sun that rises",
+        "Over a gleeful future;",
+        "Let the echo of an offense"
+      ]
+    },
+    {
+      "local": [
+        "O sinal do ressurgir.",
+        "Raios dessa aurora forte",
+        "São como beijos de mãe,",
+        "Que nos guardam, nos sustêm,"
+      ],
+      "english": [
+        "Be the sign for a comeback.",
+        "Rays of this strong dawn",
+        "Are like a mother's kisses,",
+        "That keep us, sustain us,"
+      ]
+    },
+    {
+      "local": [
+        "Contra as injúrias da sorte."
+      ],
+      "english": [
+        "Against the injuries of chance."
+      ]
+    }
+  ]
+}

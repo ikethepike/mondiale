@@ -1,0 +1,64 @@
+{
+  "isoCode": "UZ",
+  "title": "Oʻzbekiston Respublikasining Davlat madhiyasi",
+  "language": {
+    "code": "uz",
+    "name": "Uzbek",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/State_Anthem_of_Uzbekistan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Serquyosh, hur oʻlkam, elga baxt, najot,",
+        "Sen oʻzing doʻstlarga yoʻldosh, mehribon !",
+        "Yashnagay to abad ilmu fan, ijod,",
+        "Shuhrating porlasin toki bor jahon!"
+      ],
+      "english": [
+        "My country, sunny and free, salvation to your people,",
+        "You are a warmhearted companion to your friends !",
+        "Flourish eternally with knowledge and invention,",
+        "May your fame shine as long as the world exists!"
+      ]
+    },
+    {
+      "local": [
+        "Oltin bu vodiylar — jon [[Oʻzbekiston]],",
+        "Ajdodlar mardona ruhi senga yor!",
+        "Ulugʻ xalq qudrati joʻsh urgan zamon,",
+        "Olamni mahliyo aylagan diyor!"
+      ],
+      "english": [
+        "These golden valleys – dear [[Uzbekistan]],",
+        "Manly spirit of ancestors is companion to you!",
+        "When the great power of people became exuberant",
+        "You are the country that amazes the world!"
+      ]
+    },
+    {
+      "local": [
+        "Bagʻri keng oʻzbekning oʻchmas iymoni,",
+        "Erkin, yosh avlodlar senga zoʻr qanot !",
+        "Istiqlol mashʼali, tinchlik posboni,",
+        "Haqsevar, ona yurt, mangu boʻl obod!"
+      ],
+      "english": [
+        "Belief of generous [[Uzbek]] does not die out,",
+        "Free, young children are a strong wing for you !",
+        "The torch of independence, guardian of peace,",
+        "Just motherland be eternally prosperous!"
+      ]
+    }
+  ]
+}

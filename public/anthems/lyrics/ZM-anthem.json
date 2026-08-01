@@ -1,0 +1,104 @@
+{
+  "isoCode": "ZM",
+  "title": "Stand and Sing of Zambia, Proud and Free",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Stand_and_Sing_of_Zambia,_Proud_and_Free"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Stand and sing of [[Zambia]], proud and free,",
+        "Land of work and joy in unity,",
+        "Victors in the struggle for the right,",
+        "We've won freedom's fight."
+      ],
+      "english": [
+        "Stand and sing of [[Zambia]], proud and free,",
+        "Land of work and joy in unity,",
+        "Victors in the struggle for the right,",
+        "We've won freedom's fight."
+      ]
+    },
+    {
+      "local": [
+        "All one, strong and free.",
+        "Africa is our own motherland,",
+        "Fashion'd with and blessed by God's good hand,",
+        "Let us all her people join as one,"
+      ],
+      "english": [
+        "All one, strong and free.",
+        "Africa is our own motherland,",
+        "Fashion'd with and blessed by God's good hand,",
+        "Let us all her people join as one,"
+      ]
+    },
+    {
+      "local": [
+        "Brothers under the sun.",
+        "All one, strong and free.",
+        "One land and one nation is our cry,",
+        "Dignity and peace 'neath [[Zambia's]] sky,"
+      ],
+      "english": [
+        "Brothers under the sun.",
+        "All one, strong and free.",
+        "One land and one nation is our cry,",
+        "Dignity and peace 'neath [[Zambia's]] sky,"
+      ]
+    },
+    {
+      "local": [
+        "Like our noble eagle in its flight,",
+        "[[Zambia]], praise to thee.",
+        "All one, strong and free.",
+        "Praise be to God,"
+      ],
+      "english": [
+        "Like our noble eagle in its flight,",
+        "[[Zambia]], praise to thee.",
+        "All one, strong and free.",
+        "Praise be to God,"
+      ]
+    },
+    {
+      "local": [
+        "Praise be, praise be, praise be,",
+        "Bless our great nation,",
+        "[[Zambia]], [[Zambia]], [[Zambia]].",
+        "Free men we stand"
+      ],
+      "english": [
+        "Praise be, praise be, praise be,",
+        "Bless our great nation,",
+        "[[Zambia]], [[Zambia]], [[Zambia]].",
+        "Free men we stand"
+      ]
+    },
+    {
+      "local": [
+        "Under the flag of our land.",
+        "[[Zambia]], praise to thee!",
+        "All one, strong and free."
+      ],
+      "english": [
+        "Under the flag of our land.",
+        "[[Zambia]], praise to thee!",
+        "All one, strong and free."
+      ]
+    }
+  ]
+}

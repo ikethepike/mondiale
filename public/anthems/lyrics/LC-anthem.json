@@ -1,0 +1,88 @@
+{
+  "isoCode": "LC",
+  "title": "Sons and Daughters of Saint Lucia",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Sons_and_Daughters_of_Saint_Lucia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Sons and daughters of [[Saint Lucia]],",
+        "love the land that gave us birth,",
+        "land of beaches, hills and valleys,",
+        "fairest isle of all the earth."
+      ],
+      "english": [
+        "Sons and daughters of [[Saint Lucia]],",
+        "love the land that gave us birth,",
+        "land of beaches, hills and valleys,",
+        "fairest isle of all the earth."
+      ]
+    },
+    {
+      "local": [
+        "Wheresoever you may roam,",
+        "Love, oh, love our island home.",
+        "Gone the times when nations battled",
+        "for this 'Helen of the West',"
+      ],
+      "english": [
+        "Wheresoever you may roam,",
+        "Love, oh, love our island home.",
+        "Gone the times when nations battled",
+        "for this 'Helen of the West',"
+      ]
+    },
+    {
+      "local": [
+        "gone the days when strife and discord",
+        "dimmed her children's toil and rest.",
+        "Dawns at last a brighter day,",
+        "stretches out a glad new way."
+      ],
+      "english": [
+        "gone the days when strife and discord",
+        "dimmed her children's toil and rest.",
+        "Dawns at last a brighter day,",
+        "stretches out a glad new way."
+      ]
+    },
+    {
+      "local": [
+        "May the good Lord bless our island,",
+        "guard her sons from woe and harm,",
+        "may our people live united,",
+        "strong in soul and strong in arm!"
+      ],
+      "english": [
+        "May the good Lord bless our island,",
+        "guard her sons from woe and harm,",
+        "may our people live united,",
+        "strong in soul and strong in arm!"
+      ]
+    },
+    {
+      "local": [
+        "Justice, Truth and Charity,",
+        "Our ideal for ever be!"
+      ],
+      "english": [
+        "Justice, Truth and Charity,",
+        "Our ideal for ever be!"
+      ]
+    }
+  ]
+}

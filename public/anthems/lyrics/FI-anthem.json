@@ -1,0 +1,257 @@
+{
+  "isoCode": "FI",
+  "title": "Maamme",
+  "language": {
+    "code": "fi",
+    "name": "Finnish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Johan Ludvig Runeberg",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Maamme"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Vårt land, vårt land, vårt fosterland,",
+        "Ljud högt, o dyra ord!",
+        "Ej lyfts en höjd mot himlens rand,",
+        "Ej sänks en dal, ej sköljs en strand,"
+      ],
+      "english": [
+        "Our land, our land, our Fatherland!",
+        "Ring out, dear word, oh sound!",
+        "No rising hill, or mountain grand,",
+        "No sloping dale, no northern strand,"
+      ]
+    },
+    {
+      "local": [
+        "Mer älskad än vår bygd i nord,",
+        "Än våra fäders jord.",
+        "Vårt land är fattigt, skall så bli",
+        "För den, som guld begär."
+      ],
+      "english": [
+        "There is, more loved, to be found,",
+        "Than this — our fathers' ground.",
+        "Our land is poor, and so shall be",
+        "To him who gold will crave."
+      ]
+    },
+    {
+      "local": [
+        "En främling far oss stolt förbi:",
+        "Men detta landet älska vi,",
+        "För oss med moar, fjäll och skär",
+        "Ett guldland dock det är."
+      ],
+      "english": [
+        "The strangers proudly pass, but we",
+        "Shall ever love this land, we see,",
+        "In moor, and fell, and isle and wave,",
+        "A golden land, so brave."
+      ]
+    },
+    {
+      "local": [
+        "Vi älska våra strömmars brus",
+        "Och våra bäckars språng.",
+        "Den mörka skogens dystra sus,",
+        "Vår stjärnenatt, vårt sommarljus."
+      ],
+      "english": [
+        "We love our rippling brooks, so bright,",
+        "Our gushing streams, so strong,",
+        "The whisper of dark woods, at night,",
+        "Our starry skies, our summer light,"
+      ]
+    },
+    {
+      "local": [
+        "Allt, allt, vad här som syn, som sång",
+        "Vårt hjärta rört en gång.",
+        "Här striddes våra fäders strid",
+        "Med tanke, svärd och plog."
+      ],
+      "english": [
+        "All, all that we, in sight and song,",
+        "Have felt and lived among.",
+        "Here fought our fathers, without fear,",
+        "With sword, and plough, and thought."
+      ]
+    },
+    {
+      "local": [
+        "Här, här, i klar som mulen tid.",
+        "Med lycka hård, med lycka blid.",
+        "Det finska folkets hjärta slog.",
+        "Här bars vad det fördrog."
+      ],
+      "english": [
+        "And here, in clouded times, and clear,",
+        "With fortune in their front or rear,",
+        "Their [[Finnish]] hearts have beat, and wrought",
+        "And borne what bear they ought."
+      ]
+    },
+    {
+      "local": [
+        "Vem täljde väl de striders tal.",
+        "Som detta folk bestod.",
+        "Då kriget röt från dal till dal.",
+        "Då frosten kom med hungers kval."
+      ],
+      "english": [
+        "Who tells, of all the fights, the tale,",
+        "In which this folk withstood,",
+        "When war did rage from dale to dale,",
+        "When frost set in, with hunger's wail?"
+      ]
+    },
+    {
+      "local": [
+        "Vem mätte allt dess spillda blod",
+        "Och allt dess tålamod?",
+        "Och det var här det blodet flöt,",
+        "Ja, här för oss det var,"
+      ],
+      "english": [
+        "Who measured all their pouring blood,",
+        "And all their patience good?",
+        "And it was here their blood was shed,",
+        "For us, here, on this shore;"
+      ]
+    },
+    {
+      "local": [
+        "Och det var här sin fröjd det njöt,",
+        "Och det var här sin suck det göt.",
+        "Det folk som våra bördor bar",
+        "Långt före våra dar."
+      ],
+      "english": [
+        "And it was here their joys were bred,",
+        "Here, that their sighs were heaved and fled,",
+        "That people's who our burdens bore",
+        "Before us, long before."
+      ]
+    },
+    {
+      "local": [
+        "Här är oss ljuvt, här är oss gott,",
+        "Här är oss allt beskärt;",
+        "Hur ödet kastar än vår lott.",
+        "Ett land, ett fosterland vi fått,"
+      ],
+      "english": [
+        "Here it is sweet and good, we wot,",
+        "All, too, is giv'n us here;",
+        "However fate may cast our lot,",
+        "A land, a fatherland, we've got."
+      ]
+    },
+    {
+      "local": [
+        "Vad finns på jorden mera värt",
+        "Att hållas dyrt och kärt?",
+        "Och här och här är detta land.",
+        "Vårt öga ser det här,"
+      ],
+      "english": [
+        "Will there a thing on earth appear",
+        "More worthy, to hold dear?",
+        "And here's, and here's this fatherland,",
+        "Here every eye it sees;"
+      ]
+    },
+    {
+      "local": [
+        "Vi kunna sträcka ut vår hand",
+        "Och visa glatt på sjö och strand",
+        "Och säga: se det landet där.",
+        "Vårt fosterland det är."
+      ],
+      "english": [
+        "And we can stretch a pointing hand,",
+        "To show, with joy, its sea and strand,",
+        "And say, \"Behold this country, this,",
+        "Our Fatherland it is.\""
+      ]
+    },
+    {
+      "local": [
+        "Och fördes vi att bo i glans",
+        "Bland guldmoln i det blå,",
+        "Och blev vårt liv en stjärnedans.",
+        "Där tår ej göts, där suck ej fanns."
+      ],
+      "english": [
+        "And if we once were made to rise",
+        "To gold clouds, from below,",
+        "And if we moved in starry skies,",
+        "Where no one weeps, where no one sighs,"
+      ]
+    },
+    {
+      "local": [
+        "Till detta arma land ändå",
+        "Vår längtan skulle stå.",
+        "O land, du tusen sjöars land,",
+        "Där sång och trohet byggt,"
+      ],
+      "english": [
+        "To this poor lonely country, though,",
+        "Our longing hearts would go.",
+        "Oh land, the thousand lakes' own land,",
+        "Of faith, and lay, and glee,"
+      ]
+    },
+    {
+      "local": [
+        "Där livets hav oss gett en strand,",
+        "Vår forntids land, vår framtids land.",
+        "Var för din fattigdom ej skyggt.",
+        "Var fritt, var glatt, var tryggt."
+      ],
+      "english": [
+        "Where life's main sea gave us a strand,",
+        "Our fore-time's land, our future's land,",
+        "Shy of thy poorness, never be,",
+        "Be calm, be glad, be free!"
+      ]
+    },
+    {
+      "local": [
+        "Din blomning, sluten än i knopp,",
+        "Skall mogna ur sitt tvång;",
+        "Se, ur vår kärlek skall gå opp",
+        "Ditt ljus, din glans, din fröjd, ditt hopp."
+      ],
+      "english": [
+        "Thy blossom, hidden now from sight,",
+        "Shall burst its bud ere long.",
+        "Lo! from our love, shall rise aright,",
+        "Thy sun, thy hope, thy joy, thy light,"
+      ]
+    },
+    {
+      "local": [
+        "Och högre klinga skall en gång",
+        "Vår fosterländska sång."
+      ],
+      "english": [
+        "And higher, once, more full and strong,",
+        "Shall ring Our Country's song."
+      ]
+    }
+  ]
+}

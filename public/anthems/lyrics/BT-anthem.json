@@ -1,0 +1,46 @@
+{
+  "isoCode": "BT",
+  "title": "འབྲུག་ཙན་དན།",
+  "language": {
+    "code": "dz",
+    "name": "Dzongkha",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Druk_Tsenden"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[འབྲུག]]་ཙན་དན་བཀོད་པའི་རྒྱལ་ཁབ་ནང་༎",
+        "དཔལ་ལུགས་གཉིས་བསྟན་སྲིད་སྐྱོང་བའི་མགོན་༎",
+        "[[འབྲུག]]་རྒྱལ་པོ་མངའ་བདག་རིན་པོ་ཆེ་༎",
+        "སྐུ་འགྱུར་མེད་བརྟན་ཅིང་ཆབ་སྲིད་འཕེལ་༎"
+      ],
+      "english": [
+        "In the Kingdom of [[Bhutan]] adorned with cypress trees,",
+        "The Protector who reigns over the realm of spiritual and secular traditions,",
+        "He is the King of [[Bhutan]], the precious sovereign.",
+        "May His being remain unchanging, and the Kingdom prosper,"
+      ]
+    },
+    {
+      "local": [
+        "ཆོས་སངས་རྒྱས་བསྟན་པ་དར་ཞིང་རྒྱས་༎",
+        "འབངས་བདེ་སྐྱིད་ཉི་མ་ཤར་བར་ཤོག་༎"
+      ],
+      "english": [
+        "May the teachings of the Enlightened One flourish,",
+        "May the sun of peace and happiness shine over all people."
+      ]
+    }
+  ]
+}

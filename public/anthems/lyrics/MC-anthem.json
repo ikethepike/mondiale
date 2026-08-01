@@ -1,0 +1,78 @@
+{
+  "isoCode": "MC",
+  "title": "Hymne Monégasque",
+  "language": {
+    "code": "lij",
+    "name": "Monégasque",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Hymne_mon%C3%A9gasque"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Oilà cü ne toca !",
+        "Oilà cü ne garda !",
+        "Fò che cadün sace ben aiço d'aiçì",
+        "Despoei tugiù, sciü d'u nostru paise"
+      ],
+      "english": [
+        "Greetings, you who are our neighbours!",
+        "Greetings, you who are watching us!",
+        "It is important that everyone remembers the following:",
+        "Forever, in our land,"
+      ]
+    },
+    {
+      "local": [
+        "Se ride au ventu, u meme pavayùn",
+        "Despoei tugiù a cuřù russa e gianca",
+        "E stà ř'emblèma d'a nostra libertà",
+        "Grandi e piciui, ř'an sempre respetà"
+      ],
+      "english": [
+        "One flag has flown in the wind",
+        "Forever, the colours red and white",
+        "Have symbolised our liberty",
+        "Adults and children have always respected them."
+      ]
+    },
+    {
+      "local": [
+        "N'amu ch'üna tradiçiun,",
+        "n'amu ch'üna religiun,",
+        "Amu avüu per u nostru unù",
+        "I meme Principi tugiù"
+      ],
+      "english": [
+        "We have perpetuated the same traditions;",
+        "We celebrate the same religion;",
+        "We have the honour",
+        "To have always had the same Princes."
+      ]
+    },
+    {
+      "local": [
+        "E ren nun ne scangerà",
+        "Tantu ch'u suriyu lüjerà;",
+        "Diu sempre n'agiüterà",
+        "E ren nun ne scangerà"
+      ],
+      "english": [
+        "And nothing will change",
+        "As long as the sun shines;",
+        "God will always help us",
+        "And nothing will change."
+      ]
+    }
+  ]
+}

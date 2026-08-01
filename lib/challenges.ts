@@ -1,3 +1,4 @@
+import { ANTHEM_LYRICS } from '~~/data/anthem-lyrics.gen'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
@@ -494,13 +495,6 @@ const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteC
  *  and a long silence after it ends is dead air. */
 const ANTHEM_BUZZ_SECONDS = 30
 
-/**
- * Countries with a hand-curated lyric wall under public/anthems/lyrics/.
- * Listed rather than derived: the files are reviewed one at a time, and a
- * country only earns a wall once its text, translation and blanking have been
- * read by a person. See that folder's readme-anthems.md.
- */
-const ANTHEM_LYRICS = new Set<ISOCountryCode>(['SE'])
 const TONGUE_BUZZ_SECONDS = 20
 
 /**
@@ -531,7 +525,11 @@ const getAnthemBuzzChallenge = ({
     ...(game.difficulty !== 'hard'
       ? {
           region: REGION_LABELS[COUNTRIES[country].region],
-          swatches: COUNTRIES[country].identity.simplifiedColors,
+          // The flag's OWN hues, not the snapped names: `simplifiedColors`
+          // holds strings like "blue", which CSS renders as generic web blue
+          // rather than Sweden's. Same source the flag-palette round uses, and
+          // it never comes back empty (22 emblem-heavy flags simplify to none).
+          swatches: COUNTRIES[country].identity.colors.slice(0, 6),
           initial: countryName(country).slice(0, 1).toUpperCase(),
           ...(ANTHEM_LYRICS.has(country)
             ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }

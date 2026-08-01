@@ -1,0 +1,58 @@
+{
+  "isoCode": "NI",
+  "title": "Salve a ti, Nicaragua",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Salve_a_ti,_Nicaragua"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡Salve a ti, [[Nicaragua]]! En tu suelo,",
+        "ya no ruge la voz del cañón,",
+        "ni se tiñe con sangre de hermanos",
+        "tu glorioso pendón bicolor."
+      ],
+      "english": [
+        "Hail to thee, [[Nicaragua]]! On thy land",
+        "roareth the voice of the cannon no more,",
+        "nor doeth the blood of brothers now stain",
+        "thy glorious bicolor banner."
+      ]
+    },
+    {
+      "local": [
+        "Brille hermosa la paz en tu cielo,",
+        "nada empañe tu gloria inmortal,",
+        "¡Qué el trabajo es tu digno laurel!",
+        "¡Y el honor es tu enseña triunfal!"
+      ],
+      "english": [
+        "Let peace shine beautifully in thy sky,",
+        "and nothing dimmeth thine immortal glory,",
+        "for labor is thy well-earned laurel",
+        "and honor is thy triumphal emblem,"
+      ]
+    },
+    {
+      "local": [
+        "¡Es tu enseña triunfal!"
+      ],
+      "english": [
+        "is thy triumphal emblem!"
+      ]
+    }
+  ]
+}

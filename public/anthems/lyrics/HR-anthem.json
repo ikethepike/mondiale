@@ -1,0 +1,79 @@
+{
+  "isoCode": "HR",
+  "title": "Lijepa naša domovino",
+  "language": {
+    "code": "hr",
+    "name": "Croatian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Antun Mihanović",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Lijepa_naša_domovino"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Lijepa naša domovino,",
+        "Oj, junačka zemljo mila,",
+        "Stare slave djedovino,",
+        "Da bi vazda sretna bila!"
+      ],
+      "english": [
+        "Our beautiful homeland,",
+        "Oh heroic, dear land,",
+        "Fatherland of old glory,",
+        "May you be forever blissful."
+      ]
+    },
+    {
+      "local": [
+        "Mila, kano si nam slavna,",
+        "Mila, si nam ti jedina,",
+        "Mila, kuda si nam ravna,",
+        "Mila, kuda si planina!"
+      ],
+      "english": [
+        "Dear to us, you that is glorious,",
+        "Dear to us, our only one,",
+        "Dear to us, where you are flatland,",
+        "Dear, where you are mountainous."
+      ]
+    },
+    {
+      "local": [
+        "Teci, Dravo, Savo, teci,",
+        "Nit' ti, Dunav, silu gubi,",
+        "Sinje more, svijetu reci",
+        "Da svoj narod [[Hrvat]] ljubi"
+      ],
+      "english": [
+        "Flow on, Drava, Sava, flow,",
+        "Nor you, Danube, lose your might,",
+        "Oh, blue sea, tell the world",
+        "How a [[Croat]] loves his people."
+      ]
+    },
+    {
+      "local": [
+        "Dok mu njive sunce grije,",
+        "Dok mu hrašće bura vije,",
+        "Dok mu mrtve grobak krije,",
+        "Dok mu živo srce bije!"
+      ],
+      "english": [
+        "Whilst the sun warms his fields,",
+        "Whilst bura bends his oaks,",
+        "Whilst the grave covers his dead,",
+        "Whilst his living heart beats."
+      ]
+    }
+  ]
+}

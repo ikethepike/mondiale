@@ -1,0 +1,61 @@
+{
+  "isoCode": "AU",
+  "title": "Advance Australia Fair",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Peter Dodds McCormick",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Advance_Australia_Fair"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Australians]] all let us rejoice,",
+        "For we are one and free;",
+        "We've golden soil and wealth for toil,",
+        "Our home is girt by sea;"
+      ],
+      "english": [
+        "[[Australians]] all let us rejoice,",
+        "For we are one and free;",
+        "We've golden soil and wealth for toil,",
+        "Our home is girt by sea;"
+      ]
+    },
+    {
+      "local": [
+        "Our land abounds in nature's gifts",
+        "Of beauty rich and rare;",
+        "In history's page, let every stage",
+        "Advance [[Australia]] fair!"
+      ],
+      "english": [
+        "Our land abounds in nature's gifts",
+        "Of beauty rich and rare;",
+        "In history's page, let every stage",
+        "Advance [[Australia]] fair!"
+      ]
+    },
+    {
+      "local": [
+        "In joyful strains then let us sing,",
+        "Advance [[Australia]] fair!"
+      ],
+      "english": [
+        "In joyful strains then let us sing,",
+        "Advance [[Australia]] fair!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "isoCode": "AE",
+  "title": "عيشي بلادي",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ishi_Biladi"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "عِيشِي بِلَادِي عَاشْ اِتِّحَادُ إِمَارَاتِنَا",
+        "عِشْتِ لِشَعْبٍ دِينُهُ الْإِسْلَامُ هَدْيُهُ الْقُرْآنُ",
+        "حَصَّنْتُكَ بِاسْمِ اللَّٰه يَا وَطَنْ",
+        "بِلَادِي بِلَادِي بِلَادِي بِلَادِي"
+      ],
+      "english": [
+        "Long live my country, the unity of our [[Emirates]] lives.",
+        "You've lived for the nation's faith of Islam and guide of the Quran.",
+        "I've made you stronger in God's name – oh, homeland.",
+        "My country, my country, my country, my country."
+      ]
+    },
+    {
+      "local": [
+        "حَمَاكِ الْإِلَٰهُ شُرُورَ الزَّمَانْ",
+        "أَقْسَمْنَا أَنْ نَبْنِيَ نَعْمَلْ",
+        "نَعْمَلْ نُخْلِصْ نَعْمَلْ نُخْلِصْ",
+        "مَهْمَا عِشْنَا نُخْلِصْ نُخْلِصْ"
+      ],
+      "english": [
+        "God protected you from the evils of time.",
+        "We have sworn to build and work –",
+        "work earnestly, work earnestly.",
+        "As long as we live, we will be sincere."
+      ]
+    },
+    {
+      "local": [
+        "دَامَ الْأَمَانُ وَعَاشَ الْعَلَمْ يَا إِمَارَاتِنَا",
+        "رَمْزَ الْعُرُوبَةِ كُلُّنَا نَفْدِيكِ بِالدِّمَاء نَرْوِيكِ",
+        "نَفْدِيكَ بِالْأَرْوَاحْ يَا وَطَنْ"
+      ],
+      "english": [
+        "The safety has lasted, the flag has lived – oh, our [[Emirates]]!",
+        "The symbol of Arabism: we all sacrifice and shed blood for you;",
+        "For you we sacrifice with our souls – oh, homeland!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "isoCode": "IQ",
+  "title": "Mawtini",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "author": "Ibrahim Tuqan",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Mawtini"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "مَوْطِنِي مَوْطِنِي",
+        "اَلْجَلَالُ وَالْجَمَالُ وَالسَّنَاءُ وَالْبَهَاءُ",
+        "فِي رُبَاكْ فِي رُبَاكْ",
+        "وَالْحَيَاةُ وَالنَّجَاةُ وَالْهَنَاءُ وَالرَّجَاءُ"
+      ],
+      "english": [
+        "My homeland, my homeland,",
+        "Glory and beauty, sublimity and splendour",
+        "Are in thy hills, are in thy hills.",
+        "Life and deliverance, pleasure and hope"
+      ]
+    },
+    {
+      "local": [
+        "فِي هَوَاكْ فِي هَوَاكْ",
+        "هَلْ أَرَاكْ هَلْ أَرَاكْ",
+        "سَالِمًا مُنَعَّمًا وَغَانِمًا مُكَرَّمًا",
+        "هَلْ أَرَاكْ فِي عُلَاكْ"
+      ],
+      "english": [
+        "Are in thine air, are in thine air.",
+        "Will I see thee, will I see thee?",
+        "Safely comforted and victoriously honoured.",
+        "Will I see thee in thine eminence?"
+      ]
+    },
+    {
+      "local": [
+        "تَبْلُغُ السِّمَاكْ تَبْلُغُ السِّمَاكْ",
+        "مَوْطِنِي مَوْطِنِي",
+        "مَوْطِنِي مَوْطِنِي",
+        "اَلشَّبَابُ لَنْ يَكِلَّ هَمُّهُ أَنْ يَسْتَقِلَّ"
+      ],
+      "english": [
+        "Reaching to the stars, reaching to the stars",
+        "My homeland, my homeland.",
+        "My homeland, my homeland,",
+        "The youth shall not tire, their goal is thine independence"
+      ]
+    },
+    {
+      "local": [
+        "أَوْ يَبِيدْ أَوْ يَبِيدْ",
+        "نَسْتَقِي مِنَ الرَّدَىٰ وَلَنْ نَكُونَ لِلْعِدَىٰ",
+        "كَالْعَبِيدْ كَالْعَبِيدْ",
+        "لَا نُرِيدْ لَا نُرِيدْ"
+      ],
+      "english": [
+        "Or they die, or they die.",
+        "We shall drink from death, and shall not be to our enemies",
+        "Like slaves, like slaves.",
+        "We want not, we want not"
+      ]
+    },
+    {
+      "local": [
+        "ذُلَّنَا الْمُؤَبَّدَا وَعَيْشَنَا الْمُنَكَّدَا",
+        "لَا نُرِيدْ بَلْ نُعِيدْ",
+        "مَجْدَنَا التَّلِيدْ مَجْدَنَا التَّلِيدْ",
+        "مَوْطِنِي مَوْطِنِي"
+      ],
+      "english": [
+        "An eternal humiliation, nor a miserable life.",
+        "We want not, but we shall bring back",
+        "Our storied glory, our storied glory.",
+        "My homeland, my homeland."
+      ]
+    },
+    {
+      "local": [
+        "مَوْطِنِي مَوْطِنِي",
+        "اَلْحُسَامُ وَ الْيَرَاعُ لَا الْكَلَامُ وَالنِّزَاعُ",
+        "رَمْزُنَا رَمْزُنَا",
+        "مَجْدُنَا وَ عَهْدُنَا وَوَاجِبٌ مِنَ الْوَفَاء"
+      ],
+      "english": [
+        "My homeland, my homeland,",
+        "The sword and the pen, not the talk nor the quarrel",
+        "Are our symbols, are our symbols.",
+        "Our glory and our covenant, and a faithful duty"
+      ]
+    },
+    {
+      "local": [
+        "يَهُزُّنَا يَهُزُّنَا",
+        "عِزُّنَا عِزُّنَا",
+        "غَايَةٌ تُشَرِّفُ وَرَايَةٌ تُرَفْرِفُ",
+        "يَا هَنَاكْ فِي عُلَاكْ"
+      ],
+      "english": [
+        "Moveth us, moveth us.",
+        "Our glory, our glory,",
+        "Is an honourable cause, and a waving flag.",
+        "O, behold thee, in thine eminence,"
+      ]
+    },
+    {
+      "local": [
+        "قَاهِرًا عِدَاكْ قَاهِرًا عِدَاكْ",
+        "مَوْطِنِي مَوطِنِي"
+      ],
+      "english": [
+        "Victorious over thy foes, victorious over thy foes.",
+        "My homeland, my homeland!"
+      ]
+    }
+  ]
+}

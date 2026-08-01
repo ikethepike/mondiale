@@ -1,0 +1,106 @@
+{
+  "isoCode": "MW",
+  "title": "Mlungu dalitsani Malaŵi",
+  "language": {
+    "code": "ny",
+    "name": "Chichewa",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Mlungu_dalitsani_Mala%C5%B5i"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Mlungu dalitsani [[Malaŵi]],",
+        "Mumsunge m'mtendere.",
+        "Gonjetsani adani onse,",
+        "Njala, nthenda, nsanje."
+      ],
+      "english": [
+        "O God bless our land of [[Malawi]],",
+        "Keep it a land of peace.",
+        "Put down each and every enemy,",
+        "Hunger, disease, envy."
+      ]
+    },
+    {
+      "local": [
+        "Lunzitsani mitima yathu,",
+        "Kuti tisaope.",
+        "Mdalitse Mtsogoleri nafe,",
+        "Ndi Mayi [[Malaŵi]]."
+      ],
+      "english": [
+        "Join together all our hearts as one,",
+        "That we be free from fear.",
+        "Bless our leader, each and every one,",
+        "And Mother [[Malawi]]."
+      ]
+    },
+    {
+      "local": [
+        "[[Malaŵi]] ndziko lokongola,",
+        "La chonde ndi ufulu,",
+        "Nyanja ndi mphepo ya m'mapiri,",
+        "Ndithudi tadala."
+      ],
+      "english": [
+        "Our own [[Malawi]], this land so fair,",
+        "Fertile and brave and free.",
+        "With its lakes, refreshing mountain air,",
+        "How greatly blest are we."
+      ]
+    },
+    {
+      "local": [
+        "Zigwa, mapiri, nthaka, dzinthu,",
+        "N'mphatso zaulere.",
+        "Nkhalango, madambo abwino.",
+        "Ngwokoma [[Malaŵi]]."
+      ],
+      "english": [
+        "Hills and valleys, soil so rich and rare",
+        "Give us a bounty free.",
+        "Wood and forest, plains so broad and fair,",
+        "All - beauteous [[Malawi]]."
+      ]
+    },
+    {
+      "local": [
+        "O Ufulu tigwirizane,",
+        "Kukweza [[Malaŵi]].",
+        "Ndi chikondi, khama, kumvera,",
+        "Timutumikire."
+      ],
+      "english": [
+        "Freedom ever, let us all unite",
+        "To build up [[Malawi]].",
+        "With our love, our zeal and loyalty,",
+        "Bringing our best to her."
+      ]
+    },
+    {
+      "local": [
+        "Pa nkhondo nkana pa mtendere,",
+        "Cholinga n'chimodzi.",
+        "Mayi, bambo, tidzipereke,",
+        "Pokweza [[Malaŵi]]."
+      ],
+      "english": [
+        "In time of war, or in time of peace,",
+        "One purpose and one goal.",
+        "Men and women serving selflessly",
+        "In building [[Malawi]]."
+      ]
+    }
+  ]
+}

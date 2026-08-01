@@ -1,0 +1,46 @@
+{
+  "isoCode": "BN",
+  "title": "الله ڤليهاراكن سلطان",
+  "language": {
+    "code": "ms",
+    "name": "Malay",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Allah_Peliharakan_Sultan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ya Allah lanjutkanlah Usia",
+        "Kebawah Duli Yang Maha Mulia",
+        "Adil berdaulat menaungi nusa",
+        "Memimpin rakyat kekal bahagia"
+      ],
+      "english": [
+        "God bless His Majesty",
+        "With a long life",
+        "Justly and nobly rule the kingdom",
+        "And lead our people happily forever"
+      ]
+    },
+    {
+      "local": [
+        "Hidup sentosa Negara dan Sultan",
+        "Ilahi selamatkan [[Brunei]] Darussalam"
+      ],
+      "english": [
+        "Peacefully be, the Kingdom and Sultan",
+        "Lord, save [[Brunei]], the abode of peace"
+      ]
+    }
+  ]
+}

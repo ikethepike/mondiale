@@ -1,0 +1,65 @@
+{
+  "isoCode": "AL",
+  "title": "Himni i Flamurit",
+  "language": {
+    "code": "sq",
+    "name": "Albanian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Aleksandër Stavre Drenova",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Himni_i_Flamurit"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Rreth flamurit të përbashkuar",
+        "Me një dëshir' e një qëllim,",
+        "Të gjith' atij duke u betuar",
+        "Të lidhim besën për shpëtim."
+      ],
+      "english": [
+        "Around our flag united we stand,",
+        "With one wish and one intention.",
+        "A sacred oath we bestow upon it,",
+        "Faith for our pardon we blazon."
+      ]
+    },
+    {
+      "local": [
+        "Në dorë armët do t'i mbajmë,",
+        "Të mbrojmë atdheun në çdo kënd,",
+        "Të drejtat tona ne s'i ndajmë;",
+        "Këtu armiqtë s'kanë vend!"
+      ],
+      "english": [
+        "We are armed with weapon in hand,",
+        "In defending our fatherland.",
+        "Our sacred rights we shall cede not,",
+        "On our land the foe has a place not."
+      ]
+    },
+    {
+      "local": [
+        "O Flamur, flamur, shenj' e shenjtë",
+        "Tek ti betohemi këtu",
+        "Për [[Shqipërin']] atdheun e shtrenjtë,",
+        "Për nder' edhe lavdimn e tu."
+      ],
+      "english": [
+        "O Banner, banner, you symbol sacred",
+        "Upon you we now swear.",
+        "For [[Albania]], our dear fatherland,",
+        "For your glory and honour."
+      ]
+    }
+  ]
+}

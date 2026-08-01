@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { COUNTRIES } from '~~/data/countries.gen'
 import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 
 /**
@@ -75,14 +76,36 @@ describe('anthem lyric walls', () => {
   it('masks the country it belongs to, in both columns', () => {
     // The wall is a hint. A verse that prints its own country's name unmasked
     // hands over the answer the round is asking for.
-    const blanked = (line: string) => [...line.matchAll(/\[\[(.+?)\]\]/g)].map(m => m[1])
-    const leaks = entries.filter(([, l]) => {
-      const marked = l.verses.some(verse =>
-        [...verse.local, ...verse.english].some(line => blanked(line).length)
-      )
-      return !marked
+    //
+    // Asserted as "no name survives outside [[…]]" rather than "something is
+    // masked": plenty of anthems never name their country at all — Kimigayo,
+    // Lupang Hinirang and İstiklâl Marşı among them — so an unmarked file is
+    // only a bug when a name is actually sitting there in the open.
+    const leaks = entries.flatMap(([file, lyrics]) => {
+      const name = COUNTRIES[lyrics.isoCode]?.name
+      const terms = [name?.english, name?.local].filter((t): t is string => Boolean(t))
+      if (!terms.length) return []
+
+      // Strip the masked spans, then look for a name in what is left on show.
+      const exposed = lyrics.verses
+        .flatMap(verse => [...verse.local, ...verse.english])
+        .map(line => line.replace(/\[\[.+?\]\]/g, ''))
+        .join('\n')
+
+      // Bantu and Romance forms glue the name to a prefix or suffix
+      // ("weZimbabwe", "Abanyarwanda", "Congolais"), so the name is matched
+      // anywhere inside a word — but only where a letter boundary starts it, so
+      // "sireland" does not read as Ireland.
+      return terms
+        .filter(term =>
+          new RegExp(
+            `(?<![\\p{Ll}])${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+            'iu'
+          ).test(exposed)
+        )
+        .map(term => `${file}: "${term}" left unmasked`)
     })
-    expect(leaks.map(([name]) => `${name}: nothing masked`)).toEqual([])
+    expect(leaks).toEqual([])
   })
 
   it('leaves no empty lines to render as gaps in the wall', () => {

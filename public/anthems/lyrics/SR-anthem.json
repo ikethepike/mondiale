@@ -1,0 +1,50 @@
+{
+  "isoCode": "SR",
+  "title": "God zij met ons Suriname",
+  "language": {
+    "code": "nl",
+    "name": "Dutch",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_zij_met_ons_Suriname"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "God zij met ons [[Suriname]]",
+        "Hij verheff'ons heerlijk land",
+        "Hoe wij hier ook samen kwamen",
+        "Aan zijn grond zijn wij verpand"
+      ],
+      "english": [
+        "God be with our [[Suriname]]",
+        "May He elevate our lovely land",
+        "No matter how we came here together",
+        "We are dedicated to its soil"
+      ]
+    },
+    {
+      "local": [
+        "Werkend houden w'in gedachten",
+        "Recht en waarheid maken vrij",
+        "Al wat goed is te betrachten",
+        "Dat geeft aan ons land waardij."
+      ],
+      "english": [
+        "Working we keep in mind",
+        "Justice and truth will set free",
+        "All that is good to devote oneself to",
+        "Will give value to our land"
+      ]
+    }
+  ]
+}

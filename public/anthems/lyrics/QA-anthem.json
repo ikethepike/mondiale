@@ -1,0 +1,62 @@
+{
+  "isoCode": "QA",
+  "title": "السلام الأميري",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/As-Sal%C4%81m_al-Am%C4%ABr%C4%AB"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "قَسَمًا قَسَمًا",
+        "قَسَمًا بِمَنْ رَفَعَ السَّمَاء",
+        "قَسَمًا بِمَنْ نَشَرَ الضِّيَاء",
+        "قَطَرٌ سَتَبْقَى حُرَّةً تَسْمُو بِرُوحِ الْأَوْفِيَاء"
+      ],
+      "english": [
+        "I swear, I swear",
+        "Swearing by the One who raised the sky",
+        "Swearing by the One who spread the light",
+        "[[Qatar]] will always be free, elevated by the spirit of the loyal"
+      ]
+    },
+    {
+      "local": [
+        "سِيْرُواْ عَلَى نَهْجِ الْأُلَى سِيرُواْ",
+        "وَعَلَى ضِيَاءِ الْأَنْبِيَاء",
+        "قَطَرٌ بِقَلْبِي سِيرَةٌ عَزٌّ وَأَمْجَادُ الْإِبَاء",
+        "قَطَرٌ الرِّجَالِ الْأَوَّلِينْ"
+      ],
+      "english": [
+        "Travel the high road",
+        "Travel by the guiding light of the Prophets",
+        "[[Qatar]], in my heart, is an epic of dignity and the glories of the forefathers",
+        "[[Qatar]] is the land of the foremost men"
+      ]
+    },
+    {
+      "local": [
+        "حُمَاتُنَا يَوْمَ النِّدَاء",
+        "وَحَمَائِمٌ يَوْمَ السَّلَامْ",
+        "جَوَارِحٌ يَوْمَ الْفِدَاء"
+      ],
+      "english": [
+        "Who protect us in time of distress,",
+        "Doves at times of peace",
+        "Birds of prey they are at times of sacrifice"
+      ]
+    }
+  ]
+}

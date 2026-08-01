@@ -1,0 +1,64 @@
+{
+  "isoCode": "SC",
+  "title": "Koste Seselwa",
+  "language": {
+    "code": "crs",
+    "name": "Seychellois Creole",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Koste_Seselwa"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Sesel ou menm nou sel patri.",
+        "Kot nou viv dan larmoni.",
+        "Lazwa, lanmour ek lape.",
+        "Nou remersye Bondye."
+      ],
+      "english": [
+        "[[Seychelles]], our only motherland",
+        "Where we live in harmony",
+        "Happiness, love and peace",
+        "We give thanks to God."
+      ]
+    },
+    {
+      "local": [
+        "Preserv labote nou pei.",
+        "Larises nou losean.",
+        "En leritaz byen presye.",
+        "Pour boner nou zanfan."
+      ],
+      "english": [
+        "Preserve the beauty of our country",
+        "The riches of our oceans",
+        "A precious heritage",
+        "For the happiness of our children."
+      ]
+    },
+    {
+      "local": [
+        "Reste touzour dan linite.",
+        "Fer monte nou paviyon.",
+        "Ansanm pou tou leternite.",
+        "Koste Seselwa!"
+      ],
+      "english": [
+        "Live forever in unity",
+        "Raise our flag",
+        "Together for all eternity",
+        "Join together all [[Seychellois]]."
+      ]
+    }
+  ]
+}

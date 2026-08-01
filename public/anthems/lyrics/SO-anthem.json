@@ -1,0 +1,104 @@
+{
+  "isoCode": "SO",
+  "title": "Qolobaa Calankeed",
+  "language": {
+    "code": "so",
+    "name": "Somali",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Qolobaa_Calankeed"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Qolobaa calankeedu,",
+        "waa ceynoo,",
+        "Innaga keenu waa,",
+        "Cirkoo kala ee,"
+      ],
+      "english": [
+        "Any nation's flag,",
+        "bears its own colour",
+        "The sky (above us),",
+        "does ours look like"
+      ]
+    },
+    {
+      "local": [
+        "aan caadna lahayn,",
+        "Ee caashaqaye.",
+        "Xiddigyahay caddi waad,",
+        "Naa ciidamisee,"
+      ],
+      "english": [
+        "Defects it has none;",
+        "love it with candor",
+        "Oh you White Star,",
+        "at your service we are"
+      ]
+    },
+    {
+      "local": [
+        "Carradaa keligaa",
+        "adow curadee,",
+        "cadceedda sideeda,",
+        "caan noqo ee!"
+      ],
+      "english": [
+        "Superior you are,",
+        "in any part of our land",
+        "Be famous oh Star,",
+        "like the sun (of the far)"
+      ]
+    },
+    {
+      "local": [
+        "Cashadaad dhalataa",
+        "caloosheennee,",
+        "Sidii culaygii",
+        "cidaad marisee,"
+      ],
+      "english": [
+        "On the day you arose,",
+        "our hearts you have",
+        "Purified with pureness,",
+        "Lord may not dim you,"
+      ]
+    },
+    {
+      "local": [
+        "Allow ha ku celin,",
+        "\"Cawooy!\" dhahe ee",
+        "Shanteena cududood",
+        "Cadkii ka maqnaa"
+      ],
+      "english": [
+        "pray we in this night",
+        "The detached part of,",
+        "our forces of five",
+        "I beseech from God,"
+      ]
+    },
+    {
+      "local": [
+        "Adow celiyow",
+        "Nacaawimayee",
+        "Waa calaf cimrigu"
+      ],
+      "english": [
+        "their return you cause",
+        "This fate that wrote,",
+        "for us to meet now"
+      ]
+    }
+  ]
+}

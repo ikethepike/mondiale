@@ -1,0 +1,162 @@
+{
+  "isoCode": "BF",
+  "title": "Ditanyè",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ditany%C3%A8"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Contre la férule humiliante il y a déjà mille ans,",
+        "La rapacité venue de loin les asservir il y a cent ans.",
+        "Contre la cynique malice métamorphosée",
+        "En néocolonialisme et ses petits servants locaux"
+      ],
+      "english": [
+        "Against the humiliating bondage of a thousand years",
+        "Rapacity came from afar to subjugate them for a hundred years.",
+        "Against the cynical malice in the shape",
+        "Of neo-colonialism and its little local servants."
+      ]
+    },
+    {
+      "local": [
+        "Beaucoup flanchèrent et certains résistèrent.",
+        "Mais les échecs, les succès, la sueur, le sang",
+        "Ont fortifié notre peuple courageux",
+        "Et fertilisé sa lutte héroïque."
+      ],
+      "english": [
+        "Many gave in and certain others resisted.",
+        "But the frustrations, the successes, the sweat, the blood",
+        "Have fortified our courageous people",
+        "And fertilised its heroic struggle."
+      ]
+    },
+    {
+      "local": [
+        "Et une seule nuit a rassemblée en elle",
+        "L'histoire de tout un peuple.",
+        "Et une seule nuit a déclenché sa marche triomphale",
+        "Vers l'horizon du bonheur."
+      ],
+      "english": [
+        "And one single night has drawn together",
+        "The history of an entire people,",
+        "And one single night has launched its triumphal march.",
+        "Towards the horizon of good fortune."
+      ]
+    },
+    {
+      "local": [
+        "Une seule nuit a réconcilié notre peuple",
+        "Avec tous les peuples du monde,",
+        "A la conquête de la liberté et du progrès",
+        "La Patrie ou la mort, nous vaincrons!"
+      ],
+      "english": [
+        "One single night has brought together our people",
+        "With all the peoples of the World,",
+        "In the acquisition of liberty and progress.",
+        "Fatherland or death, we shall conquer!"
+      ]
+    },
+    {
+      "local": [
+        "Nourris à la source vive de la Révolution.",
+        "Les engagés volontaires de la liberté et de la paix",
+        "Dans l'énergie nocturne et salutaire du 4 août",
+        "N'avaient pas que les armes à la main, mais aussi et surtout"
+      ],
+      "english": [
+        "Nourished in the lively source of the Revolution,",
+        "The volunteers for liberty and peace",
+        "With their nocturnal and beneficial energies of the 4th of August",
+        "Had not only hand arms, but also and above all"
+      ]
+    },
+    {
+      "local": [
+        "La flamme au coeur pour légitimement libérer",
+        "Le [[Faso]] à jamais des fers de tous ceux qui",
+        "Çà et, là en poluaient l'âme sacrée de",
+        "L'indépendance, de la souveraineté."
+      ],
+      "english": [
+        "The flame in their hearts lawfully to free",
+        "[[Faso]] forever from the fetters of those who",
+        "Here and there were polluting the sacred soul of",
+        "Independence and sovereignty."
+      ]
+    },
+    {
+      "local": [
+        "Et séant désormais en sa dignité recouvrée",
+        "L'amour et l'honneur en partage avec l'humanité,",
+        "Le peuple du [[Burkina]] chante un hymne à la victoire,",
+        "A la gloire du travail libérateur, émancipateur."
+      ],
+      "english": [
+        "And seated henceforth in rediscovered dignity,",
+        "Love and honour partnered with humanity,",
+        "The people of [[Burkina]] sing a victory hymn",
+        "To the glory of the work of liberation and emancipation."
+      ]
+    },
+    {
+      "local": [
+        "A bas l'exploitation de l'homme par l'homme!",
+        "Hé en avant pour le bonheur de tout homme,",
+        "Par tous les hommes aujourd'hui et demain,",
+        "Par tous les hommes ici et pour toujours!"
+      ],
+      "english": [
+        "Down with exploitation of man by man!",
+        "Forward for the good of every man",
+        "By all men of today and tomorrow,",
+        "By every man here and always!"
+      ]
+    },
+    {
+      "local": [
+        "Révolution populaire notre sève nourricière.",
+        "Maternité immortelle du progrès à visage d'homme.",
+        "Foyer éternel de démocratie consensuelle,",
+        "Où enfin l'identité nationale a droit de cité,"
+      ],
+      "english": [
+        "Popular revolution our nourishing sap.",
+        "Undying motherhood of progress in the face of man.",
+        "Eternal hearth of agreed democracy,",
+        "Where at last national identity has the right of freedom."
+      ]
+    },
+    {
+      "local": [
+        "Où pour toujours l'injustice perd ses quartiers,",
+        "Et où, des mains des bâtisseurs d'un monde radieux",
+        "Mûrissent partout les moissons de vœux patriotiques,",
+        "Brillent les soleils infinis de joie."
+      ],
+      "english": [
+        "Where injustice has lost its place forever,",
+        "And where from the hands of builders of a glorious world",
+        "Everywhere the harvests of patriotic vows ripen,",
+        "Suns of boundless joy shine."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "isoCode": "AM",
+  "title": "Mer Hayrenik",
+  "language": {
+    "code": "hy",
+    "name": "Armenian",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "author": "Mikael Nalbandian",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Mer_Hayrenik"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Մեր [[Հայրենիք]], ազատ անկախ,",
+        "Որ ապրել է դարեդար",
+        "Յուր որդիքը արդ կանչում են",
+        "Ազատ, անկախ [[Հայաստան]]։"
+      ],
+      "english": [
+        "Our Fatherland, free, independent,",
+        "That has lived for centuries,",
+        "Is now summoning its sons",
+        "To the free, independent [[Armenia]]."
+      ]
+    },
+    {
+      "local": [
+        "Ամենայն տեղ մահը մի է",
+        "Մարդ մի անգամ պիտ մեռնի,",
+        "Բայց երանի՝ որ յուր ազգի",
+        "Ազատության կը զոհվի։"
+      ],
+      "english": [
+        "Death is the same everywhere,",
+        "A man dies but once,",
+        "Blessed is the one who dies",
+        "For the freedom of his nation."
+      ]
+    },
+    {
+      "local": [
+        "Ահա եղբայր քեզ մի դրոշ,",
+        "Որ իմ ձեռքով գործեցի",
+        "Գիշերները ես քուն չեղա,",
+        "Արտասուքով լվացի։"
+      ],
+      "english": [
+        "Here is a flag for you my brother,",
+        "That I have sewed",
+        "Over the sleepless nights,",
+        "And bathed in my tears."
+      ]
+    },
+    {
+      "local": [
+        "Նայիր նրան՝ երեք գույնով,",
+        "Նվիրական մեր նշան",
+        "Թող փողփողի թշնամու դեմ",
+        "Թող միշտ պանծա [[Հայաստան]]։"
+      ],
+      "english": [
+        "Look at it, tricoloured,",
+        "A valuable symbol for us.",
+        "Let it shine against the enemy.",
+        "Let [[Armenia]] be glorious forever."
+      ]
+    }
+  ]
+}

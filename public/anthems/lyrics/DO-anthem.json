@@ -1,0 +1,191 @@
+{
+  "isoCode": "DO",
+  "title": "Himno Nacional",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Emilio Prud'Homme",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_the_Dominican_Republic"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Quisqueyanos]] valientes, alcemos",
+        "Nuestro canto con viva emoción,",
+        "Y del mundo a la faz ostentemos",
+        "Nuestro invicto glorioso pendón."
+      ],
+      "english": [
+        "Brave [[Quisqueyans]], let us raise",
+        "Our song with vivid emotion,",
+        "And let’s show to the face of the Earth",
+        "Our unconquered, glorious banner."
+      ]
+    },
+    {
+      "local": [
+        "¡Salve! el pueblo que, intrépido y fuerte,",
+        "A la guerra a morir se lanzó,",
+        "Cuando en bélico reto de muerte",
+        "Sus cadenas de esclavo rompió."
+      ],
+      "english": [
+        "Hail, the people who strong and intrepid,",
+        "Into war launched itself set to die",
+        "When in a warring challenge to the death",
+        "Its chains of slavery cut off."
+      ]
+    },
+    {
+      "local": [
+        "Ningún pueblo ser libre merece",
+        "Si es esclavo indolente y servil;",
+        "Si en su pecho la llama no crece",
+        "Que templó el heroísmo viril,"
+      ],
+      "english": [
+        "No people deserves to be free",
+        "If it’s an indolent and servile slave;",
+        "If in its chest doesn't grow the flame",
+        "that forged the virile heroism."
+      ]
+    },
+    {
+      "local": [
+        "Mas [[Quisqueya]] la indómita y brava",
+        "Siempre altiva la frente alzará;",
+        "Que si fuere mil veces esclava",
+        "Otras tantas ser libre sabrá."
+      ],
+      "english": [
+        "But [[Quisqueya]] the brave and indomitable",
+        "Always proudly her forehead will raise",
+        "For if she were a thousand times a slave",
+        "This many times will she be free."
+      ]
+    },
+    {
+      "local": [
+        "Que si dolo y ardid la expusieron",
+        "De un intruso señor al desdén,",
+        "¡Las Carreras! ¡Beler!, campos fueron",
+        "Que cubiertos de gloria se ven."
+      ],
+      "english": [
+        "And if fraud and cunning exposed her",
+        "To disdain of an intrusive man,",
+        "Las Carreras! Beler!...were fields",
+        "Which covered in glory were seen."
+      ]
+    },
+    {
+      "local": [
+        "Que en la cima de heróico baluarte",
+        "De los libres el verbo encarnó,",
+        "Donde el genio de Sánchez y Duarte",
+        "A ser libre o morir enseñó."
+      ],
+      "english": [
+        "At the top of heroic bastion,",
+        "Word of the free was materialized,",
+        "Where the genius of Sanchez and Duarte",
+        "Taught to be free or to die."
+      ]
+    },
+    {
+      "local": [
+        "Y si pudo inconsulto caudillo",
+        "De esas glorias el brillo empañar,",
+        "De la guerra se vio en Capotillo",
+        "La bandera de fuego ondear."
+      ],
+      "english": [
+        "And if an inconsiderate ruler",
+        "Could tarnish the glow of such glories,",
+        "The war banner of fire was seen",
+        "Waving over Capotillo."
+      ]
+    },
+    {
+      "local": [
+        "Y el incendio que atónito deja",
+        "De Castilla el soberbio león,",
+        "De las playas gloriosas le aleja",
+        "Donde flota el cruzado pendón."
+      ],
+      "english": [
+        "And the fire that leaves stunned",
+        "The arrogant lion from Castile,",
+        "Pulls it away from the glorious beaches",
+        "Where the crossed banner floats."
+      ]
+    },
+    {
+      "local": [
+        "Compatriotas, mostremos erguida",
+        "Nuestra frente, orgullosos de hoy más;",
+        "Que [[Quisqueya]] será destruida",
+        "Pero sierva de nuevo, ¡jamás!"
+      ],
+      "english": [
+        "Compatriots, let’s hold our",
+        "Forehead high, like never before;",
+        "For [[Quisqueya]] will be destroyed",
+        "But it will never again be enslaved."
+      ]
+    },
+    {
+      "local": [
+        "Que es santuario de amor cada pecho",
+        "Do la patria se siente vivir;",
+        "Y es su escudo invencible el derecho;",
+        "Y es su lema ser libre o morir."
+      ],
+      "english": [
+        "That every chest is a shrine of love",
+        "Where one feels the homeland alive;",
+        "It is the law her invincible shield;",
+        "It is her motto be free or die."
+      ]
+    },
+    {
+      "local": [
+        "¡Libertad! que aún se yergue serena",
+        "La Victoria en su carro triunfal,",
+        "Y el clarín de la guerra aún resuena",
+        "Pregonando su gloria inmortal."
+      ],
+      "english": [
+        "Liberty that serenely stands up",
+        "Victory in her triumphal carriage.",
+        "The trumpet of war still resounds",
+        "Proclaiming her immortal glory"
+      ]
+    },
+    {
+      "local": [
+        "¡Libertad! Que los ecos se agiten",
+        "Mientras llenos de noble ansiedad",
+        "Nuestros campos de gloria repiten",
+        "¡Libertad! ¡Libertad! ¡Libertad!"
+      ],
+      "english": [
+        "Freedom! Let the echoes agitate",
+        "While full of noble anxiety",
+        "Our battlefields of glory reverb these words -",
+        "Freedom! Freedom! Freedom!"
+      ]
+    }
+  ]
+}

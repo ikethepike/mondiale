@@ -1,0 +1,88 @@
+{
+  "isoCode": "KE",
+  "title": "Ee Mungu Nguvu Yetu",
+  "language": {
+    "code": "sw",
+    "name": "Swahili",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ee_Mungu_Nguvu_Yetu"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ee Mungu nguvu yetu",
+        "Ilete baraka kwetu",
+        "Haki iwe ngao na mlinzi",
+        "Natukae na undugu"
+      ],
+      "english": [
+        "O God our strength",
+        "Bring a blessing to us",
+        "Justice be our shield and defender",
+        "Let us have brotherhood"
+      ]
+    },
+    {
+      "local": [
+        "Amani na uhuru",
+        "Raha tupate na ustawi.",
+        "Amkeni ndugu zetu",
+        "Tufanye sote bidii"
+      ],
+      "english": [
+        "Peace and freedom.",
+        "Happiness we get and prosperity.",
+        "Awake, our brethren;",
+        "Let's all work hard"
+      ]
+    },
+    {
+      "local": [
+        "Nasi tujitoe kwa nguvu",
+        "Nchi yetu ya [[Kenya]]",
+        "Tunayoipenda",
+        "Tuwe tayari kuilinda"
+      ],
+      "english": [
+        "And let us give ourselves mightily",
+        "Our country of [[Kenya]]",
+        "That we love",
+        "Let's be ready to defend it"
+      ]
+    },
+    {
+      "local": [
+        "Natujenge taifa letu",
+        "Ee ndio wajibu wetu",
+        "[[Kenya]] istahili heshima",
+        "Tuungane mikono"
+      ],
+      "english": [
+        "Let's build our nation",
+        "O that's our responsibility",
+        "[[Kenya]] deserves respect",
+        "Let's join hands"
+      ]
+    },
+    {
+      "local": [
+        "Pamoja kazini",
+        "Kila siku tuwe na shukrani"
+      ],
+      "english": [
+        "Together at work",
+        "Every day let us be thankful."
+      ]
+    }
+  ]
+}

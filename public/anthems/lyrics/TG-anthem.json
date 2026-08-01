@@ -1,0 +1,130 @@
+{
+  "isoCode": "TG",
+  "title": "Terre de nos aïeux",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Salut_%C3%A0_toi,_pays_de_nos_a%C3%AFeux"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Salut à toi pays de nos aïeux,",
+        "Toi qui les rendait forts, paisibles et joyeux,",
+        "Cultivant vertu, vaillance,",
+        "Pour la postérité."
+      ],
+      "english": [
+        "Hail to you, land of our forefathers,",
+        "You who made them strong, peaceful and happy,",
+        "Cultivating virtue, valour",
+        "For posterity."
+      ]
+    },
+    {
+      "local": [
+        "Que viennent les tyrans, ton cœur soupire vers la liberté.",
+        "[[Togo]] debout, luttons sans défaillance.",
+        "Vainquons ou mourons, mais dans la dignité.",
+        "Grand Dieu, toi seul nous a exaltés"
+      ],
+      "english": [
+        "Should tyrants come, may your heart long for freedom.",
+        "[[Togo]] arise, let us fight without faltering.",
+        "Victory or death, but in dignity.",
+        "God almighty, You alone have exalted us"
+      ]
+    },
+    {
+      "local": [
+        "Du [[Togo]] pour la prospérité.",
+        "[[Togolais]] viens, bâtissons la cité.",
+        "Dans l'unité nous voulons te servir,",
+        "C'est bien là de nos cœurs, le plus ardent désir."
+      ],
+      "english": [
+        "From [[Togo]] for prosperity.",
+        "[[Togolese]] come, let us build the state.",
+        "In unity we want to serve you,",
+        "It is indeed the most burning desire of our hearts."
+      ]
+    },
+    {
+      "local": [
+        "Clamons fort notre devise,",
+        "Que rien ne peut ternir.",
+        "Seul artisan de ton bonheur, ainsi que de ton avenir,",
+        "Brisons partout les chaînes de la traîtrise,"
+      ],
+      "english": [
+        "Let us loudly proclaim our motto,",
+        "Which nothing can tarnish.",
+        "Sole architect of your happiness, as well as your future,",
+        "Let us break the chains of treachery everywhere,"
+      ]
+    },
+    {
+      "local": [
+        "Et nous te jurons toujours fidélité",
+        "Et aimer servir, se dépasser,",
+        "Faire encore de toi sans nous lasser,",
+        "[[Togo]] chéri, l'or de l'humanité."
+      ],
+      "english": [
+        "And we swear loyalty to you always,",
+        "And to love to serve, to surpass ourselves,",
+        "To make you yet, without tiring,",
+        "Dear [[Togo]], the gold of humanity."
+      ]
+    },
+    {
+      "local": [
+        "Salut, salut à l'Univers entier.",
+        "Unissons nos efforts sur l'immense chantier",
+        "D'où naîtra toute nouvelle",
+        "La Grande Humanité."
+      ],
+      "english": [
+        "Hail, hail to the entire universe.",
+        "Let us unite our efforts on the immense building site",
+        "From which will be reborn completely anew",
+        "Great Humanity."
+      ]
+    },
+    {
+      "local": [
+        "Partout au lieu de la misère, apportons la félicité.",
+        "Chassons du monde la haine rebelle.",
+        "Finis l'esclavage et la captivité.",
+        "À l'étoile de la liberté,"
+      ],
+      "english": [
+        "Everywhere, instead of misery, let us bring happiness.",
+        "Let us chase from the world rebellious hatred.",
+        "Slavery and captivity is over.",
+        "To the star of liberty,"
+      ]
+    },
+    {
+      "local": [
+        "Renouons la solidarité",
+        "Des nations dans la fraternité."
+      ],
+      "english": [
+        "Let us renew the solidarity",
+        "Of nations in fraternity."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "isoCode": "MG",
+  "title": "Ry Tanindrazanay malala ô!",
+  "language": {
+    "code": "mg",
+    "name": "Malagasy",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ry_Tanindrazanay_malala_%C3%B4!"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ry Tanindrazanay malala ô!",
+        "Ry [[Madagasikara]] soa.",
+        "Ny Fitiavanay anao tsy miala,",
+        "Fa ho anao, ho anao doria tokoa."
+      ],
+      "english": [
+        "Oh dear land of our ancestors,",
+        "Oh beautiful [[Madagascar]]!",
+        "Our love for you will not falter,",
+        "And will remain to your cause eternally faithful."
+      ]
+    },
+    {
+      "local": [
+        "Tahionao ry Zanahary",
+        "'Ty Nosindrazanay ity",
+        "Hiadana sy ho finaritra",
+        "He! Sambatra tokoa izahay."
+      ],
+      "english": [
+        "Bless, oh Creator,",
+        "This island of our ancestors",
+        "May it know joy and happiness",
+        "And may we be truly happy."
+      ]
+    },
+    {
+      "local": [
+        "Ry Tanindrazanay malala ô!",
+        "Irinay mba hanompoana anao",
+        "Ny tena sy fo fanahy anananay,",
+        "'Zay sarobidy sy mendrika tokoa."
+      ],
+      "english": [
+        "Oh beloved land of our ancestors",
+        "We wish to place at your service",
+        "Our body, our heart, our soul,",
+        "which is indeed precious and full of dignity."
+      ]
+    },
+    {
+      "local": [
+        "Ry Tanindrazanay malala ô!",
+        "Irinay mba hitahiana anao,",
+        "Ka Ilay Nahary 'zao tontolo izao",
+        "No fototra ijoroan'ny satanao."
+      ],
+      "english": [
+        "Oh beloved land of our ancestors",
+        "We pray that you be blessed,",
+        "By the Creator of the universe",
+        "who is the foundation of your existence."
+      ]
+    },
+    {
+      "local": [
+        "Refrain (×2)"
+      ],
+      "english": [
+        "Chorus (×2)"
+      ]
+    }
+  ]
+}

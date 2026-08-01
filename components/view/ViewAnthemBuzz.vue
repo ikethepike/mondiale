@@ -15,7 +15,7 @@
     <LyricWall
       v-if="lyrics && unlocked.lyrics"
       :lyrics="lyrics"
-      :revealed="resolved"
+      :revealed="resolved || unlocked.lyricsUnmask"
       :translated="translated"
     />
 
@@ -126,7 +126,9 @@ const {
     // Land the answer as a place, not just a name — the country framed among
     // its neighbours, same as the silhouette reveal.
     const neighbours = BORDERS[active.country] ?? []
-    gameStore.map.labels = true
+    // No ISO labels here, unlike the silhouette reveal: the lyric wall is still
+    // on screen, and country codes scattered behind the verse read as text
+    // behind text. The tint and the flown-to frame carry the answer instead.
     gameStore.map.reveal = active.country
     gameStore.map.focus = [active.country]
     gameStore.map.focusContext = neighbours
@@ -154,6 +156,19 @@ watch(resolved, isResolved => {
   if (!isResolved) return
   const timer = setTimeout(() => (translated.value = true), TRANSLATE_AFTER_MS)
   registerCleanup(() => clearTimeout(timer))
+})
+
+/** While the lyric wall is up the map recedes — faint and set back — so the
+ *  verse owns the screen. It fades into focus on the reveal, which is the
+ *  moment locating the country actually matters. */
+watch(
+  () => !!lyrics.value && unlocked.value.lyrics && !resolved.value,
+  quiet => {
+    gameStore.map.recede = quiet
+  }
+)
+registerCleanup(() => {
+  gameStore.map.recede = false
 })
 
 const dock = ref<InstanceType<typeof AudioDock>>()

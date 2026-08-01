@@ -1,0 +1,60 @@
+{
+  "isoCode": "LS",
+  "title": "Lesotho fatše la bo-ntat'a rona",
+  "language": {
+    "code": "st",
+    "name": "Sesotho",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Lesotho_Fatse_La_Bontata_Rona"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Lesotho]] fatše la bo-ntat'a rona;",
+        "Har'a mafatše le letle ke lona;",
+        "Ke moo re hlahileng,",
+        "Ke moo re holileng,"
+      ],
+      "english": [
+        "[[Lesotho]], land of our Fathers,",
+        "Among the lands she is the most beautiful.",
+        "She is where we were born,",
+        "She is where we grew up,"
+      ]
+    },
+    {
+      "local": [
+        "Rea le rata.",
+        "Molimo ak'u boloke [[Lesotho]],",
+        "U felise lintoa le matšoenyeho;",
+        "Oho fatše lena;"
+      ],
+      "english": [
+        "We love her.",
+        "God, please protect [[Lesotho]].",
+        "Spare it conflict and tribulation,",
+        "Oh, this land,"
+      ]
+    },
+    {
+      "local": [
+        "La bo-ntat'a rona;",
+        "Le be le khotso."
+      ],
+      "english": [
+        "Land of our Fathers,",
+        "May it have peace."
+      ]
+    }
+  ]
+}

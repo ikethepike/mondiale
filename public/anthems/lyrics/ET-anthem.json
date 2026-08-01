@@ -1,0 +1,60 @@
+{
+  "isoCode": "ET",
+  "title": "ወደፊት ገስግሺ ውድ እናት ኢትዮጵያ",
+  "language": {
+    "code": "am",
+    "name": "Amharic",
+    "script": "Ethiopic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/March_Forward,_Dear_Mother_Ethiopia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "የዜግነት ፡ ክብር ፡ በ[[ኢትዮጵያ]]ችን ፡ ጸንቶ ፣",
+        "ታየ ፡ ሕዝባዊነት ፡ ዳር ፡ እስከዳር ፡ በርቶ ።",
+        "ለሰላም ፣ ለፍትህ ፣ ለሕዝቦች ፡ ነጻነት ፣",
+        "በእኩልነት ፡ በፍቅር ፡ ቆመናል ፡ ባንድነት ።"
+      ],
+      "english": [
+        "Respect for citizenship is strong in our [[Ethiopia]];",
+        "National pride is seen, shining from one side to another.",
+        "For peace, for justice, for the freedom of peoples,",
+        "In equality and in love we stand united."
+      ]
+    },
+    {
+      "local": [
+        "መሠረተ ፡ ጽኑ ፡ ሰብእናን ፡ ያልሻርን ፣",
+        "ሕዝቦች ፡ ነን ፡ ለሥራ ፡ በሥራ ፡ የኖርን ።",
+        "ድንቅ ፡ የባህል ፡ መድረክ ፡ ያኩሪ ፡ ቅርስ ፡ ባለቤት ፣",
+        "የተፈጥሮ ፡ ጸጋ ፡ የጀግና ፡ ሕዝብ ፡ እናት ።"
+      ],
+      "english": [
+        "Firm of foundation, we do not dismiss humanness;",
+        "We are people who live through work.",
+        "Wonderful is the stage of tradition, owners of a proud heritage,",
+        "Natural grace, mother of a valorous people."
+      ]
+    },
+    {
+      "local": [
+        "እንጠብቅሻለን ፡ አለብን ፡ አደራ ፣",
+        "[[ኢትዮጵያ]]ችን ፡ ኑሪ ፡ እኛም ፡ ባንቺ ፡ እንኩራ ።"
+      ],
+      "english": [
+        "We shall protect you – we have a duty;",
+        "Our [[Ethiopia]], live! And let us be proud of you!"
+      ]
+    }
+  ]
+}

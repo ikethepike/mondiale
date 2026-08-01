@@ -21,6 +21,11 @@ export const HINT_UNLOCK_AT = {
   lyrics: 0.5,
   swatches: 0.65,
   initial: 0.85,
+  /** The last stretch: the wall drops its masks on the ORIGINAL verse only.
+   *  By now the clock has nearly run out, so the words that name the country
+   *  are worth more as a last chance than as a secret. The English column
+   *  stays masked until the round actually resolves. */
+  lyricsUnmask: 0.9,
 } as const
 
 /** A wrong buzz costs a beat — long enough to matter, short enough to re-enter
@@ -69,6 +74,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     lyrics: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.lyrics,
     swatches: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.swatches,
     initial: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.initial,
+    lyricsUnmask: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.lyricsUnmask,
   }))
 
   let lockoutTimer: ReturnType<typeof setTimeout> | undefined

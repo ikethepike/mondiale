@@ -1,0 +1,45 @@
+{
+  "isoCode": "JP",
+  "title": "Kimigayo",
+  "language": {
+    "code": "ja",
+    "name": "Japanese",
+    "script": "CJK"
+  },
+  "sources": {
+    "local": {
+      "author": "anonymous waka, Heian period (c. 10th c.)",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Kimigayo"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[君が代]]は",
+        "千代に八千代に",
+        "さざれ石の",
+        "巌となりて"
+      ],
+      "english": [
+        "May your reign",
+        "Continue for a thousand, eight thousand generations,",
+        "Until the tiny pebbles",
+        "Grow into massive boulders"
+      ]
+    },
+    {
+      "local": [
+        "苔の生すまで"
+      ],
+      "english": [
+        "Lush with moss"
+      ]
+    }
+  ]
+}

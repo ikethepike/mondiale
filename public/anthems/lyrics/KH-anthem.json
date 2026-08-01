@@ -1,0 +1,76 @@
+{
+  "isoCode": "KH",
+  "title": "បទនគររាជ",
+  "language": {
+    "code": "km",
+    "name": "Khmer",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/B%C3%A2t_N%C3%B4k%C3%B4r_R%C3%A9ach"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "សូមពួកទេព្តា រក្សាមហាក្សត្រយើង",
+        "ឱ្យបានរុងរឿង ដោយជ័យមង្គលសិរីសួស្តី",
+        "យើងខ្ញុំព្រះអង្គ សូមជ្រកក្រោមម្លប់ព្រះបារមី",
+        "នៃព្រះនរបតីវង្ស ក្សត្រាដែលសាងប្រាសាទថ្ម"
+      ],
+      "english": [
+        "May the Angels save our king",
+        "Granting him happiness and prosperity",
+        "We, his servants, wish to refuge under his completeness",
+        "Of sovereign's line, the ones being to build temples"
+      ]
+    },
+    {
+      "local": [
+        "គ្រប់គ្រងដែនខ្មែរ បុរាណថ្កើងថ្កាន ។",
+        "ប្រាសាទសិលា កំបាំងកណ្តាលព្រៃ",
+        "គួរឱ្យស្រមៃ នឹកដល់យសស័ក្តិមហានគរ",
+        "ជាតិខ្មែរដូចថ្ម គង់វង្សនៅល្អរឹងប៉ឹងជំហរ"
+      ],
+      "english": [
+        "Reigning over old [[Khmer's]] glorious land.",
+        "Temples of stone, hidden amid forests",
+        "Bethought of the mighty great kingdom triumphs",
+        "[[Khmer]] race stands tough and solid as eternal stone"
+      ]
+    },
+    {
+      "local": [
+        "យើងសង្ឃឹមពរ ភ័ព្វព្រេងសំណាងរបស់[[កម្ពុជា]]",
+        "មហារដ្ឋកើតមាន យូរអង្វែងហើយ ។",
+        "គ្រប់វត្តអារាម ឮតែសូរស័ព្ទធម៌",
+        "សូត្រដោយអំណរ រំឭកគុណពុទ្ធសាសនា"
+      ],
+      "english": [
+        "We pray for the best upon [[Cambodia's]] destiny",
+        "A grand nation've ever occurred for.",
+        "Dharma risen, up from monasteries",
+        "Chant with joy, commemorate of Buddhism"
+      ]
+    },
+    {
+      "local": [
+        "ចូរយើងជាអ្នក ជឿជាក់ស្មោះស្ម័គ្រតាមបែបដូនតា",
+        "គង់តែទេវតា នឹងជួយជ្រោមជ្រែងផ្គត់ផ្គង់ប្រយោជន៍ឱ្យ",
+        "ដល់ប្រទេសខ្មែរ ជាមហានគរ ។"
+      ],
+      "english": [
+        "Let us be faithful to our ancestors' belief",
+        "Assuredly, Angels will grant its bounty",
+        "Toward [[Khmer's]], the grand nation."
+      ]
+    }
+  ]
+}

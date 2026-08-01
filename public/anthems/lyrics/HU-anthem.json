@@ -1,0 +1,247 @@
+{
+  "isoCode": "HU",
+  "title": "Himnusz",
+  "language": {
+    "code": "hu",
+    "name": "Hungarian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Ferenc Kölcsey",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Himnusz"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Isten, áldd meg a [[magyart]]",
+        "Jó kedvvel, bőséggel,",
+        "Nyújts feléje védő kart,",
+        "Ha küzd ellenséggel;"
+      ],
+      "english": [
+        "O God, bless the nation of [[Hungary]]",
+        "With your grace and bounty",
+        "Extend over it your guarding arm",
+        "During strife with its enemies"
+      ]
+    },
+    {
+      "local": [
+        "Bal sors akit régen tép,",
+        "Hozz rá víg esztendőt,",
+        "Megbűnhődte már e nép",
+        "A múltat s jövendőt!"
+      ],
+      "english": [
+        "Long torn by ill fate",
+        "Bring upon it a time of relief",
+        "This nation has suffered for all sins",
+        "Of the past and of the future!"
+      ]
+    },
+    {
+      "local": [
+        "Őseinket felhozád",
+        "Kárpát szent bércére,",
+        "Általad nyert szép hazát",
+        "Bendegúznak vére."
+      ],
+      "english": [
+        "You brought our ancestors up",
+        "Over the Carpathians' holy peaks",
+        "By You was won a beautiful homeland",
+        "For Bendeguz's sons"
+      ]
+    },
+    {
+      "local": [
+        "S merre zúgnak habjai",
+        "Tiszának, Dunának,",
+        "Árpád hős magzatjai",
+        "Felvirágozának."
+      ],
+      "english": [
+        "And wherever flow the rivers of",
+        "The Tisza and the Danube",
+        "Árpád our hero's descendants",
+        "Will root and bloom."
+      ]
+    },
+    {
+      "local": [
+        "Értünk Kunság mezein",
+        "Ért kalászt lengettél,",
+        "Tokaj szőlővesszein",
+        "Nektárt csepegtettél."
+      ],
+      "english": [
+        "For us on the plains of the Kuns",
+        "You ripened the wheat",
+        "In the grape fields of Tokaj",
+        "You dripped sweet nectar"
+      ]
+    },
+    {
+      "local": [
+        "Zászlónk gyakran plántálád",
+        "Vad török sáncára,",
+        "S nyögte Mátyás bús hadát",
+        "Bécsnek büszke vára."
+      ],
+      "english": [
+        "Our flag you often planted",
+        "On the wild Turk's earthworks",
+        "And under Mátyás' grave army whimpered",
+        "Vienna's \"proud fort.\""
+      ]
+    },
+    {
+      "local": [
+        "Hajh, de bűneink miatt",
+        "Gyúlt harag kebledben,",
+        "S elsújtád villámidat",
+        "Dörgő fellegedben,"
+      ],
+      "english": [
+        "Ah, but for our sins",
+        "Anger gathered in Your bosom",
+        "And You struck with Your lightning",
+        "From Your thundering clouds"
+      ]
+    },
+    {
+      "local": [
+        "Most rabló mongol nyilát",
+        "Zúgattad felettünk,",
+        "Majd töröktől rabigát",
+        "Vállainkra vettünk."
+      ],
+      "english": [
+        "Now the plundering Mongols' arrows",
+        "You swarmed over us",
+        "Then the Turks' slave yoke",
+        "We took upon our shoulders."
+      ]
+    },
+    {
+      "local": [
+        "Hányszor zengett ajkain",
+        "Ozmán vad népének",
+        "Vert hadunk csonthalmain",
+        "Győzedelmi ének!"
+      ],
+      "english": [
+        "How often came from the mouths",
+        "Of Osman's barbarian nation",
+        "Over the corpses of our defeated army",
+        "A victory song!"
+      ]
+    },
+    {
+      "local": [
+        "Hányszor támadt tenfiad",
+        "Szép hazám, kebledre,",
+        "S lettél magzatod miatt",
+        "Magzatod hamvvedre!"
+      ],
+      "english": [
+        "How often did your own son aggress",
+        "My homeland, upon your breast,",
+        "And you became because of your own sons",
+        "Your own sons' funeral urn!"
+      ]
+    },
+    {
+      "local": [
+        "Bújt az üldözött, s felé",
+        "Kard nyúlt barlangjában,",
+        "Szerte nézett s nem lelé",
+        "Honját a hazában,"
+      ],
+      "english": [
+        "The fugitive hid, and towards him",
+        "The sword reached into his cave",
+        "Looking everywhere he could not find",
+        "His home in his homeland"
+      ]
+    },
+    {
+      "local": [
+        "Bércre hág és völgybe száll,",
+        "Bú s kétség mellette,",
+        "Vérözön lábainál,",
+        "S lángtenger fölette."
+      ],
+      "english": [
+        "Climbs the mountain, descends the valley",
+        "Sadness and despair his companions",
+        "Sea of blood beneath his feet",
+        "Ocean of flame above."
+      ]
+    },
+    {
+      "local": [
+        "Vár állott, most kőhalom,",
+        "Kedv s öröm röpkedtek,",
+        "Halálhörgés, siralom",
+        "Zajlik már helyettek."
+      ],
+      "english": [
+        "Castle stood, now a heap of stones",
+        "Happiness and joy fluttered,",
+        "Groans of death, weeping",
+        "Now sound in their place."
+      ]
+    },
+    {
+      "local": [
+        "S ah, szabadság nem virúl",
+        "A holtnak véréből,",
+        "Kínzó rabság könnye hull",
+        "Árvánk hő szeméből!"
+      ],
+      "english": [
+        "And Ah! Freedom does not bloom",
+        "From the blood of the dead,",
+        "Torturous slavery's tears fall",
+        "From the burning eyes of the orphans!"
+      ]
+    },
+    {
+      "local": [
+        "Szánd meg Isten a [[magyart]]",
+        "Kit vészek hányának,",
+        "Nyújts feléje védő kart",
+        "Tengerén kínjának."
+      ],
+      "english": [
+        "Pity, O Lord, the [[Hungarians]]",
+        "Who are tossed by waves of danger",
+        "Extend over it your guarding arm",
+        "On the sea of its misery"
+      ]
+    },
+    {
+      "local": [
+        "Bal sors akit régen tép,",
+        "Hozz rá víg esztendőt,",
+        "Megbűnhődte már e nép",
+        "A múltat s jövendőt!"
+      ],
+      "english": [
+        "Long torn by ill fate",
+        "Bring upon it a time of relief",
+        "They who have suffered for all sins",
+        "Of the past and of the future!"
+      ]
+    }
+  ]
+}

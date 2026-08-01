@@ -1,0 +1,64 @@
+{
+  "isoCode": "FJ",
+  "title": "Meda Dau Doka",
+  "language": {
+    "code": "fj",
+    "name": "Fijian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Bless_Fiji"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Meda dau doka ka vinakata na vanua",
+        "E ra sa dau tiko kina na savasava",
+        "Rawa tu na gauna ni sautu na veilomani",
+        "Biu na i tovo tawa savasava."
+      ],
+      "english": [
+        "Let us show our pride and honour our nation",
+        "Where righteous people reside",
+        "Where prosperity and fellowship may persevere",
+        "Abandon deeds that are immoral"
+      ]
+    },
+    {
+      "local": [
+        "Me bula ga ko [[Viti]] ka me toro ga ki liu",
+        "Me ra turaga vinaka ko ira na i liuliu",
+        "Me ra liutaki na tamata e na veika vinaka",
+        "Me oti kina na i tovo ca!"
+      ],
+      "english": [
+        "Let [[Fiji]] live on and progress onwards",
+        "May our leaders be honourable men",
+        "Let them lead our people to great things",
+        "And bring an end to all things immoral"
+      ]
+    },
+    {
+      "local": [
+        "Bale ga vei kemuni na cauravou e [[Viti]]",
+        "Ni yavala me savasava na vanua",
+        "Ni kakua ni vosota na dukadukali",
+        "Ka me da sa qai biuta vakadua"
+      ],
+      "english": [
+        "The burden of change lie on your shoulders youth of [[Fiji]]",
+        "Be the strength to cleanse our nation",
+        "Be wary and not harbour malice",
+        "For we must abandon such sentiments forever"
+      ]
+    }
+  ]
+}

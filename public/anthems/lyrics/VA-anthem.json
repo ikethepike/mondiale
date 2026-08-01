@@ -1,0 +1,100 @@
+{
+  "isoCode": "VA",
+  "title": "Inno e Marcia Pontificale",
+  "language": {
+    "code": "la",
+    "name": "Latin",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Pontifical_Hymn"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "O felix [[Roma]] – o [[Roma]] nobilis:",
+        "Sedes es [[Petri]], qui [[Romae]] effudit sanguinem,",
+        "[[Petri]] cui claves datae sunt regni caelorum.",
+        "[[Pontifex]], Tu successor es [[Petri]];"
+      ],
+      "english": [
+        "O happy [[Rome]] - O noble [[Rome]]",
+        "You are the seat of [[Peter]], who shed his blood in [[Rome]],",
+        "[[Peter]], to whom the keys of the kingdom of heaven were given.",
+        "[[Pontiff]], You are the successor of [[Peter]];"
+      ]
+    },
+    {
+      "local": [
+        "[[Pontifex]], Tu magister es tuos confirmans fratres;",
+        "[[Pontifex]], Tu qui Servus servorum Dei,",
+        "hominumque piscator, pastor es gregis,",
+        "ligans caelum et terram."
+      ],
+      "english": [
+        "[[Pontiff]], You are the teacher, you confirm your brethren;",
+        "[[Pontiff]], You who are the Servant of the servants of God,",
+        "and fisher of men, are the shepherd of the flock,",
+        "linking heaven and earth."
+      ]
+    },
+    {
+      "local": [
+        "[[Pontifex]], Tu Christi es Vicarius super terram,",
+        "rupes inter fluctus, Tu es pharus in tenebris;",
+        "Tu pacis es vindex, Tu es unitatis custos,",
+        "vigil libertatis defensor; in Te potestas."
+      ],
+      "english": [
+        "[[Pontiff]], You are the vicar of Christ on earth,",
+        "a rock amidst the waves, You are a beacon in the darkness;",
+        "You are the defender of peace, You are the guardian of unity,",
+        "watchful defender of liberty; in You is the authority."
+      ]
+    },
+    {
+      "local": [
+        "Vox acuta, vox altera ab acuta:",
+        "Tu [[Pontifex]], firma es petra, et super petram",
+        "hanc aedificata est Ecclesia Dei.",
+        "Vox media, vox gravis:"
+      ],
+      "english": [
+        "Sopranos, altos:",
+        "[[Pontiff]], you are the unshakable rock, and on this rock",
+        "was built the Church of God.",
+        "Tenors, basses:"
+      ]
+    },
+    {
+      "local": [
+        "[[Pontifex]], Tu Christi es Vicarius super terram,",
+        "rupes inter fluctus, Tu es pharus in tenebris;",
+        "Tu pacis es vindex, Tu es unitatis custos,",
+        "vigil libertatis defensor; in Te potestas."
+      ],
+      "english": [
+        "[[Pontiff]], You are the vicar of Christ on earth,",
+        "a rock amidst the waves, You are a beacon in the darkness;",
+        "You are the defender of peace, You are the guardian of unity,",
+        "watchful defender of liberty; in You is the authority."
+      ]
+    },
+    {
+      "local": [
+        "O felix [[Roma]] – O [[Roma]] nobilis."
+      ],
+      "english": [
+        "O happy [[Rome]] - O noble [[Rome]]."
+      ]
+    }
+  ]
+}

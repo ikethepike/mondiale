@@ -1,0 +1,106 @@
+{
+  "isoCode": "SL",
+  "title": "High We Exalt Thee, Realm of the Free",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/High_We_Exalt_Thee,_Realm_of_the_Free"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "High we exalt thee, realm of the free;",
+        "Great is the love we have for thee;",
+        "Firmly united ever we stand,",
+        "Singing thy praise, O native land."
+      ],
+      "english": [
+        "High we exalt thee, realm of the free;",
+        "Great is the love we have for thee;",
+        "Firmly united ever we stand,",
+        "Singing thy praise, O native land."
+      ]
+    },
+    {
+      "local": [
+        "We raise up our hearts and our voices on high,",
+        "The hills and the valleys re-echo our cry;",
+        "Blessing and peace be ever thine own,",
+        "Land that we love, our [[Sierra Leone]]."
+      ],
+      "english": [
+        "We raise up our hearts and our voices on high,",
+        "The hills and the valleys re-echo our cry;",
+        "Blessing and peace be ever thine own,",
+        "Land that we love, our [[Sierra Leone]]."
+      ]
+    },
+    {
+      "local": [
+        "One with a faith that wisdom inspires,",
+        "One with a zeal that never tires;",
+        "Ever we seek to honour thy name,",
+        "Ours is the labour, thine the fame."
+      ],
+      "english": [
+        "One with a faith that wisdom inspires,",
+        "One with a zeal that never tires;",
+        "Ever we seek to honour thy name,",
+        "Ours is the labour, thine the fame."
+      ]
+    },
+    {
+      "local": [
+        "We pray that no harm on thy children may fall,",
+        "That blessing and peace may descend on us all;",
+        "So may we serve thee ever alone,",
+        "Land that we love, our [[Sierra Leone]]."
+      ],
+      "english": [
+        "We pray that no harm on thy children may fall,",
+        "That blessing and peace may descend on us all;",
+        "So may we serve thee ever alone,",
+        "Land that we love, our [[Sierra Leone]]."
+      ]
+    },
+    {
+      "local": [
+        "Knowledge and truth our forefathers spread,",
+        "Mighty the nations whom they led;",
+        "Mighty they made thee, so too may we",
+        "Show forth the good that is ever in thee."
+      ],
+      "english": [
+        "Knowledge and truth our forefathers spread,",
+        "Mighty the nations whom they led;",
+        "Mighty they made thee, so too may we",
+        "Show forth the good that is ever in thee."
+      ]
+    },
+    {
+      "local": [
+        "We pledge our devotion, our strength and our might,",
+        "Thy cause to defend and to stand for thy right;",
+        "All that we have be ever thine own,",
+        "Land that we love, our [[Sierra Leone]]."
+      ],
+      "english": [
+        "We pledge our devotion, our strength and our might,",
+        "Thy cause to defend and to stand for thy right;",
+        "All that we have be ever thine own,",
+        "Land that we love, our [[Sierra Leone]]."
+      ]
+    }
+  ]
+}

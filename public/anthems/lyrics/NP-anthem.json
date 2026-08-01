@@ -1,0 +1,50 @@
+{
+  "isoCode": "NP",
+  "title": "सयौँ थुँगा फूलका",
+  "language": {
+    "code": "ne",
+    "name": "Nepali",
+    "script": "Devanagari"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Sayaun_Thunga_Phulka"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "सयौं थुँगा फूलका हामी, एउटै माला [[नेपाल]]ी",
+        "सार्वभौम भई फैलिएका, मेची-महाकाली।",
+        "प्रकृतिका कोटि-कोटि सम्पदाको आँचल",
+        "वीरहरूका रगतले स्वतन्त्र र अटल।"
+      ],
+      "english": [
+        "Woven from hundred flowers, we are garland [[Nepali]]",
+        "Sovereignly extended from Mechi to Mahakali.",
+        "Millions of natural beauties, history like a shawl",
+        "Bloods of the braves make it free and immotile."
+      ]
+    },
+    {
+      "local": [
+        "ज्ञानभूमि, शान्तिभूमि, तराई, पहाड, हिमाल",
+        "अखण्ड यो प्यारो हाम्रो मातृभूमि [[नेपाल]]।",
+        "बहुल जाति, भाषा, धर्म, संस्कृति छन् विशाल",
+        "अग्रगामी राष्ट्र हाम्रो, जय जय [[नेपाल]]।।"
+      ],
+      "english": [
+        "Land of knowledge and peace, the plains, hills and mountains",
+        "One piece beloved country, our motherland [[Nepal]].",
+        "Peoples, languages, religions and cultures are incredible",
+        "This progressive nation of ours, victory to thee, [[Nepal]]!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "isoCode": "NL",
+  "title": "Het Wilhelmus",
+  "language": {
+    "code": "nl",
+    "name": "Dutch",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "attrib. Philips of Marnix, Lord of Sint-Aldegonde",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Wilhelmus"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Pateangkat bachata",
+        "Gogoi kinenegan",
+        "Ait poeioetoekat mata",
+        "Radja Bolanda en"
+      ],
+      "english": [
+        "O, how cheerful is our heart",
+        "On this day",
+        "The birthday",
+        "Of the Queen of [[Holland]]"
+      ]
+    },
+    {
+      "local": [
+        "Rimata Wilhelmina",
+        "Sibakat sita ne",
+        "Makate leuw bachania",
+        "Ka sakalangan te"
+      ],
+      "english": [
+        "Our Queen Wilhelmina",
+        "Who is our head",
+        "Who also loves",
+        "The Mentawaians"
+      ]
+    }
+  ]
+}

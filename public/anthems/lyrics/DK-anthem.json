@@ -1,0 +1,107 @@
+{
+  "isoCode": "DK",
+  "title": "Der er et yndigt land",
+  "language": {
+    "code": "da",
+    "name": "Danish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Adam Oehlenschläger",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Der_er_et_yndigt_land"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Der er et yndigt land,",
+        "Det står med brede bøge",
+        "Nær salten østerstrand.",
+        "Det bugter sig i bakke, dal,"
+      ],
+      "english": [
+        "There is a land we love",
+        "with shady beech-trees aspread",
+        "The briny shores above.",
+        "Its hills and valleys gently fall,"
+      ]
+    },
+    {
+      "local": [
+        "Det hedder gamle [[Danmark]]",
+        "Og det er Frejas sal.",
+        "Der sad i fordums tid",
+        "De harniskklædte kæmper,"
+      ],
+      "english": [
+        "'Tis the name of ol' [[Denmark]],",
+        "'Tis good ol' Freya's hall.",
+        "There in the days of yore",
+        "Sat armoured giants rested"
+      ]
+    },
+    {
+      "local": [
+        "Udhvilede fra strid.",
+        "Så drog de frem til fjenders mén,",
+        "Nu hvile deres bene",
+        "Bag højens bautasten."
+      ],
+      "english": [
+        "'Tween their frays of gore",
+        "Then they went forth the foe to face,",
+        "Now found in stone-set barrows,",
+        "Their final resting place."
+      ]
+    },
+    {
+      "local": [
+        "Det land endnu er skønt,",
+        "Thi blå sig søen bælter,",
+        "Og løvet står så grønt.",
+        "Og ædle kvinder, skønne møer"
+      ],
+      "english": [
+        "This land is still as fair,",
+        "The sea is blue around it,",
+        "And peace is cherished there.",
+        "Strong men and noble women still"
+      ]
+    },
+    {
+      "local": [
+        "Og mænd og raske svende",
+        "Bebo de [[danskes]] øer.",
+        "Hil drot og fædreland!",
+        "Hil hver en danneborger,"
+      ],
+      "english": [
+        "Uphold their country's honour",
+        "With faithfulness and skill.",
+        "Hail king and fatherland!",
+        "Hail citizens of honour,"
+      ]
+    },
+    {
+      "local": [
+        "Som virker, hvad han kan!",
+        "Vort gamle [[Danmark]] skal bestå,",
+        "Så længe bøgen spejler",
+        "Sin top i bølgen blå."
+      ],
+      "english": [
+        "Who do the best they can.",
+        "Our ancient [[Denmark]] shall remain,",
+        "As long as beech tops mirror",
+        "In waves of blue their chain!"
+      ]
+    }
+  ]
+}

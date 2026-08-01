@@ -1,0 +1,89 @@
+{
+  "isoCode": "AT",
+  "title": "Land der Berge, Land am Strome",
+  "language": {
+    "code": "de",
+    "name": "German",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Paula von Preradović",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Austria"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Land der Berge, Land am Strome,",
+        "Land der Äcker, Land der Dome,",
+        "Land der Hämmer, zukunftsreich!",
+        "Heimat großer Töchter und Söhne,"
+      ],
+      "english": [
+        "Land of mountains, land on the river,",
+        "Land of fields, land of cathedrals,",
+        "Land of hammers, rich in the future!",
+        "Home of great daughters and sons,"
+      ]
+    },
+    {
+      "local": [
+        "Volk, begnadet für das Schöne,",
+        "Vielgerühmtes [[Österreich]]!",
+        "Heiß umfehdet, wild umstritten,",
+        "Liegst dem Erdteil du inmitten"
+      ],
+      "english": [
+        "People gifted for beauty,",
+        "Much-praised [[Austria]]!",
+        "Hotly contested, fiercely disputed,",
+        "You lie at the heart of the continent"
+      ]
+    },
+    {
+      "local": [
+        "Einem starken Herzen gleich.",
+        "Hast seit frühen Ahnentagen",
+        "Hoher Sendung Last getragen,",
+        "Vielgeprüftes [[Österreich]]."
+      ],
+      "english": [
+        "Like a strong heart.",
+        "Since early ancestral days,",
+        "You have borne the burden of a noble mission,",
+        "Much-tested [[Austria]]."
+      ]
+    },
+    {
+      "local": [
+        "Mutig in die neuen Zeiten,",
+        "Frei und gläubig sieh uns schreiten,",
+        "Arbeitsfroh und hoffnungsreich.",
+        "Einig laß in Jubelchören,"
+      ],
+      "english": [
+        "Courageously into the new times,",
+        "Free and faithful, see us stride,",
+        "Joyful to work and full of hope.",
+        "United in jubilant choirs,"
+      ]
+    },
+    {
+      "local": [
+        "Vaterland, dir Treue schwören.",
+        "Vielgeliebtes [[Österreich]]."
+      ],
+      "english": [
+        "Fatherland, let us swear allegiance to you.",
+        "Much-beloved [[Austria]]!"
+      ]
+    }
+  ]
+}

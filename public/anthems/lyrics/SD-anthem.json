@@ -1,0 +1,50 @@
+{
+  "isoCode": "SD",
+  "title": "نحن جند الله جند الوطن",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Nahnu_Jund_Allah_Jund_Al-watan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "نحن جند الله جند الوطن",
+        "إن دعا داعي الفداء لم نخن",
+        "نتحدى الموت عند المحن",
+        "نشتري المجد بأغلى ثمن"
+      ],
+      "english": [
+        "We are soldiers of God, soldiers of the homeland",
+        "If called for redemption we will not betray",
+        "We defy death upon ordeals",
+        "We buy glory at the most expensive price"
+      ]
+    },
+    {
+      "local": [
+        "هذه الأرض لنا",
+        "فليعش سوداننا علماً بين الأمم",
+        "يا بني [[السودان]] هذا رمزكم",
+        "يحمل العبء ويحمي أرضكم"
+      ],
+      "english": [
+        "This land is ours, long live our [[Sudan]]",
+        "An edifice among the nations",
+        "O Sons of the [[Sudan]] this is your symbol,",
+        "Carries the burden and protecting your land"
+      ]
+    }
+  ]
+}

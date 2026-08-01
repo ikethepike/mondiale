@@ -1,0 +1,76 @@
+{
+  "isoCode": "ZW",
+  "title": "Simudzai Mureza wedu WeZimbabwe",
+  "language": {
+    "code": "sn",
+    "name": "Shona",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Zimbabwe"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Simudzai mureza wedu [[weZimbabwe]]",
+        "Yakazvarwa nemoto wechimurenga;",
+        "(Neropa) neropa zhinji ramagamba",
+        "Tiidzivirire kumhandu dzose"
+      ],
+      "english": [
+        "O lift high, high, our flag of [[Zimbabwe]]",
+        "Born of the fire of the revolution",
+        "And of the precious blood of our heroes.",
+        "Let's defend it against all foes;"
+      ]
+    },
+    {
+      "local": [
+        "Ngaikomborerwe nyika [[yeZimbabwe]].",
+        "Tarisai [[Zimbabwe]] nyika yakashongedzwa",
+        "Namakomo, nehova, zvinoyevedza",
+        "(Ngainaye) mvura ngainaye, minda ipe mbesa"
+      ],
+      "english": [
+        "Blessed be the land of [[Zimbabwe]].",
+        "Behold [[Zimbabwe]] so richly adorned",
+        "With mountains and rivers, beautiful.",
+        "Let rain abound and fields yield the seed"
+      ]
+    },
+    {
+      "local": [
+        "Vashandi vatuswe, ruzhinji rugutswe",
+        "Ngaikomborerwe nyika [[yeZimbabwe]].",
+        "Mwari ropafadzai nyika [[yeZimbabwe]]",
+        "Nyika yamadzitateguru edu tose;"
+      ],
+      "english": [
+        "May all be fed and workers rewarded.",
+        "Blessed be the land of [[Zimbabwe]].",
+        "O God, bless the land of [[Zimbabwe]],",
+        "The land of our heritage,"
+      ]
+    },
+    {
+      "local": [
+        "(Kubvira) kubva Zambezi kusvika Limpopo,",
+        "Navatungamiri vave nenduramo;",
+        "Ngaikomborerwe nyika [[yeZimbabwe]]."
+      ],
+      "english": [
+        "From the Zambezi to the Limpopo.",
+        "May our leaders be just and exemplary,",
+        "Blessed be the land of [[Zimbabwe]]."
+      ]
+    }
+  ]
+}

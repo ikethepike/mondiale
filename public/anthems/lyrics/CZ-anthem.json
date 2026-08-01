@@ -1,0 +1,75 @@
+{
+  "isoCode": "CZ",
+  "title": "Kde domov můj",
+  "language": {
+    "code": "cs",
+    "name": "Czech",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Josef Kajetán Tyl",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Kde_domov_můj"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Kde domov můj, kde domov můj,",
+        "voda hučí po lučinách,",
+        "bory šumí po skalinách,",
+        "v sadě skví se jara květ,"
+      ],
+      "english": [
+        "Where is my home, where is my home,",
+        "Streams are rushing through the meadows,",
+        "Midst the rocks sigh fragrant pine groves,",
+        "Orchards decked in spring's array,"
+      ]
+    },
+    {
+      "local": [
+        "zemský ráj to na pohled!",
+        "A to je ta krásná země,",
+        "země [[česká]] domov můj!",
+        "Kde domov můj, kde domov můj,"
+      ],
+      "english": [
+        "Scenes of Paradise portray.",
+        "And this land of wondrous beauty,",
+        "Is the [[Czech]] land, home of mine!",
+        "Where is my home, where is my home,"
+      ]
+    },
+    {
+      "local": [
+        "v kraji znáš-li bohumilém",
+        "duše útlé v těle čilém,",
+        "mysl jasnou, vznik a zdar",
+        "a tu sílu vzdoru zmar,"
+      ],
+      "english": [
+        "If in heavenly land thou hast met",
+        "Slender souls in spry bodies,",
+        "Of clear mind, vigorous and prosperous,",
+        "And with strength ruining all defiance,"
+      ]
+    },
+    {
+      "local": [
+        "to je [[Čechů]] slavné plémě",
+        "mezi [[Čechy]] domov můj!"
+      ],
+      "english": [
+        "This glorious nation of [[Czechs]]",
+        "Is of the [[Czechs]], home of mine!"
+      ]
+    }
+  ]
+}

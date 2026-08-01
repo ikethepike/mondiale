@@ -1,0 +1,48 @@
+{
+  "isoCode": "NR",
+  "title": "Nauru Bwiema",
+  "language": {
+    "code": "na",
+    "name": "Nauruan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Nauru_Bwiema"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Nauru]] bwiema, ngabena ma auwe.",
+        "Ma dedaro bwe dogum, ma otota bet egom.",
+        "Atsin ngago bwien okor, ama bagadugu",
+        "Epoa ngabuna ri nan orre bet imur."
+      ],
+      "english": [
+        "[[Nauru]] our homeland, the land we dearly love.",
+        "We all pray for you and we also praise your name.",
+        "Since long ago, you have been the home of our great forefathers",
+        "And will be, for generations, yet to come."
+      ]
+    },
+    {
+      "local": [
+        "Ama memag ma nan epodan eredu won engiden,",
+        "Miyan aema ngeiyin ouge:",
+        "[[Nauru]] eko dogin!"
+      ],
+      "english": [
+        "We all join in together to honour your flag,",
+        "And we shall rejoice together and say:",
+        "[[Nauru]] forevermore!"
+      ]
+    }
+  ]
+}

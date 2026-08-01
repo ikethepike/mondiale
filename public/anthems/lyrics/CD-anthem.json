@@ -1,0 +1,104 @@
+{
+  "isoCode": "CD",
+  "title": "Debout Congolais",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Debout_Congolais"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Debout [[Congolais]],",
+        "Unis par le sort,",
+        "Unis dans l'effort pour l'indépendance.",
+        "Dressons nos fronts, longtemps courbés"
+      ],
+      "english": [
+        "Arise, [[Congolese]]!",
+        "United by fate,",
+        "United for the struggle of independence",
+        "Let's hold up our heads, so long bowed"
+      ]
+    },
+    {
+      "local": [
+        "Et pour de bon prenons le plus bel élan,",
+        "Dans la paix.",
+        "Ô peuple ardent",
+        "Par le labeur"
+      ],
+      "english": [
+        "And now, for good, let's keep advance boldly,",
+        "In peace",
+        "Oh ardent people, by hard work we shall build",
+        "Our country more beautiful than before, in peace"
+      ]
+    },
+    {
+      "local": [
+        "Nous bâtirons un pays plus beau qu'avant",
+        "Dans la paix.",
+        "Citoyens,",
+        "Entonnez l'hymne sacré de votre solidarité"
+      ],
+      "english": [
+        "Countrymen, we all sing the sacred hymn of your solidarity",
+        "Countrymen, proudly salute the golden emblem of your sovereignty,",
+        "[[Congo]]!",
+        "Blessed gift, [[Congo]]!"
+      ]
+    },
+    {
+      "local": [
+        "Fièrement",
+        "Saluez l'emblème d'or de votre souveraineté",
+        "[[Congo]],",
+        "Don béni, [[Congo]] !"
+      ],
+      "english": [
+        "Of our forefathers, [[Congo]]!",
+        "Oh fatherland, [[Congo]]!",
+        "Oh beloved, [[Congo]]!",
+        "We shall populate your soil and ensure your eternal greatness"
+      ]
+    },
+    {
+      "local": [
+        "Des aïeux, [[Congo]] !",
+        "Ô pays, [[Congo]] !",
+        "Bien-aimé, [[Congo]] ! Nous peuplerons ton sol",
+        "et nous assurerons ta grandeur."
+      ],
+      "english": [
+        "Thirtieth of June, oh eternal sun,",
+        "Thirtieth of June, thirtieth of June,",
+        "Holy day, the historical witness",
+        "Holy day, immortal day"
+      ]
+    },
+    {
+      "local": [
+        "Trente juin, ô doux soleil",
+        "Trente juin, du trente juin",
+        "Jour sacré, sois le témoin,"
+      ],
+      "english": [
+        "Is the oath of freedom",
+        "That we pass on to our future generation,",
+        "Forever!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "isoCode": "BJ",
+  "title": "L'Aube nouvelle",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/L'Aube_nouvelle"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Enfants du [[Bénin]], debout !",
+        "La liberté d'un cri sonore",
+        "Chante aux premiers feux de l'aurore;",
+        "Enfants du [[Bénin]], debout !"
+      ],
+      "english": [
+        "Children of [[Benin]], arise!",
+        "The resounding cry of freedom",
+        "Is heard at the first light of dawn,",
+        "Children of [[Benin]], arise!"
+      ]
+    },
+    {
+      "local": [
+        "Jadis à son appel, nos aïeux sans faiblesse",
+        "Ont su avec courage, ardeur, pleins d'allégresse",
+        "Livrer au prix du sang des combats éclatants.",
+        "Accourez-vous aussi, bâtisseurs du présent,"
+      ],
+      "english": [
+        "Formerly, at her call, our ancestors",
+        "With strength, courage, ardour, and full of joy,",
+        "Knew how to engage in mighty battles, but at the price of blood.",
+        "Builders of present, you too, join forces"
+      ]
+    },
+    {
+      "local": [
+        "Plus forts dans l'unité, chaque jour à la tâche,",
+        "Pour la postérité, construisez sans relâche !",
+        "Quand partout souffle un vent de colère et de haine,",
+        "[[Béninois]], sois fier, et d'une âme sereine,"
+      ],
+      "english": [
+        "Each day for the task stronger in unity.",
+        "Build without ceasing for posterity.",
+        "When all around there blows a wind of anger and hate:",
+        "Citizen of [[Benin]] be proud, and in a calm spirit"
+      ]
+    },
+    {
+      "local": [
+        "Confiant dans l'avenir, regarde ton drapeau !",
+        "Dans le vert tu liras l'espoir du renouveau,",
+        "De tes aïeux le rouge évoque le courage;",
+        "Des plus riches trésors le jaune est le présage."
+      ],
+      "english": [
+        "Trusting in the future, behold your flag!",
+        "In the green you read hope of spring;",
+        "The red signifies the courage of your ancestors;",
+        "The yellow foretells the greatest treasures."
+      ]
+    },
+    {
+      "local": [
+        "Tes monts ensoleillés, tes palmiers, ta verdure,",
+        "Cher [[Bénin]], partout font ta vive parure.",
+        "Ton sol offre à chacun la richesse des fruits.",
+        "[[Bénin]], désormais que tes fils tous unis"
+      ],
+      "english": [
+        "Beloved [[Benin]], your sunny mountains, palm trees, and green pastures",
+        "Show everywhere your brightness;",
+        "Your soil offers everyone the richest fruits.",
+        "[[Benin]], from henceforth your sons are united"
+      ]
+    },
+    {
+      "local": [
+        "D'un fraternel élan partagent l'espérance",
+        "De te voir à jamais heureux dans l'abondance."
+      ],
+      "english": [
+        "With one brotherly spirit sharing the hope of seeing you",
+        "Enjoy abundance and happiness forever."
+      ]
+    }
+  ]
+}

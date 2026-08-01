@@ -1,0 +1,51 @@
+{
+  "isoCode": "ME",
+  "title": "Oj, svijetla majska zoro",
+  "language": {
+    "code": "cnr",
+    "name": "Montenegrin",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "author": "traditional; additional verses Sekula Drljević",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Oj,_svijetla_majska_zoro"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ој, јунаштва свјетла зоро,",
+        "Мајко наша Црна Горо!",
+        "На твојим се врлетима,",
+        "Разби сила душманима."
+      ],
+      "english": [
+        "O bright dawn of bravery,",
+        "Our mother [[Montenegro]]!",
+        "High on the mountains,",
+        "The enemy's force has been crushed."
+      ]
+    },
+    {
+      "local": [
+        "Једина си за слободу,",
+        "Ти остала српском роду.",
+        "Дат ће Бог и свјета мати",
+        "Да се једном све поврати!"
+      ],
+      "english": [
+        "Only you are still remaining,",
+        "For the Serbs to regain their freedom",
+        "God and Holy Mother's willing",
+        "All shall be restored again!"
+      ]
+    }
+  ]
+}

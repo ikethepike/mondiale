@@ -1,0 +1,78 @@
+{
+  "isoCode": "PG",
+  "title": "O Arise, All You Sons",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/O_Arise,_All_You_Sons"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "O arise all you sons of this land,",
+        "Let us sing of our joy to be free,",
+        "Praising God and rejoicing to be",
+        "[[Papua New Guinea]]."
+      ],
+      "english": [
+        "O arise all you sons of this land,",
+        "Let us sing of our joy to be free,",
+        "Praising God and rejoicing to be",
+        "[[Papua New Guinea]]."
+      ]
+    },
+    {
+      "local": [
+        "Shout our name from the mountains to seas",
+        "[[Papua New Guinea]];",
+        "Let us raise our voices and proclaim",
+        "[[Papua New Guinea]]."
+      ],
+      "english": [
+        "Shout our name from the mountains to seas",
+        "[[Papua New Guinea]];",
+        "Let us raise our voices and proclaim",
+        "[[Papua New Guinea]]."
+      ]
+    },
+    {
+      "local": [
+        "Now give thanks to the good Lord above",
+        "For His kindness, His wisdom and love",
+        "For this land of our fathers so free,",
+        "[[Papua New Guinea]]."
+      ],
+      "english": [
+        "Now give thanks to the good Lord above",
+        "For His kindness, His wisdom and love",
+        "For this land of our fathers so free,",
+        "[[Papua New Guinea]]."
+      ]
+    },
+    {
+      "local": [
+        "Shout again for the whole world to hear",
+        "[[Papua New Guinea]];",
+        "We're independent and we're free",
+        "[[Papua New Guinea]]."
+      ],
+      "english": [
+        "Shout again for the whole world to hear",
+        "[[Papua New Guinea]];",
+        "We're independent and we're free",
+        "[[Papua New Guinea]]."
+      ]
+    }
+  ]
+}

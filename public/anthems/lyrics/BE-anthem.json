@@ -1,0 +1,59 @@
+{
+  "isoCode": "BE",
+  "title": "La Brabançonne",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Jenneval (Louis-Alexandre Dechet), rev. Charles Rogier",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Brabançonne"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Noble [[Belgique]], ô mère chérie,",
+        "À toi nos cœurs, à toi nos bras,",
+        "À toi notre sang, ô Patrie !",
+        "Nous le jurons tous, tu vivras !"
+      ],
+      "english": [
+        "Noble [[Belgium]], O dear mother",
+        "To you our hearts, to you our arms,",
+        "To you our blood, O Fatherland!",
+        "We all swear, you shall live!"
+      ]
+    },
+    {
+      "local": [
+        "Tu vivras toujours grande et belle",
+        "Et ton invincible unité",
+        "Aura pour devise immortelle :",
+        "Le Roi, la Loi, la Liberté !"
+      ],
+      "english": [
+        "You shall always live great and beautiful,",
+        "And your invincible unity",
+        "Shall have as an immortal motto:",
+        "The King, the Law, Liberty!"
+      ]
+    },
+    {
+      "local": [
+        "Le Roi, la Loi, la Liberté !"
+      ],
+      "english": [
+        "The King, the Law, Liberty!"
+      ]
+    }
+  ]
+}

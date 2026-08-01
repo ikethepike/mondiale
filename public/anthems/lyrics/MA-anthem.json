@@ -1,0 +1,92 @@
+{
+  "isoCode": "MA",
+  "title": "النشيد الشريف",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Cherifian_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "مَنْبِتَ الْأَحْرَارْ",
+        "مَشْرِقَ الْأَنْوَارْ",
+        "مُنْتَدَى السُّؤْدَدِ وَحِمَاه",
+        "دُمْتَ مُنْتَدَاه وَحِمَاه"
+      ],
+      "english": [
+        "Root of the free,",
+        "Rising place of the Lights,",
+        "Forum of glory and its protector,",
+        "May you perpetuate as its forum and its protector."
+      ]
+    },
+    {
+      "local": [
+        "عِشْتَ فِي الْأَوْطَانْ",
+        "لِلْعُلَىٰ عُنْوَانْ",
+        "مِلْءَ كُلِّ جَنَانْ",
+        "ذِكْرَىٰ كُلِّ لِسَانْ"
+      ],
+      "english": [
+        "May you live among the homelands",
+        "As an address for grandeur",
+        "Filling every garden",
+        "conveyed by every tongue."
+      ]
+    },
+    {
+      "local": [
+        "بِالرُّوحِ",
+        "بِالْجَسَدِ",
+        "هَبَّ فَتَاكْ",
+        "لَبَّىٰ نِدَاكْ"
+      ],
+      "english": [
+        "With the spirit,",
+        "With the body,",
+        "Your son has come",
+        "To answer your call."
+      ]
+    },
+    {
+      "local": [
+        "فِي فَمِي وَفِي دَمِي",
+        "هَوَاكَ ثَارَ نُورْ وَنَارْ",
+        "إِخْوَتِي هَيَّا",
+        "لِلْعُلَىٰ سَعْيَا"
+      ],
+      "english": [
+        "In my mouth and in my blood,",
+        "Your love stirred up as light and fire.",
+        "Let's go brothers!",
+        "Heading for grandeur,"
+      ]
+    },
+    {
+      "local": [
+        "نُشْهِدِ الدُّنْيَا",
+        "أَنَّا هُنَا نَحْيَا",
+        "بِشِعَارْ",
+        "اَللَّٰه اَلْوَطَنْ اَلْمَلِكْ"
+      ],
+      "english": [
+        "Making the world witness",
+        "That we here perpetually live",
+        "With the motto:",
+        "God, Homeland, King."
+      ]
+    }
+  ]
+}

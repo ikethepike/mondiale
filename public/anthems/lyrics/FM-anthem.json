@@ -1,0 +1,86 @@
+{
+  "isoCode": "FM",
+  "title": "Patriots of Micronesia",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Patriots_of_Micronesia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "'Tis here we are pledging,",
+        "With heart and with hand,",
+        "Full measure of devotion",
+        "To thee, our native land."
+      ],
+      "english": [
+        "'Tis here we are pledging,",
+        "With heart and with hand,",
+        "Full measure of devotion",
+        "To thee, our native land."
+      ]
+    },
+    {
+      "local": [
+        "Now all join the chorus,",
+        "Let union abide.",
+        "Across all [[Micronesia]]",
+        "Join hands on every side."
+      ],
+      "english": [
+        "Now all join the chorus,",
+        "Let union abide.",
+        "Across all [[Micronesia]]",
+        "Join hands on every side."
+      ]
+    },
+    {
+      "local": [
+        "We all work together,",
+        "With heart, voice and hand,",
+        "Till we have made these islands",
+        "Another promised land."
+      ],
+      "english": [
+        "We all work together,",
+        "With heart, voice and hand,",
+        "Till we have made these islands",
+        "Another promised land."
+      ]
+    },
+    {
+      "local": [
+        "(Full measure of devotion",
+        "To thee, our native land.",
+        "Across all [[Micronesia]]",
+        "Join hands on every side."
+      ],
+      "english": [
+        "(Full measure of devotion",
+        "To thee, our native land.",
+        "Across all [[Micronesia]]",
+        "Join hands on every side."
+      ]
+    },
+    {
+      "local": [
+        "Till we have made these islands Another promised land.)"
+      ],
+      "english": [
+        "Till we have made these islands Another promised land.)"
+      ]
+    }
+  ]
+}

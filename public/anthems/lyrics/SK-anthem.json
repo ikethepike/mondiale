@@ -1,0 +1,93 @@
+{
+  "isoCode": "SK",
+  "title": "Nad Tatrou sa blýska",
+  "language": {
+    "code": "sk",
+    "name": "Slovak",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Janko Matúška",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Nad_Tatrou_sa_blýska"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Nad [[Tatrou]] sa blýska",
+        "Hromy divo bijú",
+        "Zastavme ich, bratia",
+        "Veď sa ony stratia"
+      ],
+      "english": [
+        "Far above the [[Tatras]]",
+        "Lightning bolts are pounding.",
+        "These bolts we shall banish,",
+        "brothers, for they will vanish;"
+      ]
+    },
+    {
+      "local": [
+        "Slováci ožijú",
+        "To [[Slovensko]] naše",
+        "Posiaľ tvrdo spalo",
+        "Ale blesky hromu"
+      ],
+      "english": [
+        "Slovaks are arising.",
+        "Our [[Slovakia]] was,",
+        "until now, quiescent.",
+        "But the lightning flashing"
+      ]
+    },
+    {
+      "local": [
+        "Vzbudzujú ho k tomu",
+        "Aby sa prebralo",
+        "Už [[Slovensko]] vstáva",
+        "Putá si strháva"
+      ],
+      "english": [
+        "and the thunder crashing",
+        "made it awaken.",
+        "[[Slovakia's]] now risen,",
+        "Her shackles shattering"
+      ]
+    },
+    {
+      "local": [
+        "Hej, rodina milá",
+        "Hodina odbila",
+        "Žije matka Sláva",
+        "Ešte jedle rastú"
+      ],
+      "english": [
+        "Hey, family endeared",
+        "The hour's struck",
+        "Mother Glory lives on.",
+        "Still blooming are the firs"
+      ]
+    },
+    {
+      "local": [
+        "Na krivánskej strane",
+        "Kto jak Slovák cíti",
+        "Nech sa šable chytí",
+        "A medzi nás stane"
+      ],
+      "english": [
+        "On the Krivan borders",
+        "Who feels like a Slovak",
+        "May he grab a sabre",
+        "And stand among us."
+      ]
+    }
+  ]
+}

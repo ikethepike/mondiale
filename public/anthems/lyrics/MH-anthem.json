@@ -1,0 +1,50 @@
+{
+  "isoCode": "MH",
+  "title": "Indeeo Ṃajeḷ",
+  "language": {
+    "code": "mh",
+    "name": "Marshallese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Forever_Marshall_Islands"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Aelōn̄ eo ao ion lometo;",
+        "Einwot wut ko lōti ion dren elae;",
+        "Kin meram in Mekar jen ijo ilan̄;",
+        "Erreo an romak ioir kin meram in mour;"
+      ],
+      "english": [
+        "My island lies o'er the ocean;",
+        "Like a wreath of flowers upon the sea;",
+        "With the light of the Maker from far above;",
+        "Shining with the brilliance of rays of life;"
+      ]
+    },
+    {
+      "local": [
+        "Eltan pein Anij eweleo im wōj;",
+        "Kejolit kij kin ijin jikir emol;",
+        "Ijjamin Ilok jen in aō lemoran;",
+        "Anij an ro jemem wonakke im kejrammon Aelin̄ kein ad."
+      ],
+      "english": [
+        "Our Father's wondrous creation;",
+        "Bequeathed to us, our motherland;",
+        "I'll never leave my dear home sweet home;",
+        "God of our forefathers protect and bless forever [[Marshall]] Islands."
+      ]
+    }
+  ]
+}

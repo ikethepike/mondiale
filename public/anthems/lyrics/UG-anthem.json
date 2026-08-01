@@ -1,0 +1,64 @@
+{
+  "isoCode": "UG",
+  "title": "Oh Uganda, Land of Beauty",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Oh_Uganda,_Land_of_Beauty"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Oh, [[Uganda]]! May God uphold thee,",
+        "We lay our future in thy hand;",
+        "United, free for liberty",
+        "together we'll always stand."
+      ],
+      "english": [
+        "Oh, [[Uganda]]! May God uphold thee,",
+        "We lay our future in thy hand;",
+        "United, free for liberty",
+        "together we'll always stand."
+      ]
+    },
+    {
+      "local": [
+        "Oh, [[Uganda]]! The land of freedom,",
+        "Our love and labour we give;",
+        "And with neighbours all at our country's call",
+        "In peace and friendship we'll live."
+      ],
+      "english": [
+        "Oh, [[Uganda]]! The land of freedom,",
+        "Our love and labour we give;",
+        "And with neighbours all at our country's call",
+        "In peace and friendship we'll live."
+      ]
+    },
+    {
+      "local": [
+        "Oh, [[Uganda]]! The land that feeds us,",
+        "By sun and fertile soil grown;",
+        "For our own dear land, we shall always stand,",
+        "The Pearl of Africa's Crown."
+      ],
+      "english": [
+        "Oh, [[Uganda]]! The land that feeds us,",
+        "By sun and fertile soil grown;",
+        "For our own dear land, we shall always stand,",
+        "The Pearl of Africa's Crown."
+      ]
+    }
+  ]
+}

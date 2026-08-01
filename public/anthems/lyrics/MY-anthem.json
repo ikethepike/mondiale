@@ -1,0 +1,50 @@
+{
+  "isoCode": "MY",
+  "title": "Negaraku",
+  "language": {
+    "code": "ms",
+    "name": "Malay",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Negaraku"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Negaraku,",
+        "Tanah tumpahnya darahku,",
+        "Rakyat hidup,",
+        "Bersatu dan maju!"
+      ],
+      "english": [
+        "My motherland,",
+        "The land where my blood spills,",
+        "The people live,",
+        "United and progressive!"
+      ]
+    },
+    {
+      "local": [
+        "Rahmat bahagia, (×2)",
+        "Tuhan kurniakan, (×2)",
+        "Raja kita, (×2)",
+        "Selamat bertakhta! (×2)"
+      ],
+      "english": [
+        "With God's blessings (×2)",
+        "of grace and happiness, (×2)",
+        "May our King, (×2)",
+        "be safely enthroned! (×2)"
+      ]
+    }
+  ]
+}

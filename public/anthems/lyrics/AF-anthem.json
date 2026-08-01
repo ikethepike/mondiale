@@ -1,0 +1,128 @@
+{
+  "isoCode": "AF",
+  "title": "دا د باتورانو کور",
+  "language": {
+    "code": "ps",
+    "name": "Pashto",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/This_Is_the_Home_of_the_Brave"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "ساتو يې په سرو وينو، دا د شهيدانو کور",
+        "دا د باتورانو کور، دا د باتورانو کور",
+        "کورس:",
+        "ساتو يې په سرو وينو، دا د شهيدانو کور"
+      ],
+      "english": [
+        "We defend thee with our blood, this is the home of martyrs",
+        "This is the home of the brave, this is the home of the brave",
+        "We defend thee with our blood, this is the home of martyrs",
+        "This is the home of the brave, this is the home of the brave"
+      ]
+    },
+    {
+      "local": [
+        "دا د باتورانو کور، دا د باتورانو کور",
+        "ستا کاڼي او بوټي ټول، مونږه ته لعلونه دي",
+        "ستا کاڼي او بوټي ټول، مونږه ته لعلونه دي",
+        "وينه پرې توی شوې ده، سره لکه گلونه دي"
+      ],
+      "english": [
+        "All thy stones and bushes look like rubies to us",
+        "All thy stones and bushes look like rubies to us",
+        "Upon them blood is spilt, they are all red like roses",
+        "Upon them blood is spilt, they are all red like roses"
+      ]
+    },
+    {
+      "local": [
+        "وينه پرې توی شوې ده، سره لکه گلونه دي",
+        "کله يې څوک نيولای شي؟ دا دی د زمريانو کور",
+        "دا د باتورانو کور، دا د باتورانو کور",
+        "کورس"
+      ],
+      "english": [
+        "Dost thou think 'tis conquerable? This is the home of lions",
+        "This is the home of the brave, this is the home of the brave",
+        "We shall protect thy freedom, as long as our lives last",
+        "We shall protect thy freedom, as long as our lives last"
+      ]
+    },
+    {
+      "local": [
+        "تا به تل آزاد ساتو، څو چې وي ژوندون زمونږ",
+        "تا به تل آزاد ساتو، څو چې وي ژوندون زمونږ",
+        "ستا تاريخ به ياد ساتو، څو چې وي ژوندون زمونږ",
+        "ستا تاريخ به ياد ساتو، څو چې وي ژوندون زمونږ"
+      ],
+      "english": [
+        "We shall remember thy history, as long as our lives last",
+        "We shall remember thy history, as long as our lives last",
+        "Eagles shall inhabit thee, this is the home of eagles",
+        "This is the home of the brave, this is the home of the brave"
+      ]
+    },
+    {
+      "local": [
+        "دې کې به بازان اوسي، دا دی د بازانو کور",
+        "دا د باتورانو کور، دا د باتورانو کور",
+        "کورس",
+        "ای گرانه وطن زما، ځار شمه له تا نه زه"
+      ],
+      "english": [
+        "O my dear homeland, for thy sake I offer my life",
+        "O my dear homeland, for thy sake I offer my life",
+        "O my gracious field, for thy sake I offer my life",
+        "O my gracious field, for thy sake I offer my life"
+      ]
+    },
+    {
+      "local": [
+        "ای گرانه وطن زما، ځار شمه له تا نه زه",
+        "ای ښايسته چمن زما، ځار شمه له تا نه زه",
+        "ای ښايسته چمن زما، ځار شمه له تا نه زه",
+        "خلاص که له انگرېز نه وو، شو د اورسانو گور"
+      ],
+      "english": [
+        "Once freed from the English (influence), a grave of Russians we've become",
+        "This is the home of the brave, this is the home of the brave",
+        "Behold these many skulls, remnants of the Russian foes",
+        "Behold these many skulls, remnants of the Russian foes"
+      ]
+    },
+    {
+      "local": [
+        "دا د باتورانو کور، دا د باتورانو کور",
+        "کورس",
+        "ډېرۍ ککرۍ گوره، پاتي د روسانو شوې",
+        "ډېرۍ ککرۍ گوره، پاتي د روسانو شوې"
+      ],
+      "english": [
+        "Every foe hath failed, all their hopes shattered",
+        "Every foe hath failed, all their hopes shattered",
+        "Now obvious to all, this is the home of the [[Afghans]]",
+        "This is the home of the brave, this is the home of the brave"
+      ]
+    },
+    {
+      "local": [
+        "شنډې د هر يو دښمن، واړه ارزوگانې شوې"
+      ],
+      "english": [
+        "This is the home of the brave..."
+      ]
+    }
+  ]
+}

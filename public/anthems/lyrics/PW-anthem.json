@@ -1,0 +1,78 @@
+{
+  "isoCode": "PW",
+  "title": "Belau rekid",
+  "language": {
+    "code": "pau",
+    "name": "Palauan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Belau_rekid"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Belau]] loba klisiich er a kelulul,",
+        "El di mla ngar ngii ra rechuodel mei",
+        "Meng mengeluolu era chimol beluu,",
+        "El ngar eungel a rirch el lomekesang."
+      ],
+      "english": [
+        "[[Palau]] is coming forth with strength and power,",
+        "By the old ways abides still every hour.",
+        "One country, safe, secure, one government",
+        "Under the glowing, floating soft light stands."
+      ]
+    },
+    {
+      "local": [
+        "Bodo leketek a keruul era beluad,",
+        "Lolab a blak el reng ma duch el reng.",
+        "[[Belau]] a chotil a klengar re kid,",
+        "Me bodo rurt a bedul msa klisichel."
+      ],
+      "english": [
+        "Let's build our economy's protecting fence",
+        "With courage, faithfulness and diligence",
+        "Our life is anchored in [[Palau]], our land",
+        "We with our might through life and death defend"
+      ]
+    },
+    {
+      "local": [
+        "Bo dekaiuereked chim lokiu a reng,",
+        "E do ngedmokl era di mla koted.",
+        "Lomecheliu a rengedel ma klebkellel,",
+        "Lokiu a budech ma beltik el reng."
+      ],
+      "english": [
+        "In spirit let's join hands, united, one",
+        "Care for our homeland...from forefathers on",
+        "Look after its concord, its glory keep",
+        "Through peace and love and heart's devotion deep"
+      ]
+    },
+    {
+      "local": [
+        "Dios mo mekngeltengat ra belumam,",
+        "El di mla dikesam ra rechuodel mei,",
+        "Beskemam a klisicham ma llemeltam,",
+        "Lorrurt a klungiolam el mo cherechar."
+      ],
+      "english": [
+        "God bless our country, our island home always",
+        "Our sweet inheritances from the ancient days",
+        "Give us strength and power and all of the rights",
+        "To govern with all eternity with might"
+      ]
+    }
+  ]
+}

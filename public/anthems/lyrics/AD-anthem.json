@@ -1,0 +1,65 @@
+{
+  "isoCode": "AD",
+  "title": "El Gran Carlemany",
+  "language": {
+    "code": "ca",
+    "name": "Catalan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Joan Benlloch i Vivó",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/El_gran_Carlemany"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "El gran Carlemany, mon pare,",
+        "dels alarbs em deslliurà,",
+        "i del cel vida em donà",
+        "de Meritxell, la gran Mare."
+      ],
+      "english": [
+        "The great Charlemagne, my father,",
+        "liberated me from the Saracens,",
+        "and from heaven he gave me life",
+        "of Meritxell, the great Mother."
+      ]
+    },
+    {
+      "local": [
+        "Princesa nasquí i pubilla",
+        "entre dos nacions, neutral;",
+        "sols resto l'única filla",
+        "de l'imperi Carlemany."
+      ],
+      "english": [
+        "I was born a princess and heiress",
+        "between two nations, neutral;",
+        "I am the only remaining daughter",
+        "of the Carolingian empire."
+      ]
+    },
+    {
+      "local": [
+        "Creient i lliure onze segles,",
+        "creient i lliure vull ser.",
+        "Siguin els furs mos tutors",
+        "i mos Prínceps defensors!"
+      ],
+      "english": [
+        "Faithful and free for eleven centuries,",
+        "Faithful and free I want to be.",
+        "May the laws be my tutors",
+        "and my Princes defenders!"
+      ]
+    }
+  ]
+}

@@ -549,6 +549,7 @@ export type DataSetId =
   | 'cities'
   | 'capitals'
   | 'anthems'
+  | 'anthem-lyrics'
   | 'tongues'
   | 'currencies'
   | 'leaders'
@@ -647,6 +648,13 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'wikidata-items', dataset: 'P85 anthem, P51 audio' },
       { source: 'commons-media', dataset: 'Anthem recordings' },
     ],
+  },
+  'anthem-lyrics': {
+    label: 'National anthem lyrics',
+    // The index is generated; the verse files it indexes are curated by hand
+    // under public/anthems/lyrics/. Both columns come from the same articles.
+    files: ['data/anthem-lyrics.gen.ts'],
+    origins: [{ source: 'wikipedia-articles', dataset: 'National anthem articles' }],
   },
   tongues: {
     label: 'Spoken-language recordings',

@@ -1,0 +1,61 @@
+{
+  "isoCode": "KR",
+  "title": "Aegukga",
+  "language": {
+    "code": "ko",
+    "name": "Korean",
+    "script": "Hangul"
+  },
+  "sources": {
+    "local": {
+      "author": "Yun Chi-ho or Ahn Chang-ho (disputed)",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Aegukga"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "동해 물과 백두산이 마르고 닳도록,",
+        "하느님이 보우하사 우리나라 만세.",
+        "무궁화 삼천리 화려 강산,",
+        "[[대한]] 사람 [[대한]]으로 길이 보전하세."
+      ],
+      "english": [
+        "Until the East Sea's waves are dry, Mt. Baekdu worn away,",
+        "God watch o'er our land forever, our [[Korea]] manse.",
+        "Rose of Sharon, thousand miles of range and river land;",
+        "Guarded by her people, ever may [[Korea]] stand."
+      ]
+    },
+    {
+      "local": [
+        "남산 위에 저 소나무 철갑을 두른 듯",
+        "바람서리 불변함은 우리 기상일세.",
+        "가을 하늘 공활한데 높고 구름 없이",
+        "밝은 달은 우리 가슴 일편단심일세."
+      ],
+      "english": [
+        "Like that Mt. Namsan, armoured pine, standing on duty still,",
+        "wind or frost, unchanging ever, be our resolute will.",
+        "In autumn's, arching evening sky, crystal and cloudless blue;",
+        "be the radiant moon our spirit, steadfast, single and true."
+      ]
+    },
+    {
+      "local": [
+        "이 기상과 이 맘으로 충성을 다하여",
+        "괴로우나 즐거우나 나라 사랑하세."
+      ],
+      "english": [
+        "With such a will, such a spirit, loyalty, heart and hand,",
+        "Let us love, come grief, come gladness, this our beloved land."
+      ]
+    }
+  ]
+}

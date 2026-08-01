@@ -1,0 +1,60 @@
+{
+  "isoCode": "TT",
+  "title": "Forged from the Love of Liberty",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Forged_from_the_Love_of_Liberty"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Forged from the love of liberty",
+        "In the fires of hope and prayer",
+        "With boundless faith in our destiny",
+        "We solemnly declare:"
+      ],
+      "english": [
+        "Forged from the love of liberty",
+        "In the fires of hope and prayer",
+        "With boundless faith in our destiny",
+        "We solemnly declare:"
+      ]
+    },
+    {
+      "local": [
+        "Side by side we stand",
+        "Islands of the blue Caribbean sea,",
+        "This our native land",
+        "We pledge our lives to thee."
+      ],
+      "english": [
+        "Side by side we stand",
+        "Islands of the blue Caribbean sea,",
+        "This our native land",
+        "We pledge our lives to thee."
+      ]
+    },
+    {
+      "local": [
+        "Here every creed and race find an equal place,",
+        "And may God bless our nation."
+      ],
+      "english": [
+        "Here every creed and race find an equal place,",
+        "And may God bless our nation."
+      ]
+    }
+  ]
+}

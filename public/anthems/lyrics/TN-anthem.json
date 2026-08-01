@@ -1,0 +1,107 @@
+{
+  "isoCode": "TN",
+  "title": "Humat al-Hima",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "author": "Mostafa Sadik El-Rafii, Aboul-Qacem Echebbi",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Humat_al-Hima"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "حُمَاةَ الْحِمَى يَا حُمَاةَ الْحِمَى",
+        "هَلُمُّواْ هَلُمُّواْ لِمَجْدِ الزَّمَنْ",
+        "لَقَدْ صَرَخَتْ فِي عُرُوقِنَا الدِّمَا",
+        "نَمُوتُ نَمُوتُ وَيَحْيَا الْوَطَنْ"
+      ],
+      "english": [
+        "O defenders of the Homeland!",
+        "Rally around to the glory of our time!",
+        "The blood surges in our veins,",
+        "We die for the sake of our land."
+      ]
+    },
+    {
+      "local": [
+        "لِتَدْوِ السَّمَاوَاتُ بِرَعْدِهَا",
+        "لِتَرْمِ الصَّوَاعِقُ نِيرَانَهَا",
+        "إِلَى عِزِّ تُونِسْ إِلَى مَجْدِهَا",
+        "رِجَالَ الْبِلَادِ وَشُبَّانَهَا"
+      ],
+      "english": [
+        "Let the heavens roar with thunder",
+        "Let thunderbolts rain with fire.",
+        "Men and youth of [[Tunisia]],",
+        "Rise up for her might and glory."
+      ]
+    },
+    {
+      "local": [
+        "فَلَا عَاشَ فِي تُونِسْ مَنْ خَانَهَا",
+        "وَلَا عَاشَ مَنْ لَيْسَ مِنْ جُنْدِهَا",
+        "نَمُوتُ وَنَحْيَا عَلَى عَهْدِهَا",
+        "حَيَاةَ الْكِرَامِ وَمَوْتَ الْعِظَامْ"
+      ],
+      "english": [
+        "No place for betrayers in [[Tunisia]],",
+        "Only for those who defend her!",
+        "We live and die loyal to [[Tunisia]],",
+        "A life of dignity and a death of glory."
+      ]
+    },
+    {
+      "local": [
+        "وَرِثْنَا السَّوَاعِدَ بَيْنَ الْأُمَمْ",
+        "صُخُورًا صُخُورًا كَهَذَا الْبِنَاء",
+        "سَوَاعِدُ يَهْتَزُّ فَوْقَهَا الْعَلَمْ",
+        "نُبَاهِي بِهِ وَيُبَاهِي بِنَا"
+      ],
+      "english": [
+        "As a nation we inherited",
+        "Arms like granite towers.",
+        "Holding aloft our proud flag flying,",
+        "We boast of it, it boasts of us,"
+      ]
+    },
+    {
+      "local": [
+        "وَفِيهَا كَفَا لِلْعُلَى وَالْهِمَمْ",
+        "وَفِيهَا ضَمَانٌ لِنَيْلِ الْمُنَى",
+        "وَفِيهَا لِأَعْدَاءِ تُونِسْ نِقَمْ",
+        "وَفِيهَا لِمَنْ سَالَمُونَا السَّلَامْ"
+      ],
+      "english": [
+        "Arms that achieve ambitions and glory,",
+        "Sure to realize our hopes,",
+        "Inflict defeat on foes,",
+        "Offer peace to friends."
+      ]
+    },
+    {
+      "local": [
+        "إِذَا الشَّعْبُ يَوْمًا أَرَادَ الْحَيَاة",
+        "فَلَا بُدَّ أَنْ يَسْتَجِيبَ الْقَدَرْ",
+        "وَلَا بُدَّ لِلَّيْلِ أَنْ يَنْجَلِي",
+        "وَلَا بُدَّ لِلْقَيْدِ أَنْ يَنْكَسِرْ"
+      ],
+      "english": [
+        "When the people will to live,",
+        "Destiny must surely respond.",
+        "Oppression shall then vanish.",
+        "Fetters are certain to break."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "isoCode": "SG",
+  "title": "Majulah Singapura",
+  "language": {
+    "code": "ms",
+    "name": "Malay",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Majulah_Singapura"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Mari kita rakyat [[Singapura]]",
+        "Sama-sama menuju bahagia",
+        "Cita-cita kita yang mulia",
+        "Berjaya [[Singapura]]"
+      ],
+      "english": [
+        "Come, fellow [[Singaporeans]]",
+        "Let us progress towards happiness together",
+        "May our noble aspiration bring",
+        "[[Singapore]] success"
+      ]
+    },
+    {
+      "local": [
+        "Marilah kita bersatu",
+        "Dengan semangat yang baru",
+        "Semua kita berseru",
+        "Majulah [[Singapura]]"
+      ],
+      "english": [
+        "Come, let us unite",
+        "In a new spirit",
+        "Let our voices soar as one",
+        "Onward [[Singapore]]"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "isoCode": "CV",
+  "title": "Cântico da Liberdade",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/C%C3%A2ntico_da_Liberdade"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Canta, irmão",
+        "Canta meu irmão",
+        "Que a Liberdade é hino",
+        "E o Homem a certeza."
+      ],
+      "english": [
+        "Sing, brother",
+        "Sing, my brother",
+        "For Freedom is hymn",
+        "And the Man the certainty."
+      ]
+    },
+    {
+      "local": [
+        "Com dignidade, enterra a semente",
+        "no pó da ilha nua",
+        "No despenhadeiro da vida",
+        "A esperança é"
+      ],
+      "english": [
+        "With dignity, bury the seed",
+        "In the dust of the naked island",
+        "At the escarpment of life",
+        "Hope is"
+      ]
+    },
+    {
+      "local": [
+        "Do tamanho do mar",
+        "Que nos abraça",
+        "Sentinela de mares e ventos",
+        "Perseverante"
+      ],
+      "english": [
+        "As big as the sea",
+        "Which embraces us",
+        "Sentinel of the oceans and winds",
+        "Persevering"
+      ]
+    },
+    {
+      "local": [
+        "Entre estrelas",
+        "E o Atlântico",
+        "Entoa o cântico da Liberdade"
+      ],
+      "english": [
+        "Between the stars",
+        "And the Atlantic",
+        "Intone the Chant of Freedom."
+      ]
+    }
+  ]
+}

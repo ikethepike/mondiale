@@ -1,0 +1,89 @@
+{
+  "isoCode": "EE",
+  "title": "Mu isamaa, mu õnn ja rõõm",
+  "language": {
+    "code": "et",
+    "name": "Estonian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Johann Voldemar Jannsen",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Mu_isamaa,_mu_õnn_ja_rõõm"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Mu isamaa, mu õnn ja rõõm,",
+        "kui kaunis oled sa!",
+        "Ei leia mina iial teal",
+        "see suure, laia ilma peal,"
+      ],
+      "english": [
+        "My native land, my joy – delight,",
+        "How fair thou art – how bright!",
+        "For nowhere in the world around",
+        "Can ever such a place be found"
+      ]
+    },
+    {
+      "local": [
+        "mis mul nii armas oleks ka,",
+        "kui sa, mu isamaa!",
+        "Sa oled mind ju sünnitand",
+        "ja üles kasvatand;"
+      ],
+      "english": [
+        "So well belov'd, from sense profound,",
+        "My native country dear!",
+        "My tiny crib stood on thy soil,",
+        "Whose blessings eased my toil."
+      ]
+    },
+    {
+      "local": [
+        "sind tänan mina alati",
+        "ja jään sull' truuiks surmani,",
+        "mul kõige armsam oled sa,",
+        "mu kallis isamaa!"
+      ],
+      "english": [
+        "May my last breath be thanks to thee,",
+        "For true to death I'll ever be,",
+        "O worthy, most belov'd and fine,",
+        "Thou, dearest country mine!"
+      ]
+    },
+    {
+      "local": [
+        "Su üle Jumal valvaku",
+        "mu armas isamaa!",
+        "Ta olgu sinu kaitseja",
+        "ja võtku rohkest õnnista,"
+      ],
+      "english": [
+        "May God in Heaven thee defend,",
+        "My own beloved land!",
+        "May He be guard, may He be shield,",
+        "For ever bless and guardian wield"
+      ]
+    },
+    {
+      "local": [
+        "mis iial ette võtad sa,",
+        "mu kallis isamaa!"
+      ],
+      "english": [
+        "Protection for all deeds of thine,",
+        "My own, my dearest land!"
+      ]
+    }
+  ]
+}

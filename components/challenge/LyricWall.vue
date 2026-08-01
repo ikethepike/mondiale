@@ -48,7 +48,14 @@ const props = withDefaults(
   { lyrics: undefined, revealed: false, translated: false }
 )
 
-/** `Du gamla, du [[fria]]` → [{text:'Du gamla, du '},{text:'fria',blanked:true}] */
+/**
+ * `Du gamla, du [[fria]]` → [{text:'Du gamla, du '},{text:'fria',blanked:true}]
+ *
+ * Leading and trailing spaces around a mask are moved OUT of the masked span
+ * and kept as their own plain span. A masked word is `inline-block` so its
+ * width survives the reveal, and Vue strips the whitespace between element
+ * tags — so a space left at the edge of a mask vanished and the words collided.
+ */
 const parseLine = (line: string): LyricSpan[] => {
   const spans: LyricSpan[] = []
   // `\[\[` escapes a literal bracket pair; nothing has needed it yet.
@@ -58,8 +65,16 @@ const parseLine = (line: string): LyricSpan[] => {
 
   while ((match = pattern.exec(line))) {
     if (match.index > cursor) spans.push({ text: line.slice(cursor, match.index) })
-    if (match[1] === undefined) spans.push({ text: '[[' })
-    else spans.push({ text: match[1], blanked: true })
+    if (match[1] === undefined) {
+      spans.push({ text: '[[' })
+    } else {
+      // Split the padding off so it renders as ordinary text either side of the
+      // inline-block mask, rather than being swallowed with it.
+      const [, before = '', word = '', after = ''] = match[1].match(/^(\s*)(.*?)(\s*)$/s) ?? []
+      if (before) spans.push({ text: before })
+      spans.push({ text: word, blanked: true })
+      if (after) spans.push({ text: after })
+    }
     cursor = match.index + match[0].length
   }
   if (cursor < line.length) spans.push({ text: line.slice(cursor) })
@@ -83,20 +98,38 @@ const driftDistance = ref(0)
 const driftSeconds = ref(0)
 const drifting = computed(() => driftDistance.value > 0)
 
-/** Only a verse that actually overflows drifts. Kimigayo is five lines; it
- *  should sit still rather than crawl for no reason. */
+/**
+ * Only a verse taller than the screen drifts — Kimigayo is five lines and
+ * should sit still rather than crawl for no reason.
+ *
+ * Measured as CONTENT vs the wall's own box, not `scrollHeight - clientHeight`
+ * on the column: the column is centred in a grid cell, so it shrink-wraps its
+ * content and those two are always equal. That returned zero for every verse
+ * and no wall ever drifted.
+ */
 const measureDrift = () => {
   const element = column.value
-  if (!element || prefersReducedMotion()) {
+  const frame = element?.parentElement
+  if (!element || !frame || prefersReducedMotion()) {
     driftDistance.value = 0
     return
   }
-  const overflow = element.scrollHeight - element.clientHeight
-  driftDistance.value = Math.max(0, overflow)
-  driftSeconds.value = Math.round(
-    (driftDistance.value / Math.max(1, window.innerHeight)) * DRIFT_SECONDS_PER_SCREEN * 2
+
+  // The scroll height of the line stack against the height available to it.
+  const content = element.scrollHeight
+  const available = frame.clientHeight
+  const overflow = content - available
+  // Ignore hairline overflows: a couple of stray pixels are a rounding artefact,
+  // not a verse that needs to move.
+  driftDistance.value = overflow > MINIMUM_DRIFT_PX ? overflow : 0
+  driftSeconds.value = Math.max(
+    DRIFT_SECONDS_PER_SCREEN,
+    Math.round((driftDistance.value / Math.max(1, available)) * DRIFT_SECONDS_PER_SCREEN)
   )
 }
+
+/** Below this, the overflow is rounding noise rather than real spill. */
+const MINIMUM_DRIFT_PX = 24
 
 onMounted(() => {
   measureDrift()
@@ -116,23 +149,31 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   position: absolute;
   inset: 0;
   z-index: 0;
-  display: flex;
+  // Grid rather than flex: both columns occupy the SAME cell (see the swap
+  // rules below), so the longer English verse cannot reflow the shorter local
+  // one mid-fade.
+  display: grid;
   overflow: hidden;
-  align-items: center;
+  place-items: center;
   pointer-events: none;
-  justify-content: center;
   // Fades at both edges so the text dissolves rather than being cut off.
   mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
 }
 
 .verse {
-  gap: 0.6em;
+  // Both columns share one cell so the swap cross-fades in place instead of
+  // reflowing — the English lines run longer than the local ones.
+  grid-area: 1 / 1;
+  gap: 0.45em;
   margin: 0;
-  padding: 12vh 6vw;
+  // Generous gutters, and enough room top and bottom that the mask fades over
+  // empty space rather than mid-word.
+  padding: 10vh clamp(1.6rem, 7vw, 8rem);
+  width: 100%;
   display: flex;
-  max-height: 100%;
+  max-width: 76rem;
   list-style: none;
-  text-align: center;
+  text-align: left;
   flex-flow: column nowrap;
   // The system stack: this is chrome, not the game's editorial voice, so it
   // stays out of the way of the serif the rest of the round is set in.
@@ -144,18 +185,28 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   animation: lyric-drift var(--drift-seconds) linear infinite alternate;
 }
 
+// Big, soft and set on its own terms — the Apple Music treatment. The size
+// scales with the viewport so a phone gets the same presence a desktop does,
+// and long lines wrap rather than shrinking to fit.
 .line {
   opacity: 0;
-  font-size: clamp(1.6rem, 4.4vw, 2.8rem);
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  // Pale enough to sit behind the round without competing with it.
-  color: #{ink(0.13)};
+  // Size tracks the SHORTER edge too, so a wide-but-short desktop window does
+  // not blow the verse past the bottom of the screen.
+  font-size: clamp(2rem, min(5.6vw, 4.6vh), 4.2rem);
+  font-weight: 700;
+  line-height: 1.45;
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+  // Present enough to read as words rather than texture, still clearly behind
+  // the round's own chrome.
+  color: #{ink(0.24)};
   animation: row-land 0.7s var(--ease-smooth) forwards;
   animation-delay: calc(var(--i) * 70ms);
 }
 
+// pre-wrap keeps the spaces the parser hands us: the compiler strips whitespace
+// between element tags, so a plain span holding " " would otherwise collapse and
+// the word either side of a mask would touch it.
 .span {
   white-space: pre-wrap;
 }
@@ -168,6 +219,9 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
 
   .word {
     opacity: 0;
+    // inline-block so the reveal's scale beat actually applies — transforms
+    // are ignored on a plain inline box.
+    display: inline-block;
     transition: opacity var(--motion-base) var(--ease-smooth);
   }
 
@@ -179,10 +233,14 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
     transition: opacity var(--motion-base) var(--ease-smooth);
   }
 
+  // Revealed: the hidden words are the whole point of the wall — the thing
+  // that would have named the country. They come up brighter than the verse
+  // around them and settle, so the eye lands on them rather than scanning.
   &.open {
     .word {
       opacity: 1;
-      color: #{flame(0.5)};
+      color: #{flame()};
+      animation: lyric-strike var(--motion-slow) var(--ease-out-expressive) both;
     }
 
     .mask {
@@ -200,6 +258,20 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
 .wall-enter-from,
 .wall-leave-to {
   opacity: 0;
+}
+
+// The revealed word swells briefly before settling — a beat of emphasis on the
+// span that was hiding the answer.
+@keyframes lyric-strike {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.09);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes lyric-drift {

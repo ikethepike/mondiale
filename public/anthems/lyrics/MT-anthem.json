@@ -1,0 +1,46 @@
+{
+  "isoCode": "MT",
+  "title": "L-Innu Malti",
+  "language": {
+    "code": "mt",
+    "name": "Maltese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/L-Innu_Malti"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Lil din l-art ħelwa, l-Omm li tatna isimha,",
+        "Ħares, Mulej, kif dejjem Int ħarist:",
+        "Ftakar li lilha bil-oħla dawl libbist.",
+        "Agħti, kbir Alla, id-dehen lil min jaħkimha,"
+      ],
+      "english": [
+        "This sweet land, the Mother that gave us her name,",
+        "Protect (her), Lord, as always You protected (her):",
+        "Remember that her (You) clothed with the sweetest light.",
+        "Give, great God, discernment to (those) who rule her,"
+      ]
+    },
+    {
+      "local": [
+        "Rodd il-ħniena lis-sid, saħħa 'l-ħaddiem:",
+        "Seddaq il-għaqda fil-[[Maltin]] u s-sliem."
+      ],
+      "english": [
+        "Return mercy to the owner, health to the worker:",
+        "Render righteous the unity in the [[Maltese]] and the peace."
+      ]
+    }
+  ]
+}

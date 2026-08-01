@@ -1,0 +1,88 @@
+{
+  "isoCode": "YE",
+  "title": "الجمهورية المتحدة",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Yemen"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "رَدِّدِي أَيَّتُهَا الدُّنْيَا نَشِيدِي",
+        "رَدِّدِيهِ وَأَعِيدِي وَأَعِيدِي",
+        "وَاذْكُرِي فِي فَرْحَتِي كُلَّ شَهِيدِ",
+        "وَامْنَحِيهِ حُلَلًا مِنْ ضَوْءِ عِيدِي"
+      ],
+      "english": [
+        "Repeat, O World, my song.",
+        "Echo it over and over again.",
+        "Remember, through my joy, each martyr.",
+        "Clothe her with the shining mantles of our festivals."
+      ]
+    },
+    {
+      "local": [
+        "رَدِّدِي أَيَّتُهَا الدُّنْيَا نَشِيدِي",
+        "وَحْدَتِي، وَحْدَتِي",
+        "يَا نَشِيدًا رَائِعًا يَمْلَأُ نَفْسِي",
+        "أَنْتِ عَهْدٌ عَالِقٌ فِي كُلِّ ذِمَّة"
+      ],
+      "english": [
+        "Repeat, O World, my song.",
+        "My unity, my unity",
+        "O marvelous song which fills my heart,",
+        "You are the promise of all to come,"
+      ]
+    },
+    {
+      "local": [
+        "رَايَتِي، رَايَتِي",
+        "يَا نَسِيجًا حِكْتُهُ مِنْ كُلِّ شَمْسِ",
+        "أُخْلُدِي خَافِقَةً فِي كُلِّ قِمَّة",
+        "أُمَّتِي، أُمَّتِي"
+      ],
+      "english": [
+        "My banner, my banner",
+        "O cloth nailed from every sun",
+        "Raised forever, on every peak",
+        "My nation, my nation"
+      ]
+    },
+    {
+      "local": [
+        "اِمْنَحِينِي الْبَأْسَ يَامَصْدَرَ بَأْسِي",
+        "وَاذْخُرِينِي لَكِ يَا أَكْرَمَ أُمَّة",
+        "عِشْتُ إِيمَانِي وَحُبِّي أُمَمِيَّا",
+        "وَمَسِيرِي فَوْقَ دَرْبِي عَرَبِيَّا"
+      ],
+      "english": [
+        "give me strength, o source of strength",
+        "And save me for you, the best of nations.",
+        "In faith and love I am part of mankind,",
+        "And I shall march first among the Arabs."
+      ]
+    },
+    {
+      "local": [
+        "وَسَيَبْقَى نَبْضُ قَلْبِي يَمَنِيَّا",
+        "لَنْ تَرَى الدُّنْيَا عَلَى أَرْضِي وَصِيَّا"
+      ],
+      "english": [
+        "And my heart beat shall remain that of a [[Yemenite]].",
+        "No foreigner shall ever hold dominion over [[Yemen]]."
+      ]
+    }
+  ]
+}

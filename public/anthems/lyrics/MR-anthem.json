@@ -1,0 +1,130 @@
+{
+  "isoCode": "MR",
+  "title": "بلاد الأباة الهداة الكرام",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Mauritania"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "بِلَادَ الْأُبَاةِ الْهُدَاةِ الْكِرَامْ",
+        "وَحِصْنَ الْكِتَابِ الَّذِي لَا يُضَامْ",
+        "أَيَا مُورِيتَانِ رَبِيعَ الْوِئَامْ",
+        "وَرُكْنَ السَّمَاحَةِ ثَغْرَ السَّلَامْ"
+      ],
+      "english": [
+        "The country of the honourable, generous fathers",
+        "And the fortress of the Book that cannot be violated.",
+        "O [[Mauritania]], spring of harmony",
+        "And the pillar of tolerance, the breach of peace."
+      ]
+    },
+    {
+      "local": [
+        "سَنَحْمِي حِمَاكِ وَنَحْنُ فِدَاكِ",
+        "وَنَكْسُو رُبَاكِ بِلَوْنِ الْأَمَلْ",
+        "وَعِنْدَ نِدَاكِ نُلَبِّي أَجَلْ",
+        "بُدُورُ سَمَائِكِ لَمْ تُحْجَبِ"
+      ],
+      "english": [
+        "We will protect your honour and we are your servants",
+        "And cover your soil with the colour of hope.",
+        "And at your call, we will answer 'yes'.",
+        "The constellations of your skies have not been veiled"
+      ]
+    },
+    {
+      "local": [
+        "وَشَمْسُ جَبِينِكِ لَمْ تَغْرُبِ",
+        "نَمَاكِ الْأَمَاجِدُ مِنْ يَعْرُبِ",
+        "لِإِفْرِيقِيَّا الْمَنْبَعِ الْأَعْذَبِ",
+        "رَضَعْنَا لِبَانَ النَّدَى وَالْإِبَا"
+      ],
+      "english": [
+        "and the sun of your forehead has not set.",
+        "The glorious Arabs have raised you up.",
+        "For Africa, the freshest source",
+        "We suckled the milk of praise and pride"
+      ]
+    },
+    {
+      "local": [
+        "سَجَايَا حَمَلْنَ جَنًى طَيِّبَا",
+        "وَمَرْعًى خَصِيبًا، وَإِنْ أَجْدَبَا",
+        "سَمَوْنَا، فَكَانَ لَنَا أَرْحَبَا",
+        "سَقَيْنَا عَدُوَّكِ صَابًا وَمُرًّا"
+      ],
+      "english": [
+        "Of our nature, which bores a good harvest",
+        "and fertile pasture, even if it was barren.",
+        "We rose to Heaven, and we were pleased.",
+        "We have made your enemy drink a bitter downpour,"
+      ]
+    },
+    {
+      "local": [
+        "فَمَا نَالَ نُزْلًا وَلَا مُسْتَقَرَّا",
+        "نُقَاوِمُهُ حَيْثُ جَاسَ وَمَرَّا",
+        "نُرَتِّلُ إِنَّ مَعَ العُسْرِ يُسْرَا",
+        "قَفَوْنَا الرَّسُولَ بِنَهْجٍ سَمَا"
+      ],
+      "english": [
+        "not allowing him to obtain shelter nor stability.",
+        "We resist him wherever he goes and wherever he comes,",
+        "chanting: \"Surely, with hardship comes ease\"",
+        "We followed the prophet along the path of the heavens"
+      ]
+    },
+    {
+      "local": [
+        "إِلَىٰ سِدْرَةِ الْمَجْدِ فَوْقَ السَّمَا",
+        "حَجَزْنَا الثُّرَيَّا لَنَا سُلَّمَا",
+        "رَسَمْنَا هُنَالِكَ حَدَّ الْحِمَىٰ",
+        "أَخَذْنَاكِ عَهْدًا حَمَلْنَاكِ وَعْدًا"
+      ],
+      "english": [
+        "to the tree of glory above the sky",
+        "occupying the Pleiades as our stairway",
+        "drawing there our boundary.",
+        "We took you as a vow and carried you as a promise"
+      ]
+    },
+    {
+      "local": [
+        "وَنُهْدِيكِ سَعْدًا لِجِيلٍ أطَلْ",
+        "كورال النهائي:",
+        "سَنَحْمِي حِمَاكِ وَنَحْنُ فِدَاكِ",
+        "وَنَكْسُو رُبَاكِ بِلَوْنِ الْأَمَلْ"
+      ],
+      "english": [
+        "and we happily give you up to the future generations",
+        "Final chorus:",
+        "We will protect your honour and we are your servants",
+        "And cover your soil with the colour of hope."
+      ]
+    },
+    {
+      "local": [
+        "سَنَحْمِي حِمَاكِ وَنَحْنُ فِدَاكِ",
+        "وَعِنْدَ نِدَاكِ نُلَبِّي أجَلْ"
+      ],
+      "english": [
+        "We will protect your honour and we are your servants",
+        "And at your call, we will answer 'yes'!"
+      ]
+    }
+  ]
+}

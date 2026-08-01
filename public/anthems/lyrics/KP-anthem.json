@@ -1,0 +1,78 @@
+{
+  "isoCode": "KP",
+  "title": "애국가",
+  "language": {
+    "code": "ko",
+    "name": "Korean",
+    "script": "Hangul"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Aegukka"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "아침은 빛나라 이 강산",
+        "은금에 자원도 가득한",
+        "이 세상 아름다운 내 조국",
+        "반만년 오랜 력사에"
+      ],
+      "english": [
+        "Shine bright, you dawn, on this land so fair,",
+        "Over the world, dazzles my country.",
+        "So rich in silver and in gold you are,",
+        "Five thousand years of your history."
+      ]
+    },
+    {
+      "local": [
+        "찬란한 문화로 자라난",
+        "슬기론 인민의 이 영광",
+        "몸과 맘 다 바쳐 이 [[조선]]",
+        "길이 받드세"
+      ],
+      "english": [
+        "Our people ever were renowned and sage,",
+        "And rich in cultural heritage,",
+        "And as with heart and soul, we strive,",
+        "[[Korea]] shall forever thrive!"
+      ]
+    },
+    {
+      "local": [
+        "백두산 기상을 다 안고",
+        "근로의 정신은 깃들어",
+        "진리로 뭉쳐진 억센 뜻",
+        "온 세계 앞서 나가리"
+      ],
+      "english": [
+        "And in the spirit of Mount Paektu,",
+        "With the love of toil that shall never die,",
+        "With a will of iron fostered by the truth,",
+        "We'll lead the whole world by and by."
+      ]
+    },
+    {
+      "local": [
+        "솟는 힘 노도도 내밀어",
+        "인민의 뜻으로 선 나라",
+        "한없이 부강하는 이 [[조선]]",
+        "길이 빛내세"
+      ],
+      "english": [
+        "We have the might to foil the angry sea,",
+        "Our land more prosperous still shall be,",
+        "As by the people's will we strive,",
+        "[[Korea]] shall forever thrive!"
+      ]
+    }
+  ]
+}

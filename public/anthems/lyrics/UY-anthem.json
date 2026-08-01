@@ -1,0 +1,101 @@
+{
+  "isoCode": "UY",
+  "title": "Himno Nacional de Uruguay",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Francisco Acuña de Figueroa",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Uruguay"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡[[Orientales]], la Patria o la Tumba!",
+        "¡Libertad o con gloria morir!",
+        "¡Es el voto que el alma pronuncia,",
+        "Y que heroicos sabremos cumplir!"
+      ],
+      "english": [
+        "Easterners, the Fatherland or the grave!",
+        "Freedom or with glory we die!",
+        "It is the vow that the soul pronounces,",
+        "and which, heroically we will fulfill!"
+      ]
+    },
+    {
+      "local": [
+        "¡Es el voto que el alma pronuncia,",
+        "Y que heroicos sabremos cumplir!",
+        "¡Que sabremos cumplir!",
+        "¡Sabremos cumplir!"
+      ],
+      "english": [
+        "It is the vow that the soul pronounces,",
+        "and which, heroically we will fulfill!",
+        "Which we will fulfill!",
+        "We will fulfill!"
+      ]
+    },
+    {
+      "local": [
+        "¡Sabremos cumplir!",
+        "¡Libertad, libertad, [[orientales]]!",
+        "Este grito a la Patria salvó.",
+        "Que a sus bravos en fieras batallas"
+      ],
+      "english": [
+        "We will fulfill!",
+        "Freedom, Freedom, Easterners!",
+        "This cry saved the fatherland.",
+        "Which her brave warriors, in fierce battles"
+      ]
+    },
+    {
+      "local": [
+        "De entusiasmo sublime inflamó.",
+        "De este don sacrosanto la gloria",
+        "Merecimos: ¡tiranos, temblad!",
+        "¡Tiranos, temblad!"
+      ],
+      "english": [
+        "With sublime enthusiasm fill´d.",
+        "From this sacred gift the glory we deserved",
+        "Tyrants: Tremble!",
+        "Tyrants: Tremble!"
+      ]
+    },
+    {
+      "local": [
+        "Libertad en la lid clamaremos,",
+        "Y muriendo, ¡también libertad!",
+        "Libertad en la lid clamaremos,",
+        "Y muriendo, ¡también libertad!"
+      ],
+      "english": [
+        "Freedom in combat we shall cry out!",
+        "And dying, Freedom too!",
+        "Freedom in combat we shall cry out!",
+        "And dying, Freedom too!"
+      ]
+    },
+    {
+      "local": [
+        "¡También libertad!"
+      ],
+      "english": [
+        "Freedom too!"
+      ]
+    }
+  ]
+}

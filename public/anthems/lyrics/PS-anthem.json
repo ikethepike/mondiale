@@ -1,0 +1,92 @@
+{
+  "isoCode": "PS",
+  "title": "فدائي",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Palestine"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "فِدَائِيّ فِدَائِيّ فِدَائِيّ",
+        "يَا أَرْضِي يَا أَرْضَ الجُدُود",
+        "فِدَائِيّ فِدَائِيّ فِدَائِيّ",
+        "يَا شَعْبِي يَا شَعْبَ الخُلُود"
+      ],
+      "english": [
+        "Warrior, warrior, warrior,",
+        "Oh my land, the land of the ancestors",
+        "Warrior, warrior, warrior,",
+        "Oh my people, people of eternity"
+      ]
+    },
+    {
+      "local": [
+        "كُورَال:",
+        "فِدَائِيّ فِدَائِيّ فِدَائِيّ",
+        "يَا أَرْضِي يَا أَرْضَ الجُدُود",
+        "فِدَائِيّ فِدَائِيّ فِدَائِيّ"
+      ],
+      "english": [
+        "Warrior, warrior, warrior,",
+        "Oh my land, the land of the ancestors",
+        "Warrior, warrior, warrior,",
+        "Oh my people, people of eternity"
+      ]
+    },
+    {
+      "local": [
+        "يَا شَعْبِي يَا شَعْبَ الخُلُود",
+        "بِعَزْمِي وَنَارِي وَبُرْكَانِ ثَأرِي",
+        "وَأَشْوَاقِ دَمِّي لِأَرْضِي وَدَارِي",
+        "صَعَدْتُ الجِبَالَ وَخُضْتُ النِّضَالَ"
+      ],
+      "english": [
+        "With my determination, my fire and the volcano of my vendetta",
+        "With the longing in my blood for my land and my home",
+        "I have climbed the mountains and fought the wars",
+        "I have conquered the impossible, and crossed the frontiers"
+      ]
+    },
+    {
+      "local": [
+        "قَهَرْتُ المُحَالَ عَبَرْتُ الحُدُود",
+        "كُورَال",
+        "بِعَزْمِ الرِّيَاحِ وَنَارِ السِّلَاحِ",
+        "وَإِصْرَارِ شَعْبِي بِأَرْضِ الكِفَاحِ"
+      ],
+      "english": [
+        "With the resolve of the winds and the fire of the weapons",
+        "And the determination of my nation in the land of struggle",
+        "[[Palestine]] is my home, and the path of my triumphal",
+        "[[Palestine]] is my vendetta and the land of withstanding"
+      ]
+    },
+    {
+      "local": [
+        "فِلَسْطِينُ دَارِي وَدَرْبُ انْتِصَارِي",
+        "فِلَسْطِينُ ثَارِي وَأَرْضُ الصُّمُود",
+        "كُورَال",
+        "بِحَقِّ القَسَم تَحْتَ ظِلِّ العَلَم"
+      ],
+      "english": [
+        "By the oath under the shade of the flag",
+        "By my land and nation, and the fire of pain",
+        "I will live as a warrior, I will remain a warrior,",
+        "I will die as a warrior – until my country returns"
+      ]
+    }
+  ]
+}

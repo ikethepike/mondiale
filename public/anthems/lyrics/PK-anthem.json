@@ -1,0 +1,76 @@
+{
+  "isoCode": "PK",
+  "title": "قومی ترانہ",
+  "language": {
+    "code": "ur",
+    "name": "Urdu",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Qaumi_Taranah"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "پاک سرزمین شاد باد",
+        "کشورِ حسین شاد باد",
+        "تُو نشانِ عزمِ عالی شان",
+        "ارضِ [[پاکستان]]!"
+      ],
+      "english": [
+        "Blessed be the sacred land,",
+        "Happy be the bounteous realm.",
+        "Thou symbol of high resolve,",
+        "O Land of [[Pakistan]]!"
+      ]
+    },
+    {
+      "local": [
+        "مرکزِ یقین شاد باد",
+        "پاک سرزمین کا نظام",
+        "قُوَّتِ اُخوَّتِ عوام",
+        "قوم، ملک، سلطنت"
+      ],
+      "english": [
+        "Blessed be the citadel of faith.",
+        "The order of this sacred land,",
+        "The might of the brotherhood of the people,",
+        "May the nation, the country, and the state,"
+      ]
+    },
+    {
+      "local": [
+        "پائندہ تابندہ باد!",
+        "شاد باد منزلِ مراد",
+        "پرچمِ ستارہ و ہِلال",
+        "رہبرِ ترقِّی و کمال"
+      ],
+      "english": [
+        "Shine in glory everlasting!",
+        "Blessed be the goal of our ambition.",
+        "The flag of the star and crescent,",
+        "Leads the way to progress and perfection,"
+      ]
+    },
+    {
+      "local": [
+        "ترجمانِ ماضی، شانِ حال",
+        "جانِ استقبال!",
+        "سایۂ خدائے ذوالجلال"
+      ],
+      "english": [
+        "Interpreter of our past, glory of our present,",
+        "inspiration for our future!",
+        "Shade of God, the Glorious and Mighty."
+      ]
+    }
+  ]
+}

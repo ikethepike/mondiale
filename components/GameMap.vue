@@ -1,5 +1,5 @@
 <template>
-  <div ref="wrapper" :class="[`game-map`, status, { solo, landmass, 'show-labels': labels }]">
+  <div ref="wrapper" :class="[`game-map`, status, { solo, landmass, recede, 'show-labels': labels }]">
     <!--
       Pan/zoom is viewBox-native (see the camera section in the script):
       repainting one viewport's worth of culled base-tier geometry per frame
@@ -265,6 +265,13 @@ const props = defineProps({
   /** With solo: continents stay as one silhouette — uniform fill, no strokes,
    *  so internal borders vanish and an overlay reads against real coastlines. */
   landmass: {
+    type: Boolean,
+    default: false,
+  },
+  /** Push the whole map back behind an overlay that owns the screen (the
+   *  anthem round's lyric wall). Not `solo`, which hides countries outright —
+   *  this keeps the world there, just faint, and fades back in on reveal. */
+  recede: {
     type: Boolean,
     default: false,
   },
@@ -1549,6 +1556,22 @@ watch(
   overflow: hidden;
   touch-action: none;
   overscroll-behavior: none;
+}
+
+// Receded: the world is still there, just faint and set back, so a full-screen
+// overlay can own the eye. The slight scale-down does the depth work that
+// opacity alone cannot — it reads as distance rather than as a dimmer switch.
+// Slow both ways, so the reveal is the map coming into focus, not snapping on.
+.game-map svg {
+  transform-origin: center;
+  transition:
+    opacity var(--motion-slow) var(--ease-smooth),
+    transform var(--motion-slow) var(--ease-smooth);
+}
+
+.game-map.recede svg {
+  opacity: 0.16;
+  transform: scale(0.92);
 }
 
 // Edgeless: the svg fills the viewport and the viewBox is kept at the

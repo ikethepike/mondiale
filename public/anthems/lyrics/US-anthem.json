@@ -1,0 +1,135 @@
+{
+  "isoCode": "US",
+  "title": "The Star-Spangled Banner",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Francis Scott Key",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/The_Star-Spangled_Banner"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "O say, can you see, by the dawn's early light,",
+        "⁠What so proudly we hailed at the twilight's last gleaming?",
+        "Whose broad stripes and bright stars through the perilous fight,",
+        "⁠O'er the ramparts we watched, were so gallantly streaming?"
+      ],
+      "english": [
+        "O say, can you see, by the dawn's early light,",
+        "⁠What so proudly we hailed at the twilight's last gleaming?",
+        "Whose broad stripes and bright stars through the perilous fight,",
+        "⁠O'er the ramparts we watched, were so gallantly streaming?"
+      ]
+    },
+    {
+      "local": [
+        "And the rockets' red glare, the bombs bursting in air,",
+        "Gave proof through the night that our flag was still there;",
+        "O say does that star-spangled banner yet wave,",
+        "⁠O'er the land of the free and the home of the brave?"
+      ],
+      "english": [
+        "And the rockets' red glare, the bombs bursting in air,",
+        "Gave proof through the night that our flag was still there;",
+        "O say does that star-spangled banner yet wave,",
+        "⁠O'er the land of the free and the home of the brave?"
+      ]
+    },
+    {
+      "local": [
+        "On the shore dimly seen through the mists of the deep,",
+        "⁠Where the foe's haughty host in dread silence reposes,",
+        "What is that which the breeze, o'er the towering steep,",
+        "⁠As it fitfully blows, half conceals, half discloses?"
+      ],
+      "english": [
+        "On the shore dimly seen through the mists of the deep,",
+        "⁠Where the foe's haughty host in dread silence reposes,",
+        "What is that which the breeze, o'er the towering steep,",
+        "⁠As it fitfully blows, half conceals, half discloses?"
+      ]
+    },
+    {
+      "local": [
+        "Now it catches the gleam of the morning's first beam,",
+        "In full glory reflected now shines on the stream:",
+        "'Tis the star-spangled banner, O long may it wave",
+        "O'er the land of the free and the home of the brave."
+      ],
+      "english": [
+        "Now it catches the gleam of the morning's first beam,",
+        "In full glory reflected now shines on the stream:",
+        "'Tis the star-spangled banner, O long may it wave",
+        "O'er the land of the free and the home of the brave."
+      ]
+    },
+    {
+      "local": [
+        "And where is that band who so vauntingly swore",
+        "⁠That the havoc of war and the battle's confusion,",
+        "A home and a country should leave us no more?",
+        "⁠Their blood has washed out their foul footsteps' pollution."
+      ],
+      "english": [
+        "And where is that band who so vauntingly swore",
+        "⁠That the havoc of war and the battle's confusion,",
+        "A home and a country should leave us no more?",
+        "⁠Their blood has washed out their foul footsteps' pollution."
+      ]
+    },
+    {
+      "local": [
+        "No refuge could save the hireling and slave,",
+        "From the terror of flight, or the gloom of the grave:",
+        "And the star-spangled banner in triumph doth wave,",
+        "O'er the land of the free and the home of the brave."
+      ],
+      "english": [
+        "No refuge could save the hireling and slave,",
+        "From the terror of flight, or the gloom of the grave:",
+        "And the star-spangled banner in triumph doth wave,",
+        "O'er the land of the free and the home of the brave."
+      ]
+    },
+    {
+      "local": [
+        "O thus be it ever, when freemen shall stand,",
+        "⁠Between their loved home and the war's desolation,",
+        "Blessed with vict'ry and peace, may the heav'n rescued land,",
+        "⁠Praise the power that hath made and preserved us a nation!"
+      ],
+      "english": [
+        "O thus be it ever, when freemen shall stand,",
+        "⁠Between their loved home and the war's desolation,",
+        "Blessed with vict'ry and peace, may the heav'n rescued land,",
+        "⁠Praise the power that hath made and preserved us a nation!"
+      ]
+    },
+    {
+      "local": [
+        "Then conquer we must, when our cause it is just,",
+        "And this be our motto: \"In God is our trust.\"",
+        "And the star-spangled banner in triumph shall wave,",
+        "O'er the land of the free and the home of the brave!"
+      ],
+      "english": [
+        "Then conquer we must, when our cause it is just,",
+        "And this be our motto: \"In God is our trust.\"",
+        "And the star-spangled banner in triumph shall wave,",
+        "O'er the land of the free and the home of the brave!"
+      ]
+    }
+  ]
+}

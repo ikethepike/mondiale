@@ -75,7 +75,9 @@ readable while the letters are hidden and the line never reflows on reveal.
 | --- | --- |
 | `revealed` | Masks fade off, exposing blanked words. |
 | `translated` | Swaps the `local` column for `english`. |
-| `maxLines` | Caps rendered lines (default 10). Anthem lengths vary widely, so the wall trims rather than scrolling indefinitely. |
+
+The wall renders every line; a verse taller than the screen drifts slowly
+upward instead of being truncated.
 
 The round drives these in sequence: the wall appears partway through the clock
 (`HINT_UNLOCK_AT.lyrics` in `lib/use-buzz-round.ts`), `revealed` flips when the
@@ -89,4 +91,31 @@ reveals read as separate movements.
 3. Trim to the verses actually sung.
 4. Record both `sources` entries, including where the translation came from.
 5. Mark every giveaway in both columns with `[[…]]`.
-6. Set `lyricsUrl` on the dealt challenge to `/anthems/lyrics/<ISO>-anthem.json`.
+6. Run `bun run generate:anthem-lyrics`.
+
+Step 6 rewrites `data/anthem-lyrics.gen.ts`, the set the dealer checks before it
+sets `lyricsUrl`. The index is generated from this folder rather than hand-kept:
+a file with no entry never shows its wall, and an entry with no file fetches a
+404 mid-round — both fail silently.
+
+## Coverage
+
+193 countries. Sweden was written by hand; the rest were imported in one pass
+from two plain-text corpora of Wikipedia extracts, then blanked by matching each
+country's names, endonyms and demonyms against both columns. The import script
+was a one-shot — it read folders that live outside this repo, so re-running it
+is not a thing. Fix a file by editing it.
+
+The gaps are anthems with no lyrics to port rather than missing work:
+
+| Country | Why |
+| --- | --- |
+| Bosnia and Herzegovina, Kosovo, San Marino, Spain | Instrumental — no official words exist |
+
+Spain's *Marcha Real* has never had official lyrics; the texts in circulation
+were never adopted and the 1928 Pemán version is in copyright until 2051.
+
+Some anthems never name their own country — Kimigayo, *Lupang Hinirang* and
+*İstiklâl Marşı* among them. Those files carry no `[[…]]` at all, which is
+correct rather than an omission; `anthem-lyrics.test.ts` asserts that no name is
+left **unmasked**, not that something was masked.

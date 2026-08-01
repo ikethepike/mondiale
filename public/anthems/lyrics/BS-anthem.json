@@ -1,0 +1,62 @@
+{
+  "isoCode": "BS",
+  "title": "March On, Bahamaland",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/March_On,_Bahamaland"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Lift up your head to the rising sun, [[Bahamaland]];",
+        "March on to glory, your bright banners waving high.",
+        "See how the world marks the manner of your bearing!",
+        "Pledge to excel through love and unity."
+      ],
+      "english": [
+        "Lift up your head to the rising sun, [[Bahamaland]];",
+        "March on to glory, your bright banners waving high.",
+        "See how the world marks the manner of your bearing!",
+        "Pledge to excel through love and unity."
+      ]
+    },
+    {
+      "local": [
+        "Pressing onward, march together",
+        "to a common loftier goal;",
+        "Steady sunward, tho' the weather",
+        "hide the wide and treacherous shoal."
+      ],
+      "english": [
+        "Pressing onward, march together",
+        "to a common loftier goal;",
+        "Steady sunward, tho' the weather",
+        "hide the wide and treacherous shoal."
+      ]
+    },
+    {
+      "local": [
+        "Lift up your head to the rising sun, [[Bahamaland]],",
+        "'Til the road you've trod lead unto your God,",
+        "MARCH ON, [[BAHAMALAND]]!"
+      ],
+      "english": [
+        "Lift up your head to the rising sun, [[Bahamaland]],",
+        "'Til the road you've trod lead unto your God,",
+        "MARCH ON, [[BAHAMALAND]]!"
+      ]
+    }
+  ]
+}

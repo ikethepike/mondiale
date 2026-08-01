@@ -1,0 +1,60 @@
+{
+  "isoCode": "SZ",
+  "title": "Nkulunkulu Mnikati wetibusiso temaSwati",
+  "language": {
+    "code": "ss",
+    "name": "Swazi",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Nkulunkulu_Mnikati_wetibusiso_temaSwati"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "A",
+        "Nkulunkulu Mnikati wetibusiso temaSwati;",
+        "Siyatibonga tonkhe tinhlanhla;",
+        "Sibonga iNgwenyama yetfu."
+      ],
+      "english": [
+        "A",
+        "O Lord our God, bestower of the blessings of the [[Swazi]];",
+        "We give Thee thanks for all our good fortune;",
+        "We offer thanks and praise for our King"
+      ]
+    },
+    {
+      "local": [
+        "Live netintsaba nemifula.",
+        "B",
+        "Busisa tiphatsimandla takaNgwane;",
+        "Nguwe wedvwa Somandla wetfu;"
+      ],
+      "english": [
+        "And for our fair land, its hills and rivers.",
+        "B",
+        "Thy blessings be on all rulers of our Country;",
+        "Thine alone is our Lord;"
+      ]
+    },
+    {
+      "local": [
+        "Sinike kuhlakanipha lokungenabucili",
+        "Simise usicinise, Simakadze."
+      ],
+      "english": [
+        "We pray Thee to grant us wisdom without deceit or malice.",
+        "Establish and fortify us, Lord Eternal."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "isoCode": "CF",
+  "title": "La Renaissance",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Renaissance"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ô [[Centrafrique]], ô berceau des Bantous !",
+        "Reprends ton droit au respect, à la vie !",
+        "Longtemps soumis, longtemps brimé par tous,",
+        "Mais de ce jour brisant la tyrannie."
+      ],
+      "english": [
+        "Oh! [[Central Africa]], cradle of the Bantu!",
+        "Take up again your right to respect, to life!",
+        "Long subjugated, long scorned by all,",
+        "But, from today, breaking tyranny's hold."
+      ]
+    },
+    {
+      "local": [
+        "Dans le travail, l'ordre et la dignité,",
+        "Tu reconquiers ton droit, ton unité,",
+        "Et pour franchir cette étape nouvelle,",
+        "De nos ancêtres la voix nous appelle."
+      ],
+      "english": [
+        "Through work, order and dignity",
+        "You reconquer your rights, your unity,",
+        "And to take this new step",
+        "The voice of our ancestors call us."
+      ]
+    },
+    {
+      "local": [
+        "Au travail dans l'ordre et la dignité,",
+        "Dans le respect du droit dans l'unité,",
+        "Brisant la misère et la tyrannie,",
+        "Brandissant l'étendard de la Patrie."
+      ],
+      "english": [
+        "To work! In order and dignity,",
+        "In the respect for rights and in unity,",
+        "Breaking poverty and tyranny,",
+        "Holding high the standard of the Fatherland."
+      ]
+    }
+  ]
+}

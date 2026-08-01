@@ -1,0 +1,92 @@
+{
+  "isoCode": "CM",
+  "title": "Chant de Ralliement",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/O_Cameroon,_Cradle_of_Our_Forefathers"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ô [[Cameroun]] berceau de nos ancêtres,",
+        "Va debout et jaloux de ta liberté.",
+        "Comme un soleil ton drapeau fier doit être",
+        "Un symbole ardent de foi et d'unité."
+      ],
+      "english": [
+        "O [[Cameroon]], cradle of our ancestors,",
+        "Go, upright and protective of your freedom.",
+        "Like a sun, your proud flag must be",
+        "An ardent symbol of faith and unity."
+      ]
+    },
+    {
+      "local": [
+        "Que tous tes enfants du nord au sud,",
+        "de l'est à l'ouest soient tout amour,",
+        "Te servir que ce soit leur seul but,",
+        "Pour remplir leur devoir toujours."
+      ],
+      "english": [
+        "May all your children, from North to South",
+        "From East to West, be all love,",
+        "May serving you be their only goal",
+        "To fulfil their duty always."
+      ]
+    },
+    {
+      "local": [
+        "Chère patrie, terre chérie,",
+        "Tu es notre seul et vrai bonheur,",
+        "notre joie et notre vie,",
+        "À toi l'amour et le grand honneur"
+      ],
+      "english": [
+        "Dear Fatherland, cherished land,",
+        "You are our one and true happiness.",
+        "Our joy and our life",
+        "To you, love and great honour."
+      ]
+    },
+    {
+      "local": [
+        "Tu es la tombe où dorment nos pères,",
+        "Le jardin que nos aïeux ont cultivé.",
+        "Nous travaillons pour te rendre prospère,",
+        "Un beau jour enfin nous serons arrivés."
+      ],
+      "english": [
+        "You are the grave where our fathers sleep,",
+        "The garden that our ancestors have cultivated.",
+        "We work to make you prosperous",
+        "One fine day we will finally get there."
+      ]
+    },
+    {
+      "local": [
+        "De l'Afrique sois fidèle enfant",
+        "Et progresse toujours en paix,",
+        "Espérant que tes jeunes enfants",
+        "T'aimeront sans bornes à jamais."
+      ],
+      "english": [
+        "Be Africa's faithful child",
+        "And always progress in peace",
+        "Hoping that your young children",
+        "Will love you without bounds forever."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "isoCode": "CL",
+  "title": "Himno Nacional de Chile",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Eusebio Lillo (with Bernardo de Vera y Pintado)",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Chile"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Puro, [[Chile]], es tu cielo azulado.",
+        "Puras brisas te cruzan también.",
+        "Y tu campo de flores bordado",
+        "Es la copia feliz del Edén."
+      ],
+      "english": [
+        "Pure, [[Chile]], is your bluish sky",
+        "Pure breezes cross you as well",
+        "And your flower-embroidered fields",
+        "Are the happy copy of Eden"
+      ]
+    },
+    {
+      "local": [
+        "Majestuosa es la blanca montaña",
+        "Que te dio por baluarte el Señor,",
+        "Y ese mar que tranquilo te baña",
+        "Te promete futuro esplendor."
+      ],
+      "english": [
+        "Majestic are the white mountains",
+        "That the Lord gave you as a bastion",
+        "And the sea that tranquilly bathes you",
+        "Promises you a future splendor."
+      ]
+    },
+    {
+      "local": [
+        "Dulce Patria, recibe los votos",
+        "Con que [[Chile]] en tus aras juró:",
+        "Que o la tumba serás de los libres",
+        "O el asilo contra la opresión"
+      ],
+      "english": [
+        "Sweet fatherland, receive the vows",
+        "That [[Chile]] gave you on your altars",
+        "That you be either the tomb of the free",
+        "Or a refuge against oppression"
+      ]
+    },
+    {
+      "local": [
+        "Que o la tumba serás de los libres",
+        "O el asilo contra la opresión",
+        "O el asilo contra la opresión",
+        "O el asilo contra la opresión."
+      ],
+      "english": [
+        "That you be either the tomb of the free",
+        "Or a refuge against oppression",
+        "Or a refuge against oppression",
+        "Or a refuge against oppression."
+      ]
+    }
+  ]
+}

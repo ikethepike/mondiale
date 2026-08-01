@@ -1,0 +1,134 @@
+{
+  "isoCode": "SN",
+  "title": "Le Lion rouge —",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Le_Lion_rouge"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Pincez tous vos koras, frappez les balafons.",
+        "Le lion rouge a rugi.",
+        "Le dompteur de la brousse",
+        "D'un bond s'est élancé,"
+      ],
+      "english": [
+        "Everyone strum your koras, strike the balafons.",
+        "The red lion has roared.",
+        "The tamer of the savannah",
+        "Has leapt forward,"
+      ]
+    },
+    {
+      "local": [
+        "Dissipant les ténèbres.",
+        "Soleil sur nos terreurs, soleil sur notre espoir.",
+        "Debout, frères, voici l'Afrique rassemblée.",
+        "Fibres de mon cœur vert."
+      ],
+      "english": [
+        "Dispelling the darkness.",
+        "Sunlight on our terrors, sunlight on our hope.",
+        "Stand up, brothers, here is Africa assembled.",
+        "Fibres of my green heart,"
+      ]
+    },
+    {
+      "local": [
+        "Épaule contre épaule, mes plus que frères,",
+        "O [[Sénégalais]], debout !",
+        "Unissons la mer et les sources, unissons la steppe et la forêt !",
+        "Salut Afrique mère."
+      ],
+      "english": [
+        "Shoulder to shoulder, my more-than-brothers,",
+        "O [[Senegalese]], arise!",
+        "Join sea and springs, join steppe and forest!",
+        "Hail mother Africa."
+      ]
+    },
+    {
+      "local": [
+        "[[Sénégal]] toi le fils de l'écume du lion,",
+        "Toi surgi de la nuit au galop des chevaux,",
+        "Rend-nous, oh ! rends-nous l'honneur de nos ancêtres,",
+        "Splendides comme ébène et forts comme le muscle"
+      ],
+      "english": [
+        "[[Senegal]], you the son of the lion's froth,",
+        "Sprung from the night to the gallop of horses,",
+        "Give us, oh! give us the honour of our ancestors,",
+        "Splendid as ebony and strong as muscle,"
+      ]
+    },
+    {
+      "local": [
+        "Nous disons droits - l'épée n'a pas une bavure.",
+        "[[Sénégal]], nous faisons nôtre ton grand dessein :",
+        "Rassembler les poussins à l'abri des milans",
+        "Pour en faire, de l'est à l'ouest, du nord au sud,"
+      ],
+      "english": [
+        "We say it clearly – the sword has no flaw.",
+        "[[Senegal]], we take on your great work:",
+        "To shelter the chicks from the falcons,",
+        "To make, from east to west, north to south,"
+      ]
+    },
+    {
+      "local": [
+        "Dressé, un même peuple, un peuple sans couture",
+        "Mais un peuple tourné vers tous les vents du monde.",
+        "[[Sénégal]], comme toi, comme tous nos héros,",
+        "Nous serons durs sans haine et des deux bras ouverts."
+      ],
+      "english": [
+        "Arisen, one single people, a people without seams,",
+        "But a people turned to all the winds of the earth.",
+        "[[Senegal]], like you, like all our heroes,",
+        "We will be hard without hatred, with two open arms."
+      ]
+    },
+    {
+      "local": [
+        "L'épée, nous la mettrons dans la paix du fourreau,",
+        "Car le travail sera notre arme et la parole.",
+        "Le Bantou est un frère, et l'Arabe et le Blanc.",
+        "Mais que si l'ennemi incendie nos frontières"
+      ],
+      "english": [
+        "The sword in peace-time we will store in the scabbard,",
+        "For work and words will be our weapon.",
+        "The Bantu is a brother, and so is the Arab and the White.",
+        "But if the enemy burns our borders"
+      ]
+    },
+    {
+      "local": [
+        "Nous serons tous dressés et les armes au poing :",
+        "Un peuple dans sa foi défiant tous les malheurs,",
+        "Les jeunes et les vieux, les hommes et les femmes.",
+        "La mort, oui ! Nous disons la mort, mais pas la honte."
+      ],
+      "english": [
+        "We will be risen with weapons in our hands:",
+        "One people defying all sorrows with its faith,",
+        "Young and old, men and women.",
+        "Death, yes! We say death, but not shame."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "isoCode": "JO",
+  "title": "السلام الملكي الأردني",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Royal_Jordanian_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "عَاشَ الْمَلِيكْ",
+        "سَامِيًا مَقَامُهُ",
+        "خَافِقَاتٍ فِي الْمَعَالِي أَعْلَامُهُ",
+        "نَحْنُ أَحْرَزْنَا الْمُنَىٰ"
+      ],
+      "english": [
+        "Long live the King!",
+        "His position sublime,",
+        "His banners wave in glory supreme.",
+        "Our goal we've attained,"
+      ]
+    },
+    {
+      "local": [
+        "يَوْمَ أَحْيَيْتَ لَنَا",
+        "نَهْضَةً تَحْفِزُنَا",
+        "تَتَسَامَىٰ فَوْقَ هَامِ الشُّهُبِ",
+        "يَا مَلِيكَ الْعَرَبِ"
+      ],
+      "english": [
+        "For us the day you've revived,",
+        "A revolution gives us our motivation!",
+        "Flying over the shoulders of the highest comets.",
+        "O king of Arabs,"
+      ]
+    },
+    {
+      "local": [
+        "لَكَ مِنْ خَيْرِ نَبِي",
+        "شَرَفٌ فِي النَّسَبِ",
+        "حَدَّثَتْ عَنْهُ بُطُونُ الْكُتُبِ",
+        "اَلشَّبَابُ الْأَمْجَدُ"
+      ],
+      "english": [
+        "From your best prophet.",
+        "The honour of the dynasty,",
+        "Talked about in the depths of books!",
+        "All the youthful men"
+      ]
+    },
+    {
+      "local": [
+        "جُنْدُكَ الْمُجَنَّدُ",
+        "عَزْمُهُ لَا يَخْمَدُ",
+        "فِيهِ مِنْ مَعْنَاكَ رَمْزُ الدَّأَبِ",
+        "دُمْتَ نُورًا وَهُدَىٰ"
+      ],
+      "english": [
+        "Are your armies",
+        "His determination never dies out!",
+        "Getting from your meaning a symbol of well-being!",
+        "May you stay the light and the guide,"
+      ]
+    },
+    {
+      "local": [
+        "فِي الْبَرَايَا سَيِّدَا",
+        "هَانِئًا مُمَجَّدَا",
+        "تَحْتَ أَعْلَامِكَ مَجْدُ الْعَرَبِ"
+      ],
+      "english": [
+        "A master in being away of all sins and wrong-doing,",
+        "Living your life happily and well-respected!",
+        "Under your flag rests the glory of Arabs."
+      ]
+    }
+  ]
+}

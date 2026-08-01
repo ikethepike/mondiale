@@ -1,0 +1,78 @@
+{
+  "isoCode": "MK",
+  "title": "Денес над Македонија",
+  "language": {
+    "code": "mk",
+    "name": "Macedonian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Denes_nad_Makedonija"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Денес над [[Македонија]] се раѓа,",
+        "ново сонце на слободата!",
+        "Македонците се борат,",
+        "за своите правдини!"
+      ],
+      "english": [
+        "Today over [[Macedonia]] is born",
+        "the new sun of liberty.",
+        "The [[Macedonians]] fight",
+        "for their own rights!"
+      ]
+    },
+    {
+      "local": [
+        "Не плачи [[Македонијо]] мајко мила,",
+        "Крени глава гордо, високо,",
+        "Старо, младо, машко и женско,",
+        "На нозе се кренало!"
+      ],
+      "english": [
+        "Do not cry, dear mother [[Macedonia]],",
+        "Raise your head proudly high,",
+        "Old, young, men, and women,",
+        "have risen to their feet!"
+      ]
+    },
+    {
+      "local": [
+        "Одново сега знамето се вее,",
+        "на Крушевската Република!",
+        "Гоце Делчев, Питу Гули,",
+        "Даме Груев, Сандански!"
+      ],
+      "english": [
+        "Now once again the flag flutters,",
+        "(that) of the Kruševo Republic",
+        "Goce Delčev, Pitu Guli",
+        "Dame Gruev, Sandanski!"
+      ]
+    },
+    {
+      "local": [
+        "Горите македонски шумно пеат,",
+        "нови песни, нови весници!",
+        "[[Македонија]] слободна,",
+        "слободно живее!"
+      ],
+      "english": [
+        "The [[Macedonian]] woods resoundly sing",
+        "new songs and news!",
+        "[[Macedonia]] liberated",
+        "lives in liberty!"
+      ]
+    }
+  ]
+}

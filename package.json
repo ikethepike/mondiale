@@ -25,6 +25,7 @@
     "generate:leaders": "bun run generators/create-leaders-file.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:anthems": "bun run generators/create-anthems-file.ts",
+    "generate:anthem-lyrics": "bun run generators/create-anthem-lyrics-file.ts",
     "generate:tongues": "bun run generators/create-tongues-file.ts",
     "generate:currencies": "bun run generators/create-currencies-file.ts",
     "generate:landmarks": "bun run generators/create-landmarks-file.ts",
