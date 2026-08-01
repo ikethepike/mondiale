@@ -49,6 +49,29 @@ export interface AnthemBuzzChallenge {
   swatches?: string[]
   /** First letter of the country's English name. */
   initial?: string
+  /** Where the curated lyric wall lives, when this anthem has one. Fetched by
+   *  the view rather than inlined — verses are long and most rounds never
+   *  reach the beat that shows them. */
+  lyricsUrl?: string
+}
+
+/** One line of a lyric wall, already split on its blanked spans: `text` shows,
+ *  `blanked` masks until the reveal. Parsed from the file's `[[…]]` markup. */
+export interface LyricSpan {
+  text: string
+  blanked?: boolean
+}
+
+/** A curated anthem lyric wall — see public/anthems/lyrics/readme-anthems.md. */
+export interface AnthemLyrics {
+  isoCode: ISOCountryCode
+  title: string
+  language: { code: string; name: string; script: string }
+  sources: {
+    local: { author?: string; year?: number; licence: string; note?: string }
+    english: { author?: string; licence: string; note?: string }
+  }
+  verses: { local: string[]; english: string[] }[]
 }
 
 /** A speech clip plays — name a country where that language is official.

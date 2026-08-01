@@ -1068,12 +1068,15 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'anthem-buzz-challenge',
-          country: 'JP',
-          clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+          // Sweden is the reference country for the lyric wall — the only one
+          // curated so far (see public/anthems/lyrics/readme-anthems.md).
+          country: 'SE',
+          clip: { webm: '/anthems/SE.webm', m4a: '/anthems/SE.m4a' },
+          lyricsUrl: '/anthems/lyrics/SE-anthem.json',
           durationSeconds: 30,
-          region: 'Asia',
-          swatches: ['white', 'red'],
-          initial: 'J',
+          region: 'Europe',
+          swatches: ['blue', 'yellow'],
+          initial: 'S',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

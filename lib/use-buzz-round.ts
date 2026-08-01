@@ -15,6 +15,10 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  *  something once they arrive. */
 export const HINT_UNLOCK_AT = {
   region: 0.4,
+  /** The lyric wall: the anthem's own words, masked where they name the
+   *  country. Lands between the region and the palette — it is a big hint, but
+   *  a foreign script rewards knowing something rather than guessing. */
+  lyrics: 0.5,
   swatches: 0.65,
   initial: 0.85,
 } as const
@@ -62,6 +66,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
 
   const unlocked = computed(() => ({
     region: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.region,
+    lyrics: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.lyrics,
     swatches: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.swatches,
     initial: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.initial,
   }))

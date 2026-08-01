@@ -31,6 +31,15 @@
         @started="onAudioStarted"
       />
 
+      <!-- The anthem's own words, once the earlier hints have landed. Masked
+           where they name the country, unmasked and translated on the reveal. -->
+      <LyricWall
+        v-if="lyrics && unlocked.lyrics"
+        :lyrics="lyrics"
+        :revealed="resolved"
+        :translated="translated"
+      />
+
       <!-- Chips land one at a time as the clock crosses each threshold, so
            they arrive on the shared `chip-in` beat rather than blinking on. -->
       <TransitionGroup v-if="!resolved" tag="ul" name="chain" class="hints">
@@ -74,6 +83,7 @@
 </template>
 <script lang="ts" setup>
 import AudioDock from '~/components/challenge/AudioDock.vue'
+import LyricWall from '~/components/challenge/LyricWall.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
@@ -83,6 +93,7 @@ import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
+import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 import type { Country } from '~~/types/geography.types'
 
 const {
@@ -101,6 +112,7 @@ const {
   lockedOut,
   unlocked,
   revealStage,
+  registerCleanup,
   begin,
   guess,
 } = useBuzzRound('anthem-buzz-challenge', {
@@ -120,6 +132,27 @@ const {
     gameStore.map.tints[active.country] = 'optimal'
     for (const neighbour of neighbours) gameStore.map.tints[neighbour] = 'inefficient'
   },
+})
+
+/** The curated wall, fetched rather than inlined — verses are long and most
+ *  rounds end before the beat that shows them. A miss is silent: the round
+ *  simply runs without a wall, exactly as it did before lyrics existed. */
+const lyrics = ref<AnthemLyrics>()
+watchEffect(async () => {
+  const url = challenge.value?.lyricsUrl
+  if (!url) return
+  lyrics.value = await $fetch<AnthemLyrics>(url).catch(() => undefined)
+})
+
+/** The closing beat: masks come off with the answer, then the verse turns to
+ *  English a moment later, so the two reveals read as separate movements
+ *  rather than one busy flash. */
+const translated = ref(false)
+const TRANSLATE_AFTER_MS = 1600
+watch(resolved, isResolved => {
+  if (!isResolved) return
+  const timer = setTimeout(() => (translated.value = true), TRANSLATE_AFTER_MS)
+  registerCleanup(() => clearTimeout(timer))
 })
 
 const dock = ref<InstanceType<typeof AudioDock>>()

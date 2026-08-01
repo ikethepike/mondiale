@@ -493,6 +493,14 @@ const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteC
 /** An anthem needs a few bars before it's placeable; a speech clip is shorter
  *  and a long silence after it ends is dead air. */
 const ANTHEM_BUZZ_SECONDS = 30
+
+/**
+ * Countries with a hand-curated lyric wall under public/anthems/lyrics/.
+ * Listed rather than derived: the files are reviewed one at a time, and a
+ * country only earns a wall once its text, translation and blanking have been
+ * read by a person. See that folder's readme-anthems.md.
+ */
+const ANTHEM_LYRICS = new Set<ISOCountryCode>(['SE'])
 const TONGUE_BUZZ_SECONDS = 20
 
 /**
@@ -525,6 +533,9 @@ const getAnthemBuzzChallenge = ({
           region: REGION_LABELS[COUNTRIES[country].region],
           swatches: COUNTRIES[country].identity.simplifiedColors,
           initial: countryName(country).slice(0, 1).toUpperCase(),
+          ...(ANTHEM_LYRICS.has(country)
+            ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
+            : {}),
         }
       : {}),
   }
