@@ -82,15 +82,12 @@ import { prefersReducedMotion } from '~~/lib/motion'
 const props = withDefaults(
   defineProps<{
     clip: AudioClip
-    /** 0..1 of the round clock left; sets the dial's tempo. */
-    fraction?: number
     /** Copy before the first play — the round is waiting on this tap. */
     idleLabel?: string
     playingLabel?: string
     endedLabel?: string
   }>(),
   {
-    fraction: 1,
     idleLabel: 'Tap to hear the clip',
     playingLabel: 'Listening…',
     endedLabel: 'Tap to hear it again',
@@ -189,12 +186,15 @@ onBeforeUnmount(pause)
 /** Bars idle flat under reduced motion; the caption still carries the state. */
 const barStyle = (bar: number) => {
   if (prefersReducedMotion()) return { animationPlayState: 'paused' }
-  // Each bar runs the same keyframe on its own offset, and the whole dial
-  // tightens as the round's clock runs down.
+  // Each bar runs the same keyframe on its own fixed offset and tempo. The
+  // duration must NEVER track the round clock: retiming a running CSS
+  // animation remaps its phase, so a per-tick duration made every bar leap
+  // mid-pulse once a second. Urgency is the console radial's job — these bars
+  // only say "sound is playing".
   const spread = 0.45 + (bar % 3) * 0.12
   return {
     animationDelay: `${bar * 90}ms`,
-    animationDuration: `${(0.5 + spread * props.fraction).toFixed(2)}s`,
+    animationDuration: `${(0.5 + spread).toFixed(2)}s`,
   }
 }
 

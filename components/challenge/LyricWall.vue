@@ -149,6 +149,12 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   position: absolute;
   inset: 0;
   z-index: 0;
+  // Multiply presses the ink INTO the colour field: the verse always darkens
+  // what it sits on, so the contrast ratio holds over every palette the clamp
+  // allows — no halos, no shadows, just the glyphs. It must sit HERE, on the
+  // wall root — the verse's drift transform isolates a stacking context, so a
+  // blend set any deeper never reaches the field.
+  mix-blend-mode: multiply;
   // Grid rather than flex: both columns occupy the SAME cell (see the swap
   // rules below), so the longer English verse cannot reflow the shorter local
   // one mid-fade.
@@ -157,18 +163,17 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   place-items: center;
   pointer-events: none;
   // Fades at both edges so the text dissolves rather than being cut off. The
-  // bottom fade starts early and runs long: the guess console and hint chips
-  // live down there, and lines running under them read as clutter rather than
-  // backdrop. The verse is gone before it reaches them.
-  // Measured against the console: the fade has to be fully out well above it,
-  // so the tail is pulled up rather than merely softened.
+  // bottom fade now runs to just above the console band: the console carries
+  // its own solid milk surface, so the verse only needs to be out from under
+  // its top edge (~74% of the shell on a phone), not banished half a screen
+  // above it — the wall gets to USE the stage it stands on.
   mask-image: linear-gradient(
     to bottom,
     transparent,
     #000 10%,
-    #000 40%,
-    #{rgba(#000, 0.3)} 56%,
-    transparent 66%
+    #000 58%,
+    #{rgba(#000, 0.35)} 74%,
+    transparent 84%
   );
 }
 
@@ -209,9 +214,11 @@ watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift)
   line-height: 1.45;
   text-wrap: balance;
   letter-spacing: -0.02em;
-  // Present enough to read as words rather than texture, still clearly behind
-  // the round's own chrome.
-  color: #{ink(0.24)};
+  // Dense enough for a clear contrast ratio under the wall's multiply — the
+  // Apple Music read: crisp glyphs against the artwork, no halo. Still shy of
+  // solid, so the field's colour breathes through the strokes and the wall
+  // stays a backdrop rather than becoming foreground copy.
+  color: #{ink(0.5)};
   animation: row-land 0.7s var(--ease-smooth) forwards;
   animation-delay: calc(var(--i) * 70ms);
 }

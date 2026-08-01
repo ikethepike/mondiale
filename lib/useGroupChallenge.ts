@@ -59,6 +59,14 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
 
+  // Until the round starts, the clock is FULL, not expired. The challenge
+  // usually arrives after this composable mounts, so without this sync the
+  // idle stage read secondsLeft 0 → elapsedFraction 1 — and anything staged
+  // off elapsed time (the audio field's colour drift) fired before play.
+  watch(duration, value => {
+    if (!started.value) secondsLeft.value = value ?? 0
+  })
+
   /** Clock left as a 0..1 fraction — what buzz scoring and staged reveals key
    *  off. The one place the division lives; views must not re-derive it. */
   const remainingFraction = computed(() =>

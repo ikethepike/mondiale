@@ -23,24 +23,22 @@
       </template>
     </ChallengePrompt>
 
-    <section class="stage">
-      <AudioDock
-        ref="dock"
-        :clip="challenge.clip"
-        :fraction="remainingFraction"
-        idle-label="Tap play to start the round"
-        :playing-label="resolved ? 'That was it' : 'Listening…'"
-        ended-label="Tap to hear it again — the clock is still running"
-        @started="onAudioStarted"
-      />
-
-      <!-- `hint` rather than `chain`: no -move rule, so an arriving chip can't
-           shove its neighbours. Same landing as the anthem round. -->
+    <AudioScene
+      ref="scene"
+      :clip="challenge.clip"
+      :progress="elapsedFraction"
+      :iso-codes="challenge.countries"
+      :settled="resolved"
+      :stand-down="resolved"
+      @started="onAudioStarted"
+    >
       <!-- Same ladder as the anthem round: each chip lands as the clock crosses
            its threshold, narrowing the field without naming a country. -->
-      <TransitionGroup v-if="!resolved" tag="ul" name="hint" class="hints">
+      <template #hints>
+        <!-- Count-neutral on purpose: "one of them" implies plural, and this
+             chip lands before the speaker-count hint has earned its reveal. -->
         <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
-          One of them is in {{ challenge.region }}
+          Spoken in {{ challenge.region }}
         </li>
         <li v-if="unlocked.swatches && challenge.speakerCount" key="count" class="hint-chip">
           Official in {{ challenge.speakerCount }}
@@ -48,26 +46,28 @@
         </li>
         <!-- Seeing the language written is the strongest hint short of naming
              a country: the script alone rules most of the world out. -->
-        <li v-if="unlocked.swatches && challenge.sample" key="sample" class="hint-chip sample-chip">
-          <span class="sample-script">Written in {{ challenge.sample.script }}</span>
-          <span class="sample-lines" :lang="challenge.sample.code">
-            <span v-for="(line, index) in challenge.sample.lines" :key="index">{{ line }}</span>
+        <li v-if="unlocked.swatches && sample" key="sample" class="hint-chip sample-chip">
+          <span class="sample-script">Written in {{ sample.script }}</span>
+          <span class="sample-lines" :lang="sample.code">
+            <span v-for="(line, index) in sample.lines" :key="index">{{ line }}</span>
           </span>
         </li>
         <li v-if="unlocked.initial && challenge.initial" key="initial" class="hint-chip">
           One starts with “{{ challenge.initial }}”
         </li>
-      </TransitionGroup>
+      </template>
 
-      <ol v-if="resolved" class="country-chip-list answers" aria-label="Every correct answer">
-        <CountryChip
-          v-for="isoCode in challenge.countries"
-          :key="isoCode"
-          class="map-caption"
-          :country="getCountry(isoCode)"
-        />
-      </ol>
-    </section>
+      <template #stage>
+        <ol v-if="resolved" class="country-chip-list answers" aria-label="Every correct answer">
+          <CountryChip
+            v-for="isoCode in challenge.countries"
+            :key="isoCode"
+            class="map-caption"
+            :country="getCountry(isoCode)"
+          />
+        </ol>
+      </template>
+    </AudioScene>
 
     <footer v-if="!resolved" class="suggest-berth">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -86,7 +86,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import AudioDock from '~/components/challenge/AudioDock.vue'
+import AudioScene from '~/components/challenge/AudioScene.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
@@ -95,7 +95,10 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { anthemTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
+import type { TongueSample } from '~~/lib/tongue-samples'
+import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 import type { Country } from '~~/types/geography.types'
 
 const {
@@ -105,7 +108,7 @@ const {
   started,
   submitted,
   secondsLeft,
-  remainingFraction,
+  elapsedFraction,
   hint,
   announce,
   entries,
@@ -133,8 +136,27 @@ const {
   },
 })
 
-const dock = ref<InstanceType<typeof AudioDock>>()
+const scene = ref<InstanceType<typeof AudioScene>>()
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+/** The written-sample hint. The dealer ships one for seeded languages; every
+ *  other language borrows a couple of anthem lines through the same home
+ *  (`lib/tongue-samples.ts`). Gated on `region`: hard mode omits the hint
+ *  fields, and the view must not conjure hints the dealer withheld. A failed
+ *  fetch is silent — the round just runs without this chip. */
+const sample = ref<TongueSample>()
+watchEffect(async () => {
+  const active = challenge.value
+  if (!active?.region) return
+  if (active.sample) {
+    sample.value = active.sample
+    return
+  }
+  const url = tongueSampleSource(active.language)
+  if (!url) return
+  const lyrics = await $fetch<AnthemLyrics>(url).catch(() => undefined)
+  if (lyrics) sample.value = anthemTongueSample(lyrics)
+})
 
 /** Show the stage and stop. The round never plays on its own: the player
  *  presses play, and only that starts the clip and the clock together. An
@@ -150,38 +172,15 @@ const onAudioStarted = () => {
 
 const onGuess = (country: Country) => {
   const verdict = guess(country.isoCode, countryName(country.isoCode))
-  if (verdict === 'correct') dock.value?.stop()
+  if (verdict === 'correct') scene.value?.stop()
   if (verdict === 'wrong') setTimeout(() => guessInput.value?.focus(), 3000)
 }
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 
-.stage {
-  flex: 1;
-  gap: 1.4rem;
-  display: flex;
-  min-height: 0;
-  padding: 1rem 0;
-  align-items: center;
-  flex-flow: column nowrap;
-  justify-content: center;
-}
-
-// Reserves a chip's height from the start, so the first arrival lands in space
-// already held rather than pushing the stage around it.
-.hints {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  min-height: 3rem;
-  list-style: none;
-  align-items: center;
-  flex-flow: row wrap;
-  pointer-events: auto;
-  justify-content: center;
-}
+// The stage, hint row and chip recipe live in `AudioScene` — both audio modes
+// share them.
 
 // The answer roll sits clear of the dock's caption rather than under it.
 .answers {
@@ -211,14 +210,9 @@ const onGuess = (country: Country) => {
   color: var(--dark-blue);
 }
 
-.hint-chip {
-  padding: 0.5rem 1.2rem;
-  font-size: 1.3rem;
-  font-weight: 600;
-  border-radius: 2rem;
-  color: var(--soft-blue);
-  background: #{milk(0.6)};
-  // Entrance belongs to the TransitionGroup, not to the chip — a CSS animation
-  // here would replay on every re-render and fight the landing.
+// The sample chip is a block, so it overrides the shared row recipe's centring.
+.sample-chip {
+  flex-flow: column nowrap;
+  align-items: flex-start;
 }
 </style>

@@ -1086,6 +1086,73 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'anthem-buzz-poland',
+    label: 'Opening Ceremony (white & red palette)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Poland exercises the white-as-primary path: a two-colour flag
+          // where one colour is the milk tone, so the field has to carry the
+          // hint on crimson alone.
+          country: 'PL',
+          clip: { webm: '/anthems/PL.webm', m4a: '/anthems/PL.m4a' },
+          lyricsUrl: '/anthems/lyrics/PL-anthem.json',
+          durationSeconds: 30,
+          region: 'Europe',
+          swatches: ['white', 'red'],
+          initial: 'P',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-japan',
+    label: 'Opening Ceremony (shortest anthem, CJK wall)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Kimigayo is the shortest anthem in the world: a five-line wall in
+          // CJK script with a masked 君が代 span — the tiniest verse the wall
+          // renders, no drift, non-Latin glyph fallback and mask sizing all in
+          // one scenario.
+          country: 'JP',
+          clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+          lyricsUrl: '/anthems/lyrics/JP-anthem.json',
+          durationSeconds: 30,
+          region: 'Asia',
+          swatches: ['white', 'red'],
+          initial: 'J',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-uruguay',
+    label: 'Opening Ceremony (longest anthem wall)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // The longest anthem text in the world: 21 lines across 6 verses.
+          // The wall's tallest column — the drift-scroll's stress test, and
+          // the case that finds any bottom-fade or reflow regression first.
+          country: 'UY',
+          clip: { webm: '/anthems/UY.webm', m4a: '/anthems/UY.m4a' },
+          lyricsUrl: '/anthems/lyrics/UY-anthem.json',
+          durationSeconds: 30,
+          region: 'Americas',
+          swatches: ['white', 'blue', 'yellow'],
+          initial: 'U',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'tongue-buzz',
     label: 'Mother Tongue (speech audio)',
     component: ViewTongueBuzz,
@@ -1102,6 +1169,28 @@ const scenarios: Scenario[] = [
           region: 'Africa',
           speakerCount: 4,
           initial: 'T',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'tongue-buzz-ukrainian',
+    label: 'Mother Tongue (Ukrainian, borrowed anthem sample)',
+    component: ViewTongueBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'tongue-buzz-challenge',
+          // No `sample` on purpose: Ukrainian has no seed, so the view must
+          // borrow lines from Ukraine's own anthem wall — the path Swahili and
+          // most languages take in a real deal — and render them in Cyrillic.
+          language: 'Ukrainian',
+          clip: { webm: '/tongues/uk-0.webm', m4a: '/tongues/uk-0.m4a' },
+          countries: ['UA'],
+          durationSeconds: 20,
+          region: 'Europe',
+          speakerCount: 1,
+          initial: 'U',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

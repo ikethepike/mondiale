@@ -9,16 +9,6 @@
       @done="onInterstitialDone"
     />
 
-    <!-- Full-bleed backdrop, behind every other layer: the anthem's own words
-         as a "now playing" wall. Masked where they name the country, unmasked
-         and translated on the reveal. -->
-    <LyricWall
-      v-if="lyrics && unlocked.lyrics"
-      :lyrics="lyrics"
-      :revealed="resolved || unlocked.lyricsUnmask"
-      :translated="translated"
-    />
-
     <ChallengePrompt :hint="hint">
       <template v-if="!resolved">
         <h1 class="map-caption">Whose anthem is this?</h1>
@@ -30,21 +20,26 @@
       </template>
     </ChallengePrompt>
 
-    <section class="stage">
-      <AudioDock
-        ref="dock"
-        :clip="challenge.clip"
-        :fraction="remainingFraction"
-        idle-label="Tap play to start the round"
-        :playing-label="resolved ? 'That was it' : 'Listening…'"
-        ended-label="Tap to hear it again — the clock is still running"
-        @started="onAudioStarted"
-      />
+    <AudioScene
+      ref="scene"
+      :clip="challenge.clip"
+      :progress="elapsedFraction"
+      :iso-codes="[challenge.country]"
+      :settled="resolved"
+      @started="onAudioStarted"
+    >
+      <template #backdrop>
+        <!-- Behind the stage but above the field: the anthem's own words as a
+             "now playing" wall, masked where they name the country. -->
+        <LyricWall
+          v-if="lyrics && unlocked.lyrics"
+          :lyrics="lyrics"
+          :revealed="resolved || unlocked.lyricsUnmask"
+          :translated="translated"
+        />
+      </template>
 
-      <!-- Chips land one at a time as the clock crosses each threshold. `hint`
-           rather than the generic `chain`: no -move rule, so an arriving chip
-           cannot animate its neighbours sideways. -->
-      <TransitionGroup v-if="!resolved" tag="ul" name="hint" class="hints">
+      <template #hints>
         <li v-if="unlocked.region && challenge.region" key="region" class="hint-chip">
           Region: {{ challenge.region }}
         </li>
@@ -64,8 +59,8 @@
         <li v-if="unlocked.initial && challenge.initial" key="initial" class="hint-chip">
           Starts with “{{ challenge.initial }}”
         </li>
-      </TransitionGroup>
-    </section>
+      </template>
+    </AudioScene>
 
     <footer v-if="!resolved" class="suggest-berth">
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -84,7 +79,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import AudioDock from '~/components/challenge/AudioDock.vue'
+import AudioScene from '~/components/challenge/AudioScene.vue'
 import LyricWall from '~/components/challenge/LyricWall.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
@@ -92,7 +87,6 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
-import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
 import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
@@ -105,7 +99,7 @@ const {
   started,
   submitted,
   secondsLeft,
-  remainingFraction,
+  elapsedFraction,
   hint,
   announce,
   entries,
@@ -121,21 +115,11 @@ const {
   isCorrect: (active, isoCode) => active.country === isoCode,
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `Not ${name} — locked out for 3 seconds`,
-  onResolve: () => {
-    const active = challenge.value
-    if (!active) return
-    // Land the answer as a place, not just a name — the country framed among
-    // its neighbours, same as the silhouette reveal.
-    const neighbours = BORDERS[active.country] ?? []
-    // No ISO labels here, unlike the silhouette reveal: the lyric wall is still
-    // on screen, and country codes scattered behind the verse read as text
-    // behind text. The tint and the flown-to frame carry the answer instead.
-    gameStore.map.reveal = active.country
-    gameStore.map.focus = [active.country]
-    gameStore.map.focusContext = neighbours
-    gameStore.map.tints[active.country] = 'optimal'
-    for (const neighbour of neighbours) gameStore.map.tints[neighbour] = 'inefficient'
-  },
+  // No map reveal. "Whose anthem" is not a geography question, and flying a
+  // camera to one country adds nothing the name and the settled field do not
+  // already say. The payoff is realising the colours WERE the answer, forming
+  // all along; the flag, title and composer land on the scorecard moments
+  // later, so a second scorecard here would only compete with the verse.
 })
 
 /** The curated wall, fetched rather than inlined — verses are long and most
@@ -159,20 +143,7 @@ watch(resolved, isResolved => {
   registerCleanup(() => clearTimeout(timer))
 })
 
-/** While the lyric wall is up the map recedes — faint and set back — so the
- *  verse owns the screen. It fades into focus on the reveal, which is the
- *  moment locating the country actually matters. */
-watch(
-  () => !!lyrics.value && unlocked.value.lyrics && !resolved.value,
-  quiet => {
-    gameStore.map.recede = quiet
-  }
-)
-registerCleanup(() => {
-  gameStore.map.recede = false
-})
-
-const dock = ref<InstanceType<typeof AudioDock>>()
+const scene = ref<InstanceType<typeof AudioScene>>()
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const anthem = computed(() => (challenge.value ? ANTHEMS[challenge.value.country] : undefined))
@@ -193,7 +164,7 @@ const onAudioStarted = () => {
 
 const onGuess = (country: Country) => {
   const verdict = guess(country.isoCode, countryName(country.isoCode))
-  if (verdict === 'correct') dock.value?.stop()
+  if (verdict === 'correct') scene.value?.stop()
   if (verdict === 'wrong') {
     setTimeout(() => guessInput.value?.focus(), 3000)
   }
@@ -202,55 +173,8 @@ const onGuess = (country: Country) => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 
-.stage {
-  flex: 1;
-  gap: 1.4rem;
-  display: flex;
-  min-height: 0;
-  padding: 1rem 0;
-  align-items: center;
-  flex-flow: column nowrap;
-  justify-content: center;
-  // Above the lyric backdrop, which pins itself at z-index 0.
-  position: relative;
-  z-index: 1;
-}
-
-// Chips arrive one at a time as the clock passes each threshold. The row keeps
-// a chip's worth of height from the start, so the first arrival lands in space
-// already reserved rather than pushing the stage around it.
-.hints {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  min-height: 3rem;
-  list-style: none;
-  align-items: center;
-  flex-flow: row wrap;
-  pointer-events: auto;
-  justify-content: center;
-}
-
-.hint-chip {
-  gap: 0.6rem;
-  display: flex;
-  padding: 0.5rem 1.2rem;
-  font-size: 1.3rem;
-  font-weight: 600;
-  align-items: center;
-  // Chips arrive one at a time as the clock passes each threshold, so each one
-  // centres its own contents — a lone swatch row would otherwise sit left of
-  // the dock it hangs under.
-  text-align: center;
-  justify-content: center;
-  border-radius: 2rem;
-  color: var(--soft-blue);
-  background: #{milk(0.6)};
-  // Entrance belongs to the TransitionGroup, not to the chip — a CSS animation
-  // here would replay on every re-render and fight the landing.
-}
-
+// The stage, hint row and chip recipe live in `AudioScene` — both audio modes
+// share them. Only the swatch is this round's own.
 .swatch {
   width: 1.2rem;
   height: 1.2rem;

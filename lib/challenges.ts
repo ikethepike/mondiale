@@ -580,8 +580,9 @@ const getTongueBuzzChallenge = ({
           region: REGION_LABELS[COUNTRIES[countries[0]].region],
           speakerCount: countries.length,
           // Seeded sample for languages no anthem is sung in. Languages that
-          // DO have one borrow it from the lyric wall in the view, which
-          // already fetches that file.
+          // DO have one ship no sample: the view borrows a couple of lyric
+          // lines through `tongueSampleSource`/`anthemTongueSample`, keyed off
+          // `region` being present so hard mode stays hint-free.
           ...(seededTongueSample(language) ? { sample: seededTongueSample(language) } : {}),
           initial: countryName(countries[0]).slice(0, 1).toUpperCase(),
         }

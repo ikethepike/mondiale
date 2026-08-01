@@ -56,10 +56,6 @@ interface GameStoreState {
     /** With solo: keep the continents as one quiet silhouette — same fill,
      *  no strokes, so internal borders vanish (ghosts-of-empires backdrop). */
     landmass: boolean
-    /** Push the map back — faint and slightly scaled down — so a full-screen
-     *  overlay owns the eye. Fades back in on the reveal, where locating the
-     *  country is the point (the anthem round's lyric wall). */
-    recede: boolean
     /** Show ISO acronym labels on countries (easy traversal aid). */
     labels: boolean
     /** Chrome berth (CSS px): the camera frames its subject between these
@@ -166,7 +162,6 @@ export const useGameStore = defineStore('game', {
       highlighted: new Set([]),
       solo: false,
       landmass: false,
-      recede: false,
       labels: false,
       focus: [],
       focusContext: [],
