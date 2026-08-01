@@ -1,14 +1,19 @@
 <template>
-  <div v-if="lines.length" class="lyric-wall" :class="{ revealed, translated }">
+  <div v-if="lines.length" class="lyric-wall" :class="{ revealed, drifting }" aria-hidden="true">
     <Transition name="wall" appear>
-      <ol class="verse" :style="{ '--line-count': lines.length }">
+      <ol
+        :key="translated ? 'english' : 'local'"
+        ref="column"
+        class="verse"
+        :style="{ '--drift-seconds': `${driftSeconds}s`, '--drift-distance': `${driftDistance}px` }"
+      >
         <li v-for="(line, index) in lines" :key="index" class="line" :style="{ '--i': index }">
           <template v-for="(span, spanIndex) in line" :key="spanIndex">
             <span v-if="span.blanked" class="span blanked" :class="{ open: revealed }">
-              <!-- The word sits underneath the mask the whole time: the mask is
-                   what fades, so the line never reflows on the reveal. -->
+              <!-- The word sits under the mask the whole time: the mask is what
+                   fades, so the line never reflows on the reveal. -->
               <span class="word">{{ span.text }}</span>
-              <span class="mask" aria-hidden="true" />
+              <span class="mask" />
             </span>
             <span v-else class="span">{{ span.text }}</span>
           </template>
@@ -19,16 +24,18 @@
 </template>
 <script lang="ts" setup>
 import type { AnthemLyrics, LyricSpan } from '~~/types/challenges/group-modes.type'
+import { prefersReducedMotion } from '~~/lib/motion'
 
 /**
- * The anthem's own words, drifting up behind the round.
+ * The anthem's words as a full-bleed backdrop — a "now playing" wall behind the
+ * round rather than a card on top of it. Decorative: `aria-hidden`, no pointer
+ * events, and it sits under every interactive layer.
  *
- * A hint, never the question: anything naming the country is masked while the
- * clock runs. When it stops, the masks fade off and the verse cross-fades into
- * English — the beat where the round tells you what was being sung.
+ * A verse taller than the screen drifts slowly upward on a loop. It makes NO
+ * attempt to follow the recording: anthems run from five lines to ninety-five,
+ * so any sync would be fiction. The drift is atmosphere, not karaoke.
  *
- * Format and the licensing rules for adding a country:
- * public/anthems/lyrics/readme-anthems.md
+ * Format: public/anthems/lyrics/readme-anthems.md
  */
 const props = withDefaults(
   defineProps<{
@@ -37,10 +44,8 @@ const props = withDefaults(
     revealed?: boolean
     /** Swap the local verse for its English rendering. */
     translated?: boolean
-    /** Keeps the wall to a sane height — anthems run from 5 lines to 95. */
-    maxLines?: number
   }>(),
-  { lyrics: undefined, revealed: false, translated: false, maxLines: 10 }
+  { lyrics: undefined, revealed: false, translated: false }
 )
 
 /** `Du gamla, du [[fria]]` → [{text:'Du gamla, du '},{text:'fria',blanked:true}] */
@@ -61,59 +66,102 @@ const parseLine = (line: string): LyricSpan[] => {
   return spans
 }
 
+/** Every line of the chosen column — the wall shows the whole text and lets the
+ *  drift handle length, rather than truncating a verse mid-thought. */
 const lines = computed<LyricSpan[][]>(() => {
   const verses = props.lyrics?.verses ?? []
   const column = verses.flatMap(verse => (props.translated ? verse.english : verse.local))
-  return column
-    .filter(line => line.trim())
-    .slice(0, props.maxLines)
-    .map(parseLine)
+  return column.filter(line => line.trim()).map(parseLine)
 })
+
+/** Seconds of travel per screen-height of overflow: slow enough to read a line
+ *  twice, so it reads as breathing rather than scrolling. */
+const DRIFT_SECONDS_PER_SCREEN = 40
+
+const column = ref<HTMLElement>()
+const driftDistance = ref(0)
+const driftSeconds = ref(0)
+const drifting = computed(() => driftDistance.value > 0)
+
+/** Only a verse that actually overflows drifts. Kimigayo is five lines; it
+ *  should sit still rather than crawl for no reason. */
+const measureDrift = () => {
+  const element = column.value
+  if (!element || prefersReducedMotion()) {
+    driftDistance.value = 0
+    return
+  }
+  const overflow = element.scrollHeight - element.clientHeight
+  driftDistance.value = Math.max(0, overflow)
+  driftSeconds.value = Math.round(
+    (driftDistance.value / Math.max(1, window.innerHeight)) * DRIFT_SECONDS_PER_SCREEN * 2
+  )
+}
+
+onMounted(() => {
+  measureDrift()
+  window.addEventListener('resize', measureDrift)
+})
+onBeforeUnmount(() => window.removeEventListener('resize', measureDrift))
+// Re-measure when the column swaps to English: the translation is a different
+// length, so its overflow is different too.
+watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 
-// Its own ground: the verse sits over the map, and unbacked italic text is
-// unreadable against country borders and labels.
+// Full-bleed backdrop. Pinned behind everything and inert: the round's own
+// chrome and the guess console must stay reachable through it.
 .lyric-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   display: flex;
-  padding: 1.4rem 1.8rem;
-  max-width: min(52rem, 90vw);
-  border-radius: 1.2rem;
+  overflow: hidden;
+  align-items: center;
   pointer-events: none;
   justify-content: center;
-  background: #{milk(0.9)};
-  backdrop-filter: blur(2px);
+  // Fades at both edges so the text dissolves rather than being cut off.
+  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
 }
 
 .verse {
-  gap: 0.5rem;
+  gap: 0.6em;
   margin: 0;
-  padding: 0;
+  padding: 12vh 6vw;
   display: flex;
+  max-height: 100%;
   list-style: none;
   text-align: center;
   flex-flow: column nowrap;
+  // The system stack: this is chrome, not the game's editorial voice, so it
+  // stays out of the way of the serif the rest of the round is set in.
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
 }
 
-// Lines drift up in sequence, so the wall reads as arriving rather than
-// appearing. The stagger is bounded so a long verse still lands promptly.
+.drifting .verse {
+  animation: lyric-drift var(--drift-seconds) linear infinite alternate;
+}
+
 .line {
   opacity: 0;
-  font-size: 1.5rem;
-  line-height: 1.5;
-  color: #{ink(0.62)};
-  font-style: italic;
-  animation: row-land 0.6s var(--ease-smooth) forwards;
-  animation-delay: calc(var(--i) * 90ms);
+  font-size: clamp(1.6rem, 4.4vw, 2.8rem);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  // Pale enough to sit behind the round without competing with it.
+  color: #{ink(0.13)};
+  animation: row-land 0.7s var(--ease-smooth) forwards;
+  animation-delay: calc(var(--i) * 70ms);
 }
 
 .span {
   white-space: pre-wrap;
 }
 
-// The masked word keeps its width, so line length stays a legible clue — the
-// mask covers the letters without collapsing the shape of the verse.
+// Masked words keep their width, so line length stays a clue and nothing
+// reflows when the mask lifts.
 .blanked {
   position: relative;
   display: inline-block;
@@ -124,18 +172,17 @@ const lines = computed<LyricSpan[][]>(() => {
   }
 
   .mask {
-    inset: 0.1em 0;
+    inset: 0.12em 0;
     position: absolute;
-    border-radius: 0.3rem;
-    background: #{ink(0.34)};
+    border-radius: 0.2em;
+    background: #{ink(0.16)};
     transition: opacity var(--motion-base) var(--ease-smooth);
   }
 
   &.open {
     .word {
       opacity: 1;
-      color: #{flame()};
-      font-weight: 600;
+      color: #{flame(0.5)};
     }
 
     .mask {
@@ -144,8 +191,7 @@ const lines = computed<LyricSpan[][]>(() => {
   }
 }
 
-// The whole wall fades between local and English, so the swap reads as one
-// movement rather than ten lines changing independently.
+// Local ⇄ English swap the whole wall at once, so it reads as one movement.
 .wall-enter-active,
 .wall-leave-active {
   transition: opacity var(--motion-slow) var(--ease-smooth);
@@ -156,9 +202,9 @@ const lines = computed<LyricSpan[][]>(() => {
   opacity: 0;
 }
 
-@media screen and (max-width: 480px) {
-  .line {
-    font-size: 1.3rem;
+@keyframes lyric-drift {
+  to {
+    transform: translateY(calc(var(--drift-distance) * -1));
   }
 }
 </style>

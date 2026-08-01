@@ -9,6 +9,16 @@
       @done="onInterstitialDone"
     />
 
+    <!-- Full-bleed backdrop, behind every other layer: the anthem's own words
+         as a "now playing" wall. Masked where they name the country, unmasked
+         and translated on the reveal. -->
+    <LyricWall
+      v-if="lyrics && unlocked.lyrics"
+      :lyrics="lyrics"
+      :revealed="resolved"
+      :translated="translated"
+    />
+
     <ChallengePrompt :hint="hint">
       <template v-if="!resolved">
         <h1 class="map-caption">Whose anthem is this?</h1>
@@ -29,15 +39,6 @@
         :playing-label="resolved ? 'That was it' : 'Listening…'"
         ended-label="Tap to hear it again — the clock is still running"
         @started="onAudioStarted"
-      />
-
-      <!-- The anthem's own words, once the earlier hints have landed. Masked
-           where they name the country, unmasked and translated on the reveal. -->
-      <LyricWall
-        v-if="lyrics && unlocked.lyrics"
-        :lyrics="lyrics"
-        :revealed="resolved"
-        :translated="translated"
       />
 
       <!-- Chips land one at a time as the clock crosses each threshold, so
@@ -194,6 +195,9 @@ const onGuess = (country: Country) => {
   align-items: center;
   flex-flow: column nowrap;
   justify-content: center;
+  // Above the lyric backdrop, which pins itself at z-index 0.
+  position: relative;
+  z-index: 1;
 }
 
 .hints {
