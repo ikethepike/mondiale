@@ -1184,7 +1184,12 @@ const scenarios: Scenario[] = [
           // Swahili: distinctive enough to be a fair listen, and official in
           // four countries, so the any-speaker rule is visible in the reveal.
           language: 'Swahili',
-          clip: { webm: '/tongues/sw-0.webm', m4a: '/tongues/sw-0.m4a' },
+          // All three voices, to exercise the dock's sequence-and-cycle.
+          clips: [
+            { webm: '/tongues/sw-0.webm', m4a: '/tongues/sw-0.m4a' },
+            { webm: '/tongues/sw-1.webm', m4a: '/tongues/sw-1.m4a' },
+            { webm: '/tongues/sw-2.webm', m4a: '/tongues/sw-2.m4a' },
+          ],
           countries: ['TZ', 'KE', 'UG', 'RW'],
           durationSeconds: 20,
           region: 'Africa',
@@ -1206,7 +1211,11 @@ const scenarios: Scenario[] = [
           // borrow lines from Ukraine's own anthem wall — the path Swahili and
           // most languages take in a real deal — and render them in Cyrillic.
           language: 'Ukrainian',
-          clip: { webm: '/tongues/uk-0.webm', m4a: '/tongues/uk-0.m4a' },
+          clips: [
+            { webm: '/tongues/uk-0.webm', m4a: '/tongues/uk-0.m4a' },
+            { webm: '/tongues/uk-1.webm', m4a: '/tongues/uk-1.m4a' },
+            { webm: '/tongues/uk-2.webm', m4a: '/tongues/uk-2.m4a' },
+          ],
           countries: ['UA'],
           durationSeconds: 20,
           region: 'Europe',
@@ -1227,7 +1236,8 @@ const scenarios: Scenario[] = [
           // Hindi has no anthem sung in it (India's is Bengali), so it falls
           // back to a seeded sample — the path Swahili never exercises.
           language: 'Hindi',
-          clip: { webm: '/tongues/hi-0.webm', m4a: '/tongues/hi-0.m4a' },
+          // Hindi has a single sample — the degenerate sequence of one.
+          clips: [{ webm: '/tongues/hi-0.webm', m4a: '/tongues/hi-0.m4a' }],
           countries: ['IN'],
           durationSeconds: 20,
           region: 'Asia',

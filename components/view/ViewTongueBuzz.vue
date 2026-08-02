@@ -25,7 +25,7 @@
 
     <AudioScene
       ref="scene"
-      :clip="challenge.clip"
+      :clips="challenge.clips"
       :progress="elapsedFraction"
       :iso-codes="challenge.countries"
       :settled="resolved"

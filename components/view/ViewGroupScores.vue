@@ -255,7 +255,8 @@ const audioReveal = computed(() => {
         challenge.countries.length === 1 ? 'country' : 'countries'
       } — any of them counted`,
       credit: undefined,
-      clip: challenge.clip,
+      // The scorecard replays one voice, not the sequence — first sample.
+      clip: challenge.clips[0],
     }
   }
 

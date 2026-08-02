@@ -566,13 +566,17 @@ const getTongueBuzzChallenge = ({
   if (!entry) return undefined
 
   const [language, countries] = entry
-  const clip = sample(TONGUES[language]?.clips ?? [])
-  if (!clip) return undefined
+  // ALL the language's samples, not one: the dock plays them in sequence, so
+  // three voices become continuous listening material. Shuffled at deal time —
+  // the whole room hears the same order, but rounds don't always open on
+  // Common Voice's first recording.
+  const clips = shuffleArray(TONGUES[language]?.clips ?? [])
+  if (!clips.length) return undefined
 
   return {
     _type: 'tongue-buzz-challenge',
     language,
-    clip,
+    clips,
     countries,
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),

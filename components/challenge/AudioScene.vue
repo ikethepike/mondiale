@@ -13,7 +13,7 @@
     <section class="stage">
       <AudioDock
         ref="dock"
-        :clip="clip"
+        :clips="clips"
         idle-label="Tap play to start the round"
         :playing-label="settled ? 'That was it' : 'Listening…'"
         ended-label="Tap to hear it again — the clock is still running"
@@ -47,7 +47,8 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * listening round needs to look like a listening round lives here.
  */
 defineProps<{
-  clip: AudioClip
+  /** The recordings, in play order — the dock sequences them. */
+  clips: AudioClip[]
   /** Elapsed 0..1, driving how far the field's colours have travelled. */
   progress: number
   /** The answer's countries — one for an anthem, every speaker for a language. */

@@ -79,7 +79,10 @@ export interface AnthemLyrics {
 export interface TongueBuzzChallenge {
   _type: 'tongue-buzz-challenge'
   language: string
-  clip: AudioClip
+  /** Every sample the language has (up to three Common Voice voices), played
+   *  in sequence with a breath between — three voices are more evidence than
+   *  one, and the clips are seconds long where the round runs twenty. */
+  clips: AudioClip[]
   /** The answers: playable countries with this as an official language.
    *  English is official in 55 of them, so the answer is a set by design. */
   countries: ISOCountryCode[]

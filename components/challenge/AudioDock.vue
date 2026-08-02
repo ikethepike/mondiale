@@ -7,8 +7,8 @@
          that the whole candidate list is exhausted, so the handler lives
          there. -->
     <audio ref="element" preload="auto" @timeupdate="onTimeUpdate" @ended="onEnded">
-      <source :src="clip.webm" type="audio/webm" />
-      <source :src="clip.m4a" type="audio/mp4" @error="onError" />
+      <source :src="current.webm" type="audio/webm" />
+      <source :src="current.m4a" type="audio/mp4" @error="onError" />
     </audio>
 
     <!-- NEVER disabled while sound could still be coaxed out: on iOS no media
@@ -79,7 +79,10 @@ import { prefersReducedMotion } from '~~/lib/motion'
  */
 const props = withDefaults(
   defineProps<{
-    clip: AudioClip
+    /** The recordings, in play order. One for an anthem; the tongue round
+     *  ships every voice sample it has, and the dock runs them as a sequence
+     *  with a breath between — then cycles from the top on a replay press. */
+    clips: AudioClip[]
     /** Copy before the first play — the round is waiting on this tap. */
     idleLabel?: string
     playingLabel?: string
@@ -100,8 +103,29 @@ const BAR_COUNT = 7
 const RING_RADIUS = 44
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
+/** The breath between samples in a sequence — long enough to read as "next
+ *  voice", short enough that the listening never feels stopped. */
+const INTER_CLIP_GAP_MS = 700
+
 const element = ref<HTMLAudioElement>()
 const playing = ref(false)
+
+/** Which recording the element is loaded with. */
+const index = ref(0)
+const current = computed(() => props.clips[index.value] ?? props.clips[0])
+
+/** Failed loads in the CURRENT cycle — a broken sample is skipped, but once
+ *  every clip has refused in a row there is nothing left to coax. */
+let consecutiveErrors = 0
+let advanceTimer: ReturnType<typeof setTimeout> | undefined
+
+/** Point the element at another recording. The `<source>` children re-render
+ *  from `current`, but the element only reconsults them on load(). */
+const selectClip = async (next: number) => {
+  index.value = next
+  await nextTick()
+  element.value?.load()
+}
 /** True from the press until sound is confirmed running — the only moment a
  *  spinner is honest. NEVER true before a press: pre-gesture "readiness" is
  *  unknowable on iOS, which fires no media events until a gesture loads. */
@@ -121,8 +145,17 @@ const caption = computed(() => {
 
 /** A clip that 404s must not strand the round behind a dead button. Group
  *  settlement waits on every seat, so an unstarted clock here would stall the
- *  whole table — the round arms and runs silent instead. */
+ *  whole table. A broken sample mid-sequence is skipped; only once EVERY clip
+ *  has refused does the dock fail — and even then the round arms and runs
+ *  silent rather than stalling. */
 const onError = () => {
+  consecutiveErrors++
+  if (consecutiveErrors < props.clips.length) {
+    void selectClip((index.value + 1) % props.clips.length).then(() => {
+      if (playing.value || loading.value) void play()
+    })
+    return
+  }
   loading.value = false
   playing.value = false
   failed.value = true
@@ -135,12 +168,30 @@ const onError = () => {
 const onTimeUpdate = () => {
   const audio = element.value
   if (!audio?.duration) return
-  heard.value = Math.min(1, audio.currentTime / audio.duration)
+  // The ring spans the whole SEQUENCE, so with three samples each fills a
+  // third — one recording, and it collapses to the old single-clip ring.
+  heard.value = Math.min(
+    1,
+    (index.value + Math.min(1, audio.currentTime / audio.duration)) / props.clips.length
+  )
 }
 
 const onEnded = () => {
+  // More voices to hear: keep the session alive through a short breath, then
+  // the next sample. `playing` stays true so the dial keeps pulsing — the
+  // pause is a beat in the listening, not a stop.
+  if (index.value < props.clips.length - 1) {
+    advanceTimer = setTimeout(async () => {
+      await selectClip(index.value + 1)
+      void play()
+    }, INTER_CLIP_GAP_MS)
+    return
+  }
+
+  // Sequence complete. Rewind to the top so the replay press cycles again.
   playing.value = false
   heard.value = 1
+  if (props.clips.length > 1) void selectClip(0)
 }
 
 const play = async () => {
@@ -154,6 +205,7 @@ const play = async () => {
     () => {
       playing.value = true
       loading.value = false
+      consecutiveErrors = 0
       // The clock starts on the FIRST confirmed play and never again, so a
       // replay costs the player time rather than buying more.
       if (!armed.value) {
@@ -175,6 +227,9 @@ const play = async () => {
 const pause = () => {
   const audio = element.value
   if (!audio) return
+  // A pause during the inter-clip breath must stop the SEQUENCE, not just
+  // the (already silent) element.
+  if (advanceTimer) clearTimeout(advanceTimer)
   audio.pause()
   playing.value = false
 }
@@ -184,6 +239,7 @@ const toggle = () => (playing.value ? pause() : play())
 const stop = () => {
   pause()
   heard.value = 0
+  if (index.value !== 0) void selectClip(0)
 }
 
 // Never let audio bleed into the scorecard.
