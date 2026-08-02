@@ -13,6 +13,7 @@
       <span v-if="site.description" class="description">{{ capitalize(site.description) }}</span>
       <span class="credit-row">
         <SourceInfo
+          align="start"
           drop="up"
           :attributions="sources"
           label="Sources"

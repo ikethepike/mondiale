@@ -38,6 +38,7 @@
           <p class="lesson-body">{{ lesson.body }}</p>
           <span class="credit-row">
             <SourceInfo
+              align="start"
               drop="up"
               :attributions="sources"
               label="Sources"

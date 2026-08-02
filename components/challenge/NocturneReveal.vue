@@ -36,7 +36,7 @@
       </span>
     </span>
     <span class="credit-row">
-      <SourceInfo drop="up" :attributions="sources" label="Sources" />
+      <SourceInfo align="start" drop="up" :attributions="sources" label="Sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
   </span>

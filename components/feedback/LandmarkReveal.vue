@@ -13,6 +13,7 @@
     <span v-if="landmark.description" class="description">{{ landmark.description }}</span>
     <span class="credit-row">
       <SourceInfo
+        align="start"
         drop="up"
         :attributions="sources"
         label="Sources"

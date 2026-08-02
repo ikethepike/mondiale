@@ -100,7 +100,7 @@
            lyric text and its translation each come from somewhere different,
            which is more than a single line can carry honestly. -->
       <span v-if="sources.length" class="credit-row">
-        <SourceInfo :attributions="sources" :item-credit="credit" label="Sources" />
+        <SourceInfo align="start" :attributions="sources" :item-credit="credit" label="Sources" />
         <span class="credit">{{ sources[0].credit }}</span>
       </span>
     </span>
