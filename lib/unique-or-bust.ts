@@ -265,3 +265,32 @@ export const resolveUniqueCollisions = (
   )
   return { results, scores }
 }
+
+/**
+ * The settle scores, re-derived from the reveal grid already persisted on the
+ * snapshot (`state.results` carries every holder and its per-holder pay).
+ * The settle task uses THIS, never the redis answer sheet: the sheet's TTL is
+ * stamped at write time while the game's refreshes on every save, so a settle
+ * recovered long after the crash could find the words on the snapshot and the
+ * sheet evaporated — and would silently bank zeros under a grid full of
+ * answers. A pure function of the snapshot cannot drift from what it shows.
+ */
+export const uniqueScoresFromResults = (
+  challenge: UniqueOrBustChallenge
+): { [playerId: string]: { scored: number; maximum: number } } => {
+  const banked: { [playerId: string]: number } = {}
+  for (const cells of Object.values(challenge.state.results ?? {})) {
+    for (const cell of cells) {
+      for (const holder of cell.holders) banked[holder] = (banked[holder] ?? 0) + cell.scored
+    }
+  }
+  return Object.fromEntries(
+    challenge.state.order.map(playerId => [
+      playerId,
+      {
+        scored: clampScore(banked[playerId] ?? 0, challenge.maximumPoints),
+        maximum: challenge.maximumPoints,
+      },
+    ])
+  )
+}

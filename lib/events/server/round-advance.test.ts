@@ -89,27 +89,42 @@ describe('shouldArmAdvanceWatchdog', () => {
   })
 })
 
-describe('ROUND_BOUND_PHASES', () => {
+describe('the phase partition', () => {
   // Freeze #3: a watchdog tick armed up to 8s before the reveal lands after
   // seats flipped back to 'group-challenge' with no moves — walking one
   // ejected it to 'movement-summary' mid-round. Round-bound seats must be
-  // walk-exempt, and the two exemption sets must never overlap (a phase in
-  // both would be ambiguous to the handler's re-entry).
-  it('covers every in-round and pre-game phase', () => {
-    for (const phase of ['naming', 'waiting-for-game', 'tutorial', 'group-challenge']) {
-      expect(ROUND_BOUND_PHASES).toContain(phase)
+  // walk-exempt, and every phase must land in EXACTLY one bucket: a phase in
+  // two would be ambiguous to the handler's re-entry, and a phase in none is
+  // silently walkable — the exact bug class this partition exists to close.
+  // The Record over the union makes a NEW phase a compile error here, not a
+  // prod incident.
+  const PARTITION: Record<PlayerPhase, 'round-bound' | 'settled' | 'walkable'> = {
+    naming: 'round-bound',
+    'waiting-for-game': 'round-bound',
+    tutorial: 'round-bound',
+    'group-challenge': 'round-bound',
+    'group-scores': 'walkable',
+    moving: 'walkable',
+    'individual-challenge': 'walkable',
+    'final-challenge': 'walkable',
+    'movement-summary': 'settled',
+    victory: 'settled',
+    kicked: 'settled',
+  }
+
+  it('agrees with the exported sets, exhaustively over every phase', () => {
+    const buckets = Object.values(PARTITION)
+    for (const [phase, bucket] of Object.entries(PARTITION)) {
+      expect(ROUND_BOUND_PHASES.includes(phase)).toBe(bucket === 'round-bound')
+      expect(SETTLED_PHASES.includes(phase)).toBe(bucket === 'settled')
     }
+    // …and the exported sets hold nothing that is not a real phase.
+    expect(ROUND_BOUND_PHASES).toHaveLength(buckets.filter(b => b === 'round-bound').length)
+    expect(SETTLED_PHASES).toHaveLength(buckets.filter(b => b === 'settled').length)
   })
 
-  it('is disjoint from the settled set', () => {
+  it('has no phase in both exemption sets', () => {
     for (const phase of ROUND_BOUND_PHASES) {
-      expect(SETTLED_PHASES).not.toContain(phase)
-    }
-  })
-
-  it('leaves the walking phases walkable', () => {
-    for (const phase of ['group-scores', 'moving', 'individual-challenge', 'final-challenge']) {
-      expect(ROUND_BOUND_PHASES).not.toContain(phase)
       expect(SETTLED_PHASES).not.toContain(phase)
     }
   })

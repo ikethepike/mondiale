@@ -1,6 +1,10 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
-import { REDELIVER_PAUSE_MS, useClientEvents } from '~~/lib/events/client-side'
+import {
+  REDELIVER_MAX_BATCHES,
+  REDELIVER_PAUSE_MS,
+  useClientEvents,
+} from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
@@ -93,7 +97,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    */
   let disposed = false
   let resubmitTimer: ReturnType<typeof setTimeout> | undefined
+  let deliveryBatches = 0
   const deliverAnswer = async (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
+    deliveryBatches++
     const delivered = await update({
       event: 'submit-group-challenge-answers',
       ranking,
@@ -101,6 +107,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       buzzAt,
     }).catch(() => false)
     if (delivered || disposed) return
+    if (deliveryBatches >= REDELIVER_MAX_BATCHES) {
+      return console.error('Giving up on answer delivery — a rejoin heals the seat from here')
+    }
     resubmitTimer = setTimeout(
       () => deliverAnswer(ranking, clientScore, buzzAt),
       REDELIVER_PAUSE_MS

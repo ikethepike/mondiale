@@ -1,10 +1,16 @@
 import type { Game } from '~~/types/game.types'
-import type { EngineContext } from './round-engine'
+import type { EngineContext, RearmOptions } from './round-engine'
 import { rearmBorderChain } from './chain-turns'
 import { rearmHeritageHunt } from './heritage-beats'
 import { rearmManhunt } from './manhunt-beats'
 import { rearmTimeline } from './timeline-turns'
 import { rearmUniqueOrBust } from './unique-beats'
+
+/** How long one rearm sweep covers a game. A flapping (or replaying) client
+ *  re-joins far more often than timers die; each sweep arms real timers that
+ *  live until they fire, so unbounded sweeps are unbounded timer churn. */
+const REARM_DEBOUNCE_MS = 5000
+const lastRearmedAt = new Map<string, number>()
 
 /**
  * The clocked round engines pace themselves with in-process timers, so a
@@ -20,11 +26,26 @@ import { rearmUniqueOrBust } from './unique-beats'
  * settle latch), so calling this while the real timers are still alive arms
  * only harmless duplicates.
  */
-export const rearmLiveRound = (ctx: EngineContext, game: Game) => {
+export const rearmLiveRound = (
+  ctx: EngineContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
+  const now = Date.now()
+  const last = lastRearmedAt.get(game.id) ?? 0
+  if (now - last < REARM_DEBOUNCE_MS) return
+  lastRearmedAt.set(game.id, now)
+  // The map only ever holds live rooms, but nothing removes finished ones —
+  // sweep stale entries opportunistically so it can't grow for the life of
+  // the process.
+  for (const [gameId, at] of lastRearmedAt) {
+    if (now - at > 3_600_000) lastRearmedAt.delete(gameId)
+  }
+
   // Each rearm self-guards on its own mode; at most one acts per round.
-  rearmBorderChain(ctx, game)
+  rearmBorderChain(ctx, game, options)
   rearmHeritageHunt(ctx, game)
   rearmTimeline(ctx, game)
-  rearmManhunt(ctx, game)
-  rearmUniqueOrBust(ctx, game)
+  rearmManhunt(ctx, game, options)
+  rearmUniqueOrBust(ctx, game, options)
 }

@@ -6,6 +6,7 @@ import {
   uniqueKey,
   uniqueNameKey,
   uniqueRegisters,
+  uniqueScoresFromResults,
   uniqueUsedWordKeys,
   type UniqueAnswerSheet,
 } from '~~/lib/unique-or-bust'
@@ -20,6 +21,7 @@ import {
   scheduleEngineTask,
   scheduleRevealTask,
   settleRoundScores,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -171,8 +173,8 @@ const resolveUniqueBoard = async (
 
   const sheet = await fetchAnswerSheet(ctx.redis, game.id, roundIndexOf(game))
   const registers = await uniqueRegisters(game)
-  // The settle task re-derives the scores from the same sheet; only the
-  // public results land on the snapshot here.
+  // The settle task re-derives the scores from these persisted results
+  // (uniqueScoresFromResults) — the sheet is read exactly once, here.
   const { results } = resolveUniqueCollisions(challenge, sheet, registers)
 
   state.results = results
@@ -184,8 +186,10 @@ const resolveUniqueBoard = async (
 }
 
 /** Arm the finished board's settle follow-up. The scores are re-derived from
- *  the persisted sheet inside the task (deterministic), so re-arming (rejoin
- *  recovery) is safe: the `groupAnswers` latch makes any duplicate a no-op. */
+ *  the reveal grid already on the snapshot (`state.results`) — never the
+ *  redis sheet, whose TTL can lapse before a recovered settle runs — so
+ *  re-arming (rejoin recovery) is safe: the settle is a pure function of the
+ *  snapshot and the `groupAnswers` latch makes any duplicate a no-op. */
 const scheduleUniqueSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
     const current = currentUniqueOrBust(fresh)
@@ -195,15 +199,11 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    const sheet = await fetchAnswerSheet(ctx.redis, fresh.id, roundIndexOf(fresh))
-    const registers = await uniqueRegisters(fresh)
-    const { scores } = resolveUniqueCollisions(current, sheet, registers)
-
     settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,
-      scores,
+      scores: uniqueScoresFromResults(current),
       maximumPoints: current.maximumPoints,
     })
 
@@ -223,11 +223,18 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
  * alongside a live timer — every task dies on its round/briefing/finished
  * token or the settle latch.
  */
-export const rearmUniqueOrBust = (ctx: ChainContext, game: Game) => {
+export const rearmUniqueOrBust = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
   const challenge = currentUniqueOrBust(game)
   if (!challenge) return
   // Finished but unsettled — the reveal hold died before banking the table.
   if (challenge.state.finished) return scheduleUniqueSettle(ctx)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
   // Briefing cap or the writing deadline, as the state dictates.
   scheduleUniqueTimeout(ctx, game, challenge)
 }

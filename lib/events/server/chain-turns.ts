@@ -20,6 +20,7 @@ import {
   scheduleRevealTask,
   settleRoundScores,
   type EngineContext,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -326,12 +327,19 @@ export const chainHasOpenStart = (challenge: BorderChainChallenge, game: Game): 
  * the real timer is still alive: every armed task re-reads fresh state and
  * dies on its staleness token.
  */
-export const rearmBorderChain = (ctx: ChainContext, game: Game) => {
+export const rearmBorderChain = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
   const challenge = currentBorderChain(game)
   if (!challenge) return
   // Finished but unsettled — the reveal hold died before banking the table.
   if (challenge.state.finished) return scheduleChainSettle(ctx)
   if (challenge.state.trap) return scheduleTrapResume(ctx, challenge.state.turn)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
   // Briefing cap or the active player's shot clock, as the state dictates.
   scheduleChainTimeout(ctx, challenge)
 }

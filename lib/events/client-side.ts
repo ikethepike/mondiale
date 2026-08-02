@@ -14,6 +14,12 @@ const RETRY_BACKOFF_MS = 750
 /** Pause before a caller re-runs a whole failed `update` batch (all attempts
  *  spent). Answer submits ride this — see useGroupChallenge's deliverAnswer. */
 export const REDELIVER_PAUSE_MS = 4000
+/** Redelivery is for a disconnect straddling the buzzer, not for a handler
+ *  that will never succeed (e.g. a wiped room) — cap the batches so a
+ *  permanently failing submit doesn't re-run every few seconds for the life
+ *  of the tab. ~15 batches ≈ five minutes; past that, the rejoin heals own
+ *  recovery (a refresh re-enters the round or re-banks the seat). */
+export const REDELIVER_MAX_BATCHES = 15
 
 export const useClientEvents = () => {
   const router = useRouter()

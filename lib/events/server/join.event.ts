@@ -173,12 +173,18 @@ export const joinEventHandler: EventHandler = async ({
   // restart mid-round leaves a shot clock, reveal hold, or briefing cap that
   // nobody will ever fire. Re-arm whatever the live round is waiting on;
   // idempotent alongside live timers (see rearm-round.ts). Never while a
-  // round is staged-but-unrevealed (its clocks only stamp at the reveal) or
-  // while tutorials are still up (the forced round-1 seam: close-tutorial
-  // owns arming there, and a cap must not force-start under a rules card).
+  // round is staged-but-unrevealed (its clocks only stamp at the reveal).
+  // Open tutorials (the forced round-1 seam) gate ONLY the briefing caps —
+  // a cap must not force-start under a rules card, but every other shape
+  // (shot clock, reveal hold, settle) must recover even mid-round-1, or one
+  // AFK tutorial seat disables the whole safety net.
+  // Arming BEFORE this handler's save is safe — the armed tasks re-fetch and
+  // join's pending mutations never touch engine state — but it is an
+  // exception to the engines' "arm AFTER the save" contract, not a pattern
+  // to copy.
   const tutorialsUp = Object.values(game.players).some(entry => entry.phase === 'tutorial')
-  if (game.started && !game.pendingRoundStart && !tutorialsUp) {
-    rearmLiveRound({ io, redis, socket, eventTarget }, game)
+  if (game.started && !game.pendingRoundStart) {
+    rearmLiveRound({ io, redis, socket, eventTarget }, game, { armBriefingCaps: !tutorialsUp })
   }
 
   await socket.join(gameId)

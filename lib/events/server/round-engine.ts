@@ -25,6 +25,16 @@ export interface EngineContext {
   eventTarget: ClientEventTarget
 }
 
+/** Options every engine's rearm entry accepts (see rearm-round.ts). */
+export interface RearmOptions {
+  /** False while tutorials are still up (the forced round-1 seam): a briefing
+   *  cap must not force-start a round under a rules card. ONLY the briefing
+   *  branch is gated — trap resumes, reveal holds, shot clocks and settle
+   *  tasks are all safe (and necessary) to re-arm regardless, or a restart
+   *  mid-round-1 with one AFK tutorial seat would strand the whole recovery. */
+  armBriefingCaps: boolean
+}
+
 type ServerSide = ReturnType<typeof useServerSideEvents>
 
 /**

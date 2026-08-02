@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyChainMove, currentBorderChain, rearmBorderChain } from './chain-turns'
 import { submitChainMoveHandler } from './submit-chain-move.handler'
-import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
 import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -301,6 +301,38 @@ describe('rearmBorderChain — rejoin recovery', () => {
     for (const id of ['a', 'b', 'c']) {
       expect(fresh.players[id].phase).toBe('group-scores')
     }
+  })
+
+  // Review finding: a blanket tutorials-up gate on the WHOLE rearm stranded
+  // restart recovery for the highest-traffic round (round 1). Only the
+  // briefing cap may be withheld under open rules cards — every other shape
+  // must recover regardless.
+  it('still revives a live shot clock when briefing caps are withheld', async () => {
+    // Mid-round shape: briefing over, a stamped (expired) deadline, no timer.
+    const game = buildGame({ chains: [['DE']], deadline: Date.now() - 1000 })
+    const ctx = context(game)
+
+    rearmBorderChain(ctx, game, { armBriefingCaps: false })
+    await vi.advanceTimersByTimeAsync(TIMEOUT_SLACK_MS + 10)
+    await vi.runAllTicks()
+
+    // The overdue clock fired: the active player ate a timeout miss and the
+    // round moved on — recovery ran despite the withheld briefing caps.
+    const { state } = chainOf(game.id)
+    expect(state.turn).toBeGreaterThan(1)
+    expect(state.deadline).toBeGreaterThan(Date.now())
+  })
+
+  it('does not arm a briefing cap while rules cards are up', async () => {
+    const game = buildGame({ briefing: true, deadline: 0 })
+    const ctx = context(game)
+
+    rearmBorderChain(ctx, game, { armBriefingCaps: false })
+    await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + TIMEOUT_SLACK_MS + 10)
+    await vi.runAllTicks()
+
+    // No cap was armed, so nothing force-started the briefing.
+    expect(chainOf(game.id).state.briefing).toBe(true)
   })
 
   it('does not settle a round twice', async () => {

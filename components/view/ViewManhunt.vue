@@ -305,9 +305,12 @@ const refetchPosition = () => {
 }
 onMounted(() => {
   refetchPosition()
-  gameStore.socket?.io.on('reconnect', refetchPosition)
+  // Capture the instance so mount and unmount address the same socket (the
+  // room page's precedent), whatever the store holds by teardown time.
+  const socket = gameStore.socket
+  socket?.io.on('reconnect', refetchPosition)
+  onUnmounted(() => socket?.io.off('reconnect', refetchPosition))
 })
-onUnmounted(() => gameStore.socket?.io.off('reconnect', refetchPosition))
 
 // Off-board and benched (micro-nation) countries both fade — the despot can
 // reach neither, so the rule is visible before a hop is attempted.

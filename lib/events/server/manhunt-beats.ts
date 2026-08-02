@@ -25,6 +25,7 @@ import {
   scheduleEngineTask,
   scheduleRevealTask,
   settleRoundScores,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -439,11 +440,18 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
  * alongside a live timer — every task dies on its `turn` token, the briefing
  * flag, or the settle latch.
  */
-export const rearmManhunt = (ctx: ChainContext, game: Game) => {
+export const rearmManhunt = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
   const challenge = currentManhunt(game)
   if (!challenge) return
   // Finished but unsettled — the reveal hold died before banking the table.
   if (challenge.state.finished) return scheduleManhuntSettle(ctx)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
   // Briefing cap or the live beat's clock, as the state dictates.
   scheduleManhuntTimeout(ctx, challenge)
 }
