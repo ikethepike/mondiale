@@ -364,6 +364,10 @@
             :topic="duelTopic"
             :colors="PAIR_COLORS"
           />
+          <TrendDuelReveal
+            v-else-if="variant === 'trend-duel' && trendDuelOutcomes.length"
+            :outcomes="trendDuelOutcomes"
+          />
           <TrendSparkline
             v-else-if="variant === 'trajectory-match' && challenge?.trajectory && trajectorySeries"
             class="result-sparkline"
@@ -378,6 +382,13 @@
             v-else-if="variant === 'landmark-quiz' && landmark"
             :landmark="landmark"
           />
+          <FlagMeaningReveal v-else-if="variant === 'flag-pick' && flagMeaning" :entry="flagMeaning" />
+          <CapitalReveal
+            v-else-if="variant === 'capital-match' && challenge"
+            :country="challenge.country"
+            :picked-country="submittedISOCode"
+          />
+          <span v-else-if="gateLesson">{{ gateLesson }}</span>
         </ChallengeResult>
       </Transition>
     </ChallengePrompt>
@@ -396,10 +407,13 @@
   </div>
 </template>
 <script lang="ts" setup>
+import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
+import TrendDuelReveal from '~/components/feedback/TrendDuelReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
@@ -415,6 +429,7 @@ import {
   getChallengeDetails,
   isCorrectIndividualAnswer,
 } from '~~/lib/challenges'
+import { BORDERS } from '~~/data/borders.gen'
 import {
   attributionFor,
   datasetAttribution,
@@ -423,8 +438,11 @@ import {
 } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
-import { currencyName, currencySymbol } from '~~/lib/currency'
+import { countriesSpending, currencyName, currencySymbol } from '~~/lib/currency'
+import { formatAmount } from '~~/lib/number'
+import { REGION_LABELS } from '~~/lib/variant'
 import { isHardMode } from '~~/lib/game-rules'
+import { loadFlagMeaning } from '~~/lib/flag-meanings'
 import { leaderHintFacts, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
@@ -438,7 +456,11 @@ import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
-import type { DuelOutcome } from '~~/types/challenges/individual-challenge.type'
+import type {
+  DuelOutcome,
+  TrendDuelOutcome,
+} from '~~/types/challenges/individual-challenge.type'
+import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -835,6 +857,8 @@ const currentTrendDuel = computed(() => challenge.value?.trendDuels?.[trendDuelI
 const trendDuelReveal = ref<{ picked: ISOCountryCode; correct: boolean }>()
 let trendDuelTimer: ReturnType<typeof setTimeout> | undefined
 const failedTrendDuel = ref<{ answer: ISOCountryCode; seek: 'rising' | 'falling' }>()
+// Every duel faced, kept for the reveal's ledger (higher-lower's duelOutcomes).
+const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
 
 const trendSeriesFor = (isoCode: ISOCountryCode, metric: TrendMetricId) => TRENDS[isoCode]?.[metric]
 const trendDuelLabel = computed(() =>
@@ -855,6 +879,16 @@ const answerTrendDuel = (picked: ISOCountryCode) => {
   const direction = readTrend(trendSeriesFor(picked, duel.metric), duel.metric)?.direction
   const correct = direction === duel.seek
   trendDuelReveal.value = { picked, correct }
+
+  const unpicked = picked === duel.a ? duel.b : duel.a
+  trendDuelOutcomes.value.push({
+    metric: duel.metric,
+    seek: duel.seek,
+    picked,
+    answer: correct ? picked : unpicked,
+    other: correct ? unpicked : picked,
+    correct,
+  })
 
   trendDuelTimer = setTimeout(() => {
     trendDuelReveal.value = undefined
@@ -992,6 +1026,97 @@ const incorrectMessage = computed(() => {
   }
 })
 
+/** The flag's symbolism for the flag-pick gate, preloaded so the lesson pill
+ *  only appears when there is a real entry to show. */
+const flagMeaning = ref<FlagMeaning>()
+watch(
+  [challenge, variant],
+  async ([active, activeVariant]) => {
+    flagMeaning.value = undefined
+    if (!active || activeVariant !== 'flag-pick') return
+    const entry = await loadFlagMeaning(active.country)
+    if (challenge.value === active) flagMeaning.value = entry
+  },
+  { immediate: true }
+)
+
+/**
+ * The teachable moment for gates without a bespoke reveal card — a factual
+ * line about the answer, shown on wins and losses alike (the verdict line
+ * above already handles "you picked X").
+ */
+const gateLesson = computed(() => {
+  const active = challenge.value
+  const answer = country.value
+  if (!active || !answer || !status.value) return undefined
+  switch (variant.value) {
+    case 'flag-twins': {
+      const palette = answer.identity.simplifiedColors
+      if (!palette.length) return undefined
+      return `All ${active.options?.length ?? 4} flags fly ${palette.join(' + ')} — the emblem and layout are the tell.`
+    }
+    case 'border-detective': {
+      const neighbours = BORDERS[active.country] ?? []
+      if (!neighbours.length) return undefined
+      const shown = active.neighbours?.length ?? 0
+      const roster = neighbours.map(isoCode => countryName(isoCode)).join(', ')
+      const benched = neighbours.length - shown
+      return `${countryName(answer)} borders ${neighbours.length}: ${roster}${
+        benched > 0 ? ` — the ring showed ${shown} of them` : ''
+      }.`
+    }
+    case 'money-match': {
+      const code = answer.currency
+      if (!code) return undefined
+      const spenders = countriesSpending(code)
+      return spenders.length > 1
+        ? `The ${currencyName(code)} is legal tender in ${spenders.length} countries — any of them counted.`
+        : `The ${currencyName(code)} is ${countryName(answer)}'s own.`
+    }
+    case 'odd-one-out': {
+      const shared = active.oddOneOut
+      if (!shared?.kind || !shared.value) return undefined
+      switch (shared.kind) {
+        case 'region':
+          return `${countryName(answer)} is in ${REGION_LABELS[answer.region]} — the other three are in ${shared.value}.`
+        case 'language': {
+          const spoken = (answer.languages ?? []).slice(0, 3).join(', ')
+          return spoken
+            ? `${countryName(answer)} speaks ${spoken} — the other three share ${shared.value}.`
+            : `${countryName(answer)} doesn't speak ${shared.value}.`
+        }
+        case 'organization':
+          return `${countryName(answer)} isn't a member of ${shared.value} — the other three are.`
+      }
+      return undefined
+    }
+    case 'zoom-out':
+    case 'outline-reveal': {
+      const neighbourCount = BORDERS[active.country]?.length ?? 0
+      const facts = [
+        answer.geography.area.total ? formatAmount(answer.geography.area.total) : undefined,
+        neighbourCount
+          ? `${neighbourCount} ${neighbourCount === 1 ? 'neighbour' : 'neighbours'}`
+          : 'no land neighbours',
+        REGION_LABELS[answer.region],
+      ].filter(Boolean)
+      return `${countryName(answer)} — ${facts.join(' · ')}`
+    }
+    case 'find': {
+      const facts = [
+        answer.geography.capital.name ? `capital ${answer.geography.capital.name}` : undefined,
+        REGION_LABELS[answer.region],
+        answer.people.population
+          ? `${formatAmount(answer.people.population)} people`
+          : undefined,
+      ].filter(Boolean)
+      return facts.length ? `${countryName(answer)} — ${facts.join(' · ')}` : undefined
+    }
+    default:
+      return undefined
+  }
+})
+
 const submitAnswer = (
   isoCode: ISOCountryCode,
   options: { reveal?: boolean; remainingFraction?: number; hintsUsed?: number } = {}
@@ -1055,6 +1180,8 @@ watch(currentMove, move => {
   earnedLeapSteps.value = undefined
   failedDuelAnswer.value = undefined
   duelIndex.value = 0
+  duelOutcomes.value = []
+  trendDuelOutcomes.value = []
   showDoubleTapHint.value = false
   if (outlineTimer) {
     clearInterval(outlineTimer)

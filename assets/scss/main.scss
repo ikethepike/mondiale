@@ -19,6 +19,7 @@
 @use 'templates/ghost-placeholder';
 @use 'templates/player-accent';
 @use 'templates/map-caption';
+@use 'templates/source-line';
 @use 'templates/briefing-card';
 @use 'templates/fact-row';
 // After map-caption: a chip that wears both classes keeps chip-scale padding.

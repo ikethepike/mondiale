@@ -6,6 +6,11 @@ import type { ISOCountryCode } from '../../types/geography.types'
  * enough to be fair — and controllable. Each entry is a Wikidata-searchable
  * name + its ISO country; the generator resolves the Q-id (disambiguated by
  * P17 = country) and downloads its Commons photo.
+ *
+ * Every landmark must lie WHOLLY inside its one country. The quiz asks "which
+ * country is this in?" with neighbouring decoys, so anything that straddles a
+ * border (the Sahara, Victoria Falls, Everest, Niagara, Iguazu, the
+ * Matterhorn, the Dead Sea…) has two right answers and cannot deal.
  */
 /**
  * Landmark categories — richer data for future modes (a "natural wonders only"
@@ -112,7 +117,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     unsplash: 'Little Mermaid statue Copenhagen',
   },
   { name: 'Nyhavn', country: 'DK', kind: 'urban' },
-  { name: 'Matterhorn', country: 'CH', kind: 'natural' },
   { name: 'Chapel Bridge Lucerne', country: 'CH', kind: 'religious' },
   { name: 'Jungfraujoch', country: 'CH', kind: 'natural' },
   { name: 'Belém Tower', country: 'PT', kind: 'monument' },
@@ -196,7 +200,14 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Table Mountain', country: 'ZA', kind: 'natural' },
   { name: 'Cape of Good Hope', country: 'ZA', kind: 'natural' },
   { name: 'Robben Island', country: 'ZA', kind: 'natural' },
-  { name: 'Victoria Falls', country: 'ZM', kind: 'natural' },
+  // Victoria Falls straddles the ZM/ZW border — South Luangwa carries Zambia.
+  // Its P18 is a herd of elephants; sunset over the Luangwa reads as a place.
+  {
+    name: 'South Luangwa National Park',
+    country: 'ZM',
+    kind: 'natural',
+    commons: 'Sunset Luangwa River Zambia Jul23 A7C 05789.jpg',
+  },
   { name: 'Mount Kilimanjaro', country: 'TZ', kind: 'natural' },
   { name: 'Serengeti National Park', country: 'TZ', kind: 'natural' },
   {
@@ -332,7 +343,8 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   },
   { name: 'Registan of Samarkand', country: 'UZ', kind: 'ancient' },
   { name: 'Boudhanath', country: 'NP', kind: 'religious' },
-  { name: 'Mount Everest', country: 'NP', kind: 'natural' },
+  // Everest's summit is the Nepal–China border; Annapurna is all Nepal.
+  { name: 'Annapurna', country: 'NP', kind: 'natural' },
   {
     name: 'Baiterek',
     country: 'KZ',
@@ -370,12 +382,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Times Square', country: 'US', kind: 'urban' },
   { name: 'Yellowstone National Park', country: 'US', kind: 'natural' },
   { name: 'CN Tower', country: 'CA', kind: 'monument' },
-  {
-    name: 'Niagara Falls',
-    country: 'CA',
-    kind: 'natural',
-    unsplash: 'Niagara Falls waterfall aerial',
-  },
   { name: 'Banff National Park', country: 'CA', kind: 'natural' },
   { name: 'Château Frontenac', country: 'CA', kind: 'monument' },
   { name: 'Chichen Itza', country: 'MX', kind: 'ancient' },
@@ -410,7 +416,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     kind: 'natural',
     unsplash: 'Sugarloaf Mountain Rio de Janeiro cable car',
   },
-  { name: 'Iguazu Falls', country: 'AR', kind: 'natural' },
   { name: 'Perito Moreno Glacier', country: 'AR', kind: 'natural' },
   { name: 'Obelisco de Buenos Aires', country: 'AR', kind: 'monument' },
   { name: 'Salar de Uyuni', country: 'BO', kind: 'natural' },
@@ -430,7 +435,13 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Bandiagara Escarpment', country: 'ML', kind: 'ancient' },
   { name: 'Larabanga Mosque', country: 'GH', kind: 'religious' },
   { name: 'Nyiragongo', country: 'CD', kind: 'natural' },
-  { name: 'Lake Malawi', country: 'MW', kind: 'natural' },
+  // Wikidata's pick is a satellite render — this is the massif over tea fields.
+  {
+    name: 'Mount Mulanje',
+    country: 'MW',
+    kind: 'natural',
+    commons: 'Mount Mulanje (15695182882).jpg',
+  },
   { name: 'Avenue of the Baobabs', country: 'MG', kind: 'natural' },
   { name: 'Kasubi Tombs', country: 'UG', kind: 'religious' },
   {
@@ -441,7 +452,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   },
   { name: 'Aldabra', country: 'SC', kind: 'natural' },
   { name: 'Erg Chebbi', country: 'MA', kind: 'natural' },
-  { name: 'Nile River', country: 'EG', kind: 'monument' },
   { name: 'Debre Damo', country: 'ET', kind: 'religious' },
   { name: 'Loango National Park', country: 'GA', kind: 'natural' },
   // More Middle East / Central Asia / Caucasus
@@ -540,7 +550,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Gračanica Monastery', country: 'XK', kind: 'religious' },
 
   // --- More natural wonders worldwide ---------------------------------------
-  { name: 'Dead Sea', country: 'JO', kind: 'natural' },
   // Wikipedia's search ranking drifts: on one run "Wave Rock" resolved to the
   // new wave music genre. Pinning the item makes the lookup deterministic.
   { name: 'Wave Rock', country: 'AU', kind: 'natural', qid: 'Q1754627' },
@@ -561,20 +570,13 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Antelope Canyon', country: 'US', kind: 'natural' },
   { name: 'Dettifoss', country: 'IS', kind: 'natural', unsplash: 'Dettifoss waterfall Iceland' },
   { name: 'Marble Caves Chile Chico', country: 'CL', kind: 'natural' },
-  { name: 'Mount Roraima', country: 'VE', kind: 'natural' },
   { name: 'Cano Cristales', country: 'CO', kind: 'monument' },
-  { name: 'Sahara Desert', country: 'DZ', kind: 'natural' },
-  {
-    name: 'Namib Desert',
-    qid: 'Q131377', // the article is geotagged 197km from our point
-    country: 'NA',
-    kind: 'natural',
-    unsplash: 'Namib Desert Sossusvlei dunes Namibia',
-  },
+  { name: 'Casbah of Algiers', country: 'DZ', kind: 'urban' },
   { name: 'Lake Baikal', country: 'RU', kind: 'natural' },
   { name: 'Valley of Geysers', country: 'RU', kind: 'natural' },
   { name: 'Ngorongoro Crater', country: 'TZ', kind: 'natural' },
-  { name: 'Sundarbans', country: 'BD', kind: 'natural' },
+  // The Sundarbans spill into India — the Sixty Dome Mosque carries Bangladesh.
+  { name: 'Sixty Dome Mosque', country: 'BD', kind: 'religious' },
   { name: 'Phang Nga Bay', country: 'TH', kind: 'natural' },
   { name: 'Waitomo Glowworm Caves', country: 'NZ', kind: 'natural' },
   {
@@ -747,13 +749,13 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // Wikidata has no usable free photo of these places (its best candidates are
   // satellite imagery, park signboards, or wildlife), so each points at an
   // explicitly chosen image instead.
+  // Mount Nimba is the GN/CI/LR tripoint — Fouta Djallon carries Guinea.
+  // Its P18 is a topographic map; this is a Fula village under the escarpment.
   {
-    name: 'Mount Nimba',
-    qid: 'Q924276', // the search finds Mount Richard-Molard
+    name: 'Fouta Djallon',
     country: 'GN',
     kind: 'natural',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/4/45/Mount_Nimba_Strict_Nature_Reserve-108445.jpg',
+    commons: 'Fouta Djallon (14625360573).jpg',
   },
   {
     name: 'Bubaque',

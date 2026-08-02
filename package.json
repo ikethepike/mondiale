@@ -38,6 +38,10 @@
     "generate:recognition": "bun run generators/vendors/naturalearth/create-recognition.ts",
     "generate:empires": "bun run generators/vendors/history/create-empires.ts",
     "generate:flags-wide": "bun run generators/flags/create-flags-wide-file.ts",
+    "generate:flag-meanings": "bun run generators/create-flag-meanings-file.ts",
+    "generate:capital-facts": "bun run generators/create-capital-facts-file.ts",
+    "generate:water-facts": "bun run generators/create-water-facts-file.ts",
+    "generate:tongue-facts": "bun run generators/create-tongue-facts-file.ts",
     "upscale": "bun --env-file=./.env run generators/upscale-image.ts"
   },
   "devDependencies": {

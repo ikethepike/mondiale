@@ -1,5 +1,7 @@
+import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
 import type { CurrencyCode } from '~~/types/currency.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * Currency symbols for the Money Match gate — the data only carries 3-letter
@@ -46,3 +48,12 @@ export const currencySymbol = (code?: CurrencyCode): string =>
 /** The currency's local name ("SEK" → "Swedish krona"), or the code if unknown. */
 export const currencyName = (code?: CurrencyCode): string =>
   (code && CURRENCIES[code].name) || code || 'currency'
+
+/** Every country where the currency is legal tender — the same roster the
+ *  shared-currency answer carve-out accepts (isCorrectIndividualAnswer). */
+export const countriesSpending = (code?: CurrencyCode): ISOCountryCode[] =>
+  code
+    ? Object.values(COUNTRIES)
+        .filter(country => country.currency === code)
+        .map(country => country.isoCode)
+    : []

@@ -541,6 +541,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
 export type DataSetId =
   | 'countries'
   | 'flags'
+  | 'flag-meanings'
   | 'map'
   | 'water'
   | 'recognition'
@@ -593,6 +594,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     files: ['data/flags-wide.gen.ts'],
     origins: [{ source: 'flag-icons-svg', dataset: 'Recomposed 3:1 variants' }],
   },
+  'flag-meanings': {
+    label: 'Flag symbolism',
+    files: ['data/flag-meanings.gen.ts'],
+    origins: [{ source: 'cia-factbook', dataset: 'Government › Flag' }],
+  },
   map: {
     label: 'World map',
     files: ['data/map.gen.ts', 'data/map-hd.gen.ts'],
@@ -600,8 +606,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   water: {
     label: 'Seas, lakes, rivers and ranges',
-    files: ['data/water.gen.ts'],
-    origins: [{ source: 'naturalearth-10m', dataset: '1:10m physical layers' }],
+    files: ['data/water.gen.ts', 'data/water-facts.gen.ts'],
+    origins: [
+      { source: 'naturalearth-10m', dataset: '1:10m physical layers' },
+      { source: 'cia-factbook', dataset: 'Geography › Major rivers and lakes' },
+    ],
   },
   recognition: {
     label: 'Disputed territories',
@@ -635,10 +644,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   capitals: {
     label: 'Capital photography',
-    files: ['data/capitals.gen.ts'],
+    files: ['data/capitals.gen.ts', 'data/capital-facts.gen.ts'],
     origins: [
       { source: 'wikidata-items', dataset: 'P36 capital' },
       { source: 'commons-media', dataset: 'P18 images' },
+      { source: 'cia-factbook', dataset: 'Government › Capital' },
     ],
   },
   anthems: {
@@ -658,8 +668,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   tongues: {
     label: 'Spoken-language recordings',
-    files: ['data/tongues.gen.ts'],
-    origins: [{ source: 'common-voice-clips', dataset: 'Validated clips by locale' }],
+    files: ['data/tongues.gen.ts', 'data/tongue-facts.gen.ts'],
+    origins: [
+      { source: 'common-voice-clips', dataset: 'Validated clips by locale' },
+      { source: 'wikidata-items', dataset: 'P1098 speakers, P282 scripts' },
+    ],
   },
   currencies: {
     label: 'Banknotes',

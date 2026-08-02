@@ -299,9 +299,18 @@ export type FactbookResponse = {
     }
     'Political parties and leaders'?: TextNode
     'International organization participation'?: TextNode
+    /** Pre-2023 key, kept for archived payloads — the live mirror uses `Flag`. */
     'Flag description'?: TextNode
+    /** Sectioned `<strong>label:</strong>` text: description / meaning /
+     *  history; `note` carries cross-flag trivia ("similar to Chad's"). */
+    Flag?: TextNode & { note?: string }
     'National symbol(s)'?: TextNode
     'National anthem'?: {
+      name?: TextNode
+      'lyrics/music'?: TextNode
+    }
+    /** The live mirror's spelling of the anthem node. */
+    'National anthem(s)'?: {
       name?: TextNode
       'lyrics/music'?: TextNode
     }
