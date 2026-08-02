@@ -58,6 +58,10 @@
       </span>
       <p v-else key="caption" class="caption">{{ caption }}</p>
     </Transition>
+
+    <!-- Dev-only: the element's own account of itself, for on-device debugging
+         of playback that LOOKS alive but isn't. Never ships. -->
+    <p v-if="diagnostics" class="diagnostics">{{ diagnostics }}</p>
   </div>
 </template>
 <script lang="ts" setup>
@@ -201,17 +205,15 @@ const play = async () => {
   if (audio.ended) audio.currentTime = 0
 
   loading.value = true
-  // A COLD element rebuilds its pipeline inside this gesture. iOS ignores
-  // preload and half-initialises the element at mount, without user
-  // activation; play() against that stale pipeline advances the clock but
-  // never attaches audio output — the first pass runs SILENT end to end, and
-  // only the rebuild after `ended` makes the second press sound. load() here
-  // starts clean every time (the reveal's replay has always done this, which
-  // is why it never had the bug). A resume must not reload — that rewinds —
-  // and a warm desktop element (preload honoured) skips it entirely.
-  if (audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA && !audio.currentTime) {
-    audio.load()
-  }
+  // The FIRST press always rebuilds the pipeline inside the gesture,
+  // unconditionally. iOS half-initialises the element at mount, without user
+  // activation; play() against that mount-time pipeline advances the clock
+  // but never attaches audio output — the first pass runs SILENT end to end,
+  // and only a rebuild makes sound. readyState is NOT a safe gate: on a fast
+  // network iOS buffers the data too, so the element looks warm while its
+  // output path is still the broken one. Later presses skip the reload —
+  // resuming must not rewind, and by then the pipeline has proven itself.
+  if (!armed.value) audio.load()
   await audio.play().then(
     () => {
       playing.value = true
@@ -255,6 +257,34 @@ const stop = () => {
 
 // Never let audio bleed into the scorecard.
 onBeforeUnmount(pause)
+
+/** On-device readout: the media element's own account of itself, polled
+ *  because element state is not reactive. For debugging playback that LOOKS
+ *  alive but isn't (iOS's silent first pass — how that bug was caught).
+ *  Dev-only AND opt-in via `?audio-debug`, so ordinary dev rounds stay clean;
+ *  stripped from prod entirely. */
+const diagnostics = ref('')
+if (
+  import.meta.dev &&
+  import.meta.client &&
+  new URLSearchParams(window.location.search).has('audio-debug')
+) {
+  const readState = () => {
+    const audio = element.value
+    if (!audio) return
+    const src = decodeURIComponent(audio.currentSrc.split('/').pop() || '(no src)')
+    const played = audio.played.length
+      ? audio.played.end(audio.played.length - 1).toFixed(1)
+      : '0'
+    diagnostics.value =
+      `${src} · ready=${audio.readyState} net=${audio.networkState} ` +
+      `t=${audio.currentTime.toFixed(2)} played=${played} · ` +
+      `paused=${audio.paused} muted=${audio.muted} vol=${audio.volume} ` +
+      `err=${audio.error?.code ?? '–'}`
+  }
+  const poll = setInterval(readState, 500)
+  onBeforeUnmount(() => clearInterval(poll))
+}
 
 /** Bars idle flat under reduced motion; the caption still carries the state. */
 const barStyle = (bar: number) => {
@@ -387,6 +417,19 @@ defineExpose({ play, pause, stop })
   // device pixels instead of being resampled every frame.
   transform: translateZ(0);
   will-change: height;
+}
+
+// Dev-only readout under the dock — small, monospaced, and never in the way.
+.diagnostics {
+  margin: 0;
+  padding: 0.3rem 0.8rem;
+  font-size: 1rem;
+  font-family: ui-monospace, monospace;
+  text-align: center;
+  max-width: 34rem;
+  border-radius: 0.6rem;
+  color: #{ink(0.7)};
+  background: #{milk(0.92)};
 }
 
 // Sits over the map, so it needs its own ground to stay legible against
