@@ -57,6 +57,15 @@ export const gateLeapSteps = (remainingFraction?: number, hintsUsed = 0): number
 /** Each bought point-mode hint bites this fraction of the pot. */
 export const HINT_BITE_FRACTION = 0.2
 
+/** Buyable hints unlock in waves: the opener a third of the clock in, the
+ *  last resort at two thirds. */
+export const HINT_UNLOCK_FIRST_ELAPSED = 1 / 3
+export const HINT_UNLOCK_SECOND_ELAPSED = 2 / 3
+
+/** The flat slice one bought hint takes off the pot. */
+export const hintBitePoints = (maximumPoints: number): number =>
+  Math.round(maximumPoints * HINT_BITE_FRACTION)
+
 /**
  * A correct answer's points after paying for bought hints: each bites
  * `HINT_BITE_FRACTION` of the pot, never below zero. Same posture as
@@ -65,7 +74,7 @@ export const HINT_BITE_FRACTION = 0.2
  */
 export const hintDockedScore = (scored: number, maximumPoints: number, hintsUsed = 0): number => {
   const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed)) : 0
-  return Math.max(0, scored - bought * Math.round(maximumPoints * HINT_BITE_FRACTION))
+  return Math.max(0, scored - bought * hintBitePoints(maximumPoints))
 }
 
 /**

@@ -154,6 +154,7 @@ export interface TwoTruthsChallenge {
   lieIndex: number
   /** Where the lie's value really comes from — shown in the reveal. */
   lieSource: ISOCountryCode
+  durationSeconds: number
   maximumPoints: number
 }
 

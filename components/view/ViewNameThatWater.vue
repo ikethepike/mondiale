@@ -42,7 +42,7 @@
               @click="showShoreHint"
             >
               <StatTopicIcon class="hint-icon" topic="reveal" />
-              Shores (−{{ hintBitePoints }} pts)
+              Shores (−{{ hintBitePoints(challenge.maximumPoints) }} pts)
             </button>
           </Transition>
           <Transition name="caption">
@@ -53,7 +53,7 @@
               @click="showLetterHint"
             >
               <StatTopicIcon class="hint-icon" topic="question" />
-              Initials (−{{ hintBitePoints }} pts)
+              Initials (−{{ hintBitePoints(challenge.maximumPoints) }} pts)
             </button>
           </Transition>
         </div>
@@ -81,7 +81,13 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { normalizeAnswer } from '~~/lib/strings'
-import { attemptFraction, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
+import {
+  attemptFraction,
+  HINT_UNLOCK_FIRST_ELAPSED,
+  HINT_UNLOCK_SECOND_ELAPSED,
+  hintBitePoints,
+  hintDockedScore,
+} from '~~/lib/scoring'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
@@ -159,21 +165,16 @@ useFooterBerth(consoleFooter)
 
 // Buyable hints unlock in waves: shores a third in, initials two thirds in.
 // Each bought hint bites HINT_BITE_FRACTION of the pot off the final score.
-const SHORE_HINT_UNLOCK_ELAPSED = 1 / 3
-const LETTER_HINT_UNLOCK_ELAPSED = 2 / 3
 const shoreHint = ref<string>()
 const letterHint = ref<string>()
 
 const shoreHintUnlocked = computed(
-  () => !resolved.value && elapsedFraction.value >= SHORE_HINT_UNLOCK_ELAPSED
+  () => !resolved.value && elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED
 )
 const letterHintUnlocked = computed(
-  () => !resolved.value && elapsedFraction.value >= LETTER_HINT_UNLOCK_ELAPSED
+  () => !resolved.value && elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED
 )
 const hintsUsed = computed(() => (shoreHint.value ? 1 : 0) + (letterHint.value ? 1 : 0))
-const hintBitePoints = computed(() =>
-  Math.round((challenge.value?.maximumPoints ?? 0) * HINT_BITE_FRACTION)
-)
 
 const showShoreHint = () => {
   const active = challenge.value

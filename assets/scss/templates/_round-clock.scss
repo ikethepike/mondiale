@@ -19,3 +19,10 @@
     bottom: calc(1.6rem + var(--bottom-clearance));
   }
 }
+
+// The docked variant: modes whose footer holds the round's controls centre
+// the dial inside that row instead of floating it.
+.footer-clock {
+  --clock-size: 5.6rem;
+  --clock-seconds-size: 1.8rem;
+}

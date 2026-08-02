@@ -159,12 +159,6 @@ const { spent, onGuess } = useAttemptOptions({
   }
 }
 
-// The options variant's round clock, centred above the flag grid.
-.footer-clock {
-  --clock-size: 5.6rem;
-  --clock-seconds-size: 1.8rem;
-}
-
 footer {
   display: flex;
   flex-direction: column;
