@@ -29,6 +29,7 @@ export type FinalChallengeItem =
   | MadeChallenge
   | CityNocturneChallenge
   | BoundaryChallenge
+  | EndonymChallenge
 
 /**
  * What the client submits per question type — verdicts come from the shared
@@ -50,6 +51,8 @@ export type FinalChallengeAnswer =
   | { _type: 'city-nocturne-challenge'; namedCities: string[] }
   /** The drawn line, in map-space coordinates. */
   | { _type: 'boundary-challenge'; drawn: [number, number][] }
+  /** Positional: pick i answers beat i of `countries`. */
+  | { _type: 'endonym-challenge'; isoCodes: ISOCountryCode[] }
 
 export interface RegionChallenge {
   _type: 'region-challenge'
@@ -156,6 +159,17 @@ export interface BoundaryChallenge {
   /** Max blended deviation from the true line that still passes, as a
    *  fraction of the merged pair's frame span. Scales by difficulty. */
   tolerance: number
+}
+
+/**
+ * Tap the countries by their own names, one endonym per beat — a quota of
+ * hits passes. Beat i asks for countries[i]; both sides derive the endonym
+ * via countryEndonym() (lib/country.ts).
+ */
+export interface EndonymChallenge {
+  _type: 'endonym-challenge'
+  countries: ISOCountryCode[]
+  quota: number
 }
 
 export type ScalesAccessorKey = Extract<

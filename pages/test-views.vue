@@ -2440,6 +2440,15 @@ const scenarios: Scenario[] = [
     build: () => finalGame([{ _type: 'made-challenge', commodity: 'cocoa beans' }]),
   },
   {
+    id: 'final-endonym',
+    label: 'Final: endonym (own names)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        { _type: 'endonym-challenge', countries: ['FI', 'DE', 'CN', 'EG', 'HR'], quota: 3 },
+      ]),
+  },
+  {
     id: 'final-min-max',
     label: 'Final: min/max (stat pick)',
     component: ViewFinalChallenge,

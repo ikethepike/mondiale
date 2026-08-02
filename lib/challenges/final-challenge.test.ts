@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { isLargeCountry } from '~~/lib/country'
+import { countryEndonym, isLargeCountry } from '~~/lib/country'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
-import type { BoundaryChallenge, MinChallenge } from '~~/types/challenges/final-challenge.type'
+import type {
+  BoundaryChallenge,
+  EndonymChallenge,
+  MinChallenge,
+} from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -16,6 +20,7 @@ import {
   getFinalChallenges,
   isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
+  isTransparentEndonym,
   MADE_COMMODITIES,
 } from './final-challenge'
 
@@ -400,6 +405,55 @@ describe('boundary challenge', () => {
   })
 })
 
+describe('endonym challenge', () => {
+  it('deals distinct countries with real endonyms and an absorbable miss', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'endonym-challenge') continue
+        expect(challenge.quota).toBe(4)
+        expect(challenge.countries.length).toBeLessThanOrEqual(5)
+        expect(challenge.countries.length).toBeGreaterThan(challenge.quota)
+        expect(new Set(challenge.countries).size).toBe(challenge.countries.length)
+        for (const isoCode of challenge.countries) {
+          expect(countryEndonym(isoCode)).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('keeps easy decks transparent with a quota of 2', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'easy') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'endonym-challenge') continue
+        expect(challenge.quota).toBe(2)
+        for (const isoCode of challenge.countries) {
+          expect(isTransparentEndonym(isoCode)).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('never deals on boards without enough endonyms (South America)', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('south-america', 'hard') })
+      expect(challenges.some(challenge => challenge._type === 'endonym-challenge')).toBe(false)
+    }
+  })
+
+  it('sorts the issue’s poster names into the intended tiers', () => {
+    // Guessable from the English name…
+    for (const isoCode of ['DK', 'IT', 'HR', 'BE'] as const) {
+      expect(isTransparentEndonym(isoCode)).toBe(true)
+    }
+    // …and the real test
+    for (const isoCode of ['EG', 'FI', 'CN', 'AL', 'AM', 'DE'] as const) {
+      expect(isTransparentEndonym(isoCode)).toBe(false)
+    }
+  })
+})
+
 describe('dealReplacementChallenge', () => {
   it('avoids the excluded type when an alternative exists', () => {
     for (let round = 0; round < DEAL_ROUNDS; round++) {
@@ -473,6 +527,38 @@ describe('isCorrectFinalAnswer', () => {
     ).toBe(false)
   })
 
+  it('grades endonym picks positionally against the dealt beats', () => {
+    const challenge: EndonymChallenge = {
+      _type: 'endonym-challenge',
+      countries: ['FI', 'DE', 'CN', 'EG', 'HR'],
+      quota: 4,
+    }
+    const grade = (isoCodes: ISOCountryCode[]) =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'endonym-challenge', isoCodes },
+        pool,
+      })
+
+    expect(grade(['FI', 'DE', 'CN', 'EG', 'HR'])).toBe(true)
+    // Four aligned hits with one miss still clear the quota
+    expect(grade(['FI', 'DE', 'SE', 'EG', 'HR'])).toBe(true)
+    // The right countries in the wrong beats count for nothing
+    expect(grade(['HR', 'FI', 'DE', 'CN', 'EG'])).toBe(false)
+    expect(grade(['FI', 'DE', 'SE', 'NO', 'HR'])).toBe(false)
+    // A short early-submit array still aligns beat-for-beat
+    expect(grade(['FI', 'DE', 'CN', 'EG'])).toBe(true)
+    expect(grade([])).toBe(false)
+
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'born-challenge', isoCodes: ['FI'] },
+        pool,
+      })
+    ).toThrow(TypeError)
+  })
+
   it('stays strict on leadership questions and throws on shape mismatches', () => {
     const challenge = { _type: 'leadership-challenge', country: 'SE' } as const
     expect(
@@ -496,6 +582,18 @@ describe('isCorrectFinalAnswer', () => {
         pool,
       })
     ).toThrow(TypeError)
+  })
+})
+
+describe('endonym data floors', () => {
+  // Catches a countries regeneration gutting name.local — the endonym mode
+  // silently starving would otherwise never fail a test
+  it('keeps both tiers stocked on the world board', () => {
+    const pool = Object.keys(COUNTRIES) as ISOCountryCode[]
+    const withEndonym = pool.filter(isoCode => countryEndonym(isoCode))
+    const transparent = withEndonym.filter(isTransparentEndonym)
+    expect(transparent.length).toBeGreaterThanOrEqual(40)
+    expect(withEndonym.length - transparent.length).toBeGreaterThanOrEqual(20)
   })
 })
 

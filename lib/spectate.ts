@@ -664,5 +664,11 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
         prompt: `Draw the erased ${countryName(item.countries[0])}–${countryName(item.countries[1])} border where it really runs`,
         focus: [...item.countries],
       }
+    case 'endonym-challenge':
+      return {
+        kicker,
+        prompt: `Countries by their own names — ${item.quota} of ${item.countries.length} endonyms must land`,
+        focus: item.countries,
+      }
   }
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { findCountryByName, localCountryName, searchCountriesByName } from './country'
+import {
+  countryEndonym,
+  findCountryByName,
+  localCountryName,
+  searchCountriesByName,
+} from './country'
 import { getCountry } from '~~/lib/country'
 
 const isoCodes = (query: string, limit?: number, excluded?: ReadonlySet<string>) =>
@@ -32,6 +37,11 @@ describe('findCountryByName', () => {
     expect(findCountryByName('Bharat')?.isoCode).toBe('IN')
   })
 
+  it('resolves "or"-composite local variants (Greece)', () => {
+    expect(findCountryByName('Ellas')?.isoCode).toBe('GR')
+    expect(findCountryByName('Ellada')?.isoCode).toBe('GR')
+  })
+
   it('never matches input that normalizes to nothing', () => {
     expect(findCountryByName('')).toBeUndefined()
     expect(findCountryByName('!!! 123')).toBeUndefined()
@@ -47,6 +57,38 @@ describe('localCountryName', () => {
   it('returns nothing when the local name is the English name', () => {
     expect(localCountryName(getCountry('AU'))).toBeUndefined()
     expect(localCountryName(getCountry('GM'))).toBeUndefined()
+  })
+
+  it('splits " or "-composites so Greece surfaces a single variant', () => {
+    expect(localCountryName(getCountry('GR'))).toBe('Ellas')
+  })
+})
+
+describe('countryEndonym', () => {
+  it('returns the local name where it differs from the English one', () => {
+    expect(countryEndonym('FI')).toBe('Suomi')
+    expect(countryEndonym('DE')).toBe('Deutschland')
+    expect(countryEndonym('HR')).toBe('Hrvatska')
+    expect(countryEndonym('GR')).toBe('Ellas')
+  })
+
+  it('skips variants that equal the English name (India / Bharat)', () => {
+    expect(countryEndonym('IN')).toBe('Bharat')
+  })
+
+  it('handles composite spacing quirks', () => {
+    expect(countryEndonym('CH')).toBe('Schweiz')
+    expect(countryEndonym('GQ')).toBe('Guinea Ecuatorial')
+    expect(countryEndonym('BY')).toBe("Byelarus'")
+  })
+
+  it('returns nothing when the country has no distinct endonym', () => {
+    expect(countryEndonym('AU')).toBeUndefined()
+    expect(countryEndonym('AF')).toBeUndefined()
+  })
+
+  it('never surfaces an initialism as an endonym (DR Congo’s "RDC")', () => {
+    expect(countryEndonym('CD')).toBeUndefined()
   })
 })
 

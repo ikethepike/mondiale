@@ -7,6 +7,7 @@ import type {
   BornChallenge,
   BoundaryChallenge,
   CityNocturneChallenge,
+  EndonymChallenge,
   FinalChallenge,
   FinalChallengeAnswer,
   FinalChallengeItem,
@@ -32,7 +33,8 @@ import {
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import { sample, shuffleArray } from '../arrays'
-import { isLargeCountry, pickSizedCountry } from '../country'
+import { countryEndonym, isLargeCountry, normalizeCountryName, pickSizedCountry } from '../country'
+import { editDistance } from '../strings'
 import { mainlandBox } from '../geo'
 import {
   boundaryDeviation,
@@ -75,6 +77,8 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'city-nocturne-challenge',
     // Easy-friendly since both levers scale: the pair pick and the tolerance
     'boundary-challenge',
+    // Easy-friendly: transparent-only deck and a quota of 2
+    'endonym-challenge',
   ]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
@@ -117,6 +121,8 @@ const dealChallenge = (
         return getCityNocturneChallenge(pool, difficulty)
       case 'boundary-challenge':
         return getBoundaryChallenge(pool, difficulty)
+      case 'endonym-challenge':
+        return getEndonymChallenge(pool, difficulty)
     }
   } catch {
     return undefined
@@ -472,6 +478,47 @@ const getCityNocturneChallenge = (
     }
   }
   return undefined
+}
+
+const ENDONYM_DECK_SIZE = 5
+const ENDONYM_QUOTA: { [difficulty in GameDifficulty]: number } = {
+  easy: 2,
+  normal: 3,
+  hard: 4,
+}
+/** Edit-distance share of the longer normalized name at or under which an
+ *  endonym reads as its exonym ("Polska", "Danmark") — the easy deck. */
+export const ENDONYM_TRANSPARENT_MAX_RATIO = 0.5
+
+/** Is the country's own name guessable from its English one? */
+export const isTransparentEndonym = (isoCode: ISOCountryCode): boolean => {
+  const endonym = countryEndonym(isoCode)
+  if (!endonym) return false
+  const local = normalizeCountryName(endonym)
+  const english = normalizeCountryName(COUNTRIES[isoCode].name.english)
+  const ratio = editDistance(local, english) / Math.max(local.length, english.length)
+  return ratio <= ENDONYM_TRANSPARENT_MAX_RATIO
+}
+
+const getEndonymChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): EndonymChallenge | undefined => {
+  const quota = ENDONYM_QUOTA[difficulty]
+  const withEndonym = pool.filter(isoCode => countryEndonym(isoCode))
+  const transparent = withEndonym.filter(isTransparentEndonym)
+  const opaque = withEndonym.filter(isoCode => !isTransparentEndonym(isoCode))
+  const ranked =
+    difficulty === 'easy'
+      ? shuffleArray(transparent) // transparent-only: every name stays guessable
+      : difficulty === 'hard'
+        ? [...shuffleArray(opaque), ...shuffleArray(transparent)] // opaque-first, backfill
+        : shuffleArray([...withEndonym])
+  // Slice picks the deck's composition; the reshuffle restores play order
+  const countries = shuffleArray(ranked.slice(0, ENDONYM_DECK_SIZE))
+  // The deck must leave at least one absorbable miss, or it's all-or-nothing
+  if (countries.length <= quota) return undefined
+  return { _type: 'endonym-challenge', countries, quota }
 }
 
 const NIGHT_WINDOW_MAX = 12
@@ -927,6 +974,14 @@ export const isCorrectFinalAnswer = ({
       if (submittedAnswer._type !== 'boundary-challenge') return throwTypeMismatch()
       return isBoundaryDrawnWithin(challenge, submittedAnswer.drawn)
     }
+    case 'endonym-challenge': {
+      if (submittedAnswer._type !== 'endonym-challenge') return throwTypeMismatch()
+      // Positional: pick i answers beat i, so positions can't double-count
+      const hits = challenge.countries.filter(
+        (isoCode, beat) => submittedAnswer.isoCodes[beat] === isoCode
+      ).length
+      return hits >= challenge.quota
+    }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
       // Client-trust like higher-lower gates. The whole board is nameable
@@ -1020,6 +1075,10 @@ export const getFinalChallengeDetails = ({
         question: `The ${COUNTRIES[first].name.english}–${COUNTRIES[second].name.english} border has been erased — draw where it runs`,
       }
     }
+    case 'endonym-challenge':
+      return {
+        question: `Countries by their own names — tap ${challenge.quota} of the ${challenge.countries.length} shown`,
+      }
     default:
       return {
         question: `Lazy, lazy get this implemented`,

@@ -47,12 +47,13 @@ export const normalizeCountryName = (value: string): string =>
 
 /**
  * The data's `name.local` packs co-official variants into one string
- * ("Schweiz / Suisse / Svizzera / Svizra") — split them so each is
- * individually typeable and searchable.
+ * ("Schweiz / Suisse / Svizzera / Svizra", "Ellas or Ellada") — split them so
+ * each is individually typeable and searchable.
  */
 const localNameVariants = (country: Country): string[] =>
   country.name.local
     .split('/')
+    .flatMap(variant => variant.split(' or '))
     .map(variant => variant.trim())
     .filter(Boolean)
 
@@ -63,6 +64,23 @@ export const localCountryName = (country: Country): string | undefined => {
     return undefined
   }
   return local
+}
+
+/** Looks like an initialism ("RDC"), not a name someone would call home. */
+const isAcronym = (value: string): boolean => /^[A-Z]{2,4}$/.test(value)
+
+/**
+ * The country's own name for itself: the first local variant that is a real
+ * name (not an initialism) and differs from the English exonym. The one
+ * selector the endonym dealer, stage and reveal all read.
+ */
+export const countryEndonym = (isoCode: ISOCountryCode): string | undefined => {
+  const country = COUNTRIES[isoCode]
+  const english = normalizeCountryName(country.name.english)
+  return localNameVariants(country).find(variant => {
+    const normalized = normalizeCountryName(variant)
+    return Boolean(normalized) && normalized !== english && !isAcronym(variant)
+  })
 }
 
 /**
