@@ -19,8 +19,9 @@ import type { GameDifficulty, GameRules } from '~~/types/game.types'
  * what "a river starting with M" is.
  */
 
-/** A megacity per the board's phrasing: a city of at least a million. */
-export const MEGACITY_MINIMUM_POPULATION = 1_000_000
+import { MEGACITY_MINIMUM_POPULATION } from '~~/types/city.type'
+
+export { MEGACITY_MINIMUM_POPULATION }
 
 /** The board, in slot order — every deal carries all four. */
 export const UNIQUE_BOARD: UniqueCategoryId[] = ['country', 'capital', 'river', 'megacity']
@@ -73,6 +74,12 @@ export type UniqueAnswerSheet = {
  *  names normalize alike are the same word, wherever they came from. */
 export const uniqueNameKey = (name: string): string => normalizeAnswer(name)
 
+/** Typed-river matching only: "Yellow River" is "Yellow". Collision keys and
+ *  letter filing stay on uniqueNameKey — the server validates ids, so a
+ *  looser client matcher can't drift across the wire. */
+export const riverNameKey = (value: string): string =>
+  normalizeAnswer(value, { suffixes: ['river'] })
+
 /** The board letter an entry files under (lowercase), from its canonical name. */
 export const uniqueLetterOf = (entry: Pick<UniqueEntry, 'name'>): string =>
   uniqueNameKey(entry.name).charAt(0)
@@ -98,7 +105,7 @@ export const uniqueRegisters = async (
     }),
     river: Object.values(WATER_FEATURES)
       .filter(feature => feature.kind === 'river')
-      .map(feature => ({ id: feature.id, name: feature.name })),
+      .map(feature => ({ id: feature.id, name: feature.name, aliases: feature.aliases })),
     megacity: countries.flatMap(isoCode =>
       (CITY_LIGHTS[isoCode] ?? [])
         .filter(city => city.population >= MEGACITY_MINIMUM_POPULATION)

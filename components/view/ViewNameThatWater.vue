@@ -141,7 +141,7 @@ watch(
         candidate =>
           candidate.kind === 'ocean' || candidate.kind === 'sea' || candidate.kind === 'lake'
       )
-      .map(candidate => ({ id: candidate.id, name: candidate.name }))
+      .map(candidate => ({ id: candidate.id, name: candidate.name, aliases: candidate.aliases }))
   },
   { immediate: true }
 )
