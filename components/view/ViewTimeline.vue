@@ -1,5 +1,9 @@
 <template>
-  <div v-if="challenge" class="timeline-round challenge-shell">
+  <div
+    v-if="challenge"
+    class="timeline-round challenge-shell"
+    :class="{ dragging: cardInFlight }"
+  >
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -30,12 +34,11 @@
     </ChallengePrompt>
 
     <!-- Centre stage: the drawn card, its post-placement story, or the scorecard. -->
-    <section class="stage">
+    <section class="stage" :class="{ dragging: cardInFlight }">
       <Transition name="dossier" mode="out-in">
         <TimelineReveal
           v-if="finished"
           key="reveal"
-          class="reveal"
           :challenge="challenge"
           :players="gameStore.game?.players ?? {}"
           :player-id="gameStore.playerId"
@@ -66,7 +69,15 @@
         <article
           v-else-if="drawnEvent"
           :key="`card-${state!.card}`"
+          ref="cardEl"
           class="pane tr decorator-bottom card"
+          :class="{
+            grabbable: canPlace,
+            dragging: cardDragging,
+            'over-slot': cardDragging && selectedSlot !== undefined,
+          }"
+          @pointerdown="onCardDragStart"
+          @dragstart.prevent
         >
           <figure v-if="drawnEvent.image" class="card-photo">
             <img :src="drawnEvent.image" :alt="drawnEvent.name" />
@@ -87,8 +98,9 @@
       </Transition>
     </section>
 
-    <!-- The shared line: every placed card in order, slots between them. -->
-    <footer>
+    <!-- The shared line: every placed card in order, slots between them.
+         The finished report carries the line itself, so the ledger retires. -->
+    <footer v-if="!finished">
       <div class="line-frame">
         <span class="direction">{{ isPhone ? '↑ Earlier' : '← Earlier' }}</span>
         <!-- Keyed group so a filed card presses IN while its neighbours
@@ -141,6 +153,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { gsap } from 'gsap'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
@@ -155,6 +168,7 @@ import {
   slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
+import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -225,7 +239,7 @@ const stakePoints = computed(() => {
 
 const askLine = computed(() =>
   myTurn.value
-    ? `Tap the slot on the line where this belongs — a correct call banks ${stakePoints.value} pts`
+    ? `Drag it onto the line — a correct call banks ${stakePoints.value} pts`
     : `${playerDisplayName(activePlayer.value)} is weighing the line`
 )
 
@@ -302,9 +316,141 @@ watch(
   () => [state.value?.turn, state.value?.revealing],
   () => {
     pending.value = false
+    cardLanding.value = false
     if (!revealing.value) selectedSlot.value = undefined
   }
 )
+
+// --- Dragging the card onto the line --------------------------------------------
+// The card follows the finger/mouse; the nearest slot lights up as the drop
+// target (sharing selectedSlot with the tap and keyboard paths), and letting
+// go over the line files it. A miss springs the card home.
+const cardEl = ref<HTMLElement>()
+const cardDragging = ref(false)
+// The drop is settling into its slot — the card keeps flying (and the line
+// keeps its opened-up size) until the story beat takes over.
+const cardLanding = ref(false)
+const cardInFlight = computed(() => cardDragging.value || cardLanding.value)
+let grabPoint = { x: 0, y: 0 }
+let lastPoint = { x: 0, y: 0 }
+
+/** The nearest slot to the pointer — or nothing outside the line's reach. */
+const slotUnderPointer = (x: number, y: number): number | undefined => {
+  const line = lineEl.value?.$el
+  if (!line) return undefined
+  const frame = line.getBoundingClientRect()
+  const pad = 36
+  if (x < frame.left - pad || x > frame.right + pad || y < frame.top - pad || y > frame.bottom + pad)
+    return undefined
+  let best: number | undefined
+  let bestDistance = Infinity
+  for (const gap of line.querySelectorAll<HTMLElement>('[data-slot]')) {
+    const rect = gap.getBoundingClientRect()
+    const distance = Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2))
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = Number(gap.dataset.slot)
+    }
+  }
+  return best
+}
+
+const onCardDragMove = (event: PointerEvent) => {
+  const el = cardEl.value
+  if (!cardDragging.value || !el) return
+  lastPoint = { x: event.clientX, y: event.clientY }
+  gsap.set(el, { x: event.clientX - grabPoint.x, y: event.clientY - grabPoint.y })
+  const over = slotUnderPointer(event.clientX, event.clientY)
+  // Crossing the line's edge, the card compacts toward stop size — it reads
+  // as "about to file in" — and swells back when carried away.
+  if ((over !== undefined) !== (selectedSlot.value !== undefined)) {
+    const compact = { scale: over !== undefined ? 0.72 : 1, rotation: over !== undefined ? -2 : 0 }
+    if (prefersReducedMotion()) gsap.set(el, compact)
+    else gsap.to(el, { ...compact, duration: MOTION.quick, ease: EASE.cross })
+  }
+  selectedSlot.value = over
+}
+
+const stopCardDrag = () => {
+  window.removeEventListener('pointermove', onCardDragMove)
+  window.removeEventListener('pointerup', onCardDragEnd)
+  window.removeEventListener('pointercancel', onCardDragEnd)
+}
+
+/** The drop, made visible: the card presses into its slot and vanishes —
+ *  the stop that lands there (`.fresh` hint-pop) reads as the same card. */
+const landCard = (slot: number) => {
+  const el = cardEl.value
+  const gap = lineEl.value?.$el?.querySelector(`[data-slot="${slot}"]`)
+  if (!el || !gap) return
+  cardLanding.value = true
+  if (prefersReducedMotion()) {
+    gsap.set(el, { opacity: 0 })
+    return
+  }
+  const target = gap.getBoundingClientRect()
+  const rect = el.getBoundingClientRect()
+  gsap.to(el, {
+    x: `+=${target.left + target.width / 2 - (rect.left + rect.width / 2)}`,
+    y: `+=${target.top + target.height / 2 - (rect.top + rect.height / 2)}`,
+    scale: 0.15,
+    opacity: 0,
+    duration: MOTION.base,
+    ease: EASE.exit,
+  })
+}
+
+const onCardDragEnd = () => {
+  stopCardDrag()
+  if (!cardDragging.value) return
+  cardDragging.value = false
+  const el = cardEl.value
+  const slot = selectedSlot.value
+  if (slot !== undefined && canPlace.value) {
+    place(slot)
+    landCard(slot)
+    return
+  }
+  selectedSlot.value = undefined
+  if (!el) return
+  if (prefersReducedMotion()) gsap.set(el, { clearProps: 'transform' })
+  else
+    gsap.to(el, {
+      x: 0,
+      y: 0,
+      scale: 1,
+      rotation: 0,
+      duration: MOTION.base,
+      ease: 'elastic.out(0.8, 0.6)',
+      onComplete: () => gsap.set(el, { clearProps: 'transform' }),
+    })
+}
+
+const onCardDragStart = (event: PointerEvent) => {
+  if (!canPlace.value || pending.value) return
+  cardDragging.value = true
+  grabPoint = { x: event.clientX, y: event.clientY }
+  lastPoint = { ...grabPoint }
+  const el = cardEl.value
+  if (el) {
+    gsap.killTweensOf(el)
+    // The ledger sizes up the moment the card lifts (the .dragging class), and
+    // the reflow moves the card's transform origin — re-anchor the grab so the
+    // card doesn't jump out from under the finger.
+    const origin = () => el.getBoundingClientRect().top - Number(gsap.getProperty(el, 'y'))
+    const before = origin()
+    nextTick(() => {
+      const drift = origin() - before
+      if (!drift) return
+      grabPoint.y += drift
+      gsap.set(el, { x: lastPoint.x - grabPoint.x, y: lastPoint.y - grabPoint.y })
+    })
+  }
+  window.addEventListener('pointermove', onCardDragMove)
+  window.addEventListener('pointerup', onCardDragEnd)
+  window.addEventListener('pointercancel', onCardDragEnd)
+}
+registerCleanup(stopCardDrag)
 
 // Keyboard on desktop: arrows walk the slots, Enter commits.
 const onKeydown = (event: KeyboardEvent) => {
@@ -330,11 +476,22 @@ if (import.meta.client) {
 // TransitionGroup ref resolves to the component; its $el is the <ol>.
 const lineEl = ref<{ $el?: HTMLElement } | null>(null)
 
+/** Centre a stop or slot in the line, scrolling ONLY the line — never
+ *  scrollIntoView, whose ancestor walk can shift the whole shell. Layout
+ *  offsets, not rects: the FLIP move transforms would lie mid-glide. */
 const scrollLineTo = (selector: string) => {
   nextTick(() => {
-    lineEl.value?.$el
-      ?.querySelector(selector)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    const line = lineEl.value?.$el
+    const item = line?.querySelector<HTMLElement>(selector)
+    if (!line || !item) return
+    const behavior = prefersReducedMotion() ? ('auto' as const) : ('smooth' as const)
+    if (isPhone.value) {
+      const top = item.offsetTop - line.offsetTop - (line.clientHeight - item.offsetHeight) / 2
+      line.scrollTo({ top: Math.max(0, top), behavior })
+    } else {
+      const left = item.offsetLeft - line.offsetLeft - (line.clientWidth - item.offsetWidth) / 2
+      line.scrollTo({ left: Math.max(0, left), behavior })
+    }
   })
 }
 
@@ -361,6 +518,16 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
   }
 }
 
+// Header, stage, footer as grid rows: the minmax(0, 1fr) middle is the whole
+// overlap fix — the stage can never outgrow the leftover between them. The
+// clock and the interstitial are absolutely positioned and take no row.
+.timeline-round {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  // One full-width column — the shell's space-between must not shrink-wrap it.
+  grid-template-columns: minmax(0, 1fr);
+}
+
 // --- Centre stage ---------------------------------------------------------------
 .stage {
   z-index: 2;
@@ -370,16 +537,18 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
   align-items: center;
   flex-flow: column nowrap;
   justify-content: center;
-}
 
-.reveal {
-  width: min(38rem, 100%);
+  // The card in flight rides above the line it is about to join.
+  &.dragging {
+    z-index: 3;
+  }
 }
 
 .card {
   display: flex;
   overflow: hidden;
   position: relative;
+  max-height: 100%;
   flex-flow: column nowrap;
   width: min(38rem, 100%);
 
@@ -410,6 +579,8 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
   .card-body {
     gap: 0.5rem;
     display: flex;
+    min-height: 0;
+    overflow-y: auto;
     padding: 1.4rem 1.8rem 1.6rem;
     flex-flow: column nowrap;
   }
@@ -584,8 +755,11 @@ footer {
     line-clamp: 2;
   }
 
+  // The just-filed card announces its landing: a rise-and-settle pop on top
+  // of the neighbours' FLIP glide (hint-pop lives in rules/_animations.scss).
   &.fresh {
     border-color: var(--dark-blue);
+    animation: hint-pop var(--motion-slow) var(--ease-out-expressive);
   }
 
   &.won {
@@ -597,6 +771,21 @@ footer {
     border-color: var(--hior-ange);
     background: flame(0.14);
   }
+}
+
+// The drawn card, when the call is yours: pick it up and carry it to the line.
+.card.grabbable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  img {
+    -webkit-user-drag: none;
+  }
+}
+
+.card.dragging {
+  cursor: grabbing;
 }
 
 .gap {
@@ -694,6 +883,16 @@ footer {
   }
 }
 
+// A card in flight opens the line up: every gap parts a little (the chosen
+// one widest), so the drop targets read at a glance.
+.timeline-round.dragging .gap {
+  padding: 0 0.55rem;
+}
+
+.timeline-round.dragging .gap:has(.slot.selected) {
+  padding: 0 1.1rem;
+}
+
 // Turn handoff on the line: the filed card presses in from below while its
 // neighbours glide apart to make room (TransitionGroup FLIP moves).
 .line-move {
@@ -722,6 +921,10 @@ footer {
   .line-enter-active {
     transition: none;
   }
+
+  .stop.fresh {
+    animation: none;
+  }
 }
 
 @keyframes slot-beckon {
@@ -748,6 +951,11 @@ footer {
 
 // --- Phones: the line stands upright and scrolls like a ledger -------------------
 @media screen and (max-width: $tablet) {
+  // A dragged card's below-viewport tail must not grow the document's scroll area.
+  .timeline-round {
+    overflow: hidden;
+  }
+
   header {
     // Side gutters keep the headline pill clear of the round clock's berth.
     padding: 1.2rem 6rem;
@@ -765,12 +973,13 @@ footer {
     padding: 0 1.2rem;
   }
 
+  // The drawn card keeps a low profile on phones — the line is the stage.
   .card .card-photo img {
-    height: clamp(8rem, 18vh, 12rem);
+    height: clamp(6rem, 13vh, 9rem);
   }
 
   footer {
-    padding: 1rem 1.2rem calc(1rem + var(--safe-bottom));
+    padding: 1rem 1.2rem calc(1rem + var(--bottom-clearance));
   }
 
   .line-frame {
@@ -785,10 +994,23 @@ footer {
 
   .line {
     gap: 0.35rem;
-    max-height: 30dvh;
+    max-height: 34dvh;
     overflow-x: hidden;
     overflow-y: auto;
     flex-flow: column nowrap;
+  }
+
+  // Mid-flight the ledger opens up: taller list, taller targets.
+  .timeline-round.dragging .line {
+    max-height: 46dvh;
+  }
+
+  .timeline-round.dragging .gap {
+    padding: 0;
+
+    .slot {
+      height: 3.2rem;
+    }
   }
 
   .stop {

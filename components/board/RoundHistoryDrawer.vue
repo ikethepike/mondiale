@@ -95,11 +95,9 @@
   </Teleport>
 </template>
 <script lang="ts" setup>
-import { gsap } from 'gsap'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
-import { prefersReducedMotion } from '~~/lib/motion'
 import { getCountry } from '~~/lib/country'
 import { KIND_LABELS } from '~~/lib/victory-stats'
 import { useGameStore } from '~~/store/game.store'
@@ -107,6 +105,7 @@ import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type
 import type { Game } from '~~/types/game.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import { boardProgress } from '~~/lib/player'
+import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 
 const props = defineProps<{ game: Game }>()
@@ -118,82 +117,22 @@ const close = () => {
 }
 
 // --- Swipe-to-dismiss (mobile bottom sheet) --------------------------------
-// Light kinetic feel: the sheet tracks the finger 1:1 downward (rubber-bands
-// upward), and on release a velocity sample decides — flick or far enough
-// dismisses with matched momentum, anything else springs back.
+// The drag math lives in lib/use-drag-sheet.ts; here the two stops are open
+// and offscreen, and settling offscreen closes. The inline transform stays
+// put through Vue's leave transition (inline beats the leave class), keeping
+// the sheet offscreen until it unmounts.
 const drawerEl = ref<HTMLElement>()
 const isSheet = () => window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
 
-let dragging = false
-let startY = 0
-let currentDy = 0
-let samples: { y: number; t: number }[] = []
-
-const onDragStart = (event: PointerEvent) => {
-  if (!isSheet() || !drawerEl.value) return
-  dragging = true
-  startY = event.clientY
-  currentDy = 0
-  samples = [{ y: event.clientY, t: performance.now() }]
-  gsap.killTweensOf(drawerEl.value)
-  window.addEventListener('pointermove', onDragMove)
-  window.addEventListener('pointerup', onDragEnd)
-  window.addEventListener('pointercancel', onDragEnd)
-}
-
-const onDragMove = (event: PointerEvent) => {
-  if (!dragging || !drawerEl.value) return
-  currentDy = event.clientY - startY
-  samples.push({ y: event.clientY, t: performance.now() })
-  if (samples.length > 5) samples.shift()
-
-  const translate = currentDy >= 0 ? currentDy : currentDy * 0.15
-  drawerEl.value.style.transform = `translateY(${translate}px)`
-}
-
-const stopDragListeners = () => {
-  window.removeEventListener('pointermove', onDragMove)
-  window.removeEventListener('pointerup', onDragEnd)
-  window.removeEventListener('pointercancel', onDragEnd)
-}
-
-const onDragEnd = () => {
-  stopDragListeners()
-  if (!dragging || !drawerEl.value) return
-  dragging = false
-  const el = drawerEl.value
-
-  const first = samples[0]
-  const last = samples[samples.length - 1]
-  const velocity = first && last && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0
-
-  const shouldDismiss = currentDy > el.offsetHeight * 0.35 || velocity > 0.55
-  if (shouldDismiss) {
-    // Carry the finger's momentum out of the screen
-    const remaining = Math.max(0, el.offsetHeight - currentDy)
-    const duration = Math.min(0.4, Math.max(0.12, remaining / Math.max(velocity * 1000, 900)))
-    // The inline transform stays put through Vue's leave transition (inline
-    // beats the leave class), keeping the sheet offscreen until it unmounts.
-    gsap.to(el, {
-      y: el.offsetHeight,
-      duration,
-      ease: 'power1.in',
-      onComplete: close,
-    })
-  } else {
-    gsap.to(el, {
-      y: 0,
-      duration: prefersReducedMotion() ? 0.2 : 0.5,
-      ease: prefersReducedMotion() ? 'power2.out' : 'elastic.out(0.9, 0.55)',
-      clearProps: 'transform',
-    })
-  }
-}
-
-onUnmounted(() => {
-  stopDragListeners()
-  close()
+const { onDragStart } = useDragSheet({
+  el: () => drawerEl.value,
+  enabled: isSheet,
+  stops: () => [0, drawerEl.value?.offsetHeight ?? 0],
+  momentumEase: 'power1.in',
+  onSettle: index => index === 1 && close(),
 })
+
+onUnmounted(close)
 
 // Points accumulated across every round (including the one in progress),
 // ranked — the "who's actually winning" view the board itself can't show.

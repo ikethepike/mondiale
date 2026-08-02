@@ -1,55 +1,68 @@
 <template>
-  <section class="timeline-reveal pane tr decorator-bottom">
-    <div class="pane-content">
-      <h2 class="headline">{{ headline }}</h2>
-      <p v-if="eraLine" class="era">{{ eraLine }}</p>
+  <ModalWrapper class="timeline-report-wrapper">
+    <article class="pane timeline-report tl decorator-bottom">
+      <section class="report-main">
+        <header class="pane-content card-header">
+          <span class="eyebrow">The line is complete</span>
+          <h2>{{ headline }}</h2>
+          <p v-if="eraLine" class="era">{{ eraLine }}</p>
+        </header>
 
-      <!-- Final scoring: banked points against the round's shared ceiling,
-           on the shared ranked-bar choreography — the bars ARE the stakes. -->
-      <ol class="ranked-bars score-board" aria-label="Final scores">
-        <li
-          v-for="(row, index) in rows"
-          :key="row.playerId"
-          class="row player-accent"
-          :style="{ '--i': index, '--player-color': row.color }"
-        >
-          <span class="name">{{ row.name }}</span>
-          <span class="fate">{{ row.fate }}</span>
-          <span class="bar">
-            <span class="fill" :style="{ width: `${row.share * 100}%` }" />
-          </span>
-          <strong class="pts">{{ row.tail }}</strong>
-        </li>
-      </ol>
+        <!-- The finished chronology: every card in history's order, named and
+             dated, each wearing its placer's colour — misses carry the flame
+             edge their correction earned. -->
+        <section class="pane-content chronicle-block">
+          <span class="eyebrow">The Finished Line</span>
+          <ol class="chronicle" aria-label="The finished timeline">
+            <li
+              v-for="(stop, index) in chronicle"
+              :key="stop.slug"
+              class="chronicle-stop"
+              :class="{ missed: stop.missed }"
+              :style="{ '--stop-delay': `${index * 90}ms`, '--player-color': stop.color }"
+            >
+              <img v-if="stop.image" class="chronicle-photo" :src="stop.image" :alt="stop.name" />
+              <span v-else class="chronicle-photo blank" aria-hidden="true" />
+              <span class="chronicle-year">{{ stop.year }}</span>
+              <span class="chronicle-name">{{ stop.name }}</span>
+            </li>
+          </ol>
+        </section>
 
-      <!-- The finished chronology, condensed: every card in history's order,
-           named and dated, each wearing its placer's colour — misses carry
-           the flame edge their correction earned. -->
-      <ol class="chronicle" aria-label="The finished timeline">
-        <li
-          v-for="(stop, index) in chronicle"
-          :key="stop.slug"
-          class="chronicle-stop"
-          :class="{ missed: stop.missed }"
-          :style="{ '--stop-delay': `${index * 90}ms`, '--player-color': stop.color }"
-        >
-          <img v-if="stop.image" class="chronicle-photo" :src="stop.image" :alt="stop.name" />
-          <span v-else class="chronicle-photo blank" aria-hidden="true" />
-          <span class="chronicle-year">{{ stop.year }}</span>
-          <span class="chronicle-name">{{ stop.name }}</span>
-        </li>
-      </ol>
+        <!-- The teachable moment: the card the table misjudged worst gets its
+             story retold — or, on a clean sweep, the event that opened the era. -->
+        <section v-if="lesson" class="pane-content lesson-block">
+          <span class="eyebrow">{{ lesson.kicker }}</span>
+          <strong class="lesson-title">{{ lesson.title }}</strong>
+          <span v-if="lesson.note" class="lesson-note">{{ lesson.note }}</span>
+          <p class="lesson-body">{{ lesson.body }}</p>
+        </section>
+      </section>
 
-      <!-- The teachable moment: the card the table misjudged worst gets its
-           story retold — or, on a clean sweep, the event that opened the era. -->
-      <p v-if="lesson" class="lesson">
-        <span class="eyebrow">{{ lesson.kicker }}</span>
-        <strong class="lesson-title">{{ lesson.title }}</strong>
-        <span v-if="lesson.note" class="lesson-note">{{ lesson.note }}</span>
-        <span class="lesson-body">{{ lesson.body }}</span>
-      </p>
-    </div>
-  </section>
+      <!-- Sidebar: final scoring against the round's shared ceiling, on the
+           shared ranked-bar choreography — the bars ARE the stakes. -->
+      <section class="player-listing pane-content">
+        <header class="listing-header">
+          <span class="eyebrow">Round Standings</span>
+        </header>
+        <ol class="ranked-bars score-board" aria-label="Final scores">
+          <li
+            v-for="(row, index) in rows"
+            :key="row.playerId"
+            class="row player-accent"
+            :style="{ '--i': index, '--player-color': row.color }"
+          >
+            <span class="name">{{ row.name }}</span>
+            <span class="fate">{{ row.fate }}</span>
+            <span class="bar">
+              <span class="fill" :style="{ width: `${row.share * 100}%` }" />
+            </span>
+            <strong class="pts">{{ row.tail }}</strong>
+          </li>
+        </ol>
+      </section>
+    </article>
+  </ModalWrapper>
 </template>
 <script lang="ts" setup>
 import { formatEventYear, placedYears, scoreTimeline, timelineEvent } from '~~/lib/timeline'
@@ -158,73 +171,58 @@ const lesson = computed(() => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/breakpoints' as *;
 
-.timeline-reveal {
-  pointer-events: none;
+// The wrapper's default absolute (no top) would strand the report at the
+// stage's static position — pin it over the whole view instead.
+.modal-wrapper.timeline-report-wrapper {
+  inset: 0;
+  position: fixed;
+}
 
-  .pane-content {
-    gap: 0.9rem;
-    display: flex;
-    padding: 1.8rem 2.2rem 1.6rem;
-    flex-flow: column nowrap;
+// The full-page round report, on the ViewGroupScores shell: main column and
+// a standings rail, hairline-ruled sections each opened by an eyebrow.
+.timeline-report {
+  width: 100%;
+  margin: auto;
+  display: grid;
+  max-width: 110rem;
+  grid-template-columns: 73% 27%;
+}
+
+.card-header {
+  h2 {
+    margin: 0.4rem 0 0;
+    font-size: 2.4rem;
+  }
+
+  .era {
+    margin: 0.6rem 0 0;
+    opacity: 0.75;
+    font-size: 1.35rem;
   }
 }
 
-.headline {
-  margin: 0;
-  font-size: 1.8rem;
-}
+.chronicle-block,
+.lesson-block {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  border-top: 0.1rem solid $hairline;
 
-.era {
-  margin: 0;
-  opacity: 0.75;
-  font-size: 1.3rem;
-}
-
-// Shell, row stagger and bar choreography come from templates/_ranked-bars.scss;
-// each row wears its player's identity edge and fills the bar in their colour.
-.score-board {
-  margin: 0;
-  list-style: none;
-  pointer-events: auto;
-
-  .name {
-    width: 9rem;
-    overflow: hidden;
-    text-align: left;
-    flex-shrink: 0;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .fate {
-    width: 6rem;
-    opacity: 0.65;
-    flex-shrink: 0;
-    font-size: 1.2rem;
-  }
-
-  .fill {
-    background: var(--player-color, #{ink(0.45)});
-  }
-
-  .pts {
-    width: 8.5rem;
-    text-align: right;
-    flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
+  .eyebrow {
+    display: block;
+    margin-bottom: 1.2rem;
   }
 }
 
 .chronicle {
   gap: 1rem;
-  margin: 0.3rem 0 0;
+  margin: 0;
   padding: 0.2rem 0.2rem 0.4rem;
   display: flex;
   list-style: none;
   align-items: flex-start;
-  // Long lines scroll inside the card; the card itself is pointer-inert.
-  pointer-events: auto;
+  // Long lines scroll sideways in place — never hidden (ViewVictory idiom).
   overflow-x: auto;
   overscroll-behavior-x: contain;
 }
@@ -278,33 +276,116 @@ const lesson = computed(() => {
   opacity: 0.75;
 }
 
-.lesson {
-  gap: 0.3rem;
-  margin: 0;
-  display: flex;
-  flex-flow: column nowrap;
-  padding-top: 0.7rem;
-  border-top: $hairline;
-
+.lesson-block {
   .lesson-title {
-    font-size: 1.4rem;
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 1.5rem;
   }
 
   .lesson-note {
+    display: block;
     opacity: 0.7;
+    margin-top: 0.3rem;
     font-size: 1.2rem;
   }
 
   .lesson-body {
-    font-size: 1.25rem;
-    line-height: 1.45;
+    margin: 0.8rem 0 0;
     opacity: 0.85;
+    font-size: 1.3rem;
+    line-height: 1.5;
+  }
+}
+
+// Sidebar: ranked standings on the shared bar choreography, restacked for
+// the rail — name over bar over verdict, points on the shoulder.
+.player-listing {
+  border-left: 0.1rem solid var(--text-color);
+}
+
+.listing-header {
+  margin-bottom: 1.6rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 0.1rem solid $hairline;
+
+  .eyebrow {
+    margin-bottom: 0;
+  }
+}
+
+.score-board {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+  list-style: none;
+
+  .row {
+    display: grid;
+    // Air between the identity edge and the name.
+    padding-left: 0.8rem;
+    gap: 0.25rem 0.8rem;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'name pts'
+      'bar  bar'
+      'fate fate';
+  }
+
+  .name {
+    overflow: hidden;
+    grid-area: name;
+    text-align: left;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pts {
+    grid-area: pts;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bar {
+    grid-area: bar;
+  }
+
+  .fate {
+    opacity: 0.65;
+    grid-area: fate;
+    font-size: 1.2rem;
+  }
+
+  .fill {
+    background: var(--player-color, #{ink(0.45)});
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .chronicle-stop {
     animation: none;
+  }
+}
+
+// Phone portrait: the split becomes a stack — report first, standings beneath
+// under a top rule; the wrapper's scroller owns the overflow.
+@media screen and (max-width: $tablet) {
+  .timeline-report {
+    grid-template-columns: 100%;
+    // Bottom breathing room inside the ModalWrapper scroller, past the
+    // home indicator.
+    margin-bottom: calc(var(--safe-bottom) + 2rem);
+  }
+
+  .player-listing {
+    border-left: none;
+    border-top: 0.1rem solid var(--text-color);
+  }
+
+  .card-header h2 {
+    font-size: 1.9rem;
   }
 }
 </style>

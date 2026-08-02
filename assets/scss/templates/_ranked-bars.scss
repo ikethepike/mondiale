@@ -1,3 +1,5 @@
+@use '../rules/breakpoints' as *;
+
 // The ranked-bar scorecard skeleton (Made In, City Nocturne): a scrollable
 // column of rows landing on their own beats (--i), each with a shared-scale
 // bar that grows after its row settles. Skins colour the fills and provide
@@ -58,7 +60,7 @@
   }
 
   // Phone pass: tighter columns so the bars keep real length
-  @media screen and (max-width: 480px) {
+  @media screen and (max-width: $tablet) {
     padding: 0.4rem 0;
 
     .row {
