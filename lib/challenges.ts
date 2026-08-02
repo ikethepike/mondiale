@@ -2710,7 +2710,7 @@ const CHALLENGE_DETAILS: {
 } = {
   'economics.gdpPerCapita': {
     topic: 'economics',
-    phrasing: 'Rank the following countries by GDP per capita',
+    phrasing: 'Rank these countries by GDP per capita',
     markers: {
       most: 'highest GDP',
       least: 'lowest GDP',
@@ -2726,7 +2726,7 @@ const CHALLENGE_DETAILS: {
   },
   'economics.populationBelowPovertyLine': {
     topic: 'economics',
-    phrasing: 'Rank the following countries by the percentage of people under the poverty line',
+    phrasing: 'Rank these countries by the percentage of people living below the poverty line',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
@@ -2785,15 +2785,15 @@ const CHALLENGE_DETAILS: {
   },
   'geography.highestPeak': {
     topic: 'geography',
-    phrasing: 'Rank these countries by highest mountain',
+    phrasing: 'Rank these countries by their highest mountain',
     markers: {
       most: 'highest mountain',
-      least: 'shortest mountain',
+      least: 'lowest mountain',
     },
   },
   'unemployment.youth': {
     topic: 'unemployment',
-    phrasing: 'Rank these countries by levels of youth unemployment',
+    phrasing: 'Rank these countries by the youth unemployment rate',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
@@ -2801,7 +2801,7 @@ const CHALLENGE_DETAILS: {
   },
   'unemployment.total': {
     topic: 'unemployment',
-    phrasing: 'Rank these countries by levels of unemployment',
+    phrasing: 'Rank these countries by the unemployment rate',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
@@ -2825,7 +2825,7 @@ const CHALLENGE_DETAILS: {
   },
   'gender.motherMeanAgeAtBirth': {
     topic: 'gender',
-    phrasing: 'Rank these countries by the mean age of birth at which women give birth',
+    phrasing: 'Rank these countries by the average age at which women have their first child',
     markers: {
       most: 'oldest',
       least: 'youngest',
@@ -2857,7 +2857,7 @@ const CHALLENGE_DETAILS: {
   },
   'people.childrenPerWoman': {
     topic: 'people',
-    phrasing: 'Rank these countries by the average number of children per women',
+    phrasing: 'Rank these countries by the average number of children per woman',
     markers: {
       most: 'most children',
       least: 'fewest children',
@@ -2921,7 +2921,7 @@ const CHALLENGE_DETAILS: {
   },
   'environment.CO2Emissions': {
     topic: 'environment',
-    phrasing: 'Rank these countries by CO2 emissions',
+    phrasing: 'Rank these countries by total CO2 emissions',
     markers: {
       most: 'highest CO2 emissions',
       least: 'lowest CO2 emissions',
@@ -2937,7 +2937,7 @@ const CHALLENGE_DETAILS: {
   },
   'humanRights.gayMarriageLegalized': {
     topic: 'human rights',
-    phrasing: 'Rank these countries by year gay marriage was legalized',
+    phrasing: 'Rank these countries by the year gay marriage was legalized',
     markers: {
       most: 'latest',
       least: 'earliest',
@@ -2978,7 +2978,7 @@ const CHALLENGE_DETAILS: {
   },
   'people.population': {
     topic: 'people',
-    phrasing: 'Which of these countries has the largest population?',
+    phrasing: 'Rank these countries by population',
     markers: {
       most: 'largest population',
       least: 'smallest population',
@@ -2986,7 +2986,7 @@ const CHALLENGE_DETAILS: {
   },
   'people.populationGrowthRate': {
     topic: 'people',
-    phrasing: 'Rank the following by population growth rate',
+    phrasing: 'Rank these countries by population growth rate',
     markers: {
       most: 'fastest growing',
       least: 'slowest growing',
@@ -2994,7 +2994,7 @@ const CHALLENGE_DETAILS: {
   },
   'health.tobaccoUse': {
     topic: 'health',
-    phrasing: 'Rank the following by the percentage of adults who use tobacco',
+    phrasing: 'Rank these countries by the percentage of adults who use tobacco',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
@@ -3002,7 +3002,7 @@ const CHALLENGE_DETAILS: {
   },
   'health.alcoholConsumption': {
     topic: 'health',
-    phrasing: 'Rank the following by litres of pure alcohol consumed per adult each year',
+    phrasing: 'Rank these countries by litres of pure alcohol consumed per adult each year',
     markers: {
       most: 'most litres',
       least: 'fewest litres',
@@ -3035,8 +3035,7 @@ const CHALLENGE_DETAILS: {
   },
   'government.conflictsFought': {
     topic: 'general knowledge',
-    phrasing:
-      'Rank these countries by distinct armed conflicts fought as a warring party since 1946',
+    phrasing: 'Rank these countries by armed conflicts fought since 1946',
     markers: {
       most: 'most conflicts',
       least: 'fewest conflicts',
@@ -3044,8 +3043,7 @@ const CHALLENGE_DETAILS: {
   },
   'government.yearsAtWar': {
     topic: 'general knowledge',
-    phrasing:
-      'Rank these countries by how many years since 1946 they have spent in a conflict at war intensity',
+    phrasing: 'Rank these countries by years spent at war since 1946',
     markers: {
       most: 'most years at war',
       least: 'fewest years at war',
@@ -3055,8 +3053,7 @@ const CHALLENGE_DETAILS: {
   },
   'government.recentConflicts': {
     topic: 'general knowledge',
-    phrasing:
-      'Rank these countries by armed conflicts they have been party to in the last five years',
+    phrasing: 'Rank these countries by armed conflicts fought in the last five years',
     markers: {
       most: 'most recent conflicts',
       least: 'fewest recent conflicts',
@@ -3064,7 +3061,7 @@ const CHALLENGE_DETAILS: {
   },
   'government.democracyIndex': {
     topic: 'general knowledge',
-    phrasing: 'Rank these countries by their democracy index (V-Dem electoral democracy)',
+    phrasing: 'Rank these countries by their democracy index',
     markers: {
       most: 'most democratic',
       least: 'least democratic',
@@ -3163,7 +3160,7 @@ const CHALLENGE_DETAILS: {
   },
   'people.netMigration': {
     topic: 'people',
-    phrasing: 'Rank these countries by net migration rate per 1000 people',
+    phrasing: 'Rank these countries by net migration rate per 1,000 people',
     markers: {
       most: 'most inward migration',
       least: 'most outward migration',
@@ -3171,7 +3168,7 @@ const CHALLENGE_DETAILS: {
   },
   'people.birthRate': {
     topic: 'people',
-    phrasing: 'Rank these countries by birth rate per 1000 people',
+    phrasing: 'Rank these countries by birth rate per 1,000 people',
     markers: {
       most: 'highest birth rate',
       least: 'lowest birth rate',
@@ -3187,10 +3184,10 @@ const CHALLENGE_DETAILS: {
   },
   'environment.methaneEmissions': {
     topic: 'environment',
-    phrasing: 'Rank these countries by their methane emissions',
+    phrasing: 'Rank these countries by total methane emissions',
     markers: {
-      most: 'most emissions',
-      least: 'fewest emissions',
+      most: 'highest emissions',
+      least: 'lowest emissions',
     },
   },
   'economics.touristArrivals': {
@@ -3254,7 +3251,7 @@ const CHALLENGE_DETAILS: {
   },
   'environment.redListIndex': {
     topic: 'environment',
-    phrasing: 'Rank these countries by how safe their wildlife is from extinction',
+    phrasing: 'Rank these countries by the survival outlook of their wildlife',
     markers: {
       most: 'safest wildlife',
       least: 'most at risk',
