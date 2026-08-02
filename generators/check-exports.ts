@@ -4,16 +4,31 @@
  * The Made In challenge matches commodity strings EXACTLY across countries and
  * the reveal ranks exporters by exportsTotal, so stray variants ("packaged
  * medicines" vs "packaged medicine") and mis-scaled totals are gameplay bugs,
- * not cosmetics. Findings are printed, never fatal.
+ * not cosmetics. Findings are printed; with --strict they also fail the run,
+ * which is how the DataUpdate workflow gates its auto-commit.
  *
  * Run after regenerating countries:
- *   bun run generators/check-exports.ts
+ *   bun run generators/check-exports.ts [--strict]
  */
 import { COUNTRIES } from '../data/countries.gen'
 import { MADE_COMMODITIES } from '../lib/challenges/final-challenge'
 
 const findings: string[] = []
-const flag = (id: string, message: string) => findings.push(`✗ ${id}: ${message}`)
+const flag = (id: string, message: string) => findings.push(`${id}: ${message}`)
+
+// Findings a curator has looked at and accepted (VA/KP/MC genuinely lack a
+// Factbook exports entry; a few states' totals are genuinely old). --strict
+// fails only on findings outside this baseline — a new finding is news, a
+// known one is not. When an entry stops matching (source updated), drop it.
+const ACCEPTED = new Set([
+  'VA: no exports commodity list',
+  'KP: exports list but no exportsTotal — unranked in the Made In reveal',
+  'MC: exports list but no exportsTotal — unranked in the Made In reveal',
+  'BB: exportsTotal vintage 2017 — source went stale',
+  'ER: exportsTotal vintage 2017 — source went stale',
+  'LI: exportsTotal vintage 2015 — source went stale',
+  'YE: exportsTotal vintage 2017 — source went stale',
+])
 
 const countries = Object.values(COUNTRIES)
 const withList = countries.filter(country => country.economics.exports)
@@ -119,15 +134,23 @@ const dealable = [...worldCounts.entries()].filter(
 ).length
 if (dealable < 20)
   findings.push(
-    `✗ only ${dealable} curated commodities have 2–8 world exporters — Made In deals get repetitive`
+    `only ${dealable} curated commodities have 2–8 world exporters — Made In deals get repetitive`
   )
 
 // --- Report --------------------------------------------------------------------
+const fresh = findings.filter(finding => !ACCEPTED.has(finding))
 if (findings.length) {
-  console.info(findings.join('\n'))
+  console.info(
+    findings.map(finding => `${ACCEPTED.has(finding) ? '·' : '✗'} ${finding}`).join('\n')
+  )
 } else {
   console.info('✓ all clear')
 }
 console.info(
   `\n${countries.length} countries · ${withList.length} with commodity lists · ${withTotal.length} with totals · ${worldCounts.size} distinct commodities · ${MADE_COMMODITIES.size} curated (${dealable} dealable world-wide)`
 )
+
+if (fresh.length && process.argv.includes('--strict')) {
+  console.error(`\n${fresh.length} finding(s) outside the accepted baseline`)
+  process.exit(1)
+}

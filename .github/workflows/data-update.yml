@@ -1,0 +1,66 @@
+# Weekly refresh of the data that actually moves upstream: World Bank indicators,
+# OWID metrics, Wikidata leaders, then the country file that folds them all in.
+#
+# Deliberately NOT scheduled:
+# - conflicts/conflict-events: UCDP release is pinned (DATASET_VERSION) — bump by hand
+# - wpp: pinned to the WPP2024 revision — bump by hand on a new UN release
+# - map/water/recognition: Natural Earth v5.1.2 tag-pinned, byte-identical reruns
+# - empires: CC BY-NC-SA source keeps it out of CI by policy (see its header)
+# - linking: stamps new Date() into its header — every run would produce a diff
+# - capitals/anthems/tongues/currencies/landmarks/events/heritage/cities/flags-wide/
+#   anthem-lyrics/upscale: curated media pipelines, a human reviews those runs
+name: DataUpdate
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: data-update
+  cancel-in-progress: false
+
+# The commit rides secrets.PAT, so GITHUB_TOKEN stays read-only.
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      # PAT (not GITHUB_TOKEN) so the data commit still triggers the Fly deploy.
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.PAT }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Vendor feeds first — generate:countries folds their .gen output in.
+      - name: Update World Bank indicators
+        run: bun run generate:worldbank
+
+      - name: Update OWID metrics
+        run: bun run generate:owid
+
+      - name: Update leaders
+        run: bun run generate:leaders
+
+      - name: Update countries
+        run: bun run generate:countries
+
+      # Gates — nothing commits unless the refreshed data still holds up.
+      - name: Check export parsing
+        run: bun run generators/check-exports.ts --strict
+
+      - name: Run test suite
+        run: bun run test
+
+      - name: Commit refreshed data
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: Update generated data files
+          file_pattern: 'data/*.gen.ts types/vendor/**/*.gen.ts public/leaders/*'

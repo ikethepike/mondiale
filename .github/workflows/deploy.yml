@@ -20,8 +20,8 @@ jobs:
     name: Deploy app
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
       # --ha=false keeps Mondiale on a single machine: the Socket.IO server
       # holds its io instance in per-machine memory, so a second machine
       # without sticky sessions + a Redis adapter breaks live game sessions.

@@ -6,8 +6,10 @@
 # `ws` transitive dep from the traced output, crashing the socket server at
 # startup — so we stay on node + a pinned bun here.)
 FROM node:24-alpine AS build
-RUN npm install -g bun@1.3.10
 WORKDIR /app
+# .bun-version is the single source for the Bun pin (CI reads the same file).
+COPY .bun-version ./
+RUN npm install -g bun@$(cat .bun-version)
 
 # Install deps first for layer caching — only re-runs when the lockfile changes.
 COPY package.json bun.lockb ./

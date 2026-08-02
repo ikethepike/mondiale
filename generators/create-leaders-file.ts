@@ -22,7 +22,9 @@ import type { MediaCredit } from '../lib/attribution'
  *
  * Portraits are saved as one dedicated file per country and role under
  * public/leaders/ — nothing is inlined into the data bundle. Existing files
- * are kept unless --force is passed (elections: rerun with --force).
+ * are kept unless --force is passed OR the person behind that country+role
+ * changed since the previous run (the file is keyed by country and role, so
+ * a kept file after an election would show the predecessor's face).
  *
  *   bun run generate:leaders [--force]
  */
@@ -412,11 +414,12 @@ let failed = 0
 // keep-existing-unless-force, backoff, and content-type→extension logic.
 for (const { isoCode, role, file } of portraitQueue) {
   const roleSlug = role === 'headOfState' ? 'state' : 'government'
+  const refresh = force || previousMapping[isoCode]?.[role]?.name !== mapping[isoCode]![role]!.name
   const publicPath = await saveCommonsImage(
     file,
     `${OUTPUT_DIRECTORY}/${isoCode}-${roleSlug}`,
     `/leaders/${isoCode}-${roleSlug}`,
-    { width: PORTRAIT_WIDTH, force }
+    { width: PORTRAIT_WIDTH, force: refresh }
   )
   if (!publicPath) {
     console.warn(`  portrait failed for ${isoCode} ${role}`)
@@ -426,7 +429,7 @@ for (const { isoCode, role, file } of portraitQueue) {
   mapping[isoCode]![role] = {
     ...mapping[isoCode]![role]!,
     image: publicPath,
-    ...(await captureImageCredit(file, previousMapping[isoCode]?.[role], force)),
+    ...(await captureImageCredit(file, previousMapping[isoCode]?.[role], refresh)),
   }
   done++
   process.stdout.write(`\r  ${done + failed}/${portraitQueue.length} portraits`)

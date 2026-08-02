@@ -41,8 +41,8 @@ jobs:
       name: pr-${{ github.event.number }}
       url: https://pr-${{ github.event.number }}-mondiale.fly.dev
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       - name: Create the preview app on first deploy
         run: flyctl status --app "$APP" > /dev/null 2>&1 || flyctl apps create "$APP" --org "$FLY_ORG"
@@ -101,6 +101,6 @@ jobs:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
       # `|| true`: a PR that never deployed (fork, failed build) has no app.
       - run: flyctl apps destroy "$APP" --yes || true
