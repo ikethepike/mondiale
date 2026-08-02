@@ -1,26 +1,24 @@
 <template>
   <div class="audio-dock" :class="{ playing, armed, loading }">
     <!-- Two sources: Opus/WebM covers Chrome/Firefox/Android, AAC/M4A Safari.
-         `loadedmetadata` counts as ready as well as `canplaythrough`: iOS
-         downgrades preload to metadata and withholds canplaythrough until a
-         gesture, so waiting on it alone would stall on "Loading". -->
-    <audio
-      ref="element"
-      preload="auto"
-      @canplaythrough="onReady"
-      @loadedmetadata="onReady"
-      @error="onError"
-      @timeupdate="onTimeUpdate"
-      @ended="onEnded"
-    >
+         With <source> children a failed load fires `error` at the FAILING
+         SOURCE, not the media element — those events don't bubble, so an
+         @error on <audio> is dead code. The last source is the spec's signal
+         that the whole candidate list is exhausted, so the handler lives
+         there. -->
+    <audio ref="element" preload="auto" @timeupdate="onTimeUpdate" @ended="onEnded">
       <source :src="clip.webm" type="audio/webm" />
-      <source :src="clip.m4a" type="audio/mp4" />
+      <source :src="clip.m4a" type="audio/mp4" @error="onError" />
     </audio>
 
+    <!-- NEVER disabled while sound could still be coaxed out: on iOS no media
+         event fires before a user gesture (preload is downgraded at the OS's
+         whim), so a button gated on readiness deadlocks — the press IS the
+         thing that makes loading possible. -->
     <button
       type="button"
       class="stage"
-      :disabled="loading"
+      :disabled="failed"
       :aria-label="playing ? 'Pause the clip' : armed ? 'Play the clip again' : 'Play the clip'"
       @click="toggle"
     >
@@ -104,7 +102,10 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
 const element = ref<HTMLAudioElement>()
 const playing = ref(false)
-const loading = ref(true)
+/** True from the press until sound is confirmed running — the only moment a
+ *  spinner is honest. NEVER true before a press: pre-gesture "readiness" is
+ *  unknowable on iOS, which fires no media events until a gesture loads. */
+const loading = ref(false)
 /** True once the clip has played at all — the control becomes a replay. */
 const armed = ref(false)
 /** 0..1 of the RECORDING heard, for the ring. */
@@ -118,13 +119,12 @@ const caption = computed(() => {
   return armed.value ? props.endedLabel : props.idleLabel
 })
 
-const onReady = () => {
-  loading.value = false
-}
-
-/** A clip that 404s must not strand the round behind a dead button. */
+/** A clip that 404s must not strand the round behind a dead button. Group
+ *  settlement waits on every seat, so an unstarted clock here would stall the
+ *  whole table — the round arms and runs silent instead. */
 const onError = () => {
   loading.value = false
+  playing.value = false
   failed.value = true
   if (!armed.value) {
     armed.value = true
@@ -149,6 +149,7 @@ const play = async () => {
   // A finished clip restarts; a paused one resumes where it stopped.
   if (audio.ended) audio.currentTime = 0
 
+  loading.value = true
   await audio.play().then(
     () => {
       playing.value = true
@@ -161,7 +162,12 @@ const play = async () => {
       }
     },
     () => {
+      loading.value = false
       playing.value = false
+      // Distinguish "nothing here can ever play" from a refused gesture: with
+      // the candidate list exhausted the button must not sit as a silent
+      // dead end — that's the same stranding the source error guards.
+      if (audio.error || audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) onError()
     }
   )
 }
@@ -291,6 +297,9 @@ defineExpose({ play, pause, stop })
   padding: 0 1.2rem;
   align-items: center;
   justify-content: center;
+  // The bars animate height (rounded caps need it), which is per-frame layout
+  // × 7 for the whole clip — containment fences that reflow inside this row.
+  contain: layout;
   // Its own ground, exactly like the caption it replaces — bare bars over the
   // map read as debris rather than a level meter.
   border-radius: 2rem;
@@ -341,9 +350,4 @@ defineExpose({ play, pause, stop })
   transform: translateY(0.3rem);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>

@@ -124,3 +124,11 @@
     opacity var(--motion-quick) var(--ease-out-expressive),
     transform var(--motion-quick) var(--ease-out-expressive);
 }
+
+// A loading spinner's rotation — the dock's play button and the reveal's
+// replay both wear it; one definition, per the shared-keyframes rule.
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

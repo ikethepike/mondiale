@@ -69,6 +69,7 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import { flagSwatches } from '~~/lib/audio-palette'
 import { seededTongueSample } from '~~/lib/tongue-samples'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
@@ -1079,7 +1080,7 @@ const scenarios: Scenario[] = [
           lyricsUrl: '/anthems/lyrics/SE-anthem.json',
           durationSeconds: 30,
           region: 'Europe',
-          swatches: ['blue', 'yellow'],
+          swatches: flagSwatches('SE'),
           initial: 'S',
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -1101,7 +1102,7 @@ const scenarios: Scenario[] = [
           lyricsUrl: '/anthems/lyrics/PL-anthem.json',
           durationSeconds: 30,
           region: 'Europe',
-          swatches: ['white', 'red'],
+          swatches: flagSwatches('PL'),
           initial: 'P',
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -1124,7 +1125,7 @@ const scenarios: Scenario[] = [
           lyricsUrl: '/anthems/lyrics/JP-anthem.json',
           durationSeconds: 30,
           region: 'Asia',
-          swatches: ['white', 'red'],
+          swatches: flagSwatches('JP'),
           initial: 'J',
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -1146,8 +1147,28 @@ const scenarios: Scenario[] = [
           lyricsUrl: '/anthems/lyrics/UY-anthem.json',
           durationSeconds: 30,
           region: 'Americas',
-          swatches: ['white', 'blue', 'yellow'],
+          swatches: flagSwatches('UY'),
           initial: 'U',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-broken-clip',
+    label: 'Opening Ceremony (unloadable clip)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Both sources 404 on purpose: the round must arm and run silent
+          // rather than strand the table behind a dead play button — group
+          // settlement waits on every seat.
+          country: 'SE',
+          clip: { webm: '/anthems/missing.webm', m4a: '/anthems/missing.m4a' },
+          durationSeconds: 30,
+          region: 'Europe',
+          initial: 'S',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

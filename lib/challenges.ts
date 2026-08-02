@@ -80,6 +80,7 @@ import {
   playableWorldCountries,
 } from './game-rules'
 import { pickChainSeed } from './chain'
+import { flagSwatches } from './audio-palette'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
@@ -530,7 +531,9 @@ const getAnthemBuzzChallenge = ({
           // holds strings like "blue", which CSS renders as generic web blue
           // rather than Sweden's. Same source the flag-palette round uses, and
           // it never comes back empty (22 emblem-heavy flags simplify to none).
-          swatches: COUNTRIES[country].identity.colors.slice(0, 6),
+          // Through the palette home, never a raw slice: on a crest-heavy flag
+          // the raw list's first six entries are mostly emblem gradient.
+          swatches: flagSwatches(country),
           initial: countryName(country).slice(0, 1).toUpperCase(),
           ...(ANTHEM_LYRICS.has(country)
             ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
@@ -583,7 +586,10 @@ const getTongueBuzzChallenge = ({
           // DO have one ship no sample: the view borrows a couple of lyric
           // lines through `tongueSampleSource`/`anthemTongueSample`, keyed off
           // `region` being present so hard mode stays hint-free.
-          ...(seededTongueSample(language) ? { sample: seededTongueSample(language) } : {}),
+          ...(() => {
+            const seeded = seededTongueSample(language)
+            return seeded ? { sample: seeded } : {}
+          })(),
           initial: countryName(countries[0]).slice(0, 1).toUpperCase(),
         }
       : {}),

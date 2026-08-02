@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { ATTRIBUTION_FREE, corroborates, isPlayable } from '~~/generators/anthem-corroboration'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -16,17 +17,32 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 describe('anthem dataset', () => {
   const entries = Object.entries(ANTHEMS) as [ISOCountryCode, (typeof ANTHEMS)[ISOCountryCode]][]
 
-  it('ships every clip at one sample rate', () => {
+  // The sweep spawns one ffprobe per shipped clip (~183, serially) — a
+  // data-pipeline check, not a unit test, so machines without ffmpeg skip it
+  // LOUDLY rather than crashing on a null stdout or silently vouching.
+  const ffprobeAvailable = spawnSync('ffprobe', ['-version']).status === 0
+  if (!ffprobeAvailable) {
+    console.warn('anthems.test: ffprobe not on PATH — skipping the clip sample-rate sweep')
+  }
+
+  it.skipIf(!ffprobeAvailable)('ships every clip at one sample rate', () => {
     // `loudnorm` resamples to 192kHz internally and passes that downstream, so
     // an unpinned AAC encode once shipped 96kHz m4a files — double speed, and
     // audible ONLY on Safari, which prefers the m4a over the (correct) webm.
     // Opus is 48kHz-only, so the webm was always right and hid the bug.
-    const probe = (file: string) =>
-      spawnSync(
+    const probe = (file: string) => {
+      const result = spawnSync(
         'ffprobe',
         ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', file],
         { encoding: 'utf8' }
-      ).stdout.trim()
+      )
+      // stdout is null when the spawn itself failed — surface WHICH file and
+      // why instead of a bare TypeError from `.trim()`.
+      if (result.error || result.stdout === null) {
+        throw new Error(`ffprobe failed for ${file}: ${result.error?.message ?? 'no output'}`)
+      }
+      return result.stdout.trim()
+    }
 
     const offRate = entries
       .filter(([, entry]) => entry?.m4a)
@@ -50,10 +66,10 @@ describe('anthem dataset', () => {
     // Public-domain and CC0 files need no author. CC BY / CC BY-SA do — using
     // one without attribution is a licence breach, not a cosmetic gap. Commons
     // occasionally publishes the licence with no Artist field, so this catches
-    // the files that would ship uncredited.
-    const attributionFree = /public domain|^CC0|^PD/i
+    // the files that would ship uncredited — judged by the generator's own
+    // ATTRIBUTION_FREE, imported so the two can't drift.
     const uncredited = entries.filter(
-      ([, entry]) => entry?.license && !attributionFree.test(entry.license) && !entry.credit
+      ([, entry]) => entry?.license && !ATTRIBUTION_FREE.test(entry.license) && !entry.credit
     )
     expect(uncredited.map(([iso, entry]) => `${iso}: ${entry?.license}`)).toEqual([])
   })
@@ -83,37 +99,26 @@ describe('anthem dataset', () => {
     expect(mismatched.map(([iso]) => iso)).toEqual([])
   })
 
-  it('never ships a superseded, synthesised or politically loaded take', () => {
-    // A "former" anthem is the wrong answer to "whose anthem is this"; a MIDI
-    // render sounds nothing like the real thing; a Francoist-era recording is
-    // not what should play in a party game.
-    const unusable = /\b(midi|former|historic(al)?|francoist|nazi|soviet|colonial)\b/i
-    const offenders = entries.filter(([, entry]) => entry?.sourceFile && unusable.test(entry.sourceFile))
+  it('never ships a take the generator itself calls unusable', () => {
+    // THE generator's own predicate, imported, not a re-typed copy — the copy
+    // this test once held had already drifted ("1st version" was missing), so
+    // it was vouching with a weaker rule than the one it claimed to lock in.
+    const offenders = entries.filter(
+      ([, entry]) => entry?.sourceFile && !isPlayable(entry.sourceFile)
+    )
     expect(offenders.map(([iso, entry]) => `${iso}: ${entry?.sourceFile}`)).toEqual([])
   })
 
-  it('corroborates every SEARCH-sourced clip by name', () => {
+  it('corroborates every SEARCH-sourced clip with the real predicate', () => {
     // Wikidata-sourced clips are vouched for by the anthem item's own P51 link,
     // so their filenames need not spell the country out ("Kimi ga Yo
     // instrumental" is fine for JP). Search-sourced ones have no such link —
     // Commons merely ranked them — so the filename is the only evidence there
-    // is, and it must name the anthem or the country.
-    const STOPWORDS = new Set(['the', 'of', 'and', 'national', 'anthem', 'instrumental', 'state'])
-    const words = (text: string) =>
-      text
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .split(/[^a-z0-9]+/)
-        .filter(word => word.length > 2 && !STOPWORDS.has(word))
-
+    // is, and it must pass the same `corroborates` the generator shipped with.
     const unverifiable = entries.filter(([iso, entry]) => {
       if (!entry?.sourceFile) return false // pre-existing rows without provenance
       if (entry.sourcedBy !== 'search') return false
-      const haystack = words(entry.sourceFile)
-      const wanted = [...words(entry.title ?? ''), ...words(COUNTRIES[iso]?.name.english ?? '')]
-      const stem = (word: string) => word.slice(0, Math.max(4, word.length - 3))
-      return !wanted.some(word => haystack.some(found => found.startsWith(stem(word))))
+      return !corroborates(entry.sourceFile, entry.title ?? '', COUNTRIES[iso]?.name.english ?? '')
     })
 
     expect(unverifiable.map(([iso, entry]) => `${iso}: ${entry?.sourceFile}`)).toEqual([])

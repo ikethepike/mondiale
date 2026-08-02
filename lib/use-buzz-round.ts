@@ -3,11 +3,12 @@ import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The shared body of the audio buzz rounds (Opening Ceremony, Mother Tongue).
- * Both play a clip, unlock hints as it runs, take one typed country guess and
- * pay on the clock — they differ only in prompt copy and in what counts as
- * correct, so that difference is the `isCorrect` argument and everything else
- * lives here rather than in two views.
+ * The shared body of every buzz round — Silhouette, Opening Ceremony, Mother
+ * Tongue. Each presents a mystery, takes one typed country guess and pays on
+ * the clock, with a wrong buzz costing a lockout; they differ in prompt copy,
+ * in what counts as correct (`isCorrect`) and in their reveal choreography
+ * (`onResolve`), so those are arguments and everything else lives here rather
+ * than in three views.
  */
 
 /** Where each hint lands, as the fraction of the clock ALREADY SPENT. Late
@@ -53,9 +54,24 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     lockoutHint: (guessName: string) => string
     /** Runs once the round resolves, before the reveal hold. */
     onResolve?: (guess: ISOCountryCode | undefined) => void
+    /** Runs when a lockout expires — the moment to hand focus back to the
+     *  guess input. Owned here because the lockout timer is owned here: a
+     *  view-side refocus timer re-declares the lockout length and drifts the
+     *  moment it is tuned. */
+    onLockoutEnd?: () => void
+    /** Each second of the running clock (the silhouette's border draw). */
+    onTick?: (secondsLeft: number) => void
+    /** Blank the world map for the round. The audio rounds keep it (their
+     *  colour field covers it); the silhouette blanks it — the outline IS the
+     *  question. */
+    solo?: boolean
+    /** How long the answer holds before the scorecard. Defaults to the audio
+     *  rounds' generous beat; the silhouette shortens it — it has no verse to
+     *  translate, so four seconds of framed map is the whole reveal. */
+    revealHoldMs?: number
   }
 ) => {
-  const round = useGroupChallenge(typeName, { solo: false })
+  const round = useGroupChallenge(typeName, { solo: options.solo ?? false })
   const {
     challenge,
     showInterstitial,
@@ -98,7 +114,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
 
     revealTimer = setTimeout(() => {
       submitOnce(guess ? [guess] : [], clientScore, buzzedAt.value)
-    }, BUZZ_REVEAL_HOLD_MS)
+    }, options.revealHoldMs ?? BUZZ_REVEAL_HOLD_MS)
   }
 
   /**
@@ -118,7 +134,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
    */
   const begin = (afterStart?: () => void) => {
     if (started.value) return
-    beginRound({ onTimeout: () => resolve(undefined, 0) })
+    beginRound({ onTick: options.onTick, onTimeout: () => resolve(undefined, 0) })
     afterStart?.()
   }
 
@@ -137,7 +153,10 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     announce({ kind: 'locked', hint: options.lockoutHint(guessName) })
     lockedOut.value = true
     if (lockoutTimer) clearTimeout(lockoutTimer)
-    lockoutTimer = setTimeout(() => (lockedOut.value = false), BUZZ_LOCKOUT_MS)
+    lockoutTimer = setTimeout(() => {
+      lockedOut.value = false
+      options.onLockoutEnd?.()
+    }, BUZZ_LOCKOUT_MS)
     return 'wrong'
   }
 

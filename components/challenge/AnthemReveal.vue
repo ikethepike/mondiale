@@ -6,7 +6,15 @@
     <span class="dossier">
       <span class="dossier-head">
         <span class="identity">
-          <strong class="subject">{{ subject }}</strong>
+          <!-- A country answer wears its flag (the chosen-country rule); a
+               language answer has no flag to wear and stays text. -->
+          <CountryChip
+            v-if="subjectCountry"
+            tag="strong"
+            class="subject subject-chip"
+            :country="subjectCountry"
+          />
+          <strong v-else class="subject">{{ subject }}</strong>
           <span class="subtitle">{{ subtitle }}</span>
         </span>
 
@@ -116,6 +124,7 @@
   </span>
 </template>
 <script lang="ts" setup>
+import CountryChip from '~/components/country/CountryChip.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
@@ -124,6 +133,7 @@ import { buzzFraction } from '~~/lib/scoring'
 import { formatCompact } from '~~/lib/number'
 import { seatLabel } from '~~/lib/player'
 import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 
@@ -138,6 +148,8 @@ import type { Player } from '~~/types/player.type'
 const props = defineProps<{
   /** The answer: a country name, or the language. */
   subject: string
+  /** Set when the answer IS a country — the label then wears its flag. */
+  countryCode?: ISOCountryCode
   subtitle: string
   credit?: string
   replayClip?: { webm: string; m4a: string }
@@ -148,6 +160,11 @@ const props = defineProps<{
   players: { [playerId: string]: Player }
   myPlayerId?: string
 }>()
+
+/** The chosen-country chip's subject, when the answer is a country. */
+const subjectCountry = computed(() =>
+  props.countryCode ? getCountry(props.countryCode) : undefined
+)
 
 /** Which column the couplet is showing. Starts local: the round has just
  *  finished translating, so the original is the fresher half to land on. */
@@ -338,6 +355,18 @@ const rows = computed(() => {
   line-height: 1.2;
 }
 
+// The chip inherits the subject's type scale rather than the list-item look
+// its template ships with — here it IS the title, not a row.
+.subject-chip {
+  padding: 0;
+  background: none;
+
+  :deep(.chip-name) {
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
+}
+
 .subtitle,
 // A genuine footnote: the provenance matters but must not read at the same
 // weight as the anthem's own title. The ⓘ carries the detail; the line beside
@@ -361,6 +390,13 @@ const rows = computed(() => {
 // Expanded verses scroll inside the card rather than pushing the buzz race off
 // the bottom — anthems run from five lines to ninety-five.
 .couplet {
+  gap: 0.2rem;
+  display: flex;
+  font-size: 1.4rem;
+  line-height: 1.45;
+  font-style: italic;
+  flex-flow: column nowrap;
+  color: #{ink(0.72)};
   max-height: 24rem;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -476,29 +512,6 @@ const rows = computed(() => {
   }
 }
 
-.couplet-toggle {
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  font-size: 1.2rem;
-  font-weight: 600;
-  font-family: inherit;
-  background: transparent;
-  color: var(--soft-blue);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
-.couplet {
-  gap: 0.2rem;
-  display: flex;
-  font-size: 1.4rem;
-  line-height: 1.45;
-  font-style: italic;
-  flex-flow: column nowrap;
-  color: #{ink(0.72)};
-}
-
 .couplet-line {
   display: block;
 }
@@ -544,11 +557,6 @@ const rows = computed(() => {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .race-caption {
   margin-top: 0.4rem;
@@ -577,6 +585,7 @@ const rows = computed(() => {
   // stays flush and nothing clips off the card.
   min-width: 4.5rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 // The skin owns the fill colour; the template owns its geometry. Each bar is
@@ -592,10 +601,6 @@ const rows = computed(() => {
 
 .missed .bar {
   opacity: 0.5;
-}
-
-.tail {
-  font-variant-numeric: tabular-nums;
 }
 
 .missed {

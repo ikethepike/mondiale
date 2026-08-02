@@ -88,8 +88,8 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { countryName } from '~~/lib/country'
+import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
-import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 import type { Country } from '~~/types/geography.types'
 
 const {
@@ -115,6 +115,7 @@ const {
   isCorrect: (active, isoCode) => active.country === isoCode,
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `Not ${name} — locked out for 3 seconds`,
+  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
   // No map reveal. "Whose anthem" is not a geography question, and flying a
   // camera to one country adds nothing the name and the settled field do not
   // already say. The payoff is realising the colours WERE the answer, forming
@@ -123,14 +124,8 @@ const {
 })
 
 /** The curated wall, fetched rather than inlined — verses are long and most
- *  rounds end before the beat that shows them. A miss is silent: the round
- *  simply runs without a wall, exactly as it did before lyrics existed. */
-const lyrics = ref<AnthemLyrics>()
-watchEffect(async () => {
-  const url = challenge.value?.lyricsUrl
-  if (!url) return
-  lyrics.value = await $fetch<AnthemLyrics>(url).catch(() => undefined)
-})
+ *  rounds end before the beat that shows them. */
+const lyrics = useAnthemLyrics(() => challenge.value?.lyricsUrl)
 
 /** The closing beat: masks come off with the answer, then the verse turns to
  *  English a moment later, so the two reveals read as separate movements
@@ -148,8 +143,6 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const anthem = computed(() => (challenge.value ? ANTHEMS[challenge.value.country] : undefined))
 
-/** The interstitial tap IS the gesture that unblocks autoplay — start the clip
- *  and the clock together, from inside that same user event. */
 /** Show the stage and stop. The round never plays on its own: the player
  *  presses play, and only that starts the clip and the clock together. An
  *  autoplay attempt here would start the countdown on desktop while iOS sat
@@ -163,11 +156,7 @@ const onAudioStarted = () => {
 }
 
 const onGuess = (country: Country) => {
-  const verdict = guess(country.isoCode, countryName(country.isoCode))
-  if (verdict === 'correct') scene.value?.stop()
-  if (verdict === 'wrong') {
-    setTimeout(() => guessInput.value?.focus(), 3000)
-  }
+  if (guess(country.isoCode, countryName(country.isoCode)) === 'correct') scene.value?.stop()
 }
 </script>
 <style lang="scss" scoped>

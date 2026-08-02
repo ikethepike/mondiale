@@ -96,9 +96,8 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { anthemTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
+import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
-import type { TongueSample } from '~~/lib/tongue-samples'
-import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 import type { Country } from '~~/types/geography.types'
 
 const {
@@ -125,6 +124,7 @@ const {
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `${name} doesn't have it as an official language`,
+  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
   onResolve: () => {
     const active = challenge.value
     if (!active) return
@@ -144,19 +144,16 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
  *  (`lib/tongue-samples.ts`). Gated on `region`: hard mode omits the hint
  *  fields, and the view must not conjure hints the dealer withheld. A failed
  *  fetch is silent — the round just runs without this chip. */
-const sample = ref<TongueSample>()
-watchEffect(async () => {
+const borrowedLyrics = useAnthemLyrics(() => {
   const active = challenge.value
-  if (!active?.region) return
-  if (active.sample) {
-    sample.value = active.sample
-    return
-  }
-  const url = tongueSampleSource(active.language)
-  if (!url) return
-  const lyrics = await $fetch<AnthemLyrics>(url).catch(() => undefined)
-  if (lyrics) sample.value = anthemTongueSample(lyrics)
+  if (!active?.region || active.sample) return undefined
+  return tongueSampleSource(active.language)
 })
+const sample = computed(
+  () =>
+    challenge.value?.sample ??
+    (borrowedLyrics.value ? anthemTongueSample(borrowedLyrics.value) : undefined)
+)
 
 /** Show the stage and stop. The round never plays on its own: the player
  *  presses play, and only that starts the clip and the clock together. An
@@ -171,9 +168,7 @@ const onAudioStarted = () => {
 }
 
 const onGuess = (country: Country) => {
-  const verdict = guess(country.isoCode, countryName(country.isoCode))
-  if (verdict === 'correct') scene.value?.stop()
-  if (verdict === 'wrong') setTimeout(() => guessInput.value?.focus(), 3000)
+  if (guess(country.isoCode, countryName(country.isoCode)) === 'correct') scene.value?.stop()
 }
 </script>
 <style lang="scss" scoped>
@@ -208,11 +203,5 @@ const onGuess = (country: Country) => {
   line-height: 1.4;
   flex-flow: column nowrap;
   color: var(--dark-blue);
-}
-
-// The sample chip is a block, so it overrides the shared row recipe's centring.
-.sample-chip {
-  flex-flow: column nowrap;
-  align-items: flex-start;
 }
 </style>

@@ -14,13 +14,17 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * identically — two copies of a colour rule drift the moment one is tuned.
  */
 
-/** Where the field starts, before any country's colours arrive. Literal hex
- *  rather than Sass tokens: functions do not survive the trip into a shader
- *  uniform. Mirrors --sour-milk, --warm-sand and --soft-mint in
+/** The page's own milk surface (--sour-milk), in literal hex because Sass
+ *  functions do not survive the trip into a shader uniform. Doubles as the
+ *  stand-in for a flag's white, so the two uses can never drift. */
+const MILK = '#fffbf5'
+
+/** Where the field starts, before any country's colours arrive. Mirrors
+ *  --sour-milk, --warm-sand and --soft-mint in
  *  `assets/scss/rules/_palette.scss` — keep in step with them. Deliberately
  *  NOT --soft-blue: at 51% saturation it is the map's fill colour and reads
  *  as a statement, where the idle field should read as paper. */
-export const NEUTRAL_FIELD: readonly string[] = ['#fffbf5', '#f1b982', '#90bcb5']
+export const NEUTRAL_FIELD: readonly string[] = [MILK, '#f1b982', '#90bcb5']
 
 /**
  * How many colours reach the field. Deliberately tighter than
@@ -75,10 +79,6 @@ const DUMP_HEAD = 3
 const WHITE_LOOKAHEAD = 3
 const WHITE_LIGHTNESS = 0.85
 
-/** The white that stands in for a flag's white: the page's own milk surface,
- *  so it harmonises rather than glaring. Never clamped — the lyric text
- *  already lives on this exact tone. */
-const MILK = '#fffbf5'
 
 interface Hsl {
   h: number
@@ -86,7 +86,9 @@ interface Hsl {
   l: number
 }
 
-const toHsl = (hex: string): Hsl => {
+/** Exported for the test suite — a re-typed HSL conversion there would be a
+ *  shadow implementation of exactly the maths under test. */
+export const toHsl = (hex: string): Hsl => {
   const [r, g, b] = hexToRgb(hex).map(channel => channel / 255) as [number, number, number]
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
@@ -213,4 +215,22 @@ export const audioFieldPalette = (isoCodes: ISOCountryCode[]): string[] => {
   if (flags.some(flag => flag.white) && palette.length < MAX_FIELD_COLORS) palette.push(MILK)
 
   return palette.length ? palette : [...NEUTRAL_FIELD]
+}
+
+/**
+ * The swatch-dot hint for the anthem round: the flag's trusted colours AS
+ * THEMSELVES. Same head-trust rules as the field (a crest dump contributes
+ * only the clusters its first entries open, white counts as a primary), but
+ * UNCLAMPED — dots on a milk chip need the flag's real saturation, where the
+ * field's clamp exists for text drawn over it. Raw `identity.colors.slice()`
+ * is never acceptable here: on El Salvador that shipped six entries of crest
+ * gradient as "the flag".
+ */
+export const flagSwatches = (isoCode: ISOCountryCode): string[] => {
+  const colors = COUNTRIES[isoCode]?.identity.colors ?? []
+  if (!colors.length) return []
+  const { chromatics, white } = singleFlagColours(colors)
+  const swatches = chromatics.slice(0, MAX_FIELD_COLORS).map(toHex)
+  if (white && swatches.length < MAX_FIELD_COLORS) swatches.push('#fff')
+  return swatches
 }

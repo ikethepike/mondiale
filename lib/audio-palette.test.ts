@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { audioFieldPalette, MAX_FIELD_COLORS, NEUTRAL_FIELD } from './audio-palette'
-import { hexToRgb } from './palette'
+import { audioFieldPalette, MAX_FIELD_COLORS, NEUTRAL_FIELD, toHsl } from './audio-palette'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -14,36 +13,11 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  *  exempt from the chroma and band checks by construction. */
 const MILK = NEUTRAL_FIELD[0]
 
-const saturationOf = (hex: string): number => {
-  const [r, g, b] = hexToRgb(hex).map(channel => channel / 255)
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
-  const l = (max + min) / 2
-  return max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1))
-}
-
-const lightnessOf = (hex: string): number => {
-  const [r, g, b] = hexToRgb(hex).map(channel => channel / 255)
-  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2
-}
-
-const hueOf = (hex: string): number => {
-  const [r8, g8, b8] = hexToRgb(hex)
-  const r = r8 / 255
-  const g = g8 / 255
-  const b = b8 / 255
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
-  const delta = max - min
-  if (!delta) return 0
-  const h =
-    max === r
-      ? ((g - b) / delta + (g < b ? 6 : 0)) * 60
-      : max === g
-        ? ((b - r) / delta + 2) * 60
-        : ((r - g) / delta + 4) * 60
-  return h
-}
+// THE module's own conversion, not a re-typed copy — a shadow implementation
+// here would silently vouch for different maths than the ones under test.
+const saturationOf = (hex: string): number => toHsl(hex).s
+const lightnessOf = (hex: string): number => toHsl(hex).l
+const hueOf = (hex: string): number => toHsl(hex).h
 
 describe('audioFieldPalette', () => {
   it('clamps a crest dump to the flag primaries', () => {
