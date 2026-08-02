@@ -116,4 +116,26 @@
       --suggest-berth: clamp(8rem, 24dvh, 20rem);
     }
   }
+
+  // Touch-first devices type through the software keyboard, and keyboard-up
+  // already flips the dropdown UPWARD — an idle console never shows a
+  // downward list, so the reserve only hoisted the pill a quarter of the
+  // screen up into the stage. Keep the console against the bottom edge
+  // (safe-bottom clears the home indicator; the keyboard inset rides the
+  // padding formula) and open the list upward always, which also covers the
+  // soft-keyboard-less typers (iPad hardware keyboards, Android's resized
+  // layout) that never set keyboard-up. Stays AFTER the width-keyed berth
+  // rules above — same specificity, source order decides.
+  @media (pointer: coarse) {
+    .guess-form .suggestions {
+      top: auto;
+      bottom: 100%;
+      margin: 0 0 0.6rem;
+    }
+
+    > footer.suggest-berth,
+    .shell-footer.suggest-berth {
+      --suggest-berth: calc(1.2rem + var(--safe-bottom));
+    }
+  }
 }
