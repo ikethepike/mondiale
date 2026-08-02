@@ -163,7 +163,7 @@ export type WaterFeatureKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'd
 
 /**
  * Name the countries a physical feature touches: rivers (river run), seas
- * and lakes (shared shores), ranges/deserts/plateaus (highlands, hard mode).
+ * and lakes (shared shores), ranges/deserts/plateaus (highlands).
  * Geometry stays client-side in data/water.gen — only the id travels.
  */
 export interface WaterBlitzChallenge {

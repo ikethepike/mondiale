@@ -53,6 +53,8 @@ export interface LandmarkSeed {
   commons?: string
 }
 
+// Each country's first-listed landmark is its icon — pin-landmark's easy tier
+// deals only that slice, so keep icons first.
 export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // --- Europe ---------------------------------------------------------------
   { name: 'Eiffel Tower', country: 'FR', kind: 'monument' },

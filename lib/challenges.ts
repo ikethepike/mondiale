@@ -832,12 +832,13 @@ const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 
 
 const getWaterBlitzChallenge = async (
   game: gameTypes.Game,
-  kinds: WaterFeatureKind[]
+  kinds: WaterFeatureKind[],
+  poolFraction = 1
 ): Promise<WaterBlitzChallenge | undefined> => {
   const candidates = (await waterFeaturePool(game, kinds)).filter(
     feature => feature.countries.length >= 3
   )
-  const feature = sample(candidates)
+  const feature = sample(prominenceCandidates(candidates, poolFraction))
   if (!feature) return undefined
 
   return {
@@ -876,18 +877,36 @@ export const NAME_WATER_TIERS: {
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
-/** Small variants slice thin — never starve the pool below a replayable spread. */
-const NAME_WATER_MINIMUM_POOL = 8
+/** Highlands scales the same way: easy deals the famous ranges and deserts,
+ *  normal opens the plateaus, hard deals the whole set. */
+export const HIGHLANDS_TIERS: {
+  [difficulty in gameTypes.GameDifficulty]: {
+    kinds: WaterFeatureKind[]
+    poolFraction: number
+  }
+} = {
+  easy: { kinds: ['range', 'desert'], poolFraction: 0.2 },
+  normal: { kinds: ['range', 'desert', 'plateau'], poolFraction: 0.5 },
+  hard: { kinds: ['range', 'desert', 'plateau'], poolFraction: 1 },
+}
 
-/** The difficulty's slice of the pool: prominence-sorted, top fraction. */
+/** Small variants slice thin — never starve the pool below a replayable spread. */
+const WATER_MINIMUM_POOL = 8
+
+/** A difficulty's slice of a feature pool: prominence-sorted, top fraction. */
+export const prominenceCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+  features: T[],
+  poolFraction: number
+): T[] => {
+  const sorted = [...features].sort((a, b) => waterProminence(b) - waterProminence(a))
+  const take = Math.ceil(sorted.length * poolFraction)
+  return sorted.slice(0, Math.max(WATER_MINIMUM_POOL, take))
+}
+
 export const nameWaterCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
   features: T[],
   difficulty: gameTypes.GameDifficulty
-): T[] => {
-  const sorted = [...features].sort((a, b) => waterProminence(b) - waterProminence(a))
-  const take = Math.ceil(sorted.length * NAME_WATER_TIERS[difficulty].poolFraction)
-  return sorted.slice(0, Math.max(NAME_WATER_MINIMUM_POOL, take))
-}
+): T[] => prominenceCandidates(features, NAME_WATER_TIERS[difficulty].poolFraction)
 
 const getNameWaterChallenge = async (
   game: gameTypes.Game
@@ -1078,28 +1097,66 @@ const getFlashpointChallenge = async (
  * roughly "you found the right city or its region" — the pin doesn't have to
  * land on the roof. 3,000km is about the width of Europe or the continental
  * US: past that you haven't misjudged the spot, you've misjudged the continent,
- * and there is nothing left to credit.
+ * and there is nothing left to credit. These are the hard-mode and
+ * heritage-hunt bands; easier difficulties widen via PIN_LANDMARK_TIERS.
  */
 const PIN_PERFECT_KM = 150
 const PIN_ZERO_KM = 3000
 
+/** Below hard, only each country's icon landmarks deal and the taper is
+ *  kinder: on easy the right country is a bullseye, and only a missed
+ *  continent scores nothing. */
+export const PIN_LANDMARK_TIERS: {
+  [difficulty in gameTypes.GameDifficulty]: {
+    landmarksPerCountry: number
+    perfectDistanceKm: number
+    zeroDistanceKm: number
+  }
+} = {
+  easy: { landmarksPerCountry: 1, perfectDistanceKm: 300, zeroDistanceKm: 5000 },
+  normal: { landmarksPerCountry: 2, perfectDistanceKm: 200, zeroDistanceKm: 4000 },
+  hard: { landmarksPerCountry: Infinity, perfectDistanceKm: PIN_PERFECT_KM, zeroDistanceKm: PIN_ZERO_KM },
+}
+
+/** Pools under this many candidates widen back to the whole pool. */
+const PIN_LANDMARK_MINIMUM_POOL = 8
+
+/** The seed file lists each country's icon first and the generator preserves
+ *  that order, so "first N per country" is the fame tier (pinned by the
+ *  characterization test against known icons). */
+export const pinLandmarkCandidates = <T extends { country: ISOCountryCode }>(
+  pool: [string, T][],
+  difficulty: gameTypes.GameDifficulty
+): [string, T][] => {
+  const cap = PIN_LANDMARK_TIERS[difficulty].landmarksPerCountry
+  const dealt = new Map<ISOCountryCode, number>()
+  const famous = pool.filter(([, landmark]) => {
+    const rank = dealt.get(landmark.country) ?? 0
+    dealt.set(landmark.country, rank + 1)
+    return rank < cap
+  })
+  return famous.length >= PIN_LANDMARK_MINIMUM_POOL ? famous : pool
+}
+
 const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
   // Only landmarks whose coordinates survived the generator's country check;
-  // and only countries this variant actually deals.
+  // and only countries this variant actually deals. Kept in LANDMARKS order —
+  // insertion order is the fame signal pinLandmarkCandidates slices on.
   const playable = new Set(playableCountries(game))
   const pool = Object.entries(LANDMARKS).filter(
     ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
   )
-  const picked = shuffleArray(pool)[0]
+  const picked = sample(pinLandmarkCandidates(pool, game.difficulty))
   if (!picked) return undefined
 
+  const tier = PIN_LANDMARK_TIERS[game.difficulty]
   const [slug, landmark] = picked
   return {
     _type: 'pin-landmark-challenge',
     slug,
     image: landmark.image,
-    perfectDistanceKm: PIN_PERFECT_KM,
-    zeroDistanceKm: PIN_ZERO_KM,
+    perfectDistanceKm: tier.perfectDistanceKm,
+    zeroDistanceKm: tier.zeroDistanceKm,
     durationSeconds: 40,
     maximumPoints: maximumRoundPoints(game),
   }
@@ -1581,7 +1638,8 @@ const dealRoundChallenge = async (
       break
     }
     case 'highlands': {
-      const challenge = await getWaterBlitzChallenge(game, ['range', 'desert', 'plateau'])
+      const tier = HIGHLANDS_TIERS[game.difficulty]
+      const challenge = await getWaterBlitzChallenge(game, tier.kinds, tier.poolFraction)
       if (challenge) return challenge
       break
     }

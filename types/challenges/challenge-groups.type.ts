@@ -75,7 +75,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'river-run': 'water',
   'shared-shores': 'water',
   // Deals on every difficulty — the pool scales in-dealer (famous seas on
-  // easy, major lakes join on normal, the whole atlas on hard).
+  // easy, major lakes join on normal, the whole atlas on hard). Highlands
+  // scales the same way: famous ranges and deserts first (HIGHLANDS_TIERS).
   'name-that-water': 'water',
   highlands: 'water',
   sketch: 'flags',
@@ -89,6 +90,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Countries, capitals, rivers and megacities in one board — places at large.
   'unique-or-bust': 'culture',
   'capital-guess': 'culture',
+  // Deals on every difficulty — icon landmarks and wider scoring bands below
+  // hard (PIN_LANDMARK_TIERS).
   'pin-landmark': 'culture',
   'ghost-state': 'disputed',
   'no-mans-land': 'disputed',
@@ -102,13 +105,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
 /** Kinds reserved for hard games unless their group is force-enabled. Lives
  *  with the taxonomy (not the dealer) because the lobby renders it too. */
 export const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
-  'highlands',
   // Nobody meets Transnistria on their first game.
   'ghost-state',
   'no-mans-land',
-  // Naming the country is one thing; placing it to within a few hundred km is
-  // a different game entirely.
-  'pin-landmark',
   // Conflict content is opt-in below hard — sober by default.
   'flashpoint',
 ])
