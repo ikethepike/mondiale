@@ -411,7 +411,12 @@ import { currencyName, currencySymbol } from '~~/lib/currency'
 import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
-import { GATE_HINT_BITE_STEPS, gateLeapSteps } from '~~/lib/scoring'
+import {
+  GATE_HINT_BITE_STEPS,
+  gateLeapSteps,
+  HINT_UNLOCK_FIRST_ELAPSED,
+  HINT_UNLOCK_SECOND_ELAPSED,
+} from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -604,9 +609,6 @@ const onOutlineGuess = (country: Country) => {
 // Timed like the other mystery gates: the clock scales the leap (buzz curve,
 // applied server-side from the reported fraction) and runs out into a miss.
 const BORDER_DETECTIVE_SECONDS = 40
-/** Hints unlock in waves: the outline a third in, the ISO code two thirds in. */
-const OUTLINE_HINT_UNLOCK_ELAPSED = 1 / 3
-const ISO_HINT_UNLOCK_ELAPSED = 2 / 3
 const borderSecondsLeft = ref(BORDER_DETECTIVE_SECONDS)
 let borderTimer: ReturnType<typeof setInterval> | undefined
 /** The bought outline hint, drawn in the ring's centre. Every hint bites steps. */
@@ -615,8 +617,8 @@ let borderHintLoading = false
 /** The bought last-resort hint: the country's ISO code, chipped onto the ring. */
 const isoHint = ref<ISOCountryCode>()
 const elapsedFraction = computed(() => 1 - borderSecondsLeft.value / BORDER_DETECTIVE_SECONDS)
-const outlineHintUnlocked = computed(() => elapsedFraction.value >= OUTLINE_HINT_UNLOCK_ELAPSED)
-const isoHintUnlocked = computed(() => elapsedFraction.value >= ISO_HINT_UNLOCK_ELAPSED)
+const outlineHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
+const isoHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED)
 const hintsUsed = computed(() => (borderHint.value ? 1 : 0) + (isoHint.value ? 1 : 0))
 
 const beginBorderDetective = () => {
@@ -819,14 +821,13 @@ const answerTrendDuel = (picked: ISOCountryCode) => {
 // (strike out half the decoys) bites steps, and non-hard games get the y-axis
 // values free in the final third.
 const TRAJECTORY_MATCH_SECONDS = 40
-const STRIKE_HINT_UNLOCK_ELAPSED = 1 / 3
 const VALUES_REVEAL_ELAPSED = 2 / 3
 const trajectorySecondsLeft = ref(TRAJECTORY_MATCH_SECONDS)
 let trajectoryTimer: ReturnType<typeof setInterval> | undefined
 const struckOptions = ref(new Set<ISOCountryCode>())
 
 const trajectoryElapsed = computed(() => 1 - trajectorySecondsLeft.value / TRAJECTORY_MATCH_SECONDS)
-const strikeHintUnlocked = computed(() => trajectoryElapsed.value >= STRIKE_HINT_UNLOCK_ELAPSED)
+const strikeHintUnlocked = computed(() => trajectoryElapsed.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const trajectoryValuesRevealed = computed(() => {
   const trajectory = challenge.value?.trajectory
   if (!trajectory) return false

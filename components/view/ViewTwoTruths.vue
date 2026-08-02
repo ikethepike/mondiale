@@ -96,7 +96,7 @@
             @click="buyFiftyFifty"
           >
             <StatTopicIcon class="hint-icon" topic="reveal" />
-            50/50 (−{{ hintBitePoints }} pts)
+            50/50 (−{{ hintBitePoints(challenge.maximumPoints) }} pts)
           </button>
         </Transition>
       </div>
@@ -122,7 +122,7 @@ import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { sample } from '~~/lib/arrays'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { buzzScore, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
+import { buzzScore, HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -161,18 +161,14 @@ const start = () =>
 // The 50/50: buys away one true claim, leaving the lie and one truth. Unlocks
 // a third of the clock in (the buzz curve pays most early — an instant 50/50
 // would be a strictly optimal buy), and hard mode stays unassisted.
-const FIFTY_FIFTY_UNLOCK_ELAPSED = 1 / 3
 const eliminatedIndex = ref<number>()
 const hintsUsed = computed(() => (eliminatedIndex.value === undefined ? 0 : 1))
-const hintBitePoints = computed(() =>
-  Math.round((challenge.value?.maximumPoints ?? 0) * HINT_BITE_FRACTION)
-)
 const isHard = computed(() => gameStore.game?.difficulty === 'hard')
 const fiftyFiftyUnlocked = computed(
   () =>
     !isHard.value &&
     eliminatedIndex.value === undefined &&
-    elapsedFraction.value >= FIFTY_FIFTY_UNLOCK_ELAPSED
+    elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED
 )
 
 const buyFiftyFifty = () => {
@@ -240,7 +236,7 @@ const pick = (index: number) => {
   announce({ kind: 'presence' })
 
   const correct = index === active.lieIndex
-  // Rounds dealt before the clock shipped carry no duration; pay them in full.
+  // A round dealt without a duration has no clock to race — pay it in full.
   const fraction = active.durationSeconds ? remainingFraction.value : 1
   const score = correct
     ? hintDockedScore(buzzScore(active.maximumPoints, fraction), active.maximumPoints, hintsUsed.value)
@@ -384,11 +380,6 @@ header .verdict.incorrect {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
-}
-
-.footer-clock {
-  --clock-size: 5.6rem;
-  --clock-seconds-size: 1.8rem;
 }
 
 @media screen and (max-width: $tablet) {
