@@ -86,12 +86,6 @@ defineExpose({ stop: () => dock.value?.stop() })
   overflow: hidden;
   pointer-events: none;
   transition: opacity var(--motion-slow) var(--ease-smooth);
-  // The shell deliberately ends above the browser chrome ("real content can't
-  // render under the bar"), so on iOS the field's colour sheet used to stop
-  // at a hard seam with the milk band beneath Safari's toolbar. Dissolving
-  // the last stretch into the page makes that boundary a design rather than
-  // a clip — the field ends the way the lyric wall does, by fading.
-  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
 }
 
 // Stepping aside for the map reveal. Slower than a cross-fade on purpose: the
