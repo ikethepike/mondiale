@@ -31,7 +31,11 @@
         >
           <span class="source-eyebrow">{{ label }}</span>
 
-          <span v-for="entry in attributions" :key="entry.sourceId" class="source-entry">
+          <span
+            v-for="entry in attributions"
+            :key="`${entry.sourceId}|${entry.credit}`"
+            class="source-entry"
+          >
             <a
               v-if="entry.url"
               class="source-name"
@@ -289,7 +293,9 @@ onBeforeUnmount(() => {
   max-width: min(32rem, 86vw);
   // Taller-than-the-screen content scrolls inside the panel — the backstop
   // when neither side of the trigger has the full height.
-  max-height: calc(100vh - 1.6rem);
+  // dvh, never vh: on iOS 100vh is the LARGE viewport, and a scroller
+  // sized to it hides its last lines under the toolbar.
+  max-height: calc(100dvh - 1.6rem);
   overflow-y: auto;
   text-align: left;
   border-radius: 0.8rem;

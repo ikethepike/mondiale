@@ -93,7 +93,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { anthemTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
@@ -158,10 +158,12 @@ const sample = computed(
 
 /** The clips are Common Voice; a borrowed writing sample adds the anthem
  *  walls it was lifted from. */
-const promptSources = computed(() => [
-  ...datasetAttribution('tongues'),
-  ...(borrowedLyrics.value ? datasetAttribution('anthem-lyrics') : []),
-])
+const promptSources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('tongues'),
+    ...(borrowedLyrics.value ? datasetAttribution('anthem-lyrics') : []),
+  ])
+)
 
 /** Show the stage and stop. The round never plays on its own: the player
  *  presses play, and only that starts the clip and the clock together. An

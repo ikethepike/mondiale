@@ -131,7 +131,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
@@ -142,7 +142,10 @@ import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const promptSources = [...datasetAttribution('borders'), ...datasetAttribution('straits')]
+const promptSources = dedupeAttributions([
+  ...datasetAttribution('borders'),
+  ...datasetAttribution('straits'),
+])
 
 // The whole world stays visible — the walked path needs the map for context.
 const {

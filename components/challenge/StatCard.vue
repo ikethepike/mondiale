@@ -65,12 +65,6 @@ const sources = computed<Attribution[]>(() => {
   display: flex;
   padding: 1.6rem;
   position: relative;
-
-  // While the corner ⓘ's panel is open, the card must ride above stacked
-  // siblings (clue piles, option grids).
-  &:focus-within {
-    z-index: 6;
-  }
   text-align: center;
   align-items: center;
   font-family: inherit;

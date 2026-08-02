@@ -92,7 +92,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
-import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions, mediaCreditLine } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
@@ -150,10 +150,12 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const anthem = computed(() => (challenge.value ? ANTHEMS[challenge.value.country] : undefined))
 
 /** The recording and, once the wall is up, the lyric text behind it. */
-const promptSources = computed(() => [
-  ...datasetAttribution('anthems'),
-  ...(lyrics.value ? datasetAttribution('anthem-lyrics') : []),
-])
+const promptSources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('anthems'),
+    ...(lyrics.value ? datasetAttribution('anthem-lyrics') : []),
+  ])
+)
 
 /** The performer's line stays sealed until the reveal — it can name the country. */
 const anthemCredit = computed(() => mediaCreditLine(anthem.value, 'commons-media'))

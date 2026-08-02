@@ -92,7 +92,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
@@ -151,7 +151,10 @@ const revealedClues = computed(() => {
 
 /** The photo clue is a capital skyline or a landmark — only a path travels,
  *  so the ⓘ names both registries honestly. */
-const photoSources = [...datasetAttribution('capitals'), ...datasetAttribution('landmarks')]
+const photoSources = dedupeAttributions([
+  ...datasetAttribution('capitals'),
+  ...datasetAttribution('landmarks'),
+])
 
 // The photo lands as one extra clue after every stat has shown.
 const hasPhotoClue = computed(() => !!challenge.value?.photo)

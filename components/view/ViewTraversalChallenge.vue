@@ -62,7 +62,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -138,10 +138,12 @@ const distanceMaps = computed(() => {
 
 /** The route's legality is the border graph; corridor rounds also read the
  *  membership rolls on the country profiles. */
-const promptSources = computed(() => [
-  ...datasetAttribution('borders'),
-  ...(challenge.value?.corridor ? datasetAttribution('countries') : []),
-])
+const promptSources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('borders'),
+    ...(challenge.value?.corridor ? datasetAttribution('countries') : []),
+  ])
+)
 
 const corridorSet = computed(() =>
   challenge.value?.corridor ? new Set(challenge.value.corridor.members) : undefined

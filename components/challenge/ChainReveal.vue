@@ -27,7 +27,7 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
@@ -38,7 +38,10 @@ const MAX_DOORS_SHOWN = 6
 
 /** The chain's legality comes from two registries: land adjacency and the
  *  named strait crossings. */
-const sources = [...datasetAttribution('borders'), ...datasetAttribution('straits')]
+const sources = dedupeAttributions([
+  ...datasetAttribution('borders'),
+  ...datasetAttribution('straits'),
+])
 
 const props = defineProps<{
   state: BorderChainState

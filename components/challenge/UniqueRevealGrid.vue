@@ -247,15 +247,8 @@ const countryFor = (cell: UniqueBoardCell): Country | undefined =>
 
 .panel {
   padding: 1.2rem 1.4rem;
-  position: relative;
   animation: fade-in var(--motion-base) var(--ease-out-expressive) both;
   animation-delay: calc((var(--panel-index) + 1) * 0.1s);
-
-  // The open source panel must ride above sibling cards — the fade-in
-  // animation gives every card its own stacking context.
-  &:focus-within {
-    z-index: 6;
-  }
 }
 
 // The category masthead: subtle emblem + small-caps label over the hairline.

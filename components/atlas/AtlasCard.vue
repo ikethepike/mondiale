@@ -274,12 +274,6 @@ const neighbours = computed(() =>
 
 .facts {
   margin-top: 1.6rem;
-  position: relative;
-
-  // The open source panel rides above the neighbouring sections.
-  &:focus-within {
-    z-index: 6;
-  }
 
   h3 {
     margin: 0 0 0.6rem;
