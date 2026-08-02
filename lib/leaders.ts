@@ -1,9 +1,10 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { MediaCredit } from './attribution'
 import { editDistance } from './strings'
 
-export interface LeaderProfile {
+export interface LeaderProfile extends MediaCredit {
   name: string
   image?: string
   description?: string

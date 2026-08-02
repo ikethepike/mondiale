@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
 import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
-import type { MediaCredit } from '../lib/attribution'
+import type { LeaderProfile } from '../lib/leaders'
 
 /**
  * Pulls every country's CURRENT head of state (P35) and head of government
@@ -39,20 +39,7 @@ const LEADER_PROPERTIES: { [property in 'P35' | 'P6']: LeaderRole } = {
   P6: 'headOfGovernment',
 }
 
-interface LeaderEntry extends MediaCredit {
-  name: string
-  /** Public path of the portrait file, when one exists on Commons. */
-  image?: string
-  /** Wikidata one-line description, e.g. "President of France". */
-  description?: string
-  /** Birth year (from P569), for an age line. */
-  bornYear?: number
-  /** Current office/position label (from P39), e.g. "President of Ghana". */
-  office?: string
-  /** Political party label (from P102). */
-  party?: string
-  /** Year they took the current office (P39's P580 start-time qualifier). */
-  sinceYear?: number
+interface LeaderEntry extends LeaderProfile {
   /**
    * The day this term began (the country's P35/P6 statement's P580), when
    * Wikidata records it to day precision. Used by the country generator to
