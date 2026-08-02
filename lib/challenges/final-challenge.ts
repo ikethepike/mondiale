@@ -1,6 +1,8 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { EVENTS } from '~~/data/events.gen'
+import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
 import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import type {
@@ -22,6 +24,7 @@ import type {
   ScalesAccessorKey,
   ScalesChallenge,
   SunsetBlitzChallenge,
+  YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
@@ -32,7 +35,7 @@ import {
 } from '~~/types/geography.types'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
-import { sample, shuffleArray } from '../arrays'
+import { sample, sampleMany, shuffleArray, weightedPick } from '../arrays'
 import { countryEndonym, isLargeCountry, normalizeCountryName, pickSizedCountry } from '../country'
 import { editDistance } from '../strings'
 import { mainlandBox } from '../geo'
@@ -79,6 +82,8 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'boundary-challenge',
     // Easy-friendly: transparent-only deck and a quota of 2
     'endonym-challenge',
+    // Easy-friendly via two-headline years and the widest tolerance
+    'yearbook-challenge',
   ]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
@@ -123,6 +128,8 @@ const dealChallenge = (
         return getBoundaryChallenge(pool, difficulty)
       case 'endonym-challenge':
         return getEndonymChallenge(pool, difficulty)
+      case 'yearbook-challenge':
+        return getYearbookChallenge(difficulty)
     }
   } catch {
     return undefined
@@ -519,6 +526,90 @@ const getEndonymChallenge = (
   // The deck must leave at least one absorbable miss, or it's all-or-nothing
   if (countries.length <= quota) return undefined
   return { _type: 'endonym-challenge', countries, quota }
+}
+
+export const YEARBOOK_TUNING: {
+  [difficulty in GameDifficulty]: {
+    /** Headlines on the page — doubles as the year-density floor. */
+    headlineCount: number
+    /** |guess − year| the verdict still accepts. */
+    tolerance: number
+    /** Drip cadence, timeline register: slower than stat-detective's 8s —
+     *  a headline needs reading, and the dial needs travelling. */
+    secondsPerHeadline: number
+  }
+} = {
+  easy: { headlineCount: 2, tolerance: 3, secondsPerHeadline: 20 },
+  normal: { headlineCount: 3, tolerance: 2, secondsPerHeadline: 16 },
+  hard: { headlineCount: 4, tolerance: 1, secondsPerHeadline: 14 },
+}
+
+/** Digit runs this close to the event's year read as the answer. Wider than
+ *  the widest tolerance so "a year later, in 1990" can't date a 1989 page. */
+export const YEARBOOK_LEAK_WINDOW = 5
+
+/**
+ * Year-leak filter: an event whose slug, name or description surfaces a year
+ * near its own must not make the page. The SLUG is checked too — it travels
+ * the wire as the headline key and names the card image
+ * (`treaty-of-manila-1946.webp` would date the page from devtools alone).
+ * BCE years compare against their absolute value ("490 BCE" leaks −490).
+ */
+export const yearbookLeaksYear = (slug: string, event: EventEntry): boolean => {
+  const year = Math.abs(event.year)
+  const tokens = `${slug} ${event.name} ${event.description}`.match(/\d{2,4}/g) ?? []
+  return tokens.some(token => Math.abs(Number(token) - year) <= YEARBOOK_LEAK_WINDOW)
+}
+
+/**
+ * The page's year, resolved from the dealt headlines — the reveal and the
+ * verdict share this selector, and the snapshot never carries a redundant
+ * (and spoilable) `year` field.
+ */
+export const yearbookYear = (challenge: YearbookChallenge): number | undefined =>
+  EVENTS[challenge.headlines[0]]?.year
+
+/** The dial's travel: the event library's own span, rounded out to decades. */
+export const YEARBOOK_DIAL_BOUNDS = (() => {
+  let min = Infinity
+  let max = -Infinity
+  for (const event of Object.values(EVENTS)) {
+    min = Math.min(min, event.year)
+    max = Math.max(max, event.year)
+  }
+  return { min: Math.floor(min / 10) * 10, max: Math.ceil(max / 10) * 10 }
+})()
+
+const getYearbookChallenge = (difficulty: GameDifficulty): YearbookChallenge | undefined => {
+  const { headlineCount, tolerance, secondsPerHeadline } = YEARBOOK_TUNING[difficulty]
+
+  const byYear = new Map<number, string[]>()
+  for (const [slug, event] of Object.entries(EVENTS)) {
+    if (yearbookLeaksYear(slug, event)) continue
+    byYear.set(event.year, [...(byYear.get(event.year) ?? []), slug])
+  }
+  // Density guard: only years that can fill the whole front page deal
+  const candidates = [...byYear.entries()].filter(([, slugs]) => slugs.length >= headlineCount)
+
+  // Era weighting: a year's chance is inversely proportional to how crowded
+  // its century is, so the deck isn't wall-to-wall 20th century
+  const perCentury = new Map<number, number>()
+  for (const [year] of candidates) {
+    const century = Math.floor(year / 100)
+    perCentury.set(century, (perCentury.get(century) ?? 0) + 1)
+  }
+  const picked = weightedPick(
+    candidates.map(entry => [entry, 1 / perCentury.get(Math.floor(entry[0] / 100))!] as const)
+  )
+  if (!picked) return undefined
+
+  return {
+    _type: 'yearbook-challenge',
+    // sampleMany shuffles as it picks — the famous anchor isn't always first
+    headlines: sampleMany(picked[1], headlineCount),
+    tolerance,
+    secondsPerHeadline,
+  }
 }
 
 const NIGHT_WINDOW_MAX = 12
@@ -982,6 +1073,15 @@ export const isCorrectFinalAnswer = ({
       ).length
       return hits >= challenge.quota
     }
+    case 'yearbook-challenge': {
+      if (submittedAnswer._type !== 'yearbook-challenge') return throwTypeMismatch()
+      const year = yearbookYear(challenge)
+      return (
+        year !== undefined &&
+        Number.isFinite(submittedAnswer.year) &&
+        Math.abs(submittedAnswer.year - year) <= challenge.tolerance
+      )
+    }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
       // Client-trust like higher-lower gates. The whole board is nameable
@@ -1078,6 +1178,10 @@ export const getFinalChallengeDetails = ({
     case 'endonym-challenge':
       return {
         question: `Countries by their own names — tap ${challenge.quota} of the ${challenge.countries.length} shown`,
+      }
+    case 'yearbook-challenge':
+      return {
+        question: `One year made this front page — dial it in (±${challenge.tolerance} year${challenge.tolerance === 1 ? '' : 's'} counts)`,
       }
     default:
       return {

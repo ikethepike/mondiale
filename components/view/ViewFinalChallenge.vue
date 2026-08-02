@@ -87,6 +87,15 @@
         @finished="onNocturneFinished"
       />
     </Transition>
+    <!-- The Yearbook survives the reveal: the same page takes the year stamp
+         and unfolds each headline's story, then swaps with the mode -->
+    <FinalYearbook
+      v-if="currentFinalChallenge?._type === 'yearbook-challenge'"
+      :key="`yearbook-${currentChallengeCount}`"
+      :challenge="currentFinalChallenge"
+      :paused="showInterstitial"
+      @finished="onYearbookFinished"
+    />
     <!-- Born In: picks wear their independence year as they land; the reveal
          extends the chips to every qualifying country -->
     <MapYearLabels
@@ -142,6 +151,7 @@ import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
 import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
+import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
 import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
@@ -163,8 +173,10 @@ import {
   speaksLanguage,
   sunsetQuota,
   weighScalesPicks,
+  yearbookYear,
 } from '~~/lib/challenges/final-challenge'
 import { countryEndonym, countryName } from '~~/lib/country'
+import { formatEventYear } from '~~/lib/timeline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { titlecaseLeader } from '~~/lib/leaders'
@@ -222,6 +234,7 @@ const sunsetResult = ref<
   { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number } | undefined
 >(undefined)
 const nocturneResult = ref<string[] | undefined>(undefined)
+const yearbookDialed = ref<number | undefined>(undefined)
 // The made-in reveal waits a beat so the lit map registers before the card
 const madeRevealReady = ref(false)
 let madeRevealTimeout: ReturnType<typeof setTimeout> | undefined
@@ -356,6 +369,16 @@ const lesson = computed(() => {
     case 'endonym-challenge':
       // EndonymReveal carries the whole scorecard
       return undefined
+    case 'yearbook-challenge': {
+      // The stamped page carries the stories — this line lands the
+      // simultaneity: everything up there shares one year
+      const year = yearbookYear(challenge)
+      if (year === undefined) return undefined
+      const dialed = yearbookDialed.value
+      const dialedLine =
+        dialed !== undefined && dialed !== year ? ` — you dialed ${formatEventYear(dialed)}.` : '.'
+      return `All of it happened in ${formatEventYear(year)}${dialedLine}`
+    }
     default:
       return undefined
   }
@@ -394,6 +417,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('cities')
     case 'boundary-challenge':
       return datasetAttribution('map')
+    case 'yearbook-challenge':
+      return datasetAttribution('events')
     default:
       return undefined
   }
@@ -447,6 +472,7 @@ watch(currentFinalChallenge, (challenge, previous) => {
   scalesResult.value = undefined
   sunsetResult.value = undefined
   nocturneResult.value = undefined
+  yearbookDialed.value = undefined
   bornPicks.value = []
   endonymPicks.value = []
   madeRevealReady.value = false
@@ -505,6 +531,17 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   if (challenge?._type !== 'boundary-challenge') return
 
   const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+}
+
+const onYearbookFinished = (year: number) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'yearbook-challenge') return
+
+  yearbookDialed.value = year
+  const submittedAnswer = { _type: 'yearbook-challenge', year } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   update({ event: 'submit-final-challenge-answer', submittedAnswer })
@@ -716,7 +753,8 @@ const onMapClick = (event: Event) => {
     case 'sunset-blitz-challenge':
     case 'city-nocturne-challenge':
     case 'boundary-challenge':
-      // Off-map modes — the map is scenery while the easel or night holds
+    case 'yearbook-challenge':
+      // Off-map modes — the map is scenery while the easel, page or night holds
       break
     default:
       console.error(`Unsupported final event type`, currentFinalChallenge.value)
