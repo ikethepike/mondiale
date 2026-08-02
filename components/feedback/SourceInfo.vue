@@ -161,8 +161,31 @@ const place = () => {
   panelStyle.value = { top: `${Math.round(top)}px`, left: `${Math.round(left)}px` }
 }
 
+/**
+ * The dismiss and tracking listeners exist only while a panel is open — a
+ * screen mounts a dozen ⓘs, and idle instances must not run on every
+ * scroll. Attached after the opening click has finished dispatching (watch
+ * callbacks flush on the microtask queue), so it never dismisses itself.
+ */
+const attachOpenListeners = () => {
+  document.addEventListener('click', dismiss, true)
+  document.addEventListener('keydown', onKey)
+  document.addEventListener('scroll', onViewportShift, true)
+  window.addEventListener('resize', onViewportShift)
+}
+const detachOpenListeners = () => {
+  document.removeEventListener('click', dismiss, true)
+  document.removeEventListener('keydown', onKey)
+  document.removeEventListener('scroll', onViewportShift, true)
+  window.removeEventListener('resize', onViewportShift)
+}
+
 watch(open, isOpen => {
-  if (!isOpen) return
+  if (!isOpen) {
+    detachOpenListeners()
+    return
+  }
+  attachOpenListeners()
   // Hidden until measured — the panel must never flash unplaced.
   panelStyle.value = { ...panelStyle.value, visibility: 'hidden' }
   nextTick(place)
@@ -190,18 +213,9 @@ const onKey = (event: KeyboardEvent) => {
   if (event.key === 'Escape') open.value = false
 }
 
-onMounted(() => {
-  document.addEventListener('click', dismiss, true)
-  document.addEventListener('keydown', onKey)
-  document.addEventListener('scroll', onViewportShift, true)
-  window.addEventListener('resize', onViewportShift)
-})
 onBeforeUnmount(() => {
   clearTimeout(hoverCloseTimer)
-  document.removeEventListener('click', dismiss, true)
-  document.removeEventListener('keydown', onKey)
-  document.removeEventListener('scroll', onViewportShift, true)
-  window.removeEventListener('resize', onViewportShift)
+  detachOpenListeners()
 })
 </script>
 <style lang="scss" scoped>

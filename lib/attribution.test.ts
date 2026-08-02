@@ -10,6 +10,7 @@ import {
   attributionFor,
   attributionLine,
   datasetAttribution,
+  dedupeAttributions,
   mediaCreditLine,
   pickMediaCredit,
   trendAttribution,
@@ -182,5 +183,32 @@ describe('datasetAttribution', () => {
     for (const id of Object.keys(DATASETS) as DataSetId[]) {
       expect(datasetAttribution(id).length, id).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('dedupeAttributions', () => {
+  it('collapses figures that share a source, first entry standing for the group', () => {
+    // Three Factbook stats and one OWID stat on one panel: two entries survive.
+    const deduped = dedupeAttributions([
+      attributionFor('economics.gdpPerCapita'),
+      attributionFor('economics.inflation'),
+      attributionFor('people.population', { source: 'cia-factbook' }),
+      attributionFor('government.democracyIndex'),
+    ])
+    expect(deduped.map(attribution => attribution.credit)).toEqual([
+      'CIA World Factbook',
+      'V-Dem via Our World in Data',
+    ])
+    // First wins: the surviving entry keeps its own deep link and dataset.
+    expect(deduped[0].dataset).toBe('Economy › Real GDP per capita')
+  })
+
+  it('keeps same-source entries whose named originators differ', () => {
+    // Both mirror through OWID, but V-Dem and the UNDP each earn a line.
+    const deduped = dedupeAttributions([
+      attributionFor('government.democracyIndex'),
+      attributionFor('government.humanDevelopmentIndex'),
+    ])
+    expect(deduped).toHaveLength(2)
   })
 })
