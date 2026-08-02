@@ -87,11 +87,18 @@
       </svg>
       <span class="pole-label">{{ markers.least }}</span>
     </span>
+
+    <span v-if="sourceLine" class="source-line reveal-source">
+      {{ sourceLine }}
+      <SourceInfo v-if="sourceAttribution" :attributions="[sourceAttribution]" />
+    </span>
   </div>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { attributionFor, statSourceLine } from '~~/lib/attribution'
 import { getChallengeDetails, MAXIMUM_SCORE_PER_COUNTRY, rankingBreakdown } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -145,6 +152,16 @@ const rows = computed(() => {
     }
   })
 })
+
+// The numbers' provenance: one line for the whole ledger, dated by the values.
+const sourceLine = computed(() => {
+  if (!accessorId.value) return undefined
+  return statSourceLine(accessorId.value, rows.value.find(row => row.amount)?.amount)
+})
+const sourceAttribution = computed(() => {
+  if (!accessorId.value) return undefined
+  return attributionFor(accessorId.value, rows.value.find(row => row.amount)?.amount)
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -169,6 +186,10 @@ const rows = computed(() => {
 }
 .pole-bottom {
   margin-top: 0.6rem;
+}
+
+.reveal-source {
+  margin-top: 0.8rem;
 }
 
 .pole-label {

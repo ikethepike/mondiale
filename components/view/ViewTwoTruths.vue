@@ -51,6 +51,11 @@
           :decoy="challenge.lieSource"
         />
       </Transition>
+      <Transition name="caption">
+        <span v-if="revealed && lieSourceLine" class="source-line plot-source">
+          {{ lieSourceLine }}
+        </span>
+      </Transition>
       <ul class="claim-list">
         <li v-for="(statement, index) in challenge.statements" :key="statement.accessorId">
           <StatCard
@@ -121,6 +126,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { sample } from '~~/lib/arrays'
+import { statSourceLine } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
@@ -213,6 +219,16 @@ const truthDisplay = computed(() => {
   if (!active) return ''
   const real = getValueByAccessorID(active.country, active.statements[active.lieIndex].accessorId)
   return real ? formatAmount(real) : '—'
+})
+
+// The revealed strip plot's provenance, dated by the truth it plots.
+const lieSourceLine = computed(() => {
+  const active = challenge.value
+  if (!active || !lieAccessorId.value) return undefined
+  return statSourceLine(
+    lieAccessorId.value,
+    getValueByAccessorID(active.country, lieAccessorId.value)
+  )
 })
 
 const claimClass = (index: number) => {

@@ -114,6 +114,7 @@ import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { statSourceLine } from '~~/lib/attribution'
 import {
   bornAfter,
   COLOR_CODED_REGIONS,
@@ -225,12 +226,13 @@ const lesson = computed(() => {
         status.value === 'correct' && lastGuess.value ? lastGuess.value : challenge.country
       const answer = getValueByAccessorID(answered, challenge.accessorId)
       if (!answer) return undefined
+      const source = ` (${statSourceLine(challenge.accessorId, answer)})`
       const answerLine = `${countryName(COUNTRIES[answered])}: ${formatAmount(answer)} ${label.toLowerCase()}`
       if (status.value === 'correct' || !lastGuess.value || lastGuess.value === challenge.country)
-        return answerLine
+        return `${answerLine}${source}`
       const guessed = getValueByAccessorID(lastGuess.value, challenge.accessorId)
-      if (!guessed) return answerLine
-      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}`
+      if (!guessed) return `${answerLine}${source}`
+      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}${source}`
     }
     case 'region-challenge': {
       const country = COUNTRIES[challenge.country]

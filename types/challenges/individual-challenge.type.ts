@@ -36,6 +36,11 @@ export interface IndividualChallenge {
   oddOneOut?: {
     countries: ISOCountryCode[]
     propertyLabel: string
+    /** The discriminator behind the label, kept so the reveal's lesson agrees
+     *  with the dealer by construction (optional: pre-existing games lack it). */
+    kind?: 'region' | 'language' | 'organization'
+    /** The shared value — region label, language name or organization name. */
+    value?: string
   }
   /** higher-lower: stat duels, answered in order. */
   higherLower?: {
@@ -122,5 +127,16 @@ export interface DuelOutcome {
   picked: ISOCountryCode
   higher: ISOCountryCode
   lower: ISOCountryCode
+  correct: boolean
+}
+
+/** One trend duel a player faced, kept for the educational reveal. */
+export interface TrendDuelOutcome {
+  metric: TrendMetricId
+  seek: 'rising' | 'falling'
+  picked: ISOCountryCode
+  /** The side whose series actually trends `seek`-ward. */
+  answer: ISOCountryCode
+  other: ISOCountryCode
   correct: boolean
 }

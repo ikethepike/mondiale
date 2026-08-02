@@ -919,6 +919,150 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'stat-detective-scores',
+    label: 'Stat detective (scorecard + clue recap)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'stat-detective-challenge',
+            country: 'BR',
+            clues: [
+              'people.population',
+              'geography.area.total',
+              'economics.gdpPerCapita',
+              'government.corruptionIndex',
+              'environment.CO2Emissions',
+            ],
+            secondsPerClue: 4,
+            region: 'South America',
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['BR'], correct: ['BR'] },
+            [RIVAL]: { submitted: [], correct: ['BR'] },
+            [THIRD]: { submitted: ['AR'], correct: ['BR'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 14, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
+    id: 'flag-palette-scores',
+    label: 'Flag palette (scorecard + flag meaning)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'flag-palette-challenge',
+            country: 'KE',
+            swatches: ['#000000', '#bb0000', '#006600', '#ffffff'],
+            durationSeconds: 30,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['KE'], correct: ['KE'] },
+            [RIVAL]: { submitted: ['TZ'], correct: ['KE'] },
+            [THIRD]: { submitted: [], correct: ['KE'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 12, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
+    id: 'capital-guess-scores',
+    label: 'Capital guess (scorecard + city dossier)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'capital-guess-challenge',
+            country: 'JP',
+            image: '/capitals/JP.webp',
+            durationSeconds: 30,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['JP'], correct: ['JP'] },
+            [RIVAL]: { submitted: ['KR'], correct: ['JP'] },
+            [THIRD]: { submitted: [], correct: ['JP'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 16, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
+    id: 'water-scores',
+    label: 'River run (scorecard + water fact)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'water-blitz-challenge',
+            featureId: 'river-rhine',
+            featureName: 'Rhine',
+            kind: 'river',
+            countries: ['CH', 'DE', 'FR', 'NL'],
+            durationSeconds: 45,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['DE', 'NL'], correct: ['CH', 'DE', 'FR', 'NL'] },
+            [RIVAL]: { submitted: ['CH'], correct: ['CH', 'DE', 'FR', 'NL'] },
+            [THIRD]: { submitted: [], correct: ['CH', 'DE', 'FR', 'NL'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 10, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 5, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
+    id: 'mother-tongue-scores',
+    label: 'Mother tongue (scorecard + language fact)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'mother-tongue-challenge',
+            language: 'Swahili',
+            countries: ['KE', 'TZ', 'UG'],
+            durationSeconds: 30,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: { submitted: ['KE', 'TZ'], correct: ['KE', 'TZ', 'UG'] },
+            [RIVAL]: { submitted: ['KE'], correct: ['KE', 'TZ', 'UG'] },
+            [THIRD]: { submitted: [], correct: ['KE', 'TZ', 'UG'] },
+          },
+          playerTurns: {
+            [ME]: { points: { scored: 9, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 4, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
+      ]),
+  },
+  {
     id: 'ranking-years-at-war',
     label: 'Ranking (years at war, scale bar)',
     component: ViewGroupChallenge,
@@ -2010,6 +2154,53 @@ const scenarios: Scenario[] = [
     label: 'Individual: flag pick',
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'flag-pick', options: ['NL', 'LU', 'FR', 'RU'] }),
+  },
+  {
+    id: 'individual-flag-twins',
+    label: 'Individual: flag twins (palette lookalikes)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({ variant: 'flag-twins', country: 'ID', options: ['ID', 'MC', 'PL', 'SG'] }),
+  },
+  {
+    id: 'individual-money-match',
+    label: 'Individual: money match (banknote)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'money-match',
+        country: 'JP',
+        options: ['JP', 'KR', 'CN', 'TH'],
+        image: '/currencies/JPY.webp',
+      }),
+  },
+  {
+    id: 'individual-capital-match',
+    label: 'Individual: capital match (skyline)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'capital-match',
+        country: 'SE',
+        options: ['SE', 'NO', 'DK', 'FI'],
+        image: '/capitals/SE.webp',
+      }),
+  },
+  {
+    id: 'individual-odd-one-out',
+    label: 'Individual: odd one out (shared property)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'odd-one-out',
+        country: 'BR',
+        oddOneOut: {
+          countries: ['MX', 'BR', 'CO', 'AR'],
+          propertyLabel: 'Three of these share a language: Spanish',
+          kind: 'language',
+          value: 'Spanish',
+        },
+      }),
   },
   {
     id: 'individual-zoom-out',

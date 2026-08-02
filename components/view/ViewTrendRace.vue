@@ -45,6 +45,7 @@
             :decoy="picked !== undefined && picked !== winner ? picked : undefined"
             :noted="challenge.options.filter(option => option !== winner && option !== picked)"
           />
+          <span v-if="trendSourceLine" class="source-line">{{ trendSourceLine }}</span>
         </div>
       </Transition>
       <ul class="race-list">
@@ -103,6 +104,7 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
+import { attributionLine, trendAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { TREND_METRICS, TRENDS } from '~~/lib/trends'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -138,6 +140,14 @@ const metricGlyph = computed(() =>
 )
 
 const winner = computed(() => challenge.value?.standings[0])
+
+// The series' provenance, dated by the winner's latest point.
+const trendSourceLine = computed(() => {
+  const active = challenge.value
+  if (!active) return undefined
+  const endYear = winner.value ? TRENDS[winner.value]?.[active.metric]?.at(-1)?.[0] : undefined
+  return attributionLine(trendAttribution(active.metric, endYear))
+})
 const winnerName = computed(() => (winner.value ? countryName(winner.value) : ''))
 const pickedWinner = computed(() => picked.value !== undefined && picked.value === winner.value)
 

@@ -22,11 +22,13 @@
         <ScalePlot v-if="duel.scale" class="duel-scale" v-bind="duel.scale" />
       </li>
     </ol>
+    <span v-if="sourceLine" class="source-line duel-source">{{ sourceLine }}</span>
   </div>
 </template>
 <script lang="ts" setup>
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import { statSourceLine } from '~~/lib/attribution'
 import { getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatAmount } from '~~/lib/number'
@@ -66,6 +68,12 @@ const rowScale = (higher: ISOCountryCode, lower: ISOCountryCode, pickedLower: bo
 
 // The "higher ranks higher" row is the lesson: show both real values, mark
 // which side the player chose so a wrong pick reads as "you took the smaller".
+const sourceLine = computed(() => {
+  const first = props.outcomes[0]
+  if (!first) return undefined
+  return statSourceLine(props.accessorId, getValueByAccessorID(first.higher, props.accessorId))
+})
+
 const rows = computed(() =>
   props.outcomes.map((outcome, index) => {
     const pickedLower = outcome.picked === outcome.lower
@@ -113,6 +121,12 @@ const rows = computed(() =>
   list-style: none;
   display: grid;
   gap: 0.7rem;
+}
+
+.duel-source {
+  display: flex;
+  margin-top: 0.6rem;
+  justify-content: center;
 }
 
 .duel {

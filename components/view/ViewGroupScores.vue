@@ -85,6 +85,33 @@
               <span class="eyebrow">The Conflict Behind the Dots</span>
               <ConflictProfileCard :country="flashpointChallenge.country" />
             </section>
+
+            <section v-if="statDetectiveChallenge" class="pane-content ranking">
+              <span class="eyebrow">The Numbers Behind It</span>
+              <StatDetectiveReveal :challenge="statDetectiveChallenge" />
+            </section>
+
+            <section v-if="flagMeaning" class="pane-content ranking">
+              <span class="eyebrow">What the Flag Means</span>
+              <FlagMeaningReveal :entry="flagMeaning" />
+            </section>
+
+            <section v-if="capitalGuessChallenge" class="pane-content ranking">
+              <span class="eyebrow">The City in the Picture</span>
+              <CapitalReveal :country="capitalGuessChallenge.country" />
+            </section>
+
+            <section v-if="waterFactLine" class="pane-content ranking">
+              <span class="eyebrow">About the Water</span>
+              <p class="reveal-fact">{{ waterFactLine }}</p>
+              <span v-if="waterSourceLine" class="source-line">{{ waterSourceLine }}</span>
+            </section>
+
+            <section v-if="tongueFactLine" class="pane-content ranking">
+              <span class="eyebrow">About the Language</span>
+              <p class="reveal-fact">{{ tongueFactLine }}</p>
+              <span v-if="tongueSourceLine" class="source-line">{{ tongueSourceLine }}</span>
+            </section>
           </template>
         </template>
         <!-- A bare <template> is a native, non-rendering element — this
@@ -143,10 +170,19 @@
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import AnthemReveal from '~/components/challenge/AnthemReveal.vue'
+import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
+import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
+import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
-import { mediaCreditLine } from '~~/lib/attribution'
+import { attributionLine, datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
+import { loadFlagMeaning } from '~~/lib/flag-meanings'
+import { waterFactsFor } from '~~/lib/water-facts'
+import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
+import type { FlagMeaning } from '~~/data/flag-meanings.gen'
+import type { WaterFacts } from '~~/data/water-facts.gen'
+import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
@@ -210,6 +246,116 @@ const flashpointChallenge = computed(() => {
   return challenge && '_type' in challenge && challenge._type === 'flashpoint-challenge'
     ? challenge
     : undefined
+})
+
+const statDetectiveChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'stat-detective-challenge'
+    ? challenge
+    : undefined
+})
+
+const flagPaletteChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'flag-palette-challenge'
+    ? challenge
+    : undefined
+})
+
+/** The flag's symbolism, from the lazy table — absent when the Factbook has
+ *  only a visual description, and the section hides with it. */
+const flagMeaning = ref<FlagMeaning>()
+watch(
+  flagPaletteChallenge,
+  async active => {
+    flagMeaning.value = undefined
+    if (!active) return
+    const entry = await loadFlagMeaning(active.country)
+    if (flagPaletteChallenge.value === active) flagMeaning.value = entry
+  },
+  { immediate: true }
+)
+
+const waterChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge &&
+    '_type' in challenge &&
+    (challenge._type === 'water-blitz-challenge' || challenge._type === 'name-water-challenge')
+    ? challenge
+    : undefined
+})
+
+/** The feature's official figure, joined by name/alias from the lazy facts
+ *  table — undefined for bodies the Factbook doesn't list (most seas, ranges). */
+const waterFacts = ref<WaterFacts>()
+watch(
+  waterChallenge,
+  async active => {
+    waterFacts.value = undefined
+    if (!active) return
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    const feature = WATER_FEATURES[active.featureId] ?? { name: active.featureName }
+    const facts = await waterFactsFor(feature)
+    if (waterChallenge.value === active) waterFacts.value = facts
+  },
+  { immediate: true }
+)
+
+const waterFactLine = computed(() => {
+  const active = waterChallenge.value
+  const facts = waterFacts.value
+  if (!active || !facts) return undefined
+  if (active.kind === 'river' && facts.lengthKm)
+    return `${active.featureName} runs ${formatKm(facts.lengthKm)} from source to mouth.`
+  if (facts.areaSqKm)
+    return `${active.featureName} spans ${formatNumber(facts.areaSqKm)} km² of surface.`
+  return undefined
+})
+
+const waterSourceLine = computed(() => {
+  if (!waterFactLine.value) return undefined
+  const attribution = datasetAttribution('water').find(entry => entry.sourceId === 'cia-factbook')
+  return attribution ? attributionLine(attribution) : undefined
+})
+
+const motherTongueChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'mother-tongue-challenge'
+    ? challenge
+    : undefined
+})
+
+/** The language's Wikidata facts, from the lazy table — absent for languages
+ *  it couldn't resolve. */
+const tongueFacts = ref<TongueFacts>()
+watch(
+  motherTongueChallenge,
+  async active => {
+    tongueFacts.value = undefined
+    if (!active) return
+    const { TONGUE_FACTS } = await import('~~/data/tongue-facts.gen')
+    if (motherTongueChallenge.value === active) tongueFacts.value = TONGUE_FACTS[active.language]
+  },
+  { immediate: true }
+)
+
+const tongueFactLine = computed(() => {
+  const active = motherTongueChallenge.value
+  const facts = tongueFacts.value
+  if (!active || !facts) return undefined
+  const parts = [
+    facts.speakers ? `spoken by ${formatCompact(facts.speakers)} people worldwide` : undefined,
+    facts.scripts?.length ? `written in ${facts.scripts.join(', ')}` : undefined,
+  ].filter(Boolean)
+  return parts.length ? `${active.language} — ${parts.join(' · ')}.` : undefined
+})
+
+const tongueSourceLine = computed(() => {
+  if (!tongueFactLine.value) return undefined
+  const attribution = datasetAttribution('tongues').find(
+    entry => entry.sourceId === 'wikidata-items'
+  )
+  return attribution ? attributionLine(attribution) : undefined
 })
 
 const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
@@ -369,6 +515,8 @@ const sectionLabels = computed(() => {
       return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
     case 'name-that-water':
       return { submitted: 'Your Answer', correct: 'Its Shores' }
+    case 'mother-tongue':
+      return { submitted: 'Your Answers', correct: "Everywhere It's Official" }
     case 'timeline':
       return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
     case 'empire':
@@ -553,6 +701,12 @@ const closeScores = () => {
   padding-right: 0;
   padding-bottom: 2rem;
   border-top: 0.1rem solid $hairline;
+}
+
+.reveal-fact {
+  margin: 0 0 0.4rem;
+  font-size: 1.5rem;
+  color: var(--dark-blue);
 }
 
 .card-nav {

@@ -1,6 +1,5 @@
 import { countries, languages } from 'countries-list'
 import { readFileSync, writeFileSync } from 'fs'
-import { decode } from 'he'
 import { getNationalColors } from './flag-colors'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
@@ -16,6 +15,7 @@ import {
   sharesSurname,
   wikidataRoleFor,
 } from '~~/lib/generators/leaders'
+import { decodeHtmlEntitiesDeep } from '~~/lib/generators/factbook'
 import { fetchCiaCountry, type CiaCountry } from '~~/lib/generators/vendors/cia'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import { simplifiedPalette } from '~~/lib/palette'
@@ -52,22 +52,6 @@ import { successfulCombinations } from './link-mapping.gen'
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
 const REGIONS_FILE = `types/vendor/factbook/factbook-types.gen.ts`
-
-/**
- * Factbook text contains HTML entities (e.g. C&ocirc;te d'Ivoire) which break
- * downstream parsing such as truncating on semicolons. Decode every string in
- * the response before any processing.
- */
-const decodeHtmlEntitiesDeep = <T>(value: T): T => {
-  if (typeof value === 'string') return decode(value) as T
-  if (Array.isArray(value)) return value.map(decodeHtmlEntitiesDeep) as T
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, decodeHtmlEntitiesDeep(entry)])
-    ) as T
-  }
-  return value
-}
 
 export const createCountriesFile = async (): Promise<{
   [isoCode: string]: Country

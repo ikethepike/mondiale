@@ -2143,6 +2143,8 @@ const dealOddOneOut = (
           oddOneOut: {
             countries: shuffleArray([...same, odd]),
             propertyLabel: `Three of these are in ${label}`,
+            kind,
+            value: label,
           },
         }
       }
@@ -2167,6 +2169,8 @@ const dealOddOneOut = (
           oddOneOut: {
             countries: shuffleArray([...same, odd]),
             propertyLabel: `Three of these share a language: ${language}`,
+            kind,
+            value: language,
           },
         }
       }
@@ -2198,6 +2202,8 @@ const dealOddOneOut = (
           oddOneOut: {
             countries: shuffleArray([...same, odd]),
             propertyLabel: `Three of these are members of ${name}`,
+            kind,
+            value: name,
           },
         }
       }
