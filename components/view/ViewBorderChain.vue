@@ -25,7 +25,7 @@
          journey's age, the numbers make the sequence unambiguous. -->
     <MapYearLabels v-if="!showInterstitial" :entries="sequenceEntries" :min-gap-px="26" />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
       <h1 class="map-caption">
         {{ headline }}
       </h1>
@@ -131,6 +131,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
@@ -140,6 +141,8 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
+
+const promptSources = [...datasetAttribution('borders'), ...datasetAttribution('straits')]
 
 // The whole world stays visible — the walked path needs the map for context.
 const {

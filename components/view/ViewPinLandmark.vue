@@ -9,7 +9,11 @@
       @done="begin()"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt
+      :hint="hint"
+      :attributions="result ? undefined : photoSources"
+      attribution-label="Photo"
+    >
       <h1 v-if="!result" class="map-caption">Where in the world is this?</h1>
       <h1 v-else class="map-caption">{{ verdict }}</h1>
       <span v-if="result" class="map-caption sub">
@@ -37,6 +41,7 @@
       class="photo-dock"
       :src="challenge.image"
       alt="A landmark, somewhere on Earth"
+      :attributions="photoSources"
     />
 
     <footer v-if="!result">
@@ -62,6 +67,7 @@ import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { haversineKm, type LatLng } from '~~/lib/geo'
 import { formatKm } from '~~/lib/number'
@@ -96,6 +102,8 @@ const isPhone = useIsPhone()
 const photoExpanded = ref(true)
 
 const landmark = computed(() => (challenge.value ? LANDMARKS[challenge.value.slug] : undefined))
+
+const photoSources = datasetAttribution('landmarks')
 
 const verdict = computed(() => {
   const active = challenge.value
@@ -181,6 +189,7 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   overflow: hidden;
   border-radius: 0.6rem;
+
   width: clamp(18rem, 24vw, 24rem);
   height: clamp(13rem, 22vh, 18rem);
   transition:

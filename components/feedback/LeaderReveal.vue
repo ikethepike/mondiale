@@ -20,15 +20,28 @@
     <p v-if="otherRole" class="other-role">
       {{ otherRole.role }}: <strong>{{ otherRole.leader.name }}</strong>
     </p>
+    <span class="credit-row">
+      <SourceInfo
+        drop="up"
+        :attributions="sources"
+        label="Sources"
+        :item-credit="mediaCreditLine(leader, 'commons-media')"
+      />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </div>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { leaderRoles, leaderTitle, politicalLeader } from '~~/lib/leaders'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const props = defineProps<{ country: ISOCountryCode }>()
 
 const leader = computed(() => politicalLeader(props.country))
+
+const sources = datasetAttribution('leaders')
 const title = computed(() => (leader.value ? leaderTitle(leader.value) : undefined))
 
 // "in office since 2019 · 6 yrs" — tenure of the surfaced leader.

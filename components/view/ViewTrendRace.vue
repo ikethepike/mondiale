@@ -16,7 +16,7 @@
       :total="challenge.durationSeconds"
     />
 
-    <ChallengePrompt>
+    <ChallengePrompt :attributions="[trendAttribution(challenge.metric)]">
       <h1 class="map-caption">
         Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
         {{ challenge.windowStartYear }}?
@@ -103,6 +103,7 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
+import { trendAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { TREND_METRICS, TRENDS } from '~~/lib/trends'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'

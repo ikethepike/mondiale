@@ -34,11 +34,17 @@
         </li>
       </ul>
     </div>
+    <span class="credit-row">
+      <SourceInfo drop="up" :attributions="sources" label="Sources" />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </section>
 </template>
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { attributionFor, datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { isStraitHop } from '~~/lib/chain'
 import { seatLabel } from '~~/lib/player'
 import { countryName, getCountry } from '~~/lib/country'
@@ -56,6 +62,17 @@ const nameOf = (playerId: string) => seatLabel(props.players, playerId, props.pl
 const outcome = computed(() => props.challenge.state.outcome)
 const walk = computed(() => outcome.value?.trail ?? [])
 const clues = computed(() => props.challenge.state.clues)
+
+/** The trail's legality (borders + straits), the profile data the categorical
+ *  clues read from, and each threshold clue's own stat source. */
+const sources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('borders'),
+    ...datasetAttribution('straits'),
+    ...datasetAttribution('countries'),
+    ...clues.value.flatMap(clue => (clue.accessorId ? [attributionFor(clue.accessorId)] : [])),
+  ])
+)
 
 const despotIsMe = computed(() => props.challenge.despotId === props.playerId)
 const despotName = computed(() => nameOf(props.challenge.despotId))

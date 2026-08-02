@@ -17,6 +17,14 @@
       <!-- Adaptive photo stage — any aspect ratio, never cropped; zoom + pan. -->
       <div class="photo-stage">
         <ZoomableImage :src="challenge.image" alt="A capital city" />
+        <!-- The photographer's line waits for the reveal — it can name the city. -->
+        <SourceInfo
+          class="photo-source"
+          label="Photo"
+          drop="up"
+          :attributions="photoSources"
+          :item-credit="submitted ? photoCredit : undefined"
+        />
       </div>
 
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -73,6 +81,9 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { CAPITALS } from '~~/data/capitals.gen'
+import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
@@ -94,6 +105,13 @@ const {
 } = useGroupChallenge('capital-guess-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+const photoSources = datasetAttribution('capitals')
+
+/** The shipped photo's own author line, resolved off the round's country. */
+const photoCredit = computed(() =>
+  challenge.value ? mediaCreditLine(CAPITALS[challenge.value.country], 'commons-media') : undefined
+)
 
 const stakes = computed(() =>
   challenge.value?.maximumGuesses
@@ -137,8 +155,16 @@ const { spent, onGuess } = useAttemptOptions({
 // The photo is the hero of this round, so it can breathe more than the gate's
 // stage. Scales fluidly with the viewport between a floor and a larger ceiling.
 .photo-stage {
+  position: relative;
   width: clamp(30rem, 70vw, 54rem);
   height: clamp(22rem, 40vh, 38rem);
+
+  .photo-source {
+    right: 0.2rem;
+    bottom: 0.2rem;
+    z-index: 3;
+    position: absolute;
+  }
 }
 
 @media (max-width: $tablet) {

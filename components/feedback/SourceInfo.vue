@@ -16,7 +16,14 @@
     </button>
 
     <Transition name="source-pop">
-      <span v-if="open" ref="panel" class="source-panel" role="dialog" :aria-label="label">
+      <span
+        v-if="open"
+        ref="panel"
+        class="source-panel"
+        :class="{ 'drop-up': drop === 'up', 'align-start': align === 'start' }"
+        role="dialog"
+        :aria-label="label"
+      >
         <span class="source-eyebrow">{{ label }}</span>
 
         <span v-for="entry in attributions" :key="entry.sourceId" class="source-entry">
@@ -69,8 +76,14 @@ const props = withDefaults(
     /** A single item's own credit line, e.g. a photographer, when the dataset
      *  licence alone does not name them. */
     itemCredit?: string
+    /** Open the panel above the trigger — for rows near a card's bottom edge,
+     *  where downward would run off the card or the screen. */
+    drop?: 'down' | 'up'
+    /** Anchor the panel's left edge to the trigger instead of its right —
+     *  for triggers sitting at a frame's left corner. */
+    align?: 'end' | 'start'
   }>(),
-  { label: 'Source', itemCredit: undefined }
+  { label: 'Source', itemCredit: undefined, drop: 'down', align: 'end' }
 )
 
 const open = ref(false)
@@ -109,6 +122,9 @@ onBeforeUnmount(() => {
   display: inline-flex;
   position: relative;
   vertical-align: middle;
+  // Self-contained interactive affordance: opts back in wherever a
+  // passthrough shell (`.challenge-shell`) has killed pointer events.
+  pointer-events: auto;
 }
 
 .source-trigger {
@@ -166,6 +182,16 @@ onBeforeUnmount(() => {
   background: #{milk()};
   border: 0.1rem solid #{ink(0.14)};
   box-shadow: 0 0.6rem 2rem #{ink(0.16)};
+
+  &.drop-up {
+    top: auto;
+    bottom: calc(100% + 0.6rem);
+  }
+
+  &.align-start {
+    right: auto;
+    left: 0;
+  }
 }
 
 .source-eyebrow {

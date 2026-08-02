@@ -34,6 +34,11 @@
 
       <!-- Leader -->
       <section v-if="leader" class="leader">
+        <SourceInfo
+          class="leader-source"
+          :attributions="leaderSources"
+          :item-credit="mediaCreditLine(leader, 'commons-media')"
+        />
         <span
           v-if="leader.image"
           class="leader-portrait"
@@ -52,7 +57,10 @@
 
       <!-- Fact sections -->
       <section v-for="section in sections" :key="section.heading" class="facts">
-        <h3>{{ section.heading }}</h3>
+        <h3>
+          {{ section.heading }}
+          <SourceInfo class="section-source" :attributions="section.attributions" label="Sources" />
+        </h3>
         <ul>
           <li v-for="fact in section.facts" :key="fact.label" class="fact">
             <span class="fact-label">{{ fact.label }}</span>
@@ -82,8 +90,10 @@
 </template>
 <script lang="ts" setup>
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { BORDERS } from '~~/data/borders.gen'
-import { ATLAS_SECTIONS, atlasFact, type AtlasFact } from '~~/lib/atlas'
+import { ATLAS_SECTIONS, atlasFact, atlasSectionAttributions, type AtlasFact } from '~~/lib/atlas'
+import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, primaryCoordinates } from '~~/lib/country'
 import { leaderTitle, politicalLeader } from '~~/lib/leaders'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -97,6 +107,7 @@ const languages = computed(() => props.country.languages?.slice(0, 4).join(', ')
 const coordinates = computed(() => primaryCoordinates(props.country))
 
 const leader = computed(() => politicalLeader(props.country.isoCode))
+const leaderSources = datasetAttribution('leaders')
 const leaderTitleText = computed(() => (leader.value ? leaderTitle(leader.value) : undefined))
 const leaderTenure = computed(() => {
   const since = leader.value?.sinceYear
@@ -105,14 +116,19 @@ const leaderTenure = computed(() => {
   return years >= 1 ? `since ${since} · ${years} yr${years === 1 ? '' : 's'}` : `since ${since}`
 })
 
-// Each section keeps only the facts that have data.
+// Each section keeps only the facts that have data; the heading's ⓘ lists
+// the distinct sources behind the facts that survived.
 const sections = computed(() =>
-  ATLAS_SECTIONS.map(section => ({
-    heading: section.heading,
-    facts: section.accessors
+  ATLAS_SECTIONS.map(section => {
+    const facts = section.accessors
       .map(id => atlasFact(props.country.isoCode, id))
-      .filter((fact): fact is AtlasFact => Boolean(fact)),
-  })).filter(section => section.facts.length)
+      .filter((fact): fact is AtlasFact => Boolean(fact))
+    return {
+      heading: section.heading,
+      facts,
+      attributions: atlasSectionAttributions(facts),
+    }
+  }).filter(section => section.facts.length)
 )
 
 const neighbours = computed(() =>
@@ -208,12 +224,19 @@ const neighbours = computed(() =>
 
 .leader {
   display: flex;
+  position: relative;
   align-items: center;
   gap: 1rem;
   margin: 1.4rem 0 0;
   padding: 0.9rem;
   border-radius: 1rem;
   background: hsla(29.7, 79.9%, 72.7%, 0.16);
+
+  .leader-source {
+    top: 0.2rem;
+    right: 0.2rem;
+    position: absolute;
+  }
 
   .leader-portrait {
     flex: 0 0 auto;
@@ -251,6 +274,12 @@ const neighbours = computed(() =>
 
 .facts {
   margin-top: 1.6rem;
+  position: relative;
+
+  // The open source panel rides above the neighbouring sections.
+  &:focus-within {
+    z-index: 6;
+  }
 
   h3 {
     margin: 0 0 0.6rem;
@@ -258,6 +287,10 @@ const neighbours = computed(() =>
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--soft-blue);
+
+    .section-source {
+      margin-top: -0.4rem;
+    }
   }
 
   ul {

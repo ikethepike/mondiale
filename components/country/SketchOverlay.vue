@@ -7,10 +7,13 @@
     <div class="legend">
       <span class="key target-key">{{ countryName(country) }}</span>
       <span v-if="sketchPoints" class="key drawn-key">The drawing</span>
+      <SourceInfo :attributions="sources" />
     </div>
   </div>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import {
   countryPathData,
@@ -22,6 +25,8 @@ import {
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** The sketch-round reveal: the real outline with a player's drawing overlaid. */
+const sources = datasetAttribution('map')
+
 const props = defineProps({
   country: {
     type: String as PropType<ISOCountryCode>,

@@ -35,10 +35,16 @@
         <span class="fill" :style="{ width: `${urbanization.amount}%` }" />
       </span>
     </span>
+    <span class="credit-row">
+      <SourceInfo drop="up" :attributions="sources" label="Sources" />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </span>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { attributionFor, datasetAttribution } from '~~/lib/attribution'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
@@ -80,6 +86,12 @@ const rows = computed(() => {
 
 const litCount = computed(() => rows.value.filter(row => row.lit).length)
 const urbanization = computed(() => country.value.people.urbanization)
+
+/** The city lights plus the urbanization meter's own stat source. */
+const sources = computed(() => [
+  ...datasetAttribution('cities'),
+  ...(urbanization.value ? [attributionFor('people.urbanization', urbanization.value)] : []),
+])
 </script>
 <style lang="scss" scoped>
 // Shell, row stagger and bar choreography come from templates/_ranked-bars.scss

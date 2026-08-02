@@ -9,7 +9,7 @@
       @done="onInterstitialDone"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
       <template v-if="!resolved">
         <h1 class="map-caption">Where is this spoken?</h1>
         <span class="map-caption sub">Any country with it as an official language counts</span>
@@ -93,6 +93,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { anthemTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
@@ -154,6 +155,13 @@ const sample = computed(
     challenge.value?.sample ??
     (borrowedLyrics.value ? anthemTongueSample(borrowedLyrics.value) : undefined)
 )
+
+/** The clips are Common Voice; a borrowed writing sample adds the anthem
+ *  walls it was lifted from. */
+const promptSources = computed(() => [
+  ...datasetAttribution('tongues'),
+  ...(borrowedLyrics.value ? datasetAttribution('anthem-lyrics') : []),
+])
 
 /** Show the stage and stop. The round never plays on its own: the player
  *  presses play, and only that starts the clip and the clock together. An

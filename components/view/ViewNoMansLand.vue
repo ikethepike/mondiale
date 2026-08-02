@@ -9,7 +9,7 @@
       @done="start"
     />
     <template v-else>
-      <ChallengePrompt>
+      <ChallengePrompt :attributions="promptSources" attribution-label="Sources">
         <!-- The NE status line reads "Administered by Eritrea. Claimed by
              Djibouti" — administrator ∪ claimants IS the answer set, so it
              cannot be shown until the round is over. -->
@@ -79,6 +79,9 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import type { RecognitionTerritory } from '~~/data/recognition.gen'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('recognition')
 
 // The world stays tappable: the answer is a set of countries.
 const {

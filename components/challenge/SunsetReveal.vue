@@ -20,10 +20,16 @@
       </span>
     </span>
     <span v-if="sunGap" class="sun-line">{{ sunGap }}</span>
+    <span class="credit-row">
+      <SourceInfo drop="up" :attributions="sources" />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </span>
 </template>
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
@@ -42,6 +48,9 @@ const props = defineProps<{
   inPlay: ISOCountryCode[]
   quota: number
 }>()
+
+/** The sunset gap is computed from the same city-light coordinates. */
+const sources = datasetAttribution('cities')
 
 const namedSet = computed(() => new Set(props.named))
 // The window in full, plus every beyond-window country the player actually

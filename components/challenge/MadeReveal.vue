@@ -27,10 +27,16 @@
     <span v-if="pickedLine" class="picked-line" :style="{ '--i': rows.length }">
       {{ pickedLine }}
     </span>
+    <span class="credit-row">
+      <SourceInfo drop="up" :attributions="sources" />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </span>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName } from '~~/lib/country'
 import { formatCompact } from '~~/lib/number'
@@ -49,6 +55,9 @@ const props = defineProps<{
   /** The player's answer, right or wrong. */
   picked?: ISOCountryCode
 }>()
+
+/** Export lists and totals both live on the country profiles (Factbook). */
+const sources = datasetAttribution('countries')
 
 const rows = computed(() => {
   const exporters = Object.values(COUNTRIES).filter(country =>

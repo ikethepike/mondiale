@@ -21,12 +21,18 @@
           {{ event.name }} · {{ formatEventYear(event.year) }}
         </li>
       </ul>
+      <span class="credit-row">
+        <SourceInfo drop="up" :attributions="sources" label="Sources" />
+        <span class="credit">{{ sources[0].credit }}</span>
+      </span>
     </div>
   </article>
 </template>
 <script lang="ts" setup>
 import EmpireFlag from '~/components/challenge/EmpireFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import type { Empire } from '~~/data/empires.gen'
+import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 
@@ -55,6 +61,13 @@ const events = computed(() =>
       Boolean(event.name && event.year !== undefined)
     )
 )
+
+/** The extents and flags behind the card, plus the event chips' registry
+ *  when the empire carries any. */
+const sources = computed(() => [
+  ...datasetAttribution('empires'),
+  ...(events.value.length ? datasetAttribution('events') : []),
+])
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;

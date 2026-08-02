@@ -2,6 +2,13 @@
   <header class="challenge-prompt">
     <div class="prompt">
       <slot />
+      <SourceInfo
+        v-if="attributions?.length"
+        class="prompt-source"
+        :attributions="attributions"
+        :label="attributionLabel"
+        :item-credit="attributionCredit"
+      />
       <Transition name="caption">
         <span v-if="hint" class="map-caption hint">{{ hint }}</span>
       </Transition>
@@ -9,6 +16,9 @@
   </header>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import type { Attribution } from '~~/lib/attribution'
+
 /**
  * The round's header: a centred prompt column (title, subs, whatever the mode
  * stacks) with the shared miss-hint channel floating beneath it. Every
@@ -16,8 +26,28 @@
  * same 30 lines of header CSS each. Pass `hint` for the standard floating
  * miss hint; modes with a bespoke hint treatment (Manhunt's dispatch card)
  * leave it unset and put their own in the slot.
+ *
+ * `attributions` hangs the round's data provenance off the header as the
+ * quiet corner ⓘ (SourceInfo). Views resolve through lib/attribution.ts and
+ * pass the result — the prompt never names a source in copy.
  */
-defineProps<{ hint?: string }>()
+withDefaults(
+  defineProps<{
+    hint?: string
+    /** Resolved credits for whatever data the round quotes, primary first. */
+    attributions?: Attribution[]
+    /** Panel heading — defaults to SourceInfo's own "Source". */
+    attributionLabel?: string
+    /** A single item's own credit (photographer, performer) when known. */
+    attributionCredit?: string
+  }>(),
+  {
+    hint: undefined,
+    attributions: undefined,
+    attributionLabel: undefined,
+    attributionCredit: undefined,
+  }
+)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
@@ -44,6 +74,15 @@ header {
 
 :slotted(.sub) {
   padding: 0.4rem 1.4rem;
+}
+
+// The provenance ⓘ hangs off the prompt's top-right corner rather than
+// joining the flex column — appearing must never reflow the question.
+// Doubled selector: SourceInfo's own `.source-info` rule must not win.
+.prompt .prompt-source {
+  top: 0;
+  right: 0;
+  position: absolute;
 }
 
 // The miss hint floats below the prompt instead of joining its flex flow —

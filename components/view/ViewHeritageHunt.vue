@@ -9,7 +9,7 @@
       @done="begin()"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="photoSources" attribution-label="Photo">
       <h1 class="map-caption">
         {{ headline }}
       </h1>
@@ -43,6 +43,7 @@
       class="photo-dock"
       :src="site.image"
       alt="A World Heritage Site, somewhere on Earth"
+      :attributions="photoSources"
     />
 
     <footer v-if="canPin">
@@ -63,6 +64,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import HeritageReveal from '~/components/feedback/HeritageReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { HERITAGE } from '~~/data/heritage.gen'
+import { datasetAttribution } from '~~/lib/attribution'
 import type { LatLng } from '~~/lib/geo'
 import { formatKm } from '~~/lib/number'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -70,6 +72,8 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { seatLabel } from '~~/lib/player'
 import { isMapClickEvent } from '~~/types/events.types'
+
+const photoSources = datasetAttribution('heritage')
 
 const {
   challenge,
@@ -207,6 +211,7 @@ onBeforeUnmount(() => {
   border-radius: 0.6rem;
   width: clamp(18rem, 24vw, 24rem);
   height: clamp(13rem, 22vh, 18rem);
+
   transition:
     width var(--motion-base) var(--ease-out-expressive),
     height var(--motion-base) var(--ease-out-expressive);

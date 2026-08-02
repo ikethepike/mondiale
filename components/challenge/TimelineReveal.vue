@@ -36,6 +36,15 @@
           <strong class="lesson-title">{{ lesson.title }}</strong>
           <span v-if="lesson.note" class="lesson-note">{{ lesson.note }}</span>
           <p class="lesson-body">{{ lesson.body }}</p>
+          <span class="credit-row">
+            <SourceInfo
+              drop="up"
+              :attributions="sources"
+              label="Sources"
+              :item-credit="lesson.credit"
+            />
+            <span class="credit">{{ sources[0].credit }}</span>
+          </span>
         </section>
       </section>
 
@@ -65,6 +74,8 @@
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { formatEventYear, placedYears, scoreTimeline, timelineEvent } from '~~/lib/timeline'
 import { formatNumber } from '~~/lib/number'
 import { seatLabel } from '~~/lib/player'
@@ -78,6 +89,8 @@ const props = defineProps<{
 }>()
 
 const state = computed(() => props.challenge.state)
+
+const sources = datasetAttribution('events')
 
 /** The one scorer both ends of the wire share — never re-derive from banked. */
 const scores = computed(() => scoreTimeline(props.challenge))
@@ -157,6 +170,7 @@ const lesson = computed(() => {
       title: `${event.name} — ${formatEventYear(event.year)}`,
       note: `${seatLabel(props.players, worst.playerId, props.playerId)} filed it ${off} ${off === 1 ? 'slot' : 'slots'} too ${way}.`,
       body: event.description,
+      credit: mediaCreditLine(event, 'commons-media'),
     }
   }
   const seed = timelineEvent(state.value.placed[0] ?? '')
@@ -166,6 +180,7 @@ const lesson = computed(() => {
     title: `${seed.name} — ${formatEventYear(seed.year)}`,
     note: undefined,
     body: seed.description,
+    credit: mediaCreditLine(seed, 'commons-media'),
   }
 })
 </script>

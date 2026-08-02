@@ -22,6 +22,7 @@
           <h1 class="map-caption">
             {{ details?.phrasing || 'Group Challenge' }}
           </h1>
+          <SourceInfo v-if="accessorId" :attributions="[attributionFor(accessorId)]" />
         </div>
       </section>
 
@@ -76,7 +77,9 @@
 <script lang="ts" setup>
 import { Sortable } from 'sortablejs-vue3'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import { attributionFor } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'

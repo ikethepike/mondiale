@@ -5,6 +5,14 @@
          and pinch to zoom + pan so players can inspect the detail. -->
     <div class="photo-stage">
       <ZoomableImage :src="image" :alt="alt" />
+      <SourceInfo
+        v-if="attributions?.length"
+        class="photo-source"
+        label="Photo"
+        drop="up"
+        :attributions="attributions"
+        :item-credit="itemCredit"
+      />
     </div>
     <div class="options card-options">
       <button
@@ -22,7 +30,9 @@
 </template>
 <script lang="ts" setup>
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import type { Attribution } from '~~/lib/attribution'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 withDefaults(
@@ -31,8 +41,13 @@ withDefaults(
     caption: string
     options: ISOCountryCode[]
     alt?: string
+    /** The photo's dataset credits; the caller resolves them (the stage only
+     *  knows a src). Leave `itemCredit` off while the photographer's line
+     *  could name the answer. */
+    attributions?: Attribution[]
+    itemCredit?: string
   }>(),
-  { alt: 'A photo to identify' }
+  { alt: 'A photo to identify', attributions: undefined, itemCredit: undefined }
 )
 
 const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
@@ -52,9 +67,19 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 // breakpoint. Shares the screen with the option cards below, so height is
 // capped against the viewport.
 .photo-stage {
+  position: relative;
   margin-top: 0.6rem;
   width: clamp(28rem, 62vw, 46rem);
   height: clamp(20rem, 34vh, 32rem);
+}
+
+// The photo's provenance rides the frame's corner, over the image.
+// Doubled selector so SourceInfo's own positioning never wins.
+.photo-stage .photo-source {
+  right: 0.2rem;
+  bottom: 0.2rem;
+  z-index: 3;
+  position: absolute;
 }
 
 @media (max-width: $tablet) {
