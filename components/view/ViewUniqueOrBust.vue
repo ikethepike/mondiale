@@ -41,6 +41,7 @@
         <li>A letter drops when everyone's ready. Four blanks start with it: {{ boardLine }}.</li>
         <li>Everyone writes on one clock, {{ challenge.durationSeconds }} seconds.</li>
         <li>An answer only you hold pays. Shared answers cancel to zero.</li>
+        <li>A word counts once — no repeating an answer across blanks.</li>
         <li>Each pick locks its blank — commit with care.</li>
       </ul>
       <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
@@ -155,6 +156,7 @@ import {
   UNIQUE_CATEGORIES,
   nextOpenCategory,
   uniqueEntriesForLetter,
+  uniqueNameKey,
   uniqueRegisters,
   type UniqueEntry,
 } from '~~/lib/unique-or-bust'
@@ -311,6 +313,19 @@ const pick = (option: SuggestOption) => {
   const pool = optionsByCategory.value[category] ?? []
   if (!pool.some(entry => entry.id === option.id)) {
     announce({ hint: `That answer isn't on the ${categoryLabel.value} list` })
+    return
+  }
+
+  // One word never fills two blanks. The server drops a reuse silently, so the
+  // rejection has to speak here — and say WHICH blank already holds the word.
+  const wordKey = uniqueNameKey(option.name)
+  const reused = challenge.value.categories.find(
+    slot => slot !== category && uniqueNameKey(ownPicks.value[slot]?.name ?? '') === wordKey
+  )
+  if (reused) {
+    announce({
+      hint: `${option.name} is already your ${UNIQUE_CATEGORIES[reused].label.toLowerCase()} — a word counts once`,
+    })
     return
   }
 

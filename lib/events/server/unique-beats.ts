@@ -4,7 +4,9 @@ import {
   uniqueBoardComplete,
   uniqueEntryForAnswer,
   uniqueKey,
+  uniqueNameKey,
   uniqueRegisters,
+  uniqueUsedWordKeys,
   type UniqueAnswerSheet,
 } from '~~/lib/unique-or-bust'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
@@ -122,9 +124,15 @@ export const applyUniqueAnswer = async (
   if (state.locked[playerId]?.includes(category)) return
 
   const registers = await uniqueRegisters(game)
-  if (!uniqueEntryForAnswer(registers, category, challenge.letter, id)) return
+  const entry = uniqueEntryForAnswer(registers, category, challenge.letter, id)
+  if (!entry) return
 
   const sheet = await fetchAnswerSheet(ctx.redis, game.id, roundIndexOf(game))
+  // One word never fills two blanks — the client bounces this with a hint;
+  // here it's the same silent no-op as any other off-register pick.
+  if (uniqueUsedWordKeys(registers, challenge, sheet[playerId]).has(uniqueNameKey(entry.name))) {
+    return
+  }
   ;(sheet[playerId] ??= {})[category] = id
   await setWithGameTtl(ctx.redis, uniqueKey(game.id, roundIndexOf(game)), sheet)
 
