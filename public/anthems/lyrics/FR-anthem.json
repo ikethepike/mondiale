@@ -1,0 +1,201 @@
+{
+  "isoCode": "FR",
+  "title": "La Marseillaise",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Claude Joseph Rouget de Lisle",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Marseillaise"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Allons enfants de la Patrie,",
+        "Le jour de gloire est arrivé !",
+        "Contre nous de la tyrannie",
+        "Entendez-vous dans les campagnes"
+      ],
+      "english": [
+        "Let's go, children of the Fatherland,",
+        "The day of glory has arrived!",
+        "Against us, tyranny's",
+        "Do you hear in the countryside,"
+      ]
+    },
+    {
+      "local": [
+        "Mugir ces féroces soldats ?",
+        "Ils viennent jusque dans vos bras",
+        "Égorger vos fils, vos compagnes !",
+        "Que veut cette horde d'esclaves,"
+      ],
+      "english": [
+        "The bellowing of those fierce soldiers?",
+        "They are coming right into your arms",
+        "To slit the throats of your sons, your companions!",
+        "What do they want, this horde of slaves,"
+      ]
+    },
+    {
+      "local": [
+        "De traîtres, de rois conjurés ?",
+        "Pour qui ces ignobles entraves,",
+        "[[Français]], pour nous, ah ! quel outrage",
+        "Quels transports il doit exciter!"
+      ],
+      "english": [
+        "Of traitors, of conjured kings?",
+        "For whom these ignoble chains,",
+        "For us, [[Frenchmen]], ah! What outrage",
+        "What outburst it must arouse!"
+      ]
+    },
+    {
+      "local": [
+        "C'est nous qu'on ose méditer",
+        "De rendre à l'antique esclavage !",
+        "Quoi ! des cohortes étrangères",
+        "Feraient la loi dans nos foyers !"
+      ],
+      "english": [
+        "It's us they dare to conspire",
+        "of returning to the old slavery!",
+        "What! These foreign cohorts",
+        "Would make the law in our homes!"
+      ]
+    },
+    {
+      "local": [
+        "Quoi ! Ces phalanges mercenaires",
+        "Grand Dieu ! Par des mains enchaînées",
+        "Nos fronts sous le joug se ploieraient",
+        "De vils despotes deviendraient"
+      ],
+      "english": [
+        "What! These mercenary phalanxes",
+        "Great God! With chained hands",
+        "Under the yoke we'd yield ourselves",
+        "Vile despots would become"
+      ]
+    },
+    {
+      "local": [
+        "Les maîtres de nos destinées !",
+        "Tremblez, tyrans et vous perfides",
+        "L'opprobre de tous les partis,",
+        "Tremblez ! vos projets parricides"
+      ],
+      "english": [
+        "The masters of our destinies!",
+        "Tremble, tyrants and ye traitors",
+        "The disgrace of all parties,",
+        "Tremble! Your parricidal schemes"
+      ]
+    },
+    {
+      "local": [
+        "Tout est soldat pour vous combattre,",
+        "S'ils tombent, nos jeunes héros,",
+        "La terre en produit de nouveaux,",
+        "Contre vous tout prêts à se battre !"
+      ],
+      "english": [
+        "Everyone is a soldier to fight you,",
+        "If our young heroes fall,",
+        "The earth will produce new ones,",
+        "Ready to fight against you!"
+      ]
+    },
+    {
+      "local": [
+        "[[Français]], en guerriers magnanimes,",
+        "Portez ou retenez vos coups !",
+        "Épargnez ces tristes victimes,",
+        "Mais ces despotes sanguinaires,"
+      ],
+      "english": [
+        "[[Frenchmen]], as magnanimous warriors,",
+        "Endure or hold back your blows!",
+        "Spare these pitiful victims,",
+        "But these bloodthirsty despots,"
+      ]
+    },
+    {
+      "local": [
+        "Mais ces complices de Bouillé,",
+        "Tous ces tigres qui, sans pitié,",
+        "Déchirent le sein de leur mère !",
+        "Amour sacré de la Patrie,"
+      ],
+      "english": [
+        "But these accomplices of Bouillé,",
+        "All these tigers who, without mercy,",
+        "Would tear apart their mother's breast!",
+        "Sacred love of the Fatherland,"
+      ]
+    },
+    {
+      "local": [
+        "Conduis, soutiens nos bras vengeurs",
+        "Liberté, Liberté chérie,",
+        "Sous nos drapeaux que la victoire",
+        "Accoure à tes mâles accents,"
+      ],
+      "english": [
+        "Lead, support our avenging arms",
+        "Liberty, Liberty beloved,",
+        "Under our flags may victory",
+        "Hurry to your virile accents,"
+      ]
+    },
+    {
+      "local": [
+        "Que tes ennemis expirants",
+        "Voient ton triomphe et notre gloire !",
+        "Couplet des enfants :",
+        "Nous entrerons dans la carrière"
+      ],
+      "english": [
+        "So that your dying enemies",
+        "See your triumph and our glory!",
+        "Children's verse:",
+        "We will start our career"
+      ]
+    },
+    {
+      "local": [
+        "Quand nos aînés n'y seront plus,",
+        "Nous y trouverons leur poussière",
+        "Bien moins jaloux de leur survivre",
+        "Que de partager leur cercueil,"
+      ],
+      "english": [
+        "When our elders are no more,",
+        "We will find their dust there",
+        "Much less jealous to survive them",
+        "Than to share their coffin,"
+      ]
+    },
+    {
+      "local": [
+        "Nous aurons le sublime orgueil",
+        "De les venger ou de les suivre."
+      ],
+      "english": [
+        "We will have the sublime pride",
+        "To avenge them or follow them."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "isoCode": "ST",
+  "title": "Independência Total",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Independ%C3%AAncia_Total"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Coro I:",
+        "Independência total,",
+        "Glorioso canto do povo,",
+        "Independência total,"
+      ],
+      "english": [
+        "Chorus I:",
+        "Total independence,",
+        "Glorious song of the people,",
+        "Total independence,"
+      ]
+    },
+    {
+      "local": [
+        "Hino sagrado de combate.",
+        "Coro II:",
+        "Dinamismo",
+        "Na luta nacional,"
+      ],
+      "english": [
+        "Sacred hymn of combat.",
+        "Chorus II:",
+        "Dynamism",
+        "In the national struggle,"
+      ]
+    },
+    {
+      "local": [
+        "Juramento eterno",
+        "No país soberano de [[São Tomé e Príncipe]].",
+        "Guerrilheiro da guerra sem armas na mão,",
+        "Chama viva na alma do povo,"
+      ],
+      "english": [
+        "Eternal oath",
+        "To the sovereign country of [[São Tomé and Príncipe]].",
+        "Warriors in the war without weapons,",
+        "Live flame in the soul of the people,"
+      ]
+    },
+    {
+      "local": [
+        "Congregando os filhos das ilhas",
+        "Em redor da Pátria Imortal.",
+        "Independência total, total e completa,",
+        "Construindo, no progresso e na paz,"
+      ],
+      "english": [
+        "Congregating the sons of the islands",
+        "Around the Immortal Fatherland.",
+        "Total independence, total and complete,",
+        "Building, in progress and peace,"
+      ]
+    },
+    {
+      "local": [
+        "A nação mais ditosa da Terra,",
+        "Com os braços heróicos do povo.",
+        "Trabalhando, lutando, lutando e vencendo,",
+        "Caminhamos a passos gigantes"
+      ],
+      "english": [
+        "The happiest nation on earth,",
+        "With the heroic arms of the people.",
+        "Working, struggling, struggling and conquering,",
+        "We go ahead with giant steps"
+      ]
+    },
+    {
+      "local": [
+        "Na cruzada dos povos africanos,",
+        "Hasteando a bandeira nacional.",
+        "Voz do povo, presente, presente em conjunto,",
+        "Vibra rijo no coro da esperança"
+      ],
+      "english": [
+        "In the crusade of the African peoples,",
+        "Raising the national flag.",
+        "Voice of the people, present, present and united,",
+        "Strong beat in the heart of hope"
+      ]
+    },
+    {
+      "local": [
+        "Ser herói na hora do perigo,",
+        "Ser herói no ressurgir do país."
+      ],
+      "english": [
+        "To be a hero in the hour of peril,",
+        "A hero of the nation's resurgence."
+      ]
+    }
+  ]
+}

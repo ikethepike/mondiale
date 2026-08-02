@@ -1,0 +1,241 @@
+{
+  "isoCode": "PY",
+  "title": "Paraguayos, República o Muerte",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Francisco Acuña de Figueroa",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Paraguayan_National_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "A los pueblos de América, infausto",
+        "tres centurias un cetro oprimió,",
+        "mas un día soberbia surgiendo,",
+        "\"¡Basta!\" —dijo, y el cetro rompió."
+      ],
+      "english": [
+        "The peoples of the Americas, unfortunately,",
+        "Were oppressed for three centuries by a scepter",
+        "But one magnificent day surging forth,",
+        "\"Enough!\", it said, and the scepter was broken."
+      ]
+    },
+    {
+      "local": [
+        "Nuestros padres, lidiando grandiosos,",
+        "ilustraron su gloria marcial;",
+        "y trozada la augusta diadema,",
+        "enalzaron el gorro triunfal."
+      ],
+      "english": [
+        "Our fathers, grandiose in battle,",
+        "Showed their martial glory;",
+        "And after smashing the august diadem,",
+        "The triumphal cap was raised."
+      ]
+    },
+    {
+      "local": [
+        "[[Paraguayos]], ¡República o Muerte!",
+        "nuestro brío nos dio libertad;",
+        "ni opresores, ni siervos alientan",
+        "donde reinan unión e igualdad,"
+      ],
+      "english": [
+        "[[Paraguayans]]: Republic or Death!",
+        "Our spirit gave us liberty",
+        "Neither oppressors nor slaves exist",
+        "Where union and equality reign,"
+      ]
+    },
+    {
+      "local": [
+        "unión e igualdad.",
+        "Nueva Roma, la Patria ostentará",
+        "dos caudillos de nombre y valer,",
+        "que rivales —cual Rómulo y Remo—"
+      ],
+      "english": [
+        "union and equality.",
+        "A new Rome, the Fatherland shall proudly display",
+        "Two leaders of name and valor",
+        "Who, rivals, like Romulus and Remus"
+      ]
+    },
+    {
+      "local": [
+        "dividieron gobierno y poder.",
+        "Largos años —cual Febo entre nubes—",
+        "viose oculta la perla del Sud.",
+        "Hoy un héroe grandioso aparece"
+      ],
+      "english": [
+        "Divided government and power.",
+        "These long years when, during which Phoebus in the clouds",
+        "Saw darken the pearl of the South,",
+        "Today a grand hero appears"
+      ]
+    },
+    {
+      "local": [
+        "realzando su gloria y virtud...",
+        "Con aplauso la Europa y el Mundo",
+        "la saludan, y aclaman también;",
+        "de heroísmo: baluarte invencible,"
+      ],
+      "english": [
+        "Raising up again her glory and virtue...",
+        "Europe and the entire world to her",
+        "Gives salutes and also acclaimations",
+        "To that invincible bastion of heroism,"
+      ]
+    },
+    {
+      "local": [
+        "de riquezas: magnífico Edén.",
+        "Cuando entorno rugió la Discordia",
+        "que otros Pueblos fatal devoró,",
+        "[[paraguayos]], el suelo sagrado"
+      ],
+      "english": [
+        "The magnificent Eden of riches.",
+        "(But) when discord rumbled all around",
+        "Which fatally devoured other Peoples,",
+        "[[Paraguayans]], the sacred ground"
+      ]
+    },
+    {
+      "local": [
+        "con sus alas un ángel cubrió.",
+        "¡Oh! cuán pura, de lauro ceñida,",
+        "dulce Patria te ostentas así",
+        "En tu enseña se ven los colores"
+      ],
+      "english": [
+        "Was covered by an angel with its wings.",
+        "Oh, how pure, of laurel girded",
+        "Sweet Fatherland, in this manner you show yourself.",
+        "In your ensign one sees the colors"
+      ]
+    },
+    {
+      "local": [
+        "del zafiro, diamante y rubí.",
+        "En tu escudo que el sol ilumina,",
+        "bajo el gorro se mira el león.",
+        "Doble imagen de fuertes y libres,"
+      ],
+      "english": [
+        "Of sapphire, diamond, and ruby.",
+        "In your coat of arms, which the Sun illuminates,",
+        "Under the cap, one sees the lion.",
+        "Double image of the strong and the free,"
+      ]
+    },
+    {
+      "local": [
+        "y de glorias, recuerdo y blasón.",
+        "De la tumba del vil feudalismo",
+        "se alza libre la Patria deidad;",
+        "opresores, ¡doblad rodilla!,"
+      ],
+      "english": [
+        "And of glories, the memory and crest.",
+        "From the tomb of vile feudalism",
+        "The national Deity rises free;",
+        "Oppressors, bend your knees!"
+      ]
+    },
+    {
+      "local": [
+        "compatriotas, ¡el Himno entonad!",
+        "Suene el grito: \"¡República o muerte!\",",
+        "nuestros pechos lo exhalen con fe,",
+        "y sus ecos repitan los montes"
+      ],
+      "english": [
+        "Compatriots, entone the hymn!",
+        "Sound the cry, \"Republic or death\"!",
+        "Our breasts exhale it with faith,",
+        "And the mountains repeat its echoes"
+      ]
+    },
+    {
+      "local": [
+        "cual gigantes poniéndose en pie.",
+        "Libertad y justicia defiende",
+        "nuestra Patria; tiranos, ¡oíd!",
+        "de sus fueros la carta sagrada"
+      ],
+      "english": [
+        "Like giants arising in the land.",
+        "Our Fatherland defends liberty and justice;",
+        "So tyrants: listen!",
+        "The laws in its sacred charter"
+      ]
+    },
+    {
+      "local": [
+        "su heroísmo sustenta en la lid.",
+        "Contra el mundo, si el mundo se opone,",
+        "Si intentare su prenda insultar,",
+        "batallando vengar la sabremos"
+      ],
+      "english": [
+        "Will sustain its heroism in the fight.",
+        "Against the world, if the world opposes it,",
+        "If the world dares to insult her security,",
+        "Battling to avenge we shall know her"
+      ]
+    },
+    {
+      "local": [
+        "o abrazo con ella expirar.",
+        "Alza, oh Pueblo, tu espada esplendente",
+        "que fulmina destellos de Dios,",
+        "no hay más medio que libre o esclavo"
+      ],
+      "english": [
+        "Or die embracing her.",
+        "Arise, oh People, your splendid sword",
+        "That strikes with sparkles of God,",
+        "There is no middle ground between free or slave"
+      ]
+    },
+    {
+      "local": [
+        "y un abismo divide a los dos.",
+        "En las auras el Himno resuene,",
+        "repitiendo con eco triunfal:",
+        "¡a los libres perínclita gloria!,"
+      ],
+      "english": [
+        "And an abyss divides the two.",
+        "In the gentle breezes the Hymn resounds,",
+        "Repeating with triumphal echo:",
+        "For the free, renowned glory!"
+      ]
+    },
+    {
+      "local": [
+        "¡a la Patria laurel inmortal!"
+      ],
+      "english": [
+        "For the Fatherland, immortal laurel!"
+      ]
+    }
+  ]
+}

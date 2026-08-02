@@ -1,0 +1,79 @@
+{
+  "isoCode": "LT",
+  "title": "Tautiška giesmė",
+  "language": {
+    "code": "lt",
+    "name": "Lithuanian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Vincas Kudirka",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Tautiška_giesmė"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Lietuva]], Tėvyne mūsų,",
+        "Tu didvyrių žeme,",
+        "Iš praeities Tavo sūnūs",
+        "Te stiprybę semia."
+      ],
+      "english": [
+        "[[Lithuania]], our homeland,",
+        "Land of worshiped heroes!",
+        "Let your sons draw their strength",
+        "From our past experience."
+      ]
+    },
+    {
+      "local": [
+        "Tegul Tavo vaikai eina",
+        "Vien takais dorybės,",
+        "Tegul dirba Tavo naudai",
+        "Ir žmonių gėrybei."
+      ],
+      "english": [
+        "Let your children always follow",
+        "Only roads of virtue,",
+        "May your own, mankind’s well-being",
+        "Be the goals they work for."
+      ]
+    },
+    {
+      "local": [
+        "Tegul saulė [[Lietuvoj]]",
+        "Tamsumas prašalina,",
+        "Ir šviesa, ir tiesa",
+        "Mūs žingsnius telydi."
+      ],
+      "english": [
+        "May the sun above our land",
+        "Banish darkening clouds around",
+        "Light and truth all along",
+        "Guide our steps forever."
+      ]
+    },
+    {
+      "local": [
+        "Tegul meilė [[Lietuvos]]",
+        "Dega mūsų širdyse,",
+        "Vardan tos, [[Lietuvos]]",
+        "Vienybė težydi!"
+      ],
+      "english": [
+        "May the love of [[Lithuania]]",
+        "Brightly burn in our hearts.",
+        "For the sake of this land",
+        "Let unity blossom."
+      ]
+    }
+  ]
+}

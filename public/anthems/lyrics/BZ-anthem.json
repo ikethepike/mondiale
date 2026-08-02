@@ -1,0 +1,92 @@
+{
+  "isoCode": "BZ",
+  "title": "Land of the Free",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Land_of_the_Free_(anthem)"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "O, Land of the Free by the Carib Sea,",
+        "Our manhood we pledge to thy liberty!",
+        "No tyrants here linger, despots must flee",
+        "This tranquil haven of democracy"
+      ],
+      "english": [
+        "O, Land of the Free by the Carib Sea,",
+        "Our manhood we pledge to thy liberty!",
+        "No tyrants here linger, despots must flee",
+        "This tranquil haven of democracy"
+      ]
+    },
+    {
+      "local": [
+        "The blood of our sires which hallows the sod,",
+        "Brought freedom from slavery, oppression's rod",
+        "By the might of truth, and the grace of God,",
+        "No longer shall we be hewers of wood!"
+      ],
+      "english": [
+        "The blood of our sires which hallows the sod,",
+        "Brought freedom from slavery, oppression's rod",
+        "By the might of truth, and the grace of God,",
+        "No longer shall we be hewers of wood!"
+      ]
+    },
+    {
+      "local": [
+        "Arise! ye sons of the Baymen's clan,",
+        "Put on your armour, clear the land!",
+        "Drive back the tyrants, let despots flee -",
+        "Land of the Free by the Carib Sea."
+      ],
+      "english": [
+        "Arise! ye sons of the Baymen's clan,",
+        "Put on your armour, clear the land!",
+        "Drive back the tyrants, let despots flee -",
+        "Land of the Free by the Carib Sea."
+      ]
+    },
+    {
+      "local": [
+        "Nature has blessed thee with wealth untold,",
+        "O'er mountains and valleys where prairies roll;",
+        "Our fathers, the Baymen, valiant and bold",
+        "Drove back the invader; this heritage hold"
+      ],
+      "english": [
+        "Nature has blessed thee with wealth untold,",
+        "O'er mountains and valleys where prairies roll;",
+        "Our fathers, the Baymen, valiant and bold",
+        "Drove back the invader; this heritage hold"
+      ]
+    },
+    {
+      "local": [
+        "From proud Rio Hondo to old Sarstoon,",
+        "Through coral isle, over blue lagoon;",
+        "Keep watch with the angels, the stars and moon;",
+        "For freedom comes tomorrow's noon!"
+      ],
+      "english": [
+        "From proud Rio Hondo to old Sarstoon,",
+        "Through coral isle, over blue lagoon;",
+        "Keep watch with the angels, the stars and moon;",
+        "For freedom comes tomorrow's noon!"
+      ]
+    }
+  ]
+}

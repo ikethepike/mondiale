@@ -1,0 +1,74 @@
+{
+  "isoCode": "VU",
+  "title": "Yumi, Yumi, Yumi",
+  "language": {
+    "code": "bi",
+    "name": "Bislama",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Yumi,_Yumi,_Yumi"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Yumi, yumi, yumi i glat long talem se",
+        "Yumi, yumi, yumi ol man blong [[Vanuatu]]",
+        "God i givim ples ia long yumi,",
+        "Yumi glat tumas long hem,"
+      ],
+      "english": [
+        "We are, we are, we are happy to proclaim",
+        "We are, we are, we are the people of [[Vanuatu]]",
+        "God has given us this land,",
+        "We are grateful for this,"
+      ]
+    },
+    {
+      "local": [
+        "Yumi strong mo yumi fri long hem,",
+        "Yumi brata evriwan!",
+        "Plante fasin blong bifo i stap,",
+        "Plante fasin blong tedei,"
+      ],
+      "english": [
+        "We are strong and we are free in this land,",
+        "We are all brothers!",
+        "We have many traditions,",
+        "And also many modern ways,"
+      ]
+    },
+    {
+      "local": [
+        "Be yumi i olsem wan nomo,",
+        "Hemia fasin blong yumi!",
+        "Yumi save plante wok i stap,",
+        "Long ol aelan blong yumi,"
+      ],
+      "english": [
+        "But we are all one,",
+        "And this is who we are.",
+        "We know there is much work to be done,",
+        "On all our islands,"
+      ]
+    },
+    {
+      "local": [
+        "God i helpem yumi evriwan,",
+        "Hem i papa blong yumi!"
+      ],
+      "english": [
+        "God helps us in our work,",
+        "He is Our Father!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "isoCode": "SS",
+  "title": "South Sudan Oyee!",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/South_Sudan,_Oyee!"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Oh God",
+        "We praise and glorify You",
+        "For Your grace on [[South Sudan]]",
+        "Land of great abundance"
+      ],
+      "english": [
+        "Oh God",
+        "We praise and glorify You",
+        "For Your grace on [[South Sudan]]",
+        "Land of great abundance"
+      ]
+    },
+    {
+      "local": [
+        "Uphold us united in peace and harmony.",
+        "Oh Motherland",
+        "We rise raising flag with the guiding star",
+        "And singing songs of freedom with joy;"
+      ],
+      "english": [
+        "Uphold us united in peace and harmony.",
+        "Oh Motherland",
+        "We rise raising flag with the guiding star",
+        "And singing songs of freedom with joy;"
+      ]
+    },
+    {
+      "local": [
+        "For justice, liberty and prosperity",
+        "Shall forever more reign!",
+        "Oh great patriots",
+        "Let us stand up in silence and respect,"
+      ],
+      "english": [
+        "For justice, liberty and prosperity",
+        "Shall forever more reign!",
+        "Oh great patriots",
+        "Let us stand up in silence and respect,"
+      ]
+    },
+    {
+      "local": [
+        "Saluting our martyrs whose blood",
+        "Cemented our national foundation,",
+        "We vow to protect our nation.",
+        "Oh God, bless [[South Sudan]]!"
+      ],
+      "english": [
+        "Saluting our martyrs whose blood",
+        "Cemented our national foundation,",
+        "We vow to protect our nation.",
+        "Oh God, bless [[South Sudan]]!"
+      ]
+    }
+  ]
+}

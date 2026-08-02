@@ -1,0 +1,88 @@
+{
+  "isoCode": "NG",
+  "title": "Nigeria, We Hail Thee",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Nigeria,_We_Hail_Thee"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Nigeria]], we hail thee,",
+        "Our own dear native land,",
+        "Though tribes and tongues may differ,",
+        "In brotherhood we stand"
+      ],
+      "english": [
+        "[[Nigeria]], we hail thee,",
+        "Our own dear native land,",
+        "Though tribes and tongues may differ,",
+        "In brotherhood we stand"
+      ]
+    },
+    {
+      "local": [
+        "[[Nigerians]] all, are proud to serve",
+        "Our sovereign Motherland.",
+        "Our flag shall be a symbol",
+        "That truth and justice reign,"
+      ],
+      "english": [
+        "[[Nigerians]] all, are proud to serve",
+        "Our sovereign Motherland.",
+        "Our flag shall be a symbol",
+        "That truth and justice reign,"
+      ]
+    },
+    {
+      "local": [
+        "In peace or battle honoured,",
+        "And this we count as gain,",
+        "To hand on to our children",
+        "A banner without stain."
+      ],
+      "english": [
+        "In peace or battle honoured,",
+        "And this we count as gain,",
+        "To hand on to our children",
+        "A banner without stain."
+      ]
+    },
+    {
+      "local": [
+        "O God of all creation,",
+        "Grant this our one request:",
+        "Help us to build a nation",
+        "Where no man is oppressed,"
+      ],
+      "english": [
+        "O God of all creation,",
+        "Grant this our one request:",
+        "Help us to build a nation",
+        "Where no man is oppressed,"
+      ]
+    },
+    {
+      "local": [
+        "And so with peace and plenty",
+        "[[Nigeria]] may be blessed."
+      ],
+      "english": [
+        "And so with peace and plenty",
+        "[[Nigeria]] may be blessed."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "isoCode": "MD",
+  "title": "Limba noastră",
+  "language": {
+    "code": "ro",
+    "name": "Romanian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "author": "Alexei Mateevici",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Moldova"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Лимба ноастрэ-й о комоарэ",
+        "ын адынкурь ынфундатэ",
+        "Ун шираг де пятрэ рарэ",
+        "пе мошие ревэрсатэ."
+      ],
+      "english": [
+        "Our tongue a noble gem bejeweled",
+        "From ominous shadows of old,",
+        "A pendant of stones rare and grand",
+        "That scattered all over our land."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й фок че арде",
+        "ынтр-ун ням, че фэрэ весте",
+        "С-а трезит дин сомн де моарте",
+        "ка витязул дин повесте."
+      ],
+      "english": [
+        "Our language is a fervent flare",
+        "Amidst a folk who suddenly",
+        "Awoke from the deadly slumber",
+        "Like the heroes brave and holy."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й нумай кынтек",
+        "дойна дорурилор ноастре",
+        "Рой де фулӂере, че спинтек",
+        "ноурь негри, зэрь албастре."
+      ],
+      "english": [
+        "Our language a body of songs",
+        "From the devotions of our soul.",
+        "A flash of lightning strikes apace",
+        "Within black clouds, blue horizons."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й граюл пыйний",
+        "кынд де вынт се мишкэ вара",
+        "Ын ростиря ей бэтрыний",
+        "ку судорь сфинцит-ау цара."
+      ],
+      "english": [
+        "Our language is the tongue of bread",
+        "When the breeze blows through the summer",
+        "Proclaimed by our forefathers who",
+        "Blessed the country through their labour."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й фрунзэ верде",
+        "збучумул дин кодрий вешничь",
+        "Ниструл лин, че-н валурь пиерде",
+        "ай лучеферилор сфешничь."
+      ],
+      "english": [
+        "Our tongue the greenest verdant frond",
+        "Of our codrii lasting and fond,",
+        "Our Dniester flows with repose",
+        "Like a constellation of stars."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й векь извоаде",
+        "повестирь дин алте времурь",
+        "Ши читинду-ле ’нширате",
+        "те-нфиорь адынк ши тремурь."
+      ],
+      "english": [
+        "Bemoan not! Thy yammers shall cease",
+        "That thy tongue's only a mere piece;",
+        "Yet, abound in words aplenty",
+        "That scatter o'er our dear country."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ ый алясэ",
+        "сэ ридиче слава-н черурь",
+        "Сэ не спуе-н храм ши-акасэ",
+        "вешничеле адевэрурь."
+      ],
+      "english": [
+        "Our language abounds in folklore",
+        "And legends from the days of yore.",
+        "Reading and delving into them",
+        "Renders all aghast and in qualm."
+      ]
+    },
+    {
+      "local": [
+        "Лимба ноастрэ-й лимбэ сфынтэ",
+        "лимба векилор казаний",
+        "Каре-о плынг ши каре-о кынтэ",
+        "пе ла ватра лор цэраний."
+      ],
+      "english": [
+        "Our language is the chosen one",
+        "For blessing glory in heaven,",
+        "Acclaiming in endless passion",
+        "Everlasting faiths that beckon."
+      ]
+    },
+    {
+      "local": [
+        "IX",
+        "Ынвиаци-вэ дар граюл",
+        "руӂинит де мултэ време",
+        "Штерӂець слинул, мучегаюл"
+      ],
+      "english": [
+        "IX",
+        "More than heavenly is our tongue",
+        "Of sacred homilies of old;",
+        "For aeons lamented and sung"
+      ]
+    },
+    {
+      "local": [
+        "ал уйтэрий ’н каре ӂеме.",
+        "X",
+        "Стрынӂець пятра лучитоаре",
+        "че дин соаре се апринде"
+      ],
+      "english": [
+        "All over the motherland heard.",
+        "X",
+        "Our language shall one again rise",
+        "After the passing grieving years,"
+      ]
+    },
+    {
+      "local": [
+        "Ши-ць авя ын ревэрсаре",
+        "ун потоп ноу де кувинте.",
+        "XI",
+        "Ну вець плынӂе-атунчь амарник"
+      ],
+      "english": [
+        "Wash off the rust and grime that grew",
+        "When left in oblivion our land.",
+        "XI",
+        "Round up that brilliant shining stone,"
+      ]
+    },
+    {
+      "local": [
+        "кэ ви-й лимба пря сэракэ",
+        "Ши-ць ведя, кыт ый де дарник",
+        "граюл цэрий ноастре драгэ.",
+        "XII"
+      ],
+      "english": [
+        "And absorb bright light from the sun.",
+        "Now thou wilt see countless new words",
+        "That are rushing over our land.",
+        "XII"
+      ]
+    },
+    {
+      "local": [
+        "Рэсэри-ва о комоарэ",
+        "ын адынкурь ынфундатэ",
+        "Ун шираг де пятрэ рарэ",
+        "пе мошие ревэрсатэ."
+      ],
+      "english": [
+        "Apace shall our treasure extend",
+        "From ominous shadows of old,",
+        "A pendant of stones rare and grand",
+        "That scattered all over our land."
+      ]
+    }
+  ]
+}

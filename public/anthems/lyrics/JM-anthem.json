@@ -1,0 +1,92 @@
+{
+  "isoCode": "JM",
+  "title": "Jamaica, Land We Love",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Jamaica,_Land_We_Love"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Eternal Father, bless our land",
+        "Guard us with Thy mighty hand",
+        "Keep us free from evil powers",
+        "Be our light through countless hours"
+      ],
+      "english": [
+        "Eternal Father, bless our land",
+        "Guard us with Thy mighty hand",
+        "Keep us free from evil powers",
+        "Be our light through countless hours"
+      ]
+    },
+    {
+      "local": [
+        "To our leaders, Great Defender,",
+        "Grant true wisdom from above",
+        "Justice, truth be ours forever",
+        "[[Jamaica]], land we love"
+      ],
+      "english": [
+        "To our leaders, Great Defender,",
+        "Grant true wisdom from above",
+        "Justice, truth be ours forever",
+        "[[Jamaica]], land we love"
+      ]
+    },
+    {
+      "local": [
+        "[[Jamaica]], [[Jamaica]],",
+        "[[Jamaica]], land we love.",
+        "Teach us true respect for all",
+        "Stir response to duty's call"
+      ],
+      "english": [
+        "[[Jamaica]], [[Jamaica]],",
+        "[[Jamaica]], land we love.",
+        "Teach us true respect for all",
+        "Stir response to duty's call"
+      ]
+    },
+    {
+      "local": [
+        "Strengthen us the weak to cherish",
+        "Give us vision lest we perish",
+        "Knowledge send us, Heavenly Father,",
+        "Grant true wisdom from above"
+      ],
+      "english": [
+        "Strengthen us the weak to cherish",
+        "Give us vision lest we perish",
+        "Knowledge send us, Heavenly Father,",
+        "Grant true wisdom from above"
+      ]
+    },
+    {
+      "local": [
+        "Justice, truth be ours forever",
+        "[[Jamaica]], land we love",
+        "[[Jamaica]], [[Jamaica]],",
+        "[[Jamaica]], land we love."
+      ],
+      "english": [
+        "Justice, truth be ours forever",
+        "[[Jamaica]], land we love",
+        "[[Jamaica]], [[Jamaica]],",
+        "[[Jamaica]], land we love."
+      ]
+    }
+  ]
+}

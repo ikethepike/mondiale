@@ -53,37 +53,10 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
-import { buzzScore } from '~~/lib/scoring'
-import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useBuzzRound } from '~~/lib/use-buzz-round'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import type { Country } from '~~/types/geography.types'
 
-// Blank the world map — the silhouette IS the whole question
-const {
-  challenge,
-  currentRound,
-  showInterstitial,
-  started,
-  submitted,
-  secondsLeft,
-  remainingFraction,
-  begin: beginRound,
-  hint,
-  announce,
-  entries,
-  submitOnce,
-  stopCountdown,
-  registerCleanup,
-  gameStore,
-} = useGroupChallenge('silhouette-challenge')
-
-const resolved = ref(false)
-const lockedOut = ref(false)
-const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-
-// The region hint (non-hard mode) surfaces only in the final 30% of the clock —
-// a late nudge once the outline is nearly whole, not a giveaway from the start.
-const regionRevealed = computed(() => started.value && remainingFraction.value <= 0.3)
 // Preview flash → sweep-away → clock-synced border draw, all size-relative.
 const {
   outline,
@@ -93,80 +66,82 @@ const {
   tickOutlineReveal,
   resetOutlineReveal,
 } = useOutlineReveal()
+
+/** Shorter than the audio rounds' hold: no verse to translate, so four
+ *  seconds of the country framed among its neighbours is the whole reveal. */
+const OUTLINE_REVEAL_HOLD_MS = 4000
+
+const {
+  challenge,
+  currentRound,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  remainingFraction,
+  hint,
+  announce,
+  entries,
+  registerCleanup,
+  gameStore,
+  resolved,
+  lockedOut,
+  begin: beginBuzz,
+  guess,
+} = useBuzzRound('silhouette-challenge', {
+  isCorrect: (active, isoCode) => active.country === isoCode,
+  maximumPoints: active => active.maximumPoints,
+  // No isoCode: a wrong buzz would name a candidate for the shared answer.
+  lockoutHint: name => `Not ${name} — locked out for 3 seconds`,
+  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
+  onTick: tickOutlineReveal,
+  // Blank the world map — the silhouette IS the whole question.
+  solo: true,
+  revealHoldMs: OUTLINE_REVEAL_HOLD_MS,
+  /**
+   * Resolution beat: whether buzzed right or timed out, drop the shapes-only
+   * veil and frame the country among its neighbours — the answer lands as a
+   * place on the map, not just a name. The scorecard follows after the hold.
+   */
+  onResolve: winningGuess => {
+    const active = challenge.value
+    if (!active) return
+    gameStore.map.solo = false
+    gameStore.map.labels = true
+    gameStore.map.reveal = active.country
+    // No full-map status wash here — the reveal is about locating the country,
+    // so the tints carry the verdict: the answer in mint or coral, its
+    // neighbours in soft sand. Neighbour centers keep the frame tight even
+    // next to a giant (Russia would otherwise stretch the shot to the Pacific).
+    const neighbours = BORDERS[active.country] ?? []
+    gameStore.map.focus = [active.country]
+    gameStore.map.focusContext = neighbours
+    gameStore.map.tints[active.country] = winningGuess ? 'optimal' : 'stray'
+    for (const neighbour of neighbours) {
+      gameStore.map.tints[neighbour] = 'inefficient'
+    }
+  },
+})
+
+const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+// The region hint (non-hard mode) surfaces only in the final 30% of the clock —
+// a late nudge once the outline is nearly whole, not a giveaway from the start.
+const regionRevealed = computed(() => started.value && remainingFraction.value <= 0.3)
+
 onMounted(() => {
   const active = challenge.value
   if (active) prepareOutline(active.country)
 })
-
-let lockoutTimer: ReturnType<typeof setTimeout> | undefined
-let revealTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => {
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  if (revealTimer) clearTimeout(revealTimer)
-  resetOutlineReveal()
-})
-
-const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
-  submitOnce(guess ? [guess] : [], clientScore)
-}
-
-/**
- * Resolution beat: whether buzzed right or timed out, drop the shapes-only
- * veil and frame the country among its neighbours — the answer lands as a
- * place on the map, not just a name. The scorecard follows after the hold.
- */
-const REVEAL_HOLD_MS = 4000
-const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
-  const active = challenge.value
-  if (!active || resolved.value) return
-  resolved.value = true
-  stopCountdown()
-
-  gameStore.map.solo = false
-  gameStore.map.labels = true
-  gameStore.map.reveal = active.country
-  // No full-map status wash here — the reveal is about locating the country,
-  // so the tints carry the verdict: the answer in mint or coral, its
-  // neighbours in soft sand. Neighbour centers keep the frame tight even
-  // next to a giant (Russia would otherwise stretch the shot to the Pacific).
-  const neighbours = BORDERS[active.country] ?? []
-  gameStore.map.focus = [active.country]
-  gameStore.map.focusContext = neighbours
-  gameStore.map.tints[active.country] = guess ? 'optimal' : 'stray'
-  for (const neighbour of neighbours) {
-    gameStore.map.tints[neighbour] = 'inefficient'
-  }
-
-  revealTimer = setTimeout(() => submitRound(guess, clientScore), REVEAL_HOLD_MS)
-}
+registerCleanup(resetOutlineReveal)
 
 const begin = () => {
   beginOutlineReveal(challenge.value?.durationSeconds ?? 30)
-  beginRound({
-    onTick: tickOutlineReveal,
-    onTimeout: () => resolve(undefined, 0),
-  })
-  nextTick(() => guessInput.value?.focus({ auto: true }))
+  beginBuzz(() => nextTick(() => guessInput.value?.focus({ auto: true })))
 }
 
 const onGuess = (country: Country) => {
-  const active = challenge.value
-  if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
-
-  if (country.isoCode === active.country) {
-    const clientScore = buzzScore(active.maximumPoints, remainingFraction.value)
-    resolve(country.isoCode, clientScore)
-    return
-  }
-
-  // No isoCode: a wrong buzz would name a candidate for the shared answer.
-  announce({ kind: 'locked', hint: `Not ${countryName(country)} — locked out for 3 seconds` })
-  lockedOut.value = true
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  lockoutTimer = setTimeout(() => {
-    lockedOut.value = false
-    nextTick(() => guessInput.value?.focus())
-  }, 3000)
+  guess(country.isoCode, countryName(country))
 }
 </script>
 <style lang="scss" scoped>

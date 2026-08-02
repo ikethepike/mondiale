@@ -1,0 +1,89 @@
+{
+  "isoCode": "DE",
+  "title": "Deutschlandlied",
+  "language": {
+    "code": "de",
+    "name": "German",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "August Heinrich Hoffmann von Fallersleben",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Deutschlandlied"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Deutschland]], [[Deutschland]] über alles,",
+        "Über alles in der Welt,",
+        "Wenn es stets zu Schutz und Trutze",
+        "Brüderlich zusammenhält."
+      ],
+      "english": [
+        "[[Germany]], [[Germany]] above all,",
+        "Above all in the world,",
+        "When it always stands united",
+        "Brotherly in protection and defence."
+      ]
+    },
+    {
+      "local": [
+        "Von der Maas bis an die Memel,",
+        "Von der Etsch bis an den Belt,",
+        "[[Deutsche]] Frauen, [[deutsche]] Treue,",
+        "[[Deutscher]] Wein und [[deutscher]] Sang"
+      ],
+      "english": [
+        "From the Meuse to the Neman,",
+        "From the Adige to the Little Belt,",
+        "[[German]] women, [[German]] loyalty,",
+        "[[German]] wine and [[German]] song"
+      ]
+    },
+    {
+      "local": [
+        "Sollen in der Welt behalten",
+        "Ihren alten schönen Klang,",
+        "Uns zu edler Tat begeistern",
+        "Unser ganzes Leben lang –"
+      ],
+      "english": [
+        "Shall retain in the world",
+        "Their old, beautiful sound,",
+        "Inspiring us to noble deeds",
+        "Throughout our entire lives –"
+      ]
+    },
+    {
+      "local": [
+        "Einigkeit und Recht und Freiheit",
+        "Für das [[deutsche]] Vaterland!",
+        "Danach lasst uns alle streben",
+        "Brüderlich mit Herz und Hand!"
+      ],
+      "english": [
+        "Unity and justice and freedom",
+        "For the [[German]] fatherland!",
+        "Let us strive for this together,",
+        "Brotherly with heart and hand!"
+      ]
+    },
+    {
+      "local": [
+        "Einigkeit und Recht und Freiheit",
+        "Sind des Glückes Unterpfand –"
+      ],
+      "english": [
+        "Unity and justice and freedom",
+        "Are the foundation of happiness –"
+      ]
+    }
+  ]
+}

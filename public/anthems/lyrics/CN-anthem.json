@@ -1,0 +1,58 @@
+{
+  "isoCode": "CN",
+  "title": "义勇军进行曲",
+  "language": {
+    "code": "zh",
+    "name": "Chinese",
+    "script": "CJK"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/March_of_the_Volunteers"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "起来！不愿做奴隶的人们！",
+        "把我们的血肉，筑成我们新的长城！",
+        "[[中华]]民族到了最危险的时候，",
+        "每个人被迫着发出最后的吼声。"
+      ],
+      "english": [
+        "Arise, we who refuse to be slaves!",
+        "With our very flesh and blood,",
+        "Let us build our new Great Wall!",
+        "The peoples of [[China]] are at their most critical time,"
+      ]
+    },
+    {
+      "local": [
+        "起来！起来！起来！",
+        "我们万众一心，",
+        "冒着敌人的炮火，前进！",
+        "冒着敌人的炮火，前进！"
+      ],
+      "english": [
+        "Everybody must roar defiance.",
+        "Arise! Arise! Arise!",
+        "Millions of hearts with one mind,",
+        "Brave the enemy's gunfire, march on!"
+      ]
+    },
+    {
+      "local": [
+        "前进！前进！进！"
+      ],
+      "english": [
+        "Brave the enemy's gunfire, march on!"
+      ]
+    }
+  ]
+}

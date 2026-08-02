@@ -1,0 +1,93 @@
+{
+  "isoCode": "PH",
+  "title": "Lupang Hinirang",
+  "language": {
+    "code": "fil",
+    "name": "Filipino",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "José Palma (Spanish); Filipino text 1956",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Lupang_Hinirang"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Bayang magiliw,",
+        "Perlas ng silanganan,",
+        "Alab ng puso",
+        "Sa dibdib mo'y buhay."
+      ],
+      "english": [
+        "Land of the morning,",
+        "Child of the sun returning,",
+        "With fervor burning",
+        "Thee do our souls adore."
+      ]
+    },
+    {
+      "local": [
+        "Lupang hinirang,",
+        "Duyan ka ng magiting,",
+        "Sa manlulupig",
+        "Di ka pasisiil."
+      ],
+      "english": [
+        "Land dear and holy,",
+        "Cradle of noble heroes,",
+        "Ne'er shall invaders",
+        "Trample thy sacred shores."
+      ]
+    },
+    {
+      "local": [
+        "Sa dagat at bundok,",
+        "Sa simoy at sa langit mong bughaw,",
+        "May dilag ang tula",
+        "At awit sa paglayang minamahal."
+      ],
+      "english": [
+        "Ever within thy skies and through thy clouds,",
+        "And o'er thy hills and seas,",
+        "Do we behold the radiance, feel the throb",
+        "Of glorious liberty."
+      ]
+    },
+    {
+      "local": [
+        "Ang kislap ng watawat mo'y",
+        "Tagumpay na nagniningning;",
+        "Ang bituin at araw niya,",
+        "Kailan pa ma'y di magdidilim."
+      ],
+      "english": [
+        "Thy banner dear to all our hearts,",
+        "Its sun and stars alight,",
+        "Oh, never shall its shining fields",
+        "Be dimmed by tyrant's might!"
+      ]
+    },
+    {
+      "local": [
+        "Lupa ng araw, ng luwalhati't pagsinta,",
+        "Buhay ay langit sa piling mo;",
+        "Aming ligaya na 'pag may mang-aapi,",
+        "Ang mamatay nang dahil sa 'yo."
+      ],
+      "english": [
+        "Beautiful land of love, o land of light,",
+        "In thine embrace 'tis rapture to lie,",
+        "But it is glory ever, when thou art wronged,",
+        "For us, thy sons to suffer and die."
+      ]
+    }
+  ]
+}

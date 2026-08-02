@@ -1,0 +1,106 @@
+{
+  "isoCode": "DM",
+  "title": "Isle of Beauty",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Isle_of_Beauty"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Isle of beauty, isle of splendour,",
+        "Isle to all so sweet and fair,",
+        "All must surely gaze in wonder",
+        "At thy gifts so rich and rare."
+      ],
+      "english": [
+        "Isle of beauty, isle of splendour,",
+        "Isle to all so sweet and fair,",
+        "All must surely gaze in wonder",
+        "At thy gifts so rich and rare."
+      ]
+    },
+    {
+      "local": [
+        "Rivers, valleys, hills and mountains,",
+        "All these gifts we do extol.",
+        "Healthy land, so like all fountains,",
+        "Giving cheer that warms the soul."
+      ],
+      "english": [
+        "Rivers, valleys, hills and mountains,",
+        "All these gifts we do extol.",
+        "Healthy land, so like all fountains,",
+        "Giving cheer that warms the soul."
+      ]
+    },
+    {
+      "local": [
+        "[[Dominica]], God hath blest thee",
+        "With a clime benign and bright,",
+        "Pastures green and flowers of beauty",
+        "Filling all with pure delight,"
+      ],
+      "english": [
+        "[[Dominica]], God hath blest thee",
+        "With a clime benign and bright,",
+        "Pastures green and flowers of beauty",
+        "Filling all with pure delight,"
+      ]
+    },
+    {
+      "local": [
+        "And a people strong and healthy,",
+        "Full of godly reverent fear.",
+        "May we ever seek to praise Thee",
+        "For these gifts so rich and rare."
+      ],
+      "english": [
+        "And a people strong and healthy,",
+        "Full of godly reverent fear.",
+        "May we ever seek to praise Thee",
+        "For these gifts so rich and rare."
+      ]
+    },
+    {
+      "local": [
+        "Come ye forward, sons and daughters",
+        "Of this gem beyond compare.",
+        "Strive for honour, sons and daughters,",
+        "Do the right, be firm, be fair."
+      ],
+      "english": [
+        "Come ye forward, sons and daughters",
+        "Of this gem beyond compare.",
+        "Strive for honour, sons and daughters,",
+        "Do the right, be firm, be fair."
+      ]
+    },
+    {
+      "local": [
+        "Toil with hearts and hands and voices.",
+        "We must prosper! Sound the call,",
+        "In which ev'ryone rejoices,",
+        "\"All for Each and Each for All\"."
+      ],
+      "english": [
+        "Toil with hearts and hands and voices.",
+        "We must prosper! Sound the call,",
+        "In which ev'ryone rejoices,",
+        "\"All for Each and Each for All\"."
+      ]
+    }
+  ]
+}

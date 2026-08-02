@@ -1,0 +1,72 @@
+{
+  "isoCode": "NA",
+  "title": "Namibia, Land of the Brave",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Namibia,_Land_of_the_Brave"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Namibia]], land of the brave",
+        "Freedom fight we have won",
+        "Glory to their bravery",
+        "Whose blood waters our freedom"
+      ],
+      "english": [
+        "[[Namibia]], land of the brave",
+        "Freedom fight we have won",
+        "Glory to their bravery",
+        "Whose blood waters our freedom"
+      ]
+    },
+    {
+      "local": [
+        "We give our love and loyalty",
+        "Together in unity",
+        "Contrasting beautiful [[Namibia]]",
+        "[[Namibia]] our country"
+      ],
+      "english": [
+        "We give our love and loyalty",
+        "Together in unity",
+        "Contrasting beautiful [[Namibia]]",
+        "[[Namibia]] our country"
+      ]
+    },
+    {
+      "local": [
+        "Beloved land of savannahs,",
+        "Hold high the banner of liberty",
+        "[[Namibia]] our Country,",
+        "[[Namibia]] Motherland,"
+      ],
+      "english": [
+        "Beloved land of savannahs,",
+        "Hold high the banner of liberty",
+        "[[Namibia]] our Country,",
+        "[[Namibia]] Motherland,"
+      ]
+    },
+    {
+      "local": [
+        "We love thee."
+      ],
+      "english": [
+        "We love thee."
+      ]
+    }
+  ]
+}

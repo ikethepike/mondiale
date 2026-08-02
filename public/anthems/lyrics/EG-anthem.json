@@ -1,0 +1,78 @@
+{
+  "isoCode": "EG",
+  "title": "بلادي بلادي بلادي",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Biladi,_Biladi,_Biladi"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "بِلَادِي بِلَادِي بِلَادِي",
+        "لَكِ حُبِّي وَفُؤَادِي",
+        "بِلَادِي بِلَادِي بِلَادِي",
+        "لَكِ حُبِّي وَفُؤَادِي"
+      ],
+      "english": [
+        "My homeland, my homeland, my homeland",
+        "You have my love and my heart.",
+        "My homeland, my homeland, my homeland",
+        "You have my love and my heart."
+      ]
+    },
+    {
+      "local": [
+        "مَصْرِ يَا أُمِّ الْبِلَادْ",
+        "أَنْتِ غَايَتِي وَالْمُرَادْ",
+        "وَعَلَى كُلِّ الْعِبَادْ",
+        "كَمْ لِنِيلِكْ مِنْ أَيَادِي"
+      ],
+      "english": [
+        "[[Egypt]]! O mother of all countries,",
+        "You are my hope and my ambition,",
+        "And above all people,",
+        "Your Nile has countless graces!"
+      ]
+    },
+    {
+      "local": [
+        "مَصْرِ أَنْتِ أَغْلَى دُرَّة",
+        "فُوقْ جَبِينِ الدَّهْرِ غُرَّة",
+        "يَا بِلَادِي عِيشِي حُرَّة",
+        "وَاسْلَمِي رَغْمَ الْأَعَادِي"
+      ],
+      "english": [
+        "[[Egypt]]! Most precious gem,",
+        "A blaze on the brow of eternity!",
+        "O my homeland, be for ever free,",
+        "Safe from every enemy!"
+      ]
+    },
+    {
+      "local": [
+        "مَصْرِ أَوْلَادِكْ كِرَامْ",
+        "أَوْفِيَاء يَرْعُوا الزِّمَامْ",
+        "نَحْنُ حَرْبٌ وَسَلَامْ",
+        "وَفِدَاكِي يَا بِلَادِي"
+      ],
+      "english": [
+        "[[Egypt]], noble are your children.",
+        "Loyal, and guardians of the reins.",
+        "Be we at war or peace",
+        "We will sacrifice ourselves for you, my homeland."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "isoCode": "GA",
+  "title": "La Concorde",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Concorde"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Uni dans la Concorde et la fraternité",
+        "Éveille-toi [[Gabon]], une aurore se lève,",
+        "Encourage l'ardeur qui vibre et nous soulève!",
+        "C'est enfin notre essor vers la félicité."
+      ],
+      "english": [
+        "United in the concord and the brotherhood,",
+        "Awaken thee, [[Gabon]], dawn is at hand.",
+        "Stir up the spirit that thrills and inspires us!",
+        "At last we rise up to attain happiness."
+      ]
+    },
+    {
+      "local": [
+        "Éblouissant et fier, le jour sublime monte",
+        "Pourchassant à jamais l'injustice et la honte.",
+        "Qu'il monte, monte encore et calme nos alarmes,",
+        "Qu'il prône la vertu et repousse les armes."
+      ],
+      "english": [
+        "Dazzling and proud, the sublime day dawns,",
+        "Dispelling for ever injustice and shame.",
+        "May it rise, rise again and calm our fears,",
+        "May it promote virtue and banish warfare."
+      ]
+    },
+    {
+      "local": [
+        "Oui que le temps heureux rêvé par nos ancêtres",
+        "Arrive enfin chez nous, réjouisse les êtres,",
+        "Et chasse les sorciers, ces perfides trompeurs",
+        "Qui sèment le poison et répandent la peur."
+      ],
+      "english": [
+        "Yes, may the happy days dreamed by our ancestors",
+        "Come for us at last, rejoice our hearts,",
+        "And banish the sorcerers, those perfidious deceivers",
+        "Who sow poison and spread fear."
+      ]
+    },
+    {
+      "local": [
+        "Afin qu'aux yeux du monde et des nations amies",
+        "Le [[Gabon]] immortel reste digne d'envie,",
+        "Oublions nos querelles, ensemble bâtissons",
+        "L'édifice nouveau auquel tous nous rêvons."
+      ],
+      "english": [
+        "So that, in the eyes of the world and of friendly nations,",
+        "The immortal [[Gabon]] may maintain her good repute,",
+        "Let us forget our quarrels, let us build together",
+        "The new structure of which we are all dreaming of."
+      ]
+    },
+    {
+      "local": [
+        "Des bords de l'Océan au cœur de la forêt,",
+        "Demeurons vigilants, sans faiblesse et sans haine!",
+        "Autour de ce drapeau, qui vers l'honneur nous mène,",
+        "Saluons la Patrie et chantons sans arrêt!"
+      ],
+      "english": [
+        "From the shores of the Ocean to the heart of the forest,",
+        "Let us remain vigilant, without weakness and without hatred!",
+        "Around this flag which leads us to honour,",
+        "Let us salute the Fatherland and ever sing!"
+      ]
+    }
+  ]
+}

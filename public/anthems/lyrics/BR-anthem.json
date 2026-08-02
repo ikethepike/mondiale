@@ -1,0 +1,173 @@
+{
+  "isoCode": "BR",
+  "title": "Hino Nacional Brasileiro",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Joaquim Osório Duque-Estrada",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Brazilian_National_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ouviram do Ipiranga as margens plácidas",
+        "De um povo heroico o brado retumbante,",
+        "E o sol da liberdade, em raios fúlgidos,",
+        "Brilhou no céu da pátria nesse instante."
+      ],
+      "english": [
+        "The placid shores of the Ipiranga heard,",
+        "the resounding shout of a heroic people.",
+        "And the sun of Liberty in shining beams,",
+        "shone in the homeland's sky at that instant."
+      ]
+    },
+    {
+      "local": [
+        "Se o penhor dessa igualdade",
+        "Conseguimos conquistar com braço forte,",
+        "Em teu seio, ó liberdade,",
+        "Desafia o nosso peito a própria morte!"
+      ],
+      "english": [
+        "If the pledge of this equality",
+        "we managed to conquer with strong arm,",
+        "in thy bosom, O Freedom,",
+        "our chest defieth death itself!"
+      ]
+    },
+    {
+      "local": [
+        "Ó Pátria amada,",
+        "Idolatrada,",
+        "Salve! Salve!",
+        "[[Brasil]], um sonho intenso, um raio vívido"
+      ],
+      "english": [
+        "O beloved,",
+        "idolized homeland,",
+        "Hail, hail!",
+        "[[Brazil]], an intense dream, a vivid ray"
+      ]
+    },
+    {
+      "local": [
+        "De amor e de esperança à terra desce,",
+        "Se em teu formoso céu, risonho e límpido,",
+        "A imagem do Cruzeiro resplandece.",
+        "Gigante pela própria natureza,"
+      ],
+      "english": [
+        "of love and hope to earth descendeth.",
+        "If in thy beautiful, smiling and limpid sky,",
+        "the image of the [Southern] Cross blazeth.",
+        "Giant by thine own nature,"
+      ]
+    },
+    {
+      "local": [
+        "És belo, és forte, impávido colosso,",
+        "E o teu futuro espelha essa grandeza.",
+        "Terra adorada,",
+        "Entre outras mil,"
+      ],
+      "english": [
+        "Thou art beautiful, strong, a fearless colossus,",
+        "And thy future mirrors that greatness",
+        "Adored land",
+        "Amongst a thousand others"
+      ]
+    },
+    {
+      "local": [
+        "És tu, [[Brasil]],",
+        "Ó Pátria amada!",
+        "Dos filhos deste solo és mãe gentil,",
+        "Pátria amada, [[Brasil]]!"
+      ],
+      "english": [
+        "art thou, [[Brazil]],",
+        "O beloved homeland",
+        "Of the sons of this ground",
+        "Thou art kind mother"
+      ]
+    },
+    {
+      "local": [
+        "Deitado eternamente em berço esplêndido,",
+        "Ao som do mar e à luz do céu profundo,",
+        "Fulguras, ó [[Brasil]], florão da América,",
+        "Iluminado ao sol do Novo Mundo!"
+      ],
+      "english": [
+        "Beloved homeland, [[Brazil]]!",
+        "Eternally lying on a splendid cradle,",
+        "to the sound of the sea and in the light of the deep sky.",
+        "Thou flashest, o [[Brazil]], crocket of America,"
+      ]
+    },
+    {
+      "local": [
+        "Do que a terra, mais garrida,",
+        "Teus risonhos, lindos campos têm mais flores;",
+        "\"Nossos bosques têm mais vida\",",
+        "\"Nossa vida\" no teu seio \"mais amores.\" (*)"
+      ],
+      "english": [
+        "illuminated by the sun of the New World.",
+        "Than the most ostentatious land,",
+        "thy smiling, beautiful meadows have more flowers.",
+        "\"Our forests have more life,\""
+      ]
+    },
+    {
+      "local": [
+        "Ó Pátria amada,",
+        "Idolatrada,",
+        "Salve! Salve!",
+        "[[Brasil]], de amor eterno seja símbolo"
+      ],
+      "english": [
+        "\"Our life\" in thy bosom \"more loves\".",
+        "O beloved,",
+        "idolized homeland,",
+        "Hail, hail!"
+      ]
+    },
+    {
+      "local": [
+        "O lábaro que ostentas estrelado,",
+        "E diga o verde-louro dessa flâmula",
+        "– \"Paz no futuro e glória no passado.\"",
+        "Mas, se ergues da justiça a clava forte,"
+      ],
+      "english": [
+        "[[Brazil]], of eternal love, may",
+        "the starry ensign which thou displayest be a symbol.",
+        "And may the laurel-green of this pennon say:",
+        "\"Peace in the future and glory in the past.\""
+      ]
+    },
+    {
+      "local": [
+        "Verás que um filho teu não foge à luta,",
+        "Nem teme, quem te adora, a própria morte."
+      ],
+      "english": [
+        "But if thou raisest the strong cudgel of justice,",
+        "thou shalt see that a son of thine fleeth not from battle,"
+      ]
+    }
+  ]
+}

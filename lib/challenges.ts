@@ -1,9 +1,12 @@
+import { ANTHEM_LYRICS } from '~~/data/anthem-lyrics.gen'
+import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
+import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
@@ -22,6 +25,7 @@ import {
   GROUP_CHALLENGES,
 } from '~~/types/challenges/group-challenge.type'
 import type {
+  AnthemBuzzChallenge,
   BorderChainChallenge,
   CapitalGuessChallenge,
   EmpireChallenge,
@@ -40,6 +44,7 @@ import type {
   SketchChallenge,
   StatDetectiveChallenge,
   TimelineChallenge,
+  TongueBuzzChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
   UniqueOrBustChallenge,
@@ -66,7 +71,7 @@ import {
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
 import { titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
-import { pickSizedCountry } from './country'
+import { countryName, pickSizedCountry } from './country'
 import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
@@ -75,6 +80,8 @@ import {
   playableWorldCountries,
 } from './game-rules'
 import { pickChainSeed } from './chain'
+import { flagSwatches } from './audio-palette'
+import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
@@ -117,6 +124,11 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['heritage-hunt', 0.07],
   ['neighbour-blitz', 0.1],
   ['silhouette', 0.09],
+  // The only rounds that need sound: still shy of the visual staples so a
+  // muted room or a bad connection never faces a run of them, but no longer
+  // rare — they earned their slot.
+  ['anthem-buzz', 0.08],
+  ['tongue-buzz', 0.06],
   ['hot-cold', 0.06],
   ['sketch', 0.07],
   ['stat-detective', 0.06],
@@ -481,6 +493,121 @@ const getSilhouetteChallenge = ({ game }: { game: gameTypes.Game }): SilhouetteC
     ...(game.difficulty !== 'hard' ? { region: REGION_LABELS[COUNTRIES[country].region] } : {}),
   }
 }
+
+/** An anthem needs a few bars before it's placeable; a speech clip is shorter
+ *  and a long silence after it ends is dead air. */
+const ANTHEM_BUZZ_SECONDS = 30
+
+const TONGUE_BUZZ_SECONDS = 20
+
+/**
+ * Opening Ceremony: an anthem plays from the top, buzz early with the country.
+ * Deals only where a clip shipped — coverage is good but not universal, and a
+ * silent round is no round at all.
+ */
+const getAnthemBuzzChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): AnthemBuzzChallenge | undefined => {
+  const withAnthem = (pool: ISOCountryCode[]) => pool.filter(isoCode => ANTHEMS[isoCode])
+  const pool = withAnthem(playableCountries(game))
+  const country = sample(pool.length ? pool : withAnthem(playableWorldCountries(game)))
+  if (!country) return undefined
+
+  const anthem = ANTHEMS[country]
+  if (!anthem) return undefined
+
+  return {
+    _type: 'anthem-buzz-challenge',
+    country,
+    clip: { webm: anthem.webm, m4a: anthem.m4a },
+    durationSeconds: ANTHEM_BUZZ_SECONDS,
+    maximumPoints: maximumRoundPoints(game),
+    // Non-hard mode unlocks these as the clip runs; hard mode hears it cold.
+    ...(game.difficulty !== 'hard'
+      ? {
+          region: REGION_LABELS[COUNTRIES[country].region],
+          // The flag's OWN hues, not the snapped names: `simplifiedColors`
+          // holds strings like "blue", which CSS renders as generic web blue
+          // rather than Sweden's. Same source the flag-palette round uses, and
+          // it never comes back empty (22 emblem-heavy flags simplify to none).
+          // Through the palette home, never a raw slice: on a crest-heavy flag
+          // the raw list's first six entries are mostly emblem gradient.
+          swatches: flagSwatches(country),
+          initial: countryName(country).slice(0, 1).toUpperCase(),
+          ...(ANTHEM_LYRICS.has(country)
+            ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
+            : {}),
+        }
+      : {}),
+  }
+}
+
+/**
+ * A speech clip plays — name any country where that language is official.
+ * The answer is a SET, not one country: English is official in 55 of them, so
+ * demanding a single code would make the most recognisable languages unfair.
+ */
+const getTongueBuzzChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): TongueBuzzChallenge | undefined => {
+  const pool = playableCountries(game)
+  const speakers = new Map<string, ISOCountryCode[]>()
+  for (const isoCode of pool) {
+    for (const language of COUNTRIES[isoCode].languages ?? []) {
+      if (!TONGUES[language]) continue
+      speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
+    }
+  }
+
+  const entry = sample([...speakers.entries()])
+  if (!entry) return undefined
+
+  const [language, countries] = entry
+  // ALL the language's samples, not one: the dock plays them in sequence, so
+  // three voices become continuous listening material. Shuffled at deal time —
+  // the whole room hears the same order, but rounds don't always open on
+  // Common Voice's first recording.
+  const clips = shuffleArray(TONGUES[language]?.clips ?? [])
+  if (!clips.length) return undefined
+
+  return {
+    _type: 'tongue-buzz-challenge',
+    language,
+    clips,
+    countries,
+    durationSeconds: TONGUE_BUZZ_SECONDS,
+    maximumPoints: maximumRoundPoints(game),
+    // Non-hard mode unlocks these as the clip runs, mirroring the anthem
+    // round's ladder. Hard mode listens cold.
+    ...(game.difficulty !== 'hard' && countries[0]
+      ? {
+          region: REGION_LABELS[COUNTRIES[countries[0]].region],
+          speakerCount: countries.length,
+          // Seeded sample for languages no anthem is sung in. Languages that
+          // DO have one ship no sample: the view borrows a couple of lyric
+          // lines through `tongueSampleSource`/`anthemTongueSample`, keyed off
+          // `region` being present so hard mode stays hint-free.
+          ...(() => {
+            const seeded = seededTongueSample(language)
+            return seeded ? { sample: seeded } : {}
+          })(),
+          initial: countryName(countries[0]).slice(0, 1).toUpperCase(),
+        }
+      : {}),
+  }
+}
+
+/**
+ * Whether a guess is one of a tongue round's correct countries. The client pays
+ * out on a buzz and the server verifies the same buzz, so both import this —
+ * two membership tests would drift the moment the answer set grows a qualifier.
+ */
+export const speaksTongue = (challenge: TongueBuzzChallenge, guess: ISOCountryCode): boolean =>
+  challenge.countries.includes(guess)
 
 /**
  * Micro-island states are near-invisible click targets at world zoom, and a
@@ -1417,6 +1544,16 @@ const dealRoundChallenge = async (
     }
     case 'silhouette':
       return getSilhouetteChallenge({ game })
+    case 'anthem-buzz': {
+      const challenge = getAnthemBuzzChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
+    case 'tongue-buzz': {
+      const challenge = getTongueBuzzChallenge({ game })
+      if (challenge) return challenge
+      break
+    }
     case 'hot-cold':
       return getHotColdChallenge({ game })
     case 'sketch':

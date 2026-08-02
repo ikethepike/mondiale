@@ -28,6 +28,40 @@
 }
 
 // A scorecard row settles into place
+// The <TransitionGroup name="hint"> landing for chips that appear mid-round.
+// Deliberately has NO -move rule, unlike `chain`: a chip animating its
+// neighbours aside is exactly the layout shift these reveals must not cause.
+// The row reserves its own height, so an arriving chip lands in place.
+.hint-enter-active {
+  animation: hint-pop var(--motion-base) var(--ease-out-expressive);
+}
+
+.hint-leave-active {
+  transition: opacity var(--motion-quick) var(--ease-smooth);
+}
+
+.hint-leave-to {
+  opacity: 0;
+}
+
+// A hint chip arriving mid-round: rises, overshoots a touch, settles. Reads as
+// something landing rather than blinking on, which matters when a chip appears
+// unprompted while the player is listening elsewhere.
+@keyframes hint-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.7rem) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes row-land {
   from {
     opacity: 0;
@@ -60,6 +94,24 @@
   }
 }
 
+// The audio rounds' level meter: bars breathe while a clip plays. Decoration
+// only — driven by the round clock, never by audio analysis.
+// Animates HEIGHT rather than scaleY: scaling a 3px-wide bar stretches its
+// rasterised edges and the rounded caps go blocky. Height keeps the caps
+// perfectly round at every frame, and the eased midpoint reads as a breath
+// rather than a bounce.
+@keyframes audio-pulse {
+  0% {
+    height: 0.4rem;
+  }
+  50% {
+    height: 1.6rem;
+  }
+  100% {
+    height: 0.7rem;
+  }
+}
+
 // The <TransitionGroup name="chain"> landing: a new chip pops in from below
 // and neighbours slide aside. One definition for every chosen-country list.
 .chain-enter-from {
@@ -71,4 +123,12 @@
   transition:
     opacity var(--motion-quick) var(--ease-out-expressive),
     transform var(--motion-quick) var(--ease-out-expressive);
+}
+
+// A loading spinner's rotation — the dock's play button and the reveal's
+// replay both wear it; one definition, per the shared-keyframes rule.
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -1,0 +1,214 @@
+{
+  "isoCode": "CI",
+  "title": "L'Abidjanaise",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/L%27Abidjanaise"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Salut Ô terre d'espérance;",
+        "Pays de l'hospitalité.",
+        "Tes légions remplies de vaillance",
+        "Ont relevé ta dignité."
+      ],
+      "english": [
+        "We salute you, O land of hope,",
+        "Country of hospitality;",
+        "Thy full gallant legions",
+        "Have restored thy dignity."
+      ]
+    },
+    {
+      "local": [
+        "Tes fils, chère [[Côte d'Ivoire]],",
+        "Fiers artisans de ta grandeur,",
+        "Tous rassemblés pour ta gloire",
+        "Te bâtiront dans le bonheur."
+      ],
+      "english": [
+        "Beloved [[Ivory]] Coast, thy sons,",
+        "Proud builders of thy greatness,",
+        "All gathered together for thy glory,",
+        "In joy will we construct thee."
+      ]
+    },
+    {
+      "local": [
+        "Refrain I :",
+        "Fiers [[Ivoiriens]], le pays nous appelle.",
+        "Si nous avons dans la paix ramené la liberté,",
+        "Notre devoir sera d'être un modèle"
+      ],
+      "english": [
+        "Chorus I:",
+        "Proud Ivorians, the country calls us.",
+        "If we have brought back liberty peacefully,",
+        "It will be our duty to be an example"
+      ]
+    },
+    {
+      "local": [
+        "De l'espérance promise à l'humanité,",
+        "En forgeant, unis dans la foi nouvelle,",
+        "La patrie de la vraie fraternité.",
+        "À toi noble [[Côte d'Ivoire]],"
+      ],
+      "english": [
+        "Of the hope promised to humanity,",
+        "In building, united in the new faith",
+        "The homeland of true brotherhood.",
+        "To you, noble [[Ivory]] Coast,"
+      ]
+    },
+    {
+      "local": [
+        "Ô grand pays des bonnes gens !",
+        "Nous apportons dans la victoire,",
+        "L'hommage de nos cœurs ardents.",
+        "Dans l'amitié des peuples frères,"
+      ],
+      "english": [
+        "O great country of good people!",
+        "We bring in victory,",
+        "The homage of our ardent hearts.",
+        "In the friendship of the brotherly peoples,"
+      ]
+    },
+    {
+      "local": [
+        "Dieu guide nous vers l'idéal,",
+        "Soumise à la devise chère :",
+        "Union, discipline, travail.",
+        "Refrain II :"
+      ],
+      "english": [
+        "God guides us to the ideal,",
+        "Subject to the motto:",
+        "Union, labour, discipline.",
+        "Chorus II:"
+      ]
+    },
+    {
+      "local": [
+        "Pour ta grandeur, riche et noble patrie,",
+        "Nous marcherons de l'avant, pleins d'amour et pleins de foi.",
+        "De cœurs unis, au cours de notre vie,",
+        "Nous œuvrerons dans l'honneur pour le juste droit,"
+      ],
+      "english": [
+        "For your greatness, rich and noble homeland,",
+        "We will walk forward, full of love and full of faith.",
+        "From united hearts, during our life,",
+        "We will work in honor for the just right,"
+      ]
+    },
+    {
+      "local": [
+        "De cœurs unis au cours de notre vie,",
+        "À tes appels nous serons tous présents.",
+        "À tous nos compagnons de route,",
+        "À l'aube de ce jour tombés,"
+      ],
+      "english": [
+        "Of hearts united during our life,",
+        "With your calls we will all be present.",
+        "To all our fellow travelers,",
+        "At the dawn of this fallen day,"
+      ]
+    },
+    {
+      "local": [
+        "Pour que ne règne plus le doute,",
+        "Mais la foi, la fraternité.",
+        "À tous nos bataillons d'élite,",
+        "Dans la tombe aujourd'hui couchés,"
+      ],
+      "english": [
+        "So that there is no longer any doubt,",
+        "But faith, fraternity.",
+        "To all our elite battalions,",
+        "In the tomb today,"
+      ]
+    },
+    {
+      "local": [
+        "Ô peuple tout entier redites :",
+        "Amour, honneur, fidélité.",
+        "Et que ton drapeau nous unisse,",
+        "Que ton amour nous fortifie,"
+      ],
+      "english": [
+        "O whole people repetitions:",
+        "Love, honor, fidelity.",
+        "And let your flag unite us,",
+        "May your love strengthen us,"
+      ]
+    },
+    {
+      "local": [
+        "Car pour toi seul nous voulons vivre,",
+        "Et pour toi combattre et mourir.",
+        "Et vous, fière et noble jeunesse,",
+        "De tous les horizons connus,"
+      ],
+      "english": [
+        "Because for you alone we want to live,",
+        "And for you fight and die.",
+        "And you, proud and noble youth,",
+        "From all known horizons,"
+      ]
+    },
+    {
+      "local": [
+        "Suivez toujours cette sagesse,",
+        "de nos ainés qui ne sont plus.",
+        "A nous qu'anime l'espérance,",
+        "En ton avenir lumineux,"
+      ],
+      "english": [
+        "Always follow this wisdom,",
+        "of our elders who are no more.",
+        "To us, which animates hope,",
+        "In your bright future,"
+      ]
+    },
+    {
+      "local": [
+        "Redonne toujours l'assurance,",
+        "De nous conduire en peuple heureux.",
+        "Et nous irons de par le monde,",
+        "Semer ton nom et tes bienfaits,"
+      ],
+      "english": [
+        "Always restore the insurance,",
+        "To lead us into happy people.",
+        "And we will go around the world,",
+        "Sow your name and your benefits,"
+      ]
+    },
+    {
+      "local": [
+        "En clamant sur toutes les ondes,",
+        "Que sur ton sol règne la paix."
+      ],
+      "english": [
+        "By clamoring on all the waves,",
+        "That on your soil reigns peace."
+      ]
+    }
+  ]
+}

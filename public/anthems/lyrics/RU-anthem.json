@@ -1,0 +1,78 @@
+{
+  "isoCode": "RU",
+  "title": "Государственный гимн Российской Федерации",
+  "language": {
+    "code": "ru",
+    "name": "Russian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Russia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Россия]] — священная наша держава,",
+        "[[Россия]] — любимая наша страна.",
+        "Могучая воля, великая слава –",
+        "Твоё достоянье на все времена!"
+      ],
+      "english": [
+        "[[Russia]] is our sacred state,",
+        "[[Russia]] is our beloved country.",
+        "A mighty will, great glory –",
+        "Your dignity for all time!"
+      ]
+    },
+    {
+      "local": [
+        "Славься, Отечество наше свободное,",
+        "Братских народов союз вековой,",
+        "Предками данная мудрость народная!",
+        "Славься, страна! Мы гордимся тобой!"
+      ],
+      "english": [
+        "Be glorified, our free Fatherland,",
+        "The age-old union of fraternal peoples,",
+        "Ancestor-given wisdom of the people!",
+        "Be glorified, country! We are proud of you!"
+      ]
+    },
+    {
+      "local": [
+        "От южных морей до полярного края",
+        "Раскинулись наши леса и поля.",
+        "Одна ты на свете! Одна ты такая –",
+        "Хранимая Богом родная земля!"
+      ],
+      "english": [
+        "From the southern seas to the polar edge",
+        "Our forests and fields are spread out.",
+        "You are the only one in the world! You are the only one –",
+        "the native land so kept by God!"
+      ]
+    },
+    {
+      "local": [
+        "Широкий простор для мечты и для жизни",
+        "Грядущие нам открывают года.",
+        "Нам силу даёт наша верность Отчизне.",
+        "Так было, так есть и так будет всегда!"
+      ],
+      "english": [
+        "A wide scope for dreams and for life",
+        "The coming years open to us.",
+        "We are given strength by our fidelity to the Fatherland.",
+        "So it was, so it is and it will always be so!"
+      ]
+    }
+  ]
+}

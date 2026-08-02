@@ -1,0 +1,64 @@
+{
+  "isoCode": "GN",
+  "title": "Liberté",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Libert%C3%A9_(anthem)"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Peuple d'Afrique,",
+        "Le Passé historique !",
+        "Que chante l'hymne de la [[Guinée]] fière et jeune",
+        "Illustre épopée de nos frères"
+      ],
+      "english": [
+        "People of Africa,",
+        "The historical past!",
+        "Let the anthem of a proud and young [[Guinea]]",
+        "The illustrious epic of our brothers"
+      ]
+    },
+    {
+      "local": [
+        "Morts au champ d'honneur en libérant l'Afrique !",
+        "Le peuple de [[Guinée]] prêchant l'unité.",
+        "Appelle l'Afrique.",
+        "Liberté! C'est la voix d'un peuple"
+      ],
+      "english": [
+        "Who died on the field of honour, liberating Africa!",
+        "The people of [[Guinea]] preaching unity.",
+        "Call Africa.",
+        "Freedom! It's the voice of a people"
+      ]
+    },
+    {
+      "local": [
+        "Qui appelle tous ses frères de la grande Afrique.",
+        "Liberté! C'est la voix d'un peuple",
+        "Qui appelle tous ses frères à se retrouver.",
+        "Bâtissons l'unité africaine dans l'indépendance retrouvée."
+      ],
+      "english": [
+        "Who call all of their brothers from across Africa!",
+        "Freedom! It's the voice of a people",
+        "Who call all their brothers to come together.",
+        "Let us build African unity in regained independence."
+      ]
+    }
+  ]
+}

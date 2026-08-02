@@ -1,0 +1,77 @@
+{
+  "isoCode": "AR",
+  "title": "Himno Nacional Argentino",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Vicente López y Planes",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Argentine_National_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Oíd, mortales, el grito sagrado:",
+        "\"¡Libertad! ¡Libertad! ¡Libertad!\"",
+        "Oíd el ruido de rotas cadenas",
+        "ved en trono a la noble igualdad"
+      ],
+      "english": [
+        "Hear, mortals, the sacred cry:",
+        "\"Freedom! Freedom! Freedom!\"",
+        "Hear the sound of broken chains",
+        "See noble equality enthroned."
+      ]
+    },
+    {
+      "local": [
+        "Ya su trono dignísimo abrieron",
+        "las Provincias Unidas del Sud",
+        "y los libres del mundo responden:",
+        "\"¡Al gran pueblo [[argentino]], salud!\""
+      ],
+      "english": [
+        "Their most worthy throne have now opened",
+        "The United Provinces of the South.",
+        "And the free people of the world reply:",
+        "\"To the great [[Argentine]] people, cheers!\""
+      ]
+    },
+    {
+      "local": [
+        "Y los libres del mundo responden:",
+        "\"¡Al gran pueblo [[argentino]], salud!\"",
+        "Sean eternos los laureles,",
+        "que supimos conseguir."
+      ],
+      "english": [
+        "And the free ones of the world reply:",
+        "\"To the great [[Argentine]] people, cheers!\"",
+        "May the laurels be eternal",
+        "that we were able to achieve"
+      ]
+    },
+    {
+      "local": [
+        "Coronados de gloria vivamos",
+        "¡O juremos con gloria morir!",
+        "¡O juremos con gloria morir!"
+      ],
+      "english": [
+        "Let's live crowned in glory",
+        "Or let's swear to die with glory!",
+        "Or let's swear to die with glory!"
+      ]
+    }
+  ]
+}

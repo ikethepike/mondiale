@@ -1,0 +1,48 @@
+{
+  "isoCode": "WS",
+  "title": "Sāmoa Tulaʻi",
+  "language": {
+    "code": "sm",
+    "name": "Samoan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/The_Banner_of_Freedom"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Sāmoa]], tūlaʻi ma sīsīʻia lau fuʻa, lou pale lea!",
+        "[[Sāmoa]], tūlaʻi ma sīsīʻia lau fuʻa, lou pale lea!",
+        "Vaʻai i nā fētū o lō ua āgiagia ai:",
+        "Le faʻailoga lea o Iesu na maliu ai mo [[Sāmoa]]."
+      ],
+      "english": [
+        "[[Samoa]], arise and raise your flag, your crown!",
+        "[[Samoa]], arise and raise your flag, your crown!",
+        "Look at those stars that are waving on it:",
+        "This is the symbol of Jesus, who died on it for [[Samoa]]."
+      ]
+    },
+    {
+      "local": [
+        "ʻOi, [[Sāmoa]] e, uʻu mau lau pule ia faʻavavau.",
+        "ʻAua e te fefe; o le Atua o lō tā faʻavae, o lō tā saʻolotoga.",
+        "[[Sāmoa]], tulaʻi; ua āgiagia lau fuʻa lou pale lea."
+      ],
+      "english": [
+        "Oh, [[Samoa]], hold fast your power forever.",
+        "Do not be afraid; God is our foundation, our freedom.",
+        "[[Samoa]], arise; your flag is waving, your crown!"
+      ]
+    }
+  ]
+}

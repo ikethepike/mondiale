@@ -1,0 +1,78 @@
+{
+  "isoCode": "SY",
+  "title": "حُمَاةَ الدِّيَارِ",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/%E1%B8%A4um%C4%81t_ad-Diy%C4%81r"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "حُـمَاةَ الـدِّيَارِ عَلَيْكُمْ سَـلَامْ",
+        "أَبَتْ أَنْ تَـذِلَّ النُّفُـوسُ الْكِرَامْ",
+        "عَـرِينُ الْعُرُوبَةِ بَيْتٌ حَـرَامْ",
+        "وَعَرْشُ الشُّمُوسِ حِمَىً لَا يُضَامْ"
+      ],
+      "english": [
+        "Guardians of the homeland, upon you be peace,",
+        "our proud spirits refuse to be humiliated.",
+        "The den of Arabism is a sacred sanctuary,",
+        "and the throne of the suns is a preserve that will not be subjugated."
+      ]
+    },
+    {
+      "local": [
+        "رُبُوعُ الشَّـآمِ بُـرُوجُ الْعَـلَا",
+        "تُحَاكِي السَّـمَاءَ بِعَـالِي السَّـنَا",
+        "فَأَرْضٌ زَهَتْ بِالشُّمُوسِ الْوِضَا",
+        "سَـمَاءٌ لَعَمْـرُكَ أَوْ كَالسَّـمَا"
+      ],
+      "english": [
+        "The quarters of Levant are towers in height,",
+        "which are in dialogue with the zenith of the skies.",
+        "A land resplendent with brilliant suns,",
+        "becoming another sky or almost a sky."
+      ]
+    },
+    {
+      "local": [
+        "رَفِيـفُ الْأَمَانِي وَخَفْـقُ الْفُؤَادْ",
+        "عَـلَىٰ عَـلَمٍ ضَمَّ شَـمْلَ الْبِلَادْ",
+        "أَمَا فِيهِ مِنْ كُـلِّ عَـيْنٍ سَـوَادْ",
+        "وَمِـنْ دَمِ كُـلِّ شَـهِيدٍ مِـدَادْ؟"
+      ],
+      "english": [
+        "The flutter of hopes and the beat of the heart,",
+        "are on a flag that united the entire country.",
+        "Is there not blackness from every eye,",
+        "and ink from every martyr's blood?"
+      ]
+    },
+    {
+      "local": [
+        "نُفُـوسٌ أُبَـاةٌ وَمَـاضٍ مَجِيـدْ",
+        "وَرُوحُ الْأَضَاحِي رَقِيبٌ عَـتِيدْ",
+        "فَمِـنَّا الْوَلِيـدُ وَ مِـنَّا الرَّشِـيدْ",
+        "فَلِـمْ لَا نَسُودُ وَلِمْ لَا نَشِيدْ؟"
+      ],
+      "english": [
+        "Our spirits are defiant and our history is glorious,",
+        "and our martyrs' souls are formidable guardians.",
+        "From us is \"Al-Walid\" and from us is \"ar-Rashid\",",
+        "so why wouldn't we prosper and why wouldn't we build?"
+      ]
+    }
+  ]
+}

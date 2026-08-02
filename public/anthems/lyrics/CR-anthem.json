@@ -1,0 +1,233 @@
+{
+  "isoCode": "CR",
+  "title": "Himno Nacional de Costa Rica",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "José María Zeledón Brenes",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Costa_Rica"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡Ciudadanos! El sol de los libres",
+        "ha subido radiante al cenit!",
+        "Su esplendor nos infunda el aliento",
+        "de vencer por la Patria o morir!"
+      ],
+      "english": [
+        "Citizens, the sun of the free",
+        "has risen radiantly to the zenith:",
+        "its splendour gives us the breath",
+        "to win for the Fatherland or die."
+      ]
+    },
+    {
+      "local": [
+        "[[Costa Rica]] rompió las cadenas",
+        "que la ataban a extraño poder;",
+        "soltó al viento su propria bandera",
+        "y el imperio fundó de la ley."
+      ],
+      "english": [
+        "[[Costa Rica]] broke the chains",
+        "that bound her to foreign power;",
+        "she let loose her own flag to the wind",
+        "and founded the empire of law."
+      ]
+    },
+    {
+      "local": [
+        "Libertad proclamó entusiasmada,",
+        "Libertad en el orden y el bien;",
+        "del progreso ciñó la guirnalda",
+        "¡en su virgen y cándida sien!"
+      ],
+      "english": [
+        "Liberty proclaimed enthusiastically,",
+        "Liberty in order and good;",
+        "she girded the garland of progress",
+        "on her virgin and innocent temple!"
+      ]
+    },
+    {
+      "local": [
+        "La ambición de un oscuro extranjero",
+        "someterla al yugo intentó,",
+        "indignados se alzaron los pueblos,",
+        "y gritaron: «atrás invasor!»"
+      ],
+      "english": [
+        "The ambition of a suspicious foreigner",
+        "tried to submit her to the yoke,",
+        "outraged, the peoples rose up,",
+        "and they cried: \"Back off, invader!\""
+      ]
+    },
+    {
+      "local": [
+        "Y de Walker las huestes rabiosas",
+        "escucharon templando la voz,",
+        "pues sobre ellas, las lides heroicas,",
+        "[[Costa Rica]] clavó su pendón."
+      ],
+      "english": [
+        "And Walker's enraged troops",
+        "listened, tempering their voices,",
+        "for over them, the heroic battles,",
+        "[[Costa Rica]] nailed her banner."
+      ]
+    },
+    {
+      "local": [
+        "Largos años entonces el cielo",
+        "quiso darnos de dicha y de paz",
+        "I (sic) a su sombra benigna, el Progreso",
+        "la riqueza fundó nacional."
+      ],
+      "english": [
+        "For long years thereupon heaven",
+        "wanted to give us happiness and peace",
+        "and in its benign shadow, progress",
+        "founded national wealth."
+      ]
+    },
+    {
+      "local": [
+        "El trabajo constante i (sic) activo",
+        "daba al pueblo, munifico, el pan",
+        "I (sic) era Guardia, el deber circunscrito,",
+        "Del derecho del pueblo, el guardián."
+      ],
+      "english": [
+        "Constant and active work",
+        "gave the people, generous, bread",
+        "and Guardia was, the circumscribed duty,",
+        "Of the right of the people, the guardian."
+      ]
+    },
+    {
+      "local": [
+        "La codicia de hermanos celosos",
+        "agitada en constante inquietud:",
+        "no consciente vivamos nosotros",
+        "en la paz, el progreso i la luz;"
+      ],
+      "english": [
+        "The greed of jealous brothers",
+        "agitated in constant restlessness:",
+        "let us not consciously live",
+        "in peace, progress and light;"
+      ]
+    },
+    {
+      "local": [
+        "I nos retan a lid fraticida",
+        "preparando el traidor arcabuz;",
+        "¡vengan, pues, que jamá la injusticia",
+        "vencerá nuestra noble actitud!"
+      ],
+      "english": [
+        "And they challenge us to a fratricidal fight",
+        "preparing the traitorous arquebus;",
+        "Come, then, so that injustice never",
+        "will overcome our noble attitude!"
+      ]
+    },
+    {
+      "local": [
+        "El cañón que en San Juan i San Jorge",
+        "hizo el polvo otro tiempo morder",
+        "al intruso bandido del Norte,",
+        "su estampido prepara otra vez;"
+      ],
+      "english": [
+        "The cannon that in San Juan and San Jorge",
+        "once made the dust bite",
+        "the intruder bandit from the North,",
+        "its blast prepares again;"
+      ]
+    },
+    {
+      "local": [
+        "Si el clarín sanguinario resuena,",
+        "[[Costa Rica]], con noble altivez,",
+        "´guerra, guerra´ dirán sus cornetas,",
+        "«¡Ciudadanos, morir o vencer!»"
+      ],
+      "english": [
+        "If the bloodthirsty clarion resounds,",
+        "[[Costa Rica]], with noble pride,",
+        "'War, war' will say its horns,",
+        "\"Citizens, death or victory!\""
+      ]
+    },
+    {
+      "local": [
+        "I del mar i del prado i del bosque,",
+        "Del desierto i poblado la voz",
+        "La ha escuchado el lejano horizonte",
+        "Repitiendo: «¡Jamás! ¡Invasor!»"
+      ],
+      "english": [
+        "And from the sea and the meadow and the forest,",
+        "From the desert and settlement, the voice",
+        "Has been heard by the distant horizon",
+        "Repeating: \"Never! Invader!\""
+      ]
+    },
+    {
+      "local": [
+        "»Nuestro suelo no huella la planta",
+        "de una alianza cobarde feroz,",
+        "Mientras brille la chispa sagrada,",
+        "en el pueblo, de bélico ardor»"
+      ],
+      "english": [
+        "\"Our soil does not mark the plant",
+        "of a fierce cowardly alliance,",
+        "As long as the holy spark shines,",
+        "in the people, of warlike ardour\""
+      ]
+    },
+    {
+      "local": [
+        "Mientras Guardia, el soldado aguerrido,",
+        "Trace al pueblo del pueblo el deber,",
+        "aunque se halle la patria en peligro,",
+        "Guardar puede su honor i su fe;"
+      ],
+      "english": [
+        "As long as Guardia, the hardened soldier,",
+        "Outlines the duty of the people to the people,",
+        "even if the fatherland finds itself in danger,",
+        "It can keep its honour and his faith;"
+      ]
+    },
+    {
+      "local": [
+        "¡Salve oh Guardia, valiente i patriota!",
+        "¡Salve, oh Guardia, de heroica altivez!",
+        "Salve, oh Guardia, su honor i sus glorias",
+        "son de un pueblo de libres, sostén."
+      ],
+      "english": [
+        "Hail oh Guardia, brave and patriotic!",
+        "Hail, oh Guardia, of heroic pride!",
+        "Hail, oh Guardia, your honour and your glories",
+        "Are the sustenance of a free people."
+      ]
+    }
+  ]
+}

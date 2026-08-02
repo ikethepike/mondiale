@@ -1,0 +1,93 @@
+{
+  "isoCode": "PL",
+  "title": "Mazurek Dąbrowskiego",
+  "language": {
+    "code": "pl",
+    "name": "Polish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Józef Wybicki",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Poland_Is_Not_Yet_Lost"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Jeszcze [[Polska]] nie zginęła,",
+        "Kiedy my żyjemy.",
+        "Co nam obca przemoc wzięła,",
+        "Szablą odbierzemy."
+      ],
+      "english": [
+        "[[Poland]] has not yet succumbed.",
+        "As long as we remain,",
+        "What the foe by force has seized,",
+        "Sword in hand we'll gain."
+      ]
+    },
+    {
+      "local": [
+        "Marsz, marsz, Dąbrowski,",
+        "Z ziemi włoskiej do [[Polski]].",
+        "Za twoim przewodem",
+        "Złączym się z narodem."
+      ],
+      "english": [
+        "March! March, Dabrowski!",
+        "March from Italy to [[Poland]]!",
+        "Under your command",
+        "We shall reach our land."
+      ]
+    },
+    {
+      "local": [
+        "Przejdziem Wisłę, przejdziem Wartę,",
+        "Będziem [[Polakami]].",
+        "Dał nam przykład Bonaparte,",
+        "Jak zwyciężać mamy."
+      ],
+      "english": [
+        "Cross the Vistula and Warta",
+        "And Poles we shall be;",
+        "We've been shown by Bonaparte",
+        "Ways to victory."
+      ]
+    },
+    {
+      "local": [
+        "Jak Czarniecki do Poznania",
+        "Po szwedzkim zaborze,",
+        "Dla ojczyzny ratowania",
+        "Wrócim się przez morze."
+      ],
+      "english": [
+        "As Czarniecki Poznan town regains,",
+        "Fighting with the Swede,",
+        "To free our fatherland from chains.",
+        "We shall return by sea."
+      ]
+    },
+    {
+      "local": [
+        "Już tam ojciec do swej Basi",
+        "Mówi zapłakany –",
+        "Słuchaj jeno, pono nasi",
+        "Biją w tarabany."
+      ],
+      "english": [
+        "And the father to Basia,",
+        "Then says and crying:",
+        "\"Listen to that, it's our boys",
+        "playing the drums!\""
+      ]
+    }
+  ]
+}

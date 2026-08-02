@@ -83,6 +83,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
   silhouette: 'flags',
   'heritage-hunt': 'culture',
   'mother-tongue': 'culture',
+  // The audio pair: an anthem, and a language spoken aloud.
+  'anthem-buzz': 'culture',
+  'tongue-buzz': 'culture',
   // Countries, capitals, rivers and megacities in one board — places at large.
   'unique-or-bust': 'culture',
   'capital-guess': 'culture',

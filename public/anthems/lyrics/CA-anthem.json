@@ -1,0 +1,61 @@
+{
+  "isoCode": "CA",
+  "title": "O Canada",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Adolphe-Basile Routhier (Fr.); Robert Stanley Weir (Eng.)",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/O_Canada"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "French lyrics",
+        "Ô [[Canada]]!",
+        "Terre de nos aïeux,",
+        "Ton front est ceint de fleurons glorieux!"
+      ],
+      "english": [
+        "English lyrics",
+        "O [[Canada]]!",
+        "Our home and native land!",
+        "True patriot love in all of us command."
+      ]
+    },
+    {
+      "local": [
+        "Car ton bras sait porter l'épée,",
+        "Il sait porter la croix!",
+        "Ton histoire est une épopée",
+        "Des plus brillants exploits."
+      ],
+      "english": [
+        "With glowing hearts we see thee rise,",
+        "The True North strong and free!",
+        "From far and wide,",
+        "O [[Canada]], we stand on guard for thee."
+      ]
+    },
+    {
+      "local": [
+        "Et ta valeur, de foi trempée,",
+        "Protégera nos foyers et nos droits."
+      ],
+      "english": [
+        "God keep our land glorious and free!",
+        "O [[Canada]], we stand on guard for thee."
+      ]
+    }
+  ]
+}

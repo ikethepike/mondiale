@@ -1,0 +1,76 @@
+{
+  "isoCode": "ER",
+  "title": "ኤርትራ ኤርትራ ኤርትራ",
+  "language": {
+    "code": "ti",
+    "name": "Tigrinya",
+    "script": "Ethiopic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Eritrea,_Eritrea,_Eritrea"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[ኤርትራ]] [[ኤርትራ]] [[ኤርትራ]]፡",
+        "በዓል ደማ እናልቀሰ ተደምሲሱ፡",
+        "መስዋእታ ብሓርነት ተደቢሱ።",
+        "መዋእል ነኺሳ ኣብ ዕላማ፡"
+      ],
+      "english": [
+        "[[Eritrea]], [[Eritrea]], [[Eritrea]],",
+        "Her Nemesis destroyed while wailing,",
+        "her sacrifices vindicated by freedom.",
+        "Forever firm in her principles,"
+      ]
+    },
+    {
+      "local": [
+        "ትእምርቲ ጽንዓት ኰይኑ ስማ፡",
+        "[[ኤርትራ]]'ዛ ሓበን ውጹዓት፡",
+        "ኣመስኪራ ሓቂ ክምትዕወት።",
+        "[[ኤርትራ]] [[ኤርትራ]]፡"
+      ],
+      "english": [
+        "her name became a synonym of tenacity,",
+        "[[Eritrea]], the pride of the oppressed,",
+        "is a testament that truth prevails.",
+        "[[Eritrea]], [[Eritrea]],"
+      ]
+    },
+    {
+      "local": [
+        "ኣብ ዓለም ጨቢጣቶ ግቡእ ክብራ።",
+        "ናጽነት ዘምጽኣ ልዑል ኒሕ፡",
+        "ንህንጻ ንልምዓት ክሰርሕ፡",
+        "ስልጣነ ከነልብሳ ግርማ፡"
+      ],
+      "english": [
+        "has taken her rightful place in the world.",
+        "The supreme dedication that brought us freedom,",
+        "will serve to rebuild her and develop her,",
+        "We shall honor her with progress,"
+      ]
+    },
+    {
+      "local": [
+        "ሕድሪ'ለና ግምጃ ክንስልማ።",
+        "[[ኤርትራ]] [[ኤርትራ]]፡",
+        "ኣብ ዓለም ጨቢጣቶ ግቡእ ክብራ።"
+      ],
+      "english": [
+        "It is our legacy to crown her.",
+        "[[Eritrea]], [[Eritrea]],",
+        "has taken her rightful place in the world."
+      ]
+    }
+  ]
+}

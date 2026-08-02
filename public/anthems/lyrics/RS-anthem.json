@@ -1,0 +1,135 @@
+{
+  "isoCode": "RS",
+  "title": "Bože pravde",
+  "language": {
+    "code": "sr",
+    "name": "Serbian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "author": "Jovan Đorđević",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Bože_pravde"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Боже правде, ти што спасе",
+        "од пропасти досад нас,",
+        "чуј и одсад наше гласе",
+        "и од сад нам буди спас."
+      ],
+      "english": [
+        "God of Justice; Thou who saved us",
+        "when in deepest bondage cast,",
+        "Hear Thy [[Serbian]] children's voices,",
+        "Be our help as in the past."
+      ]
+    },
+    {
+      "local": [
+        "Моћном руком води, брани",
+        "будућности српске брод,",
+        "Боже спаси, Боже xрани,",
+        "српске земље, српски род!"
+      ],
+      "english": [
+        "With Thy mighty hand sustain us,",
+        "Still our rugged pathway trace;",
+        "God, our hope; protect and cherish,",
+        "[[Serbian]] lands and [[Serbian]] race!"
+      ]
+    },
+    {
+      "local": [
+        "Сложи српску браћу драгу",
+        "на свак дичан славан рад,",
+        "слога биће пораз врагу",
+        "а најјачи српству град."
+      ],
+      "english": [
+        "Bind in closest links our kindred",
+        "Teach the love that will not fail,",
+        "May the loathed fiend of discord",
+        "Never in our ranks prevail."
+      ]
+    },
+    {
+      "local": [
+        "Нек на српској блиста грани",
+        "братске слоге златан плод,",
+        "Боже спаси, Боже xрани",
+        "српске земље, српски род!"
+      ],
+      "english": [
+        "Let the golden fruits of union",
+        "Our young tree of freedom grace;",
+        "God, our Master! Guide and prosper,",
+        "[[Serbian]] lands and [[Serbian]] race!"
+      ]
+    },
+    {
+      "local": [
+        "Нек на српско ведро чело",
+        "твог не падне гнева гром",
+        "Благослови Србу село",
+        "поље, њиву, град и дом!"
+      ],
+      "english": [
+        "Lord! Avert from us Thy vengeance,",
+        "Thunder of Thy dreaded ire;",
+        "Bless each [[Serbian]] town and hamlet,",
+        "Mountain, meadow, hearth and spire!"
+      ]
+    },
+    {
+      "local": [
+        "Кад наступе борбе дани",
+        "к победи му води ход",
+        "Боже спаси, Боже xрани",
+        "српске земље, српски род!"
+      ],
+      "english": [
+        "When our host goes forth to battle",
+        "Death or victory to embrace-",
+        "God of armies! Be our leader,",
+        "Strengthen then the [[Serbian]] race!"
+      ]
+    },
+    {
+      "local": [
+        "Из мрачнога сину гроба",
+        "српске славе нови сјај",
+        "настало је ново доба",
+        "Нову срећу, Боже дај!"
+      ],
+      "english": [
+        "On our sepulcher of ages",
+        "Breaks the resurrection morn,",
+        "From the slough of direst slavery",
+        "[[Serbia]] anew is born."
+      ]
+    },
+    {
+      "local": [
+        "Отаџбину српску брани",
+        "петвековне борбе плод",
+        "Боже спаси, Боже брани",
+        "моли ти се српски род!"
+      ],
+      "english": [
+        "Through five hundred years of durance",
+        "We have knelt before Thy face,",
+        "All our kin, O God! Deliver,",
+        "Thus entreats the [[Serbian]] race!"
+      ]
+    }
+  ]
+}

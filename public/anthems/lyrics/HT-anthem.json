@@ -1,0 +1,163 @@
+{
+  "isoCode": "HT",
+  "title": "La Dessalinienne",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Justin Lhérisson",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/La_Dessalinienne"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Pour le Pays, pour les Ancêtres,",
+        "Marchons unis, marchons unis.",
+        "Dans nos rangs point de traîtres !",
+        "Du sol soyons seuls maîtres."
+      ],
+      "english": [
+        "For the Country, for the Ancestors,",
+        "Let us march united, let us march united.",
+        "Let there be no traitors in our ranks!",
+        "Let us be the only masters of our soil."
+      ]
+    },
+    {
+      "local": [
+        "Marchons unis, marchons unis",
+        "Pour le Pays, pour les Ancêtres,",
+        "Marchons, marchons, marchons unis,",
+        "Pour le Pays, pour les Ancêtres…"
+      ],
+      "english": [
+        "Let us march united, let us march united",
+        "For the Country, for the Ancestors,",
+        "Let us march, let us march, let us march united,",
+        "For the Country, for the Ancestors…"
+      ]
+    },
+    {
+      "local": [
+        "Pour les Aïeux, pour la Patrie",
+        "Bêchons joyeux, bêchons joyeux",
+        "Quand le champ fructifie",
+        "L'âme se fortifie"
+      ],
+      "english": [
+        "For the Forefathers, for the Fatherland",
+        "Let us toil joyous, let us toil joyous.",
+        "When the field fructifieth",
+        "The soul fortifieth"
+      ]
+    },
+    {
+      "local": [
+        "Bêchons joyeux, bêchons joyeux",
+        "Pour les Aïeux, pour la Patrie",
+        "Bêchons, bêchons, bêchons joyeux",
+        "Pour les Aïeux, pour la Patrie."
+      ],
+      "english": [
+        "Let us toil joyous, let us toil joyous",
+        "For the Forefathers, for the Fatherland",
+        "Let us toil, let us toil, let us toil joyous",
+        "For the Forefathers, for the Fatherland."
+      ]
+    },
+    {
+      "local": [
+        "Pour le Pays et pour nos Pères",
+        "Formons des Fils, formons des Fils",
+        "Libres, forts et prospères",
+        "Toujours nous serons frères"
+      ],
+      "english": [
+        "For the Country and for our Fathers",
+        "Let us train Sons, let us train Sons",
+        "Free, strong and prosperous",
+        "We shall always be brothers"
+      ]
+    },
+    {
+      "local": [
+        "Formons des Fils, formons des Fils",
+        "Pour le Pays et pour nos Pères",
+        "Formons, formons, formons des Fils",
+        "Pour le Pays et pour nos Pères."
+      ],
+      "english": [
+        "Let us train Sons, Let us train Sons",
+        "For the Country and for our Fathers",
+        "Let us train, let us train, let us train Sons",
+        "For the Country and for our Fathers."
+      ]
+    },
+    {
+      "local": [
+        "Pour les Aïeux, pour la Patrie",
+        "O Dieu des Preux, O Dieu des Preux !",
+        "Sous ta garde infinie",
+        "Prends nos droits, notre vie"
+      ],
+      "english": [
+        "For the Forefathers, for the Fatherland",
+        "O Lord of the Valiant, O Lord of the Valiant!",
+        "Under Thine infinite protection",
+        "Take our rights, our life"
+      ]
+    },
+    {
+      "local": [
+        "O Dieu des Preux, O Dieu des Preux !",
+        "Pour les Aïeux, pour la Patrie",
+        "O Dieu, O Dieu, O Dieu des Preux",
+        "Pour les Aïeux, pour la Patrie."
+      ],
+      "english": [
+        "O Lord of the Valiant, O Lord of the Valiant!",
+        "For the Forefathers, for the Fatherland",
+        "O Lord, O Lord, O Lord of the Valiant",
+        "For the Forefathers, for the Fatherland."
+      ]
+    },
+    {
+      "local": [
+        "Pour le Drapeau, pour la Patrie",
+        "Mourir est beau, mourir est beau !",
+        "Notre passé nous crie :",
+        "Ayez l'âme aguerrie!"
+      ],
+      "english": [
+        "For the Flag, for the Fatherland",
+        "To die is beautiful, to die is beautiful!",
+        "Our past crieth out to us:",
+        "Have a hardened soul!"
+      ]
+    },
+    {
+      "local": [
+        "Mourir est beau, mourir est beau",
+        "Pour le Drapeau, pour la Patrie",
+        "Mourir, mourir, mourir est beau",
+        "Pour le Drapeau, pour la Patrie."
+      ],
+      "english": [
+        "To die is beautiful, to die is beautiful",
+        "For the Flag, for the Fatherland",
+        "To die, to die, to die is beautiful",
+        "For the Flag, for the Fatherland."
+      ]
+    }
+  ]
+}

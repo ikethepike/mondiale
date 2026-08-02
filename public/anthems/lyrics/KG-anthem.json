@@ -1,0 +1,64 @@
+{
+  "isoCode": "KG",
+  "title": "Кыргыз Республикасынын Мамлекеттик гимни",
+  "language": {
+    "code": "ky",
+    "name": "Kyrgyz",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/State_Anthem_of_the_Kyrgyz_Republic"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ак мөңгүлүү аска, зоолор, талаалар,",
+        "Элибиздин жаны менен барабар.",
+        "Сансыз кылым Ала-Тоосун мекендеп,",
+        "Сактап келди биздин ата-бабалар."
+      ],
+      "english": [
+        "Land of snow-capped mountains, steppes and valleys,",
+        "Which are equal to the souls of our folks.",
+        "For countless generations our forefathers",
+        "Have lived in and protected the Ala-Too."
+      ]
+    },
+    {
+      "local": [
+        "Алгалай бер, [[кыргыз]] эл,",
+        "Азаттыктын жолунда.",
+        "Өркүндөй бер, өсө бер,",
+        "Өз тагдырың колуңда."
+      ],
+      "english": [
+        "March on, O [[Kyrgyz]] folk,",
+        "Onward to democracy!",
+        "Progress and prosperity …",
+        "In your hands lies your destiny!"
+      ]
+    },
+    {
+      "local": [
+        "Аткарылып элдин үмүт тилеги,",
+        "Желбиреди эркиндиктин желеги.",
+        "Бизге жеткен ата салтын, мурасын,",
+        "Ыйык сактап урпактарга берели."
+      ],
+      "english": [
+        "Our hopes and aspirations have been fulfilled,",
+        "And the flag of freedom is soaring over us.",
+        "Let us preserve our heritage and traditions,",
+        "And pass them on to our descendants."
+      ]
+    }
+  ]
+}

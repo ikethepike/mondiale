@@ -1,0 +1,101 @@
+{
+  "isoCode": "AZ",
+  "title": "Azərbaycan marşı",
+  "language": {
+    "code": "az",
+    "name": "Azerbaijani",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "author": "Ahmad Javad",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/State_Anthem_of_the_Republic_of_Azerbaijan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "آذربایجان! آذربایجان!",
+        "إی قهرمان أْؤولادؽن شانلؽ وطنی!",
+        "سندن أْؤترۆ جان ورمه‌يه جۆمله حاضؽرؽز!",
+        "سندن أْؤترۆ قان تؤكمه‌يه جۆمله قادیریز!"
+      ],
+      "english": [
+        "[[Azerbaijan]]! [[Azerbaijan]]!",
+        "O triumphant homeland of children of heroes!",
+        "We are all ready to bestow our lives on you!",
+        "We are fain to shed our very own blood for you!"
+      ]
+    },
+    {
+      "local": [
+        "اُٚۆچرنگلی بايراغؽنلا مسعۇد یاشا!",
+        "اُٚۆچرنگلی بايراغؽنلا مسعۇد یاشا!",
+        "مینلرله جان قوُربان اوْلدۇ،",
+        "سینن حربه مئیدان اوْلدۇ!"
+      ],
+      "english": [
+        "May you live in bliss with your three-coloured flag!",
+        "May you live in bliss with your three-coloured flag!",
+        "Thousands of lives were sacrificed,",
+        "Your soul a battlefield became,"
+      ]
+    },
+    {
+      "local": [
+        "حقۇقۇندان کئچن عسگر،",
+        "هره بير قهرمان اوْلدۇ!",
+        "سن اْوْلاسان گۆلۆستان،",
+        "سنه هر آن جان قۇربان!"
+      ],
+      "english": [
+        "Of every soldier devoted,",
+        "Each one of them heroes became!",
+        "Blossom like a rose garden,",
+        "My life ever sworn to you,"
+      ]
+    },
+    {
+      "local": [
+        "سنه مین بیر محبت",
+        "سينمده تۇتمۇش مکان!",
+        "نامۇسۇنۇ حیفظ ائتمه‌يه،",
+        "بایراغؽنؽ یۆکسلتمه‌یه"
+      ],
+      "english": [
+        "A thousand one loves for you,",
+        "Rooted deeply in my heart!",
+        "To stand on guard for your honour,",
+        "Bearing aloft your sacred flag;"
+      ]
+    },
+    {
+      "local": [
+        "نامۇسۇنۇ حیفظ ائتمه‌یه،",
+        "جۆمله گنجلر مۆشتاقدؽر!",
+        "شانلؽ وطن! شانلؽ وطن!",
+        "آذربایجان! آذربایجان!"
+      ],
+      "english": [
+        "To stand on guard for your honour,",
+        "Eager be every youthful heir!",
+        "Glorious homeland! Glorious homeland!",
+        "[[Azerbaijan]]! [[Azerbaijan]]!"
+      ]
+    },
+    {
+      "local": [
+        "آذربایجان! آذربایجان!"
+      ],
+      "english": [
+        "[[Azerbaijan]]! [[Azerbaijan]]!"
+      ]
+    }
+  ]
+}

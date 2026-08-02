@@ -11,7 +11,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
  *  ranking `GroupChallenge` has none, so `Extract` drops it automatically. */
-type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
+export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
 
 /** Our own chips are capped separately from the store's incoming cap. */
 const MAX_OWN_ENTRIES = 6
@@ -59,6 +59,14 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
 
+  // Until the round starts, the clock is FULL, not expired. The challenge
+  // usually arrives after this composable mounts, so without this sync the
+  // idle stage read secondsLeft 0 → elapsedFraction 1 — and anything staged
+  // off elapsed time (the audio field's colour drift) fired before play.
+  watch(duration, value => {
+    if (!started.value) secondsLeft.value = value ?? 0
+  })
+
   /** Clock left as a 0..1 fraction — what buzz scoring and staged reveals key
    *  off. The one place the division lives; views must not re-derive it. */
   const remainingFraction = computed(() =>
@@ -68,10 +76,10 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
   /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op. */
-  const submitOnce = (ranking: ISOCountryCode[], clientScore?: number) => {
+  const submitOnce = (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
     if (submitted.value) return
     submitted.value = true
-    update({ event: 'submit-group-challenge-answers', ranking, clientScore })
+    update({ event: 'submit-group-challenge-answers', ranking, clientScore, buzzAt })
   }
 
   /**

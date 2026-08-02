@@ -1551,6 +1551,17 @@ watch(
   overscroll-behavior: none;
 }
 
+// Receded: the world is still there, just faint and set back, so a full-screen
+// overlay can own the eye. The slight scale-down does the depth work that
+// opacity alone cannot — it reads as distance rather than as a dimmer switch.
+// Slow both ways, so the reveal is the map coming into focus, not snapping on.
+.game-map svg {
+  transform-origin: center;
+  transition:
+    opacity var(--motion-slow) var(--ease-smooth),
+    transform var(--motion-slow) var(--ease-smooth);
+}
+
 // Edgeless: the svg fills the viewport and the viewBox is kept at the
 // SCREEN's aspect ratio (see measureViewAspect), so the rendered map always
 // reaches every window edge — content ends in coastlines, never a clip line.

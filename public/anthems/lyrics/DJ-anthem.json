@@ -1,0 +1,50 @@
+{
+  "isoCode": "DJ",
+  "title": "Jabuuti",
+  "language": {
+    "code": "so",
+    "name": "Somali",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Djibouti_(anthem)"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Hinjinne u sara kaca",
+        "Calankaan harraad iyo",
+        "Haydaar u mudateen!",
+        "Hir cagaarku qariyayiyo"
+      ],
+      "english": [
+        "Arise with strength! For we have raised our flag,",
+        "The flag which has cost us dear",
+        "With extremes of thirst and pain.",
+        "Our flag, whose colours are the everlasting green of the earth,"
+      ]
+    },
+    {
+      "local": [
+        "Habkay samadu tahayoo",
+        "Xiddig dhi igleh hoorshoo",
+        "Caddaan lagu hadheeyaay.",
+        "Maxaa haybad kugu yaal."
+      ],
+      "english": [
+        "The blue of the sky, and white, the colour of peace;",
+        "And in the centre the red star of blood.",
+        "Oh flag of ours, what a glorious sight!",
+        "Oh flag of ours, what a glorious sight!"
+      ]
+    }
+  ]
+}

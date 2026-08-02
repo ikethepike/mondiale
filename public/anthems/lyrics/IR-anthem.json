@@ -1,0 +1,48 @@
+{
+  "isoCode": "IR",
+  "title": "سرود ملی جمهوری اسلامی ایران",
+  "language": {
+    "code": "fa",
+    "name": "Persian",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Iran"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "سر زد از افق مهر خاوران",
+        "فروغ دیده‌ی حق‌باوران",
+        "بهمن فر ایمان ماست",
+        "پیامت ای امام «استقلال، آزادی» نقش جان ماست"
+      ],
+      "english": [
+        "Upwards on the horizon rose the Eastern Sun",
+        "The light in the eyes of the Believers in Justice",
+        "Bahman is the zenith of our faith.",
+        "Your message, O Imam, of Sovereignty and Freedom is imprinted on our souls"
+      ]
+    },
+    {
+      "local": [
+        "شهیدان پیچیده در گوش زمان فریادتان",
+        "پاینده مانی و جاودان",
+        "جمهوری اسلامی [[ایران]]"
+      ],
+      "english": [
+        "O Martyrs! Your shouts echo in the ears of time:",
+        "Be enduring, continuing, and eternal,",
+        "The Islamic Republic of [[Iran]]."
+      ]
+    }
+  ]
+}

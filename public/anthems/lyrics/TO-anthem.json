@@ -1,0 +1,50 @@
+{
+  "isoCode": "TO",
+  "title": "Ko e fasi ʻo e tuʻi ʻo e ʻOtu Tonga",
+  "language": {
+    "code": "to",
+    "name": "Tongan",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Ko_e_fasi_%CA%BBo_e_tu%CA%BBi_%CA%BBo_e_%CA%BBOtu_Tonga"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "ʻE ʻOtua māfimafi",
+        "Ko homau ʻeiki koe",
+        "Ko koe ko e falalaʻanga",
+        "Mo e ʻofa ki [[Tonga]];"
+      ],
+      "english": [
+        "Oh almighty God above",
+        "Thou art our lord and sure defence",
+        "As your people, we trust thee",
+        "And our [[Tonga]] thou dost love"
+      ]
+    },
+    {
+      "local": [
+        "ʻAfio hifo ʻemau lotu",
+        "ʻAia ʻoku mau faí ni",
+        "Mo ke tali homau loto",
+        "ʻO maluʻi ʻa Tupou."
+      ],
+      "english": [
+        "Hear our prayer for thou unseen",
+        "We know that thou hast blessed our land",
+        "Grant our earnest supplication",
+        "Guard and save Tupou, our king (queen)."
+      ]
+    }
+  ]
+}

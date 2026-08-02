@@ -1,0 +1,60 @@
+{
+  "isoCode": "GE",
+  "title": "თავისუფლება",
+  "language": {
+    "code": "ka",
+    "name": "Georgian",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Tavisupleba"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "ჩემი ხატია სამშობლო,",
+        "სახატე მთელი ქვეყანა,",
+        "განათებული მთა-ბარი,",
+        "წილნაყარია ღმერთთანა."
+      ],
+      "english": [
+        "My icon is the homeland",
+        "It draws the entire country,",
+        "It lights up the plains and mountains,",
+        "It is shared with God."
+      ]
+    },
+    {
+      "local": [
+        "თავისუფლება დღეს ჩვენი",
+        "მომავალს უმღერს დიდებას,",
+        "ცისკრის ვარსკვლავი ამოდის",
+        "ამოდის და ორ ზღვას შუა ბრწყინდება,"
+      ],
+      "english": [
+        "Freedom is ours today.",
+        "Sing glory to the future,",
+        "The morning star rises.",
+        "It rises and shines between two seas."
+      ]
+    },
+    {
+      "local": [
+        "და დიდება თავისუფლებას,",
+        "თავისუფლებას დიდება!"
+      ],
+      "english": [
+        "And glory to freedom,",
+        "Glory to freedom!"
+      ]
+    }
+  ]
+}

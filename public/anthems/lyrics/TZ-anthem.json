@@ -1,0 +1,78 @@
+{
+  "isoCode": "TZ",
+  "title": "Mungu ibariki Afrika",
+  "language": {
+    "code": "sw",
+    "name": "Swahili",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Mungu_ibariki_Afrika"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Mungu ibariki Afrika",
+        "Wabariki Viongozi wake",
+        "Hekima Umoja na Amani",
+        "Hizi ni ngao zetu"
+      ],
+      "english": [
+        "God bless Africa",
+        "Bless its leaders",
+        "Wisdom, unity and peace",
+        "These are our shields"
+      ]
+    },
+    {
+      "local": [
+        "Afrika na watu wake.",
+        "Kiitikio ya kwanza:",
+        "Ibariki Afrika, Ibariki Afrika",
+        "Tubariki watoto wa Afrika."
+      ],
+      "english": [
+        "Africa and its people",
+        "Chorus I:",
+        "Bless Africa, Bless Africa",
+        "Bless us, the children of Africa"
+      ]
+    },
+    {
+      "local": [
+        "Mungu ibariki [[Tanzania]]",
+        "Dumisha uhuru na Umoja",
+        "Wake kwa Waume na Watoto",
+        "Mungu Ibariki"
+      ],
+      "english": [
+        "God bless [[Tanzania]]",
+        "Grant eternal freedom and unity",
+        "To its women, men and children",
+        "God bless"
+      ]
+    },
+    {
+      "local": [
+        "[[Tanzania]] na watu wake.",
+        "Kiitikio ya pili:",
+        "Ibariki [[Tanzania]], Ibariki [[Tanzania]]",
+        "Tubariki watoto wa [[Tanzania]]."
+      ],
+      "english": [
+        "[[Tanzania]] and its people",
+        "Chorus II:",
+        "Bless [[Tanzania]], Bless [[Tanzania]]",
+        "Bless us, the children of [[Tanzania]]"
+      ]
+    }
+  ]
+}

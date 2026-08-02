@@ -1,0 +1,78 @@
+{
+  "isoCode": "AO",
+  "title": "Angola Avante",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Angola_Avante"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Ó Pátria, nunca mais esqueceremos",
+        "Os heróis do quatro de Fevereiro.",
+        "Ó Pátria, nós saudamos os teus filhos",
+        "Tombados pela nossa Independência."
+      ],
+      "english": [
+        "Oh Fatherland, we shall never forget",
+        "The heroes of the Fourth of February.",
+        "Oh Fatherland, we salute your children",
+        "Who died for our Independence."
+      ]
+    },
+    {
+      "local": [
+        "Honramos o passado e a nossa História,",
+        "Construindo no Trabalho o Homem novo.",
+        "[[Angola]], avante!",
+        "Revolução, pelo Poder Popular!"
+      ],
+      "english": [
+        "We honour the past and our History,",
+        "As by our work we build the New Man.",
+        "Forward, [[Angola]]!",
+        "Revolution through the power of the People:"
+      ]
+    },
+    {
+      "local": [
+        "Pátria Unida, Liberdade,",
+        "Um só povo, uma só Nação!",
+        "Levantemos nossas vozes libertadas,",
+        "Para glória dos povos Africanos,"
+      ],
+      "english": [
+        "A United Country, Freedom,",
+        "One People, one Nation!",
+        "Let us raise our liberated voices",
+        "For the glory of the peoples of Africa."
+      ]
+    },
+    {
+      "local": [
+        "Marchemos combatentes [[Angolanos]],",
+        "Solidários com os povos oprimidos,",
+        "Orgulhosos lutaremos pela Paz,",
+        "Com as forças progressistas do mundo."
+      ],
+      "english": [
+        "We shall march, [[Angolan]] fighters,",
+        "In solidarity with oppressed peoples.",
+        "We shall fight proudly for Peace",
+        "Along with the progressive forces of the world."
+      ]
+    }
+  ]
+}

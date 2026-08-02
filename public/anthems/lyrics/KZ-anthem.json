@@ -1,0 +1,92 @@
+{
+  "isoCode": "KZ",
+  "title": "Менің Қазақстаным",
+  "language": {
+    "code": "kk",
+    "name": "Kazakh",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Men%C4%B1%C3%B1_Qazaqstanym"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Алтын күн аспаны,",
+        "Алтын дән даласы,",
+        "Ерліктің дастаны —",
+        "Еліме қарашы!"
+      ],
+      "english": [
+        "Sky of golden sun,",
+        "Steppe of golden seed,",
+        "Legend of courage —",
+        "Take a look at my country!"
+      ]
+    },
+    {
+      "local": [
+        "Ежелден ер деген,",
+        "Даңқымыз шықты ғой,",
+        "Намысын бермеген,",
+        "Қазағым мықты ғой!"
+      ],
+      "english": [
+        "From the antiquity",
+        "Our heroic glory emerged,",
+        "They did not give up their pride",
+        "My [[Kazakh]] people are strong!"
+      ]
+    },
+    {
+      "local": [
+        "Менің елім, менің елім,",
+        "Гүлің болып егілемін,",
+        "Жырың болып төгілемін, елім!",
+        "Туған жерім менің — [[Қазақстаным]]!"
+      ],
+      "english": [
+        "My country, my country,",
+        "As your flower I will be planted,",
+        "As your song I will stream, my country!",
+        "My native land — My [[Kazakhstan]]!"
+      ]
+    },
+    {
+      "local": [
+        "Ұрпаққа жол ашқан,",
+        "Кең байтақ жерім бар.",
+        "Бірлігі жарасқан,",
+        "Тәуелсіз елім бар."
+      ],
+      "english": [
+        "The way was opened to the descendants",
+        "By the vast land I have.",
+        "Its unity is proper,",
+        "I have an independent country."
+      ]
+    },
+    {
+      "local": [
+        "Қарсы алған уақытты,",
+        "Мәңгілік досындай.",
+        "Біздің ел бақытты,",
+        "Біздің ел осындай!"
+      ],
+      "english": [
+        "It welcomed the tests of time",
+        "Like an eternal friend,",
+        "Our country is blessed,",
+        "Our country is such!"
+      ]
+    }
+  ]
+}

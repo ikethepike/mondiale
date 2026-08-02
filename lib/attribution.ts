@@ -33,6 +33,7 @@ export type ProviderId =
   | 'cshapes'
   | 'flag-icons'
   | 'countries-list'
+  | 'mozilla'
   | 'mondiale'
 
 export interface Provider {
@@ -139,6 +140,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://github.com/annexare/Countries',
     description: 'Currency codes and spoken languages per country.',
   },
+  mozilla: {
+    name: 'Mozilla Common Voice',
+    url: 'https://commonvoice.mozilla.org',
+    description:
+      'Crowd-sourced speech recordings in over a hundred languages, donated and validated by volunteers and released into the public domain.',
+  },
   mondiale: {
     name: 'Mondiale',
     url: 'https://github.com/ikethepike/mondiale',
@@ -165,6 +172,7 @@ export type SourceId =
   | 'cshapes-2'
   | 'flag-icons-svg'
   | 'countries-list-package'
+  | 'common-voice-clips'
   | 'mondiale-editorial'
 
 export interface Source {
@@ -299,6 +307,16 @@ export const SOURCES: Record<SourceId, Source> = {
     url: 'https://github.com/annexare/Countries',
     edition: 'v3.3.0',
     license: 'MIT',
+  },
+  'common-voice-clips': {
+    provider: 'mozilla',
+    title: 'Common Voice speech corpus',
+    url: 'https://commonvoice.mozilla.org/datasets',
+    // Read through Hugging Face's ungated Common Voice 17 mirror, which serves
+    // individual clips — Mozilla's own endpoint is account-gated and ships
+    // whole-language archives. Same corpus, same CC0 terms.
+    edition: 'v17.0',
+    license: 'CC0 1.0',
   },
   'mondiale-editorial': {
     provider: 'mondiale',
@@ -530,6 +548,9 @@ export type DataSetId =
   | 'straits'
   | 'cities'
   | 'capitals'
+  | 'anthems'
+  | 'anthem-lyrics'
+  | 'tongues'
   | 'currencies'
   | 'leaders'
   | 'landmarks'
@@ -619,6 +640,26 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'wikidata-items', dataset: 'P36 capital' },
       { source: 'commons-media', dataset: 'P18 images' },
     ],
+  },
+  anthems: {
+    label: 'National anthem recordings',
+    files: ['data/anthems.gen.ts'],
+    origins: [
+      { source: 'wikidata-items', dataset: 'P85 anthem, P51 audio' },
+      { source: 'commons-media', dataset: 'Anthem recordings' },
+    ],
+  },
+  'anthem-lyrics': {
+    label: 'National anthem lyrics',
+    // The index is generated; the verse files it indexes are curated by hand
+    // under public/anthems/lyrics/. Both columns come from the same articles.
+    files: ['data/anthem-lyrics.gen.ts'],
+    origins: [{ source: 'wikipedia-articles', dataset: 'National anthem articles' }],
+  },
+  tongues: {
+    label: 'Spoken-language recordings',
+    files: ['data/tongues.gen.ts'],
+    origins: [{ source: 'common-voice-clips', dataset: 'Validated clips by locale' }],
   },
   currencies: {
     label: 'Banknotes',
@@ -794,7 +835,9 @@ export interface MediaCredit {
 }
 
 /** Just the credit fields of an entry that also holds game data — the one way
- *  to carry a photo's credit from one generator run to the next. */
+ *  to carry a photo's credit from one generator run to the next. Callers pass
+ *  a whole generator row (a landmark with its name, image and coordinates);
+ *  the extra fields are simply ignored. */
 export const pickMediaCredit = (entry: MediaCredit | undefined): MediaCredit | undefined => {
   if (!entry?.credit && !entry?.license) return undefined
   return {

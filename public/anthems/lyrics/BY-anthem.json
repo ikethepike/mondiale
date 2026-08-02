@@ -1,0 +1,78 @@
+{
+  "isoCode": "BY",
+  "title": "Дзяржаўны гімн Рэспублікі Беларусь",
+  "language": {
+    "code": "be",
+    "name": "Belarusian",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Belarus"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Мы, [[беларусы]] – мірныя людзі,",
+        "Сэрцам адданыя роднай зямлі,",
+        "Шчыра сябруем, сілы гартуем",
+        "Мы ў працавітай, вольнай сямьі."
+      ],
+      "english": [
+        "We, [[Belarusians]], are peaceful people,",
+        "Wholeheartedly devoted to our Motherland.",
+        "We are faithful friends, growing up",
+        "Living in a hardworking and independent family."
+      ]
+    },
+    {
+      "local": [
+        "Слаўся, зямлі нашай сьветлае імя,",
+        "Слаўся, народаў братэрскі саюз!",
+        "Наша любімая маці-Радзіма,",
+        "Вечна жыві і квітней, [[Беларусь]]!"
+      ],
+      "english": [
+        "Glory to the blessed name of our land,",
+        "Glory to the brotherly union of peoples!",
+        "Our dearly beloved Motherland,",
+        "May you live long and prosper, [[Belarus]]!"
+      ]
+    },
+    {
+      "local": [
+        "Разам з братамі мужна вякамі",
+        "Мы баранілі родны парог,",
+        "У бітвах за волю, бітвах за долю",
+        "Свой здабывалі сьцяг перамог!"
+      ],
+      "english": [
+        "Together with our brothers, we for centuries",
+        "Courageously defended our home's threshold.",
+        "In battles for freedom, and battles for our lot",
+        "We have won our banners of victory!"
+      ]
+    },
+    {
+      "local": [
+        "Дружба народаў – сіла народаў –",
+        "Наш запаветны, сонечны шлях.",
+        "Горда ж узьвіся ў ясныя высі,",
+        "Сьцяг пераможны – радасьці сьцяг!"
+      ],
+      "english": [
+        "Friendship of peoples is the strength of peoples",
+        "And it is our sacred sunlit path.",
+        "Proudly we fly in the clear blue skies,",
+        "The banner of victory is the flag of sunshine!"
+      ]
+    }
+  ]
+}

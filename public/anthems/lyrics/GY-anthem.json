@@ -1,0 +1,78 @@
+{
+  "isoCode": "GY",
+  "title": "Green Land of Guyana",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Dear_Land_of_Guyana,_of_Rivers_and_Plains"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Dear land of [[Guyana]], of rivers and plains",
+        "Made rich by the sunshine, and lush by the rains,",
+        "Set gem-like and fair, between mountains and seas,",
+        "Your children salute you, dear land of the free."
+      ],
+      "english": [
+        "Dear land of [[Guyana]], of rivers and plains",
+        "Made rich by the sunshine, and lush by the rains,",
+        "Set gem-like and fair, between mountains and seas,",
+        "Your children salute you, dear land of the free."
+      ]
+    },
+    {
+      "local": [
+        "Green land of [[Guyana]], our heroes of yore,",
+        "Both bondsmen and free, laid their bones on your shore.",
+        "This soil so they hallowed, and from them are we,",
+        "All sons of one Mother, [[Guyana]] the free."
+      ],
+      "english": [
+        "Green land of [[Guyana]], our heroes of yore,",
+        "Both bondsmen and free, laid their bones on your shore.",
+        "This soil so they hallowed, and from them are we,",
+        "All sons of one Mother, [[Guyana]] the free."
+      ]
+    },
+    {
+      "local": [
+        "Great land of [[Guyana]], diverse though our strains,",
+        "We're born of their sacrifice, heirs of their pains,",
+        "And ours is the glory their eyes did not see,",
+        "One land of six peoples, united and free."
+      ],
+      "english": [
+        "Great land of [[Guyana]], diverse though our strains,",
+        "We're born of their sacrifice, heirs of their pains,",
+        "And ours is the glory their eyes did not see,",
+        "One land of six peoples, united and free."
+      ]
+    },
+    {
+      "local": [
+        "Dear land of [[Guyana]], to you will we give,",
+        "Our homage, our service, each day that we live;",
+        "God guard you, great Mother, and make us to be",
+        "More worthy our heritage, land of the free."
+      ],
+      "english": [
+        "Dear land of [[Guyana]], to you will we give,",
+        "Our homage, our service, each day that we live;",
+        "God guard you, great Mother, and make us to be",
+        "More worthy our heritage, land of the free."
+      ]
+    }
+  ]
+}

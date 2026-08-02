@@ -1,0 +1,88 @@
+{
+  "isoCode": "GW",
+  "title": "Esta É a Nossa Pátria Amada",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Esta_%C3%89_a_Nossa_P%C3%A1tria_Amada"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Sol, suor e o verde e mar,",
+        "Séculos de dor e esperança;",
+        "Esta é a terra dos nossos avós!",
+        "Fruto das nossas mãos,"
+      ],
+      "english": [
+        "Sun, sweat, verdure and sea,",
+        "Centuries of pain and hope;",
+        "This is the land of our ancestors!",
+        "Fruit of our hands,"
+      ]
+    },
+    {
+      "local": [
+        "Da flôr do nosso sangue:",
+        "Esta é a nossa pátria amada.",
+        "Viva a pátria gloriosa!",
+        "Floriu nos céus a bandeira da luta."
+      ],
+      "english": [
+        "Of the flower of our blood:",
+        "This is our beloved homeland.",
+        "Long live our glorious homeland!",
+        "The banner of the struggle has fluttered in the skies."
+      ]
+    },
+    {
+      "local": [
+        "Avante, contra o jugo estrangeiro!",
+        "Nós vamos construir",
+        "Na pátria imortal",
+        "A paz e o progresso!"
+      ],
+      "english": [
+        "Forward, against the foreign yoke!",
+        "We are going to build",
+        "In our immortal homeland",
+        "Peace and progress!"
+      ]
+    },
+    {
+      "local": [
+        "Ramos do mesmo tronco,",
+        "Olhos na mesma luz:",
+        "Esta é a força da nossa união!",
+        "Cantem o mar e a terra"
+      ],
+      "english": [
+        "Branches of the same trunk,",
+        "Eyes in the same light;",
+        "This is the force of our union!",
+        "Sing of the sea and land,"
+      ]
+    },
+    {
+      "local": [
+        "A madrugada e o sol",
+        "Que a nossa luta fecundou."
+      ],
+      "english": [
+        "The dawn and the sun",
+        "That our struggle fertilised!"
+      ]
+    }
+  ]
+}

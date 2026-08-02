@@ -1,0 +1,51 @@
+{
+  "isoCode": "BD",
+  "title": "Amar Sonar Bangla",
+  "language": {
+    "code": "bn",
+    "name": "Bengali",
+    "script": "Devanagari"
+  },
+  "sources": {
+    "local": {
+      "author": "Rabindranath Tagore",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Amar_Sonar_Bangla"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "আমার সোনার [[বাংলা]], আমি তোমায় ভালোবাসি।",
+        "চিরদিন তোমার আকাশ, তোমার বাতাস, আমার প্রাণে বাজায় বাঁশি॥",
+        "ও মা, ফাগুনে তোর আমের বনে ঘ্রাণে পাগল করে,",
+        "ও মা, অঘ্রাণে তোর ভরা ক্ষেতে আমি কী দেখেছি মধুর হাসি॥"
+      ],
+      "english": [
+        "My golden [[Bengal]], I love you.",
+        "Forever your skies, your air set my heart in tune as if it were a flute.",
+        "In spring, O mother mine, the fragrance from your mango groves makes me wild with joy,",
+        "In autumn, O mother mine, in the full-blossomed paddy fields I have seen spread all over sweet smiles."
+      ]
+    },
+    {
+      "local": [
+        "কী শোভা, কী ছায়া গো, কী স্নেহ, কী মায়া গো—",
+        "কী আঁচল বিছায়েছ বটের মূলে, নদীর কূলে কূলে।",
+        "মা, তোর মুখের বাণী আমার কানে লাগে সুধার মতো,",
+        "মা, তোর বদনখানি মলিন হলে, ও মা, আমি নয়নজলে ভাসি॥"
+      ],
+      "english": [
+        "Ah, what a beauty, what shades, what an affection, what a tenderness!",
+        "What a quilt have you spread at the feet of banyan trees and along the banks of rivers!",
+        "O mother mine, words from your lips are like nectar to my ears.",
+        "If sadness, O mother mine, casts a gloom on your face, my eyes are filled with tears!"
+      ]
+    }
+  ]
+}

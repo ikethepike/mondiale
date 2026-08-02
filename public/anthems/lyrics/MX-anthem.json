@@ -1,0 +1,149 @@
+{
+  "isoCode": "MX",
+  "title": "Himno Nacional Mexicano",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Francisco González Bocanegra",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Himno_Nacional_Mexicano"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Mexicanos]], al grito de guerra",
+        "El acero aprestad y el bridón,",
+        "Y retiemble en sus centros la tierra",
+        "Al sonoro rugir del cañón."
+      ],
+      "english": [
+        "[[Mexicans]], at the cry of war,",
+        "assemble the steel and the bridle,",
+        "and may the Earth tremble to its core",
+        "to the resounding roar of the cannon."
+      ]
+    },
+    {
+      "local": [
+        "Ciña ¡Oh Patria! tus sienes de oliva",
+        "de la paz el arcángel divino,",
+        "que en el cielo tu eterno destino",
+        "por el dedo de Dios se escribió."
+      ],
+      "english": [
+        "Encircle, O Fatherland!, thy temples with olives",
+        "peace by the divine archangel,",
+        "for in heaven thine eternal destiny",
+        "by the finger of God it was written."
+      ]
+    },
+    {
+      "local": [
+        "Mas si osare un extraño enemigo",
+        "profanar con su planta tu suelo,",
+        "piensa ¡oh Patria querida! que el cielo",
+        "un soldado en cada hijo te dio."
+      ],
+      "english": [
+        "If, however, a foreign foe would dare",
+        "to profane Thy ground with their sole,",
+        "think, O beloved Fatherland!, that Heaven",
+        "hath given a soldier in every son."
+      ]
+    },
+    {
+      "local": [
+        "¡Guerra, guerra sin tregua al que intente",
+        "de la patria manchar los blasones!",
+        "¡Guerra, guerra! los patrios pendones",
+        "en las olas de sangre empapad."
+      ],
+      "english": [
+        "War, war! with no mercy to any who shall try",
+        "to tarnish the coats of arms of the Fatherland!",
+        "War, war! The national banners",
+        "Shall be drenched in the waves of blood."
+      ]
+    },
+    {
+      "local": [
+        "¡Guerra, guerra! en el monte, en el valle,",
+        "los cañones horrísonos truenen,",
+        "y los ecos sonoros resuenen",
+        "con las voces de ¡Unión! ¡Libertad!."
+      ],
+      "english": [
+        "War, war! On the mountain, in the valley,",
+        "The cannons thunder in horrid unison",
+        "and the sonorous echoes resound",
+        "with bellows of Union! Liberty!"
+      ]
+    },
+    {
+      "local": [
+        "Antes, Patria, que inermes tus hijos",
+        "bajo el yugo su cuello dobleguen,",
+        "tus campiñas con sangre se rieguen,",
+        "sobre sangre se estampe su pie."
+      ],
+      "english": [
+        "O Fatherland, if however thy children, defenseless",
+        "With their necks bent beneath the yoke,",
+        "May thy fields be watered with blood,",
+        "May their footsteps be printed with blood."
+      ]
+    },
+    {
+      "local": [
+        "Y tus templos, palacios y torres",
+        "se derrumben con hórrido estruendo,",
+        "y sus ruinas existan diciendo:",
+        "de mil héroes la patria aquí fue."
+      ],
+      "english": [
+        "And thy temples, palaces and towers",
+        "Shall collapse with horrid clamor,",
+        "And thy ruins continue on, whispering:",
+        "Of one thousand heroes, the Fatherland once was."
+      ]
+    },
+    {
+      "local": [
+        "¡Patria! ¡Patria! tus hijos te juran",
+        "exhalar en tus aras su aliento,",
+        "si el clarín con su bélico acento",
+        "los convoca a lidiar con valor."
+      ],
+      "english": [
+        "Fatherland! Fatherland! Thy children assure",
+        "to breathe until their last for thy sake,",
+        "if the bugle with its bellicose accent",
+        "calleth them together to battle with courage."
+      ]
+    },
+    {
+      "local": [
+        "¡Para ti las guirnaldas de oliva!",
+        "¡Un recuerdo para ellos de gloria!",
+        "¡Un laurel para ti de victoria!",
+        "¡Un sepulcro para ellos de honor!"
+      ],
+      "english": [
+        "For thee, the olive wreaths!",
+        "For them, a reminder of glory!",
+        "For thee, a laurel of victory!",
+        "For them, a tomb of honor!"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "isoCode": "SA",
+  "title": "النشيد الوطني السعودي",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Saudi_Arabia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "سَارِعِي",
+        "لِلمَجْدِ وَالعَلْيَاء",
+        "مَجِّدِي لِخَالِقِ السَّمَاء",
+        "وَارْفَعِي الخَفَّاقَ أَخْضَر"
+      ],
+      "english": [
+        "Hasten",
+        "To glory and supremacy,",
+        "Glory in the Creator of the heavens!",
+        "And raise the green flag"
+      ]
+    },
+    {
+      "local": [
+        "يَحْمِلُ النُّورَ المُسَطَّر",
+        "رَدِّدِي: اللَّهُ أَكْبَر",
+        "يَا مَوْطِنِي",
+        "مَوْطِنِي"
+      ],
+      "english": [
+        "Carrying the written light reflecting guidance,",
+        "Repeat: God is the greatest!",
+        "O my homeland!",
+        "My homeland,"
+      ]
+    },
+    {
+      "local": [
+        "قَدْ عِشْتَ فَخْرَ الْمُسْلِمِين",
+        "عَاشَ المَلِك",
+        "لِلعَلَم",
+        "وَالوَطَن"
+      ],
+      "english": [
+        "Live as the pride of the Muslims!",
+        "Long live the King",
+        "For the flag",
+        "And the land!"
+      ]
+    }
+  ]
+}

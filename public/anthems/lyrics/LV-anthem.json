@@ -1,0 +1,51 @@
+{
+  "isoCode": "LV",
+  "title": "Dievs, svētī Latviju!",
+  "language": {
+    "code": "lv",
+    "name": "Latvian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Kārlis Baumanis",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Dievs,_svētī_Latviju!"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Dievs, svētī [[Latviju]]!",
+        "Mūs' dārgo tēviju",
+        "Svētī jel [[Latviju]]",
+        "Ak, svētī jel to!"
+      ],
+      "english": [
+        "God bless [[Latvia]]!",
+        "Our beloved fatherland,",
+        "Do bless [[Latvia]],",
+        "O do bless it!"
+      ]
+    },
+    {
+      "local": [
+        "Kur [[latvju]] meitas zied",
+        "Kur [[latvju]] dēli dzied",
+        "Laid mums tur laimē diet",
+        "Mūs' [[Latvijā]]!"
+      ],
+      "english": [
+        "Where [[Latvian]] daughters bloom,",
+        "Where [[Latvian]] sons sing,",
+        "Let us dance in happiness there,",
+        "In our [[Latvia]]!"
+      ]
+    }
+  ]
+}

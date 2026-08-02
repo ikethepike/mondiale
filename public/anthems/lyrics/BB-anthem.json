@@ -1,0 +1,106 @@
+{
+  "isoCode": "BB",
+  "title": "National Anthem of Barbados",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Barbados"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "In plenty and in time of need",
+        "When this fair land was young",
+        "Our brave forefathers sowed the seed",
+        "From which our pride is sprung"
+      ],
+      "english": [
+        "In plenty and in time of need",
+        "When this fair land was young",
+        "Our brave forefathers sowed the seed",
+        "From which our pride is sprung"
+      ]
+    },
+    {
+      "local": [
+        "A pride that makes no wanton boast",
+        "Of what it has withstood",
+        "That binds our hearts from coast to coast",
+        "The pride of nationhood"
+      ],
+      "english": [
+        "A pride that makes no wanton boast",
+        "Of what it has withstood",
+        "That binds our hearts from coast to coast",
+        "The pride of nationhood"
+      ]
+    },
+    {
+      "local": [
+        "We loyal sons and daughters all",
+        "Do hereby make it known",
+        "These fields and hills beyond recall",
+        "Are now our very own"
+      ],
+      "english": [
+        "We loyal sons and daughters all",
+        "Do hereby make it known",
+        "These fields and hills beyond recall",
+        "Are now our very own"
+      ]
+    },
+    {
+      "local": [
+        "We write our names on history's page",
+        "With expectations great",
+        "Strict guardians of our heritage",
+        "Firm craftsmen of our fate"
+      ],
+      "english": [
+        "We write our names on history's page",
+        "With expectations great",
+        "Strict guardians of our heritage",
+        "Firm craftsmen of our fate"
+      ]
+    },
+    {
+      "local": [
+        "The Lord has been the people's guide",
+        "For past three hundred years.",
+        "With Him still on the people's side",
+        "We have no doubts or fears."
+      ],
+      "english": [
+        "The Lord has been the people's guide",
+        "For past three hundred years.",
+        "With Him still on the people's side",
+        "We have no doubts or fears."
+      ]
+    },
+    {
+      "local": [
+        "Upward and onward we shall go,",
+        "Inspired, exulting, free,",
+        "And greater will our nation grow",
+        "In strength and unity."
+      ],
+      "english": [
+        "Upward and onward we shall go,",
+        "Inspired, exulting, free,",
+        "And greater will our nation grow",
+        "In strength and unity."
+      ]
+    }
+  ]
+}

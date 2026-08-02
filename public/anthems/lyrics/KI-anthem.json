@@ -1,0 +1,106 @@
+{
+  "isoCode": "KI",
+  "title": "Kunan Kiribati",
+  "language": {
+    "code": "gil",
+    "name": "Gilbertese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Kunan_Kiribati"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Teirake kaaini [[Kiribati]],",
+        "Anene ma te kakatonga,",
+        "Tauraoi nakon te mwioko,",
+        "Ma ni buokia aomata."
+      ],
+      "english": [
+        "Stand up, people of [[Kiribati]]!",
+        "Sing with jubilation!",
+        "Prepare to accept responsibility",
+        "And to help each other!"
+      ]
+    },
+    {
+      "local": [
+        "Tauaninne nte raoiroi,",
+        "Tangiria aomata nako.",
+        "Tauaninne nte raoiroi,",
+        "Tangiria aomata."
+      ],
+      "english": [
+        "Be steadfastly righteous!",
+        "Love all our people!",
+        "Be steadfastly righteous!",
+        "Love all our people!"
+      ]
+    },
+    {
+      "local": [
+        "Reken te kabaia ma te rau,",
+        "Ibuakoia kaain abara,",
+        "Bon reken te nano ae banin,",
+        "Ma te i-tangitangiri naba."
+      ],
+      "english": [
+        "The attainment of contentment",
+        "And peace by our people",
+        "Will be achieved",
+        "When all our hearts beat as one,"
+      ]
+    },
+    {
+      "local": [
+        "Ma ni wakina te kabaia,",
+        "Ma n neboa i eta abara.",
+        "Ma ni wakina te kabaia,",
+        "Ma n neboa abara."
+      ],
+      "english": [
+        "Love one another!",
+        "Promote happiness and unity!",
+        "Love one another!",
+        "Promote happiness and unity!"
+      ]
+    },
+    {
+      "local": [
+        "Ti butiko ngkoe Atuara,",
+        "Kawakinira ao kairira,",
+        "Nakon taai aika i maira,",
+        "Buokira ni baim ae akoi."
+      ],
+      "english": [
+        "We beseech You, O God,",
+        "To protect and lead us",
+        "In the days to come.",
+        "Help us with Your loving hand."
+      ]
+    },
+    {
+      "local": [
+        "Kakabaia ara Tautaeka,",
+        "Ma ake a makuri iai.",
+        "Kakabaia ara Tautaeka,",
+        "Ma aomata ni bane."
+      ],
+      "english": [
+        "Bless our Government",
+        "And all our people!",
+        "Bless our Government",
+        "And all our people!"
+      ]
+    }
+  ]
+}

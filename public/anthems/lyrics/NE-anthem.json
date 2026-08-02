@@ -1,0 +1,100 @@
+{
+  "isoCode": "NE",
+  "title": "L'Honneur de la Patrie",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/The_Honour_of_the_Fatherland"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Des rives du [[Niger]] aux confins du Ténéré",
+        "Frères et sœurs nous sommes",
+        "Enfants d'une même Patrie le [[Niger]]",
+        "Nourris de la sève des mêmes idéaux"
+      ],
+      "english": [
+        "From the shores of the [[Niger]] to the edges of the Ténéré",
+        "Brothers and sisters we are",
+        "Children of a same fatherland [[Niger]]",
+        "Fed of the sap of the same ideals"
+      ]
+    },
+    {
+      "local": [
+        "Pour un [[Niger]] de paix libre fort et uni",
+        "Pour un [[Niger]] prospère le Pays de nos rêves",
+        "Pour l'honneur de la Patrie",
+        "Incarnons la vaillance et la persévérance"
+      ],
+      "english": [
+        "For a [[Niger]] of peace, free, strong, and united",
+        "For a prosperous [[Niger]], the country of our dreams",
+        "For the honor of the fatherland",
+        "Let us incarnate the valiance and the perseverance"
+      ]
+    },
+    {
+      "local": [
+        "Et toutes les vertus de nos dignes aïeux",
+        "Guerriers intrépides déterminés et fiers",
+        "Défendons la patrie au prix de notre sang",
+        "Faisons du [[Niger]] symbole de dignité"
+      ],
+      "english": [
+        "And all the virtues of our worthy forefathers",
+        "Intrepid, determined and proud warriors",
+        "Let us defend the homeland at the price of our blood",
+        "Let us make [[Niger]] the symbol of dignity"
+      ]
+    },
+    {
+      "local": [
+        "Emblème et flambeau de l'Afrique qui avance",
+        "Pour ces nobles idéaux debout et en avant",
+        "En avant pour le travail en avant pour le combat",
+        "Nous demeurons debout"
+      ],
+      "english": [
+        "The emblem and torch of Africa advancing",
+        "For these noble ideals, arise and go forward",
+        "Forward for work and forward for the fight",
+        "We remain standing"
+      ]
+    },
+    {
+      "local": [
+        "Portant haut le drapeau de notre cher Pays",
+        "Dans le ciel d'Afrique et dans tout l'Univers",
+        "Pour construire ensemble",
+        "Un monde de justice de paix et de progrès"
+      ],
+      "english": [
+        "Holding high the flag of our dear country",
+        "In the sky of Africa and in the whole universe",
+        "To construct together",
+        "A world of justice, peace and progress"
+      ]
+    },
+    {
+      "local": [
+        "Et pour faire du [[Niger]] la fierté de l'Afrique."
+      ],
+      "english": [
+        "And to make [[Niger]] the pride of Africa"
+      ]
+    }
+  ]
+}

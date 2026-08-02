@@ -1,0 +1,159 @@
+{
+  "isoCode": "BO",
+  "title": "Himno Nacional de Bolivia",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "José Ignacio de Sanjinés",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Bolivia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Bolivianos]]: el hado propicio",
+        "coronó nuestros votos y anhelo.",
+        "Es ya libre, ya libre este suelo,",
+        "ya cesó su servil condición."
+      ],
+      "english": [
+        "[[Bolivians]], a propitious fate",
+        "has at long last crowned our vows and longings;",
+        "This land is free, free at last.",
+        "Its servile state has now finally ceased."
+      ]
+    },
+    {
+      "local": [
+        "Al estruendo marcial que ayer fuera",
+        "y al clamor de la guerra horroroso,",
+        "siguen hoy, en contraste armonioso,",
+        "dulces himnos de paz y de unión."
+      ],
+      "english": [
+        "The martial turmoil of yesterday,",
+        "and the horrible clamor of war,",
+        "are followed today, in harmonious contrast,",
+        "by sweet hymns of peace and unity."
+      ]
+    },
+    {
+      "local": [
+        "De la Patria, el alto nombre,",
+        "en glorioso esplendor conservemos.",
+        "Y en sus aras de nuevo juremos:",
+        "¡Morir antes que esclavos vivir!"
+      ],
+      "english": [
+        "Let us keep the lofty name of our Fatherland",
+        "in glorious splendor.",
+        "And, on its altars, once more we must swear:",
+        "To die before we would live as slaves!"
+      ]
+    },
+    {
+      "local": [
+        "¡Morir antes que esclavos vivir!",
+        "¡Morir antes que esclavos vivir!",
+        "Loor eterno a los bravos guerreros,",
+        "cuyo heroico valor y firmeza,"
+      ],
+      "english": [
+        "To die before we would live as slaves!",
+        "To die before we would live as slaves!",
+        "Eternal praise to the brave warriors",
+        "whose heroic valor and firmness"
+      ]
+    },
+    {
+      "local": [
+        "conquistaron las glorias que empieza",
+        "hoy [[Bolivia]] feliz a gozar.",
+        "Que sus nombres, en mármol y en bronce,",
+        "a remotas edades transmitan,"
+      ],
+      "english": [
+        "conquered the freedom and glories that now",
+        "a happy [[Bolivia]] justly begins to enjoy!",
+        "Let their names, preserved forever in marble and bronze,",
+        "transmit their glory to remote future ages."
+      ]
+    },
+    {
+      "local": [
+        "y en sonoros cantares repitan:",
+        "¡Libertad, Libertad, Libertad!",
+        "Aquí alzó la justicia su trono",
+        "que la vil opresión desconoce,"
+      ],
+      "english": [
+        "And in resounding songs let them repeat:",
+        "Freedom! Freedom! Freedom!",
+        "Here has Justice erected its throne",
+        "which vile oppression ignores"
+      ]
+    },
+    {
+      "local": [
+        "y en su timbre glorioso legose",
+        "libertad, libertad, libertad.",
+        "Esta tierra innocente y hermosa",
+        "que ha debido a Bolívar su nombre"
+      ],
+      "english": [
+        "and, on its glorious laurel it bequeathed us",
+        "Freedom, freedom, freedom",
+        "This innocent and beautiful land,",
+        "which owes its name to Bolívar,"
+      ]
+    },
+    {
+      "local": [
+        "es la patria feliz donde el hombre",
+        "goza el bien de la dicha y la paz.",
+        "Si extranjero poder algún día",
+        "sojuzgar a [[Bolivia]] intentare,"
+      ],
+      "english": [
+        "is the happy homeland where mankind",
+        "enjoys the benefits of bliss and peace.",
+        "If a foreigner may, any given day",
+        "even attempt to subjugate [[Bolivia]],"
+      ]
+    },
+    {
+      "local": [
+        "al destino fatal se prepare",
+        "que amenaza a soberbio agresor.",
+        "Que los hijos del grande Bolívar",
+        "han ya mil y mil veces jurado:"
+      ],
+      "english": [
+        "let him prepare for a fatal destiny,",
+        "which menaces such haughty aggressor.",
+        "For the sons of the mighty Bolívar",
+        "have sworn, thousands upon thousands of times:"
+      ]
+    },
+    {
+      "local": [
+        "morir antes que ver humillado",
+        "de la Patria el augusto pendón."
+      ],
+      "english": [
+        "to die rather than see the country's",
+        "majestic banner humiliated."
+      ]
+    }
+  ]
+}

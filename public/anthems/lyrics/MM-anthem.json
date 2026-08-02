@@ -1,0 +1,73 @@
+{
+  "isoCode": "MM",
+  "title": "Kaba Ma Kyei",
+  "language": {
+    "code": "my",
+    "name": "Burmese",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "author": "Saya Tin",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Kaba_Ma_Kyei"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "တရားမျှတ လွတ်လပ်ခြင်းနဲ့ မသွေ၊",
+        "တို့ပြည်၊ တို့မြေ၊",
+        "များလူခပ်သိမ်း၊ ငြိမ်းချမ်းစေဖို့၊",
+        "ခွင့်တူညီမျှ၊ ဝါဒဖြူစင်တဲ့ပြည်၊"
+      ],
+      "english": [
+        "Accompanied with justice and freedom;",
+        "our nation, our motherland.",
+        "To bring peace to all people;",
+        "the nation having equal right and pure policy,"
+      ]
+    },
+    {
+      "local": [
+        "တို့ပြည်၊ တို့မြေ၊",
+        "ပြည်ထောင်စုအမွေ၊ အမြဲတည်တံ့စေ၊",
+        "အဓိဋ္ဌာန်ပြုပေ၊ ထိန်းသိမ်းစို့လေ။",
+        "ကမ္ဘာမကျေ၊ [[မြန်မာပ]]ြည်၊"
+      ],
+      "english": [
+        "our nation, our motherland.",
+        "Let us preserve with vow",
+        "for perpetuity of our heritage of the Union.",
+        "As long as the world exists, we love [[Myanmar]],"
+      ]
+    },
+    {
+      "local": [
+        "တို့ဘိုးဘွား အမွေစစ်မို့ ချစ်မြတ်နိုးပေ။",
+        "ပြည်ထောင်စုကို အသက်ပေးလို့ တို့ကာကွယ်မလေ၊",
+        "ဒါတို့ပြည် ဒါတို့မြေ တို့ပိုင်နက်မြေ။",
+        "တို့ပြည် တို့မြေ အကျိုးကို ညီညာစွာတို့တစ်တွေ"
+      ],
+      "english": [
+        "the true heritage of our ancestors.",
+        "We shall safeguard the Union by sacrificing our lives.",
+        "This is our nation, our motherland and our own land.",
+        "Let us serve unitedly for the interest of our nation, our motherland."
+      ]
+    },
+    {
+      "local": [
+        "ထမ်းဆောင်ပါစို့လေ တို့တာဝန်ပေ အဖိုးတန်မြေ။"
+      ],
+      "english": [
+        "That is our duty for the precious land."
+      ]
+    }
+  ]
+}

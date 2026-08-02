@@ -1,0 +1,205 @@
+{
+  "isoCode": "IT",
+  "title": "Il Canto degli Italiani",
+  "language": {
+    "code": "it",
+    "name": "Italian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Goffredo Mameli",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Canto_degli_italiani"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Fratelli d'[[Italia]],",
+        "l'[[Italia]] s'è desta,",
+        "dell'elmo di Scipio",
+        "s'è cinta la testa."
+      ],
+      "english": [
+        "Brothers of [[Italy]],",
+        "[[Italy]] has risen,",
+        "bound Scipio's helmet",
+        "Upon her head."
+      ]
+    },
+    {
+      "local": [
+        "Dov'è la Vittoria?",
+        "Le porga la chioma,",
+        "ché schiava di Roma",
+        "Iddio la creò."
+      ],
+      "english": [
+        "Where is Victory?",
+        "Let her bow down,",
+        "Because as a slave of Rome",
+        "God did create her."
+      ]
+    },
+    {
+      "local": [
+        "Stringiamci a coorte,",
+        "siam pronti alla morte.",
+        "Siam pronti alla morte,",
+        "l'[[Italia]] chiamò."
+      ],
+      "english": [
+        "Let us join in a cohort,",
+        "we are ready for death.",
+        "We are ready for death,",
+        "[[Italy]] has called!"
+      ]
+    },
+    {
+      "local": [
+        "Noi fummo da secoli",
+        "calpesti, derisi,",
+        "perché non siam popolo,",
+        "perché siam divisi."
+      ],
+      "english": [
+        "We were for centuries",
+        "downtrodden, derided,",
+        "because we are not one people,",
+        "because we are divided."
+      ]
+    },
+    {
+      "local": [
+        "Raccolgaci un'unica",
+        "bandiera, una speme:",
+        "di fonderci insieme",
+        "già l'ora suonò."
+      ],
+      "english": [
+        "Let one flag, one hope",
+        "gather us all.",
+        "The hour has struck",
+        "for us to unite."
+      ]
+    },
+    {
+      "local": [
+        "Uniamoci, amiamoci,",
+        "l'unione e l'amore",
+        "rivelano ai popoli",
+        "le vie del Signore."
+      ],
+      "english": [
+        "Let us unite, let us love one another,",
+        "Union and love",
+        "Reveal to the peoples",
+        "The ways of the Lord."
+      ]
+    },
+    {
+      "local": [
+        "Giuriamo far libero",
+        "il suolo natio:",
+        "uniti, per Dio,",
+        "chi vincer ci può?"
+      ],
+      "english": [
+        "Let us swear to set free",
+        "The land of our birth:",
+        "United, by God,",
+        "Who can overcome us?"
+      ]
+    },
+    {
+      "local": [
+        "Dall'Alpi a Sicilia",
+        "dovunque è Legnano,",
+        "ogn'uom di Ferruccio",
+        "ha il core, ha la mano,"
+      ],
+      "english": [
+        "From the Alps to Sicily,",
+        "Legnano is everywhere;",
+        "Every man hath the heart",
+        "and hand of Ferruccio"
+      ]
+    },
+    {
+      "local": [
+        "i bimbi d'[[Italia]]",
+        "si chiaman Balilla,",
+        "il suon d'ogni squilla",
+        "i Vespri suonò."
+      ],
+      "english": [
+        "The children of [[Italy]]",
+        "Are all called Balilla;",
+        "Every trumpet blast",
+        "soundeth the Vespers."
+      ]
+    },
+    {
+      "local": [
+        "Son giunchi che piegano",
+        "le spade vendute:",
+        "già l'Aquila d'Austria",
+        "le penne ha perdute."
+      ],
+      "english": [
+        "The mercenary swords",
+        "Are feeble reeds.",
+        "Already the Eagle of Austria",
+        "Hath lost its plumes."
+      ]
+    },
+    {
+      "local": [
+        "Il sangue d'[[Italia]],",
+        "il sangue Polacco,",
+        "bevé, col cosacco,",
+        "ma il cor le bruciò."
+      ],
+      "english": [
+        "The blood of [[Italy]],",
+        "The blood of Poland",
+        "It with Cossacks did drink,",
+        "But will burn its heart."
+      ]
+    },
+    {
+      "local": [
+        "Evviva l'[[Italia]],",
+        "dal sonno s'è desta,",
+        "dell'elmo di Scipio",
+        "s'è cinta la testa."
+      ],
+      "english": [
+        "Long live [[Italy]],",
+        "She has awoken from slumber,",
+        "bound Scipio's helmet",
+        "Upon her head."
+      ]
+    },
+    {
+      "local": [
+        "Dov'è la vittoria?!",
+        "Le porga la chioma,",
+        "ché schiava di Roma",
+        "Iddio la creò."
+      ],
+      "english": [
+        "Where is Victory?",
+        "Let her bow down,",
+        "Because as a slave of Rome",
+        "God did create her."
+      ]
+    }
+  ]
+}

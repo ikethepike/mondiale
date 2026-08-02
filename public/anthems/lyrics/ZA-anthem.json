@@ -1,0 +1,37 @@
+{
+  "isoCode": "ZA",
+  "title": "National anthem of South Africa",
+  "language": {
+    "code": "xh",
+    "name": "isiXhosa",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Enoch Sontonga; C. J. Langenhoven; English verse Jeanne Zaidel-Rudolph",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_South_Africa"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Morena boloka setjhaba sa heso,",
+        "O fedise dintwa le matshwenyeho,",
+        "O se boloke, O se boloke setjhaba sa heso,",
+        "Setjhaba sa, South [[Afrika]], South [[Afrika]]."
+      ],
+      "english": [
+        "Lord we ask You to protect our nation,",
+        "End all conflicts and troubles",
+        "Protect us, protect our nation,",
+        "The nation of [[South Africa]], [[South Africa]]."
+      ]
+    }
+  ]
+}

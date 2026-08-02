@@ -1,0 +1,37 @@
+{
+  "isoCode": "CO",
+  "title": "Himno Nacional de la República de Colombia",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Rafael Núñez",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Colombia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Gloria eterna a la Nueva Granada,",
+        "Que, formando una nueva nación,",
+        "Hoy levanta ya el templo sagrado",
+        "De las leyes, la paz y la unión."
+      ],
+      "english": [
+        "Eternal glory to New Granada,",
+        "Which, forming a new nation,",
+        "Today already raises the sacred temple",
+        "Of laws, peace and union."
+      ]
+    }
+  ]
+}

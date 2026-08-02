@@ -1,0 +1,79 @@
+{
+  "isoCode": "HN",
+  "title": "Himno Nacional de Honduras",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Augusto Constancio Coello",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Honduras"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Tu bandera, tu bandera es un lampo de cielo",
+        "Por un bloque, por un bloque de nieve cruzado;",
+        "Y se ven en su fondo sagrado",
+        "Cinco estrellas de pálido azul;"
+      ],
+      "english": [
+        "Your flag, your flag is a splendour of sky",
+        "Crossed by a block, by a block of snow;",
+        "And seen on its sacred background",
+        "Are five stars of pale blue;"
+      ]
+    },
+    {
+      "local": [
+        "En tu emblema, que un mar rumoroso",
+        "Con sus ondas bravías escuda,",
+        "De un volcán, de un volcán tras la cima desnuda",
+        "Hay un astro, hay un astro de nítida luz."
+      ],
+      "english": [
+        "On your emblem, which a roaring sea",
+        "Shields with its rough waves,",
+        "Behind the bare summit of a volcano, of a volcano,",
+        "There is a star, there is a star of clear light."
+      ]
+    },
+    {
+      "local": [
+        "Por guardar ese emblema divino,",
+        "Marcharemos Oh! Patria a la muerte,",
+        "Generosa será nuestra suerte,",
+        "Si morimos pensando en tu amor."
+      ],
+      "english": [
+        "To keep that divine emblem,",
+        "Let us march, oh fatherland, to death,",
+        "Generous will be our fate,",
+        "If we die thinking of your love."
+      ]
+    },
+    {
+      "local": [
+        "Defendiendo tu santa bandera",
+        "Y en tus pliegues gloriosos cubiertos,",
+        "Serán muchos, [[Honduras]], tus muertos,",
+        "Pero todos caerán con honor."
+      ],
+      "english": [
+        "Defending your holy flag",
+        "And covered in your glorious folds,",
+        "There will be many, [[Honduras]], of your dead,",
+        "But all will fall with honour."
+      ]
+    }
+  ]
+}

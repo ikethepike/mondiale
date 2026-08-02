@@ -1,0 +1,78 @@
+{
+  "isoCode": "VC",
+  "title": "Saint Vincent, Land So Beautiful",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Saint_Vincent,_Land_So_Beautiful"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Saint [[Vincent]], Land so beautiful",
+        "With joyful hearts we pledge to thee",
+        "Our loyalty and love and vow",
+        "To keep you ever free."
+      ],
+      "english": [
+        "Saint [[Vincent]], Land so beautiful",
+        "With joyful hearts we pledge to thee",
+        "Our loyalty and love and vow",
+        "To keep you ever free."
+      ]
+    },
+    {
+      "local": [
+        "What e'er the future brings,",
+        "Our faith will see us through.",
+        "May peace reign from shore to shore,",
+        "And God bless and keep us true."
+      ],
+      "english": [
+        "What e'er the future brings,",
+        "Our faith will see us through.",
+        "May peace reign from shore to shore,",
+        "And God bless and keep us true."
+      ]
+    },
+    {
+      "local": [
+        "Hairoun, Our fair and blessed Isle,",
+        "Your mountains high, so clear and green,",
+        "Are home to me, though I may stray,",
+        "A haven, calm, serene."
+      ],
+      "english": [
+        "Hairoun, Our fair and blessed Isle,",
+        "Your mountains high, so clear and green,",
+        "Are home to me, though I may stray,",
+        "A haven, calm, serene."
+      ]
+    },
+    {
+      "local": [
+        "Our little sister islands are",
+        "Those gems, the lovely [[Grenadines]],",
+        "Upon their seas and golden sands",
+        "The sunshine ever beams."
+      ],
+      "english": [
+        "Our little sister islands are",
+        "Those gems, the lovely [[Grenadines]],",
+        "Upon their seas and golden sands",
+        "The sunshine ever beams."
+      ]
+    }
+  ]
+}

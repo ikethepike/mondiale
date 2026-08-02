@@ -1,0 +1,79 @@
+{
+  "isoCode": "EC",
+  "title": "Salve, Oh Patria",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Juan León Mera",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Salve,_Oh_Patria"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡Salve, Oh Patria, mil veces, oh Patria!",
+        "¡Gloria a ti, gloria a ti!",
+        "Ya tu pecho, tu pecho, rebosa,",
+        "gozo y paz ya tu pecho rebosa;"
+      ],
+      "english": [
+        "Hail, Oh Fatherland, a thousand times! Oh Fatherland,",
+        "Glory be to you! Glory be to you!",
+        "Now your breast, your breast, overflows,",
+        "Now your breast overflows with joy and peace;"
+      ]
+    },
+    {
+      "local": [
+        "Y tu frente, tu frente radiosa,",
+        "Más que el sol contemplamos lucir.",
+        "II:",
+        "Los primeros, los hijos del suelo"
+      ],
+      "english": [
+        "And your forehead, your radiant forehead",
+        "we contemplate shining more than the Sun.",
+        "II:",
+        "The firsts, the sons of the soil"
+      ]
+    },
+    {
+      "local": [
+        "que, soberbio, el Pichincha decora,",
+        "te aclamaron por siempre señora",
+        "y vertieron su sangre por ti.",
+        "Dios miró y aceptó el holocausto"
+      ],
+      "english": [
+        "Which Pichincha superbly adorns,",
+        "Declared you as their sovereign lady forever,",
+        "And shed their blood for you.",
+        "God observed and accepted the holocaust,"
+      ]
+    },
+    {
+      "local": [
+        "y esa sangre fue germen fecundo",
+        "de otros héroes que atónito el mundo",
+        "vió en tu torno a millares surgir.",
+        "¡A millares surgir!"
+      ],
+      "english": [
+        "And that blood was the fertile germ",
+        "Of other heroes whom the world in astonishment",
+        "Saw rise up around you by the thousands.",
+        "Rise up by the thousands!"
+      ]
+    }
+  ]
+}

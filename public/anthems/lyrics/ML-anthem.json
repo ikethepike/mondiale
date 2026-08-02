@@ -1,0 +1,186 @@
+{
+  "isoCode": "ML",
+  "title": "Le Mali",
+  "language": {
+    "code": "fr",
+    "name": "French",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Le_Mali"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "À ton appel [[Mali]]",
+        "Pour ta prospérité",
+        "Fidèle à ton destin",
+        "Nous serons tous unis"
+      ],
+      "english": [
+        "At your call, [[Mali]]",
+        "For your prosperity",
+        "Loyal towards your destiny",
+        "We will be all united,"
+      ]
+    },
+    {
+      "local": [
+        "Un peuple, un but, une foi",
+        "Pour une Afrique Unie",
+        "Si l'ennemi découvre son front",
+        "Au dedans ou au dehors"
+      ],
+      "english": [
+        "One people, one goal, one faith,",
+        "For a united Africa",
+        "If the enemy should show himself",
+        "Inside or outside,"
+      ]
+    },
+    {
+      "local": [
+        "Debout sur les remparts",
+        "Nous sommes résolus de mourir",
+        "Pour l'Afrique et pour toi, [[Mali]],",
+        "Notre drapeau sera liberté."
+      ],
+      "english": [
+        "Standing on the ramparts,",
+        "We are ready to die.",
+        "For Africa and for you, [[Mali]],",
+        "Our banner shall be liberty."
+      ]
+    },
+    {
+      "local": [
+        "Pour l'Afrique et pour toi, [[Mali]],",
+        "Notre combat sera unité.",
+        "Ô [[Mali]] d'aujourd'hui",
+        "Ô [[Mali]] de demain"
+      ],
+      "english": [
+        "For Africa and for you, [[Mali]],",
+        "Our fight shall be for unity.",
+        "Oh, [[Mali]] of today,",
+        "Oh, [[Mali]] of tomorrow,"
+      ]
+    },
+    {
+      "local": [
+        "Les champs fleurissent d'espérance",
+        "Les cœurs vibrent de confiance",
+        "Debout villes et campagnes",
+        "Debout femmes, jeunes et vieux"
+      ],
+      "english": [
+        "The fields are flowering with hope",
+        "Hearts are thrilling with confidence.",
+        "Standing town and country",
+        "Standing women, young and old"
+      ]
+    },
+    {
+      "local": [
+        "Pour la patrie en marche",
+        "Vers l'avenir radieux",
+        "Pour notre dignité",
+        "Renforçons bien nos rangs"
+      ],
+      "english": [
+        "For the country moving",
+        "Towards a bright future",
+        "For our dignity",
+        "Let us strengthen our ranks well"
+      ]
+    },
+    {
+      "local": [
+        "Pour le salut public",
+        "Forgeons le bien commun",
+        "Ensemble au coude à coude",
+        "Faisons le sentier du bonheur"
+      ],
+      "english": [
+        "For the public salvation",
+        "Let us forge the common good",
+        "Together shoulder to shoulder",
+        "Let us make the path of happiness"
+      ]
+    },
+    {
+      "local": [
+        "La voie est dure très dure",
+        "Qui mène au bonheur commun",
+        "Courage et dévouement",
+        "Vigilance à tout moment"
+      ],
+      "english": [
+        "The path is hard very hard",
+        "Which leads to common happiness",
+        "Courage and dedication",
+        "Vigilance at all times"
+      ]
+    },
+    {
+      "local": [
+        "Vérité des temps anciens",
+        "Vérité de tous les jours",
+        "Le bonheur par le labeur",
+        "Fera le [[Mali]] de demain"
+      ],
+      "english": [
+        "Truth of ancient times",
+        "Truth everyday",
+        "Happiness through labour",
+        "Will make the [[Mali]] of tomorrow"
+      ]
+    },
+    {
+      "local": [
+        "L'Afrique se lève enfin",
+        "Saluons ce jour nouveau",
+        "Saluons la liberté",
+        "Marchons vers l'unité"
+      ],
+      "english": [
+        "Africa finally rises",
+        "Let us welcome this new day",
+        "Let us welcome liberty",
+        "Let us march towards unity"
+      ]
+    },
+    {
+      "local": [
+        "Dignité retrouvée",
+        "Soutient notre combat",
+        "Fidèle à notre serment",
+        "De faire l'Afrique unie"
+      ],
+      "english": [
+        "New found dignity",
+        "Support our fight",
+        "True to our oath",
+        "Of making Africa united"
+      ]
+    },
+    {
+      "local": [
+        "Ensemble debout mes frères",
+        "Tous au rendez-vous de l'honneur"
+      ],
+      "english": [
+        "My brothers standing together",
+        "All at the appointment of honour"
+      ]
+    }
+  ]
+}

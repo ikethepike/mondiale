@@ -1,0 +1,88 @@
+{
+  "isoCode": "KW",
+  "title": "النشيد الوطني الكويتي",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Kuwait"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "وَطَنِي الْكُوَيْتَ سَلِمْتَ لِلْمَجْدِ",
+        "وَعَلَىٰ جَبِينِكَ طَالِعُ السَّعْدِ",
+        "وَطَنِي الْكُوَيْتَ سَلِمْتَ لِلْمَجْدِ",
+        "وَعَلَىٰ جَبِينِكَ طَالِعُ السَّعْدِ"
+      ],
+      "english": [
+        "My homeland [[Kuwait]], you have prospered to glory,",
+        "And on your forehead is an omen of fortune.",
+        "My homeland [[Kuwait]], you have prospered to glory,",
+        "And on your forehead is an omen of fortune."
+      ]
+    },
+    {
+      "local": [
+        "وَطَنِي الْكُوَيْت وَطَنِي الْكُوَيْت",
+        "وَطَنِي الْكُوَيْتَ سَلِمْتَ لِلْمَجْدِ",
+        "يَا مَهْدَ آبَاءِ الْأُولَىٰ كَتَبُواْ",
+        "سِفْرَ الْخُلُودِ فَنَادَتِ الشُّهُبُ"
+      ],
+      "english": [
+        "My homeland [[Kuwait]], my homeland [[Kuwait]],",
+        "My homeland [[Kuwait]], you have prospered to glory.",
+        "Oh cradle of forefathers, they wrote",
+        "A book of eternity, then the meteors called"
+      ]
+    },
+    {
+      "local": [
+        "اَللّٰهُ أَكْبَرُ إِنَّهُمْ عَرَبُ",
+        "طَلَعَتْ كَوَاكِبُ جَنَّةِ الْخُلْدِ",
+        "بُورِكْتَ يَا وَطَنِي الْكُوَيْتَ لَنَا",
+        "سَكَنًا وَعِشْتَ عَلِى الْمَدَىٰ وَطَنًا"
+      ],
+      "english": [
+        "God is the greatest, indeed Arabs",
+        "Ascended as the planets of paradise of perpetuity.",
+        "Blessed be my homeland [[Kuwait]], for us",
+        "It was peaceful, and you lived on the extent of the homeland"
+      ]
+    },
+    {
+      "local": [
+        "يَفْدِيْكَ حُرٌّ فِي حِمَاكَ بَنَىٰ",
+        "صَرْحَ الْحَيَاةِ بِأَكْرَمِ الْأَيْدِي",
+        "نَحْمِيكَ يَا وَطَنِي وَشَاهِدُنَا",
+        "شَرْعُ الْهُدَىٰ وَالْحَقُّ رَائِدُنَا"
+      ],
+      "english": [
+        "Kept free in your protection to build",
+        "A palace of life with the most generous arms.",
+        "Let us protect, oh my homeland, and we witnessed",
+        "The revealing of the guidance and the truth, our pioneer,"
+      ]
+    },
+    {
+      "local": [
+        "وَأَمِيرُنَا لِلْعِزِّ قَائِدُنَا",
+        "رَبُّ الْحَمِيَّةِ صَادِقُ الْوَعْدِ"
+      ],
+      "english": [
+        "And our Amir is the powerful, our leader,",
+        "The master of my protection, the truthful of the promise."
+      ]
+    }
+  ]
+}

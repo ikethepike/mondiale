@@ -1,0 +1,62 @@
+{
+  "isoCode": "MU",
+  "title": "Motherland",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Motherland_(anthem)"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Glory to thee, Motherland",
+        "O Motherland of mine.",
+        "Sweet is thy beauty,",
+        "Sweet is thy fragrance,"
+      ],
+      "english": [
+        "Glory to thee, Motherland",
+        "O Motherland of mine.",
+        "Sweet is thy beauty,",
+        "Sweet is thy fragrance,"
+      ]
+    },
+    {
+      "local": [
+        "Around thee we gather",
+        "As one people,",
+        "As one nation,",
+        "In peace, justice and liberty."
+      ],
+      "english": [
+        "Around thee we gather",
+        "As one people,",
+        "As one nation,",
+        "In peace, justice and liberty."
+      ]
+    },
+    {
+      "local": [
+        "Beloved Country,",
+        "May God bless thee",
+        "For ever and ever."
+      ],
+      "english": [
+        "Beloved Country,",
+        "May God bless thee",
+        "For ever and ever."
+      ]
+    }
+  ]
+}

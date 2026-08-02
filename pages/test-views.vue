@@ -69,6 +69,8 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import { flagSwatches } from '~~/lib/audio-palette'
+import { seededTongueSample } from '~~/lib/tongue-samples'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
@@ -282,8 +284,11 @@ const scenarios: Scenario[] = [
         {
           groupChallenge: {
             _type: 'anthem-buzz-challenge',
-            country: 'JP',
-            clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+            // Sweden rather than Japan: it carries a curated lyric wall, so the
+            // scorecard's couplet and its language toggle are reachable here.
+            country: 'SE',
+            clip: { webm: '/anthems/SE.webm', m4a: '/anthems/SE.m4a' },
+            lyricsUrl: '/anthems/lyrics/SE-anthem.json',
             durationSeconds: 30,
             maximumPoints: MAXIMUM_POINTS,
           },
@@ -1068,29 +1073,177 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'anthem-buzz-challenge',
+          // Sweden is the reference country for the lyric wall — the only one
+          // curated so far (see public/anthems/lyrics/readme-anthems.md).
+          country: 'SE',
+          clip: { webm: '/anthems/SE.webm', m4a: '/anthems/SE.m4a' },
+          lyricsUrl: '/anthems/lyrics/SE-anthem.json',
+          durationSeconds: 30,
+          region: 'Europe',
+          swatches: flagSwatches('SE'),
+          initial: 'S',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-poland',
+    label: 'Opening Ceremony (white & red palette)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Poland exercises the white-as-primary path: a two-colour flag
+          // where one colour is the milk tone, so the field has to carry the
+          // hint on crimson alone.
+          country: 'PL',
+          clip: { webm: '/anthems/PL.webm', m4a: '/anthems/PL.m4a' },
+          lyricsUrl: '/anthems/lyrics/PL-anthem.json',
+          durationSeconds: 30,
+          region: 'Europe',
+          swatches: flagSwatches('PL'),
+          initial: 'P',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-japan',
+    label: 'Opening Ceremony (shortest anthem, CJK wall)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Kimigayo is the shortest anthem in the world: a five-line wall in
+          // CJK script with a masked 君が代 span — the tiniest verse the wall
+          // renders, no drift, non-Latin glyph fallback and mask sizing all in
+          // one scenario.
           country: 'JP',
           clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
+          lyricsUrl: '/anthems/lyrics/JP-anthem.json',
           durationSeconds: 30,
           region: 'Asia',
-          swatches: ['white', 'red'],
+          swatches: flagSwatches('JP'),
           initial: 'J',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
   },
   {
+    id: 'anthem-buzz-uruguay',
+    label: 'Opening Ceremony (longest anthem wall)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // The longest anthem text in the world: 21 lines across 6 verses.
+          // The wall's tallest column — the drift-scroll's stress test, and
+          // the case that finds any bottom-fade or reflow regression first.
+          country: 'UY',
+          clip: { webm: '/anthems/UY.webm', m4a: '/anthems/UY.m4a' },
+          lyricsUrl: '/anthems/lyrics/UY-anthem.json',
+          durationSeconds: 30,
+          region: 'Americas',
+          swatches: flagSwatches('UY'),
+          initial: 'U',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'anthem-buzz-broken-clip',
+    label: 'Opening Ceremony (unloadable clip)',
+    component: ViewAnthemBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'anthem-buzz-challenge',
+          // Both sources 404 on purpose: the round must arm and run silent
+          // rather than strand the table behind a dead play button — group
+          // settlement waits on every seat.
+          country: 'SE',
+          clip: { webm: '/anthems/missing.webm', m4a: '/anthems/missing.m4a' },
+          durationSeconds: 30,
+          region: 'Europe',
+          initial: 'S',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'tongue-buzz',
-    label: 'Mother Tongue (speech audio)',
+    label: 'Tongues (speech audio)',
     component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
           _type: 'tongue-buzz-challenge',
-          language: 'Portuguese',
-          clip: { webm: '/tongues/pt-0.webm', m4a: '/tongues/pt-0.m4a' },
-          countries: ['PT', 'BR', 'AO', 'MZ', 'CV', 'GW', 'ST', 'TL'],
+          // Swahili: distinctive enough to be a fair listen, and official in
+          // four countries, so the any-speaker rule is visible in the reveal.
+          language: 'Swahili',
+          // All three voices, to exercise the dock's sequence-and-cycle.
+          clips: [
+            { webm: '/tongues/sw-0.webm', m4a: '/tongues/sw-0.m4a' },
+            { webm: '/tongues/sw-1.webm', m4a: '/tongues/sw-1.m4a' },
+            { webm: '/tongues/sw-2.webm', m4a: '/tongues/sw-2.m4a' },
+          ],
+          countries: ['TZ', 'KE', 'UG', 'RW'],
+          durationSeconds: 20,
+          region: 'Africa',
+          speakerCount: 4,
+          initial: 'T',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'tongue-buzz-ukrainian',
+    label: 'Tongues (Ukrainian, borrowed anthem sample)',
+    component: ViewTongueBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'tongue-buzz-challenge',
+          // No `sample` on purpose: Ukrainian has no seed, so the view must
+          // borrow lines from Ukraine's own anthem wall — the path Swahili and
+          // most languages take in a real deal — and render them in Cyrillic.
+          language: 'Ukrainian',
+          clips: [
+            { webm: '/tongues/uk-0.webm', m4a: '/tongues/uk-0.m4a' },
+            { webm: '/tongues/uk-1.webm', m4a: '/tongues/uk-1.m4a' },
+            { webm: '/tongues/uk-2.webm', m4a: '/tongues/uk-2.m4a' },
+          ],
+          countries: ['UA'],
           durationSeconds: 20,
           region: 'Europe',
+          speakerCount: 1,
+          initial: 'U',
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'tongue-buzz-sample',
+    label: 'Tongues (seeded writing sample)',
+    component: ViewTongueBuzz,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'tongue-buzz-challenge',
+          // Hindi has no anthem sung in it (India's is Bengali), so it falls
+          // back to a seeded sample — the path Swahili never exercises.
+          language: 'Hindi',
+          // Hindi has a single sample — the degenerate sequence of one.
+          clips: [{ webm: '/tongues/hi-0.webm', m4a: '/tongues/hi-0.m4a' }],
+          countries: ['IN'],
+          durationSeconds: 20,
+          region: 'Asia',
+          speakerCount: 1,
+          sample: seededTongueSample('Hindi'),
+          initial: 'I',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -2141,6 +2294,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+/** The floating scenario bar's footprint: its content plus its own top offset.
+ *  Used twice below to push the scene clear of it on a phone. */
+$harness-bar-height: 3.4rem;
+
 /** Mirrors `.main-board` in pages/room/[roomId].vue — see test-recognition. */
 .harness {
   height: var(--viewport-height);
@@ -2148,6 +2305,15 @@ onMounted(() => {
   position: relative;
   max-width: 100%;
   pointer-events: none;
+
+  // The scenario bar floats over the scene. On a desktop there is room above
+  // the title for it; on a phone it lands squarely on the challenge's header,
+  // hiding the very question the round is asking. Start the scene below it
+  // instead — the bar can't move to the bottom, where the guess console lives.
+  @media screen and (max-width: 480px) {
+    height: calc(var(--viewport-height) - #{$harness-bar-height});
+    margin-top: $harness-bar-height;
+  }
 }
 
 .controls {

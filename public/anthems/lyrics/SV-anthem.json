@@ -1,0 +1,149 @@
+{
+  "isoCode": "SV",
+  "title": "Himno Nacional de El Salvador",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Juan José Cañas",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_El_Salvador"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Libertad, Libertad es el grito",
+        "Que á la Patria feliz encamina;",
+        "Libertad es la estrella divina",
+        "Luz de gloria del fiel [[Salvador]]."
+      ],
+      "english": [
+        "Liberty, Liberty is the cry",
+        "That leads to a happy country;",
+        "Liberty is the divine star",
+        "Light of glory of the faithful Savior."
+      ]
+    },
+    {
+      "local": [
+        "En la Patria dichosa resuena",
+        "De los libres un canto bendito:",
+        "Ella nunca al estigma maldito",
+        "Se rindió de la vil opresion."
+      ],
+      "english": [
+        "In the blissful homeland resounds",
+        "A blessed song of the free:",
+        "She never, to the cursed stigma",
+        "Of vile oppression, surrendered."
+      ]
+    },
+    {
+      "local": [
+        "Contemplando gozosa en el Cielo",
+        "Levantada su espléndida estrella,",
+        "De la Union en la pléyade bella",
+        "A los mundos dará admiracion."
+      ],
+      "english": [
+        "Joyfully beholding, in Heaven",
+        "Her splendid star raised,",
+        "From the Union in the beautiful Pleiad",
+        "She will give admiration to the worlds."
+      ]
+    },
+    {
+      "local": [
+        "Resolvióse su dicha labrar",
+        "Porque esclava vivir no consiente;",
+        "Libertad es su timbre fulgente",
+        "Libertad su bandera y honor."
+      ],
+      "english": [
+        "She resolved her happiness to work",
+        "Because she does not consent to live a slave;",
+        "Liberty is her shining stamp",
+        "Liberty her flag and honour."
+      ]
+    },
+    {
+      "local": [
+        "Y sus hijos, sus bravos soldados;",
+        "Para gloria mayor de sus leyes",
+        "El poder condenó de los reyes......",
+        "¡Que es la Ley su absoluto señor!"
+      ],
+      "english": [
+        "And her children, her brave soldiers;",
+        "For the greater glory of her laws",
+        "She doomed the power of the kings......",
+        "Because the Law is her absolute lord!"
+      ]
+    },
+    {
+      "local": [
+        "Solo encierra tu seno demócratas",
+        "Dulce Patria, con solo un matiz;",
+        "Tú por libre respiras feliz",
+        "La Igualdad en tu suelo creció."
+      ],
+      "english": [
+        "Just enclose your bosom, democrats",
+        "Sweet Fatherland, with just one nuance;",
+        "You freely breathe happily",
+        "Equality grew on your soil."
+      ]
+    },
+    {
+      "local": [
+        "Generoso te extiende su mano",
+        "Y te llama República fuerte,",
+        "Todo un Dios que te brinda la suerte",
+        "Cuantos bienes la tierra creó."
+      ],
+      "english": [
+        "The generous extends his hand to you",
+        "And calls you a strong Republic,",
+        "A true God who provides you fortune",
+        "All the goods the earth created."
+      ]
+    },
+    {
+      "local": [
+        "Si los pueblos de América un dia",
+        "Bajo el yugo de Iberia gimieron,",
+        "Héroes tuvo que al fin sacudieron",
+        "De su frente tan torpe baldon."
+      ],
+      "english": [
+        "If the peoples of America one day",
+        "Moaned under the yoke of Iberia,",
+        "Heroes had to finally shake off",
+        "From their forehead such a clumsy disgrace."
+      ]
+    },
+    {
+      "local": [
+        "Su memoria honoremos rendidos",
+        "Aclamemos sus glorias y hazañas,",
+        "Y resuene en las altas montañas",
+        "El placer de esta libre Nacion."
+      ],
+      "english": [
+        "Let us honour their memory surrendered",
+        "Let us acclaim their glories and deeds,",
+        "And let resonate in the high mountains",
+        "The pleasure of this free Nation."
+      ]
+    }
+  ]
+}

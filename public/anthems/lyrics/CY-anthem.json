@@ -1,0 +1,135 @@
+{
+  "isoCode": "CY",
+  "title": "Ymnos eis tin Eleftherian",
+  "language": {
+    "code": "el",
+    "name": "Greek",
+    "script": "Greek"
+  },
+  "sources": {
+    "local": {
+      "author": "Dionysios Solomos",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Hymn_to_Liberty"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Σὲ γνωρίζω ἀπὸ τὴν κόψι",
+        "Τοῦ σπαθιοῦ τὴν τρομερή,",
+        "Σὲ γνωρίζω ἀπὸ τὴν ὄψι,",
+        "Ποὺ μὲ βία μετράει τὴν γῆ."
+      ],
+      "english": [
+        "I know you by the direful,",
+        "Cutting edge of your keen sword.",
+        "I know your eye stare ireful.",
+        "Counting fast the lands restored."
+      ]
+    },
+    {
+      "local": [
+        "Ἀπ' τὰ κόκκαλα βγαλμένη",
+        "Τῶν [[Ἑλλήνων]] τὰ ἱερά,",
+        "Καὶ σὰν πρῶτα ἀνδρειωμένη,",
+        "Χαῖρε, ὢ χαῖρε, Ἐλευθεριά!"
+      ],
+      "english": [
+        "You came forth from the departed",
+        "[[Greeks]] who died and lived for you.",
+        "And like erstwhile stouthearted,",
+        "Hail, O hail! Freedom for you!"
+      ]
+    },
+    {
+      "local": [
+        "Ἐκεῖ μέσα ἐκαρτεροῦσες,",
+        "Πικραμένη, ἐντροπαλή,",
+        "Κ' ἕνα στόμα ἀκαρτεροῦσες,",
+        "Ἔλα πάλι, νὰ σοῦ ‘πῇ."
+      ],
+      "english": [
+        "Thereinside you were dwelling",
+        "Reticent, embittered too.",
+        "For a summon you were praying",
+        "Telling you come back anew."
+      ]
+    },
+    {
+      "local": [
+        "Ἄργιε νἄλθῃ ἐκείνη ἡ 'μέρα,",
+        "Καὶ ἦταν ὅλα σιωπηλά,",
+        "Γιατὶ τἄσκιαζε ἡ φοβέρα,",
+        "Καὶ τὰ πλάκονε ἡ σκλαβιά."
+      ],
+      "english": [
+        "That good day was always tarrying,",
+        "Everything was mute around.",
+        "For oppression was scaring",
+        "And by slavery they were bound."
+      ]
+    },
+    {
+      "local": [
+        "Δυστυχής! παρηγορία",
+        "Μόνη σοῦ ἔμενε νὰ λὲς",
+        "Περασμένα μεγαλεῖα,",
+        "Καὶ διηγῶντάς τα νὰ κλαῖς."
+      ],
+      "english": [
+        "Woe is you! Your only solace,",
+        "Sitting lone telling with sigh.",
+        "Glories past when you were aweless",
+        "And recounting them to cry."
+      ]
+    },
+    {
+      "local": [
+        "Καὶ ἀκαρτέρει, καὶ ἀκαρτέρει",
+        "Φιλελεύθερην λαλιά,",
+        "Ἕνα ἐκτύπαε τἄλλο χέρι",
+        "Ἀπὸ τὴν ἀπελπησιά."
+      ],
+      "english": [
+        "And awaiting and awaiting",
+        "A liberal strong voice to dare",
+        "Your one hand the other smiting",
+        "Our of sorrow and despair"
+      ]
+    },
+    {
+      "local": [
+        "Κ’ ἔλεες· πότε ἄ! πότε βγάνω",
+        "Τὸ κεφάλι ἀπὸ τσ’ ἐρμιαῖς;",
+        "Καὶ ἀποκρίνοντο ἀπὸ πάνω",
+        "Κλάψαις, ἅλυσσες, φωναῖς."
+      ],
+      "english": [
+        "And you were saying: \"When will I ever",
+        "Raise my head from these lorn wilds?\"",
+        "From above replies as ever",
+        "Wails, chains, fetters of all kinds."
+      ]
+    },
+    {
+      "local": [
+        "Τότε ἐσήκονες τὸ βλέμμα",
+        "Μὲς τὰ κλαΰματα θολό,",
+        "Καὶ εἰς τὸ ῥοῦχό σου ἔσταζ’ αἷμα,",
+        "Πλῆθος αἷμα [[Ἑλληνικό]]."
+      ],
+      "english": [
+        "Then your eyes you'd lift up weeping,",
+        "Hazy, full of tears and red,",
+        "on your dress unendly dripping",
+        "gobs of [[Greek]] blood vainly shed"
+      ]
+    }
+  ]
+}

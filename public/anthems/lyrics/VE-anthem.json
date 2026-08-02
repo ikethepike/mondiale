@@ -1,0 +1,163 @@
+{
+  "isoCode": "VE",
+  "title": "Gloria al Bravo Pueblo",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Vicente Salias",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Gloria_al_Bravo_Pueblo"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Gloria al Bravo Pueblo",
+        "que el yugo lanzó",
+        "la ley respetando",
+        "la virtud y honor"
+      ],
+      "english": [
+        "Glory to the brave people",
+        "who shook off the yoke,",
+        "The law respecting,",
+        "virtue and honour."
+      ]
+    },
+    {
+      "local": [
+        "«¡Abajo cadenas!»",
+        "Gritaba el Señor",
+        "y el pobre en su choza",
+        "libertad pidió"
+      ],
+      "english": [
+        "\"Down with chains!\"",
+        "Shouted the Lord;",
+        "And the poor man in his hovel",
+        "For Freedom implored."
+      ]
+    },
+    {
+      "local": [
+        "A este santo nombre",
+        "tembló de pavor",
+        "el vil egoísmo",
+        "que otra vez triunfó"
+      ],
+      "english": [
+        "Upon this holy name",
+        "Trembled in great dread",
+        "The vile selfishness",
+        "That had once prevailed."
+      ]
+    },
+    {
+      "local": [
+        "A este santo nombre",
+        "tembló de pavor",
+        "el vil egoísmo",
+        "que otra vez triunfó"
+      ],
+      "english": [
+        "Upon this holy name",
+        "Trembled in great dread",
+        "The vile selfishness",
+        "That had once prevailed."
+      ]
+    },
+    {
+      "local": [
+        "Gritemos con brío",
+        "¡Muera la opresión!",
+        "Compatriotas fieles",
+        "la fuerza es la unión"
+      ],
+      "english": [
+        "Let's scream out aloud:",
+        "\"Death to oppression!\"",
+        "Oh, loyal countrymen:",
+        "Strength is unity;"
+      ]
+    },
+    {
+      "local": [
+        "y desde el empíreo",
+        "el Supremo Autor",
+        "un sublime aliento",
+        "al pueblo infundió"
+      ],
+      "english": [
+        "And from the Empyrean",
+        "The Supreme Author",
+        "A sublime spirit",
+        "To the people blew;"
+      ]
+    },
+    {
+      "local": [
+        "y desde el empíreo",
+        "el Supremo Autor",
+        "un sublime aliento",
+        "al pueblo infundió"
+      ],
+      "english": [
+        "And from the Empyrean",
+        "The Supreme Author",
+        "A sublime spirit",
+        "To the people blew."
+      ]
+    },
+    {
+      "local": [
+        "Unida con lazos",
+        "que el cielo formó",
+        "la América toda",
+        "existe en Nación"
+      ],
+      "english": [
+        "United by bonds",
+        "That Heaven has formed,",
+        "The entire America",
+        "Exists as a Nation;"
+      ]
+    },
+    {
+      "local": [
+        "y si el despotismo",
+        "levanta la voz",
+        "seguid el ejemplo",
+        "que Caracas dio"
+      ],
+      "english": [
+        "And if ever despotism",
+        "Raises again its voice,",
+        "Then follow the example",
+        "That Caracas gave;"
+      ]
+    },
+    {
+      "local": [
+        "y si el despotismo",
+        "levanta la voz",
+        "seguid el ejemplo",
+        "que Caracas dio"
+      ],
+      "english": [
+        "And if ever despotism",
+        "Raises again its voice,",
+        "Then follow the example",
+        "That Caracas gave."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "isoCode": "LI",
+  "title": "Oben am jungen Rhein",
+  "language": {
+    "code": "de",
+    "name": "German",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Jakob Josef Jauch",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Oben_am_jungen_Rhein"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Oben am jungen Rhein",
+        "Lehnet sich [[Liechtenstein]]",
+        "An Alpenhöh'n.",
+        "Dies liebe Heimatland,"
+      ],
+      "english": [
+        "High on the young Rhine",
+        "Lies [[Liechtenstein]], resting",
+        "On Alpine heights.",
+        "This beloved homeland"
+      ]
+    },
+    {
+      "local": [
+        "Das teure Vaterland",
+        "Hat Gottes weise Hand",
+        "Für uns erseh'n.",
+        "Wo einst St. Lucien"
+      ],
+      "english": [
+        "The dear fatherland",
+        "God's wise hand has",
+        "Chosen for us.",
+        "Where once St. Lucius"
+      ]
+    },
+    {
+      "local": [
+        "Frieden nach Rhätien",
+        "Hineingebracht",
+        "Dort an dem Grenzestein",
+        "Und längs des jungen Rhein"
+      ],
+      "english": [
+        "Peace to Raetia",
+        "Brought,",
+        "There by the border stone",
+        "And along the young Rhine"
+      ]
+    },
+    {
+      "local": [
+        "Steht furchtlos [[Liechtenstein]]",
+        "Auf Deutschlands Wacht.",
+        "Lieblich zur Sommerzeit",
+        "Auf hoher Alpenweid"
+      ],
+      "english": [
+        "[[Liechtenstein]] stands fearless",
+        "On guard for Germany.",
+        "Lovely in the summer",
+        "On the high Alps' meadows"
+      ]
+    },
+    {
+      "local": [
+        "Schwebt Himmelsruh:",
+        "Wo frei die Gemse springt,",
+        "Kühn sich der Adler schwingt,",
+        "Der Senn das Ave singt"
+      ],
+      "english": [
+        "Floats heavenly quietude.",
+        "Where the chamois leaps freely,",
+        "The eagle soars boldly,",
+        "The herdsman sings the Ave"
+      ]
+    },
+    {
+      "local": [
+        "Der Heimat zu.",
+        "Von grünen Felsenhöh'n",
+        "Freundlich es ist zu seh'n",
+        "Mit einem Blick:"
+      ],
+      "english": [
+        "For the native land.",
+        "From green rocky heights",
+        "It is lovely to look at",
+        "With one gaze:"
+      ]
+    },
+    {
+      "local": [
+        "Wie des Rhein's Silberband",
+        "Säumet das schöne Land,",
+        "Ein kleines Vaterland",
+        "Von stillem Glück."
+      ],
+      "english": [
+        "How the Rhine's silver band",
+        "Hems the beautiful land",
+        "A small fatherland",
+        "Of silent bliss."
+      ]
+    },
+    {
+      "local": [
+        "Treu und fest, wenn schon klein",
+        "Im deutschen Reichsverein",
+        "Ruht [[Liechtenstein]].",
+        "Lichtvoll auf ew'gem Grund"
+      ],
+      "english": [
+        "Loyal and firm, even if small",
+        "In the German Empire association",
+        "Rests [[Liechtenstein]].",
+        "Full of light on eternal ground"
+      ]
+    },
+    {
+      "local": [
+        "Einig und kerngesund",
+        "In Sturm und Nacht dem Bund",
+        "Leuchtstern zu sein.",
+        "Theilt nicht des Fürsten Herz"
+      ],
+      "english": [
+        "United and healthy",
+        "In storm and night the union",
+        "to be a shining star.",
+        "Does the prince's heart not share"
+      ]
+    },
+    {
+      "local": [
+        "Väterlich Freud' und Schmerz",
+        "Mit Kindern hier?",
+        "Nicht ihn erhält das Land —",
+        "So reichet ihm die Hand,"
+      ],
+      "english": [
+        "Fatherly joy and pain",
+        "With children here?",
+        "The country is not receiving him —",
+        "So give him your hand"
+      ]
+    },
+    {
+      "local": [
+        "In unserm Vaterland",
+        "Vater und Zier!",
+        "Hoch lebe [[Liechtenstein]],",
+        "Blühend am jungen Rhein,"
+      ],
+      "english": [
+        "In our fatherland",
+        "father and ornament!",
+        "Long live [[Liechtenstein]],",
+        "Blossoming on the young Rhine,"
+      ]
+    },
+    {
+      "local": [
+        "Glücklich und treu.",
+        "Hoch leb' der Fürst vom Land,",
+        "Hoch unser Vaterland,",
+        "Durch Bruderliebe Band"
+      ],
+      "english": [
+        "Fortunate and faithful!",
+        "Long live the Prince of the Land,",
+        "Long live our fatherland,",
+        "Through bonds of brotherly love"
+      ]
+    },
+    {
+      "local": [
+        "Vereint und frei."
+      ],
+      "english": [
+        "United and free!"
+      ]
+    }
+  ]
+}

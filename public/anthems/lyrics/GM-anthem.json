@@ -1,0 +1,64 @@
+{
+  "isoCode": "GM",
+  "title": "For The Gambia Our Homeland",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/For_The_Gambia_Our_Homeland"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "For [[The Gambia]], our homeland",
+        "We strive and work and pray,",
+        "That all may live in unity,",
+        "Freedom and peace each day."
+      ],
+      "english": [
+        "For [[The Gambia]], our homeland",
+        "We strive and work and pray,",
+        "That all may live in unity,",
+        "Freedom and peace each day."
+      ]
+    },
+    {
+      "local": [
+        "Let justice guide our actions",
+        "Towards the common good,",
+        "And join our diverse peoples",
+        "To prove man's brotherhood."
+      ],
+      "english": [
+        "Let justice guide our actions",
+        "Towards the common good,",
+        "And join our diverse peoples",
+        "To prove man's brotherhood."
+      ]
+    },
+    {
+      "local": [
+        "We pledge our firm allegiance,",
+        "Our promise we renew;",
+        "Keep us, great God of nations,",
+        "To [[The Gambia]] ever true."
+      ],
+      "english": [
+        "We pledge our firm allegiance,",
+        "Our promise we renew;",
+        "Keep us, great God of nations,",
+        "To [[The Gambia]] ever true."
+      ]
+    }
+  ]
+}

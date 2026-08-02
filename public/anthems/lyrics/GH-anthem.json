@@ -1,0 +1,106 @@
+{
+  "isoCode": "GH",
+  "title": "God Bless Our Homeland Ghana",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Bless_Our_Homeland_Ghana"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "God bless our motherland [[Ghana]]",
+        "And make our nation great and strong,",
+        "Bold to defend forever",
+        "The cause of Freedom and of Right;"
+      ],
+      "english": [
+        "God bless our motherland [[Ghana]]",
+        "And make our nation great and strong,",
+        "Bold to defend forever",
+        "The cause of Freedom and of Right;"
+      ]
+    },
+    {
+      "local": [
+        "Fill our hearts with true humility,",
+        "Make us cherish fearless honesty,",
+        "And help us to resist oppressors' rule",
+        "With all our will and might for evermore."
+      ],
+      "english": [
+        "Fill our hearts with true humility,",
+        "Make us cherish fearless honesty,",
+        "And help us to resist oppressors' rule",
+        "With all our will and might for evermore."
+      ]
+    },
+    {
+      "local": [
+        "Hail to thy name, O [[Ghana]],",
+        "To thee we make our solemn vow:",
+        "Steadfast to build together",
+        "A nation strong in Unity;"
+      ],
+      "english": [
+        "Hail to thy name, O [[Ghana]],",
+        "To thee we make our solemn vow:",
+        "Steadfast to build together",
+        "A nation strong in Unity;"
+      ]
+    },
+    {
+      "local": [
+        "With our gifts of mind and strength of arm,",
+        "Whether night or day, in mist or storm,",
+        "In every need, whate'er the call may be,",
+        "To serve thee, [[Ghana]], now and for evermore."
+      ],
+      "english": [
+        "With our gifts of mind and strength of arm,",
+        "Whether night or day, in mist or storm,",
+        "In every need, whate'er the call may be,",
+        "To serve thee, [[Ghana]], now and for evermore."
+      ]
+    },
+    {
+      "local": [
+        "Raise high the flag of [[Ghana]]",
+        "and one with Africa advance;",
+        "Black star of hope and honour",
+        "To all who thirst for liberty;"
+      ],
+      "english": [
+        "Raise high the flag of [[Ghana]]",
+        "and one with Africa advance;",
+        "Black star of hope and honour",
+        "To all who thirst for liberty;"
+      ]
+    },
+    {
+      "local": [
+        "Where the banner of [[Ghana]] freely flies,",
+        "May the way to freedom truly lie;",
+        "Arise, arise, O sons of [[Ghana]] land,",
+        "And under God march on for evermore!"
+      ],
+      "english": [
+        "Where the banner of [[Ghana]] freely flies,",
+        "May the way to freedom truly lie;",
+        "Arise, arise, O sons of [[Ghana]] land,",
+        "And under God march on for evermore!"
+      ]
+    }
+  ]
+}

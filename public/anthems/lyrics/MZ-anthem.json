@@ -1,0 +1,78 @@
+{
+  "isoCode": "MZ",
+  "title": "Pátria Amada",
+  "language": {
+    "code": "pt",
+    "name": "Portuguese",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/P%C3%A1tria_Amada"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Na memória de África e do Mundo",
+        "Pátria bela dos que ousaram lutar",
+        "[[Moçambique]], o teu nome é liberdade",
+        "O Sol de Junho para sempre brilhará"
+      ],
+      "english": [
+        "In the memory of Africa and the World",
+        "Beautiful fatherland of those that dared to fight",
+        "[[Mozambique]], your name is freedom",
+        "The Sun of June forever will shine"
+      ]
+    },
+    {
+      "local": [
+        "[[Moçambique]] nossa terra gloriosa",
+        "Pedra a pedra construindo um novo dia",
+        "Milhões de braços, uma só força",
+        "Oh pátria amada, vamos vencer"
+      ],
+      "english": [
+        "[[Mozambique]], our Glorious Land",
+        "Rock by rock constructing a new day",
+        "Millions of arms, only one force",
+        "O beloved fatherland, let's be victorious"
+      ]
+    },
+    {
+      "local": [
+        "Povo unido do Rovuma ao Maputo",
+        "Colhe os frutos do combate pela paz",
+        "Cresce o sonho ondulando na bandeira",
+        "E vai lavrando na certeza do amanhã"
+      ],
+      "english": [
+        "United people from the Rovuma to Maputo",
+        "Harvest the fruits of the combat for peace",
+        "The dream grows waving in the flag",
+        "And goes cultivating in the certainty of tomorrow"
+      ]
+    },
+    {
+      "local": [
+        "Flores brotando do chão do teu suor",
+        "Pelos montes, pelos rios, pelo mar",
+        "Nós juramos por ti, oh [[Moçambique]]",
+        "Nenhum tirano nos irá escravizar"
+      ],
+      "english": [
+        "Flowers sprouting of the soil of your sweat",
+        "In the mountains, in the rivers, in the sea",
+        "We swear by you, O [[Mozambique]]",
+        "No tyrant will enslave us"
+      ]
+    }
+  ]
+}

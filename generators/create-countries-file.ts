@@ -1,6 +1,7 @@
 import { countries, languages } from 'countries-list'
 import { readFileSync, writeFileSync } from 'fs'
 import { decode } from 'he'
+import { getNationalColors } from './flag-colors'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
@@ -172,7 +173,7 @@ const normalizeCountry = ({
     languages: getLanguages({ data, isoCode }),
     currency: getCurrency({ isoCode }),
     identity: (() => {
-      const colors = getNationalColors(data, isoCode, flag.toString())
+      const colors = getNationalColors(flag.toString())
       return { colors, simplifiedColors: simplifiedPalette(colors) }
     })(),
     government: {
@@ -793,16 +794,6 @@ export const getNames = ({
     local: removeAfterCharacter(removeParentheticals(output.local), ';'),
     english: removeAfterCharacter(removeParentheticals(output.english), ';'),
   }
-}
-
-const getNationalColors = (data: FactbookResponse, isoCode: string, flag: string): string[] => {
-  if (!flag.includes('fill')) {
-    return []
-  }
-
-  const matches = new Set(flag.match(/#(?:[0-9a-fA-F]{3}){1,2}/g))
-
-  return [...matches]
 }
 
 const getMembership = ({

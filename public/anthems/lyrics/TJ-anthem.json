@@ -1,0 +1,100 @@
+{
+  "isoCode": "TJ",
+  "title": "Суруди Миллӣ",
+  "language": {
+    "code": "tg",
+    "name": "Tajik",
+    "script": "Cyrillic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Surudi_Milli"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Диёри арҷманди мо,",
+        "Ба бахти мо сари азизи ту баланд бод,",
+        "Саодати ту, давлати ту бегазанд бод.",
+        "Зи дурии замонаҳо расидаем,"
+      ],
+      "english": [
+        "Our beloved country,",
+        "Happy we are to see your dignity.",
+        "Let your joy and prosperity forever be.",
+        "We have reached this day since time immemorial."
+      ]
+    },
+    {
+      "local": [
+        "Ба зери парчами ту саф кашидаем, кашидаем.",
+        "Зинда бош, эй Ватан,",
+        "[[Тоҷикистони]] озоди ман!",
+        "Барои ному нанги мо"
+      ],
+      "english": [
+        "Together aligned we stand under your flag, under your flag.",
+        "Long live my homeland,",
+        "My free [[Tajikistan]]!",
+        "You are our symbol maternal,"
+      ]
+    },
+    {
+      "local": [
+        "Ту аз умеди рафтагони мо нишонаӣ,",
+        "Ту баҳри ворисон ҷаҳони ҷовидонаӣ,",
+        "Хазон намерасад ба навбаҳори ту,",
+        "Ки мазраи вафо бувад канори ту, канори ту."
+      ],
+      "english": [
+        "You are the symbol of our honour and dignity,",
+        "You are for all your sons and daughters a world eternal,",
+        "Never shall your bosom fade away,",
+        "We shall continue to remain loyal to you, loyal to you."
+      ]
+    },
+    {
+      "local": [
+        "Зинда бош, эй Ватан,",
+        "[[Тоҷикистони]] озоди ман!",
+        "Ту модари ягонаӣ,",
+        "Бақои ту бувад бақои хонадони мо,"
+      ],
+      "english": [
+        "Long live my homeland,",
+        "My free [[Tajikistan]]!",
+        "You are a mother for all of us,",
+        "Your destiny is the future for our families,"
+      ]
+    },
+    {
+      "local": [
+        "Мароми ту бувад мароми ҷисму ҷони мо,",
+        "Зи ту саодати абад насиби мост,",
+        "Ту ҳастиву ҳама ҷаҳон ҳабиби мост, ҳабиби мост.",
+        "Зинда бош, эй Ватан,"
+      ],
+      "english": [
+        "Your meaning is the essence of our souls and bodies,",
+        "You give us amaranthine happiness,",
+        "Because of you, [[Tajikistan]], we love the world – love the world.",
+        "Long live my homeland,"
+      ]
+    },
+    {
+      "local": [
+        "[[Тоҷикистони]] озоди ман!"
+      ],
+      "english": [
+        "My free [[Tajikistan]]!"
+      ]
+    }
+  ]
+}

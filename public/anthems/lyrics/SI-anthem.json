@@ -1,0 +1,63 @@
+{
+  "isoCode": "SI",
+  "title": "Zdravljica",
+  "language": {
+    "code": "sl",
+    "name": "Slovene",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "France Prešeren",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Slovenia"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Žive naj vsi narodi",
+        "Ki hrepene dočakat' dan",
+        "Da koder sonce hodi",
+        "Prepir iz sveta bo pregnan"
+      ],
+      "english": [
+        "Let all people of all nations live",
+        "Who long and work for that bright day",
+        "When o'er earth's habitations",
+        "No war, no strife shall hold its sway"
+      ]
+    },
+    {
+      "local": [
+        "Da rojak",
+        "Prost bo vsak",
+        "Ne vrag, le sosed bo mejak!",
+        "Da rojak"
+      ],
+      "english": [
+        "Who long to see",
+        "That all men free",
+        "No more shall foes, but neighbours be!",
+        "Who long to see"
+      ]
+    },
+    {
+      "local": [
+        "Prost bo vsak",
+        "Ne vrag, le sosed bo",
+        "Ne vrag, le sosed bo mejak!"
+      ],
+      "english": [
+        "That all men free",
+        "No more shall foes, but neighbours,",
+        "No more shall foes, but neighbours be!"
+      ]
+    }
+  ]
+}

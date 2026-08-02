@@ -1,0 +1,49 @@
+{
+  "isoCode": "GB",
+  "title": "God Save the King",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "traditional, author unknown",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Save_the_King"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "God save our gracious King!",
+        "Long live our noble King!",
+        "God save the King!",
+        "Send him victorious,"
+      ],
+      "english": [
+        "God save our gracious King!",
+        "Long live our noble King!",
+        "God save the King!",
+        "Send him victorious,"
+      ]
+    },
+    {
+      "local": [
+        "Happy and glorious,",
+        "Long to reign over us,",
+        "God save the King!"
+      ],
+      "english": [
+        "Happy and glorious,",
+        "Long to reign over us,",
+        "God save the King!"
+      ]
+    }
+  ]
+}

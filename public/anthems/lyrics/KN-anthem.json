@@ -1,0 +1,78 @@
+{
+  "isoCode": "KN",
+  "title": "O Land of Beauty!",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/O_Land_of_Beauty!"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "O Land of Beauty!",
+        "Our country where peace abounds,",
+        "Thy children stand free",
+        "On the strength of will and love."
+      ],
+      "english": [
+        "O Land of Beauty!",
+        "Our country where peace abounds,",
+        "Thy children stand free",
+        "On the strength of will and love."
+      ]
+    },
+    {
+      "local": [
+        "With God in all our struggles,",
+        "[[Saint Kitts and Nevis]] be,",
+        "A nation bound together,",
+        "With a common destiny."
+      ],
+      "english": [
+        "With God in all our struggles,",
+        "[[Saint Kitts and Nevis]] be,",
+        "A nation bound together,",
+        "With a common destiny."
+      ]
+    },
+    {
+      "local": [
+        "As stalwarts we stand,",
+        "For justice and liberty.",
+        "With wisdom and truth,",
+        "We will serve and honour thee."
+      ],
+      "english": [
+        "As stalwarts we stand,",
+        "For justice and liberty.",
+        "With wisdom and truth,",
+        "We will serve and honour thee."
+      ]
+    },
+    {
+      "local": [
+        "No sword nor spear can conquer,",
+        "For God will sure defend.",
+        "His blessings shall forever,",
+        "To posterity extend."
+      ],
+      "english": [
+        "No sword nor spear can conquer,",
+        "For God will sure defend.",
+        "His blessings shall forever,",
+        "To posterity extend."
+      ]
+    }
+  ]
+}

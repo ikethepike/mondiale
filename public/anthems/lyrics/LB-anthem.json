@@ -1,0 +1,75 @@
+{
+  "isoCode": "LB",
+  "title": "Kulluna lil-watan",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "author": "Rashid Nakhle",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_Lebanon"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "كُلُّنَـا لِلْوَطَـنْ لِلْعُـلَا لِلْعَـلَمْ",
+        "مِلْءُ عَيْنِ الزَّمَنْ سَـيْفُنَا وَالْقَـلَمْ",
+        "سَهْلُنَا وَالْجَبَـلْ مَنْبِتٌ لِلرِّجَـالْ",
+        "قَوْلُنَا وَالْعَمَـلْ فِي سَبِيلِ الْكَمَالْ"
+      ],
+      "english": [
+        "All of us! For our Country, for our Glory and Flag!",
+        "Our valor and our writings are the envy of the ages.",
+        "Our mountain and our valley, they bring forth stalwart men.",
+        "And to Perfection we devote our words and labor."
+      ]
+    },
+    {
+      "local": [
+        "كُلُّنَا لِلْوَطَنْ لِلْعُلَا لِلْعَلَمْ",
+        "كُلُّنَا لِلْوَطَنْ",
+        "شَيْخُنَـا وَالْفَتَـى عِنْـدَ صَـوْتِ الْوَطَنْ",
+        "أُسْـدُ غَـابٍ مَتَى سَـاوَرَتْنَا الْفِــتَنْ"
+      ],
+      "english": [
+        "All of us! For our Country, for our Glory and Flag!",
+        "All of us! For our Country!",
+        "Our Elders and our children, they await our Country's call,",
+        "And on the Day of Crisis they are as Lions of the Jungle."
+      ]
+    },
+    {
+      "local": [
+        "شَــرْقُنَـا قَلْبُـهُ أَبَــدًا لُبْـنَانْ",
+        "صَانَهُ رَبُّهُ لِمَدَى الْأَزْمَانْ",
+        "بَحْـرُهُ بَــرُّهُ دُرَّةُ الشَّرْقَيْن",
+        "رِفْـدُهُ بِــرُّهُ مَالِئُ الْقُطْبَيْن"
+      ],
+      "english": [
+        "The heart of our East is ever [[Lebanon]],",
+        "God has preserved him until the end of time.",
+        "The Gems of the East are his land and sea.",
+        "Throughout the world his good deeds flow from pole to pole."
+      ]
+    },
+    {
+      "local": [
+        "إِسْمُـهُ عِـزُّهُ مُنْذُ كَانَ الْجُدُودْ",
+        "مَجْــدُهُ أَرْزُهُ رَمْزُهُ لِلْخُلُودْ"
+      ],
+      "english": [
+        "And his name is his glory since time began.",
+        "The cedars are his pride, his immortality's symbol."
+      ]
+    }
+  ]
+}

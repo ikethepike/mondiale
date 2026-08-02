@@ -1,0 +1,90 @@
+{
+  "isoCode": "KM",
+  "title": "Udzima wa ya Masiwa",
+  "language": {
+    "code": "zdj",
+    "name": "Comorian",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Umodja_Wa_Massiwa"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Beramu isi pepeza",
+        "I nadi ukombozi piya",
+        "Ye daula ivenuha",
+        "Hasibabu yahe dini voya tsangaya hunu [[Komoriya]]"
+      ],
+      "english": [
+        "The flag is flying,",
+        "Announcing total independence;",
+        "The nation rises up",
+        "Because of the faith we have in our [[Comoros]]."
+      ]
+    },
+    {
+      "local": [
+        "Narikeni yamahaba ya huvendza ya [[masiwa]] yatru",
+        "Wasiwa Komoro damu ndzima",
+        "Wasiwa Komoro dini ndzima",
+        "Ya [[masiwa]] razaliwa"
+      ],
+      "english": [
+        "Let us always have devotion to love our Great Islands.",
+        "We [[Comorians]] are of one blood,",
+        "We [[Comorians]] are of one faith.",
+        "On these Islands we were born,"
+      ]
+    },
+    {
+      "local": [
+        "Ya [[masiwa]] yarileya",
+        "Mola nde yari sayidiya",
+        "Narike niya ndzima",
+        "Rivendze uwatwaniya"
+      ],
+      "english": [
+        "These Islands brought us up.",
+        "May God always help us;",
+        "Let us always have the firm resolve",
+        "To love our fatherland,"
+      ]
+    },
+    {
+      "local": [
+        "Mahaba ya dini na duniya.",
+        "Beramu isi pepeza",
+        "Rangu mwezi sita wa Juiye",
+        "Ye daula ivenuha"
+      ],
+      "english": [
+        "Love our religion and the world.",
+        "The flag is flying.",
+        "From the Sixth of July",
+        "The Nation rises up;"
+      ]
+    },
+    {
+      "local": [
+        "Zisiwa zatru zi katruha",
+        "Maoré na Ndzuani, Mwali na Ngazidja",
+        "Narikeni yamahaba ya huvendza ya [[masiwa]]."
+      ],
+      "english": [
+        "Our Islands are lined up.",
+        "Mayotte and Anjouan, Mohéli and N'Gazidja,",
+        "Let us always have devotion to love our Great Islands."
+      ]
+    }
+  ]
+}

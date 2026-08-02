@@ -1,0 +1,121 @@
+{
+  "isoCode": "LR",
+  "title": "All Hail, Liberia, Hail!",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Daniel Bashiel Warner",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/All_Hail,_Liberia,_Hail!"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "All hail, [[Liberia]], hail! (All hail!)",
+        "This glorious land of liberty",
+        "Shall long be ours.",
+        "Though new her name,"
+      ],
+      "english": [
+        "All hail, [[Liberia]], hail! (All hail!)",
+        "This glorious land of liberty",
+        "Shall long be ours.",
+        "Though new her name,"
+      ]
+    },
+    {
+      "local": [
+        "Grand be her fame,",
+        "And mighty be her powers,",
+        "And mighty be her powers,",
+        "In joy and gladness"
+      ],
+      "english": [
+        "Grand be her fame,",
+        "And mighty be her powers,",
+        "And mighty be her powers,",
+        "In joy and gladness"
+      ]
+    },
+    {
+      "local": [
+        "With our hearts united,",
+        "We'll shout the freedom",
+        "Of a race benighted,",
+        "Long live [[Liberia]], happy land!"
+      ],
+      "english": [
+        "With our hearts united,",
+        "We'll shout the freedom",
+        "Of a race benighted,",
+        "Long live [[Liberia]], happy land!"
+      ]
+    },
+    {
+      "local": [
+        "A home of glorious liberty,",
+        "By God's command!",
+        "All hail, [[Liberia]], hail! (All hail!)",
+        "In union strong success is sure"
+      ],
+      "english": [
+        "A home of glorious liberty,",
+        "By God's command!",
+        "All hail, [[Liberia]], hail! (All hail!)",
+        "In union strong success is sure"
+      ]
+    },
+    {
+      "local": [
+        "We cannot fail!",
+        "With God above",
+        "Our rights to prove",
+        "We will o'er all prevail,"
+      ],
+      "english": [
+        "We cannot fail!",
+        "With God above",
+        "Our rights to prove",
+        "We will o'er all prevail,"
+      ]
+    },
+    {
+      "local": [
+        "We will o'er all prevail,",
+        "With heart and hand",
+        "Our country's cause defending",
+        "We'll meet the foe"
+      ],
+      "english": [
+        "We will o'er all prevail,",
+        "With heart and hand",
+        "Our country's cause defending",
+        "We'll meet the foe"
+      ]
+    },
+    {
+      "local": [
+        "With valor unpretending.",
+        "Long live [[Liberia]], happy land!",
+        "A home of glorious liberty,",
+        "By God's command!"
+      ],
+      "english": [
+        "With valor unpretending.",
+        "Long live [[Liberia]], happy land!",
+        "A home of glorious liberty,",
+        "By God's command!"
+      ]
+    }
+  ]
+}

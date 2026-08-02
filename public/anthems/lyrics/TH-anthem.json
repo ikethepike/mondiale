@@ -1,0 +1,79 @@
+{
+  "isoCode": "TH",
+  "title": "Phleng Chat Thai",
+  "language": {
+    "code": "th",
+    "name": "Thai",
+    "script": "Thai"
+  },
+  "sources": {
+    "local": {
+      "author": "Luang Saranupraphan",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Thai_National_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "แผ่นดินสยามนามประเทืองว่าเมืองทอง",
+        "[[ไทย]]เข้าครองตั้งประเทศเขตต์แดนสง่า",
+        "สืบชาติ[[ไทย]]ดึกดำบรรพ์โบราณลงมา",
+        "ร่วมรักษาเอกราษฎร์ชนชาติ[[ไทย]]"
+      ],
+      "english": [
+        "[[Siamese]] land is renowned as the land of gold.",
+        "The [[Thais]] have conquered this beautiful land.",
+        "The lineage of [[Thai]] people were tracing back to ancient times.",
+        "We united to defense the independence of [[Thai]] race."
+      ]
+    },
+    {
+      "local": [
+        "บางสมัยศัตรูจู่มารบ",
+        "[[ไทย]]สมทบสวนทัพเข้าขับไล่",
+        "ตะลุยเลือดหมายมุ่งผดุงผะไท",
+        "สยามสมัยบุราณรอดตลอดมา"
+      ],
+      "english": [
+        "In some eras, our foes have attacked us.",
+        "But the [[Thais]] gathered their forces to suppressing the enemies.",
+        "With blood, we fought for our sovereignty",
+        "And hitherto we have kept [[Siam]] alive."
+      ]
+    },
+    {
+      "local": [
+        "อันดินสยามคือว่าเนื้อของเชื้อ[[ไทย]]",
+        "น้ำรินไหลคือว่าเลือดของเชื้อข้า",
+        "เอกราษฎร์คือกระดูกที่เราบูชา",
+        "เราจะสามัคคีร่วมมีใจ"
+      ],
+      "english": [
+        "This [[Siamese]] land is the bulwark of the [[Thai]] race",
+        "Our blood runs through this nation's veins.",
+        "Independence is like the bones we honor",
+        "We will rise and stand as one."
+      ]
+    },
+    {
+      "local": [
+        "ยึดอำนาจกุมสิทธิ์อิสสระเสรี",
+        "ใครย่ำยีเราจะไม่ละให้",
+        "เอาเลือดล้างให้สิ้นแผ่นดินของ[[ไทย]]",
+        "สถาปนาสยามให้เทอด[[ไทย]]ไชโย"
+      ],
+      "english": [
+        "To take power and hold the rights of independence and freedom",
+        "There will be no mercy for those who dishonor it.",
+        "We shall massacre them until their last.",
+        "To glorify our great [[Siamese]] land, horray!"
+      ]
+    }
+  ]
+}

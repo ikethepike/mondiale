@@ -1,0 +1,46 @@
+{
+  "isoCode": "TW",
+  "title": "中華民國國歌",
+  "language": {
+    "code": "zh",
+    "name": "Chinese",
+    "script": "CJK"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_Anthem_of_the_Republic_of_China"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "三民主義，吾黨所宗；",
+        "以建民國，以進大同。",
+        "咨爾多士，為民前鋒；",
+        "夙夜匪懈，主義是從。"
+      ],
+      "english": [
+        "San Min Chu-i",
+        "Our aim shall be:",
+        "To found a free land,",
+        "World peace, be our stand."
+      ]
+    },
+    {
+      "local": [
+        "矢勤矢勇，必信必忠；",
+        "一心一德，貫徹始終。"
+      ],
+      "english": [
+        "Lead on, comrades,",
+        "Vanguards ye are."
+      ]
+    }
+  ]
+}

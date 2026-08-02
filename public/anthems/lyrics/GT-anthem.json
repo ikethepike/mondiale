@@ -1,0 +1,204 @@
+{
+  "isoCode": "GT",
+  "title": "Himno Nacional de Guatemala",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/National_anthem_of_Guatemala"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "¡[[Guatemala]] feliz! que tus aras",
+        "no profane jamás el verdugo;",
+        "ni haya esclavos que laman el yugo",
+        "ni tiranos que escupan tu faz."
+      ],
+      "english": [
+        "Merry [[Guatemala]]! That your altars",
+        "Never be profaned by the tormentor,",
+        "Nor there be slaves who lick the yoke",
+        "Nor tyrants who spit on your face."
+      ]
+    },
+    {
+      "local": [
+        "Si mañana tu suelo sagrado",
+        "lo amenaza invasión extranjera,",
+        "libre al viento tu hermosa bandera",
+        "a vencer o a morir llamará."
+      ],
+      "english": [
+        "If tomorrow your sacred ground",
+        "Is threatened by foreign invasion",
+        "Free to the wind, your beautiful flag",
+        "To victory or death it will call."
+      ]
+    },
+    {
+      "local": [
+        "Coro I:",
+        "Libre al viento tu hermosa bandera",
+        "a vencer o a morir llamará;",
+        "que tu pueblo con ánima fiera"
+      ],
+      "english": [
+        "Chorus I:",
+        "Free to the wind, your beautiful flag",
+        "To victory or death it will call;",
+        "That your people with fierce spirit"
+      ]
+    },
+    {
+      "local": [
+        "antes muerto que esclavo será.",
+        "De tus viejas y duras cadenas",
+        "tú forjaste con mano iracunda,",
+        "el arado que el suelo fecunda"
+      ],
+      "english": [
+        "Rather dead than slave become.",
+        "From your old and hard chains",
+        "You forged with an angry hand",
+        "The plough that fertilizes the soil,"
+      ]
+    },
+    {
+      "local": [
+        "y la espada que salva el honor.",
+        "Nuestros padres lucharon un día",
+        "encendidos en patrio ardimiento,",
+        "y lograron sin choque sangriento"
+      ],
+      "english": [
+        "And the sword that saves honor.",
+        "Our fathers fought one day",
+        "Burning with patriotic fervor,",
+        "And managed without a bloody clash"
+      ]
+    },
+    {
+      "local": [
+        "colocarte en un trono de amor.",
+        "Coro II:",
+        "Y lograron sin choque sangriento",
+        "colocarte en un trono de amor,"
+      ],
+      "english": [
+        "To place you on a throne of love.",
+        "Chorus II:",
+        "And managed without a bloody clash",
+        "To place you on a throne of love,"
+      ]
+    },
+    {
+      "local": [
+        "que de patria en enérgico acento",
+        "dieron vida al ideal redentor.",
+        "Es tu enseña pedazo de cielo",
+        "en que prende una nube su albura,"
+      ],
+      "english": [
+        "Which from fatherland in energetic focus",
+        "Gave life to the redemptive ideal.",
+        "A piece of heaven your ensign is",
+        "In which a cloud enlightens its alabaster"
+      ]
+    },
+    {
+      "local": [
+        "y ¡ay! de aquel que con ciega locura",
+        "sus colores pretenda manchar.",
+        "Pues tus hijos valientes y altivos,",
+        "que veneran la paz cual presea,"
+      ],
+      "english": [
+        "And… woe to him who with blind madness",
+        "Its colors intends to stain!",
+        "Because your brave and proud children,",
+        "Who venerate peace as a prized gift,"
+      ]
+    },
+    {
+      "local": [
+        "nunca esquivan la ruda pelea",
+        "si defienden su tierra y su hogar.",
+        "Coro III:",
+        "Nunca esquivan la ruda pelea"
+      ],
+      "english": [
+        "Never dodge the rough fight",
+        "If they defend their land and their home.",
+        "Chorus III:",
+        "Never dodge the rough fight"
+      ]
+    },
+    {
+      "local": [
+        "si defienden su tierra y su hogar,",
+        "que es tan sólo el honor su alma idea",
+        "y el altar de la patria su altar.",
+        "Recostada en el ande soberbio,"
+      ],
+      "english": [
+        "If they defend their land and their home,",
+        "That honor is their guiding cry",
+        "And the altar of the fatherland their altar.",
+        "Leaning on the proud alp"
+      ]
+    },
+    {
+      "local": [
+        "de dos mares al ruido sonoro,",
+        "bajo el ala de grana y de oro",
+        "te adormeces del bello Quetzal.",
+        "Ave indiana que vive en tu escudo,"
+      ],
+      "english": [
+        "From two seas to the sonorous noise",
+        "Under the wing of scarlet and gold",
+        "You are dazzled by the beautiful quetzal.",
+        "Indian bird that lives in your shield,"
+      ]
+    },
+    {
+      "local": [
+        "paladión que protege tu suelo;",
+        "¡ojalá que remonte su vuelo,",
+        "más que el cóndor y el águila real!",
+        "Coro IV:"
+      ],
+      "english": [
+        "Palladium that protects your land",
+        "May it take its flight",
+        "Higher than the condor and the golden eagle!",
+        "Chorus IV:"
+      ]
+    },
+    {
+      "local": [
+        "¡Ojalá que remonte su vuelo,",
+        "más que el cóndor y el águila real!",
+        "y en sus alas levante hasta el cielo,",
+        "[[Guatemala]], tu nombre inmortal."
+      ],
+      "english": [
+        "May it take its flight",
+        "Higher than the condor and the golden eagle,",
+        "And on its wings lift up to the sky,",
+        "[[Guatemala]], your immortal name!"
+      ]
+    }
+  ]
+}

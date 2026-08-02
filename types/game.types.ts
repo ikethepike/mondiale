@@ -89,6 +89,11 @@ export interface GroupChallengeAnswer {
   /** Ghosts-of-empires rounds: the beat-1 name verdict, for the scorecard.
    *  `id` keys EMPIRES; absent when the player never buzzed. */
   empireGuess?: { id?: string; correct: boolean }
+  /** Buzz rounds: the clock fraction left when the player buzzed, for the
+   *  reveal's buzz race. Absent when the player never buzzed. Reveal-only —
+   *  the score is already settled by then, and inverting `buzzScore` would not
+   *  recover it through the rounding and the server's clamp. */
+  buzzAt?: number
 }
 
 export const gameVariants = [

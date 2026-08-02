@@ -1,0 +1,50 @@
+{
+  "isoCode": "SB",
+  "title": "God Save Our Solomon Islands",
+  "language": {
+    "code": "en",
+    "name": "English",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/God_Save_Our_Solomon_Islands"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "God save our [[Solomon Islands]] from shore to shore",
+        "Bless all our people and all our lands",
+        "With your protecting hands",
+        "Joy, peace, progress and prosperity"
+      ],
+      "english": [
+        "God save our [[Solomon Islands]] from shore to shore",
+        "Bless all our people and all our lands",
+        "With your protecting hands",
+        "Joy, peace, progress and prosperity"
+      ]
+    },
+    {
+      "local": [
+        "That men should brothers be, make nations see",
+        "Our [[Solomon Islands]], our [[Solomon Islands]]",
+        "Our nation [[Solomon Islands]]",
+        "Stands for ever more."
+      ],
+      "english": [
+        "That men should brothers be, make nations see",
+        "Our [[Solomon Islands]], our [[Solomon Islands]]",
+        "Our nation [[Solomon Islands]]",
+        "Stands for ever more."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "isoCode": "PA",
+  "title": "Himno Istmeño",
+  "language": {
+    "code": "es",
+    "name": "Spanish",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Jerónimo de la Ossa",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Himno_Istmeño"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Alcanzamos por fin la victoria",
+        "En el campo feliz de la unión;",
+        "Con ardientes fulgores de gloria",
+        "¡Se ilumina la nueva nación!"
+      ],
+      "english": [
+        "At last we reached victory",
+        "In the joyous field of the union;",
+        "With ardent fires of glory",
+        "A new nation shines bright."
+      ]
+    },
+    {
+      "local": [
+        "Es preciso cubrir con un velo",
+        "Del pasado el calvario y la cruz;",
+        "Y que adorne el azul de tu cielo",
+        "De concordia la espléndida luz."
+      ],
+      "english": [
+        "It is necessary to cover with a veil",
+        "The past time of Calvary and cross;",
+        "Let now the blue skies be adorned with",
+        "The splendid light of the concord."
+      ]
+    },
+    {
+      "local": [
+        "El progreso acaricia tus lares.",
+        "Al compás de sublime canción,",
+        "Ves rugir a tus pies ambos mares",
+        "Que dan rumbo a tu noble misión."
+      ],
+      "english": [
+        "Progress caresses your path.",
+        "To the rhythm of a sublime song,",
+        "You see both your seas roar at your feet",
+        "Giving you a path to your noble mission."
+      ]
+    },
+    {
+      "local": [
+        "En tu suelo cubierto de flores",
+        "A los besos del tibio terral,",
+        "Terminaron guerreros fragores;",
+        "Sólo reina el amor fraternal."
+      ],
+      "english": [
+        "In your soil covered with flowers",
+        "To the kisses of the warm terrestrial breeze,",
+        "Warrior roars have ceased;",
+        "Only fraternal love reigns."
+      ]
+    },
+    {
+      "local": [
+        "Adelante la pica y la pala,",
+        "Al trabajo sin más dilación,",
+        "Y seremos así prez y gala",
+        "De este mundo feraz de Colón."
+      ],
+      "english": [
+        "Ahead the shovel and pick,",
+        "At work without any more dilation,",
+        "and we will be as such at work and gala",
+        "of this fruitful world of Columbus."
+      ]
+    }
+  ]
+}

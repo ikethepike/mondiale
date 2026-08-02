@@ -33,6 +33,14 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'silhouette-challenge'
         ? `Whose outline is this? It was ${countryName(challenge.country)}`
         : ''
+    case 'anthem-buzz':
+      return '_type' in challenge && challenge._type === 'anthem-buzz-challenge'
+        ? `Whose anthem was that? It was ${countryName(challenge.country)}`
+        : ''
+    case 'tongue-buzz':
+      return '_type' in challenge && challenge._type === 'tongue-buzz-challenge'
+        ? `That was ${challenge.language} — official in ${challenge.countries.length} countries`
+        : ''
     case 'hot-cold':
       return '_type' in challenge && challenge._type === 'hot-cold-challenge'
         ? `The mystery country was ${countryName(challenge.country)}`

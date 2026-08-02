@@ -1,0 +1,62 @@
+{
+  "isoCode": "OM",
+  "title": "تحية السلطان",
+  "language": {
+    "code": "ar",
+    "name": "Arabic",
+    "script": "Arabic"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Salute_to_the_Sultan"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "يَا رَبَّنَا اَحْفَظْ لَنَا جَلَالَةَ السُّلْطَان",
+        "وَالشَّعْبَ فِي الْأَوْطَان",
+        "بِالْعِزِّ وَ الْأَمَان",
+        "وَلْيَدُمْ مُؤَيَدَا"
+      ],
+      "english": [
+        "O Almighty, save His Majesty the Sultan",
+        "and His people in their homelands",
+        "with pride and peace",
+        "May He live long and triumphant"
+      ]
+    },
+    {
+      "local": [
+        "عَاهِلًا مُّمَجَّدَا",
+        "بِالنُّفُوسِ يُفْتَدَىٰ",
+        "يَا عُمَانْ نَحْنُ مِنْ عَهْدِ النَّبِي",
+        "أَوْفِيَاء مِنْ كِرَامِ الْعَرَبِي"
+      ],
+      "english": [
+        "a glorified leader",
+        "for whom we shall lay down our lives",
+        "O [[Oman]], we have been from the time of the Prophet",
+        "of the most loyal and noble Arabs"
+      ]
+    },
+    {
+      "local": [
+        "فَارْتَقِي هَامَ السَّمَاء",
+        "وَامْلَئِي الْكَوْنَ ضِيَاء",
+        "وَاسْعَدِي وَانْعَمِي بِالرَّخَاء"
+      ],
+      "english": [
+        "So ascend to the apex of the heavens",
+        "Illuminate the cosmos",
+        "And rejoice and relish in prosperity."
+      ]
+    }
+  ]
+}

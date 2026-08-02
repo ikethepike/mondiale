@@ -159,9 +159,14 @@ describe('media credits', () => {
   })
 
   it('carries only the credit fields between generator runs', () => {
-    const entry = { name: 'Petra', image: '/landmarks/petra.webp', credit: 'Jane Doe' }
-    expect(pickMediaCredit(entry)).toEqual({ credit: 'Jane Doe' })
-    expect(pickMediaCredit({ name: 'Petra' })).toBeUndefined()
+    // Stand-ins for a generator row: game data alongside the credit, which is
+    // what every real caller passes. Bound to variables rather than written
+    // inline so TypeScript's excess-property check doesn't reject the extras
+    // the function is specifically there to drop.
+    const credited = { name: 'Petra', image: '/landmarks/petra.webp', credit: 'Jane Doe' }
+    const uncredited = { name: 'Petra', credit: undefined }
+    expect(pickMediaCredit(credited)).toEqual({ credit: 'Jane Doe' })
+    expect(pickMediaCredit(uncredited)).toBeUndefined()
   })
 })
 

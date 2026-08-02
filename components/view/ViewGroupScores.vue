@@ -42,6 +42,22 @@
               />
             </section>
           </template>
+          <template v-else-if="audioReveal && currentRound">
+            <section class="pane-content ranking">
+              <span class="eyebrow">The Reveal</span>
+              <AnthemReveal
+                :subject="audioReveal.subject"
+                :country-code="audioReveal.countryCode"
+                :subtitle="audioReveal.subtitle"
+                :credit="audioReveal.credit"
+                :replay-clip="audioReveal.clip"
+                :lyrics="audioReveal.lyrics"
+                :round="currentRound.round"
+                :players="gameStore.game?.players ?? {}"
+                :my-player-id="playerId"
+              />
+            </section>
+          </template>
           <!-- `right` restores the pane padding the tile rows give up to scroll
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
@@ -126,14 +142,19 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import AnthemReveal from '~/components/challenge/AnthemReveal.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
+import { ANTHEMS } from '~~/data/anthems.gen'
+import { mediaCreditLine } from '~~/lib/attribution'
+import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { rankingHasTies } from '~~/lib/challenges'
+import { countryName } from '~~/lib/country'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
@@ -192,6 +213,56 @@ const flashpointChallenge = computed(() => {
 
 const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.value))
 
+/** The audio rounds' dossier: what the clip was, plus the clip itself to hear
+ *  again. Both kinds share one reveal — they differ only in what the subject is. */
+/** The round's lyric wall, refetched for the scorecard's couplet. Cheap — the
+ *  file is already in the browser's cache from the round itself. The shared
+ *  composable also owns the race this view is most exposed to: the url
+ *  re-fires every round, and a slow round-N response must not land over
+ *  round N+1's. */
+const lyrics = useAnthemLyrics(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'anthem-buzz-challenge'
+    ? challenge.lyricsUrl
+    : undefined
+})
+
+const audioReveal = computed(() => {
+  const challenge = roundChallenge.value
+  if (!challenge || !('_type' in challenge)) return undefined
+
+  if (challenge._type === 'anthem-buzz-challenge') {
+    const anthem = ANTHEMS[challenge.country]
+    const era = anthem?.adoptedYear ? `adopted ${anthem.adoptedYear}` : undefined
+    return {
+      subject: countryName(challenge.country),
+      // The answer is a COUNTRY, so its label carries a flag (the
+      // chosen-country rule); the tongue round's subject is a language and
+      // stays bare text.
+      countryCode: challenge.country,
+      subtitle: [anthem?.title, anthem?.composer, era].filter(Boolean).join(' · '),
+      credit: mediaCreditLine(anthem, 'commons-media'),
+      clip: challenge.clip,
+      lyrics: lyrics.value,
+    }
+  }
+
+  if (challenge._type === 'tongue-buzz-challenge') {
+    return {
+      subject: challenge.language,
+      countryCode: undefined,
+      subtitle: `Official in ${challenge.countries.length} ${
+        challenge.countries.length === 1 ? 'country' : 'countries'
+      } — any of them counted`,
+      credit: undefined,
+      // The scorecard replays one voice, not the sequence — first sample.
+      clip: challenge.clips[0],
+    }
+  }
+
+  return undefined
+})
+
 /** Ghosts of empires: the beat-1 name verdict, above the tap ledger. */
 const empireVerdict = computed(() => {
   const challenge = roundChallenge.value
@@ -215,6 +286,10 @@ const explainer = computed(() => {
       return 'Points scale with neighbours found — wrong names each cost one.'
     case 'silhouette':
       return 'The earlier the buzz, the bigger the score.'
+    case 'anthem-buzz':
+      return 'The earlier the buzz, the bigger the score.'
+    case 'tongue-buzz':
+      return 'Any country with that official language counted — the earlier the buzz, the bigger the score.'
     case 'hot-cold':
       return 'Finding it is everything — every extra probe costs points.'
     case 'sketch':

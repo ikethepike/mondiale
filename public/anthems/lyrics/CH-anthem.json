@@ -1,0 +1,135 @@
+{
+  "isoCode": "CH",
+  "title": "Schweizerpsalm",
+  "language": {
+    "code": "de",
+    "name": "German",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "author": "Leonhard Widmer",
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Swiss_Psalm"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Trittst im Morgenrot daher,",
+        "Seh’ ich dich im Strahlenmeer,",
+        "Dich, du Hocherhabener, Herrlicher!",
+        "Wenn der Alpenfirn sich rötet,"
+      ],
+      "english": [
+        "You come along in the dawn,",
+        "I see you in the sea of rays,",
+        "You, you exalted, glorious one!",
+        "When the Alpine snow turns red,"
+      ]
+    },
+    {
+      "local": [
+        "Betet, freie [[Schweizer]], betet,",
+        "Eure fromme Seele ahnt...",
+        "Gott im hehren Vaterland!",
+        "Gott, den Herrn im hehren Vaterland!"
+      ],
+      "english": [
+        "Pray, free [[Swiss]], pray,",
+        "Your pious soul suspects...",
+        "God in the noble fatherland!",
+        "God the Lord in the noble fatherland!"
+      ]
+    },
+    {
+      "local": [
+        "Kommst im Abendglühn daher,",
+        "Find ich dich im Sternenheer,",
+        "Dich, du Menschenfreundlicher, Liebender!",
+        "In des Himmels lichten Räumen"
+      ],
+      "english": [
+        "You come along in the evening glow,",
+        "I find you in the starry army,",
+        "You, you philanthropist, lover!",
+        "In the bright spaces of heaven"
+      ]
+    },
+    {
+      "local": [
+        "Kann ich froh und selig träumen;",
+        "Denn die fromme Seele ahnt",
+        "Gott im hehren Vaterland!",
+        "Gott, den Herrn, im hehren Vaterland!"
+      ],
+      "english": [
+        "Can I dream happily and happily;",
+        "For the pious soul suspects",
+        "God in the noble fatherland!",
+        "God the Lord in the noble fatherland!"
+      ]
+    },
+    {
+      "local": [
+        "Ziehst im Nebelflor daher,",
+        "Such ich dich im Wolkenmeer,",
+        "Dich, du Unergründlicher, Ewiger!",
+        "Aus dem grauen Luftgebilde"
+      ],
+      "english": [
+        "You move along in the mist,",
+        "I'm looking for you in the sea of clouds,",
+        "You, you unfathomable, eternal one!",
+        "From the gray air structure"
+      ]
+    },
+    {
+      "local": [
+        "Bricht die Sonne klar und milde,",
+        "Und die fromme Seele ahnt",
+        "Gott im hehren Vaterland!",
+        "Gott, den Herrn, im hehren Vaterland!"
+      ],
+      "english": [
+        "The sun breaks clear and mild,",
+        "And the pious soul suspects",
+        "God in the noble fatherland!",
+        "God the Lord in the noble fatherland!"
+      ]
+    },
+    {
+      "local": [
+        "Fährst im wilden Sturm daher,",
+        "Bist du selbst uns Hort und Wehr,",
+        "Du, allmächtig Waltender, Rettender!",
+        "In Gewitternacht und Grauen"
+      ],
+      "english": [
+        "You drive along in a wild storm,",
+        "You yourself are our refuge and defense,",
+        "You, all-powerful ruler, savior!",
+        "In thunderstorm night and horror"
+      ]
+    },
+    {
+      "local": [
+        "Lasst uns kindlich ihm vertrauen!",
+        "Ja, die fromme Seele ahnt",
+        "Gott im hehren Vaterland!",
+        "Gott, den Herrn, im hehren Vaterland!"
+      ],
+      "english": [
+        "Let us childlike trust in him!",
+        "Yes, the pious soul suspects",
+        "God in the noble fatherland!",
+        "God the Lord in the noble fatherland!"
+      ]
+    }
+  ]
+}

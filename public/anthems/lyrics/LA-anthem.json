@@ -1,0 +1,74 @@
+{
+  "isoCode": "LA",
+  "title": "ເພງຊາດລາວ",
+  "language": {
+    "code": "lo",
+    "name": "Lao",
+    "script": "Other"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Lao_National_Anthem"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "ຊາດລາວຕັ້ງແຕ່ໃດມາ",
+        "[[ລາວທ]]ຸກທົ່ວໜ້າເຊີດຊູສຸດໃຈ",
+        "ຮ່ວມແຮງຮ່ວມຈິດຮ່ວມໃຈ",
+        "ສາມັກຄີກັນເປັນກຳລັງດຽວ"
+      ],
+      "english": [
+        "For all time, the [[Lao]] folk",
+        "have glorified their motherland.",
+        "United in heart –",
+        "spirit and vigour as one."
+      ]
+    },
+    {
+      "local": [
+        "ເດັດດ່ຽວພ້ອມກັນກ້າວໜ້າ",
+        "ບູຊາຊູກຽດຂອງລາວ",
+        "ສົ່ງເສີມໃຊ້ສິດເປັນເຈົ້າ",
+        "[[ລາວທ]]ຸກຊົນເຜົ່າສະເໝີພາບກັນ"
+      ],
+      "english": [
+        "Determined to move forward,",
+        "upholding the [[Laotians']] grace.",
+        "Proclaiming their right to sovereignty,",
+        "equal are [[Laotians]] of every race."
+      ]
+    },
+    {
+      "local": [
+        "ບໍ່ໃຫ້ພວກຈັກກະພັດ",
+        "ແລະພວກຂາຍຊາດເຂົ້າມາລົບກວນ",
+        "[[ລາວທ]]ັງມວນຊູເອກະລາດ",
+        "ອິດສະຫຼະພາບຂອງຊາດລາວໄວ້"
+      ],
+      "english": [
+        "No more shall imperialists",
+        "and traitors trample them.",
+        "Every [[Lao]] shall defend",
+        "the independence of [[Laos]]."
+      ]
+    },
+    {
+      "local": [
+        "ຕັດສິນໃຈສູ້ຊີງເອົາໄຊ",
+        "ພາຊາດກ້າວໄປສູ່ຄວາມວັດທະນາ"
+      ],
+      "english": [
+        "They'll battle for victory,",
+        "and lead the nation to prosperity."
+      ]
+    }
+  ]
+}

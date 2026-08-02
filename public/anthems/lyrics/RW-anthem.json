@@ -1,0 +1,120 @@
+{
+  "isoCode": "RW",
+  "title": "Rwanda Nziza",
+  "language": {
+    "code": "rw",
+    "name": "Kinyarwanda",
+    "script": "Latin"
+  },
+  "sources": {
+    "local": {
+      "licence": "Public domain",
+      "note": "https://en.wikipedia.org/wiki/Rwanda_Nziza"
+    },
+    "english": {
+      "author": "English Wikipedia contributors",
+      "licence": "CC BY-SA 4.0",
+      "note": "Extracted from the English Wikipedia article cited in sources.local.note."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "[[Rwanda]] nziza Gihugu cyacu",
+        "Wuje imisozi, ibiyaga n'ibirunga",
+        "Ngobyi iduhetse gahorane ishya.",
+        "Reka tukurate tukuvuge ibigwi"
+      ],
+      "english": [
+        "[[Rwanda]], our beautiful and dear country",
+        "Adorned of hills, lakes and volcanoes",
+        "Motherland, would be always filled of happiness",
+        "Us all your children: [[Abanyarwanda]]"
+      ]
+    },
+    {
+      "local": [
+        "Wowe utubumbiye hamwe twese",
+        "[[Abanyarwanda]] uko watubyaye",
+        "Berwa, sugira, singizwa iteka.",
+        "Horana Imana, murage mwiza"
+      ],
+      "english": [
+        "Let us sing your glare and proclaim your high facts",
+        "You, maternal bosom of us all",
+        "Would be admired forever, prosperous and cover of praises.",
+        "Invaluable heritage, that God protects to you"
+      ]
+    },
+    {
+      "local": [
+        "Ibyo tugukesha ntibishyikirwa;",
+        "Umuco dusangiye uraturanga",
+        "Ururimi rwacu rukaduhuza",
+        "Ubwenge, umutima, amaboko yacu"
+      ],
+      "english": [
+        "You filled us priceless goods",
+        "Our common culture identifies us",
+        "Our single language unifies us",
+        "That our intelligence, our conscience and our forces"
+      ]
+    },
+    {
+      "local": [
+        "Nibigukungahaze bikwiye",
+        "Nuko utere imbere ubutitsa.",
+        "Abakurambere b'intwari",
+        "Bitanze batizigama"
+      ],
+      "english": [
+        "Fill you with varied riches",
+        "For an unceasingly renewed development.",
+        "Our valorous ancestors",
+        "Gave themselves bodies and souls"
+      ]
+    },
+    {
+      "local": [
+        "Baraguhanga uvamo ubukombe",
+        "Utsinda ubukoroni na mpatsibihugu",
+        "Byayogoje Afurika yose",
+        "None uraganje mu bwigenge"
+      ],
+      "english": [
+        "As far as making you a big nation",
+        "You overcame the colonial-imperialistic yoke",
+        "That has devastated Africa entirely",
+        "And has your joy of your sovereign independence"
+      ]
+    },
+    {
+      "local": [
+        "Tubukomeyeho uko turi twese.",
+        "Komeza imihigo [[Rwanda]] dukunda",
+        "Duhagurukiye kukwitangira",
+        "Ngo amahoro asabe mu bagutuye"
+      ],
+      "english": [
+        "Acquired that constantly we will defend.",
+        "Maintain this cape, beloved [[Rwanda]],",
+        "Standing, we commit for you",
+        "So that peace reigns countrywide"
+      ]
+    },
+    {
+      "local": [
+        "Wishyire wizane muri byose",
+        "Urangwe n'ishyaka, utere imbere",
+        "Uhamye umubano n'amahanga yose",
+        "Maze ijabo ryawe riguhe ijambo."
+      ],
+      "english": [
+        "That you are free of all hindrance",
+        "That your determination hires progress",
+        "That you have excellent relations with all countries",
+        "And that finally your pride is worth your esteem."
+      ]
+    }
+  ]
+}

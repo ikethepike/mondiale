@@ -1,0 +1,52 @@
+{
+  "isoCode": "SE",
+  "title": "Du gamla, du fria",
+  "language": { "code": "sv", "name": "Swedish", "script": "Latin" },
+  "sources": {
+    "local": {
+      "author": "Richard Dybeck",
+      "year": 1844,
+      "licence": "Public domain",
+      "note": "Dybeck's text and the traditional folk melody are both long out of copyright."
+    },
+    "english": {
+      "author": "Government of Sweden",
+      "licence": "Public domain",
+      "note": "The Swedish government's own English rendering, supplied for public use. Recorded here because a translation carries its own rights even when the original is free — see readme-anthems.md."
+    }
+  },
+  "verses": [
+    {
+      "local": [
+        "Du gamla, Du fria, Du fjällhöga [[nord]],",
+        "Du tysta, Du glädjerika sköna!",
+        "Jag hälsar Dig, vänaste land uppå jord,",
+        "Din sol, Din himmel, Dina ängder gröna.",
+        "Din sol, Din himmel, Dina ängder gröna."
+      ],
+      "english": [
+        "You old, you free, you high mountain [[North]]",
+        "You silent, you joyful beauty!",
+        "I greet you, friendliest land upon Earth,",
+        "Your sun, your sky, your countryside green.",
+        "Your sun, your sky, your countryside green."
+      ]
+    },
+    {
+      "local": [
+        "Du tronar på minnen från fornstora dar,",
+        "då ärat Ditt namn flög över jorden.",
+        "Jag vet att Du är och Du blir vad Du var.",
+        "Ja, jag vill leva jag vill dö i [[Norden]].",
+        "Ja, jag vill leva jag vill dö i [[Norden]]."
+      ],
+      "english": [
+        "You sit enthroned upon memories of ancient great places,",
+        "When your name flew over the Earth in glory,",
+        "I know that you are, and you will be what you were,",
+        "Yes, I want to live, I want to die in [[the North]].",
+        "Yes, I want to live, I want to die in [[the North]]."
+      ]
+    }
+  ]
+}
