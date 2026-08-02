@@ -17,10 +17,18 @@
             :organization="currentFinalChallenge.organization"
           />
           <h2 class="map-caption">{{ details?.question }}</h2>
-          <!-- The live beat's endonym — swaps on its own, inside the beat -->
+          <!-- The live beat's endonym rides the top of a staggered card deck —
+               the fanned cards behind it are the endonyms still to come -->
           <Transition name="caption" mode="out-in">
-            <span v-if="currentEndonym" :key="currentEndonym" class="endonym-word map-caption">
-              “{{ currentEndonym }}”<span class="beat">{{ endonymProgress }}</span>
+            <span v-if="currentEndonym" :key="currentEndonym" class="endonym-deck">
+              <span
+                v-for="layer in endonymCardsBehind"
+                :key="layer"
+                class="deck-card map-caption"
+                :style="{ '--layer': layer }"
+                aria-hidden="true"
+              />
+              <span class="endonym-word map-caption">“{{ currentEndonym }}”</span>
             </span>
           </Transition>
         </div>
@@ -231,10 +239,11 @@ const currentEndonym = computed(() => {
   return isoCode ? countryEndonym(isoCode) : undefined
 })
 
-const endonymProgress = computed(() => {
+// The fanned cards behind the live one — the endonyms still to come
+const endonymCardsBehind = computed(() => {
   const challenge = currentFinalChallenge.value
-  if (challenge?._type !== 'endonym-challenge') return undefined
-  return `${Math.min(endonymPicks.value.length + 1, challenge.countries.length)}/${challenge.countries.length}`
+  if (challenge?._type !== 'endonym-challenge') return 0
+  return Math.max(0, challenge.countries.length - endonymPicks.value.length - 1)
 })
 
 // Endonym chips: during the hunt only hit beats wear the country's own name;
@@ -759,15 +768,27 @@ header .prompt {
     padding: 0.4rem 1.4rem;
   }
 
-  // The endonym takes the stage — the question above it is just framing
-  .endonym-word {
-    padding: 0.5rem 1.8rem;
-    font-size: 2.1rem;
+  // The endonym takes the stage on a card deck — the fanned cards behind it
+  // count the names still to come, thinning as beats resolve
+  .endonym-deck {
+    position: relative;
+    isolation: isolate;
+    display: inline-block;
 
-    .beat {
-      opacity: 0.55;
-      font-size: 1.3rem;
-      margin-left: 0.9rem;
+    .deck-card {
+      inset: 0;
+      position: absolute;
+      transform: translate(calc(var(--layer) * 0.5rem), calc(var(--layer) * -0.4rem))
+        rotate(calc(var(--layer) * 1.6deg));
+      transform-origin: bottom left;
+    }
+
+    .endonym-word {
+      position: relative;
+      z-index: 1;
+      display: inline-block;
+      padding: 0.5rem 1.8rem;
+      font-size: 2.1rem;
     }
   }
 }
