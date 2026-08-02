@@ -17,11 +17,17 @@
         <li v-if="overflowCount" class="door more">+ {{ overflowCount }} others</li>
       </ul>
     </div>
+    <span class="credit-row">
+      <SourceInfo :attributions="sources" label="Sources" />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </section>
 </template>
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
@@ -29,6 +35,13 @@ import type { BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
 const MAX_DOORS_SHOWN = 6
+
+/** The chain's legality comes from two registries: land adjacency and the
+ *  named strait crossings. */
+const sources = dedupeAttributions([
+  ...datasetAttribution('borders'),
+  ...datasetAttribution('straits'),
+])
 
 const props = defineProps<{
   state: BorderChainState

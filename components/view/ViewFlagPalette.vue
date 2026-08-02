@@ -17,7 +17,7 @@
       :flag="COUNTRIES[challenge.country].flag"
       :draw-seconds="drawSeconds"
     />
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">Whose flag has these colours?</h1>
       <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
         Region: {{ challenge.region }}
@@ -60,11 +60,14 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { attributionFor } from '~~/lib/attribution'
 import { isFlagPaletteMatch } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
+
+const promptSources = [attributionFor('flag')]
 
 const {
   challenge,

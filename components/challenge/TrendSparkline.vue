@@ -28,6 +28,7 @@
         <strong v-if="!hideValues" class="value">{{ formatNumber(first[1]) }}</strong>
         <span class="year">{{ first[0] }}</span>
       </span>
+      <SourceInfo class="series-source" :attributions="[trendAttribution(metric, last[0])]" />
       <span class="endpoint end">
         <strong v-if="!hideValues" class="value">
           {{ formatNumber(last[1]) }}{{ unitSuffix }}
@@ -38,6 +39,8 @@
   </figure>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { trendAttribution } from '~~/lib/attribution'
 import { monotoneCurvePath, type ChartPoint } from '~~/lib/charts'
 import { clamp, formatNumber } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId, type TrendSeries } from '~~/lib/trends'
@@ -210,7 +213,14 @@ figcaption {
   display: flex;
   font-size: 1.2rem;
   color: var(--dark-blue);
+  align-items: flex-start;
   justify-content: space-between;
+
+  // The series' provenance sits between the endpoints, where the eye already
+  // reads the years the source published.
+  .series-source {
+    margin-top: -0.4rem;
+  }
 
   .endpoint {
     gap: 0.1rem;

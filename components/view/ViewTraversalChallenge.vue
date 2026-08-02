@@ -17,7 +17,7 @@
       @done="onInterstitialDone"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
       <h1 class="map-caption">
         Link {{ countryName(challenge.start) }} to {{ countryName(challenge.target) }}
       </h1>
@@ -62,6 +62,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -134,6 +135,15 @@ const distanceMaps = computed(() => {
     fromTarget: distancesFrom(active.target),
   }
 })
+
+/** The route's legality is the border graph; corridor rounds also read the
+ *  membership rolls on the country profiles. */
+const promptSources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('borders'),
+    ...(challenge.value?.corridor ? datasetAttribution('countries') : []),
+  ])
+)
 
 const corridorSet = computed(() =>
   challenge.value?.corridor ? new Set(challenge.value.corridor.members) : undefined

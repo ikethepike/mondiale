@@ -1,9 +1,5 @@
 <template>
-  <div
-    v-if="challenge"
-    class="timeline-round challenge-shell"
-    :class="{ dragging: cardInFlight }"
-  >
+  <div v-if="challenge" class="timeline-round challenge-shell" :class="{ dragging: cardInFlight }">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
@@ -57,6 +53,12 @@
             <figcaption v-if="photoCredit(story.event)" class="credit">
               {{ photoCredit(story.event) }}
             </figcaption>
+            <SourceInfo
+              class="photo-source on-photo"
+              label="Sources"
+              :attributions="eventSources"
+              :item-credit="photoCredit(story.event)"
+            />
           </figure>
           <div class="card-body">
             <span class="eyebrow verdict">{{ story.verdict }}</span>
@@ -81,6 +83,9 @@
         >
           <figure v-if="drawnEvent.image" class="card-photo">
             <img :src="drawnEvent.image" :alt="drawnEvent.name" />
+            <!-- The drawn card is a drag surface — no ⓘ here, or a touch on it
+                 would start a drag. The story beat and the final report carry
+                 the full panel; the strip keeps the photographer's line. -->
             <figcaption v-if="photoCredit(drawnEvent)" class="credit">
               {{ photoCredit(drawnEvent) }}
             </figcaption>
@@ -158,6 +163,8 @@ import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import {
   activeTimelinePlayerId,
@@ -248,6 +255,9 @@ const photoCredit = (event: EventEntry): string => {
   if (!event.credit && !event.license) return ''
   return ['Photo', event.credit, event.license].filter(Boolean).join(' · ')
 }
+
+/** The facts behind every card — the ⓘ beside the photo credit opens them. */
+const eventSources = datasetAttribution('events')
 
 // --- The story beat's verdict line -------------------------------------------
 const story = computed(() => {
@@ -340,7 +350,12 @@ const slotUnderPointer = (x: number, y: number): number | undefined => {
   if (!line) return undefined
   const frame = line.getBoundingClientRect()
   const pad = 36
-  if (x < frame.left - pad || x > frame.right + pad || y < frame.top - pad || y > frame.bottom + pad)
+  if (
+    x < frame.left - pad ||
+    x > frame.right + pad ||
+    y < frame.top - pad ||
+    y > frame.bottom + pad
+  )
     return undefined
   let best: number | undefined
   let bestDistance = Infinity
@@ -573,6 +588,12 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
       color: var(--sour-milk);
       background: ink(0.55, 12%);
       border-top-left-radius: 0.4rem;
+    }
+
+    .photo-source {
+      left: 0.6rem;
+      bottom: 0.6rem;
+      position: absolute;
     }
   }
 

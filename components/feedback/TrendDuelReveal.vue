@@ -26,13 +26,11 @@
         </span>
       </li>
     </ol>
-    <span v-if="sourceLine" class="source-line">{{ sourceLine }}</span>
   </div>
 </template>
 <script lang="ts" setup>
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
-import { attributionLine, trendAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { TREND_METRICS, TRENDS } from '~~/lib/trends'
 import type { TrendDuelOutcome } from '~~/types/challenges/individual-challenge.type'
@@ -62,14 +60,6 @@ const rows = computed(() =>
   }))
 )
 
-/** Provenance, one line — duels can span metrics, so dedupe their credits. */
-const sourceLine = computed(() => {
-  const lines = props.outcomes.map(outcome => {
-    const endYear = TRENDS[outcome.answer]?.[outcome.metric]?.at(-1)?.[0]
-    return attributionLine(trendAttribution(outcome.metric, endYear))
-  })
-  return [...new Set(lines)].join(' · ')
-})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

@@ -1,0 +1,19 @@
+@use '../rules/ink' as *;
+
+// The provenance footnote on a reveal card: the SourceInfo ⓘ with a quiet
+// one-line credit beside it, so the primary source reads at a glance without
+// opening the panel. The negative margin optically aligns the ⓘ's circle
+// with the text column above it.
+.credit-row {
+  gap: 0.3rem;
+  display: flex;
+  margin-left: -0.4rem;
+  align-items: center;
+
+  .credit {
+    min-width: 0;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    color: ink(0.45);
+  }
+}

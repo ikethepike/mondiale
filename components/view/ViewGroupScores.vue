@@ -62,7 +62,14 @@
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
             <section class="pane-content ranking right">
-              <span class="eyebrow">The True Order</span>
+              <span class="eyebrow">
+                The True Order
+                <SourceInfo
+                  v-if="rankingSources.length"
+                  class="eyebrow-source"
+                  :attributions="rankingSources"
+                />
+              </span>
               <RankingReveal
                 :submitted="selectedScorecard.answers.submitted"
                 :correct="selectedScorecard.answers.correct"
@@ -175,8 +182,14 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
-import { attributionLine, datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
+import {
+  attributionFor,
+  attributionLine,
+  datasetAttribution,
+  mediaCreditLine,
+} from '~~/lib/attribution'
 import { loadFlagMeaning } from '~~/lib/flag-meanings'
 import { waterFactsFor } from '~~/lib/water-facts'
 import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
@@ -207,6 +220,10 @@ const { currentRound, playerId, gameStore } = useClientEvents()
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
 const accessorId = computed(() => rankingAccessorId(roundChallenge.value))
+
+/** The reveal's figures come from the round's stat — same resolution the
+ *  ranking rows use. */
+const rankingSources = computed(() => (accessorId.value ? [attributionFor(accessorId.value)] : []))
 
 const selectedPlayer = ref(playerId.value)
 

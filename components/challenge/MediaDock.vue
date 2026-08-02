@@ -5,6 +5,13 @@
         <div class="dock-scrim" aria-hidden="true" @click="expanded = false" />
         <div class="dock-frame">
           <ZoomableImage :src="src" :alt="alt" />
+          <SourceInfo
+            v-if="attributions?.length"
+            class="dock-source on-photo"
+            label="Photo"
+            :attributions="attributions"
+            :item-credit="itemCredit"
+          />
           <button type="button" class="dock-close" title="Collapse photo" @click="expanded = false">
             <svg class="dock-close-icon" viewBox="0 0 16 16" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
@@ -27,6 +34,8 @@
 </template>
 <script lang="ts" setup>
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import type { Attribution } from '~~/lib/attribution'
 
 /**
  * Phone presentation for a photo prompt whose ANSWER surface is the map:
@@ -34,8 +43,20 @@ import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
  * scrim) for studying; collapsed, it docks as a corner thumbnail so the map
  * is fully unobscured. The host view decides when to auto-collapse (e.g. on
  * the first pin drop) via v-model:expanded.
+ *
+ * `attributions`/`itemCredit` put the photo's provenance ⓘ on the expanded
+ * frame (the thumbnail has no room). Hold `itemCredit` back while the
+ * photographer's line could name the answer.
  */
-withDefaults(defineProps<{ src: string; alt?: string }>(), { alt: 'A photo to identify' })
+withDefaults(
+  defineProps<{
+    src: string
+    alt?: string
+    attributions?: Attribution[]
+    itemCredit?: string
+  }>(),
+  { alt: 'A photo to identify', attributions: undefined, itemCredit: undefined }
+)
 
 const expanded = defineModel<boolean>('expanded', { default: true })
 </script>
@@ -67,6 +88,16 @@ const expanded = defineModel<boolean>('expanded', { default: true })
   width: min(92vw, 46rem);
   height: min(40vh, 32rem);
   height: min(40dvh, 32rem);
+}
+
+// Top-left: the close button owns the top-right corner, the zoom controls
+// the bottom-right. Doubled selector so SourceInfo's own positioning never
+// wins.
+.dock-frame .dock-source {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  z-index: 4;
 }
 
 .dock-close {

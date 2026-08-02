@@ -127,7 +127,7 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { datasetAttribution } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { buzzFraction } from '~~/lib/scoring'
 import { formatCompact } from '~~/lib/number'
@@ -175,10 +175,12 @@ const showEnglish = ref(false)
  * assembled here: the recording and the lyric text come from different places,
  * so the panel lists both instead of one line pretending to cover them.
  */
-const sources = computed(() => [
-  ...datasetAttribution('anthems'),
-  ...(props.lyrics ? datasetAttribution('anthem-lyrics') : []),
-])
+const sources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('anthems'),
+    ...(props.lyrics ? datasetAttribution('anthem-lyrics') : []),
+  ])
+)
 
 /** The language's own name, labelling the original column. */
 const lyricsLanguage = computed(() => props.lyrics?.language.name ?? 'Original')
@@ -206,7 +208,8 @@ watch(showEnglish, () => (expanded.value = false))
  * from quoting a couplet.
  */
 const expandable = computed(
-  () => !showEnglish.value && (props.lyrics?.verses.flatMap(v => v.local).length ?? 0) > COUPLET_LINES
+  () =>
+    !showEnglish.value && (props.lyrics?.verses.flatMap(v => v.local).length ?? 0) > COUPLET_LINES
 )
 
 const couplet = computed(() => {
@@ -367,22 +370,12 @@ const rows = computed(() => {
   }
 }
 
-.subtitle,
-// A genuine footnote: the provenance matters but must not read at the same
-// weight as the anthem's own title. The ⓘ carries the detail; the line beside
-// it names the primary source so the card still credits at a glance.
-.credit-row {
+// The footnote geometry itself lives in templates/_credit-row.scss.
+.subtitle {
   gap: 0.3rem;
   display: flex;
   margin-left: -0.4rem;
   align-items: center;
-}
-
-.credit {
-  min-width: 0;
-  font-size: 1.05rem;
-  line-height: 1.4;
-  color: #{ink(0.45)};
 }
 
 // The couplet is a quotation inside the dossier — a left rule sets it apart
@@ -556,7 +549,6 @@ const rows = computed(() => {
   border-top-color: #{milk()};
   animation: spin 0.8s linear infinite;
 }
-
 
 .race-caption {
   margin-top: 0.4rem;

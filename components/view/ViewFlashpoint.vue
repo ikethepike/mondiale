@@ -17,7 +17,7 @@
         :abroad="submitted ? abroadField : undefined"
       />
 
-      <ChallengePrompt :hint="hint">
+      <ChallengePrompt :hint="hint" :attributions="dotSources">
         <h1 class="map-caption">
           {{ submitted ? verdictHeadline : 'Where did this happen?' }}
         </h1>
@@ -90,6 +90,7 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
@@ -131,6 +132,9 @@ const fieldBounds = (
   const pad = Math.max(6, 0.15 * Math.max(maxX - minX, maxY - minY))
   return [minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2]
 }
+
+/** The dots are UCDP GED events on the shared projection. */
+const dotSources = datasetAttribution('conflict-events')
 
 const stakes = computed(() => {
   const base =

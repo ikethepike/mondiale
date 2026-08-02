@@ -16,7 +16,7 @@
         :total="challenge.durationSeconds"
       />
 
-      <ChallengePrompt>
+      <ChallengePrompt :attributions="promptSources" attribution-label="Sources">
         <div ref="flagHost" class="flag" />
 
         <!-- Before the answer, never the name or the claimant: both hand the
@@ -54,6 +54,9 @@ import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import type { RecognitionTerritory } from '~~/data/recognition.gen'
 import { sanitizeSvg } from '~~/lib/svg'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('recognition')
 
 // The whole world must stay tappable — the answer is a place, not a shape.
 const {

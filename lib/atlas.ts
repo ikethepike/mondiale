@@ -1,3 +1,4 @@
+import { attributionFor, dedupeAttributions, type Attribution } from '~~/lib/attribution'
 import { accessorTopicLabel, getScaleProps } from '~~/lib/challenges'
 import type { ScalePlotProps } from '~~/lib/challenges'
 import { formatAmount } from '~~/lib/number'
@@ -10,6 +11,8 @@ export interface AtlasFact {
   value: string
   /** Present for bounded indices — plot on a ScalePlot. */
   scale?: ScalePlotProps
+  /** The figure's provenance, exact to its year and winning fallback source. */
+  attribution: Attribution
 }
 
 export interface AtlasSection {
@@ -103,5 +106,11 @@ export const atlasFact = (
     label: accessorTopicLabel(accessorId),
     value,
     scale: getScaleProps(accessorId, amount.amount),
+    attribution: attributionFor(accessorId, amount),
   }
 }
+
+/** One credit set per section: every rendered fact's attribution, collapsed
+ *  to distinct sources. */
+export const atlasSectionAttributions = (facts: AtlasFact[]): Attribution[] =>
+  dedupeAttributions(facts.map(fact => fact.attribution))

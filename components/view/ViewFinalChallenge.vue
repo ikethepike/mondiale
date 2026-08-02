@@ -6,7 +6,7 @@
       :lives="livesRemaining"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt :class="{ dimmed: status }">
+    <ChallengePrompt :class="{ dimmed: status }" :attributions="promptSources">
       <Transition name="caption" mode="out-in">
         <div :key="currentChallengeCount" class="prompt">
           <span class="counter map-caption"
@@ -114,7 +114,7 @@ import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { statSourceLine } from '~~/lib/attribution'
+import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import {
   bornAfter,
   COLOR_CODED_REGIONS,
@@ -226,13 +226,12 @@ const lesson = computed(() => {
         status.value === 'correct' && lastGuess.value ? lastGuess.value : challenge.country
       const answer = getValueByAccessorID(answered, challenge.accessorId)
       if (!answer) return undefined
-      const source = ` (${statSourceLine(challenge.accessorId, answer)})`
       const answerLine = `${countryName(COUNTRIES[answered])}: ${formatAmount(answer)} ${label.toLowerCase()}`
       if (status.value === 'correct' || !lastGuess.value || lastGuess.value === challenge.country)
-        return `${answerLine}${source}`
+        return answerLine
       const guessed = getValueByAccessorID(lastGuess.value, challenge.accessorId)
-      if (!guessed) return `${answerLine}${source}`
-      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}${source}`
+      if (!guessed) return answerLine
+      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}`
     }
     case 'region-challenge': {
       const country = COUNTRIES[challenge.country]
@@ -291,6 +290,33 @@ const livesLine = computed(() => {
   return livesRemaining.value > 0
     ? `A life is spent — ${livesRemaining.value - 1} left.`
     : 'Out of lives — back to the board race.'
+})
+
+/** Where the current gate's question comes from, by challenge kind. The
+ *  reveal cards (sunset, nocturne, made) carry their own credit rows. */
+const promptSources = computed<Attribution[] | undefined>(() => {
+  const active = currentFinalChallenge.value
+  if (!active) return undefined
+  switch (active._type) {
+    case 'scales-challenge':
+    case 'max-challenge':
+    case 'min-challenge':
+      return [attributionFor(active.accessorId)]
+    case 'membership-challenge':
+    case 'language-challenge':
+    case 'made-challenge':
+    case 'region-challenge':
+      return datasetAttribution('countries')
+    case 'leadership-challenge':
+      return datasetAttribution('leaders')
+    case 'born-challenge':
+      return datasetAttribution('countries')
+    case 'sunset-blitz-challenge':
+    case 'city-nocturne-challenge':
+      return datasetAttribution('cities')
+    default:
+      return undefined
+  }
 })
 
 const details = computed(() => {

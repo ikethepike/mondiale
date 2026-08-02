@@ -14,6 +14,11 @@
           <span>Peek</span>
           <div class="peek-icon" />
         </ButtonFilled>
+        <SourceInfo
+          v-if="accessorId"
+          class="question-source"
+          :attributions="[attributionFor(accessorId)]"
+        />
       </header>
 
       <section id="question">
@@ -76,7 +81,9 @@
 <script lang="ts" setup>
 import { Sortable } from 'sortablejs-vue3'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import { attributionFor } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -197,6 +204,22 @@ const options = ref({
 
 // No h1 font-size here: caption headings scale through the shared clamp in
 // templates/_map-caption.scss — a view override forks the type scale.
+
+// The view's top-right corner — the same berth ChallengePrompt gives the
+// provenance ⓘ in every other challenge view (its 2rem/4rem header padding).
+.question-source {
+  top: 2rem;
+  right: 4rem;
+  z-index: 10;
+  position: absolute;
+}
+
+@media screen and (max-width: $tablet) {
+  .question-source {
+    top: 1.2rem;
+    right: 1.6rem;
+  }
+}
 
 .peek-button {
   top: 5vh;

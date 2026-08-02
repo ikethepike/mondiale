@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">{{ copy.title }}</h1>
       <span class="map-caption sub">
         {{ found.length }} of {{ challenge.countries.length }} found
@@ -55,6 +55,9 @@ import { countryName, getCountry } from '~~/lib/country'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('water')
 
 // Full world map with the feature drawn on top; guesses tint as they land — so
 // this mode opts out of the composable's shapes-only default.

@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">Name {{ countryName(challenge.country) }}'s neighbours</h1>
       <span class="map-caption sub">
         {{ found.length }} of {{ challenge.neighbours.length }} found
@@ -53,6 +53,9 @@ import { countryName, getCountry } from '~~/lib/country'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('borders')
 
 // Shapes-only map: the centre country plus guesses materializing around it
 const {

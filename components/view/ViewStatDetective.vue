@@ -33,6 +33,7 @@
           :label="clue.label"
           :topic="clue.topic"
           :accessor="clue.accessorId"
+          :source-value="clue.amount"
           :style="{ '--depth': clue.depth }"
         >
           <strong class="clue-value">{{ clue.value }}</strong>
@@ -50,6 +51,7 @@
           class="clue-card photo-clue"
           label="A glimpse of the place"
           topic="photo"
+          :attributions="photoSources"
           :style="{ '--depth': 0 }"
         >
           <div class="photo-clue-stage">
@@ -90,6 +92,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import { BORDERS } from '~~/data/borders.gen'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
@@ -138,10 +141,20 @@ const revealedClues = computed(() => {
       label: clueLabel(accessorId),
       topic: details?.topic,
       value: value ? formatAmount(value) : '—',
+      // The figure itself rides along so the card's ⓘ credits the exact
+      // vintage and whichever source won this country's fallback chain.
+      amount: value,
       scale,
     }
   })
 })
+
+/** The photo clue is a capital skyline or a landmark — only a path travels,
+ *  so the ⓘ names both registries honestly. */
+const photoSources = dedupeAttributions([
+  ...datasetAttribution('capitals'),
+  ...datasetAttribution('landmarks'),
+])
 
 // The photo lands as one extra clue after every stat has shown.
 const hasPhotoClue = computed(() => !!challenge.value?.photo)

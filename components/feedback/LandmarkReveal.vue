@@ -11,9 +11,19 @@
       </span>
     </span>
     <span v-if="landmark.description" class="description">{{ landmark.description }}</span>
+    <span class="credit-row">
+      <SourceInfo
+        :attributions="sources"
+        label="Sources"
+        :item-credit="mediaCreditLine(landmark)"
+      />
+      <span class="credit">{{ sources[0].credit }}</span>
+    </span>
   </span>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import type { LandmarkEntry } from '~~/generators/create-landmarks-file'
 import type { LandmarkKind } from '~~/generators/data/landmark-seeds'
 import { countryName } from '~~/lib/country'
@@ -27,6 +37,10 @@ const KIND_COPY: { [kind in LandmarkKind]: string } = {
 }
 
 defineProps<{ landmark: LandmarkEntry }>()
+
+// The entry's own `imageSource` says whether the photo is Commons or
+// Unsplash — mediaCreditLine reads it, so no fallback source is passed.
+const sources = datasetAttribution('landmarks')
 </script>
 <style lang="scss" scoped>
 // Spans throughout: the reveal also renders inside ChallengeResult's lesson
