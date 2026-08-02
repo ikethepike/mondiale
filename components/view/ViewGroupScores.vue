@@ -297,7 +297,7 @@ const explainer = computed(() => {
     case 'stat-detective':
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
-      return 'Spotting the lie is all or nothing.'
+      return "The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot."
     case 'capital-guess':
       return capitalGuessChallenge.value?.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'

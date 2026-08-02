@@ -5,18 +5,22 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Two Truths and a Lie`"
       :title="`Three claims about ${countryName(challenge.country)}`"
-      stakes="One of these values secretly belongs to another country. Spot the lie — you get one shot."
-      @done="begin"
+      stakes="One of these values secretly belongs to another country. Spot the lie — the sooner you call it, the more it pays. One shot."
+      @done="start"
     />
 
     <ChallengePrompt>
       <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-      <span v-if="picked === undefined" class="map-caption sub">
+      <span v-if="!revealed" class="map-caption sub">
         Tap the claim that doesn't belong
       </span>
       <span v-else-if="foundLie" class="map-caption sub verdict correct">
         Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
         {{ truthDisplay }}
+      </span>
+      <span v-else-if="timedOut" class="map-caption sub verdict incorrect">
+        Time ran out — the lie was {{ lieLabel }}, which belongs to
+        {{ countryName(challenge.lieSource) }}
       </span>
       <span v-else class="map-caption sub verdict incorrect">
         That one was true — the lie was {{ lieLabel }}, which belongs to
@@ -30,7 +34,7 @@
       <!-- Before the pick: the flag. After: the lie's stat as a world strip,
            so the reveal SHOWS where the truth and the borrowed number sit. -->
       <Transition name="caption" mode="out-in">
-        <div v-if="picked === undefined" key="flag" class="flag-frame">
+        <div v-if="!revealed" key="flag" class="flag-frame">
           <CountryFlag
             class="flag"
             :country="getCountry(challenge.country)"
@@ -57,7 +61,7 @@
             :label="statementLabel(statement.accessorId)"
             :topic="statementTopic(statement.accessorId)"
             :accessor="statement.accessorId"
-            :disabled="picked !== undefined"
+            :disabled="revealed || index === eliminatedIndex"
             @click="pick(index)"
           >
             <strong class="claim-value">
@@ -66,7 +70,7 @@
             <ScalePlot v-if="statementScales[index]" v-bind="statementScales[index]" />
             <Transition name="caption">
               <span
-                v-if="picked !== undefined"
+                v-if="revealed"
                 class="verdict-tag"
                 :class="index === challenge.lieIndex ? 'lie' : 'truth'"
               >
@@ -81,19 +85,44 @@
         </li>
       </ul>
     </section>
+
+    <footer v-if="!showInterstitial && !revealed" class="clock-footer">
+      <div class="hint-row">
+        <Transition name="caption">
+          <button
+            v-if="fiftyFiftyUnlocked"
+            class="hint-button"
+            type="button"
+            @click="buyFiftyFifty"
+          >
+            <StatTopicIcon class="hint-icon" topic="reveal" />
+            50/50 (−{{ hintBitePoints }} pts)
+          </button>
+        </Transition>
+      </div>
+      <ChallengeTimerRadial
+        class="footer-clock"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      />
+    </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
+import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
+import { sample } from '~~/lib/arrays'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { buzzScore, HINT_BITE_FRACTION, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -109,11 +138,51 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  secondsLeft,
+  remainingFraction,
+  elapsedFraction,
+  stopCountdown,
 } = useGroupChallenge('two-truths-challenge')
 
 const picked = ref<number>()
+const timedOut = ref(false)
+const revealed = computed(() => picked.value !== undefined || timedOut.value)
 let submitTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => submitTimer && clearTimeout(submitTimer))
+
+const start = () =>
+  begin({
+    onTimeout: () => {
+      timedOut.value = true
+      submitOnce([], 0)
+    },
+  })
+
+// The 50/50: buys away one true claim, leaving the lie and one truth. Unlocks
+// a third of the clock in (the buzz curve pays most early — an instant 50/50
+// would be a strictly optimal buy), and hard mode stays unassisted.
+const FIFTY_FIFTY_UNLOCK_ELAPSED = 1 / 3
+const eliminatedIndex = ref<number>()
+const hintsUsed = computed(() => (eliminatedIndex.value === undefined ? 0 : 1))
+const hintBitePoints = computed(() =>
+  Math.round((challenge.value?.maximumPoints ?? 0) * HINT_BITE_FRACTION)
+)
+const isHard = computed(() => gameStore.game?.difficulty === 'hard')
+const fiftyFiftyUnlocked = computed(
+  () =>
+    !isHard.value &&
+    eliminatedIndex.value === undefined &&
+    elapsedFraction.value >= FIFTY_FIFTY_UNLOCK_ELAPSED
+)
+
+const buyFiftyFifty = () => {
+  const active = challenge.value
+  if (!active || revealed.value || eliminatedIndex.value !== undefined) return
+  const truths = active.statements
+    .map((_, index) => index)
+    .filter(index => index !== active.lieIndex)
+  eliminatedIndex.value = sample(truths)
+}
 
 const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
 const statementTopic = (accessorId: GroupChallengeAccessorId) =>
@@ -150,9 +219,9 @@ const truthDisplay = computed(() => {
 })
 
 const claimClass = (index: number) => {
-  if (picked.value === undefined) return undefined
   const active = challenge.value
   if (!active) return undefined
+  if (!revealed.value) return index === eliminatedIndex.value ? 'is-eliminated' : undefined
   if (index === active.lieIndex) return 'is-lie'
   if (index === picked.value) return 'was-picked'
   return 'is-truth'
@@ -161,14 +230,23 @@ const claimClass = (index: number) => {
 const REVEAL_HOLD_MS = 4500
 const pick = (index: number) => {
   const active = challenge.value
-  if (!active || picked.value !== undefined || showInterstitial.value) return
+  if (!active || revealed.value || showInterstitial.value) return
+  if (index === eliminatedIndex.value) return
   picked.value = index
+  // The clock must not decay through the reveal hold — the score is what the
+  // player saw at the moment of the pick.
+  stopCountdown()
   // Only three statements, all on screen — naming the pick would name the lie.
   announce({ kind: 'presence' })
 
   const correct = index === active.lieIndex
+  // Rounds dealt before the clock shipped carry no duration; pay them in full.
+  const fraction = active.durationSeconds ? remainingFraction.value : 1
+  const score = correct
+    ? hintDockedScore(buzzScore(active.maximumPoints, fraction), active.maximumPoints, hintsUsed.value)
+    : 0
   submitTimer = setTimeout(() => {
-    submitOnce(correct ? [active.country] : [], correct ? active.maximumPoints : 0)
+    submitOnce(correct ? [active.country] : [], score, fraction)
   }, REVEAL_HOLD_MS)
 }
 </script>
@@ -279,6 +357,13 @@ header .verdict.incorrect {
     }
   }
 
+  // A bought 50/50 greys its truth out of contention until the reveal washes
+  // it like the others.
+  &.is-eliminated {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+
   // Reveal: the lie glows coral, truths settle to mint
   &.is-lie {
     border-color: var(--hior-ange);
@@ -292,6 +377,18 @@ header .verdict.incorrect {
     outline: 0.25rem solid var(--hior-ange);
     outline-offset: 0.2rem;
   }
+}
+
+.clock-footer {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+
+.footer-clock {
+  --clock-size: 5.6rem;
+  --clock-seconds-size: 1.8rem;
 }
 
 @media screen and (max-width: $tablet) {

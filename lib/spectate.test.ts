@@ -278,6 +278,7 @@ const ROUND_FIXTURES: RoundChallenge[] = [
     ],
     lieIndex: 1,
     lieSource: 'DE',
+    durationSeconds: 40,
     maximumPoints: 8,
   },
   {

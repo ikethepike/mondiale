@@ -640,6 +640,7 @@ const getSketchChallenge = ({ game }: { game: gameTypes.Game }): SketchChallenge
 /** How alike two values may be before a claim stops being decidable. */
 const LIE_MINIMUM_GAP = 0.4
 const LIE_MINIMUM_YEAR_GAP = 8
+const TWO_TRUTHS_SECONDS = 40
 
 /**
  * Stat detective: a mystery country's stats reveal one by one. Only the
@@ -709,7 +710,7 @@ const getTwoTruthsChallenge = ({
     if (accessors.length < 3) continue
 
     const chosen = accessors.slice(0, 3)
-    const lieIndex = Math.floor(Math.random() * chosen.length)
+    const lieIndex = sample(chosen.map((_, index) => index)) ?? 0
     const lieAccessor = chosen[lieIndex]
     const truth = getValueByAccessorID(country, lieAccessor)
     if (!truth) continue
@@ -741,6 +742,7 @@ const getTwoTruthsChallenge = ({
       statements,
       lieIndex,
       lieSource,
+      durationSeconds: TWO_TRUTHS_SECONDS,
       maximumPoints: maximumRoundPoints(game),
     }
   }

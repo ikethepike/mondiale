@@ -12,6 +12,7 @@ import {
   attemptFraction,
   blitzScore,
   buzzFraction,
+  buzzScore,
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
@@ -198,6 +199,10 @@ describe('hintDockedScore', () => {
     expect(hintDockedScore(15, 15, -3)).toBe(15)
     expect(hintDockedScore(15, 15, Number.NaN)).toBe(15)
     expect(hintDockedScore(15, 15, 0.4)).toBe(15)
+  })
+
+  it('composes with the buzz curve the way two-truths pays: curve first, flat bite after', () => {
+    expect(hintDockedScore(buzzScore(15, 0.5), 15, 1)).toBe(7)
   })
 })
 
