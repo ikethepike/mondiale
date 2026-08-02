@@ -4,6 +4,7 @@ import {
   UNIQUE_BOARD,
   nextOpenCategory,
   resolveUniqueCollisions,
+  riverNameKey,
   uniqueBoardComplete,
   uniqueCategoryShares,
   uniqueEntriesForLetter,
@@ -275,6 +276,29 @@ describe('uniqueRegisters (generated data)', () => {
   // The reported round: on S, neither Stockholm nor Sanaa was accepted as a
   // capital or a million-city. The registers were never the problem — the view
   // was routing the answer to another category — so this pins the data down.
+  // The August 2026 audit: CITIES_PER_COUNTRY clipped "a city over a million"
+  // to each country's top 12 (China held 12 of its 174) — pin the deep tail.
+  it('covers million-cities far below a country top-12', async () => {
+    const registers = await uniqueRegisters(RULES)
+    for (const name of ['Qingdao', 'Harbin', 'Nagpur', 'Indore']) {
+      expect(
+        registers.megacity.find(entry => entry.name === name),
+        `${name} missing`
+      ).toBeDefined()
+    }
+  })
+
+  // Rhein/Rhine shipped as two features and both scored "unique" for one
+  // river — merged, the variant name matches as an alias and only the
+  // canonical word sits at the table.
+  it('folds same-river stretch names into aliases of one canonical entry', async () => {
+    const registers = await uniqueRegisters(RULES)
+    expect(registers.river.find(entry => entry.name === 'Rhein')).toBeUndefined()
+    const rhine = registers.river.find(entry => entry.name === 'Rhine')
+    expect(rhine?.aliases).toContain('Rhein')
+    expect(riverNameKey('The Yellow River')).toBe('yellow')
+  })
+
   it('files Stockholm and Sanaa under S as both capital and million-city', async () => {
     const registers = await uniqueRegisters(RULES)
     for (const category of ['capital', 'megacity'] as const) {

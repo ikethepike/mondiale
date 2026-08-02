@@ -7,9 +7,12 @@
  */
 export const normalizeAnswer = (
   value: string,
-  options: { articles?: readonly string[]; digits?: boolean } = {}
+  options: { articles?: readonly string[]; suffixes?: readonly string[]; digits?: boolean } = {}
 ): string => {
   const articles = options.articles ?? ['the']
+  // Generic trailing words a guesser appends ("Yellow River") — stripped once,
+  // never from a bare one-word answer (the regex needs a preceding space)
+  const suffixes = options.suffixes ?? []
   const keep = options.digits === false ? /[^a-z]+/g : /[^a-z0-9]+/g
   const flattened = value
     .toLowerCase()
@@ -18,9 +21,10 @@ export const normalizeAnswer = (
     .replace(/['’]/g, '')
     .replace(keep, ' ')
     .trim()
-  return articles.length
+  const led = articles.length
     ? flattened.replace(new RegExp(`^(?:${articles.join('|')}) `), '')
     : flattened
+  return suffixes.length ? led.replace(new RegExp(` (?:${suffixes.join('|')})$`), '') : led
 }
 
 /**

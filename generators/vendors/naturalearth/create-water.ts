@@ -27,6 +27,8 @@ import type {
 } from 'geojson'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
+import { WATER_NAME_FIXES } from '../../../data/static/water-name-fixes'
+import { RIVER_ALIASES } from '../../../data/static/water-aliases'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
@@ -82,6 +84,8 @@ export interface WaterFeature {
   id: string
   name: string
   kind: WaterKind
+  /** Accepted alternate names (merged NE stretches, common alternates) — matched, never displayed. */
+  aliases?: string[]
   /** Projected path: closed rings for areas, open polylines for rivers. */
   d: string
   bounds: [number, number, number, number]
@@ -122,6 +126,20 @@ const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
     output.push([roundTo(last[0]), roundTo(last[1])])
   }
   return output
+}
+
+const unionBounds = (
+  [ax, ay, aw, ah]: [number, number, number, number],
+  [bx, by, bw, bh]: [number, number, number, number]
+): [number, number, number, number] => {
+  const minX = Math.min(ax, bx)
+  const minY = Math.min(ay, by)
+  return [
+    minX,
+    minY,
+    roundTo(Math.max(ax + aw, bx + bw) - minX),
+    roundTo(Math.max(ay + ah, by + bh) - minY),
+  ]
 }
 
 const boundsOf = (pointGroups: Point[][]): [number, number, number, number] => {
@@ -300,9 +318,23 @@ const property = (properties: Record<string, unknown>, key: string): string => {
   return value === null || value === undefined ? '' : String(value).trim()
 }
 
+/** NE attributes carry dropped characters and doubled spaces — repair BEFORE
+ *  river segments bucket by name, so fixed halves land in one bucket. */
+const usedNameFixes = new Set<string>()
+const cleanName = (raw: string): string => {
+  const fixed = WATER_NAME_FIXES[raw]
+  if (fixed !== undefined) usedNameFixes.add(raw)
+  return (fixed ?? raw).replace(/\s+/g, ' ')
+}
+
+const featureName = (properties: Record<string, unknown>): string =>
+  cleanName(property(properties, 'name_en') || property(properties, 'name'))
+
 const slugify = (name: string) =>
   name
     .toLowerCase()
+    // Turkish dotless ı never NFD-decomposes to a base letter — fold it by hand
+    .replace(/ı/g, 'i')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
@@ -315,17 +347,8 @@ const add = (feature: WaterFeature) => {
   // NE splits the Pacific and Atlantic into hemispheric halves that share one
   // English name — merge the halves into the canonical ocean.
   if (existing && existing.kind === 'ocean' && feature.kind === 'ocean') {
-    const [ax, ay, aw, ah] = existing.bounds
-    const [bx, by, bw, bh] = feature.bounds
-    const minX = Math.min(ax, bx)
-    const minY = Math.min(ay, by)
     existing.d = `${existing.d} ${feature.d}`
-    existing.bounds = [
-      minX,
-      minY,
-      roundTo(Math.max(ax + aw, bx + bw) - minX),
-      roundTo(Math.max(ay + ah, by + bh) - minY),
-    ]
+    existing.bounds = unionBounds(existing.bounds, feature.bounds)
     existing.countries = [...new Set([...existing.countries, ...feature.countries])].sort()
     return
   }
@@ -351,7 +374,7 @@ const main = async () => {
   for (const feature of marine.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
     const kind = MARINE_KINDS[property(properties, 'featurecla').toLowerCase()]
-    const name = property(properties, 'name_en') || property(properties, 'name')
+    const name = featureName(properties)
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -377,7 +400,7 @@ const main = async () => {
   const lakes = await fetchLayer(LAYERS.lakes)
   for (const feature of lakes.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = property(properties, 'name_en') || property(properties, 'name')
+    const name = featureName(properties)
     const scalerank = Number(property(properties, 'scalerank') || 99)
     if (!name || scalerank > 3) continue
 
@@ -405,7 +428,7 @@ const main = async () => {
   const riverSegments = new Map<string, Point[][]>()
   for (const feature of rivers.features as Feature<LineString | MultiLineString>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = property(properties, 'name_en') || property(properties, 'name')
+    const name = featureName(properties)
     if (!name || property(properties, 'featurecla').includes('Lake')) continue
     const projected = asLines(feature.geometry).map(line => decimate(line.map(project), 0.5))
     const bucket = riverSegments.get(name) ?? []
@@ -476,12 +499,41 @@ const main = async () => {
     })
   }
 
+  // --- Same-river reconciliation: fold NE's per-stretch names into one -------
+  const mergedIds = new Set<string>()
+  for (const group of RIVER_ALIASES) {
+    const canonical = features[`river-${slugify(group.canonical)}`]
+    if (!canonical) {
+      console.warn(`water-aliases: canonical river missing from NE data: ${group.canonical}`)
+      continue
+    }
+    const aliases: string[] = []
+    for (const name of group.merge) {
+      const id = `river-${slugify(name)}`
+      const stretch = features[id]
+      if (!stretch) {
+        console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
+        continue
+      }
+      canonical.d = `${canonical.d} ${stretch.d}`
+      canonical.bounds = unionBounds(canonical.bounds, stretch.bounds)
+      canonical.countries = [
+        ...canonical.countries,
+        ...stretch.countries.filter(code => !canonical.countries.includes(code)),
+      ]
+      aliases.push(stretch.name)
+      mergedIds.add(id)
+    }
+    aliases.push(...group.alt)
+    if (aliases.length) canonical.aliases = aliases
+  }
+
   // --- Ranges, deserts, plateaus ---------------------------------------------
   const regions = await fetchLayer(LAYERS.regions)
   for (const feature of regions.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
     const kind = REGION_KINDS[property(properties, 'featurecla')]
-    const name = property(properties, 'name_en') || property(properties, 'name')
+    const name = featureName(properties)
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -509,8 +561,21 @@ const main = async () => {
     })
   }
 
+  // --- Drift defenses: an NE bump must not silently reship broken names ------
+  const broken = Object.values(features).filter(feature => /[?]| {2}/.test(feature.name))
+  if (broken.length) {
+    throw new Error(`Broken names shipped: ${broken.map(feature => feature.name).join(', ')}`)
+  }
+  for (const raw of Object.keys(WATER_NAME_FIXES)) {
+    if (!usedNameFixes.has(raw)) console.warn(`water-name-fixes: entry matched nothing: ${raw}`)
+  }
+
   // --- Emit --------------------------------------------------------------------
-  const sorted = Object.fromEntries(Object.entries(features).sort(([a], [b]) => a.localeCompare(b)))
+  const sorted = Object.fromEntries(
+    Object.entries(features)
+      .filter(([id]) => !mergedIds.has(id))
+      .sort(([a], [b]) => a.localeCompare(b))
+  )
   const output = `// Generated by generators/vendors/naturalearth/create-water.ts — do not edit by hand.
 // Source: Natural Earth 1:10m physical layers (${NE_TAG}, public domain),
 // projected with the map's fitted Robinson (see data/map.gen.ts).
@@ -522,6 +587,8 @@ export interface WaterFeature {
   id: string
   name: string
   kind: WaterKind
+  /** Accepted alternate names (merged NE stretches, common alternates) — matched, never displayed. */
+  aliases?: string[]
   /** Projected path in map space: closed rings for areas, open polylines for rivers. */
   d: string
   bounds: [number, number, number, number]
@@ -534,7 +601,7 @@ export const WATER_FEATURES: Record<string, WaterFeature> = ${JSON.stringify(sor
   writeFileSync(OUT_FILE, output)
 
   const byKind = new Map<string, number>()
-  for (const feature of Object.values(features)) {
+  for (const feature of Object.values(sorted)) {
     byKind.set(feature.kind, (byKind.get(feature.kind) ?? 0) + 1)
   }
   console.info(

@@ -3,6 +3,7 @@ import { strFromU8, unzipSync } from 'fflate'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { editDistance } from '../../../lib/strings'
 import { CITY_ENDONYMS } from '../../../data/static/city-endonyms'
+import { MEGACITY_MINIMUM_POPULATION } from '../../../types/city.type'
 import type { CityLight } from '../../../types/city.type'
 
 /**
@@ -227,10 +228,15 @@ export const createCitiesFile = async () => {
 
   const output: { [isoCode: string]: CityLight[] } = {}
   for (const isoCode of [...byCountry.keys()].sort()) {
+    // Top N for the map rounds (consumers slice the desc-sorted head), plus
+    // EVERY megacity so "a city over a million" holds all 174 of China's, not 12
     const top = byCountry
       .get(isoCode)!
       .sort((a, b) => b.population - a.population)
-      .slice(0, CITIES_PER_COUNTRY)
+      .filter(
+        (city, index) =>
+          index < CITIES_PER_COUNTRY || city.population >= MEGACITY_MINIMUM_POPULATION
+      )
 
     // Native display names, language-tagged, for the kept cities only
     const natives = await nativeNames(isoCode, new Set(top.map(city => city.geonameid)))

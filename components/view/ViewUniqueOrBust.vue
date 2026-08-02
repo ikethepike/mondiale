@@ -120,6 +120,7 @@
             ref="input"
             :options="activeOptions"
             :suggest="false"
+            :normalize="activeNormalize"
             placeholder="Type your answer…"
             @pick="pick"
             @miss="announce({ hint: `Nothing on the ${categoryLabel} list by that name` })"
@@ -155,6 +156,7 @@ import { seatLabel } from '~~/lib/player'
 import {
   UNIQUE_CATEGORIES,
   nextOpenCategory,
+  riverNameKey,
   uniqueEntriesForLetter,
   uniqueNameKey,
   uniqueRegisters,
@@ -258,6 +260,11 @@ watch(
 const optionsCategory = computed<UniqueCategoryId>(() => activeCategory.value)
 
 const categoryLabel = computed(() => UNIQUE_CATEGORIES[optionsCategory.value].label.toLowerCase())
+/** River guesses forgive a trailing "River" ("Yellow River" → Yellow); every
+ *  other register matches on the plain word key. */
+const activeNormalize = computed(() =>
+  optionsCategory.value === 'river' ? riverNameKey : uniqueNameKey
+)
 const activeOptions = computed<SuggestOption[]>(
   () => optionsByCategory.value[optionsCategory.value] ?? []
 )

@@ -22,6 +22,14 @@ describe('normalizeAnswer', () => {
     expect(normalizeAnswer('El Niño', { articles: ['the', 'el', 'la', 'il'] })).toBe('nino')
     expect(normalizeAnswer('La Manche')).toBe('la manche')
   })
+
+  it('strips a trailing suffix word, never a bare or mid-name one', () => {
+    expect(normalizeAnswer('Yellow River', { suffixes: ['river'] })).toBe('yellow')
+    expect(normalizeAnswer('The Rhine river', { suffixes: ['river'] })).toBe('rhine')
+    expect(normalizeAnswer('River', { suffixes: ['river'] })).toBe('river')
+    expect(normalizeAnswer('River Plate', { suffixes: ['river'] })).toBe('river plate')
+    expect(normalizeAnswer('Arctic Red', { suffixes: ['river'] })).toBe('arctic red')
+  })
 })
 
 describe('editDistance', () => {
