@@ -1,9 +1,5 @@
 import { writeFileSync } from 'fs'
-import {
-  factbookResponses,
-  splitFactbookSections,
-  stripFactbookMarkup,
-} from '~~/lib/generators/factbook'
+import { factbookResponses, splitFactbookSections } from '~~/lib/generators/factbook'
 import { successfulCombinations } from './link-mapping.gen'
 
 const OUTPUT_FILE = 'data/flag-meanings.gen.ts'
@@ -13,7 +9,6 @@ interface FlagMeaning {
   description?: string
   meaning?: string
   history?: string
-  note?: string
 }
 
 /**
@@ -41,11 +36,6 @@ const createFlagMeaningsFile = async () => {
     if (sections.description) entry.description = sections.description
     if (sections.meaning) entry.meaning = sections.meaning
     if (sections.history) entry.history = sections.history
-    // The node-level note carries the cross-flag trivia ("similar to Chad's").
-    const note = flag.note
-      ? stripFactbookMarkup(flag.note.replace(/<strong>.*?<\/strong>/gi, ' '))
-      : undefined
-    if (note) entry.note = note
 
     if (Object.keys(entry).length) meanings[isoCode] = entry
   }
@@ -64,13 +54,12 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** What a flag's design stands for, from the CIA World Factbook's Flag node
  *  (public domain). \`meaning\` explains the colours and symbols, \`history\` how
- *  the design came to be, \`note\` cross-flag trivia ("similar to Chad's");
- *  \`description\` is visual prose only — never present it as symbolism. */
+ *  the design came to be; \`description\` is visual prose only — never present
+ *  it as symbolism. */
 export interface FlagMeaning {
   description?: string
   meaning?: string
   history?: string
-  note?: string
 }
 
 export const FLAG_MEANINGS: { [key in ISOCountryCode]?: FlagMeaning } = ${JSON.stringify(meanings)}

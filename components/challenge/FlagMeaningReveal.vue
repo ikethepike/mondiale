@@ -7,10 +7,6 @@
       <span class="line-label">The story</span>
       {{ entry.history }}
     </span>
-    <span v-if="entry.note" class="note-line">
-      <span class="line-label">Note</span>
-      {{ entry.note }}
-    </span>
     <span class="source-line">
       {{ sourceLine }}
       <SourceInfo :attributions="attributions" />
@@ -53,8 +49,7 @@ const sourceLine = computed(() => attributionLine(attributions.value[0]))
   color: var(--dark-blue);
 }
 
-.history-line,
-.note-line {
+.history-line {
   opacity: 0.8;
   font-size: 1.3rem;
   line-height: 1.5;
