@@ -39,7 +39,10 @@
         />
       </div>
 
-      <p class="map-caption note">{{ ucdpNote }}</p>
+      <p class="map-caption note">
+        <SourceInfo class="note-source" :attributions="sources" />
+        <span>{{ ucdpNote }}</span>
+      </p>
       <p v-if="overflow" class="map-caption more">
         + {{ overflow }} more recorded {{ overflow === 1 ? 'conflict' : 'conflicts' }} since 1946
       </p>
@@ -49,6 +52,8 @@
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution } from '~~/lib/attribution'
 import { findCountryByName } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -68,6 +73,8 @@ const props = defineProps<{
   country: ISOCountryCode
   framed?: boolean
 }>()
+
+const sources = datasetAttribution('conflicts')
 
 const conflict = ref<ConflictSummary>()
 const overflow = ref(0)
@@ -263,6 +270,17 @@ const ucdpNote = computed(() => {
   text-align: center;
   line-height: 1.55;
   padding: 0.6rem 1.6rem;
+}
+
+.note {
+  gap: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-source {
+  flex-shrink: 0;
 }
 
 .more {

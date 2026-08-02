@@ -9,7 +9,7 @@
       @done="begin()"
     />
 
-    <ChallengePrompt>
+    <ChallengePrompt :attributions="promptSources">
       <h1 class="map-caption">Find the mystery country</h1>
       <span class="map-caption sub">
         {{ probesLeft }} {{ probesLeft === 1 ? 'probe' : 'probes' }} left
@@ -52,6 +52,9 @@ import { formatKm } from '~~/lib/number'
 import type { MapTint } from '~~/store/game.store'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('map')
 
 // Full outline map, fully clickable — never reveal the target through
 // highlights, tints or camera focus, so this mode opts out of shapes-only.

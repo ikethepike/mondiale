@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources">
       <template v-if="!resolved">
         <h1 class="map-caption">{{ promptTitle }}</h1>
         <span class="map-caption sub">
@@ -92,6 +92,9 @@ import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('water')
 
 // The glowing feature IS the question — countries stay for context, so this
 // mode opts out of the composable's shapes-only default.

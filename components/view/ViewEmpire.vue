@@ -22,7 +22,7 @@
         @progress="onProgress"
       />
 
-      <ChallengePrompt :hint="hint">
+      <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
         <span ref="yearEl" class="map-caption year">&nbsp;</span>
         <h1 class="map-caption">{{ headline }}</h1>
         <Transition name="verdict">
@@ -172,6 +172,9 @@ import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('empires')
 
 const {
   challenge,

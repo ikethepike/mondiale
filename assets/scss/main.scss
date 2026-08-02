@@ -26,6 +26,7 @@
 @use 'templates/chip';
 @use 'templates/pulse';
 @use 'templates/round-clock';
+@use 'templates/credit-row';
 
 // A fixed-shell game: the document never scrolls, so iOS's elastic body
 // bounce is pure noise — it fights drag gestures (ranking tiles) and map

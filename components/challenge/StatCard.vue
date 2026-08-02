@@ -6,34 +6,56 @@
       :topic="topic"
       :accessor="accessor"
     />
+    <SourceInfo v-if="sources.length" class="source-corner" :attributions="sources" />
     <span v-if="label" class="stat-label">{{ label }}</span>
     <slot />
   </component>
 </template>
 <script lang="ts" setup>
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { attributionFor, type Attribution } from '~~/lib/attribution'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
+import type { Amount } from '~~/types/geography.types'
 
 /**
  * The shared stat card: cream surface, hairline border, small-caps label and
  * a thin-outline stat emblem in the corner. Stat Detective's clues and Two
  * Truths' claims are both built on it — behavioural styling (hover lifts,
  * verdict washes, stack positioning) stays with the host view.
+ *
+ * A card with an `accessor` credits itself: the opposite corner wears the
+ * SourceInfo ⓘ resolved through `attributionFor`. Pass `sourceValue` (the
+ * `Amount` behind the figure) so the year and any fallback source are exact,
+ * or `attributions` to override the resolution entirely. Interactive hosts
+ * (`tag="button"`) opt out by construction — a nested button is invalid.
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     label?: string
     topic?: string
     accessor?: GroupChallengeAccessorId
+    /** The figure the card shows — carries its year and winning source. */
+    sourceValue?: Pick<Amount<unknown>, 'year' | 'source'>
+    /** Override when the card's data isn't a ranked stat (photos, trends). */
+    attributions?: Attribution[]
     tag?: string
   }>(),
   {
     label: undefined,
     topic: undefined,
     accessor: undefined,
+    sourceValue: undefined,
+    attributions: undefined,
     tag: 'article',
   }
 )
+
+const sources = computed<Attribution[]>(() => {
+  if (props.tag === 'button') return []
+  if (props.attributions) return props.attributions
+  return props.accessor ? [attributionFor(props.accessor, props.sourceValue)] : []
+})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -60,6 +82,15 @@ withDefaults(
   opacity: 0.45;
   position: absolute;
   color: var(--dark-blue);
+}
+
+// Mirrors the topic emblem in the opposite corner — .stat-label already
+// clears 2.8rem on both sides for exactly this symmetry. Doubled selector:
+// SourceInfo's own `.source-info` positioning must not win.
+.stat-card .source-corner {
+  top: 0.6rem;
+  right: 0.6rem;
+  position: absolute;
 }
 
 .stat-label {

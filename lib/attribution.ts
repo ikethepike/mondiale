@@ -808,6 +808,19 @@ export const trendAttribution = (metric: TrendMetricId, endYear?: number): Attri
 export const datasetAttribution = (datasetId: DataSetId): Attribution[] =>
   DATASETS[datasetId].origins.map(origin => resolve(origin))
 
+/** Collapse repeated credits when several figures share a panel (a clue
+ *  recap, an atlas section): one entry per source+credit pair, first wins —
+ *  its deep link and dataset stand for the group. */
+export const dedupeAttributions = (attributions: Attribution[]): Attribution[] => {
+  const seen = new Set<string>()
+  return attributions.filter(attribution => {
+    const key = `${attribution.sourceId}|${attribution.credit}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 /** One-line credit for a caption: "SIPRI via Our World in Data · 2024". */
 export const attributionLine = (attribution: Attribution): string =>
   attribution.year ? `${attribution.credit} · ${attribution.year}` : attribution.credit

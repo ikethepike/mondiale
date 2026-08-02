@@ -3,6 +3,7 @@
     <p class="topic map-caption">
       <StatTopicIcon class="topic-icon" :accessor="accessorId" />
       {{ topic }}
+      <SourceInfo :attributions="[attributionFor(accessorId)]" />
     </p>
     <ol class="duels">
       <li v-for="(duel, index) in rows" :key="index" class="duel">
@@ -26,7 +27,9 @@
 </template>
 <script lang="ts" setup>
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import { attributionFor } from '~~/lib/attribution'
 import { getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatAmount } from '~~/lib/number'

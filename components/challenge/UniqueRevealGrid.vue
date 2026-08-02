@@ -31,6 +31,10 @@
       <header class="panel-head">
         <StatTopicIcon class="panel-icon" v-bind="UNIQUE_CATEGORIES[panel.category].icon" />
         <span class="eyebrow">{{ UNIQUE_CATEGORIES[panel.category].prompt }}</span>
+        <SourceInfo
+          class="panel-source"
+          :attributions="datasetAttribution(CATEGORY_DATASETS[panel.category])"
+        />
       </header>
       <p v-if="!panel.cells.length" class="panel-empty">Nobody found one.</p>
       <ul v-else class="cell-list">
@@ -82,10 +86,16 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import { datasetAttribution, type DataSetId } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { UNIQUE_CATEGORIES } from '~~/lib/unique-or-bust'
-import type { UniqueBoardCell, UniqueOrBustChallenge } from '~~/types/challenges/group-modes.type'
+import type {
+  UniqueBoardCell,
+  UniqueCategoryId,
+  UniqueOrBustChallenge,
+} from '~~/types/challenges/group-modes.type'
 import { isValidISOCode, type Country } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
 
@@ -96,6 +106,14 @@ import type { Player } from '~~/types/player.type'
  * struck and cancels for everyone on it. The teaching moment IS the duplicate
  * pile-up, so cancelled rows sort biggest crowd first under the unique payers.
  */
+/** Each register reads from exactly one dataset — the panel ⓘ names it. */
+const CATEGORY_DATASETS: { [category in UniqueCategoryId]: DataSetId } = {
+  country: 'countries',
+  capital: 'capitals',
+  river: 'water',
+  megacity: 'cities',
+}
+
 const props = defineProps<{
   challenge: UniqueOrBustChallenge
   players: Record<string, Player>
@@ -241,6 +259,10 @@ const countryFor = (cell: UniqueBoardCell): Country | undefined =>
   padding-bottom: 0.7rem;
   margin-bottom: 0.9rem;
   border-bottom: 0.1rem solid $hairline;
+
+  .panel-source {
+    margin-left: auto;
+  }
 
   .eyebrow {
     margin-bottom: 0;

@@ -62,7 +62,14 @@
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
             <section class="pane-content ranking right">
-              <span class="eyebrow">The True Order</span>
+              <span class="eyebrow">
+                The True Order
+                <SourceInfo
+                  v-if="rankingSources.length"
+                  class="eyebrow-source"
+                  :attributions="rankingSources"
+                />
+              </span>
               <RankingReveal
                 :submitted="selectedScorecard.answers.submitted"
                 :correct="selectedScorecard.answers.correct"
@@ -145,8 +152,9 @@ import { gsap } from 'gsap'
 import AnthemReveal from '~/components/challenge/AnthemReveal.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
-import { mediaCreditLine } from '~~/lib/attribution'
+import { attributionFor, mediaCreditLine } from '~~/lib/attribution'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
@@ -171,6 +179,10 @@ const { currentRound, playerId, gameStore } = useClientEvents()
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
 const accessorId = computed(() => rankingAccessorId(roundChallenge.value))
+
+/** The reveal's figures come from the round's stat — same resolution the
+ *  ranking rows use. */
+const rankingSources = computed(() => (accessorId.value ? [attributionFor(accessorId.value)] : []))
 
 const selectedPlayer = ref(playerId.value)
 

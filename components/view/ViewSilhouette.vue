@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :attributions="promptSources">
       <template v-if="!resolved">
         <h1 class="map-caption">Whose outline is this?</h1>
         <span class="map-caption sub">Earlier answers score higher</span>
@@ -56,6 +56,9 @@ import { countryName } from '~~/lib/country'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import type { Country } from '~~/types/geography.types'
+import { datasetAttribution } from '~~/lib/attribution'
+
+const promptSources = datasetAttribution('map')
 
 // Preview flash → sweep-away → clock-synced border draw, all size-relative.
 const {

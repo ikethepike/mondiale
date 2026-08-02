@@ -6,7 +6,7 @@
       :stakes="'Answer correctly to leap ahead — get it wrong and you\'re knocked back.'"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt v-else ref="promptHost">
+    <ChallengePrompt v-else ref="promptHost" :attributions="promptSources">
       <Transition name="caption" mode="out-in">
         <div v-if="!status" key="question" class="question">
           <!-- Classic find-on-the-map -->
@@ -207,6 +207,7 @@
             caption="Which country does this leader govern?"
             :options="challenge.options"
             alt="A national leader"
+            :attributions="datasetAttribution('leaders')"
             @pick="submitAnswer"
           />
 
@@ -217,6 +218,7 @@
             caption="Which country's capital is this?"
             :options="challenge.options"
             alt="A capital city"
+            :attributions="datasetAttribution('capitals')"
             @pick="submitAnswer"
           />
 
@@ -227,6 +229,7 @@
             caption="Which country is this landmark in?"
             :options="challenge.options"
             alt="A famous landmark"
+            :attributions="datasetAttribution('landmarks')"
             @pick="submitAnswer"
           />
 
@@ -412,6 +415,12 @@ import {
   getChallengeDetails,
   isCorrectIndividualAnswer,
 } from '~~/lib/challenges'
+import {
+  attributionFor,
+  datasetAttribution,
+  trendAttribution,
+  type Attribution,
+} from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { currencyName, currencySymbol } from '~~/lib/currency'
@@ -501,6 +510,40 @@ const country = computed(() => {
 const landmark = computed(() =>
   challenge.value?.landmarkSlug ? LANDMARKS[challenge.value.landmarkSlug] : undefined
 )
+
+/** The gate's provenance, per variant. Photo variants credit on the photo
+ *  frame itself (PhotoOptionChallenge), so the prompt stays quiet there. */
+const promptSources = computed<Attribution[] | undefined>(() => {
+  const active = challenge.value
+  if (!active) return undefined
+  switch (variant.value) {
+    case 'find':
+    case 'flag-pick':
+    case 'flag-twins':
+      return [attributionFor('flag')]
+    case 'border-detective':
+      return datasetAttribution('borders')
+    case 'zoom-out':
+    case 'outline-reveal':
+      return datasetAttribution('map')
+    case 'money-match':
+      return datasetAttribution('currencies')
+    case 'odd-one-out':
+      return datasetAttribution('countries')
+    case 'leader-pick':
+      return datasetAttribution('leaders')
+    case 'higher-lower':
+      return active.higherLower ? [attributionFor(active.higherLower.accessorId)] : undefined
+    case 'trend-duel': {
+      const metric = currentTrendDuel.value?.metric
+      return metric ? [trendAttribution(metric)] : undefined
+    }
+    case 'trajectory-match':
+      return active.trajectory ? [trendAttribution(active.trajectory.metric)] : undefined
+    default:
+      return undefined
+  }
+})
 
 const interstitialTitle = computed(() => {
   const active = challenge.value
