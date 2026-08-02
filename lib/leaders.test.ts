@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { titlecaseLeader } from './leaders'
+import { leaderHintFacts, titlecaseLeader } from './leaders'
 
 describe('titlecaseLeader', () => {
   it('softens the factbook surname caps', () => {
@@ -20,5 +20,20 @@ describe('titlecaseLeader', () => {
   it('leaves mixed-case words and particles alone', () => {
     expect(titlecaseLeader('Mohammed bin ZAYID Al Nuhayyan')).toBe('Mohammed bin Zayid Al Nuhayyan')
     expect(titlecaseLeader('Emmanuel Macron')).toBe('Emmanuel Macron')
+  })
+})
+
+describe('leaderHintFacts', () => {
+  it('surfaces party and tenure start, in that order', () => {
+    expect(
+      leaderHintFacts({ name: 'Anna Example', party: 'Green Party', sinceYear: 2021 })
+    ).toEqual(['Green Party', 'in office since 2021'])
+  })
+
+  it('skips missing fields and never leaks the office', () => {
+    expect(leaderHintFacts({ name: 'Anna Example', office: 'President of Examplia' })).toEqual([])
+    expect(leaderHintFacts({ name: 'Anna Example', sinceYear: 2019 })).toEqual([
+      'in office since 2019',
+    ])
   })
 })
