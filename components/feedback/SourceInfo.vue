@@ -99,21 +99,24 @@ const trigger = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
 
 /**
- * Mouse users hover to read, touch users tap — the click toggle stays as the
- * universal (and keyboard) path. The close delay bridges the pointer's hop
- * across the gap between the trigger and the teleported panel.
+ * The panel opens on click/tap — deliberate, and the same gesture on every
+ * device. Flip HOVER_OPENS_PANEL to also let mouse users open it on hover
+ * (coarse pointers always ignore hover); the close delay then bridges the
+ * pointer's hop across the gap between the trigger and the teleported panel.
  */
-const isCoarsePointer = useIsCoarsePointer()
+const HOVER_OPENS_PANEL = false
 const HOVER_CLOSE_DELAY_MS = 250
+
+const isCoarsePointer = useIsCoarsePointer()
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined
 
 const onHoverIn = () => {
-  if (isCoarsePointer.value) return
+  if (!HOVER_OPENS_PANEL || isCoarsePointer.value) return
   clearTimeout(hoverCloseTimer)
   open.value = true
 }
 const onHoverOut = () => {
-  if (isCoarsePointer.value) return
+  if (!HOVER_OPENS_PANEL || isCoarsePointer.value) return
   clearTimeout(hoverCloseTimer)
   hoverCloseTimer = setTimeout(() => (open.value = false), HOVER_CLOSE_DELAY_MS)
 }
