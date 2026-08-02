@@ -171,11 +171,11 @@
           <!-- Who leads X? -->
           <template v-else-if="variant === 'leader-pick'">
             <h1 class="map-caption">Who leads {{ countryName(challenge.country) }}?</h1>
-            <div class="options leader-options">
+            <div class="options card-options leader-options">
               <button
                 v-for="option in challenge.options"
                 :key="option"
-                class="option leader-option map-caption"
+                class="option card-option leader-option map-caption"
                 type="button"
                 @click="submitAnswer(option)"
               >
@@ -190,7 +190,7 @@
                   <span class="leader-name">{{
                     titlecaseLeader(getCountry(option).government?.leader ?? '')
                   }}</span>
-                  <span v-if="leaderFacts(option).length" class="leader-facts">
+                  <span v-if="leaderFacts(option).length" class="fact-row">
                     <span v-for="fact in leaderFacts(option)" :key="fact" class="fact">{{
                       fact
                     }}</span>
@@ -1479,9 +1479,9 @@ header .flag {
   grid-template-columns: minmax(28rem, 44rem);
 }
 
+// A card-option laid as a row: portrait left, name and hint facts right.
 .leader-option {
-  display: flex;
-  align-items: center;
+  flex-flow: row nowrap;
   gap: 1.2rem;
   text-align: left;
   padding: 0.8rem 1.2rem;
@@ -1510,18 +1510,8 @@ header .flag {
     gap: 0.2rem;
   }
 
-  .leader-facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.2rem 0.8rem;
-    font-size: 1.2rem;
+  .fact-row {
     line-height: 1.3;
-    opacity: 0.65;
-
-    .fact:not(:last-child)::after {
-      content: '·';
-      margin-left: 0.8rem;
-    }
   }
 }
 

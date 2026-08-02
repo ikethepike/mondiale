@@ -20,6 +20,7 @@
 @use 'templates/player-accent';
 @use 'templates/map-caption';
 @use 'templates/briefing-card';
+@use 'templates/fact-row';
 // After map-caption: a chip that wears both classes keeps chip-scale padding.
 @use 'templates/country-chip';
 @use 'templates/chip';
