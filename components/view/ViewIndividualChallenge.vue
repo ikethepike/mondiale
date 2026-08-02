@@ -408,6 +408,7 @@ import {
 import { countryName, getCountry } from '~~/lib/country'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { currencyName, currencySymbol } from '~~/lib/currency'
+import { isHardMode } from '~~/lib/game-rules'
 import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
@@ -471,7 +472,7 @@ const onTextGuess = (country: Country) => {
 }
 const status = toRef(gameStore.map, 'status')
 /** Hard mode hides the helper labels (e.g. neighbour names in Border Detective). */
-const isHard = computed(() => gameStore.game?.difficulty === 'hard')
+const isHard = computed(() => isHardMode(gameStore.game))
 
 const submittedISOCode = ref<ISOCountryCode>()
 const submittedCountry = computed(() => {

@@ -11,6 +11,10 @@ import { countryInVariant } from './variant'
  * never re-derive a pool or a gate locally.
  */
 
+/** The hard-mode gate: hints and helper labels stay off when this is true. */
+export const isHardMode = (game?: { difficulty: GameDifficulty }): boolean =>
+  game?.difficulty === 'hard'
+
 export const DIFFICULTY_CONFIGURATION: {
   [difficulty in GameDifficulty]: {
     rankingChallengeCountries: number

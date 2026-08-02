@@ -155,6 +155,7 @@ import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { isHardMode } from '~~/lib/game-rules'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
@@ -297,7 +298,9 @@ const explainer = computed(() => {
     case 'stat-detective':
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
-      return "The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot."
+      return isHardMode(gameStore.game)
+        ? 'The sooner you call the lie, the more it pays.'
+        : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
     case 'capital-guess':
       return capitalGuessChallenge.value?.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'

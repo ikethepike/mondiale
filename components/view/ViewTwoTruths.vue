@@ -86,7 +86,8 @@
       </ul>
     </section>
 
-    <footer v-if="!showInterstitial && !revealed" class="clock-footer">
+    <!-- A round dealt without a duration has no clock to show or race. -->
+    <footer v-if="!showInterstitial && !revealed && challenge.durationSeconds" class="clock-footer">
       <div class="hint-row">
         <Transition name="caption">
           <button
@@ -122,6 +123,7 @@ import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { sample } from '~~/lib/arrays'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { isHardMode } from '~~/lib/game-rules'
 import { buzzScore, HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints, hintDockedScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { formatAmount } from '~~/lib/number'
@@ -163,10 +165,9 @@ const start = () =>
 // would be a strictly optimal buy), and hard mode stays unassisted.
 const eliminatedIndex = ref<number>()
 const hintsUsed = computed(() => (eliminatedIndex.value === undefined ? 0 : 1))
-const isHard = computed(() => gameStore.game?.difficulty === 'hard')
 const fiftyFiftyUnlocked = computed(
   () =>
-    !isHard.value &&
+    !isHardMode(gameStore.game) &&
     eliminatedIndex.value === undefined &&
     elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED
 )
