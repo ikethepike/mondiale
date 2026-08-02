@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  boundaryDeviation,
   DRAW_COMPLETE_AT,
   drawnFraction,
   largestRing,
   normalizeOutline,
+  polylineLength,
   previewSweepSeconds,
   resampleClosed,
+  resampleOpen,
   scoreSketch,
+  sharedBoundary,
+  unsharedRuns,
 } from './outline'
 import type { OutlinePoint } from './outline'
 import { MAP_PATHS } from '~~/data/map.gen'
@@ -122,6 +127,137 @@ describe('scoreSketch', () => {
     // for a genuinely confusable silhouette is fine, a real payout is not.
     expect(scoreSketch(ring('BR'), ring('AU'), 100)).toBeLessThanOrEqual(15)
     expect(scoreSketch(ring('EG'), ring('CL'), 100)).toBeLessThanOrEqual(10)
+  })
+})
+
+// Open-polyline geometry: the Boundary Commission's shared-border machinery.
+
+describe('resampleOpen', () => {
+  it('preserves the endpoints and the requested count', () => {
+    const line: OutlinePoint[] = [
+      [0, 0],
+      [4, 0],
+      [4, 3],
+    ]
+    const resampled = resampleOpen(line, 15)
+    expect(resampled.length).toBe(15)
+    expect(resampled[0]).toEqual([0, 0])
+    expect(resampled[14]).toEqual([4, 3])
+  })
+
+  it('spaces points evenly by arc length', () => {
+    const line: OutlinePoint[] = [
+      [0, 0],
+      [10, 0],
+    ]
+    const resampled = resampleOpen(line, 11)
+    for (let index = 0; index < resampled.length; index++) {
+      expect(resampled[index][0]).toBeCloseTo(index, 6)
+      expect(resampled[index][1]).toBeCloseTo(0, 6)
+    }
+  })
+})
+
+describe('polylineLength', () => {
+  it('sums the segment lengths of an open line', () => {
+    expect(
+      polylineLength([
+        [0, 0],
+        [3, 4],
+        [3, 14],
+      ])
+    ).toBe(15)
+  })
+})
+
+describe('sharedBoundary', () => {
+  // The map generator simplifies topologically — the shared border keeps
+  // identical vertices on both countries' rings.
+  it('finds a substantial shared run for real land neighbours', () => {
+    for (const [a, b] of [
+      ['FR', 'ES'],
+      ['KZ', 'UZ'],
+      ['NO', 'SE'],
+      ['IN', 'PK'],
+    ] as const) {
+      const ringA = largestRing(MAP_PATHS[a])!
+      const ringB = largestRing(MAP_PATHS[b])!
+      const line = sharedBoundary(ringA, ringB)
+      expect(line, `${a}-${b}`).toBeDefined()
+      expect(line!.length, `${a}-${b}`).toBeGreaterThanOrEqual(8)
+
+      // The border lies on both rings, bar the odd bridged 1–2 vertex gap
+      // where simplification dropped a vertex on one side only
+      const keys = new Set(ringB.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`))
+      const offRing = line!.filter(([x, y]) => !keys.has(`${x.toFixed(2)},${y.toFixed(2)}`))
+      expect(offRing.length, `${a}-${b}`).toBeLessThanOrEqual(2)
+    }
+  })
+
+  it('finds nothing between countries that never touch', () => {
+    const france = largestRing(MAP_PATHS.FR)!
+    const japan = largestRing(MAP_PATHS.JP)!
+    expect(sharedBoundary(france, japan)).toBeUndefined()
+  })
+})
+
+describe('unsharedRuns', () => {
+  it('returns the whole ring when nothing is shared', () => {
+    const france = largestRing(MAP_PATHS.FR)!
+    const japan = largestRing(MAP_PATHS.JP)!
+    const runs = unsharedRuns(france, japan)
+    expect(runs.length).toBe(1)
+    expect(runs[0].length).toBe(france.length + 1)
+  })
+
+  it('covers the ring minus the border, junctions included', () => {
+    const france = largestRing(MAP_PATHS.FR)!
+    const spain = largestRing(MAP_PATHS.ES)!
+    const border = sharedBoundary(france, spain)!
+    const runs = unsharedRuns(france, spain)
+    expect(runs.length).toBeGreaterThan(0)
+
+    // Each coast run starts and ends on a SHARED vertex (the junction
+    // extension), so the stroked outline meets the erased line's endpoints
+    const sharedKeys = new Set(spain.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`))
+    const total = runs.reduce((sum, run) => sum + run.length, 0)
+    expect(total).toBeGreaterThan(france.length - border.length)
+    for (const run of runs) {
+      const [firstX, firstY] = run[0]
+      const [lastX, lastY] = run[run.length - 1]
+      expect(sharedKeys.has(`${firstX.toFixed(2)},${firstY.toFixed(2)}`)).toBe(true)
+      expect(sharedKeys.has(`${lastX.toFixed(2)},${lastY.toFixed(2)}`)).toBe(true)
+    }
+  })
+})
+
+describe('boundaryDeviation', () => {
+  const target: OutlinePoint[] = Array.from({ length: 20 }, (_, index) => [index, 0])
+
+  it('is zero for a perfect tracing', () => {
+    expect(boundaryDeviation(target, target)).toBeCloseTo(0, 6)
+  })
+
+  it('grows with lateral offset', () => {
+    const near = target.map(([x, y]): OutlinePoint => [x, y + 0.5])
+    const far = target.map(([x, y]): OutlinePoint => [x, y + 3])
+    expect(boundaryDeviation(near, target)).toBeLessThan(boundaryDeviation(far, target))
+    expect(boundaryDeviation(near, target)).toBeCloseTo(0.5, 1)
+  })
+
+  it('punishes a token stub harder than its own mean distance', () => {
+    // A stub sits ON the line — pointwise it misses by nothing — but the
+    // uncovered remainder of the target must dominate through the blend
+    const stub: OutlinePoint[] = [
+      [0, 0],
+      [3, 0],
+    ]
+    expect(boundaryDeviation(stub, target)).toBeGreaterThan(3)
+  })
+
+  it('is direction-agnostic', () => {
+    const reversed = [...target].reverse()
+    expect(boundaryDeviation(reversed, target)).toBeCloseTo(0, 6)
   })
 })
 

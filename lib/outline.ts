@@ -11,7 +11,7 @@ export const countryPathData = (isoCode: ISOCountryCode): string | undefined =>
   document.querySelector(`.game-map path#${isoCode}`)?.getAttribute('d') ?? undefined
 
 /** Stroke width as a share of the frame — the classic hairline at stage size. */
-const STROKE_WIDTH_RATIO = 0.0045
+export const STROKE_WIDTH_RATIO = 0.0045
 
 /**
  * A country's MAINLAND ring as standalone path data, framed in its own
@@ -251,6 +251,169 @@ export const resampleClosed = (points: OutlinePoint[], count = 96): OutlinePoint
   }
 
   return output
+}
+
+/** Resample an OPEN polyline to `count` points, evenly spaced by arc length —
+ *  endpoints preserved (the open sibling of `resampleClosed`). */
+export const resampleOpen = (points: OutlinePoint[], count = 48): OutlinePoint[] => {
+  if (points.length < 2 || count < 2) return points
+
+  const segmentLengths: number[] = []
+  let total = 0
+  for (let index = 0; index + 1 < points.length; index++) {
+    const [x1, y1] = points[index]
+    const [x2, y2] = points[index + 1]
+    const length = Math.hypot(x2 - x1, y2 - y1)
+    segmentLengths.push(length)
+    total += length
+  }
+  if (total === 0) return points
+
+  const step = total / (count - 1)
+  const output: OutlinePoint[] = [points[0]]
+  let distance = step
+  let segment = 0
+  let travelled = 0
+
+  for (let index = 1; index < count - 1; index++) {
+    while (segment < segmentLengths.length && travelled + segmentLengths[segment] < distance) {
+      travelled += segmentLengths[segment]
+      segment++
+    }
+    const [x1, y1] = points[Math.min(segment, points.length - 2)]
+    const [x2, y2] = points[Math.min(segment + 1, points.length - 1)]
+    const t = segmentLengths[segment] ? (distance - travelled) / segmentLengths[segment] : 0
+    output.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t])
+    distance += step
+  }
+
+  output.push(points[points.length - 1])
+  return output
+}
+
+/** Arc length of an open polyline. */
+export const polylineLength = (points: OutlinePoint[]): number => {
+  let total = 0
+  for (let index = 0; index + 1 < points.length; index++) {
+    total += Math.hypot(
+      points[index + 1][0] - points[index][0],
+      points[index + 1][1] - points[index][1]
+    )
+  }
+  return total
+}
+
+/** Vertex identity that survives the map generator's 2-decimal output. */
+const vertexKey = ([x, y]: OutlinePoint): string => `${x.toFixed(2)},${y.toFixed(2)}`
+
+/**
+ * The shared border between two adjacent rings: the longest contiguous run
+ * (wrap-aware) of `ring`'s vertices that also lie on `neighbour`. Reliable
+ * because the map generator simplifies topologically — a border keeps
+ * identical vertices on both of its countries.
+ */
+export const sharedBoundary = (
+  ring: OutlinePoint[],
+  neighbour: OutlinePoint[]
+): OutlinePoint[] | undefined => {
+  const neighbourKeys = new Set(neighbour.map(vertexKey))
+  const count = ring.length
+  const shared = ring.map(point => neighbourKeys.has(vertexKey(point)))
+  if (!shared.includes(false)) return [...ring]
+
+  // Bridge 1–2 vertex gaps: simplification occasionally drops a border vertex
+  // on one side only, splitting one real border into runs (France–Spain)
+  for (let index = 0; index < count; index++) {
+    if (shared[index]) continue
+    const previous = shared[(index - 1 + count) % count]
+    const next = shared[(index + 1) % count]
+    const afterNext = shared[(index + 2) % count]
+    if (previous && (next || afterNext)) shared[index] = true
+  }
+
+  let best = { start: -1, length: 0 }
+  let start = -1
+  let length = 0
+  for (let index = 0; index < 2 * count; index++) {
+    if (shared[index % count]) {
+      if (start < 0) start = index
+      length++
+      if (length > best.length) best = { start, length }
+    } else {
+      start = -1
+      length = 0
+    }
+  }
+  if (best.length < 2) return undefined
+
+  const run: OutlinePoint[] = []
+  for (let index = 0; index < Math.min(best.length, count); index++) {
+    run.push(ring[(best.start + index) % count])
+  }
+  return run
+}
+
+/**
+ * The complement of `sharedBoundary` on one ring: the contiguous stretches of
+ * `ring` NOT shared with `neighbour` — its own coastline and outer borders.
+ * Each run is extended one vertex into the shared border on both ends so
+ * strokes meet the junction instead of stopping short of it.
+ */
+export const unsharedRuns = (ring: OutlinePoint[], neighbour: OutlinePoint[]): OutlinePoint[][] => {
+  const neighbourKeys = new Set(neighbour.map(vertexKey))
+  const count = ring.length
+  const shared = ring.map(point => neighbourKeys.has(vertexKey(point)))
+  if (!shared.includes(true)) return [[...ring, ring[0]]]
+  if (!shared.includes(false)) return []
+
+  // Walk from a shared vertex so every unshared run is seen exactly once
+  const anchor = shared.indexOf(true)
+  const runs: OutlinePoint[][] = []
+  let current: OutlinePoint[] | undefined
+  for (let offset = 0; offset <= count; offset++) {
+    const index = (anchor + offset) % count
+    if (shared[index]) {
+      if (current) {
+        current.push(ring[index])
+        runs.push(current)
+        current = undefined
+      }
+    } else {
+      current ??= [ring[(anchor + offset - 1 + count) % count]]
+      current.push(ring[index])
+    }
+  }
+  if (current) {
+    current.push(ring[anchor])
+    runs.push(current)
+  }
+  return runs
+}
+
+/**
+ * Blended deviation between two open polylines, in the input units: the mean
+ * symmetric nearest-point distance blended with the 85th-percentile miss.
+ * Same philosophy as `scoreSketch` — the mean alone flatters a token stub
+ * ("near the border somewhere"); the tail demands the whole line shows up.
+ */
+export const boundaryDeviation = (drawn: OutlinePoint[], target: OutlinePoint[]): number => {
+  const a = resampleOpen(drawn)
+  const b = resampleOpen(target)
+  if (a.length < 2 || b.length < 2) return Infinity
+
+  const nearestDistances = (from: OutlinePoint[], to: OutlinePoint[]) =>
+    from.map(([x1, y1]) => {
+      let nearest = Infinity
+      for (const [x2, y2] of to) {
+        nearest = Math.min(nearest, Math.hypot(x2 - x1, y2 - y1))
+      }
+      return nearest
+    })
+
+  const misses = [...nearestDistances(a, b), ...nearestDistances(b, a)]
+  const mean = misses.reduce((sum, miss) => sum + miss, 0) / misses.length
+  const worst = [...misses].sort((x, y) => x - y)[Math.floor(misses.length * 0.85)]
+  return mean * 0.7 + worst * 0.3
 }
 
 /** Translate centroid to origin, scale the longer side to 1 — shape only. */

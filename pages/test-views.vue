@@ -81,7 +81,11 @@ import {
 } from '~~/lib/timeline'
 import { flagSwatches } from '~~/lib/audio-palette'
 import { seededTongueSample } from '~~/lib/tongue-samples'
-import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
+import {
+  BOUNDARY_TOLERANCE,
+  GAUNTLET_LIVES,
+  getFinalChallenges,
+} from '~~/lib/challenges/final-challenge'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -2394,6 +2398,32 @@ const scenarios: Scenario[] = [
           cityCount: 10,
           quota: 3,
           durationSeconds: 60,
+        },
+      ]),
+  },
+  {
+    id: 'final-boundary',
+    label: 'Final: boundary commission (draw, FR–ES)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'boundary-challenge',
+          countries: ['FR', 'ES'],
+          tolerance: BOUNDARY_TOLERANCE.normal,
+        },
+      ]),
+  },
+  {
+    id: 'final-boundary-hard',
+    label: 'Final: boundary commission (draw, KZ–UZ)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'boundary-challenge',
+          countries: ['KZ', 'UZ'],
+          tolerance: BOUNDARY_TOLERANCE.hard,
         },
       ]),
   },
