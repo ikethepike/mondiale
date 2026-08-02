@@ -54,7 +54,7 @@
               {{ photoCredit(story.event) }}
             </figcaption>
             <SourceInfo
-              class="photo-source"
+              class="photo-source on-photo"
               label="Sources"
               :attributions="eventSources"
               :item-credit="photoCredit(story.event)"
@@ -591,10 +591,9 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
     }
 
     .photo-source {
-      left: 0.2rem;
-      bottom: 0.2rem;
+      left: 0.6rem;
+      bottom: 0.6rem;
       position: absolute;
-      color: var(--sour-milk);
     }
   }
 

@@ -19,7 +19,7 @@
         <ZoomableImage :src="challenge.image" alt="A capital city" />
         <!-- The photographer's line waits for the reveal — it can name the city. -->
         <SourceInfo
-          class="photo-source"
+          class="photo-source on-photo"
           label="Photo"
           :attributions="photoSources"
           :item-credit="submitted ? photoCredit : undefined"
@@ -158,9 +158,10 @@ const { spent, onGuess } = useAttemptOptions({
   width: clamp(30rem, 70vw, 54rem);
   height: clamp(22rem, 40vh, 38rem);
 
+  // Top corner: the bottom edge belongs to the zoom controls and hint pill.
   .photo-source {
-    right: 0.2rem;
-    bottom: 0.2rem;
+    top: 0.8rem;
+    right: 0.8rem;
     z-index: 3;
     position: absolute;
   }

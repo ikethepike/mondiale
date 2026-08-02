@@ -7,7 +7,7 @@
       <ZoomableImage :src="image" :alt="alt" />
       <SourceInfo
         v-if="attributions?.length"
-        class="photo-source"
+        class="photo-source on-photo"
         label="Photo"
         :attributions="attributions"
         :item-credit="itemCredit"
@@ -72,11 +72,12 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
   height: clamp(20rem, 34vh, 32rem);
 }
 
-// The photo's provenance rides the frame's corner, over the image.
-// Doubled selector so SourceInfo's own positioning never wins.
+// The photo's provenance rides the frame's top corner — the bottom edge
+// belongs to the zoom controls and the gesture hint. Doubled selector so
+// SourceInfo's own positioning never wins.
 .photo-stage .photo-source {
-  right: 0.2rem;
-  bottom: 0.2rem;
+  top: 0.8rem;
+  right: 0.8rem;
   z-index: 3;
   position: absolute;
 }

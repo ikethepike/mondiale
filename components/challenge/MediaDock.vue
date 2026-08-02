@@ -7,7 +7,7 @@
           <ZoomableImage :src="src" :alt="alt" />
           <SourceInfo
             v-if="attributions?.length"
-            class="dock-source"
+            class="dock-source on-photo"
             label="Photo"
             :attributions="attributions"
             :item-credit="itemCredit"
@@ -90,11 +90,13 @@ const expanded = defineModel<boolean>('expanded', { default: true })
   height: min(40dvh, 32rem);
 }
 
-// Doubled selector so SourceInfo's own positioning never wins.
+// Top-left: the close button owns the top-right corner, the zoom controls
+// the bottom-right. Doubled selector so SourceInfo's own positioning never
+// wins.
 .dock-frame .dock-source {
   position: absolute;
-  right: 0.2rem;
-  bottom: 0.2rem;
+  top: 0.8rem;
+  left: 0.8rem;
   z-index: 4;
 }
 

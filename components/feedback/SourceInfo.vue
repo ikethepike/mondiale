@@ -7,6 +7,8 @@
       :aria-expanded="open"
       :aria-label="`Where this comes from: ${summary}`"
       @click.stop="open = !open"
+      @mouseenter="onHoverIn"
+      @mouseleave="onHoverOut"
     >
       <svg class="source-icon" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="9.2" />
@@ -24,6 +26,8 @@
           :style="panelStyle"
           role="dialog"
           :aria-label="label"
+          @mouseenter="onHoverIn"
+          @mouseleave="onHoverOut"
         >
           <span class="source-eyebrow">{{ label }}</span>
 
@@ -59,6 +63,7 @@
 <script lang="ts" setup>
 import { attributionLine, type Attribution } from '~~/lib/attribution'
 import { clamp } from '~~/lib/number'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 /**
  * The "where did this come from" affordance: a quiet ⓘ that opens the full
@@ -92,6 +97,26 @@ const props = withDefaults(
 const open = ref(false)
 const trigger = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
+
+/**
+ * Mouse users hover to read, touch users tap — the click toggle stays as the
+ * universal (and keyboard) path. The close delay bridges the pointer's hop
+ * across the gap between the trigger and the teleported panel.
+ */
+const isCoarsePointer = useIsCoarsePointer()
+const HOVER_CLOSE_DELAY_MS = 250
+let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined
+
+const onHoverIn = () => {
+  if (isCoarsePointer.value) return
+  clearTimeout(hoverCloseTimer)
+  open.value = true
+}
+const onHoverOut = () => {
+  if (isCoarsePointer.value) return
+  clearTimeout(hoverCloseTimer)
+  hoverCloseTimer = setTimeout(() => (open.value = false), HOVER_CLOSE_DELAY_MS)
+}
 
 /** Breathing room between the panel, its trigger, and the viewport edges. */
 const PANEL_GAP_PX = 6
@@ -169,6 +194,7 @@ onMounted(() => {
   window.addEventListener('resize', onViewportShift)
 })
 onBeforeUnmount(() => {
+  clearTimeout(hoverCloseTimer)
   document.removeEventListener('click', dismiss, true)
   document.removeEventListener('keydown', onKey)
   document.removeEventListener('scroll', onViewportShift, true)
@@ -209,6 +235,15 @@ onBeforeUnmount(() => {
 
 .open .source-trigger {
   color: #{ink()};
+}
+
+// Riding a photo: the ⓘ wears the zoom controls' frosted chip language so it
+// reads on any image instead of vanishing into it.
+.source-info.on-photo .source-trigger {
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: hsla(0, 0%, 100%, 0.55);
+  border: 0.1rem solid #{ink(0.2)};
 }
 
 .source-icon {
