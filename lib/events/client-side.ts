@@ -11,6 +11,9 @@ import type { PlayerMove } from '~~/types/game.types'
 const ACK_TIMEOUT_MS = 5000
 const ACK_ATTEMPTS = 3
 const RETRY_BACKOFF_MS = 750
+/** Pause before a caller re-runs a whole failed `update` batch (all attempts
+ *  spent). Answer submits ride this — see useGroupChallenge's deliverAnswer. */
+export const REDELIVER_PAUSE_MS = 4000
 
 export const useClientEvents = () => {
   const router = useRouter()

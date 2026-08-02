@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { applyChainMove, currentBorderChain } from './chain-turns'
-import { TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
+import { applyChainMove, currentBorderChain, rearmBorderChain } from './chain-turns'
+import { submitChainMoveHandler } from './submit-chain-move.handler'
+import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
 import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
 
 /**
@@ -28,6 +30,17 @@ const trapState = (): BorderChainState => ({
   missedOuts: {},
 })
 
+const seat = (id: string): Player =>
+  ({
+    id,
+    name: id,
+    ready: true,
+    color: 'blue',
+    phase: 'group-challenge',
+    moves: [],
+    currentPosition: 0,
+  }) as unknown as Player
+
 const buildGame = (stateOverrides: Partial<BorderChainState> = {}): Game => {
   const challenge: BorderChainChallenge = {
     _type: 'border-chain-challenge',
@@ -43,7 +56,7 @@ const buildGame = (stateOverrides: Partial<BorderChainState> = {}): Game => {
     tiles: [],
     variant: 'world',
     difficulty: 'hard',
-    players: {},
+    players: { a: seat('a'), b: seat('b'), c: seat('c') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   } as unknown as Game
 }
@@ -213,5 +226,96 @@ describe('applyChainMove — the ordinary move', () => {
     expect(state.lastMoverId).toBe('a')
     expect(state.order[state.activeIndex]).toBe('b')
     expect(state.eliminated).toEqual([])
+  })
+})
+
+/** A persisted dead-end hold, as a fresh process would find it: the trapped
+ *  seat still reads as active with a matching turn token, and no timer exists
+ *  anywhere. */
+const heldTrap = (): Partial<BorderChainState> => ({
+  chains: [['ES', 'PT']],
+  activeIndex: 1,
+  turn: 2,
+  deadline: 0,
+  eliminated: ['b'],
+  outcomes: { b: 'trapped' },
+  missedOuts: { b: [] },
+  lastMoverId: 'a',
+  trap: { playerId: 'b', head: 'PT', byPlayerId: 'a', doors: [] },
+})
+
+describe('submitChainMoveHandler — the dead-end hold', () => {
+  // Regression: without the trap guard, this submit passed every check
+  // (active player, matching turn), resolved as a miss, and advanced the
+  // turn — staling the hold's follow-up while scheduleChainTimeout refuses
+  // to arm during a trap. Permanent freeze, and a double elimination.
+  it('rejects a submit from the trapped seat during the hold', async () => {
+    const game = buildGame(heldTrap())
+    const ctx = context(game)
+
+    await submitChainMoveHandler({
+      ...ctx,
+      eventKey: 'submit-chain-move',
+      eventData: { event: 'submit-chain-move', turn: 2, isoCode: 'FR' },
+      eventTarget: { gameId: game.id, playerId: 'b' },
+    })
+
+    const { state } = chainOf(game.id)
+    expect(state.turn).toBe(2)
+    expect(state.trap).toBeDefined()
+    expect(state.eliminated).toEqual(['b'])
+  })
+})
+
+describe('rearmBorderChain — rejoin recovery', () => {
+  it('revives a dead trap hold and deals fresh ground', async () => {
+    const game = buildGame(heldTrap())
+    const ctx = context(game)
+
+    rearmBorderChain(ctx, game)
+    await elapseHold()
+
+    const { state } = chainOf(game.id)
+    expect(state.trap).toBeUndefined()
+    expect(state.chains).toHaveLength(2)
+    expect(state.deadline).toBeGreaterThan(0)
+  })
+
+  it('settles a finished round whose reveal hold died before banking', async () => {
+    const game = buildGame({
+      chains: [['ES', 'PT']],
+      eliminated: ['b', 'c'],
+      outcomes: { a: 'won', b: 'trapped', c: 'timeout' },
+      finished: true,
+    })
+    const ctx = context(game)
+
+    rearmBorderChain(ctx, game)
+    await vi.advanceTimersByTimeAsync(REVEAL_HOLD_MS + 10)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!
+    const round = fresh.rounds[0]
+    expect(Object.keys(round.groupAnswers)).toHaveLength(3)
+    expect(round.playerTurns.a).toBeDefined()
+    for (const id of ['a', 'b', 'c']) {
+      expect(fresh.players[id].phase).toBe('group-scores')
+    }
+  })
+
+  it('does not settle a round twice', async () => {
+    const game = buildGame({ finished: true, outcomes: { a: 'won' } })
+    // Scoring already marked the round — the latch every settle task checks.
+    game.rounds[0].groupAnswers = { a: { submitted: [], correct: [] } }
+    game.players.a.phase = 'movement-summary'
+    const ctx = context(game)
+
+    rearmBorderChain(ctx, game)
+    await vi.advanceTimersByTimeAsync(REVEAL_HOLD_MS + 10)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!
+    expect(Object.keys(fresh.rounds[0].groupAnswers)).toEqual(['a'])
+    expect(fresh.players.a.phase).toBe('movement-summary')
   })
 })

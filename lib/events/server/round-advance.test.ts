@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ADVANCE_WATCHDOG_MAX_TICKS,
+  ROUND_BOUND_PHASES,
   SETTLED_PHASES,
   shouldArmAdvanceWatchdog,
   tableIsSettled,
@@ -85,5 +86,31 @@ describe('shouldArmAdvanceWatchdog', () => {
   it('is bounded so an abandoned seat cannot poll forever', () => {
     expect(ADVANCE_WATCHDOG_MAX_TICKS).toBeGreaterThan(0)
     expect(Number.isFinite(ADVANCE_WATCHDOG_MAX_TICKS)).toBe(true)
+  })
+})
+
+describe('ROUND_BOUND_PHASES', () => {
+  // Freeze #3: a watchdog tick armed up to 8s before the reveal lands after
+  // seats flipped back to 'group-challenge' with no moves — walking one
+  // ejected it to 'movement-summary' mid-round. Round-bound seats must be
+  // walk-exempt, and the two exemption sets must never overlap (a phase in
+  // both would be ambiguous to the handler's re-entry).
+  it('covers every in-round and pre-game phase', () => {
+    for (const phase of ['naming', 'waiting-for-game', 'tutorial', 'group-challenge']) {
+      expect(ROUND_BOUND_PHASES).toContain(phase)
+    }
+  })
+
+  it('is disjoint from the settled set', () => {
+    for (const phase of ROUND_BOUND_PHASES) {
+      expect(SETTLED_PHASES).not.toContain(phase)
+    }
+  })
+
+  it('leaves the walking phases walkable', () => {
+    for (const phase of ['group-scores', 'moving', 'individual-challenge', 'final-challenge']) {
+      expect(ROUND_BOUND_PHASES).not.toContain(phase)
+      expect(SETTLED_PHASES).not.toContain(phase)
+    }
   })
 })

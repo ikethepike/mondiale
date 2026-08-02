@@ -107,9 +107,14 @@ export const resolveTimelinePlacement = async (
   await server.updateGameState(game)
   server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 
-  // The story card's own hold: not the shot clock, so scheduleEngineTask with
-  // the reveal's fixed length plus the usual buzzer slack.
-  const revealedTurn = state.turn
+  scheduleTimelineReveal(ctx, challenge)
+}
+
+/** Arm the story card's own hold: not the shot clock, so scheduleEngineTask
+ *  with the reveal's fixed length plus the usual buzzer slack. Idempotent:
+ *  the fired task re-reads fresh state and bails once the turn moved on. */
+const scheduleTimelineReveal = (ctx: ChainContext, challenge: TimelineChallenge) => {
+  const revealedTurn = challenge.state.turn
   scheduleEngineTask(ctx, challenge.revealSeconds * 1000 + TIMEOUT_SLACK_MS, async fresh => {
     const current = currentTimeline(fresh)
     if (!current?.state.revealing || current.state.finished) return
@@ -152,6 +157,13 @@ const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: Tim
   await server.updateGameState(game)
   server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 
+  scheduleTimelineSettle(ctx)
+}
+
+/** Arm the finished round's settle follow-up. Everything is re-derived from
+ *  fresh state inside the task, so re-arming (rejoin recovery) is safe: the
+ *  `groupAnswers` latch makes any duplicate a no-op. */
+const scheduleTimelineSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
     const current = currentTimeline(fresh)
     if (!current?.state.finished) return
@@ -186,4 +198,23 @@ const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: Tim
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
   })
+}
+
+/**
+ * Re-arm whatever follow-up the live timeline round is waiting on after its
+ * in-process timer was lost (restart, or a save that threw once the timer was
+ * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
+ * alongside a live timer — every task dies on its (turn, revealing, finished)
+ * token or the settle latch.
+ */
+export const rearmTimeline = (ctx: ChainContext, game: Game) => {
+  const challenge = currentTimeline(game)
+  if (!challenge) return
+  // Finished but unsettled — the reveal hold died before banking the table.
+  if (challenge.state.finished) return scheduleTimelineSettle(ctx)
+  if (challenge.state.revealing) return scheduleTimelineReveal(ctx, challenge)
+  // A zero deadline is the staged-but-unrevealed shape (the clock stamps at
+  // the reveal) — arming against it would time out turn 0 before anyone saw it.
+  if (challenge.state.deadline === 0) return
+  scheduleTimelineTimeout(ctx, challenge)
 }

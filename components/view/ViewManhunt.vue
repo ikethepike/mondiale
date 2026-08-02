@@ -295,10 +295,19 @@ const despotName = computed(() => playerDisplayName(despotPlayer.value))
 const trail = computed(() => (isDespot.value ? (gameStore.manhunt?.trail ?? []) : []))
 const despotAt = computed(() => trail.value[trail.value.length - 1])
 
-// The despot re-asks for their trail on mount — covers reveal AND reconnect.
+// The despot re-asks for their trail on mount — covers the reveal — and on
+// every socket reconnect: the position channel is a single-socket emit, so a
+// hop committed while the despot's socket was down never reaches them, and a
+// stale trail computes wrong legal moves for the rest of the round (the view
+// stays mounted across reconnects, so mount alone can't cover this).
+const refetchPosition = () => {
+  if (isDespot.value && !finished.value) update({ event: 'fetch-manhunt-position' })
+}
 onMounted(() => {
-  if (isDespot.value) update({ event: 'fetch-manhunt-position' })
+  refetchPosition()
+  gameStore.socket?.io.on('reconnect', refetchPosition)
 })
+onUnmounted(() => gameStore.socket?.io.off('reconnect', refetchPosition))
 
 // Off-board and benched (micro-nation) countries both fade — the despot can
 // reach neither, so the rule is visible before a hop is attempted.

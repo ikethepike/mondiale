@@ -31,7 +31,7 @@ export const closeTutorialHandler = defineGameHandler(
     // task bails on the briefing flag.
     const unique = currentUniqueOrBust(game)
     if (unique && !unique.state.finished && unique.state.briefing) {
-      scheduleUniqueTimeout({ io, redis, socket, eventTarget }, unique)
+      scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, unique)
     }
 
     // And for Border Chain's briefing, which holds its first shot clock the

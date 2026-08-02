@@ -19,6 +19,12 @@ import { latestRound } from '~~/lib/rounds'
 /** Phases that no longer take part in a round's movement. */
 export const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
 
+/** Phases that live INSIDE the round (or before the game): never walkable.
+ *  Walking one ejects the seat to 'movement-summary' mid-round — the reveal
+ *  flips seats to 'group-challenge' with `moves: []`, and a watchdog tick
+ *  armed before the reveal (up to 8s earlier) lands exactly there. */
+export const ROUND_BOUND_PHASES = ['naming', 'waiting-for-game', 'tutorial', 'group-challenge']
+
 const STEP_INTERVAL = 500
 const NEW_ROUND_PAUSE = 2000
 
@@ -121,7 +127,10 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // someone recompute readyForNextTurn after a win (the winner reaches
     // victory outside this handler), which would otherwise strand everyone
     // else in movement-summary with no `new-round` ever fired.
-    const alreadySettled = SETTLED_PHASES.includes(player.phase)
+    // A seat still IN the round (or pre-game) is equally unwalkable — a late
+    // watchdog tick or a stray client event must not eject it mid-round.
+    const alreadySettled =
+      SETTLED_PHASES.includes(player.phase) || ROUND_BOUND_PHASES.includes(player.phase)
 
     const move = player.moves[0]
 
@@ -261,7 +270,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // Unique or Bust opens on its briefing (deadline stays 0) — this arms
       // the reading cap; the writing clock stamps when the table is briefed.
       if (isUniqueOrBustChallenge(revealed)) {
-        scheduleUniqueTimeout({ io, redis, socket, eventTarget }, revealed)
+        scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, revealed)
       }
     }
   }
