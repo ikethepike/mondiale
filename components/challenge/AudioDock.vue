@@ -201,6 +201,17 @@ const play = async () => {
   if (audio.ended) audio.currentTime = 0
 
   loading.value = true
+  // A COLD element rebuilds its pipeline inside this gesture. iOS ignores
+  // preload and half-initialises the element at mount, without user
+  // activation; play() against that stale pipeline advances the clock but
+  // never attaches audio output — the first pass runs SILENT end to end, and
+  // only the rebuild after `ended` makes the second press sound. load() here
+  // starts clean every time (the reveal's replay has always done this, which
+  // is why it never had the bug). A resume must not reload — that rewinds —
+  // and a warm desktop element (preload honoured) skips it entirely.
+  if (audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA && !audio.currentTime) {
+    audio.load()
+  }
   await audio.play().then(
     () => {
       playing.value = true
