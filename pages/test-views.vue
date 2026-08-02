@@ -1175,7 +1175,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'tongue-buzz',
-    label: 'Mother Tongue (speech audio)',
+    label: 'Tongues (speech audio)',
     component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
@@ -1201,7 +1201,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'tongue-buzz-ukrainian',
-    label: 'Mother Tongue (Ukrainian, borrowed anthem sample)',
+    label: 'Tongues (Ukrainian, borrowed anthem sample)',
     component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
@@ -1227,7 +1227,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'tongue-buzz-sample',
-    label: 'Mother Tongue (seeded writing sample)',
+    label: 'Tongues (seeded writing sample)',
     component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [

@@ -55,8 +55,8 @@ defineProps<{
   isoCodes: ISOCountryCode[]
   /** Once the answer is out the field stops drifting and holds. */
   settled: boolean
-  /** Clear the field away so the map behind it can be the reveal. Mother
-   *  Tongue's answer IS geography — every speaker lit at once — where the
+  /** Clear the field away so the map behind it can be the reveal. the Tongues
+   *  round's answer IS geography — every speaker lit at once — where the
    *  anthem round's answer is the settled colour, so only one mode asks. */
   standDown?: boolean
 }>()
@@ -86,6 +86,12 @@ defineExpose({ stop: () => dock.value?.stop() })
   overflow: hidden;
   pointer-events: none;
   transition: opacity var(--motion-slow) var(--ease-smooth);
+  // The shell deliberately ends above the browser chrome ("real content can't
+  // render under the bar"), so on iOS the field's colour sheet used to stop
+  // at a hard seam with the milk band beneath Safari's toolbar. Dissolving
+  // the last stretch into the page makes that boundary a design rather than
+  // a clip — the field ends the way the lyric wall does, by fading.
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
 }
 
 // Stepping aside for the map reveal. Slower than a cross-fade on purpose: the

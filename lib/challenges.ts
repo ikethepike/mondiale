@@ -124,10 +124,11 @@ const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
   ['heritage-hunt', 0.07],
   ['neighbour-blitz', 0.1],
   ['silhouette', 0.09],
-  // The only rounds that need sound: rarer than the visual staples so a muted
-  // room or a bad connection never faces a run of them.
-  ['anthem-buzz', 0.07],
-  ['tongue-buzz', 0.05],
+  // The only rounds that need sound: still shy of the visual staples so a
+  // muted room or a bad connection never faces a run of them, but no longer
+  // rare — they earned their slot.
+  ['anthem-buzz', 0.08],
+  ['tongue-buzz', 0.06],
   ['hot-cold', 0.06],
   ['sketch', 0.07],
   ['stat-detective', 0.06],

@@ -4,7 +4,7 @@ import { TONGUE_SAMPLE_SEEDS } from '~~/generators/data/tongue-sample-seeds'
 import type { AnthemLyrics } from '~~/types/challenges/group-modes.type'
 
 /**
- * The written-sample hint for the Mother Tongue round: a couple of lines of the
+ * The written-sample hint for the Tongues round: a couple of lines of the
  * language in its own script.
  *
  * One home for the lookup so the dealer and any future reveal resolve it the

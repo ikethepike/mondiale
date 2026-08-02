@@ -100,7 +100,7 @@ describe('audioFieldPalette', () => {
   })
 
   it('blends across every speaker country rather than following the first', () => {
-    // Mother Tongue must never drift toward ONE flag. Switzerland is the
+    // The Tongues blend must never drift toward ONE flag. Switzerland is the
     // honest witness in the German set: its white appears in no German or
     // Austrian colour, so a blend that ignored later speakers would lack milk.
     const german = ['DE', 'AT', 'CH'] as ISOCountryCode[]

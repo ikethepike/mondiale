@@ -21,7 +21,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const props = withDefaults(
   defineProps<{
-    /** The answer's countries. Mother Tongue passes every speaker, so the
+    /** The answer's countries. Tongues passes every speaker, so the
      *  field blends rather than fingering one nation. */
     isoCodes?: ISOCountryCode[]
     /** 0..1 along the round, from `useBuzzRound`'s `elapsedFraction`. Drives

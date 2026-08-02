@@ -36,7 +36,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'neighbour-blitz': ['Human Atlas', 'Good Neighbour', 'The Border Lord', 'Fence-Line Fanatic'],
   silhouette: ['Shape Spotter', 'Outline Oracle', 'Silhouette Sniper', 'Shadow Reader'],
   'anthem-buzz': ['Perfect Pitch', 'The Golden Ear', 'First Bar Buzzer', 'Anthem Whisperer'],
-  'tongue-buzz': ['Polyglot', 'The Good Ear', 'Mother Tongue', 'Accent Hunter'],
+  'tongue-buzz': ['Polyglot', 'The Good Ear', 'Native Speaker', 'Accent Hunter'],
   'hot-cold': ['Heat Seeker', 'Warm-Warmer-Hot', 'The Divining Rod', 'Compass Point'],
   sketch: ['Cartographer', 'Steady Hand', 'The Map Maker', 'Freehand Fabulist'],
   'stat-detective': ['Stat Detective', 'Number Sleuth', 'The Data Diviner', 'Percentile Poirot'],

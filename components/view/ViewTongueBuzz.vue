@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Mother Tongue`"
+      :kicker="`Round ${currentRound?.number ?? 1} — Tongues`"
       title="What language is this?"
       :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country where that language is official — there is more than one right answer. Buzz early for more points.`"
       @done="onInterstitialDone"

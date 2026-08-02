@@ -3,8 +3,8 @@ import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The shared body of every buzz round — Silhouette, Opening Ceremony, Mother
- * Tongue. Each presents a mystery, takes one typed country guess and pays on
+ * The shared body of every buzz round — Silhouette, Opening Ceremony,
+ * Tongues. Each presents a mystery, takes one typed country guess and pays on
  * the clock, with a wrong buzz costing a lockout; they differ in prompt copy,
  * in what counts as correct (`isCorrect`) and in their reveal choreography
  * (`onResolve`), so those are arguments and everything else lives here rather
@@ -45,7 +45,7 @@ export const BUZZ_REVEAL_HOLD_MS = 7000
 export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: {
-    /** Whether this guess wins the round. Anthem: one country. Tongue: any of
+    /** Whether this guess wins the round. Anthem: one country. Tongues: any of
      *  a set — through the same predicate the server verifies with. */
     isCorrect: (challenge: Extract<TypedRoundChallenge, { _type: T }>, guess: ISOCountryCode) => boolean
     /** The pot, off the narrowed challenge. */
@@ -150,7 +150,14 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
       return 'correct'
     }
 
-    announce({ kind: 'locked', hint: options.lockoutHint(guessName) })
+    // The wrong guess travels WITH its name; the policy home decides who sees
+    // it. Tongues is `label` — dozens of countries share the language, so a
+    // named miss is colour, and seeing "Poland ✗" is what teaches the room the
+    // multi-answer rule. Anthem and silhouette are `presence` — one shared
+    // hidden answer, so the name is stripped before the wire. A CORRECT buzz
+    // announces nothing: naming it would hand the answer to everyone still
+    // racing the clock.
+    announce({ kind: 'locked', hint: options.lockoutHint(guessName), isoCode, label: guessName })
     lockedOut.value = true
     if (lockoutTimer) clearTimeout(lockoutTimer)
     lockoutTimer = setTimeout(() => {

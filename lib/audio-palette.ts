@@ -140,7 +140,7 @@ const clampForLegibility = ({ h, s, l }: Hsl): Hsl => ({
 /**
  * The field's target colours for one or more countries.
  *
- * Mother Tongue passes EVERY speaker country, not one: English is official in
+ * Tongues passes EVERY speaker country, not one: English is official in
  * 55 of them, so drifting toward a single flag would finger a nation rather
  * than hint a language. Blending says "these colours" and leaks nobody.
  *
