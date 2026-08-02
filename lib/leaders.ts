@@ -135,6 +135,18 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
 }
 
 /**
+ * Short on-screen facts for a leader quiz option (easy/normal modes): party
+ * and tenure start. Never the office — "President of France" answers the
+ * question outright, while a party and a start year merely narrow it.
+ */
+export const leaderHintFacts = (leader: LeaderProfile): string[] => {
+  const facts: string[] = []
+  if (leader.party) facts.push(leader.party)
+  if (leader.sinceYear) facts.push(`in office since ${leader.sinceYear}`)
+  return facts
+}
+
+/**
  * Is this exact name one of the country's leader roles? Shared leaders are
  * real — Charles III reigns over 14 realms, Macron co-rules Andorra — so a
  * portrait question must never offer two countries the same person leads.

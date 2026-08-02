@@ -171,11 +171,11 @@
           <!-- Who leads X? -->
           <template v-else-if="variant === 'leader-pick'">
             <h1 class="map-caption">Who leads {{ countryName(challenge.country) }}?</h1>
-            <div class="options leader-options">
+            <div class="options card-options leader-options">
               <button
                 v-for="option in challenge.options"
                 :key="option"
-                class="option leader-option map-caption"
+                class="option card-option leader-option map-caption"
                 type="button"
                 @click="submitAnswer(option)"
               >
@@ -186,9 +186,16 @@
                   aria-hidden="true"
                 />
                 <span v-else class="leader-thumb placeholder" aria-hidden="true" />
-                <span class="leader-name">{{
-                  titlecaseLeader(getCountry(option).government?.leader ?? '')
-                }}</span>
+                <span class="leader-ident">
+                  <span class="leader-name">{{
+                    titlecaseLeader(getCountry(option).government?.leader ?? '')
+                  }}</span>
+                  <span v-if="leaderFacts(option).length" class="fact-row">
+                    <span v-for="fact in leaderFacts(option)" :key="fact" class="fact">{{
+                      fact
+                    }}</span>
+                  </span>
+                </span>
               </button>
             </div>
           </template>
@@ -409,7 +416,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { currencyName, currencySymbol } from '~~/lib/currency'
 import { isHardMode } from '~~/lib/game-rules'
-import { politicalLeader, titlecaseLeader } from '~~/lib/leaders'
+import { leaderHintFacts, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import {
@@ -707,6 +714,12 @@ const totalDuels = computed(() => challenge.value?.higherLower?.pairs.length ?? 
 const currentDuel = computed(() => challenge.value?.higherLower?.pairs[duelIndex.value])
 // Small portrait for a leader-pick option, when Wikidata has one.
 const leaderPortrait = (isoCode: ISOCountryCode) => politicalLeader(isoCode)?.image
+// Hard mode gets bare names; easy/normal see party and tenure under each option.
+const leaderFacts = (isoCode: ISOCountryCode): string[] => {
+  if (isHard.value) return []
+  const leader = politicalLeader(isoCode)
+  return leader ? leaderHintFacts(leader) : []
+}
 
 const duelAccessorId = computed(() => challenge.value?.higherLower?.accessorId)
 const duelTopic = computed(() => {
@@ -1466,9 +1479,9 @@ header .flag {
   grid-template-columns: minmax(28rem, 44rem);
 }
 
+// A card-option laid as a row: portrait left, name and hint facts right.
 .leader-option {
-  display: flex;
-  align-items: center;
+  flex-flow: row nowrap;
   gap: 1.2rem;
   text-align: left;
   padding: 0.8rem 1.2rem;
@@ -1489,9 +1502,16 @@ header .flag {
     }
   }
 
-  .leader-name {
+  .leader-ident {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .fact-row {
+    line-height: 1.3;
   }
 }
 

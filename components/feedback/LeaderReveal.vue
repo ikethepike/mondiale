@@ -10,7 +10,7 @@
       <div class="ident">
         <strong class="name">{{ leader.name }}</strong>
         <span v-if="title" class="title">{{ title }}</span>
-        <span class="facts">
+        <span class="facts fact-row">
           <span v-if="leader.party" class="fact">{{ leader.party }}</span>
           <span v-if="tenure" class="fact">{{ tenure }}</span>
           <span v-if="age" class="fact">{{ age }}</span>
@@ -97,17 +97,7 @@ const otherRole = computed(() =>
 }
 
 .facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.8rem;
   margin-top: 0.2rem;
-  font-size: 1.2rem;
-  opacity: 0.65;
-}
-
-.fact:not(:last-child)::after {
-  content: '·';
-  margin-left: 0.8rem;
 }
 
 .other-role {
