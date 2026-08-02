@@ -37,13 +37,7 @@
           <span v-if="lesson.note" class="lesson-note">{{ lesson.note }}</span>
           <p class="lesson-body">{{ lesson.body }}</p>
           <span class="credit-row">
-            <SourceInfo
-              align="start"
-              drop="up"
-              :attributions="sources"
-              label="Sources"
-              :item-credit="lesson.credit"
-            />
+            <SourceInfo :attributions="sources" label="Sources" :item-credit="lesson.credit" />
             <span class="credit">{{ sources[0].credit }}</span>
           </span>
         </section>

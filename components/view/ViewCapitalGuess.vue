@@ -21,7 +21,6 @@
         <SourceInfo
           class="photo-source"
           label="Photo"
-          drop="up"
           :attributions="photoSources"
           :item-credit="submitted ? photoCredit : undefined"
         />

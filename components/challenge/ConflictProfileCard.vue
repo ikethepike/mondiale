@@ -40,7 +40,7 @@
       </div>
 
       <p class="map-caption note">
-        <SourceInfo class="note-source" drop="up" :attributions="sources" />
+        <SourceInfo class="note-source" :attributions="sources" />
         <span>{{ ucdpNote }}</span>
       </p>
       <p v-if="overflow" class="map-caption more">

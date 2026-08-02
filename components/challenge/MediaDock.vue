@@ -9,7 +9,6 @@
             v-if="attributions?.length"
             class="dock-source"
             label="Photo"
-            drop="up"
             :attributions="attributions"
             :item-credit="itemCredit"
           />

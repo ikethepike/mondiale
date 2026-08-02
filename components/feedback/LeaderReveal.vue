@@ -22,8 +22,6 @@
     </p>
     <span class="credit-row">
       <SourceInfo
-        align="start"
-        drop="up"
         :attributions="sources"
         label="Sources"
         :item-credit="mediaCreditLine(leader, 'commons-media')"

@@ -28,7 +28,7 @@
       {{ pickedLine }}
     </span>
     <span class="credit-row">
-      <SourceInfo align="start" drop="up" :attributions="sources" />
+      <SourceInfo :attributions="sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
   </span>

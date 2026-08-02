@@ -56,7 +56,6 @@
             <SourceInfo
               class="photo-source"
               label="Sources"
-              align="start"
               :attributions="eventSources"
               :item-credit="photoCredit(story.event)"
             />

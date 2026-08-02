@@ -9,7 +9,6 @@
         v-if="attributions?.length"
         class="photo-source"
         label="Photo"
-        drop="up"
         :attributions="attributions"
         :item-credit="itemCredit"
       />
