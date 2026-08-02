@@ -96,8 +96,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
     "A small bronze on a rock in Copenhagen harbour, from Hans Christian Andersen's 1837 fairy tale. Just 1.25 metres tall.",
   nyhavn:
     'A 17th-century Copenhagen canal lined with brightly painted townhouses, its water still full of historic wooden ships.',
-  matterhorn:
-    'A near-symmetric pyramid on the Swiss–Italian border, 4,478 metres high. The emblem of the Alps.',
   'chapel-bridge-lucerne':
     "Europe's oldest wooden covered bridge, hung with 17th-century paintings. Fire destroyed much of it in 1993; it was rebuilt.",
   jungfraujoch:
@@ -189,8 +187,8 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'A rocky headland on the Atlantic coast of the Cape Peninsula. It is not, despite the belief, the southern tip of Africa.',
   'robben-island':
     'Seal Island, in Dutch. It lies in Table Bay, seven kilometres off the coast north of Cape Town.',
-  'victoria-falls':
-    'A curtain of water 1,708 metres wide, where the Zambezi drops along the border of Zambia and Zimbabwe.',
+  'south-luangwa-national-park':
+    'A game reserve since 1938 in the valley of the meandering Luangwa, at the end of the East African Rift. Its river and lagoons support more than 60 mammal species and 400 kinds of bird.',
   'mount-kilimanjaro':
     "Africa's highest mountain at 5,895 metres, and the tallest free-standing mountain in the world. A dormant volcano.",
   'serengeti-national-park':
@@ -334,8 +332,8 @@ export const LANDMARK_FACTS: Record<string, string> = {
   'registan-of-samarkand':
     'A public square in Samarkand framed by three madrasas — the Ulugh Beg of Timurid days, the Sherdar and Tilakari from later.',
   boudhanath: 'A stupa in Kathmandu, held to embody the enlightened mind of all the Buddhas.',
-  'mount-everest':
-    'The highest mountain on Earth above sea level, its summit marking part of the border between China and Nepal.',
+  annapurna:
+    'The tenth-highest mountain in the world and, in 1950, the first eight-thousander ever climbed. For decades it had the highest fatality rate of them all.',
   baiterek:
     'A monument and observation tower in Astana, which became the capital of Kazakhstan in 1997.',
   'song-kol-lake':
@@ -367,8 +365,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'Established by an act of the 42nd Congress, mostly in Wyoming but spilling into Montana and Idaho.',
   'cn-tower':
     'A 553.3-metre tower finished in 1976, named for Canadian National, the railway that built it.',
-  'niagara-falls':
-    'Three waterfalls on the Ontario–New York border. The largest, Horseshoe Falls, straddles the line itself.',
   'banff-national-park':
     "Canada's first national park, established in 1885 as Rocky Mountains Park.",
   'chateau-frontenac': 'A historic hotel in the Upper Town of Old Quebec.',
@@ -401,8 +397,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'An Art Deco Jesus above Rio, sculpted by Paul Landowski and engineered by Heitor da Silva Costa.',
   'sugarloaf-mountain':
     'A peak of 396 metres at the mouth of Guanabara Bay, named for its likeness to a loaf of refined sugar.',
-  'iguazu-falls':
-    'The largest waterfall system in the world, on the Iguazu River where Argentina meets Brazil.',
   'perito-moreno-glacier':
     'A glacier in Los Glaciares National Park, in the southwest of Argentine Patagonia.',
   'obelisco-de-buenos-aires':
@@ -429,8 +423,8 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'The oldest mosque in Ghana and among the oldest in West Africa — the "Mecca of West Africa".',
   nyiragongo:
     'An active stratovolcano of 3,470 metres in the Virunga Mountains, inside Virunga National Park.',
-  'lake-malawi':
-    'The southernmost lake of the East African Rift, shared by Malawi, Mozambique and Tanzania.',
+  'mount-mulanje':
+    "A vast inselberg rising sharply from the plains of southern Malawi. Sapitwa Peak, at 3,002 metres, is the country's highest point.",
   'avenue-of-the-baobabs':
     "Grandidier's baobabs lining an unpaved road through the Menabe region of western Madagascar.",
   'kasubi-tombs':
@@ -540,8 +534,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
   'rugova-canyon':
     'A river canyon in the Albanian Alps of western Kosovo, near the Montenegrin border.',
   'gracanica-monastery': 'A Serbian Orthodox monastery built by King Stefan Milutin in 1321.',
-  'dead-sea':
-    'A landlocked salt lake in the Jordan Rift Valley, fed by the Jordan River and with no way out.',
   'wave-rock':
     'A granite formation shaped like a breaking wave, 15 metres high and 110 long, on the side of Hyden Rock.',
   'pink-lake-hillier':
@@ -566,12 +558,10 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'On the Jökulsá á Fjöllum, and reputed to be the second most powerful waterfall in Europe after the Rhine Falls.',
   'marble-caves-chile-chico':
     'On General Carrera Lake, a deep Patagonian water shared by Chile and Argentina. Its own name is Chelenko — storm.',
-  'mount-roraima':
-    'The highest of the Pacaraima tepuis, where Brazil, Guyana and Venezuela meet. Cliffs of 400 to 1,000 metres ring its flat top.',
   'cano-cristales':
     'A river in the Serranía de la Macarena, a tributary of the Guayabero and part of the Orinoco basin.',
-  'sahara-desert':
-    'The largest hot desert in the world at 9,200,000 square kilometres — outsized only by Antarctica and the Arctic.',
+  'casbah-of-algiers':
+    'The old town of Algiers, founded in 944 and laid out under the Berber Zirids. During the Algerian War its alleys were the stronghold of FLN independence fighters.',
   'lake-baikal':
     'The deepest lake in the world, in southern Siberia, and a rift lake still pulling itself apart.',
   'valley-of-geysers':
@@ -579,8 +569,8 @@ export const LANDMARK_FACTS: Record<string, string> = {
   'ngorongoro-crater':
     'A protected area in the Crater Highlands of northeastern Tanzania, 180 kilometres west of Arusha.',
 
-  sundarbans:
-    'Mangrove forest in the Ganges Delta, where the Ganges, Brahmaputra and Meghna meet the Bay of Bengal.',
+  'sixty-dome-mosque':
+    'The largest mosque in Bangladesh from the Bengal Sultanate period. Despite the name, 81 domes rest on its sixty columns.',
   'phang-nga-bay':
     'Four hundred square kilometres of the Andaman Sea between Phuket and the mainland, much of it a national park since 1981.',
   'waitomo-glowworm-caves':
@@ -731,6 +721,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'Completed in Muscat in 2001, the largest mosque in Oman. Twenty thousand worshippers fit inside.',
   pitons:
     'Two volcanic spires linked by the Piton Mitan ridge — Gros Piton at 798 metres, Petit Piton at 743.',
-  'mount-nimba':
-    "A strict nature reserve of 175.4 square kilometres, straddling Guinea and Côte d'Ivoire.",
+  'fouta-djallon':
+    'The highland region at the heart of Guinea — the plateau country West Africans know as Middle Guinea.',
 }
