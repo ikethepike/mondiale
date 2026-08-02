@@ -12,6 +12,7 @@ import {
   uniqueLetterOf,
   uniqueNameKey,
   uniqueRegisters,
+  uniqueScoresFromResults,
   uniqueUsedWordKeys,
   uniqueViableLetters,
   type UniqueAnswerSheet,
@@ -227,6 +228,40 @@ describe('resolveUniqueCollisions', () => {
       .flat()
       .reduce((sum, cell) => sum + cell.scored, 0)
     expect(cellTotal).toBe(15)
+  })
+})
+
+describe('uniqueScoresFromResults', () => {
+  // The settle task derives scores from the persisted reveal grid, never the
+  // TTL'd redis sheet — a recovered settle must agree with the words the
+  // scoreboard shows, not with a blob that may have evaporated.
+  it('agrees exactly with the resolve-time scores', () => {
+    const challenge = boardChallenge(['a', 'b', 'c'])
+    const answers: UniqueAnswerSheet = {
+      a: { country: 'MX', river: 'mekong' },
+      b: { country: 'MX', river: 'mississippi' },
+      c: { country: 'MR' },
+    }
+    const { results, scores } = resolveUniqueCollisions(challenge, answers, registerFixture)
+    challenge.state.results = results
+    expect(uniqueScoresFromResults(challenge)).toEqual(scores)
+  })
+
+  it('banks a zero for every seat when no results were recorded', () => {
+    const challenge = boardChallenge(['a', 'b'])
+    expect(uniqueScoresFromResults(challenge)).toEqual({
+      a: { scored: 0, maximum: 20 },
+      b: { scored: 0, maximum: 20 },
+    })
+  })
+
+  it('clamps a full unique board to the round pot', () => {
+    const challenge = boardChallenge(['a'])
+    const answers: UniqueAnswerSheet = {
+      a: { country: 'MX', capital: 'ES', river: 'mekong', megacity: 'DE:Munich' },
+    }
+    challenge.state.results = resolveUniqueCollisions(challenge, answers, registerFixture).results
+    expect(uniqueScoresFromResults(challenge).a.scored).toBe(20)
   })
 })
 

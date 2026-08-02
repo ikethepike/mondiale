@@ -20,6 +20,7 @@ import {
   scheduleRevealTask,
   settleRoundScores,
   type EngineContext,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -190,7 +191,12 @@ const springTrap = async (ctx: ChainContext, game: Game, challenge: BorderChainC
   await server.updateGameState(game)
   server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
 
-  const heldTurn = state.turn
+  scheduleTrapResume(ctx, state.turn)
+}
+
+/** Arm the dead-end hold's follow-up. Idempotent: the fired task re-reads
+ *  fresh state and bails once the trap cleared or the turn moved on. */
+const scheduleTrapResume = (ctx: ChainContext, heldTurn: number) => {
   scheduleEngineTask(ctx, TRAP_HOLD_MS + TIMEOUT_SLACK_MS, async fresh => {
     const current = currentBorderChain(fresh)
     if (!current?.state.trap || current.state.finished) return
@@ -275,6 +281,13 @@ const finishChainRound = async (ctx: ChainContext, game: Game, challenge: Border
   await server.updateGameState(game)
   server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
 
+  scheduleChainSettle(ctx)
+}
+
+/** Arm the finished round's settle follow-up. Everything is re-derived from
+ *  fresh state inside the task, so re-arming (rejoin recovery) is safe: the
+ *  `groupAnswers` latch makes any duplicate a no-op. */
+const scheduleChainSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
     const current = currentBorderChain(fresh)
     if (!current?.state.finished) return
@@ -305,3 +318,28 @@ const finishChainRound = async (ctx: ChainContext, game: Game, challenge: Border
 /** Reveal-path entry (enter-movement-phase): sanity-recheck the opening head. */
 export const chainHasOpenStart = (challenge: BorderChainChallenge, game: Game): boolean =>
   !!chainHead(challenge.state) && openMoves(challenge.state, game).length > 0
+
+/**
+ * Re-arm whatever follow-up the live chain round is waiting on. Timers are
+ * in-process, so a restart (or a save that threw after the timer was spent)
+ * leaves the persisted state pointing at a beat nobody will ever advance —
+ * a rejoin is the recovery moment (see rearm-round.ts). Safe to call while
+ * the real timer is still alive: every armed task re-reads fresh state and
+ * dies on its staleness token.
+ */
+export const rearmBorderChain = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
+  const challenge = currentBorderChain(game)
+  if (!challenge) return
+  // Finished but unsettled — the reveal hold died before banking the table.
+  if (challenge.state.finished) return scheduleChainSettle(ctx)
+  if (challenge.state.trap) return scheduleTrapResume(ctx, challenge.state.turn)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
+  // Briefing cap or the active player's shot clock, as the state dictates.
+  scheduleChainTimeout(ctx, challenge)
+}

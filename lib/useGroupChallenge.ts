@@ -1,6 +1,10 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
-import { useClientEvents } from '~~/lib/events/client-side'
+import {
+  REDELIVER_MAX_BATCHES,
+  REDELIVER_PAUSE_MS,
+  useClientEvents,
+} from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
@@ -79,8 +83,42 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const submitOnce = (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
     if (submitted.value) return
     submitted.value = true
-    update({ event: 'submit-group-challenge-answers', ranking, clientScore, buzzAt })
+    void deliverAnswer(ranking, clientScore, buzzAt)
   }
+
+  /**
+   * `update` already acks-and-retries critical events, but a submit that
+   * exhausts that batch (a disconnect straddling the buzzer) must not die:
+   * an unbanked answer strands the seat in 'group-challenge' and one such
+   * seat freezes the whole table. Keep the answer alive on a timer until the
+   * server confirms — the handler's duplicate guard and stranded-submitter
+   * heal make every re-send safe, and the `submitted` latch stays up so the
+   * view never offers a second answer.
+   */
+  let disposed = false
+  let resubmitTimer: ReturnType<typeof setTimeout> | undefined
+  let deliveryBatches = 0
+  const deliverAnswer = async (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
+    deliveryBatches++
+    const delivered = await update({
+      event: 'submit-group-challenge-answers',
+      ranking,
+      clientScore,
+      buzzAt,
+    }).catch(() => false)
+    if (delivered || disposed) return
+    if (deliveryBatches >= REDELIVER_MAX_BATCHES) {
+      return console.error('Giving up on answer delivery — a rejoin heals the seat from here')
+    }
+    resubmitTimer = setTimeout(
+      () => deliverAnswer(ranking, clientScore, buzzAt),
+      REDELIVER_PAUSE_MS
+    )
+  }
+  cleanups.push(() => {
+    disposed = true
+    if (resubmitTimer) clearTimeout(resubmitTimer)
+  })
 
   /**
    * A wrong guess, a duplicate, a name that matched nothing. `hint` renders

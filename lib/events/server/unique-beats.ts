@@ -6,6 +6,7 @@ import {
   uniqueKey,
   uniqueNameKey,
   uniqueRegisters,
+  uniqueScoresFromResults,
   uniqueUsedWordKeys,
   type UniqueAnswerSheet,
 } from '~~/lib/unique-or-bust'
@@ -20,6 +21,7 @@ import {
   scheduleEngineTask,
   scheduleRevealTask,
   settleRoundScores,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -54,21 +56,30 @@ const fetchAnswerSheet = async (
 
 /** Arm the round's clock (call AFTER the save — the fired task re-reads fresh
  *  state). During the briefing that clock is the reading cap; after it, the
- *  writing deadline. */
-export const scheduleUniqueTimeout = (ctx: ChainContext, challenge: UniqueOrBustChallenge) => {
+ *  writing deadline. The armed round's index is the staleness token the
+ *  sibling engines get from their turn counters — unique has a single beat,
+ *  so without it a stale task could resolve a LATER unique round early. */
+export const scheduleUniqueTimeout = (
+  ctx: ChainContext,
+  game: Game,
+  challenge: UniqueOrBustChallenge
+) => {
+  const armedRound = roundIndexOf(game)
   if (challenge.state.briefing) {
-    scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
-      const current = currentUniqueOrBust(game)
+    scheduleEngineTask(ctx, BRIEFING_CAP_MS, async fresh => {
+      if (roundIndexOf(fresh) !== armedRound) return
+      const current = currentUniqueOrBust(fresh)
       if (!current || current.state.finished || !current.state.briefing) return
-      await beginBoard(ctx, game, current)
+      await beginBoard(ctx, fresh, current)
     })
     return
   }
-  scheduleDeadlineTask(ctx, challenge.state.deadline, async game => {
-    const current = currentUniqueOrBust(game)
+  scheduleDeadlineTask(ctx, challenge.state.deadline, async fresh => {
+    if (roundIndexOf(fresh) !== armedRound) return
+    const current = currentUniqueOrBust(fresh)
     // An early all-locked resolve got there first — stale.
     if (!current || current.state.finished || current.state.briefing) return
-    await resolveUniqueBoard(ctx, game, current)
+    await resolveUniqueBoard(ctx, fresh, current)
   })
 }
 
@@ -100,7 +111,7 @@ const beginBoard = async (ctx: ChainContext, game: Game, challenge: UniqueOrBust
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
   server.emit({ event: 'unique-updated', game }, ctx.eventTarget)
-  scheduleUniqueTimeout(ctx, challenge)
+  scheduleUniqueTimeout(ctx, game, challenge)
 }
 
 /**
@@ -162,13 +173,24 @@ const resolveUniqueBoard = async (
 
   const sheet = await fetchAnswerSheet(ctx.redis, game.id, roundIndexOf(game))
   const registers = await uniqueRegisters(game)
-  const { results, scores } = resolveUniqueCollisions(challenge, sheet, registers)
+  // The settle task re-derives the scores from these persisted results
+  // (uniqueScoresFromResults) — the sheet is read exactly once, here.
+  const { results } = resolveUniqueCollisions(challenge, sheet, registers)
 
   state.results = results
   state.finished = true
   await server.updateGameState(game)
   server.emit({ event: 'unique-updated', game }, ctx.eventTarget)
 
+  scheduleUniqueSettle(ctx)
+}
+
+/** Arm the finished board's settle follow-up. The scores are re-derived from
+ *  the reveal grid already on the snapshot (`state.results`) — never the
+ *  redis sheet, whose TTL can lapse before a recovered settle runs — so
+ *  re-arming (rejoin recovery) is safe: the settle is a pure function of the
+ *  snapshot and the `groupAnswers` latch makes any duplicate a no-op. */
+const scheduleUniqueSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
     const current = currentUniqueOrBust(fresh)
     if (!current?.state.finished) return
@@ -181,7 +203,7 @@ const resolveUniqueBoard = async (
       game: fresh,
       round,
       order: current.state.order,
-      scores,
+      scores: uniqueScoresFromResults(current),
       maximumPoints: current.maximumPoints,
     })
 
@@ -192,4 +214,27 @@ const resolveUniqueBoard = async (
     // The sheet has served its round; the words live on in `state.results`.
     await ctx.redis.del(uniqueKey(fresh.id, roundIndexOf(fresh)))
   })
+}
+
+/**
+ * Re-arm whatever follow-up the live unique round is waiting on after its
+ * in-process timer was lost (restart, or a save that threw once the timer was
+ * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
+ * alongside a live timer — every task dies on its round/briefing/finished
+ * token or the settle latch.
+ */
+export const rearmUniqueOrBust = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
+  const challenge = currentUniqueOrBust(game)
+  if (!challenge) return
+  // Finished but unsettled — the reveal hold died before banking the table.
+  if (challenge.state.finished) return scheduleUniqueSettle(ctx)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
+  // Briefing cap or the writing deadline, as the state dictates.
+  scheduleUniqueTimeout(ctx, game, challenge)
 }

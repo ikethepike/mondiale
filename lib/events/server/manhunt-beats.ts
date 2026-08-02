@@ -25,6 +25,7 @@ import {
   scheduleEngineTask,
   scheduleRevealTask,
   settleRoundScores,
+  type RearmOptions,
 } from './round-engine'
 
 /**
@@ -184,7 +185,13 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
 
     if (current.state.beat === 'move') {
       const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-      if (!secret) return
+      // A vanished blob is unplayable — this task holds the round's only
+      // timer, so bailing silently would strand the table. Run the finish
+      // ritual (everyone scores zero, phases advance) like the no-seed path.
+      if (!secret) {
+        console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
+        return finishManhunt(ctx, game, current)
+      }
       const from = secret.trail[secret.trail.length - 1]
       // The free hop: random, ground where possible — a charge burns only
       // when the despot idles somewhere ground can't leave.
@@ -333,7 +340,11 @@ export const applyManhuntMarker = async (
 const resolveHuntBeat = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
   const { state } = challenge
   const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-  if (!secret) return
+  // See the move-beat timeout: a vanished blob must finish, never strand.
+  if (!secret) {
+    console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
+    return finishManhunt(ctx, game, challenge)
+  }
 
   const despotAt = secret.trail[secret.trail.length - 1]
   state.dragnets.push({ hop: state.hop, markers: { ...secret.markers } })
@@ -386,6 +397,13 @@ const finishManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntCh
   await server.updateGameState(game)
   server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
 
+  scheduleManhuntSettle(ctx)
+}
+
+/** Arm the finished round's settle follow-up. Everything is re-derived from
+ *  fresh state inside the task, so re-arming (rejoin recovery) is safe: the
+ *  `groupAnswers` latch makes any duplicate a no-op. */
+const scheduleManhuntSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
     // No outcome check: the degenerate no-seed finish scores zeros through
     // the same ritual (scoreManhunt returns {} without an outcome).
@@ -413,4 +431,27 @@ const finishManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntCh
     // The secret has served its round; the trail lives on in the outcome.
     await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
   })
+}
+
+/**
+ * Re-arm whatever follow-up the live manhunt round is waiting on after its
+ * in-process timer was lost (restart, or a save that threw once the timer was
+ * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
+ * alongside a live timer — every task dies on its `turn` token, the briefing
+ * flag, or the settle latch.
+ */
+export const rearmManhunt = (
+  ctx: ChainContext,
+  game: Game,
+  options: RearmOptions = { armBriefingCaps: true }
+) => {
+  const challenge = currentManhunt(game)
+  if (!challenge) return
+  // Finished but unsettled — the reveal hold died before banking the table.
+  if (challenge.state.finished) return scheduleManhuntSettle(ctx)
+  // The one shape a rearm may not touch: a briefing cap while the caller says
+  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
+  if (challenge.state.briefing && !options.armBriefingCaps) return
+  // Briefing cap or the live beat's clock, as the state dictates.
+  scheduleManhuntTimeout(ctx, challenge)
 }

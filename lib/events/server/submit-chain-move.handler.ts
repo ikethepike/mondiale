@@ -11,6 +11,11 @@ export const submitChainMoveHandler = defineGameHandler(
     const { state } = challenge
     // No moves while the rules card is up — the clock hasn't started.
     if (state.briefing) return
+    // No moves during a dead-end hold either. The trapped player still reads
+    // as active with a matching turn token, and a submit slipping through
+    // would advance the turn — staling the trap's own follow-up while
+    // scheduleChainTimeout refuses to arm during a trap: a permanent freeze.
+    if (state.trap) return
 
     // Only the player on the clock may act, and only for the turn they saw —
     // a retried critical event or a stale client re-send lands after the turn

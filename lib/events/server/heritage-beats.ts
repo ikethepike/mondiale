@@ -117,7 +117,12 @@ const resolveHeritageBeat = async (
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
 
-  const revealedBeat = state.beat
+  scheduleHeritageReveal(ctx, state.beat)
+}
+
+/** Arm the beat reveal's follow-up. Idempotent: the fired task re-reads fresh
+ *  state and bails once the beat moved on. */
+const scheduleHeritageReveal = (ctx: ChainContext, revealedBeat: number) => {
   scheduleRevealTask(ctx, async fresh => {
     const current = currentHeritageHunt(fresh)
     if (!current?.state.revealing || current.state.beat !== revealedBeat) return
@@ -148,6 +153,9 @@ const advanceHeritageBeat = async (
   state.revealing = false
   const round = latestRound(game)
   if (!round) return
+  // The once-only latch every sibling engine carries (round-engine.ts):
+  // scoring marks the round, so a duplicate follow-up settles nothing twice.
+  if (Object.keys(round.groupAnswers).length) return
   const scores = Object.fromEntries(
     state.order.map(playerId => {
       const scored = Object.values(state.pins[playerId] ?? {}).reduce(
@@ -170,4 +178,22 @@ const advanceHeritageBeat = async (
 
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
+}
+
+/**
+ * Re-arm whatever follow-up the live heritage round is waiting on after its
+ * in-process timer was lost (restart, or a save that threw once the timer was
+ * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
+ * alongside a live timer — every task dies on its (beat, revealing) token.
+ * Heritage settles in the same task that finishes, so `finished` needs no
+ * settle re-arm: the last beat's wedge shape is `revealing` on the last beat.
+ */
+export const rearmHeritageHunt = (ctx: ChainContext, game: Game) => {
+  const challenge = currentHeritageHunt(game)
+  if (!challenge || challenge.state.finished) return
+  if (challenge.state.revealing) return scheduleHeritageReveal(ctx, challenge.state.beat)
+  // A zero deadline is the staged-but-unrevealed shape (the clock stamps at
+  // the reveal) — arming against it would resolve beat 0 before anyone saw it.
+  if (challenge.state.deadline === 0) return
+  scheduleHeritageTimeout(ctx, challenge)
 }
