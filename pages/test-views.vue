@@ -69,6 +69,16 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import { latestChallengeOfType } from '~~/lib/rounds'
+import {
+  drawnCard,
+  activeTimelinePlayerId,
+  perCardPoints,
+  placedYears,
+  resolveSlot,
+  slotDensityFraction,
+  timelineEvent,
+} from '~~/lib/timeline'
 import { flagSwatches } from '~~/lib/audio-palette'
 import { seededTongueSample } from '~~/lib/tongue-samples'
 import { GAUNTLET_LIVES, getFinalChallenges } from '~~/lib/challenges/final-challenge'
@@ -96,10 +106,66 @@ const renderKey = ref(0)
 const lastEvent = ref('')
 const diagnostics = ref(false)
 
+/**
+ * Mirror of the server's resolveTimelinePlacement/advanceTimelineTurn
+ * (timeline-turns.ts) on the pinned game, through the same lib/timeline math —
+ * so the timeline scenario plays its full turn rhythm (story beat, line
+ * landing, scorecard) without a server. The deal never rotates: it is always
+ * your call, every card to the end of the deck.
+ */
+const SIM_LATENCY_MS = 300
+const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
+  const game = gameStore.game
+  const challenge = game ? latestChallengeOfType(game, 'timeline-challenge') : undefined
+  if (!challenge || challenge.state.finished || challenge.state.revealing) return
+  const { state } = challenge
+  if (eventData.turn !== state.turn) return
+  const playerId = activeTimelinePlayerId(state)
+  const slug = drawnCard(state)
+  const event = slug ? timelineEvent(slug) : undefined
+  if (!slug || !event) return
+
+  window.setTimeout(() => {
+    const chosen = typeof eventData.slot === 'number' ? eventData.slot : -1
+    const { correct, slot } = resolveSlot(placedYears(state.placed), event.year, chosen)
+    const scored = correct
+      ? Math.round(
+          perCardPoints(challenge) * slotDensityFraction(state.placed.length + 1, state.deck.length)
+        )
+      : 0
+    state.placements.push({
+      playerId,
+      slug,
+      chosenSlot: chosen,
+      correctSlot: slot,
+      correct,
+      scored,
+      kind: 'placed',
+    })
+    if (scored) state.banked[playerId] = (state.banked[playerId] ?? 0) + scored
+    state.placed.splice(slot, 0, slug)
+    state.revealing = true
+    state.deadline = Date.now() + challenge.revealSeconds * 1000
+
+    window.setTimeout(() => {
+      if (state.card >= state.deck.length - 1) {
+        state.finished = true
+        state.revealing = false
+        return
+      }
+      state.revealing = false
+      state.card++
+      state.turn++
+      state.deadline = Date.now() + challenge.turnSeconds * 1000
+    }, challenge.revealSeconds * 1000)
+  }, SIM_LATENCY_MS)
+}
+
 const installStubSocket = () => {
   gameStore.playerId = ME
   const record = (event: string, eventData: Record<string, unknown>) => {
     lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
+    if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
   }
   // Critical events go through timeout().emitWithAck() — stub both paths
   const stub = {
