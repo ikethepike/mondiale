@@ -116,6 +116,9 @@ export const uniqueEntriesForLetter = (entries: UniqueEntry[], letter: string): 
 /**
  * Letters every category can field at least `minimumDepth` answers for —
  * the dealer's viability filter (Q, X and friends fall out here naturally).
+ * Depth counts DISTINCT words, not register entries: Hyderabad (IN) and
+ * Hyderabad (PK) are one answer at this table — they cancel, so they can't
+ * both count toward the pool the dealer promises.
  */
 export const uniqueViableLetters = (
   registers: Record<UniqueCategoryId, UniqueEntry[]>,
@@ -125,9 +128,46 @@ export const uniqueViableLetters = (
     .split('')
     .filter(letter =>
       UNIQUE_BOARD.every(
-        category => uniqueEntriesForLetter(registers[category], letter).length >= minimumDepth
+        category =>
+          new Set(
+            uniqueEntriesForLetter(registers[category], letter).map(entry =>
+              uniqueNameKey(entry.name)
+            )
+          ).size >= minimumDepth
       )
     )
+
+/**
+ * Integer per-category shares that sum exactly to the pot (largest remainder:
+ * the first `pot mod count` slots carry the extra point). One rounded share
+ * either overshot the pot on a full board or left it unreachable — the client
+ * sums cells, the server clamps, and the two disagreed.
+ */
+export const uniqueCategoryShares = (maximumPoints: number, count: number): number[] => {
+  const base = Math.floor(maximumPoints / count)
+  const extras = maximumPoints - base * count
+  return Array.from({ length: count }, (_, index) => (index < extras ? base + 1 : base))
+}
+
+/**
+ * The words a player has already locked, as collision keys — the reuse gate.
+ * One word never fills two blanks: Singapore the country, the capital and the
+ * megacity are the same word at this table.
+ */
+export const uniqueUsedWordKeys = (
+  registers: Record<UniqueCategoryId, UniqueEntry[]>,
+  challenge: Pick<UniqueOrBustChallenge, 'categories' | 'letter'>,
+  row: Partial<Record<UniqueCategoryId, string>> | undefined
+): Set<string> => {
+  const keys = new Set<string>()
+  for (const category of challenge.categories) {
+    const id = row?.[category]
+    const entry =
+      id !== undefined ? uniqueEntryForAnswer(registers, category, challenge.letter, id) : undefined
+    if (entry) keys.add(uniqueNameKey(entry.name))
+  }
+  return keys
+}
 
 /** The answer a slot id names, if it exists AND files under the dealt letter.
  *  The server-side validity check and the resolve both go through this. */
@@ -169,8 +209,9 @@ export const nextOpenCategory = (
  * The reveal's collision grid and the scores, in one pass. Cells group by
  * normalized name, not register id — Córdoba (AR) and Córdoba (ES) are the
  * same word at a Scattergories table and cancel each other. A slot pays its
- * category's equal share of the pot only when exactly one player holds its
- * word; empty and off-register slots pay nothing.
+ * category's share of the pot (integer, the shares sum exactly to the pot)
+ * only when exactly one player holds its word; empty and off-register slots
+ * pay nothing.
  */
 export const resolveUniqueCollisions = (
   challenge: UniqueOrBustChallenge,
@@ -180,11 +221,11 @@ export const resolveUniqueCollisions = (
   results: { [category in UniqueCategoryId]?: UniqueBoardCell[] }
   scores: { [playerId: string]: { scored: number; maximum: number } }
 } => {
-  const share = challenge.maximumPoints / challenge.categories.length
+  const shares = uniqueCategoryShares(challenge.maximumPoints, challenge.categories.length)
   const results: { [category in UniqueCategoryId]?: UniqueBoardCell[] } = {}
   const banked: { [playerId: string]: number } = {}
 
-  for (const category of challenge.categories) {
+  for (const [categoryIndex, category] of challenge.categories.entries()) {
     const cells = new Map<string, UniqueBoardCell>()
     for (const playerId of challenge.state.order) {
       const id = answers[playerId]?.[category]
@@ -200,7 +241,7 @@ export const resolveUniqueCollisions = (
     }
 
     for (const cell of cells.values()) {
-      cell.scored = cell.holders.length === 1 ? Math.round(share) : 0
+      cell.scored = cell.holders.length === 1 ? shares[categoryIndex] : 0
       for (const holder of cell.holders) banked[holder] = (banked[holder] ?? 0) + cell.scored
     }
     results[category] = [...cells.values()].sort((a, b) => a.name.localeCompare(b.name))

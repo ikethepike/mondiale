@@ -5,11 +5,13 @@ import {
   nextOpenCategory,
   resolveUniqueCollisions,
   uniqueBoardComplete,
+  uniqueCategoryShares,
   uniqueEntriesForLetter,
   uniqueEntryForAnswer,
   uniqueLetterOf,
   uniqueNameKey,
   uniqueRegisters,
+  uniqueUsedWordKeys,
   uniqueViableLetters,
   type UniqueAnswerSheet,
   type UniqueEntry,
@@ -78,6 +80,33 @@ describe('uniqueViableLetters', () => {
   it('offers only letters every category can serve at depth', () => {
     expect(uniqueViableLetters(registerFixture, 2)).toEqual(['m'])
     expect(uniqueViableLetters(registerFixture, 3)).toEqual([])
+  })
+
+  // Hyderabad (IN) and Hyderabad (PK) are one word — they cancel, so a pool
+  // padded with same-name entries must not pass the dealer's depth promise.
+  it('counts distinct words, not register entries', () => {
+    const padded: Record<UniqueCategoryId, UniqueEntry[]> = {
+      ...registerFixture,
+      capital: [...registerFixture.capital, { id: 'XX', name: 'Manila' }],
+      river: [...registerFixture.river, { id: 'meghna', name: 'Meghna' }],
+    }
+    // Megacity holds three entries but only two words (Mérida VE = Mérida MX).
+    expect(uniqueViableLetters(padded, 3)).toEqual([])
+  })
+})
+
+describe('uniqueCategoryShares', () => {
+  it('sums exactly to the pot at every difficulty', () => {
+    for (const pot of [12, 15, 21]) {
+      const shares = uniqueCategoryShares(pot, UNIQUE_BOARD.length)
+      expect(shares.reduce((sum, value) => sum + value, 0)).toBe(pot)
+    }
+  })
+
+  it('spreads the remainder over the leading categories', () => {
+    expect(uniqueCategoryShares(12, 4)).toEqual([3, 3, 3, 3])
+    expect(uniqueCategoryShares(15, 4)).toEqual([4, 4, 4, 3])
+    expect(uniqueCategoryShares(21, 4)).toEqual([6, 5, 5, 5])
   })
 })
 
@@ -181,6 +210,42 @@ describe('resolveUniqueCollisions', () => {
     }
     const { scores } = resolveUniqueCollisions(challenge, answers, registerFixture)
     expect(scores.a.scored).toBe(20)
+  })
+
+  // The normal pot (15) doesn't divide by four — one rounded share paid a
+  // full board 16 while the settle clamped to 15, and the client showed
+  // "16 of 15". The shares must land the pot exactly.
+  it('pays a full unique board the pot exactly when shares are uneven', () => {
+    const challenge = boardChallenge(['a'], { maximumPoints: 15 })
+    const answers: UniqueAnswerSheet = {
+      a: { country: 'MX', capital: 'ES', river: 'mekong', megacity: 'DE:Munich' },
+    }
+    const { results, scores } = resolveUniqueCollisions(challenge, answers, registerFixture)
+    expect(scores.a.scored).toBe(15)
+    const cellTotal = Object.values(results)
+      .flat()
+      .reduce((sum, cell) => sum + cell.scored, 0)
+    expect(cellTotal).toBe(15)
+  })
+})
+
+describe('uniqueUsedWordKeys', () => {
+  it('collects the words a player has locked, through the one normalizer', () => {
+    const challenge = boardChallenge([])
+    const keys = uniqueUsedWordKeys(registerFixture, challenge, {
+      country: 'MX',
+      megacity: 'MX:Mérida',
+    })
+    expect(keys.has(uniqueNameKey('Mexico'))).toBe(true)
+    // The reuse gate sees Mérida and Merida as the same word.
+    expect(keys.has(uniqueNameKey('Merida'))).toBe(true)
+    expect(keys.size).toBe(2)
+  })
+
+  it('ignores empty rows and off-register ids', () => {
+    const challenge = boardChallenge([])
+    expect(uniqueUsedWordKeys(registerFixture, challenge, undefined).size).toBe(0)
+    expect(uniqueUsedWordKeys(registerFixture, challenge, { river: 'amazon' }).size).toBe(0)
   })
 })
 
