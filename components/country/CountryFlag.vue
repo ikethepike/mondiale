@@ -71,11 +71,14 @@ const effectiveFit = computed(() =>
  * browser resolve those refs against the FIRST matching id anywhere on the
  * page — another flag's geometry (see: Panama rendering with giant mangled
  * stars). Namespacing ids per country keeps every inline flag self-contained.
+ * The \b is load-bearing: without it `marker-mid="url(#a)"` matches as
+ * `id="url(#a)"` and the rewrite corrupts the attribute (the US stars ride
+ * a marker-mid path).
  */
 const namespacedMarkup = computed(() => {
   const prefix = `flag-${props.country.isoCode}-`
   return props.country.flag
-    .replaceAll(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
+    .replaceAll(/\bid="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
     .replaceAll(
       /(xlink:href|href)="#([^"]+)"/g,
       (_, attribute, id) => `${attribute}="#${prefix}${id}"`
