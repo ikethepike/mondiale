@@ -1,11 +1,14 @@
 <template>
-  <div class="conflict-dot-field" aria-hidden="true">
-    <!-- Mirrors the live camera viewBox each frame (the chip technique), with
-         preserveAspectRatio=none so map coordinates land exactly where the
-         map draws them. Dot radius counter-scales so zoom never balloons it. -->
+  <div ref="root" class="conflict-dot-field" aria-hidden="true">
+    <!-- Mirrors the committed camera box (pans in between ride the container's
+         compositor transform), preserveAspectRatio=none so map coordinates
+         land exactly where the map draws them. The svg paints a bleed past
+         every edge so the ride-along never slides unpainted ground into view.
+         Dot radius counter-scales so zoom never balloons it. -->
     <svg
-      v-if="viewBox"
-      :viewBox="`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`"
+      v-if="fieldBox"
+      :viewBox="`${fieldBox.x} ${fieldBox.y} ${fieldBox.w} ${fieldBox.h}`"
+      :style="{ inset: OVERLAY_BLEED_INSET }"
       preserveAspectRatio="none"
     >
       <circle
@@ -39,7 +42,13 @@
 </template>
 <script lang="ts" setup>
 import { CONFLICT_ERAS, type ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
-import { useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
+import {
+  bleedBox,
+  OVERLAY_BLEED_INSET,
+  useMapPanTrack,
+  useMapViewBox,
+  WORLD_MAP_WIDTH,
+} from '~~/lib/use-map-viewbox'
 
 /**
  * A country's recorded conflict history as dots in map space, arriving one era
@@ -59,6 +68,11 @@ const props = defineProps<{
 }>()
 
 const { viewBox } = useMapViewBox()
+const root = ref<HTMLElement>()
+useMapPanTrack(root)
+
+/** The committed camera grown by the overlay bleed — what the svg draws. */
+const fieldBox = computed(() => (viewBox.value?.w ? bleedBox(viewBox.value) : undefined))
 
 /** ~0.16% of the visible width — reads as a pinpoint at any camera height. */
 const dotRadius = computed(() => (viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0016)
@@ -111,9 +125,9 @@ const chips = computed(() => {
   position: absolute;
   pointer-events: none;
 
+  // The bleed inset comes inline from OVERLAY_BLEED_INSET — one source.
   svg {
-    width: 100%;
-    height: 100%;
+    position: absolute;
     display: block;
   }
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="map-year-labels" aria-hidden="true">
+  <div ref="root" class="map-year-labels" aria-hidden="true">
     <span
       v-for="chip in chips"
       :key="chip.isoCode"
@@ -18,7 +18,7 @@
 </template>
 <script lang="ts" setup>
 import { mapRegionCentre } from '~~/lib/challenges/final-challenge'
-import { useMapViewBox } from '~~/lib/use-map-viewbox'
+import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -38,12 +38,16 @@ const props = withDefaults(
 )
 
 const { viewBox } = useMapViewBox()
+// Pans between commits slide the whole layer on the compositor — the O(n²)
+// collision layout below re-runs only when the camera box actually commits.
+const root = ref<HTMLElement>()
+const { size } = useMapPanTrack(root)
 
 const chips = computed(() => {
   const vb = viewBox.value
-  if (!vb?.w || typeof window === 'undefined') return []
-  const width = window.innerWidth
-  const height = window.innerHeight
+  if (!vb?.w || !size.w) return []
+  const width = size.w
+  const height = size.h
 
   const placed: { x: number; y: number }[] = []
   const result: {

@@ -46,7 +46,7 @@ import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
-import { useMapViewBox } from '~~/lib/use-map-viewbox'
+import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -85,7 +85,10 @@ const named = ref(new Set<ISOCountryCode>())
 const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
-const { viewBox } = useMapViewBox()
+// Subscribing keeps the camera poller live; the ticker reads currentViewBox()
+// imperatively so the veil and the visibility gate track the true camera
+// between the bus's reactive commits.
+useMapViewBox()
 
 // The dealt window stays visible above the console (and the keyboard); the
 // sweep bounds lock against the berthed camera, so line and window agree
@@ -119,7 +122,7 @@ let sweepClockStart = 0
 
 const lockSweepBounds = () => {
   if (boundsLocked.value || elapsedMs.value < SETTLE_DELAY_MS) return
-  const vb = viewBox.value
+  const vb = currentViewBox()
   if (vb?.w) {
     const tan = Math.tan(SUNSET_TILT)
     sweepStart.value = Math.max(sweepStart.value, vb.x + vb.w - vb.y * tan + 8)
@@ -163,7 +166,7 @@ const quota = computed(() => sunsetQuota(props.challenge))
  * transform (compositor-only) via the --sunset-veil custom property.
  */
 const positionSeaNight = () => {
-  const vb = viewBox.value
+  const vb = currentViewBox()
   if (!vb || !vb.w) return
   const dusk = currentDusk.value
   const tan = Math.tan(SUNSET_TILT)
@@ -221,7 +224,7 @@ const paintNightfall = () => {
 
 /** On screen right now — centre inside the live camera viewBox. */
 const isVisible = (isoCode: ISOCountryCode) => {
-  const vb = viewBox.value
+  const vb = currentViewBox()
   if (!vb) return false
   const { x, y } = mapRegionCentre(isoCode)
   return x >= vb.x && x <= vb.x + vb.w && y >= vb.y && y <= vb.y + vb.h

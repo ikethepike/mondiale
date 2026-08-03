@@ -1,17 +1,20 @@
 <template>
-  <div class="empire-ghost-field" aria-hidden="true">
-    <!-- Mirrors the live camera viewBox each frame (the ConflictDotField
-         technique), preserveAspectRatio=none so map coordinates land exactly
-         where the map draws them. The ghost's d is written imperatively —
-         Vue's vnode diff never sees per-frame geometry. -->
+  <div ref="root" class="empire-ghost-field" aria-hidden="true">
+    <!-- Mirrors the committed camera box (the ConflictDotField technique —
+         pans in between ride the container's compositor transform, and the
+         svg paints an OVERLAY_BLEED past every edge so the slide never shows
+         a clipped ghost). preserveAspectRatio=none so map coordinates land
+         exactly where the map draws them. The ghost's d is written
+         imperatively — Vue's vnode diff never sees per-frame geometry. -->
     <!-- The blur lives on the svg ELEMENT: an inline svg is an HTML box, so
          its CSS filter is true screen pixels — on an inner <g> the radius is
-         local map units, which a zoomed camera stretches into a smear. -->
+         local map units, which a zoomed camera stretches into a smear. And it
+         now re-rasterizes per commit, not per pan frame. -->
     <svg
-      v-if="viewBox"
-      :viewBox="`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`"
+      v-if="fieldBox"
+      :viewBox="`${fieldBox.x} ${fieldBox.y} ${fieldBox.w} ${fieldBox.h}`"
       preserveAspectRatio="none"
-      :style="blurStyle"
+      :style="[blurStyle, { inset: OVERLAY_BLEED_INSET }]"
     >
       <g class="ghost-layer" :class="{ hidden: !visible, revealed }">
         <path v-if="revealed || pastPeak" class="ghost-scar" :d="peakPath" />
@@ -42,7 +45,13 @@
 <script lang="ts" setup>
 import { useEmpireMorph } from '~~/lib/useEmpireMorph'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
+import {
+  bleedBox,
+  OVERLAY_BLEED_INSET,
+  useMapPanTrack,
+  useMapViewBox,
+  WORLD_MAP_WIDTH,
+} from '~~/lib/use-map-viewbox'
 
 /**
  * The animated empire extent: a single-hue umber ghost that morphs through
@@ -69,6 +78,11 @@ const visible = ref(true)
 const currentIndex = ref(0)
 
 const { viewBox, cameraScale } = useMapViewBox()
+const root = ref<HTMLElement>()
+useMapPanTrack(root)
+
+/** The committed camera grown by the overlay bleed — what the svg draws. */
+const fieldBox = computed(() => (viewBox.value?.w ? bleedBox(viewBox.value) : undefined))
 
 /** Stroke and star sizes counter-scale off the camera so zoom never balloons them. */
 const ghostStroke = computed(() => `${(viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0012}px`)
@@ -146,9 +160,9 @@ onBeforeUnmount(() => morph.dispose())
   position: absolute;
   pointer-events: none;
 
+  // The bleed inset comes inline from OVERLAY_BLEED_INSET — one source.
   svg {
-    width: 100%;
-    height: 100%;
+    position: absolute;
     display: block;
   }
 }
