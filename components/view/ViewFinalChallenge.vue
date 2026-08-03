@@ -775,12 +775,18 @@ header .prompt {
     isolation: isolate;
     display: inline-block;
 
-    // A tidy vertical pile: each card peeks straight out below the one above,
-    // narrowing slightly so the stack tapers instead of reading as a shadow
+    // A tidy centered pile: each card below is a narrower sliver peeking out
+    // under the one above. Slivers, not full cards — the pill is translucent,
+    // so anything tucked underneath would show through it.
     .deck-card {
-      inset: 0;
+      top: calc(100% - 0.4rem + (var(--layer) - 1) * 0.35rem);
+      left: 50%;
+      width: calc(100% - var(--layer) * 1.6rem);
+      height: 0.75rem;
+      padding: 0;
       position: absolute;
-      transform: translateY(calc(var(--layer) * 0.5rem)) scaleX(calc(1 - var(--layer) * 0.06));
+      z-index: calc(-1 * var(--layer));
+      transform: translateX(-50%);
     }
 
     .endonym-word {
