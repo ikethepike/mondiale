@@ -10,7 +10,16 @@
                 : `${selectedScorecard.player.name}'s Scorecard`
             }}
           </span>
-          <h2>{{ challengeHeading }}</h2>
+          <h2>
+            {{ challengeHeading }}
+            <SourceInfo
+              v-if="rankingDefinition"
+              icon="question"
+              class="heading-definition"
+              label="What this measures"
+              :definition="rankingDefinition"
+            />
+          </h2>
         </header>
         <template v-if="selectedScorecard.answers">
           <div class="pane-content score-summary">
@@ -202,7 +211,7 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
-import { rankingHasTies } from '~~/lib/challenges'
+import { getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
 import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
@@ -224,6 +233,11 @@ const accessorId = computed(() => rankingAccessorId(roundChallenge.value))
 /** The reveal's figures come from the round's stat — same resolution the
  *  ranking rows use. */
 const rankingSources = computed(() => (accessorId.value ? [attributionFor(accessorId.value)] : []))
+
+/** The stat's plain-words definition, when its phrasing alone can mislead. */
+const rankingDefinition = computed(() =>
+  accessorId.value ? getChallengeDetails(accessorId.value)?.definition : undefined
+)
 
 const selectedPlayer = ref(playerId.value)
 

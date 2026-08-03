@@ -26,6 +26,13 @@
           <StatTopicIcon v-if="accessorId" class="topic-icon" :accessor="accessorId" />
           <h1 class="map-caption">
             {{ details?.phrasing || 'Group Challenge' }}
+            <SourceInfo
+              v-if="details?.definition"
+              icon="question"
+              class="question-definition"
+              label="What this measures"
+              :definition="details.definition"
+            />
           </h1>
         </div>
       </section>

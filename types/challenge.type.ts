@@ -19,6 +19,12 @@ export type ChallengeTopic =
 export interface ChallengeConfiguration {
   topic: ChallengeTopic
   phrasing: string
+  /**
+   * A plain-words definition of what the stat measures, for stats whose
+   * phrasing alone invites the wrong denominator (electricity vs total
+   * energy, spending vs GDP share). Surfaces behind a ? next to the prompt.
+   */
+  definition?: string
   markers?: ChallengeMarkers
   /**
    * Fixed bounds for indices whose bare number is meaningless without its scale

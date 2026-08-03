@@ -2956,6 +2956,8 @@ const CHALLENGE_DETAILS: {
   'environment.renewables': {
     topic: 'environment',
     phrasing: 'Rank these countries by the share of electricity from renewables',
+    definition:
+      'The share of each country’s electricity generation that comes from renewables — hydro, wind, solar, geothermal and biomass. Electricity only: fuel burned for transport and heating doesn’t count, and neither does nuclear power.',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
@@ -3179,6 +3181,8 @@ const CHALLENGE_DETAILS: {
   'energy.fossilFuels': {
     topic: 'energy',
     phrasing: 'Rank these countries by the share of electricity from fossil fuels',
+    definition:
+      'The share of each country’s electricity generation that comes from burning coal, oil and gas. Electricity only: fuel burned for transport and heating doesn’t count.',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',

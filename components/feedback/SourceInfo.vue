@@ -5,12 +5,17 @@
       type="button"
       class="source-trigger"
       :aria-expanded="open"
-      :aria-label="`Where this comes from: ${summary}`"
+      :aria-label="triggerLabel"
       @click.stop="open = !open"
       @mouseenter="onHoverIn"
       @mouseleave="onHoverOut"
     >
-      <svg class="source-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <svg v-if="icon === 'question'" class="source-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.2" />
+        <path d="M9.5 9.4a2.5 2.5 0 1 1 4.2 1.85c-.75.66-1.7 1.15-1.7 2.35v.3" />
+        <circle cx="12" cy="16.9" r="1.15" class="dot" />
+      </svg>
+      <svg v-else class="source-icon" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="9.2" />
         <path d="M12 10.6v6" />
         <circle cx="12" cy="7.4" r="1.15" class="dot" />
@@ -30,6 +35,8 @@
           @mouseleave="onHoverOut"
         >
           <span class="source-eyebrow">{{ label }}</span>
+
+          <span v-if="definition" class="source-definition">{{ definition }}</span>
 
           <span
             v-for="entry in attributions"
@@ -71,7 +78,9 @@ import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 /**
  * The "where did this come from" affordance: a quiet ⓘ that opens the full
- * provenance for whatever it sits beside.
+ * provenance for whatever it sits beside. The `question` icon variant is its
+ * "what does this measure" sibling: same trigger, same panel, leading with a
+ * `definition` paragraph — attributions become optional there.
  *
  * Takes resolved `Attribution` objects rather than ids, so every caller reaches
  * them through the same helpers in lib/attribution.ts — `attributionFor` for a
@@ -88,14 +97,24 @@ import { useIsCoarsePointer } from '~~/lib/use-viewport'
 const props = withDefaults(
   defineProps<{
     /** Resolved credits, primary first. */
-    attributions: Attribution[]
+    attributions?: Attribution[]
     /** Panel heading — "Source", "Sources", "Photo" … */
     label?: string
     /** A single item's own credit line, e.g. a photographer, when the dataset
      *  licence alone does not name them. */
     itemCredit?: string
+    /** A plain-words definition of the stat, rendered above the credits. */
+    definition?: string
+    /** Trigger glyph: ⓘ for provenance, ? for a definition. */
+    icon?: 'info' | 'question'
   }>(),
-  { label: 'Source', itemCredit: undefined }
+  {
+    attributions: () => [],
+    label: 'Source',
+    itemCredit: undefined,
+    definition: undefined,
+    icon: 'info',
+  }
 )
 
 const open = ref(false)
@@ -202,8 +221,11 @@ const onViewportShift = () => {
 }
 
 /** Read out by the trigger's own label, so the credit is available without
- *  opening anything. */
+ *  opening anything. Definition-only triggers read as their panel heading. */
 const summary = computed(() => props.attributions.map(attributionLine).join('; '))
+const triggerLabel = computed(() =>
+  summary.value ? `Where this comes from: ${summary.value}` : props.label
+)
 
 /** Click-away and Escape: the panel is transient, and on a phone there is no
  *  hover to fall back on. */
@@ -312,6 +334,12 @@ onBeforeUnmount(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--soft-blue);
+}
+
+.source-definition {
+  font-size: 1.3rem;
+  line-height: 1.45;
+  color: #{ink(0.78)};
 }
 
 .source-entry {
