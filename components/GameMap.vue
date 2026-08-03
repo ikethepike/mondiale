@@ -660,15 +660,18 @@ const viewBoxState = shallowRef<[number, number, number, number]>([
   viewState.width,
   viewState.height,
 ])
-/** Below this, a re-layout would be invisible. In map units. */
-const VIEW_ECHO_EPSILON = 0.5
+/** Below this, a re-layout would be invisible. In SCREEN pixels: a fixed
+ *  map-unit epsilon goes sub-pixel the moment the camera dives, which had the
+ *  echo (and the inset render behind it) firing every single pan frame. */
+const VIEW_ECHO_PX = 1.5
 
 const echoViewBox = () => {
   const [x, y, width] = viewBoxState.value
+  const epsilon = (viewState.width / (mapRect()?.width ?? WORLD_VIEW.width)) * VIEW_ECHO_PX
   if (
-    Math.abs(x - viewState.x) < VIEW_ECHO_EPSILON &&
-    Math.abs(y - viewState.y) < VIEW_ECHO_EPSILON &&
-    Math.abs(width - viewState.width) < VIEW_ECHO_EPSILON
+    Math.abs(x - viewState.x) < epsilon &&
+    Math.abs(y - viewState.y) < epsilon &&
+    Math.abs(width - viewState.width) < epsilon
   ) {
     return
   }
