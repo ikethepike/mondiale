@@ -2,6 +2,8 @@
 # OWID metrics, Wikidata leaders, then the country file that folds them all in.
 #
 # Deliberately NOT scheduled:
+# - commodity-exporters: BACI release pinned (BACI_RELEASE), ~300MB hand-run
+#   download — bump by hand on a new CEPII release
 # - conflicts/conflict-events: UCDP release is pinned (DATASET_VERSION) — bump by hand
 # - wpp: pinned to the WPP2024 revision — bump by hand on a new UN release
 # - map/water/recognition: Natural Earth v5.1.2 tag-pinned, byte-identical reruns

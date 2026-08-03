@@ -129,7 +129,8 @@ export interface BornChallenge {
   quota: number
 }
 
-/** Click a country whose top exports include `commodity`. */
+/** Click a top exporter of `commodity` — a global top exporter (BACI trade
+ *  values) or a country with it in its own top-5 list both count. */
 export interface MadeChallenge {
   _type: 'made-challenge'
   commodity: string

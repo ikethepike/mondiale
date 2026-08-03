@@ -11,6 +11,7 @@ import type {
   MinChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -19,12 +20,15 @@ import {
   boundaryScene,
   boundaryStory,
   dealReplacementChallenge,
+  exportsCommodity,
   GAUNTLET_LIVES,
   getFinalChallenges,
   isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
   isTransparentEndonym,
   MADE_COMMODITIES,
+  madeAcceptedCountries,
+  madeTopExporters,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
   yearbookYear,
@@ -713,13 +717,51 @@ describe('MADE_COMMODITIES', () => {
     for (const commodity of MADE_COMMODITIES) expect(shipped).toContain(commodity)
   })
 
-  it('deals only curated commodities', () => {
+  it('deals only curated commodities, and only ones with trade data', () => {
     for (let round = 0; round < DEAL_ROUNDS; round++) {
       const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
       for (const challenge of challenges) {
-        if (challenge._type === 'made-challenge')
-          expect(MADE_COMMODITIES.has(challenge.commodity)).toBe(true)
+        if (challenge._type !== 'made-challenge') continue
+        expect(MADE_COMMODITIES.has(challenge.commodity)).toBe(true)
+        expect(madeTopExporters(challenge.commodity).length).toBeGreaterThan(0)
       }
+    }
+  })
+
+  it('backs every curated commodity with the BACI exporters dataset', () => {
+    for (const commodity of MADE_COMMODITIES) {
+      expect(madeTopExporters(commodity).length, commodity).toBeGreaterThanOrEqual(
+        MIN_STORED_EXPORTERS
+      )
+    }
+  })
+
+  it('accepts both readings: global top exporters AND own-top-5 countries', () => {
+    // The union guarantee — every own-top-5 exporter stays a right answer
+    for (const commodity of MADE_COMMODITIES) {
+      const accepted = madeAcceptedCountries(commodity)
+      for (const country of Object.values(COUNTRIES)) {
+        if ((country.economics.exports ?? []).includes(commodity)) {
+          expect(accepted.has(country.isoCode), `${commodity}: ${country.isoCode}`).toBe(true)
+        }
+      }
+    }
+
+    // The Brazil/tobacco regression, found dynamically: some global top
+    // exporter absent from its own top-5 list must still validate
+    const giants = [...MADE_COMMODITIES].flatMap(commodity =>
+      madeTopExporters(commodity)
+        .filter(row => !exportsCommodity(row.isoCode, commodity))
+        .map(row => ({ commodity, isoCode: row.isoCode }))
+    )
+    expect(giants.length).toBeGreaterThan(0)
+    for (const { commodity, isoCode } of giants.slice(0, 25)) {
+      const correct = isCorrectFinalAnswer({
+        challenge: { _type: 'made-challenge', commodity },
+        submittedAnswer: { _type: 'made-challenge', isoCode },
+        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
+      })
+      expect(correct, `${commodity}: ${isoCode}`).toBe(true)
     }
   })
 })

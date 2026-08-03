@@ -3,10 +3,7 @@
   <span class="ranked-bars made-reveal">
     <span class="header">
       <strong class="commodity">{{ challenge.commodity }}</strong>
-      <span class="subtitle">
-        a top export of {{ rows.length }} {{ rows.length === 1 ? 'country' : 'countries' }} — ranked
-        by total exports
-      </span>
+      <span class="subtitle">the world's top exporters · {{ year }}</span>
     </span>
     <span class="rows">
       <span
@@ -38,16 +35,17 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { exportsCommodity, MADE_REVEAL_ROWS, madeTopExporters } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
-import { formatCompact } from '~~/lib/number'
+import { formatCompact, formatOrdinal } from '~~/lib/number'
+import { sentenceCase } from '~~/lib/strings'
 import type { MadeChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The Made In scorecard: every country shipping the commodity, ranked by
- * total exports of goods and services (the Factbook gives no per-commodity
- * values), each
- * landing on its own beat with a shared-scale bar. A wrong pick gets its own
+ * The Made In scorecard: the world's top exporters of the commodity, ranked
+ * by real per-commodity trade value (CEPII BACI), each landing on its own
+ * beat with a shared-scale bar. A pick outside the chart gets its own
  * teaching line instead of vanishing.
  */
 const props = defineProps<{
@@ -56,35 +54,40 @@ const props = defineProps<{
   picked?: ISOCountryCode
 }>()
 
-/** Export lists and totals both live on the country profiles (Factbook). */
-const sources = datasetAttribution('countries')
+const sources = datasetAttribution('commodity-exporters')
+
+const exporters = computed(() =>
+  madeTopExporters(props.challenge.commodity).slice(0, MADE_REVEAL_ROWS)
+)
+
+const year = computed(() => exporters.value[0]?.value.year)
 
 const rows = computed(() => {
-  const exporters = Object.values(COUNTRIES).filter(country =>
-    (country.economics.exports ?? []).includes(props.challenge.commodity)
-  )
-  const largest = Math.max(
-    ...exporters.map(country => country.economics.exportsTotal?.amount ?? 0),
-    1
-  )
-  return exporters
-    .map(country => {
-      const total = country.economics.exportsTotal?.amount
-      return {
-        isoCode: country.isoCode,
-        name: countryName(country),
-        total: total ?? 0,
-        width: total ? Math.max(3, (total / largest) * 100) : 3,
-        display: total ? formatCompact(total, { currency: true }) : '—',
-      }
-    })
-    .sort((a, b) => b.total - a.total)
+  const largest = Math.max(...exporters.value.map(row => row.value.amount), 1)
+  return exporters.value.map(row => ({
+    isoCode: row.isoCode,
+    name: countryName(COUNTRIES[row.isoCode]),
+    width: Math.max(3, (row.value.amount / largest) * 100),
+    display: formatCompact(row.value.amount, { currency: true }),
+  }))
 })
 
-// A wrong pick teaches too: what the picked country actually ships
+// A pick outside the chart teaches too: a stored exporter below the shown
+// rows gets its world rank, an own-top-5 exporter that never cracks the
+// world ranking is still a right answer, and a wrong pick shows what the
+// picked country actually ships.
 const pickedLine = computed(() => {
   if (!props.picked || rows.value.some(row => row.isoCode === props.picked)) return undefined
   const country = COUNTRIES[props.picked]
+  const rank = madeTopExporters(props.challenge.commodity).findIndex(
+    row => row.isoCode === props.picked
+  )
+  if (rank !== -1) {
+    return `${countryName(country)} — the world's ${formatOrdinal(rank + 1)}-biggest shipper of ${props.challenge.commodity}, just off this chart.`
+  }
+  if (exportsCommodity(props.picked, props.challenge.commodity)) {
+    return `${sentenceCase(props.challenge.commodity)} — one of ${countryName(country)}'s own top exports, though not among the world's biggest shippers.`
+  }
   const top = country.economics.exports?.slice(0, 3)
   return top?.length
     ? `Your pick, ${countryName(country)}, mostly ships ${top.join(', ')}.`

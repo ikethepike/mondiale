@@ -19,6 +19,7 @@ import type { Amount } from '~~/types/geography.types'
 
 export type ProviderId =
   | 'cia'
+  | 'cepii'
   | 'owid'
   | 'worldbank'
   | 'un-wpp'
@@ -52,6 +53,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://www.cia.gov/the-world-factbook/',
     logo: 'cia.svg',
     description: 'Country profiles and world leaders: geography, people, government and economy.',
+  },
+  cepii: {
+    name: 'CEPII',
+    url: 'https://www.cepii.fr',
+    description:
+      'BACI: reconciled bilateral trade flows for 200 economies at the HS6 product level, from the French research center in international economics.',
   },
   owid: {
     name: 'Our World in Data',
@@ -157,6 +164,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
 export type SourceId =
   | 'cia-factbook'
   | 'cia-world-leaders'
+  | 'cepii-baci'
   | 'owid-grapher'
   | 'worldbank-wdi'
   | 'un-wpp-2024'
@@ -200,6 +208,14 @@ export const SOURCES: Record<SourceId, Source> = {
     title: 'World Leaders',
     url: 'https://www.cia.gov/resources/world-leaders/',
     license: 'Public domain',
+  },
+  'cepii-baci': {
+    provider: 'cepii',
+    title: 'BACI: International Trade Database at the Product-Level',
+    url: 'https://www.cepii.fr/CEPII/en/bdd_modele/bdd_modele_item.asp?id=37',
+    edition: 'HS22, V202601',
+    license: 'Etalab Open Licence 2.0',
+    year: 2024,
   },
   'owid-grapher': {
     provider: 'owid',
@@ -561,6 +577,7 @@ export type DataSetId =
   | 'empires'
   | 'conflicts'
   | 'conflict-events'
+  | 'commodity-exporters'
   | 'owid'
   | 'worldbank'
   | 'wpp'
@@ -588,6 +605,17 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'flag-icons-svg', dataset: 'Country flag SVGs' },
       { source: 'countries-list-package', dataset: 'Currencies and languages' },
       { source: 'mondiale-editorial', dataset: 'Membership and marriage-rights corrections' },
+    ],
+  },
+  'commodity-exporters': {
+    label: 'Top commodity exporters',
+    files: ['data/commodity-exporters.gen.ts'],
+    // The Made In answer key is a union: BACI's global top exporters plus the
+    // Factbook's per-country export lists — both legs earn their credit here.
+    origins: [
+      { source: 'cepii-baci' },
+      { source: 'cia-factbook', dataset: 'Economy › Exports - commodities' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/commodity-hs-codes.ts' },
     ],
   },
   flags: {
