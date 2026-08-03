@@ -14,7 +14,7 @@ export interface PlayerStatus {
 }
 
 /** Tiles left to walk: end of the final queued move minus where the pawn stands. */
-export const stepsRemaining = (player: Player): number => {
+const stepsRemaining = (player: Player): number => {
   const lastMove = player.moves[player.moves.length - 1]
   return lastMove ? Math.max(0, lastMove.endTile.position - player.currentPosition) : 0
 }

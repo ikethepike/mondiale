@@ -1,5 +1,4 @@
 import { io } from 'socket.io-client'
-import { v4 as uuidv4 } from 'uuid'
 import { gameAlreadyStartedEvent } from '~~/lib/events/client/game-already-started.event'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
@@ -97,7 +96,7 @@ const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`
 const PLAYER_SECRET_STORAGE_KEY = `GL_PLAYER_SECRET`
 
 export default defineNuxtPlugin(() => {
-  const playerId = ref(localStorage.getItem(PLAYER_ID_STORAGE_KEY) || uuidv4())
+  const playerId = ref(localStorage.getItem(PLAYER_ID_STORAGE_KEY) || crypto.randomUUID())
 
   // Set player ID
   localStorage.setItem(PLAYER_ID_STORAGE_KEY, playerId.value)
@@ -106,7 +105,7 @@ export default defineNuxtPlugin(() => {
   // is public (it rides every snapshot); the secret never does, so seeing an
   // id off the wire is not enough to act as its owner. Kept in localStorage
   // alongside the id and sent in the handshake auth, never in event payloads.
-  const secret = localStorage.getItem(PLAYER_SECRET_STORAGE_KEY) || uuidv4()
+  const secret = localStorage.getItem(PLAYER_SECRET_STORAGE_KEY) || crypto.randomUUID()
   localStorage.setItem(PLAYER_SECRET_STORAGE_KEY, secret)
 
   // The handshake carries the id + secret so the server can VERIFY and rebind

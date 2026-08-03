@@ -125,7 +125,7 @@ const rows = computed(() =>
   gap: 0.9rem;
   padding: 0.7rem 1rem;
   border-radius: 1.2rem;
-  background: hsla(0, 0%, 100%, 0.55);
+  background: glass(0.55);
   border: 1px solid ink(0.1);
 }
 

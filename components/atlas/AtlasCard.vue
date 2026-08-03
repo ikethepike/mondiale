@@ -164,7 +164,7 @@ const neighbours = computed(() =>
   font-size: 2rem;
   line-height: 1;
   color: var(--dark-blue);
-  background: hsla(0, 0%, 100%, 0.6);
+  background: glass(0.6);
 }
 
 .atlas-scroll {
@@ -340,7 +340,7 @@ const neighbours = computed(() =>
     font-size: 1.3rem;
     border-radius: 999px;
     color: var(--dark-blue);
-    background: hsla(0, 0%, 100%, 0.5);
+    background: glass(0.5);
     border: 1px solid ink(0.18);
     transition: border-color 0.15s ease;
 

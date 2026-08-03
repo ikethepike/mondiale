@@ -47,6 +47,7 @@
 import { computed, ref } from 'vue'
 import ViewGhostState from '~/components/view/ViewGhostState.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
+import { sample } from '~~/lib/arrays'
 import { scoreGhostState, scoreNoMansLand } from '~~/lib/challenges'
 import { useGameStore } from '~~/store/game.store'
 import { generateTiles } from '~~/lib/tiles'
@@ -80,7 +81,7 @@ const recognitionSummary = (t: RecognitionTerritory) => {
 const claimantSummary = (t: RecognitionTerritory) =>
   t.claimants.length ? `claimed by ${t.claimants.join(', ')}` : 'claimed by nobody'
 
-const randomId = () => pool.value[Math.floor(Math.random() * pool.value.length)]?.id
+const randomId = () => sample(pool.value)?.id
 
 const MAXIMUM_POINTS = 21
 /** A uuid: isValidClientEventTarget rejects anything else, and the store's

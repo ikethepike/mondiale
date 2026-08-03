@@ -27,7 +27,7 @@ export const multiply = (m: Matrix, n: Matrix): Matrix => {
 
 export const translate = (x: number, y: number): Matrix => [1, 0, 0, 1, x, y]
 export const scale = (s: number): Matrix => [s, 0, 0, s, 0, 0]
-export const scaleXY = (sx: number, sy: number): Matrix => [sx, 0, 0, sy, 0, 0]
+const scaleXY = (sx: number, sy: number): Matrix => [sx, 0, 0, sy, 0, 0]
 export const rotate = (deg: number): Matrix => {
   const r = (deg * Math.PI) / 180
   const c = Math.cos(r)
@@ -94,42 +94,6 @@ export const parseTransform = (transform: string | undefined): Matrix => {
   }
   return m
 }
-
-export interface Decomposed {
-  translateX: number
-  translateY: number
-  rotationDeg: number
-  /** Uniform scale magnitude (geometric mean of the axis scales). */
-  scale: number
-  scaleX: number
-  scaleY: number
-}
-
-/**
- * Decompose an affine into translate · rotate · scale (+ shear discarded).
- * We keep rotation (semantic — Korea's taegeuk, Nepal's jag) and the per-axis
- * scales for inspection, but the recompose engine uses a single UNIFORM scale
- * (see `uniformScale`) so a source's non-uniform stretch (e.g. Serbia's
- * `matrix(1 0 0 1.00437 …)`) never survives into the emblem.
- */
-export const decompose = (m: Matrix): Decomposed => {
-  const [a, b, c, d, e, f] = m
-  const scaleX = Math.hypot(a, b)
-  const rotationDeg = (Math.atan2(b, a) * 180) / Math.PI
-  // Remove rotation to recover the y-scale (determinant / scaleX).
-  const det = a * d - b * c
-  const scaleY = scaleX === 0 ? 0 : det / scaleX
-  return {
-    translateX: e,
-    translateY: f,
-    rotationDeg,
-    scale: Math.sqrt(Math.abs(scaleX * scaleY)) || scaleX,
-    scaleX,
-    scaleY,
-  }
-}
-
-export const uniformScale = (m: Matrix): number => decompose(m).scale
 
 export interface BBox {
   x: number

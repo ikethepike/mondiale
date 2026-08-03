@@ -63,6 +63,7 @@
 </template>
 <script lang="ts" setup>
 import { clamp } from '~~/lib/number'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 withDefaults(defineProps<{ src: string; alt?: string }>(), { alt: 'A photo to identify' })
 
 const MIN_SCALE = 1
@@ -80,8 +81,9 @@ const grabbing = ref(false)
 const hintVisible = ref(true)
 const hintText = ref('Scroll or pinch to zoom')
 let hintTimer: ReturnType<typeof setTimeout> | undefined
+const isCoarsePointer = useIsCoarsePointer()
 onMounted(() => {
-  if (window.matchMedia('(hover: none)').matches) hintText.value = 'Pinch to zoom'
+  if (isCoarsePointer.value) hintText.value = 'Pinch to zoom'
   hintTimer = setTimeout(() => (hintVisible.value = false), 4000)
 })
 onUnmounted(() => clearTimeout(hintTimer))
@@ -384,7 +386,7 @@ const pinchDistance = (): number => {
   z-index: 3;
   border-radius: 999px;
   backdrop-filter: blur(0.5rem);
-  background: hsla(0, 0%, 100%, 0.55);
+  background: glass(0.55);
   border: 0.1rem solid ink(0.2);
 }
 .zoom-btn {

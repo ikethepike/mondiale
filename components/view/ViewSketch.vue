@@ -86,6 +86,7 @@ onMounted(() => {
   parts.context.lineWidth = 3
   parts.context.lineCap = 'round'
   parts.context.lineJoin = 'round'
+  // ink() at full strength (rules/_ink.scss) — canvas needs the literal
   parts.context.strokeStyle = 'hsla(215.7, 76.4%, 21.6%, 1)'
 })
 

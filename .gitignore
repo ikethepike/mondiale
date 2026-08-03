@@ -9,7 +9,16 @@ dist
 test-results
 playwright-report
 .DS_Store
-generators/vendors/gemini/.cache/
+.claude/worktrees/
+dump.rdb
+
+# One-off QA screenshots from /test-views
+reveal-screenshots/
+
+# Downloaded vendor datasets — regenerable via the generate:* scripts
+generators/vendors/**
+!generators/vendors/**/
+!generators/vendors/**/*.ts
 
 # Regenerated report, not source of truth
 generators/data/currency-coin-review.txt

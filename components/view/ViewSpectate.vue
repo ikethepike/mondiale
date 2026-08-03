@@ -495,7 +495,7 @@ $hairline: ink(0.12);
   border-radius: 0.9rem;
   position: relative;
   cursor: pointer;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
   border: 1px solid ink(0.08);
 
   &.leader {

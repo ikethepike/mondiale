@@ -258,7 +258,7 @@ const entries = computed(() =>
   gap: 0.9rem;
   padding: 0.55rem 0.7rem;
   border-radius: 0.9rem;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
   border: 1px solid ink(0.08);
 
   // Board progress: a static hairline along the bottom edge — reads at a

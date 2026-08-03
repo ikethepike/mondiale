@@ -41,7 +41,7 @@ export const hexToRgb = (hex: string): [number, number, number] => {
 }
 
 /** Snap one hex colour to its nearest named bucket. */
-export const snapToNamedColor = (hex: string): NamedColor => {
+const snapToNamedColor = (hex: string): NamedColor => {
   const [r, g, b] = hexToRgb(hex)
   let best: NamedColor = 'black'
   let bestDistance = Infinity

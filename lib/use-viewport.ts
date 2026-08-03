@@ -1,7 +1,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 /** Reactive matchMedia flag; SSR-safe (false until mounted). */
-export const useMediaMatch = (query: string) => {
+const useMediaMatch = (query: string) => {
   const matches = ref(false)
   let media: MediaQueryList | undefined
   const sync = () => (matches.value = !!media?.matches)

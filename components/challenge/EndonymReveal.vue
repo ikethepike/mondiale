@@ -70,6 +70,7 @@ const sources = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 // Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
 .endonym-reveal {
   position: relative;
@@ -155,7 +156,7 @@ const sources = computed(() =>
   }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: $phone) {
   .pair .primary {
     font-size: 1.35rem;
   }

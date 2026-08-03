@@ -25,5 +25,12 @@
   @return hsla(24, 80%, $lightness, $alpha);
 }
 
+// The frosted-glass wash: the translucent white panel surface (usually paired
+// with a backdrop blur and an ink() border). The fifth brand wash — same
+// one-hue rule as the others.
+@function glass($alpha: 0.55) {
+  @return hsla(0, 0%, 100%, $alpha);
+}
+
 // The hairline divider under card headers — near-black at 12%, one token.
 $hairline: hsla(0, 0%, 7.5%, 0.12);

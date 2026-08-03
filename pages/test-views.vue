@@ -29,7 +29,6 @@
  *   /test-views
  */
 import { computed, defineComponent, h, ref } from 'vue'
-import { v4 as uuidv4 } from 'uuid'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
@@ -2617,9 +2616,9 @@ const deal = () => {
 const seedGuesses = () => {
   const now = Date.now()
   gameStore.map.liveGuesses.push(
-    { entryId: uuidv4(), playerId: RIVAL, kind: 'wrong', isoCode: 'DE', at: now },
-    { entryId: uuidv4(), playerId: THIRD, kind: 'correct', isoCode: 'PT', at: now },
-    { entryId: uuidv4(), playerId: RIVAL, kind: 'presence', at: now }
+    { entryId: crypto.randomUUID(), playerId: RIVAL, kind: 'wrong', isoCode: 'DE', at: now },
+    { entryId: crypto.randomUUID(), playerId: THIRD, kind: 'correct', isoCode: 'PT', at: now },
+    { entryId: crypto.randomUUID(), playerId: RIVAL, kind: 'presence', at: now }
   )
 }
 
@@ -2633,6 +2632,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 /** The floating scenario bar's footprint: its content plus its own top offset.
  *  Used twice below to push the scene clear of it on a phone. */
 $harness-bar-height: 3.4rem;
@@ -2649,7 +2649,7 @@ $harness-bar-height: 3.4rem;
   // the title for it; on a phone it lands squarely on the challenge's header,
   // hiding the very question the round is asking. Start the scene below it
   // instead — the bar can't move to the bottom, where the guess console lives.
-  @media screen and (max-width: 480px) {
+  @media screen and (max-width: $phone) {
     height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
   }

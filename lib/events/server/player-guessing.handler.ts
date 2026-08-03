@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 import { countryLatLng, haversineKm } from '~~/lib/geo'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { isValidISOCode } from '~~/types/geography.types'
@@ -56,7 +55,7 @@ export const playerGuessingHandler: EventHandler = async ({
       // probed isoCode is trusted (it's the player's own click) but never
       // echoed, so the number is a radius with no centre.
       ...probeDistance(challenge, eventData),
-      entryId: uuidv4(),
+      entryId: crypto.randomUUID(),
       at: Date.now(),
     },
     eventTarget

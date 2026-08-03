@@ -69,11 +69,11 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { LANDMARKS } from '~~/data/landmarks.gen'
-import { haversineKm, type LatLng } from '~~/lib/geo'
+import { formatLatLng, haversineKm } from '~~/lib/geo'
 import { formatKm } from '~~/lib/number'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { usePinDrop } from '~~/lib/use-pin-drop'
 import { useIsPhone } from '~~/lib/use-viewport'
-import { isMapClickEvent } from '~~/types/events.types'
 
 const {
   challenge,
@@ -93,13 +93,17 @@ const {
   clearBoard,
 } = useGroupChallenge('pin-landmark-challenge', { solo: false })
 
-const pin = ref<LatLng | undefined>(undefined)
 const result = ref<{ distanceKm: number } | undefined>(undefined)
 
 // Phones swap the side-docked photo for the collapsible MediaDock: study the
-// photo first, then it docks out of the map's way once the first pin lands.
+// photo first, then it docks out of the map's way once the first pin lands
+// (the pin/photo choreography is usePinDrop's).
 const isPhone = useIsPhone()
-const photoExpanded = ref(true)
+const { pin, photoExpanded } = usePinDrop({
+  canDrop: () => !showInterstitial.value && !submitted.value && started.value,
+  announce,
+  registerCleanup,
+})
 
 const landmark = computed(() => (challenge.value ? LANDMARKS[challenge.value.slug] : undefined))
 
@@ -114,9 +118,6 @@ const verdict = computed(() => {
   if (distanceKm >= active.zeroDistanceKm) return 'Wrong part of the world.'
   return 'Not quite.'
 })
-
-const formatLatLng = ({ lat, lng }: LatLng) =>
-  `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}`
 
 /**
  * Resolution beat, as in the silhouette view: the true point lands on the map
@@ -145,25 +146,6 @@ const lockIn = () => {
     REVEAL_HOLD_MS
   )
 }
-
-const onMapClick = (event: Event) => {
-  if (!isMapClickEvent(event)) return
-  if (showInterstitial.value || submitted.value || !started.value) return
-
-  const latLng = event.detail.latLng
-  if (!latLng) return
-
-  const first = !pin.value
-  pin.value = latLng
-  gameStore.map.pin = latLng
-  if (first) {
-    announce({ kind: 'presence' })
-    photoExpanded.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('mapClick', onMapClick))
-registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 
 watch(secondsLeft, seconds => {
   if (seconds > 0 || submitted.value) return
@@ -199,7 +181,7 @@ onBeforeUnmount(() => {
   // Desktop: the stage swells under the cursor for studying detail, then
   // shrinks out of the map's way on leave. Width/height, not scale — the
   // photo re-lays out and stays sharp.
-  @media (hover: hover) and (min-width: 901px) {
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
     &:hover {
       z-index: 3;
       width: clamp(28rem, 44vw, 52rem);
@@ -231,7 +213,7 @@ onBeforeUnmount(() => {
   transform: translateY(1.5rem);
 }
 
-@media (max-width: 900px) {
+@media (max-width: $tablet-wide) {
   .photo-stage {
     top: auto;
     left: 50%;

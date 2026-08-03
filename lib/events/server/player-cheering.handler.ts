@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 import { CHEER_EMOJIS } from '~~/types/events.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createTokenBucket } from './rate-limit'
@@ -41,7 +40,7 @@ export const playerCheeringHandler: EventHandler = async ({
       playerId: eventTarget.playerId,
       targetPlayerId: eventData.targetPlayerId,
       emoji: eventData.emoji,
-      entryId: uuidv4(),
+      entryId: crypto.randomUUID(),
       at: Date.now(),
     },
     eventTarget

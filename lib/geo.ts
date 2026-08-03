@@ -60,6 +60,10 @@ export const compassLabel = (bearing: number): string =>
 
 const COMPASS_ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
 
+/** "12.5°N, 3.2°E" — the one lat/lng display format (views and harnesses alike). */
+export const formatLatLng = ({ lat, lng }: LatLng): string =>
+  `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}`
+
 export const compassArrow = (bearing: number): string =>
   COMPASS_ARROWS[Math.round(bearing / 45) % 8]
 

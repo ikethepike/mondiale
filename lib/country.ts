@@ -1,7 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
-import { sample, shuffleArray } from './arrays'
+import { shuffleArray } from './arrays'
 import { baseEncode, editDistance, normalizeAnswer } from './strings'
 
 export const getCountry = (isoCode: ISOCountryCode): Country => COUNTRIES[isoCode]
@@ -306,10 +305,3 @@ export const pickSizedCountry = (
   )
 }
 
-export const getRandomISOCountryCode = (modifier?: 'large' | 'small'): ISOCountryCode =>
-  modifier ? pickSizedCountry(ISOCountryCodes, modifier)! : sample(ISOCountryCodes)!
-
-export const getRandomCountry = (): Country => {
-  const isoCode = getRandomISOCountryCode()
-  return COUNTRIES[isoCode]
-}

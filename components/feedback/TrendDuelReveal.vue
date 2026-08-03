@@ -86,7 +86,7 @@ const rows = computed(() =>
   padding: 0.7rem 1rem;
   border-radius: 1.2rem;
   flex-flow: column nowrap;
-  background: hsla(0, 0%, 100%, 0.55);
+  background: glass(0.55);
   border: 1px solid ink(0.1);
 }
 

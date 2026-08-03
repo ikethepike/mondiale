@@ -315,10 +315,6 @@ const scheduleChainSettle = (ctx: ChainContext) => {
   })
 }
 
-/** Reveal-path entry (enter-movement-phase): sanity-recheck the opening head. */
-export const chainHasOpenStart = (challenge: BorderChainChallenge, game: Game): boolean =>
-  !!chainHead(challenge.state) && openMoves(challenge.state, game).length > 0
-
 /**
  * Re-arm whatever follow-up the live chain round is waiting on. Timers are
  * in-process, so a restart (or a save that threw after the timer was spent)

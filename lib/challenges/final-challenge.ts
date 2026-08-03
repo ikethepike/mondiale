@@ -1000,7 +1000,7 @@ export const weighScalesPicks = (
 }
 
 /** The dealt cities a nocturne answer may light — the top N of CITY_LIGHTS. */
-export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
+const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
   new Set(
     (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount).map(city => city.name)
   )
