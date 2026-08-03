@@ -1,4 +1,4 @@
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, type Ref } from 'vue'
 
 /** The world map's nominal design frame (mirror of data/map.gen's MAP_VIEWBOX). */
 export const WORLD_MAP_WIDTH = 2000
@@ -12,16 +12,18 @@ export interface MapViewBox {
 }
 
 /**
- * How far the camera may pan, as a fraction of the view width, before the
- * reactive tier commits. In between, pan-tracked overlays ride a compositor
- * transform — pure pan frames never touch Vue at all.
+ * How far the camera may pan, per axis as a fraction of that axis's view
+ * dimension, before the reactive tier commits. In between, pan-tracked
+ * overlays ride a compositor transform — pure pan frames never touch Vue.
  */
-const COMMIT_DRIFT = 0.2
+export const COMMIT_DRIFT = 0.2
 
 /**
  * How far past the viewport a pan-tracked overlay paints, per side, as a
- * fraction of the viewport. Must exceed COMMIT_DRIFT, or a fast pan slides
- * the painted edge into view before the next commit repaints it.
+ * fraction of the viewport's own dimension on each axis. Must exceed
+ * COMMIT_DRIFT per axis (each axis's drift budget is measured against its
+ * own dimension — see use-map-viewbox.test.ts), or a fast pan slides the
+ * painted edge into view before the next commit repaints it.
  */
 export const OVERLAY_BLEED = 0.25
 /** The bleed as a CSS inset — same constant, for the overlay's own box. */
@@ -105,7 +107,7 @@ const readViewBox = () => {
     !base?.w ||
     currentBox.w !== base.w ||
     Math.abs(currentBox.x - base.x) > base.w * COMMIT_DRIFT ||
-    Math.abs(currentBox.y - base.y) > base.w * COMMIT_DRIFT
+    Math.abs(currentBox.y - base.y) > base.h * COMMIT_DRIFT
   ) {
     commit()
   } else {
@@ -121,7 +123,12 @@ const remeasureAll = () => {
 const subscribe = () => {
   subscribers += 1
   if (subscribers > 1) return
-  lastRaw = '' // force a fresh read — the camera may have moved while idle
+  // Force a fresh read — the camera may have moved while nobody polled — and
+  // drop any drift carried over from a mid-pan unmount, or the first frame
+  // could commit a dead camera before the svg is even queryable.
+  lastRaw = ''
+  drifted = false
+  currentBox = undefined
   window.addEventListener('resize', remeasureAll)
   frame = requestAnimationFrame(readViewBox)
 }
@@ -175,9 +182,12 @@ export const useMapViewBox = () => {
  *
  * Returns the element's cached px `size` (kept fresh across resizes) so
  * layout math can use pixels without reading `window` or layout per compute.
+ * Reactive on purpose: the mount-time measurement lands after the first
+ * render, and a consumer's computed must re-run when it does — it only
+ * mutates at mount/resize, so the poller's per-frame proxy reads stay cheap.
  */
 export const useMapPanTrack = (el: Ref<HTMLElement | undefined>) => {
-  const size = { w: 0, h: 0 }
+  const size = reactive({ w: 0, h: 0 })
   let item: PanTracked | undefined
   onMounted(() => {
     subscribe()

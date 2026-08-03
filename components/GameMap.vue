@@ -581,23 +581,25 @@ const viewState = { ...WORLD_VIEW }
 /** Where gestures want the camera — viewState eases toward it every frame. */
 const targetView = { ...WORLD_VIEW }
 
-/** The svg's screen box, measured at mount/resize/gesture-start — reading it
- *  per frame or per pointer event forces layout inside the camera loop. */
-let svgRect: DOMRect | undefined
+/** The map's screen box, measured at mount/resize/gesture-start — reading it
+ *  per frame or per pointer event forces layout inside the camera loop.
+ *  Measured on the WRAPPER, not the svg: the svg fills it exactly, but wears
+ *  the recede scale transition — a mid-recede measurement must never stick. */
+let mapScreenRect: DOMRect | undefined
 /** Clamp bounds derived from rect + berth — arithmetic-only in the frame loop. */
 let clampCache: { maxWidth: number; centerFraction: number } | undefined
 
 const measureMapRect = () => {
-  const rect = svg.value?.getBoundingClientRect()
+  const rect = wrapper.value?.getBoundingClientRect()
   if (rect?.width && rect.height) {
-    svgRect = rect
+    mapScreenRect = rect
     viewAspect = rect.width / rect.height
     clampCache = undefined
   }
-  return svgRect
+  return mapScreenRect
 }
 /** The cached screen box, measuring lazily before the first gesture. */
-const mapRect = () => svgRect ?? measureMapRect()
+const mapRect = () => mapScreenRect ?? measureMapRect()
 
 /** The fully-zoomed-out camera: full world width, vertically centered. */
 const worldFitView = () => {
@@ -1250,9 +1252,14 @@ const startLoop = () => {
   requestAnimationFrame(gestureLoop)
 }
 
-/** Pointer position → map units, via the gesture-cached screen rect. */
+/** Pointer position → map units, via the gesture-cached screen rect.
+ *  No rect (unmeasurable, zero-size window) → the view centre, so a zoom
+ *  anchored on it degrades to a plain centred zoom. */
 const unitsAt = (clientX: number, clientY: number) => {
-  const rect = mapRect() ?? (svg.value as SVGElement).getBoundingClientRect()
+  const rect = mapRect()
+  if (!rect) {
+    return { x: viewState.x + viewState.width / 2, y: viewState.y + viewState.height / 2 }
+  }
   return {
     x: viewState.x + ((clientX - rect.left) / rect.width) * viewState.width,
     y: viewState.y + ((clientY - rect.top) / rect.height) * viewState.height,
@@ -1348,7 +1355,8 @@ const onPointerMove = (event: PointerEvent) => {
       zoomAround((a.x + b.x) / 2, (a.y + b.y) / 2, targetView.width / pinchWidth)
     }
   } else if (pointers.size === 1) {
-    const rect = mapRect() ?? (svg.value as SVGElement).getBoundingClientRect()
+    const rect = mapRect()
+    if (!rect) return // zero-size window: no sane px→unit ratio, skip the step
     const unitsPerPx = viewState.width / rect.width
     targetView.x -= (pointer.x - previous.x) * unitsPerPx
     targetView.y -= (pointer.y - previous.y) * unitsPerPx
