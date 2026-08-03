@@ -668,7 +668,7 @@ footer {
   color: var(--dark-blue);
   padding: 0.5rem 1.2rem;
   border-radius: 999px;
-  background: hsla(0, 0%, 100%, 0.55);
+  background: glass(0.55);
   border: 0.1rem solid ink(0.25);
   transition: border-color var(--motion-quick) var(--ease-out-expressive);
 

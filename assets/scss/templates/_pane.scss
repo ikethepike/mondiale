@@ -1,3 +1,5 @@
+@use '../rules/breakpoints' as *;
+
 $paneBorderRadius: 1.9rem;
 
 .pane {
@@ -36,9 +38,8 @@ $paneBorderRadius: 1.9rem;
     }
   }
 
-  // Compact card padding on phones (640px matches $tablet; this template is
-  // loaded globally and can't @use the SCSS token).
-  @media screen and (max-width: 640px) {
+  // Compact card padding on phones.
+  @media screen and (max-width: $tablet) {
     .pane-content {
       padding: 1.6rem;
       &.vertical {

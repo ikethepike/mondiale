@@ -300,6 +300,7 @@ const rows = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 // Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
@@ -329,7 +330,7 @@ const rows = computed(() => {
 // Phone: the switch collapses to bare symbols and rides up onto the title row
 // beside play, so the words below get the full width instead of sharing it
 // with two labelled pills.
-@media screen and (max-width: 480px) {
+@media screen and (max-width: $phone) {
   .dossier-head {
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas: 'identity switch play';
@@ -473,7 +474,7 @@ const rows = computed(() => {
 // Phone: symbols only. The flag and the globe already say which is which, and
 // each button keeps its title/aria-pressed, so the meaning survives for screen
 // readers and long-press alike.
-@media screen and (max-width: 480px) {
+@media screen and (max-width: $phone) {
   .column-label {
     position: absolute;
     width: 0.1rem;
@@ -557,7 +558,7 @@ const rows = computed(() => {
 // The row wears .player-accent, whose colour edge is a border with no padding
 // of its own — without this the name sits flush against the player's colour.
 // The right inset is ours too: _ranked-bars.scss drops the shell's horizontal
-// padding under 480px, which would otherwise run the points to the card edge.
+// padding under $phone, which would otherwise run the points to the card edge.
 .row {
   padding-left: 0.8rem;
   padding-right: 0.6rem;

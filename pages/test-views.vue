@@ -2633,6 +2633,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 /** The floating scenario bar's footprint: its content plus its own top offset.
  *  Used twice below to push the scene clear of it on a phone. */
 $harness-bar-height: 3.4rem;
@@ -2649,7 +2650,7 @@ $harness-bar-height: 3.4rem;
   // the title for it; on a phone it lands squarely on the challenge's header,
   // hiding the very question the round is asking. Start the scene below it
   // instead — the bar can't move to the bottom, where the guess console lives.
-  @media screen and (max-width: 480px) {
+  @media screen and (max-width: $phone) {
     height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
   }

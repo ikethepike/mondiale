@@ -1,5 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { hexToRgb } from './palette'
+import { clamp } from './number'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -134,7 +135,7 @@ const toHex = ({ h, s, l }: Hsl): string => {
 const clampForLegibility = ({ h, s, l }: Hsl): Hsl => ({
   h,
   s: Math.min(s, MAX_SATURATION),
-  l: Math.min(Math.max(l, MIN_LIGHTNESS), MAX_LIGHTNESS),
+  l: clamp(l, MIN_LIGHTNESS, MAX_LIGHTNESS),
 })
 
 /**

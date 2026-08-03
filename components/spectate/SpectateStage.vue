@@ -361,7 +361,7 @@ $hairline: ink(0.12);
   gap: 1rem;
   padding: 0.5rem 0.8rem;
   border-radius: 0.6rem;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
   border-left: 0.3rem solid var(--soft-blue);
 
   .fact-label {
@@ -546,7 +546,7 @@ $hairline: ink(0.12);
   gap: 0.8rem;
   padding: 0.5rem 0.8rem;
   border-radius: 0.8rem;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
 
   .rank {
     opacity: 0.45;

@@ -63,7 +63,7 @@ onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
   transform: translateX(-50%);
   padding: 0.8rem 1.6rem;
   border-radius: 999px;
-  background: hsla(0, 0%, 100%, 0.7);
+  background: glass(0.7);
   border: 1px solid ink(0.12);
   pointer-events: none;
 

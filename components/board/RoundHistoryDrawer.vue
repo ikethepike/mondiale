@@ -106,7 +106,7 @@ import type { Game } from '~~/types/game.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import { boardProgress } from '~~/lib/player'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
-import { PHONE_MAX_PX } from '~~/lib/use-viewport'
+import { useIsPhone } from '~~/lib/use-viewport'
 
 const props = defineProps<{ game: Game }>()
 
@@ -122,7 +122,8 @@ const close = () => {
 // put through Vue's leave transition (inline beats the leave class), keeping
 // the sheet offscreen until it unmounts.
 const drawerEl = ref<HTMLElement>()
-const isSheet = () => window.matchMedia(`(max-width: ${PHONE_MAX_PX}px)`).matches
+const isPhone = useIsPhone()
+const isSheet = () => isPhone.value
 
 const { onDragStart } = useDragSheet({
   el: () => drawerEl.value,
@@ -305,7 +306,7 @@ $hairline: ink(0.12);
   gap: 0.8rem;
   padding: 0.5rem 0.8rem;
   border-radius: 0.9rem;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
   border: 1px solid ink(0.08);
 
   // Same board-progress hairline as the status panel — one visual language
@@ -347,7 +348,7 @@ $hairline: ink(0.12);
   margin-bottom: 1.2rem;
   padding: 1.2rem 1.4rem 1.3rem;
   border-radius: 0.9rem;
-  background: hsla(0, 0%, 100%, 0.5);
+  background: glass(0.5);
   border: 1px solid ink(0.08);
 }
 

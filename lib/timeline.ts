@@ -1,4 +1,5 @@
 import { EVENTS } from '~~/data/events.gen'
+import { clamp } from './number'
 import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventKind } from '~~/generators/data/event-seeds'
 import { isValidISOCode } from '~~/types/geography.types'
@@ -91,7 +92,7 @@ export const resolveSlot = (
 ): { correct: boolean; slot: number } => {
   const { low, high } = correctSlotRange(years, year)
   const correct = chosenSlot >= low && chosenSlot <= high
-  return { correct, slot: correct ? chosenSlot : Math.min(Math.max(chosenSlot, low), high) }
+  return { correct, slot: correct ? chosenSlot : clamp(chosenSlot, low, high) }
 }
 
 /** The floor a correct opening placement (two slots) still pays. */

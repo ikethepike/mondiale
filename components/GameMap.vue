@@ -208,6 +208,7 @@ import {
 } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { clamp } from '~~/lib/number'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -356,7 +357,9 @@ const props = defineProps({
   },
 })
 
-// Deliberately soft washes — feedback, not verdict-shouting
+// Deliberately soft washes — feedback, not verdict-shouting. JS needs the
+// literals; `stray`/`hot` mirror flame() and `endpoint` mirrors ink() in
+// rules/_ink.scss — keep the hues in step (the walkColor rule, lib/chain.ts).
 const TINT_COLORS: { [tint in MapTint]: string } = {
   optimal: 'hsla(170.5, 34.7%, 55.1%, 0.65)',
   inefficient: 'hsla(29.7, 79.9%, 66.7%, 0.6)',
@@ -672,13 +675,14 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   // inside the clear band — the zoom-out ceiling follows the actual rest.
   const { centerFraction } = berthMetrics()
   const maxWidth = Math.max(WORLD_VIEW.width, restView().width)
-  view.width = Math.min(maxWidth, Math.max(minWidth, view.width))
+  view.width = clamp(view.width, minWidth, maxWidth)
   view.height = view.width / viewAspect
   // Wider than the world (berth rest): the only legal x is dead centre.
   const overhang = (WORLD_VIEW.width - view.width) / 2
-  view.x = Math.min(
-    Math.max(WORLD_VIEW.width - view.width, overhang),
-    Math.max(Math.min(0, overhang), view.x)
+  view.x = clamp(
+    view.x,
+    Math.min(0, overhang),
+    Math.max(WORLD_VIEW.width - view.width, overhang)
   )
 
   // Vertical headroom: a strict [0, world-height] clamp pins the far north

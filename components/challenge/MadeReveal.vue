@@ -95,6 +95,7 @@ const pickedLine = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 // Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
 .header {
   gap: 0.3rem;
@@ -164,7 +165,7 @@ const pickedLine = computed(() => {
   }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: $phone) {
   .row {
     .country {
       width: 8.5rem;

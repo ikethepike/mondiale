@@ -96,6 +96,7 @@ const sources = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 // Shell, row stagger and bar choreography come from templates/_ranked-bars.scss
 .nocturne-reveal {
   position: relative;
@@ -210,7 +211,7 @@ const sources = computed(() =>
   }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: $phone) {
   .row {
     .city {
       width: 8.5rem;

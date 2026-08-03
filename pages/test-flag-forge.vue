@@ -41,13 +41,13 @@
 </template>
 
 <script setup lang="ts">
+import { sample } from '~~/lib/arrays'
 import { forgeFlag } from '~~/lib/flags/forge'
 
 definePageMeta({ layout: false })
 
-const HEX = '0123456789abcdef'
-const randomHash = () =>
-  Array.from({ length: 7 }, () => HEX[Math.floor(Math.random() * 16)]).join('')
+const HEX = [...'0123456789abcdef']
+const randomHash = () => Array.from({ length: 7 }, () => sample(HEX)).join('')
 
 const hashes = ref<string[]>([])
 const reroll = () => {

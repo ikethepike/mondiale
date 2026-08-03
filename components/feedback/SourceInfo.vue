@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
 .source-info.on-photo .source-trigger {
   color: var(--dark-blue);
   backdrop-filter: blur(0.5rem);
-  background: hsla(0, 0%, 100%, 0.55);
+  background: glass(0.55);
   border: 0.1rem solid #{ink(0.2)};
 }
 

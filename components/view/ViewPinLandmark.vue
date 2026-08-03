@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
   // Desktop: the stage swells under the cursor for studying detail, then
   // shrinks out of the map's way on leave. Width/height, not scale — the
   // photo re-lays out and stays sharp.
-  @media (hover: hover) and (min-width: 901px) {
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
     &:hover {
       z-index: 3;
       width: clamp(28rem, 44vw, 52rem);
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
   transform: translateY(1.5rem);
 }
 
-@media (max-width: 900px) {
+@media (max-width: $tablet-wide) {
   .photo-stage {
     top: auto;
     left: 50%;
