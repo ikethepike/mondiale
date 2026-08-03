@@ -5027,4 +5027,272 @@ export const EVENT_SEEDS: EventSeed[] = [
     description:
       "Legend set the day Romulus founded the city — and killed his twin Remus over its wall. From that hilltop village grew the empire whose languages, laws and calendars Europe still lives inside.",
   },
+
+  // --- Expansion: the ancient world beyond the battlefield --------------------
+  {
+    name: 'Confucius',
+    title: 'Confucius teaches in a warring age',
+    country: 'CN',
+    kind: 'culture',
+    year: -551,
+    qid: 'Q4604',
+    commons: 'Statues of Confucius in the Beijing Temple of Confucius 2013.jpg',
+    description:
+      'Born into a China splintering into warring states, a minor official taught that order begins with personal virtue and respect between people. His recorded sayings shaped East Asian thought for millennia.',
+  },
+  {
+    name: 'Cyrus Cylinder',
+    title: 'Cyrus writes his charter in clay',
+    country: 'IR',
+    kind: 'politics',
+    // Wikidata dates the cylinder itself to -530, not the fall of Babylon.
+    year: -530,
+    qid: 'Q405008',
+    description:
+      'Having taken Babylon, the Persian king had a clay barrel inscribed proclaiming that deported peoples could go home and worship as they pleased. It is often called the first declaration of human rights.',
+  },
+  {
+    name: 'Gautama Buddha',
+    title: 'The Buddha begins to teach',
+    country: 'IN',
+    kind: 'culture',
+    // Verified against the traditional birth year Wikidata carries; the
+    // card asserts the life, not a datable sermon.
+    year: -563,
+    qid: 'Q9441',
+    description:
+      'A prince of the Himalayan foothills left his palace, sat under a fig tree until he understood suffering, and spent forty years teaching a way out of it. Buddhism followed the trade roads across half the world.',
+  },
+  {
+    name: 'Library of Alexandria',
+    title: 'Alexandria gathers all the world\'s books',
+    country: 'EG',
+    kind: 'culture',
+    year: -300,
+    qid: 'Q435',
+    description:
+      'The Ptolemies set out to collect a copy of every book on Earth, seizing scrolls from ships in the harbour to be copied. Its scholars measured the planet and catalogued the stars before it was lost.',
+  },
+  {
+    name: 'Ashoka',
+    title: 'Ashoka carves his remorse into rock',
+    country: 'IN',
+    kind: 'politics',
+    // Wikidata carries only Ashoka's life dates; the reign's end anchors it.
+    year: -232,
+    qid: 'Q8589',
+    description:
+      'Sickened by the slaughter of his own conquest of Kalinga, the Mauryan emperor turned to Buddhism and had edicts of tolerance and welfare carved on pillars across India. His lion capital crowns the republic today.',
+  },
+  {
+    name: 'Great Wall of China',
+    title: 'The Great Wall goes up',
+    country: 'CN',
+    kind: 'engineering',
+    year: -700,
+    qid: 'Q12501',
+    description:
+      'Rival Chinese states began walling their northern frontiers against the steppe horsemen; later dynasties joined and rebuilt the ramparts for two thousand years into the longest structure ever built.',
+  },
+  {
+    name: 'Julian calendar',
+    title: 'Caesar fixes the calendar',
+    country: 'IT',
+    kind: 'science',
+    year: -45,
+    qid: 'Q11184',
+    description:
+      "Rome's calendar had drifted three months from the seasons, so Caesar imposed a solar year of 365 days with a leap day every fourth. Europe kept his reckoning, barely altered, for sixteen centuries.",
+  },
+  {
+    name: 'Zhang Qian',
+    title: 'Zhang Qian opens the Silk Road',
+    country: 'CN',
+    kind: 'culture',
+    // Wikidata carries only the envoy's life dates.
+    year: -114,
+    description:
+      "The Han envoy Zhang Qian returned from the west with word of great civilisations beyond the deserts, and the caravans began. Silk went one way, glass, horses, religions and plagues the other.",
+  },
+  {
+    name: 'Antikythera mechanism',
+    title: 'A geared computer sails the Aegean',
+    country: 'GR',
+    kind: 'science',
+    year: -100,
+    qid: 'Q182324',
+    description:
+      'A shoebox of bronze gears aboard a Greek ship predicted eclipses and the movements of the planets. Nothing of comparable complexity is known for the next fourteen centuries.',
+  },
+  {
+    name: 'Nazca Lines',
+    title: 'Vast figures are drawn in the desert',
+    country: 'PE',
+    kind: 'culture',
+    year: -200,
+    qid: 'Q2620036',
+    description:
+      'The Nazca cleared dark stones from the desert floor to trace a hummingbird, a monkey and a spider hundreds of metres across — shapes best read from the sky, made by people who never saw them whole.',
+  },
+  {
+    name: 'Kingdom of Aksum',
+    title: 'Aksum rises on the Red Sea',
+    country: 'ET',
+    kind: 'nation',
+    year: -400,
+    qid: 'Q139377',
+    description:
+      "The Aksumite kingdom grew rich on the trade between Rome and India, minted its own gold coin and raised granite obelisks taller than any single stone the world had yet stood upright.",
+  },
+  {
+    name: 'Brahmasphutasiddhanta',
+    title: 'Brahmagupta gives zero its rules',
+    country: 'IN',
+    kind: 'science',
+    year: 628,
+    qid: 'Q1290001',
+    commons: 'Bas-relief of Brahmagupta.jpg',
+    description:
+      'The astronomer Brahmagupta wrote down what happens when you add, subtract and multiply with zero and with negative numbers — treating nothing as a number. Arithmetic has run on his rules ever since.',
+  },
+
+  // --- Expansion: deep earth --------------------------------------------------
+  // Geological time. These never cluster into a yearbook page and sit far below
+  // the dial's floor; they are timeline anchors and awe.
+  {
+    name: 'Great Oxidation Event',
+    title: 'The air turns to poison, then to breath',
+    country: 'AU',
+    kind: 'disaster',
+    year: -2450000000,
+    qid: 'Q837561',
+    // The item's image is a geological timescale chart; living stromatolites —
+    // the descendants of the cyanobacteria that did it — instead.
+    commons: 'Stromatolites at Hamelin Pool in Shark Bay - Western Australia - 27 Aug. 2014.jpg',
+    description:
+      'Cyanobacteria began exhaling oxygen into an atmosphere that had none, rusting the oceans and wiping out most life on Earth. Everything that breathes today descends from what survived that poisoning.',
+  },
+  {
+    name: 'Cambrian explosion',
+    title: 'Life invents almost every animal',
+    country: 'CA',
+    kind: 'science',
+    year: -543000000,
+    qid: 'Q32919',
+    // Anomalocaris, the Burgess Shale's signature predator.
+    commons: 'Anomalocaris canadensis grasping claw, Burgess Shale.jpg',
+    description:
+      'In a geological eyeblink, seas that had held little but microbes filled with eyes, shells, legs and jaws. Nearly every animal body plan alive today first appears in the rocks of that burst.',
+  },
+  {
+    name: 'Permian–Triassic extinction event',
+    title: 'The Great Dying',
+    country: 'RU',
+    kind: 'disaster',
+    year: -251900000,
+    qid: 'Q141118',
+    // The Siberian Traps basalt that did the killing.
+    commons: 'Native iron in basalt (Siberian Traps Flood Basalt, Permian-Triassic boundary times, 251 Ma; Putoran Plateau, Siberia, Russia) 1 (17151514269).jpg',
+    description:
+      'Siberian volcanoes erupted for a million years and cooked the planet, killing roughly nine in ten marine species — the worst catastrophe life has ever survived. Recovery took some ten million years.',
+  },
+  {
+    name: 'Cretaceous–Paleogene extinction event',
+    title: 'The asteroid that ended the dinosaurs',
+    country: 'MX',
+    kind: 'disaster',
+    year: -66000000,
+    qid: 'Q55811',
+    // No photograph exists of an asteroid strike; the standard impact painting.
+    commons: 'Impact event.jpg',
+    description:
+      'A rock the size of a city struck what is now the Yucatán at tens of kilometres a second, throwing up a shroud that darkened the world. The non-bird dinosaurs died; small furry survivors inherited the Earth.',
+  },
+  {
+    name: 'Neolithic Revolution',
+    title: 'People start to farm',
+    country: 'IQ',
+    kind: 'culture',
+    year: -9000,
+    qid: 'Q180548',
+    description:
+      'In the Fertile Crescent, foragers began sowing wheat and penning sheep instead of following them. Villages, granaries, property and kings all followed from that one change — the deepest break in human history.',
+  },
+  {
+    name: 'Last Glacial Maximum',
+    title: 'The ice reaches its furthest',
+    country: 'CA',
+    kind: 'disaster',
+    year: -19000,
+    qid: 'Q1979625',
+    // The item's image is a CLIMAP temperature-anomaly map; real ice instead.
+    commons: 'Chutes and Fissures in Greenland (17572779961).jpg',
+    description:
+      'Ice sheets kilometres thick buried northern Europe and America, and so much water was locked up that seas lay a hundred metres lower — opening the land bridges that people walked into the Americas.',
+  },
+
+  // --- Expansion: 1968 and 1974 ------------------------------------------------
+  {
+    name: 'Tet Offensive',
+    title: 'Tet shatters the war narrative',
+    country: 'VN',
+    kind: 'conflict',
+    year: 1968,
+    qid: 'Q82542',
+    // The item's image is a campaign map whose title block prints the year.
+    commons: 'US Embassy, Saigon, January 1968.jpg',
+    description:
+      'North Vietnamese and Viet Cong forces struck a hundred towns at once during the lunar new year truce, reaching the US embassy grounds in Saigon. Militarily it failed; on American television it broke the war.',
+  },
+  {
+    name: 'May 68',
+    title: 'Paris rises — beneath the paving stones, the beach',
+    country: 'FR',
+    kind: 'revolution',
+    year: 1968,
+    description:
+      'Student barricades in the Latin Quarter set off the largest general strike in French history: ten million workers stopped, de Gaulle briefly fled the country, and the old social order never quite recovered.',
+  },
+  {
+    name: 'Assassination of Robert F. Kennedy',
+    title: 'A second Kennedy is shot',
+    country: 'US',
+    kind: 'politics',
+    year: 1968,
+    // Campaign handouts print the year; the official portrait doesn't.
+    commons: 'RFK Portrait 3x4 (rotated).jpg',
+    description:
+      "Minutes after winning the California primary, the senator was shot in a hotel kitchen in Los Angeles — two months after Martin Luther King's murder, in a year that felt like it was coming apart.",
+  },
+  {
+    name: 'Resignation of Richard Nixon',
+    title: 'A president resigns',
+    country: 'US',
+    kind: 'politics',
+    year: 1974,
+    qid: 'Q16932404',
+    description:
+      'With the Oval Office tapes released and impeachment certain, Nixon told the country he would leave office — the only US president ever to resign — and flew out of Washington by helicopter the next morning.',
+  },
+  {
+    name: 'The Rumble in the Jungle',
+    title: 'Ali beats Foreman in Kinshasa',
+    country: 'CD',
+    kind: 'culture',
+    year: 1974,
+    qid: 'Q939560',
+    commons: 'Ali right The Rumble in the Jungle UPI.jpg',
+    description:
+      'Written off at thirty-two, Muhammad Ali leaned on the ropes and let George Foreman punch himself out before flooring him — staged in Zaire before sixty thousand people chanting his name.',
+  },
+  {
+    name: 'Ethiopian Revolution',
+    title: 'The last emperor is deposed',
+    country: 'ET',
+    kind: 'revolution',
+    year: 1974,
+    qid: 'Q9068538',
+    description:
+      "A creeping mutiny of soldiers ended three thousand years of Ethiopian monarchy, deposing Haile Selassie and installing the Derg. Famine had been hidden, and the hiding is what finally broke the throne.",
+  },
 ]
