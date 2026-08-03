@@ -119,6 +119,7 @@ const isBlockedByChallenge = (player: Player) => {
 const displayPositionFor = (player: Player) =>
   isBlockedByChallenge(player) ? player.moves[0].endTile.position : player.currentPosition
 
+
 const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success') => {
   const material = board.value?.contourMaterial
   if (!material) return
@@ -388,8 +389,9 @@ const syncPawns = () => {
     pawns.set(player.id, pawn)
     build.group.add(pawn)
     // restore() replays any steps taken while the board was unmounted
-    // (challenge-win leaps, walks begun before the scene finished loading)
-    mover.restore(player.id, displayPositionFor(player))
+    // (challenge-win leaps, walks begun before the scene finished loading),
+    // bounded by server truth so it can never re-walk settled ground
+    mover.restore(player.id, displayPositionFor(player), { walkSeq: player.walkSeq ?? 0 })
   }
 
   syncCrowns()

@@ -11,11 +11,21 @@
         <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
       </select>
     </nav>
-    <Board3D :game="mockGame" player-id="mock-player-1" />
+    <!-- Pawn-replay repro: the board unmounts for challenge views, and the
+         gate resolves while it is gone. These drive that sequence. -->
+    <nav class="controls replay-controls">
+      <button @click="walkToGate">Walk P1 to gate</button>
+      <button @click="boardVisible = false">Hide board</button>
+      <button @click="loseGate">Lose gate (hidden)</button>
+      <button @click="winGate">Win gate (hidden)</button>
+      <button @click="boardVisible = true">Show board</button>
+    </nav>
+    <Board3D v-if="boardVisible" :game="mockGame" player-id="mock-player-1" />
   </div>
 </template>
 <script lang="ts" setup>
 import { PLAYER_COLORS } from '~~/data/palette'
+import { gateLeapSteps } from '~~/lib/scoring'
 import { generateTiles } from '~~/lib/tiles'
 import { gameLengths, type Game, type GameLength, type Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -60,16 +70,55 @@ const mockGame = reactive<Game>({
 const firstGate = (board: Tile[]) =>
   board.find(tile => !['start', 'normal', 'final'].includes(tile.type))!
 
-mockGame.players['mock-player-1'].moves = [
-  {
-    endTile: firstGate(tiles),
-    challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' },
-  },
-]
+// A walk dealt PAST the gate, split the way movesForScoredPoints splits it:
+// the gate move, then the remainder it only reaches by beating the gate. The
+// tail is what a failed gate forfeits — and what the board must never walk.
+const walkThroughGate = (board: Tile[]) => {
+  const gate = firstGate(board)
+  const tail = board[Math.min(gate.position + 5, board.length - 1)]
+  return [
+    {
+      endTile: gate,
+      challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' } as const,
+    },
+    { endTile: tail },
+  ]
+}
+
+mockGame.players['mock-player-1'].moves = walkThroughGate(tiles)
 
 const step = (playerId: string, steps: number) => {
   const player = mockGame.players[playerId]
   player.currentPosition = Math.min(player.currentPosition + steps, mockGame.tiles.length - 1)
+}
+
+// --- Pawn-replay repro controls -------------------------------------------
+// The board unmounts while a challenge view is up, and the gate resolves in
+// that window. These reproduce that sequence against the same mock game id,
+// so the mover's cross-mount display memory (keyed by game id) survives —
+// reseeding instead would clear it and mask what we're testing.
+const boardVisible = ref(true)
+
+/** Walk to the tile before the gate, as the server's stepper would. */
+const walkToGate = () => {
+  const player = mockGame.players['mock-player-1']
+  const gate = player.moves[0]?.endTile.position
+  if (gate === undefined) return
+  player.currentPosition = gate - 1
+}
+
+/** Wrong answer: the server clears the moves and leaves the pawn at gate − 1. */
+const loseGate = () => {
+  const player = mockGame.players['mock-player-1']
+  player.moves = []
+}
+
+/** Correct answer: the leap advances the pawn and the gate move is consumed. */
+const winGate = () => {
+  const player = mockGame.players['mock-player-1']
+  if (!player.moves.length) return
+  player.currentPosition += gateLeapSteps()
+  player.moves.shift()
 }
 
 // First win is the champion (gold crown), later wins are finishers (silver)
@@ -85,12 +134,7 @@ let reseedCount = 0
 const regenerate = () => {
   mockGame.length = length.value
   mockGame.tiles = generateTiles(length.value, mockGame.id)
-  mockGame.players['mock-player-1'].moves = [
-    {
-      endTile: firstGate(mockGame.tiles),
-      challenge: { _type: 'individual-challenge', id: 'flag', country: 'FR' },
-    },
-  ]
+  mockGame.players['mock-player-1'].moves = walkThroughGate(mockGame.tiles)
 }
 
 const reseed = () => {
