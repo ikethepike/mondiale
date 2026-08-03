@@ -29,7 +29,6 @@
  *   /test-views
  */
 import { computed, defineComponent, h, ref } from 'vue'
-import { v4 as uuidv4 } from 'uuid'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
@@ -2617,9 +2616,9 @@ const deal = () => {
 const seedGuesses = () => {
   const now = Date.now()
   gameStore.map.liveGuesses.push(
-    { entryId: uuidv4(), playerId: RIVAL, kind: 'wrong', isoCode: 'DE', at: now },
-    { entryId: uuidv4(), playerId: THIRD, kind: 'correct', isoCode: 'PT', at: now },
-    { entryId: uuidv4(), playerId: RIVAL, kind: 'presence', at: now }
+    { entryId: crypto.randomUUID(), playerId: RIVAL, kind: 'wrong', isoCode: 'DE', at: now },
+    { entryId: crypto.randomUUID(), playerId: THIRD, kind: 'correct', isoCode: 'PT', at: now },
+    { entryId: crypto.randomUUID(), playerId: RIVAL, kind: 'presence', at: now }
   )
 }
 

@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 import { MANHUNT_TAUNTS } from '~~/lib/manhunt'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { useServerSideEvents } from '../server-side'
@@ -58,7 +57,7 @@ export const manhuntTauntHandler: EventHandler = async ({
       playerId: eventTarget.playerId,
       role,
       index: eventData.index,
-      entryId: uuidv4(),
+      entryId: crypto.randomUUID(),
       at: Date.now(),
     },
     eventTarget
