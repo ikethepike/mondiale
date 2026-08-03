@@ -25,3 +25,6 @@ docker-compose.yml
 # Logs & OS cruft
 **/*.log*
 **/.DS_Store
+
+# Claude worktrees & session files (can hold full repo copies)
+.claude
