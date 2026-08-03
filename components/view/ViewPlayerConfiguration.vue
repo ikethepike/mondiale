@@ -171,9 +171,7 @@
               :aria-label="`Remove ${playerDisplayName(lobbyPlayer)} from the game`"
               :title="`Remove ${playerDisplayName(lobbyPlayer)}`"
               @click="kickPlayer(lobbyPlayer.id)"
-            >
-              ×
-            </button>
+            ></button>
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
         </TransitionGroup>
@@ -864,21 +862,37 @@ const startGame = () => {
   }
 }
 
+// Same visual language as the ready marker beside it: a solid masked icon,
+// not a typeset glyph. Quiet at rest (removal shouldn't shout on every
+// tile), full weight + the alert hue on hover/focus — it's destructive.
 .kick-button {
   margin-left: auto;
-  width: 2rem;
+  width: 2.4rem;
   height: 2rem;
+  padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--black);
-  opacity: 0.35;
+  opacity: 0.45;
+  transition: opacity var(--motion-quick, 0.15s) ease;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--black);
+    mask: url('~/assets/icons/cross.svg') no-repeat center / 1.4rem;
+    transition: background-color var(--motion-quick, 0.15s) ease;
+  }
 
   &:hover,
   &:focus-visible {
     opacity: 1;
+
+    &::before {
+      background: flame();
+    }
   }
 }
 
