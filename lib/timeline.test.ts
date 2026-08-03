@@ -131,6 +131,12 @@ describe('formatEventYear', () => {
     expect(formatEventYear(-9500)).toBe('9,500 BCE')
     expect(formatEventYear(-10000)).toBe('10,000 BCE')
   })
+
+  it('drops the era for geological time', () => {
+    expect(formatEventYear(-66000000)).toBe('66 million years ago')
+    expect(formatEventYear(-251900000)).toBe('251.9 million years ago')
+    expect(formatEventYear(-2450000000)).toBe('2.45 billion years ago')
+  })
 })
 
 describe('dealTimelineDeck', () => {

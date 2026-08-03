@@ -1,5 +1,17 @@
-events: 546 shipped of 547 seeds
+events: 565 shipped of 570 seeds
 
-dropped (0) — fix the year or pin a qid:
+dropped (5) — fix the year or pin a qid:
+  cyrus-cylinder	-539	no time claim near -539 (saw 539, -530, 1879)
+  gautama-buddha	-528	no time claim near -528 (saw -563, -623, -500, -483, -543)
+  ashoka	-260	no time claim near -260 (saw -304, -232)
+  silk-road	-130	candidates carry no time claims at all
+  origin-of-the-domestic-dog	-20000	candidates carry no time claims at all
 
-no image (0) — add a commons/imageUrl override:
+no image (7) — add a commons/imageUrl override:
+  confucius
+  brahmasphutasiddhanta
+  cambrian-explosion
+  permian-triassic-extinction-event
+  cretaceous-paleogene-extinction-event
+  assassination-of-robert-f-kennedy
+  the-rumble-in-the-jungle

@@ -52,13 +52,19 @@ const MIN_IMAGE_WIDTH = 640
 const YEAR_TOLERANCE = 1
 /**
  * Deep time trades precision for existence: scholarly dates ("c. 9500 BCE")
- * meet Wikidata's millennium-precision placeholders ("-9999"). Seeds this old
- * verify to the right epoch, not the right digit.
+ * meet Wikidata's coarse placeholders ("-9999"), and a geological claim can be
+ * off by millions and still name the same event. Tolerance therefore scales
+ * with the seed's own age — a fixed window cannot serve both the Iron Age and
+ * the Great Oxidation. Antiquity keeps a floor so traditional dates (the
+ * Buddha, the founding of Rome) still verify.
  */
 const DEEP_TIME_FLOOR = -1000
-const DEEP_TIME_TOLERANCE = 500
+const DEEP_TIME_MINIMUM = 500
+const DEEP_TIME_FRACTION = 0.1
 const yearTolerance = (seedYear: number): number =>
-  seedYear <= DEEP_TIME_FLOOR ? DEEP_TIME_TOLERANCE : YEAR_TOLERANCE
+  seedYear <= DEEP_TIME_FLOOR
+    ? Math.max(DEEP_TIME_MINIMUM, Math.abs(seedYear) * DEEP_TIME_FRACTION)
+    : YEAR_TOLERANCE
 
 /** Time-bearing properties, in the order the issue's spec trusts them:
  *  point in time, start/end, inception, publication, discovery, launch,

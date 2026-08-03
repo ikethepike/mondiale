@@ -46,12 +46,23 @@ export const TIMELINE_TUNING: {
 
 export const timelineEvent = (slug: string): EventEntry | undefined => EVENTS[slug]
 
+/** Below this, a year is geology and reads in years-ago, not in BCE. */
+export const DEEP_TIME_YEAR = -1000000
+
 /**
  * "1989" for the common era, "490 BCE" before it — never a bare negative.
- * Deep time groups its digits ("10,000 BCE"); CE years never need to.
+ * Human deep time groups its digits ("10,000 BCE"); geological time drops the
+ * era entirely ("66 million years ago"), because no one dates an asteroid to
+ * the birth of Christ.
  */
-export const formatEventYear = (year: number): string =>
-  year < 0 ? `${formatNumber(-year)} BCE` : `${year}`
+export const formatEventYear = (year: number): string => {
+  if (year >= 0) return `${year}`
+  if (year > DEEP_TIME_YEAR) return `${formatNumber(-year)} BCE`
+  const billions = -year / 1_000_000_000
+  return billions >= 1
+    ? `${Number(billions.toFixed(2))} billion years ago`
+    : `${Number((-year / 1_000_000).toFixed(1))} million years ago`
+}
 
 /** Card copy per event kind, shared by the view and the spectate stage. */
 export const EVENT_KIND_COPY: { [kind in EventKind]: string } = {
