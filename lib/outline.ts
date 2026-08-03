@@ -3,12 +3,21 @@ import { clamp01 } from './number'
 
 export type OutlinePoint = [number, number]
 
+/** The slice of the DOM this module reads, typed locally: outline geometry is
+ *  reachable from the server tsconfig project (no DOM lib), so the read goes
+ *  through globalThis and fails soft to undefined off-client. */
+type DocumentLike = {
+  querySelector(selector: string): { getAttribute(name: string): string | null } | null
+}
+
 /**
  * The country outlines live as SVG path data in the always-mounted world map.
  * Client-only by nature — callers run inside mounted components.
  */
 export const countryPathData = (isoCode: ISOCountryCode): string | undefined =>
-  document.querySelector(`.game-map path#${isoCode}`)?.getAttribute('d') ?? undefined
+  (globalThis as { document?: DocumentLike }).document
+    ?.querySelector(`.game-map path#${isoCode}`)
+    ?.getAttribute('d') ?? undefined
 
 /** Stroke width as a share of the frame — the classic hairline at stage size. */
 export const STROKE_WIDTH_RATIO = 0.0045
