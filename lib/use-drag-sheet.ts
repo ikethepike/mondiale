@@ -64,7 +64,10 @@ export const useDragSheet = (options: DragSheetOptions) => {
   let baseY = 0
   let samples: PointerSample[] = []
 
-  const settleTo = (index: number, { velocity = 0, from, immediate = false }: SettleOptions = {}) => {
+  const settleTo = (
+    index: number,
+    { velocity = 0, from, immediate = false }: SettleOptions = {}
+  ) => {
     const el = options.el()
     if (!el) return
     stopIndex.value = index
@@ -92,7 +95,12 @@ export const useDragSheet = (options: DragSheetOptions) => {
           : flicked
             ? clamp(remaining / Math.max(Math.abs(velocity) * 1000, 900), SNAP_MIN_S, SNAP_MAX_S)
             : SPRING_S,
-      ease: from !== undefined ? EASE.enter : flicked ? (options.momentumEase ?? 'power2.out') : SPRING_EASE,
+      ease:
+        from !== undefined
+          ? EASE.enter
+          : flicked
+            ? (options.momentumEase ?? 'power2.out')
+            : SPRING_EASE,
       onComplete: land,
     })
   }
@@ -133,7 +141,10 @@ export const useDragSheet = (options: DragSheetOptions) => {
     const target =
       Math.abs(velocity) > FLICK_PX_PER_MS
         ? clamp(stopIndex.value + Math.sign(velocity), 0, stops.length - 1)
-        : stops.reduce((best, stop, index) => (Math.abs(stop - y) < Math.abs(stops[best] - y) ? index : best), 0)
+        : stops.reduce(
+            (best, stop, index) => (Math.abs(stop - y) < Math.abs(stops[best] - y) ? index : best),
+            0
+          )
     settleTo(target, { velocity })
   }
 

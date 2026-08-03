@@ -2435,7 +2435,12 @@ const scenarios: Scenario[] = [
       finalGame([
         {
           _type: 'yearbook-challenge',
-          headlines: ['fall-of-the-berlin-wall', 'baltic-way', 'velvet-revolution', 'world-wide-web'],
+          headlines: [
+            'fall-of-the-berlin-wall',
+            'baltic-way',
+            'velvet-revolution',
+            'world-wide-web',
+          ],
           tolerance: 1,
           secondsPerHeadline: 14,
         },

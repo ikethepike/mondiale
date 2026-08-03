@@ -234,7 +234,11 @@ const settleDial = (target: number, { velocity = 0 } = {}) => {
   gsap.to(dialYear, {
     value: to,
     duration: flicked
-      ? clamp(Math.sqrt(Math.abs(to - dialYear.value)) * GLIDE_S_PER_SQRT_YEAR, GLIDE_MIN_S, GLIDE_MAX_S)
+      ? clamp(
+          Math.sqrt(Math.abs(to - dialYear.value)) * GLIDE_S_PER_SQRT_YEAR,
+          GLIDE_MIN_S,
+          GLIDE_MAX_S
+        )
       : MOTION.quick,
     // A flick decelerates like a spun wheel; everything else just eases home
     ease: flicked ? 'power3.out' : EASE.enter,

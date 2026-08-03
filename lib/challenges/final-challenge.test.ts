@@ -508,9 +508,9 @@ describe('yearbook challenge', () => {
       true
     )
     // A neighbouring year inside the tolerance window dates the page as well
-    expect(
-      yearbookLeaksYear('a-treaty', event({ description: 'Ratified early in 1947.' }))
-    ).toBe(true)
+    expect(yearbookLeaksYear('a-treaty', event({ description: 'Ratified early in 1947.' }))).toBe(
+      true
+    )
     expect(
       yearbookLeaksYear('a-battle', event({ year: -490, description: 'Fought in 490 BCE.' }))
     ).toBe(true)
