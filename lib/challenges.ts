@@ -2955,7 +2955,7 @@ const CHALLENGE_DETAILS: {
   },
   'environment.renewables': {
     topic: 'environment',
-    phrasing: 'Rank these countries by percent renewable energy in their national energy mix',
+    phrasing: 'Rank these countries by the share of electricity from renewables',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',
