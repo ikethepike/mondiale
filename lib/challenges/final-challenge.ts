@@ -1,7 +1,9 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
+import { COMMODITY_EXPORTERS } from '~~/data/commodity-exporters.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
+import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
 import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
@@ -444,17 +446,42 @@ export const MADE_COMMODITIES = new Set([
   'wool',
 ])
 
+/** The dealt commodity needs enough right answers on the board to be fair,
+ *  but few enough that clicking blind stays a gamble: at most a fifth of the
+ *  board, with a floor that keeps small regional boards dealable. */
+export const MADE_MIN_POOL = 2
+export const MADE_MAX_POOL_SHARE = 0.2
+export const MADE_MAX_POOL_FLOOR = 8
+/** How much of the stored top-15 the reveal's bar chart shows. */
+export const MADE_REVEAL_ROWS = 8
+
+/** The world's top exporters of the commodity by trade value (CEPII BACI). */
+export const madeTopExporters = (commodity: string): CommodityExporterRow[] =>
+  COMMODITY_EXPORTERS[commodity]?.top ?? []
+
+/**
+ * Every country a made-challenge accepts: the global top exporters ∪ countries
+ * with the commodity in their OWN top-5 list. Both readings of "a top exporter
+ * of tobacco" are legitimate geography — Brazil ships the most leaf, while
+ * tobacco is Malawi's economic lifeline without cracking any world ranking.
+ */
+export const madeAcceptedCountries = (commodity: string): Set<ISOCountryCode> =>
+  new Set([
+    ...madeTopExporters(commodity).map(row => row.isoCode),
+    ...Object.values(COUNTRIES)
+      .filter(country => (country.economics.exports ?? []).includes(commodity))
+      .map(country => country.isoCode),
+  ])
+
 const getMadeChallenge = (pool: ISOCountryCode[]): MadeChallenge | undefined => {
-  const exporterCounts = new Map<string, number>()
-  for (const isoCode of pool) {
-    for (const item of COUNTRIES[isoCode].economics.exports ?? []) {
-      exporterCounts.set(item, (exporterCounts.get(item) ?? 0) + 1)
-    }
-  }
+  const board = new Set(pool)
+  const maxOnBoard = Math.max(MADE_MAX_POOL_FLOOR, Math.ceil(pool.length * MADE_MAX_POOL_SHARE))
   const commodity = shuffleArray(
-    [...exporterCounts.entries()]
-      .filter(([item, count]) => MADE_COMMODITIES.has(item) && count >= 2 && count <= 8)
-      .map(([item]) => item)
+    [...MADE_COMMODITIES].filter(item => {
+      if (!COMMODITY_EXPORTERS[item]) return false
+      const onBoard = [...madeAcceptedCountries(item)].filter(isoCode => board.has(isoCode))
+      return onBoard.length >= MADE_MIN_POOL && onBoard.length <= maxOnBoard
+    })
   ).shift()
   return commodity ? { _type: 'made-challenge', commodity } : undefined
 }
@@ -1044,7 +1071,7 @@ export const isCorrectFinalAnswer = ({
     case 'made-challenge': {
       if (submittedAnswer._type !== 'made-challenge') return throwTypeMismatch()
       if (!isValidISOCode(submittedAnswer.isoCode)) return false
-      return exportsCommodity(submittedAnswer.isoCode, challenge.commodity)
+      return madeAcceptedCountries(challenge.commodity).has(submittedAnswer.isoCode)
     }
     case 'scales-challenge': {
       if (submittedAnswer._type !== 'scales-challenge') return throwTypeMismatch()
@@ -1163,7 +1190,7 @@ export const getFinalChallengeDetails = ({
       }
     case 'made-challenge':
       return {
-        question: `Select a country whose top exports include ${challenge.commodity}`,
+        question: `Select a top exporter of ${challenge.commodity}`,
       }
     case 'city-nocturne-challenge':
       return {

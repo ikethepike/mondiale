@@ -165,7 +165,7 @@ import {
   bornAfter,
   boundaryStory,
   COLOR_CODED_REGIONS,
-  exportsCommodity,
+  madeAcceptedCountries,
   FINAL_STAT_LABELS,
   GAUNTLET_LIVES,
   getFinalChallengeDetails,
@@ -404,9 +404,10 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return [attributionFor(active.accessorId)]
     case 'membership-challenge':
     case 'language-challenge':
-    case 'made-challenge':
     case 'region-challenge':
       return datasetAttribution('countries')
+    case 'made-challenge':
+      return datasetAttribution('commodity-exporters')
     case 'leadership-challenge':
       return datasetAttribution('leaders')
     case 'born-challenge':
@@ -706,10 +707,8 @@ const onMapClick = (event: Event) => {
         }
         const { commodity } = currentFinalChallenge.value
 
-        for (const country of Object.values(COUNTRIES)) {
-          if (exportsCommodity(country.isoCode, commodity)) {
-            gameStore.map.highlighted.add(country.isoCode)
-          }
+        for (const accepted of madeAcceptedCountries(commodity)) {
+          gameStore.map.highlighted.add(accepted)
         }
 
         const submittedAnswer = { _type: 'made-challenge', isoCode } as const

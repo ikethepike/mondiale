@@ -652,7 +652,7 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
         prompt: `Click ${item.quota} countries that gained independence after ${item.year} — one wrong pick ends the run`,
       }
     case 'made-challenge':
-      return { kicker, prompt: `Find a country whose top exports include ${item.commodity}` }
+      return { kicker, prompt: `Find a top exporter of ${item.commodity}` }
     case 'city-nocturne-challenge':
       return {
         kicker,

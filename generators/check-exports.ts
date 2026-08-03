@@ -1,17 +1,28 @@
 /**
  * Advisory linter for the exports data — coverage, string hygiene and
- * plausibility checks the generator deliberately does NOT enforce with throws.
- * The Made In challenge matches commodity strings EXACTLY across countries and
- * the reveal ranks exporters by exportsTotal, so stray variants ("packaged
- * medicines" vs "packaged medicine") and mis-scaled totals are gameplay bugs,
- * not cosmetics. Findings are printed; with --strict they also fail the run,
- * which is how the DataUpdate workflow gates its auto-commit.
+ * plausibility checks the generators deliberately do NOT enforce with throws.
+ * The Made In challenge matches commodity strings EXACTLY across countries
+ * (the own-top-5 leg of its answer key) and against the release-pinned
+ * commodity-exporters dataset, so stray variants ("packaged medicines" vs
+ * "packaged medicine") and drift between the weekly Factbook regen and the
+ * pinned BACI data are gameplay bugs, not cosmetics. Findings are printed;
+ * with --strict they also fail the run, which is how the DataUpdate workflow
+ * gates its auto-commit.
  *
  * Run after regenerating countries:
  *   bun run generators/check-exports.ts [--strict]
  */
+import { COMMODITY_EXPORTERS } from '../data/commodity-exporters.gen'
 import { COUNTRIES } from '../data/countries.gen'
-import { MADE_COMMODITIES } from '../lib/challenges/final-challenge'
+import { COMMODITY_HS_CODES } from './data/commodity-hs-codes'
+import {
+  MADE_COMMODITIES,
+  MADE_MAX_POOL_FLOOR,
+  MADE_MAX_POOL_SHARE,
+  MADE_MIN_POOL,
+  madeAcceptedCountries,
+} from '../lib/challenges/final-challenge'
+import { isValidISOCode } from '../types/geography.types'
 
 const findings: string[] = []
 const flag = (id: string, message: string) => findings.push(`${id}: ${message}`)
@@ -22,8 +33,8 @@ const flag = (id: string, message: string) => findings.push(`${id}: ${message}`)
 // known one is not. When an entry stops matching (source updated), drop it.
 const ACCEPTED = new Set([
   'VA: no exports commodity list',
-  'KP: exports list but no exportsTotal — unranked in the Made In reveal',
-  'MC: exports list but no exportsTotal — unranked in the Made In reveal',
+  'KP: exports list but no exportsTotal',
+  'MC: exports list but no exportsTotal',
   'BB: exportsTotal vintage 2017 — source went stale',
   'ER: exportsTotal vintage 2017 — source went stale',
   'LI: exportsTotal vintage 2015 — source went stale',
@@ -36,12 +47,10 @@ const withTotal = countries.filter(country => country.economics.exportsTotal)
 
 // --- Coverage ------------------------------------------------------------------
 // The Factbook genuinely lacks an Exports dollar entry for a few states (VA, KP,
-// MC as of 2026) — those rank as "—" in the Made In reveal, which is fine. New
-// gaps mean the source moved or the parser broke.
+// MC as of 2026). New gaps mean the source moved or the parser broke.
 for (const country of countries) {
   if (!country.economics.exports) flag(country.isoCode, 'no exports commodity list')
-  else if (!country.economics.exportsTotal)
-    flag(country.isoCode, 'exports list but no exportsTotal — unranked in the Made In reveal')
+  else if (!country.economics.exportsTotal) flag(country.isoCode, 'exports list but no exportsTotal')
 }
 
 // --- Item hygiene: parse residue from the Factbook free text -------------------
@@ -116,9 +125,12 @@ for (const country of withTotal) {
     flag(country.isoCode, `exportsTotal is ${(total / gdp).toFixed(1)}x GDP (PPP)`)
 }
 
-// --- Dealability: the Made In dealer draws curated commodities with 2–8 pool --
-// exporters. Regens can rename or drop a commodity out from under the curated
-// set, and a thin curated band makes deals repetitive.
+// --- Made In answer key: the pinned BACI dataset vs the weekly Factbook regen --
+// The dealer requires a commodity-exporters entry and the validator accepts
+// the union (global top exporters ∪ own-top-5 lists) — both legs match commodity
+// strings EXACTLY, so a Factbook rename or a stale curation silently shrinks
+// the answer set. The BACI release is hand-pinned; only the countries side
+// moves weekly.
 const worldCounts = new Map<string, number>()
 for (const country of withList) {
   for (const item of country.economics.exports!) {
@@ -128,13 +140,38 @@ for (const country of withList) {
 for (const commodity of MADE_COMMODITIES) {
   if (!worldCounts.has(commodity))
     flag(commodity, 'curated in MADE_COMMODITIES but no country exports it — curation went stale')
+  if (!COMMODITY_HS_CODES[commodity])
+    flag(commodity, 'curated in MADE_COMMODITIES but missing from COMMODITY_HS_CODES')
 }
-const dealable = [...worldCounts.entries()].filter(
-  ([item, count]) => MADE_COMMODITIES.has(item) && count >= 2 && count <= 8
-).length
+for (const commodity of Object.keys(COMMODITY_HS_CODES)) {
+  if (!MADE_COMMODITIES.has(commodity))
+    flag(commodity, 'in COMMODITY_HS_CODES but not MADE_COMMODITIES — dead mapping')
+}
+for (const [commodity, entry] of Object.entries(COMMODITY_EXPORTERS)) {
+  if (!entry) continue
+  if (entry.top.length < MADE_MIN_POOL)
+    flag(commodity, `only ${entry.top.length} stored exporters — regenerate or drop it`)
+  const shareSum = entry.top.reduce((sum, row) => sum + row.share, 0)
+  for (const row of entry.top) {
+    if (!isValidISOCode(row.isoCode)) flag(commodity, `invalid exporter code "${row.isoCode}"`)
+    if (!Number.isFinite(row.value.amount) || row.value.amount <= 0)
+      flag(commodity, `exporter ${row.isoCode} has value ${row.value.amount}`)
+  }
+  if (shareSum > 1.001) flag(commodity, `world shares sum to ${shareSum.toFixed(3)}`)
+  const vintage = entry.world.year
+  if (vintage === undefined) flag(commodity, 'world total has no year')
+  else if (vintage < currentYear - 4)
+    flag(commodity, `BACI vintage ${vintage} — release went stale, bump the pin`)
+}
+const worldCap = Math.max(MADE_MAX_POOL_FLOOR, Math.ceil(countries.length * MADE_MAX_POOL_SHARE))
+const dealable = [...MADE_COMMODITIES].filter(commodity => {
+  if (!COMMODITY_EXPORTERS[commodity]) return false
+  const accepted = madeAcceptedCountries(commodity).size
+  return accepted >= MADE_MIN_POOL && accepted <= worldCap
+}).length
 if (dealable < 20)
   findings.push(
-    `only ${dealable} curated commodities have 2–8 world exporters — Made In deals get repetitive`
+    `only ${dealable} curated commodities are dealable on a world board — Made In deals get repetitive`
   )
 
 // --- Report --------------------------------------------------------------------
