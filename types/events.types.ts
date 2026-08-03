@@ -55,6 +55,10 @@ export type ClientEventData =
        *  clamps the claim to beat 1's share of the pot. Beat-2 taps travel in
        *  `ranking` as usual. */
       empire?: { guessedId?: string; clientScore: number }
+      /** Name-that-water rounds: the feature the player settled on (absent =
+       *  never resolved correctly). The server re-checks it against the dealt
+       *  feature and zeroes the claim on a miss — same posture as `empire`. */
+      water?: { guessedId?: string; guessedName?: string }
     }
   | {
       event: 'submit-individual-challenge-answer'

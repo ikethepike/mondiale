@@ -1,6 +1,7 @@
 import {
   clampClientScore,
   getCorrectRanking,
+  isCorrectWaterGuess,
   isFlagPaletteMatch,
   scoreChallengeSubmission,
   scoreGhostState,
@@ -211,14 +212,12 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       }
       case 'name-that-water': {
         const challenge = expectChallengeType(roundChallenge, 'name-water-challenge')
-        // The guessed NAME is validated client-side (it isn't an ISO code);
-        // the scorecard shows the feature's shore countries as the answer
+        // The guess isn't an ISO code, so the server re-checks the named
+        // feature itself and clamps the claim — a claim with no matching guess
+        // pays nothing. The scorecard shows the shore countries as the answer.
+        const named = isCorrectWaterGuess(challenge, eventData.water)
         answer = { submitted: eventData.ranking, correct: challenge.countries }
-        scoring = clampClientScore(
-          eventData.clientScore,
-          challenge.maximumPoints,
-          (eventData.clientScore ?? 0) > 0
-        )
+        scoring = clampClientScore(eventData.clientScore, challenge.maximumPoints, named)
         break
       }
       case 'sketch': {

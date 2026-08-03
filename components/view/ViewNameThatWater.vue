@@ -80,6 +80,7 @@ import SuggestInput, { type SuggestOption } from '~/components/challenge/Suggest
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
+import { isCorrectWaterGuess } from '~~/lib/challenges'
 import { normalizeAnswer } from '~~/lib/strings'
 import {
   attemptFraction,
@@ -212,7 +213,7 @@ registerCleanup(() => {
 
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
 const REVEAL_HOLD_MS = 4200
-const resolve = (correct: boolean) => {
+const resolve = (correct: boolean, guess?: SuggestOption) => {
   const active = challenge.value
   if (!active || resolved.value) return
   resolved.value = true
@@ -232,7 +233,14 @@ const resolve = (correct: boolean) => {
       )
     : 0
 
-  revealTimer = setTimeout(() => submitOnce([], clientScore), REVEAL_HOLD_MS)
+  // The named feature rides along so the server can re-check it: the claimed
+  // score alone proves nothing.
+  const water = guess ? { guessedId: guess.id, guessedName: guess.name } : undefined
+
+  revealTimer = setTimeout(
+    () => submitOnce([], clientScore, undefined, water ? { water } : undefined),
+    REVEAL_HOLD_MS
+  )
 }
 
 const begin = () => {
@@ -252,11 +260,8 @@ const pick = (option: SuggestOption) => {
   if (!active || resolved.value || !started.value) return
   attempts.value++
 
-  if (
-    option.id === active.featureId ||
-    normalizeName(option.name) === normalizeName(active.featureName)
-  ) {
-    return resolve(true)
+  if (isCorrectWaterGuess(active, { guessedId: option.id, guessedName: option.name })) {
+    return resolve(true, option)
   }
 
   if (attempts.value >= active.maximumGuesses) return resolve(false)
