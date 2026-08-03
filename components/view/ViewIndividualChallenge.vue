@@ -1201,6 +1201,13 @@ watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapB
 })
 
 // The reveal race starts the moment the interstitial clears
+// Watch-mode verdict (see WATCH_SAFE_EVENTS in client-side.ts): these reveal
+// races RUN AS AMBIENCE in the booth. They are the gate's QUESTION — the
+// zoom, the drawing outline, the duel — and fidelity means the watcher sees
+// what the racer sees; their dangerous endpoints (the timers' submitAnswer
+// calls) die on the guard at the top of submitAnswer. In the booth the
+// interstitial self-skips (Interstitial's watching contract), so `done`
+// lands here immediately — deliberate, not a leak.
 watch(showInterstitial, value => {
   if (value) return
   if (variant.value === 'outline-reveal') beginOutlineReveal()

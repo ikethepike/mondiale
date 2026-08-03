@@ -23,7 +23,19 @@ export const REDELIVER_MAX_BATCHES = 15
 
 /** The only events a booth watcher may emit: their own (re)admission and the
  *  sanctioned crowd cheer. Everything else a mounted read-only view attempts
- *  is swallowed by update()'s watch gate. */
+ *  is swallowed by update()'s watch gate.
+ *
+ *  THE CONTAINMENT INVARIANT (both layers are input-shaped): `inert` blocks
+ *  what a USER triggers, this gate blocks what a view EMITS — neither stops
+ *  a mounted view's self-firing effects (setTimeout/setInterval/watch/
+ *  onMounted) from mutating local, store or module state. Every such effect
+ *  needs an explicit watch-mode verdict, one of: RUN AS AMBIENCE (the group
+ *  clock, gate reveal races — what the racer sees, the watcher sees), SKIP
+ *  (submitOnce/announce/submitAnswer), SKIP AND CLEAR (movement-request),
+ *  or REPLACE WITH SNAPSHOT TRUTH (buzz resolve). The composables record
+ *  verdicts for views built on them; a view on neither composable —
+ *  ViewIndividualChallenge is the standing example — owns every verdict
+ *  itself, including the invisible ones (its interstitial ref, its timers). */
 export const WATCH_SAFE_EVENTS: ClientEventData['event'][] = ['join', 'player-cheering']
 
 export const useClientEvents = () => {
