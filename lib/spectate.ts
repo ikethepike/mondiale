@@ -23,6 +23,7 @@ import {
   isTraversalChallenge,
   roundChallengeKind,
   type RoundChallenge,
+  type RoundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -147,6 +148,27 @@ export const nextDirectorShot = (
   if (cut.classIndex < currentClass && now - previous.at >= MIN_SHOT_MS) return cut
   return held
 }
+
+/**
+ * Round kinds the booth mounts as REAL views (read-only) instead of story
+ * cards. Grows batch by batch as kinds are verified; a kind not listed falls
+ * back to its SpectateStage card. The starting three are fully snapshot-
+ * driven: server deadlines, whole-table state, no local-clock dependence.
+ */
+export const MOUNTABLE_KINDS: RoundChallengeKind[] = ['border-chain', 'heritage-hunt', 'timeline']
+
+/**
+ * Every active racer is out of the answering window — the round's outcome is
+ * public. The SpoilerVeil drops once this is true: before it, a followed
+ * racer's early reveal would spoil the table for a glanced-at screen.
+ */
+export const roundSettled = (
+  players: Player[],
+  groupAnswers: Partial<Record<string, unknown>>
+): boolean =>
+  players
+    .filter(player => player.phase !== 'kicked' && !player.completedAtRound)
+    .every(player => player.phase !== 'group-challenge' || !!groupAnswers[player.id])
 
 /**
  * A stage card's copy. `secret` is the spectator's dramatic irony — the

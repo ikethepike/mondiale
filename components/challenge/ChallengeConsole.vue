@@ -1,5 +1,7 @@
 <template>
-  <div class="challenge-console" :class="{ low }">
+  <!-- Watch mode: the booth mounts views read-only — a dead input console is
+       noise, so the one console home hides itself and every view follows. -->
+  <div v-if="!gameStore.watching" class="challenge-console" :class="{ low }">
     <div class="console-input"><slot /></div>
     <ChallengeTimerRadial class="console-clock" :value="value" :total="total" />
   </div>
@@ -7,6 +9,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import { useGameStore } from '~~/store/game.store'
+
+const gameStore = useGameStore()
 
 /**
  * The timed modes' guess console: one map-caption pill holding the slotted

@@ -47,11 +47,18 @@
     <!-- Centre stage: what the followed racer is looking at right now. Keyed
          on the SUBJECT only: the same racer's phase changes swap the card's
          content in place (no transition, no blank stage), while a real
-         director cut gets a quick out-in. The old `stage-subject` key faded
-         the card out and in on every phase flip — the booth's flicker. -->
+         director cut gets a quick out-in. Mountable round kinds render the
+         REAL challenge view read-only through the followed seat; the rest
+         keep their story cards. -->
     <Transition name="shot-cut" mode="out-in">
+      <SpectateMount
+        v-if="mountedView"
+        :key="`mount-${followed?.id ?? 'none'}-${mountedView.key}`"
+        :view="mountedView"
+        :veiled="veiled"
+      />
       <SpectateStage
-        v-if="stage !== 'board'"
+        v-else-if="stage !== 'board'"
         :key="followed?.id ?? 'none'"
         :stage="stage"
         :story="story"
@@ -156,13 +163,17 @@ import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import SpectateBoard from '~/components/spectate/SpectateBoard.vue'
+import SpectateMount from '~/components/spectate/SpectateMount.vue'
 import SpectateStage from '~/components/spectate/SpectateStage.vue'
+import { resolveChallengeView } from '~/components/view/dispatch'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { getPlayerStatus } from '~~/lib/player-status'
 import {
   finalStory,
   gateStory,
+  MOUNTABLE_KINDS,
   nextDirectorShot,
+  roundSettled,
   roundStory,
   stageForPhase,
   type DirectorShot,
@@ -216,6 +227,39 @@ const toggleFollow = (playerId: string) => {
 const stage = computed(() => {
   if (raceOver.value) return 'scores'
   return followed.value ? stageForPhase(followed.value.phase) : 'idle'
+})
+
+// The booth is spectateSeatId's ONE writer: mounted views resolve their seat
+// through it, so the whole read-only fidelity rides this line.
+watch(
+  () => followed.value?.id,
+  id => {
+    gameStore.spectateSeatId = id
+  },
+  { immediate: true }
+)
+
+/** The real challenge view for the followed seat, when the round kind has
+ *  been verified mountable — otherwise undefined and the story card shows. */
+const mountedView = computed(() => {
+  if (!followed.value || raceOver.value) return undefined
+  if (stage.value !== 'question') return undefined
+  const round = currentRound.value?.round
+  if (!round) return undefined
+  if (!MOUNTABLE_KINDS.includes(roundChallengeKind(round.groupChallenge))) return undefined
+  return resolveChallengeView(followed.value.phase, round)
+})
+
+// Spoiler policy over mounted views: pre-reveal they show only what the racer
+// sees, so the only leak is a reveal state reached EARLY (the followed seat
+// answered while others still race). Central veil, no per-view discipline.
+const veiled = computed(() => {
+  if (!gameStore.spectateHideSpoilers || !mountedView.value) return false
+  const round = currentRound.value?.round
+  if (!round) return false
+  const seatRevealed =
+    !!followed.value && (!!round.groupAnswers[followed.value.id] || stage.value === 'scores')
+  return seatRevealed && !roundSettled(racers.value, round.groupAnswers)
 })
 
 const currentRound = toRef(gameStore, 'currentRound')
@@ -302,13 +346,11 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
 // board covers the map entirely, so painting pauses there.
 const paintMap = () => {
   if (!game.value || stage.value === 'board') return
+  // A mounted view owns the map — the booth painting under it would fight
+  // the very fidelity the mount exists for.
+  if (mountedView.value) return
 
-  // clearBoard() also resets the live-guess ticker; snapshot and restore it so
-  // a repaint mid-round (border-chain / heritage focus shifts) can't wipe
-  // in-flight guess chips.
-  const guesses = gameStore.map.liveGuesses
-  clearBoard()
-  gameStore.map.liveGuesses = guesses
+  clearBoard({ preserveLiveGuesses: true })
 
   // Hiding spoilers pulls the focus glow too — it would point straight at the
   // answer country. Fall back to the game's atlas glow.
@@ -328,12 +370,14 @@ const paintMap = () => {
 // re-fit the map camera on identical focus sets. The spoiler flag is in the
 // key so toggling it repaints immediately.
 const paintKey = computed(
-  () => `${stage.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
+  () =>
+    `${stage.value}|${!!mountedView.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
 )
 onMounted(paintMap)
 watch(paintKey, paintMap)
 onBeforeUnmount(() => {
   gameStore.spectateFollowId = undefined
+  gameStore.spectateSeatId = undefined
   // A finisher leaving a finished race must land on their report, not bounce
   // back into a dead booth on the next routing pass.
   if (raceOver.value) gameStore.spectating = false

@@ -147,6 +147,13 @@ interface GameStoreState {
   spectating: boolean
   /** Spectator booth: pinned player to follow; undefined = auto-director. */
   spectateFollowId?: string
+  /**
+   * The seat the booth is rendering as — the followed racer's id. Written by
+   * ONE owner (ViewSpectate: director cut or pin), cleared on booth unmount,
+   * so for every racer `seatId === playerId` and their path is provably
+   * untouched. Views resolve their seat through `seatId`, never this field.
+   */
+  spectateSeatId?: string
   /** Spectator booth: hide the answer secrets, pre-settle reveals and map
    *  focus glow — for a screen someone in the room might glance at. */
   spectateHideSpoilers: boolean
@@ -165,6 +172,7 @@ export const useGameStore = defineStore('game', {
     joinAsSpectator: false,
     spectating: false,
     spectateFollowId: undefined,
+    spectateSeatId: undefined,
     spectateHideSpoilers: false,
     map: {
       status: undefined,
@@ -213,14 +221,25 @@ export const useGameStore = defineStore('game', {
         number: state.game.rounds.length,
       }
     },
-    currentGroupChallengeForPlayer(state): ISOCountryCode[] | undefined {
+    /** The identity this UI renders as: the booth's followed seat, or self.
+     *  Every per-seat read goes through here; `playerId` stays the REAL
+     *  identity for emits, host checks and the routing `self`. */
+    seatId(state): string {
+      return state.spectateSeatId ?? state.playerId
+    },
+    /** In the booth — a latecomer watcher or a finisher watching. The write
+     *  gate in client-side.ts keys off this. */
+    watching(state): boolean {
+      return this.isSpectator || state.spectating
+    },
+    currentGroupChallengeForPlayer(): ISOCountryCode[] | undefined {
       const round = this.currentRound?.round
       if (!round) return undefined
-      if (!state.playerId) return undefined
+      if (!this.seatId) return undefined
       // Only ranking rounds deal per-player hands
       if (!('countriesPerPlayer' in round.groupChallenge)) return undefined
 
-      return round.groupChallenge.countriesPerPlayer[state.playerId]
+      return round.groupChallenge.countriesPerPlayer[this.seatId]
     },
     playersByPhase(state) {
       const players = Object.values(state.game?.players || [])
@@ -231,14 +250,14 @@ export const useGameStore = defineStore('game', {
         all: players,
       }
     },
-    playerScore(state): PlayerScore {
-      if (!state.playerId) return undefined
+    playerScore(): PlayerScore {
+      if (!this.seatId) return undefined
       if (!this?.currentRound) return undefined
       const { groupAnswers, playerTurns } = this.currentRound.round
 
       return {
-        ordering: groupAnswers[state.playerId] || [],
-        points: playerTurns[state.playerId]?.points || 0,
+        ordering: groupAnswers[this.seatId] || [],
+        points: playerTurns[this.seatId]?.points || 0,
       }
     },
     /**

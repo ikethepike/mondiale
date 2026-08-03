@@ -135,7 +135,7 @@
       class="reveal"
       :challenge="challenge"
       :players="gameStore.game?.players ?? {}"
-      :player-id="gameStore.playerId"
+      :player-id="gameStore.seatId"
     />
   </div>
 </template>
@@ -202,9 +202,9 @@ const beginRound = () => {
 }
 
 const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
-const iAmReady = computed(() => state.value.ready.includes(gameStore.playerId))
+const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
 const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
@@ -269,7 +269,7 @@ const activeOptions = computed<SuggestOption[]>(
   () => optionsByCategory.value[optionsCategory.value] ?? []
 )
 
-const myLocked = computed(() => state.value.locked[gameStore.playerId] ?? [])
+const myLocked = computed(() => state.value.locked[gameStore.seatId] ?? [])
 const isMineLocked = (category: UniqueCategoryId) =>
   myLocked.value.includes(category) || ownPicks.value[category] !== undefined
 /** Every blank of mine that is spent — the server's locks plus picks still in
@@ -295,7 +295,7 @@ const ownCountryPick = (category: UniqueCategoryId) => {
 
 const rivalsLocked = (category: UniqueCategoryId) =>
   state.value.order.filter(
-    playerId => playerId !== gameStore.playerId && state.value.locked[playerId]?.includes(category)
+    playerId => playerId !== gameStore.seatId && state.value.locked[playerId]?.includes(category)
   )
 
 // A slot that just locked must not keep focus — step to the next OPEN blank
@@ -362,7 +362,7 @@ const verdictLine = computed(() => {
   let banked = 0
   for (const cells of Object.values(results)) {
     for (const cell of cells) {
-      if (cell.holders.includes(gameStore.playerId)) banked += cell.scored
+      if (cell.holders.includes(gameStore.seatId)) banked += cell.scored
     }
   }
   return `You banked ${banked} of ${challenge.value?.maximumPoints ?? 0} points`

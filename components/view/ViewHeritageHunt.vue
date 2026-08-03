@@ -97,7 +97,7 @@ const showPhoto = computed(() => canPin.value)
 
 const isPhone = useIsPhone()
 const locked = computed(
-  () => !!state.value && !!state.value.pins[gameStore.playerId]?.[state.value.beat]
+  () => !!state.value && !!state.value.pins[gameStore.seatId]?.[state.value.beat]
 )
 
 const headline = computed(() => {
@@ -116,7 +116,7 @@ const beatStandings = computed(() => {
         const entry = current.pins[playerId]?.[current.beat]
         return {
           playerId,
-          name: seatLabel(gameStore.game?.players, playerId, gameStore.playerId),
+          name: seatLabel(gameStore.game?.players, playerId, gameStore.seatId),
           distanceKm: entry?.distanceKm,
           tail: entry?.distanceKm !== undefined ? formatKm(entry.distanceKm) : 'no pin',
         }

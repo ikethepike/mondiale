@@ -52,13 +52,31 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       : undefined
   })
 
-  // Blank the world map by default — most modes ARE the whole question.
-  clearBoard()
+  // Blank the world map by default — most modes ARE the whole question. In
+  // the booth the reset keeps the ticker: a director cut mid-round must not
+  // wipe in-flight guess chips.
+  clearBoard({ preserveLiveGuesses: gameStore.watching })
   if (options.solo !== false) gameStore.map.solo = true
 
-  const showInterstitial = ref(true)
-  const started = ref(false)
-  const submitted = ref(false)
+  // Watch mode (the booth mounting this view read-only): no interstitial —
+  // every director cut would replay the 2.4s beat — and the round counts as
+  // started, since the racers are already in it.
+  const showInterstitial = ref(!gameStore.watching)
+  const started = ref(gameStore.watching)
+
+  // The submit latch. For a racer it's local state; in watch mode it rides
+  // the snapshot — the followed SEAT's banked answer is the truth, so the
+  // reveal state tracks whoever the booth follows.
+  const submittedLocal = ref(false)
+  const submitted = computed({
+    get: () =>
+      gameStore.watching
+        ? !!currentRound.value?.round.groupAnswers[gameStore.seatId]
+        : submittedLocal.value,
+    set: value => {
+      submittedLocal.value = value
+    },
+  })
 
   // Optional countdown, driven by a `durationSeconds` on the challenge.
   const duration = computed(() =>
@@ -95,6 +113,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     buzzAt?: number,
     extras?: SubmitExtras
   ) => {
+    // Watchers hold no answer: the gate here also keeps the redelivery loop
+    // from ever arming (update() would swallow the emit and retry forever).
+    if (gameStore.watching) return
     if (submitted.value) return
     submitted.value = true
     void deliverAnswer(ranking, clientScore, buzzAt, extras)
@@ -166,6 +187,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     isoCode?: ISOCountryCode
     label?: string
   }) => {
+    // A watcher fabricates no guess chips and sends nothing to the room
+    if (gameStore.watching) return
     if (text !== undefined) {
       hint.value = text
       if (hintTimer) clearTimeout(hintTimer)
@@ -249,7 +272,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
   onBeforeUnmount(() => {
-    clearBoard()
+    clearBoard({ preserveLiveGuesses: gameStore.watching })
     if (countdown) clearInterval(countdown)
     for (const fn of cleanups) fn()
   })

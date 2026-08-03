@@ -40,7 +40,11 @@ import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
 
-const { game, player, currentRound, gameStore } = useClientEvents()
+// ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
+// followed seat, so a latecomer watcher HAS a `player` while following — a
+// routing branch on it would drop them into the raw phase switch instead of
+// the booth. `self` is the raw own record.
+const { game, self, currentRound, gameStore } = useClientEvents()
 
 // Mounted here, above the view switch: inside a view it would remount on every
 // phase change, lose the previous-phase map, and announce the same moment again.
@@ -68,7 +72,7 @@ const activeView = computed<ActiveView | undefined>(() => {
   // No player record in a started game: a watcher. Either admitted through
   // the spectator door, or ejected mid-watch (door closed) — the same dead
   // end a closed-door latecomer gets.
-  if (game.value.started && !player.value) {
+  if (game.value.started && !self.value) {
     return gameStore.isSpectator
       ? { component: ViewSpectate, kind: 'score', key: 'spectate' }
       : { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
@@ -78,19 +82,19 @@ const activeView = computed<ActiveView | undefined>(() => {
   // balcony. The else arm is the mid-wait ejection (host sealed the room):
   // record gone, same card a closed-door latecomer gets. A normal joining
   // player never lands here — their first snapshot carries their own record.
-  if (!game.value.started && !player.value) {
+  if (!game.value.started && !self.value) {
     return gameStore.isWaitingSpectator
       ? { component: ViewWaitingRoom, kind: 'card', key: 'waiting-room' }
       : { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
   }
 
-  if (!player.value) return undefined
+  if (!self.value) return undefined
 
   if (!game.value.started) {
     return { component: ViewPlayerConfiguration, kind: 'lobby', key: 'lobby' }
   }
 
-  if (player.value.phase === 'tutorial') {
+  if (self.value.phase === 'tutorial') {
     return { component: ViewTutorial, kind: 'card', key: 'tutorial' }
   }
 
@@ -98,13 +102,13 @@ const activeView = computed<ActiveView | undefined>(() => {
   // purely client-side, they already receive every broadcast. Checked BEFORE
   // the round guard: the booth must survive the between-rounds window where
   // `currentRound` is briefly empty (it used to blank the finisher's screen).
-  if (player.value.phase === 'victory' && gameStore.spectating) {
+  if (self.value.phase === 'victory' && gameStore.spectating) {
     return { component: ViewSpectate, kind: 'score', key: 'spectate' }
   }
 
   if (!currentRound.value?.round) return undefined
 
-  return resolveChallengeView(player.value.phase, currentRound.value.round)
+  return resolveChallengeView(self.value.phase, currentRound.value.round)
 })
 
 /**
