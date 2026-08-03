@@ -1,5 +1,5 @@
 <template>
-  <div class="group-challenge-wrapper" :class="{ peeking }">
+  <div class="group-challenge-wrapper">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -10,10 +10,6 @@
     />
     <form id="active-round" @submit.prevent="submitRanking">
       <header>
-        <ButtonFilled class="peek-button" element="a" @click="peeking = !peeking">
-          <span>Peek</span>
-          <div class="peek-icon" />
-        </ButtonFilled>
         <SourceInfo
           v-if="accessorId"
           class="question-source"
@@ -101,7 +97,6 @@ const { gameStore, update, currentRound } = useClientEvents()
 const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
-const peeking = ref(false)
 const showInterstitial = ref(true)
 
 const ranking = ref<ISOCountryCode[]>(gameStore.currentGroupChallengeForPlayer || [])
@@ -195,20 +190,6 @@ const options = ref({
   }
 }
 
-.peeking {
-  #active-round {
-    pointer-events: none;
-    backdrop-filter: blur(0);
-  }
-  footer {
-    transform: translateY(calc(100% - 9rem));
-  }
-
-  #question {
-    opacity: 0;
-  }
-}
-
 // No h1 font-size here: caption headings scale through the shared clamp in
 // templates/_map-caption.scss — a view override forks the type scale.
 
@@ -225,23 +206,6 @@ const options = ref({
   .question-source {
     top: 1.2rem;
     right: 1.6rem;
-  }
-}
-
-.peek-button {
-  top: 5vh;
-  z-index: 10;
-  flex-shrink: 0;
-  position: absolute;
-  width: max-content;
-  pointer-events: auto;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  .peek-icon {
-    width: 4rem;
-    height: 2rem;
-    background: #fff;
-    mask: url('~/assets/icons/eye.svg') no-repeat center/contain;
   }
 }
 
@@ -437,14 +401,6 @@ footer {
   #active-round {
     padding: calc(1.2rem + var(--safe-top)) calc(1.2rem + var(--safe-right))
       calc(1.2rem + var(--safe-bottom)) calc(1.2rem + var(--safe-left));
-  }
-
-  // No peek on phones: the vertical list owns the screen and the blurred map
-  // behind it isn't worth a control. (The map is fully visible between rounds.)
-  // Chained with .button to outrank ButtonBase's `display: flex` — equal
-  // specificity leaves the winner to stylesheet order, which varies per build.
-  .peek-button.button {
-    display: none;
   }
 
   // The question keeps its caption intact (min-height: auto) and absorbs
