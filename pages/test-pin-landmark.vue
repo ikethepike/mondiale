@@ -25,12 +25,12 @@
       </div>
 
       <p v-if="truthPoint && showTruth" class="truth">
-        {{ truthPoint.name }} is at {{ format(truthPoint.coordinates) }}
+        {{ truthPoint.name }} is at {{ formatLatLng(truthPoint.coordinates) }}
       </p>
 
       <p v-if="lastSubmission" class="submission">
-        pinned {{ format(lastSubmission.pin) }} —
-        <strong>{{ Math.round(lastSubmission.distanceKm).toLocaleString() }} km</strong>
+        pinned {{ formatLatLng(lastSubmission.pin) }} —
+        <strong>{{ formatKm(lastSubmission.distanceKm) }}</strong>
         off, scored <strong>{{ lastSubmission.scored }}</strong> / {{ lastSubmission.maximum }}
       </p>
       <p v-else-if="ready" class="submission muted">click the map, then lock in your pin</p>
@@ -61,6 +61,8 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { sample } from '~~/lib/arrays'
 import { scorePinLandmark } from '~~/lib/challenges'
 import { generateTiles } from '~~/lib/tiles'
+import { formatLatLng } from '~~/lib/geo'
+import { formatKm } from '~~/lib/number'
 import type { LatLng } from '~~/lib/geo'
 import { useGameStore } from '~~/store/game.store'
 import type { PinLandmarkChallenge } from '~~/types/challenges/group-modes.type'
@@ -96,8 +98,7 @@ const truthPoint = computed(() => {
   return { name: landmark.name, coordinates: landmark.coordinates }
 })
 
-const format = ({ lat, lng }: LatLng) =>
-  `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(2)}°${lng >= 0 ? 'E' : 'W'}`
+
 
 const randomSlug = () => sample(pool.value)?.slug
 

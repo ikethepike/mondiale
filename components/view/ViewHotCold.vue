@@ -48,7 +48,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { bearingDegrees, compassArrow, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
-import { formatKm } from '~~/lib/number'
+import { formatApproxKm, formatKm } from '~~/lib/number'
 import type { MapTint } from '~~/store/game.store'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -120,9 +120,7 @@ const temperatureFor = (probe: Probe): string => {
 }
 
 const distancePhrase = (distanceKm: number): string =>
-  distanceKm < 100
-    ? 'less than 100 km'
-    : `about ${(Math.round(distanceKm / 100) * 100).toLocaleString()} km`
+  distanceKm < 100 ? 'less than 100 km' : `about ${formatApproxKm(distanceKm)}`
 
 const clueFor = (probe: Probe): string => {
   const from = countryLatLng(probe.isoCode)

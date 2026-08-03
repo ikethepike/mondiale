@@ -60,3 +60,7 @@ export const formatCompact = (amount: number, options: { currency?: boolean } = 
 /** "1,234 km" — the one distance formatter for pin drops, probes and standings. */
 export const formatKm = (distanceKm: number): string =>
   `${Math.round(distanceKm).toLocaleString()} km`
+
+/** "3,400 km" at a 100 km grain — the deliberately vague distance for clue copy. */
+export const formatApproxKm = (distanceKm: number, grainKm = 100): string =>
+  formatKm(Math.round(distanceKm / grainKm) * grainKm)

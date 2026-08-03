@@ -65,13 +65,12 @@ import HeritageReveal from '~/components/feedback/HeritageReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { datasetAttribution } from '~~/lib/attribution'
-import type { LatLng } from '~~/lib/geo'
 import { formatKm } from '~~/lib/number'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { usePinDrop } from '~~/lib/use-pin-drop'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { seatLabel } from '~~/lib/player'
-import { isMapClickEvent } from '~~/types/events.types'
 
 const photoSources = datasetAttribution('heritage')
 
@@ -97,9 +96,6 @@ const canPin = computed(() => !!state.value && !state.value.revealing && !state.
 const showPhoto = computed(() => canPin.value)
 
 const isPhone = useIsPhone()
-const photoExpanded = ref(true)
-
-const pin = ref<LatLng | undefined>(undefined)
 const locked = computed(
   () => !!state.value && !!state.value.pins[gameStore.playerId]?.[state.value.beat]
 )
@@ -136,39 +132,21 @@ const beatStandings = computed(() => {
 const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 // --- Pinning ------------------------------------------------------------------
+const { pin, photoExpanded, resetPin } = usePinDrop({
+  canDrop: () =>
+    !showInterstitial.value && started.value && !locked.value && canPin.value,
+  announce,
+  registerCleanup,
+})
+
 const lockIn = () => {
   const current = state.value
   if (!current || !pin.value || locked.value || !canPin.value) return
   update({ event: 'submit-heritage-pin', beat: current.beat, pin: pin.value })
 }
 
-const onMapClick = (event: Event) => {
-  if (!isMapClickEvent(event)) return
-  if (showInterstitial.value || !started.value || locked.value || !canPin.value) return
-  const latLng = event.detail.latLng
-  if (!latLng) return
-
-  const first = !pin.value
-  pin.value = latLng
-  gameStore.map.pin = latLng
-  if (first) {
-    announce({ kind: 'presence' })
-    photoExpanded.value = false
-  }
-}
-onMounted(() => document.addEventListener('mapClick', onMapClick))
-registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
-
 // A new beat: fresh pin, fresh photo, clean map.
-watch(
-  () => state.value?.beat,
-  () => {
-    pin.value = undefined
-    photoExpanded.value = true
-    gameStore.map.pin = undefined
-    gameStore.map.pinAnswer = undefined
-  }
-)
+watch(() => state.value?.beat, resetPin)
 
 // The reveal: the truth appears, the dashed line measures the local miss.
 // Immediate, so arriving mid-reveal (reconnect, harness) still shows it.

@@ -86,6 +86,8 @@
       <Transition name="caption">
         <ButtonFilled v-if="revealed" class="continue-button" @click="finish">
           <span v-if="browseSecondsLeft > BROWSE_HINT_S">Continue</span>
+          <!-- Button copy, not view chrome — the round clock above is the shared
+               radial; a dial inside a button label wouldn't read. -->
           <span v-else>Continuing in {{ browseSecondsLeft }}s</span>
         </ButtonFilled>
       </Transition>
