@@ -55,8 +55,6 @@ import { resolveChallengeView } from '~/components/view/dispatch'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { getPlayerStatus } from '~~/lib/player-status'
 import {
-  finalStory,
-  gateStory,
   MOUNTABLE_KINDS,
   nextDirectorShot,
   roundSettled,
@@ -149,24 +147,13 @@ const veiled = computed(() => {
 
 const currentRound = toRef(gameStore, 'currentRound')
 
-/** The centre card's copy — also drives what the shared map paints. */
+/** The centre card's copy — the fallback stages only (unmountable question
+ *  kinds and idle beats); gates, finals and scores always mount real views. */
 const story = computed<SpectateStory>(() => {
   const target = followed.value
   switch (stage.value) {
     case 'question':
       return roundStory(currentRound.value?.round.groupChallenge)
-    case 'gate': {
-      const gate = target?.moves[0]?.challenge
-      return gate?._type === 'individual-challenge'
-        ? gateStory(gate)
-        : { kicker: 'Challenge gate', prompt: 'A gate blocks the path…' }
-    }
-    case 'final': {
-      const gauntlet = target?.moves[0]?.challenge
-      return gauntlet?._type === 'final-challenge'
-        ? finalStory(gauntlet.challenges[0])
-        : { kicker: 'Final gauntlet', prompt: 'The gauntlet is being dealt…' }
-    }
     default:
       // The idle stages that used to read as a broken card: the whole table
       // reading the rules at game open, or a finisher the director lingers on.

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  finalStory,
-  gateStory,
   IDLE_CUT_GRACE_MS,
   MIN_SHOT_MS,
   MOUNTABLE_KINDS,
@@ -16,14 +14,7 @@ import {
 import {
   roundChallengeKind,
   type RoundChallenge,
-  type RoundChallengeKind,
-  type TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
-import {
-  individualChallengeVariants,
-  type IndividualChallenge,
-} from '~~/types/challenges/individual-challenge.type'
-import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import { EVENTS } from '~~/data/events.gen'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
@@ -180,131 +171,50 @@ describe('roundSettled', () => {
 })
 
 describe('roundStory', () => {
-  it('tells the traversal secret as the optimal route', () => {
-    const challenge: TraversalChallenge = {
-      _type: 'traversal-challenge',
-      start: 'FR',
-      target: 'DE',
-      optimalHops: 1,
-      optimalPath: ['FR', 'DE'],
-      maximumClicks: 5,
-      maximumPoints: 8,
-    }
-    const story = roundStory(challenge)
-    expect(story.prompt).toContain('France')
-    expect(story.prompt).toContain('Germany')
-    expect(story.secret).toContain('France → Germany')
-    expect(story.focus).toEqual(['FR', 'DE'])
-  })
-
-  it('keeps the silhouette answer in the secret, not the prompt', () => {
+  // Only the three unmountable kinds keep bespoke cards; every other kind
+  // mounts its real view and falls through to the generic fallback here.
+  it('keeps the anthem answer in the secret, not the prompt', () => {
     const story = roundStory({
-      _type: 'silhouette-challenge',
+      _type: 'anthem-buzz-challenge',
       country: 'TD',
-      durationSeconds: 30,
+      durationSeconds: 45,
       maximumPoints: 8,
-    })
+    } as unknown as RoundChallenge)
     expect(story.prompt).not.toContain('Chad')
     expect(story.secret).toContain('Chad')
+  })
+
+  it('names the whole answer set for the tongue round', () => {
+    const story = roundStory({
+      _type: 'tongue-buzz-challenge',
+      language: 'German',
+      countries: ['DE', 'AT', 'CH'],
+      durationSeconds: 45,
+      maximumPoints: 8,
+    } as unknown as RoundChallenge)
+    expect(story.secret).toContain('German')
+    expect(story.focus).toEqual(['DE', 'AT', 'CH'])
   })
 
   it('falls back gracefully with no round dealt', () => {
     expect(roundStory(undefined).kicker).toBe('Between rounds')
   })
-})
 
-describe('gateStory', () => {
-  it('renders flag choices and marks the answer for a flag-pick gate', () => {
-    const challenge: IndividualChallenge = {
-      _type: 'individual-challenge',
-      id: 'flag',
-      country: 'SE',
-      variant: 'flag-pick',
-      options: ['SE', 'NO', 'DK'],
-    }
-    const story = gateStory(challenge)
-    expect(story.kicker).toContain('gate')
-    // The country is named openly (as the real gate does), the flags are the
-    // choices, and the correct one is flagged via `answer`.
-    expect(story.prompt).toContain('Sweden')
-    expect(story.options).toEqual(['SE', 'NO', 'DK'])
-    expect(story.answer).toBe('SE')
-  })
-
-  it('mirrors the photo, not the accessor phrasing, for a capital-match gate', () => {
-    const challenge: IndividualChallenge = {
-      _type: 'individual-challenge',
-      id: 'capital.name',
-      country: 'SE',
-      variant: 'capital-match',
-      image: '/skylines/stockholm.webp',
-      options: ['SE', 'NO', 'DK'],
-    }
-    const story = gateStory(challenge)
-    expect(story.image).toBe('/skylines/stockholm.webp')
-    expect(story.prompt).not.toContain('Stockholm') // the skyline is the clue, not its name
-    expect(story.answer).toBe('SE')
-  })
-
-  it('keeps the hidden country a secret for a zoom-out gate', () => {
-    const challenge: IndividualChallenge = {
-      _type: 'individual-challenge',
-      id: 'isoCode',
-      country: 'SE',
-      variant: 'zoom-out',
-    }
-    const story = gateStory(challenge)
-    expect(story.prompt).not.toContain('Sweden')
-    expect(story.secret).toContain('Sweden')
-  })
-
-  it('fills phrasing tokens like {leader} from the answer country', () => {
-    const challenge: IndividualChallenge = {
-      _type: 'individual-challenge',
-      id: 'government.leader',
-      country: 'SE',
-      variant: 'leader-pick',
-    }
-    const story = gateStory(challenge)
-    expect(story.prompt).not.toContain('{leader}')
-    expect(story.secret).toContain('Sweden')
-  })
-
-  it('withholds a secret for client-streak gates with no single answer', () => {
-    const challenge: IndividualChallenge = {
-      _type: 'individual-challenge',
-      id: 'isoCode',
-      country: 'SE',
-      variant: 'higher-lower',
-      higherLower: { accessorId: 'people.population', pairs: [{ a: 'SE', b: 'NO' }] },
-    }
-    expect(gateStory(challenge).secret).toBeUndefined()
+  it('gives mounted kinds the generic card as a safety net', () => {
+    const story = roundStory({
+      _type: 'silhouette-challenge',
+      country: 'TD',
+      durationSeconds: 30,
+      maximumPoints: 8,
+    } as unknown as RoundChallenge)
+    expect(story.kicker).toBe('Group round')
+    expect(story.secret).toBeUndefined()
   })
 })
 
-describe('finalStory', () => {
-  it('marks the membership exception as the secret', () => {
-    const story = finalStory({
-      _type: 'membership-challenge',
-      organization: 'nato',
-      exception: 'SE',
-    })
-    expect(story.prompt).toContain('North Atlantic Treaty Organization')
-    expect(story.secret).toContain('Sweden')
-  })
 
-  it('describes an empty gauntlet hand as dealing', () => {
-    expect(finalStory(undefined).prompt).toContain('dealt')
-  })
-})
-
-/**
- * The "dangling asset" guard: no spectator card may reference an asset in its
- * prompt (a flag, colours, an outline, a dossier, a highlighted feature) that
- * the card doesn't actually render. This enumerates EVERY challenge type and
- * asserts the pattern is gone across the board — the regression net for
- * "ensure this is fixed for all challenge types".
- */
+// Copy that references an asset the card isn't showing ("this flag", "these
+// colours") reads as broken — the sweep below keeps the fallback cards honest.
 const DANGLING = [
   /\bthis flag\b/i,
   /\bthese colou?rs\b/i,
@@ -531,110 +441,12 @@ const ROUND_FIXTURES: RoundChallenge[] = [
   },
 ] as unknown as RoundChallenge[]
 
-const FINAL_FIXTURES: FinalChallengeItem[] = [
-  { _type: 'region-challenge', country: 'FR' },
-  { _type: 'max-challenge', accessorId: 'people.population', country: 'FR', hints: ['DE', 'ES'] },
-  { _type: 'min-challenge', accessorId: 'people.population', country: 'FR', hints: ['DE', 'ES'] },
-  { _type: 'leadership-challenge', country: 'FR' },
-  { _type: 'language-challenge', language: 'French' },
-  { _type: 'membership-challenge', organization: 'nato', exception: 'SE' },
-  { _type: 'sunset-blitz-challenge', countries: ['FR'], quotaRatio: 0.5, durationSeconds: 30 },
-  {
-    _type: 'scales-challenge',
-    accessorId: 'people.population',
-    target: 'FR',
-    maxPicks: 3,
-    tolerance: 0.2,
-  },
-  { _type: 'born-challenge', year: 1990, quota: 3 },
-  { _type: 'made-challenge', commodity: 'oil' },
-  { _type: 'city-nocturne-challenge', country: 'FR', cityCount: 5, quota: 3, durationSeconds: 30 },
-] as unknown as FinalChallengeItem[]
-
 describe('no spectator card dangles an unshown asset', () => {
-  it('covers every group round kind', () => {
-    const covered = new Set<RoundChallengeKind>()
+  // The surviving fallback cards (and the generic net every mounted kind
+  // falls to) must never promise an asset the template cannot show.
+  it('covers every fixture the dealer can produce', () => {
     for (const fixture of ROUND_FIXTURES) {
-      const kind = roundChallengeKind(fixture)
-      covered.add(kind)
-      assertNoDangle(`round:${kind}`, roundStory(fixture))
+      assertNoDangle(`round:${roundChallengeKind(fixture)}`, roundStory(fixture))
     }
-    // Every kind the game can deal is exercised above.
-    const ALL_KINDS: RoundChallengeKind[] = [
-      'ranking',
-      'traversal',
-      'border-chain',
-      'heritage-hunt',
-      'neighbour-blitz',
-      'silhouette',
-      'hot-cold',
-      'sketch',
-      'stat-detective',
-      'two-truths',
-      'river-run',
-      'shared-shores',
-      'highlands',
-      'name-that-water',
-      'mother-tongue',
-      'flag-palette',
-      'capital-guess',
-      'flashpoint',
-      'ghost-state',
-      'no-mans-land',
-      'pin-landmark',
-      'trend-race',
-      'timeline',
-      'empire',
-    ]
-    for (const kind of ALL_KINDS)
-      expect(covered.has(kind), `missing round kind: ${kind}`).toBe(true)
-  })
-
-  it('covers every individual gate variant', () => {
-    for (const variant of individualChallengeVariants) {
-      const challenge = {
-        _type: 'individual-challenge',
-        id: 'flag',
-        country: 'SE',
-        variant,
-        options: ['SE', 'NO', 'DK'],
-        oddOneOut: { countries: ['SE', 'NO', 'DK'], propertyLabel: 'landlocked' },
-        higherLower: { accessorId: 'people.population', pairs: [{ a: 'SE', b: 'NO' }] },
-        trendDuels: [{ metric: 'hdi', seek: 'rising', a: 'SE', b: 'NO' }],
-        neighbours: ['NO', 'DK', 'FI'],
-        trajectory: { metric: 'hdi', options: ['SE', 'NO'], valuesHint: false },
-        portrait: { image: '/x.webp', name: 'X' },
-        image: '/x.webp',
-      } as unknown as IndividualChallenge
-      assertNoDangle(`gate:${variant}`, gateStory(challenge))
-    }
-  })
-
-  it('covers every final gauntlet question type', () => {
-    for (const item of FINAL_FIXTURES) assertNoDangle(`final:${item._type}`, finalStory(item))
-  })
-})
-
-describe('asset-driven cards actually carry their asset', () => {
-  const round = (fixture: RoundChallenge) => roundStory(fixture)
-  const find = (type: string) =>
-    ROUND_FIXTURES.find(
-      f => roundChallengeKind(f) !== undefined && (f as { _type: string })._type === type
-    )!
-
-  it('silhouette carries an outline', () => {
-    expect(round(find('silhouette-challenge')).outline).toBe('TD')
-  })
-  it('flag-palette carries swatches', () => {
-    expect(round(find('flag-palette-challenge')).swatches?.length).toBeGreaterThan(0)
-  })
-  it('two-truths carries three fact claims', () => {
-    expect(round(find('two-truths-challenge')).facts?.length).toBe(3)
-  })
-  it('stat-detective carries a dossier', () => {
-    expect(round(find('stat-detective-challenge')).facts?.length).toBeGreaterThan(0)
-  })
-  it('trend-race carries option flags', () => {
-    expect(round(find('trend-race-challenge')).options?.length).toBeGreaterThan(0)
   })
 })
