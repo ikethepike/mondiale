@@ -4,6 +4,11 @@ import { defineGameHandler } from '../server-side'
 export const startGameHandler = defineGameHandler(
   'start-game',
   async ({ game, server, eventTarget }) => {
+    // Host-only: pre-start balcony watchers hold bound sockets, so this is
+    // reachable by a non-player — the client guard alone no longer covers it.
+    if (game.host !== eventTarget.playerId) {
+      return console.warn(`Ignoring start-game from non-host ${eventTarget.playerId}`)
+    }
     if (game.started) return server.emit({ event: 'update', game }, eventTarget)
 
     // Start the game

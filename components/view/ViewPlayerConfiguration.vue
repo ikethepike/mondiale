@@ -251,7 +251,8 @@
             <div class="challenge-meta">
               <span class="challenge-name">Spectators</span>
               <span class="challenge-caption"
-                >Let latecomers watch the race live. Off keeps the room sealed.</span
+                >Friends with the link can watch — from the balcony now, live once you start. Off
+                seals the room.</span
               >
             </div>
             <SegmentedControl

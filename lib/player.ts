@@ -22,6 +22,63 @@ export const tableIsFull = (
   playerId: string
 ): boolean => !players[playerId] && Object.keys(players).length >= MAX_PLAYERS
 
+/** A room stops admitting watchers past this — a bound on the "N watching"
+ *  count and, more importantly, on the spectator records that ride every
+ *  broadcast snapshot. */
+export const MAX_SPECTATORS = 20
+
+export type JoinVerdict =
+  | { admit: 'seat' }
+  | { admit: 'spectate' }
+  | {
+      admit: 'refuse'
+      reason: 'room-full' | 'game-already-started' | 'removed-from-room'
+      /** The door is open and a watcher slot is free — the join door leaves
+       *  the socket connected so "Watch instead" can just re-emit join. */
+      spectatable: boolean
+    }
+
+interface JoinDoor {
+  players: Partial<Record<string, unknown>>
+  spectators?: Partial<Record<string, unknown>>
+  started: boolean
+  allowSpectators?: boolean
+  lobbyKicks?: string[]
+}
+
+/**
+ * The one admission rule for every join, pre-start and mid-race alike.
+ * Membership beats intent: a seated player or admitted watcher always gets
+ * back in (refresh and reconnect stay idempotent, watchers bypass the cap),
+ * a kicked id never does, and `asSpectator` is only honored once the table
+ * is full — while seats are free, a joiner plays. A waiting watcher is never
+ * auto-promoted to a freed seat; if a promotion path is ever added it must
+ * delete the spectator record when seating, or the watcher count drifts.
+ */
+export const joinVerdict = (
+  game: JoinDoor,
+  playerId: string,
+  asSpectator = false
+): JoinVerdict => {
+  if (game.lobbyKicks?.includes(playerId)) {
+    return { admit: 'refuse', reason: 'removed-from-room', spectatable: false }
+  }
+  if (game.players[playerId]) return { admit: 'seat' }
+  if (game.spectators?.[playerId]) return { admit: 'spectate' }
+
+  const spectatable =
+    !!game.allowSpectators && Object.keys(game.spectators ?? {}).length < MAX_SPECTATORS
+
+  if (game.started) {
+    return spectatable
+      ? { admit: 'spectate' }
+      : { admit: 'refuse', reason: 'game-already-started', spectatable: false }
+  }
+  if (!tableIsFull(game.players, playerId)) return { admit: 'seat' }
+  if (spectatable && asSpectator) return { admit: 'spectate' }
+  return { admit: 'refuse', reason: 'room-full', spectatable }
+}
+
 /**
  * The one gate a submitted player name passes through (client guard and
  * server handler alike): trims whitespace and clamps the length, returning

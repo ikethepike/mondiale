@@ -156,7 +156,15 @@ export const useClientEvents = () => {
           // The socket lost its player binding (a reconnect raced the
           // re-join): join binds it back, and is idempotent server-side.
           if (receipt.reason === 'unbound' && game.value) {
-            socket.value.emit('join', { event: 'join', variant: game.value.variant }, eventTarget)
+            socket.value.emit(
+              'join',
+              {
+                event: 'join',
+                variant: game.value.variant,
+                ...(gameStore.joinAsSpectator ? { asSpectator: true } : {}),
+              },
+              eventTarget
+            )
           }
           console.warn(`${eventData.event} not accepted (${receipt.reason}), retrying`)
         } catch {

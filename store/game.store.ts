@@ -125,12 +125,20 @@ interface GameStoreState {
    */
   pendingMovementRequest: boolean
   /**
-   * The server refused the join — the game was already underway ('started')
-   * or the table was at capacity ('full') — and closed the socket. Terminal:
-   * nothing further arrives, so the room page shows a dead end rather than
-   * waiting on a join that will never land.
+   * The server refused the join — the game was already underway ('started'),
+   * the table was at capacity ('full'), or the host removed this player
+   * ('removed'). Terminal, with one exception: a spectatable 'full' refusal
+   * leaves the socket connected so "Watch instead" can re-emit join; every
+   * other shape closes the socket and the room page shows a dead end.
    */
-  rejected: false | 'started' | 'full'
+  rejected: false | 'started' | 'full' | 'removed'
+  /** Rode the last room-full refusal: the door is open and a watcher slot is
+   *  free, so the dead-end card offers "Watch instead". */
+  spectatable: boolean
+  /** Watch intent for the next join emit (all three emit sites: joinRoom on
+   *  mount/reconnect, the watch-instead click, the ack-recovery re-join).
+   *  Client-only; reset when leaving the room page. */
+  joinAsSpectator: boolean
   /**
    * A FINISHED player watching the race from their victory screen. Purely
    * client-side — they already receive every broadcast; this only swaps the
@@ -153,6 +161,8 @@ export const useGameStore = defineStore('game', {
     socket: undefined,
     pendingMovementRequest: false,
     rejected: false,
+    spectatable: false,
+    joinAsSpectator: false,
     spectating: false,
     spectateFollowId: undefined,
     spectateHideSpoilers: false,
@@ -260,6 +270,14 @@ export const useGameStore = defineStore('game', {
      *  outside `players`. Ejection (door closed mid-watch) flips this false. */
     isSpectator(state): boolean {
       if (!state.game?.started || !state.playerId) return false
+      if (state.game.players[state.playerId]) return false
+      return !!state.game.spectators?.[state.playerId]
+    },
+    /** Admitted before the start: on the balcony, waiting for the race. Flips
+     *  into `isSpectator` (and the booth) the moment the started snapshot
+     *  lands — round 1 rides that same snapshot. */
+    isWaitingSpectator(state): boolean {
+      if (!state.game || state.game.started || !state.playerId) return false
       if (state.game.players[state.playerId]) return false
       return !!state.game.spectators?.[state.playerId]
     },

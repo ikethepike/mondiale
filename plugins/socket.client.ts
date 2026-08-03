@@ -45,6 +45,9 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'room-full': {
     handler: joinRefusedEvent,
   },
+  'removed-from-room': {
+    handler: joinRefusedEvent,
+  },
   update: {
     handler: playerUpdateEvent,
   },

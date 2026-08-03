@@ -64,14 +64,15 @@ import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
+import ViewWaitingRoom from '~/components/view/ViewWaitingRoom.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
+import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
-import { gameVariants, isValidGameVariant } from '~~/types/game.types'
 
-const { update, game, player, currentRound, gameStore } = useClientEvents()
+const { game, player, currentRound, gameStore } = useClientEvents()
 
 // Mounted here, above the view switch: inside a view it would remount on every
 // phase change, lose the previous-phase map, and announce the same moment again.
@@ -102,6 +103,16 @@ const activeView = computed<ActiveView | undefined>(() => {
   if (game.value.started && !player.value) {
     return gameStore.isSpectator
       ? { component: ViewSpectate, kind: 'score', key: 'spectate' }
+      : { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
+  }
+
+  // Pre-start watcher: admitted through the door before the race — the
+  // balcony. The else arm is the mid-wait ejection (host sealed the room):
+  // record gone, same card a closed-door latecomer gets. A normal joining
+  // player never lands here — their first snapshot carries their own record.
+  if (!game.value.started && !player.value) {
+    return gameStore.isWaitingSpectator
+      ? { component: ViewWaitingRoom, kind: 'card', key: 'waiting-room' }
       : { component: ViewGameAlreadyStarted, kind: 'card', key: 'game-already-started' }
   }
 
@@ -215,26 +226,7 @@ const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition
   () => presentedView.value?.kind ?? 'card'
 )
 
-const route = useRoute()
-
-const joinRoom = () => {
-  const { variant } = route.query
-
-  // Fold this room's id into the handshake auth (which already carries
-  // playerId + secret from the socket plugin). A reconnect then re-presents
-  // all three, letting the server verify and rebind before buffered events
-  // flush — the first connection has no room yet, so `join` binds instead.
-  const socket = gameStore.socket
-  const roomId = route.params.roomId
-  if (socket && typeof roomId === 'string') {
-    socket.auth = { ...(socket.auth as Record<string, unknown>), gameId: roomId }
-  }
-
-  update({
-    event: 'join',
-    variant: isValidGameVariant(variant) ? variant : gameVariants[0],
-  })
-}
+const joinRoom = useJoinRoom()
 
 onMounted(() => {
   joinRoom()
@@ -248,7 +240,11 @@ onMounted(() => {
   // first — the initial join is handled by onMounted above.
   const socket = gameStore.socket
   socket?.io.on('reconnect', joinRoom)
-  onUnmounted(() => socket?.io.off('reconnect', joinRoom))
+  onUnmounted(() => {
+    socket?.io.off('reconnect', joinRoom)
+    // Watch intent must not leak into the next room this client opens
+    gameStore.joinAsSpectator = false
+  })
 })
 </script>
 <style scoped>
