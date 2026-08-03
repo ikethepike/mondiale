@@ -1035,6 +1035,14 @@ const LOD_ZOOM_OUT = 2.4
 const CULL_ZOOM = 2
 /** Cull margin in viewports, so small pans don't reveal blanked countries. */
 const CULL_MARGIN = 1
+/** The margin also buys skipped passes: nothing culled can reach the screen
+ *  before the camera has drifted this fraction of a viewport (or rescaled
+ *  by CULL_ZOOM_DRIFT), so in between the box tests are pure waste. */
+const CULL_PAN_DRIFT = 0.25
+const CULL_ZOOM_DRIFT = 0.1
+let lastCullView: { x: number; y: number; width: number } | undefined
+/** Every country code, hoisted — Object.keys allocates 219 strings a call. */
+const MAP_CODES = Object.keys(MAP_BOUNDS) as MapCode[]
 let hdPaths: Record<string, string> | undefined
 let hdLoading = false
 const hdApplied = new Set<string>()
@@ -1067,6 +1075,7 @@ const intersectsAnyRegion = (code: string, x: number, y: number, width: number, 
 
 /** Show every country again — reveals/fly-ins must never target a culled path. */
 const uncullAll = () => {
+  lastCullView = undefined // the DOM no longer matches any past pass
   if (!culled.size) return
   for (const code of culled) {
     const path = pathEls.get(code)
@@ -1091,9 +1100,18 @@ const cullPass = () => {
     uncullAll()
     return
   }
+  if (
+    lastCullView &&
+    Math.abs(viewState.x - lastCullView.x) < viewState.width * CULL_PAN_DRIFT &&
+    Math.abs(viewState.y - lastCullView.y) < viewState.height * CULL_PAN_DRIFT &&
+    Math.abs(viewState.width - lastCullView.width) < lastCullView.width * CULL_ZOOM_DRIFT
+  ) {
+    return
+  }
+  lastCullView = { x: viewState.x, y: viewState.y, width: viewState.width }
   const marginX = viewState.width * CULL_MARGIN
   const marginY = viewState.height * CULL_MARGIN
-  for (const code of Object.keys(MAP_BOUNDS)) {
+  for (const code of MAP_CODES) {
     const nearView = intersectsAnyRegion(
       code,
       viewState.x - marginX,
@@ -1122,7 +1140,7 @@ const applyLod = (effectiveZoom: number) => {
   }
   if (!hdPaths || effectiveZoom < LOD_ZOOM_IN) return // hysteresis band: keep as-is
 
-  for (const code of Object.keys(MAP_BOUNDS)) {
+  for (const code of MAP_CODES) {
     const path = pathEls.get(code)
     if (!path) continue
     // Every un-culled country swaps together: mixing tiers puts differently-
