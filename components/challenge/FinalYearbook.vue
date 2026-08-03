@@ -384,18 +384,23 @@ onBeforeUnmount(() => {
   box-shadow: 0 0.4rem 2.4rem ink(0.18);
 }
 
+// One grid, two mastheads: desktop stamps the year in the right column,
+// the phone restacks it under the subtitle — no absolute corners to collide
 .masthead {
-  gap: 0.3rem;
-  display: flex;
-  position: relative;
+  row-gap: 0.3rem;
+  display: grid;
   text-align: center;
   align-items: center;
-  flex-flow: column nowrap;
+  grid-template-areas:
+    '. name stamp'
+    '. edition stamp';
+  grid-template-columns: 1fr auto 1fr;
   padding-bottom: 0.8rem;
   margin-bottom: 1.2rem;
   border-bottom: 0.4rem double ink(0.7);
 
   .paper-name {
+    grid-area: name;
     font-size: 2.4rem;
     font-weight: bold;
     letter-spacing: 0.18em;
@@ -403,6 +408,7 @@ onBeforeUnmount(() => {
   }
 
   .edition {
+    grid-area: edition;
     opacity: 0.65;
     font-size: 1.2rem;
     letter-spacing: 0.14em;
@@ -410,11 +416,11 @@ onBeforeUnmount(() => {
   }
 }
 
-// The committed year inks the masthead corner like a date received
+// The committed year inks the masthead's shoulder like a date received
 .year-stamp {
-  top: -0.4rem;
-  right: -0.6rem;
-  position: absolute;
+  grid-area: stamp;
+  justify-self: end;
+  align-self: start;
   padding: 0.2rem 0.9rem;
   font-size: 1.9rem;
   font-weight: bold;
@@ -666,9 +672,18 @@ onBeforeUnmount(() => {
     font-size: 1.8rem;
   }
 
+  // The masthead spans the phone, so the stamp row restacks under the subtitle
+  .masthead {
+    grid-template-areas:
+      'name'
+      'edition'
+      'stamp';
+    grid-template-columns: 1fr;
+  }
+
   .year-stamp {
-    top: -0.2rem;
-    right: -0.4rem;
+    justify-self: center;
+    margin-top: 0.1rem;
     font-size: 1.4rem;
     border-width: 0.2rem;
   }
