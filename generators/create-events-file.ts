@@ -50,6 +50,15 @@ const EVENT_WIDTH = 1400
 const MIN_IMAGE_WIDTH = 640
 /** |seed year − claim year| a verification will accept — calendar edges. */
 const YEAR_TOLERANCE = 1
+/**
+ * Deep time trades precision for existence: scholarly dates ("c. 9500 BCE")
+ * meet Wikidata's millennium-precision placeholders ("-9999"). Seeds this old
+ * verify to the right epoch, not the right digit.
+ */
+const DEEP_TIME_FLOOR = -1000
+const DEEP_TIME_TOLERANCE = 500
+const yearTolerance = (seedYear: number): number =>
+  seedYear <= DEEP_TIME_FLOOR ? DEEP_TIME_TOLERANCE : YEAR_TOLERANCE
 
 /** Time-bearing properties, in the order the issue's spec trusts them:
  *  point in time, start/end, inception, publication, discovery, launch,
@@ -190,7 +199,7 @@ const verifySeed = async (seed: EventSeed): Promise<Verification | { failure: st
   const seenYears: number[] = []
   for (const qid of candidates) {
     for (const year of claimYears(data?.entities?.[qid]?.claims)) {
-      if (Math.abs(year - seed.year) <= YEAR_TOLERANCE) return { qid, matchedYear: year }
+      if (Math.abs(year - seed.year) <= yearTolerance(seed.year)) return { qid, matchedYear: year }
       seenYears.push(year)
     }
   }

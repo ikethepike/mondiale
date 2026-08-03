@@ -1,5 +1,5 @@
 import { EVENTS } from '~~/data/events.gen'
-import { clamp } from './number'
+import { clamp, formatNumber } from './number'
 import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventKind } from '~~/generators/data/event-seeds'
 import { isValidISOCode } from '~~/types/geography.types'
@@ -46,8 +46,12 @@ export const TIMELINE_TUNING: {
 
 export const timelineEvent = (slug: string): EventEntry | undefined => EVENTS[slug]
 
-/** "1989" for the common era, "490 BCE" before it — never a bare negative. */
-export const formatEventYear = (year: number): string => (year < 0 ? `${-year} BCE` : `${year}`)
+/**
+ * "1989" for the common era, "490 BCE" before it — never a bare negative.
+ * Deep time groups its digits ("10,000 BCE"); CE years never need to.
+ */
+export const formatEventYear = (year: number): string =>
+  year < 0 ? `${formatNumber(-year)} BCE` : `${year}`
 
 /** Card copy per event kind, shared by the view and the spectate stage. */
 export const EVENT_KIND_COPY: { [kind in EventKind]: string } = {
