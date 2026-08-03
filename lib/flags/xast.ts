@@ -41,7 +41,7 @@ export const transformSvg = (svg: string, mutate: (root: XNode, svgEl: XNode) =>
 }
 
 /** Depth-first: first element node with the given tag name. */
-export const findElement = (node: XNode, name: string): XNode | undefined => {
+const findElement = (node: XNode, name: string): XNode | undefined => {
   if (node.type === 'element' && node.name === name) return node
   for (const child of node.children || []) {
     const found = findElement(child, name)
@@ -156,7 +156,7 @@ export const flattenDrawables = (svgEl: XNode): Flattened => {
 }
 
 /** Walk every element node in the subtree (pre-order), calling `visit`. */
-export const walkElements = (node: XNode, visit: (el: XNode, parent: XNode | null) => void) => {
+const walkElements = (node: XNode, visit: (el: XNode, parent: XNode | null) => void) => {
   const recurse = (n: XNode, parent: XNode | null) => {
     if (n.type === 'element') visit(n, parent)
     for (const child of n.children || []) recurse(child, n)

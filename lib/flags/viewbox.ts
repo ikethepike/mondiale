@@ -13,9 +13,6 @@ export const parseViewBox = (value: string | undefined): ViewBox => {
   return { minX: 0, minY: 0, width: 1, height: 1 }
 }
 
-export const formatViewBox = (vb: ViewBox): string =>
-  `${vb.minX} ${vb.minY} ${vb.width} ${vb.height}`
-
 export const TARGET_VIEWBOX: ViewBox = {
   minX: 0,
   minY: 0,
@@ -29,7 +26,7 @@ export const TARGET_VIEWBOX: ViewBox = {
  * whole flag, `center-band` the middle horizontal third, `canton` the
  * upper-hoist quarter-ish, `triangle` the hoist chevron zone.
  */
-export const regionRect = (region: 'field' | 'canton' | 'center-band' | 'triangle'): BBox => {
+const regionRect = (region: 'field' | 'canton' | 'center-band' | 'triangle'): BBox => {
   switch (region) {
     case 'field':
       return { x: 0, y: 0, width: TARGET_WIDTH, height: TARGET_HEIGHT }

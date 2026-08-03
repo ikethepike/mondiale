@@ -103,18 +103,6 @@ export const baseEncode = (data: string) => {
   }
 }
 
-export const removeAllNumbers = (string: string): string => {
-  return string.replaceAll(/[+-]?\d+(\.\d+)?/g, '')
-}
-
-export const removeAllPercentages = (string: string): string => {
-  return removeAllNumbers(string).replaceAll('%', '')
-}
-
-export const getAllCapitalizedWords = (string: string): string[] => {
-  return string.match(/([A-Z][^\s]*)/g) || []
-}
-
 /** First letter up, rest untouched — prose starts ("the Ottoman Empire" → "The Ottoman Empire"). */
 export const sentenceCase = (value: string): string =>
   value ? `${value[0].toUpperCase()}${value.slice(1)}` : value

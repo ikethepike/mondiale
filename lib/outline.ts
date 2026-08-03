@@ -449,29 +449,6 @@ export const normalizeOutline = (points: OutlinePoint[]): OutlinePoint[] => {
 }
 
 /**
- * Crude-sketch similarity in the $1-recognizer family: symmetric mean
- * nearest-point distance between two normalized, resampled closed shapes.
- * Returns a distance in normalized units (~0.03 great, ~0.2 unrecognizable).
- */
-export const outlineDistance = (a: OutlinePoint[], b: OutlinePoint[]): number => {
-  if (!a.length || !b.length) return Infinity
-
-  const meanNearest = (from: OutlinePoint[], to: OutlinePoint[]) => {
-    let total = 0
-    for (const [x1, y1] of from) {
-      let nearest = Infinity
-      for (const [x2, y2] of to) {
-        nearest = Math.min(nearest, Math.hypot(x2 - x1, y2 - y1))
-      }
-      total += nearest
-    }
-    return total / from.length
-  }
-
-  return (meanNearest(a, b) + meanNearest(b, a)) / 2
-}
-
-/**
  * Centroid + RMS-radius normalization ($1-recognizer style). Bounding-box
  * scaling lets one bulge rescale the whole drawing; RMS radius is stable, so
  * a sketch that's simply drawn a little large lines up with the target.

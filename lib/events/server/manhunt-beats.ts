@@ -79,7 +79,7 @@ const stampDeadline = (challenge: ManhuntChallenge, extraMs = 0) => {
  * broadcast. Tolerates the despot being offline — the reconnect path
  * (fetch-manhunt-position) covers them when they return.
  */
-export const pushManhuntPosition = async (
+const pushManhuntPosition = async (
   ctx: ChainContext,
   despotId: string,
   secret: ManhuntSecret,

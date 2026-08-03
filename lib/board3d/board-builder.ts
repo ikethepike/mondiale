@@ -76,7 +76,7 @@ const TERRAIN_OVERHANG = 2.6
  * track ribbon, instanced tile discs, tile numbers and challenge icons.
  * Deterministic per (seed, tiles) — every client builds the same board.
  */
-export const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
+const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   const group = new Group()
 
   // Edge falloff wraps the base field so hills subside into the page at the

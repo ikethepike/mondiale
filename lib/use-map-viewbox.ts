@@ -54,13 +54,3 @@ export const useMapViewBox = () => {
   return { viewBox, toScreenPercent, cameraScale }
 }
 
-/** Inside the viewport with a little margin — where a chip can land legibly. */
-export const onScreenPercent = (
-  point: { left: number; top: number },
-  marginX = 2,
-  marginY = 4
-): boolean =>
-  point.left >= marginX &&
-  point.left <= 100 - marginX &&
-  point.top >= marginY &&
-  point.top <= 100 - marginY

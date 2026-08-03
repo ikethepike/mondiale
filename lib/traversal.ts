@@ -67,7 +67,7 @@ export const isRouteComplete = (
  * Undefined when no land route exists (islands, separate landmasses).
  * `within` restricts the route to a subset of countries (alliance corridors).
  */
-export const shortestPath = (
+const shortestPath = (
   from: ISOCountryCode,
   to: ISOCountryCode,
   within?: Set<ISOCountryCode>
