@@ -579,10 +579,23 @@ const viewState = { ...WORLD_VIEW }
 /** Where gestures want the camera — viewState eases toward it every frame. */
 const targetView = { ...WORLD_VIEW }
 
-const measureViewAspect = () => {
+/** The svg's screen box, measured at mount/resize/gesture-start — reading it
+ *  per frame or per pointer event forces layout inside the camera loop. */
+let svgRect: DOMRect | undefined
+/** Clamp bounds derived from rect + berth — arithmetic-only in the frame loop. */
+let clampCache: { maxWidth: number; centerFraction: number } | undefined
+
+const measureMapRect = () => {
   const rect = svg.value?.getBoundingClientRect()
-  if (rect?.width && rect.height) viewAspect = rect.width / rect.height
+  if (rect?.width && rect.height) {
+    svgRect = rect
+    viewAspect = rect.width / rect.height
+    clampCache = undefined
+  }
+  return svgRect
 }
+/** The cached screen box, measuring lazily before the first gesture. */
+const mapRect = () => svgRect ?? measureMapRect()
 
 /** The fully-zoomed-out camera: full world width, vertically centered. */
 const worldFitView = () => {
@@ -601,7 +614,7 @@ const worldFitView = () => {
 const berthMetrics = () => {
   const top = props.berth?.top ?? 0
   const bottom = props.berth?.bottom ?? 0
-  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const viewportHeight = mapRect()?.height ?? 0
   const band = viewportHeight - top - bottom
   if (!top && !bottom) return { scale: 1, centerFraction: 0.5 }
   if (!viewportHeight || band < viewportHeight * 0.35) return { scale: 1, centerFraction: 0.5 }
@@ -617,7 +630,7 @@ const berthMetrics = () => {
 const berthedView = (view: typeof WORLD_VIEW, content: { y: number; height: number }) => {
   const { scale: bandScale, centerFraction } = berthMetrics()
   if (bandScale === 1 && centerFraction === 0.5) return view
-  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const viewportHeight = mapRect()?.height ?? 0
   const bandHeightPx = viewportHeight / bandScale
   const contentHeightPx = viewportHeight * (content.height / view.height)
   const scale = Math.max(1, contentHeightPx / bandHeightPx)
@@ -673,8 +686,13 @@ const writeViewBox = () => {
 const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZOOM) => {
   // A berth may rest the camera wider than the world so the subject can sit
   // inside the clear band — the zoom-out ceiling follows the actual rest.
-  const { centerFraction } = berthMetrics()
-  const maxWidth = Math.max(WORLD_VIEW.width, restView().width)
+  // Cached: this runs every gesture frame, and the berth chain behind it
+  // only moves with the rect or the berth props.
+  clampCache ??= {
+    maxWidth: Math.max(WORLD_VIEW.width, restView().width),
+    centerFraction: berthMetrics().centerFraction,
+  }
+  const { maxWidth, centerFraction } = clampCache
   view.width = clamp(view.width, minWidth, maxWidth)
   view.height = view.width / viewAspect
   // Wider than the world (berth rest): the only legal x is dead centre.
@@ -819,7 +837,10 @@ watch(
 // A berth arriving or leaving re-aims the camera the same way a focus does.
 watch(
   () => [props.berth?.top, props.berth?.bottom],
-  () => nextTick(frameFocus)
+  () => {
+    clampCache = undefined
+    nextTick(frameFocus)
+  }
 )
 
 /**
@@ -986,7 +1007,7 @@ const RING_ZOOM = 4
 const updateEffectiveZoom = () => {
   if (!wrapper.value || !svg.value) return
   const effectiveZoom = WORLD_VIEW.width / viewState.width
-  const pxPerUnit = svg.value.getBoundingClientRect().width / viewState.width
+  const pxPerUnit = (mapRect()?.width ?? viewState.width) / viewState.width
   svg.value.classList.toggle('deep-zoom', effectiveZoom >= RING_ZOOM)
   svg.value.style.setProperty('--stroke-zoom', String(1 / Math.max(1, effectiveZoom)))
   const dotRadius = 3.5 / Math.max(1, effectiveZoom)
@@ -1123,7 +1144,12 @@ const applyLod = (effectiveZoom: number) => {
 let gestureTimer: ReturnType<typeof setTimeout> | undefined
 const beginGesture = () => {
   gsap.killTweensOf(viewState)
-  if (!loopRunning) Object.assign(targetView, viewState)
+  if (!loopRunning) {
+    Object.assign(targetView, viewState)
+    // A fresh gesture is the moment layout could have shifted under us —
+    // remeasure once here, never per event or per frame.
+    measureMapRect()
+  }
   wrapper.value?.classList.add('is-interacting')
   clearTimeout(gestureTimer)
 }
@@ -1193,9 +1219,9 @@ const startLoop = () => {
   requestAnimationFrame(gestureLoop)
 }
 
-/** Pointer position → map units, via live rects (ancestor transforms & all). */
+/** Pointer position → map units, via the gesture-cached screen rect. */
 const unitsAt = (clientX: number, clientY: number) => {
-  const rect = (svg.value as SVGElement).getBoundingClientRect()
+  const rect = mapRect() ?? (svg.value as SVGElement).getBoundingClientRect()
   return {
     x: viewState.x + ((clientX - rect.left) / rect.width) * viewState.width,
     y: viewState.y + ((clientY - rect.top) / rect.height) * viewState.height,
@@ -1291,7 +1317,7 @@ const onPointerMove = (event: PointerEvent) => {
       zoomAround((a.x + b.x) / 2, (a.y + b.y) / 2, targetView.width / pinchWidth)
     }
   } else if (pointers.size === 1) {
-    const rect = (svg.value as SVGElement).getBoundingClientRect()
+    const rect = mapRect() ?? (svg.value as SVGElement).getBoundingClientRect()
     const unitsPerPx = viewState.width / rect.width
     targetView.x -= (pointer.x - previous.x) * unitsPerPx
     targetView.y -= (pointer.y - previous.y) * unitsPerPx
@@ -1338,13 +1364,13 @@ onMounted(async () => {
 
   // Adopt the screen's aspect ratio (edgeless full-bleed map) and keep it
   // across window resizes, preserving the camera's center point.
-  measureViewAspect()
+  measureMapRect()
   Object.assign(viewState, restView())
   Object.assign(targetView, viewState)
   writeViewBox()
   window.addEventListener('resize', () => {
     const centerY = viewState.y + viewState.height / 2
-    measureViewAspect()
+    measureMapRect()
     for (const view of [viewState, targetView]) {
       view.height = view.width / viewAspect
       view.y = centerY - view.height / 2
