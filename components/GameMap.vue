@@ -1553,6 +1553,9 @@ watch(
   overflow: hidden;
   touch-action: none;
   overscroll-behavior: none;
+  // The map never sizes or paints outside its own box — let the browser skip
+  // invalidating anything else when the vector layer repaints mid-gesture.
+  contain: layout paint;
 }
 
 // Receded: the world is still there, just faint and set back, so a full-screen
@@ -1841,6 +1844,15 @@ path[id] {
 // transitions it triggers would repaint the vector layer and drop frames —
 // countries aren't clickable while zooming/panning anyway.
 .is-interacting {
+  // While the camera is the animation, trade anti-aliased coastlines for
+  // cheap rasterization — 130k HD-tier vertices repaint every pan frame.
+  // shape-rendering inherits, so one rule covers every path and marker;
+  // settle removes the class and the same repaint that restores strokes/LOD
+  // brings the crisp edges back.
+  svg {
+    shape-rendering: optimizeSpeed;
+  }
+
   path[id],
   .micro-marker,
   .micro-hit {
