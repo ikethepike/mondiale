@@ -45,6 +45,17 @@ export default defineNuxtConfig({
       ],
     },
   },
+  // Neither tree needs HMR, and watching them exhausts macOS's default 256-fd
+  // limit (EMFILE): public/ is 563MB of static media nitro serves straight
+  // from disk, and .claude/worktrees/ can hold full repo copies
+  ignore: ['public/**', '.claude/**'],
+  vite: {
+    server: {
+      watch: {
+        ignored: ['**/public/**', '**/.claude/**'],
+      },
+    },
+  },
   // The codebase predates Nuxt 4's noUncheckedIndexedAccess default
   typescript: {
     tsConfig: {
