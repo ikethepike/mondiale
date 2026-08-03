@@ -458,12 +458,7 @@ import { formatAmount } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import { isEasyMode, isHardMode } from '~~/lib/game-rules'
 import { loadFlagMeaning } from '~~/lib/flag-meanings'
-import {
-  leaderHintFacts,
-  leaderNamesOverlap,
-  politicalLeader,
-  titlecaseLeader,
-} from '~~/lib/leaders'
+import { leaderHintFacts, phrasedLeader, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import {
@@ -805,17 +800,12 @@ const leaderFacts = (isoCode: ISOCountryCode): string[] => {
   return leader ? leaderHintFacts(leader, isoCode) : []
 }
 
-// The find fallback phrases the factbook's leader string; hint only with the
-// SAME person — politicalLeader may fall back to a different office-holder,
-// and their face or party would point at the wrong country.
 const findLeader = computed(() => {
   const active = challenge.value
   if (isHard.value || variant.value !== 'find' || active?.id !== 'government.leader') {
     return undefined
   }
-  const profile = politicalLeader(active.country)
-  const phrased = getCountry(active.country).government?.leader
-  return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
+  return phrasedLeader(active.country)
 })
 // A recognizable face is the strongest clue on the board: easy mode only.
 const findLeaderPortrait = computed(() =>
@@ -1687,6 +1677,10 @@ header .flag {
   grid-template-columns: minmax(28rem, 44rem);
 }
 
+.fact-row {
+  line-height: 1.3;
+}
+
 .leader-thumb {
   width: 4.4rem;
   height: 4.4rem;
@@ -1726,7 +1720,6 @@ header .flag {
 
   .fact-row {
     grid-area: facts;
-    line-height: 1.3;
   }
 }
 
@@ -1747,7 +1740,6 @@ header .flag {
 
   .fact-row {
     grid-area: facts;
-    line-height: 1.3;
   }
 }
 

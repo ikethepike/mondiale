@@ -137,6 +137,18 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
 }
 
 /**
+ * The leader as a `government.leader`-phrased prompt names them: the
+ * political leader, but only when the profile is the SAME person the
+ * factbook string phrases — a drifted profile would hint the wrong face or
+ * party. Any surface hinting against a phrased leader selects through here.
+ */
+export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
+  const profile = politicalLeader(isoCode)
+  const phrased = COUNTRIES[isoCode]?.government?.leader
+  return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
+}
+
+/**
  * Short on-screen facts for a leader quiz option (easy/normal modes): party
  * and tenure start. Never the office — "President of France" answers the
  * question outright, while a party and a start year merely narrow it. The

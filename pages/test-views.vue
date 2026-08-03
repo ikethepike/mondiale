@@ -2574,13 +2574,13 @@ const gauntletGame = (difficulty: GameDifficulty): Game => {
   return game
 }
 
-/** Individual gates read the challenge off the player's pending move. */
 const leaderFindGame = (difficulty: GameDifficulty): Game => {
   const game = individualGame({ variant: 'find', id: 'government.leader', country: 'SO' })
   game.difficulty = difficulty
   return game
 }
 
+/** Individual gates read the challenge off the player's pending move. */
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('individual-challenge', [settledRound()])
   const me = game.players[ME]!

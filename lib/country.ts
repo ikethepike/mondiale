@@ -112,11 +112,16 @@ const GENERIC_NAME_TOKENS = new Set([
   'santa',
 ])
 
+/** Shared-stem length that ties a name to its derivatives ("Senegal" ↔ "Senegalese"). */
+const MENTION_STEM_CHARS = 5
+/** Tokens shorter than this ("of", "de", "la") carry no country signal. */
+const MENTION_MIN_TOKEN_CHARS = 3
+
 /**
  * Does this text betray the country — its name (English or local) or any of
  * its demonyms? The giveaway gate for on-screen hints: a party called
  * "Congolese Party of Labour" or "United Seychelles Party" answers a leader
- * question outright. Tokens match on a 5-char stem so "Senegal" catches
+ * question outright. Tokens match on a shared stem so "Senegal" catches
  * "Senegalese" and "España" catches "Español"; irregulars (Swiss, Dutch,
  * Spaniard) ride `name.demonyms` — the Factbook's nationality fields — so
  * no exception list lives here.
@@ -124,21 +129,24 @@ const GENERIC_NAME_TOKENS = new Set([
 export const mentionsCountry = (text: string, isoCode: ISOCountryCode): boolean => {
   const country = COUNTRIES[isoCode]
   if (!country) return false
+  const tokens = (value: string) =>
+    normalizeCountryName(value)
+      .split(' ')
+      .filter(token => token.length >= MENTION_MIN_TOKEN_CHARS)
   const markers = [
     country.name.english,
     ...localNameVariants(country),
     ...(country.name.demonyms ?? []),
   ]
-    .flatMap(name => normalizeCountryName(name).split(' '))
-    .filter(token => token.length >= 3 && !GENERIC_NAME_TOKENS.has(token))
-  return normalizeCountryName(text)
-    .split(' ')
-    .filter(token => token.length >= 3)
-    .some(token =>
-      markers.some(
-        marker => token.startsWith(marker.slice(0, 5)) || marker.startsWith(token.slice(0, 5))
-      )
+    .flatMap(tokens)
+    .filter(token => !GENERIC_NAME_TOKENS.has(token))
+  return tokens(text).some(token =>
+    markers.some(
+      marker =>
+        token.startsWith(marker.slice(0, MENTION_STEM_CHARS)) ||
+        marker.startsWith(token.slice(0, MENTION_STEM_CHARS))
     )
+  )
 }
 
 /**
