@@ -42,6 +42,15 @@
       @clear="clearScalesPicks"
       @weigh="submitScales"
     />
+    <!-- The easel stays up through the reveal — the true border draws itself
+         in over the attempt before the next question sweeps both away -->
+    <FinalBoundary
+      v-if="currentFinalChallenge?._type === 'boundary-challenge' && !showInterstitial"
+      :key="`boundary-${currentChallengeCount}`"
+      :challenge="currentFinalChallenge"
+      :revealed="!!status"
+      @finished="onBoundaryFinished"
+    />
     <!-- The night survives the reveal — lit countries glow in the dark while
          the lesson shows, then the whole scene eases back to daylight -->
     <Transition name="sunset-fade">
@@ -103,6 +112,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import FinalBoundary from '~/components/challenge/FinalBoundary.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
@@ -117,6 +127,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import {
   bornAfter,
+  boundaryStory,
   COLOR_CODED_REGIONS,
   exportsCommodity,
   FINAL_STAT_LABELS,
@@ -279,6 +290,15 @@ const lesson = computed(() => {
     case 'city-nocturne-challenge':
       // NocturneReveal carries the whole scorecard
       return undefined
+    case 'boundary-challenge': {
+      // The border's story where the atlas has one; the easel overlay is the
+      // visual lesson either way
+      const [first, second] = challenge.countries
+      return (
+        boundaryStory(challenge.countries) ??
+        `The real ${countryName(COUNTRIES[first])}–${countryName(COUNTRIES[second])} line draws itself in over yours.`
+      )
+    }
     default:
       return undefined
   }
@@ -314,6 +334,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     case 'sunset-blitz-challenge':
     case 'city-nocturne-challenge':
       return datasetAttribution('cities')
+    case 'boundary-challenge':
+      return datasetAttribution('map')
     default:
       return undefined
   }
@@ -342,6 +364,9 @@ const triggerMembershipChallenge = () => {
     gameStore.map.tints[challenge.target] = 'endpoint'
     gameStore.map.focus = [challenge.target]
   }
+  // The world behind the easel goes silhouette — its drawn borders would
+  // hand the boundary round its answer
+  gameStore.map.solo = challenge?._type === 'boundary-challenge'
 }
 
 watch(currentFinalChallenge, (challenge, previous) => {
@@ -411,6 +436,16 @@ const onNocturneFinished = (namedCities: string[]) => {
 
   nocturneResult.value = namedCities
   const submittedAnswer = { _type: 'city-nocturne-challenge', namedCities } as const
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+}
+
+const onBoundaryFinished = (drawn: [number, number][]) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'boundary-challenge') return
+
+  const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   update({ event: 'submit-final-challenge-answer', submittedAnswer })
@@ -587,7 +622,8 @@ const onMapClick = (event: Event) => {
       break
     case 'sunset-blitz-challenge':
     case 'city-nocturne-challenge':
-      // Typed modes — the map is scenery while the night holds
+    case 'boundary-challenge':
+      // Off-map modes — the map is scenery while the easel or night holds
       break
     default:
       console.error(`Unsupported final event type`, currentFinalChallenge.value)

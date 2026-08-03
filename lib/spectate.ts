@@ -658,5 +658,11 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
         prompt: `Light up ${item.quota} of ${countryName(item.country)}'s biggest cities before the clock dies`,
         focus: [item.country],
       }
+    case 'boundary-challenge':
+      return {
+        kicker,
+        prompt: `Draw the erased ${countryName(item.countries[0])}–${countryName(item.countries[1])} border where it really runs`,
+        focus: [...item.countries],
+      }
   }
 }

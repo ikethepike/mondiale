@@ -198,10 +198,15 @@ export const searchCountriesByName = (
 /** The area line (thousand km²) between "findable on a map" and "tiny island nation". */
 const LARGE_COUNTRY_AREA = 400
 
+/** The one "is this a map-findable landmass" gate — dealers must not re-derive it. */
+export const isLargeCountry = (isoCode: ISOCountryCode): boolean => {
+  const total = COUNTRIES[isoCode].geography.area.total
+  return !!total && total.amount > LARGE_COUNTRY_AREA
+}
+
 /**
  * A random member of `pool` biased toward ('large') or away from ('small')
- * map-findable landmasses; any pool member when none qualifies. The one
- * "pick a large country" — dealers must not re-derive the area gate.
+ * map-findable landmasses; any pool member when none qualifies.
  */
 export const pickSizedCountry = (
   pool: readonly ISOCountryCode[],
@@ -212,9 +217,7 @@ export const pickSizedCountry = (
     shuffled.find(isoCode => {
       const total = COUNTRIES[isoCode].geography.area.total
       if (!total) return false
-      return modifier === 'large'
-        ? total.amount > LARGE_COUNTRY_AREA
-        : total.amount < LARGE_COUNTRY_AREA
+      return modifier === 'large' ? isLargeCountry(isoCode) : total.amount < LARGE_COUNTRY_AREA
     }) ?? shuffled[0]
   )
 }

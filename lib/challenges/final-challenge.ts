@@ -2,9 +2,10 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { titlecaseLeader } from '~~/lib/leaders'
-import { MAP_REGIONS } from '~~/data/map.gen'
+import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import type {
   BornChallenge,
+  BoundaryChallenge,
   CityNocturneChallenge,
   FinalChallenge,
   FinalChallengeAnswer,
@@ -31,8 +32,16 @@ import {
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import { sample, shuffleArray } from '../arrays'
-import { pickSizedCountry } from '../country'
+import { isLargeCountry, pickSizedCountry } from '../country'
 import { mainlandBox } from '../geo'
+import {
+  boundaryDeviation,
+  largestRing,
+  type OutlinePoint,
+  polylineLength,
+  sharedBoundary,
+  unsharedRuns,
+} from '../outline'
 import { getValueByAccessorID } from '../values'
 import { playableCountries } from '../game-rules'
 import { REGION_LABELS } from '../variant'
@@ -64,6 +73,8 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'made-challenge',
     // Easy-friendly since the quota scales with difficulty (1/2/3 cities)
     'city-nocturne-challenge',
+    // Easy-friendly since both levers scale: the pair pick and the tolerance
+    'boundary-challenge',
   ]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
@@ -104,6 +115,8 @@ const dealChallenge = (
         return getMadeChallenge(pool)
       case 'city-nocturne-challenge':
         return getCityNocturneChallenge(pool, difficulty)
+      case 'boundary-challenge':
+        return getBoundaryChallenge(pool, difficulty)
     }
   } catch {
     return undefined
@@ -600,6 +613,183 @@ const getSunsetBlitzChallenge = (pool: ISOCountryCode[]): SunsetBlitzChallenge |
   return undefined
 }
 
+// --- The Boundary Commission -----------------------------------------------------
+// Calibrated on simulated touchpad/phone strokes over real borders (blended
+// deviation as a fraction of the pair frame's span — see outline.test.ts):
+// careful touchpad lines land 0.010–0.016, honest phone-finger lines
+// 0.019–0.031, sloppy-but-right corridors 0.033–0.054. Wrong lines sit apart:
+// a border drawn 12% of the frame off ≥0.065, a perpendicular line ≥0.07,
+// tracing a coastline instead ≥0.09.
+export const BOUNDARY_TOLERANCE: { [difficulty in GameDifficulty]: number } = {
+  easy: 0.055,
+  normal: 0.04,
+  hard: 0.032,
+}
+
+/** A drawn line must cover this share of the true border's arc length —
+ *  deviation alone lets a token stub pass on a short border. */
+export const BOUNDARY_MIN_COVERAGE = 0.45
+
+// Drawable-border guards: enough vertices to be a line worth recalling, and
+// long enough relative to the merged frame to be drawable at all (an
+// archipelago adjacency or a sliver contact fails both).
+const BOUNDARY_MIN_VERTICES = 8
+const BOUNDARY_MIN_LENGTH_RATIO = 0.18
+const BOUNDARY_FRAME_PAD = 0.08
+
+export interface BoundaryScene {
+  /** The erased border, in map space. */
+  line: OutlinePoint[]
+  /** Padded bounding box of both mainlands: x, y, width, height. */
+  frame: [number, number, number, number]
+  /** The frame's longer side — the deviation normalizer. */
+  span: number
+  /** Each country's mainland ring, in `countries` order. */
+  rings: [OutlinePoint[], OutlinePoint[]]
+  /** The blob's visible outline: each ring minus the shared border. */
+  coasts: OutlinePoint[][]
+}
+
+const boundarySceneCache = new Map<string, BoundaryScene | undefined>()
+
+/**
+ * Everything the Boundary Commission derives from a pair: the dealer's
+ * drawability guard, the server verdict and the client's blob + reveal all
+ * resolve through here — the true line never rides the snapshot.
+ */
+export const boundaryScene = (
+  countries: [ISOCountryCode, ISOCountryCode]
+): BoundaryScene | undefined => {
+  // Keyed by the dealt order — rings come back in `countries` order
+  const cacheKey = countries.join('|')
+  if (boundarySceneCache.has(cacheKey)) return boundarySceneCache.get(cacheKey)
+
+  const build = (): BoundaryScene | undefined => {
+    const [a, b] = countries
+    const ringA = MAP_PATHS[a] ? largestRing(MAP_PATHS[a]) : undefined
+    const ringB = MAP_PATHS[b] ? largestRing(MAP_PATHS[b]) : undefined
+    if (!ringA || !ringB) return undefined
+
+    const line = sharedBoundary(ringA, ringB)
+    if (!line || line.length < BOUNDARY_MIN_VERTICES) return undefined
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const [x, y] of [...ringA, ...ringB]) {
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+    }
+    const span = Math.max(maxX - minX, maxY - minY)
+    if (span <= 0 || polylineLength(line) / span < BOUNDARY_MIN_LENGTH_RATIO) return undefined
+
+    const pad = span * BOUNDARY_FRAME_PAD
+    return {
+      line,
+      frame: [minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2],
+      span,
+      rings: [ringA, ringB],
+      coasts: [...unsharedRuns(ringA, ringB), ...unsharedRuns(ringB, ringA)],
+    }
+  }
+
+  const scene = build()
+  boundarySceneCache.set(cacheKey, scene)
+  return scene
+}
+
+/**
+ * The pass/fail ruling, shared by the server handler and the client's result
+ * beat: the drawn line must cover the border and stay inside the tolerance
+ * corridor. Garbage submissions fail, they don't throw — only a `_type`
+ * mismatch is a client bug.
+ */
+export const isBoundaryDrawnWithin = (
+  challenge: BoundaryChallenge,
+  drawn: [number, number][]
+): boolean => {
+  const scene = boundaryScene(challenge.countries)
+  if (!scene || !Array.isArray(drawn)) return false
+  const line = drawn.filter(
+    (point): point is OutlinePoint =>
+      Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])
+  )
+  if (line.length < 2) return false
+  if (polylineLength(line) < polylineLength(scene.line) * BOUNDARY_MIN_COVERAGE) return false
+  return boundaryDeviation(line, scene.line) / scene.span <= challenge.tolerance
+}
+
+const getBoundaryChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): BoundaryChallenge | undefined => {
+  const poolSet = new Set(pool)
+  // Difficulty picks the border: easy runs stay between map-findable
+  // landmasses (France–Spain, not Moldova–Romania); hard opens the atlas.
+  const familiarEnough = (a: ISOCountryCode, b: ISOCountryCode) => {
+    if (difficulty === 'easy') return isLargeCountry(a) && isLargeCountry(b)
+    if (difficulty === 'normal') return isLargeCountry(a) || isLargeCountry(b)
+    return true
+  }
+
+  for (const country of shuffleArray([...pool])) {
+    for (const neighbour of shuffleArray([...(BORDERS[country] ?? [])])) {
+      if (!poolSet.has(neighbour) || !familiarEnough(country, neighbour)) continue
+      if (!boundaryScene([country, neighbour])) continue
+      return {
+        _type: 'boundary-challenge',
+        countries: [country, neighbour],
+        tolerance: BOUNDARY_TOLERANCE[difficulty],
+      }
+    }
+  }
+  return undefined
+}
+
+/**
+ * Why the line runs where it does — the reveal captions the borders whose
+ * story the atlas can stand behind (crest, river, treaty meridian). Keyed by
+ * the sorted ISO pair.
+ */
+export const BORDER_STORIES: Partial<Record<string, string>> = {
+  'ES|FR':
+    'The line rides the crest of the Pyrenees, fixed by treaty in 1659 — one of Europe’s oldest unchanged borders.',
+  'AR|CL':
+    'The border follows the highest crests of the Andes and the continental water divide — the world’s longest mountain border.',
+  'CA|US':
+    'West of Lake of the Woods the line is simply the 49th parallel — an 1818 treaty latitude, drawn straight through mountains and prairie alike.',
+  'EG|LY':
+    'A ruler-straight colonial line along the 25th meridian east, drawn across the Sahara in 1925.',
+  'EG|SD': 'The 22nd parallel north, ruled across the desert by Britain in 1899.',
+  'IN|PK': 'The Radcliffe Line — drawn in just five weeks in 1947 to partition British India.',
+  'NO|SE':
+    'The line tracks the ridge of the Scandinavian Mountains — the Kølen — from south to north.',
+  'ES|PT':
+    'Largely fixed by the Treaty of Alcañices in 1297 — among the world’s oldest borders, with long stretches carried by the Douro and Guadiana rivers.',
+  'DE|PL': 'The Oder–Neisse line: two rivers, adopted as the border after 1945.',
+  'MX|US':
+    'East of El Paso the border IS the Rio Grande; westward it runs as survey lines from the 1848 Treaty of Guadalupe Hidalgo.',
+  'KZ|UZ':
+    'A 1920s Soviet internal boundary that became international overnight in 1991, skirting the Kyzylkum desert toward the Aral Sea.',
+  'NA|ZA': 'The Orange River carries the border all the way to the Atlantic.',
+  'DO|HT':
+    'Hispaniola was split between Spain and France in 1697 — the island still wears that line.',
+  'FI|SE': 'The Torne river valley, fixed in 1809 when Russia took Finland from Sweden.',
+  'BG|RO': 'The Danube carries most of the line before it cuts overland to the Black Sea.',
+  'CH|IT': 'The Alpine watershed — a border that legally moves as the glaciers defining it melt.',
+  'FR|IT':
+    'The crest of the Alps from Mont Blanc to the Mediterranean, settled when Savoy and Nice joined France in 1860.',
+  'CN|NP': 'The high Himalaya — the line runs across the summit of Mount Everest itself.',
+  'LA|TH': 'The Mekong carries the border for most of its run.',
+  'AR|PY': 'Rivers nearly end to end — the Pilcomayo, Paraguay and Paraná draw the line.',
+}
+
+export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): string | undefined =>
+  BORDER_STORIES[[...countries].sort().join('|')]
+
 const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
   const country = shuffleArray(pool.map(isoCode => COUNTRIES[isoCode])).find(country => {
     return !!country.government.leader
@@ -733,6 +923,10 @@ export const isCorrectFinalAnswer = ({
       const lit = [...new Set(submittedAnswer.namedCities)].filter(name => dealt.has(name))
       return lit.length >= challenge.quota
     }
+    case 'boundary-challenge': {
+      if (submittedAnswer._type !== 'boundary-challenge') return throwTypeMismatch()
+      return isBoundaryDrawnWithin(challenge, submittedAnswer.drawn)
+    }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
       // Client-trust like higher-lower gates. The whole board is nameable
@@ -820,6 +1014,12 @@ export const getFinalChallengeDetails = ({
       return {
         question: `Light up ${COUNTRIES[challenge.country].name.english} — type its ${challenge.cityCount} biggest cities`,
       }
+    case 'boundary-challenge': {
+      const [first, second] = challenge.countries
+      return {
+        question: `The ${COUNTRIES[first].name.english}–${COUNTRIES[second].name.english} border has been erased — draw where it runs`,
+      }
+    }
     default:
       return {
         question: `Lazy, lazy get this implemented`,

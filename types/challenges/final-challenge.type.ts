@@ -28,6 +28,7 @@ export type FinalChallengeItem =
   | BornChallenge
   | MadeChallenge
   | CityNocturneChallenge
+  | BoundaryChallenge
 
 /**
  * What the client submits per question type — verdicts come from the shared
@@ -47,6 +48,8 @@ export type FinalChallengeAnswer =
   | { _type: 'made-challenge'; isoCode: ISOCountryCode }
   /** Client-trust: canonical CITY_LIGHTS names lit in time. */
   | { _type: 'city-nocturne-challenge'; namedCities: string[] }
+  /** The drawn line, in map-space coordinates. */
+  | { _type: 'boundary-challenge'; drawn: [number, number][] }
 
 export interface RegionChallenge {
   _type: 'region-challenge'
@@ -138,6 +141,21 @@ export interface CityNocturneChallenge {
   cityCount: number
   quota: number
   durationSeconds: number
+}
+
+/**
+ * The Boundary Commission: two neighbours render as one merged blob — the
+ * shared border erased — and the player draws where it runs. Only the pair
+ * travels the wire; both sides resolve the true line through `boundaryScene`
+ * (lib/challenges/final-challenge.ts), so the snapshot never carries the
+ * answer geometry.
+ */
+export interface BoundaryChallenge {
+  _type: 'boundary-challenge'
+  countries: [ISOCountryCode, ISOCountryCode]
+  /** Max blended deviation from the true line that still passes, as a
+   *  fraction of the merged pair's frame span. Scales by difficulty. */
+  tolerance: number
 }
 
 export type ScalesAccessorKey = Extract<

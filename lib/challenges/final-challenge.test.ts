@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import type { MinChallenge } from '~~/types/challenges/final-challenge.type'
+import { isLargeCountry } from '~~/lib/country'
+import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
+import type { BoundaryChallenge, MinChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import {
+  BORDER_STORIES,
+  BOUNDARY_TOLERANCE,
+  boundaryScene,
+  boundaryStory,
   dealReplacementChallenge,
   GAUNTLET_LIVES,
   getFinalChallenges,
+  isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
   MADE_COMMODITIES,
 } from './final-challenge'
@@ -144,6 +153,249 @@ describe('city nocturne challenge', () => {
         expect(challenge.quota).toBeLessThanOrEqual(challenge.cityCount)
         expect(challenge.quota).toBeGreaterThan(0)
       }
+    }
+  })
+})
+
+describe('boundary challenge', () => {
+  const challengeFor = (
+    countries: [ISOCountryCode, ISOCountryCode],
+    difficulty: GameDifficulty
+  ): BoundaryChallenge => ({
+    _type: 'boundary-challenge',
+    countries,
+    tolerance: BOUNDARY_TOLERANCE[difficulty],
+  })
+
+  /** Deterministic pseudo-noise — tests must not roll dice. */
+  const noise = (seed: number): number => {
+    const value = Math.sin(seed * 12.9898) * 43758.5453
+    return (value - Math.floor(value)) * 2 - 1
+  }
+
+  /**
+   * A deterministic stand-in for a real drawn line over the true border.
+   * A TOUCHPAD line tracks faithfully but carries high-frequency jitter (pad
+   * quantization) and a small drift. A PHONE finger comes out heavily
+   * smoothed by the touch pipeline, wobbles wider, drifts more and stops
+   * short of the coasts. RUSHED is the sloppy-but-right corridor sweep.
+   * Amplitudes are fractions of the pair frame's span — how big the error
+   * looks on the screen the player actually drew on.
+   */
+  const drawnLine = (
+    target: OutlinePoint[],
+    span: number,
+    quality: { smooth: number; jitter: number; wobble: number; drift: number; trim: number }
+  ): [number, number][] => {
+    let points = resampleOpen(target, 44)
+    for (let pass = 0; pass < quality.smooth; pass++) {
+      points = points.map((point, index) => {
+        if (index === 0 || index === points.length - 1) return point
+        return [
+          (points[index - 1][0] + point[0] + points[index + 1][0]) / 3,
+          (points[index - 1][1] + point[1] + points[index + 1][1]) / 3,
+        ]
+      })
+    }
+    const cut = Math.floor(points.length * quality.trim)
+    points = points.slice(cut, points.length - cut)
+    const count = points.length
+    return points.map(([x, y], index) => {
+      const t = index / count
+      return [
+        x +
+          (Math.sin(t * Math.PI * 2.3 + 0.7) * quality.wobble +
+            noise(index) * quality.jitter +
+            quality.drift) *
+            span,
+        y +
+          (Math.cos(t * Math.PI * 3.1) * quality.wobble +
+            noise(index + 100) * quality.jitter +
+            quality.drift * 0.6) *
+            span,
+      ]
+    })
+  }
+
+  const TOUCHPAD = { smooth: 1, jitter: 0.004, wobble: 0.01, drift: 0.008, trim: 0.03 }
+  const PHONE = { smooth: 4, jitter: 0.002, wobble: 0.022, drift: 0.014, trim: 0.08 }
+  const RUSHED = { smooth: 6, jitter: 0.003, wobble: 0.04, drift: 0.028, trim: 0.1 }
+
+  const PAIRS: [ISOCountryCode, ISOCountryCode][] = [
+    ['FR', 'ES'],
+    ['KZ', 'UZ'],
+    ['NO', 'SE'],
+    ['IN', 'PK'],
+    ['US', 'CA'],
+    ['DE', 'PL'],
+  ]
+
+  it('deals adjacent, drawable pairs with the difficulty tolerance', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (let round = 0; round < DEAL_ROUNDS; round++) {
+        const { challenges } = getFinalChallenges({ game: gameFor('world', difficulty) })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'boundary-challenge') continue
+          const [a, b] = challenge.countries
+          expect(BORDERS[a]).toContain(b)
+          expect(challenge.tolerance).toBe(BOUNDARY_TOLERANCE[difficulty])
+          expect(boundaryScene(challenge.countries)).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('keeps easy runs between map-findable landmasses', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'easy') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'boundary-challenge') continue
+        expect(challenge.countries.every(isLargeCountry)).toBe(true)
+      }
+    }
+  })
+
+  it('passes an honest touchpad line at every difficulty', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const line = drawnLine(scene.line, scene.span, TOUCHPAD)
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        expect(
+          isBoundaryDrawnWithin(challengeFor(pair, difficulty), line),
+          `${pair.join('-')} ${difficulty}`
+        ).toBe(true)
+      }
+    }
+  })
+
+  it('passes an honest phone-finger line at every difficulty', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const line = drawnLine(scene.line, scene.span, PHONE)
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        expect(
+          isBoundaryDrawnWithin(challengeFor(pair, difficulty), line),
+          `${pair.join('-')} ${difficulty}`
+        ).toBe(true)
+      }
+    }
+  })
+
+  it('judges a rushed corridor sweep by difficulty: easy forgives, hard does not', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const line = drawnLine(scene.line, scene.span, RUSHED)
+      expect(isBoundaryDrawnWithin(challengeFor(pair, 'easy'), line), pair.join('-')).toBe(true)
+    }
+    // On a short straight border (Germany–Poland) a rushed sweep and an honest
+    // line are the same thing — hard's strictness shows on the wiggly ones
+    for (const pair of PAIRS.filter(([a]) => !['FR', 'DE'].includes(a))) {
+      const scene = boundaryScene(pair)!
+      const line = drawnLine(scene.line, scene.span, RUSHED)
+      expect(isBoundaryDrawnWithin(challengeFor(pair, 'hard'), line), pair.join('-')).toBe(false)
+    }
+  })
+
+  it('accepts the line drawn in either direction', () => {
+    const scene = boundaryScene(['FR', 'ES'])!
+    const line = drawnLine(scene.line, scene.span, PHONE).reverse()
+    expect(isBoundaryDrawnWithin(challengeFor(['FR', 'ES'], 'hard'), line)).toBe(true)
+  })
+
+  it('fails a line drawn through the blob in the wrong place', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const [x, y, width, height] = scene.frame
+      // The frame diagonal: confidently long, confidently wrong
+      const diagonal: [number, number][] = Array.from({ length: 24 }, (_, index) => [
+        x + (width * index) / 23,
+        y + (height * index) / 23,
+      ])
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        expect(
+          isBoundaryDrawnWithin(challengeFor(pair, difficulty), diagonal),
+          `${pair.join('-')} ${difficulty}`
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('fails the true line shifted an eighth of the frame off', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const shifted = scene.line.map(([x, y]): [number, number] => [
+        x + scene.span * 0.12,
+        y + scene.span * 0.06,
+      ])
+      expect(isBoundaryDrawnWithin(challengeFor(pair, 'easy'), shifted), pair.join('-')).toBe(false)
+    }
+  })
+
+  it('fails a token stub on the coverage gate even when it sits on the line', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const stub = resampleOpen(scene.line, 48).slice(0, 8) as [number, number][]
+      expect(isBoundaryDrawnWithin(challengeFor(pair, 'easy'), stub), pair.join('-')).toBe(false)
+    }
+  })
+
+  it('fails a coastline tracing — near the blob, not the border', () => {
+    for (const pair of PAIRS) {
+      const scene = boundaryScene(pair)!
+      const coast = scene.coasts.reduce((longest, run) =>
+        run.length > longest.length ? run : longest
+      ) as [number, number][]
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        expect(
+          isBoundaryDrawnWithin(challengeFor(pair, difficulty), coast),
+          `${pair.join('-')} ${difficulty}`
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('fails garbage without throwing; only a shape mismatch throws', () => {
+    const challenge = challengeFor(['FR', 'ES'], 'easy')
+    expect(isBoundaryDrawnWithin(challenge, [])).toBe(false)
+    expect(isBoundaryDrawnWithin(challenge, [[NaN, 2] as [number, number]])).toBe(false)
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'boundary-challenge', drawn: [] },
+        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
+      })
+    ).toBe(false)
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
+      })
+    ).toThrow(TypeError)
+  })
+
+  it('resolves the same scene for either country order', () => {
+    const dealt = boundaryScene(['FR', 'ES'])!
+    const flipped = boundaryScene(['ES', 'FR'])!
+    expect(dealt.span).toBe(flipped.span)
+    expect(dealt.line.length).toBe(flipped.line.length)
+    expect(dealt.rings[0]).toEqual(flipped.rings[1])
+  })
+
+  it('refuses pairs that never touch or barely touch', () => {
+    expect(boundaryScene(['FR', 'JP'])).toBeUndefined()
+    expect(boundaryScene(['ES', 'DE'])).toBeUndefined()
+  })
+
+  // Like MADE_COMMODITIES: curated copy must not drift from the data. A typo
+  // or unsorted key would silently never surface on any reveal.
+  it('tells stories only about real, drawable, correctly-keyed borders', () => {
+    for (const storyKey of Object.keys(BORDER_STORIES)) {
+      const [a, b] = storyKey.split('|') as [ISOCountryCode, ISOCountryCode]
+      expect([a, b].sort().join('|'), storyKey).toBe(storyKey)
+      expect(BORDERS[a], storyKey).toContain(b)
+      expect(boundaryScene([a, b]), storyKey).toBeDefined()
+      expect(boundaryStory([b, a]), storyKey).toBe(BORDER_STORIES[storyKey])
     }
   })
 })
