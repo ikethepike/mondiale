@@ -712,7 +712,7 @@ export const isBoundaryDrawnWithin = (
   drawn: [number, number][]
 ): boolean => {
   const scene = boundaryScene(challenge.countries)
-  if (!scene) return false
+  if (!scene || !Array.isArray(drawn)) return false
   const line = drawn.filter(
     (point): point is OutlinePoint =>
       Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])
@@ -754,7 +754,7 @@ const getBoundaryChallenge = (
  * story the atlas can stand behind (crest, river, treaty meridian). Keyed by
  * the sorted ISO pair.
  */
-const BORDER_STORIES: Partial<Record<string, string>> = {
+export const BORDER_STORIES: Partial<Record<string, string>> = {
   'ES|FR':
     'The line rides the crest of the Pyrenees, fixed by treaty in 1659 — one of Europe’s oldest unchanged borders.',
   'AR|CL':

@@ -307,6 +307,29 @@ export const polylineLength = (points: OutlinePoint[]): number => {
 const vertexKey = ([x, y]: OutlinePoint): string => `${x.toFixed(2)},${y.toFixed(2)}`
 
 /**
+ * Which of `ring`'s vertices lie on `neighbour` — the one mask behind
+ * `sharedBoundary` and `unsharedRuns`, so the extracted border and the drawn
+ * coasts partition the ring identically. Bridges 1–2 vertex gaps:
+ * simplification occasionally drops a border vertex on one side only,
+ * splitting one real border into runs (France–Spain).
+ */
+const sharedVertexMask = (ring: OutlinePoint[], neighbour: OutlinePoint[]): boolean[] => {
+  const neighbourKeys = new Set(neighbour.map(vertexKey))
+  const count = ring.length
+  const shared = ring.map(point => neighbourKeys.has(vertexKey(point)))
+  if (!shared.includes(false) || !shared.includes(true)) return shared
+
+  for (let index = 0; index < count; index++) {
+    if (shared[index]) continue
+    const previous = shared[(index - 1 + count) % count]
+    const next = shared[(index + 1) % count]
+    const afterNext = shared[(index + 2) % count]
+    if (previous && (next || afterNext)) shared[index] = true
+  }
+  return shared
+}
+
+/**
  * The shared border between two adjacent rings: the longest contiguous run
  * (wrap-aware) of `ring`'s vertices that also lie on `neighbour`. Reliable
  * because the map generator simplifies topologically — a border keeps
@@ -316,20 +339,9 @@ export const sharedBoundary = (
   ring: OutlinePoint[],
   neighbour: OutlinePoint[]
 ): OutlinePoint[] | undefined => {
-  const neighbourKeys = new Set(neighbour.map(vertexKey))
   const count = ring.length
-  const shared = ring.map(point => neighbourKeys.has(vertexKey(point)))
+  const shared = sharedVertexMask(ring, neighbour)
   if (!shared.includes(false)) return [...ring]
-
-  // Bridge 1–2 vertex gaps: simplification occasionally drops a border vertex
-  // on one side only, splitting one real border into runs (France–Spain)
-  for (let index = 0; index < count; index++) {
-    if (shared[index]) continue
-    const previous = shared[(index - 1 + count) % count]
-    const next = shared[(index + 1) % count]
-    const afterNext = shared[(index + 2) % count]
-    if (previous && (next || afterNext)) shared[index] = true
-  }
 
   let best = { start: -1, length: 0 }
   let start = -1
@@ -360,9 +372,8 @@ export const sharedBoundary = (
  * strokes meet the junction instead of stopping short of it.
  */
 export const unsharedRuns = (ring: OutlinePoint[], neighbour: OutlinePoint[]): OutlinePoint[][] => {
-  const neighbourKeys = new Set(neighbour.map(vertexKey))
   const count = ring.length
-  const shared = ring.map(point => neighbourKeys.has(vertexKey(point)))
+  const shared = sharedVertexMask(ring, neighbour)
   if (!shared.includes(true)) return [[...ring, ring[0]]]
   if (!shared.includes(false)) return []
 

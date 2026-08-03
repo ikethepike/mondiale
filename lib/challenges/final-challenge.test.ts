@@ -7,8 +7,10 @@ import type { BoundaryChallenge, MinChallenge } from '~~/types/challenges/final-
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
+  BORDER_STORIES,
   BOUNDARY_TOLERANCE,
   boundaryScene,
+  boundaryStory,
   dealReplacementChallenge,
   GAUNTLET_LIVES,
   getFinalChallenges,
@@ -383,6 +385,18 @@ describe('boundary challenge', () => {
   it('refuses pairs that never touch or barely touch', () => {
     expect(boundaryScene(['FR', 'JP'])).toBeUndefined()
     expect(boundaryScene(['ES', 'DE'])).toBeUndefined()
+  })
+
+  // Like MADE_COMMODITIES: curated copy must not drift from the data. A typo
+  // or unsorted key would silently never surface on any reveal.
+  it('tells stories only about real, drawable, correctly-keyed borders', () => {
+    for (const storyKey of Object.keys(BORDER_STORIES)) {
+      const [a, b] = storyKey.split('|') as [ISOCountryCode, ISOCountryCode]
+      expect([a, b].sort().join('|'), storyKey).toBe(storyKey)
+      expect(BORDERS[a], storyKey).toContain(b)
+      expect(boundaryScene([a, b]), storyKey).toBeDefined()
+      expect(boundaryStory([b, a]), storyKey).toBe(BORDER_STORIES[storyKey])
+    }
   })
 })
 

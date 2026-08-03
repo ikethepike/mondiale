@@ -157,10 +157,29 @@ const submitLine = () => {
   )
   emit('finished', shipped)
 }
+
+// A missed LAST question redeals in place — the counter doesn't advance, so
+// the keyed remount never happens. The reveal ending is the new-question
+// signal: wipe the judged line and re-arm the easel.
+watch(
+  () => props.revealed,
+  revealed => {
+    if (!revealed) {
+      points.value = []
+      submitted.value = false
+    }
+  }
+)
 </script>
 <style lang="scss" scoped>
+@use 'sass:color';
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+
+// The land tone as OPAQUE paint: a translucent wash would let the two fills'
+// antialiasing seam glow through as a faint trail along the erased border —
+// the answer, readable by anyone squinting
+$blob-land: color.mix(ink(), milk(), 8%);
 
 .boundary-stage {
   flex: 1;
@@ -196,8 +215,8 @@ const submitLine = () => {
 }
 
 .blob {
-  fill: ink(0.08);
-  stroke: ink(0.08);
+  fill: $blob-land;
+  stroke: $blob-land;
   stroke-linejoin: round;
 }
 
@@ -211,7 +230,6 @@ const submitLine = () => {
 .label {
   fill: ink(0.45);
   text-anchor: middle;
-  font-family: var(--heading-font-family, inherit);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   pointer-events: none;
