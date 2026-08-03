@@ -83,6 +83,64 @@ export const countryEndonym = (isoCode: ISOCountryCode): string | undefined => {
   })
 }
 
+/** Name parts that mark no single country — never a giveaway on their own
+ *  ("United Seychelles Party" must scrub on "seychelles", not "united"). */
+const GENERIC_NAME_TOKENS = new Set([
+  'the',
+  'and',
+  'republic',
+  'democratic',
+  'peoples',
+  'federal',
+  'federation',
+  'united',
+  'kingdom',
+  'state',
+  'states',
+  'island',
+  'islands',
+  'islander',
+  'islanders',
+  'new',
+  'north',
+  'south',
+  'east',
+  'west',
+  'central',
+  'saint',
+  'san',
+  'santa',
+])
+
+/**
+ * Does this text betray the country — its name (English or local) or any of
+ * its demonyms? The giveaway gate for on-screen hints: a party called
+ * "Congolese Party of Labour" or "United Seychelles Party" answers a leader
+ * question outright. Tokens match on a 5-char stem so "Senegal" catches
+ * "Senegalese" and "España" catches "Español"; irregulars (Swiss, Dutch,
+ * Spaniard) ride `name.demonyms` — the Factbook's nationality fields — so
+ * no exception list lives here.
+ */
+export const mentionsCountry = (text: string, isoCode: ISOCountryCode): boolean => {
+  const country = COUNTRIES[isoCode]
+  if (!country) return false
+  const markers = [
+    country.name.english,
+    ...localNameVariants(country),
+    ...(country.name.demonyms ?? []),
+  ]
+    .flatMap(name => normalizeCountryName(name).split(' '))
+    .filter(token => token.length >= 3 && !GENERIC_NAME_TOKENS.has(token))
+  return normalizeCountryName(text)
+    .split(' ')
+    .filter(token => token.length >= 3)
+    .some(token =>
+      markers.some(
+        marker => token.startsWith(marker.slice(0, 5)) || marker.startsWith(token.slice(0, 5))
+      )
+    )
+}
+
 /**
  * Some countries (France, UK…) pack every overseas territory into
  * `coordinates` as HTML. Strip tags and keep just the primary lat/long pair.

@@ -2321,6 +2321,24 @@ const scenarios: Scenario[] = [
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
   },
   {
+    id: 'individual-leader-find-easy',
+    label: 'Individual: leader find (easy — portrait + facts)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('easy'),
+  },
+  {
+    id: 'individual-leader-find-normal',
+    label: 'Individual: leader find (normal — facts only)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('normal'),
+  },
+  {
+    id: 'individual-leader-find-hard',
+    label: 'Individual: leader find (hard — bare question)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('hard'),
+  },
+  {
     id: 'individual-landmark-quiz',
     label: 'Individual: landmark quiz (photo)',
     component: ViewIndividualChallenge,
@@ -2557,6 +2575,12 @@ const gauntletGame = (difficulty: GameDifficulty): Game => {
 }
 
 /** Individual gates read the challenge off the player's pending move. */
+const leaderFindGame = (difficulty: GameDifficulty): Game => {
+  const game = individualGame({ variant: 'find', id: 'government.leader', country: 'SO' })
+  game.difficulty = difficulty
+  return game
+}
+
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('individual-challenge', [settledRound()])
   const me = game.players[ME]!

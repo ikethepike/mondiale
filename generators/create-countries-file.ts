@@ -732,6 +732,39 @@ const getRenewablesProduction = (data: FactbookResponse): Amount<'%'> | undefine
   }
 }
 
+/**
+ * Nationality forms ("Swiss", "Dane", "Spaniard") from the Factbook's
+ * adjective + noun fields — the true demonyms, irregulars included, so the
+ * giveaway scrub never needs a hand-kept exception list. The fields ship as
+ * loose prose: alternates behind "or"/commas/semicolons, "(s)"/"(men)"
+ * plural marks, alternates hidden in "(or Taiwanese)" parentheticals, and
+ * trailing note clauses.
+ */
+const DEMONYM_JUNK = /^(note|former|still|singular|plural|and|or|none|collective)\b/i
+
+export const getDemonyms = (data: FactbookResponse): string[] => {
+  const nationality = data['People and Society']?.Nationality
+  const forms = new Set<string>()
+  for (const node of [nationality?.adjective, nationality?.noun]) {
+    if (!node?.text) continue
+    // extractParentheticals keeps the parens: "(or Taiwanese)" → "or Taiwanese"
+    const alternates = extractParentheticals(node.text)
+      .map(match => match.replace(/^\(|\)$/g, '').trim())
+      .filter(inner => /^or\s/i.test(inner))
+      .map(inner => inner.replace(/^or\s+/i, ''))
+    for (const fragment of [
+      ...removeParentheticals(node.text).split(/;|,|\sor\s/),
+      ...alternates,
+    ]) {
+      const form = fragment.trim()
+      if (form.length < 3 || DEMONYM_JUNK.test(form)) continue
+      if (form.split(/\s+/).length > 3) continue
+      forms.add(form.toLowerCase())
+    }
+  }
+  return [...forms]
+}
+
 export const getNames = ({
   data,
   isoCode,
@@ -774,9 +807,14 @@ export const getNames = ({
       break
   }
 
+  const demonyms = getDemonyms(data)
+  // The Factbook publishes no nationality for Palestine.
+  if (isoCode === 'PS' && !demonyms.length) demonyms.push('palestinian')
+
   return {
     local: removeAfterCharacter(removeParentheticals(output.local), ';'),
     english: removeAfterCharacter(removeParentheticals(output.english), ';'),
+    demonyms,
   }
 }
 

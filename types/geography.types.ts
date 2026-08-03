@@ -39,6 +39,9 @@ export interface Country {
   name: {
     local: string
     english: string
+    /** Nationality forms from the Factbook (adjective + noun, lowercased):
+     *  "swiss", "dane", "spaniard"… — the giveaway scrub reads these. */
+    demonyms?: string[]
   }
   identity: {
     /** Raw hex colours extracted from the flag SVG. */
