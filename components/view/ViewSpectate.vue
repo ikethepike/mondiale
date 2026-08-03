@@ -134,14 +134,23 @@ const mountedView = computed(() => {
 })
 
 // Spoiler policy over mounted views: pre-reveal they show only what the racer
-// sees, so the only leak is a reveal state reached EARLY (the followed seat
-// answered while others still race). Central veil, no per-view discipline.
+// sees, so the leaks are reveal states reached EARLY — the followed seat's
+// banked answer, an early scores screen, or a turn-based mode's finished
+// state during its reveal hold (the whole table sees the answer before any
+// groupAnswers bank). Central veil, no per-view discipline; its backdrop
+// blur covers the shared map too.
 const veiled = computed(() => {
   if (!gameStore.spectateHideSpoilers || !mountedView.value) return false
   const round = currentRound.value?.round
   if (!round) return false
+  const challenge = round.groupChallenge
+  const modeFinished =
+    '_type' in challenge &&
+    'state' in challenge &&
+    !!(challenge.state as { finished?: boolean }).finished
   const seatRevealed =
-    !!followed.value && (!!round.groupAnswers[followed.value.id] || stage.value === 'scores')
+    !!followed.value &&
+    (!!round.groupAnswers[followed.value.id] || stage.value === 'scores' || modeFinished)
   return seatRevealed && !roundSettled(racers.value, round.groupAnswers)
 })
 
@@ -211,9 +220,15 @@ const paintKey = computed(
 )
 onMounted(paintMap)
 watch(paintKey, paintMap)
+// The page transition is mode="out-in", so this unmount completes before the
+// next view's setup reads seatId — that ordering is what keeps a returning
+// finisher's views off the followed seat. The 3D follow target must clear
+// too: it outlives the booth otherwise and hijacks the finisher's own board
+// camera, HUD and blocked-banner on their next walk.
 onBeforeUnmount(() => {
   gameStore.spectateFollowId = undefined
   gameStore.spectateSeatId = undefined
+  gameStore.board.spectateTargetId = undefined
   // A finisher leaving a finished race must land on their report, not bounce
   // back into a dead booth on the next routing pass.
   if (raceOver.value) gameStore.spectating = false

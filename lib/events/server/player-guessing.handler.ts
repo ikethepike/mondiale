@@ -38,6 +38,9 @@ export const playerGuessingHandler: EventHandler = async ({
   const server = useServerSideEvents({ socket, redis, io })
   const game = await server.fetchGame(eventTarget.gameId)
   if (!game) return
+  // Guess chips are racer speech — a bound-but-seatless socket (kicked id,
+  // ejected watcher) must not reach the room's ticker.
+  if (!game.players[eventTarget.playerId]) return
 
   const challenge = latestRound(game)?.groupChallenge
   const policy = guessPolicyFor(game, challenge)

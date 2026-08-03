@@ -4,22 +4,22 @@
       <span class="mark" aria-hidden="true" />
       <span class="visually-hidden">Mondiale</span>
     </h1>
-    <div v-if="removed" class="message" role="alert">
+    <div v-if="removed" class="message">
       <h2>The host removed you</h2>
       <p>You're out of this game. You'll have to catch the next one.</p>
     </div>
-    <div v-else-if="roomFull" class="message" role="alert">
+    <div v-else-if="roomFull" class="message">
       <h2>This table is full</h2>
       <p v-if="gameStore.spectatable">
         All {{ MAX_PLAYERS }} seats are taken, but the room is open to watchers.
       </p>
       <p v-else>All {{ MAX_PLAYERS }} seats are taken. You'll have to catch the next game.</p>
     </div>
-    <div v-else-if="sealedBeforeStart" class="message" role="alert">
+    <div v-else-if="sealedBeforeStart" class="message">
       <h2>The room is sealed</h2>
       <p>The host closed the room to watchers. You'll have to catch the next game.</p>
     </div>
-    <div v-else class="message" role="alert">
+    <div v-else class="message">
       <h2>This game already started</h2>
       <p>The players are already out in the world. You'll have to catch the next one.</p>
     </div>

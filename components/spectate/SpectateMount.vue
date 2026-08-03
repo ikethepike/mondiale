@@ -1,10 +1,16 @@
 <template>
-  <!-- `inert` is the central interaction kill: clicks, focus, tab order and
-       round-start autofocus all die at this boundary, so mounted views need
-       no per-view read-only discipline. pointer-events is the belt for
-       engines without inert support. -->
-  <div class="spectate-mount" inert>
-    <component :is="view.component" :key="view.key" />
+  <div class="spectate-mount">
+    <!-- `inert` is the central interaction kill: clicks, focus, tab order and
+         round-start autofocus all die at this boundary, so mounted views need
+         no per-view read-only discipline. pointer-events is the belt for
+         engines without inert support. -->
+    <div class="mounted-view" inert>
+      <component :is="view.component" :key="view.key" />
+    </div>
+    <!-- The veil stands OUTSIDE the inert subtree: inert removes content from
+         the accessibility tree, and the one thing a screen reader must hear
+         under hide-spoilers is why the stage is silent. Its backdrop blur
+         also masks the shared map painting beneath the page. -->
     <div v-if="veiled" class="spoiler-veil" role="status">
       <p>Answers hidden until the table settles</p>
     </div>
@@ -21,6 +27,12 @@ defineProps<{ view: ResolvedView; veiled: boolean }>()
 @use '~/assets/scss/rules/ink' as *;
 
 .spectate-mount {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mounted-view {
   position: absolute;
   inset: 0;
   pointer-events: none;

@@ -26,10 +26,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { Component } from 'vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
-import { resolveChallengeView } from '~/components/view/dispatch'
+import { resolveChallengeView, type ResolvedView } from '~/components/view/dispatch'
 import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSpectate from '~/components/view/ViewSpectate.vue'
@@ -38,7 +37,7 @@ import ViewWaitingRoom from '~/components/view/ViewWaitingRoom.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
-import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
+import { usePhaseTransition } from '~~/lib/phase-transitions'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
@@ -50,15 +49,8 @@ const { game, self, currentRound, gameStore } = useClientEvents()
 // phase change, lose the previous-phase map, and announce the same moment again.
 const { announcement, dismiss } = useGameAnnouncements()
 
-interface ActiveView {
-  component: Component
-  kind: ViewKind
-  /**
-   * Transition identity: views sharing a key never re-transition between
-   * each other — 'moving' and 'movement-summary' both map to the board.
-   */
-  key: string
-}
+// The dispatch's ResolvedView IS the page's view shape — one home, no drift
+type ActiveView = ResolvedView
 
 const activeView = computed<ActiveView | undefined>(() => {
   // Terminal: the server refused the join and closed the socket. Checked first

@@ -4,12 +4,15 @@ import { defineGameHandler } from '../server-side'
 export const startGameHandler = defineGameHandler(
   'start-game',
   async ({ game, server, eventTarget }) => {
+    // Idempotency first: a duplicate start-game answers with a resync snapshot
+    // whoever sent it — that recovery beat must survive the host gate below.
+    if (game.started) return server.emit({ event: 'update', game }, eventTarget)
+
     // Host-only: pre-start balcony watchers hold bound sockets, so this is
     // reachable by a non-player — the client guard alone no longer covers it.
     if (game.host !== eventTarget.playerId) {
       return console.warn(`Ignoring start-game from non-host ${eventTarget.playerId}`)
     }
-    if (game.started) return server.emit({ event: 'update', game }, eventTarget)
 
     // Start the game
     game.started = true

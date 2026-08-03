@@ -3,8 +3,10 @@ import { defineGameHandler } from '../server-side'
 /**
  * Host-only door policy for watchers, togglable at ANY point — before the
  * start (from the lobby settings) or mid-race (from the host's victory
- * report). Closing the door also ejects current spectators: it's the only
- * eviction lever a host has against a lurker.
+ * report). Closing the door also ejects current spectators — including
+ * pre-start balcony watchers, who ride the same room membership — and it's
+ * the only eviction lever a host has against a lurker (kick-player targets
+ * seated players only).
  */
 export const setSpectatorAccessHandler = defineGameHandler(
   'set-spectator-access',

@@ -1,5 +1,11 @@
 import { defineGameHandler } from '../server-side'
 
+/** Denylist bound: lobbyKicks rides every broadcast snapshot (same argument
+ *  as MAX_SPECTATORS), so a churn-heavy lobby must not grow it forever.
+ *  Oldest entries fall off — a 48h-TTL room never meaningfully recycles
+ *  sixty-four kicked ids. */
+const LOBBY_KICKS_MAX = 64
+
 /**
  * Host-only, lobby-only: remove a seated player and free their chair. The
  * kicked id lands on `lobbyKicks`, which joinVerdict checks first — neither
@@ -22,6 +28,9 @@ export const kickPlayerHandler = defineGameHandler('kick-player', async (context
   )
   game.lobbyKicks ??= []
   if (!game.lobbyKicks.includes(targetId)) game.lobbyKicks.push(targetId)
+  if (game.lobbyKicks.length > LOBBY_KICKS_MAX) {
+    game.lobbyKicks = game.lobbyKicks.slice(-LOBBY_KICKS_MAX)
+  }
 
   await server.updateGameState(game)
   // Whole-snapshot event: the lobby sees the seat free up.

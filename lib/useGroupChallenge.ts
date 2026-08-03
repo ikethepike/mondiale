@@ -64,15 +64,16 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const showInterstitial = ref(!gameStore.watching)
   const started = ref(gameStore.watching)
 
-  // The submit latch. For a racer it's local state; in watch mode it rides
-  // the snapshot — the followed SEAT's banked answer is the truth, so the
-  // reveal state tracks whoever the booth follows.
+  // The submit latch. For a racer it's local state; in watch mode the
+  // followed SEAT's banked answer joins it — snapshot truth drives the
+  // reveal, while local writes (views latch `submitted.value = true` as a
+  // re-entrancy guard) still stick. The OR matters: a getter that ignored
+  // the local side would silently break every such guard in the booth.
   const submittedLocal = ref(false)
   const submitted = computed({
     get: () =>
-      gameStore.watching
-        ? !!currentRound.value?.round.groupAnswers[gameStore.seatId]
-        : submittedLocal.value,
+      submittedLocal.value ||
+      (gameStore.watching && !!currentRound.value?.round.groupAnswers[gameStore.seatId]),
     set: value => {
       submittedLocal.value = value
     },
@@ -245,6 +246,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     showInterstitial.value = false
     started.value = true
     if (duration.value) {
+      // Re-entrant callers (the watch-mode round-boundary restart) must
+      // replace the clock, never stack a second interval beside it
+      if (countdown) clearInterval(countdown)
       secondsLeft.value = duration.value
       countdown = setInterval(() => {
         secondsLeft.value--
@@ -273,9 +277,20 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
 
   // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
   // hint unlocks and staged reveals key off elapsedFraction and would stay
-  // frozen otherwise. No hooks: the resolve truth arrives from the snapshot
-  // (use-buzz-round's watch path), never from a local timeout.
-  if (gameStore.watching && duration.value) begin()
+  // frozen otherwise. Keyed on the ROUND NUMBER, not the duration: two
+  // same-kind rounds in a row swap the challenge under a live component (the
+  // mount is keyed on subject and kind) with an identical duration value, and
+  // the clock must still restart. No hooks: the resolve truth arrives from
+  // the snapshot (use-buzz-round's watch path), never a local timeout.
+  if (gameStore.watching) {
+    watch(
+      () => (duration.value ? currentRound.value?.number : undefined),
+      roundNumber => {
+        if (roundNumber !== undefined) begin()
+      },
+      { immediate: true }
+    )
+  }
 
   onBeforeUnmount(() => {
     clearBoard({ preserveLiveGuesses: gameStore.watching })

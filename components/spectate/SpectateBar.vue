@@ -3,8 +3,8 @@
     <div class="bar-brief">
       <span class="live-badge"><span class="live-dot" aria-hidden="true" />Live</span>
       <span class="round-label">{{ headline }}</span>
-      <span class="watching" :title="`${gameStore.spectatorCount} watching`">
-        👁 {{ gameStore.spectatorCount }}
+      <span class="watching" :aria-label="`${gameStore.spectatorCount} watching`">
+        <span aria-hidden="true">👁</span> {{ gameStore.spectatorCount }}
       </span>
     </div>
 
@@ -20,6 +20,9 @@
           }"
           :style="`--player-color: ${entry.player.color}; --progress: ${entry.progress}`"
           :aria-pressed="entry.player.id === gameStore.spectateFollowId"
+          :aria-label="`${entry.player.name || 'Player'} — ${entry.status.label}${
+            entry.player.id === followed?.id ? ', on camera' : ''
+          }`"
           :title="`${entry.player.name || 'Player'} — ${entry.status.label}`"
           @click="toggleFollow(entry.player.id)"
         >
@@ -39,6 +42,7 @@
           class="cheer-button"
           type="button"
           :aria-label="`Cheer ${followed.name || 'the racer'}`"
+          :aria-expanded="stripOpen"
           :disabled="cheerCooldown"
           @click.stop="stripOpen = !stripOpen"
         >
@@ -89,26 +93,22 @@ import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { boardProgress } from '~~/lib/player'
 import { getPlayerStatus } from '~~/lib/player-status'
-import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { KIND_LABELS } from '~~/lib/victory-stats'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
-import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
+import { CHEER_COOLDOWN_MS, CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
 
 /**
  * The booth's one control surface, standing where a racer's console would —
- * the console hides in watch mode, so this band is free by construction and
- * mounted views' chrome never collides with it. Reserves its band from the
- * map camera like any console footer. (A mounted view's own footer may also
- * reserve; both bands cover the same bottom strip, so last-writer-wins is
- * benign.)
+ * the console hides in watch mode, so this band is free by construction.
+ * Deliberately does NOT reserve a map berth: `gameStore.map.berth` is a
+ * single-owner slot and the mounted views' own footers already claim it; a
+ * second ResizeObserver here made the reservation oscillate and a director
+ * cut's unmount wiped whichever owner was left.
  */
 const props = defineProps<{ followed?: Player; raceOver: boolean }>()
 
 const { game, gameStore, update, currentRound } = useClientEvents()
-
-const bar = ref<HTMLElement>()
-useFooterBerth(bar)
 
 const headline = computed(() => {
   if (props.raceOver) return 'Final standings'
@@ -146,7 +146,7 @@ const sendCheer = (emoji: CheerEmoji) => {
   cheerCooldown.value = true
   setTimeout(() => {
     cheerCooldown.value = false
-  }, 1000)
+  }, CHEER_COOLDOWN_MS)
 }
 const closeStrip = () => {
   stripOpen.value = false
@@ -164,6 +164,7 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
   left: 50%;
   bottom: calc(1rem + var(--bottom-clearance, 0rem));
   transform: translateX(-50%);
+  // Above the shell chrome (2-3), below the round clock (5)
   z-index: 4;
   pointer-events: auto;
   display: flex;
@@ -198,7 +199,13 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
   height: 0.7rem;
   border-radius: 50%;
   background: flame();
-  animation: pulse 2s ease-in-out infinite;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .round-label {
@@ -228,7 +235,11 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.7rem 0.5rem;
-  border: 0.1rem solid ink(0.15);
+  // Longhands on purpose: the border SHORTHAND would reset the left edge
+  // that .player-accent owns (the identity stripe this chip wears)
+  border-width: 0.1rem;
+  border-style: solid;
+  border-color: ink(0.15);
   border-radius: 1rem;
   background: milk(0.7);
   cursor: pointer;
@@ -347,12 +358,18 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
 }
 
 @media screen and (max-width: $tablet) {
+  // FIXED, not static: mounted views are absolute full-bleed, so in the
+  // booth's phone flex column a static bar would float to the TOP of the
+  // stage over the mounted view's header. Pinned to the bottom edge the bar
+  // overlays exactly where a racer's console would sit, on every stage.
   .spectate-bar {
-    position: static;
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(1rem + var(--bottom-clearance, 0rem));
     transform: none;
     flex-wrap: wrap;
     max-width: none;
-    width: 100%;
   }
 
   .bar-chips {

@@ -226,7 +226,14 @@ export default defineEventHandler(({ node }) => {
             // stops a client forging another player's actions
             // (server-originated re-entries call the handler functions
             // directly and never pass through here).
-            if (eventKey !== 'join' && eventTarget.playerId !== socket.data.playerId) {
+            // An UNBOUND socket (refused join left connected, pre-join
+            // handshake) must match nothing: undefined !== undefined is
+            // false, so without the explicit bind check a crafted
+            // `playerId: undefined` target sailed through this guard.
+            if (
+              eventKey !== 'join' &&
+              (!socket.data.playerId || eventTarget.playerId !== socket.data.playerId)
+            ) {
               console.warn(
                 `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
               )

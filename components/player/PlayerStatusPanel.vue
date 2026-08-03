@@ -79,7 +79,7 @@
 import { useClientEvents } from '~~/lib/events/client-side'
 import { getPlayerStatus } from '~~/lib/player-status'
 import { useGameStore } from '~~/store/game.store'
-import { CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
+import { CHEER_COOLDOWN_MS, CHEER_EMOJIS, type CheerEmoji } from '~~/types/events.types'
 import type { Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { boardProgress } from '~~/lib/player'
@@ -130,7 +130,7 @@ const sendCheer = (targetPlayerId: string, emoji: CheerEmoji) => {
   cheerCooldown.value = true
   setTimeout(() => {
     cheerCooldown.value = false
-  }, 1000)
+  }, CHEER_COOLDOWN_MS)
 }
 
 const closeStrip = () => {

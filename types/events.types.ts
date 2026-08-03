@@ -13,6 +13,10 @@ export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 
 export const CHEER_EMOJIS = ['👏', '🔥', '😅', '⏳', '🫶'] as const
 export type CheerEmoji = (typeof CHEER_EMOJIS)[number]
 
+/** Local cooldown between cheers — UX pacing only; the server's token bucket
+ *  is the real guard. One token, two strips (board panel, spectate bar). */
+export const CHEER_COOLDOWN_MS = 1000
+
 export type ClientEventData =
   | {
       event: 'join'
