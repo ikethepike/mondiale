@@ -1146,7 +1146,7 @@ const gateLesson = computed(() => {
       const facts = [
         answer.geography.capital.name ? `capital ${answer.geography.capital.name}` : undefined,
         REGION_LABELS[answer.region],
-        answer.people.population ? `${formatAmount(answer.people.population)} people` : undefined,
+        answer.people.population ? formatAmount(answer.people.population) : undefined,
       ].filter(Boolean)
       return facts.length ? `${countryName(answer)} — ${facts.join(' · ')}` : undefined
     }
