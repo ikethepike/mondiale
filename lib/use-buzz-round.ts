@@ -1,4 +1,5 @@
 import { buzzScore } from './scoring'
+import { roundSettled } from './spectate'
 import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -136,6 +137,33 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     if (started.value) return
     beginRound({ onTick: options.onTick, onTimeout: () => resolve(undefined, 0) })
     afterStart?.()
+  }
+
+  // Watch mode: the followed seat's banked answer IS the resolve — their
+  // buzz reaches the snapshot after their own reveal hold, and the booth
+  // plays the same reveal choreography off it. Hide-spoilers defers the
+  // moment until the whole table is out of the answering window: the reveal
+  // paints the shared map, which sits outside the mount's veil.
+  const round2 = round.gameStore
+  if (round2.watching) {
+    const revealableAnswer = computed(() => {
+      const liveRound = round.currentRound.value?.round
+      const answer = liveRound?.groupAnswers[round2.seatId]
+      if (!answer) return undefined
+      if (!round2.spectateHideSpoilers) return answer
+      const players = Object.values(round2.game?.players ?? {})
+      return roundSettled(players, liveRound?.groupAnswers ?? {}) ? answer : undefined
+    })
+    watch(
+      revealableAnswer,
+      answer => {
+        if (!answer || resolved.value) return
+        resolved.value = true
+        stopCountdown()
+        options.onResolve?.(answer.submitted[0])
+      },
+      { immediate: true }
+    )
   }
 
   const guess = (isoCode: ISOCountryCode, guessName: string): 'correct' | 'wrong' | 'ignored' => {

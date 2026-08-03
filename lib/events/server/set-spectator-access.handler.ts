@@ -3,8 +3,10 @@ import { defineGameHandler } from '../server-side'
 /**
  * Host-only door policy for watchers, togglable at ANY point — before the
  * start (from the lobby settings) or mid-race (from the host's victory
- * report). Closing the door also ejects current spectators: it's the only
- * eviction lever a host has against a lurker.
+ * report). Closing the door also ejects current spectators — including
+ * pre-start balcony watchers, who ride the same room membership — and it's
+ * the only eviction lever a host has against a lurker (kick-player targets
+ * seated players only).
  */
 export const setSpectatorAccessHandler = defineGameHandler(
   'set-spectator-access',
@@ -34,7 +36,13 @@ export const setSpectatorAccessHandler = defineGameHandler(
       const sockets = await io.in(eventTarget.gameId).fetchSockets()
       for (const roomSocket of sockets) {
         const boundId = roomSocket.data.playerId
-        if (boundId && ejected.includes(boundId)) roomSocket.leave(eventTarget.gameId)
+        if (boundId && ejected.includes(boundId)) {
+          roomSocket.leave(eventTarget.gameId)
+          // Close like every other terminal refusal: a merely-ejected socket
+          // stays BOUND, and bound sockets pass the dispatch guard — the
+          // relay handlers must not be reachable from outside the room.
+          roomSocket.disconnect(false)
+        }
       }
     }
   }

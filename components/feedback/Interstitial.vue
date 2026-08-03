@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="intro-overlay interstitial" :class="tone" @click="skip">
+  <div v-if="!watching" ref="root" class="intro-overlay interstitial" :class="tone" @click="skip">
     <ContourRipple class="ripple" :tone="tone === 'alert' ? 'alert' : 'success'" :delay="0.35" />
     <div class="content">
       <span data-interstitial class="kicker map-caption">
@@ -16,6 +16,7 @@
 </template>
 <script lang="ts" setup>
 import { useIntroBeat } from '~~/lib/use-intro-beat'
+import { useGameStore } from '~~/store/game.store'
 import ContourRipple from './ContourRipple.vue'
 
 /**
@@ -49,6 +50,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{ done: [] }>()
+
+// Watch mode: the booth's inert wrapper would make "tap to continue"
+// unskippable and every director cut would replay the beat — so the one
+// interstitial home skips itself and fires `done` immediately, letting every
+// view's state machine proceed exactly as if the beat had played.
+const gameStore = useGameStore()
+const watching = computed(() => gameStore.watching)
+if (watching.value) onMounted(() => emit('done'))
 
 const root = ref<HTMLElement>()
 const { skip } = useIntroBeat(

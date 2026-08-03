@@ -65,7 +65,11 @@ interface CheerChip {
 // A burst from the same sender with the same emoji coalesces into one chip
 // with a bumping ×N — three spammed claps never crowd out other senders.
 const visible = computed<CheerChip[]>(() => {
-  const me = gameStore.playerId
+  // The SEAT, not the raw id: in the booth the watcher's stage is the
+  // followed racer's stage, and cheers aimed at that racer must surface —
+  // this is the audience senderFallback below was written for. For racers
+  // the two ids are identical.
+  const me = gameStore.seatId
   const phase = gameStore.game?.players[me]?.phase
   if (!phase || BOARD_PHASES.includes(phase)) return []
 

@@ -63,7 +63,7 @@
                 :lyrics="audioReveal.lyrics"
                 :round="currentRound.round"
                 :players="gameStore.game?.players ?? {}"
-                :my-player-id="playerId"
+                :my-player-id="gameStore.seatId"
               />
             </section>
           </template>
@@ -166,7 +166,10 @@
           v-for="({ player, score }, index) in gameStore.rankedScores"
           :key="player.id"
           class="score-row"
-          :class="{ 'own-player': player.id === playerId, selected: player.id === selectedPlayer }"
+          :class="{
+            'own-player': player.id === gameStore.seatId,
+            selected: player.id === selectedPlayer,
+          }"
           @click="selectedPlayer = player.id"
         >
           <span class="rank">{{ index + 1 }}</span>
@@ -239,7 +242,9 @@ const rankingDefinition = computed(() =>
   accessorId.value ? getChallengeDetails(accessorId.value)?.definition : undefined
 )
 
-const selectedPlayer = ref(playerId.value)
+// Defaults to the SEAT (the booth's followed racer for a watcher, self for a
+// racer) — the scorecard opens on whoever this screen is about.
+const selectedPlayer = ref(gameStore.seatId)
 
 const selectedScorecard = computed(
   () =>
@@ -601,8 +606,12 @@ watch(selectedPlayer, () => {
   gsap.fromTo(scoreCard.value, { opacity: 0.2 }, { opacity: 1, duration: 0.25, ease: EASE.cross })
 })
 
+// Seat-resolved: the "your scorecard" framing follows whoever this screen is
+// ABOUT — self for a racer, the followed racer in the booth (a finisher
+// watching must not see personal framing on someone else's card, nor their
+// own card framed personally while the director happens to hold them).
 const isPersonalScorecard = computed(() => {
-  return playerId.value === selectedScorecard.value.player.id
+  return gameStore.seatId === selectedScorecard.value.player.id
 })
 
 const closeScores = () => {

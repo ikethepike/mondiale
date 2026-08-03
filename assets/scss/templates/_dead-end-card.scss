@@ -1,0 +1,50 @@
+// The centered full-viewport card outside the game proper: wordmark, message,
+// actions. Worn by ViewGameAlreadyStarted (refusals, ejections) and
+// ViewWaitingRoom (the pre-start balcony) — views keep only their own content
+// styles. The parent shell is pointer-events: none, so the card opts back in.
+.dead-end-card {
+  height: var(--viewport-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  pointer-events: auto;
+  text-align: center;
+  padding: 0 calc(2rem + var(--safe-right)) 0 calc(2rem + var(--safe-left));
+
+  .wordmark {
+    margin: 0;
+    width: 100%;
+    max-width: 32rem;
+  }
+
+  .mark {
+    display: block;
+    height: 3.2rem;
+    background: var(--text-color);
+    mask: url('~/assets/logos/mondiale.svg') no-repeat center/contain;
+  }
+
+  .message {
+    max-width: 34rem;
+
+    h2 {
+      margin: 0 0 0.8rem;
+      font-size: 2rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--dark-blue);
+      opacity: 0.75;
+    }
+  }
+
+  .card-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+}

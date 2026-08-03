@@ -33,6 +33,10 @@ const status = computed(() => (target.value ? getPlayerStatus(target.value) : un
 
 const release = () => {
   gameStore.board.spectateTargetId = undefined
+  // In the booth there is no own pawn to release TO — the × means "back to
+  // the auto director", so drop the rail pin as well (harmless for racers,
+  // whose pin is never set).
+  gameStore.spectateFollowId = undefined
 }
 </script>
 <style lang="scss" scoped>

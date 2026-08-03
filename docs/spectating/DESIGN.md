@@ -284,3 +284,20 @@ a synced game timer). The silhouette / outline-reveal border **strokes itself
 in** (GSAP over `getTotalLength`), then the fill washes up under it; facts,
 swatches and option flags **flip in one at a time** (a CSS `stagger-in` keyed
 on index). All of it is `prefers-reduced-motion` safe — assets appear at rest.
+
+## Addendum — August 2026: the fidelity rework
+
+The story-card architecture this document designed is largely retired. The
+booth now mounts the REAL challenge views read-only through a seat override
+(`gameStore.seatId`, written only by the booth) with a central write gate in
+`update()`, an `inert` mount boundary (`SpectateMount`), and a SpoilerVeil for
+reveal states reached early. The original objections to mounting real views
+(§ "Mounting the real challenge views read-only") were answered one by one —
+see the PR chain #96–#101 and `MOUNTABLE_KINDS` in `lib/spectate.ts`.
+
+What survives of this document's design: the door/join model, the auto
+director (now with shot memory — `nextDirectorShot`), hide-spoilers (as the
+veil), and story cards for exactly three kinds the booth cannot mount
+honestly: the two audio rounds (a local play tap is required, and the inert
+boundary rightly blocks it) and sketch (the canvas is local-only). Booth
+chrome consolidated into `SpectateBar`.

@@ -13,10 +13,17 @@ export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 
 export const CHEER_EMOJIS = ['👏', '🔥', '😅', '⏳', '🫶'] as const
 export type CheerEmoji = (typeof CHEER_EMOJIS)[number]
 
+/** Local cooldown between cheers — UX pacing only; the server's token bucket
+ *  is the real guard. One token, two strips (board panel, spectate bar). */
+export const CHEER_COOLDOWN_MS = 1000
+
 export type ClientEventData =
   | {
       event: 'join'
       variant: GameVariant
+      /** Honored only when the table is full: take the balcony instead of a
+       *  seat. While seats are free a joiner always plays (see joinVerdict). */
+      asSpectator?: boolean
     }
   | {
       name: string
@@ -197,6 +204,12 @@ export type ClientEventData =
       allowed: boolean
     }
   | {
+      /** Host removes a seated player pre-start; the seat frees and the id is
+       *  denylisted for this game (see kick-player.handler.ts). */
+      event: 'kick-player'
+      targetId: string
+    }
+  | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
        *  state (like update-by-index). `isoCode`/`label` are omitted under a
@@ -277,8 +290,13 @@ export type ServerEventData =
   /** Join refused — deliberately carries no `game`, so `hasGame()` stays false
    *  and the generic store-write can never strand the client mid-join. */
   | { event: 'game-already-started' }
-  /** Join refused — the table is at MAX_PLAYERS. Same no-`game` contract. */
-  | { event: 'room-full' }
+  /** Join refused — the table is at MAX_PLAYERS. Same no-`game` contract.
+   *  `spectatable`: the door is open and a watcher slot is free — the socket
+   *  was left CONNECTED so "Watch instead" can just re-emit join. */
+  | { event: 'room-full'; spectatable?: boolean }
+  /** Join refused — the host removed this player from the game. Terminal;
+   *  same no-`game` contract as the other refusals. */
+  | { event: 'removed-from-room' }
   | { event: 'update'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }

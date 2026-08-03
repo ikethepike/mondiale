@@ -477,7 +477,7 @@ import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { currentMove, update, gameStore, clearBoard, game, player, playerId } = useClientEvents()
+const { currentMove, update, gameStore, clearBoard, game, player } = useClientEvents()
 
 const challenge = ref(
   currentMove.value?.challenge?._type === 'individual-challenge'
@@ -1150,6 +1150,12 @@ const submitAnswer = (
   isoCode: ISOCountryCode,
   options: { reveal?: boolean; remainingFraction?: number; hintsUsed?: number } = {}
 ) => {
+  // Watch mode: the gate's own timers (outline countdown, zoom-out safety,
+  // miss timer) reach here with NO user input, so inert can't block them and
+  // the write gate only swallows the emit AFTER this body has mutated local
+  // reveal state and the pawn display memory. Same guard as submitOnce in
+  // useGroupChallenge — the booth never answers a gate.
+  if (gameStore.watching) return
   if (status.value) return
   if (currentMove.value?.challenge?._type === 'final-challenge') return
 
@@ -1173,7 +1179,10 @@ const submitAnswer = (
       // display memory to the server position so the summary board opens with
       // the pawn truthfully blocked at gate − 1 instead of restoring it onto
       // the gate (or replaying a stale forward walk).
-      syncDisplayedPawnPosition(game.value.id, playerId.value, player.value.currentPosition)
+      // seatId, not playerId: `player` is seat-resolved, and mixing the raw
+      // id with seat data would write another pawn's position into our
+      // display memory (for racers the two ids are identical)
+      syncDisplayedPawnPosition(game.value.id, gameStore.seatId, player.value.currentPosition)
     }
     if (options.reveal !== false) {
       // A shared-currency gate can be won on a country other than the dealt
@@ -1192,6 +1201,13 @@ watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapB
 })
 
 // The reveal race starts the moment the interstitial clears
+// Watch-mode verdict (see WATCH_SAFE_EVENTS in client-side.ts): these reveal
+// races RUN AS AMBIENCE in the booth. They are the gate's QUESTION — the
+// zoom, the drawing outline, the duel — and fidelity means the watcher sees
+// what the racer sees; their dangerous endpoints (the timers' submitAnswer
+// calls) die on the guard at the top of submitAnswer. In the booth the
+// interstitial self-skips (Interstitial's watching contract), so `done`
+// lands here immediately — deliberate, not a leak.
 watch(showInterstitial, value => {
   if (value) return
   if (variant.value === 'outline-reveal') beginOutlineReveal()

@@ -37,7 +37,7 @@
           key="reveal"
           :challenge="challenge"
           :players="gameStore.game?.players ?? {}"
-          :player-id="gameStore.playerId"
+          :player-id="gameStore.seatId"
         />
 
         <!-- The teaching beat: the card's year, story and photo, told to the
@@ -197,7 +197,7 @@ const activePlayer = computed(() =>
   activeId.value ? gameStore.game?.players[activeId.value] : undefined
 )
 const myTurn = computed(
-  () => !finished.value && !revealing.value && activeId.value === gameStore.playerId
+  () => !finished.value && !revealing.value && activeId.value === gameStore.seatId
 )
 const canPlace = computed(() => myTurn.value && !showInterstitial.value)
 
@@ -266,7 +266,7 @@ const story = computed(() => {
   const event = timelineEvent(placement.slug)
   if (!event) return undefined
 
-  const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.playerId)
+  const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.seatId)
   const verdict = placement.correct
     ? who === 'You'
       ? `Correct — placed exactly right, +${placement.scored} pts`
@@ -482,7 +482,9 @@ const onKeydown = (event: KeyboardEvent) => {
     place(selectedSlot.value)
   }
 }
-if (import.meta.client) {
+// Window listeners bypass the booth's inert wrapper — a watcher's arrow keys
+// must not drive the followed racer's UI.
+if (import.meta.client && !gameStore.watching) {
   window.addEventListener('keydown', onKeydown)
   registerCleanup(() => window.removeEventListener('keydown', onKeydown))
 }

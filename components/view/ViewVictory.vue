@@ -101,7 +101,7 @@
                 @change="setSpectatorAccess"
               />
               <span>
-                Open to spectators — anyone with the room link can watch the rest of the race
+                Open to watchers — anyone with the room link can watch the rest of the race
               </span>
             </label>
           </footer>

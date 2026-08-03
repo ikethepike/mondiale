@@ -161,7 +161,7 @@
       class="reveal"
       :challenge="challenge"
       :players="gameStore.game?.players ?? {}"
-      :player-id="gameStore.playerId"
+      :player-id="gameStore.seatId"
     />
 
     <footer>
@@ -284,7 +284,10 @@ const EMPTY_STATE: ManhuntState = {
 
 const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
 const finished = computed(() => !!state.value.finished)
-const isDespot = computed(() => challenge.value?.despotId === gameStore.playerId)
+// The watching lens: following the despot shows the HUNT's honest view — the
+// despot's trail arrives only on their own socket, so their first-person UI
+// cannot render truthfully for a watcher.
+const isDespot = computed(() => challenge.value?.despotId === gameStore.seatId && !gameStore.watching)
 const despotPlayer = computed(() =>
   challenge.value ? gameStore.game?.players[challenge.value.despotId] : undefined
 )
@@ -352,7 +355,7 @@ const mapChipEntries = computed(() => {
   }
 
   if (iAmDetective.value && state.value.beat === 'hunt' && myMarker.value) {
-    entries.push({ isoCode: myMarker.value, label: '✕', color: playerColor(gameStore.playerId) })
+    entries.push({ isoCode: myMarker.value, label: '✕', color: playerColor(gameStore.seatId) })
   }
 
   if (isDespot.value && state.value.beat === 'move' && gameStore.game?.difficulty === 'easy') {
@@ -415,19 +418,19 @@ const seaPassageAnnounced = computed(() => {
 
 const recentClues = computed(() => [...state.value.clues].slice(-4).reverse())
 
-const iCommitted = computed(() => state.value.committed.includes(gameStore.playerId))
-const iAmDetective = computed(() => state.value.detectives.includes(gameStore.playerId))
+const iCommitted = computed(() => state.value.committed.includes(gameStore.seatId))
+const iAmDetective = computed(() => state.value.detectives.includes(gameStore.seatId))
 
 const briefing = computed(
   () => !!state.value.briefing && !finished.value && !showInterstitial.value
 )
 const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
 const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
 )
-const iAmReady = computed(() => state.value.ready.includes(gameStore.playerId))
+const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
 const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
@@ -447,10 +450,10 @@ const sendTaunt = () => {
 }
 
 const nameOf = (playerId: string) =>
-  playerId === gameStore.playerId ? 'you' : playerDisplayName(gameStore.game?.players[playerId])
+  playerId === gameStore.seatId ? 'you' : playerDisplayName(gameStore.game?.players[playerId])
 
 // --- Subpoenas ---------------------------------------------------------------
-const mySubpoenas = computed(() => state.value.subpoenasLeft[gameStore.playerId] ?? 0)
+const mySubpoenas = computed(() => state.value.subpoenasLeft[gameStore.seatId] ?? 0)
 const canSubpoena = computed(
   () =>
     !finished.value &&

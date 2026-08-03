@@ -38,6 +38,7 @@ import {
   forgetGuessBucket,
   playerGuessingHandler,
 } from '~~/lib/events/server/player-guessing.handler'
+import { kickPlayerHandler } from '~~/lib/events/server/kick-player.handler'
 import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
@@ -145,6 +146,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   'set-spectator-access': {
     handler: setSpectatorAccessHandler,
   },
+  'kick-player': {
+    handler: kickPlayerHandler,
+  },
 }
 
 /**
@@ -168,6 +172,9 @@ const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSo
       Object.entries(game.spectators).filter(([id]) => id !== playerId)
     )
     await server.updateGameState(game)
+    // eventTarget names the DEPARTED watcher — the actor whose exit this
+    // snapshot reflects. Nothing keys off the target on whole-snapshot
+    // broadcasts today; anything that starts to must tolerate a gone id.
     server.emit({ event: 'player-joined', game }, { gameId, playerId })
   }).catch(error => console.error(`Spectator prune failed for ${gameId}`, error))
 }
@@ -222,7 +229,14 @@ export default defineEventHandler(({ node }) => {
             // stops a client forging another player's actions
             // (server-originated re-entries call the handler functions
             // directly and never pass through here).
-            if (eventKey !== 'join' && eventTarget.playerId !== socket.data.playerId) {
+            // An UNBOUND socket (refused join left connected, pre-join
+            // handshake) must match nothing: undefined !== undefined is
+            // false, so without the explicit bind check a crafted
+            // `playerId: undefined` target sailed through this guard.
+            if (
+              eventKey !== 'join' &&
+              (!socket.data.playerId || eventTarget.playerId !== socket.data.playerId)
+            ) {
               console.warn(
                 `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
               )

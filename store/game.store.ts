@@ -125,12 +125,20 @@ interface GameStoreState {
    */
   pendingMovementRequest: boolean
   /**
-   * The server refused the join — the game was already underway ('started')
-   * or the table was at capacity ('full') — and closed the socket. Terminal:
-   * nothing further arrives, so the room page shows a dead end rather than
-   * waiting on a join that will never land.
+   * The server refused the join — the game was already underway ('started'),
+   * the table was at capacity ('full'), or the host removed this player
+   * ('removed'). Terminal, with one exception: a spectatable 'full' refusal
+   * leaves the socket connected so "Watch instead" can re-emit join; every
+   * other shape closes the socket and the room page shows a dead end.
    */
-  rejected: false | 'started' | 'full'
+  rejected: false | 'started' | 'full' | 'removed'
+  /** Rode the last room-full refusal: the door is open and a watcher slot is
+   *  free, so the dead-end card offers "Watch instead". */
+  spectatable: boolean
+  /** Watch intent for the next join emit (all three emit sites: joinRoom on
+   *  mount/reconnect, the watch-instead click, the ack-recovery re-join).
+   *  Client-only; reset when leaving the room page. */
+  joinAsSpectator: boolean
   /**
    * A FINISHED player watching the race from their victory screen. Purely
    * client-side — they already receive every broadcast; this only swaps the
@@ -139,6 +147,13 @@ interface GameStoreState {
   spectating: boolean
   /** Spectator booth: pinned player to follow; undefined = auto-director. */
   spectateFollowId?: string
+  /**
+   * The seat the booth is rendering as — the followed racer's id. Written by
+   * ONE owner (ViewSpectate: director cut or pin), cleared on booth unmount,
+   * so for every racer `seatId === playerId` and their path is provably
+   * untouched. Views resolve their seat through `seatId`, never this field.
+   */
+  spectateSeatId?: string
   /** Spectator booth: hide the answer secrets, pre-settle reveals and map
    *  focus glow — for a screen someone in the room might glance at. */
   spectateHideSpoilers: boolean
@@ -153,8 +168,11 @@ export const useGameStore = defineStore('game', {
     socket: undefined,
     pendingMovementRequest: false,
     rejected: false,
+    spectatable: false,
+    joinAsSpectator: false,
     spectating: false,
     spectateFollowId: undefined,
+    spectateSeatId: undefined,
     spectateHideSpoilers: false,
     map: {
       status: undefined,
@@ -203,14 +221,25 @@ export const useGameStore = defineStore('game', {
         number: state.game.rounds.length,
       }
     },
-    currentGroupChallengeForPlayer(state): ISOCountryCode[] | undefined {
+    /** The identity this UI renders as: the booth's followed seat, or self.
+     *  Every per-seat read goes through here; `playerId` stays the REAL
+     *  identity for emits, host checks and the routing `self`. */
+    seatId(state): string {
+      return state.spectateSeatId ?? state.playerId
+    },
+    /** In the booth — a latecomer watcher or a finisher watching. The write
+     *  gate in client-side.ts keys off this. */
+    watching(state): boolean {
+      return this.isSpectator || state.spectating
+    },
+    currentGroupChallengeForPlayer(): ISOCountryCode[] | undefined {
       const round = this.currentRound?.round
       if (!round) return undefined
-      if (!state.playerId) return undefined
+      if (!this.seatId) return undefined
       // Only ranking rounds deal per-player hands
       if (!('countriesPerPlayer' in round.groupChallenge)) return undefined
 
-      return round.groupChallenge.countriesPerPlayer[state.playerId]
+      return round.groupChallenge.countriesPerPlayer[this.seatId]
     },
     playersByPhase(state) {
       const players = Object.values(state.game?.players || [])
@@ -221,14 +250,14 @@ export const useGameStore = defineStore('game', {
         all: players,
       }
     },
-    playerScore(state): PlayerScore {
-      if (!state.playerId) return undefined
+    playerScore(): PlayerScore {
+      if (!this.seatId) return undefined
       if (!this?.currentRound) return undefined
       const { groupAnswers, playerTurns } = this.currentRound.round
 
       return {
-        ordering: groupAnswers[state.playerId] || [],
-        points: playerTurns[state.playerId]?.points || 0,
+        ordering: groupAnswers[this.seatId] || [],
+        points: playerTurns[this.seatId]?.points || 0,
       }
     },
     /**
@@ -260,6 +289,14 @@ export const useGameStore = defineStore('game', {
      *  outside `players`. Ejection (door closed mid-watch) flips this false. */
     isSpectator(state): boolean {
       if (!state.game?.started || !state.playerId) return false
+      if (state.game.players[state.playerId]) return false
+      return !!state.game.spectators?.[state.playerId]
+    },
+    /** Admitted before the start: on the balcony, waiting for the race. Flips
+     *  into `isSpectator` (and the booth) the moment the started snapshot
+     *  lands — round 1 rides that same snapshot. */
+    isWaitingSpectator(state): boolean {
+      if (!state.game || state.game.started || !state.playerId) return false
       if (state.game.players[state.playerId]) return false
       return !!state.game.spectators?.[state.playerId]
     },

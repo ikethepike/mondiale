@@ -91,20 +91,6 @@
           {{ story.secret }}
         </p>
 
-        <!-- Final gauntlet: the run so far -->
-        <div v-if="stage === 'final' && gauntlet" class="gauntlet">
-          <div class="gauntlet-track">
-            <div
-              class="gauntlet-fill"
-              :style="{ width: `${(gauntlet.answeredCorrect / gauntlet.totalCount) * 100}%` }"
-            />
-          </div>
-          <span class="gauntlet-label">
-            {{ gauntlet.answeredCorrect }}/{{ gauntlet.totalCount }} cleared · {{ gauntlet.lives }}
-            {{ gauntlet.lives === 1 ? 'life' : 'lives' }} left
-          </span>
-        </div>
-
         <!-- Group rounds: who's answered, who's still sweating -->
         <ul v-if="stage === 'question' && answerChips.length > 1" class="answer-chips">
           <li
@@ -219,11 +205,6 @@ const headline = computed(() => {
 })
 
 const scorecards = computed(() => gameStore.rankedScores)
-
-const gauntlet = computed(() => {
-  const gauntletChallenge = props.followed?.moves[0]?.challenge
-  return gauntletChallenge?._type === 'final-challenge' ? gauntletChallenge : undefined
-})
 
 const answerChips = computed(() => {
   if (!game.value || !round.value) return []
@@ -452,30 +433,6 @@ $hairline: ink(0.12);
   text-align: center;
   line-height: 1.2;
   opacity: 0.75;
-}
-
-.gauntlet {
-  margin-top: 1.4rem;
-}
-
-.gauntlet-track {
-  height: 0.6rem;
-  border-radius: 0.3rem;
-  overflow: hidden;
-  background: ink(0.08);
-}
-
-.gauntlet-fill {
-  height: 100%;
-  background: var(--soft-blue);
-  transition: width 0.5s var(--ease-smooth, ease);
-}
-
-.gauntlet-label {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 1.2rem;
-  opacity: 0.7;
 }
 
 .answer-chips {

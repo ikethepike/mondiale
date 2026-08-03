@@ -164,6 +164,14 @@
             :key="lobbyPlayer.id"
             :player="lobbyPlayer"
           >
+            <button
+              v-if="isPlayerHost && lobbyPlayer.id !== player?.id"
+              type="button"
+              class="kick-button"
+              :aria-label="`Remove ${playerDisplayName(lobbyPlayer)} from the game`"
+              :title="`Remove ${playerDisplayName(lobbyPlayer)}`"
+              @click="kickPlayer(lobbyPlayer.id)"
+            ></button>
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
         </TransitionGroup>
@@ -251,7 +259,8 @@
             <div class="challenge-meta">
               <span class="challenge-name">Spectators</span>
               <span class="challenge-caption"
-                >Let latecomers watch the race live. Off keeps the room sealed.</span
+                >Friends with the link can watch — from the balcony now, live once you start. Off
+                seals the room.</span
               >
             </div>
             <SegmentedControl
@@ -285,7 +294,12 @@ import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
-import { MAX_PLAYER_NAME_LENGTH, MAX_PLAYERS, normalizePlayerName } from '~~/lib/player'
+import {
+  MAX_PLAYER_NAME_LENGTH,
+  MAX_PLAYERS,
+  normalizePlayerName,
+  playerDisplayName,
+} from '~~/lib/player'
 import { wait } from '~~/lib/time'
 import {
   autoEnabledKinds,
@@ -481,6 +495,10 @@ const setSpectatorAccess = (value: string) => {
     event: 'set-spectator-access',
     allowed: value === 'on',
   })
+}
+
+const kickPlayer = (targetId: string) => {
+  update({ event: 'kick-player', targetId })
 }
 
 const startGame = () => {
@@ -844,11 +862,50 @@ const startGame = () => {
   }
 }
 
+// Same visual language as the ready marker beside it: a solid masked icon,
+// not a typeset glyph. Quiet at rest (removal shouldn't shout on every
+// tile), full weight + the alert hue on hover/focus — it's destructive.
+.kick-button {
+  margin-left: auto;
+  width: 2.4rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity var(--motion-quick, 0.15s) ease;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--black);
+    mask: url('~/assets/icons/cross.svg') no-repeat center / 1.4rem;
+    transition: background-color var(--motion-quick, 0.15s) ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+
+    &::before {
+      background: flame();
+    }
+  }
+}
+
 .player-status {
   width: 4rem;
   height: 2rem;
   margin-left: auto;
   background: var(--black);
+
+  // The kick button already claimed the auto gap when it renders before us
+  .kick-button + & {
+    margin-left: 0.5rem;
+  }
   &:not(.ready) {
     mask: url('~/assets/icons/dots.svg') no-repeat center/2rem;
   }

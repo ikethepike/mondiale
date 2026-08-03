@@ -18,7 +18,7 @@
       v-if="trap"
       :trap="trap"
       :players="gameStore.game?.players ?? {}"
-      :player-id="gameStore.playerId"
+      :player-id="gameStore.seatId"
     />
 
     <!-- Walk-order numbers pinned over the chain — the gradient shows the
@@ -86,7 +86,7 @@
       class="reveal"
       :state="state!"
       :players="gameStore.game?.players ?? {}"
-      :player-id="gameStore.playerId"
+      :player-id="gameStore.seatId"
     />
 
     <!-- Berth only while the console stands — the reserve would shove the
@@ -161,7 +161,7 @@ const {
 
 const state = computed(() => challenge.value?.state)
 const briefing = computed(() => !!state.value?.briefing)
-const iAmReady = computed(() => !!state.value?.ready.includes(gameStore.playerId))
+const iAmReady = computed(() => !!state.value?.ready.includes(gameStore.seatId))
 const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
@@ -169,14 +169,14 @@ const sendReady = () => {
   update({ event: 'chain-ready' })
 }
 const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.playerId)
+  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
 const chain = computed(() => (state.value ? liveChain(state.value) : []))
 const chainCount = computed(() => state.value?.chains.length ?? 0)
 const seed = computed(() => state.value?.chains[0]?.[0] as ISOCountryCode)
 const finished = computed(() => !!state.value?.finished)
 const trap = computed(() => state.value?.trap)
-const iAmOut = computed(() => !!state.value?.eliminated.includes(gameStore.playerId))
+const iAmOut = computed(() => !!state.value?.eliminated.includes(gameStore.seatId))
 const activeId = computed(() => (state.value ? activePlayerId(state.value) : undefined))
 const activePlayer = computed(() =>
   activeId.value ? gameStore.game?.players[activeId.value] : undefined
@@ -184,7 +184,7 @@ const activePlayer = computed(() =>
 // Nobody is on the clock during a dead-end hold — the console stands down with
 // the turn line so no one types into a paused table.
 const myTurn = computed(
-  () => !finished.value && !trap.value && activeId.value === gameStore.playerId
+  () => !finished.value && !trap.value && activeId.value === gameStore.seatId
 )
 const walked = computed(() => chain.value)
 
@@ -351,7 +351,7 @@ watch(
     gameStore.map.pulsing = []
     setTimeout(() => {
       paintChain(true)
-      const outs = state.value?.missedOuts[gameStore.playerId] ?? []
+      const outs = state.value?.missedOuts[gameStore.seatId] ?? []
       gameStore.map.tints = Object.fromEntries(outs.map(isoCode => [isoCode, 'optimal']))
     }, 400)
   },

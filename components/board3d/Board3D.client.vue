@@ -57,10 +57,13 @@ const props = defineProps({
   },
 })
 
-const { game: storeGame, playerId: storePlayerId, gameStore, currentRound } = useClientEvents()
+const { game: storeGame, gameStore, currentRound } = useClientEvents()
 
 const resolvedGame = computed(() => props.game ?? storeGame.value)
-const resolvedPlayerId = computed(() => props.playerId ?? storePlayerId.value)
+// Falls back to the SEAT: today every booth path passes player-id explicitly
+// (SpectateBoard), but if a board phase ever reaches the mount unpropped, the
+// scene must key off the followed seat, not the watcher's pawnless id
+const resolvedPlayerId = computed(() => props.playerId ?? gameStore.seatId)
 
 // A failed gate settles the walk with no hop to see — the banner says what the
 // knock animation alone can't: the gate held, and the banked steps are gone.

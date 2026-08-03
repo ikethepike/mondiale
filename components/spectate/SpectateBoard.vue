@@ -15,13 +15,14 @@ const props = defineProps<{ followedId: string }>()
 const { game, gameStore } = useClientEvents()
 
 // Switching who's followed flies the camera — TopoScene watches this id.
-// The scene may auto-release it (target settles, user grabs the camera);
-// the playerId prop above keeps the fallback on the followed pawn anyway.
+// `immediate` matters: without it the FIRST board stage never set the
+// target, so the scene had nobody to follow until the next director cut.
 watch(
   () => props.followedId,
   id => {
     gameStore.board.spectateTargetId = id
-  }
+  },
+  { immediate: true }
 )
 
 // Same guard as ModalMoving: a deploy invalidates the lazy chunk's URL and

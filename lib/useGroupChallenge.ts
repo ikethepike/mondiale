@@ -52,13 +52,32 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       : undefined
   })
 
-  // Blank the world map by default — most modes ARE the whole question.
-  clearBoard()
+  // Blank the world map by default — most modes ARE the whole question. In
+  // the booth the reset keeps the ticker: a director cut mid-round must not
+  // wipe in-flight guess chips.
+  clearBoard({ preserveLiveGuesses: gameStore.watching })
   if (options.solo !== false) gameStore.map.solo = true
 
-  const showInterstitial = ref(true)
-  const started = ref(false)
-  const submitted = ref(false)
+  // Watch mode (the booth mounting this view read-only): no interstitial —
+  // every director cut would replay the 2.4s beat — and the round counts as
+  // started, since the racers are already in it.
+  const showInterstitial = ref(!gameStore.watching)
+  const started = ref(gameStore.watching)
+
+  // The submit latch. For a racer it's local state; in watch mode the
+  // followed SEAT's banked answer joins it — snapshot truth drives the
+  // reveal, while local writes (views latch `submitted.value = true` as a
+  // re-entrancy guard) still stick. The OR matters: a getter that ignored
+  // the local side would silently break every such guard in the booth.
+  const submittedLocal = ref(false)
+  const submitted = computed({
+    get: () =>
+      submittedLocal.value ||
+      (gameStore.watching && !!currentRound.value?.round.groupAnswers[gameStore.seatId]),
+    set: value => {
+      submittedLocal.value = value
+    },
+  })
 
   // Optional countdown, driven by a `durationSeconds` on the challenge.
   const duration = computed(() =>
@@ -95,6 +114,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     buzzAt?: number,
     extras?: SubmitExtras
   ) => {
+    // Watchers hold no answer: the gate here also keeps the redelivery loop
+    // from ever arming (update() would swallow the emit and retry forever).
+    if (gameStore.watching) return
     if (submitted.value) return
     submitted.value = true
     void deliverAnswer(ranking, clientScore, buzzAt, extras)
@@ -166,6 +188,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     isoCode?: ISOCountryCode
     label?: string
   }) => {
+    // A watcher fabricates no guess chips and sends nothing to the room
+    if (gameStore.watching) return
     if (text !== undefined) {
       hint.value = text
       if (hintTimer) clearTimeout(hintTimer)
@@ -222,6 +246,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     showInterstitial.value = false
     started.value = true
     if (duration.value) {
+      // Re-entrant callers (the watch-mode round-boundary restart) must
+      // replace the clock, never stack a second interval beside it
+      if (countdown) clearInterval(countdown)
       secondsLeft.value = duration.value
       countdown = setInterval(() => {
         secondsLeft.value--
@@ -248,8 +275,25 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
+  // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
+  // hint unlocks and staged reveals key off elapsedFraction and would stay
+  // frozen otherwise. Keyed on the ROUND NUMBER, not the duration: two
+  // same-kind rounds in a row swap the challenge under a live component (the
+  // mount is keyed on subject and kind) with an identical duration value, and
+  // the clock must still restart. No hooks: the resolve truth arrives from
+  // the snapshot (use-buzz-round's watch path), never a local timeout.
+  if (gameStore.watching) {
+    watch(
+      () => (duration.value ? currentRound.value?.number : undefined),
+      roundNumber => {
+        if (roundNumber !== undefined) begin()
+      },
+      { immediate: true }
+    )
+  }
+
   onBeforeUnmount(() => {
-    clearBoard()
+    clearBoard({ preserveLiveGuesses: gameStore.watching })
     if (countdown) clearInterval(countdown)
     for (const fn of cleanups) fn()
   })

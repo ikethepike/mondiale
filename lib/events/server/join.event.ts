@@ -1,7 +1,7 @@
 import { generateTiles } from '~~/lib/tiles'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
-import { createPlayer, tableIsFull } from '../../../lib/player'
+import { createPlayer, joinVerdict } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import {
@@ -10,11 +10,6 @@ import {
   tableIsSettled,
 } from './enter-movement-phase.handler'
 import { rearmLiveRound } from './rearm-round'
-
-/** A room stops admitting watchers past this — a bound on the "N watching"
- *  count and, more importantly, on the spectator records that ride every
- *  broadcast snapshot. Rejected joins get the same door-closed dead end. */
-const MAX_SPECTATORS = 20
 
 export const joinEventHandler: EventHandler = async ({
   io,
@@ -64,6 +59,7 @@ export const joinEventHandler: EventHandler = async ({
       length: 'medium',
       difficulty: 'normal',
       liveGuesses: true,
+      allowSpectators: true,
       challengeOverrides: {},
       tiles: generateTiles('medium', gameId),
     }
@@ -73,57 +69,52 @@ export const joinEventHandler: EventHandler = async ({
     await server.updateGameState(game)
   }
 
-  // Player connecting to existing game — hand them a colour nobody else has.
-  // The seat check mirrors the spectator cap below: the table size is a tuned
-  // gameplay rule (see MAX_PLAYERS), and like the spectator door the refusal
-  // goes straight to this socket — it never joined the room.
-  if (!game.players[playerId] && !game.started) {
-    if (tableIsFull(game.players, playerId)) {
-      console.warn(`Table full for ${gameId} — refusing ${playerId}`)
-      socket.emit('room-full', { event: 'room-full' }, eventTarget)
+  // One admission rule for every join shape (see joinVerdict): seat, watch,
+  // or refuse. Refusals emit straight to this socket — it never joined the
+  // gameId room, so a room broadcast would reach everyone except the one
+  // player the message is about — and close only once the frame is on the
+  // wire. The exception: a spectatable room-full keeps the socket CONNECTED,
+  // so "Watch instead" is a plain re-emit of join, no reconnect dance.
+  const admission = joinVerdict(game, playerId, eventData.asSpectator === true)
+
+  if (admission.admit === 'refuse') {
+    console.warn(`Refusing ${playerId} in ${gameId}: ${admission.reason}`)
+    if (admission.reason === 'room-full') {
+      socket.emit(
+        'room-full',
+        { event: 'room-full', spectatable: admission.spectatable },
+        eventTarget
+      )
+      if (!admission.spectatable) socket.disconnect(false)
+    } else {
+      socket.emit(admission.reason, { event: admission.reason }, eventTarget)
       socket.disconnect(false)
-      return
     }
-    const takenColors = Object.values(game.players).map(existing => existing.color)
-    game.players[playerId] = createPlayer(playerId, takenColors)
+    return
   }
 
-  // Game already started: latecomers fork on the spectator door. With it open
-  // they watch — in the socket room (every broadcast is a room broadcast, so
+  // Watchers live in the socket room (every broadcast is a room broadcast, so
   // this alone makes spectating live), never in `players`, never own a pawn.
-  // The upsert keeps re-joins idempotent, exactly like player joins.
-  if (!game.players[playerId] && game.started) {
-    if (game.allowSpectators) {
-      // Cap new watchers: spectator records ride every broadcast, so an
-      // unbounded set inflates the snapshot for the whole room. Returning
-      // watchers (already in the set) always get back in.
-      const alreadyWatching = !!game.spectators?.[playerId]
-      const watching = Object.keys(game.spectators ?? {}).length
-      if (!alreadyWatching && watching >= MAX_SPECTATORS) {
-        console.warn(`Spectator cap reached for ${gameId} — refusing ${playerId}`)
-        socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
-        socket.disconnect(false)
-        return
-      }
+  // The upsert keeps re-joins idempotent, exactly like player joins. A record
+  // stamped `joinedAtRound: 0` was on the balcony before the start. Watchers
+  // skip the healing/re-arm tail below — they have no seat to heal.
+  if (admission.admit === 'spectate') {
+    game.spectators ??= {}
+    game.spectators[playerId] ??= { id: playerId, joinedAtRound: game.rounds.length }
 
-      game.spectators ??= {}
-      game.spectators[playerId] ??= { id: playerId, joinedAtRound: game.rounds.length }
+    await socket.join(gameId)
+    socket.data.playerId = playerId
+    socket.data.gameId = gameId
 
-      await socket.join(gameId)
-      socket.data.playerId = playerId
-      socket.data.gameId = gameId
-
-      await server.updateGameState(game)
-      server.emit({ event: 'player-joined', game }, eventTarget)
-      return
-    }
-
-    // Door closed. Emit straight to this socket: it never joined the gameId
-    // room, so a room broadcast would reach everyone except the one player
-    // the message is about. Close only once the frame is on the wire.
-    socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
-    socket.disconnect(false)
+    await server.updateGameState(game)
+    server.emit({ event: 'player-joined', game }, eventTarget)
     return
+  }
+
+  // Seat verdict: hand a newcomer a colour nobody else has
+  if (!game.players[playerId] && !game.started) {
+    const takenColors = Object.values(game.players).map(existing => existing.color)
+    game.players[playerId] = createPlayer(playerId, takenColors)
   }
 
   // Safety logic for returning players: someone who left before answering owes

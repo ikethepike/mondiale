@@ -16,6 +16,12 @@ export const useMovementRequest = () => {
   const { gameStore, update } = useClientEvents()
 
   const requestMovementIfPending = async (): Promise<void> => {
+    // A booth watcher never owes the server a movement request — without this
+    // the write gate would swallow the emit and the 3s retry would spin.
+    if (gameStore.watching) {
+      gameStore.pendingMovementRequest = false
+      return
+    }
     if (!gameStore.pendingMovementRequest || inFlight) return
     if (retryTimer) {
       clearTimeout(retryTimer)
