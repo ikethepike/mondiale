@@ -74,6 +74,7 @@ export const COMMODITY_HS_CODES: Record<string, string[]> = {
  * validates through that leg.
  */
 export const COMMODITY_EXPORTER_EXCLUSIONS: Record<string, string[]> = {
+  'cocoa beans': ['GN'], // Ivorian beans smuggled across the border for the price arbitrage (~150kt in 2024)
   'crude petroleum': ['MY'], // Iranian barrels relabeled via ship-to-ship transfers off Malaysia
   aircraft: ['IN'], // lessor repossessions (Go First collapse), not manufacture
   ships: ['IN', 'AO'], // second-hand vessel sales and FPSO re-flaggings, not shipbuilding
