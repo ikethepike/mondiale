@@ -126,6 +126,11 @@ describe('formatEventYear', () => {
     expect(formatEventYear(-490)).toBe('490 BCE')
     expect(formatEventYear(1989)).toBe('1989')
   })
+
+  it('groups deep-time digits', () => {
+    expect(formatEventYear(-9500)).toBe('9,500 BCE')
+    expect(formatEventYear(-10000)).toBe('10,000 BCE')
+  })
 })
 
 describe('dealTimelineDeck', () => {

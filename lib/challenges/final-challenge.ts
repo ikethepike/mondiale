@@ -575,6 +575,10 @@ export const YEARBOOK_TUNING: {
  *  the widest tolerance so "a year later, in 1990" can't date a 1989 page. */
 export const YEARBOOK_LEAK_WINDOW = 5
 
+/** Era weighting treats a century as holding at least this many candidate
+ *  years, so sparse eras stay dealable without minting fixed headliners. */
+export const CENTURY_DENSITY_FLOOR = 3
+
 /**
  * Year-leak filter: an event whose slug, name or description surfaces a year
  * near its own must not make the page. The SLUG is checked too — it travels
@@ -596,13 +600,36 @@ export const yearbookLeaksYear = (slug: string, event: EventEntry): boolean => {
 export const yearbookYear = (challenge: YearbookChallenge): number | undefined =>
   EVENTS[challenge.headlines[0]]?.year
 
-/** The dial's travel: the event library's own span, rounded out to decades. */
+/** Leak-filtered events bucketed by year — the dealer and the dial share it. */
+const yearbookYearPools = (): Map<number, string[]> => {
+  const byYear = new Map<number, string[]>()
+  for (const [slug, event] of Object.entries(EVENTS)) {
+    if (yearbookLeaksYear(slug, event)) continue
+    byYear.set(event.year, [...(byYear.get(event.year) ?? []), slug])
+  }
+  return byYear
+}
+
+/**
+ * The dial's travel: the span of years that can actually fill a front page,
+ * rounded out to decades. Deep-time singletons never deal, so they must not
+ * stretch a ±few-years dial across ten millennia.
+ */
 export const YEARBOOK_DIAL_BOUNDS = (() => {
+  const floor = Math.min(...Object.values(YEARBOOK_TUNING).map(tuning => tuning.headlineCount))
   let min = Infinity
   let max = -Infinity
-  for (const event of Object.values(EVENTS)) {
-    min = Math.min(min, event.year)
-    max = Math.max(max, event.year)
+  for (const [year, slugs] of yearbookYearPools()) {
+    if (slugs.length < floor) continue
+    min = Math.min(min, year)
+    max = Math.max(max, year)
+  }
+  // A pool too small to deal any page (test fixtures) falls back to the library's span
+  if (min > max) {
+    for (const event of Object.values(EVENTS)) {
+      min = Math.min(min, event.year)
+      max = Math.max(max, event.year)
+    }
   }
   return { min: Math.floor(min / 10) * 10, max: Math.ceil(max / 10) * 10 }
 })()
@@ -610,23 +637,27 @@ export const YEARBOOK_DIAL_BOUNDS = (() => {
 const getYearbookChallenge = (difficulty: GameDifficulty): YearbookChallenge | undefined => {
   const { headlineCount, tolerance, secondsPerHeadline } = YEARBOOK_TUNING[difficulty]
 
-  const byYear = new Map<number, string[]>()
-  for (const [slug, event] of Object.entries(EVENTS)) {
-    if (yearbookLeaksYear(slug, event)) continue
-    byYear.set(event.year, [...(byYear.get(event.year) ?? []), slug])
-  }
+  const byYear = yearbookYearPools()
   // Density guard: only years that can fill the whole front page deal
   const candidates = [...byYear.entries()].filter(([, slugs]) => slugs.length >= headlineCount)
 
   // Era weighting: a year's chance is inversely proportional to how crowded
-  // its century is, so the deck isn't wall-to-wall 20th century
+  // its century is, so the deck isn't wall-to-wall 20th century. Thin centuries
+  // are floored at a phantom density — a century holding a single candidate
+  // year must not crown that year a fixed share of every deal.
   const perCentury = new Map<number, number>()
   for (const [year] of candidates) {
     const century = Math.floor(year / 100)
     perCentury.set(century, (perCentury.get(century) ?? 0) + 1)
   }
   const picked = weightedPick(
-    candidates.map(entry => [entry, 1 / perCentury.get(Math.floor(entry[0] / 100))!] as const)
+    candidates.map(
+      entry =>
+        [
+          entry,
+          1 / Math.max(perCentury.get(Math.floor(entry[0] / 100))!, CENTURY_DENSITY_FLOOR),
+        ] as const
+    )
   )
   if (!picked) return undefined
 

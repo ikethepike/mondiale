@@ -956,7 +956,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'engineering',
     year: 1889,
     description:
-      "Built as the entrance arch to the 1889 World's Fair and meant to stand twenty years, it was then the tallest structure on Earth. Paris's artists petitioned furiously against it.",
+      "Built as the entrance arch to a Paris World's Fair and meant to stand twenty years, it was then the tallest structure on Earth. The city's artists petitioned furiously against it.",
   },
   {
     name: 'Battle of Adwa',
@@ -1179,7 +1179,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'disaster',
     year: 1918,
     description:
-      'The influenza pandemic of 1918 infected a third of humanity and killed at least 50 million — more than the war it rode in on. It was called "Spanish" only because Spain\'s uncensored press reported it first.',
+      'The influenza pandemic at the close of the Great War infected a third of humanity and killed at least 50 million — more than the war it rode in on. It was called "Spanish" only because Spain\'s uncensored press reported it first.',
   },
   {
     name: 'Treaty of Versailles',
@@ -1425,7 +1425,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'conflict',
     year: 1944,
     description:
-      "On 6 June 1944, some 156,000 Allied troops crossed the Channel onto five Normandy beaches in history's largest seaborne invasion. Paris was free by August.",
+      "On the sixth of June, some 156,000 Allied troops crossed the Channel onto five Normandy beaches in history's largest seaborne invasion. Paris was free within three months.",
   },
   {
     name: 'Bretton Woods Conference',
@@ -1688,7 +1688,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'nation',
     year: 1960,
     description:
-      'Africa\'s most populous country took independence from Britain in 1960 — the "Year of Africa", when seventeen African nations raised new flags.',
+      'Africa\'s most populous country took independence from Britain in the "Year of Africa", when seventeen African nations raised new flags.',
   },
   {
     name: 'Independence of the Democratic Republic of the Congo',
@@ -1744,15 +1744,6 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1962,
     description:
       'Jamaica left the failed West Indies Federation and took full independence from Britain, the first of the anglophone Caribbean islands to do so.',
-  },
-  {
-    name: 'Organisation of African Unity',
-    title: "Africa's states unite in one organisation",
-    country: 'ET',
-    kind: 'politics',
-    year: 1963,
-    description:
-      'Thirty-two independent African states founded the OAU in Addis Ababa, pledging to finish decolonisation. It became the African Union in 2002, headquartered in the same city.',
   },
   {
     name: 'Assassination of John F. Kennedy',
@@ -1820,7 +1811,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'science',
     year: 1969,
     description:
-      'Armstrong and Aldrin landed on the Sea of Tranquility with about 25 seconds of fuel to spare while some 600 million people watched. Twelve people have walked the Moon; none since 1972.',
+      'Armstrong and Aldrin landed on the Sea of Tranquility with about 25 seconds of fuel to spare while some 600 million people watched. Twelve people have walked the Moon; the last left three years later, and no one has been back.',
   },
   {
     name: 'Woodstock',
@@ -1851,7 +1842,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1960,
     qid: 'Q38891',
     description:
-      "Begun in 1960 and completed a decade later, the Soviet-financed dam tamed the Nile's ancient flood and lit Egypt — while drowning Nubian homelands and forcing the block-by-block rescue of the Abu Simbel temples.",
+      "A decade in the building, the Soviet-financed dam tamed the Nile's ancient flood and lit Egypt — while drowning Nubian homelands and forcing the block-by-block rescue of the Abu Simbel temples.",
   },
   {
     name: 'Bangladesh Liberation War',
@@ -2000,7 +1991,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'conflict',
     year: 1979,
     description:
-      'Soviet troops took Kabul in the last week of 1979 and stayed nine years, fighting US-armed mujahideen. The war helped exhaust the USSR — and seeded the conflicts that followed.',
+      'Soviet troops took Kabul in the last week of the year and stayed nine more, fighting US-armed mujahideen. The war helped exhaust the USSR — and seeded the conflicts that followed.',
   },
   {
     name: 'Independence of Zimbabwe',
@@ -2316,7 +2307,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'science',
     year: 1998,
     description:
-      'A Russian module launched from Baikonur and an American one joined it weeks later, beginning the largest structure ever assembled in space. It has been continuously inhabited since 2000.',
+      'A Russian module launched from Baikonur and an American one joined it weeks later, beginning the largest structure ever assembled in space. It has been continuously inhabited for over two decades.',
   },
   {
     name: 'Euro',
@@ -2325,7 +2316,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'politics',
     year: 1999,
     description:
-      'Eleven EU countries locked their currencies into the euro; notes and coins followed in 2002, retiring the franc, mark, lira and peseta. It is now money for over 340 million people.',
+      'Eleven EU countries locked their currencies into the euro; notes and coins followed three years later, retiring the franc, mark, lira and peseta. It is now money for over 340 million people.',
   },
   {
     name: 'Torrijos–Carter Treaties',
@@ -2366,7 +2357,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     // transitional administration's dissolution marks the 2002 restoration.
     qid: 'Q332358',
     description:
-      'The first new state of the century rose from a quarter-century of brutal Indonesian occupation and a UN-run transition after its people voted overwhelmingly for freedom in 1999.',
+      'The first new state of the century rose from a quarter-century of brutal Indonesian occupation and a UN-run transition, after its people voted overwhelmingly for freedom in a UN ballot.',
   },
   {
     name: 'Iraq War',
@@ -2600,7 +2591,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'disaster',
     year: 2019,
     description:
-      'Fire took the roof and spire of the 850-year-old cathedral as Paris watched from the bridges, singing hymns. The towers and the rose windows survived; it reopened in 2024.',
+      'Fire took the roof and spire of the 850-year-old cathedral as Paris watched from the bridges, singing hymns. The towers and the rose windows survived; it reopened five years later.',
   },
   {
     name: 'COVID-19 pandemic',
@@ -3362,7 +3353,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'nation',
     year: 1956,
     description:
-      "Africa's largest country left joint British-Egyptian rule on New Year's Day 1956 — already carrying the north–south divide that would bring two long civil wars.",
+      "Africa's largest country left joint British-Egyptian rule on a New Year's Day — already carrying the north–south divide that would bring two long civil wars.",
   },
   {
     name: 'Somalia',
@@ -3875,7 +3866,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'science',
     year: 1915,
     description:
-      'Einstein told the Prussian Academy that gravity is not a force but the curving of space and time. A 1919 eclipse showed starlight bending around the Sun — and made him world-famous.',
+      'Einstein told the Prussian Academy that gravity is not a force but the curving of space and time. An eclipse four years later showed starlight bending around the Sun — and made him world-famous.',
   },
   {
     name: 'Pluto',
@@ -4155,7 +4146,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'culture',
     year: 1954,
     description:
-      'Tolkien\'s "new Hobbit" had swollen into a three-volume epic, twelve years in the writing. The Fellowship of the Ring appeared in 1954 and founded modern fantasy almost single-handed.',
+      'Tolkien\'s "new Hobbit" had swollen into a three-volume epic, twelve years in the writing. The Fellowship of the Ring appeared first and founded modern fantasy almost single-handed.',
   },
   {
     name: 'Disneyland',
@@ -4228,5 +4219,812 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 2005,
     description:
       'Three former PayPal employees launched a site for sharing home videos; the first upload was nineteen seconds at the zoo. Within two years the world watched more video there than on any TV network.',
+  },
+
+  // --- Expansion: same-year clusters -----------------------------------------
+  // Seeded for the yearbook's density guard: each entry lands in a year that
+  // already holds clean events, widening the pool of dealable front pages.
+  {
+    name: 'Death of Napoleon',
+    title: 'Napoleon dies on Saint Helena',
+    country: 'FR',
+    kind: 'politics',
+    year: 1821,
+    description:
+      "Six years after Waterloo, the exiled emperor died in British custody on Saint Helena, one of the remotest islands on Earth. His body came home to Paris nineteen years later to a hero's tomb.",
+  },
+  {
+    name: 'Das Kapital',
+    title: 'Marx publishes Das Kapital',
+    country: 'DE',
+    kind: 'culture',
+    year: 1867,
+    // The first-edition title page prints the year; Marx himself doesn't.
+    commons: 'Karl Marx 001.jpg',
+    description:
+      "Marx published the first volume of his critique of capitalism in Hamburg, after long years in the British Museum's reading room. The remaining volumes appeared only after his death, edited by Engels.",
+  },
+  {
+    name: 'War and Peace',
+    title: 'Tolstoy finishes War and Peace',
+    country: 'RU',
+    kind: 'culture',
+    year: 1869,
+    // The first-edition title page prints the year; Repin's Tolstoy doesn't.
+    commons: 'Ilya Efimovich Repin (1844-1930) - Portrait of Leo Tolstoy (1887).jpg',
+    description:
+      'Tolstoy completed his vast chronicle of Russia in the Napoleonic wars, following five families through invasion and peace. He insisted it was not a novel at all — genres, he said, could not hold it.',
+  },
+  {
+    name: 'Fountain (Duchamp)',
+    title: 'A urinal splits art history',
+    country: 'FR',
+    kind: 'culture',
+    year: 1917,
+    qid: 'Q1206847',
+    // Every photo of the piece shows its inked date; the Dada circle instead.
+    commons: 'Marcel Duchamp, Francis Picabia, and Beatrice Wood at the Broadway Photo Shop, NYC, 1917.jpg',
+    description:
+      "Duchamp signed a porcelain urinal 'R. Mutt' and submitted it to a New York exhibition that had promised to refuse nothing — it was refused anyway. After that gesture, an artwork could be an idea.",
+  },
+  {
+    name: 'Ulysses',
+    title: 'Ulysses is published in Paris',
+    country: 'IE',
+    kind: 'culture',
+    year: 1922,
+    // No free cover reproduction; the author's portrait, per the house pattern.
+    commons: 'James Joyce by Alex Ehrenzweig, 1915 restored.jpg',
+    description:
+      "Sylvia Beach's Paris bookshop published Joyce's banned epic of a single Dublin day — June the sixteenth — after serial instalments had been prosecuted for obscenity. Fans still retrace the day each year as Bloomsday.",
+  },
+  {
+    name: 'Space Shuttle Columbia disaster',
+    title: 'Columbia breaks up on re-entry',
+    country: 'US',
+    kind: 'disaster',
+    year: 2003,
+    description:
+      'Columbia broke apart over Texas minutes from landing, killing her crew of seven — a chunk of foam had holed a wing at launch a fortnight before. The shuttle fleet never fully recovered.',
+  },
+  {
+    name: 'Taipei 101',
+    title: 'Taipei 101 opens as the tallest building on Earth',
+    country: 'TW',
+    kind: 'engineering',
+    year: 2004,
+    description:
+      'The bamboo-shaped tower opened as the tallest building in the world, with a giant golden pendulum swinging inside to steady it against typhoons and earthquakes.',
+  },
+  {
+    name: 'Joint Comprehensive Plan of Action',
+    title: 'The Iran nuclear deal is signed',
+    country: 'IR',
+    kind: 'politics',
+    year: 2015,
+    description:
+      'After marathon talks in Vienna, Iran agreed with six world powers to shrink its nuclear programme in exchange for sanctions relief. Three years on, the United States walked out and the deal unravelled.',
+  },
+  {
+    name: 'Squid Game',
+    title: 'Squid Game sweeps the world',
+    country: 'KR',
+    kind: 'culture',
+    year: 2021,
+    // Item image is the bare logotype; the Shibuya promotional set instead.
+    commons: 'Promotional event for イカゲーム (Squid Game) in Shibuya.jpg',
+    description:
+      'A Korean survival drama of debtors playing deadly children\'s games became the most-watched series launch in Netflix history, its tracksuits and masked guards a global Halloween uniform within weeks.',
+  },
+  {
+    name: 'Eruption of Mount Tambora',
+    title: 'Tambora erupts',
+    country: 'ID',
+    kind: 'disaster',
+    year: 1815,
+    // The item's own image is an ashfall diagram; NASA's caldera photo instead.
+    commons: 'Mount Tambora Volcano, Sumbawa Island, Indonesia.jpg',
+    description:
+      "The largest volcanic eruption in recorded history blew the top off Tambora and was heard across the archipelago. Its ash veiled the sun worldwide — the following 'Year Without a Summer' brought June snow and failed harvests.",
+  },
+  {
+    name: 'United Kingdom of Portugal, Brazil and the Algarves',
+    title: 'Brazil is raised to a kingdom',
+    country: 'BR',
+    kind: 'nation',
+    year: 1815,
+    qid: 'Q903779',
+    // Item image is the bare royal arms; Debret's acclamation scene in Rio.
+    commons: 'Aclamação do rei Dom João VI no Rio de Janeiro.jpg',
+    description:
+      "With Lisbon lost to Napoleon's armies, the Portuguese court had fled to Rio de Janeiro — and now raised Brazil from colony to co-equal kingdom, a European empire ruled from its own colony.",
+  },
+  {
+    name: 'Traffic light',
+    title: 'The first traffic light is lit',
+    country: 'GB',
+    kind: 'engineering',
+    year: 1868,
+    qid: 'Q8004',
+    description:
+      'A gas-lit signal with semaphore arms went up outside the Houses of Parliament to tame horse-drawn traffic — the first traffic light. It exploded within weeks; the idea returned electrified half a century later.',
+  },
+  {
+    name: 'Battle of Tsushima',
+    title: 'The Russian fleet is destroyed at Tsushima',
+    country: 'JP',
+    kind: 'conflict',
+    year: 1905,
+    description:
+      "Admiral Tōgō annihilated a Russian fleet that had sailed halfway around the world to meet him in the Tsushima Strait. The first great naval defeat of a European power by an Asian one stunned the world's chancelleries.",
+  },
+  {
+    name: 'Potemkin uprising',
+    title: 'Mutiny on the battleship Potemkin',
+    country: 'RU',
+    kind: 'revolution',
+    year: 1905,
+    // Bare name search lands on a 1972 namesake.
+    qid: 'Q4126381',
+    // The event item carries no image of its own.
+    commons: "Potemkin - Brassey's Naval Annual 1905.png",
+    description:
+      'Sailors on the battleship Potemkin killed their officers over maggoty meat and ran up the red flag off Odessa. The mutiny became a symbol of revolution — and one of cinema\'s most famous films.',
+  },
+  {
+    name: 'First Battle of the Marne',
+    title: 'The taxis of the Marne save Paris',
+    country: 'FR',
+    kind: 'conflict',
+    year: 1914,
+    // The item image is a dated situation map; the famous taxi instead.
+    commons: 'Taxi de la Marne, Musée de l\'Armée-IMG 0987.jpg',
+    description:
+      'French and British armies turned the German drive on Paris at the Marne — Parisian taxis famously ferried reserves to the front. The war of movement died there, and the trenches began.',
+  },
+  {
+    name: 'Christmas truce',
+    title: 'Carols between the trenches',
+    country: 'BE',
+    kind: 'conflict',
+    year: 1914,
+    description:
+      'Along stretches of the Western Front, German and British soldiers climbed out of their trenches on Christmas Eve to sing carols, swap tobacco and bury their dead — a spontaneous peace their generals made sure never happened again.',
+  },
+  {
+    name: 'Transatlantic flight of Alcock and Brown',
+    title: 'Alcock and Brown fly the Atlantic',
+    country: 'GB',
+    kind: 'science',
+    year: 1919,
+    // Item image is an ocean map; the Vimy nose-down in the Clifden bog.
+    commons: 'Alcock-Brown-Clifden.jpg',
+    description:
+      'Alcock and Brown flew a converted bomber nonstop from Newfoundland to Ireland in sixteen hours, landing nose-first in an Irish bog. The Atlantic had been crossed by air, eight years before Lindbergh flew it alone.',
+  },
+  {
+    name: 'Bauhaus',
+    title: 'The Bauhaus opens in Weimar',
+    country: 'DE',
+    kind: 'culture',
+    year: 1919,
+    description:
+      'Walter Gropius opened a school in Weimar that fused art, craft and industry. Closed by the Nazis within fourteen years, its clean-lined ideas escaped into exile and built the look of the modern world.',
+  },
+  {
+    name: 'iPod',
+    title: 'A thousand songs in your pocket',
+    country: 'US',
+    kind: 'culture',
+    year: 2001,
+    // The card should show the original scroll-wheel brick, not the later lineup.
+    commons: 'Lightmatter ipod 1G.jpg',
+    description:
+      "Apple's white brick with a scroll wheel arrived weeks after the dot-com crash and rebuilt the music industry around itself — paving the way for the phone that followed.",
+  },
+  {
+    name: 'Enron scandal',
+    title: 'Enron collapses',
+    country: 'US',
+    kind: 'politics',
+    year: 2001,
+    commons: 'Enron Complex.jpg',
+    description:
+      "America's seventh-largest company collapsed in weeks when its profits proved to be accounting fiction. The scandal took the auditor Arthur Andersen down with it and rewrote the rules of corporate bookkeeping.",
+  },
+  {
+    name: 'ChatGPT',
+    title: 'ChatGPT is released',
+    country: 'US',
+    kind: 'science',
+    year: 2022,
+    // House style is photos, not logos — OpenAI's Pioneer Building.
+    commons: 'Pioneer Building, San Francisco (2019) -1.jpg',
+    description:
+      'OpenAI released a chatbot as a low-key research preview; it reached a hundred million users faster than any consumer product before it and pushed artificial intelligence into everyday life.',
+  },
+  {
+    name: 'Artemis 1',
+    title: 'Artemis flies back toward the Moon',
+    country: 'US',
+    kind: 'science',
+    year: 2022,
+    description:
+      "Half a century after the last Apollo crew left the Moon, NASA's giant new rocket finally flew, sending an empty capsule around the far side and home — the first step of the programme meant to take people back.",
+  },
+  {
+    name: 'Great Chicago Fire',
+    title: 'Chicago burns',
+    country: 'US',
+    kind: 'disaster',
+    year: 1871,
+    description:
+      'Fire leapt through a city built of wood until a third of Chicago lay in ashes and a hundred thousand people were homeless. The rebuilding that followed raised some of the world\'s first skyscrapers.',
+  },
+  {
+    name: 'Royal Albert Hall',
+    title: 'The Royal Albert Hall opens',
+    country: 'GB',
+    kind: 'culture',
+    year: 1871,
+    description:
+      "Queen Victoria opened the great domed hall raised in memory of her husband Albert. Its echo was notorious — the joke ran that it was the only place a British composer could hear their work twice.",
+  },
+  {
+    name: 'Battle of Castillon',
+    title: 'The Hundred Years\' War ends at Castillon',
+    country: 'FR',
+    kind: 'conflict',
+    year: 1453,
+    description:
+      "French cannon shattered an English army at Castillon in Gascony — the last battle of the Hundred Years' War. England kept only Calais, and gunpowder had announced the end of the knight.",
+  },
+  {
+    name: 'Wars of the Roses',
+    title: 'The Wars of the Roses begin',
+    country: 'GB',
+    kind: 'conflict',
+    year: 1455,
+    description:
+      "The houses of Lancaster and York first drew blood at St Albans, opening three decades of dynastic civil war for England's crown — the feud of the red rose and the white that the Tudors would end.",
+  },
+  {
+    name: 'Diet of Worms',
+    title: 'Luther stands at Worms',
+    country: 'DE',
+    kind: 'politics',
+    year: 1521,
+    description:
+      '"Here I stand" — summoned before the young emperor Charles V, Luther refused to recant his writings and left Worms an outlaw. Smuggled into hiding at the Wartburg, he set about translating the Bible into German.',
+  },
+  {
+    name: 'De humani corporis fabrica',
+    title: 'Vesalius maps the human body',
+    country: 'BE',
+    kind: 'science',
+    year: 1543,
+    description:
+      'In the same year Copernicus moved the Earth, the anatomist Vesalius published his lavishly illustrated atlas of the human body, built on dissections he performed himself — and toppled thirteen centuries of received wisdom.',
+  },
+  {
+    name: 'Honnō-ji Incident',
+    title: 'Nobunaga betrayed at Honnō-ji',
+    country: 'JP',
+    kind: 'politics',
+    year: 1582,
+    description:
+      "Japan's great unifier Oda Nobunaga, betrayed by his own general, died in a burning Kyoto temple within reach of mastering the whole country. His avenger Hideyoshi finished the work within a decade.",
+  },
+  {
+    name: 'Manila',
+    title: 'Manila is founded',
+    country: 'PH',
+    kind: 'nation',
+    year: 1571,
+    // City item leads with the modern skyline; the Spanish walled city instead.
+    commons: 'Manila, Fort Santiago, Walled city of Intramuros, Philippines.jpg',
+    description:
+      'Legazpi founded Manila as the capital of the Spanish Philippines, and the galleons soon ran yearly to Acapulco — silver east, silk west — the first sustained trade route to span the Pacific.',
+  },
+  {
+    name: 'Novum Organum',
+    title: 'Bacon proposes the scientific method',
+    country: 'GB',
+    kind: 'science',
+    year: 1620,
+    qid: 'Q585046',
+    description:
+      "Francis Bacon published his 'new instrument' for knowledge: stop deducing from ancient authority, start observing and experimenting. The method he argued for became the scientific one.",
+  },
+  {
+    name: 'Discourse on the Method',
+    title: '"I think, therefore I am"',
+    country: 'FR',
+    kind: 'science',
+    year: 1637,
+    commons: 'Descartes Discours de la Methode.jpg',
+    description:
+      'Descartes published the little book that made doubt itself the starting point of knowledge — and tucked into its appendices the coordinate geometry every graph still uses.',
+  },
+  {
+    name: 'East India Company',
+    title: 'The East India Company is chartered',
+    country: 'GB',
+    kind: 'politics',
+    year: 1600,
+    commons: 'East India House by Thomas Malton the Younger.jpg',
+    description:
+      'Queen Elizabeth granted a company of London merchants a monopoly on trade east of the Cape. The venture would end up ruling a subcontinent with its own army before the Crown took India from it.',
+  },
+  {
+    name: 'Bodleian Library',
+    title: 'The Bodleian opens its doors',
+    country: 'GB',
+    kind: 'culture',
+    year: 1602,
+    description:
+      "Thomas Bodley reopened Oxford's plundered university library, soon striking a deal that a copy of every book printed in England be deposited there. Readers still swear an oath not to kindle flame within.",
+  },
+  {
+    name: 'The Wealth of Nations',
+    title: 'Adam Smith publishes The Wealth of Nations',
+    country: 'GB',
+    kind: 'culture',
+    year: 1776,
+    commons: 'Wealth of Nations.jpg',
+    description:
+      'In the same year America declared independence, the Scottish professor Adam Smith published his inquiry into why nations prosper — the invisible hand, the division of labour — and founded modern economics.',
+  },
+  {
+    name: 'Mutiny on the Bounty',
+    title: 'Mutiny on the Bounty',
+    country: 'GB',
+    kind: 'conflict',
+    year: 1789,
+    description:
+      'Fletcher Christian set Captain Bligh adrift in the South Pacific with eighteen loyalists; Bligh sailed the open boat four thousand miles to safety, while the mutineers vanished to Pitcairn Island, where their descendants live still.',
+  },
+  {
+    name: 'Coup of 18 Brumaire',
+    title: 'Bonaparte seizes power',
+    country: 'FR',
+    kind: 'politics',
+    year: 1799,
+    description:
+      "General Bonaparte returned from Egypt and overthrew the Directory in a near-bloodless coup, ending the French Revolution's decade of turmoil. The republic's First Consul would soon crown himself emperor.",
+  },
+  {
+    name: 'Boston Massacre',
+    title: 'Redcoats fire on a Boston crowd',
+    country: 'US',
+    kind: 'politics',
+    year: 1770,
+    // Revere's print engraves the date; Chappel's painting doesn't.
+    commons: 'BostonMassacre byAlonzoChappel1878.png',
+    description:
+      "British soldiers fired into a jeering Boston crowd, killing five — Crispus Attucks among them, often called the first casualty of the Revolution. Paul Revere's engraving of the scene became the age's most effective propaganda.",
+  },
+  {
+    name: 'The Magic Flute',
+    title: 'The Magic Flute premieres',
+    country: 'AT',
+    kind: 'culture',
+    year: 1791,
+    // The original playbill prints the premiere year; a staging photo instead.
+    commons: 'The Magic Flute - 54363596966.jpg',
+    description:
+      "Mozart's fairy-tale opera premiered in a popular Vienna theatre, its Queen of the Night aria a vocal Everest ever since. He died just weeks into its triumphant run, at thirty-five.",
+  },
+  {
+    name: 'Alhambra Decree',
+    title: 'Spain expels its Jews',
+    country: 'ES',
+    kind: 'politics',
+    year: 1492,
+    // Emilio Sala's painting of the expulsion order before the Catholic Monarchs.
+    commons: 'Expulsión de los judíos.jpg',
+    description:
+      "Months after Granada fell, Ferdinand and Isabella ordered Spain's Jews to convert or leave. Tens of thousands of Sephardim scattered across the Mediterranean, carrying a Spanish they speak to this day.",
+  },
+  {
+    name: 'Airbus A380',
+    title: 'The A380 takes flight',
+    country: 'FR',
+    kind: 'engineering',
+    year: 2005,
+    description:
+      'The double-decked giant — the largest passenger aircraft ever built — lifted off from Toulouse on its maiden flight, watched live by tens of thousands. Airports rebuilt gates and runways to receive it.',
+  },
+  {
+    name: 'Beijing Olympics',
+    title: 'The Beijing Olympics open',
+    country: 'CN',
+    kind: 'culture',
+    year: 2008,
+    // Item image is the bare Olympic rings; the Bird's Nest at night instead.
+    commons: "National stadium at night (bird's nest), Beijing, China - 国家体育场(鸟巢), 北京，中国 (38200491105).jpg",
+    description:
+      "China announced itself with the most spectacular Games ever staged, opening in the Bird's Nest with a drummed ceremony watched by a billion people. Michael Phelps swam to eight golds in a single Games.",
+  },
+  {
+    name: 'Instagram',
+    title: 'Instagram launches',
+    country: 'US',
+    kind: 'culture',
+    year: 2010,
+    commons: 'Instagram app on smartphone (grass background) (cropped).jpg',
+    description:
+      'Two Stanford graduates launched a photo app with retro filters; it gained a million users in under three months and sold to Facebook for a billion dollars before it was two years old.',
+  },
+  {
+    name: 'Killing of Osama bin Laden',
+    title: 'Bin Laden found in Abbottabad',
+    country: 'PK',
+    kind: 'conflict',
+    year: 2011,
+    description:
+      "US Navy SEALs flew by night into a compound in Abbottabad and killed the man behind the September 11 attacks, a decade after them. He had been living within a mile of Pakistan's military academy.",
+  },
+  {
+    name: 'Battle of Salamis',
+    title: 'The Greek fleet turns the tide at Salamis',
+    country: 'GR',
+    kind: 'conflict',
+    year: -480,
+    description:
+      'Themistocles lured the vast Persian fleet into the narrow strait off Salamis, where numbers counted for nothing, and broke it while Xerxes watched from a throne ashore. The same year the pass fell at Thermopylae.',
+  },
+  {
+    name: 'Malaysia Airlines Flight 370',
+    title: 'MH370 vanishes',
+    country: 'MY',
+    kind: 'disaster',
+    year: 2014,
+    description:
+      'A red-eye to Beijing with 239 people aboard turned off course and vanished; years of the largest search in aviation history found only fragments washed ashore. Where it rests remains unknown.',
+  },
+  {
+    name: 'Panama Papers',
+    title: 'The Panama Papers leak',
+    country: 'PA',
+    kind: 'politics',
+    year: 2016,
+    // Item image is a data map; the Reykjavik protests the leak set off.
+    commons: 'Althingi protest iceland 04.04.2016.png',
+    description:
+      "Eleven million leaked files from a Panama City law firm exposed the offshore holdings of presidents, oligarchs and celebrities. Iceland's prime minister fell within days, and 'shell company' entered dinner-table vocabulary.",
+  },
+  {
+    name: 'Falcon Heavy test flight',
+    title: 'A sports car flies past Mars orbit',
+    country: 'US',
+    kind: 'science',
+    year: 2018,
+    // The double side-booster landing — the mission's signature frame.
+    commons: 'Falcon Heavy Side Boosters landing on LZ1 and LZ2 - 2018 (25254688767).jpg',
+    description:
+      "SpaceX's triple-core rocket thundered up from the old Apollo pad carrying its founder's cherry-red roadster, a spacesuited mannequin at the wheel — then landed two of its boosters side by side like choreography.",
+  },
+  {
+    name: 'Battle of Stamford Bridge',
+    title: 'The last Viking invasion breaks',
+    country: 'GB',
+    kind: 'conflict',
+    year: 1066,
+    description:
+      'King Harold destroyed a Viking invasion at Stamford Bridge, ending the age of Norse kings in England — then force-marched his exhausted army south to meet William at Hastings, nineteen days later.',
+  },
+  {
+    name: 'Crab Nebula supernova',
+    title: 'A new star blazes in daylight',
+    country: 'CN',
+    kind: 'science',
+    year: 1054,
+    description:
+      "Chinese astronomers recorded a 'guest star' in Taurus bright enough to see in daylight for weeks. Its shredded remains glow on as the Crab Nebula — the sky's most studied wreck of an exploded star.",
+  },
+  {
+    name: 'Fourth Council of the Lateran',
+    title: 'The great council of the Middle Ages',
+    country: 'VA',
+    kind: 'politics',
+    year: 1215,
+    description:
+      'Innocent III summoned the greatest church council of the Middle Ages: hundreds of bishops set doctrine — transubstantiation among it — and rules that governed Catholic life for centuries.',
+  },
+  {
+    name: 'Delhi Sultanate',
+    title: 'A slave-general takes Delhi\'s throne',
+    country: 'IN',
+    kind: 'nation',
+    year: 1206,
+    // The item's image is a dynasty map whose legend prints the year.
+    commons: 'Qutub Minar, New Delhi, India.jpg',
+    description:
+      'Qutb ud-Din Aibak, a former slave risen to general, made himself Sultan of Delhi — founding the sultanate that would rule northern India for three centuries and raise the Qutb Minar over the city.',
+  },
+  {
+    name: 'Battle of Las Navas de Tolosa',
+    title: 'The Reconquista turns at Las Navas',
+    country: 'ES',
+    kind: 'conflict',
+    year: 1212,
+    description:
+      'Three Christian kings together broke the Almohad army in the Sierra Morena — the turning point of the Reconquista. Within a generation, Muslim rule in Iberia had shrunk to Granada alone.',
+  },
+  {
+    name: "Children's Crusade",
+    title: "The Children's Crusade sets out",
+    country: 'FR',
+    kind: 'culture',
+    year: 1212,
+    description:
+      "Thousands of children and poor folk marched for the Holy Land behind boy preachers, believing the sea would part for them. It didn't; most turned back, and legend says some were sold into slavery.",
+  },
+  {
+    name: 'Fall of Acre',
+    title: 'The Crusades end at Acre',
+    country: 'IL',
+    kind: 'conflict',
+    year: 1291,
+    description:
+      'The Mamluks stormed the last Crusader capital on the Levantine coast, two centuries after the First Crusade took Jerusalem. The military orders sailed for Cyprus, and the Crusades in the Holy Land were over.',
+  },
+  {
+    name: 'Swiss Federal Charter',
+    title: 'Three cantons swear the oath',
+    country: 'CH',
+    kind: 'nation',
+    year: 1291,
+    description:
+      'Three forest cantons around Lake Lucerne swore mutual defence in a parchment pact — the founding legend of Switzerland, later wrapped in the tale of William Tell. The confederacy has never since been conquered.',
+  },
+  {
+    name: 'First inauguration of George Washington',
+    title: 'Washington takes the first oath',
+    country: 'US',
+    kind: 'politics',
+    year: 1789,
+    description:
+      'On a Wall Street balcony, Washington swore the oath as first President of the United States, inventing the office as he went — including the two-term habit that held for a century and a half.',
+  },
+  {
+    name: 'Paris Métro',
+    title: 'Paris goes underground',
+    country: 'FR',
+    kind: 'engineering',
+    year: 1900,
+    // The description's Guimard ironwork, not a modern trainset.
+    commons: 'Paris.metro.abbesses.jpg',
+    description:
+      "Paris opened its first Métro line beneath the Exposition crowds, its entrances dressed in Guimard's swirling Art Nouveau ironwork — canopies so loved they became the emblem of the city underground.",
+  },
+  {
+    name: 'The Football Association',
+    title: 'Football writes its rulebook',
+    country: 'GB',
+    kind: 'culture',
+    year: 1863,
+    qid: 'Q9500',
+    description:
+      "A dozen London clubs met in a tavern to write one shared rulebook for football — handling the ball was out, and the world's most popular game had its birth certificate.",
+  },
+  {
+    name: 'Coca-Cola',
+    title: 'Coca-Cola is first served',
+    country: 'US',
+    kind: 'culture',
+    year: 1886,
+    description:
+      'An Atlanta pharmacist first sold his caramel-coloured nerve tonic at a drugstore soda fountain for five cents a glass. The recipe stayed secret; the drink went on to outsell every other on Earth.',
+  },
+  {
+    name: 'Tunguska event',
+    title: 'Something explodes over Siberia',
+    country: 'RU',
+    kind: 'disaster',
+    year: 1908,
+    description:
+      'Something detonated over the Siberian taiga with the force of a thousand Hiroshimas, flattening eighty million trees — yet leaving no crater. A comet or asteroid airburst remains the verdict.',
+  },
+
+  // --- Expansion: the world beyond the West ----------------------------------
+  {
+    name: 'Peruvian Declaration of Independence',
+    title: 'San Martín proclaims Peru free',
+    country: 'PE',
+    kind: 'nation',
+    year: 1821,
+    description:
+      "San Martín proclaimed Peru's independence in Lima's main square after landing his army by sea from Chile. The last Spanish viceroyalty in the Americas was falling — Bolívar would finish the job at Ayacucho.",
+  },
+  {
+    name: 'Haitian Declaration of Independence',
+    title: 'Haiti declares the first Black republic',
+    country: 'HT',
+    kind: 'nation',
+    year: 1804,
+    // The proclamation broadside is a wall of type (and dates itself); the
+    // Citadelle, independence's mountain fortress, instead.
+    commons: 'Citadelle Laferrière Aerial View.jpg',
+    description:
+      'Dessalines proclaimed Haiti independent at Gonaïves — the first Black republic, born of the only slave revolt in history to found a state. France exacted a crushing indemnity that Haiti paid off for over a century.',
+  },
+  {
+    name: 'Cry of Dolores',
+    title: 'The cry that woke Mexico',
+    country: 'MX',
+    kind: 'revolution',
+    year: 1810,
+    description:
+      "Before dawn, the priest Miguel Hidalgo rang his church bell in the town of Dolores and called the crowd to rise against Spanish rule. Every year at midnight, Mexico's president re-enacts the cry from the National Palace balcony.",
+  },
+  {
+    name: 'May Revolution',
+    title: 'Buenos Aires deposes the viceroy',
+    country: 'AR',
+    kind: 'revolution',
+    year: 1810,
+    description:
+      "With Napoleon holding Spain's king captive, Buenos Aires deposed the Spanish viceroy and installed its own junta — a week of rain-soaked crowds that began Argentina's road to independence.",
+  },
+  {
+    name: 'Siege of Baghdad',
+    title: 'The Mongols sack Baghdad',
+    country: 'IQ',
+    kind: 'conflict',
+    year: 1258,
+    description:
+      "Hulagu's Mongols razed the Abbasid capital, killed the last caliph and threw the House of Wisdom's books into the Tigris — the river was said to run black with ink. The golden age of the Islamic world's greatest city was over.",
+  },
+  {
+    name: 'Tenochtitlan',
+    title: 'An eagle on a cactus — Tenochtitlan is founded',
+    country: 'MX',
+    kind: 'nation',
+    year: 1325,
+    description:
+      "On an island in Lake Texcoco — where, the legend says, an eagle perched on a cactus devouring a snake — the Mexica founded Tenochtitlan. The city grew into one of the largest on Earth; its symbol is on Mexico's flag.",
+  },
+  {
+    name: 'Mali Empire',
+    title: 'Sundiata founds the Mali Empire',
+    country: 'ML',
+    kind: 'nation',
+    year: 1235,
+    qid: 'Q184536',
+    description:
+      "After victory at Kirina, Sundiata Keita united the Mande peoples into the Mali Empire — West Africa's golden-age power, whose wealth in gold and salt would stun the world when Mansa Musa later rode to Mecca.",
+  },
+  {
+    name: 'Taj Mahal',
+    title: 'The Taj Mahal is begun',
+    country: 'IN',
+    kind: 'engineering',
+    year: 1632,
+    description:
+      'Shah Jahan began a white-marble tomb for his wife Mumtaz Mahal, who had died bearing their fourteenth child. Twenty thousand craftsmen worked two decades on what became the world\'s most famous monument to grief.',
+  },
+  {
+    name: 'Organisation of African Unity',
+    title: 'Africa unites at Addis Ababa',
+    country: 'ET',
+    kind: 'politics',
+    year: 1963,
+    qid: 'Q191703',
+    description:
+      'Three dozen newly independent states signed the founding charter of the Organisation of African Unity in Addis Ababa, vowing to finish decolonisation. Its successor, the African Union, still keeps its seat there.',
+  },
+  {
+    name: 'Battle of Isandlwana',
+    title: 'The Zulu destroy a British army',
+    country: 'ZA',
+    kind: 'conflict',
+    year: 1879,
+    description:
+      'A Zulu army with spears and cowhide shields destroyed a modern British column at the foot of Isandlwana hill — the worst defeat Victorian Britain ever suffered against an African foe. The empire\'s shock was total.',
+  },
+  {
+    name: 'Hunminjeongeum',
+    title: 'King Sejong gives Korea an alphabet',
+    country: 'KR',
+    kind: 'culture',
+    year: 1446,
+    // The museum-case shot's placard prints the year; the bare page instead.
+    commons: 'Hunmin jeong-eum.jpg',
+    description:
+      "King Sejong promulgated an alphabet so simple 'a wise man can learn it before morning is over', designed so Koreans need not write their language in Chinese characters. Hangul remains the only major script with a known birthday.",
+  },
+  {
+    name: 'Battle of Talas',
+    title: 'Arab and Chinese empires collide at Talas',
+    country: 'KG',
+    kind: 'conflict',
+    year: 751,
+    // No period battle art exists and the item image is a dated map; the
+    // classic papermaking woodcut carries the card's actual story.
+    commons: 'Making Paper.gif',
+    description:
+      'Abbasid and Tang armies met on the Talas river in Central Asia — the only battle ever fought between Arab and Chinese empires. Among the prisoners marched west were papermakers, and paper followed them into the Islamic world.',
+  },
+
+  // --- Expansion: deep time ---------------------------------------------------
+  // Rough, tradition-dated years — curated to the value Wikidata's time claims
+  // carry so verification holds. These stay timeline anchors: they never
+  // cluster into a yearbook page, and the dial's bounds ignore them.
+  {
+    name: 'Göbekli Tepe',
+    title: 'The first temple rises',
+    country: 'TR',
+    kind: 'engineering',
+    year: -9500,
+    description:
+      'Hunter-gatherers raised rings of carved stone pillars on an Anatolian hilltop millennia before farming, pottery or the wheel — the oldest known monumental sanctuary on Earth, deliberately buried by its own builders.',
+  },
+  {
+    name: 'Domestication of the horse',
+    title: 'The horse is tamed',
+    country: 'KZ',
+    kind: 'culture',
+    year: -3500,
+    // No event item image; Przewalski's horses on the steppe stand in.
+    commons: "Askania-Nova Steppe 24 Przewalski's Horses (YDS 1683).jpg",
+    description:
+      'On the steppes of Central Asia, people first bridled and milked the horse. Everything moved faster afterwards — herds, trade, languages and armies — and it stayed the engine of war until living memory.',
+  },
+  {
+    name: 'Cuneiform',
+    title: 'Writing is invented',
+    country: 'IQ',
+    kind: 'culture',
+    year: -3200,
+    description:
+      'In the cities of Sumer, temple accountants pressing reed styluses into wet clay invented writing — first for tallies of grain and sheep, only later for kings, laws and stories.',
+  },
+  {
+    name: 'Great Pyramid of Giza',
+    title: 'The Great Pyramid is raised',
+    country: 'EG',
+    kind: 'engineering',
+    year: -2560,
+    description:
+      "Khufu's tomb rose in millions of quarried blocks to become the tallest structure humans had ever built — and stayed so for nearly four thousand years. It is the last of the ancient wonders still standing.",
+  },
+  {
+    name: 'Code of Hammurabi',
+    title: 'Hammurabi writes down the law',
+    country: 'IQ',
+    kind: 'politics',
+    year: -1755,
+    description:
+      "The Babylonian king had nearly three hundred laws carved on a black stone stele — 'an eye for an eye' among them — one of the oldest law codes ever found, now standing in the Louvre.",
+  },
+  {
+    name: 'The Tale of Genji',
+    title: 'The first novel is written',
+    country: 'JP',
+    kind: 'culture',
+    year: 1010,
+    qid: 'Q8269',
+    description:
+      "At the Heian court, the lady-in-waiting Murasaki Shikibu completed her vast chronicle of Prince Genji's loves — often called the world's first novel, written a millennium ago by a woman whose real name is lost.",
+  },
+  {
+    name: 'Ancient Olympic Games',
+    title: 'The first Olympic Games',
+    country: 'GR',
+    kind: 'culture',
+    year: -776,
+    description:
+      'Runners raced a single sprint at Olympia in honour of Zeus — the traditional first Games. Held every four years for a millennium, they were sacred enough that warring city-states paused to compete.',
+  },
+  {
+    name: 'Founding of Rome',
+    title: 'Romulus ploughs the first furrow',
+    country: 'IT',
+    kind: 'nation',
+    year: -753,
+    description:
+      "Legend set the day Romulus founded the city — and killed his twin Remus over its wall. From that hilltop village grew the empire whose languages, laws and calendars Europe still lives inside.",
   },
 ]
