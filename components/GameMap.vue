@@ -59,8 +59,9 @@
         Visibility is toggled with direct DOM writes (not reactive state) so
         wheel/camera zoom never forces a re-render of the 220 country paths.
       -->
-          <!-- Invisible tap halos: micro-states get ~14px of click slop at any
-               zoom. A halo whose country carries state (highlight, tint,
+          <!-- Invisible tap halos: micro-states get click slop — finger-sized
+               on touch, tighter on mouse where it grows with zoom (see
+               updateEffectiveZoom). A halo whose country carries state (highlight, tint,
                grouping) renders as a filled disc in that colour — the real
                shape is a few pixels at best, so the disc IS the readable
                "is Monaco lit?" signal. -->
@@ -213,7 +214,7 @@ import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import MapInset from '~/components/map/MapInset.vue'
-import { useIsPhone } from '~~/lib/use-viewport'
+import { useIsCoarsePointer, useIsPhone } from '~~/lib/use-viewport'
 import type {
   CountryColorGrouping,
   MapFeatureOverlay,
@@ -222,6 +223,7 @@ import type {
 
 // Phone-width screens get the compact magnifier presentation.
 const isPhone = useIsPhone()
+const isCoarsePointer = useIsCoarsePointer()
 
 // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
 // 1-unit stroke itself at world zoom, so they'd render as solid ink blobs.
@@ -1004,6 +1006,10 @@ const LEGIBLE_FOOTPRINT_PX = 8
 // CONTENT, which is worth exactly one repaint — never one per motion frame.
 /** ~44px tap diameter — finger-sized, per platform guidelines. */
 const HIT_SLOP_PX = 22
+/** Mouse pointers don't need finger-sized slop: at world zoom a 44px disc
+ *  around Monaco swallows the whole Riviera. The halo starts tight and grows
+ *  with zoom until it reaches the finger cap. */
+const FINE_SLOP_PX = 8
 /** Past this zoom the halo renders as a visible ring marking the tap area. */
 const RING_ZOOM = 4
 
@@ -1019,9 +1025,13 @@ const updateEffectiveZoom = () => {
     dot.style.display = footprint * effectiveZoom < LEGIBLE_FOOTPRINT_PX ? '' : 'none'
     dot.setAttribute('r', String(dotRadius))
   })
-  // Tap halos keep a constant on-screen slop no matter the zoom
+  // Tap halos: touch keeps the full finger-sized on-screen slop at any zoom;
+  // fine pointers scale up from a tight world-view halo to the same cap.
+  const slopPx = isCoarsePointer.value
+    ? HIT_SLOP_PX
+    : clamp(FINE_SLOP_PX * effectiveZoom, FINE_SLOP_PX, HIT_SLOP_PX)
   svg.value.querySelectorAll<SVGCircleElement>('.micro-hit').forEach(halo => {
-    halo.setAttribute('r', String(dotRadius + HIT_SLOP_PX / Math.max(1, pxPerUnit)))
+    halo.setAttribute('r', String(dotRadius + slopPx / Math.max(1, pxPerUnit)))
   })
   applyLod(effectiveZoom)
 }
