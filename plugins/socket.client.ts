@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client'
-import { gameAlreadyStartedEvent } from '~~/lib/events/client/game-already-started.event'
+import { joinRefusedEvent } from '~~/lib/events/client/join-refused.event'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
@@ -40,7 +40,10 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
     handler: genericUpdateEvent,
   },
   'game-already-started': {
-    handler: gameAlreadyStartedEvent,
+    handler: joinRefusedEvent,
+  },
+  'room-full': {
+    handler: joinRefusedEvent,
   },
   update: {
     handler: playerUpdateEvent,

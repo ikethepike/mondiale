@@ -4,7 +4,11 @@
       <span class="mark" aria-hidden="true" />
       <span class="visually-hidden">Mondiale</span>
     </h1>
-    <div class="message" role="alert">
+    <div v-if="roomFull" class="message" role="alert">
+      <h2>This table is full</h2>
+      <p>All {{ MAX_PLAYERS }} seats are taken. You'll have to catch the next game.</p>
+    </div>
+    <div v-else class="message" role="alert">
       <h2>This game already started</h2>
       <p>The players are already out in the world. You'll have to catch the next one.</p>
     </div>
@@ -16,6 +20,12 @@
 
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import { MAX_PLAYERS } from '~~/lib/player'
+import { useGameStore } from '~~/store/game.store'
+
+// The mid-watch ejection path reaches this card with `rejected` unset — the
+// full-table copy shows only on an explicit capacity refusal.
+const roomFull = computed(() => useGameStore().rejected === 'full')
 </script>
 
 <style lang="scss" scoped>

@@ -277,6 +277,8 @@ export type ServerEventData =
   /** Join refused — deliberately carries no `game`, so `hasGame()` stays false
    *  and the generic store-write can never strand the client mid-join. */
   | { event: 'game-already-started' }
+  /** Join refused — the table is at MAX_PLAYERS. Same no-`game` contract. */
+  | { event: 'room-full' }
   | { event: 'update'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }

@@ -155,7 +155,7 @@
       </section>
       <section class="player-lobby pane-content">
         <header>
-          <p ref="playerCounter">{{ playersByPhase.all.length }}/8</p>
+          <p ref="playerCounter">{{ playersByPhase.all.length }}/{{ MAX_PLAYERS }}</p>
         </header>
 
         <TransitionGroup tag="ul" name="lobby-tile">
@@ -285,7 +285,7 @@ import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
-import { MAX_PLAYER_NAME_LENGTH, normalizePlayerName } from '~~/lib/player'
+import { MAX_PLAYER_NAME_LENGTH, MAX_PLAYERS, normalizePlayerName } from '~~/lib/player'
 import { wait } from '~~/lib/time'
 import {
   autoEnabledKinds,
@@ -360,7 +360,7 @@ const groupCaption = (id: ChallengeGroupId): string => {
   return `${enabled.length} of ${total.length} modes at ${difficultyPreview.value}`
 }
 
-// Pulse the n/8 counter when the lobby size changes
+// Pulse the seat counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
 watch(
   () => playersByPhase.value.all.length,

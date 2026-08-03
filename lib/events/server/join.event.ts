@@ -1,7 +1,7 @@
 import { generateTiles } from '~~/lib/tiles'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
-import { createPlayer } from '../../../lib/player'
+import { createPlayer, tableIsFull } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import {
@@ -73,8 +73,17 @@ export const joinEventHandler: EventHandler = async ({
     await server.updateGameState(game)
   }
 
-  // Player connecting to existing game — hand them a colour nobody else has
+  // Player connecting to existing game — hand them a colour nobody else has.
+  // The seat check mirrors the spectator cap below: the table size is a tuned
+  // gameplay rule (see MAX_PLAYERS), and like the spectator door the refusal
+  // goes straight to this socket — it never joined the room.
   if (!game.players[playerId] && !game.started) {
+    if (tableIsFull(game.players, playerId)) {
+      console.warn(`Table full for ${gameId} — refusing ${playerId}`)
+      socket.emit('room-full', { event: 'room-full' }, eventTarget)
+      socket.disconnect(false)
+      return
+    }
     const takenColors = Object.values(game.players).map(existing => existing.color)
     game.players[playerId] = createPlayer(playerId, takenColors)
   }

@@ -4,6 +4,25 @@ import { getRandomPlayerColor } from './color'
 export const MAX_PLAYER_NAME_LENGTH = 24
 
 /**
+ * The table size the game is tuned for. Turn-based rounds grow a full
+ * turn+reveal per seat (Timeline's deck is `cardsPerPlayer × players`),
+ * whole-table barriers wait on every seat, and each player record rides
+ * every broadcast snapshot — so the cap is a gameplay rule, not a UI nicety.
+ * Enforced at the join door; the lobby counter reads the same constant.
+ */
+export const MAX_PLAYERS = 8
+
+/**
+ * The join door's seat check: a newcomer is refused once the table is at
+ * capacity, while returning players (already seated) always get back in —
+ * rejoins stay idempotent, exactly like the spectator door.
+ */
+export const tableIsFull = (
+  players: Partial<Record<string, unknown>>,
+  playerId: string
+): boolean => !players[playerId] && Object.keys(players).length >= MAX_PLAYERS
+
+/**
  * The one gate a submitted player name passes through (client guard and
  * server handler alike): trims whitespace and clamps the length, returning
  * undefined when nothing readable remains — blank names never enter a game.
@@ -16,8 +35,8 @@ export const normalizePlayerName = (name: unknown): string | undefined => {
 
 /**
  * A fresh player. `takenColors` are the colours already in the game, so a
- * new joiner gets a colour nobody else has (falling back to a random one
- * only if the whole palette is exhausted — an 18-player lobby).
+ * new joiner gets a colour nobody else has (the exhausted-palette fallback
+ * is unreachable under MAX_PLAYERS, kept as a safety net).
  */
 export const createPlayer = (playerId: string, takenColors: string[] = []): Player => ({
   name: '',

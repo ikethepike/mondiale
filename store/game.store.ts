@@ -125,11 +125,12 @@ interface GameStoreState {
    */
   pendingMovementRequest: boolean
   /**
-   * The server refused the join because the game was already underway, and it
-   * closed the socket. Terminal: nothing further arrives, so the room page
-   * shows a dead end rather than waiting on a join that will never land.
+   * The server refused the join — the game was already underway ('started')
+   * or the table was at capacity ('full') — and closed the socket. Terminal:
+   * nothing further arrives, so the room page shows a dead end rather than
+   * waiting on a join that will never land.
    */
-  rejected: boolean
+  rejected: false | 'started' | 'full'
   /**
    * A FINISHED player watching the race from their victory screen. Purely
    * client-side — they already receive every broadcast; this only swaps the
