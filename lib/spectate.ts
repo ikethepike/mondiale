@@ -81,6 +81,74 @@ export const pickDirectorTarget = (players: Player[]): Player | undefined => {
 }
 
 /**
+ * Shot classes for the director's cut decisions: phases in one class are the
+ * SAME shot (a walk and its movement summary are one continuous board beat),
+ * so the camera never re-cuts inside a class. Order is watchability, mirroring
+ * DIRECTOR_PRIORITY's story logic.
+ */
+export const SHOT_CLASSES: PlayerPhase[][] = [
+  ['moving', 'movement-summary'],
+  ['final-challenge'],
+  ['individual-challenge'],
+  ['group-challenge'],
+  ['group-scores'],
+]
+
+/** The dwell floor: even a better story waits this long before a cut. */
+export const MIN_SHOT_MS = 8000
+/** A subject who fell idle keeps the camera briefly so their moment lands. */
+export const IDLE_CUT_GRACE_MS = 1500
+/** How long a spectator's manual 3D-camera grab suppresses the follow-cam. */
+export const GRAB_HOLD_MS = 8000
+
+export interface DirectorShot {
+  targetId: string
+  classIndex: number
+  /** When the camera cut to this subject — NOT when their phase changed. */
+  at: number
+}
+
+const shotClassIndex = (phase: PlayerPhase): number => {
+  const index = SHOT_CLASSES.findIndex(shotClass => shotClass.includes(phase))
+  return index === -1 ? SHOT_CLASSES.length : index
+}
+
+/**
+ * The shot-memory layer over pickDirectorTarget. Pure so the cut rules are
+ * testable: snapshots land every ~500ms during walks, and a memoryless
+ * re-sort re-cut the camera on every one — the booth's flicker. Rules:
+ * a vanished subject cuts immediately; the same subject never cuts (phase
+ * changes swap the stage under a held camera); a candidate in the SAME class
+ * never steals the shot; a strictly better class waits out the dwell floor;
+ * an idle subject is abandoned after a short grace.
+ */
+export const nextDirectorShot = (
+  previous: DirectorShot | undefined,
+  players: Player[],
+  now: number
+): DirectorShot | undefined => {
+  const best = pickDirectorTarget(players)
+  if (!best) return undefined
+  const cut: DirectorShot = { targetId: best.id, classIndex: shotClassIndex(best.phase), at: now }
+
+  const current = previous
+    ? players.find(player => player.id === previous.targetId && player.phase !== 'kicked')
+    : undefined
+  if (!previous || !current) return cut
+
+  const currentClass = shotClassIndex(current.phase)
+  const held: DirectorShot = { targetId: current.id, classIndex: currentClass, at: previous.at }
+
+  if (best.id === current.id) return held
+  if (cut.classIndex === currentClass) return held
+  if (currentClass === SHOT_CLASSES.length) {
+    return now - previous.at >= IDLE_CUT_GRACE_MS ? cut : held
+  }
+  if (cut.classIndex < currentClass && now - previous.at >= MIN_SHOT_MS) return cut
+  return held
+}
+
+/**
  * A stage card's copy. `secret` is the spectator's dramatic irony — the
  * answer the racers are sweating over, safe to show because watchers hold no
  * pawn (and room snapshots carry the data regardless).

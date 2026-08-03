@@ -41,6 +41,7 @@ import type { TileTransform } from '~~/lib/board3d/path'
 import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { compareStandings } from '~~/lib/player'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
@@ -95,6 +96,14 @@ const gameStore = useGameStore()
 // Whose pawn the auto-camera tracks: the spectate target when set (an explicit
 // act, so it wins even while the own pawn walks), otherwise the own pawn.
 const cameraTargetId = computed(() => gameStore.board.spectateTargetId ?? props.playerId)
+
+// The booth (a latecomer watcher or a finisher in the spectate view) has no
+// own pawn to release the camera to — the followed pawn IS home, so the
+// auto-release below is skipped and a manual grab only holds the follow-cam
+// off temporarily instead of unfollowing for good.
+const boothMode = computed(() => gameStore.isSpectator || gameStore.spectating)
+let grabHeldUntil = 0
+const cameraHeld = () => Date.now() < grabHeldUntil
 
 /**
  * A pawn blocked by an individual challenge sits at endTile - 1 in server
@@ -410,7 +419,7 @@ const rebuild = () => {
       }
 
       triggerRipple(tile, 'success')
-      if (playerId === cameraTargetId.value) boardCamera?.follow(tile.position)
+      if (playerId === cameraTargetId.value && !cameraHeld()) boardCamera?.follow(tile.position)
     },
   })
 
@@ -463,7 +472,7 @@ watch(
     for (const [playerId, position] of positionSignatureEntries(signature)) {
       if (previous.get(playerId) === position) continue
       mover?.moveTo(playerId, position)
-      if (playerId === cameraTargetId.value) {
+      if (playerId === cameraTargetId.value && !cameraHeld()) {
         const tile = tileFor(position)
         if (tile) boardCamera?.follow(tile.position)
       }
@@ -520,6 +529,8 @@ const SPECTATE_RELEASE_PHASES = ['movement-summary', 'victory']
 watch(
   () => gameStore.board.spectateTargetId,
   () => {
+    // An explicit follow change (pin, director cut) overrides a grab hold
+    grabHeldUntil = 0
     const focus = props.game.players[cameraTargetId.value]
     const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
     if (tile) boardCamera?.flyTo(tile.position, (board.value?.spacing ?? 8) * 5.5)
@@ -537,8 +548,11 @@ watch(
   state => {
     if (state === 'gone') {
       gameStore.board.spectateTargetId = undefined
-    } else if (state === 'done') {
-      // Let the final follow land before handing the camera back
+    } else if (state === 'done' && !boothMode.value) {
+      // A racer's camera hands back to their own pawn once the show is over.
+      // The booth never auto-releases: movement-summary is still the board
+      // beat, and there is no own pawn to return to — releasing here aimed
+      // the camera at a pawnless id (the between-walks jump cut).
       schedule(() => {
         const targetId = gameStore.board.spectateTargetId
         const phase = targetId ? props.game.players[targetId]?.phase : undefined
@@ -677,8 +691,14 @@ watch([cameraRef, controlsRef, board], () => {
   if (!camera?.isCamera || !controls || typeof controls.update !== 'function') return
 
   boardCamera = createBoardCamera(camera, controls, {
-    // A grab means "I'll drive" — spectating shouldn't wrestle back after idle
+    // A racer's grab means "I'll drive" — spectating shouldn't wrestle back.
+    // A booth grab is a look-around: hold the follow-cam off briefly, then
+    // resume following (permanently unfollowing left the booth camera lost).
     onUserGrab: () => {
+      if (boothMode.value) {
+        grabHeldUntil = Date.now() + GRAB_HOLD_MS
+        return
+      }
       gameStore.board.spectateTargetId = undefined
     },
   })

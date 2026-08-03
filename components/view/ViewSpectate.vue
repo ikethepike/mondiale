@@ -44,11 +44,15 @@
       </div>
     </header>
 
-    <!-- Centre stage: what the followed racer is looking at right now -->
-    <Transition name="stage-fade" mode="out-in">
+    <!-- Centre stage: what the followed racer is looking at right now. Keyed
+         on the SUBJECT only: the same racer's phase changes swap the card's
+         content in place (no transition, no blank stage), while a real
+         director cut gets a quick out-in. The old `stage-subject` key faded
+         the card out and in on every phase flip — the booth's flicker. -->
+    <Transition name="shot-cut" mode="out-in">
       <SpectateStage
         v-if="stage !== 'board'"
-        :key="`${stage}-${followed?.id ?? 'none'}`"
+        :key="followed?.id ?? 'none'"
         :stage="stage"
         :story="story"
         :followed="followed"
@@ -158,9 +162,10 @@ import { getPlayerStatus } from '~~/lib/player-status'
 import {
   finalStory,
   gateStory,
-  pickDirectorTarget,
+  nextDirectorShot,
   roundStory,
   stageForPhase,
+  type DirectorShot,
   type SpectateStory,
 } from '~~/lib/spectate'
 import { KIND_LABELS, visitedCountries } from '~~/lib/victory-stats'
@@ -177,12 +182,28 @@ const raceOver = computed(
 
 // --- The director: who the camera follows ------------------------------------
 // A pinned racer wins while they're still in the game; otherwise the auto
-// director cuts to the most watchable moment (walking > gauntlet > gate > …).
+// director cuts to the most watchable moment (walking > gauntlet > gate > …)
+// through the shot-memory layer — snapshots land every ~500ms during walks,
+// and nextDirectorShot's dwell rules are what keep the camera from thrashing.
+// Pinning clears the memory, so releasing the pin cuts fresh immediately.
+const shot = ref<DirectorShot>()
+watch(
+  [racers, () => gameStore.spectateFollowId],
+  () => {
+    if (gameStore.spectateFollowId) {
+      shot.value = undefined
+      return
+    }
+    shot.value = nextDirectorShot(shot.value, racers.value, Date.now())
+  },
+  { immediate: true }
+)
+
 const followed = computed(() => {
   const pinnedId = gameStore.spectateFollowId
   const pinned = pinnedId ? game.value?.players[pinnedId] : undefined
   if (pinned && pinned.phase !== 'kicked') return pinned
-  return pickDirectorTarget(racers.value)
+  return shot.value ? game.value?.players[shot.value.targetId] : undefined
 })
 
 const followedStatus = computed(() => (followed.value ? getPlayerStatus(followed.value).label : ''))
@@ -222,6 +243,20 @@ const story = computed<SpectateStory>(() => {
         : { kicker: 'Final gauntlet', prompt: 'The gauntlet is being dealt…' }
     }
     default:
+      // The idle stages that used to read as a broken card: the whole table
+      // reading the rules at game open, or a finisher the director lingers on.
+      if (target?.phase === 'tutorial') {
+        return {
+          kicker: 'Warming up',
+          prompt: 'The racers are reading the rules — the first round is moments away.',
+        }
+      }
+      if (target?.phase === 'victory') {
+        return {
+          kicker: `${target.name || 'A racer'} has finished`,
+          prompt: 'Across the line — waiting on the rest of the field.',
+        }
+      }
       return {
         kicker: target?.name ? `Following ${target.name}` : 'Between moments',
         prompt: target ? getPlayerStatus(target).label : 'Waiting for the race…',
@@ -299,6 +334,9 @@ onMounted(paintMap)
 watch(paintKey, paintMap)
 onBeforeUnmount(() => {
   gameStore.spectateFollowId = undefined
+  // A finisher leaving a finished race must land on their report, not bounce
+  // back into a dead booth on the next routing pass.
+  if (raceOver.value) gameStore.spectating = false
   clearBoard()
 })
 </script>
@@ -644,13 +682,24 @@ $hairline: ink(0.12);
   max-width: min(30rem, 24vw);
 }
 
-// Stage swaps dissolve — a broadcast cut, not a hard pop
+// The board's entrance dissolves — a broadcast cut, not a hard pop
 .stage-fade-enter-active,
 .stage-fade-leave-active {
   transition: opacity 0.35s ease;
 }
 .stage-fade-enter-from,
 .stage-fade-leave-to {
+  opacity: 0;
+}
+
+// A director cut between subjects: quick, deliberate. Same-subject phase
+// changes never pass through here — the card swaps content in place.
+.shot-cut-enter-active,
+.shot-cut-leave-active {
+  transition: opacity var(--motion-quick, 0.15s) ease;
+}
+.shot-cut-enter-from,
+.shot-cut-leave-to {
   opacity: 0;
 }
 
@@ -662,7 +711,9 @@ $hairline: ink(0.12);
     transition: none;
   }
   .stage-fade-enter-active,
-  .stage-fade-leave-active {
+  .stage-fade-leave-active,
+  .shot-cut-enter-active,
+  .shot-cut-leave-active {
     transition: none;
   }
 }

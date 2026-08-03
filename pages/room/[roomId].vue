@@ -29,48 +29,16 @@
 import type { Component } from 'vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
-import ModalMoving from '~/components/modal/ModalMoving.vue'
-import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
-import ViewManhunt from '~/components/view/ViewManhunt.vue'
-import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
-import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
+import { resolveChallengeView } from '~/components/view/dispatch'
 import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
-import ViewGhostState from '~/components/view/ViewGhostState.vue'
-import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
-import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
-import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
-import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
-import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
-import ViewHotCold from '~/components/view/ViewHotCold.vue'
-import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
-import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
-import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
-import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSpectate from '~/components/view/ViewSpectate.vue'
-import ViewSketch from '~/components/view/ViewSketch.vue'
-import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
-import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
-import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
-import ViewTimeline from '~/components/view/ViewTimeline.vue'
-import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
-import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
-import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
-import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
-import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
-import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
-import ViewEmpire from '~/components/view/ViewEmpire.vue'
-import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
-import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
-import ViewVictory from '~/components/view/ViewVictory.vue'
 import ViewWaitingRoom from '~/components/view/ViewWaitingRoom.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition, type ViewKind } from '~~/lib/phase-transitions'
-import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
-import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
 const { game, player, currentRound, gameStore } = useClientEvents()
 
@@ -126,68 +94,17 @@ const activeView = computed<ActiveView | undefined>(() => {
     return { component: ViewTutorial, kind: 'card', key: 'tutorial' }
   }
 
+  // A finisher can flip to watching the ongoing race and back — the flag is
+  // purely client-side, they already receive every broadcast. Checked BEFORE
+  // the round guard: the booth must survive the between-rounds window where
+  // `currentRound` is briefly empty (it used to blank the finisher's screen).
+  if (player.value.phase === 'victory' && gameStore.spectating) {
+    return { component: ViewSpectate, kind: 'score', key: 'spectate' }
+  }
+
   if (!currentRound.value?.round) return undefined
 
-  switch (player.value.phase) {
-    case 'group-challenge': {
-      // The shared round comes in several formats — one view per kind. Typed
-      // exhaustively over RoundChallengeKind so a new kind that forgets its
-      // dispatch entry is a COMPILE error, not a silent runtime fallback.
-      const groupViews: Record<RoundChallengeKind, Component> = {
-        ranking: ViewGroupChallenge,
-        traversal: ViewTraversalChallenge,
-        'border-chain': ViewBorderChain,
-        'heritage-hunt': ViewHeritageHunt,
-        'neighbour-blitz': ViewNeighbourBlitz,
-        silhouette: ViewSilhouette,
-        'anthem-buzz': ViewAnthemBuzz,
-        'tongue-buzz': ViewTongueBuzz,
-        'hot-cold': ViewHotCold,
-        sketch: ViewSketch,
-        'stat-detective': ViewStatDetective,
-        'two-truths': ViewTwoTruths,
-        'river-run': ViewWaterBlitz,
-        'shared-shores': ViewWaterBlitz,
-        highlands: ViewWaterBlitz,
-        'name-that-water': ViewNameThatWater,
-        'mother-tongue': ViewMotherTongue,
-        'flag-palette': ViewFlagPalette,
-        'capital-guess': ViewCapitalGuess,
-        flashpoint: ViewFlashpoint,
-        'ghost-state': ViewGhostState,
-        'no-mans-land': ViewNoMansLand,
-        'pin-landmark': ViewPinLandmark,
-        'trend-race': ViewTrendRace,
-        timeline: ViewTimeline,
-        empire: ViewEmpire,
-        manhunt: ViewManhunt,
-        'unique-or-bust': ViewUniqueOrBust,
-      }
-      const roundKind = roundChallengeKind(currentRound.value.round.groupChallenge)
-      return {
-        component: groupViews[roundKind] ?? ViewGroupChallenge,
-        kind: 'challenge',
-        key: `group-${roundKind}`,
-      }
-    }
-    case 'group-scores':
-      return { component: ViewGroupScores, kind: 'score', key: 'group-scores' }
-    case 'moving':
-    case 'movement-summary':
-      return { component: ModalMoving, kind: 'board', key: 'board' }
-    case 'individual-challenge':
-      return { component: ViewIndividualChallenge, kind: 'challenge', key: 'individual-challenge' }
-    case 'final-challenge':
-      return { component: ViewFinalChallenge, kind: 'challenge', key: 'final-challenge' }
-    case 'victory':
-      // A finisher can flip to watching the ongoing race and back — the flag
-      // is purely client-side, they already receive every broadcast.
-      return gameStore.spectating
-        ? { component: ViewSpectate, kind: 'score', key: 'spectate' }
-        : { component: ViewVictory, kind: 'victory', key: 'victory' }
-    default:
-      return undefined
-  }
+  return resolveChallengeView(player.value.phase, currentRound.value.round)
 })
 
 /**
