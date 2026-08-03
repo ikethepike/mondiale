@@ -11,6 +11,7 @@ import type {
   MinChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -729,7 +730,9 @@ describe('MADE_COMMODITIES', () => {
 
   it('backs every curated commodity with the BACI exporters dataset', () => {
     for (const commodity of MADE_COMMODITIES) {
-      expect(madeTopExporters(commodity).length, commodity).toBeGreaterThanOrEqual(2)
+      expect(madeTopExporters(commodity).length, commodity).toBeGreaterThanOrEqual(
+        MIN_STORED_EXPORTERS
+      )
     }
   })
 

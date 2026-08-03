@@ -610,8 +610,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   'commodity-exporters': {
     label: 'Top commodity exporters',
     files: ['data/commodity-exporters.gen.ts'],
+    // The Made In answer key is a union: BACI's global top exporters plus the
+    // Factbook's per-country export lists — both legs earn their credit here.
     origins: [
       { source: 'cepii-baci' },
+      { source: 'cia-factbook', dataset: 'Economy › Exports - commodities' },
       { source: 'mondiale-editorial', dataset: 'generators/data/commodity-hs-codes.ts' },
     ],
   },

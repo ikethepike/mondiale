@@ -1,7 +1,10 @@
-import { createReadStream, existsSync, writeFileSync } from 'fs'
+import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs'
 import { createInterface } from 'readline'
 import { type Amount, type ISOCountryCode, isValidISOCode } from '../../../types/geography.types'
-import { COMMODITY_HS_CODES } from '../../data/commodity-hs-codes'
+import {
+  COMMODITY_EXPORTER_EXCLUSIONS,
+  COMMODITY_HS_CODES,
+} from '../../data/commodity-hs-codes'
 import { parseCSV } from '../../lib/csv'
 
 /**
@@ -49,7 +52,8 @@ export type CommodityExportersMapping = {
 const download = async () => {
   if (existsSync(TRADE_FILE) && existsSync(COUNTRY_FILE)) return
   console.info(`Downloading BACI ${HS_REVISION} V${BACI_RELEASE} (~300MB) — hand-run only`)
-  const unzip = Bun.spawnSync(['curl', '-sO', ZIP_URL], { cwd: CACHE_DIR })
+  mkdirSync(CACHE_DIR, { recursive: true })
+  const unzip = Bun.spawnSync(['curl', '-fsO', ZIP_URL], { cwd: CACHE_DIR })
   if (unzip.exitCode !== 0) throw new Error(`BACI download failed: ${unzip.stderr}`)
   const extract = Bun.spawnSync(['unzip', '-o', '-q', `BACI_${HS_REVISION}_V${BACI_RELEASE}.zip`], {
     cwd: CACHE_DIR,
@@ -68,18 +72,39 @@ const loadCountryLookup = async (): Promise<Map<string, ISOCountryCode>> => {
     const iso2 = row[isoIndex]
     if (isValidISOCode(iso2)) lookup.set(row[codeIndex], iso2)
   }
+  // UN trade convention files Taiwan under "Other Asia, nes" with no ISO code —
+  // without this the world's top integrated-circuits exporter vanishes.
+  lookup.set('490', 'TW')
+  // CEPII's csv writer read Namibia's "NA" as NaN and wrote an empty field —
+  // without this the world's #3 uranium exporter vanishes.
+  lookup.set('516', 'NA')
   return lookup
 }
 
 /** HS prefix (2/4/6 digits) → commodity, split by prefix length for O(1) rows. */
 const prefixLookups = (): Map<number, Map<string, string>> => {
-  const byLength = new Map<number, Map<string, string>>()
-  for (const [commodity, codes] of Object.entries(COMMODITY_HS_CODES)) {
-    for (const code of codes) {
-      const lookup = byLength.get(code.length) ?? new Map<string, string>()
-      lookup.set(code, commodity)
-      byLength.set(code.length, lookup)
+  // The per-row loop matches every prefix length independently, so a code
+  // claimed twice — or nested inside another commodity's code — would silently
+  // double-count that trade into both commodities.
+  const all = Object.entries(COMMODITY_HS_CODES).flatMap(([commodity, codes]) =>
+    codes.map(code => ({ commodity, code }))
+  )
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      const a = all[i]
+      const b = all[j]
+      if (a.code.startsWith(b.code) || b.code.startsWith(a.code)) {
+        throw new Error(
+          `HS overlap: "${a.commodity}" ${a.code} vs "${b.commodity}" ${b.code} — trade would double-count`
+        )
+      }
     }
+  }
+  const byLength = new Map<number, Map<string, string>>()
+  for (const { commodity, code } of all) {
+    const lookup = byLength.get(code.length) ?? new Map<string, string>()
+    lookup.set(code, commodity)
+    byLength.set(code.length, lookup)
   }
   return byLength
 }
@@ -123,12 +148,14 @@ const createCommodityExporters = async () => {
   })
   for (const [commodity, byExporter] of values) {
     const world = worldTotals.get(commodity)!
+    const excluded = new Set(COMMODITY_EXPORTER_EXCLUSIONS[commodity] ?? [])
     mapping[commodity] = {
       hsCodes: COMMODITY_HS_CODES[commodity],
       world: amount(world),
       top: [...byExporter.entries()]
         .map(([code, dollars]) => ({ isoCode: countryLookup.get(code), dollars }))
         .filter((row): row is { isoCode: ISOCountryCode; dollars: number } => !!row.isoCode)
+        .filter(row => !excluded.has(row.isoCode))
         .sort((a, b) => b.dollars - a.dollars)
         .slice(0, TOP_EXPORTERS_STORED)
         .map(({ isoCode, dollars }) => ({

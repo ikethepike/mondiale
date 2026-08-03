@@ -37,7 +37,7 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { exportsCommodity, MADE_REVEAL_ROWS, madeTopExporters } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
-import { formatCompact } from '~~/lib/number'
+import { formatCompact, formatOrdinal } from '~~/lib/number'
 import { sentenceCase } from '~~/lib/strings'
 import type { MadeChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -72,12 +72,19 @@ const rows = computed(() => {
   }))
 })
 
-// A pick outside the chart teaches too: an own-top-5 exporter that never
-// cracks the world ranking is still a right answer, a wrong pick shows what
-// the picked country actually ships.
+// A pick outside the chart teaches too: a stored exporter below the shown
+// rows gets its world rank, an own-top-5 exporter that never cracks the
+// world ranking is still a right answer, and a wrong pick shows what the
+// picked country actually ships.
 const pickedLine = computed(() => {
   if (!props.picked || rows.value.some(row => row.isoCode === props.picked)) return undefined
   const country = COUNTRIES[props.picked]
+  const rank = madeTopExporters(props.challenge.commodity).findIndex(
+    row => row.isoCode === props.picked
+  )
+  if (rank !== -1) {
+    return `${countryName(country)} — the world's ${formatOrdinal(rank + 1)}-biggest shipper of ${props.challenge.commodity}, just off this chart.`
+  }
   if (exportsCommodity(props.picked, props.challenge.commodity)) {
     return `${sentenceCase(props.challenge.commodity)} — one of ${countryName(country)}'s own top exports, though not among the world's biggest shippers.`
   }

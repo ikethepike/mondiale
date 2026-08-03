@@ -14,7 +14,11 @@
  */
 import { COMMODITY_EXPORTERS } from '../data/commodity-exporters.gen'
 import { COUNTRIES } from '../data/countries.gen'
-import { COMMODITY_HS_CODES } from './data/commodity-hs-codes'
+import {
+  COMMODITY_EXPORTER_EXCLUSIONS,
+  COMMODITY_HS_CODES,
+  MIN_STORED_EXPORTERS,
+} from './data/commodity-hs-codes'
 import {
   MADE_COMMODITIES,
   MADE_MAX_POOL_FLOOR,
@@ -22,6 +26,7 @@ import {
   MADE_MIN_POOL,
   madeAcceptedCountries,
 } from '../lib/challenges/final-challenge'
+import { playableCountries } from '../lib/game-rules'
 import { isValidISOCode } from '../types/geography.types'
 
 const findings: string[] = []
@@ -147,10 +152,22 @@ for (const commodity of Object.keys(COMMODITY_HS_CODES)) {
   if (!MADE_COMMODITIES.has(commodity))
     flag(commodity, 'in COMMODITY_HS_CODES but not MADE_COMMODITIES — dead mapping')
 }
+for (const [commodity, exclusions] of Object.entries(COMMODITY_EXPORTER_EXCLUSIONS)) {
+  if (!MADE_COMMODITIES.has(commodity))
+    flag(commodity, 'in COMMODITY_EXPORTER_EXCLUSIONS but not MADE_COMMODITIES — dead exclusion')
+  for (const isoCode of exclusions) {
+    if (!isValidISOCode(isoCode)) flag(commodity, `excluded exporter "${isoCode}" is not an ISO code`)
+    if (COMMODITY_EXPORTERS[commodity]?.top.some(row => row.isoCode === isoCode))
+      flag(commodity, `excluded exporter ${isoCode} still in the stored rows — regenerate`)
+  }
+}
 for (const [commodity, entry] of Object.entries(COMMODITY_EXPORTERS)) {
   if (!entry) continue
-  if (entry.top.length < MADE_MIN_POOL)
+  if (entry.top.length < MIN_STORED_EXPORTERS)
     flag(commodity, `only ${entry.top.length} stored exporters — regenerate or drop it`)
+  const mapped = COMMODITY_HS_CODES[commodity]
+  if (mapped && JSON.stringify(entry.hsCodes) !== JSON.stringify(mapped))
+    flag(commodity, 'stored hsCodes differ from COMMODITY_HS_CODES — mapping edited without regenerating')
   const shareSum = entry.top.reduce((sum, row) => sum + row.share, 0)
   for (const row of entry.top) {
     if (!isValidISOCode(row.isoCode)) flag(commodity, `invalid exporter code "${row.isoCode}"`)
@@ -163,11 +180,15 @@ for (const [commodity, entry] of Object.entries(COMMODITY_EXPORTERS)) {
   else if (vintage < currentYear - 4)
     flag(commodity, `BACI vintage ${vintage} — release went stale, bump the pin`)
 }
-const worldCap = Math.max(MADE_MAX_POOL_FLOOR, Math.ceil(countries.length * MADE_MAX_POOL_SHARE))
+// The dealer's own pool and band math — a hard world game, the widest board.
+const worldPool = new Set(
+  playableCountries({ variant: 'world', difficulty: 'hard', includeMicroNations: false })
+)
+const worldCap = Math.max(MADE_MAX_POOL_FLOOR, Math.ceil(worldPool.size * MADE_MAX_POOL_SHARE))
 const dealable = [...MADE_COMMODITIES].filter(commodity => {
   if (!COMMODITY_EXPORTERS[commodity]) return false
-  const accepted = madeAcceptedCountries(commodity).size
-  return accepted >= MADE_MIN_POOL && accepted <= worldCap
+  const onBoard = [...madeAcceptedCountries(commodity)].filter(isoCode => worldPool.has(isoCode))
+  return onBoard.length >= MADE_MIN_POOL && onBoard.length <= worldCap
 }).length
 if (dealable < 20)
   findings.push(
