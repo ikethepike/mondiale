@@ -775,12 +775,12 @@ header .prompt {
     isolation: isolate;
     display: inline-block;
 
+    // A tidy vertical pile: each card peeks straight out below the one above,
+    // narrowing slightly so the stack tapers instead of reading as a shadow
     .deck-card {
       inset: 0;
       position: absolute;
-      transform: translate(calc(var(--layer) * 0.5rem), calc(var(--layer) * -0.4rem))
-        rotate(calc(var(--layer) * 1.6deg));
-      transform-origin: bottom left;
+      transform: translateY(calc(var(--layer) * 0.5rem)) scaleX(calc(1 - var(--layer) * 0.06));
     }
 
     .endonym-word {
