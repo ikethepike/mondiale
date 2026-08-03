@@ -542,6 +542,7 @@ export type DataSetId =
   | 'countries'
   | 'flags'
   | 'flag-meanings'
+  | 'name-facts'
   | 'map'
   | 'water'
   | 'recognition'
@@ -598,6 +599,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     label: 'Flag symbolism',
     files: ['data/flag-meanings.gen.ts'],
     origins: [{ source: 'cia-factbook', dataset: 'Government › Flag' }],
+  },
+  'name-facts': {
+    label: 'Country name origins',
+    files: ['data/name-facts.gen.ts'],
+    origins: [{ source: 'cia-factbook', dataset: 'Government › Country name' }],
   },
   map: {
     label: 'World map',

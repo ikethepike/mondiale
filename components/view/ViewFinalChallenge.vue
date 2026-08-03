@@ -17,6 +17,20 @@
             :organization="currentFinalChallenge.organization"
           />
           <h2 class="map-caption">{{ details?.question }}</h2>
+          <!-- The live beat's endonym rides the top of a staggered card deck —
+               the fanned cards behind it are the endonyms still to come -->
+          <Transition name="caption" mode="out-in">
+            <span v-if="currentEndonym" :key="currentEndonym" class="endonym-deck">
+              <span
+                v-for="layer in endonymCardsBehind"
+                :key="layer"
+                class="deck-card map-caption"
+                :style="{ '--layer': layer }"
+                aria-hidden="true"
+              />
+              <span class="endonym-word map-caption">“{{ currentEndonym }}”</span>
+            </span>
+          </Transition>
         </div>
       </Transition>
     </ChallengePrompt>
@@ -79,6 +93,12 @@
       v-if="currentFinalChallenge?._type === 'born-challenge' && bornYearEntries.length"
       :entries="bornYearEntries"
     />
+    <!-- Endonym: hits wear the country's own name for the rest of the round;
+         the reveal extends the chips to the whole dealt deck -->
+    <MapYearLabels
+      v-if="currentFinalChallenge?._type === 'endonym-challenge' && endonymLabelEntries.length"
+      :entries="endonymLabelEntries"
+    />
     <ChallengeResult
       v-if="status"
       :key="currentChallengeCount"
@@ -105,6 +125,11 @@
         :challenge="currentFinalChallenge"
         :picked="lastGuess"
       />
+      <EndonymReveal
+        v-if="currentFinalChallenge?._type === 'endonym-challenge'"
+        :challenge="currentFinalChallenge"
+        :picks="endonymPicks"
+      />
       <template v-if="lesson">{{ lesson }}</template>
       <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
@@ -116,6 +141,7 @@ import FinalBoundary from '~/components/challenge/FinalBoundary.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
+import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
 import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
@@ -138,7 +164,7 @@ import {
   sunsetQuota,
   weighScalesPicks,
 } from '~~/lib/challenges/final-challenge'
-import { countryName } from '~~/lib/country'
+import { countryEndonym, countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { titlecaseLeader } from '~~/lib/leaders'
@@ -202,6 +228,34 @@ let madeRevealTimeout: ReturnType<typeof setTimeout> | undefined
 
 // Born In: picks made so far (multi-pick quota; a wrong click ends the round)
 const bornPicks = ref<ISOCountryCode[]>([])
+
+// Endonym: one pick per answered beat — the current beat is the array length
+const endonymPicks = ref<ISOCountryCode[]>([])
+
+const currentEndonym = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'endonym-challenge' || status.value) return undefined
+  const isoCode = challenge.countries[endonymPicks.value.length]
+  return isoCode ? countryEndonym(isoCode) : undefined
+})
+
+// The fanned cards behind the live one — the endonyms still to come
+const endonymCardsBehind = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'endonym-challenge') return 0
+  return Math.max(0, challenge.countries.length - endonymPicks.value.length - 1)
+})
+
+// Endonym chips: during the hunt only hit beats wear the country's own name;
+// at the reveal the whole dealt deck does
+const endonymLabelEntries = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'endonym-challenge') return []
+  const revealAll = !!status.value
+  return challenge.countries
+    .filter((isoCode, beat) => revealAll || endonymPicks.value[beat] === isoCode)
+    .map(isoCode => ({ isoCode, label: countryEndonym(isoCode)! }))
+})
 
 // Year chips: during the hunt only the player's picks wear them; at the
 // reveal every qualifying country does — biggest populations first so the
@@ -299,6 +353,9 @@ const lesson = computed(() => {
         `The real ${countryName(COUNTRIES[first])}–${countryName(COUNTRIES[second])} line draws itself in over yours.`
       )
     }
+    case 'endonym-challenge':
+      // EndonymReveal carries the whole scorecard
+      return undefined
     default:
       return undefined
   }
@@ -330,6 +387,7 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     case 'leadership-challenge':
       return datasetAttribution('leaders')
     case 'born-challenge':
+    case 'endonym-challenge':
       return datasetAttribution('countries')
     case 'sunset-blitz-challenge':
     case 'city-nocturne-challenge':
@@ -390,6 +448,7 @@ watch(currentFinalChallenge, (challenge, previous) => {
   sunsetResult.value = undefined
   nocturneResult.value = undefined
   bornPicks.value = []
+  endonymPicks.value = []
   madeRevealReady.value = false
   if (madeRevealTimeout) clearTimeout(madeRevealTimeout)
 
@@ -569,6 +628,40 @@ const onMapClick = (event: Event) => {
         update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
+    case 'endonym-challenge':
+      {
+        if (!isValidISOCode(isoCode)) {
+          return console.error(`Unsupported country: ${isoCode}`)
+        }
+        const { countries, quota } = currentFinalChallenge.value
+        const beat = endonymPicks.value.length
+        if (beat >= countries.length) return
+        // A tap on an already-hit country is a misclick, not an answer
+        if (countries.some((iso, index) => endonymPicks.value[index] === iso && iso === isoCode)) {
+          return
+        }
+
+        endonymPicks.value.push(isoCode)
+        // A later hit may overwrite an earlier stray on the same country
+        gameStore.map.tints[isoCode] = isoCode === countries[beat] ? 'optimal' : 'stray'
+
+        const hits = countries.filter((iso, index) => endonymPicks.value[index] === iso).length
+        const remaining = countries.length - endonymPicks.value.length
+        // The verdict is still open — the next endonym takes the stage
+        if (hits < quota && hits + remaining >= quota) return
+
+        // Decided: surface the dealt countries the player never found
+        for (const iso of countries) {
+          gameStore.map.tints[iso] ??= 'inefficient'
+        }
+        const submittedAnswer: FinalChallengeAnswer = {
+          _type: 'endonym-challenge',
+          isoCodes: [...endonymPicks.value],
+        }
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+      }
+      break
     case 'made-challenge':
       {
         if (!isValidISOCode(isoCode)) {
@@ -673,6 +766,36 @@ header .prompt {
 
   .counter {
     padding: 0.4rem 1.4rem;
+  }
+
+  // The endonym takes the stage on a card deck — the fanned cards behind it
+  // count the names still to come, thinning as beats resolve
+  .endonym-deck {
+    position: relative;
+    isolation: isolate;
+    display: inline-block;
+
+    // A tidy centered pile: each card below is a narrower sliver peeking out
+    // under the one above. Slivers, not full cards — the pill is translucent,
+    // so anything tucked underneath would show through it.
+    .deck-card {
+      top: calc(100% - 0.4rem + (var(--layer) - 1) * 0.35rem);
+      left: 50%;
+      width: calc(100% - var(--layer) * 1.6rem);
+      height: 0.75rem;
+      padding: 0;
+      position: absolute;
+      z-index: calc(-1 * var(--layer));
+      transform: translateX(-50%);
+    }
+
+    .endonym-word {
+      position: relative;
+      z-index: 1;
+      display: inline-block;
+      padding: 0.5rem 1.8rem;
+      font-size: 2.1rem;
+    }
   }
 }
 
