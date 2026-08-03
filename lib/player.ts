@@ -138,6 +138,18 @@ export const boardProgress = (position: number, tileCount: number): number => {
 }
 
 /**
+ * Everyone still competing when a round is dealt takes a seat in it. The one
+ * definition of "the table" — turn-based dealers seat their order from it, and
+ * the round mix pre-filters kinds against its size (MINIMUM_TABLE_BY_KIND).
+ */
+export const chainContenders = (game: {
+  players: Partial<Record<string, Pick<Player, 'phase'>>>
+}): string[] =>
+  Object.entries(game.players)
+    .filter(([, player]) => !!player && !['kicked', 'victory'].includes(player.phase))
+    .map(([playerId]) => playerId)
+
+/**
  * Standings order: finished players first (earliest completion round wins),
  * everyone else by how far along the board they are.
  */

@@ -16,7 +16,6 @@ import {
   HEAVY_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
-  isKindEnabled,
   MINIMUM_TABLE_BY_KIND,
   type ChallengeOverrides,
 } from '~~/types/challenges/challenge-groups.type'
@@ -85,6 +84,8 @@ import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { haversineKm, mainlandBox, type LatLng } from './geo'
+import { chainContenders } from './player'
+import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
   attemptDecayScore,
   attemptFraction,
@@ -116,58 +117,6 @@ export { DIFFICULTY_CONFIGURATION } from './game-rules'
 const maximumRoundPoints = (game: gameTypes.Game) =>
   MAXIMUM_SCORE_PER_COUNTRY * DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
 
-/** Relative weights for the round mix (after the tutorial-friendly round 1). */
-const ROUND_WEIGHTS: [RoundChallengeKind, number][] = [
-  ['ranking', 0.2],
-  ['traversal', 0.13],
-  ['border-chain', 0.09],
-  ['heritage-hunt', 0.07],
-  ['neighbour-blitz', 0.1],
-  ['silhouette', 0.09],
-  // The only rounds that need sound: still shy of the visual staples so a
-  // muted room or a bad connection never faces a run of them, but no longer
-  // rare — they earned their slot.
-  ['anthem-buzz', 0.08],
-  ['tongue-buzz', 0.06],
-  ['hot-cold', 0.06],
-  ['sketch', 0.07],
-  ['stat-detective', 0.06],
-  ['two-truths', 0.07],
-  ['river-run', 0.06],
-  ['shared-shores', 0.05],
-  ['name-that-water', 0.04],
-  ['highlands', 0.08],
-  ['mother-tongue', 0.09],
-  ['flag-palette', 0.08],
-  ['capital-guess', 0.08],
-  // Rare on purpose. The cast is tiny — eight ghost states, and only six of
-  // them obscure — so dealing these at a staple's rate burns through the whole
-  // roster in a session or two. They should land like finding something odd on
-  // the map, not like a rotation slot. At these weights a hard game sees one
-  // roughly one time in five, and two almost never.
-  ['ghost-state', 0.018],
-  ['no-mans-land', 0.012],
-  // Rare for a different reason: it's the game's heaviest subject, and it
-  // must never read as a defining mode. A hard game sees one about one time
-  // in eight — an occasional, sobering find.
-  ['flashpoint', 0.02],
-  ['pin-landmark', 0.06],
-  ['trend-race', 0.08],
-  ['timeline', 0.08],
-  // A set-piece, dealt sparingly: two beats make it the longest single-player
-  // round in the game, and each empire is one-shot learnable — a roster of a
-  // few dozen at a staple's rate would repeat inside a fortnight of games.
-  // At 0.05 a full game usually sees one, rarely two.
-  ['empire', 0.05],
-  // Another set-piece — a full pursuit spans up to eight two-beat turns —
-  // and it needs four players to deal at all, so it self-rarifies further
-  // at small tables.
-  ['manhunt', 0.05],
-  // Needs three players before duplicate-cancel scoring has teeth, so it
-  // self-rarifies at duos the same way manhunt does.
-  ['unique-or-bust', 0.07],
-]
-
 /**
  * Test hook: FORCE_ROUND_TYPE=<kind> makes every round that kind
  * (FORCE_TRAVERSAL_ROUNDS=1 kept as an alias for traversal).
@@ -176,15 +125,12 @@ const forcedRoundKind = (): RoundChallengeKind | undefined => {
   if (typeof process === 'undefined') return undefined
   if (process.env?.FORCE_TRAVERSAL_ROUNDS === '1') return 'traversal'
   const forced = process.env?.FORCE_ROUND_TYPE
-  return ROUND_WEIGHTS.some(([kind]) => kind === forced)
+  // hasOwn, not `in` — `in` walks the prototype chain, so 'toString' would
+  // validate and be dealt as a kind.
+  return forced && Object.hasOwn(ROUND_WEIGHTS, forced)
     ? (forced as RoundChallengeKind)
     : undefined
 }
-
-// Difficulty gates and the lobby's tri-state group toggles resolve in one
-// place (challenge-groups.type) — the dealer only ever asks isKindEnabled.
-const pickRoundKind = (game: gameTypes.Game): RoundChallengeKind =>
-  weightedPick(ROUND_WEIGHTS.filter(([kind]) => isKindEnabled(game, kind))) ?? 'ranking'
 
 /** Countries whose outlines are dominated by scattered islands — no fun to
  * draw or to watch materialize; excluded from shape-centric modes. */
@@ -245,12 +191,6 @@ const pickShapeFriendlyCountry = (
   return sample(viable)!
 }
 
-/** Everyone still competing when the round is dealt takes a chain seat. */
-const chainContenders = (game: gameTypes.Game): string[] =>
-  Object.entries(game.players)
-    .filter(([, player]) => !['kicked', 'victory'].includes(player.phase))
-    .map(([playerId]) => playerId)
-
 const getBorderChainChallenge = ({
   game,
 }: {
@@ -296,6 +236,9 @@ const getBorderChainChallenge = ({
  */
 const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallenge | undefined => {
   const contenders = chainContenders(game)
+  // Also pre-filtered by the mix (lib/round-mix `isKindFeasible`), so a small
+  // table never spends a pick here — kept as defence in depth, and because
+  // FORCE_ROUND_TYPE reaches this dealer without passing the picker.
   if (contenders.length < (MINIMUM_TABLE_BY_KIND.manhunt ?? 0)) return undefined
   // A board too small to hide on never deals (South America fields nine
   // viable seeds) — the real seed is picked at reveal, off the snapshot.
@@ -351,6 +294,7 @@ const getUniqueOrBustChallenge = async ({
   game: gameTypes.Game
 }): Promise<UniqueOrBustChallenge | undefined> => {
   const contenders = chainContenders(game)
+  // Pre-filtered by the mix too — see the note in getManhuntChallenge.
   if (contenders.length < (MINIMUM_TABLE_BY_KIND['unique-or-bust'] ?? 0)) return undefined
 
   const registers = await uniqueRegisters(game)
@@ -1534,10 +1478,19 @@ export const scoreTrendRace = ({
 }
 
 /**
+ * How many kinds one staging may try before taking the ranking floor. Three
+ * covers the realistic stack (a data-thin dealer, then a second one hitting
+ * the same thin continental pool) without letting a single round fan out into
+ * a dozen dynamic dataset imports.
+ */
+const MAXIMUM_DEAL_ATTEMPTS = 3
+
+/**
  * Deal the shared challenge for a round: always a ranking challenge for the
- * opening round (it doubles as the tutorial round), then a weighted mix of
- * every group mode. Modes that can't produce a viable prompt fall back to
- * a ranking round.
+ * opening round (it doubles as the tutorial round), then the decayed mix
+ * (lib/round-mix) over every group mode. A mode that can't produce a viable
+ * prompt for this table yields to another kind, and only a spent attempt
+ * budget falls back to a ranking round.
  */
 export const getRoundChallenge = async ({
   game,
@@ -1546,25 +1499,68 @@ export const getRoundChallenge = async ({
 }): Promise<RoundChallenge> => {
   const forced = forcedRoundKind()
   const isFirstRound = game.rounds.length === 0
-  const kind = forced ?? (isFirstRound ? 'ranking' : pickRoundKind(game))
 
-  // A dealer that THROWS (bad generated data, drifted accessor) must degrade
-  // to the ranking fallback below, exactly like one that deals nothing — an
-  // escaped throw fails the round-staging task with no retry, freezing the
-  // room permanently (prod postmortem: timeline's HK card).
-  try {
-    return await dealRoundChallenge(kind, game)
-  } catch (error) {
-    console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
-    return getGroupChallenge({ game })
+  // The test hook and the tutorial opener bypass the mix entirely.
+  if (forced || isFirstRound) {
+    const kind = forced ?? 'ranking'
+    try {
+      return (await dealRoundChallenge(kind, game)) ?? getGroupChallenge({ game })
+    } catch (error) {
+      console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
+      return getGroupChallenge({ game })
+    }
   }
+
+  const contenders = chainContenders(game).length
+  const spent: RoundChallengeKind[] = []
+
+  for (let attempt = 0; attempt < MAXIMUM_DEAL_ATTEMPTS; attempt++) {
+    const kind = pickRoundKind({ game, contenders, exclude: spent })
+    if (!kind) break
+    spent.push(kind)
+
+    try {
+      const challenge = await dealRoundChallenge(kind, game)
+      if (challenge) return challenge
+    } catch (error) {
+      // A THROWN dealer is a data or code fault, not a thin pool — retrying
+      // would spend the budget on kinds that may share the same broken
+      // dataset, three stack traces deep, while the round-staging task waits.
+      // Take the floor immediately and loudly (prod postmortem: timeline's
+      // HK card — an escaped throw freezes the room permanently).
+      console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
+      return getGroupChallenge({ game })
+    }
+
+    // Nothing to deal for THIS table — the kind is fine, the board is thin.
+    console.warn(`Round dealer '${kind}' had nothing for ${game.id} (attempt ${attempt + 1})`)
+  }
+
+  // The ranking floor. Logged with the table's shape because "ranking looks
+  // over-represented" is only actionable once you know WHICH configuration
+  // starves — every miss here used to be silent.
+  console.warn(
+    `Round mix fell back to ranking for ${game.id} after ${spent.length} attempts ` +
+      `[${spent.join(', ')}] (${game.difficulty}/${game.variant}, ${contenders} players, ` +
+      `round ${game.rounds.length + 1})`
+  )
+  return getGroupChallenge({ game })
 }
 
+/**
+ * One attempt at one kind. Undefined means "nothing viable for this table" —
+ * the caller decides whether that buys another kind or the ranking floor, so
+ * the fallback lives in exactly one place.
+ */
 const dealRoundChallenge = async (
   kind: RoundChallengeKind,
   game: gameTypes.Game
-): Promise<RoundChallenge> => {
+): Promise<RoundChallenge | undefined> => {
   switch (kind) {
+    // Not a fallback here — ranking is a first-class pick in the mix, and the
+    // dealer must say so, or the pick would read as a miss and burn an attempt.
+    case 'ranking':
+      return getGroupChallenge({ game })
     case 'traversal': {
       const challenge = getTraversalChallenge({ game })
       if (challenge) return challenge
@@ -1694,7 +1690,7 @@ const dealRoundChallenge = async (
     }
   }
 
-  return getGroupChallenge({ game })
+  return undefined
 }
 
 /**
