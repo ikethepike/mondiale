@@ -50,8 +50,12 @@ interface JoinDoor {
  * The one admission rule for every join, pre-start and mid-race alike.
  * Membership beats intent: a seated player or admitted watcher always gets
  * back in (refresh and reconnect stay idempotent, watchers bypass the cap),
- * a kicked id never does, and `asSpectator` is only honored once the table
- * is full — while seats are free, a joiner plays. A waiting watcher is never
+ * and a kicked id never does. `asSpectator` only matters at a FULL unstarted
+ * table — while seats are free a joiner plays, and a STARTED open-door room
+ * admits every non-member as a watcher unconditionally (a mid-race joiner
+ * has no seat to take; the booth is all there is). `spectatable` folds door
+ * AND cap: a full booth refuses terminally just like a sealed door, and the
+ * refused visitor must reload to retry. A waiting watcher is never
  * auto-promoted to a freed seat; if a promotion path is ever added it must
  * delete the spectator record when seating, or the watcher count drifts.
  */

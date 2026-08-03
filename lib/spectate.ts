@@ -128,39 +128,48 @@ export const nextDirectorShot = (
 }
 
 /**
- * Round kinds the booth mounts as REAL views (read-only) instead of story
- * cards — an allowlist, so an unverified new kind falls back to its
- * SpectateStage card rather than mounting untested. The three absentees are
- * honest impossibilities: the audio rounds need a local play tap (inert
- * blocks it) and sketch's canvas is local-only.
+ * Whether the booth mounts each round kind as a REAL view (read-only) or
+ * falls back to its SpectateStage card. Typed exhaustively over
+ * RoundChallengeKind for the same reason as the dispatch's GROUP_VIEWS: a
+ * new kind that forgets its entry here is a COMPILE error, not a booth that
+ * silently degrades to a card. The three `false` entries are honest
+ * impossibilities: the audio rounds need a local play tap (inert blocks it)
+ * and sketch's canvas is local-only.
  */
-export const MOUNTABLE_KINDS: RoundChallengeKind[] = [
-  'ranking',
-  'traversal',
-  'border-chain',
-  'heritage-hunt',
-  'neighbour-blitz',
-  'silhouette',
-  'hot-cold',
-  'stat-detective',
-  'two-truths',
-  'river-run',
-  'shared-shores',
-  'highlands',
-  'name-that-water',
-  'mother-tongue',
-  'flag-palette',
-  'capital-guess',
-  'flashpoint',
-  'ghost-state',
-  'no-mans-land',
-  'pin-landmark',
-  'trend-race',
-  'timeline',
-  'empire',
-  'manhunt',
-  'unique-or-bust',
-]
+const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
+  ranking: true,
+  traversal: true,
+  'border-chain': true,
+  'heritage-hunt': true,
+  'neighbour-blitz': true,
+  silhouette: true,
+  'anthem-buzz': false,
+  'tongue-buzz': false,
+  'hot-cold': true,
+  sketch: false,
+  'stat-detective': true,
+  'two-truths': true,
+  'river-run': true,
+  'shared-shores': true,
+  highlands: true,
+  'name-that-water': true,
+  'mother-tongue': true,
+  'flag-palette': true,
+  'capital-guess': true,
+  flashpoint: true,
+  'ghost-state': true,
+  'no-mans-land': true,
+  'pin-landmark': true,
+  'trend-race': true,
+  timeline: true,
+  empire: true,
+  manhunt: true,
+  'unique-or-bust': true,
+}
+
+export const MOUNTABLE_KINDS: RoundChallengeKind[] = (
+  Object.keys(KIND_MOUNTABLE) as RoundChallengeKind[]
+).filter(kind => KIND_MOUNTABLE[kind])
 
 /**
  * Every active racer is out of the answering window — the round's outcome is

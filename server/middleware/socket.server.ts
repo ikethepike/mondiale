@@ -172,6 +172,9 @@ const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSo
       Object.entries(game.spectators).filter(([id]) => id !== playerId)
     )
     await server.updateGameState(game)
+    // eventTarget names the DEPARTED watcher — the actor whose exit this
+    // snapshot reflects. Nothing keys off the target on whole-snapshot
+    // broadcasts today; anything that starts to must tolerate a gone id.
     server.emit({ event: 'player-joined', game }, { gameId, playerId })
   }).catch(error => console.error(`Spectator prune failed for ${gameId}`, error))
 }

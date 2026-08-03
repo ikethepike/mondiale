@@ -48,7 +48,7 @@
     <PlayerStatusPanel
       v-if="showStatusPanel"
       :players="allPlayers"
-      :current-player-id="gameStore.playerId"
+      :current-player-id="gameStore.seatId"
       :points="currentRound?.round.playerTurns"
       :board-length="game?.tiles.length"
       :round-number="currentRound?.number"
