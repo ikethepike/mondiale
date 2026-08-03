@@ -134,6 +134,10 @@ const GLIDE_TAU_MS = 260
 /** Glide duration bounds, seconds — a big flick coasts, a small one settles fast. */
 const GLIDE_MIN_S = 0.45
 const GLIDE_MAX_S = 1.5
+/** Glide duration per √year of travel, s — the coast lengthens sub-linearly. */
+const GLIDE_S_PER_SQRT_YEAR = 0.18
+/** One wheel notch in line mode, px — the browser's own line-height convention. */
+const WHEEL_LINE_PX = 16
 /** Wheel gearing is coarser than drag — a trackpad swipe covers a decade, not a lifetime. */
 const WHEEL_PX_PER_YEAR = PX_PER_YEAR * 2
 /** Wheel deltas stop arriving for this long → the tape settles on a whole year. */
@@ -206,6 +210,9 @@ const stopGlide = () => {
   wheelSettle = undefined
 }
 
+/** The sheet home's flick threshold, translated through the tape's gearing. */
+const isFlick = (yearVelocity: number) => Math.abs(yearVelocity) * PX_PER_YEAR > FLICK_PX_PER_MS
+
 /** Ease the tape onto a whole year — post-flick coast, spring-back from the
  *  rubber zone, and the plain release-snap all land through here. */
 const settleDial = (target: number, { velocity = 0 } = {}) => {
@@ -215,11 +222,11 @@ const settleDial = (target: number, { velocity = 0 } = {}) => {
     dialYear.value = to
     return
   }
-  const flicked = Math.abs(velocity) * PX_PER_YEAR > FLICK_PX_PER_MS
+  const flicked = isFlick(velocity)
   gsap.to(dialYear, {
     value: to,
     duration: flicked
-      ? clamp(Math.sqrt(Math.abs(to - dialYear.value)) * 0.18, GLIDE_MIN_S, GLIDE_MAX_S)
+      ? clamp(Math.sqrt(Math.abs(to - dialYear.value)) * GLIDE_S_PER_SQRT_YEAR, GLIDE_MIN_S, GLIDE_MAX_S)
       : MOTION.quick,
     // A flick decelerates like a spun wheel; everything else just eases home
     ease: flicked ? 'power3.out' : EASE.enter,
@@ -269,19 +276,18 @@ const onDialUp = (event: PointerEvent) => {
   // Finger velocity in years/ms (drag left = later years, hence the sign flip)
   const velocity = -releaseVelocity(samples) / PX_PER_YEAR
   samples = []
-  const flicked = Math.abs(velocity) * PX_PER_YEAR > FLICK_PX_PER_MS
-  settleDial(flicked ? dialYear.value + velocity * GLIDE_TAU_MS : dialYear.value, { velocity })
+  const glide = isFlick(velocity) ? velocity * GLIDE_TAU_MS : 0
+  settleDial(dialYear.value + glide, { velocity })
 }
 
 let wheelSettle: ReturnType<typeof setTimeout> | undefined
 
 const onDialWheel = (event: WheelEvent) => {
   if (committed.value || paused.value) return
-  gsap.killTweensOf(dialYear)
+  stopGlide()
   const dominant = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
-  const px = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? dominant * 16 : dominant
+  const px = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? dominant * WHEEL_LINE_PX : dominant
   dialYear.value = clamp(dialYear.value + px / WHEEL_PX_PER_YEAR, DIAL_MIN, DIAL_MAX)
-  clearTimeout(wheelSettle)
   wheelSettle = setTimeout(() => settleDial(dialYear.value), WHEEL_SETTLE_MS)
 }
 
@@ -573,10 +579,22 @@ onBeforeUnmount(() => {
   background: milk(0.85);
 }
 
+// The commit button owns dead centre; the clock stands offset beside it
 .commit-row {
   gap: 1.2rem;
-  display: flex;
+  width: 100%;
+  display: grid;
   align-items: center;
+  grid-template-columns: 1fr auto 1fr;
+
+  .filled {
+    grid-column: 2;
+  }
+
+  .radial-timer {
+    grid-column: 3;
+    justify-self: start;
+  }
 }
 
 // New headlines land with the clue-stage settle
