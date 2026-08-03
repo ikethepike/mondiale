@@ -81,9 +81,17 @@
         </button>
       </div>
       <div class="commit-row">
-        <ButtonFilled :disabled="paused" @click="commit"
-          >Commit {{ formatEventYear(shownYear) }}</ButtonFilled
-        >
+        <ButtonFilled :disabled="paused" @click="commit">
+          <span class="commit-label">Commit {{ formatEventYear(shownYear) }}</span>
+          <!-- Invisible widest labels hold the button's width still while the dial spins -->
+          <span
+            v-for="bound in [DIAL_MIN, DIAL_MAX]"
+            :key="bound"
+            class="commit-sizer"
+            aria-hidden="true"
+            >Commit {{ formatEventYear(bound) }}</span
+          >
+        </ButtonFilled>
         <ChallengeTimerRadial :value="secondsLeft" :total="totalSeconds" />
       </div>
     </footer>
@@ -506,6 +514,8 @@ onBeforeUnmount(() => {
   position: relative;
   touch-action: none;
   user-select: none;
+  // Digits hold their column while the tape spins — no shimmering labels
+  font-variant-numeric: tabular-nums;
   border-radius: 0.8rem;
   background: ink(0.06);
   border: 0.1rem solid ink(0.2);
@@ -587,8 +597,24 @@ onBeforeUnmount(() => {
   align-items: center;
   grid-template-columns: 1fr auto 1fr;
 
+  // The label and its hidden widest siblings share one grid cell, so the
+  // button holds the width of "Commit <widest bound>" while the year spins
   .filled {
     grid-column: 2;
+    display: inline-grid;
+    align-items: center;
+    justify-items: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .commit-label,
+  .commit-sizer {
+    grid-area: 1 / 1;
+    white-space: nowrap;
+  }
+
+  .commit-sizer {
+    visibility: hidden;
   }
 
   .radial-timer {
