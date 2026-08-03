@@ -224,9 +224,9 @@ describe('clue engine', () => {
 
   it('answers a subpoena inside the requested topic, truthfully', () => {
     const candidates = initialManhuntCandidates(RULES)
-    const language = answerManhuntSubpoena(game, 'FR', candidates, 1, [], 'language')
+    const language = answerManhuntSubpoena(game, 'EG', candidates, 1, [], 'language')
     expect(language.clue.kind).toBe('language')
-    expect(language.matches).toContain('FR')
+    expect(language.matches).toContain('EG')
 
     const economy = answerManhuntSubpoena(game, 'FR', candidates, 1, [], 'economy')
     expect(economy.clue.kind).toBe('threshold')
@@ -249,10 +249,30 @@ describe('clue engine', () => {
     const candidates = initialManhuntCandidates(RULES)
     // Burn the language topic dry for a country with few official languages,
     // then ask again — the token still buys a true, useful clue.
-    const first = answerManhuntSubpoena(game, 'DE', candidates, 1, [], 'language')
-    const again = answerManhuntSubpoena(game, 'DE', candidates, 2, [first.clue], 'language')
-    expect(again.matches).toContain('DE')
+    const first = answerManhuntSubpoena(game, 'EG', candidates, 1, [], 'language')
+    const again = answerManhuntSubpoena(game, 'EG', candidates, 2, [first.clue], 'language')
+    expect(again.matches).toContain('EG')
     expect(again.matches.length).toBeGreaterThan(0)
+  })
+
+  it('never deals a language clue that names the despot country', () => {
+    // Late hops are the leak path: once the used list exhausts every better
+    // cut, the engine would be forced down to "official languages include
+    // Hungarian" — the stem scrub must keep it out of the pool entirely.
+    const endgame: ISOCountryCode[] = ['HU', 'SK', 'AT', 'RO', 'HR', 'SI']
+    const used: ManhuntClue[] = []
+    for (let hop = 1; hop <= 40; hop++) {
+      const pick = pickManhuntClue(game, 'HU', endgame, hop, used)
+      expect(pick.clue.text).not.toContain('Hungarian')
+      used.push(pick.clue)
+    }
+  })
+
+  it('keeps diaspora languages dealable away from their eponym', () => {
+    const endgame: ISOCountryCode[] = ['BR', 'AO', 'MZ', 'AR', 'CL', 'PE']
+    const pick = answerManhuntSubpoena(game, 'BR', endgame, 1, [], 'language')
+    expect(pick.clue.kind).toBe('language')
+    expect(pick.clue.text).toContain('Portuguese')
   })
 
   it('every subpoena topic answers for a typical country', () => {

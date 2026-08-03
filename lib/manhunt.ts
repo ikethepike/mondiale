@@ -12,7 +12,7 @@ import { OrganizationVector } from '~~/types/organization.type'
 import { sample, shuffleArray } from './arrays'
 import { clampScore } from './scoring'
 import { connectionsOf } from './chain'
-import { getCountry } from './country'
+import { getCountry, mentionsCountry } from './country'
 import { distancesFrom } from './traversal'
 import { getValueByAccessorID } from './values'
 import { isCountryPlayable, playableCountries } from './game-rules'
@@ -266,7 +266,10 @@ const clueCandidates = (
     candidates.filter(isoCode => getCountry(isoCode)?.region === country.region)
   )
 
+  // An eponymous language (Hungarian in Hungary) is a name leak, not a clue;
+  // the same language stays dealable away from its eponym (Portuguese in Brazil).
   for (const language of country.languages ?? []) {
+    if (mentionsCountry(language, despotAt)) continue
     push(
       {
         hop,
