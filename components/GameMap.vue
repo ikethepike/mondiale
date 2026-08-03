@@ -59,8 +59,9 @@
         Visibility is toggled with direct DOM writes (not reactive state) so
         wheel/camera zoom never forces a re-render of the 220 country paths.
       -->
-          <!-- Invisible tap halos: micro-states get ~14px of click slop at any
-               zoom. A halo whose country carries state (highlight, tint,
+          <!-- Invisible tap halos: micro-states get click slop — finger-sized
+               on touch, tighter on mouse where it grows with zoom (see
+               updateEffectiveZoom). A halo whose country carries state (highlight, tint,
                grouping) renders as a filled disc in that colour — the real
                shape is a few pixels at best, so the disc IS the readable
                "is Monaco lit?" signal. -->
@@ -213,7 +214,7 @@ import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import MapInset from '~/components/map/MapInset.vue'
-import { useIsPhone } from '~~/lib/use-viewport'
+import { useIsCoarsePointer, useIsPhone } from '~~/lib/use-viewport'
 import type {
   CountryColorGrouping,
   MapFeatureOverlay,
@@ -222,6 +223,7 @@ import type {
 
 // Phone-width screens get the compact magnifier presentation.
 const isPhone = useIsPhone()
+const isCoarsePointer = useIsCoarsePointer()
 
 // Micro-territories (Hong Kong, Singapore, Andorra…) are smaller than the
 // 1-unit stroke itself at world zoom, so they'd render as solid ink blobs.
@@ -579,10 +581,25 @@ const viewState = { ...WORLD_VIEW }
 /** Where gestures want the camera — viewState eases toward it every frame. */
 const targetView = { ...WORLD_VIEW }
 
-const measureViewAspect = () => {
-  const rect = svg.value?.getBoundingClientRect()
-  if (rect?.width && rect.height) viewAspect = rect.width / rect.height
+/** The map's screen box, measured at mount/resize/gesture-start — reading it
+ *  per frame or per pointer event forces layout inside the camera loop.
+ *  Measured on the WRAPPER, not the svg: the svg fills it exactly, but wears
+ *  the recede scale transition — a mid-recede measurement must never stick. */
+let mapScreenRect: DOMRect | undefined
+/** Clamp bounds derived from rect + berth — arithmetic-only in the frame loop. */
+let clampCache: { maxWidth: number; centerFraction: number } | undefined
+
+const measureMapRect = () => {
+  const rect = wrapper.value?.getBoundingClientRect()
+  if (rect?.width && rect.height) {
+    mapScreenRect = rect
+    viewAspect = rect.width / rect.height
+    clampCache = undefined
+  }
+  return mapScreenRect
 }
+/** The cached screen box, measuring lazily before the first gesture. */
+const mapRect = () => mapScreenRect ?? measureMapRect()
 
 /** The fully-zoomed-out camera: full world width, vertically centered. */
 const worldFitView = () => {
@@ -601,7 +618,7 @@ const worldFitView = () => {
 const berthMetrics = () => {
   const top = props.berth?.top ?? 0
   const bottom = props.berth?.bottom ?? 0
-  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const viewportHeight = mapRect()?.height ?? 0
   const band = viewportHeight - top - bottom
   if (!top && !bottom) return { scale: 1, centerFraction: 0.5 }
   if (!viewportHeight || band < viewportHeight * 0.35) return { scale: 1, centerFraction: 0.5 }
@@ -617,7 +634,7 @@ const berthMetrics = () => {
 const berthedView = (view: typeof WORLD_VIEW, content: { y: number; height: number }) => {
   const { scale: bandScale, centerFraction } = berthMetrics()
   if (bandScale === 1 && centerFraction === 0.5) return view
-  const viewportHeight = svg.value?.getBoundingClientRect().height ?? 0
+  const viewportHeight = mapRect()?.height ?? 0
   const bandHeightPx = viewportHeight / bandScale
   const contentHeightPx = viewportHeight * (content.height / view.height)
   const scale = Math.max(1, contentHeightPx / bandHeightPx)
@@ -647,15 +664,18 @@ const viewBoxState = shallowRef<[number, number, number, number]>([
   viewState.width,
   viewState.height,
 ])
-/** Below this, a re-layout would be invisible. In map units. */
-const VIEW_ECHO_EPSILON = 0.5
+/** Below this, a re-layout would be invisible. In SCREEN pixels: a fixed
+ *  map-unit epsilon goes sub-pixel the moment the camera dives, which had the
+ *  echo (and the inset render behind it) firing every single pan frame. */
+const VIEW_ECHO_PX = 1.5
 
 const echoViewBox = () => {
   const [x, y, width] = viewBoxState.value
+  const epsilon = (viewState.width / (mapRect()?.width ?? WORLD_VIEW.width)) * VIEW_ECHO_PX
   if (
-    Math.abs(x - viewState.x) < VIEW_ECHO_EPSILON &&
-    Math.abs(y - viewState.y) < VIEW_ECHO_EPSILON &&
-    Math.abs(width - viewState.width) < VIEW_ECHO_EPSILON
+    Math.abs(x - viewState.x) < epsilon &&
+    Math.abs(y - viewState.y) < epsilon &&
+    Math.abs(width - viewState.width) < epsilon
   ) {
     return
   }
@@ -673,8 +693,13 @@ const writeViewBox = () => {
 const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZOOM) => {
   // A berth may rest the camera wider than the world so the subject can sit
   // inside the clear band — the zoom-out ceiling follows the actual rest.
-  const { centerFraction } = berthMetrics()
-  const maxWidth = Math.max(WORLD_VIEW.width, restView().width)
+  // Cached: this runs every gesture frame, and the berth chain behind it
+  // only moves with the rect or the berth props.
+  clampCache ??= {
+    maxWidth: Math.max(WORLD_VIEW.width, restView().width),
+    centerFraction: berthMetrics().centerFraction,
+  }
+  const { maxWidth, centerFraction } = clampCache
   view.width = clamp(view.width, minWidth, maxWidth)
   view.height = view.width / viewAspect
   // Wider than the world (berth rest): the only legal x is dead centre.
@@ -819,7 +844,10 @@ watch(
 // A berth arriving or leaving re-aims the camera the same way a focus does.
 watch(
   () => [props.berth?.top, props.berth?.bottom],
-  () => nextTick(frameFocus)
+  () => {
+    clampCache = undefined
+    nextTick(frameFocus)
+  }
 )
 
 /**
@@ -980,13 +1008,17 @@ const LEGIBLE_FOOTPRINT_PX = 8
 // CONTENT, which is worth exactly one repaint — never one per motion frame.
 /** ~44px tap diameter — finger-sized, per platform guidelines. */
 const HIT_SLOP_PX = 22
+/** Mouse pointers don't need finger-sized slop: at world zoom a 44px disc
+ *  around Monaco swallows the whole Riviera. The halo starts tight and grows
+ *  with zoom until it reaches the finger cap. */
+const FINE_SLOP_PX = 8
 /** Past this zoom the halo renders as a visible ring marking the tap area. */
 const RING_ZOOM = 4
 
 const updateEffectiveZoom = () => {
   if (!wrapper.value || !svg.value) return
   const effectiveZoom = WORLD_VIEW.width / viewState.width
-  const pxPerUnit = svg.value.getBoundingClientRect().width / viewState.width
+  const pxPerUnit = (mapRect()?.width ?? viewState.width) / viewState.width
   svg.value.classList.toggle('deep-zoom', effectiveZoom >= RING_ZOOM)
   svg.value.style.setProperty('--stroke-zoom', String(1 / Math.max(1, effectiveZoom)))
   const dotRadius = 3.5 / Math.max(1, effectiveZoom)
@@ -995,9 +1027,13 @@ const updateEffectiveZoom = () => {
     dot.style.display = footprint * effectiveZoom < LEGIBLE_FOOTPRINT_PX ? '' : 'none'
     dot.setAttribute('r', String(dotRadius))
   })
-  // Tap halos keep a constant on-screen slop no matter the zoom
+  // Tap halos: touch keeps the full finger-sized on-screen slop at any zoom;
+  // fine pointers scale up from a tight world-view halo to the same cap.
+  const slopPx = isCoarsePointer.value
+    ? HIT_SLOP_PX
+    : clamp(FINE_SLOP_PX * effectiveZoom, FINE_SLOP_PX, HIT_SLOP_PX)
   svg.value.querySelectorAll<SVGCircleElement>('.micro-hit').forEach(halo => {
-    halo.setAttribute('r', String(dotRadius + HIT_SLOP_PX / Math.max(1, pxPerUnit)))
+    halo.setAttribute('r', String(dotRadius + slopPx / Math.max(1, pxPerUnit)))
   })
   applyLod(effectiveZoom)
 }
@@ -1014,6 +1050,14 @@ const LOD_ZOOM_OUT = 2.4
 const CULL_ZOOM = 2
 /** Cull margin in viewports, so small pans don't reveal blanked countries. */
 const CULL_MARGIN = 1
+/** The margin also buys skipped passes: nothing culled can reach the screen
+ *  before the camera has drifted this fraction of a viewport (or rescaled
+ *  by CULL_ZOOM_DRIFT), so in between the box tests are pure waste. */
+const CULL_PAN_DRIFT = 0.25
+const CULL_ZOOM_DRIFT = 0.1
+let lastCullView: { x: number; y: number; width: number } | undefined
+/** Every country code, hoisted — Object.keys allocates 219 strings a call. */
+const MAP_CODES = Object.keys(MAP_BOUNDS) as MapCode[]
 let hdPaths: Record<string, string> | undefined
 let hdLoading = false
 const hdApplied = new Set<string>()
@@ -1046,6 +1090,7 @@ const intersectsAnyRegion = (code: string, x: number, y: number, width: number, 
 
 /** Show every country again — reveals/fly-ins must never target a culled path. */
 const uncullAll = () => {
+  lastCullView = undefined // the DOM no longer matches any past pass
   if (!culled.size) return
   for (const code of culled) {
     const path = pathEls.get(code)
@@ -1070,9 +1115,18 @@ const cullPass = () => {
     uncullAll()
     return
   }
+  if (
+    lastCullView &&
+    Math.abs(viewState.x - lastCullView.x) < viewState.width * CULL_PAN_DRIFT &&
+    Math.abs(viewState.y - lastCullView.y) < viewState.height * CULL_PAN_DRIFT &&
+    Math.abs(viewState.width - lastCullView.width) < lastCullView.width * CULL_ZOOM_DRIFT
+  ) {
+    return
+  }
+  lastCullView = { x: viewState.x, y: viewState.y, width: viewState.width }
   const marginX = viewState.width * CULL_MARGIN
   const marginY = viewState.height * CULL_MARGIN
-  for (const code of Object.keys(MAP_BOUNDS)) {
+  for (const code of MAP_CODES) {
     const nearView = intersectsAnyRegion(
       code,
       viewState.x - marginX,
@@ -1101,7 +1155,7 @@ const applyLod = (effectiveZoom: number) => {
   }
   if (!hdPaths || effectiveZoom < LOD_ZOOM_IN) return // hysteresis band: keep as-is
 
-  for (const code of Object.keys(MAP_BOUNDS)) {
+  for (const code of MAP_CODES) {
     const path = pathEls.get(code)
     if (!path) continue
     // Every un-culled country swaps together: mixing tiers puts differently-
@@ -1123,7 +1177,12 @@ const applyLod = (effectiveZoom: number) => {
 let gestureTimer: ReturnType<typeof setTimeout> | undefined
 const beginGesture = () => {
   gsap.killTweensOf(viewState)
-  if (!loopRunning) Object.assign(targetView, viewState)
+  if (!loopRunning) {
+    Object.assign(targetView, viewState)
+    // A fresh gesture is the moment layout could have shifted under us —
+    // remeasure once here, never per event or per frame.
+    measureMapRect()
+  }
   wrapper.value?.classList.add('is-interacting')
   clearTimeout(gestureTimer)
 }
@@ -1193,9 +1252,14 @@ const startLoop = () => {
   requestAnimationFrame(gestureLoop)
 }
 
-/** Pointer position → map units, via live rects (ancestor transforms & all). */
+/** Pointer position → map units, via the gesture-cached screen rect.
+ *  No rect (unmeasurable, zero-size window) → the view centre, so a zoom
+ *  anchored on it degrades to a plain centred zoom. */
 const unitsAt = (clientX: number, clientY: number) => {
-  const rect = (svg.value as SVGElement).getBoundingClientRect()
+  const rect = mapRect()
+  if (!rect) {
+    return { x: viewState.x + viewState.width / 2, y: viewState.y + viewState.height / 2 }
+  }
   return {
     x: viewState.x + ((clientX - rect.left) / rect.width) * viewState.width,
     y: viewState.y + ((clientY - rect.top) / rect.height) * viewState.height,
@@ -1291,7 +1355,8 @@ const onPointerMove = (event: PointerEvent) => {
       zoomAround((a.x + b.x) / 2, (a.y + b.y) / 2, targetView.width / pinchWidth)
     }
   } else if (pointers.size === 1) {
-    const rect = (svg.value as SVGElement).getBoundingClientRect()
+    const rect = mapRect()
+    if (!rect) return // zero-size window: no sane px→unit ratio, skip the step
     const unitsPerPx = viewState.width / rect.width
     targetView.x -= (pointer.x - previous.x) * unitsPerPx
     targetView.y -= (pointer.y - previous.y) * unitsPerPx
@@ -1338,13 +1403,13 @@ onMounted(async () => {
 
   // Adopt the screen's aspect ratio (edgeless full-bleed map) and keep it
   // across window resizes, preserving the camera's center point.
-  measureViewAspect()
+  measureMapRect()
   Object.assign(viewState, restView())
   Object.assign(targetView, viewState)
   writeViewBox()
   window.addEventListener('resize', () => {
     const centerY = viewState.y + viewState.height / 2
-    measureViewAspect()
+    measureMapRect()
     for (const view of [viewState, targetView]) {
       view.height = view.width / viewAspect
       view.y = centerY - view.height / 2
@@ -1553,6 +1618,9 @@ watch(
   overflow: hidden;
   touch-action: none;
   overscroll-behavior: none;
+  // The map never sizes or paints outside its own box — let the browser skip
+  // invalidating anything else when the vector layer repaints mid-gesture.
+  contain: layout paint;
 }
 
 // Receded: the world is still there, just faint and set back, so a full-screen
@@ -1841,6 +1909,15 @@ path[id] {
 // transitions it triggers would repaint the vector layer and drop frames —
 // countries aren't clickable while zooming/panning anyway.
 .is-interacting {
+  // While the camera is the animation, trade anti-aliased coastlines for
+  // cheap rasterization — 130k HD-tier vertices repaint every pan frame.
+  // shape-rendering inherits, so one rule covers every path and marker;
+  // settle removes the class and the same repaint that restores strokes/LOD
+  // brings the crisp edges back.
+  svg {
+    shape-rendering: optimizeSpeed;
+  }
+
   path[id],
   .micro-marker,
   .micro-hit {
