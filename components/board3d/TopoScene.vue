@@ -42,6 +42,7 @@ import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-ca
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { compareStandings } from '~~/lib/player'
+import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -609,6 +610,45 @@ watch(
           { z: 0.07, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.6 }
         )
       )
+    }
+  },
+  { immediate: true }
+)
+
+// A FAILED gate settles the pawn at gate − 1 with nothing left to walk: no
+// landing hop fires, `isBlockedByChallenge` is already false, and without a
+// beat the forfeit reads as the blocker being ignored. The round record
+// (`playerTurns[id].blocked`, stamped by the server on the failed submit)
+// carries the fact — play the challenge-hit language at the gate once per
+// player per round, delayed a breath so the remount's placement settles.
+const blockedBeatsPlayed = new Set<string>()
+watch(
+  () =>
+    Object.values(props.game.players)
+      .map(player => `${player.id}:${player.phase}`)
+      .join('|'),
+  () => {
+    const round = latestRound(props.game)
+    if (!round) return
+    const roundKey = props.game.rounds.length - 1
+
+    for (const player of Object.values(props.game.players)) {
+      const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
+      if (blockedAt === undefined || player.phase !== 'movement-summary') continue
+      const key = `${player.id}:${roundKey}`
+      if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
+      blockedBeatsPlayed.add(key)
+
+      const beatPlayerId = player.id
+      schedule(() => {
+        const gateTile = tileFor(blockedAt)
+        if (!gateTile) return
+        triggerRipple(gateTile, 'alert')
+        knockPawn(beatPlayerId)
+        if (beatPlayerId === cameraTargetId.value) {
+          boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
+        }
+      }, 700)
     }
   },
   { immediate: true }

@@ -69,7 +69,7 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
-import { titleCase } from './strings'
+import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
 import { countryName, pickSizedCountry } from './country'
 import { countryLedBy, politicalLeader } from './leaders'
@@ -1777,6 +1777,26 @@ export const clampClientScore = (
   if (!correct) return { scored: 0, maximum }
   const scored = Math.round(clientScore ?? 0)
   return { scored: clampScore(scored, maximum), maximum }
+}
+
+/** Articles a named water feature may shed before matching ("the Baltic Sea"). */
+const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
+
+/**
+ * Does a named-water guess hit the dealt feature? The id is authoritative; the
+ * typed name is the fallback for suggestion entries carrying no id. Both the
+ * round view and the submit handler resolve through this, so the score the
+ * client claims and the correctness the server enforces can never drift.
+ */
+export const isCorrectWaterGuess = (
+  challenge: Pick<NameWaterChallenge, 'featureId' | 'featureName'>,
+  guess: { guessedId?: string; guessedName?: string } | undefined
+): boolean => {
+  if (!guess) return false
+  if (guess.guessedId !== undefined && guess.guessedId === challenge.featureId) return true
+  if (guess.guessedName === undefined) return false
+  const normalize = (name: string) => normalizeAnswer(name, { articles: WATER_NAME_ARTICLES })
+  return normalize(guess.guessedName) === normalize(challenge.featureName)
 }
 
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {

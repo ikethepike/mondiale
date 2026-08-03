@@ -84,7 +84,7 @@ export const shouldArmAdvanceWatchdog = ({
 export const scheduleMovementPhase = (
   delay: number,
   ctx: { io: GameServer; redis: Redis; socket: GameSocket; eventTarget: ClientEventTarget },
-  options: { continuation?: boolean; watchdogTick?: number } = {}
+  options: { continuation?: boolean; watchdogTick?: number; walkSeq?: number } = {}
 ) => {
   setTimeout(() => {
     enqueueGameTask(ctx.eventTarget.gameId, () =>
@@ -98,6 +98,7 @@ export const scheduleMovementPhase = (
           event: 'enter-movement-phase',
           ...(options.continuation ? { continuation: true } : {}),
           ...(options.watchdogTick ? { watchdogTick: options.watchdogTick } : {}),
+          ...(options.walkSeq !== undefined ? { walkSeq: options.walkSeq } : {}),
         },
       })
     )
@@ -115,11 +116,17 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // forge one to advance another player (Fix #1 already binds playerId).
     if (player.phase === 'moving' && !eventData.continuation) return
 
-    // The result beat is over once movement resumes: clear the challenge
-    // answer latch so the next gate accepts a genuine answer. (Set by the
-    // submit-*-challenge-answer handlers; this is the individual challenge's
-    // reveal follow-up — the final challenge clears its own.)
-    player.resolving = false
+    // Staleness token: a continuation armed under an older walk generation is
+    // a dead timer's tick (a watchdog re-check outliving its round, a result
+    // beat outrun by a re-deal). Dropping it here is what makes arming the
+    // same follow-up twice always safe.
+    if (
+      eventData.continuation &&
+      eventData.walkSeq !== undefined &&
+      eventData.walkSeq !== player.walkSeq
+    ) {
+      return
+    }
 
     // A player who has already settled (won, was kicked, or finished their
     // turn) must NOT be re-walked or re-settled on re-entry — treat this as a
@@ -131,6 +138,14 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // watchdog tick or a stray client event must not eject it mid-round.
     const alreadySettled =
       SETTLED_PHASES.includes(player.phase) || ROUND_BOUND_PHASES.includes(player.phase)
+
+    // The result beat is over once movement resumes for a live seat: clear the
+    // challenge answer latch so the next gate accepts a genuine answer. Only
+    // when this entry actually walks/settles the seat — a stray tick hitting a
+    // settled or round-bound seat must not re-open the duplicate-submit
+    // window. (Duplicates that race a live resume are still killed by the
+    // phase guard and the submit's gate-tile echo.)
+    if (!alreadySettled) player.resolving = false
 
     const move = player.moves[0]
 
@@ -155,7 +170,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
         scheduleMovementPhase(
           STEP_INTERVAL,
           { io, redis, socket, eventTarget },
-          { continuation: true }
+          { continuation: true, walkSeq: player.walkSeq }
         )
         return
       }
@@ -198,7 +213,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       scheduleMovementPhase(
         NEW_ROUND_PAUSE,
         { io, redis, socket, eventTarget },
-        { continuation: true }
+        { continuation: true, walkSeq: player.walkSeq }
       )
       return
     }
@@ -220,7 +235,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
         scheduleMovementPhase(
           ADVANCE_WATCHDOG_MS,
           { io, redis, socket, eventTarget },
-          { continuation: true, watchdogTick: tick }
+          { continuation: true, watchdogTick: tick, walkSeq: player.walkSeq }
         )
       } else {
         console.warn(

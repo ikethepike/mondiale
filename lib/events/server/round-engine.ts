@@ -7,7 +7,7 @@ import {
   type GameServer,
   type GameSocket,
 } from '../server-side'
-import { movesForScoredPoints } from './moves'
+import { movesForScoredPoints, startWalk } from './moves'
 import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
 
 /**
@@ -99,7 +99,7 @@ export const settleRoundScores = ({
     round.playerTurns[playerId] = { points: scoring }
     if (player && player.phase === 'group-challenge') {
       player.phase = 'group-scores'
-      player.moves = movesForScoredPoints({ game, player, scored: scoring.scored })
+      startWalk(player, movesForScoredPoints({ game, player, scored: scoring.scored }))
     }
   }
 }

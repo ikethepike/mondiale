@@ -55,6 +55,10 @@ export type ClientEventData =
        *  clamps the claim to beat 1's share of the pot. Beat-2 taps travel in
        *  `ranking` as usual. */
       empire?: { guessedId?: string; clientScore: number }
+      /** Name-that-water rounds: the feature the player settled on (absent =
+       *  never resolved correctly). The server re-checks it against the dealt
+       *  feature and zeroes the claim on a miss — same posture as `empire`. */
+      water?: { guessedId?: string; guessedName?: string }
     }
   | {
       event: 'submit-individual-challenge-answer'
@@ -65,6 +69,11 @@ export type ClientEventData =
       /** Timed gates: how many hints were bought (outline, ISO code) — each
        *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. */
       hintsUsed?: number
+      /** The gate being answered (`endTile.position` of the head move) — the
+       *  same echo-token posture as `submit-chain-move`'s `turn`: an ack
+       *  redelivery that lands after the walk reached the NEXT gate can't be
+       *  judged against it. */
+      gateTile?: number
     }
   | {
       /** Border Chain: the active player extends the chain. `turn` echoes the
@@ -162,6 +171,10 @@ export type ClientEventData =
        *  this settle. Bounds the self-sustaining poll so a seat that never
        *  returns cannot spin a timer for the life of the room. */
       watchdogTick?: number
+      /** Server-only: the player's walk generation this continuation was armed
+       *  under. A mismatch on arrival means the moveset changed since — the
+       *  timer is stale and must not step the pawn. */
+      walkSeq?: number
     }
   | {
       event: 'update-by-index'

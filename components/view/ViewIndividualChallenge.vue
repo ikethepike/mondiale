@@ -460,6 +460,7 @@ import { isEasyMode, isHardMode } from '~~/lib/game-rules'
 import { loadFlagMeaning } from '~~/lib/flag-meanings'
 import { leaderHintFacts, phrasedLeader, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { syncDisplayedPawnPosition } from '~~/lib/board3d/use-pawn-movement'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import {
   GATE_HINT_BITE_STEPS,
@@ -476,7 +477,7 @@ import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
-const { currentMove, update, gameStore, clearBoard } = useClientEvents()
+const { currentMove, update, gameStore, clearBoard, game, player, playerId } = useClientEvents()
 
 const challenge = ref(
   currentMove.value?.challenge?._type === 'individual-challenge'
@@ -1159,6 +1160,7 @@ const submitAnswer = (
     isoCode,
     remainingFraction: options.remainingFraction,
     hintsUsed: options.hintsUsed,
+    gateTile: currentMove.value?.endTile.position,
   })
 
   const active = currentMove.value?.challenge
@@ -1166,6 +1168,12 @@ const submitAnswer = (
     const correct = isCorrectIndividualAnswer(active, isoCode)
     if (correct) {
       earnedLeapSteps.value = gateLeapSteps(options.remainingFraction, options.hintsUsed)
+    } else if (game.value && player.value) {
+      // The board last showed this pawn ON the gate it just lost. Sync the
+      // display memory to the server position so the summary board opens with
+      // the pawn truthfully blocked at gate − 1 instead of restoring it onto
+      // the gate (or replaying a stale forward walk).
+      syncDisplayedPawnPosition(game.value.id, playerId.value, player.value.currentPosition)
     }
     if (options.reveal !== false) {
       // A shared-currency gate can be won on a country other than the dealt

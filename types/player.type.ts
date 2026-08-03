@@ -14,6 +14,11 @@ export interface Player {
    *  Rejects a duplicate submitted during the 5s reveal pause so it can't be
    *  applied against a shifted move. See submit-*-challenge-answer handlers. */
   resolving?: boolean
+  /** Walk generation: bumped whenever a fresh moveset is dealt
+   *  (settleRoundScores). Movement continuations carry the seq they were armed
+   *  under and die on a mismatch, so a stale timer (a watchdog tick from a
+   *  previous round) can never start a second stepping chain. */
+  walkSeq?: number
 }
 
 export type PlayerPhase =

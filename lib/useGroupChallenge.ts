@@ -9,12 +9,20 @@ import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { GuessKind } from '~~/types/events.types'
+import type { ClientEventData, GuessKind } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
  *  ranking `GroupChallenge` has none, so `Extract` drops it automatically. */
 export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
+
+/** Mode-specific fields a submit may carry beyond the ranking/score/buzz trio.
+ *  Derived from the wire contract, so a new field is available here the moment
+ *  the event declares it — and can never drift from what the server reads. */
+export type SubmitExtras = Omit<
+  Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
+  'event' | 'ranking' | 'clientScore' | 'buzzAt'
+>
 
 /** Our own chips are capped separately from the store's incoming cap. */
 const MAX_OWN_ENTRIES = 6
@@ -78,11 +86,18 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** 1 − remaining, for reveals that unlock as time passes. */
   const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
-  /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op. */
-  const submitOnce = (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
+  /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op.
+   *  `extras` carries mode-specific payload the server re-checks (the named
+   *  water feature, say) — a claimed `clientScore` alone never proves an answer. */
+  const submitOnce = (
+    ranking: ISOCountryCode[],
+    clientScore?: number,
+    buzzAt?: number,
+    extras?: SubmitExtras
+  ) => {
     if (submitted.value) return
     submitted.value = true
-    void deliverAnswer(ranking, clientScore, buzzAt)
+    void deliverAnswer(ranking, clientScore, buzzAt, extras)
   }
 
   /**
@@ -97,20 +112,26 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   let disposed = false
   let resubmitTimer: ReturnType<typeof setTimeout> | undefined
   let deliveryBatches = 0
-  const deliverAnswer = async (ranking: ISOCountryCode[], clientScore?: number, buzzAt?: number) => {
+  const deliverAnswer = async (
+    ranking: ISOCountryCode[],
+    clientScore?: number,
+    buzzAt?: number,
+    extras?: SubmitExtras
+  ) => {
     deliveryBatches++
     const delivered = await update({
       event: 'submit-group-challenge-answers',
       ranking,
       clientScore,
       buzzAt,
+      ...extras,
     }).catch(() => false)
     if (delivered || disposed) return
     if (deliveryBatches >= REDELIVER_MAX_BATCHES) {
       return console.error('Giving up on answer delivery — a rejoin heals the seat from here')
     }
     resubmitTimer = setTimeout(
-      () => deliverAnswer(ranking, clientScore, buzzAt),
+      () => deliverAnswer(ranking, clientScore, buzzAt, extras),
       REDELIVER_PAUSE_MS
     )
   }
