@@ -42,11 +42,13 @@ export interface CommodityExporterRow {
 }
 
 export type CommodityExportersMapping = {
-  [commodity: string]?: {
-    hsCodes: string[]
-    world: Amount<'$'>
-    top: CommodityExporterRow[]
-  }
+  [commodity: string]:
+    | {
+        hsCodes: string[]
+        world: Amount<'$'>
+        top: CommodityExporterRow[]
+      }
+    | undefined
 }
 
 const download = async () => {
