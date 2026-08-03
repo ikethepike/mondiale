@@ -65,6 +65,11 @@ export type ClientEventData =
       /** Timed gates: how many hints were bought (outline, ISO code) — each
        *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. */
       hintsUsed?: number
+      /** The gate being answered (`endTile.position` of the head move) — the
+       *  same echo-token posture as `submit-chain-move`'s `turn`: an ack
+       *  redelivery that lands after the walk reached the NEXT gate can't be
+       *  judged against it. */
+      gateTile?: number
     }
   | {
       /** Border Chain: the active player extends the chain. `turn` echoes the
@@ -162,6 +167,10 @@ export type ClientEventData =
        *  this settle. Bounds the self-sustaining poll so a seat that never
        *  returns cannot spin a timer for the life of the room. */
       watchdogTick?: number
+      /** Server-only: the player's walk generation this continuation was armed
+       *  under. A mismatch on arrival means the moveset changed since — the
+       *  timer is stale and must not step the pawn. */
+      walkSeq?: number
     }
   | {
       event: 'update-by-index'

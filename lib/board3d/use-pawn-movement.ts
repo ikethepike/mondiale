@@ -34,6 +34,18 @@ export interface PawnMover {
  */
 const displayedMemory = new Map<string, Map<string, number>>()
 
+/**
+ * Overwrite a pawn's last-shown tile while the board is unmounted. The failed
+ * gate needs this: the pawn was displayed ON the gate it just lost, and
+ * without the sync the summary board would restore() it there (or replay a
+ * stale forward walk) — reading as the blocker being ignored. Syncing to the
+ * server position makes the remount open with the pawn truthfully blocked at
+ * gate − 1.
+ */
+export const syncDisplayedPawnPosition = (gameId: string, playerId: string, tileIndex: number) => {
+  displayedMemory.get(gameId)?.set(playerId, tileIndex)
+}
+
 const PAWN_REST_Y = 0.6
 const SHARED_TILE_SCALE = 0.72
 

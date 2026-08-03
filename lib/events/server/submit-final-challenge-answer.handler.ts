@@ -89,7 +89,11 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       if (!survives) {
         player.moves = []
         await server.updateGameState(game)
-        scheduleMovementPhase(5000, { io, redis, socket, eventTarget })
+        scheduleMovementPhase(
+          5000,
+          { io, redis, socket, eventTarget },
+          { continuation: true, walkSeq: player.walkSeq }
+        )
         return
       }
     }
@@ -111,7 +115,11 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // skips settled players and only runs the advancement check) so it stages
     // and reveals the next round for the remaining players.
     if (won) {
-      scheduleMovementPhase(0, { io, redis, socket, eventTarget })
+      scheduleMovementPhase(
+        0,
+        { io, redis, socket, eventTarget },
+        { continuation: true, walkSeq: player.walkSeq }
+      )
     }
 
     // Pace the reveal: the client shows its own result beat first, then the

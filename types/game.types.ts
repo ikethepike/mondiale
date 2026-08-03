@@ -67,6 +67,13 @@ export interface PlayerTurn {
     scored: number
     maximum: number
   }
+  /** A failed gate this turn: where the walk was stopped and how many earned
+   *  steps the failure forfeited. The reveal beats and forensics read this —
+   *  without it a blocked walk is indistinguishable from a clean one. */
+  blocked?: {
+    atTile: number
+    forfeitedSteps: number
+  }
 }
 
 export interface Round {

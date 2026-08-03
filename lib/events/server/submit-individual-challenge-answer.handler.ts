@@ -1,4 +1,5 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
@@ -17,6 +18,15 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     const currentMove = player.moves[0]
     if (!currentMove || currentMove.challenge?._type !== 'individual-challenge') {
       return console.warn(`Unable to retrieve current individual challenge`)
+    }
+
+    // Echo-token check (submit-chain-move's `turn` posture): an ack-redelivered
+    // answer that lands after the walk already reached the NEXT gate must not
+    // be judged against it.
+    if (eventData.gateTile !== undefined && eventData.gateTile !== currentMove.endTile.position) {
+      return console.warn(
+        `Ignoring individual submit for gate ${eventData.gateTile} — head gate is ${currentMove.endTile.position}`
+      )
     }
 
     // The `resolving` latch closes the duplicate window. On a correct answer
@@ -38,6 +48,17 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
       player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintsUsed)
       player.moves.shift()
     } else {
+      // The block goes on the record before the moves are forfeited — without
+      // it a blocked walk is indistinguishable from a clean one, on the board
+      // and in the round history.
+      const turn = latestRound(game)?.playerTurns[player.id]
+      const lastMove = player.moves[player.moves.length - 1]
+      if (turn && lastMove) {
+        turn.blocked = {
+          atTile: currentMove.endTile.position,
+          forfeitedSteps: lastMove.endTile.position - player.currentPosition,
+        }
+      }
       player.moves = []
     }
 
@@ -47,8 +68,14 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // Let the player bask in the result, then continue their movement.
     // The pause runs OUTSIDE the per-game queue — holding the lock for five
     // seconds would stall every other player's events — and the follow-up
-    // re-enters through the queue with a fresh game fetch.
-    scheduleMovementPhase(5000, { io, redis, socket, eventTarget })
+    // re-enters through the queue with a fresh game fetch. It is the walk's
+    // own resumption, so it travels as a continuation under the current walk
+    // generation.
+    scheduleMovementPhase(
+      5000,
+      { io, redis, socket, eventTarget },
+      { continuation: true, walkSeq: player.walkSeq }
+    )
   },
   { player: 'warn' }
 )

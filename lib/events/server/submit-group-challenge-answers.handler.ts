@@ -20,7 +20,7 @@ import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type
 import type { GroupChallengeAnswer } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { defineGameHandler } from '../server-side'
-import { movesForScoredPoints } from './moves'
+import { movesForScoredPoints, startWalk } from './moves'
 
 export const submitGroupChallengeAnswersHandler = defineGameHandler(
   'submit-group-challenge-answers',
@@ -42,7 +42,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         const banked = currentRound.playerTurns[playerId]?.points
         console.warn(`Healing stranded submitter ${playerId} (answer banked, phase was not)`)
         player.phase = 'group-scores'
-        player.moves = movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 })
+        startWalk(player, movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 }))
         await server.updateGameState(game)
         server.emit({ event: 'group-challenge-scored', game }, eventTarget)
         return
@@ -267,12 +267,12 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       currentRound.playerTurns[playerId] = { points: scoring }
       player.phase = 'group-scores'
       player.currentPosition = finalTile.position - 1
-      player.moves = [
+      startWalk(player, [
         {
           endTile: finalTile,
           challenge: getFinalChallenges({ game }),
         },
-      ]
+      ])
       await server.updateGameState(game)
       server.emit({ event: 'group-challenge-scored', game }, eventTarget)
       return
@@ -281,7 +281,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     currentRound.playerTurns[playerId] = { points: scoring }
 
     player.phase = 'group-scores'
-    player.moves = movesForScoredPoints({ game, player, scored: scoring.scored })
+    startWalk(player, movesForScoredPoints({ game, player, scored: scoring.scored }))
 
     await server.updateGameState(game)
     server.emit({ event: 'group-challenge-scored', game }, eventTarget)

@@ -13,6 +13,14 @@
 
     <SpectateHud v-if="resolvedGame" :game="resolvedGame" />
 
+    <div v-if="blockedTurn && !gameStore.board.spectateTargetId" class="pane blocked-banner">
+      <strong>Blocked!</strong>
+      <span>
+        The gate held — {{ blockedTurn.forfeitedSteps === 1 ? '1 step' : `${blockedTurn.forfeitedSteps} steps` }}
+        forfeited.
+      </span>
+    </div>
+
     <Interstitial
       v-if="showMoveInterstitial"
       tone="info"
@@ -53,6 +61,17 @@ const { game: storeGame, playerId: storePlayerId, gameStore, currentRound } = us
 
 const resolvedGame = computed(() => props.game ?? storeGame.value)
 const resolvedPlayerId = computed(() => props.playerId ?? storePlayerId.value)
+
+// A failed gate settles the walk with no hop to see — the banner says what the
+// knock animation alone can't: the gate held, and the banked steps are gone.
+// Server truth from the round record; vanishes when the next round flips the
+// phase off movement-summary.
+const blockedTurn = computed(() => {
+  const game = resolvedGame.value
+  const playerId = resolvedPlayerId.value
+  if (!game || !playerId || game.players[playerId]?.phase !== 'movement-summary') return undefined
+  return currentRound.value?.round.playerTurns[playerId]?.blocked
+})
 
 // Phones cap device-pixel-ratio at 1.5 — a full-retina 3x canvas costs more
 // GPU than the small screen can show.
@@ -129,5 +148,26 @@ onMounted(() => {
   min-height: var(--viewport-height);
   pointer-events: auto;
   touch-action: none;
+}
+
+/* Same berth as the spectate HUD (they never show together — the banner is
+   the own pawn's, the HUD a watched one's). */
+.blocked-banner {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.8rem 1.2rem;
+  max-width: min(36rem, calc(100vw - 2rem));
+  white-space: nowrap;
+  animation: chip-in 0.3s ease-out;
+}
+
+.blocked-banner strong {
+  color: var(--hior-ange);
 }
 </style>

@@ -14,6 +14,16 @@ import type { Player } from '~~/types/player.type'
  * (submit-group-challenge-answers) and the server-resolved rounds
  * (Border Chain), so the two can never drift.
  */
+/**
+ * Hand a player a fresh moveset and open a new walk generation. Every dealer
+ * goes through this: the bumped `walkSeq` is what kills movement continuations
+ * still in flight from the previous walk (see enterMovementPhaseHandler).
+ */
+export const startWalk = (player: Player, moves: PlayerMove[]) => {
+  player.moves = moves
+  player.walkSeq = (player.walkSeq ?? 0) + 1
+}
+
 export const movesForScoredPoints = ({
   game,
   player,
