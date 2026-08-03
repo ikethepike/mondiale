@@ -71,6 +71,14 @@
     --suggest-berth: 1.2rem;
   }
 
+  // Opponent guess chips popping in flush against the console crowd the
+  // input — when the ticker stands on its own above a guess-box, hold a
+  // clear band between them.
+  > footer > .guess-ticker,
+  .shell-footer > .guess-ticker {
+    margin-bottom: 2rem;
+  }
+
   // The typing consoles' column: input pill over its helpers. Interactive by
   // right — the passthrough shell is pointer-events: none for the map's sake,
   // and the shared strips opt back in HERE, never per view.
