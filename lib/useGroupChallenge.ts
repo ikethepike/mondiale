@@ -271,6 +271,12 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
+  // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
+  // hint unlocks and staged reveals key off elapsedFraction and would stay
+  // frozen otherwise. No hooks: the resolve truth arrives from the snapshot
+  // (use-buzz-round's watch path), never from a local timeout.
+  if (gameStore.watching && duration.value) begin()
+
   onBeforeUnmount(() => {
     clearBoard({ preserveLiveGuesses: gameStore.watching })
     if (countdown) clearInterval(countdown)

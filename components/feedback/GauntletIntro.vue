@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="intro-overlay gauntlet-intro" @click="skip">
+  <div v-if="!watching" ref="root" class="intro-overlay gauntlet-intro" @click="skip">
     <div class="beam left" aria-hidden="true" />
     <div class="beam right" aria-hidden="true" />
     <div class="content">
@@ -21,6 +21,7 @@
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import { useGameStore } from '~~/store/game.store'
 import { EASE } from '~~/lib/motion'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 
@@ -33,6 +34,12 @@ import { useIntroBeat } from '~~/lib/use-intro-beat'
 defineProps<{ questions: number; lives: number }>()
 
 const emit = defineEmits<{ done: [] }>()
+
+// Watch mode: the booth's inert wrapper makes a tap-held overlay unskippable —
+// skip the beat and fire done immediately (same contract as Interstitial).
+const gameStore = useGameStore()
+const watching = computed(() => gameStore.watching)
+if (watching.value) onMounted(() => emit('done'))
 
 const root = ref<HTMLElement>()
 const { skip } = useIntroBeat(

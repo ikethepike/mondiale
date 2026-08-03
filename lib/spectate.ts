@@ -151,11 +151,38 @@ export const nextDirectorShot = (
 
 /**
  * Round kinds the booth mounts as REAL views (read-only) instead of story
- * cards. Grows batch by batch as kinds are verified; a kind not listed falls
- * back to its SpectateStage card. The starting three are fully snapshot-
- * driven: server deadlines, whole-table state, no local-clock dependence.
+ * cards — an allowlist, so an unverified new kind falls back to its
+ * SpectateStage card rather than mounting untested. The three absentees are
+ * honest impossibilities: the audio rounds need a local play tap (inert
+ * blocks it) and sketch's canvas is local-only.
  */
-export const MOUNTABLE_KINDS: RoundChallengeKind[] = ['border-chain', 'heritage-hunt', 'timeline']
+export const MOUNTABLE_KINDS: RoundChallengeKind[] = [
+  'ranking',
+  'traversal',
+  'border-chain',
+  'heritage-hunt',
+  'neighbour-blitz',
+  'silhouette',
+  'hot-cold',
+  'stat-detective',
+  'two-truths',
+  'river-run',
+  'shared-shores',
+  'highlands',
+  'name-that-water',
+  'mother-tongue',
+  'flag-palette',
+  'capital-guess',
+  'flashpoint',
+  'ghost-state',
+  'no-mans-land',
+  'pin-landmark',
+  'trend-race',
+  'timeline',
+  'empire',
+  'manhunt',
+  'unique-or-bust',
+]
 
 /**
  * Every active racer is out of the answering window — the round's outcome is

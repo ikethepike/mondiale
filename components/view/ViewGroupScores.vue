@@ -239,7 +239,9 @@ const rankingDefinition = computed(() =>
   accessorId.value ? getChallengeDetails(accessorId.value)?.definition : undefined
 )
 
-const selectedPlayer = ref(playerId.value)
+// Defaults to the SEAT (the booth's followed racer for a watcher, self for a
+// racer) — the scorecard opens on whoever this screen is about.
+const selectedPlayer = ref(gameStore.seatId)
 
 const selectedScorecard = computed(
   () =>

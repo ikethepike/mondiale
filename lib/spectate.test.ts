@@ -4,8 +4,10 @@ import {
   gateStory,
   IDLE_CUT_GRACE_MS,
   MIN_SHOT_MS,
+  MOUNTABLE_KINDS,
   nextDirectorShot,
   pickDirectorTarget,
+  roundSettled,
   roundStory,
   stageForPhase,
   type DirectorShot,
@@ -143,6 +145,37 @@ describe('nextDirectorShot', () => {
     const field = [player('summary', 'movement-summary'), player('scores', 'group-scores')]
     const previous = at('summary', 0, 1000)
     expect(nextDirectorShot(previous, field, 1000 + MIN_SHOT_MS * 10)).toEqual(previous)
+  })
+})
+
+describe('MOUNTABLE_KINDS', () => {
+  // The three honest impossibilities: audio needs a local play tap (the
+  // inert wrapper blocks it) and sketch's canvas is local-only. Everything
+  // else mounts — a regression here silently downgrades the booth to cards.
+  it('excludes exactly the unmountable kinds', () => {
+    for (const kind of ['anthem-buzz', 'tongue-buzz', 'sketch']) {
+      expect(MOUNTABLE_KINDS).not.toContain(kind)
+    }
+    expect(MOUNTABLE_KINDS.length).toBeGreaterThanOrEqual(25)
+  })
+})
+
+describe('roundSettled', () => {
+  it('is settled once every active racer is past the answering window', () => {
+    const field = [player('a', 'group-scores'), player('b', 'movement-summary')]
+    expect(roundSettled(field, {})).toBe(true)
+  })
+
+  it('is unsettled while an unanswered racer is still in the round', () => {
+    const field = [player('a', 'group-scores'), player('b', 'group-challenge')]
+    expect(roundSettled(field, {})).toBe(false)
+    expect(roundSettled(field, { b: { submitted: [], correct: [] } })).toBe(true)
+  })
+
+  it('ignores kicked and finished players', () => {
+    const done = { ...player('done', 'group-challenge'), completedAtRound: 2 }
+    const field = [player('gone', 'kicked'), done, player('a', 'group-scores')]
+    expect(roundSettled(field, {})).toBe(true)
   })
 })
 

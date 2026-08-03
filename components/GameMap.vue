@@ -976,6 +976,8 @@ const onPointerOver = (event: PointerEvent) => {
   const isoCode = target?.getAttribute?.('data-id') ?? undefined
   if (isoCode === hoveredId) return
   hoveredId = isoCode
+  // Same booth guard as handleClick: hover previews are view logic too
+  if (gameStore.watching) return
   document.dispatchEvent(new CustomEvent('mapHover', { detail: { isoCode } }))
 }
 
@@ -983,6 +985,11 @@ const handleClick = (isoCode: string, event?: MouseEvent) => {
   // Benched countries are not click targets anywhere — swallowing the click
   // here gates every listener (views, atlas, document mapClick) at once.
   if (unselectableSet.value.has(isoCode)) return
+
+  // The booth's mounted views listen for mapClick like any view, but the map
+  // sits OUTSIDE their inert wrapper — a watcher's tap must not drive the
+  // followed racer's guess logic. Swallowed at the one dispatch source.
+  if (gameStore.watching) return
 
   emit('countryClick', isoCode)
 

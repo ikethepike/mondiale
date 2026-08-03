@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="intro-overlay trap-sprung" @click="skip">
+  <div v-if="!watching" ref="root" class="intro-overlay trap-sprung" @click="skip">
     <div class="content">
       <span data-intro class="kicker map-caption">Dead end</span>
       <h1 data-intro>{{ title }}</h1>
@@ -30,6 +30,7 @@
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import CountryChip from '~/components/country/CountryChip.vue'
+import { useGameStore } from '~~/store/game.store'
 import { countryName, getCountry } from '~~/lib/country'
 import { EASE } from '~~/lib/motion'
 import { playerDisplayName } from '~~/lib/player'
@@ -53,6 +54,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ done: [] }>()
+
+// Watch mode: the booth's inert wrapper makes a tap-held overlay unskippable —
+// skip the beat and fire done immediately (same contract as Interstitial).
+const gameStore = useGameStore()
+const watching = computed(() => gameStore.watching)
+if (watching.value) onMounted(() => emit('done'))
 
 const doors = computed(() => props.trap.doors)
 const mine = computed(() => props.trap.playerId === props.playerId)
