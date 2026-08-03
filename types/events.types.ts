@@ -200,6 +200,12 @@ export type ClientEventData =
       allowed: boolean
     }
   | {
+      /** Host removes a seated player pre-start; the seat frees and the id is
+       *  denylisted for this game (see kick-player.handler.ts). */
+      event: 'kick-player'
+      targetId: string
+    }
+  | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
        *  state (like update-by-index). `isoCode`/`label` are omitted under a

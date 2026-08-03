@@ -35,6 +35,9 @@ export interface Game {
   players: { [playerId: string]: Player }
   /** Host toggle: let latecomers watch a started game. Absent = off. */
   allowSpectators?: boolean
+  /** Ids the host kicked from the lobby — joinVerdict refuses them at both
+   *  doors for this game's lifetime. Public snapshot data: ids only. */
+  lobbyKicks?: string[]
   /** Watchers, not competitors — never in `players`, never own a pawn.
    *  Populated only while `allowSpectators` is on. */
   spectators?: { [spectatorId: string]: Spectator }

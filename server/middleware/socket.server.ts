@@ -38,6 +38,7 @@ import {
   forgetGuessBucket,
   playerGuessingHandler,
 } from '~~/lib/events/server/player-guessing.handler'
+import { kickPlayerHandler } from '~~/lib/events/server/kick-player.handler'
 import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
@@ -144,6 +145,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'set-spectator-access': {
     handler: setSpectatorAccessHandler,
+  },
+  'kick-player': {
+    handler: kickPlayerHandler,
   },
 }
 

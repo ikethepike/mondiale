@@ -164,6 +164,16 @@
             :key="lobbyPlayer.id"
             :player="lobbyPlayer"
           >
+            <button
+              v-if="isPlayerHost && lobbyPlayer.id !== player?.id"
+              type="button"
+              class="kick-button"
+              :aria-label="`Remove ${playerDisplayName(lobbyPlayer)} from the game`"
+              :title="`Remove ${playerDisplayName(lobbyPlayer)}`"
+              @click="kickPlayer(lobbyPlayer.id)"
+            >
+              ×
+            </button>
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
         </TransitionGroup>
@@ -286,7 +296,12 @@ import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
-import { MAX_PLAYER_NAME_LENGTH, MAX_PLAYERS, normalizePlayerName } from '~~/lib/player'
+import {
+  MAX_PLAYER_NAME_LENGTH,
+  MAX_PLAYERS,
+  normalizePlayerName,
+  playerDisplayName,
+} from '~~/lib/player'
 import { wait } from '~~/lib/time'
 import {
   autoEnabledKinds,
@@ -482,6 +497,10 @@ const setSpectatorAccess = (value: string) => {
     event: 'set-spectator-access',
     allowed: value === 'on',
   })
+}
+
+const kickPlayer = (targetId: string) => {
+  update({ event: 'kick-player', targetId })
 }
 
 const startGame = () => {
@@ -845,11 +864,34 @@ const startGame = () => {
   }
 }
 
+.kick-button {
+  margin-left: auto;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--black);
+  opacity: 0.35;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
 .player-status {
   width: 4rem;
   height: 2rem;
   margin-left: auto;
   background: var(--black);
+
+  // The kick button already claimed the auto gap when it renders before us
+  .kick-button + & {
+    margin-left: 0.5rem;
+  }
   &:not(.ready) {
     mask: url('~/assets/icons/dots.svg') no-repeat center/2rem;
   }
