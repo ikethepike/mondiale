@@ -3,11 +3,12 @@ import { onUnmounted, ref } from 'vue'
 import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { clamp } from '~~/lib/number'
 
-/** A finger flick, in px/ms — one threshold for every sheet in the game. */
+/** A finger flick, in px/ms — one threshold for every dragged surface in the game. */
 export const FLICK_PX_PER_MS = 0.55
-/** Past the outer stops the sheet tracks the finger at this fraction. */
+/** Past the outer stops a dragged surface tracks the finger at this fraction. */
 export const SHEET_RUBBER = 0.15
-const VELOCITY_SAMPLES = 5
+/** Rolling window of pointer samples that decides the release velocity. */
+export const VELOCITY_SAMPLES = 5
 const TAP_SLOP_PX = 6
 /** Momentum snap bounds, seconds — a flick lands fast but never blinks. */
 const SNAP_MIN_S = 0.12
@@ -23,6 +24,21 @@ export interface DragSheetOptions {
   onSettle?: (index: number) => void
   /** Ease for a flick-carried move between stops. */
   momentumEase?: string
+}
+
+export interface PointerSample {
+  /** Position along the drag axis, px. */
+  p: number
+  /** `performance.now()` when sampled. */
+  t: number
+}
+
+/** Release velocity in px/ms from a rolling sample window — the one home for
+ *  flick math; the sheet and the yearbook tape both read it. */
+export const releaseVelocity = (samples: PointerSample[]): number => {
+  const first = samples[0]
+  const last = samples[samples.length - 1]
+  return first && last && last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0
 }
 
 export interface SettleOptions {
@@ -46,7 +62,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
   let moved = false
   let startY = 0
   let baseY = 0
-  let samples: { y: number; t: number }[] = []
+  let samples: PointerSample[] = []
 
   const settleTo = (index: number, { velocity = 0, from, immediate = false }: SettleOptions = {}) => {
     const el = options.el()
@@ -86,7 +102,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
     if (!dragging || !el) return
     const dy = event.clientY - startY
     if (Math.abs(dy) > TAP_SLOP_PX) moved = true
-    samples.push({ y: event.clientY, t: performance.now() })
+    samples.push({ p: event.clientY, t: performance.now() })
     if (samples.length > VELOCITY_SAMPLES) samples.shift()
 
     const stops = options.stops()
@@ -110,9 +126,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
     if (!dragging || !el) return
     dragging = false
 
-    const first = samples[0]
-    const last = samples[samples.length - 1]
-    const velocity = first && last && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0
+    const velocity = releaseVelocity(samples)
 
     const stops = options.stops()
     const y = Number(gsap.getProperty(el, 'y'))
@@ -130,7 +144,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
     moved = false
     startY = event.clientY
     baseY = Number(gsap.getProperty(el, 'y'))
-    samples = [{ y: event.clientY, t: performance.now() }]
+    samples = [{ p: event.clientY, t: performance.now() }]
     gsap.killTweensOf(el)
     window.addEventListener('pointermove', onDragMove)
     window.addEventListener('pointerup', onDragEnd)

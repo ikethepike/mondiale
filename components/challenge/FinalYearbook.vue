@@ -33,6 +33,7 @@
           :key="jump"
           type="button"
           class="step map-caption"
+          :class="jump === -10 ? 'fine' : 'coarse'"
           :disabled="paused"
           @click="nudge(jump)"
         >
@@ -46,13 +47,14 @@
           aria-label="Year dial"
           :aria-valuemin="DIAL_MIN"
           :aria-valuemax="DIAL_MAX"
-          :aria-valuenow="Math.round(dialYear)"
-          :aria-valuetext="formatEventYear(Math.round(dialYear))"
+          :aria-valuenow="shownYear"
+          :aria-valuetext="formatEventYear(shownYear)"
           @pointerdown="onDialDown"
           @pointermove="onDialMove"
           @pointerup="onDialUp"
           @pointercancel="onDialUp"
           @keydown="onDialKeys"
+          @wheel.prevent="onDialWheel"
         >
           <span
             v-for="tick in ticks"
@@ -64,13 +66,14 @@
             <em v-if="tick.decade">{{ formatEventYear(tick.year) }}</em>
           </span>
           <span class="needle" aria-hidden="true" />
-          <strong class="readout">{{ formatEventYear(Math.round(dialYear)) }}</strong>
+          <strong class="readout">{{ formatEventYear(shownYear) }}</strong>
         </div>
         <button
           v-for="jump in [10, 100]"
           :key="jump"
           type="button"
           class="step map-caption"
+          :class="jump === 10 ? 'fine' : 'coarse'"
           :disabled="paused"
           @click="nudge(jump)"
         >
@@ -79,7 +82,7 @@
       </div>
       <div class="commit-row">
         <ButtonFilled :disabled="paused" @click="commit"
-          >Commit {{ formatEventYear(Math.round(dialYear)) }}</ButtonFilled
+          >Commit {{ formatEventYear(shownYear) }}</ButtonFilled
         >
         <ChallengeTimerRadial :value="secondsLeft" :total="totalSeconds" />
       </div>
@@ -87,14 +90,23 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { gsap } from 'gsap'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { YEARBOOK_DIAL_BOUNDS, yearbookYear } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
+import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { clamp } from '~~/lib/number'
 import { EVENT_KIND_COPY, formatEventYear } from '~~/lib/timeline'
+import {
+  FLICK_PX_PER_MS,
+  releaseVelocity,
+  SHEET_RUBBER,
+  VELOCITY_SAMPLES,
+  type PointerSample,
+} from '~~/lib/use-drag-sheet'
 import type { YearbookChallenge } from '~~/types/challenges/final-challenge.type'
 import { isValidISOCode } from '~~/types/geography.types'
 
@@ -117,6 +129,15 @@ const DIAL_MAX = YEARBOOK_DIAL_BOUNDS.max
 const PX_PER_YEAR = 9
 /** Years visible either side of the needle. */
 const DIAL_SPAN = 34
+/** Momentum time constant, ms — a flick's glide distance is velocity × this. */
+const GLIDE_TAU_MS = 260
+/** Glide duration bounds, seconds — a big flick coasts, a small one settles fast. */
+const GLIDE_MIN_S = 0.45
+const GLIDE_MAX_S = 1.5
+/** Wheel gearing is coarser than drag — a trackpad swipe covers a decade, not a lifetime. */
+const WHEEL_PX_PER_YEAR = PX_PER_YEAR * 2
+/** Wheel deltas stop arriving for this long → the tape settles on a whole year. */
+const WHEEL_SETTLE_MS = 160
 
 const committed = ref(false)
 const shownCount = ref(1)
@@ -125,6 +146,8 @@ const dialYear = ref(Math.round((DIAL_MIN + DIAL_MAX) / 2 / 10) * 10)
 const tape = ref<HTMLElement>()
 
 const year = computed(() => yearbookYear(props.challenge))
+/** What the needle, readout and commit all agree on — whole years inside the rails. */
+const shownYear = computed(() => clamp(Math.round(dialYear.value), DIAL_MIN, DIAL_MAX))
 const totalSeconds = props.challenge.headlines.length * props.challenge.secondsPerHeadline
 
 // The reveal shows the WHOLE page — headlines the clock never dripped included
@@ -157,7 +180,8 @@ const commit = () => {
   committed.value = true
   if (ticker) clearInterval(ticker)
   ticker = undefined
-  dialYear.value = Math.round(dialYear.value)
+  stopGlide()
+  dialYear.value = shownYear.value
   emit('finished', dialYear.value)
 }
 
@@ -176,38 +200,89 @@ const start = () => {
   }, 1000)
 }
 
+const stopGlide = () => {
+  gsap.killTweensOf(dialYear)
+  clearTimeout(wheelSettle)
+  wheelSettle = undefined
+}
+
+/** Ease the tape onto a whole year — post-flick coast, spring-back from the
+ *  rubber zone, and the plain release-snap all land through here. */
+const settleDial = (target: number, { velocity = 0 } = {}) => {
+  const to = clamp(Math.round(target), DIAL_MIN, DIAL_MAX)
+  stopGlide()
+  if (prefersReducedMotion()) {
+    dialYear.value = to
+    return
+  }
+  const flicked = Math.abs(velocity) * PX_PER_YEAR > FLICK_PX_PER_MS
+  gsap.to(dialYear, {
+    value: to,
+    duration: flicked
+      ? clamp(Math.sqrt(Math.abs(to - dialYear.value)) * 0.18, GLIDE_MIN_S, GLIDE_MAX_S)
+      : MOTION.quick,
+    // A flick decelerates like a spun wheel; everything else just eases home
+    ease: flicked ? 'power3.out' : EASE.enter,
+  })
+}
+
 const nudge = (delta: number) => {
   if (committed.value) return
-  dialYear.value = clamp(Math.round(dialYear.value) + delta, DIAL_MIN, DIAL_MAX)
+  settleDial(shownYear.value + delta)
 }
 
 let dragPointer: number | undefined
 let dragStartX = 0
 let dragStartYear = 0
+let samples: PointerSample[] = []
 
 const onDialDown = (event: PointerEvent) => {
   if (committed.value || paused.value) return
+  // Grabbing a coasting tape catches it where it is
+  stopGlide()
   dragPointer = event.pointerId
   dragStartX = event.clientX
   dragStartYear = dialYear.value
+  samples = [{ p: event.clientX, t: performance.now() }]
   tape.value?.setPointerCapture(event.pointerId)
   tape.value?.focus()
 }
 
 const onDialMove = (event: PointerEvent) => {
   if (dragPointer !== event.pointerId) return
-  // Ruler physics: dragging the tape left brings later years to the needle
-  dialYear.value = clamp(
-    dragStartYear - (event.clientX - dragStartX) / PX_PER_YEAR,
-    DIAL_MIN,
-    DIAL_MAX
-  )
+  samples.push({ p: event.clientX, t: performance.now() })
+  if (samples.length > VELOCITY_SAMPLES) samples.shift()
+  // Ruler physics: dragging the tape left brings later years to the needle,
+  // and past either end the tape rubber-bands instead of walling
+  const raw = dragStartYear - (event.clientX - dragStartX) / PX_PER_YEAR
+  dialYear.value =
+    raw < DIAL_MIN
+      ? DIAL_MIN + (raw - DIAL_MIN) * SHEET_RUBBER
+      : raw > DIAL_MAX
+        ? DIAL_MAX + (raw - DIAL_MAX) * SHEET_RUBBER
+        : raw
 }
 
 const onDialUp = (event: PointerEvent) => {
   if (dragPointer !== event.pointerId) return
   dragPointer = undefined
-  dialYear.value = Math.round(dialYear.value)
+  // Finger velocity in years/ms (drag left = later years, hence the sign flip)
+  const velocity = -releaseVelocity(samples) / PX_PER_YEAR
+  samples = []
+  const flicked = Math.abs(velocity) * PX_PER_YEAR > FLICK_PX_PER_MS
+  settleDial(flicked ? dialYear.value + velocity * GLIDE_TAU_MS : dialYear.value, { velocity })
+}
+
+let wheelSettle: ReturnType<typeof setTimeout> | undefined
+
+const onDialWheel = (event: WheelEvent) => {
+  if (committed.value || paused.value) return
+  gsap.killTweensOf(dialYear)
+  const dominant = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+  const px = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? dominant * 16 : dominant
+  dialYear.value = clamp(dialYear.value + px / WHEEL_PX_PER_YEAR, DIAL_MIN, DIAL_MAX)
+  clearTimeout(wheelSettle)
+  wheelSettle = setTimeout(() => settleDial(dialYear.value), WHEEL_SETTLE_MS)
 }
 
 const DIAL_KEYS: { [key: string]: number } = {
@@ -253,6 +328,7 @@ watch(
 
 onBeforeUnmount(() => {
   if (ticker) clearInterval(ticker)
+  stopGlide()
 })
 </script>
 <style lang="scss" scoped>
@@ -557,9 +633,9 @@ onBeforeUnmount(() => {
     font-size: 1.6rem;
   }
 
-  // The century jumps give way — drag and ±10 still cover the board
-  .step:first-child,
-  .step:last-child {
+  // Drag owns the fine moves on a phone, so the ±10 give way — the century
+  // jumps stay, because a thumb-drag across 300 years is the real chore
+  .step.fine {
     display: none;
   }
 }
