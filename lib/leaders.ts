@@ -2,6 +2,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { MediaCredit } from './attribution'
+import { mentionsCountry } from './country'
 import { editDistance } from './strings'
 
 export interface LeaderProfile extends MediaCredit {
@@ -136,13 +137,29 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
 }
 
 /**
+ * The leader as a `government.leader`-phrased prompt names them: the
+ * political leader, but only when the profile is the SAME person the
+ * factbook string phrases — a drifted profile would hint the wrong face or
+ * party. Any surface hinting against a phrased leader selects through here.
+ */
+export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
+  const profile = politicalLeader(isoCode)
+  const phrased = COUNTRIES[isoCode]?.government?.leader
+  return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
+}
+
+/**
  * Short on-screen facts for a leader quiz option (easy/normal modes): party
  * and tenure start. Never the office — "President of France" answers the
- * question outright, while a party and a start year merely narrow it.
+ * question outright, while a party and a start year merely narrow it. The
+ * party gets the same treatment when it names its own country or people
+ * ("United Seychelles Party", "Congolese Party of Labour").
  */
-export const leaderHintFacts = (leader: LeaderProfile): string[] => {
+export const leaderHintFacts = (leader: LeaderProfile, isoCode: ISOCountryCode): string[] => {
   const facts: string[] = []
-  if (leader.party) facts.push(leader.party)
+  // Wikidata's stand-in for partyless leaders reads clunky as a chip.
+  const party = leader.party === 'independent politician' ? 'independent' : leader.party
+  if (party && !mentionsCountry(party, isoCode)) facts.push(party)
   if (leader.sinceYear) facts.push(`in office since ${leader.sinceYear}`)
   return facts
 }

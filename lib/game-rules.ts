@@ -15,6 +15,10 @@ import { countryInVariant } from './variant'
 export const isHardMode = (game?: { difficulty: GameDifficulty }): boolean =>
   game?.difficulty === 'hard'
 
+/** The easy-mode gate: the strongest hints (a leader's face) show only here. */
+export const isEasyMode = (game?: { difficulty: GameDifficulty }): boolean =>
+  game?.difficulty === 'easy'
+
 export const DIFFICULTY_CONFIGURATION: {
   [difficulty in GameDifficulty]: {
     rankingChallengeCountries: number

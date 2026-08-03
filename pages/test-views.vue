@@ -2321,6 +2321,24 @@ const scenarios: Scenario[] = [
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
   },
   {
+    id: 'individual-leader-find-easy',
+    label: 'Individual: leader find (easy — portrait + facts)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('easy'),
+  },
+  {
+    id: 'individual-leader-find-normal',
+    label: 'Individual: leader find (normal — facts only)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('normal'),
+  },
+  {
+    id: 'individual-leader-find-hard',
+    label: 'Individual: leader find (hard — bare question)',
+    component: ViewIndividualChallenge,
+    build: () => leaderFindGame('hard'),
+  },
+  {
     id: 'individual-landmark-quiz',
     label: 'Individual: landmark quiz (photo)',
     component: ViewIndividualChallenge,
@@ -2553,6 +2571,12 @@ const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty 
 const gauntletGame = (difficulty: GameDifficulty): Game => {
   const game = finalGame([], difficulty)
   game.players[ME]!.moves[0]!.challenge = getFinalChallenges({ game })
+  return game
+}
+
+const leaderFindGame = (difficulty: GameDifficulty): Game => {
+  const game = individualGame({ variant: 'find', id: 'government.leader', country: 'SO' })
+  game.difficulty = difficulty
   return game
 }
 

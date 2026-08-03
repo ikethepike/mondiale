@@ -14,6 +14,20 @@
             <h1 class="map-caption">
               {{ processReplacements(details?.phrasing || '', challenge.country) }}
             </h1>
+            <div
+              v-if="findLeaderPortrait || findLeaderFacts.length"
+              class="leader-hint map-caption"
+            >
+              <span
+                v-if="findLeaderPortrait"
+                class="leader-thumb"
+                :style="{ backgroundImage: `url(${findLeaderPortrait})` }"
+                aria-hidden="true"
+              />
+              <span v-if="findLeaderFacts.length" class="fact-row">
+                <span v-for="fact in findLeaderFacts" :key="fact" class="fact">{{ fact }}</span>
+              </span>
+            </div>
             <div v-if="challenge.id === 'flag' && country" class="flag-frame">
               <CountryFlag
                 class="flag ambient-loop"
@@ -175,7 +189,7 @@
               <button
                 v-for="option in challenge.options"
                 :key="option"
-                class="option card-option leader-option map-caption"
+                class="option card-option leader-option"
                 type="button"
                 @click="submitAnswer(option)"
               >
@@ -186,15 +200,13 @@
                   aria-hidden="true"
                 />
                 <span v-else class="leader-thumb placeholder" aria-hidden="true" />
-                <span class="leader-ident">
-                  <span class="leader-name">{{
-                    titlecaseLeader(getCountry(option).government?.leader ?? '')
+                <span class="leader-name">{{
+                  titlecaseLeader(getCountry(option).government?.leader ?? '')
+                }}</span>
+                <span v-if="leaderFacts(option).length" class="fact-row">
+                  <span v-for="fact in leaderFacts(option)" :key="fact" class="fact">{{
+                    fact
                   }}</span>
-                  <span v-if="leaderFacts(option).length" class="fact-row">
-                    <span v-for="fact in leaderFacts(option)" :key="fact" class="fact">{{
-                      fact
-                    }}</span>
-                  </span>
                 </span>
               </button>
             </div>
@@ -382,7 +394,10 @@
             v-else-if="variant === 'landmark-quiz' && landmark"
             :landmark="landmark"
           />
-          <FlagMeaningReveal v-else-if="variant === 'flag-pick' && flagMeaning" :entry="flagMeaning" />
+          <FlagMeaningReveal
+            v-else-if="variant === 'flag-pick' && flagMeaning"
+            :entry="flagMeaning"
+          />
           <CapitalReveal
             v-else-if="variant === 'capital-match' && challenge"
             :country="challenge.country"
@@ -441,9 +456,9 @@ import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { countriesSpending, currencyName, currencySymbol } from '~~/lib/currency'
 import { formatAmount } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
-import { isHardMode } from '~~/lib/game-rules'
+import { isEasyMode, isHardMode } from '~~/lib/game-rules'
 import { loadFlagMeaning } from '~~/lib/flag-meanings'
-import { leaderHintFacts, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
+import { leaderHintFacts, phrasedLeader, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import {
@@ -456,10 +471,7 @@ import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
-import type {
-  DuelOutcome,
-  TrendDuelOutcome,
-} from '~~/types/challenges/individual-challenge.type'
+import type { DuelOutcome, TrendDuelOutcome } from '~~/types/challenges/individual-challenge.type'
 import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -540,6 +552,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
   if (!active) return undefined
   switch (variant.value) {
     case 'find':
+      // The leader find shows Wikidata facts (and, on easy, a Commons face).
+      return findLeader.value ? datasetAttribution('leaders') : [attributionFor('flag')]
     case 'flag-pick':
     case 'flag-twins':
       return [attributionFor('flag')]
@@ -783,8 +797,24 @@ const leaderPortrait = (isoCode: ISOCountryCode) => politicalLeader(isoCode)?.im
 const leaderFacts = (isoCode: ISOCountryCode): string[] => {
   if (isHard.value) return []
   const leader = politicalLeader(isoCode)
-  return leader ? leaderHintFacts(leader) : []
+  return leader ? leaderHintFacts(leader, isoCode) : []
 }
+
+const findLeader = computed(() => {
+  const active = challenge.value
+  if (isHard.value || variant.value !== 'find' || active?.id !== 'government.leader') {
+    return undefined
+  }
+  return phrasedLeader(active.country)
+})
+// A recognizable face is the strongest clue on the board: easy mode only.
+const findLeaderPortrait = computed(() =>
+  isEasyMode(gameStore.game) ? findLeader.value?.image : undefined
+)
+const findLeaderFacts = computed(() => {
+  const active = challenge.value
+  return findLeader.value && active ? leaderHintFacts(findLeader.value, active.country) : []
+})
 
 const duelAccessorId = computed(() => challenge.value?.higherLower?.accessorId)
 const duelTopic = computed(() => {
@@ -1106,9 +1136,7 @@ const gateLesson = computed(() => {
       const facts = [
         answer.geography.capital.name ? `capital ${answer.geography.capital.name}` : undefined,
         REGION_LABELS[answer.region],
-        answer.people.population
-          ? `${formatAmount(answer.people.population)} people`
-          : undefined,
+        answer.people.population ? formatAmount(answer.people.population) : undefined,
       ].filter(Boolean)
       return facts.length ? `${countryName(answer)} — ${facts.join(' · ')}` : undefined
     }
@@ -1649,39 +1677,69 @@ header .flag {
   grid-template-columns: minmax(28rem, 44rem);
 }
 
-// A card-option laid as a row: portrait left, name and hint facts right.
+.fact-row {
+  line-height: 1.3;
+}
+
+.leader-thumb {
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center top;
+  background-color: ink(0.08);
+  border: 0.1rem solid ink(0.2);
+
+  &.placeholder {
+    // A subtle silhouette stand-in when no portrait exists.
+    background-image: radial-gradient(circle at 50% 38%, ink(0.25) 0 1.1rem, transparent 1.2rem);
+  }
+}
+
+// A card-option on an explicit grid: portrait left, name and hint facts
+// right. `display` is declared here on purpose — the card must own its
+// layout even against later-imported templates.
 .leader-option {
-  flex-flow: row nowrap;
-  gap: 1.2rem;
+  display: grid;
+  grid-template-areas: 'thumb name' 'thumb facts';
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  align-items: center;
+  column-gap: 1.2rem;
+  row-gap: 0.2rem;
   text-align: left;
   padding: 0.8rem 1.2rem;
 
   .leader-thumb {
-    flex: 0 0 auto;
-    width: 4.4rem;
-    height: 4.4rem;
-    border-radius: 50%;
-    background-size: cover;
-    background-position: center top;
-    background-color: ink(0.08);
-    border: 0.1rem solid ink(0.2);
-
-    &.placeholder {
-      // A subtle silhouette stand-in when no portrait exists.
-      background-image: radial-gradient(circle at 50% 38%, ink(0.25) 0 1.1rem, transparent 1.2rem);
-    }
+    grid-area: thumb;
   }
 
-  .leader-ident {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+  .leader-name {
+    grid-area: name;
   }
 
   .fact-row {
-    line-height: 1.3;
+    grid-area: facts;
+  }
+}
+
+// The find fallback's leader clue: a lone portrait (easy mode) over the
+// party/tenure facts, wearing the map-caption scrim for contrast.
+.leader-hint {
+  display: grid;
+  grid-template-areas: 'thumb' 'facts';
+  justify-items: center;
+  row-gap: 0.6rem;
+  padding: 1rem 1.6rem;
+
+  .leader-thumb {
+    grid-area: thumb;
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .fact-row {
+    grid-area: facts;
   }
 }
 

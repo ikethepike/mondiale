@@ -83,6 +83,72 @@ export const countryEndonym = (isoCode: ISOCountryCode): string | undefined => {
   })
 }
 
+/** Name parts that mark no single country — never a giveaway on their own
+ *  ("United Seychelles Party" must scrub on "seychelles", not "united"). */
+const GENERIC_NAME_TOKENS = new Set([
+  'the',
+  'and',
+  'republic',
+  'democratic',
+  'peoples',
+  'federal',
+  'federation',
+  'united',
+  'kingdom',
+  'state',
+  'states',
+  'island',
+  'islands',
+  'islander',
+  'islanders',
+  'new',
+  'north',
+  'south',
+  'east',
+  'west',
+  'central',
+  'saint',
+  'san',
+  'santa',
+])
+
+/** Shared-stem length that ties a name to its derivatives ("Senegal" ↔ "Senegalese"). */
+const MENTION_STEM_CHARS = 5
+/** Tokens shorter than this ("of", "de", "la") carry no country signal. */
+const MENTION_MIN_TOKEN_CHARS = 3
+
+/**
+ * Does this text betray the country — its name (English or local) or any of
+ * its demonyms? The giveaway gate for on-screen hints: a party called
+ * "Congolese Party of Labour" or "United Seychelles Party" answers a leader
+ * question outright. Tokens match on a shared stem so "Senegal" catches
+ * "Senegalese" and "España" catches "Español"; irregulars (Swiss, Dutch,
+ * Spaniard) ride `name.demonyms` — the Factbook's nationality fields — so
+ * no exception list lives here.
+ */
+export const mentionsCountry = (text: string, isoCode: ISOCountryCode): boolean => {
+  const country = COUNTRIES[isoCode]
+  if (!country) return false
+  const tokens = (value: string) =>
+    normalizeCountryName(value)
+      .split(' ')
+      .filter(token => token.length >= MENTION_MIN_TOKEN_CHARS)
+  const markers = [
+    country.name.english,
+    ...localNameVariants(country),
+    ...(country.name.demonyms ?? []),
+  ]
+    .flatMap(tokens)
+    .filter(token => !GENERIC_NAME_TOKENS.has(token))
+  return tokens(text).some(token =>
+    markers.some(
+      marker =>
+        token.startsWith(marker.slice(0, MENTION_STEM_CHARS)) ||
+        marker.startsWith(token.slice(0, MENTION_STEM_CHARS))
+    )
+  )
+}
+
 /**
  * Some countries (France, UK…) pack every overseas territory into
  * `coordinates` as HTML. Strip tags and keep just the primary lat/long pair.

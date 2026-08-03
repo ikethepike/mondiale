@@ -3,6 +3,7 @@ import {
   countryEndonym,
   findCountryByName,
   localCountryName,
+  mentionsCountry,
   searchCountriesByName,
 } from './country'
 import { getCountry } from '~~/lib/country'
@@ -150,6 +151,35 @@ describe('searchCountriesByName', () => {
 
   it('caps results at the limit', () => {
     expect(isoCodes('a', 4)).toHaveLength(4)
+  })
+})
+
+describe('mentionsCountry', () => {
+  it('catches the country name inside a longer label', () => {
+    expect(mentionsCountry('United Seychelles Party', 'SC')).toBe(true)
+    expect(mentionsCountry("Cameroon People's Democratic Movement", 'CM')).toBe(true)
+    expect(
+      mentionsCountry('African Patriots of Senegal for Work, Ethics and Fraternity', 'SN')
+    ).toBe(true)
+  })
+
+  it('catches demonyms, irregulars included', () => {
+    expect(mentionsCountry('Congolese Party of Labour', 'CG')).toBe(true)
+    expect(mentionsCountry("Swiss People's Party", 'CH')).toBe(true)
+    expect(mentionsCountry("Spanish Socialist Workers' Party", 'ES')).toBe(true)
+    expect(mentionsCountry('Dutch Republican Movement', 'NL')).toBe(true)
+  })
+
+  it('catches the local name and its derivatives', () => {
+    expect(mentionsCountry('Sverigedemokraterna', 'SE')).toBe(true)
+    expect(mentionsCountry('Partido Español Ficticio', 'ES')).toBe(true)
+  })
+
+  it('never trips on generic name parts or unrelated labels', () => {
+    expect(mentionsCountry('United Workers Party', 'US')).toBe(false)
+    expect(mentionsCountry('Labour Party', 'GB')).toBe(false)
+    expect(mentionsCountry('Renaissance', 'FR')).toBe(false)
+    expect(mentionsCountry('Green Party', 'DE')).toBe(false)
   })
 })
 
