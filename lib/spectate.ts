@@ -4,6 +4,7 @@ import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { accessorTopicLabel, getChallengeDetails } from '~~/lib/challenges'
+import { yearbookYear } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { formatAmount } from '~~/lib/number'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
@@ -670,5 +671,13 @@ export const finalStory = (item: FinalChallengeItem | undefined): SpectateStory 
         prompt: `Countries by their own names — ${item.quota} of ${item.countries.length} endonyms must land`,
         focus: item.countries,
       }
+    case 'yearbook-challenge': {
+      const year = yearbookYear(item)
+      return {
+        kicker,
+        prompt: `Headlines from one year assemble — dial it in, ±${item.tolerance} counts`,
+        ...(year === undefined ? {} : { secret: `The year is ${formatEventYear(year)}` }),
+      }
+    }
   }
 }

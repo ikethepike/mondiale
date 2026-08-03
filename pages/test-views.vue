@@ -2428,6 +2428,25 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'final-yearbook',
+    label: 'Final: yearbook (year dial)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'yearbook-challenge',
+          headlines: [
+            'fall-of-the-berlin-wall',
+            'baltic-way',
+            'velvet-revolution',
+            'world-wide-web',
+          ],
+          tolerance: 1,
+          secondsPerHeadline: 14,
+        },
+      ]),
+  },
+  {
     id: 'final-born',
     label: 'Final: born in (independence)',
     component: ViewFinalChallenge,

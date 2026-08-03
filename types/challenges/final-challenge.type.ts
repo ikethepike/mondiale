@@ -30,6 +30,7 @@ export type FinalChallengeItem =
   | CityNocturneChallenge
   | BoundaryChallenge
   | EndonymChallenge
+  | YearbookChallenge
 
 /**
  * What the client submits per question type — verdicts come from the shared
@@ -53,6 +54,8 @@ export type FinalChallengeAnswer =
   | { _type: 'boundary-challenge'; drawn: [number, number][] }
   /** Positional: pick i answers beat i of `countries`. */
   | { _type: 'endonym-challenge'; isoCodes: ISOCountryCode[] }
+  /** The dialed year — verdict is |year − yearbookYear| ≤ tolerance. */
+  | { _type: 'yearbook-challenge'; year: number }
 
 export interface RegionChallenge {
   _type: 'region-challenge'
@@ -170,6 +173,22 @@ export interface EndonymChallenge {
   _type: 'endonym-challenge'
   countries: ISOCountryCode[]
   quota: number
+}
+
+/**
+ * The Yearbook: a newspaper front page assembles — headlines from ONE year
+ * land one at a time — and the player dials in the year. The answer never
+ * rides the wire: both sides resolve it from the headline slugs through
+ * `yearbookYear` (lib/challenges/final-challenge.ts).
+ */
+export interface YearbookChallenge {
+  _type: 'yearbook-challenge'
+  /** Event slugs sharing one year, shuffled so the famous anchor isn't always first. */
+  headlines: string[]
+  /** |guess − year| the verdict still accepts. */
+  tolerance: number
+  /** Drip cadence — one headline per interval; the tail interval is the commit window. */
+  secondsPerHeadline: number
 }
 
 export type ScalesAccessorKey = Extract<

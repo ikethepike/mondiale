@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { EVENTS } from '~~/data/events.gen'
+import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry } from '~~/lib/country'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
   EndonymChallenge,
   MinChallenge,
+  YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -22,6 +25,9 @@ import {
   isCorrectFinalAnswer,
   isTransparentEndonym,
   MADE_COMMODITIES,
+  YEARBOOK_TUNING,
+  yearbookLeaksYear,
+  yearbookYear,
 } from './final-challenge'
 
 const gameFor = (variant: Game['variant'], difficulty: GameDifficulty) =>
@@ -451,6 +457,108 @@ describe('endonym challenge', () => {
     for (const isoCode of ['EG', 'FI', 'CN', 'AL', 'AM', 'DE'] as const) {
       expect(isTransparentEndonym(isoCode)).toBe(false)
     }
+  })
+})
+
+describe('yearbook challenge', () => {
+  // Density guard: every dealt page fills its difficulty's headline count
+  // from ONE year — a mixed-year page would have no single answer
+  it('deals a full page of same-year headlines at the difficulty density', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (let round = 0; round < DEAL_ROUNDS; round++) {
+        const { challenges } = getFinalChallenges({ game: gameFor('world', difficulty) })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'yearbook-challenge') continue
+          const tuning = YEARBOOK_TUNING[difficulty]
+          expect(challenge.headlines.length).toBe(tuning.headlineCount)
+          expect(challenge.tolerance).toBe(tuning.tolerance)
+          expect(new Set(challenge.headlines).size).toBe(challenge.headlines.length)
+          const years = new Set(challenge.headlines.map(slug => EVENTS[slug]?.year))
+          expect(years.size).toBe(1)
+          expect(yearbookYear(challenge)).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('never deals a headline whose slug, name or description surfaces the year', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'yearbook-challenge') continue
+        for (const slug of challenge.headlines) {
+          expect(yearbookLeaksYear(slug, EVENTS[slug])).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('flags leaks in slugs, names, near-year mentions and BCE spellings', () => {
+    const event = (overrides: Partial<EventEntry>): EventEntry => ({
+      name: 'A quiet treaty',
+      country: 'DE',
+      kind: 'politics',
+      year: 1946,
+      description: 'Signed without ceremony.',
+      ...overrides,
+    })
+    // The slug travels the wire and names the card image — it leaks too
+    expect(yearbookLeaksYear('treaty-of-manila-1946', event({}))).toBe(true)
+    expect(yearbookLeaksYear('a-treaty', event({ name: 'Revolutions of 1848', year: 1848 }))).toBe(
+      true
+    )
+    // A neighbouring year inside the tolerance window dates the page as well
+    expect(yearbookLeaksYear('a-treaty', event({ description: 'Ratified early in 1947.' }))).toBe(
+      true
+    )
+    expect(
+      yearbookLeaksYear('a-battle', event({ year: -490, description: 'Fought in 490 BCE.' }))
+    ).toBe(true)
+    // Unrelated numbers are not years
+    expect(
+      yearbookLeaksYear(
+        'battle-of-marathon',
+        event({ year: -490, description: 'The modern 42-kilometre race is named for it.' })
+      )
+    ).toBe(false)
+    expect(yearbookLeaksYear('a-treaty', event({}))).toBe(false)
+  })
+
+  it('accepts a dialed year within tolerance and rejects outside it', () => {
+    const slug = Object.keys(EVENTS)[0]
+    const challenge: YearbookChallenge = {
+      _type: 'yearbook-challenge',
+      headlines: [slug],
+      tolerance: 2,
+      secondsPerHeadline: 16,
+    }
+    const year = EVENTS[slug].year
+    const pool = Object.keys(COUNTRIES) as (keyof typeof COUNTRIES)[]
+    for (const offset of [-2, -1, 0, 1, 2]) {
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'yearbook-challenge', year: year + offset },
+          pool,
+        })
+      ).toBe(true)
+    }
+    for (const dialed of [year - 3, year + 3, Number.NaN]) {
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'yearbook-challenge', year: dialed },
+          pool,
+        })
+      ).toBe(false)
+    }
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+        pool,
+      })
+    ).toThrow(TypeError)
   })
 })
 
