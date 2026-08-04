@@ -107,24 +107,26 @@ describe('getCompositionChallenge (via getRoundChallenge)', () => {
     // The option table is always the bar's own origins, so it cannot narrow
     // with difficulty — the board carries the scaling instead. Without this,
     // easy and normal dealt identical rounds.
-    const medianMargin = async (difficulty: GameDifficulty) => {
-      const margins: number[] = []
+    //
+    // Asserted as pool composition, not as an ordering of medians: normal is
+    // an untiered shuffle of every board, so its median sits near hard's and
+    // the two cross by chance often enough to make that flaky (~4% per run).
+    // What the tiering actually guarantees is which boards each end can draw.
+    const blowoutShare = async (difficulty: GameDifficulty) => {
+      let clear = 0
       for (let round = 0; round < 40; round++) {
         const challenge = await deal(difficulty)
-        margins.push(corridorMargin(corridorsToDestination(challenge.country)))
+        if (corridorMargin(corridorsToDestination(challenge.country)) >= COMPOSITION_CLEAR_MARGIN) {
+          clear++
+        }
       }
-      return margins.sort((a, b) => a - b)[Math.floor(margins.length / 2)]
+      return clear / 40
     }
 
-    const easy = await medianMargin('easy')
-    const normal = await medianMargin('normal')
-    const hard = await medianMargin('hard')
-
-    // Easy leads with the blowouts, hard with the boards whose top two are
-    // close enough that the bar alone will not tell you
-    expect(easy).toBeGreaterThanOrEqual(COMPOSITION_CLEAR_MARGIN)
-    expect(easy).toBeGreaterThan(normal)
-    expect(normal).toBeGreaterThan(hard)
+    // Easy draws blowouts exclusively — the shape answers before the names do
+    expect(await blowoutShare('easy')).toBe(1)
+    // …and hard exhausts the close boards before it ever reaches one
+    expect(await blowoutShare('hard')).toBe(0)
   })
 
   it('never puts the country on its own bar', async () => {
