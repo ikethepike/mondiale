@@ -32,6 +32,7 @@ import { computed, defineComponent, h, ref } from 'vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewComposition from '~/components/view/ViewComposition.vue'
 import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
@@ -775,6 +776,29 @@ const scenarios: Scenario[] = [
               },
             ],
           },
+        }),
+      ]),
+  },
+  {
+    id: 'composition',
+    label: 'Composition (foreign-born origins)',
+    component: ViewComposition,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'composition-challenge',
+          country: 'TR',
+          slices: [
+            { isoCode: 'SY', share: 0.5221 },
+            { isoCode: 'IQ', share: 0.0591 },
+            { isoCode: 'DE', share: 0.0533 },
+            { isoCode: 'BG', share: 0.051 },
+            { isoCode: 'AF', share: 0.0486 },
+            { isoCode: 'IR', share: 0.0293 },
+          ],
+          options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
+          durationSeconds: 30,
+          maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
   },
@@ -2499,6 +2523,20 @@ const scenarios: Scenario[] = [
     build: () =>
       finalGame([
         { _type: 'endonym-challenge', countries: ['FI', 'DE', 'CN', 'EG', 'HR'], quota: 3 },
+      ]),
+  },
+  {
+    id: 'final-diaspora',
+    label: 'Final: diaspora (where the born-in live)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'diaspora-challenge',
+          origins: ['LK', 'MW', 'KW'],
+          accepted: [['IN'], ['ZA'], ['AE']],
+          quota: 2,
+        },
       ]),
   },
   {

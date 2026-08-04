@@ -23,6 +23,7 @@ export type ProviderId =
   | 'owid'
   | 'worldbank'
   | 'un-wpp'
+  | 'un-pd-migration'
   | 'ucdp'
   | 'naturalearth'
   | 'geonames'
@@ -79,6 +80,16 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     logo: 'un-wpp.svg',
     description:
       'Population estimates and projections 1950–2100 from the UN Population Division: age structures, fertility, mortality and migration.',
+  },
+  // Same UN Population Division desk as un-wpp, but a separate publication on
+  // its own four-yearly cycle. Filing the migrant stock under WPP would have
+  // the sources page claim WPP publishes it, which it does not.
+  'un-pd-migration': {
+    name: 'UN Population Division',
+    url: 'https://www.un.org/development/desa/pd/',
+    logo: 'un-wpp.svg',
+    description:
+      'International Migrant Stock: where the world’s foreign-born live, counted by country of birth and country of residence.',
   },
   ucdp: {
     name: 'Uppsala Conflict Data Program',
@@ -168,6 +179,7 @@ export type SourceId =
   | 'owid-grapher'
   | 'worldbank-wdi'
   | 'un-wpp-2024'
+  | 'un-migrant-stock-2024'
   | 'ucdp-acd'
   | 'ucdp-ged'
   | 'naturalearth-10m'
@@ -240,6 +252,21 @@ export const SOURCES: Record<SourceId, Source> = {
     // The revision's last estimate year; later rows are projections and never
     // enter the game.
     year: 2023,
+  },
+  'un-migrant-stock-2024': {
+    provider: 'un-pd-migration',
+    title: 'International Migrant Stock',
+    url: 'https://www.un.org/development/desa/pd/content/international-migrant-stock',
+    edition: '2024 revision',
+    // Licence and citation are not on the landing page — they are stated
+    // inside the workbook itself: "Copyright © 2024 by United Nations, made
+    // available under a Creative Commons license CC BY 3.0 IGO", citing
+    // "United Nations Department of Economic and Social Affairs, Population
+    // Division (2024). International Migrant Stock 2024."
+    license: 'CC BY 3.0 IGO',
+    // Mid-year stock. The matrix counts the foreign-born — people living
+    // outside the country they were born in — not ancestry or descent.
+    year: 2024,
   },
   'ucdp-acd': {
     provider: 'ucdp',
@@ -556,6 +583,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
 
 export type DataSetId =
   | 'countries'
+  | 'migration'
   | 'flags'
   | 'flag-meanings'
   | 'name-facts'
@@ -787,6 +815,13 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     label: 'Demography and population pyramids',
     files: ['data/wpp.gen.ts', 'data/wpp-trends.gen.ts', 'data/pyramids.gen.ts'],
     origins: [{ source: 'un-wpp-2024' }],
+  },
+  migration: {
+    label: 'Where the foreign-born live',
+    files: ['data/migration.gen.ts'],
+    origins: [
+      { source: 'un-migrant-stock-2024', dataset: 'Table 1 — stock by destination and origin' },
+    ],
   },
 }
 

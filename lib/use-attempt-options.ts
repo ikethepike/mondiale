@@ -6,10 +6,22 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 /** The challenge shape the attempt machine needs — capital-guess, flashpoint. */
 interface AttemptChallenge {
+  /** The round's subject: the country the prompt is about. */
   country: ISOCountryCode
+  /**
+   * The country that scores, when the subject is not itself the answer.
+   * Recognition modes name their subject, so `country` doubles as the answer
+   * key; composition asks about a board and answers with one of its origins,
+   * and the board is never among its own options.
+   */
+  answer?: ISOCountryCode
   maximumGuesses?: number
   maximumPoints: number
 }
+
+/** What a guess is graded against — the answer key, never the prompt. */
+const answerOf = (challenge: AttemptChallenge): ISOCountryCode =>
+  challenge.answer ?? challenge.country
 
 /**
  * The two-guess option state machine shared by the recognition modes that
@@ -54,7 +66,7 @@ export const useAttemptOptions = ({
     if (!active || submitted.value || !started.value) return
 
     // The winning guess is never broadcast — it would hand opponents the answer.
-    if (country.isoCode === active.country) return submitRound(scoreFor(active))
+    if (country.isoCode === answerOf(active)) return submitRound(scoreFor(active))
 
     if (active.maximumGuesses) {
       if (spent.value.includes(country.isoCode)) return

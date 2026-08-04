@@ -90,6 +90,10 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Countries, capitals, rivers and megacities in one board — places at large.
   'unique-or-bust': 'culture',
   'capital-guess': 'culture',
+  // 'society' would read closer, but its group is hidden — hidden groups
+  // classify stat accessors and can't be toggled, so a round kind filed there
+  // could never be switched off. Culture is the visible home for the people.
+  composition: 'culture',
   // Deals on every difficulty — icon landmarks and wider scoring bands below
   // hard (PIN_LANDMARK_TIERS).
   'pin-landmark': 'culture',

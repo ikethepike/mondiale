@@ -7,6 +7,7 @@ import { countryEndonym, isLargeCountry } from '~~/lib/country'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
+  DiasporaChallenge,
   EndonymChallenge,
   MinChallenge,
   YearbookChallenge,
@@ -20,8 +21,10 @@ import {
   boundaryScene,
   boundaryStory,
   dealReplacementChallenge,
+  decisiveOrigins,
   exportsCommodity,
   GAUNTLET_LIVES,
+  hasObviousDestination,
   getFinalChallenges,
   isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
@@ -706,6 +709,141 @@ describe('endonym data floors', () => {
     const transparent = withEndonym.filter(isTransparentEndonym)
     expect(transparent.length).toBeGreaterThanOrEqual(40)
     expect(withEndonym.length - transparent.length).toBeGreaterThanOrEqual(20)
+  })
+})
+
+describe('diaspora challenge', () => {
+  const MAGNET_REGIONS = ['europe', 'north-america']
+  const acceptedWidth: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 2, hard: 1 }
+  const pool = Object.keys(COUNTRIES) as ISOCountryCode[]
+
+  const dealtDiasporas = (difficulty: GameDifficulty, variant: Game['variant'] = 'world') => {
+    const dealt: DiasporaChallenge[] = []
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      for (const challenge of getFinalChallenges({ game: gameFor(variant, difficulty) })
+        .challenges) {
+        if (challenge._type === 'diaspora-challenge') dealt.push(challenge)
+      }
+    }
+    return dealt
+  }
+
+  it('deals every difficulty a deck that leaves a miss absorbable', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      const dealt = dealtDiasporas(difficulty)
+      expect(dealt.length, difficulty).toBeGreaterThan(0)
+      for (const challenge of dealt) {
+        // The deck must exceed the quota — equal is all-or-nothing, which is
+        // the bug that kept hard from dealing at all
+        expect(challenge.origins.length).toBeGreaterThan(challenge.quota)
+        expect(new Set(challenge.origins).size).toBe(challenge.origins.length)
+        expect(challenge.accepted.length).toBe(challenge.origins.length)
+      }
+    }
+  })
+
+  it('opens the answer key by difficulty — one destination on hard, three on easy', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealtDiasporas(difficulty)) {
+        for (const options of challenge.accepted) {
+          expect(options.length, difficulty).toBe(acceptedWidth[difficulty])
+          expect(new Set(options).size).toBe(options.length)
+        }
+      }
+    }
+  })
+
+  it('deals only decisive corridors', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealtDiasporas(difficulty)) {
+        for (const origin of challenge.origins) {
+          expect(decisiveOrigins([origin]), origin).toEqual([origin])
+        }
+      }
+    }
+  })
+
+  it('never lets one flag answer the whole deck', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealtDiasporas(difficulty)) {
+        const answers = challenge.accepted.map(([leading]) => leading)
+        // Each beat's answer is its own country…
+        expect(new Set(answers).size).toBe(answers.length)
+        // …and the rich-world magnets never take more than half the beats
+        const magnets = answers.filter(iso => MAGNET_REGIONS.includes(COUNTRIES[iso].region))
+        expect(magnets.length).toBeLessThanOrEqual(Math.floor(challenge.origins.length / 2))
+      }
+    }
+  })
+
+  it('keeps easy answers next door and hard answers far from home', () => {
+    const share = (difficulty: GameDifficulty) => {
+      const beats = dealtDiasporas(difficulty).flatMap(challenge => challenge.origins)
+      return beats.filter(hasObviousDestination).length / beats.length
+    }
+    // Easy deals the neighbour tier exclusively; hard exhausts the surprising
+    // tier before it ever reaches a neighbour answer
+    expect(share('easy')).toBe(1)
+    expect(share('hard')).toBeLessThan(share('normal'))
+  })
+
+  it('never deals on a board too small for a representative deck (North America)', () => {
+    // The continental boards each carry enough decisive corridors…
+    expect(dealtDiasporas('hard', 'south-america').length).toBeGreaterThan(0)
+    // …but North America cannot fill a deck whose answers are all distinct
+    // and not all magnets, so the dealer stands down rather than repeat a flag
+    expect(dealtDiasporas('hard', 'north-america').length).toBe(0)
+  })
+
+  it('grades picks positionally against each beat’s answer key', () => {
+    const challenge: DiasporaChallenge = {
+      _type: 'diaspora-challenge',
+      origins: ['MX', 'PT', 'LK'],
+      accepted: [['US', 'CA'], ['FR', 'CH'], ['IN']],
+      quota: 2,
+    }
+    const grade = (isoCodes: ISOCountryCode[]) =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'diaspora-challenge', isoCodes },
+        pool,
+      })
+
+    expect(grade(['US', 'FR', 'IN'])).toBe(true)
+    // A runner-up counts wherever the key lists it
+    expect(grade(['CA', 'CH', 'IN'])).toBe(true)
+    // Two hits clear the quota even with a miss
+    expect(grade(['US', 'DE', 'IN'])).toBe(true)
+    expect(grade(['US', 'DE', 'PK'])).toBe(false)
+    // The right countries in the wrong beats count for nothing
+    expect(grade(['IN', 'US', 'FR'])).toBe(false)
+  })
+
+  it('throws when the submitted shape is not a diaspora answer', () => {
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge: {
+          _type: 'diaspora-challenge',
+          origins: ['MX'],
+          accepted: [['US']],
+          quota: 1,
+        },
+        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+        pool,
+      })
+    ).toThrow(TypeError)
+  })
+})
+
+describe('diaspora data floors', () => {
+  // Catches a migration regeneration starving the mode — a half-parsed matrix
+  // still type-checks, and the dealer would just quietly stop dealing
+  it('keeps both tiers stocked on the world board', () => {
+    const decisive = decisiveOrigins(Object.keys(COUNTRIES) as ISOCountryCode[])
+    expect(decisive.length).toBeGreaterThanOrEqual(60)
+    const obvious = decisive.filter(hasObviousDestination)
+    expect(obvious.length).toBeGreaterThanOrEqual(20)
+    expect(decisive.length - obvious.length).toBeGreaterThanOrEqual(20)
   })
 })
 

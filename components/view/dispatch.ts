@@ -3,6 +3,7 @@ import ModalMoving from '~/components/modal/ModalMoving.vue'
 import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewComposition from '~/components/view/ViewComposition.vue'
 import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
 import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
@@ -71,6 +72,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   'mother-tongue': ViewMotherTongue,
   'flag-palette': ViewFlagPalette,
   'capital-guess': ViewCapitalGuess,
+  composition: ViewComposition,
   flashpoint: ViewFlashpoint,
   'ghost-state': ViewGhostState,
   'no-mans-land': ViewNoMansLand,

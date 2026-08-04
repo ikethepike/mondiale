@@ -278,8 +278,10 @@ describe('the mix over a full game', () => {
 
   it('almost never deals the same kind twice running', () => {
     expect(repeatRate(play(true))).toBeLessThan(0.005)
-    // …and the control shows the problem it fixes.
-    expect(repeatRate(play(false))).toBeGreaterThan(0.04)
+    // …and the control shows the problem it fixes. Stated as a ratio, not a
+    // rate: an undecayed draw repeats less often simply because the roster
+    // grew, so a fixed floor here fails every time a kind is added.
+    expect(repeatRate(play(false))).toBeGreaterThan(repeatRate(play(true)) * 5)
   })
 
   it('keeps the rarities rare and ranking the staple', () => {

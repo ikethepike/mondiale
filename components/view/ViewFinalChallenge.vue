@@ -31,6 +31,27 @@
               <span class="endonym-word map-caption">“{{ currentEndonym }}”</span>
             </span>
           </Transition>
+          <!-- The country of birth rides the same deck; its flag is the
+               prompt, so the question needs no country name spelled out -->
+          <Transition name="caption" mode="out-in">
+            <span v-if="currentDiasporaOrigin" :key="currentDiasporaOrigin" class="endonym-deck">
+              <span
+                v-for="layer in diasporaCardsBehind"
+                :key="layer"
+                class="deck-card map-caption"
+                :style="{ '--layer': layer }"
+                aria-hidden="true"
+              />
+              <span class="origin-card map-caption">
+                <CountryFlag
+                  class="origin-flag"
+                  :country="getCountry(currentDiasporaOrigin)"
+                  mode="background"
+                />
+                <span>Born in {{ countryName(currentDiasporaOrigin) }}</span>
+              </span>
+            </span>
+          </Transition>
         </div>
       </Transition>
     </ChallengePrompt>
@@ -139,6 +160,11 @@
         :challenge="currentFinalChallenge"
         :picks="endonymPicks"
       />
+      <DiasporaReveal
+        v-if="currentFinalChallenge?._type === 'diaspora-challenge'"
+        :challenge="currentFinalChallenge"
+        :picks="diasporaPicks"
+      />
       <template v-if="lesson">{{ lesson }}</template>
       <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
@@ -150,6 +176,7 @@ import FinalBoundary from '~/components/challenge/FinalBoundary.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
+import DiasporaReveal from '~/components/challenge/DiasporaReveal.vue'
 import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
 import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
 import MadeReveal from '~/components/challenge/MadeReveal.vue'
@@ -175,7 +202,7 @@ import {
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
-import { countryEndonym, countryName } from '~~/lib/country'
+import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
@@ -250,6 +277,23 @@ const currentEndonym = computed(() => {
   if (challenge?._type !== 'endonym-challenge' || status.value) return undefined
   const isoCode = challenge.countries[endonymPicks.value.length]
   return isoCode ? countryEndonym(isoCode) : undefined
+})
+
+// Diaspora: one pick per answered beat — the current beat is the array length
+const diasporaPicks = ref<ISOCountryCode[]>([])
+
+/** The country of birth the live beat is asking about. */
+const currentDiasporaOrigin = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'diaspora-challenge' || status.value) return undefined
+  return challenge.origins[diasporaPicks.value.length]
+})
+
+// The origins still to come, counted by the deck's ghost cards
+const diasporaCardsBehind = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'diaspora-challenge') return 0
+  return Math.max(0, challenge.origins.length - diasporaPicks.value.length - 1)
 })
 
 // The fanned cards behind the live one — the endonyms still to come
@@ -369,6 +413,9 @@ const lesson = computed(() => {
     case 'endonym-challenge':
       // EndonymReveal carries the whole scorecard
       return undefined
+    case 'diaspora-challenge':
+      // DiasporaReveal carries the whole scorecard
+      return undefined
     case 'yearbook-challenge': {
       // The stamped page carries the stories — this line lands the
       // simultaneity: everything up there shares one year
@@ -413,6 +460,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     case 'born-challenge':
     case 'endonym-challenge':
       return datasetAttribution('countries')
+    case 'diaspora-challenge':
+      return datasetAttribution('migration')
     case 'sunset-blitz-challenge':
     case 'city-nocturne-challenge':
       return datasetAttribution('cities')
@@ -476,6 +525,7 @@ watch(currentFinalChallenge, (challenge, previous) => {
   yearbookDialed.value = undefined
   bornPicks.value = []
   endonymPicks.value = []
+  diasporaPicks.value = []
   madeRevealReady.value = false
   if (madeRevealTimeout) clearTimeout(madeRevealTimeout)
 
@@ -666,6 +716,44 @@ const onMapClick = (event: Event) => {
         update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break
+    case 'diaspora-challenge':
+      {
+        if (!isValidISOCode(isoCode)) {
+          return console.error(`Unsupported country: ${isoCode}`)
+        }
+        const { origins, accepted, quota } = currentFinalChallenge.value
+        const beat = diasporaPicks.value.length
+        if (beat >= origins.length) return
+        // Tapping the country of birth itself is a misread of the question,
+        // not an answer — let it pass without burning the beat
+        if (isoCode === origins[beat]) return
+
+        diasporaPicks.value.push(isoCode)
+        gameStore.map.tints[isoCode] = accepted[beat].includes(isoCode) ? 'optimal' : 'stray'
+
+        const hits = accepted.filter((options, index) =>
+          options.includes(diasporaPicks.value[index])
+        ).length
+        const remaining = origins.length - diasporaPicks.value.length
+        // The verdict is still open — the next country of birth takes the stage
+        if (hits < quota && hits + remaining >= quota) return
+
+        // Decided: surface the destinations the player never found, and the
+        // origins themselves so the reveal's arcs have both ends on the map
+        for (const [leading] of accepted) gameStore.map.tints[leading] ??= 'inefficient'
+        for (const origin of origins) gameStore.map.tints[origin] ??= 'endpoint'
+        // Every journey drawn at once — arcForPair bows a directed key, so the
+        // corridors read as travel rather than as borders
+        gameStore.map.landRoutes = origins.map((origin, index) => `${origin}>${accepted[index][0]}`)
+        gameStore.map.focus = [...origins, ...accepted.map(([leading]) => leading)]
+        const submittedAnswer: FinalChallengeAnswer = {
+          _type: 'diaspora-challenge',
+          isoCodes: [...diasporaPicks.value],
+        }
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+      }
+      break
     case 'endonym-challenge':
       {
         if (!isValidISOCode(isoCode)) {
@@ -832,6 +920,25 @@ header .prompt {
       display: inline-block;
       padding: 0.5rem 1.8rem;
       font-size: 2.1rem;
+    }
+
+    // The country of birth leads with its flag: the prompt is a place, so the
+    // flag carries it and the words only have to name it
+    .origin-card {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      gap: 0.7rem;
+      align-items: center;
+      padding: 0.5rem 1.4rem;
+      font-size: 1.5rem;
+
+      .origin-flag {
+        width: 2.4rem;
+        height: 1.6rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 0 0 1px ink(0.12);
+      }
     }
   }
 }

@@ -262,6 +262,28 @@ export interface NameWaterChallenge {
  * Geometry, the flag SVG, and the 33-government recognition matrix all stay
  * client-side in data/recognition.gen.ts — only the id travels the wire.
  */
+/**
+ * A country's foreign-born population, broken into the places those people
+ * were born — the bar is the question, and the largest slice is the answer.
+ *
+ * The figures count residents born abroad, NOT ancestry: a country's largest
+ * recognised minority is frequently home-born and invisible here (Sweden's
+ * Finns, Tornedalians and Sámi all are). Copy says "born in", never
+ * "minority" or "ethnic" — see lib/migration.ts.
+ */
+export interface CompositionChallenge {
+  _type: 'composition-challenge'
+  country: ISOCountryCode
+  /** Origin shares of the whole foreign-born population, largest first. The
+   *  head is the answer; the listed slices never sum to 1 — the remainder is
+   *  the long tail of smaller origins. */
+  slices: { isoCode: ISOCountryCode; share: number }[]
+  /** Multiple choice outside hard mode, where players free-type instead. */
+  options?: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
 export interface GhostStateChallenge {
   _type: 'ghost-state-challenge'
   /** Key into RECOGNITION_TERRITORIES. */
@@ -734,6 +756,7 @@ export type GroupModeChallenge =
   | FlagPaletteChallenge
   | CapitalGuessChallenge
   | FlashpointChallenge
+  | CompositionChallenge
   | GhostStateChallenge
   | NoMansLandChallenge
   | PinLandmarkChallenge
