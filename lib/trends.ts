@@ -9,6 +9,7 @@ import type {
 import { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS } from '~~/generators/lib/trend-series'
 import { TRENDS as OWID_TRENDS } from '~~/data/trends.gen'
 import { WPP_TRENDS } from '~~/data/wpp-trends.gen'
+import { formatCompact, formatNumber } from '~~/lib/number'
 import type { ChallengeScale, ChallengeTopic } from '~~/types/challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
@@ -340,6 +341,35 @@ export const TREND_METRICS: Record<
 }
 
 export const TREND_METRIC_IDS = Object.keys(TREND_METRICS) as TrendMetricId[]
+
+/** Units that lead the number rather than trail it. */
+const PREFIX_UNITS = new Set(['$'])
+/** Units that name a scale rather than measure one — mute them in a readout. */
+const SILENT_UNITS = new Set(['index'])
+
+/**
+ * The one trend value renderer: '$1.2T', '61.3%', '83.4 years', '0.87'. Units
+ * do not share one shape — '$' leads, '%' closes up, the rest trail a space —
+ * so a lone suffix rule printed GDP as "1.2t $". Chart axes, tooltips, end
+ * labels and the hidden data table all speak through this.
+ * `compact` is the tight axis-tick voice; the default is the label voice.
+ */
+export const formatTrendValue = (
+  amount: number,
+  metric: TrendMetricId,
+  options: { compact?: boolean } = {}
+): string => {
+  const { unit } = TREND_METRICS[metric]
+  const currency = PREFIX_UNITS.has(unit)
+  const number = options.compact
+    ? formatCompact(amount, { currency })
+    : currency
+      ? `$${formatNumber(amount)}`
+      : formatNumber(amount)
+  // formatCompact already stamps the '$'; a bare scale name reads as noise.
+  if (currency || SILENT_UNITS.has(unit)) return number
+  return unit === '%' ? `${number}%` : `${number} ${unit}`
+}
 
 export interface TrendReading {
   direction: 'rising' | 'falling' | 'flat'

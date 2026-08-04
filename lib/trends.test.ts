@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TrendSeries } from './trends'
-import { dramaScore, isDecisiveGap, readTrend } from './trends'
+import { dramaScore, formatTrendValue, isDecisiveGap, readTrend } from './trends'
 
 /** Evenly spaced series from `start` to `end` over `years`. */
 const line = (start: number, end: number, years = 30, points = 7): TrendSeries =>
@@ -122,5 +122,35 @@ describe('dramaScore', () => {
     expect(dramaScore([], 'gdp')).toBe(0)
     expect(dramaScore([[2024, 5]], 'gdp')).toBe(0)
     expect(dramaScore(line(0, 0), 'gdp')).toBe(0)
+  })
+})
+
+describe('formatTrendValue', () => {
+  it('leads with the currency instead of trailing it', () => {
+    // Pins the bug that rendered total GDP as "1.2t $".
+    const gdp = formatTrendValue(1_200_000_000_000, 'gdp')
+    expect(gdp.startsWith('$')).toBe(true)
+    expect(gdp).not.toMatch(/\s\$$/)
+  })
+
+  it('closes a percentage up against its number', () => {
+    expect(formatTrendValue(61.3, 'internetUse')).toBe('61.3%')
+  })
+
+  it('spaces a trailing unit', () => {
+    expect(formatTrendValue(83.4, 'lifeExpectancy')).toBe('83.4 years')
+  })
+
+  it('mutes a scale name that would read as noise', () => {
+    expect(formatTrendValue(0.87, 'democracyIndex')).toBe('0.87')
+  })
+
+  it('speaks the compact axis voice on request', () => {
+    expect(formatTrendValue(1_200_000_000_000, 'gdp', { compact: true })).toBe('$1.2T')
+    expect(formatTrendValue(1_400_000, 'population', { compact: true })).toBe('1.4M people')
+  })
+
+  it('keeps a negative value signed', () => {
+    expect(formatTrendValue(-1.2, 'populationGrowthRate')).toBe('-1.2%')
   })
 })
