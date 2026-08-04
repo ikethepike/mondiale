@@ -202,6 +202,21 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     afterUrl:
       'https://upload.wikimedia.org/wikipedia/commons/2/20/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-2-of-2-%282025%29.png',
   },
+  // --- Europe ---------------------------------------------------------------
+  {
+    name: 'the glacier that was declared dead',
+    title: 'Okjökull',
+    countries: ['IS'],
+    kind: 'ice',
+    coordinates: { lat: 64.6, lng: -20.9 },
+    startYear: 1980,
+    beforeYear: 1986,
+    afterYear: 2019,
+    description:
+      'The first glacier here to lose its status as a glacier — too thin to move under its own weight. Scientists held a funeral for it in 2019 and left a plaque addressed to the future.',
+    beforeUrl: EO('145000/145439/okjokull_tm5_1986257_lrg.jpg'),
+    afterUrl: EO('145000/145439/okjokull_oli_2019213_lrg.jpg'),
+  },
   // --- Africa ---------------------------------------------------------------
   {
     name: 'the shrinking basin lake',
