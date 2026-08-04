@@ -41,10 +41,19 @@ const CHANGE_WIDTH = 1400
 /** Every region must carry at least this many stories — the Anthropocene is
  *  not a story about one continent. */
 const MIN_STORIES_PER_REGION = 1
-/** No region may carry more than this share of the deck. The share only binds
- *  once the deck is big enough for it to mean anything — under this many seeds
- *  a single story can breach 25% on its own. */
-const MAX_REGION_SHARE = 0.25
+/**
+ * No region may carry more than this share of the deck. A third rather than a
+ * quarter because the source series is itself American-weighted — NASA shot
+ * more of its own country — so a quarter would cap the whole deck at four
+ * times however many non-US stories exist, and the answer to a lopsided source
+ * is to keep hunting the rest of the world, not to ship six stories. The
+ * dealer weights by region on top of this, so a region at the ceiling still
+ * deals less often per story than a thin one.
+ *
+ * The share only binds once the deck is big enough for it to mean anything —
+ * under this many seeds a single story can breach a third on its own.
+ */
+const MAX_REGION_SHARE = 1 / 3
 const REGION_SHARE_APPLIES_FROM = 12
 
 export interface ChangeFrame {

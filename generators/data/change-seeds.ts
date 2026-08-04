@@ -100,6 +100,20 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     afterUrl: WOC('shanghai/shanghai_oli_2019210_lrg.jpg'),
   },
   {
+    name: 'the silt-built river mouth',
+    title: 'The Yellow River Delta',
+    countries: ['CN'],
+    kind: 'water',
+    coordinates: { lat: 37.75, lng: 119.05 },
+    startYear: 1990,
+    beforeYear: 1989,
+    afterYear: 2020,
+    description:
+      'The muddiest big river on earth throws its load into the sea and builds new land with it, growing a hook of silt that swings and re-forms as engineers move the channel.',
+    beforeUrl: WOC('yellow_river/yellowriverwoc_tm4_198944_lrg.jpg'),
+    afterUrl: WOC('yellow_river/yellowriverwoc_oli_2020298.jpg'),
+  },
+  {
     name: 'the wandering braided river',
     title: 'The Padma River',
     countries: ['BD'],
@@ -151,12 +165,34 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     kind: 'forest',
     coordinates: { lat: -10.5, lng: -62.5 },
     startYear: 1970,
-    beforeYear: 2000,
+    // NASA's series opens in 2000, by which time the fishbone was already
+    // cut — so this pair shows the pattern THICKENING rather than arriving.
+    // The 2000 frame carries a bank of cloud over its eastern third; 2001 is
+    // the earliest clear look at the same footprint.
+    beforeYear: 2001,
     afterYear: 2012,
     description:
-      'Settlers cut side roads off a single new highway and cleared plots along each one, stamping a fishbone pattern across the rainforest that satellites read like a diagram.',
-    beforeUrl: WOC('amazon/amazon_deforestation_20000730_lrg.jpg'),
+      'Settlers cut side roads off a single new highway and cleared plots along each one, stamping a fishbone pattern across the rainforest that satellites read like a diagram. It has been thickening ever since.',
+    beforeUrl: WOC('amazon/amazon_deforestation_20010811_lrg.jpg'),
     afterUrl: WOC('amazon/amazon_deforestation_20120718_lrg.jpg'),
+  },
+  {
+    name: 'the cleared dry forest',
+    title: 'The Gran Chaco',
+    countries: ['PY'],
+    kind: 'forest',
+    // Not a World of Change story: NASA's Landsat 50th-anniversary pair,
+    // mirrored to Commons. Same public-domain terms, same matched framing.
+    coordinates: { lat: -21.5, lng: -60.0 },
+    startYear: 1990,
+    beforeYear: 1985,
+    afterYear: 2025,
+    description:
+      'The fastest-vanishing dry forest on earth, cut into rectangular cattle ranches so quickly that the frontier is visible from orbit as a straight edge marching west.',
+    beforeUrl:
+      'https://upload.wikimedia.org/wikipedia/commons/c/cd/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-1-of-2-%281985%29.png',
+    afterUrl:
+      'https://upload.wikimedia.org/wikipedia/commons/2/20/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-2-of-2-%282025%29.png',
   },
   // --- North America --------------------------------------------------------
   {
@@ -186,6 +222,20 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'Boreal forest and peat stripped away to mine the bitumen underneath, leaving open pits and tailings ponds big enough to be mistaken for lakes.',
     beforeUrl: WOC('athabasca/athabasca_tm5_19840723_lrg.jpg'),
     afterUrl: WOC('athabasca/athabasca_oli_20160715_lrg.jpg'),
+  },
+  {
+    name: 'the blast zone regrowing',
+    title: 'Mount St. Helens',
+    countries: ['US'],
+    kind: 'forest',
+    coordinates: { lat: 46.19, lng: -122.19 },
+    startYear: 1980,
+    beforeYear: 1979,
+    afterYear: 2016,
+    description:
+      'A volcano took six hundred square kilometres of forest down in minutes, and the decades since have been a live experiment in how fast a flattened landscape comes back.',
+    beforeUrl: WOC('sthelens/sthelens_ms3_19790829_lrg.jpg'),
+    afterUrl: WOC('sthelens/sthelens_oli_20160828_lrg.jpg'),
   },
   {
     name: 'the emptying canyon reservoir',
