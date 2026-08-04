@@ -2502,6 +2502,20 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'final-diaspora',
+    label: 'Final: diaspora (where the born-in live)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'diaspora-challenge',
+          origins: ['LK', 'MW', 'KW'],
+          accepted: [['IN'], ['ZA'], ['AE']],
+          quota: 2,
+        },
+      ]),
+  },
+  {
     id: 'final-min-max',
     label: 'Final: min/max (stat pick)',
     component: ViewFinalChallenge,
