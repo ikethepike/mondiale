@@ -1608,12 +1608,20 @@ header .flag {
   margin: 0.8rem auto 0;
 }
 
+// The name rides directly over the map, so it takes the map-caption surface at
+// chip scale — bare ink on a country fill was unreadable.
 .ring-name {
   font-size: 1.1rem;
   line-height: 1.15;
   text-align: center;
   color: var(--dark-blue);
   max-width: 12ch;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.6rem;
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
+  box-decoration-break: clone;
 }
 
 @media (max-width: $tablet) {

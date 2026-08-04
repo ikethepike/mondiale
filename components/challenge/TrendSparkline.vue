@@ -505,6 +505,9 @@ figcaption.source-only {
   // percentage measured against the same box the svg fills.
   .plot {
     padding-left: 3.6rem;
+    // Headroom so a peak that reaches the top of the domain keeps clear of
+    // whatever titles the chart — the curve used to run into the frame's edge.
+    padding-top: 2.4rem;
     // Room for the year row, and beneath it the expand control.
     padding-bottom: 4.6rem;
   }
@@ -673,11 +676,21 @@ figcaption.source-only {
   }
 }
 
-// Inside the dock the chart takes the whole frame.
+// Inside the dock the chart takes the whole frame, less the gutters the axes
+// and headroom reserve — 100% of the frame would push the curve back off it.
 .docked-chart {
   --sparkline-height: 100%;
 
   width: 100%;
   height: 100%;
+
+  .plot {
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .plot-frame {
+    height: 100%;
+  }
 }
 </style>
