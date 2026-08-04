@@ -26,6 +26,7 @@
     "generate:commodity-exporters": "bun run generators/vendors/cepii/create-commodity-exporters.ts",
     "generate:wpp": "bun run generators/vendors/unwpp/create-wpp.ts",
     "generate:migration": "bun run generators/vendors/undesa/create-migration.ts",
+    "generate:treaties": "bun run generators/vendors/untc/create-treaties.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:anthems": "bun run generators/create-anthems-file.ts",

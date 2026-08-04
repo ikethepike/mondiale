@@ -1,5 +1,6 @@
 # Weekly refresh of the data that actually moves upstream: World Bank indicators,
-# OWID metrics, Wikidata leaders, then the country file that folds them all in.
+# OWID metrics, Wikidata leaders, treaty ratifications, then the country file
+# that folds them all in.
 #
 # Deliberately NOT scheduled:
 # - commodity-exporters: BACI release pinned (BACI_RELEASE), ~300MB hand-run
@@ -50,6 +51,11 @@ jobs:
 
       - name: Update leaders
         run: bun run generate:leaders
+
+      # Ratifications land most months, and the generator's floors + the
+      # CRC/US canary fail the job rather than committing a broken parse.
+      - name: Update treaty ratifications
+        run: bun run generate:treaties
 
       - name: Update countries
         run: bun run generate:countries
