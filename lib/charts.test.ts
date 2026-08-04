@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { monotoneCurvePath, niceTicks, type ChartPoint } from './charts'
 
 /** Every coordinate in a path's `C`/`M` commands, in order. */
-const coordinates = (path: string): number[] =>
-  path.match(/-?\d+\.?\d*/g)?.map(Number) ?? []
+const coordinates = (path: string): number[] => path.match(/-?\d+\.?\d*/g)?.map(Number) ?? []
 
 describe('monotoneCurvePath', () => {
   it('draws nothing for an empty series', () => {
