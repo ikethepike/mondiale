@@ -175,6 +175,16 @@
       <template v-if="lesson">{{ lesson }}</template>
       <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
+
+    <!-- The lit set, made readable: 54 highlighted countries are a wall at
+         world zoom, so the roster gets its own surface and its rows answer. -->
+    <MembershipSheet
+      v-if="currentFinalChallenge?._type === 'membership-challenge' && !showInterstitial"
+      :countries="membershipCountries"
+      :organization="currentFinalChallenge.organization"
+      :settled="!!status"
+      @pick="submitMembership"
+    />
   </div>
 </template>
 <script lang="ts" setup>
@@ -191,6 +201,7 @@ import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
+import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
@@ -508,16 +519,22 @@ const details = computed(() => {
   })
 })
 
+/** The lit set for a membership question — the sheet lists exactly this. */
+const membershipCountries = ref<ISOCountryCode[]>([])
+
 const triggerMembershipChallenge = () => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type === 'membership-challenge') {
-    const countries = Object.values(COUNTRIES)
-    gameStore.map.highlighted.add(challenge.exception)
-    for (const country of countries) {
+    const lit = new Set<ISOCountryCode>([challenge.exception])
+    for (const country of Object.values(COUNTRIES)) {
       if (country.membership.some(organization => organization.id === challenge.organization)) {
-        gameStore.map.highlighted.add(country.isoCode)
+        lit.add(country.isoCode)
       }
     }
+    // One set, two consumers: the map lights it, the sheet lists it. A second
+    // derivation that filtered differently would point at the exception.
+    membershipCountries.value = [...lit]
+    for (const isoCode of lit) gameStore.map.highlighted.add(isoCode)
   }
   if (challenge?._type === 'scales-challenge') {
     gameStore.map.tints[challenge.target] = 'endpoint'
@@ -546,6 +563,7 @@ watch(currentFinalChallenge, (challenge, previous) => {
   gameStore.map.focus = []
   gameStore.map.focusContext = []
   lastGuess.value = undefined
+  membershipCountries.value = []
   scalesPicks.value = []
   scalesResult.value = undefined
   sunsetResult.value = undefined
@@ -565,6 +583,19 @@ const showInterstitial = ref(true)
 const clearScalesPicks = () => {
   for (const isoCode of scalesPicks.value) gameStore.map.highlighted.delete(isoCode)
   scalesPicks.value = []
+}
+
+/** The one membership submission — the map tap and a sheet row both land here. */
+const submitMembership = (isoCode: ISOCountryCode) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'membership-challenge' || gameStore.map.status) return
+
+  gameStore.map.highlighted.clear()
+  const submittedAnswer = { _type: 'membership-challenge', isoCode } as const
+  gameStore.map.reveal = challenge.exception
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
 }
 
 const submitScales = () => {
@@ -870,19 +901,7 @@ const onMapClick = (event: Event) => {
       }
       break
     case 'membership-challenge':
-      {
-        const { exception } = currentFinalChallenge.value
-        gameStore.map.highlighted.clear()
-
-        const submittedAnswer = {
-          _type: 'membership-challenge',
-          isoCode: isoCode as ISOCountryCode,
-        } as const
-        gameStore.map.reveal = exception
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
-
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
-      }
+      submitMembership(isoCode as ISOCountryCode)
       break
     case 'scales-challenge':
       {

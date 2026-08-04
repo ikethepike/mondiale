@@ -2416,6 +2416,23 @@ const scenarios: Scenario[] = [
       finalGame([{ _type: 'membership-challenge', organization: 'eu', exception: 'NO' }]),
   },
   {
+    // 54 members: the sheet's stress case, and the one that proved region
+    // headings leak (every AU member is African).
+    id: 'final-membership-au',
+    label: 'Final: membership (African Union, 54 rows)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([{ _type: 'membership-challenge', organization: 'au', exception: 'PT' }]),
+  },
+  {
+    // 6 members: below the letter-heading threshold, renders flat.
+    id: 'final-membership-csto',
+    label: 'Final: membership (CSTO, 6 rows)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([{ _type: 'membership-challenge', organization: 'csto', exception: 'MN' }]),
+  },
+  {
     id: 'final-scales',
     label: 'Final: tip the scales',
     component: ViewFinalChallenge,
