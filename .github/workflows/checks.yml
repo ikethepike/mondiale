@@ -1,0 +1,58 @@
+# Verifies every PR and every push to main. Before this, nothing ran the test
+# suite in CI — deploy.yml went straight from a push on main to flyctl, so a
+# red commit could reach Fly and the 634 unit tests only ran when someone
+# remembered locally.
+#
+# The four checks are independent, so they run as separate steps rather than a
+# chain: a formatting slip and a failing test should both be visible from one
+# run, not hidden behind whichever fails first. `--frozen-lockfile` install +
+# `nuxt prepare` (via postinstall) is what makes vue-tsc able to see .nuxt's
+# generated types.
+name: Checks
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# A force-push mid-run should cancel the stale run, not race it. Keyed per ref
+# so main and each PR queue independently.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Test, typecheck, lint, format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Unit tests
+        run: bun run test
+
+      # Nuxt's generated types come from the postinstall `nuxt prepare` above.
+      - name: Typecheck
+        if: '!cancelled()'
+        run: bun run typecheck
+
+      - name: Lint
+        if: '!cancelled()'
+        run: bun run lint
+
+      # eslint does not cover formatting here, so this is its own gate — a
+      # missing space once passed a clean lint run and reached review.
+      - name: Format
+        if: '!cancelled()'
+        run: bun run format:check

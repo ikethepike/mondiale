@@ -7,3 +7,7 @@ bun.lockb
 dump.rdb
 test-results
 playwright-report
+
+# Curated content, not code: one lyric line per array entry is how these are
+# read and edited. Prettier would collapse the short ones onto single lines.
+public/anthems/lyrics

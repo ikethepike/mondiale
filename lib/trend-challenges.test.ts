@@ -125,7 +125,11 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
       let dealtCount = 0
       for (let deal = 0; deal < 60; deal++) {
-        const dealt = getIndividualChallenge({ accessorId: 'isoCode', difficulty, variant: 'world' })
+        const dealt = getIndividualChallenge({
+          accessorId: 'isoCode',
+          difficulty,
+          variant: 'world',
+        })
         if (dealt.trajectory) dealtCount++
       }
       expect(dealtCount).toBeGreaterThan(30)

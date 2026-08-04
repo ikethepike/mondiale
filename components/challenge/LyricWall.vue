@@ -138,7 +138,10 @@ onMounted(() => {
 onBeforeUnmount(() => window.removeEventListener('resize', measureDrift))
 // Re-measure when the column swaps to English: the translation is a different
 // length, so its overflow is different too.
-watch(() => [props.translated, lines.value.length], () => nextTick(measureDrift))
+watch(
+  () => [props.translated, lines.value.length],
+  () => nextTick(measureDrift)
+)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

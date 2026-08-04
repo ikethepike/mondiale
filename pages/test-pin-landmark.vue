@@ -98,8 +98,6 @@ const truthPoint = computed(() => {
   return { name: landmark.name, coordinates: landmark.coordinates }
 })
 
-
-
 const randomSlug = () => sample(pool.value)?.slug
 
 const MAXIMUM_POINTS = 21

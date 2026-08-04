@@ -48,7 +48,10 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   options: {
     /** Whether this guess wins the round. Anthem: one country. Tongues: any of
      *  a set — through the same predicate the server verifies with. */
-    isCorrect: (challenge: Extract<TypedRoundChallenge, { _type: T }>, guess: ISOCountryCode) => boolean
+    isCorrect: (
+      challenge: Extract<TypedRoundChallenge, { _type: T }>,
+      guess: ISOCountryCode
+    ) => boolean
     /** The pot, off the narrowed challenge. */
     maximumPoints: (challenge: Extract<TypedRoundChallenge, { _type: T }>) => number
     /** Copy for a wrong buzz; the country is already named for the guesser. */

@@ -4263,7 +4263,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1917,
     qid: 'Q1206847',
     // Every photo of the piece shows its inked date; the Dada circle instead.
-    commons: 'Marcel Duchamp, Francis Picabia, and Beatrice Wood at the Broadway Photo Shop, NYC, 1917.jpg',
+    commons:
+      'Marcel Duchamp, Francis Picabia, and Beatrice Wood at the Broadway Photo Shop, NYC, 1917.jpg',
     description:
       "Duchamp signed a porcelain urinal 'R. Mutt' and submitted it to a New York exhibition that had promised to refuse nothing — it was refused anyway. After that gesture, an artwork could be an idea.",
   },
@@ -4314,7 +4315,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     // Item image is the bare logotype; the Shibuya promotional set instead.
     commons: 'Promotional event for イカゲーム (Squid Game) in Shibuya.jpg',
     description:
-      'A Korean survival drama of debtors playing deadly children\'s games became the most-watched series launch in Netflix history, its tracksuits and masked guards a global Halloween uniform within weeks.',
+      "A Korean survival drama of debtors playing deadly children's games became the most-watched series launch in Netflix history, its tracksuits and masked guards a global Halloween uniform within weeks.",
   },
   {
     name: 'Eruption of Mount Tambora',
@@ -4369,7 +4370,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     // The event item carries no image of its own.
     commons: "Potemkin - Brassey's Naval Annual 1905.png",
     description:
-      'Sailors on the battleship Potemkin killed their officers over maggoty meat and ran up the red flag off Odessa. The mutiny became a symbol of revolution — and one of cinema\'s most famous films.',
+      "Sailors on the battleship Potemkin killed their officers over maggoty meat and ran up the red flag off Odessa. The mutiny became a symbol of revolution — and one of cinema's most famous films.",
   },
   {
     name: 'First Battle of the Marne',
@@ -4378,7 +4379,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'conflict',
     year: 1914,
     // The item image is a dated situation map; the famous taxi instead.
-    commons: 'Taxi de la Marne, Musée de l\'Armée-IMG 0987.jpg',
+    commons: "Taxi de la Marne, Musée de l'Armée-IMG 0987.jpg",
     description:
       'French and British armies turned the German drive on Paris at the Marne — Parisian taxis famously ferried reserves to the front. The war of movement died there, and the trenches began.',
   },
@@ -4459,7 +4460,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'disaster',
     year: 1871,
     description:
-      'Fire leapt through a city built of wood until a third of Chicago lay in ashes and a hundred thousand people were homeless. The rebuilding that followed raised some of the world\'s first skyscrapers.',
+      "Fire leapt through a city built of wood until a third of Chicago lay in ashes and a hundred thousand people were homeless. The rebuilding that followed raised some of the world's first skyscrapers.",
   },
   {
     name: 'Royal Albert Hall',
@@ -4468,11 +4469,11 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'culture',
     year: 1871,
     description:
-      "Queen Victoria opened the great domed hall raised in memory of her husband Albert. Its echo was notorious — the joke ran that it was the only place a British composer could hear their work twice.",
+      'Queen Victoria opened the great domed hall raised in memory of her husband Albert. Its echo was notorious — the joke ran that it was the only place a British composer could hear their work twice.',
   },
   {
     name: 'Battle of Castillon',
-    title: 'The Hundred Years\' War ends at Castillon',
+    title: "The Hundred Years' War ends at Castillon",
     country: 'FR',
     kind: 'conflict',
     year: 1453,
@@ -4642,7 +4643,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'culture',
     year: 2008,
     // Item image is the bare Olympic rings; the Bird's Nest at night instead.
-    commons: "National stadium at night (bird's nest), Beijing, China - 国家体育场(鸟巢), 北京，中国 (38200491105).jpg",
+    commons:
+      "National stadium at night (bird's nest), Beijing, China - 国家体育场(鸟巢), 北京，中国 (38200491105).jpg",
     description:
       "China announced itself with the most spectacular Games ever staged, opening in the Bird's Nest with a drummed ceremony watched by a billion people. Michael Phelps swam to eight golds in a single Games.",
   },
@@ -4734,7 +4736,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Delhi Sultanate',
-    title: 'A slave-general takes Delhi\'s throne',
+    title: "A slave-general takes Delhi's throne",
     country: 'IN',
     kind: 'nation',
     year: 1206,
@@ -4903,7 +4905,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'engineering',
     year: 1632,
     description:
-      'Shah Jahan began a white-marble tomb for his wife Mumtaz Mahal, who had died bearing their fourteenth child. Twenty thousand craftsmen worked two decades on what became the world\'s most famous monument to grief.',
+      "Shah Jahan began a white-marble tomb for his wife Mumtaz Mahal, who had died bearing their fourteenth child. Twenty thousand craftsmen worked two decades on what became the world's most famous monument to grief.",
   },
   {
     name: 'Organisation of African Unity',
@@ -4922,7 +4924,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'conflict',
     year: 1879,
     description:
-      'A Zulu army with spears and cowhide shields destroyed a modern British column at the foot of Isandlwana hill — the worst defeat Victorian Britain ever suffered against an African foe. The empire\'s shock was total.',
+      "A Zulu army with spears and cowhide shields destroyed a modern British column at the foot of Isandlwana hill — the worst defeat Victorian Britain ever suffered against an African foe. The empire's shock was total.",
   },
   {
     name: 'Hunminjeongeum',
@@ -5025,7 +5027,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     kind: 'nation',
     year: -753,
     description:
-      "Legend set the day Romulus founded the city — and killed his twin Remus over its wall. From that hilltop village grew the empire whose languages, laws and calendars Europe still lives inside.",
+      'Legend set the day Romulus founded the city — and killed his twin Remus over its wall. From that hilltop village grew the empire whose languages, laws and calendars Europe still lives inside.',
   },
 
   // --- Expansion: the ancient world beyond the battlefield --------------------
@@ -5065,7 +5067,7 @@ export const EVENT_SEEDS: EventSeed[] = [
   },
   {
     name: 'Library of Alexandria',
-    title: 'Alexandria gathers all the world\'s books',
+    title: "Alexandria gathers all the world's books",
     country: 'EG',
     kind: 'culture',
     year: -300,
@@ -5112,7 +5114,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     // Wikidata carries only the envoy's life dates.
     year: -114,
     description:
-      "The Han envoy Zhang Qian returned from the west with word of great civilisations beyond the deserts, and the caravans began. Silk went one way, glass, horses, religions and plagues the other.",
+      'The Han envoy Zhang Qian returned from the west with word of great civilisations beyond the deserts, and the caravans began. Silk went one way, glass, horses, religions and plagues the other.',
   },
   {
     name: 'Antikythera mechanism',
@@ -5142,7 +5144,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: -400,
     qid: 'Q139377',
     description:
-      "The Aksumite kingdom grew rich on the trade between Rome and India, minted its own gold coin and raised granite obelisks taller than any single stone the world had yet stood upright.",
+      'The Aksumite kingdom grew rich on the trade between Rome and India, minted its own gold coin and raised granite obelisks taller than any single stone the world had yet stood upright.',
   },
   {
     name: 'Brahmasphutasiddhanta',
@@ -5192,7 +5194,8 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: -251900000,
     qid: 'Q141118',
     // The Siberian Traps basalt that did the killing.
-    commons: 'Native iron in basalt (Siberian Traps Flood Basalt, Permian-Triassic boundary times, 251 Ma; Putoran Plateau, Siberia, Russia) 1 (17151514269).jpg',
+    commons:
+      'Native iron in basalt (Siberian Traps Flood Basalt, Permian-Triassic boundary times, 251 Ma; Putoran Plateau, Siberia, Russia) 1 (17151514269).jpg',
     description:
       'Siberian volcanoes erupted for a million years and cooked the planet, killing roughly nine in ten marine species — the worst catastrophe life has ever survived. Recovery took some ten million years.',
   },
@@ -5293,6 +5296,6 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 1974,
     qid: 'Q9068538',
     description:
-      "A creeping mutiny of soldiers ended three thousand years of Ethiopian monarchy, deposing Haile Selassie and installing the Derg. Famine had been hidden, and the hiding is what finally broke the throne.",
+      'A creeping mutiny of soldiers ended three thousand years of Ethiopian monarchy, deposing Haile Selassie and installing the Derg. Famine had been hidden, and the hiding is what finally broke the throne.',
   },
 ]

@@ -2,7 +2,15 @@
   <canvas ref="canvas" class="audio-field-gl" aria-hidden="true" />
 </template>
 <script lang="ts" setup>
-import { Color, Mesh, OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial, WebGLRenderer } from 'three'
+import {
+  Color,
+  Mesh,
+  OrthographicCamera,
+  PlaneGeometry,
+  Scene,
+  ShaderMaterial,
+  WebGLRenderer,
+} from 'three'
 import { audioFieldPalette, MAX_FIELD_COLORS, NEUTRAL_FIELD } from '~~/lib/audio-palette'
 import { hexToRgb } from '~~/lib/palette'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'

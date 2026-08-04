@@ -87,8 +87,14 @@ describe('audioFieldPalette', () => {
     const redBand = (hex: string) => hueOf(hex) < 30 || hueOf(hex) > 330
     const ukraine = audioFieldPalette(['UA'] as ISOCountryCode[])
     expect(ukraine).toHaveLength(2)
-    expect(ukraine.some(hex => hueOf(hex) > 40 && hueOf(hex) < 70), 'UA gold').toBe(true)
-    expect(ukraine.some(hex => hueOf(hex) > 190 && hueOf(hex) < 250), 'UA blue').toBe(true)
+    expect(
+      ukraine.some(hex => hueOf(hex) > 40 && hueOf(hex) < 70),
+      'UA gold'
+    ).toBe(true)
+    expect(
+      ukraine.some(hex => hueOf(hex) > 190 && hueOf(hex) < 250),
+      'UA blue'
+    ).toBe(true)
 
     // Switzerland: red field, white cross.
     const swiss = audioFieldPalette(['CH'] as ISOCountryCode[])
@@ -110,7 +116,18 @@ describe('audioFieldPalette', () => {
 
   it('keeps a language blend inside the same cap as a single flag', () => {
     // A 55-speaker language must not arrive as 55 flags' worth of colour.
-    const anglophone = ['GB', 'US', 'IE', 'AU', 'NZ', 'ZA', 'IN', 'NG', 'KE', 'JM'] as ISOCountryCode[]
+    const anglophone = [
+      'GB',
+      'US',
+      'IE',
+      'AU',
+      'NZ',
+      'ZA',
+      'IN',
+      'NG',
+      'KE',
+      'JM',
+    ] as ISOCountryCode[]
     expect(audioFieldPalette(anglophone).length).toBeLessThanOrEqual(MAX_FIELD_COLORS)
   })
 

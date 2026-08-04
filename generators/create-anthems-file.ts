@@ -108,7 +108,11 @@ const isInstrumental = (file: string): boolean => /instrumental|orchestr|band|or
  *  Commons directly, preferring an instrumental take. Every hit must still
  *  corroborate — an unverifiable match is dropped, not shipped. */
 const searchCommonsAudio = async (anthem: string, country: string): Promise<string | undefined> => {
-  for (const term of [`${anthem} instrumental`, `${country} national anthem instrumental`, anthem]) {
+  for (const term of [
+    `${anthem} instrumental`,
+    `${country} national anthem instrumental`,
+    anthem,
+  ]) {
     const url =
       `https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search` +
       `&srnamespace=6&srlimit=8&srsearch=${encodeURIComponent(`${term} filetype:audio`)}`
@@ -156,7 +160,9 @@ for (const row of sparql.results.bindings) {
 
   // Prefer an instrumental recording over whatever came first.
   const keepFile =
-    file && isPlayable(file) && (!existing?.file || (isInstrumental(file) && !isInstrumental(existing.file)))
+    file &&
+    isPlayable(file) &&
+    (!existing?.file || (isInstrumental(file) && !isInstrumental(existing.file)))
       ? file
       : existing?.file
 
@@ -195,9 +201,14 @@ for (const [isoCode, candidate] of candidates) {
     continue
   }
 
-  const clip = await saveCommonsAudio(file, `${OUTPUT_DIRECTORY}/${isoCode}`, `/anthems/${isoCode}`, {
-    force,
-  })
+  const clip = await saveCommonsAudio(
+    file,
+    `${OUTPUT_DIRECTORY}/${isoCode}`,
+    `/anthems/${isoCode}`,
+    {
+      force,
+    }
+  )
   if (!clip) {
     missing.push(`${isoCode}  ${candidate.title}  (encode failed: ${file})`)
     continue

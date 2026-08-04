@@ -55,7 +55,8 @@ const withTotal = countries.filter(country => country.economics.exportsTotal)
 // MC as of 2026). New gaps mean the source moved or the parser broke.
 for (const country of countries) {
   if (!country.economics.exports) flag(country.isoCode, 'no exports commodity list')
-  else if (!country.economics.exportsTotal) flag(country.isoCode, 'exports list but no exportsTotal')
+  else if (!country.economics.exportsTotal)
+    flag(country.isoCode, 'exports list but no exportsTotal')
 }
 
 // --- Item hygiene: parse residue from the Factbook free text -------------------
@@ -156,7 +157,8 @@ for (const [commodity, exclusions] of Object.entries(COMMODITY_EXPORTER_EXCLUSIO
   if (!MADE_COMMODITIES.has(commodity))
     flag(commodity, 'in COMMODITY_EXPORTER_EXCLUSIONS but not MADE_COMMODITIES — dead exclusion')
   for (const isoCode of exclusions) {
-    if (!isValidISOCode(isoCode)) flag(commodity, `excluded exporter "${isoCode}" is not an ISO code`)
+    if (!isValidISOCode(isoCode))
+      flag(commodity, `excluded exporter "${isoCode}" is not an ISO code`)
     if (COMMODITY_EXPORTERS[commodity]?.top.some(row => row.isoCode === isoCode))
       flag(commodity, `excluded exporter ${isoCode} still in the stored rows — regenerate`)
   }
@@ -167,7 +169,10 @@ for (const [commodity, entry] of Object.entries(COMMODITY_EXPORTERS)) {
     flag(commodity, `only ${entry.top.length} stored exporters — regenerate or drop it`)
   const mapped = COMMODITY_HS_CODES[commodity]
   if (mapped && JSON.stringify(entry.hsCodes) !== JSON.stringify(mapped))
-    flag(commodity, 'stored hsCodes differ from COMMODITY_HS_CODES — mapping edited without regenerating')
+    flag(
+      commodity,
+      'stored hsCodes differ from COMMODITY_HS_CODES — mapping edited without regenerating'
+    )
   const shareSum = entry.top.reduce((sum, row) => sum + row.share, 0)
   for (const row of entry.top) {
     if (!isValidISOCode(row.isoCode)) flag(commodity, `invalid exporter code "${row.isoCode}"`)

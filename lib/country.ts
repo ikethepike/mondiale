@@ -304,4 +304,3 @@ export const pickSizedCountry = (
     }) ?? shuffled[0]
   )
 }
-

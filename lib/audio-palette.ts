@@ -80,7 +80,6 @@ const DUMP_HEAD = 3
 const WHITE_LOOKAHEAD = 3
 const WHITE_LIGHTNESS = 0.85
 
-
 interface Hsl {
   h: number
   s: number
@@ -157,8 +156,7 @@ const singleFlagColours = (colors: readonly string[]): { chromatics: Hsl[]; whit
 
   colors.forEach((hex, index) => {
     const hsl = toHsl(hex)
-    const chromatic =
-      hsl.s >= GREY_SATURATION && hsl.l >= INK_LIGHTNESS && hsl.l <= PAPER_LIGHTNESS
+    const chromatic = hsl.s >= GREY_SATURATION && hsl.l >= INK_LIGHTNESS && hsl.l <= PAPER_LIGHTNESS
     if (!chromatic) {
       if (index < WHITE_LOOKAHEAD && hsl.l >= WHITE_LIGHTNESS) white = true
       return

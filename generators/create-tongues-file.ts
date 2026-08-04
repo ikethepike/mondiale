@@ -254,8 +254,7 @@ const fetchMirrorClips = async (locale: string, wanted: number): Promise<RemoteC
     }
 
     const body = (await response.json().catch(() => undefined)) as
-      | { rows?: MirrorRow[] }
-      | undefined
+      { rows?: MirrorRow[] } | undefined
     const rows = body?.rows ?? []
     if (!rows.length) return picked
 
@@ -316,8 +315,9 @@ const mirrorConfigs = await fetch(
   `https://datasets-server.huggingface.co/splits?dataset=${encodeURIComponent(MIRROR)}`
 )
   .then(response => (response.ok ? response.json() : undefined))
-  .then((body: { splits?: { config: string }[] } | undefined) =>
-    new Set((body?.splits ?? []).map(split => split.config))
+  .then(
+    (body: { splits?: { config: string }[] } | undefined) =>
+      new Set((body?.splits ?? []).map(split => split.config))
   )
   .catch(() => new Set<string>())
 
@@ -404,4 +404,7 @@ writeFileSync(
 )
 
 console.log(`${Object.keys(mapping).length} languages have speech clips.`)
-if (skipped.length) console.log(`  ${skipped.length} skipped (no local corpus): ${skipped.slice(0, 6).join(', ')}${skipped.length > 6 ? '…' : ''}`)
+if (skipped.length)
+  console.log(
+    `  ${skipped.length} skipped (no local corpus): ${skipped.slice(0, 6).join(', ')}${skipped.length > 6 ? '…' : ''}`
+  )

@@ -70,13 +70,16 @@ export const TONGUE_SAMPLE_SEEDS: TongueSampleSeed[] = [
     code: 'ha',
     script: 'Latin',
     // A goat borrows the sun, returns it late and slightly bent.
-    lines: ['Akuya ta ari rana ta kai gida,', "Ta mayar da ita a makare, ta ɗan lanƙwasa."],
+    lines: ['Akuya ta ari rana ta kai gida,', 'Ta mayar da ita a makare, ta ɗan lanƙwasa.'],
   },
   {
     language: 'Welsh',
     code: 'cy',
     script: 'Latin',
     // A sheep teaches the rain to spell, badly.
-    lines: ['Dysgodd y ddafad i’r glaw sut i sillafu,', 'Ond mynnodd y glaw mai “gwlyb” oedd pob gair yn hollol.'],
+    lines: [
+      'Dysgodd y ddafad i’r glaw sut i sillafu,',
+      'Ond mynnodd y glaw mai “gwlyb” oedd pob gair yn hollol.',
+    ],
   },
 ]

@@ -16,7 +16,8 @@
     <div v-if="blockedTurn && !gameStore.board.spectateTargetId" class="pane blocked-banner">
       <strong>Blocked!</strong>
       <span>
-        The gate held — {{ blockedTurn.forfeitedSteps === 1 ? '1 step' : `${blockedTurn.forfeitedSteps} steps` }}
+        The gate held —
+        {{ blockedTurn.forfeitedSteps === 1 ? '1 step' : `${blockedTurn.forfeitedSteps} steps` }}
         forfeited.
       </span>
     </div>

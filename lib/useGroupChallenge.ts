@@ -203,7 +203,13 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
 
     ownGuesses.value = [
       ...ownGuesses.value.slice(-(MAX_OWN_ENTRIES - 1)),
-      { entryId: crypto.randomUUID(), playerId: gameStore.playerId, kind, ...named, at: Date.now() },
+      {
+        entryId: crypto.randomUUID(),
+        playerId: gameStore.playerId,
+        kind,
+        ...named,
+        at: Date.now(),
+      },
     ]
     // A probe carries its country to the server even under presence: the server
     // measures the distance to the hidden target and broadcasts that alone,

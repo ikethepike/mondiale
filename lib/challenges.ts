@@ -127,9 +127,7 @@ const forcedRoundKind = (): RoundChallengeKind | undefined => {
   const forced = process.env?.FORCE_ROUND_TYPE
   // hasOwn, not `in` — `in` walks the prototype chain, so 'toString' would
   // validate and be dealt as a kind.
-  return forced && Object.hasOwn(ROUND_WEIGHTS, forced)
-    ? (forced as RoundChallengeKind)
-    : undefined
+  return forced && Object.hasOwn(ROUND_WEIGHTS, forced) ? (forced as RoundChallengeKind) : undefined
 }
 
 /** Countries whose outlines are dominated by scattered islands — no fun to
@@ -1506,7 +1504,10 @@ export const getRoundChallenge = async ({
     try {
       return (await dealRoundChallenge(kind, game)) ?? getGroupChallenge({ game })
     } catch (error) {
-      console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
+      console.error(
+        `Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`,
+        error
+      )
       return getGroupChallenge({ game })
     }
   }
@@ -1528,7 +1529,10 @@ export const getRoundChallenge = async ({
       // dataset, three stack traces deep, while the round-staging task waits.
       // Take the floor immediately and loudly (prod postmortem: timeline's
       // HK card — an escaped throw freezes the room permanently).
-      console.error(`Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`, error)
+      console.error(
+        `Round dealer '${kind}' crashed for ${game.id} — falling back to ranking`,
+        error
+      )
       return getGroupChallenge({ game })
     }
 

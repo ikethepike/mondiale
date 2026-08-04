@@ -4,7 +4,10 @@ import {
   MINIMUM_TABLE_BY_KIND,
 } from '~~/types/challenges/challenge-groups.type'
 import type { ChallengeOverrides } from '~~/types/challenges/challenge-groups.type'
-import type { RoundChallenge, RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+import type {
+  RoundChallenge,
+  RoundChallengeKind,
+} from '~~/types/challenges/traversal-challenge.type'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import {
@@ -35,9 +38,12 @@ const mulberry32 = (seed: number) => () => {
  */
 const challengeOf = (kind: RoundChallengeKind): RoundChallenge | undefined => {
   if (kind === 'ranking') return undefined
-  if (kind === 'river-run') return { _type: 'water-blitz-challenge', kind: 'river' } as RoundChallenge
-  if (kind === 'shared-shores') return { _type: 'water-blitz-challenge', kind: 'sea' } as RoundChallenge
-  if (kind === 'highlands') return { _type: 'water-blitz-challenge', kind: 'range' } as RoundChallenge
+  if (kind === 'river-run')
+    return { _type: 'water-blitz-challenge', kind: 'river' } as RoundChallenge
+  if (kind === 'shared-shores')
+    return { _type: 'water-blitz-challenge', kind: 'sea' } as RoundChallenge
+  if (kind === 'highlands')
+    return { _type: 'water-blitz-challenge', kind: 'range' } as RoundChallenge
   if (kind === 'name-that-water') return { _type: 'name-water-challenge' } as RoundChallenge
   return { _type: `${kind}-challenge` } as RoundChallenge
 }
@@ -68,10 +74,9 @@ describe('the mix tables', () => {
     const staples = ROUND_KINDS.filter(kind => !rare.includes(kind))
     for (const oddity of rare) {
       for (const staple of staples) {
-        expect(
-          ROUND_WEIGHTS[oddity],
-          `${oddity} must stay rarer than ${staple}`
-        ).toBeLessThan(ROUND_WEIGHTS[staple])
+        expect(ROUND_WEIGHTS[oddity], `${oddity} must stay rarer than ${staple}`).toBeLessThan(
+          ROUND_WEIGHTS[staple]
+        )
       }
     }
   })
@@ -175,7 +180,11 @@ describe('mixWeights', () => {
   })
 
   it('drops excluded kinds outright', () => {
-    const entries = mixWeights({ game: gameWith([]), contenders: 4, exclude: ['ranking', 'sketch'] })
+    const entries = mixWeights({
+      game: gameWith([]),
+      contenders: 4,
+      exclude: ['ranking', 'sketch'],
+    })
     expect(weightOf(entries, 'ranking')).toBe(0)
     expect(weightOf(entries, 'sketch')).toBe(0)
     expect(entries.length).toBe(ROUND_KINDS.length - 2)
@@ -244,8 +253,7 @@ describe('the mix over a full game', () => {
     return games
   }
 
-  const distinctCount = (games: RoundChallengeKind[][]) =>
-    games.map(dealt => new Set(dealt).size)
+  const distinctCount = (games: RoundChallengeKind[][]) => games.map(dealt => new Set(dealt).size)
 
   const repeatRate = (games: RoundChallengeKind[][]) => {
     let repeats = 0
@@ -282,9 +290,7 @@ describe('the mix over a full game', () => {
     const rarities = share('ghost-state') + share('no-mans-land') + share('flashpoint')
     expect(rarities).toBeLessThan(0.06)
 
-    const ranked = ROUND_KINDS.map(kind => [kind, share(kind)] as const).sort(
-      (a, b) => b[1] - a[1]
-    )
+    const ranked = ROUND_KINDS.map(kind => [kind, share(kind)] as const).sort((a, b) => b[1] - a[1])
     expect(ranked[0][0]).toBe('ranking')
   })
 

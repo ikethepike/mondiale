@@ -133,8 +133,7 @@ const { secondsOnClock } = useDeadlineClock(() => state.value?.deadline)
 
 // --- Pinning ------------------------------------------------------------------
 const { pin, photoExpanded, resetPin } = usePinDrop({
-  canDrop: () =>
-    !showInterstitial.value && started.value && !locked.value && canPin.value,
+  canDrop: () => !showInterstitial.value && started.value && !locked.value && canPin.value,
   announce,
   registerCleanup,
 })

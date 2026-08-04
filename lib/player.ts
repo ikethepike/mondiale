@@ -17,10 +17,8 @@ export const MAX_PLAYERS = 8
  * capacity, while returning players (already seated) always get back in —
  * rejoins stay idempotent, exactly like the spectator door.
  */
-export const tableIsFull = (
-  players: Partial<Record<string, unknown>>,
-  playerId: string
-): boolean => !players[playerId] && Object.keys(players).length >= MAX_PLAYERS
+export const tableIsFull = (players: Partial<Record<string, unknown>>, playerId: string): boolean =>
+  !players[playerId] && Object.keys(players).length >= MAX_PLAYERS
 
 /** A room stops admitting watchers past this — a bound on the "N watching"
  *  count and, more importantly, on the spectator records that ride every
@@ -59,11 +57,7 @@ interface JoinDoor {
  * auto-promoted to a freed seat; if a promotion path is ever added it must
  * delete the spectator record when seating, or the watcher count drifts.
  */
-export const joinVerdict = (
-  game: JoinDoor,
-  playerId: string,
-  asSpectator = false
-): JoinVerdict => {
+export const joinVerdict = (game: JoinDoor, playerId: string, asSpectator = false): JoinVerdict => {
   if (game.lobbyKicks?.includes(playerId)) {
     return { admit: 'refuse', reason: 'removed-from-room', spectatable: false }
   }
