@@ -2504,6 +2504,25 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'final-change-africa',
+    label: 'Final: world of change (Lake Chad)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'change-challenge',
+          slug: 'the-shrinking-basin-lake',
+          frames: [
+            '/changes/the-shrinking-basin-lake-before.webp',
+            '/changes/the-shrinking-basin-lake-after.webp',
+          ],
+          crossfadeSeconds: 2.4,
+          frameYears: [1973, 2017],
+          acceptNeighbours: true,
+        },
+      ]),
+  },
+  {
     id: 'final-change-decade',
     label: 'Final: world of change (tap + decade dial)',
     component: ViewFinalChallenge,

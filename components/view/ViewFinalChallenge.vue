@@ -433,10 +433,11 @@ const lesson = computed(() => {
       // The whole point of the round: name the place, then say what did it
       const story = CHANGES[challenge.slug]
       if (!story) return undefined
-      const where = story.countries
-        .filter(isValidISOCode)
-        .map(iso => countryName(COUNTRIES[iso]))
-        .join(' and ')
+      // Four countries hold Lake Chad, so this is a list, not a pair:
+      // "Chad, Niger, Nigeria and Cameroon" rather than three ands.
+      const names = story.countries.filter(isValidISOCode).map(iso => countryName(COUNTRIES[iso]))
+      const where =
+        names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
       return `${story.name}, ${where} — ${story.description}`
     }
     case 'yearbook-challenge': {
