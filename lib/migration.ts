@@ -70,5 +70,12 @@ export const DIASPORA_MIN_STOCK = 20_000
 export const COMPOSITION_MIN_MARGIN = 1.25
 /** Fewer slices than this and the bar has no shape to read. */
 export const COMPOSITION_MIN_SLICES = 4
+/**
+ * At or above this the leading origin dominates its bar outright — Colombia is
+ * 96% Venezuelan-born, Iran 98% Afghan-born — and the shape answers the
+ * question before the names do. Easy leads with these; hard exhausts the tight
+ * boards (Australia and Germany both sit at 1.3×) first.
+ */
+export const COMPOSITION_CLEAR_MARGIN = 4
 /** Below this the percentages describe a rounding error, not a population. */
 export const COMPOSITION_MIN_TOTAL = 100_000

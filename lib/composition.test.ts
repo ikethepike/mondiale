@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { compositionBoards, getRoundChallenge } from '~~/lib/challenges'
 import {
+  COMPOSITION_CLEAR_MARGIN,
   COMPOSITION_MIN_MARGIN,
   COMPOSITION_MIN_SLICES,
   COMPOSITION_MIN_TOTAL,
@@ -100,6 +101,30 @@ describe('getCompositionChallenge (via getRoundChallenge)', () => {
         COMPOSITION_MIN_MARGIN
       )
     }
+  })
+
+  it('scales the board by difficulty, not just the console', async () => {
+    // The option table is always the bar's own origins, so it cannot narrow
+    // with difficulty — the board carries the scaling instead. Without this,
+    // easy and normal dealt identical rounds.
+    const medianMargin = async (difficulty: GameDifficulty) => {
+      const margins: number[] = []
+      for (let round = 0; round < 40; round++) {
+        const challenge = await deal(difficulty)
+        margins.push(corridorMargin(corridorsToDestination(challenge.country)))
+      }
+      return margins.sort((a, b) => a - b)[Math.floor(margins.length / 2)]
+    }
+
+    const easy = await medianMargin('easy')
+    const normal = await medianMargin('normal')
+    const hard = await medianMargin('hard')
+
+    // Easy leads with the blowouts, hard with the boards whose top two are
+    // close enough that the bar alone will not tell you
+    expect(easy).toBeGreaterThanOrEqual(COMPOSITION_CLEAR_MARGIN)
+    expect(easy).toBeGreaterThan(normal)
+    expect(normal).toBeGreaterThan(hard)
   })
 
   it('never puts the country on its own bar', async () => {

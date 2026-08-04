@@ -73,6 +73,7 @@ import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
 import { countryName, pickSizedCountry } from './country'
 import {
+  COMPOSITION_CLEAR_MARGIN,
   COMPOSITION_MIN_MARGIN,
   COMPOSITION_MIN_SLICES,
   COMPOSITION_MIN_TOTAL,
@@ -973,11 +974,32 @@ export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
     return corridorMargin(origins) >= COMPOSITION_MIN_MARGIN
   })
 
+/** Boards whose leading origin dominates outright — the shape alone answers. */
+export const hasClearLeader = (isoCode: ISOCountryCode): boolean =>
+  corridorMargin(corridorsToDestination(isoCode)) >= COMPOSITION_CLEAR_MARGIN
+
 const getCompositionChallenge = (
   gameState: gameTypes.Game
 ): CompositionChallenge | undefined => {
   const pool = playableCountries(gameState)
-  const country = sample(compositionBoards(pool))
+  const boards = compositionBoards(pool)
+  if (!boards.length) return undefined
+
+  // The option table is always the bar's own origins, so it can't narrow with
+  // difficulty the way capital-guess's decoy list does — hiding a slice the
+  // player can see would make it unnameable. The board itself is the lever:
+  // easy leads with the blowouts, hard with the boards whose top two are
+  // close enough that the bar alone won't tell you. Both tiers backfill, so a
+  // thin variant still deals.
+  const clear = boards.filter(hasClearLeader)
+  const close = boards.filter(isoCode => !hasClearLeader(isoCode))
+  const ranked =
+    gameState.difficulty === 'easy'
+      ? [...shuffleArray(clear), ...shuffleArray(close)]
+      : gameState.difficulty === 'hard'
+        ? [...shuffleArray(close), ...shuffleArray(clear)]
+        : shuffleArray([...boards])
+  const country = ranked[0]
   if (!country) return undefined
 
   const slices: CompositionChallenge['slices'] = corridorsToDestination(country).map(origin => ({
