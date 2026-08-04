@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60" role="img" aria-label="NASA Earth Observatory">
+  <g fill="none" stroke="#1a3a63" stroke-width="2.4">
+    <circle cx="30" cy="30" r="17" />
+    <ellipse cx="30" cy="30" rx="7" ry="17" />
+    <path d="M13.6 24.5 h32.8 M13.6 35.5 h32.8" stroke-width="1.6" />
+  </g>
+  <text x="58" y="27" font-family="Georgia, serif" font-size="21" fill="#1a3a63">NASA</text>
+  <text x="58" y="45" font-family="Georgia, serif" font-size="14" fill="#1a3a63" opacity="0.75">
+    Earth Observatory
+  </text>
+</svg>

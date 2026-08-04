@@ -2486,6 +2486,61 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'final-change',
+    label: 'Final: world of change (tap only)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'change-challenge',
+          slug: 'the-vanishing-inland-sea',
+          frames: [
+            '/changes/the-vanishing-inland-sea-before.webp',
+            '/changes/the-vanishing-inland-sea-after.webp',
+          ],
+          crossfadeSeconds: 2.4,
+          frameYears: [2000, 2018],
+        },
+      ]),
+  },
+  {
+    id: 'final-change-africa',
+    label: 'Final: world of change (Lake Chad)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'change-challenge',
+          slug: 'the-shrinking-basin-lake',
+          frames: [
+            '/changes/the-shrinking-basin-lake-before.webp',
+            '/changes/the-shrinking-basin-lake-after.webp',
+          ],
+          crossfadeSeconds: 2.4,
+          frameYears: [1973, 2017],
+          acceptNeighbours: true,
+        },
+      ]),
+  },
+  {
+    id: 'final-change-decade',
+    label: 'Final: world of change (tap + decade dial)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'change-challenge',
+          slug: 'the-fishbone-clearings',
+          frames: [
+            '/changes/the-fishbone-clearings-before.webp',
+            '/changes/the-fishbone-clearings-after.webp',
+          ],
+          crossfadeSeconds: 2,
+          decadeTolerance: 10,
+        },
+      ]),
+  },
+  {
     id: 'final-yearbook',
     label: 'Final: yearbook (year dial)',
     component: ViewFinalChallenge,

@@ -117,6 +117,13 @@
       :paused="showInterstitial"
       @finished="onYearbookFinished"
     />
+    <FinalChangeStage
+      v-if="currentFinalChallenge?._type === 'change-challenge'"
+      :key="`change-${currentChallengeCount}`"
+      :challenge="currentFinalChallenge"
+      :paused="showInterstitial"
+      @finished="onChangeFinished"
+    />
     <!-- Born In: picks wear their independence year as they land; the reveal
          extends the chips to every qualifying country -->
     <MapYearLabels
@@ -178,6 +185,7 @@ import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScal
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
 import DiasporaReveal from '~/components/challenge/DiasporaReveal.vue'
 import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
+import FinalChangeStage from '~/components/challenge/FinalChangeStage.vue'
 import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
 import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
@@ -186,11 +194,13 @@ import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
+import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import {
   bornAfter,
   boundaryStory,
+  changeAccepted,
   COLOR_CODED_REGIONS,
   madeAcceptedCountries,
   FINAL_STAT_LABELS,
@@ -210,7 +220,10 @@ import { titlecaseLeader } from '~~/lib/leaders'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
-import type { FinalChallengeAnswer } from '~~/types/challenges/final-challenge.type'
+import type {
+  ChangeChallenge,
+  FinalChallengeAnswer,
+} from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
@@ -416,6 +429,17 @@ const lesson = computed(() => {
     case 'diaspora-challenge':
       // DiasporaReveal carries the whole scorecard
       return undefined
+    case 'change-challenge': {
+      // The whole point of the round: name the place, then say what did it
+      const story = CHANGES[challenge.slug]
+      if (!story) return undefined
+      // Four countries hold Lake Chad, so this is a list, not a pair:
+      // "Chad, Niger, Nigeria and Cameroon" rather than three ands.
+      const names = story.countries.filter(isValidISOCode).map(iso => countryName(COUNTRIES[iso]))
+      const where =
+        names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+      return `${story.name}, ${where} — ${story.description}`
+    }
     case 'yearbook-challenge': {
       // The stamped page carries the stories — this line lands the
       // simultaneity: everything up there shares one year
@@ -469,6 +493,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('map')
     case 'yearbook-challenge':
       return datasetAttribution('events')
+    case 'change-challenge':
+      return datasetAttribution('changes')
     default:
       return undefined
   }
@@ -513,6 +539,8 @@ watch(currentFinalChallenge, (challenge, previous) => {
   gameStore.map.reveal = undefined
   gameStore.map.revealStat = undefined
   gameStore.map.status = undefined
+  // World of Change drops the subject's pin at its reveal
+  gameStore.map.pinAnswer = undefined
   gameStore.map.highlighted.clear()
   gameStore.map.tints = {}
   gameStore.map.focus = []
@@ -585,6 +613,26 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   update({ event: 'submit-final-challenge-answer', submittedAnswer })
+}
+
+/** Only the dial difficulties come through here — the stage holds the tapped
+ *  country until the decade commits, so both halves land as one answer. */
+const onChangeFinished = ({ isoCode, decade }: { isoCode: ISOCountryCode; decade: number }) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'change-challenge') return
+
+  const submittedAnswer = { _type: 'change-challenge', isoCode, decade } as const
+  revealChange(challenge, isoCode)
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+}
+
+/** Light every accepted country and drop the truth pin on the subject. */
+const revealChange = (challenge: ChangeChallenge, isoCode: ISOCountryCode) => {
+  for (const accepted of changeAccepted(challenge)) gameStore.map.highlighted.add(accepted)
+  const story = CHANGES[challenge.slug]
+  if (story) gameStore.map.pinAnswer = story.coordinates
+  lastGuess.value = isoCode
 }
 
 const onYearbookFinished = (year: number) => {
@@ -785,6 +833,21 @@ const onMapClick = (event: Event) => {
           isoCodes: [...endonymPicks.value],
         }
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+      }
+      break
+    case 'change-challenge':
+      {
+        // Where the decade is also asked, the stage owns the answer: it holds
+        // this tap until the dial commits and submits both together.
+        if (currentFinalChallenge.value.decadeTolerance !== undefined) break
+        if (!isValidISOCode(isoCode)) {
+          return console.error(`Unsupported country: ${isoCode}`)
+        }
+        const submittedAnswer = { _type: 'change-challenge', isoCode } as const
+        revealChange(currentFinalChallenge.value, isoCode)
+        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+
         update({ event: 'submit-final-challenge-answer', submittedAnswer })
       }
       break

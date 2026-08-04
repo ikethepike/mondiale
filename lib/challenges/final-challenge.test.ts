@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
+import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
-import { countryEndonym, isLargeCountry } from '~~/lib/country'
+import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
+import { playableCountries } from '~~/lib/game-rules'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
+  ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
   MinChallenge,
@@ -20,6 +23,9 @@ import {
   BOUNDARY_TOLERANCE,
   boundaryScene,
   boundaryStory,
+  CHANGE_TUNING,
+  changeAccepted,
+  changeDecade,
   dealReplacementChallenge,
   decisiveOrigins,
   exportsCommodity,
@@ -29,6 +35,7 @@ import {
   isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
   isTransparentEndonym,
+  leaksYear,
   MADE_COMMODITIES,
   madeAcceptedCountries,
   madeTopExporters,
@@ -463,6 +470,168 @@ describe('endonym challenge', () => {
     // …and the real test
     for (const isoCode of ['EG', 'FI', 'CN', 'AL', 'AM', 'DE'] as const) {
       expect(isTransparentEndonym(isoCode)).toBe(false)
+    }
+  })
+})
+
+describe('change challenge', () => {
+  const dealtChanges = (difficulty: GameDifficulty, rounds = DEAL_ROUNDS) => {
+    const dealt: ChangeChallenge[] = []
+    for (let round = 0; round < rounds; round++) {
+      for (const challenge of getFinalChallenges({ game: gameFor('world', difficulty) })
+        .challenges) {
+        if (challenge._type === 'change-challenge') dealt.push(challenge)
+      }
+    }
+    return dealt
+  }
+
+  it('deals two real frames and the difficulty tuning', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      const dealt = dealtChanges(difficulty)
+      expect(dealt.length, difficulty).toBeGreaterThan(0)
+      const tuning = CHANGE_TUNING[difficulty]
+      for (const challenge of dealt) {
+        expect(CHANGES[challenge.slug]).toBeDefined()
+        expect(challenge.frames).toHaveLength(2)
+        expect(challenge.frames[0]).not.toBe(challenge.frames[1])
+        expect(challenge.crossfadeSeconds).toBe(tuning.crossfadeSeconds)
+        expect(challenge.decadeTolerance).toBe(tuning.decadeTolerance)
+        // The years are the strongest hint on offer: easy and normal wear
+        // them, hard reads the picture alone
+        expect(Boolean(challenge.frameYears)).toBe(tuning.showYears)
+        // The answer never rides the snapshot
+        expect(JSON.stringify(challenge)).not.toContain('countries')
+      }
+    }
+  })
+
+  it('accepts every country holding the subject, and neighbours only on easy', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealtChanges(difficulty, 40)) {
+        const held = CHANGES[challenge.slug].countries
+        const accepted = changeAccepted(challenge)
+        for (const iso of held) expect(accepted).toContain(iso)
+        if (difficulty === 'easy') expect(accepted.length).toBeGreaterThanOrEqual(held.length)
+        else expect(accepted).toHaveLength(held.length)
+      }
+    }
+  })
+
+  it('grades the tap against the accepted set', () => {
+    const [challenge] = dealtChanges('normal', 40)
+    const pool = playableCountries(gameFor('world', 'normal'))
+    const accepted = changeAccepted(challenge)
+    const wrong = pool.find(iso => !accepted.includes(iso))!
+
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'change-challenge', isoCode: accepted[0] },
+        pool,
+      })
+    ).toBe(true)
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'change-challenge', isoCode: wrong },
+        pool,
+      })
+    ).toBe(false)
+  })
+
+  it('needs both halves where the decade is asked, and never throws on a missing dial', () => {
+    const [challenge] = dealtChanges('hard', 40)
+    const pool = playableCountries(gameFor('world', 'hard'))
+    const isoCode = changeAccepted(challenge)[0]
+    const decade = changeDecade(challenge)!
+    const grade = (answer: { isoCode: ISOCountryCode; decade?: number }) =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'change-challenge', ...answer },
+        pool,
+      })
+
+    expect(grade({ isoCode, decade })).toBe(true)
+    expect(grade({ isoCode, decade: decade + challenge.decadeTolerance! })).toBe(true)
+    expect(grade({ isoCode, decade: decade + challenge.decadeTolerance! + 10 })).toBe(false)
+    // A right place with no decade is a wrong answer, not a malformed one
+    expect(grade({ isoCode })).toBe(false)
+    expect(grade({ isoCode, decade: Number.NaN })).toBe(false)
+  })
+
+  // `if (!decadeTolerance)` read "must be exact" and "don't ask" the same way,
+  // so a zero-tolerance round would have passed every tap on its own.
+  it('reads a zero decade tolerance as exact, not as absent', () => {
+    const [dealt] = dealtChanges('hard', 40)
+    const challenge: ChangeChallenge = { ...dealt, decadeTolerance: 0 }
+    const pool = playableCountries(gameFor('world', 'hard'))
+    const isoCode = changeAccepted(challenge)[0]
+    const grade = (decade?: number) =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'change-challenge', isoCode, decade },
+        pool,
+      })
+
+    expect(grade(changeDecade(challenge)!)).toBe(true)
+    expect(grade(changeDecade(challenge)! + 10)).toBe(false)
+    expect(grade(undefined)).toBe(false)
+  })
+
+  it('throws only on a mismatched answer shape', () => {
+    const [challenge] = dealtChanges('normal', 40)
+    expect(() =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+        pool: playableCountries(gameFor('world', 'normal')),
+      })
+    ).toThrow(TypeError)
+  })
+
+  it('never deals a story that names its own country, or its decade on hard', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealtChanges(difficulty, 40)) {
+        const story = CHANGES[challenge.slug]
+        for (const iso of story.countries) {
+          expect(mentionsCountry(story.name, iso), `${challenge.slug} names ${iso}`).toBe(false)
+        }
+        if (!challenge.decadeTolerance) continue
+        expect(
+          leaksYear(story.startYear, challenge.slug, story.name, story.description),
+          challenge.slug
+        ).toBe(false)
+      }
+    }
+  })
+
+  // The stage stacks the frames, so a pair that disagrees on shape jump-cuts
+  // rather than fades. The generator gates on this; asserting it here catches a
+  // hand-edited data file too.
+  it('ships frames that can actually crossfade', () => {
+    for (const [slug, story] of Object.entries(CHANGES)) {
+      const [before, after] = story.frames
+      expect(before.image, slug).not.toBe(after.image)
+      expect(before.year, slug).toBeLessThan(after.year)
+    }
+  })
+
+  // A curated deck drifts: this catches a seed file that has quietly become a
+  // single region's story, or a story whose frames fell off disk.
+  it('keeps the shipped deck honest — two frames each, no region past a third', () => {
+    const stories = Object.entries(CHANGES)
+    expect(stories.length).toBeGreaterThanOrEqual(5)
+    const perRegion = new Map<string, number>()
+    for (const [slug, story] of stories) {
+      expect(story.frames, slug).toHaveLength(2)
+      expect(story.countries.length, slug).toBeGreaterThan(0)
+      expect(story.startYear, slug).toBeGreaterThan(1900)
+      const region = COUNTRIES[story.countries[0]]?.region
+      if (region) perRegion.set(region, (perRegion.get(region) ?? 0) + 1)
+    }
+    for (const [region, count] of perRegion) {
+      expect(count / stories.length, region).toBeLessThanOrEqual(0.5)
     }
   })
 })

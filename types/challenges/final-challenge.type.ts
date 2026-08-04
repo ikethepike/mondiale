@@ -32,6 +32,7 @@ export type FinalChallengeItem =
   | EndonymChallenge
   | DiasporaChallenge
   | YearbookChallenge
+  | ChangeChallenge
 
 /**
  * What the client submits per question type — verdicts come from the shared
@@ -59,6 +60,9 @@ export type FinalChallengeAnswer =
   | { _type: 'diaspora-challenge'; isoCodes: ISOCountryCode[] }
   /** The dialed year — verdict is |year − yearbookYear| ≤ tolerance. */
   | { _type: 'yearbook-challenge'; year: number }
+  /** The tapped country, plus the dialed decade where the difficulty asks for
+   *  one — hard must land both. */
+  | { _type: 'change-challenge'; isoCode: ISOCountryCode; decade?: number }
 
 export interface RegionChallenge {
   _type: 'region-challenge'
@@ -210,6 +214,33 @@ export interface YearbookChallenge {
   tolerance: number
   /** Drip cadence — one headline per interval; the tail interval is the commit window. */
   secondsPerHeadline: number
+}
+
+/**
+ * World of Change: two satellite frames of one place decades apart crossfade,
+ * and the player taps where on earth it is happening.
+ *
+ * The snapshot ships the STORY KEY and its frames, never the answer: the
+ * accepted countries and the start decade are re-derived from `CHANGES[slug]`
+ * by `changeAccepted`/`changeDecade`, which the dealer, the verdict and the
+ * reveal all share. A `countries` field here would reach every socket in the
+ * room and hand over the round.
+ */
+export interface ChangeChallenge {
+  _type: 'change-challenge'
+  slug: string
+  /** Public paths of the two frames, earlier first. */
+  frames: [string, string]
+  /** Seconds one frame holds before crossfading to the other. */
+  crossfadeSeconds: number
+  /** Frame years, shown only where the difficulty allows the hint. */
+  frameYears?: [number, number]
+  /** Set when the difficulty also asks for the decade; absent = tap only. */
+  decadeTolerance?: number
+  /** Easy widens the accept set to the subject's land neighbours. Dealt rather
+   *  than re-derived from difficulty, so the verdict needs no extra argument
+   *  and both sides of the wire read the same flag. */
+  acceptNeighbours?: boolean
 }
 
 export type ScalesAccessorKey = Extract<

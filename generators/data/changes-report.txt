@@ -1,0 +1,16 @@
+changes: 14 shipped of 14 seeds
+committed imagery: 8.3 MB across 28 frames (303 KB average)
+
+by region (max 33.33333333333333% of the deck):
+  north-america	4
+  asia	3
+  middle-east	2
+  south-america	2
+  africa	2
+  europe	1
+
+by kind:
+  water	6
+  urban	3
+  forest	3
+  ice	2

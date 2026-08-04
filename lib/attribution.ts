@@ -37,6 +37,7 @@ export type ProviderId =
   | 'countries-list'
   | 'mozilla'
   | 'mondiale'
+  | 'nasa'
 
 export interface Provider {
   name: string
@@ -170,6 +171,13 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description:
       'Hand-maintained editorial data: land and sea adjacency, empire and landmark selections, legal milestones.',
   },
+  nasa: {
+    name: 'NASA Earth Observatory',
+    url: 'https://earthobservatory.nasa.gov',
+    logo: 'nasa.svg',
+    description:
+      'Matched satellite pairs of one place decades apart, from the Landsat and Terra archives.',
+  },
 }
 
 export type SourceId =
@@ -194,6 +202,7 @@ export type SourceId =
   | 'countries-list-package'
   | 'common-voice-clips'
   | 'mondiale-editorial'
+  | 'nasa-earth-observatory'
 
 export interface Source {
   provider: ProviderId
@@ -366,6 +375,12 @@ export const SOURCES: Record<SourceId, Source> = {
     title: 'Hand-maintained game data',
     url: 'https://github.com/ikethepike/mondiale',
     license: 'Compiled from public reporting',
+  },
+  'nasa-earth-observatory': {
+    provider: 'nasa',
+    title: 'World of Change imagery',
+    url: 'https://earthobservatory.nasa.gov/world-of-change',
+    license: 'Public domain',
   },
 }
 
@@ -602,6 +617,7 @@ export type DataSetId =
   | 'landmarks'
   | 'heritage'
   | 'events'
+  | 'changes'
   | 'empires'
   | 'conflicts'
   | 'conflict-events'
@@ -779,6 +795,15 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'commons-media' },
       { source: 'wikipedia-articles' },
       { source: 'mondiale-editorial', dataset: 'generators/data/event-seeds.ts' },
+    ],
+  },
+  changes: {
+    label: 'World of Change',
+    files: ['data/changes.gen.ts'],
+    origins: [
+      { source: 'nasa-earth-observatory', dataset: 'Matched Landsat/Terra pairs' },
+      { source: 'naturalearth-10m', dataset: 'On-land validation of each subject' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/change-seeds.ts' },
     ],
   },
   empires: {
