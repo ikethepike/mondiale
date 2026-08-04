@@ -1,0 +1,82 @@
+@use '../rules/ink' as *;
+
+// The dock: a centred stage over a tap-to-close scrim, holding one framed
+// subject with a close button on its corner. Shared by the photo dock
+// (MediaDock) and the chart dock (ExpandDock) — the frame's size, the scrim's
+// wash and the close button's geometry live here once. Skins supply only what
+// stands inside the frame.
+.dock-stage {
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  position: fixed;
+  align-items: center;
+  pointer-events: auto;
+  justify-content: center;
+}
+
+.dock-scrim {
+  inset: 0;
+  position: absolute;
+  background: milk(0.55);
+  backdrop-filter: blur(0.5rem);
+}
+
+.dock-frame {
+  position: relative;
+  width: min(92vw, 46rem);
+  // The vh line is the fallback for browsers without dynamic units; the dvh
+  // line below wins where it is supported. Not a scroller, so dvh is right.
+  height: min(40vh, 32rem);
+  height: min(40dvh, 32rem);
+}
+
+// A chart needs more vertical room than a photo: its axes and gutters eat the
+// band a photo would fill with subject.
+.dock-frame.tall {
+  height: min(58vh, 40rem);
+  height: min(58dvh, 40rem);
+}
+
+.dock-close {
+  top: -1.4rem;
+  right: -0.6rem;
+  z-index: 4;
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0;
+  display: flex;
+  cursor: pointer;
+  position: absolute;
+  appearance: none;
+  align-items: center;
+  border-radius: 999px;
+  justify-content: center;
+  touch-action: manipulation;
+  color: var(--dark-blue);
+  background: var(--background-color);
+  border: 0.1rem solid var(--text-color);
+}
+
+.dock-close-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.dock-enter-active,
+.dock-leave-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+}
+
+.dock-enter-from,
+.dock-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}

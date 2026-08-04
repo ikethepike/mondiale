@@ -61,33 +61,10 @@ withDefaults(
 const expanded = defineModel<boolean>('expanded', { default: true })
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
+// Stage, scrim, frame, close button and the dock transition come from
+// templates/_dock.scss — only the photo's own pieces live here.
 .media-dock {
   pointer-events: none;
-}
-
-.dock-stage {
-  position: fixed;
-  inset: 0;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
-
-.dock-scrim {
-  position: absolute;
-  inset: 0;
-  backdrop-filter: blur(0.5rem);
-  background: milk(0.55);
-}
-
-.dock-frame {
-  position: relative;
-  width: min(92vw, 46rem);
-  height: min(40vh, 32rem);
-  height: min(40dvh, 32rem);
 }
 
 // Top-left: the close button owns the top-right corner, the zoom controls
@@ -98,36 +75,6 @@ const expanded = defineModel<boolean>('expanded', { default: true })
   top: 0.8rem;
   left: 0.8rem;
   z-index: 4;
-}
-
-.dock-close {
-  position: absolute;
-  top: -1.4rem;
-  right: -0.6rem;
-  z-index: 4;
-  width: 3.6rem;
-  height: 3.6rem;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  appearance: none;
-  border-radius: 999px;
-  touch-action: manipulation;
-  color: var(--dark-blue);
-  background: var(--background-color);
-  border: 0.1rem solid var(--text-color);
-}
-
-.dock-close-icon {
-  width: 1.4rem;
-  height: 1.4rem;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
 }
 
 // The collapsed thumbnail borrows the wide-tile grammar: pane surface with
@@ -154,17 +101,5 @@ const expanded = defineModel<boolean>('expanded', { default: true })
   display: block;
   object-fit: cover;
   border-radius: 0.4rem;
-}
-
-.dock-enter-active,
-.dock-leave-active {
-  transition:
-    opacity var(--motion-base) var(--ease-out-expressive),
-    transform var(--motion-base) var(--ease-out-expressive);
-}
-.dock-enter-from,
-.dock-leave-to {
-  opacity: 0;
-  transform: scale(0.96);
 }
 </style>
