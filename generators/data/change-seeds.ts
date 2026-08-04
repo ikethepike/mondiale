@@ -69,6 +69,14 @@ export interface ChangeSeed {
 const WOC = (path: string) =>
   `https://web.archive.org/web/2023id_/https://earthobservatory.nasa.gov/ContentWOC/images/${path}`
 
+/**
+ * EO's per-story image records. Unlike the retired World of Change tree these
+ * still serve from the live asset host, so they need no archive detour — but
+ * they are one-off comparison stories rather than a time series, so the pair
+ * has to be picked by hand from the record's own frame list.
+ */
+const EO = (path: string) => `https://eoimages.gsfc.nasa.gov/images/imagerecords/${path}`
+
 export const CHANGE_SEEDS: ChangeSeed[] = [
   // --- Asia -----------------------------------------------------------------
   {
@@ -193,6 +201,37 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'https://upload.wikimedia.org/wikipedia/commons/c/cd/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-1-of-2-%281985%29.png',
     afterUrl:
       'https://upload.wikimedia.org/wikipedia/commons/2/20/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-2-of-2-%282025%29.png',
+  },
+  // --- Africa ---------------------------------------------------------------
+  {
+    name: 'the shrinking basin lake',
+    // The lake shares its name with one of the four countries holding it, so
+    // the reveal-facing title stays mute too.
+    title: 'The great Sahelian lake',
+    countries: ['TD', 'NE', 'NG', 'CM'],
+    kind: 'water',
+    coordinates: { lat: 13.0, lng: 14.2 },
+    startYear: 1960,
+    beforeYear: 1973,
+    afterYear: 2017,
+    description:
+      'Drought and irrigation shrank it to a fraction of its old area, pulling the ground out from under the fishers and herders of four countries at once. The northern basin is dry sand now.',
+    beforeUrl: EO('91000/91291/lakechad_ms1_1973_lrg.jpg'),
+    afterUrl: EO('91000/91291/lakechad_oli_2017_lrg.jpg'),
+  },
+  {
+    name: 'the lakes conjured from desert',
+    title: 'The Toshka Lakes',
+    countries: ['EG'],
+    kind: 'water',
+    coordinates: { lat: 22.7, lng: 31.0 },
+    startYear: 1990,
+    beforeYear: 2002,
+    afterYear: 2021,
+    description:
+      'Floodwater pumped out of a reservoir into empty desert made a chain of brand-new lakes in the 1990s — then most of them evaporated away again within two decades.',
+    beforeUrl: EO('149000/149334/ISS005-E-13562_lrg.jpg'),
+    afterUrl: EO('149000/149334/iss066e091633_lrg.jpg'),
   },
   // --- North America --------------------------------------------------------
   {
