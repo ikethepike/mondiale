@@ -192,10 +192,20 @@ const normalizeCountry = ({
       independence: getIndependence(data),
     },
     economics: {
-      inflation: getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
-      gdpPerCapita: getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
-      gdpTotal: getGdpTotal(data),
-      gdpGrowth: getYearlyIndex<'%'>(data['Economy']['Real GDP growth rate'], '%'),
+      // The Factbook's inflation node is badly stale (many countries sit at
+      // 2021); the WB reaches 2025. Factbook backstops where the WB is blank.
+      inflation:
+        worldBankAmount(isoCode, 'inflation', '%') ??
+        getYearlyIndex<'%'>(data.Economy['Inflation rate (consumer prices)'], '%'),
+      // Both read the WB's constant-2021-$ PPP series, the same basis the
+      // Factbook quotes, so the refresh does not rebase the numbers.
+      gdpPerCapita:
+        worldBankAmount(isoCode, 'gdpPerCapita', '$') ??
+        getYearlyIndex<'$'>(data['Economy']['Real GDP per capita'], '$'),
+      gdpTotal: worldBankAmount(isoCode, 'gdpTotal', '$') ?? getGdpTotal(data),
+      gdpGrowth:
+        worldBankAmount(isoCode, 'gdpGrowth', '%') ??
+        getYearlyIndex<'%'>(data['Economy']['Real GDP growth rate'], '%'),
       publicDebt: getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
       populationBelowPovertyLine: getTextNode<'%'>(
         data['Economy']['Population below poverty line'],
@@ -238,8 +248,14 @@ const normalizeCountry = ({
       },
     },
     unemployment: {
-      youth: getYearlyIndex<'%'>(data.Economy['Youth unemployment rate (ages 15-24)'], '%'),
-      total: getYearlyIndex<'%'>(data.Economy['Unemployment rate'], '%'),
+      // WB (modelled ILO estimate) reaches 2025 for 172 countries; the Factbook
+      // node backstops the handful the WB does not model.
+      youth:
+        worldBankAmount(isoCode, 'unemploymentYouth', '%') ??
+        getYearlyIndex<'%'>(data.Economy['Youth unemployment rate (ages 15-24)'], '%'),
+      total:
+        worldBankAmount(isoCode, 'unemploymentTotal', '%') ??
+        getYearlyIndex<'%'>(data.Economy['Unemployment rate'], '%'),
     },
     infrastructure: {
       // Factbook dropped Roadways entirely; only Railways survives.
@@ -412,24 +428,24 @@ const getYearlyIndex = <Unit>(
 ): Amount<Unit> | undefined => {
   if (!isYearlyIndex(data)) return undefined
 
-  const values = Object.values(data)
-  if (!values.length) return undefined
-  const mostRecent = values.shift()
-  if (!mostRecent) return undefined
-  const numbers = extractNumbers(mostRecent?.text.replaceAll(',', '') || '')
-  if (!numbers.length) return undefined
-
-  const indices = Object.keys(data)
-  let year: number | undefined
-  if (indices && indices.length) {
-    const mostRecentKey = indices.shift() || ''
-    year = extractYears(mostRecentKey).shift()
+  // Pick by highest year rather than trusting the Factbook's key order — the
+  // same max-by-year rule getScaledDollarIndex uses. Entries whose key carries
+  // no year (e.g. the sibling 'note' string) only win if nothing else parses.
+  let best: { year?: number; amount: number } | undefined
+  for (const [key, entry] of Object.entries(data)) {
+    if (!entry?.text) continue
+    const numbers = extractNumbers(entry.text.replaceAll(',', ''))
+    if (!numbers.length) continue
+    const year = extractYears(key).shift()
+    if (best && !(year !== undefined && (best.year === undefined || year > best.year))) continue
+    best = { year, amount: numbers[0] }
   }
+  if (!best) return undefined
 
   return {
     unit,
-    year,
-    amount: numbers[0],
+    year: best.year,
+    amount: best.amount,
     source: 'cia-factbook',
   }
 }
@@ -504,10 +520,15 @@ const getHighestPeak = (data: FactbookResponse): (Amount<'m'> & { name: string }
   }
 }
 
-/** Pull a World Bank metric for a country and wrap it as an Amount. */
+/**
+ * Pull a World Bank metric for a country and wrap it as an Amount. Percentages
+ * and indices keep one decimal; dollar totals are already absolute (no
+ * magnitude word to scale, unlike the Factbook's "$6.089 trillion") and round
+ * to whole units so a GDP never carries fictional sub-dollar precision.
+ */
 const worldBankAmount = <Unit>(
   isoCode: string,
-  metric: 'womenInParliament' | 'contraceptivePrevalence',
+  metric: keyof NonNullable<(typeof worldBankMapping)[ISOCountryCode]>,
   unit: Unit
 ): Amount<Unit> | undefined => {
   const value = worldBankMapping[isoCode as ISOCountryCode]?.[metric]
@@ -515,7 +536,7 @@ const worldBankAmount = <Unit>(
   return {
     unit,
     year: value.year,
-    amount: Math.round(value.amount * 10) / 10,
+    amount: unit === '$' ? Math.round(value.amount) : Math.round(value.amount * 10) / 10,
     source: 'worldbank-wdi',
   }
 }

@@ -4,12 +4,28 @@ import { type ISOCountryCode, isValidISOCode } from '../../../types/geography.ty
 const OUTPUT_FILE = `data/worldbank.gen.ts`
 
 /**
- * World Bank indicators used to backfill metrics the CIA Factbook dropped.
- * Each is a percentage; we keep the most recent non-empty value per country.
+ * World Bank indicators used to backfill metrics the CIA Factbook dropped, plus
+ * the economics stats where the Factbook has gone stale: it stops at 2024 for
+ * ~175 of 194 countries, while these reach 2025. Only fields where the WB both
+ * keeps coverage and measures the same thing live here — publicDebt, equality
+ * and povertyLine stay on the Factbook, where WB coverage is far worse.
+ *
+ * The GDP pair uses the *.PP.KD (constant 2021 international $) series, NOT
+ * *.PP.CD (current $): the Factbook quotes constant 2021 dollars, so .KD keeps
+ * the same basis and every value stays comparable across sources. Swapping in
+ * .CD would rebase every figure (~19% on Russia) while looking like a refresh.
+ *
+ * We keep the most recent non-empty value per country.
  */
 const INDICATORS = {
   womenInParliament: 'SG.GEN.PARL.ZS',
   contraceptivePrevalence: 'SP.DYN.CONU.ZS',
+  gdpGrowth: 'NY.GDP.MKTP.KD.ZG',
+  inflation: 'FP.CPI.TOTL.ZG',
+  unemploymentTotal: 'SL.UEM.TOTL.ZS',
+  unemploymentYouth: 'SL.UEM.1524.ZS',
+  gdpPerCapita: 'NY.GDP.PCAP.PP.KD',
+  gdpTotal: 'NY.GDP.MKTP.PP.KD',
 } as const
 
 export type WorldBankMetric = { amount: number; year?: number }

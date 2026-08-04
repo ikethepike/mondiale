@@ -190,8 +190,8 @@ describe('dedupeAttributions', () => {
   it('collapses figures that share a source, first entry standing for the group', () => {
     // Three Factbook stats and one OWID stat on one panel: two entries survive.
     const deduped = dedupeAttributions([
-      attributionFor('economics.gdpPerCapita'),
-      attributionFor('economics.inflation'),
+      attributionFor('economics.publicDebt'),
+      attributionFor('economics.equality'),
       attributionFor('people.population', { source: 'cia-factbook' }),
       attributionFor('government.democracyIndex'),
     ])
@@ -200,7 +200,7 @@ describe('dedupeAttributions', () => {
       'V-Dem via Our World in Data',
     ])
     // First wins: the surviving entry keeps its own deep link and dataset.
-    expect(deduped[0].dataset).toBe('Economy › Real GDP per capita')
+    expect(deduped[0].dataset).toBe('Economy › Public debt')
   })
 
   it('keeps same-source entries whose named originators differ', () => {

@@ -429,11 +429,23 @@ const factbook = (field: string): DataOrigin => ({ source: 'cia-factbook', datas
  * choices, and `Amount.source` records which one actually won per country).
  */
 export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
-  'economics.gdpPerCapita': factbook('Economy › Real GDP per capita'),
-  'economics.gdpTotal': factbook('Economy › Real GDP (purchasing power parity)'),
-  'economics.gdpGrowth': factbook('Economy › Real GDP growth rate'),
+  'economics.gdpPerCapita': {
+    ...worldBank('NY.GDP.PCAP.PP.KD'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
+  'economics.gdpTotal': {
+    ...worldBank('NY.GDP.MKTP.PP.KD'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
+  'economics.gdpGrowth': {
+    ...worldBank('NY.GDP.MKTP.KD.ZG'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
   'economics.publicDebt': factbook('Economy › Public debt'),
-  'economics.inflation': factbook('Economy › Inflation rate (consumer prices)'),
+  'economics.inflation': {
+    ...worldBank('FP.CPI.TOTL.ZG'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
   'economics.equality': factbook('Economy › Gini Index coefficient'),
   'economics.populationBelowPovertyLine': factbook('Economy › Population below poverty line'),
   'economics.militarySpending': {
@@ -453,8 +465,14 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   },
   'geography.highestPeak': factbook('Geography › Elevation › highest point'),
 
-  'unemployment.youth': factbook('Economy › Youth unemployment rate (ages 15-24)'),
-  'unemployment.total': factbook('Economy › Unemployment rate'),
+  'unemployment.youth': {
+    ...worldBank('SL.UEM.1524.ZS'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
+  'unemployment.total': {
+    ...worldBank('SL.UEM.TOTL.ZS'),
+    fallback: FACTBOOK_BACKSTOP,
+  },
 
   'infrastructure.rail': factbook('Transportation › Railways › total'),
   'infrastructure.internetAccess': factbook('Communications › Internet users'),
