@@ -8,10 +8,11 @@
         v-if="open"
         ref="drawerEl"
         class="pane tl history-drawer"
+        :class="{ sheet: isPhone }"
         role="dialog"
         aria-label="Past rounds"
       >
-        <div class="sheet-handle" aria-hidden="true" @pointerdown="onDragStart" />
+        <div v-if="isPhone" class="sheet-handle" aria-hidden="true" @pointerdown="onDragStart" />
         <header class="drawer-header" @pointerdown="onDragStart">
           <div>
             <span class="eyebrow">The story so far</span>
@@ -258,11 +259,6 @@ $hairline: ink(0.12);
   padding-bottom: 0.25rem;
 }
 
-// Grab handle: only exists in sheet mode (see the mobile block below)
-.sheet-handle {
-  display: none;
-}
-
 .empty {
   opacity: 0.7;
 }
@@ -488,44 +484,18 @@ $hairline: ink(0.12);
   }
 }
 
-// Mobile: bottom sheet clear of the home indicator, rising from below
+// Mobile: the sheet skeleton comes from templates/_sheet.scss; only the
+// drawer's own overrides live here.
 @media (max-width: $tablet) {
   .history-drawer {
+    // .sheet anchors bottom; clear the desktop drawer's top/right pinning.
     top: auto;
-    left: 0;
     right: 0;
-    bottom: 0;
-    width: 100%;
-    max-height: 70dvh;
-    padding: 1.6rem 1.6rem calc(1.6rem + var(--safe-bottom));
-    border: 0.1rem solid var(--text-color);
-    border-bottom: none;
-    border-top-left-radius: 1.9rem;
-    border-top-right-radius: 1.9rem;
   }
 
   .drawer-enter-from,
   .drawer-leave-to {
     transform: translateY(105%);
-  }
-
-  // The grab affordance: a small pill, with generous invisible hit area.
-  // touch-action: none on the draggable surfaces hands the pan to us.
-  .sheet-handle {
-    display: flex;
-    justify-content: center;
-    margin: -0.8rem 0 0.4rem;
-    padding: 0.8rem 0;
-    touch-action: none;
-    cursor: grab;
-
-    &::after {
-      content: '';
-      width: 4rem;
-      height: 0.4rem;
-      border-radius: 999px;
-      background: ink(0.2);
-    }
   }
 
   .drawer-header {

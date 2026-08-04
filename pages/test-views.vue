@@ -63,6 +63,10 @@ import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { TREATIES } from '~~/data/treaties.gen'
+import { buildLineup } from '~~/lib/odd-one-out'
+import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
 import { TRENDS } from '~~/lib/trends'
 import { HERITAGE } from '~~/data/heritage.gen'
@@ -2413,7 +2417,65 @@ const scenarios: Scenario[] = [
     label: 'Final: membership (odd one out)',
     component: ViewFinalChallenge,
     build: () =>
-      finalGame([{ _type: 'membership-challenge', organization: 'eu', exception: 'NO' }]),
+      finalGame([
+        {
+          _type: 'membership-challenge',
+          organization: 'eu',
+          exception: 'NO',
+          lineup: membershipLineup('eu', 'NO'),
+        },
+      ]),
+  },
+  {
+    // 54 members: the sheet's stress case, and the one that proved region
+    // headings leak (every AU member is African).
+    id: 'final-membership-au',
+    label: 'Final: membership (African Union, 54 rows)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'membership-challenge',
+          organization: 'au',
+          exception: 'PT',
+          lineup: membershipLineup('au', 'PT'),
+        },
+      ]),
+  },
+  {
+    // 6 members: below the letter-heading threshold, renders flat.
+    id: 'final-membership-csto',
+    label: 'Final: membership (CSTO, 6 rows)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'membership-challenge',
+          organization: 'csto',
+          exception: 'MN',
+          lineup: membershipLineup('csto', 'MN'),
+        },
+      ]),
+  },
+  {
+    // The payoff case: the US is the only country on earth that signed the CRC
+    // and never ratified it.
+    id: 'final-treaty',
+    label: 'Final: treaty (signed, never ratified)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'treaty-challenge',
+          treaty: 'crc',
+          holdout: 'US',
+          standing: 'signatory',
+          lineup: buildLineup(
+            'US',
+            ISOCountryCodes.filter(isoCode => TREATIES.crc?.[isoCode]?.standing === 'party')
+          ),
+        },
+      ]),
   },
   {
     id: 'final-scales',
@@ -2675,6 +2737,18 @@ const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty 
   ] as never
   return game
 }
+
+/** The lineup a real deal would build, so a pinned fixture matches production. */
+const membershipLineup = (
+  organization: keyof typeof OrganizationVector,
+  exception: ISOCountryCode
+): ISOCountryCode[] =>
+  buildLineup(
+    exception,
+    ISOCountryCodes.filter(isoCode =>
+      COUNTRIES[isoCode].membership.some(entry => entry.id === organization)
+    )
+  )
 
 /** A real dealer run — same randomness as production. */
 const gauntletGame = (difficulty: GameDifficulty): Game => {

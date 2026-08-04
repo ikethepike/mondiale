@@ -5,6 +5,9 @@ import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { TREATIES } from '~~/data/treaties.gen'
+import { buildLineup, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
+import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
@@ -24,6 +27,7 @@ import type {
   MadeChallenge,
   MaxChallenge,
   MembershipChallenge,
+  TreatyChallenge,
   MinChallenge,
   MinMaxAccessorKeys,
   RegionChallenge,
@@ -32,6 +36,7 @@ import type {
   SunsetBlitzChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { oddOneOut } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
   type Amount,
@@ -111,6 +116,7 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
     if (eligibleOrganizations(pool).length) types.push('membership-challenge')
+    if (eligibleTreaties(pool).length) types.push('treaty-challenge')
     types.push('scales-challenge', 'sunset-blitz-challenge')
   }
   return types
@@ -137,6 +143,8 @@ const dealChallenge = (
         return getMaxChallenge(pool)
       case 'membership-challenge':
         return getMembershipChallenge(pool)
+      case 'treaty-challenge':
+        return getTreatyChallenge(pool)
       case 'scales-challenge':
         return getScalesChallenge(pool)
       case 'sunset-blitz-challenge':
@@ -327,6 +335,56 @@ const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge | u
     _type: 'membership-challenge',
     organization,
     exception,
+    lineup: buildLineup(
+      exception,
+      pool.filter(isoCode => isMemberOf(isoCode, organization))
+    ),
+  }
+}
+
+const isBoundBy = (isoCode: ISOCountryCode, treaty: TreatyId) =>
+  TREATIES[treaty]?.[isoCode]?.standing === 'party'
+
+/**
+ * Enough bound countries to fill a lineup, and at least one holdout to find.
+ *
+ * Unlike the organizations, this does NOT require a large unbound pool. The
+ * lineup is capped and the map tap is gated to it, so the answer hides among
+ * the countries actually shown — the size of the rest of the world is
+ * irrelevant. Requiring four holdouts would rule out the sharpest questions in
+ * the deck: the Convention on the Rights of the Child has exactly one country
+ * outside it, which is the whole reason it is worth asking.
+ */
+const eligibleTreaties = (pool: ISOCountryCode[]): TreatyId[] =>
+  TREATY_META.filter(meta => {
+    const bound = pool.filter(isoCode => isBoundBy(isoCode, meta.id)).length
+    return bound >= MIN_LINEUP_BOUND && pool.length - bound >= 1
+  }).map(meta => meta.id)
+
+const getTreatyChallenge = (pool: ISOCountryCode[]): TreatyChallenge | undefined => {
+  const treaty = sample(eligibleTreaties(pool))
+  if (!treaty) return undefined
+
+  const unbound = pool.filter(isoCode => !isBoundBy(isoCode, treaty))
+  // A country that signed and stalled, or ratified and walked out, made a
+  // choice — that is the question worth asking. One that simply never turned
+  // up is a weaker answer, so it only gets drawn when nothing pointed is on
+  // the board. Without this the interesting holdouts are a rounding error
+  // against ~160 never-joined countries.
+  const pointed = unbound.filter(isoCode => TREATIES[treaty]?.[isoCode])
+  const holdout = sample(pointed.length ? pointed : unbound)
+  if (!holdout) return undefined
+
+  const standing = TREATIES[treaty]?.[holdout]?.standing
+  return {
+    _type: 'treaty-challenge',
+    treaty,
+    holdout,
+    standing: standing && standing !== 'party' ? standing : 'absent',
+    lineup: buildLineup(
+      holdout,
+      pool.filter(isoCode => isBoundBy(isoCode, treaty))
+    ),
   }
 }
 
@@ -1352,10 +1410,11 @@ export const isCorrectFinalAnswer = ({
       if (!isValidISOCode(submittedAnswer.isoCode)) return false
       return speaksLanguage(submittedAnswer.isoCode, challenge.language)
     }
-    case 'membership-challenge': {
-      if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
+    case 'membership-challenge':
+    case 'treaty-challenge': {
+      if (submittedAnswer._type !== challenge._type) return throwTypeMismatch()
       return (
-        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
+        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === oddOneOut(challenge)
       )
     }
     case 'born-challenge': {
@@ -1483,6 +1542,11 @@ export const getFinalChallengeDetails = ({
 
       return {
         question: `Which of the following countries is not a part of the ${organization}?`,
+      }
+    }
+    case 'treaty-challenge': {
+      return {
+        question: `Which of these countries is not bound by the ${treatyMeta(challenge.treaty).shortName}?`,
       }
     }
     case 'region-challenge': {

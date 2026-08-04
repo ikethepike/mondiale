@@ -173,7 +173,6 @@ export interface Country {
     CO2Emissions?: Amount<'megatons'>
     methaneEmissions?: Amount<'megatons'>
     renewables?: Amount<'%'>
-    parisAgreement?: boolean
     /** Population-weighted outdoor PM2.5 exposure. */
     airPollution?: Amount<'µg/m³'>
     /** IUCN Red List Index, 0–1 (1 = all species safe; declines ≈ everywhere). */

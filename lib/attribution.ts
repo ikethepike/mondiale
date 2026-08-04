@@ -24,6 +24,7 @@ export type ProviderId =
   | 'worldbank'
   | 'un-wpp'
   | 'un-pd-migration'
+  | 'untc'
   | 'ucdp'
   | 'naturalearth'
   | 'geonames'
@@ -91,6 +92,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     logo: 'un-wpp.svg',
     description:
       'International Migrant Stock: where the world’s foreign-born live, counted by country of birth and country of residence.',
+  },
+  untc: {
+    name: 'UN Treaty Collection',
+    url: 'https://treaties.un.org',
+    description:
+      'The depositary’s own record for multilateral treaties: who signed, who ratified, and who never got round to it.',
   },
   ucdp: {
     name: 'Uppsala Conflict Data Program',
@@ -188,6 +195,7 @@ export type SourceId =
   | 'worldbank-wdi'
   | 'un-wpp-2024'
   | 'un-migrant-stock-2024'
+  | 'untc-mtdsg'
   | 'ucdp-acd'
   | 'ucdp-ged'
   | 'naturalearth-10m'
@@ -299,6 +307,14 @@ export const SOURCES: Record<SourceId, Source> = {
     url: 'https://www.naturalearthdata.com/downloads/10m-cultural-vectors/',
     edition: 'v5.1.2',
     license: 'Public domain',
+  },
+  'untc-mtdsg': {
+    provider: 'untc',
+    title: 'Multilateral Treaties Deposited with the Secretary-General',
+    url: 'https://treaties.un.org/Pages/ParticipationStatus.aspx',
+    // The UN's terms let its material be reproduced freely without permission
+    // where it is not for sale or commercial resale, with the source cited.
+    license: 'UN publication — free reproduction with attribution',
   },
   'geonames-cities15000': {
     provider: 'geonames',
@@ -617,6 +633,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
 export type DataSetId =
   | 'countries'
   | 'migration'
+  | 'treaties'
   | 'flags'
   | 'flag-meanings'
   | 'name-facts'
@@ -864,6 +881,15 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     files: ['data/migration.gen.ts'],
     origins: [
       { source: 'un-migrant-stock-2024', dataset: 'Table 1 — stock by destination and origin' },
+    ],
+  },
+  treaties: {
+    label: 'Who signed what',
+    files: ['data/treaties.gen.ts'],
+    origins: [
+      { source: 'untc-mtdsg', dataset: 'Status of treaties, by chapter' },
+      { source: 'wikidata-items', dataset: 'Schengen Area membership' },
+      { source: 'mondiale-editorial', dataset: 'data/static/treaty-corrections.ts' },
     ],
   },
 }

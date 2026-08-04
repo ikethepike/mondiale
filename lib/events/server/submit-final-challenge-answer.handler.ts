@@ -47,6 +47,21 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     if (player.resolving) {
       return console.warn(`Final challenge answer already being processed — ignoring duplicate`)
     }
+
+    // An odd-one-out question offers a lineup, and only the lineup. Off it sit
+    // countries that ALSO genuinely don't belong — a capped African Union
+    // roster leaves 31 real members unlit — so scoring such a tap would burn a
+    // life for a defensible answer. The view ignores them; reject here too,
+    // before the question is consumed, so a stray click can't cost anything.
+    if (
+      (currentChallenge._type === 'membership-challenge' ||
+        currentChallenge._type === 'treaty-challenge') &&
+      'isoCode' in eventData.submittedAnswer &&
+      !currentChallenge.lineup.includes(eventData.submittedAnswer.isoCode)
+    ) {
+      return console.warn(`Answer outside the lineup — ignoring`)
+    }
+
     player.resolving = true
 
     // The shared verdict throws on an answer/question shape mismatch, exiting

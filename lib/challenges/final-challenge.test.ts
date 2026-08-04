@@ -3,6 +3,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
+import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
@@ -12,9 +13,13 @@ import type {
   ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
+  MembershipChallenge,
   MinChallenge,
+  TreatyChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { oddOneOut } from '~~/types/challenges/final-challenge.type'
+import { MAX_LINEUP } from '~~/lib/odd-one-out'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -91,6 +96,7 @@ describe('getFinalChallenges', () => {
       for (const challenge of easy.challenges) {
         expect([
           'membership-challenge',
+          'treaty-challenge',
           'scales-challenge',
           'sunset-blitz-challenge',
         ]).not.toContain(challenge._type)
@@ -124,6 +130,148 @@ describe('membership challenge', () => {
         expect(['opec', 'au', 'csto']).not.toContain(challenge.organization)
       }
     }
+  })
+})
+
+describe('odd-one-out lineup rides the challenge', () => {
+  const oddOneOutItems = (variant: Game['variant']) => {
+    const items: (MembershipChallenge | TreatyChallenge)[] = []
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      for (const challenge of getFinalChallenges({ game: gameFor(variant, 'hard') }).challenges) {
+        if (challenge._type === 'membership-challenge' || challenge._type === 'treaty-challenge') {
+          items.push(challenge)
+        }
+      }
+    }
+    return items
+  }
+
+  // The lineup is sampled, so deriving it per client would hand two players
+  // different questions and reshuffle one on remount. It has to be dealt.
+  it('always carries a lineup containing the odd one out', () => {
+    const items = oddOneOutItems('world')
+    expect(items.length).toBeGreaterThan(0)
+    for (const challenge of items) {
+      expect(challenge.lineup.length).toBeGreaterThan(1)
+      expect(challenge.lineup.length).toBeLessThanOrEqual(MAX_LINEUP)
+      expect(challenge.lineup).toContain(oddOneOut(challenge))
+      expect(new Set(challenge.lineup).size).toBe(challenge.lineup.length)
+    }
+  })
+
+  // Everything else on the lineup must genuinely belong, or the question has
+  // more than one defensible answer.
+  it('fills the lineup with countries that do belong', () => {
+    for (const challenge of oddOneOutItems('world')) {
+      for (const isoCode of challenge.lineup) {
+        if (isoCode === oddOneOut(challenge)) continue
+        if (challenge._type === 'membership-challenge') {
+          expect(isMember(isoCode, challenge.organization)).toBe(true)
+        } else {
+          expect(TREATIES[challenge.treaty]?.[isoCode]?.standing).toBe('party')
+        }
+      }
+    }
+  })
+
+  // Why the view and the submit handler both gate on the lineup: a capped
+  // roster leaves countries that genuinely don't belong either — 31 African
+  // Union members go unlit — and tapping one is a defensible read of the
+  // prompt. Neither surface may score it, so both reject before the verdict.
+  it('leaves belonging countries off the lineup, which is why taps are gated', () => {
+    const pool = playableCountries(gameFor('world', 'hard'))
+    let stranded = 0
+    for (const challenge of oddOneOutItems('world')) {
+      const belongs = (isoCode: ISOCountryCode) =>
+        challenge._type === 'membership-challenge'
+          ? isMember(isoCode, challenge.organization)
+          : TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
+      if (pool.some(isoCode => belongs(isoCode) && !challenge.lineup.includes(isoCode))) stranded++
+    }
+    expect(stranded).toBeGreaterThan(0)
+  })
+
+  // The odd one out is the only lineup entry that scores.
+  it('scores exactly one lineup entry as correct', () => {
+    const pool = playableCountries(gameFor('world', 'hard'))
+    for (const challenge of oddOneOutItems('world').slice(0, 20)) {
+      const correct = challenge.lineup.filter(isoCode =>
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: challenge._type, isoCode },
+          pool,
+        })
+      )
+      expect(correct).toEqual([oddOneOut(challenge)])
+    }
+  })
+})
+
+describe('treaty challenge', () => {
+  // The mirror of the membership regression: the holdout must genuinely not be
+  // bound, or the question has no answer.
+  it('never names a party as the holdout', () => {
+    for (const variant of ['world', 'europe'] as const) {
+      for (let round = 0; round < DEAL_ROUNDS; round++) {
+        const { challenges } = getFinalChallenges({ game: gameFor(variant, 'hard') })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'treaty-challenge') continue
+          expect(TREATIES[challenge.treaty]?.[challenge.holdout]?.standing).not.toBe('party')
+        }
+      }
+    }
+  })
+
+  // standing drives the reveal's wording, so a mismatch would have the lesson
+  // state something the data does not say.
+  it('records a standing the data agrees with', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge') continue
+        const recorded = TREATIES[challenge.treaty]?.[challenge.holdout]?.standing
+        expect(challenge.standing).toBe(recorded ?? 'absent')
+      }
+    }
+  })
+
+  // The point of the mode: a country that signed and stalled, or walked out,
+  // is the question worth asking. Without the bias those holdouts are a
+  // rounding error against ~160 countries that simply never joined.
+  it('prefers a holdout that made a choice', () => {
+    let pointed = 0
+    let dealt = 0
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge') continue
+        dealt++
+        if (challenge.standing !== 'absent') pointed++
+      }
+    }
+    expect(dealt).toBeGreaterThan(0)
+    expect(pointed / dealt).toBeGreaterThan(0.8)
+  })
+
+  // The United States is the only country on earth that signed the Convention
+  // on the Rights of the Child and never ratified it — so on any board holding
+  // it, the CRC has exactly one legal answer.
+  //
+  // Asserting the deal COUNT matters: an earlier eligibility gate demanded four
+  // unbound countries, and the CRC has three, so it was never dealt at all and
+  // this test passed by never entering its loop.
+  it('deals the CRC, and names the United States when it does', () => {
+    let dealt = 0
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge' || challenge.treaty !== 'crc') continue
+        dealt++
+        expect(challenge.holdout).toBe('US')
+        expect(challenge.standing).toBe('signatory')
+      }
+    }
+    expect(dealt).toBeGreaterThan(0)
   })
 })
 

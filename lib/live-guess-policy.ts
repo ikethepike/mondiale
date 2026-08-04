@@ -36,6 +36,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   'capital-guess': 'label',
   flashpoint: 'label',
 
+  // Unlike the other option rounds, composition's table IS the bar's own
+  // origins — a handful, shared by the room — so a named wrong guess strikes a
+  // slice off everyone's list.
+  composition: 'presence',
+
   // One hidden target, shared by the room.
   'hot-cold': 'presence',
   silhouette: 'presence',
