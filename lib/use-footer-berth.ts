@@ -21,7 +21,11 @@ export const useFooterBerth = (footer: Ref<HTMLElement | undefined>, key = 'foot
 
   const reserve = () => {
     const height = footer.value?.getBoundingClientRect().height
-    claimMapBerth(gameStore, key, height ? { bottom: Math.round(height) + BERTH_GAP_PX } : undefined)
+    claimMapBerth(
+      gameStore,
+      key,
+      height ? { bottom: Math.round(height) + BERTH_GAP_PX } : undefined
+    )
   }
 
   const observe = (element: HTMLElement | undefined) => {

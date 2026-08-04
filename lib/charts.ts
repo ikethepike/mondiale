@@ -45,3 +45,29 @@ export const monotoneCurvePath = (points: readonly ChartPoint[]): string => {
 }
 
 const round = (value: number): string => value.toFixed(2)
+
+/**
+ * Human-readable axis ticks across [min, max] — the 1/2/5/10 ladder, so a
+ * domain of 1834–16001 reads 5k / 10k / 15k instead of raw thirds. `count` is
+ * a target, not a promise: the ladder picks the real spacing, so the tick
+ * count lands near it rather than on it. Ticks stay inside the domain — a
+ * bounded metric's axis must never sprout a step past its own scale.
+ */
+export const niceTicks = (min: number, max: number, count = 3): number[] => {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || count < 2) return []
+  if (max <= min) return [min]
+
+  const rawStep = (max - min) / (count - 1)
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep))
+  const normalized = rawStep / magnitude
+  const step = (normalized > 5 ? 10 : normalized > 2 ? 5 : normalized > 1 ? 2 : 1) * magnitude
+
+  const ticks: number[] = []
+  // The epsilon guards float dust twice over: it keeps a tick that lands a
+  // hair past `max` (0.6000000000000001) and snaps a near-zero to a clean 0.
+  const epsilon = step * 1e-9
+  for (let value = Math.ceil(min / step) * step; value <= max + epsilon; value += step) {
+    ticks.push(Math.abs(value) < epsilon ? 0 : value)
+  }
+  return ticks
+}
