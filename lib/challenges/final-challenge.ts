@@ -11,6 +11,7 @@ import type {
   BornChallenge,
   BoundaryChallenge,
   CityNocturneChallenge,
+  DiasporaChallenge,
   EndonymChallenge,
   FinalChallenge,
   FinalChallengeAnswer,
@@ -39,6 +40,13 @@ import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import { sample, sampleMany, shuffleArray, weightedPick } from '../arrays'
 import { countryEndonym, isLargeCountry, normalizeCountryName, pickSizedCountry } from '../country'
+import {
+  corridorMargin,
+  corridorsFromOrigin,
+  DIASPORA_MIN_MARGIN,
+  DIASPORA_MIN_STOCK,
+} from '../migration'
+import { isNeighbour } from '../traversal'
 import { editDistance } from '../strings'
 import { mainlandBox } from '../geo'
 import {
@@ -84,6 +92,8 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'boundary-challenge',
     // Easy-friendly: transparent-only deck and a quota of 2
     'endonym-challenge',
+    // Easy-friendly: the neighbour-answer deck leads, and a quota of 2
+    'diaspora-challenge',
     // Easy-friendly via two-headline years and the widest tolerance
     'yearbook-challenge',
   ]
@@ -130,6 +140,8 @@ const dealChallenge = (
         return getBoundaryChallenge(pool, difficulty)
       case 'endonym-challenge':
         return getEndonymChallenge(pool, difficulty)
+      case 'diaspora-challenge':
+        return getDiasporaChallenge(pool, difficulty)
       case 'yearbook-challenge':
         return getYearbookChallenge(difficulty)
     }
@@ -670,6 +682,118 @@ const getYearbookChallenge = (difficulty: GameDifficulty): YearbookChallenge | u
   }
 }
 
+/** The issue's three beats, plus a fourth on hard: the quota rises there too,
+ *  and a deck equal to its quota is all-or-nothing rather than a gauntlet
+ *  question — every dealt beat has to leave one miss absorbable. */
+const DIASPORA_DECK_SIZE: { [difficulty in GameDifficulty]: number } = {
+  easy: 3,
+  normal: 3,
+  hard: 4,
+}
+const DIASPORA_QUOTA: { [difficulty in GameDifficulty]: number } = {
+  easy: 2,
+  normal: 2,
+  hard: 3,
+}
+/** How wide the answer key opens: the leading destination alone on hard, the
+ *  top two or three below it. The bar for "where they went" is lower when the
+ *  runner-up is a real second home. */
+const DIASPORA_ACCEPTED: { [difficulty in GameDifficulty]: number } = {
+  easy: 3,
+  normal: 2,
+  hard: 1,
+}
+/** Regions whose countries answer far more corridors than any other, so a deck
+ *  stacked with them rewards tapping the same rich-world flag every beat. */
+const DIASPORA_MAGNET_REGIONS: Region[] = ['europe', 'north-america']
+
+/** Origins whose leading destination is clear enough to be the one answer. */
+export const decisiveOrigins = (pool: ISOCountryCode[]): ISOCountryCode[] =>
+  pool.filter(isoCode => {
+    const corridors = corridorsFromOrigin(isoCode)
+    if (!corridors.length) return false
+    if (corridors[0].value.amount < DIASPORA_MIN_STOCK) return false
+    return corridorMargin(corridors) >= DIASPORA_MIN_MARGIN
+  })
+
+/** Is the answer the country next door? The obvious tier — easy's deck. */
+export const hasObviousDestination = (isoCode: ISOCountryCode): boolean => {
+  const [leading] = corridorsFromOrigin(isoCode)
+  return !!leading && isNeighbour(isoCode, leading.isoCode)
+}
+
+const isMagnetAnswer = (isoCode: ISOCountryCode): boolean => {
+  const [leading] = corridorsFromOrigin(isoCode)
+  return !!leading && DIASPORA_MAGNET_REGIONS.includes(COUNTRIES[leading.isoCode].region)
+}
+
+/**
+ * A deck the player can't beat by tapping one flag every beat: each answer
+ * country appears once, and Europe/North America never take more than half
+ * the beats.
+ *
+ * The magnet-capped seats are filled FIRST, from the non-magnet candidates
+ * only. Walking the ranked list in one pass instead would spend the cap on
+ * whichever magnets happened to rank highest and then starve — on hard, where
+ * the surprising tier leads and 43 of its 60 origins answer to Europe or North
+ * America, that produced a deck that could never fill.
+ */
+const representativeDeck = (ranked: ISOCountryCode[], size: number): ISOCountryCode[] => {
+  const magnetSeats = Math.floor(size / 2)
+  const deck: ISOCountryCode[] = []
+  const answered = new Set<ISOCountryCode>()
+
+  const take = (candidates: ISOCountryCode[], limit: number) => {
+    let taken = 0
+    for (const isoCode of candidates) {
+      if (deck.length >= size || taken >= limit) break
+      const [leading] = corridorsFromOrigin(isoCode)
+      if (!leading || answered.has(leading.isoCode)) continue
+      answered.add(leading.isoCode)
+      deck.push(isoCode)
+      taken++
+    }
+  }
+
+  take(
+    ranked.filter(isoCode => !isMagnetAnswer(isoCode)),
+    size
+  )
+  take(ranked.filter(isMagnetAnswer), magnetSeats)
+  return deck
+}
+
+const getDiasporaChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): DiasporaChallenge | undefined => {
+  const quota = DIASPORA_QUOTA[difficulty]
+  const decisive = decisiveOrigins(pool)
+  const obvious = decisive.filter(hasObviousDestination)
+  const surprising = decisive.filter(isoCode => !hasObviousDestination(isoCode))
+  const ranked =
+    difficulty === 'easy'
+      ? [...shuffleArray(obvious), ...shuffleArray(surprising)]
+      : difficulty === 'hard'
+        ? [...shuffleArray(surprising), ...shuffleArray(obvious)]
+        : shuffleArray([...decisive])
+
+  const origins = shuffleArray(representativeDeck(ranked, DIASPORA_DECK_SIZE[difficulty]))
+  // The deck must leave at least one absorbable miss, or it's all-or-nothing
+  if (origins.length <= quota) return undefined
+
+  return {
+    _type: 'diaspora-challenge',
+    origins,
+    accepted: origins.map(isoCode =>
+      corridorsFromOrigin(isoCode)
+        .slice(0, DIASPORA_ACCEPTED[difficulty])
+        .map(corridor => corridor.isoCode)
+    ),
+    quota,
+  }
+}
+
 const NIGHT_WINDOW_MAX = 12
 const NIGHT_WINDOW_MIN = 8
 const SUNSET_SECONDS_PER_COUNTRY = 4
@@ -1140,6 +1264,15 @@ export const isCorrectFinalAnswer = ({
         Math.abs(submittedAnswer.year - year) <= challenge.tolerance
       )
     }
+    case 'diaspora-challenge': {
+      if (submittedAnswer._type !== 'diaspora-challenge') return throwTypeMismatch()
+      // Positional like endonym: pick i answers beat i, so the right country
+      // tapped on the wrong beat counts for nothing
+      const hits = challenge.accepted.filter((options, beat) =>
+        options.includes(submittedAnswer.isoCodes[beat])
+      ).length
+      return hits >= challenge.quota
+    }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
       // Client-trust like higher-lower gates. The whole board is nameable
@@ -1236,6 +1369,12 @@ export const getFinalChallengeDetails = ({
     case 'endonym-challenge':
       return {
         question: `Countries by their own names — tap ${challenge.quota} of the ${challenge.countries.length} shown`,
+      }
+    case 'diaspora-challenge':
+      // "Born in", never "diaspora" — the data counts the foreign-born, and
+      // descent communities are a different (and much larger) thing
+      return {
+        question: `Where do most people born in these countries now live? Tap ${challenge.quota} of ${challenge.origins.length}`,
       }
     case 'yearbook-challenge':
       return {

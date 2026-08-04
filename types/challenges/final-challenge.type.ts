@@ -30,6 +30,7 @@ export type FinalChallengeItem =
   | CityNocturneChallenge
   | BoundaryChallenge
   | EndonymChallenge
+  | DiasporaChallenge
   | YearbookChallenge
 
 /**
@@ -54,6 +55,8 @@ export type FinalChallengeAnswer =
   | { _type: 'boundary-challenge'; drawn: [number, number][] }
   /** Positional: pick i answers beat i of `countries`. */
   | { _type: 'endonym-challenge'; isoCodes: ISOCountryCode[] }
+  /** Positional: pick i answers beat i of `origins`. */
+  | { _type: 'diaspora-challenge'; isoCodes: ISOCountryCode[] }
   /** The dialed year — verdict is |year − yearbookYear| ≤ tolerance. */
   | { _type: 'yearbook-challenge'; year: number }
 
@@ -173,6 +176,23 @@ export interface BoundaryChallenge {
 export interface EndonymChallenge {
   _type: 'endonym-challenge'
   countries: ISOCountryCode[]
+  quota: number
+}
+
+/**
+ * Where the world's people went: each beat names a country of birth and the
+ * player taps where most of those people now live. Beat i asks for
+ * origins[i]; accepted[i] is that beat's answer key, widened by difficulty
+ * (the leading destination on hard, the top two or three below it).
+ *
+ * The data counts the FOREIGN-BORN, never descent — see lib/migration.ts.
+ * Both sides resolve corridors through that module.
+ */
+export interface DiasporaChallenge {
+  _type: 'diaspora-challenge'
+  origins: ISOCountryCode[]
+  /** Destinations that answer each beat, leading one first. */
+  accepted: ISOCountryCode[][]
   quota: number
 }
 

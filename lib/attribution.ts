@@ -168,6 +168,7 @@ export type SourceId =
   | 'owid-grapher'
   | 'worldbank-wdi'
   | 'un-wpp-2024'
+  | 'un-migrant-stock-2024'
   | 'ucdp-acd'
   | 'ucdp-ged'
   | 'naturalearth-10m'
@@ -240,6 +241,16 @@ export const SOURCES: Record<SourceId, Source> = {
     // The revision's last estimate year; later rows are projections and never
     // enter the game.
     year: 2023,
+  },
+  'un-migrant-stock-2024': {
+    provider: 'un-wpp',
+    title: 'International Migrant Stock',
+    url: 'https://www.un.org/development/desa/pd/content/international-migrant-stock',
+    edition: '2024 revision',
+    license: 'CC BY 3.0 IGO',
+    // Mid-year stock. The matrix counts the foreign-born — people living
+    // outside the country they were born in — not ancestry or descent.
+    year: 2024,
   },
   'ucdp-acd': {
     provider: 'ucdp',
@@ -556,6 +567,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
 
 export type DataSetId =
   | 'countries'
+  | 'migration'
   | 'flags'
   | 'flag-meanings'
   | 'name-facts'
@@ -787,6 +799,13 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     label: 'Demography and population pyramids',
     files: ['data/wpp.gen.ts', 'data/wpp-trends.gen.ts', 'data/pyramids.gen.ts'],
     origins: [{ source: 'un-wpp-2024' }],
+  },
+  migration: {
+    label: 'Where the foreign-born live',
+    files: ['data/migration.gen.ts'],
+    origins: [
+      { source: 'un-migrant-stock-2024', dataset: 'Table 1 — stock by destination and origin' },
+    ],
   },
 }
 
