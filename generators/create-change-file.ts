@@ -177,6 +177,8 @@ for (const seed of CHANGE_SEEDS) {
     [seed.beforeUrl, seed.beforeYear, 'before'],
     [seed.afterUrl, seed.afterYear, 'after'],
   ] as const) {
+    // A dropped socket mid-run must cost one frame, not the whole deck: the
+    // merge below keeps whatever a previous run already captured.
     const image = await saveImageUrl(
       url,
       `${OUTPUT_DIRECTORY}/${slug}-${suffix}`,
@@ -185,7 +187,10 @@ for (const seed of CHANGE_SEEDS) {
         width: CHANGE_WIDTH,
         force,
       }
-    )
+    ).catch(error => {
+      console.log(`  ${slug}-${suffix} failed: ${error}`)
+      return undefined
+    })
     if (image) frames.push({ image, year })
     // The archive throttles far harder than Commons does; a cached frame
     // short-circuits above, so this only paces genuinely new downloads.

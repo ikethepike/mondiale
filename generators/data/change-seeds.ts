@@ -129,6 +129,20 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     beforeUrl: WOC('dubai/dubai_20001111.jpg'),
     afterUrl: WOC('dubai/dubai_ast_20110425_cyl.jpg'),
   },
+  {
+    name: 'the drained then reflooded marshes',
+    title: 'The Mesopotamian Marshes',
+    countries: ['IQ'],
+    kind: 'water',
+    coordinates: { lat: 31.0, lng: 47.0 },
+    startYear: 1990,
+    beforeYear: 2000,
+    afterYear: 2010,
+    description:
+      'Wetlands the size of a small country were deliberately drained to punish the people living in them, then partly reflooded when the dykes were broken open a decade later.',
+    beforeUrl: WOC('iraq_marsh/iraq_tmo_2000059_143_lrg.jpg'),
+    afterUrl: WOC('iraq_marsh/iraq_amo_2010039_143_lrg.jpg'),
+  },
   // --- South America --------------------------------------------------------
   {
     name: 'the fishbone clearings',
@@ -158,5 +172,33 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'A tidewater glacier that has pulled back more than twenty kilometres and thinned by half a kilometre, dumping so many icebergs that tankers had to be re-routed around them.',
     beforeUrl: WOC('columbia_glacier/columbia_tm5_1986209_lrg.jpg'),
     afterUrl: WOC('columbia_glacier/columbiaglacier653_oli_2019172_lrg.jpg'),
+  },
+  {
+    name: 'the boreal tar extraction',
+    title: 'The Athabasca oil sands',
+    countries: ['CA'],
+    kind: 'urban',
+    coordinates: { lat: 57.02, lng: -111.48 },
+    startYear: 1970,
+    beforeYear: 1984,
+    afterYear: 2016,
+    description:
+      'Boreal forest and peat stripped away to mine the bitumen underneath, leaving open pits and tailings ponds big enough to be mistaken for lakes.',
+    beforeUrl: WOC('athabasca/athabasca_tm5_19840723_lrg.jpg'),
+    afterUrl: WOC('athabasca/athabasca_oli_20160715_lrg.jpg'),
+  },
+  {
+    name: 'the emptying canyon reservoir',
+    title: 'Lake Powell',
+    countries: ['US'],
+    kind: 'water',
+    coordinates: { lat: 37.07, lng: -111.25 },
+    startYear: 2000,
+    beforeYear: 1999,
+    afterYear: 2021,
+    description:
+      'A reservoir drawn down to a quarter of its capacity by two decades of drought and over-allocation, ringing the canyon in a white mineral bathtub line.',
+    beforeUrl: WOC('lakepowell/lakepowell_19990325_lrg.jpg'),
+    afterUrl: WOC('lakepowell/lakepowell_oli_2021120_lrg.jpg'),
   },
 ]
