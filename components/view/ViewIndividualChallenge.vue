@@ -469,6 +469,7 @@ import {
 } from '~~/lib/scoring'
 import { mainlandOutline } from '~~/lib/outline'
 import { wait } from '~~/lib/time'
+import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { getValueByAccessorID, processReplacements } from '~~/lib/values'
 import type { DuelOutcome, TrendDuelOutcome } from '~~/types/challenges/individual-challenge.type'
@@ -491,15 +492,21 @@ const variant = computed(() => challenge.value?.variant ?? 'find')
 // hand the camera a berth so the world drops into the clear space instead.
 const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
 const isPhone = useIsPhone()
+const BERTH_KEY = 'individual-challenge-prompt'
+onBeforeUnmount(() => claimMapBerth(gameStore, BERTH_KEY, undefined))
 const placeMapBerth = () => {
   if (!isPhone.value || variant.value !== 'find' || challenge.value?.id !== 'flag') {
-    gameStore.map.berth = undefined
+    claimMapBerth(gameStore, BERTH_KEY, undefined)
     return
   }
   nextTick(() => {
     const prompt = promptHost.value?.$el as HTMLElement | undefined
     const bottom = prompt?.getBoundingClientRect().bottom
-    gameStore.map.berth = bottom ? { top: Math.round(bottom) + 12, bottom: 24 } : undefined
+    claimMapBerth(
+      gameStore,
+      BERTH_KEY,
+      bottom ? { top: Math.round(bottom) + BERTH_GAP_PX, bottom: 24 } : undefined
+    )
   })
 }
 

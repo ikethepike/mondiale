@@ -58,11 +58,16 @@
 
     <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />
 
-    <div v-if="revealCountry && !gameStore.map.atlasMode" class="reveal-wrapper">
+    <div v-if="revealCountry && !gameStore.map.atlasMode" ref="revealCard" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
         <div class="pane-content">
-          <CountryFlag class="flag" :country="revealCountry" />
+          <!-- Phones take the 3:1 wide tile: it buys ~76px of card height,
+               which is the difference between the card clearing the revealed
+               country and sitting on it. Desktop has the room, so it keeps
+               the flag's own proportions. -->
+          <CountryTileFlag v-if="isPhone" class="flag" :country="revealCountry" />
+          <CountryFlag v-else class="flag" :country="revealCountry" />
           <small>{{ primaryCoordinates(revealCountry) }}</small>
           <h3>{{ countryName(revealCountry) }}</h3>
           <p>{{ revealCountry.geography.capital.name }}</p>
@@ -90,7 +95,8 @@ import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { excludedMicroNations } from '~~/lib/game-rules'
 import { formatNumber } from '~~/lib/number'
-import { useKeyboardInset } from '~~/lib/use-viewport'
+import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
+import { useIsPhone, useKeyboardInset } from '~~/lib/use-viewport'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { BOARD_PHASES } from '~~/types/player.type'
@@ -122,6 +128,40 @@ const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : 
 const unselectableCountries = computed(() =>
   !game.value || gameStore.map.atlasMode ? [] : excludedMicroNations(game.value)
 )
+
+// The reveal card floats bottom-left over the map; without a reservation the
+// camera centres the country vertically and parks it behind the card. Claim
+// the card's band so the subject lifts clear — phones only, where the card is
+// a real share of the viewport. The claim rides the shared registry, so a
+// mounted view's footer berth and this one can coexist.
+const REVEAL_BERTH_KEY = 'reveal-card'
+const revealCard = ref<HTMLElement>()
+const isPhone = useIsPhone()
+let revealObserver: ResizeObserver | undefined
+
+const reserveRevealBerth = () => {
+  const height = isPhone.value ? revealCard.value?.getBoundingClientRect().height : undefined
+  claimMapBerth(
+    gameStore,
+    REVEAL_BERTH_KEY,
+    height ? { bottom: Math.round(height) + BERTH_GAP_PX } : undefined
+  )
+}
+
+// The card is v-if'd inside a long-lived layout, so the element arriving and
+// leaving is the lifecycle — not mount/unmount.
+watch([revealCard, isPhone], () => {
+  revealObserver?.disconnect()
+  reserveRevealBerth()
+  if (!revealCard.value) return
+  revealObserver = new ResizeObserver(reserveRevealBerth)
+  revealObserver.observe(revealCard.value, { box: 'border-box' })
+})
+
+onBeforeUnmount(() => {
+  revealObserver?.disconnect()
+  claimMapBerth(gameStore, REVEAL_BERTH_KEY, undefined)
+})
 
 const revealPopulation = computed(() => {
   const population = revealCountry.value?.people?.population
@@ -268,7 +308,10 @@ onMounted(() => {
   overflow: hidden;
   position: absolute;
   padding: 0.3rem 0.3rem 0 0;
-  animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1;
+  // `backwards` so the card holds its off-screen start from the moment it is
+  // painted — without it the first frames render at the resting position and
+  // the entrance reads as a pop-in mid-screen.
+  animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1 backwards;
   border-top: 0.1rem solid #ccc;
   border-left: 0.1rem solid #ccc;
   border-top-right-radius: 1.9rem;
@@ -299,6 +342,7 @@ onMounted(() => {
     margin-bottom: 2rem;
     border: 0.1rem solid var(--text-color);
   }
+  // Desktop keeps the inline SVG flag; phones swap in the wide background tile.
   .flag:deep(svg) {
     display: block;
   }

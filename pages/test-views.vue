@@ -96,6 +96,10 @@ import type { Component } from 'vue'
 
 const gameStore = useGameStore()
 
+/** Long enough for a scenario's interstitial to finish and stop clearing the
+ *  board, so `?reveal=` lands on a settled scene. */
+const REVEAL_PREVIEW_DELAY_MS = 6000
+
 const ME = '00000000-0000-4000-8000-000000000000'
 const RIVAL = '00000000-0000-4000-8000-000000000001'
 const THIRD = '00000000-0000-4000-8000-000000000002'
@@ -2628,6 +2632,19 @@ onMounted(() => {
   if (scenarios.some(s => s.id === requested)) scenarioId.value = requested
   diagnostics.value = route.query.diagnostics !== undefined
   deal()
+
+  // /test-views?reveal=AL — park the country reveal card open (framed, as a
+  // real round leaves it) so the card's layout and the berth it claims from
+  // the camera can be inspected without playing a round to its answer.
+  // Waits out the scenario's interstitial, which clears the board on arrival.
+  const reveal = String(route.query.reveal ?? '').toUpperCase()
+  if (reveal) {
+    window.setTimeout(() => {
+      gameStore.map.reveal = reveal as ISOCountryCode
+      gameStore.map.status = 'correct'
+      gameStore.map.focus = [reveal as ISOCountryCode]
+    }, REVEAL_PREVIEW_DELAY_MS)
+  }
 })
 </script>
 
