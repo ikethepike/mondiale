@@ -6,6 +6,7 @@ import {
   shouldArmAdvanceWatchdog,
   tableIsSettled,
 } from './enter-movement-phase.handler'
+import { isStrandedSubmitter } from './join.event'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 
 const seat = (phase: PlayerPhase): Pick<Player, 'phase'> => ({ phase })
@@ -176,5 +177,38 @@ describe('group-challenge scoring coverage', () => {
     )
     const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
     expect(SCORED_ELSEWHERE.filter(kind => arms.has(kind))).toEqual([])
+  })
+})
+
+/**
+ * Regression cover for the second half of the `construction-sitting-talk`
+ * freeze: the seat was stuck in 'group-challenge' and NO join heal covered
+ * it (orphanedInChallenge wants an individual/final phase, wedgedMoving
+ * wants 'moving', tableSettledButStuck wants a SETTLED_PHASES seat), so
+ * refreshing — the documented recovery moment — could never cure it.
+ */
+describe('isStrandedSubmitter', () => {
+  it('heals a seat whose answer banked but whose phase advance was lost', () => {
+    expect(isStrandedSubmitter({ phase: 'group-challenge', answered: true })).toBe(true)
+  })
+
+  it('leaves a seat still genuinely playing the round alone', () => {
+    // No banked answer: the player owes the round an answer and must keep
+    // the challenge, not be walked off it.
+    expect(isStrandedSubmitter({ phase: 'group-challenge', answered: false })).toBe(false)
+  })
+
+  it('never fires for a seat that already advanced', () => {
+    for (const phase of ['group-scores', 'moving', 'movement-summary', 'victory'] as const) {
+      expect(isStrandedSubmitter({ phase, answered: true })).toBe(false)
+    }
+  })
+
+  it('is disjoint from the movement-summary demotion above it', () => {
+    // join.event demotes a 'movement-summary' seat back to 'group-challenge'
+    // only when its answer is ABSENT; this heal requires it PRESENT. The two
+    // must never both fire, or the seat would ping-pong on every rejoin.
+    const demoted = { phase: 'movement-summary', answered: false } as const
+    expect(isStrandedSubmitter(demoted)).toBe(false)
   })
 })

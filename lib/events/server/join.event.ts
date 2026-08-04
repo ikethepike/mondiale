@@ -1,4 +1,5 @@
 import { generateTiles } from '~~/lib/tiles'
+import type { Player } from '~~/types/player.type'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
@@ -9,7 +10,23 @@ import {
   SETTLED_PHASES,
   tableIsSettled,
 } from './enter-movement-phase.handler'
+import { movesForScoredPoints, startWalk } from './moves'
 import { rearmLiveRound } from './rearm-round'
+
+/**
+ * A seat whose answer is banked but whose phase advance was lost. The table
+ * cannot advance past it (`readyForNextTurn` needs every seat settled), and
+ * the submit handler's own heal only fires if the client sends a duplicate —
+ * which a client that exhausted its ack retries, or closed its tab, never
+ * does. Rejoining is the recovery moment.
+ */
+export const isStrandedSubmitter = ({
+  phase,
+  answered,
+}: {
+  phase: Player['phase']
+  answered: boolean
+}): boolean => phase === 'group-challenge' && answered
 
 export const joinEventHandler: EventHandler = async ({
   io,
@@ -160,6 +177,28 @@ export const joinEventHandler: EventHandler = async ({
   // as a pure advance check), so the guard is the settled set, not one phase.
   const tableSettledButStuck =
     SETTLED_PHASES.includes(rejoining.phase) && tableIsSettled(Object.values(game.players))
+
+  // An answer banked while the phase advance was LOST: the seat sits in
+  // 'group-challenge' forever, and because `readyForNextTurn` needs every
+  // seat settled, that one seat freezes the whole table. The submit handler
+  // heals this when a duplicate arrives — but a client that gave up (its
+  // ack retries exhausted, or the tab closed) sends no duplicate, so the
+  // refresh has to be the cure. Same recipe as the handler's heal: read the
+  // banked score, never recompute it.
+  const banked = game.rounds[index]?.playerTurns[playerId]?.points
+  const strandedSubmitter = isStrandedSubmitter({
+    phase: rejoining.phase,
+    answered: !!game.rounds[index]?.groupAnswers[playerId],
+  })
+
+  if (game.started && strandedSubmitter) {
+    console.warn(`Healing stranded submitter ${playerId} on rejoin (answer banked, phase was not)`)
+    rejoining.phase = 'group-scores'
+    startWalk(
+      rejoining,
+      movesForScoredPoints({ game, player: rejoining, scored: banked?.scored ?? 0 })
+    )
+  }
 
   if (game.started && (orphanedInChallenge || wedgedMoving || tableSettledButStuck)) {
     console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)

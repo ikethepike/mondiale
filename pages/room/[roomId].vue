@@ -98,6 +98,16 @@ const activeView = computed<ActiveView | undefined>(() => {
     return { component: ViewSpectate, kind: 'score', key: 'spectate' }
   }
 
+  // Victory outlives the round that produced it: a winner who clears the
+  // gauntlet on the LAST round has no `currentRound` to hang off, and the
+  // guard below would blank their screen instead of showing the summary.
+  // Same reason the booth is checked above — neither ending depends on a
+  // live round. The mapping stays in the dispatch table; this only exempts
+  // victory from the round guard.
+  if (self.value.phase === 'victory') {
+    return resolveChallengeView(self.value.phase)
+  }
+
   if (!currentRound.value?.round) return undefined
 
   return resolveChallengeView(self.value.phase, currentRound.value.round)

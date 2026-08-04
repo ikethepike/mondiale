@@ -216,6 +216,16 @@ export const useClientEvents = () => {
               eventTarget
             )
           }
+          // 'error' means the handler THREW — a deterministic failure that
+          // will fail identically on every retry, burning the attempt budget
+          // in seconds and then giving up silently. The seat is stranded
+          // either way, so stop early and let the caller surface it rather
+          // than spending three round-trips proving the same thing.
+          if (receipt.reason === 'error') {
+            console.error(`${eventData.event} rejected by the server (handler threw)`)
+            return false
+          }
+
           console.warn(`${eventData.event} not accepted (${receipt.reason}), retrying`)
         } catch {
           console.warn(`No ack for ${eventData.event} (attempt ${attempt}/${ACK_ATTEMPTS})`)
