@@ -212,7 +212,6 @@ describe('roundStory', () => {
   })
 })
 
-
 // Copy that references an asset the card isn't showing ("this flag", "these
 // colours") reads as broken — the sweep below keeps the fallback cards honest.
 const DANGLING = [

@@ -287,7 +287,9 @@ const finished = computed(() => !!state.value.finished)
 // The watching lens: following the despot shows the HUNT's honest view — the
 // despot's trail arrives only on their own socket, so their first-person UI
 // cannot render truthfully for a watcher.
-const isDespot = computed(() => challenge.value?.despotId === gameStore.seatId && !gameStore.watching)
+const isDespot = computed(
+  () => challenge.value?.despotId === gameStore.seatId && !gameStore.watching
+)
 const despotPlayer = computed(() =>
   challenge.value ? gameStore.game?.players[challenge.value.despotId] : undefined
 )

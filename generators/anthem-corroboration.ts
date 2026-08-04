@@ -20,7 +20,8 @@ import { ISOCountryCodes } from '../data/iso-codes.gen'
  * wrong answer to "whose anthem is this", and a Francoist-era recording is
  * not what should play in a party game.
  */
-export const UNUSABLE = /\b(midi|former|historic(al)?|francoist|nazi|soviet|colonial|1st version)\b/i
+export const UNUSABLE =
+  /\b(midi|former|historic(al)?|francoist|nazi|soviet|colonial|1st version)\b/i
 
 /** Licences that need no named author. Everything else (CC BY, CC BY-SA) does. */
 export const ATTRIBUTION_FREE = /public domain|^CC0|^PD/i
@@ -31,9 +32,34 @@ export const isPlayable = (file: string): boolean =>
 /** Words that carry no identifying weight — matching on these alone would let
  *  any anthem recording answer for any country. */
 const STOPWORDS = new Set([
-  'the', 'of', 'a', 'an', 'and', 'or', 'to', 'is', 'in', 'our', 'we', 'you',
-  'national', 'anthem', 'hymn', 'march', 'song', 'state', 'instrumental',
-  'de', 'la', 'le', 'les', 'du', 'des', 'el', 'nossa', 'e',
+  'the',
+  'of',
+  'a',
+  'an',
+  'and',
+  'or',
+  'to',
+  'is',
+  'in',
+  'our',
+  'we',
+  'you',
+  'national',
+  'anthem',
+  'hymn',
+  'march',
+  'song',
+  'state',
+  'instrumental',
+  'de',
+  'la',
+  'le',
+  'les',
+  'du',
+  'des',
+  'el',
+  'nossa',
+  'e',
 ])
 
 /** Military/ceremonial bands record other countries' anthems constantly, and

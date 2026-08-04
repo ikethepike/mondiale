@@ -103,9 +103,7 @@ describe('anthem lyric walls', () => {
       // Over-reporting a prefixed word is a curation nudge; under-reporting is
       // a spoiled round.
       return terms
-        .filter(term =>
-          new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu').test(exposed)
-        )
+        .filter(term => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu').test(exposed))
         .map(term => `${file}: "${term}" left unmasked`)
     })
     expect(leaks).toEqual([])

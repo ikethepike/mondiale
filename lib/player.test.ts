@@ -133,7 +133,9 @@ describe('joinVerdict', () => {
 
   it('refuses started-game latecomers on a closed door or full booth', () => {
     const refusal = { admit: 'refuse', reason: 'game-already-started', spectatable: false }
-    expect(joinVerdict(room({ started: true, allowSpectators: false }), 'newcomer')).toEqual(refusal)
+    expect(joinVerdict(room({ started: true, allowSpectators: false }), 'newcomer')).toEqual(
+      refusal
+    )
     expect(
       joinVerdict(room({ started: true, spectators: watchers(MAX_SPECTATORS) }), 'newcomer')
     ).toEqual(refusal)

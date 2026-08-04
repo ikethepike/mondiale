@@ -183,9 +183,7 @@ const activePlayer = computed(() =>
 )
 // Nobody is on the clock during a dead-end hold — the console stands down with
 // the turn line so no one types into a paused table.
-const myTurn = computed(
-  () => !finished.value && !trap.value && activeId.value === gameStore.seatId
-)
+const myTurn = computed(() => !finished.value && !trap.value && activeId.value === gameStore.seatId)
 const walked = computed(() => chain.value)
 
 // Countries out of this game — off a continental board, or benched

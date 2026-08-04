@@ -12,7 +12,7 @@ const LOBBY_KICKS_MAX = 64
  * door readmits them, so their tab's automatic re-join bounces. Fire-and-
  * forget by design: a lost kick is a visible non-event the host re-clicks.
  */
-export const kickPlayerHandler = defineGameHandler('kick-player', async (context) => {
+export const kickPlayerHandler = defineGameHandler('kick-player', async context => {
   const { game, server, eventData, eventTarget, io } = context
   if (game.host !== eventTarget.playerId)
     return console.warn(`Non-host tried to kick: ${eventTarget.playerId}`)
@@ -23,9 +23,7 @@ export const kickPlayerHandler = defineGameHandler('kick-player', async (context
     return console.warn(`Invalid kick target for ${game.id}`)
   if (targetId === game.host) return console.warn(`Host cannot kick themselves in ${game.id}`)
 
-  game.players = Object.fromEntries(
-    Object.entries(game.players).filter(([id]) => id !== targetId)
-  )
+  game.players = Object.fromEntries(Object.entries(game.players).filter(([id]) => id !== targetId))
   game.lobbyKicks ??= []
   if (!game.lobbyKicks.includes(targetId)) game.lobbyKicks.push(targetId)
   if (game.lobbyKicks.length > LOBBY_KICKS_MAX) {

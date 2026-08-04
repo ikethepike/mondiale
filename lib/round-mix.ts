@@ -79,14 +79,7 @@ export const ROUND_WEIGHTS = {
  * challenge-groups.type.
  */
 export type RoundMechanic =
-  | 'typed'
-  | 'pin'
-  | 'choice'
-  | 'buzz'
-  | 'collect'
-  | 'turns'
-  | 'draw'
-  | 'order'
+  'typed' | 'pin' | 'choice' | 'buzz' | 'collect' | 'turns' | 'draw' | 'order'
 
 export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
@@ -195,8 +188,7 @@ export const recentKinds = (game: MixGame, window: number): RoundChallengeKind[]
     .map(round => roundChallengeKind(round.groupChallenge))
 
 /** 1.0 for the round just played, halving every `halfLife` rounds back. */
-const penalty = (halfLife: number, distance: number): number =>
-  2 ** (-(distance - 1) / halfLife)
+const penalty = (halfLife: number, distance: number): number => 2 ** (-(distance - 1) / halfLife)
 
 /**
  * How hard a recent history bites, on one axis. `max` over matching rounds

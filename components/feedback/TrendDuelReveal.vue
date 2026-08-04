@@ -59,7 +59,6 @@ const rows = computed(() =>
     })),
   }))
 )
-
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

@@ -25,33 +25,47 @@ describe('anthem dataset', () => {
     console.warn('anthems.test: ffprobe not on PATH — skipping the clip sample-rate sweep')
   }
 
-  it.skipIf(!ffprobeAvailable)('ships every clip at one sample rate', () => {
-    // `loudnorm` resamples to 192kHz internally and passes that downstream, so
-    // an unpinned AAC encode once shipped 96kHz m4a files — double speed, and
-    // audible ONLY on Safari, which prefers the m4a over the (correct) webm.
-    // Opus is 48kHz-only, so the webm was always right and hid the bug.
-    const probe = (file: string) => {
-      const result = spawnSync(
-        'ffprobe',
-        ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', file],
-        { encoding: 'utf8' }
-      )
-      // stdout is null when the spawn itself failed — surface WHICH file and
-      // why instead of a bare TypeError from `.trim()`.
-      if (result.error || result.stdout === null) {
-        throw new Error(`ffprobe failed for ${file}: ${result.error?.message ?? 'no output'}`)
+  it.skipIf(!ffprobeAvailable)(
+    'ships every clip at one sample rate',
+    () => {
+      // `loudnorm` resamples to 192kHz internally and passes that downstream, so
+      // an unpinned AAC encode once shipped 96kHz m4a files — double speed, and
+      // audible ONLY on Safari, which prefers the m4a over the (correct) webm.
+      // Opus is 48kHz-only, so the webm was always right and hid the bug.
+      const probe = (file: string) => {
+        const result = spawnSync(
+          'ffprobe',
+          [
+            '-v',
+            'error',
+            '-select_streams',
+            'a',
+            '-show_entries',
+            'stream=sample_rate',
+            '-of',
+            'csv=p=0',
+            file,
+          ],
+          { encoding: 'utf8' }
+        )
+        // stdout is null when the spawn itself failed — surface WHICH file and
+        // why instead of a bare TypeError from `.trim()`.
+        if (result.error || result.stdout === null) {
+          throw new Error(`ffprobe failed for ${file}: ${result.error?.message ?? 'no output'}`)
+        }
+        return result.stdout.trim()
       }
-      return result.stdout.trim()
-    }
 
-    const offRate = entries
-      .filter(([, entry]) => entry?.m4a)
-      .map(([iso, entry]) => [iso, probe(`public${entry!.m4a}`)] as const)
-      .filter(([, rate]) => rate && rate !== '48000')
+      const offRate = entries
+        .filter(([, entry]) => entry?.m4a)
+        .map(([iso, entry]) => [iso, probe(`public${entry!.m4a}`)] as const)
+        .filter(([, rate]) => rate && rate !== '48000')
 
-    expect(offRate.map(([iso, rate]) => `${iso}: ${rate}Hz`)).toEqual([])
-    // One ffprobe per shipped clip — well past the 5s default.
-  }, 60_000)
+      expect(offRate.map(([iso, rate]) => `${iso}: ${rate}Hz`)).toEqual([])
+      // One ffprobe per shipped clip — well past the 5s default.
+    },
+    60_000
+  )
 
   it('ships both encodings for every country', () => {
     const broken = entries.filter(([, entry]) => !entry?.webm || !entry?.m4a)

@@ -35,7 +35,11 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { exportsCommodity, MADE_REVEAL_ROWS, madeTopExporters } from '~~/lib/challenges/final-challenge'
+import {
+  exportsCommodity,
+  MADE_REVEAL_ROWS,
+  madeTopExporters,
+} from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
 import { formatCompact, formatOrdinal } from '~~/lib/number'
 import { sentenceCase } from '~~/lib/strings'

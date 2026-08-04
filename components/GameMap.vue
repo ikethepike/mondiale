@@ -704,11 +704,7 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   view.height = view.width / viewAspect
   // Wider than the world (berth rest): the only legal x is dead centre.
   const overhang = (WORLD_VIEW.width - view.width) / 2
-  view.x = clamp(
-    view.x,
-    Math.min(0, overhang),
-    Math.max(WORLD_VIEW.width - view.width, overhang)
-  )
+  view.x = clamp(view.x, Math.min(0, overhang), Math.max(WORLD_VIEW.width - view.width, overhang))
 
   // Vertical headroom: a strict [0, world-height] clamp pins the far north
   // (Svalbard, Hans Island at y≈87 of 1001) and the far south to the screen

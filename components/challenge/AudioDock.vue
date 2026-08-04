@@ -46,7 +46,6 @@
           <path d="M8 5.5v13l11-6.5z" />
         </svg>
       </span>
-
     </button>
 
     <!-- The waveform takes the caption's place while sound is running: one
@@ -273,9 +272,7 @@ if (
     const audio = element.value
     if (!audio) return
     const src = decodeURIComponent(audio.currentSrc.split('/').pop() || '(no src)')
-    const played = audio.played.length
-      ? audio.played.end(audio.played.length - 1).toFixed(1)
-      : '0'
+    const played = audio.played.length ? audio.played.end(audio.played.length - 1).toFixed(1) : '0'
     diagnostics.value =
       `${src} · ready=${audio.readyState} net=${audio.networkState} ` +
       `t=${audio.currentTime.toFixed(2)} played=${played} · ` +
@@ -459,5 +456,4 @@ defineExpose({ play, pause, stop })
   opacity: 0;
   transform: translateY(0.3rem);
 }
-
 </style>

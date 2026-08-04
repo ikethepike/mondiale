@@ -87,7 +87,9 @@ describe('round staging', () => {
     expect(roundChallengeKind(dealt)).toBe('ranking')
     expect(pickRoundKind).toHaveBeenCalledTimes(3)
 
-    const summary = warn.mock.calls.map(call => String(call[0])).find(line => line.includes('fell back'))
+    const summary = warn.mock.calls
+      .map(call => String(call[0]))
+      .find(line => line.includes('fell back'))
     expect(summary).toContain('test-room')
     expect(summary).toContain('manhunt, unique-or-bust, border-chain')
     expect(summary).toContain('1 players')

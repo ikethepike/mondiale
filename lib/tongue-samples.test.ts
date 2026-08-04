@@ -38,7 +38,9 @@ describe('anthemTongueSample', () => {
   it('skips lines that mask a country name', () => {
     // The masks exist BECAUSE those words name the country — a written hint
     // that includes them points at the answer instead of narrowing it.
-    const sample = anthemTongueSample(wall(['Ще не вмерла [[Україна]],', 'Ще нам, браття…', 'Згинуть наші…']))
+    const sample = anthemTongueSample(
+      wall(['Ще не вмерла [[Україна]],', 'Ще нам, браття…', 'Згинуть наші…'])
+    )
     expect(sample?.lines).toEqual(['Ще нам, браття…', 'Згинуть наші…'])
     expect(sample?.script).toBe('Cyrillic')
     expect(sample?.code).toBe('uk')

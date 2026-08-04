@@ -1,10 +1,7 @@
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs'
 import { createInterface } from 'readline'
 import { type Amount, type ISOCountryCode, isValidISOCode } from '../../../types/geography.types'
-import {
-  COMMODITY_EXPORTER_EXCLUSIONS,
-  COMMODITY_HS_CODES,
-} from '../../data/commodity-hs-codes'
+import { COMMODITY_EXPORTER_EXCLUSIONS, COMMODITY_HS_CODES } from '../../data/commodity-hs-codes'
 import { parseCSV } from '../../lib/csv'
 
 /**
