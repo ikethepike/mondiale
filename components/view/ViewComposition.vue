@@ -286,10 +286,12 @@ footer {
 
 @media (max-width: $tablet) {
   // The stage owns the shell's padding here, so the bar can't bleed past the
-  // viewport edge the way a fixed clamp would
+  // viewport edge the way a fixed clamp would. It sits high rather than
+  // centred: the tall column below belongs to the option table.
   .stage {
+    justify-content: flex-start;
     width: 100%;
-    padding: 0 1.2rem;
+    padding: 2rem 1.2rem 0;
   }
 
   .bar {
