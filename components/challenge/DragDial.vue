@@ -121,7 +121,10 @@ const tape = ref<HTMLElement>()
  * fill the tape instead.
  */
 const pxPerUnit = computed(() => {
-  const detents = (props.max - props.min) / props.step
+  // Rails that meet (a data-derived scale whose values all fell in one step)
+  // would divide by zero and hand NaN to every tick offset, so they keep the
+  // base gearing rather than spreading to fill a tape with nothing on it.
+  const detents = Math.max(1, (props.max - props.min) / props.step)
   const perStep = detents < ROOMY_DETENTS ? PX_PER_STEP * (ROOMY_DETENTS / detents) : PX_PER_STEP
   return perStep / props.step
 })

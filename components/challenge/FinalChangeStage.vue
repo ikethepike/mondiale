@@ -5,6 +5,7 @@
            animates, so the pair never blinks through to the page mid-cross. -->
       <img class="frame" :src="challenge.frames[0]" :alt="EARLIER_ALT" />
       <img
+        ref="laterFrame"
         class="frame later"
         :class="{ still: paused || reducedMotion, shown: manualLater }"
         :src="challenge.frames[1]"
@@ -97,6 +98,7 @@ const reducedMotion = prefersReducedMotion()
 const committed = ref(false)
 const manualLater = ref(false)
 const tapped = ref<ISOCountryCode>()
+const laterFrame = ref<HTMLImageElement>()
 const dialDecade = ref(Math.round((DIAL_MIN + DIAL_MAX) / 2 / 10) * 10)
 const consoleFooter = ref<HTMLElement>()
 
@@ -105,21 +107,36 @@ useFooterBerth(consoleFooter)
 const formatDecade = (year: number) => `${year}s`
 const shownDecade = computed(() => Math.round(dialDecade.value / 10) * 10)
 
-/** Which frame the year chips should light. Without motion the swap button
- *  owns it; with motion it follows the loop's own half-period. */
+/**
+ * Which frame the year chips light. Read from the fading element itself rather
+ * than a timer beside it: a `setInterval` at half the period drifts against
+ * the compositor, and even in phase it disagreed with the picture for the
+ * tail of every cycle, since the frame starts fading back at 88% while a
+ * half-period tick only flips at 100%.
+ */
 const showingLater = ref(false)
-let beat: ReturnType<typeof setInterval> | undefined
+let raf: number | undefined
+
+const trackFrame = () => {
+  const el = laterFrame.value
+  if (el) {
+    const [animation] = el.getAnimations()
+    const period = props.challenge.crossfadeSeconds * 2 * 1000
+    const t = Number(animation?.currentTime ?? 0) % period
+    // The later frame is opaque across the keyframe's 50%–88% hold
+    showingLater.value = t / period >= 0.5 && t / period < 0.88
+  }
+  raf = requestAnimationFrame(trackFrame)
+}
 
 watch(
   [() => props.paused, () => props.challenge.slug],
   () => {
-    if (beat) clearInterval(beat)
-    beat = undefined
+    if (raf) cancelAnimationFrame(raf)
+    raf = undefined
     showingLater.value = false
     if (props.paused || reducedMotion) return
-    beat = setInterval(() => {
-      showingLater.value = !showingLater.value
-    }, props.challenge.crossfadeSeconds * 1000)
+    raf = requestAnimationFrame(trackFrame)
   },
   { immediate: true }
 )
@@ -145,7 +162,7 @@ const onMapClick = (event: Event) => {
 onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 onBeforeUnmount(() => {
   document.removeEventListener('mapClick', onMapClick)
-  if (beat) clearInterval(beat)
+  if (raf) cancelAnimationFrame(raf)
 })
 </script>
 <style lang="scss" scoped>
