@@ -59,15 +59,30 @@ export const niceTicks = (min: number, max: number, count = 3): number[] => {
 
   const rawStep = (max - min) / (count - 1)
   const magnitude = 10 ** Math.floor(Math.log10(rawStep))
-  const normalized = rawStep / magnitude
-  const step = (normalized > 5 ? 10 : normalized > 2 ? 5 : normalized > 1 ? 2 : 1) * magnitude
+  // Walk the 1/2/5/10 ladder and keep the step whose tick count lands nearest
+  // the target. Rounding UP alone overshoots a domain that cannot absorb the
+  // next rung — 1834–16001 takes a 10k step and keeps one lonely tick, where
+  // 5k reads 5k/10k/15k as the docstring promises.
+  const tickCount = (candidate: number) =>
+    Math.floor(max / candidate + 1e-9) - Math.ceil(min / candidate - 1e-9) + 1
+  const step = [1, 2, 5, 10]
+    .map(rung => rung * magnitude)
+    .reduce((best, candidate) => {
+      if (tickCount(candidate) < 2) return best
+      return Math.abs(tickCount(candidate) - count) < Math.abs(tickCount(best) - count)
+        ? candidate
+        : best
+    }, magnitude)
 
   const ticks: number[] = []
-  // The epsilon guards float dust twice over: it keeps a tick that lands a
-  // hair past `max` (0.6000000000000001) and snaps a near-zero to a clean 0.
   const epsilon = step * 1e-9
-  for (let value = Math.ceil(min / step) * step; value <= max + epsilon; value += step) {
-    ticks.push(Math.abs(value) < epsilon ? 0 : value)
+  // Multiply out from the first tick rather than accumulating `+= step`: the
+  // running sum is what leaves 0.6000000000000001 in place of the 0.6 that
+  // must stay inside the domain. Snapping also cleans a near-zero to a true 0.
+  const first = Math.ceil(min / step - 1e-9)
+  for (let index = 0; first * step + index * step <= max + epsilon; index++) {
+    const value = (first + index) * step
+    ticks.push(Math.abs(value) < epsilon ? 0 : Number(value.toPrecision(12)))
   }
   return ticks
 }
