@@ -1,0 +1,60 @@
+@use '../rules/breakpoints' as *;
+@use '../rules/ink' as *;
+
+// Bottom-sheet skeleton, worn alongside .pane (which owns the surface:
+// background, border, radius, pointer-events). This adds only sheet-ness —
+// the bottom-anchored geometry, the grab handle and the scroll containment.
+// Drag math never lives here; it comes from lib/use-drag-sheet.ts.
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: 70dvh;
+  border-bottom: none;
+  border-top-left-radius: 1.9rem;
+  border-top-right-radius: 1.9rem;
+  // The keyboard is the floor when it is up; --bottom-clearance already
+  // resolves to whichever of home-indicator/keyboard bites.
+  padding: 1.6rem 1.6rem calc(1.6rem + var(--bottom-clearance));
+}
+
+// The grab affordance: a small pill in a generous invisible hit area.
+// touch-action: none hands the pan to the drag composable — only drag
+// surfaces carry it, never the scrolling body.
+.sheet-handle {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  margin: -0.8rem 0 0.4rem;
+  padding: 0.8rem 0;
+  touch-action: none;
+  cursor: grab;
+
+  &::after {
+    content: '';
+    width: 4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: ink(0.2);
+  }
+}
+
+// Fixed handle/header with a scrolling body underneath. Opt in — a sheet
+// that scrolls as one block (the history drawer) leaves it off and keeps
+// overflow on its own root.
+.sheet.split {
+  display: flex;
+  flex-direction: column;
+}
+
+// The scroller. pan-y (not none) so the list scrolls natively while the
+// handle above still drags the sheet.
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
