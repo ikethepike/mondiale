@@ -21,7 +21,12 @@
               <span class="side-name">{{ countryName(side.isoCode) }}</span>
               <span v-if="side.pickedMark" class="side-picked">your pick</span>
             </span>
-            <TrendSparkline v-if="side.series" :series="side.series" :metric="row.metric" />
+            <TrendSparkline
+              v-if="side.series"
+              :series="side.series"
+              :metric="row.metric"
+              detail="chart"
+            />
           </span>
         </span>
       </li>

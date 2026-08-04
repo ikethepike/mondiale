@@ -385,6 +385,7 @@
             class="result-sparkline"
             :series="trajectorySeries"
             :metric="challenge.trajectory.metric"
+            detail="chart"
           />
           <LeaderReveal
             v-else-if="(variant === 'leader-pick' || variant === 'leader-portrait') && challenge"
@@ -1601,8 +1602,9 @@ header .flag {
   }
 }
 
+// Wider at chart detail: the axis gutters must not eat the data band.
 .result-sparkline {
-  width: min(30rem, 80vw);
+  width: min(42rem, 92vw);
   margin: 0.8rem auto 0;
 }
 

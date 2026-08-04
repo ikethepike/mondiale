@@ -281,39 +281,46 @@ const GALLERY = [
   { isoCode: 'SV', metric: 'homicideRate', note: 'El Salvador — homicide collapse' },
   { isoCode: 'US', metric: 'gini', note: 'United States — inequality (0.2–0.6 scale)' },
   { isoCode: 'BD', metric: 'childMortality', note: 'Bangladesh — child mortality' },
+  { isoCode: 'SY', metric: 'netMigration', note: 'Syria — net migration (crosses zero)' },
 ] as const
 
-const TrendGallery = defineComponent({
-  name: 'TrendGallery',
-  setup: () => () =>
-    h(
-      'div',
-      {
-        style:
-          'position:absolute;inset:0;overflow:auto;pointer-events:auto;padding:6rem 2rem 2rem;' +
-          'display:grid;gap:1.6rem;grid-template-columns:repeat(auto-fill,minmax(24rem,1fr));' +
-          'align-content:start;background:hsl(36,100%,97%)',
-      },
-      GALLERY.map(({ isoCode, metric, note }) => {
-        const series = TRENDS[isoCode]?.[metric]
-        return h(
-          'figure',
-          {
-            key: `${isoCode}-${metric}`,
-            style:
-              'margin:0;padding:1.4rem;border-radius:1.2rem;background:hsla(36,100%,99%,0.9);' +
-              'border:1px solid hsla(215.7,76.4%,21.6%,0.2)',
-          },
-          [
-            series
-              ? h(TrendSparkline, { series: [...series], metric })
-              : h('em', 'no series in data/trends.gen'),
-            h('figcaption', { style: 'margin-top:0.6rem;font-size:1.3rem' }, note),
-          ]
-        )
-      })
-    ),
-})
+/** One gallery, both voices: 'spark' is the plain sparkline, 'chart' the
+ *  post-reveal treatment (axes, scrub readout, expand dock). */
+const trendGallery = (detail: 'spark' | 'chart') =>
+  defineComponent({
+    name: detail === 'chart' ? 'TrendChartGallery' : 'TrendGallery',
+    setup: () => () =>
+      h(
+        'div',
+        {
+          style:
+            'position:absolute;inset:0;overflow:auto;pointer-events:auto;padding:6rem 2rem 2rem;' +
+            'display:grid;gap:1.6rem;align-content:start;background:hsl(36,100%,97%);' +
+            `grid-template-columns:repeat(auto-fill,minmax(${detail === 'chart' ? 34 : 24}rem,1fr))`,
+        },
+        GALLERY.map(({ isoCode, metric, note }) => {
+          const series = TRENDS[isoCode]?.[metric]
+          return h(
+            'figure',
+            {
+              key: `${isoCode}-${metric}`,
+              style:
+                'margin:0;padding:1.4rem;border-radius:1.2rem;background:hsla(36,100%,99%,0.9);' +
+                'border:1px solid hsla(215.7,76.4%,21.6%,0.2)',
+            },
+            [
+              series
+                ? h(TrendSparkline, { series: [...series], metric, detail })
+                : h('em', 'no series in data/trends.gen'),
+              h('figcaption', { style: 'margin-top:0.6rem;font-size:1.3rem' }, note),
+            ]
+          )
+        })
+      ),
+  })
+
+const TrendGallery = trendGallery('spark')
+const TrendChartGallery = trendGallery('chart')
 
 const scenarios: Scenario[] = [
   {
@@ -423,6 +430,12 @@ const scenarios: Scenario[] = [
     id: 'trend-sparkline-gallery',
     label: 'Trend sparklines (shape gallery)',
     component: TrendGallery,
+    build: () => mockGame('group-scores', []),
+  },
+  {
+    id: 'trend-sparkline-chart',
+    label: 'Trend charts (axes + scrub)',
+    component: TrendChartGallery,
     build: () => mockGame('group-scores', []),
   },
   {
