@@ -300,6 +300,12 @@ const props = defineProps({
     type: Object as PropType<MapFeatureOverlay>,
     default: undefined,
   },
+  /** Frame tightness for a mode whose subject IS the feature (water modes):
+   *  the pad floor that over-zooms a small subject relaxes to this. */
+  framePad: {
+    type: Object as PropType<{ scale?: number; floor?: number }>,
+    default: undefined,
+  },
   /** Magnifying inset for a subject too small to see at world zoom. */
   inset: {
     type: Object as PropType<MapInsetType>,
@@ -785,7 +791,11 @@ const frameForBoxes = (
   }
   if (minX === Infinity) return restView()
 
-  const pad = Math.max((maxX - minX) * 0.35, (maxY - minY) * 0.35, 60)
+  // The flat floor keeps a small subject from filling the screen. A mode whose
+  // subject IS the feature relaxes it, or the pad outgrows the thing it frames.
+  const padScale = props.framePad?.scale ?? 0.35
+  const padFloor = props.framePad?.floor ?? 60
+  const pad = Math.max((maxX - minX) * padScale, (maxY - minY) * padScale, padFloor)
   let x = minX - pad
   let y = minY - pad
   let width = maxX - minX + pad * 2
@@ -800,6 +810,18 @@ const frameForBoxes = (
     const grow = height * viewAspect - width
     x -= grow / 2
     width += grow
+  }
+
+  // This frame skips `clampView`, so honour its zoom floor here: a sub-unit
+  // subject (Lake Chad spans 2.6) would otherwise ask for a view no camera can
+  // hold. Grow about the centre so the subject stays put as it loosens.
+  const minWidth = WORLD_VIEW.width / MAX_ZOOM
+  if (width < minWidth) {
+    const grow = minWidth / width
+    x += width / 2 - (width * grow) / 2
+    y += height / 2 - (height * grow) / 2
+    width *= grow
+    height *= grow
   }
   return berthedView({ x, y, width, height }, { y: minY - pad, height: maxY - minY + pad * 2 })
 }

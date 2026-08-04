@@ -65,6 +65,9 @@ interface GameStoreState {
     focus: ISOCountryCode[]
     /** Context countries whose centers stay in frame (soft inclusion). */
     focusContext: ISOCountryCode[]
+    /** Frame tightness for modes whose subject is the feature itself — the
+     *  default pad floor outgrows a small river or lake. */
+    framePad?: { scale?: number; floor?: number }
     /** Soft per-country verdict fills for traversal guesses. */
     tints: { [isoCode in ISOCountryCode]?: MapTint }
     /** Pin-landmark: the point the player dropped, drawn as a marker. */
@@ -184,6 +187,7 @@ export const useGameStore = defineStore('game', {
       labels: false,
       focus: [],
       focusContext: [],
+      framePad: undefined,
       tints: {},
       pin: undefined,
       pinAnswer: undefined,

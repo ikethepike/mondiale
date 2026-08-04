@@ -121,6 +121,10 @@ onMounted(async () => {
     kind: feature.kind === 'river' ? 'line' : 'area',
     bounds: feature.bounds,
   }
+  // The feature IS the subject here, and the default 60-unit pad floor is wider
+  // than most of them — the Drau spans 23. The answer countries stay in frame
+  // regardless: a waterway runs through the very countries it asks for.
+  gameStore.map.framePad = { floor: 12 }
 })
 
 const {

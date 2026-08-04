@@ -28,6 +28,7 @@
       :focus-context="gameStore.map.focusContext"
       :tints="gameStore.map.tints"
       :feature="gameStore.map.feature"
+      :frame-pad="gameStore.map.framePad"
       :inset="gameStore.map.inset"
       :sea-links="gameStore.map.seaLinks"
       :ringed="gameStore.map.ringed"
