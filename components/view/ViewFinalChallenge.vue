@@ -179,9 +179,9 @@
     <!-- The lit set, made readable: 54 highlighted countries are a wall at
          world zoom, so the roster gets its own surface and its rows answer. -->
     <MembershipSheet
-      v-if="currentFinalChallenge?._type === 'membership-challenge' && !showInterstitial"
+      v-if="oddOneOutSubject && !showInterstitial"
       :countries="membershipCountries"
-      :organization="currentFinalChallenge.organization"
+      :subject="oddOneOutSubject"
       :settled="!!status"
       @pick="submitMembership"
     />
@@ -207,6 +207,10 @@ import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { TREATIES } from '~~/data/treaties.gen'
+import { buildLineup } from '~~/lib/odd-one-out'
+import { OrganizationVector } from '~~/types/organization.type'
+import { treatyMeta } from '~~/types/treaty.type'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import {
   bornAfter,
@@ -399,6 +403,21 @@ const lesson = computed(() => {
         ? `${countryName(COUNTRIES[challenge.exception])} is the odd one out.`
         : `The odd one out was ${countryName(COUNTRIES[challenge.exception])}.`
     }
+    case 'treaty-challenge': {
+      // The lesson is the standing, not the name — "signed it and never
+      // ratified" is the fact worth carrying out of the round.
+      const name = countryName(COUNTRIES[challenge.holdout])
+      const { shortName } = treatyMeta(challenge.treaty)
+      const year = TREATIES[challenge.treaty]?.[challenge.holdout]?.year
+      switch (challenge.standing) {
+        case 'signatory':
+          return `${name} signed the ${shortName}${year ? ` in ${year}` : ''} and never ratified it.`
+        case 'withdrawn':
+          return `${name} was a party to the ${shortName}, then withdrew.`
+        default:
+          return `${name} never joined the ${shortName}.`
+      }
+    }
     case 'born-challenge': {
       const qualifying = Object.values(COUNTRIES).filter(country =>
         bornAfter(country.isoCode, challenge.year)
@@ -490,6 +509,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('countries')
     case 'made-challenge':
       return datasetAttribution('commodity-exporters')
+    case 'treaty-challenge':
+      return datasetAttribution('treaties')
     case 'leadership-challenge':
       return datasetAttribution('leaders')
     case 'born-challenge':
@@ -519,22 +540,40 @@ const details = computed(() => {
   })
 })
 
-/** The lit set for a membership question — the sheet lists exactly this. */
+/** The lit set for an odd-one-out question — the sheet lists exactly this. */
 const membershipCountries = ref<ISOCountryCode[]>([])
+
+/** What the lit countries share, when the question is an odd-one-out. */
+const oddOneOutSubject = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type === 'membership-challenge') {
+    return OrganizationVector[challenge.organization]
+  }
+  if (challenge?._type === 'treaty-challenge') return treatyMeta(challenge.treaty).shortName
+  return undefined
+})
 
 const triggerMembershipChallenge = () => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type === 'membership-challenge') {
-    const lit = new Set<ISOCountryCode>([challenge.exception])
-    for (const country of Object.values(COUNTRIES)) {
-      if (country.membership.some(organization => organization.id === challenge.organization)) {
-        lit.add(country.isoCode)
-      }
-    }
+    const members = Object.values(COUNTRIES)
+      .filter(country =>
+        country.membership.some(organization => organization.id === challenge.organization)
+      )
+      .map(country => country.isoCode)
     // One set, two consumers: the map lights it, the sheet lists it. A second
     // derivation that filtered differently would point at the exception.
-    membershipCountries.value = [...lit]
-    for (const isoCode of lit) gameStore.map.highlighted.add(isoCode)
+    membershipCountries.value = buildLineup(challenge.exception, members)
+    for (const isoCode of membershipCountries.value) gameStore.map.highlighted.add(isoCode)
+  }
+  if (challenge?._type === 'treaty-challenge') {
+    // Capped, unlike membership: the CRC binds 191 countries, and a lineup that
+    // long is a lit planet with a roster nobody reads.
+    const bound = (game.value ? playableCountries(game.value) : []).filter(
+      isoCode => TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
+    )
+    membershipCountries.value = buildLineup(challenge.holdout, bound)
+    for (const isoCode of membershipCountries.value) gameStore.map.highlighted.add(isoCode)
   }
   if (challenge?._type === 'scales-challenge') {
     gameStore.map.tints[challenge.target] = 'endpoint'
@@ -585,17 +624,27 @@ const clearScalesPicks = () => {
   scalesPicks.value = []
 }
 
-/** The one membership submission — the map tap and a sheet row both land here. */
+/**
+ * The one odd-one-out submission — the map tap and a sheet row both land here,
+ * for the club question and the treaty question alike.
+ */
 const submitMembership = (isoCode: ISOCountryCode) => {
   const challenge = currentFinalChallenge.value
-  if (challenge?._type !== 'membership-challenge' || gameStore.map.status) return
+  if (gameStore.map.status) return
+
+  const answered =
+    challenge?._type === 'membership-challenge'
+      ? { submittedAnswer: { _type: challenge._type, isoCode } as const, reveal: challenge.exception }
+      : challenge?._type === 'treaty-challenge'
+        ? { submittedAnswer: { _type: challenge._type, isoCode } as const, reveal: challenge.holdout }
+        : undefined
+  if (!answered) return
 
   gameStore.map.highlighted.clear()
-  const submittedAnswer = { _type: 'membership-challenge', isoCode } as const
-  gameStore.map.reveal = challenge.exception
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  gameStore.map.reveal = answered.reveal
+  gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  update({ event: 'submit-final-challenge-answer', submittedAnswer: answered.submittedAnswer })
 }
 
 const submitScales = () => {
@@ -901,6 +950,7 @@ const onMapClick = (event: Event) => {
       }
       break
     case 'membership-challenge':
+    case 'treaty-challenge':
       submitMembership(isoCode as ISOCountryCode)
       break
     case 'scales-challenge':

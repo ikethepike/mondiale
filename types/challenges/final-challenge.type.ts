@@ -1,6 +1,7 @@
 import type { GameDifficulty } from '../game.types'
 import type { ISOCountryCode, Region } from '../geography.types'
 import type { OrganizationVector } from '../organization.type'
+import type { TreatyId, TreatyStanding } from '../treaty.type'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 
 export interface FinalChallenge {
@@ -22,6 +23,7 @@ export type FinalChallengeItem =
   | MaxChallenge
   | LanguageChallenge
   | MembershipChallenge
+  | TreatyChallenge
   | LeadershipChallenge
   | SunsetBlitzChallenge
   | ScalesChallenge
@@ -45,6 +47,7 @@ export type FinalChallengeAnswer =
   | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'language-challenge'; isoCode: ISOCountryCode }
   | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
+  | { _type: 'treaty-challenge'; isoCode: ISOCountryCode }
   /** Client-trust (like higher-lower): the countries named in time. */
   | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
   | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
@@ -98,6 +101,20 @@ export interface MembershipChallenge {
   _type: 'membership-challenge'
   exception: ISOCountryCode
   organization: keyof typeof OrganizationVector
+}
+
+/**
+ * The mirror of a membership question, asked of an instrument rather than a
+ * club: everyone lit is bound by it except one. `standing` is why that one
+ * isn't — it drives the reveal, so the dealer and the lesson can't drift.
+ */
+export interface TreatyChallenge {
+  _type: 'treaty-challenge'
+  treaty: TreatyId
+  /** The country to tap: the one not bound by it. */
+  holdout: ISOCountryCode
+  /** How it isn't bound — signed and stalled, walked out, or never came. */
+  standing: Exclude<TreatyStanding, 'party'> | 'absent'
 }
 
 export interface LeadershipChallenge {

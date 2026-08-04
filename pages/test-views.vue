@@ -2433,6 +2433,17 @@ const scenarios: Scenario[] = [
       finalGame([{ _type: 'membership-challenge', organization: 'csto', exception: 'MN' }]),
   },
   {
+    // The payoff case: the US is the only country on earth that signed the CRC
+    // and never ratified it.
+    id: 'final-treaty',
+    label: 'Final: treaty (signed, never ratified)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        { _type: 'treaty-challenge', treaty: 'crc', holdout: 'US', standing: 'signatory' },
+      ]),
+  },
+  {
     id: 'final-scales',
     label: 'Final: tip the scales',
     component: ViewFinalChallenge,

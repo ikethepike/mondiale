@@ -3,6 +3,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
+import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
@@ -91,6 +92,7 @@ describe('getFinalChallenges', () => {
       for (const challenge of easy.challenges) {
         expect([
           'membership-challenge',
+          'treaty-challenge',
           'scales-challenge',
           'sunset-blitz-challenge',
         ]).not.toContain(challenge._type)
@@ -122,6 +124,67 @@ describe('membership challenge', () => {
       for (const challenge of challenges) {
         if (challenge._type !== 'membership-challenge') continue
         expect(['opec', 'au', 'csto']).not.toContain(challenge.organization)
+      }
+    }
+  })
+})
+
+describe('treaty challenge', () => {
+  // The mirror of the membership regression: the holdout must genuinely not be
+  // bound, or the question has no answer.
+  it('never names a party as the holdout', () => {
+    for (const variant of ['world', 'europe'] as const) {
+      for (let round = 0; round < DEAL_ROUNDS; round++) {
+        const { challenges } = getFinalChallenges({ game: gameFor(variant, 'hard') })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'treaty-challenge') continue
+          expect(TREATIES[challenge.treaty]?.[challenge.holdout]?.standing).not.toBe('party')
+        }
+      }
+    }
+  })
+
+  // standing drives the reveal's wording, so a mismatch would have the lesson
+  // state something the data does not say.
+  it('records a standing the data agrees with', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge') continue
+        const recorded = TREATIES[challenge.treaty]?.[challenge.holdout]?.standing
+        expect(challenge.standing).toBe(recorded ?? 'absent')
+      }
+    }
+  })
+
+  // The point of the mode: a country that signed and stalled, or walked out,
+  // is the question worth asking. Without the bias those holdouts are a
+  // rounding error against ~160 countries that simply never joined.
+  it('prefers a holdout that made a choice', () => {
+    let pointed = 0
+    let dealt = 0
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge') continue
+        dealt++
+        if (challenge.standing !== 'absent') pointed++
+      }
+    }
+    expect(dealt).toBeGreaterThan(0)
+    expect(pointed / dealt).toBeGreaterThan(0.8)
+  })
+
+  // The United States is the only country on earth that signed the Convention
+  // on the Rights of the Child and never ratified it — so on any board holding
+  // it, the CRC has exactly one legal answer.
+  it('names the United States when the CRC is dealt', () => {
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      for (const challenge of challenges) {
+        if (challenge._type !== 'treaty-challenge' || challenge.treaty !== 'crc') continue
+        expect(challenge.holdout).toBe('US')
+        expect(challenge.standing).toBe('signatory')
       }
     }
   })

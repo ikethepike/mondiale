@@ -5,6 +5,8 @@ import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { TREATIES } from '~~/data/treaties.gen'
+import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
@@ -24,6 +26,7 @@ import type {
   MadeChallenge,
   MaxChallenge,
   MembershipChallenge,
+  TreatyChallenge,
   MinChallenge,
   MinMaxAccessorKeys,
   RegionChallenge,
@@ -111,6 +114,7 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
     if (eligibleOrganizations(pool).length) types.push('membership-challenge')
+    if (eligibleTreaties(pool).length) types.push('treaty-challenge')
     types.push('scales-challenge', 'sunset-blitz-challenge')
   }
   return types
@@ -137,6 +141,8 @@ const dealChallenge = (
         return getMaxChallenge(pool)
       case 'membership-challenge':
         return getMembershipChallenge(pool)
+      case 'treaty-challenge':
+        return getTreatyChallenge(pool)
       case 'scales-challenge':
         return getScalesChallenge(pool)
       case 'sunset-blitz-challenge':
@@ -327,6 +333,42 @@ const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge | u
     _type: 'membership-challenge',
     organization,
     exception,
+  }
+}
+
+const isBoundBy = (isoCode: ISOCountryCode, treaty: TreatyId) =>
+  TREATIES[treaty]?.[isoCode]?.standing === 'party'
+
+/**
+ * Same fairness test as the organizations: enough bound countries to light up,
+ * and enough unbound ones for the holdout to hide among.
+ */
+const eligibleTreaties = (pool: ISOCountryCode[]): TreatyId[] =>
+  TREATY_META.filter(meta => {
+    const bound = pool.filter(isoCode => isBoundBy(isoCode, meta.id)).length
+    return bound >= 4 && pool.length - bound >= 4
+  }).map(meta => meta.id)
+
+const getTreatyChallenge = (pool: ISOCountryCode[]): TreatyChallenge | undefined => {
+  const treaty = sample(eligibleTreaties(pool))
+  if (!treaty) return undefined
+
+  const unbound = pool.filter(isoCode => !isBoundBy(isoCode, treaty))
+  // A country that signed and stalled, or ratified and walked out, made a
+  // choice — that is the question worth asking. One that simply never turned
+  // up is a weaker answer, so it only gets drawn when nothing pointed is on
+  // the board. Without this the interesting holdouts are a rounding error
+  // against ~160 never-joined countries.
+  const pointed = unbound.filter(isoCode => TREATIES[treaty]?.[isoCode])
+  const holdout = sample(pointed.length ? pointed : unbound)
+  if (!holdout) return undefined
+
+  const standing = TREATIES[treaty]?.[holdout]?.standing
+  return {
+    _type: 'treaty-challenge',
+    treaty,
+    holdout,
+    standing: standing && standing !== 'party' ? standing : 'absent',
   }
 }
 
@@ -1358,6 +1400,12 @@ export const isCorrectFinalAnswer = ({
         isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
       )
     }
+    case 'treaty-challenge': {
+      if (submittedAnswer._type !== 'treaty-challenge') return throwTypeMismatch()
+      return (
+        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.holdout
+      )
+    }
     case 'born-challenge': {
       if (submittedAnswer._type !== 'born-challenge') return throwTypeMismatch()
       // Quota of distinct picks, every one of which must qualify
@@ -1483,6 +1531,11 @@ export const getFinalChallengeDetails = ({
 
       return {
         question: `Which of the following countries is not a part of the ${organization}?`,
+      }
+    }
+    case 'treaty-challenge': {
+      return {
+        question: `Which of these countries is not bound by the ${treatyMeta(challenge.treaty).shortName}?`,
       }
     }
     case 'region-challenge': {

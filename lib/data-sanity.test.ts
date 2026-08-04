@@ -10,7 +10,9 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { owidMapping } from '~~/data/owid.gen'
+import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
+import { TREATY_META } from '~~/types/treaty.type'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -34,6 +36,39 @@ describe('countries.gen', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
       expect(country.flag).toContain('<svg')
+    }
+  })
+})
+
+describe('treaties.gen', () => {
+  it('carries every instrument the deck expects', () => {
+    for (const meta of TREATY_META) expect(TREATIES[meta.id]).toBeTruthy()
+  })
+
+  it('holds each instrument above its own floor', () => {
+    for (const meta of TREATY_META) {
+      const parties = Object.values(TREATIES[meta.id] ?? {}).filter(
+        status => status.standing === 'party'
+      ).length
+      expect(`${meta.id}: ${parties}`).toBe(
+        `${meta.id}: ${Math.max(parties, meta.minimumParties)}`
+      )
+    }
+  })
+
+  // The canary. The United States signed the Convention on the Rights of the
+  // Child in 1995 and is the only country never to have ratified it. If this
+  // reads anything else, either that changed or the scrape broke — and the
+  // scrape is a UNTC HTML table, so bet on the scrape.
+  it('still finds the United States outside the CRC', () => {
+    expect(TREATIES.crc?.US?.standing).toBe('signatory')
+  })
+
+  it('records only the three standings', () => {
+    for (const statuses of Object.values(TREATIES)) {
+      for (const status of Object.values(statuses)) {
+        expect(['party', 'signatory', 'withdrawn']).toContain(status.standing)
+      }
     }
   })
 })

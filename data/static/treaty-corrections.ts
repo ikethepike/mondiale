@@ -1,5 +1,5 @@
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { TreatyId, TreatyStatus } from '~~/generators/vendors/untc/create-treaties'
+import type { TreatyId, TreatyStatus } from '~~/types/treaty.type'
 
 /**
  * Treaty status the UNTC scrape cannot supply, applied last in

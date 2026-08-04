@@ -4,7 +4,7 @@
     class="pane tl membership-sheet"
     :class="{ sheet: isPhone, split: isPhone }"
     role="dialog"
-    :aria-label="`Countries lit for ${OrganizationVector[organization]}`"
+    :aria-label="`Countries lit for ${subject}`"
   >
     <div v-if="isPhone" class="sheet-handle" aria-hidden="true" @pointerdown="onDragStart" />
 
@@ -54,10 +54,10 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
+import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { keyboardInset, useIsPhone } from '~~/lib/use-viewport'
-import { OrganizationVector } from '~~/types/organization.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -73,16 +73,15 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * stands alone under its own heading — measured at 100% of AU deals, 80% EU).
  */
 const props = defineProps<{
-  /** Members ∪ exception, exactly as written to gameStore.map.highlighted. */
+  /** The bound set ∪ the odd one out, as written to gameStore.map.highlighted. */
   countries: ISOCountryCode[]
-  organization: keyof typeof OrganizationVector
+  /** What they have in common — an organization or an instrument. Label only. */
+  subject: string
   settled: boolean
 }>()
 
 const emit = defineEmits<{ pick: [isoCode: ISOCountryCode] }>()
 
-/** Below this the list reads fine as one block and headings are noise. */
-const MIN_ROWS_FOR_LETTERS = 12
 /** Visible height of the grab handle, excluded from the tucked stop. */
 const HANDLE_PX = 28
 
@@ -99,29 +98,17 @@ const named = computed(() =>
 
 const filtered = computed(() => {
   const needle = normalizeAnswer(query.value)
-  const rows = needle
-    ? named.value.filter(row => normalizeAnswer(row.name).includes(needle))
-    : [...named.value]
-  return rows.sort((a, b) => a.name.localeCompare(b.name))
+  if (!needle) return props.countries
+  return named.value
+    .filter(row => normalizeAnswer(row.name).includes(needle))
+    .map(row => row.isoCode)
 })
 
+// A filtered list is already short and already the answer to a question the
+// player asked — headings would only get in the way.
 const showLetters = computed(() => !query.value && props.countries.length >= MIN_ROWS_FOR_LETTERS)
 
-const groups = computed(() => {
-  if (!showLetters.value) {
-    return filtered.value.length
-      ? [{ letter: '', isoCodes: filtered.value.map(row => row.isoCode) }]
-      : []
-  }
-  const buckets: { letter: string; isoCodes: ISOCountryCode[] }[] = []
-  for (const row of filtered.value) {
-    const letter = row.name.slice(0, 1).toUpperCase()
-    const last = buckets[buckets.length - 1]
-    if (last?.letter === letter) last.isoCodes.push(row.isoCode)
-    else buckets.push({ letter, isoCodes: [row.isoCode] })
-  }
-  return buckets
-})
+const groups = computed(() => groupByLetter(filtered.value, showLetters.value))
 
 // [0] full, [1] peek (handle + search), [2] tucked (handle only). Measured
 // lazily so 54 rows and 7 rows both get honest stops.

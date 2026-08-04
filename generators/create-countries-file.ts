@@ -401,7 +401,6 @@ const normalizeCountry = ({
       // Ember/Energy Institute via OWID first — annual series vs the
       // Factbook's undated share.
       renewables: owidAmount(isoCode, 'renewables', '%') ?? getRenewablesProduction(data),
-      parisAgreement: isParisAgreementParty(data),
       airPollution: owidAmount(isoCode, 'airPollution', 'µg/m³'),
       redListIndex: owidAmount(isoCode, 'redListIndex', 'index'),
       threatenedMammals: owidAmount(isoCode, 'threatenedMammals', 'species'),
@@ -561,15 +560,6 @@ const owidAmount = <Unit>(
   const value = owidMapping[isoCode as ISOCountryCode]?.[metric]
   if (!value) return undefined
   return { unit, year: value.year, amount: value.amount, source: 'owid-grapher' }
-}
-
-/** Whether a country is party to the Paris Agreement (Factbook treaty list). */
-const isParisAgreementParty = (data: FactbookResponse): boolean => {
-  const agreements =
-    data.Environment['International environmental agreements']?.['party to']?.text ??
-    data.Environment['Environment - international agreements']?.['party to']?.text ??
-    ''
-  return /Climate Change-Paris Agreement/i.test(agreements)
 }
 
 const getCapital = (data: FactbookResponse, isoCode: string) => {
