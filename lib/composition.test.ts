@@ -71,8 +71,11 @@ describe('getCompositionChallenge (via getRoundChallenge)', () => {
       const shares = challenge.slices.map(slice => slice.share)
       expect([...shares].sort((a, b) => b - a)).toEqual(shares)
       // Shares are of the country's whole foreign-born population, so the
-      // listed head sums to less than 1 — the rest is the long tail
-      expect(shares.reduce((sum, share) => sum + share, 0)).toBeLessThanOrEqual(1)
+      // listed head sums to less than 1 — the rest is the long tail. The
+      // generator rounds each share to 4 decimals independently, so a board
+      // whose origins nearly exhaust its population can land a hair over
+      // (Nepal and Rwanda both reach 1.0001); the bar clamps its tail at 0.
+      expect(shares.reduce((sum, share) => sum + share, 0)).toBeLessThanOrEqual(1.001)
       expect(new Set(challenge.slices.map(slice => slice.isoCode)).size).toBe(
         challenge.slices.length
       )
