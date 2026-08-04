@@ -31,6 +31,14 @@ import type { ISOCountryCode } from '../../types/geography.types'
  *    carry the phrase a player would recognise, the same split event-seeds
  *    uses. Both go through `mentionsCountry`, the shared giveaway scrub.
  *
+ * And one the generator CANNOT check, so it falls to whoever adds a seed:
+ * THE IMAGERY ITSELF MUST NOT BE ANNOTATED. Borders, place labels, scale bars
+ * and inset locator maps all answer the question before it is asked — drawn
+ * national borders especially, since their shapes match the game's own map
+ * exactly. Look at both frames before shipping a story. This is why the Grand
+ * Renaissance Dam is not here: a flawless pixel-identical filling sequence,
+ * every frame overprinted with national borders.
+ *
  * `countries` is the accepted set, not a single anchor: a change that straddles
  * a border (the Aral Sea is Kazakh AND Uzbek) accepts either tap. Order is
  * cosmetic; the first entry only decides which region the quota counts it in.
@@ -234,6 +242,12 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     beforeUrl: EO('91000/91291/lakechad_ms1_1973_lrg.jpg'),
     afterUrl: EO('91000/91291/lakechad_oli_2017_lrg.jpg'),
   },
+  // NOTE: the Grand Renaissance Dam's filling (CIRA's year-by-year series on
+  // Commons) is a perfect crossfade — pixel-identical frames, dramatic change,
+  // public domain — but every frame has NATIONAL BORDERS drawn over it. A
+  // player can match the border shapes straight to the map, which hands over
+  // the answer as surely as naming the country would. Out unless an
+  // unannotated rendering turns up.
   {
     name: 'the lakes conjured from desert',
     title: 'The Toshka Lakes',
