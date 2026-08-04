@@ -27,6 +27,7 @@ import type {
   AnthemBuzzChallenge,
   BorderChainChallenge,
   CapitalGuessChallenge,
+  CompositionChallenge,
   EmpireChallenge,
   FlagPaletteChallenge,
   FlashpointChallenge,
@@ -71,6 +72,13 @@ import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
 import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
 import { countryName, pickSizedCountry } from './country'
+import {
+  COMPOSITION_MIN_MARGIN,
+  COMPOSITION_MIN_SLICES,
+  COMPOSITION_MIN_TOTAL,
+  corridorMargin,
+  corridorsToDestination,
+} from './migration'
 import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
@@ -943,6 +951,55 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   }
 }
 
+const COMPOSITION_SECONDS = 30
+
+/**
+ * Countries whose foreign-born population has a shape worth reading: enough
+ * origins to make a bar, a population big enough for the percentages to mean
+ * something, and a leading origin that isn't a coin-flip against the runner-up.
+ *
+ * The margin gate is what keeps the round honest — measured on the 2024
+ * revision it drops the 22 boards where the top two origins sit within a
+ * rounding error of each other (Spain, the Netherlands, Canada…), where
+ * "name the largest" would be a guess dressed as knowledge.
+ */
+export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
+  pool.filter(isoCode => {
+    const origins = corridorsToDestination(isoCode)
+    if (origins.length < COMPOSITION_MIN_SLICES) return false
+    const total = origins.reduce((sum, origin) => sum + origin.value.amount, 0)
+    if (total < COMPOSITION_MIN_TOTAL) return false
+    return corridorMargin(origins) >= COMPOSITION_MIN_MARGIN
+  })
+
+const getCompositionChallenge = (
+  gameState: gameTypes.Game
+): CompositionChallenge | undefined => {
+  const pool = playableCountries(gameState)
+  const country = sample(compositionBoards(pool))
+  if (!country) return undefined
+
+  const slices: CompositionChallenge['slices'] = corridorsToDestination(country).map(origin => ({
+    isoCode: origin.isoCode,
+    share: origin.share,
+  }))
+
+  // Outside hard mode the origins on the bar are the option table — the answer
+  // is already on screen, and the question is which slice leads. Hard mode
+  // free-types, so the bar stays anonymous until the reveal.
+  const options =
+    gameState.difficulty === 'hard' ? undefined : shuffleArray(slices.map(slice => slice.isoCode))
+
+  return {
+    _type: 'composition-challenge',
+    country,
+    slices,
+    options,
+    durationSeconds: COMPOSITION_SECONDS,
+    maximumPoints: maximumRoundPoints(gameState),
+  }
+}
+
 /** Points for naming the country on attempt `attempt` (1-based) of `attempts`.
  *  Exported for the View, which reports the score it earned. */
 export const capitalGuessScore = (
@@ -1664,6 +1721,11 @@ const dealRoundChallenge = async (
     }
     case 'capital-guess': {
       const challenge = getCapitalGuessChallenge(game)
+      if (challenge) return challenge
+      break
+    }
+    case 'composition': {
+      const challenge = getCompositionChallenge(game)
       if (challenge) return challenge
       break
     }

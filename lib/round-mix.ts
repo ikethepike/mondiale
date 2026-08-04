@@ -43,6 +43,7 @@ export const ROUND_WEIGHTS = {
   'mother-tongue': 0.09,
   'flag-palette': 0.08,
   'capital-guess': 0.08,
+  composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
   // roster in a session or two. They should land like finding something odd on
@@ -89,6 +90,7 @@ export const MECHANIC_BY_KIND = {
   silhouette: 'typed',
   'mother-tongue': 'typed',
   'capital-guess': 'typed',
+  composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',
   // Tap the map until the set is complete.
