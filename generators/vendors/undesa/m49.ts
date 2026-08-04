@@ -11,8 +11,9 @@ import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
  * WPP and BACI generators drop their non-ISO rows.
  *
  * Codes at or above 900 are regional and development-group aggregates
- * ("World", "Sub-Saharan Africa"); the generator filters those before it
- * ever reaches this table.
+ * ("World", "Sub-Saharan Africa"). The generator drops those on their numeric
+ * code before a name ever reaches this table — belt and braces, since their
+ * names would also fail to resolve here.
  */
 const UN_NAME_ALIASES: { [unName: string]: ISOCountryCode } = {
   'bolivia (plurinational state of)': 'BO',

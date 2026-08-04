@@ -27,7 +27,7 @@
           :class="{ named }"
           :style="{ '--share': slice.share, '--depth': index, '--i': index }"
         >
-          <span v-if="named" class="slice-label">
+          <span v-if="named && slice.share >= LABEL_MIN_SHARE" class="slice-label">
             <CountryFlag class="slice-flag" :country="getCountry(slice.isoCode)" mode="background" />
             <span class="slice-name">{{ countryName(slice.isoCode) }}</span>
           </span>
@@ -134,6 +134,10 @@ const slices = computed(() => challenge.value?.slices ?? [])
 /** The bar is anonymous while it is the question; answering names it. */
 const named = computed(() => submitted.value)
 
+/** Below this a slice is too narrow to hold a flag and a name without
+ *  spilling over its neighbours — its percentage stands alone. */
+const LABEL_MIN_SHARE = 0.08
+
 /** Listed shares are of the whole foreign-born population, so what's left is
  *  the long tail of origins too small to draw. */
 const tailShare = computed(() =>
@@ -162,10 +166,15 @@ const stakes = computed(() =>
     : 'The bar splits a country’s foreign-born residents by where they were born. Name the largest origin before the clock runs out.'
 )
 
+/** The largest origin — what the round actually asks for. */
+const answer = computed(() => slices.value[0]?.isoCode)
+
 const submitRound = (score: number) => {
   if (submitted.value) return
-  gameStore.map.status = score > 0 ? 'correct' : undefined
-  submitOnce(score > 0 && challenge.value ? [challenge.value.country] : [], score)
+  // No map verdict wash: the question lives entirely on the bar, and a
+  // full-board tint would read as a claim about the map itself
+  // Bank the origin that scored, not the board the bar belongs to
+  submitOnce(score > 0 && answer.value ? [answer.value] : [], score)
 }
 
 const start = () => {
@@ -173,8 +182,14 @@ const start = () => {
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
+// The attempt machine grades against `answer`, since this round's subject —
+// the board on the bar — is never one of its own options
+const attemptChallenge = computed(() =>
+  challenge.value && answer.value ? { ...challenge.value, answer: answer.value } : undefined
+)
+
 const { spent, onGuess } = useAttemptOptions({
-  challenge,
+  challenge: attemptChallenge,
   submitted,
   started,
   remainingFraction,
@@ -235,11 +250,16 @@ const { spent, onGuess } = useAttemptOptions({
   }
 }
 
+// A 3% slice is a few pixels wide — its flag and name would spill across its
+// neighbours, so only slices with room to hold a label wear one. The
+// percentages carry the rest, and the reveal names every origin in order.
 .slice-label {
   display: flex;
   gap: 0.3rem;
   align-items: center;
+  overflow: hidden;
   min-width: 0;
+  max-width: 100%;
 }
 
 .slice-flag {

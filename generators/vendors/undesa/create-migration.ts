@@ -142,10 +142,14 @@ const locateColumns = (rows: { [column: string]: string }[]) => {
     if (!destination) continue
     const origin = entries.find(([, text]) => /country or area of origin/i.test(text))
     const year = entries.find(([, text]) => text.trim() === String(IMS_REVISION))
-    if (!origin || !year) break
+    const destinationCode = entries.find(([, text]) => /location code of destination/i.test(text))
+    const originCode = entries.find(([, text]) => /location code of origin/i.test(text))
+    if (!origin || !year || !destinationCode || !originCode) break
     return {
       destinationName: destination[0],
       originName: origin[0],
+      destinationCode: destinationCode[0],
+      originCode: originCode[0],
       stock: year[0],
     }
   }
@@ -159,11 +163,18 @@ const createMigrationFile = () => {
   const { rows } = readMatrix()
   const columns = locateColumns(rows)
 
+  /** Regions and development groups ("World", "Sub-Saharan Africa") — never
+   *  countries, and they would double-count every flow beneath them. */
+  const isAggregate = (row: { [column: string]: string }) =>
+    Number(row[columns.originCode] ?? '') >= AGGREGATE_CODE_FLOOR ||
+    Number(row[columns.destinationCode] ?? '') >= AGGREGATE_CODE_FLOOR
+
   // origin -> destination -> people. Aggregates and non-playable territories
   // fall out here, so every downstream number is country-to-country.
   const flows = new Map<ISOCountryCode, Map<ISOCountryCode, number>>()
   let parsed = 0
   for (const row of rows) {
+    if (isAggregate(row)) continue
     const origin = resolveUnLocation(row[columns.originName] ?? '')
     const destination = resolveUnLocation(row[columns.destinationName] ?? '')
     if (!origin || !destination || origin === destination) continue

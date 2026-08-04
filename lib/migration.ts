@@ -26,17 +26,15 @@ export const corridorsToDestination = (destination: ISOCountryCode): MigrationCo
   MIGRATION[destination]?.origins ?? []
 
 /**
- * Share of a destination's foreign-born residents that came from each listed
- * origin, 0–1. Shares are of the country's WHOLE foreign-born population, so
- * a truncated list sums to less than 1 — the remainder is the long tail.
- */
-export const originShares = (destination: ISOCountryCode): number[] =>
-  corridorsToDestination(destination).map(corridor => corridor.share)
-
-/**
  * How diverse a country's foreign-born population is by origin, 0–1 — Shannon
  * evenness over every origin, computed by the generator across the full matrix
- * before truncation. 1 is a perfectly even mix, 0 a single dominant origin.
+ * before truncation, so it describes the real population rather than the
+ * stored head. 1 is a perfectly even mix, 0 a single dominant origin.
+ *
+ * No mode reads this yet: it is the one figure that cannot be recovered from
+ * the shipped file, because truncating to the top corridors destroys it. The
+ * alternative to keeping it is re-running the hand-run generator against a
+ * pinned 6MB workbook the day a ranking mode wants it.
  */
 export const originDiversity = (destination: ISOCountryCode): number | undefined =>
   MIGRATION[destination]?.diversity
@@ -64,8 +62,10 @@ export const DIASPORA_MIN_STOCK = 20_000
 /**
  * Composition tolerates a slimmer lead than a diaspora beat: the bar shows
  * every slice, so a near-tie is visible rather than hidden behind one tap.
- * Measured on the 2024 revision, 1.25 excludes the 22 genuinely ambiguous
- * boards (Spain 1.02×, the Netherlands 1.02×, Canada 1.05×).
+ * Measured on the 2024 revision, 1.25 rejects 19 of the 121 boards that are
+ * otherwise big enough — the tightest being the Netherlands (1.030×, Poland
+ * against Türkiye), Palestine (1.057×) and Uruguay (1.073×). Canada sits at
+ * 1.215× and is also refused; Spain passes at 1.374×.
  */
 export const COMPOSITION_MIN_MARGIN = 1.25
 /** Fewer slices than this and the bar has no shape to read. */

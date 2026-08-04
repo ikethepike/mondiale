@@ -959,9 +959,10 @@ const COMPOSITION_SECONDS = 30
  * something, and a leading origin that isn't a coin-flip against the runner-up.
  *
  * The margin gate is what keeps the round honest — measured on the 2024
- * revision it drops the 22 boards where the top two origins sit within a
- * rounding error of each other (Spain, the Netherlands, Canada…), where
- * "name the largest" would be a guess dressed as knowledge.
+ * revision it drops 19 of the 121 boards that are otherwise big enough,
+ * the ones where the top two origins sit close enough that "name the
+ * largest" would be a guess dressed as knowledge (the Netherlands at
+ * 1.030×, Canada at 1.215×). The thresholds live in lib/migration.ts.
  */
 export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
   pool.filter(isoCode => {
