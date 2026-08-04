@@ -380,12 +380,13 @@
             v-else-if="variant === 'trend-duel' && trendDuelOutcomes.length"
             :outcomes="trendDuelOutcomes"
           />
-          <TrendSparkline
-            v-else-if="variant === 'trajectory-match' && challenge?.trajectory && trajectorySeries"
-            class="result-sparkline"
-            :series="trajectorySeries"
+          <TrajectoryReveal
+            v-else-if="variant === 'trajectory-match' && challenge?.trajectory"
+            class="result-trajectory"
             :metric="challenge.trajectory.metric"
-            detail="chart"
+            :options="challenge.trajectory.options"
+            :answer="challenge.country"
+            :picked="submittedISOCode"
           />
           <LeaderReveal
             v-else-if="(variant === 'leader-pick' || variant === 'leader-portrait') && challenge"
@@ -438,6 +439,7 @@ import PhotoOptionChallenge from '~/components/challenge/PhotoOptionChallenge.vu
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
+import TrajectoryReveal from '~/components/challenge/TrajectoryReveal.vue'
 import { TRENDS } from '~~/lib/trends'
 import { shuffleArray } from '~~/lib/arrays'
 import {
@@ -1605,6 +1607,12 @@ header .flag {
 // Wider at chart detail: the axis gutters must not eat the data band.
 .result-sparkline {
   width: min(42rem, 92vw);
+  margin: 0.8rem auto 0;
+}
+
+// Four curves need more width than one — the lesson pill's own max-width caps it.
+.result-trajectory {
+  width: min(56rem, 100%);
   margin: 0.8rem auto 0;
 }
 
