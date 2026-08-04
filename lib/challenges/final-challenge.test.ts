@@ -13,9 +13,13 @@ import type {
   ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
+  MembershipChallenge,
   MinChallenge,
+  TreatyChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { oddOneOut } from '~~/types/challenges/final-challenge.type'
+import { MAX_LINEUP } from '~~/lib/odd-one-out'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -125,6 +129,80 @@ describe('membership challenge', () => {
         if (challenge._type !== 'membership-challenge') continue
         expect(['opec', 'au', 'csto']).not.toContain(challenge.organization)
       }
+    }
+  })
+})
+
+describe('odd-one-out lineup rides the challenge', () => {
+  const oddOneOutItems = (variant: Game['variant']) => {
+    const items: (MembershipChallenge | TreatyChallenge)[] = []
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      for (const challenge of getFinalChallenges({ game: gameFor(variant, 'hard') }).challenges) {
+        if (challenge._type === 'membership-challenge' || challenge._type === 'treaty-challenge') {
+          items.push(challenge)
+        }
+      }
+    }
+    return items
+  }
+
+  // The lineup is sampled, so deriving it per client would hand two players
+  // different questions and reshuffle one on remount. It has to be dealt.
+  it('always carries a lineup containing the odd one out', () => {
+    const items = oddOneOutItems('world')
+    expect(items.length).toBeGreaterThan(0)
+    for (const challenge of items) {
+      expect(challenge.lineup.length).toBeGreaterThan(1)
+      expect(challenge.lineup.length).toBeLessThanOrEqual(MAX_LINEUP)
+      expect(challenge.lineup).toContain(oddOneOut(challenge))
+      expect(new Set(challenge.lineup).size).toBe(challenge.lineup.length)
+    }
+  })
+
+  // Everything else on the lineup must genuinely belong, or the question has
+  // more than one defensible answer.
+  it('fills the lineup with countries that do belong', () => {
+    for (const challenge of oddOneOutItems('world')) {
+      for (const isoCode of challenge.lineup) {
+        if (isoCode === oddOneOut(challenge)) continue
+        if (challenge._type === 'membership-challenge') {
+          expect(isMember(isoCode, challenge.organization)).toBe(true)
+        } else {
+          expect(TREATIES[challenge.treaty]?.[isoCode]?.standing).toBe('party')
+        }
+      }
+    }
+  })
+
+  // Why the view and the submit handler both gate on the lineup: a capped
+  // roster leaves countries that genuinely don't belong either — 31 African
+  // Union members go unlit — and tapping one is a defensible read of the
+  // prompt. Neither surface may score it, so both reject before the verdict.
+  it('leaves belonging countries off the lineup, which is why taps are gated', () => {
+    const pool = playableCountries(gameFor('world', 'hard'))
+    let stranded = 0
+    for (const challenge of oddOneOutItems('world')) {
+      const belongs = (isoCode: ISOCountryCode) =>
+        challenge._type === 'membership-challenge'
+          ? isMember(isoCode, challenge.organization)
+          : TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
+      if (pool.some(isoCode => belongs(isoCode) && !challenge.lineup.includes(isoCode))) stranded++
+    }
+    expect(stranded).toBeGreaterThan(0)
+  })
+
+  // The odd one out is the only lineup entry that scores.
+  it('scores exactly one lineup entry as correct', () => {
+    const pool = playableCountries(gameFor('world', 'hard'))
+    for (const challenge of oddOneOutItems('world').slice(0, 20)) {
+      const correct = challenge.lineup.filter(isoCode =>
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: challenge._type, isoCode },
+          pool,
+        })
+      )
+      expect(correct).toEqual([oddOneOut(challenge)])
     }
   })
 })

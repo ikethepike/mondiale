@@ -101,6 +101,8 @@ export interface MembershipChallenge {
   _type: 'membership-challenge'
   exception: ISOCountryCode
   organization: keyof typeof OrganizationVector
+  /** The countries on offer, exception included — see `lineup` below. */
+  lineup: ISOCountryCode[]
 }
 
 /**
@@ -115,7 +117,25 @@ export interface TreatyChallenge {
   holdout: ISOCountryCode
   /** How it isn't bound — signed and stalled, walked out, or never came. */
   standing: Exclude<TreatyStanding, 'party'> | 'absent'
+  /** The countries on offer, holdout included — see `lineup` below. */
+  lineup: ISOCountryCode[]
 }
+
+/**
+ * The lit set for an odd-one-out question, decided ONCE by the dealer.
+ *
+ * It rides the challenge because it is part of the question, not a rendering
+ * detail. The roster is sampled (191 CRC parties don't fit on a phone) and the
+ * answer surface is gated to it, so a lineup re-derived per client would give
+ * two players different questions — and re-deriving on remount would reshuffle
+ * one mid-round. It carries no secret: every entry is on the map already, and
+ * the odd one out is sorted in among them.
+ */
+export type OddOneOutChallenge = MembershipChallenge | TreatyChallenge
+
+/** The country that does not belong, whichever question is being asked. */
+export const oddOneOut = (challenge: OddOneOutChallenge): ISOCountryCode =>
+  challenge._type === 'membership-challenge' ? challenge.exception : challenge.holdout
 
 export interface LeadershipChallenge {
   _type: 'leadership-challenge'

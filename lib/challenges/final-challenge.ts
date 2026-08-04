@@ -6,7 +6,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
-import { MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
+import { buildLineup, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
@@ -36,6 +36,7 @@ import type {
   SunsetBlitzChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
+import { oddOneOut } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
   type Amount,
@@ -334,6 +335,10 @@ const getMembershipChallenge = (pool: ISOCountryCode[]): MembershipChallenge | u
     _type: 'membership-challenge',
     organization,
     exception,
+    lineup: buildLineup(
+      exception,
+      pool.filter(isoCode => isMemberOf(isoCode, organization))
+    ),
   }
 }
 
@@ -376,6 +381,10 @@ const getTreatyChallenge = (pool: ISOCountryCode[]): TreatyChallenge | undefined
     treaty,
     holdout,
     standing: standing && standing !== 'party' ? standing : 'absent',
+    lineup: buildLineup(
+      holdout,
+      pool.filter(isoCode => isBoundBy(isoCode, treaty))
+    ),
   }
 }
 
@@ -1401,16 +1410,11 @@ export const isCorrectFinalAnswer = ({
       if (!isValidISOCode(submittedAnswer.isoCode)) return false
       return speaksLanguage(submittedAnswer.isoCode, challenge.language)
     }
-    case 'membership-challenge': {
-      if (submittedAnswer._type !== 'membership-challenge') return throwTypeMismatch()
-      return (
-        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.exception
-      )
-    }
+    case 'membership-challenge':
     case 'treaty-challenge': {
-      if (submittedAnswer._type !== 'treaty-challenge') return throwTypeMismatch()
+      if (submittedAnswer._type !== challenge._type) return throwTypeMismatch()
       return (
-        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.holdout
+        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === oddOneOut(challenge)
       )
     }
     case 'born-challenge': {

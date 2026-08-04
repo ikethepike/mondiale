@@ -208,7 +208,6 @@ import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { TREATIES } from '~~/data/treaties.gen'
-import { buildLineup } from '~~/lib/odd-one-out'
 import { OrganizationVector } from '~~/types/organization.type'
 import { treatyMeta } from '~~/types/treaty.type'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
@@ -559,20 +558,11 @@ const oddOneOutSubject = computed(() => {
 
 const triggerMembershipChallenge = () => {
   const challenge = currentFinalChallenge.value
-  // Both odd-one-out questions build their lineup the same way, from the same
-  // board pool: the sheet must never list a country the map isn't showing, and
-  // a second derivation that filtered differently would point at the answer.
+  // The lineup is dealt, not derived: it is sampled, so re-deriving it here
+  // would hand two players different questions and reshuffle one on remount.
   if (challenge?._type === 'membership-challenge' || challenge?._type === 'treaty-challenge') {
-    const board = game.value ? playableCountries(game.value) : []
-    const isIn = (isoCode: ISOCountryCode) =>
-      challenge._type === 'membership-challenge'
-        ? COUNTRIES[isoCode].membership.some(entry => entry.id === challenge.organization)
-        : TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
-    const oddOneOut =
-      challenge._type === 'membership-challenge' ? challenge.exception : challenge.holdout
-
-    membershipCountries.value = buildLineup(oddOneOut, board.filter(isIn))
-    for (const isoCode of membershipCountries.value) gameStore.map.highlighted.add(isoCode)
+    membershipCountries.value = challenge.lineup
+    for (const isoCode of challenge.lineup) gameStore.map.highlighted.add(isoCode)
   }
   if (challenge?._type === 'scales-challenge') {
     gameStore.map.tints[challenge.target] = 'endpoint'
