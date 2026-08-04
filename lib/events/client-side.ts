@@ -1,3 +1,4 @@
+import { releaseAllMapBerths } from '~~/lib/map-berth'
 import { resolveAccessorPath } from '~~/lib/values'
 import { useGameStore } from '~~/store/game.store'
 import {
@@ -103,6 +104,9 @@ export const useClientEvents = () => {
     gameStore.map.solo = false
     gameStore.map.landmass = false
     gameStore.map.labels = false
+    // Drop the claims too, or a released slot would be re-applied by the
+    // next claimant's recompute from stale owners.
+    releaseAllMapBerths()
     gameStore.map.berth = undefined
     gameStore.map.focus = []
     gameStore.map.focusContext = []

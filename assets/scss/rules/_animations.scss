@@ -8,10 +8,16 @@
   }
 }
 
-// Enter from fully below the container (reveal card)
+// Enter from fully below the container (reveal card). Both ends are explicit
+// and the caller fills `backwards`: with only a 0% stop the card paints at its
+// resting place for the frames before the animation starts, which reads as a
+// pop-in mid-screen followed by a short slide.
 @keyframes slide-up-full {
-  0% {
+  from {
     transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
