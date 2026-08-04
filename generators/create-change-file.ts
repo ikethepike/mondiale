@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import sharp from 'sharp'
 import { CHANGE_SEEDS, type ChangeKind, type ChangeSeed } from './data/change-seeds'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import { saveImageUrl, wait } from './vendors/wikidata/commons'
@@ -55,6 +56,9 @@ const MIN_STORIES_PER_REGION = 1
  */
 const MAX_REGION_SHARE = 1 / 3
 const REGION_SHARE_APPLIES_FROM = 12
+/** How far two frames' aspect ratios may drift and still read as one place
+ *  seen twice. A few percent is sensor cropping; a third is a different photo. */
+const MAX_FRAME_SHAPE_DRIFT = 0.06
 
 export interface ChangeFrame {
   /** Public path of the committed WebP. */
@@ -209,6 +213,22 @@ for (const seed of CHANGE_SEEDS) {
   // One frame is not a crossfade — a half-downloaded story never ships.
   if (frames.length !== 2) {
     dropped.push({ slug, reason: `only ${frames.length}/2 frames downloaded` })
+    continue
+  }
+
+  // Frames of different shape are two pictures, not one place twice: the
+  // stage stacks them, so the crossfade becomes a jump cut. EO publishes
+  // several renderings per story (small crops beside the co-registered full
+  // series) and it is easy to pick one of each by accident — that is exactly
+  // how Dubai shipped a 720x480 against a 1400x1400.
+  const shapes = await Promise.all(frames.map(frame => sharp(`public${frame.image}`).metadata()))
+  const ratios = shapes.map(meta => (meta.width ?? 1) / (meta.height ?? 1))
+  const drift = Math.abs(ratios[0] - ratios[1]) / Math.max(...ratios)
+  if (drift > MAX_FRAME_SHAPE_DRIFT) {
+    dropped.push({
+      slug,
+      reason: `frames disagree on shape (${shapes.map(m => `${m.width}x${m.height}`).join(' vs ')}) — pick renderings from the same series`,
+    })
     continue
   }
 

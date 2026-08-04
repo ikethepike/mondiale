@@ -840,7 +840,7 @@ const onMapClick = (event: Event) => {
       {
         // Where the decade is also asked, the stage owns the answer: it holds
         // this tap until the dial commits and submits both together.
-        if (currentFinalChallenge.value.decadeTolerance) break
+        if (currentFinalChallenge.value.decadeTolerance !== undefined) break
         if (!isValidISOCode(isoCode)) {
           return console.error(`Unsupported country: ${isoCode}`)
         }

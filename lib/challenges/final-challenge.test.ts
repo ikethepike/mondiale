@@ -560,6 +560,25 @@ describe('change challenge', () => {
     expect(grade({ isoCode, decade: Number.NaN })).toBe(false)
   })
 
+  // `if (!decadeTolerance)` read "must be exact" and "don't ask" the same way,
+  // so a zero-tolerance round would have passed every tap on its own.
+  it('reads a zero decade tolerance as exact, not as absent', () => {
+    const [dealt] = dealtChanges('hard', 40)
+    const challenge: ChangeChallenge = { ...dealt, decadeTolerance: 0 }
+    const pool = playableCountries(gameFor('world', 'hard'))
+    const isoCode = changeAccepted(challenge)[0]
+    const grade = (decade?: number) =>
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'change-challenge', isoCode, decade },
+        pool,
+      })
+
+    expect(grade(changeDecade(challenge)!)).toBe(true)
+    expect(grade(changeDecade(challenge)! + 10)).toBe(false)
+    expect(grade(undefined)).toBe(false)
+  })
+
   it('throws only on a mismatched answer shape', () => {
     const [challenge] = dealtChanges('normal', 40)
     expect(() =>
@@ -584,6 +603,17 @@ describe('change challenge', () => {
           challenge.slug
         ).toBe(false)
       }
+    }
+  })
+
+  // The stage stacks the frames, so a pair that disagrees on shape jump-cuts
+  // rather than fades. The generator gates on this; asserting it here catches a
+  // hand-edited data file too.
+  it('ships frames that can actually crossfade', () => {
+    for (const [slug, story] of Object.entries(CHANGES)) {
+      const [before, after] = story.frames
+      expect(before.image, slug).not.toBe(after.image)
+      expect(before.year, slug).toBeLessThan(after.year)
     }
   })
 

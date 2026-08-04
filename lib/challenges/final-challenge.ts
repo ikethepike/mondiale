@@ -772,7 +772,10 @@ const changeCandidates = (pool: ISOCountryCode[], difficulty: GameDifficulty): s
       if (story.countries.some(iso => isValidISOCode(iso) && mentionsCountry(story.name, iso))) {
         return false
       }
-      return !decadeTolerance || !leaksYear(story.startYear, slug, story.name, story.description)
+      return (
+        decadeTolerance === undefined ||
+        !leaksYear(story.startYear, slug, story.name, story.description)
+      )
     })
     .map(([slug]) => slug)
 }
@@ -815,7 +818,7 @@ const getChangeChallenge = (
     ...(showYears
       ? { frameYears: [story.frames[0].year, story.frames[1].year] as [number, number] }
       : {}),
-    ...(decadeTolerance ? { decadeTolerance } : {}),
+    ...(decadeTolerance === undefined ? {} : { decadeTolerance }),
     ...(acceptNeighbours ? { acceptNeighbours } : {}),
   }
 }
@@ -1408,7 +1411,9 @@ export const isCorrectFinalAnswer = ({
       if (!changeAccepted(challenge).includes(submittedAnswer.isoCode)) return false
       // Tap-only difficulties stop here; where the decade is asked, both halves
       // must land. A missing dial is a wrong answer, not a malformed one.
-      if (!challenge.decadeTolerance) return true
+      // Compared against undefined, not falsiness: a tolerance of 0 means the
+      // decade must be exact, NOT that the round stopped asking for one.
+      if (challenge.decadeTolerance === undefined) return true
       const decade = changeDecade(challenge)
       return (
         decade !== undefined &&
@@ -1535,9 +1540,10 @@ export const getFinalChallengeDetails = ({
       }
     case 'change-challenge':
       return {
-        question: challenge.decadeTolerance
-          ? 'This place changed — tap where on earth, and dial the decade it started'
-          : 'This place changed — tap where on earth it is happening',
+        question:
+          challenge.decadeTolerance === undefined
+            ? 'This place changed — tap where on earth it is happening'
+            : 'This place changed — tap where on earth, and dial the decade it started',
       }
     default:
       return {

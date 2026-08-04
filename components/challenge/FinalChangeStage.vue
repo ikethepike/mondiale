@@ -1,6 +1,6 @@
 <template>
   <div class="final-change">
-    <article class="frame-stage" :class="{ dialing: !!challenge.decadeTolerance }">
+    <article class="frame-stage" :class="{ dialing: dialed }">
       <!-- Both frames are stacked and identically framed; only the later one
            animates, so the pair never blinks through to the page mid-cross. -->
       <img class="frame" :src="challenge.frames[0]" :alt="EARLIER_ALT" />
@@ -27,7 +27,7 @@
       </button>
     </article>
 
-    <footer v-if="challenge.decadeTolerance && !committed" ref="consoleFooter" class="shell-footer">
+    <footer v-if="dialed && !committed" ref="consoleFooter" class="shell-footer">
       <DragDial
         v-model="dialDecade"
         :min="DIAL_MIN"
@@ -88,6 +88,11 @@ const LATER_ALT = 'The same place years later, the second of two frames'
 const DIAL_MIN = CHANGE_DIAL_BOUNDS.min
 const DIAL_MAX = CHANGE_DIAL_BOUNDS.max
 
+/** Whether this round asks for the decade as well as the place. Compared
+ *  against undefined: a tolerance of 0 would mean "must be exact", not "no
+ *  dial", and truthiness reads those two the same way. */
+const dialed = computed(() => props.challenge.decadeTolerance !== undefined)
+
 const reducedMotion = prefersReducedMotion()
 const committed = ref(false)
 const manualLater = ref(false)
@@ -131,7 +136,7 @@ const commit = () => {
 
 /** Only the dial difficulties listen: elsewhere the view submits the tap. */
 const onMapClick = (event: Event) => {
-  if (!props.challenge.decadeTolerance || committed.value || props.paused) return
+  if (!dialed.value || committed.value || props.paused) return
   if (!isMapClickEvent(event)) return
   const { isoCode } = event.detail
   if (isValidISOCode(isoCode)) tapped.value = isoCode

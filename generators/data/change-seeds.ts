@@ -115,20 +115,11 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     beforeUrl: WOC('shanghai/shanghai_tm5_1984114_lrg.jpg'),
     afterUrl: WOC('shanghai/shanghai_oli_2019210_lrg.jpg'),
   },
-  {
-    name: 'the silt-built river mouth',
-    title: 'The Yellow River Delta',
-    countries: ['CN'],
-    kind: 'water',
-    coordinates: { lat: 37.75, lng: 119.05 },
-    startYear: 1990,
-    beforeYear: 1989,
-    afterYear: 2020,
-    description:
-      'The muddiest big river on earth throws its load into the sea and builds new land with it, growing a hook of silt that swings and re-forms as engineers move the channel.',
-    beforeUrl: WOC('yellow_river/yellowriverwoc_tm4_198944_lrg.jpg'),
-    afterUrl: WOC('yellow_river/yellowriverwoc_oli_2020298.jpg'),
-  },
+  // NOTE: the Yellow River delta (WOC "YellowRiver") is out. Only its 1989
+  // frame was archived at full size; every later year survives solely as the
+  // small rendering, and those carry burned-in labels — "Bohai Sea", "New
+  // channel", "Aquaculture" — which name the answer outright. Restore it if a
+  // clean later frame turns up.
   {
     name: 'the wandering braided river',
     title: 'The Padma River',
@@ -156,7 +147,10 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     afterYear: 2011,
     description:
       'Ninety million cubic metres of dredged sand poured into the Gulf to make palm-shaped suburbs — a coastline drawn by decree and legible from orbit.',
-    beforeUrl: WOC('dubai/dubai_20001111.jpg'),
+    // Both frames MUST be the _cyl renderings: they are the co-registered
+    // full-size series. The bare dubai_<date>.jpg files are small crops on a
+    // different footprint, so mixing the two gives a jump cut, not a fade.
+    beforeUrl: WOC('dubai/dubai_ast_20001111_cyl.jpg'),
     afterUrl: WOC('dubai/dubai_ast_20110425_cyl.jpg'),
   },
   {
