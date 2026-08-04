@@ -129,3 +129,52 @@ describe('the phase partition', () => {
     }
   })
 })
+
+/**
+ * Regression cover for the freeze that stranded room
+ * `construction-sitting-talk`. `composition` was dealt by the mix but had no
+ * arm in the scoring switch, so it fell to `default:` — which needs a
+ * `countriesPerPlayer` ranking it does not have — and threw on EVERY
+ * submission. All three seats stayed in `group-challenge` with an empty
+ * `groupAnswers`, and no seat was settled enough to arm the advance watchdog.
+ *
+ * A mode reaching the switch with no arm is unscoreable by construction, so
+ * assert the two sets line up rather than waiting for a room to hang.
+ */
+describe('group-challenge scoring coverage', () => {
+  /** Kinds that settle somewhere OTHER than the scoring switch: the ranking
+   *  shape the `default:` arm exists for, the engines that score themselves,
+   *  and `floor`, which is a mix-tuning constant rather than a round. */
+  const SCORED_ELSEWHERE = [
+    'ranking',
+    'border-chain',
+    'heritage-hunt',
+    'timeline',
+    'manhunt',
+    'unique-or-bust',
+    'floor',
+  ]
+
+  it('gives every dealable round kind a scoring arm', async () => {
+    const [{ ROUND_WEIGHTS }, handler] = await Promise.all([
+      import('~~/lib/round-mix'),
+      import('node:fs/promises').then(fs =>
+        fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+      ),
+    ])
+    const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
+
+    const unscoreable = Object.keys(ROUND_WEIGHTS).filter(
+      kind => !arms.has(kind) && !SCORED_ELSEWHERE.includes(kind)
+    )
+    expect(unscoreable).toEqual([])
+  })
+
+  it('keeps the exemption list free of kinds that grew their own arm', async () => {
+    const handler = await import('node:fs/promises').then(fs =>
+      fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+    )
+    const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
+    expect(SCORED_ELSEWHERE.filter(kind => arms.has(kind))).toEqual([])
+  })
+})

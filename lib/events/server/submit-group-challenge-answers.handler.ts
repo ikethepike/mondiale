@@ -152,6 +152,19 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         buzzOn(expectChallengeType(roundChallenge, 'flashpoint-challenge'))
         break
       }
+      case 'composition': {
+        // The answer is the largest origin — the head slice — NOT `country`,
+        // which is the country whose residents are being split. Same source
+        // the view grades against (slices[0]), so both sides agree.
+        const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
+        const largestOrigin = challenge.slices[0]?.isoCode
+        if (!largestOrigin) throw new ReferenceError('Composition challenge dealt with no slices')
+        buzzOn(
+          { country: largestOrigin, maximumPoints: challenge.maximumPoints },
+          eventData.ranking[0] === largestOrigin
+        )
+        break
+      }
       case 'ghost-state': {
         const challenge = expectChallengeType(roundChallenge, 'ghost-state-challenge')
         answer = { submitted: eventData.ranking, correct: [challenge.parent] }
@@ -232,7 +245,11 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         break
       }
       default: {
-        if (!('countriesPerPlayer' in roundChallenge)) throw new TypeError('kind mismatch')
+        // A mode with no scoring arm above lands here and has no ranking to
+        // grade — name it, or every submission fails as an anonymous throw
+        // and the round freezes with no clue which kind broke it.
+        if (!('countriesPerPlayer' in roundChallenge))
+          throw new TypeError(`No scoring arm for round kind: ${kind}`)
         const originalRanking = roundChallenge.countriesPerPlayer[playerId]
         if (!originalRanking)
           throw new ReferenceError(`Unable to retrieve original order for player: ${playerId}`)
