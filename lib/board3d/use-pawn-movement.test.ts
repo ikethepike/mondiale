@@ -18,8 +18,31 @@ const tileFor = (index: number): TileTransform | undefined =>
 
 /** Minimal stand-in for a pawn Group — the mover only touches these. */
 const stubPawn = () => ({
-  position: { x: 0, y: 0, z: 0, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z } },
-  scale: { x: 1, y: 1, z: 1, setScalar(v: number) { this.x = v; this.y = v; this.z = v }, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z } },
+  position: {
+    x: 0,
+    y: 0,
+    z: 0,
+    set(x: number, y: number, z: number) {
+      this.x = x
+      this.y = y
+      this.z = z
+    },
+  },
+  scale: {
+    x: 1,
+    y: 1,
+    z: 1,
+    setScalar(v: number) {
+      this.x = v
+      this.y = v
+      this.z = v
+    },
+    set(x: number, y: number, z: number) {
+      this.x = x
+      this.y = y
+      this.z = z
+    },
+  },
 })
 
 const PLAYER = 'p1'

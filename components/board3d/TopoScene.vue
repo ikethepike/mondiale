@@ -119,7 +119,7 @@ const isBlockedByChallenge = (player: Player) => {
 const displayPositionFor = (player: Player) =>
   isBlockedByChallenge(player) ? player.moves[0].endTile.position : player.currentPosition
 
-const triggerRipple =(tile: TileTransform, tone: 'success' | 'alert' = 'success') => {
+const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success') => {
   const material = board.value?.contourMaterial
   if (!material) return
 

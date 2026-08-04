@@ -164,10 +164,9 @@ test('a failed gate cuts progress off at the gate', async ({ page }) => {
     .filter(entry => entry.fn === 'place' || entry.fn === 'hop')
     .map(entry => entry.to)
   expect(rendered.length, 'the pawn should have been placed').toBeGreaterThan(0)
-  expect(
-    Math.max(...rendered),
-    'the board walked past a gate the player failed'
-  ).toBeLessThan(gateTile)
+  expect(Math.max(...rendered), 'the board walked past a gate the player failed').toBeLessThan(
+    gateTile
+  )
 })
 
 test('a won gate still replays its leap forward', async ({ page }) => {
