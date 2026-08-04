@@ -11,6 +11,7 @@
     "postinstall": "nuxt prepare",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:repro": "playwright test --config=playwright.repro.config.ts",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
