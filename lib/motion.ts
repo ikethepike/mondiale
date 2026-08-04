@@ -25,6 +25,13 @@ export const DWELL = {
   taunt: 5200,
 } as const
 
+/**
+ * How long a reveal holds its first act before the second, in ms. Long enough
+ * for the caption fades (--motion-base) to finish and a sparkline to read, so
+ * the follow-up settles the cards rather than colliding with them.
+ */
+export const REVEAL_BEAT_MS = 700
+
 /** GSAP ease names matching the CSS custom-property easings. */
 export const EASE = {
   /** Entrances — matches --ease-out-expressive */

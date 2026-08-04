@@ -33,7 +33,7 @@
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
-    <section class="race-stage">
+    <section ref="stageEl" class="race-stage">
       <!-- The reveal's second act: the whole world's CURRENT values as a
            gapminder strip, so the racers land in absolute context. -->
       <Transition name="caption">
@@ -47,8 +47,8 @@
           />
         </div>
       </Transition>
-      <ul class="race-list">
-        <li v-for="isoCode in challenge.options" :key="isoCode">
+      <TransitionGroup ref="listEl" tag="ul" name="race" class="race-list">
+        <li v-for="isoCode in raceOrder" :key="isoCode" :data-iso="isoCode">
           <StatCard
             tag="button"
             type="button"
@@ -82,7 +82,7 @@
             </Transition>
           </StatCard>
         </li>
-      </ul>
+      </TransitionGroup>
       <Transition name="caption">
         <ButtonFilled v-if="revealed" class="continue-button" @click="finish">
           <span v-if="browseSecondsLeft > BROWSE_HINT_S">Continue</span>
@@ -107,7 +107,9 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { trendAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
+import { prefersReducedMotion, REVEAL_BEAT_MS } from '~~/lib/motion'
 import { TREND_METRICS, TRENDS } from '~~/lib/trends'
+import { centreScrollTop, useIsPhone } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -127,8 +129,18 @@ const {
 
 const picked = ref<ISOCountryCode>()
 const revealed = ref(false)
+const sorted = ref(false)
 let browseTimer: ReturnType<typeof setInterval> | undefined
+let sortTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => browseTimer && clearInterval(browseTimer))
+// Continue can land before the beat fires — an orphaned timer would write to
+// a torn-down component.
+registerCleanup(() => sortTimer && clearTimeout(sortTimer))
+
+const isPhone = useIsPhone()
+const stageEl = ref<HTMLElement | null>(null)
+// TransitionGroup's ref resolves to the component; its $el is the <ul>.
+const listEl = ref<{ $el?: HTMLElement } | null>(null)
 
 const metricLabel = computed(() =>
   challenge.value ? TREND_METRICS[challenge.value.metric].label : ''
@@ -143,6 +155,15 @@ const metricGlyph = computed(() =>
 const winner = computed(() => challenge.value?.standings[0])
 const winnerName = computed(() => (winner.value ? countryName(winner.value) : ''))
 const pickedWinner = computed(() => picked.value !== undefined && picked.value === winner.value)
+
+// Deal order is a shuffle, so the rank tags read out of order and the winner
+// can sit below the fold. The reveal re-lays the cards into standings order —
+// the server's ranking, never re-derived here.
+const raceOrder = computed<ISOCountryCode[]>(() => {
+  const active = challenge.value
+  if (!active) return []
+  return sorted.value ? active.standings : active.options
+})
 
 const seriesFor = (isoCode: ISOCountryCode) =>
   challenge.value ? TRENDS[isoCode]?.[challenge.value.metric] : undefined
@@ -160,6 +181,37 @@ const cardClass = (isoCode: ISOCountryCode) => {
   return 'is-settled'
 }
 
+/**
+ * Land the reveal on the player's own card: the sort already puts the winner
+ * on top and the header names them, so "where did mine finish?" is what's
+ * left. On a timeout there is no pick — fall back to the winner.
+ *
+ * Scrolls the stage only, never scrollIntoView, whose ancestor walk shifts
+ * the whole shell. Layout offsets, not rects: the FLIP moves lie mid-glide.
+ */
+const scrollToOutcome = () => {
+  // Desktop's .race-stage has no overflow — the grid is centred and whole.
+  if (!isPhone.value) return
+  const target = picked.value ?? winner.value
+  if (!target) return
+  nextTick(() => {
+    const stage = stageEl.value
+    const item = listEl.value?.$el?.querySelector<HTMLElement>(`[data-iso="${CSS.escape(target)}"]`)
+    if (!stage || !item) return
+    // .race-stage is the only positioned ancestor, so it is the li's
+    // offsetParent and offsetTop already reads in the stage's scroll space.
+    stage.scrollTo({
+      top: centreScrollTop(
+        stage.clientHeight,
+        stage.scrollHeight,
+        item.offsetTop,
+        item.offsetHeight
+      ),
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    })
+  })
+}
+
 // The reveal is browsable: the player leaves via Continue, the cap only
 // exists so an AFK player can't hold up the room's next-round barrier.
 const BROWSE_CAP_S = 60
@@ -170,6 +222,8 @@ const browseSecondsLeft = ref(BROWSE_CAP_S)
 const finish = () => {
   if (browseTimer) clearInterval(browseTimer)
   browseTimer = undefined
+  if (sortTimer) clearTimeout(sortTimer)
+  sortTimer = undefined
   submitOnce(picked.value ? [picked.value] : [])
 }
 
@@ -182,6 +236,12 @@ const resolve = (isoCode?: ISOCountryCode) => {
   picked.value = isoCode
   // Every card is on screen — naming the pick would hand out the answer.
   if (isoCode) announce({ kind: 'presence' })
+  // A beat, then the cards rank themselves and the stage finds the pick.
+  sortTimer = setTimeout(() => {
+    sortTimer = undefined
+    sorted.value = true
+    scrollToOutcome()
+  }, REVEAL_BEAT_MS)
   browseTimer = setInterval(() => {
     browseSecondsLeft.value--
     if (browseSecondsLeft.value <= 0) finish()
@@ -309,6 +369,25 @@ header .verdict.incorrect {
   &.was-picked:not(.is-winner) {
     outline: 0.25rem solid var(--hior-ange);
     outline-offset: 0.2rem;
+  }
+}
+
+// The reveal's second beat: the shuffled cards re-lay themselves into
+// standings order. --motion-slow, like the timeline's line-move — a rank
+// shuffle is an entrance, not a tick.
+.race-move {
+  transition: transform var(--motion-slow) var(--ease-out-expressive);
+}
+
+// Nothing enters or leaves — the same cards only ever permute. The guard
+// keeps a mid-glide unmount from collapsing the grid under cards in flight.
+.race-leave-active {
+  position: absolute;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .race-move {
+    transition: none;
   }
 }
 

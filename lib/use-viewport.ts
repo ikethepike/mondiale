@@ -1,4 +1,5 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { clamp } from './number'
 
 /** Reactive matchMedia flag; SSR-safe (false until mounted). */
 const useMediaMatch = (query: string) => {
@@ -40,6 +41,20 @@ export const listScrollTop = (
   if (itemBottom > scrollTop + viewHeight) return Math.min(itemTop, itemBottom - viewHeight)
   return scrollTop
 }
+
+/**
+ * Scroll offset that CENTRES an item in its own scroller. Unlike
+ * `listScrollTop` it moves even when the item is already visible: the callers
+ * are reveals answering "where did mine land?", not keep-in-view nudges.
+ * Clamped to the scrollable range, so an item near either end pins there.
+ */
+export const centreScrollTop = (
+  viewLength: number,
+  scrollLength: number,
+  itemStart: number,
+  itemLength: number
+): number =>
+  clamp(itemStart - (viewLength - itemLength) / 2, 0, Math.max(0, scrollLength - viewLength))
 
 /**
  * The keyboard's occlusion of the layout viewport. Pure so the platform

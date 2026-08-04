@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { keyboardOverlap, listScrollTop } from './use-viewport'
+import { centreScrollTop, keyboardOverlap, listScrollTop } from './use-viewport'
 
 describe('listScrollTop', () => {
   it('scrolls up to an item above the view', () => {
@@ -16,6 +16,28 @@ describe('listScrollTop', () => {
 
   it('pins a taller-than-view item to its top edge', () => {
     expect(listScrollTop(0, 100, 150, 300)).toBe(150)
+  })
+})
+
+describe('centreScrollTop', () => {
+  it('centres an item in the middle of a long list', () => {
+    expect(centreScrollTop(200, 1000, 400, 40)).toBe(320)
+  })
+
+  it('moves an already-visible item, unlike listScrollTop', () => {
+    expect(centreScrollTop(200, 1000, 300, 40)).toBe(220)
+  })
+
+  it('pins to the top rather than scrolling past the start', () => {
+    expect(centreScrollTop(200, 1000, 10, 40)).toBe(0)
+  })
+
+  it('pins to the bottom rather than scrolling past the end', () => {
+    expect(centreScrollTop(200, 1000, 960, 40)).toBe(800)
+  })
+
+  it('stays put when the container does not scroll', () => {
+    expect(centreScrollTop(500, 500, 100, 40)).toBe(0)
   })
 })
 
