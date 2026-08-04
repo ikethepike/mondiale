@@ -720,7 +720,8 @@ describe('diaspora challenge', () => {
   const dealtDiasporas = (difficulty: GameDifficulty, variant: Game['variant'] = 'world') => {
     const dealt: DiasporaChallenge[] = []
     for (let round = 0; round < DEAL_ROUNDS; round++) {
-      for (const challenge of getFinalChallenges({ game: gameFor(variant, difficulty) }).challenges) {
+      for (const challenge of getFinalChallenges({ game: gameFor(variant, difficulty) })
+        .challenges) {
         if (challenge._type === 'diaspora-challenge') dealt.push(challenge)
       }
     }

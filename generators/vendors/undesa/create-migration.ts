@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { unzipSync, strFromU8 } from 'fflate'
-import { type Amount, type ISOCountryCode } from '../../../types/geography.types'
+import type { Amount, ISOCountryCode } from '../../../types/geography.types'
 import { resolveUnLocation } from './m49'
 
 /**

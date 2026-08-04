@@ -11,8 +11,7 @@
 
     <ChallengePrompt :hint="hint">
       <h1 class="map-caption">
-        {{ countryName(challenge.country) }}'s residents born abroad — where were most of them
-        born?
+        {{ countryName(challenge.country) }}'s residents born abroad — where were most of them born?
       </h1>
     </ChallengePrompt>
 
@@ -28,7 +27,11 @@
           :style="{ '--share': slice.share, '--depth': index, '--i': index }"
         >
           <span v-if="named && slice.share >= LABEL_MIN_SHARE" class="slice-label">
-            <CountryFlag class="slice-flag" :country="getCountry(slice.isoCode)" mode="background" />
+            <CountryFlag
+              class="slice-flag"
+              :country="getCountry(slice.isoCode)"
+              mode="background"
+            />
             <span class="slice-name">{{ countryName(slice.isoCode) }}</span>
           </span>
           <span class="slice-share">{{ formatShare(slice.share) }}</span>
@@ -156,7 +159,9 @@ const formatShare = (share: number) => `${Math.round(share * 100)}%`
 
 const barLabel = computed(() =>
   submitted.value
-    ? slices.value.map(slice => `${countryName(slice.isoCode)} ${formatShare(slice.share)}`).join(', ')
+    ? slices.value
+        .map(slice => `${countryName(slice.isoCode)} ${formatShare(slice.share)}`)
+        .join(', ')
     : `${slices.value.length} origins, largest ${formatShare(slices.value[0]?.share ?? 0)}`
 )
 

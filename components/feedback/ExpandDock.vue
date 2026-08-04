@@ -3,9 +3,21 @@
     <Transition name="dock">
       <div v-if="open" class="dock-stage expand-dock">
         <div class="dock-scrim" aria-hidden="true" @click="close" />
-        <div class="dock-frame" :class="{ tall }" role="dialog" aria-modal="true" :aria-label="label">
+        <div
+          class="dock-frame"
+          :class="{ tall }"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="label"
+        >
           <slot />
-          <button ref="closeButton" type="button" class="dock-close" :title="closeTitle" @click="close">
+          <button
+            ref="closeButton"
+            type="button"
+            class="dock-close"
+            :title="closeTitle"
+            @click="close"
+          >
             <svg class="dock-close-icon" viewBox="0 0 16 16" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>

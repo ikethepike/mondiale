@@ -978,9 +978,7 @@ export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
 export const hasClearLeader = (isoCode: ISOCountryCode): boolean =>
   corridorMargin(corridorsToDestination(isoCode)) >= COMPOSITION_CLEAR_MARGIN
 
-const getCompositionChallenge = (
-  gameState: gameTypes.Game
-): CompositionChallenge | undefined => {
+const getCompositionChallenge = (gameState: gameTypes.Game): CompositionChallenge | undefined => {
   const pool = playableCountries(gameState)
   const boards = compositionBoards(pool)
   if (!boards.length) return undefined
