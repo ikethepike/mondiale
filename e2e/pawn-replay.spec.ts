@@ -23,22 +23,87 @@ const armTrace = async (page: import('@playwright/test').Page) => {
 
 const P1 = 'mock-player-1'
 
+/** Where the board has actually put the pawn, or undefined if not yet placed. */
+const shownTile = async (page: import('@playwright/test').Page) =>
+  (await readTrace(page))
+    .filter(entry => entry.playerId === P1 && (entry.fn === 'place' || entry.fn === 'hop'))
+    .at(-1)?.to
+
+/**
+ * Wait for the pawn to actually settle rather than for a fixed duration:
+ * hop chains are paced by the mover, so a wall-clock guess is either slow or
+ * flaky. Polls until the shown tile stops changing.
+ */
+const waitForPawnToSettle = async (page: import('@playwright/test').Page) => {
+  let previous: number | undefined
+  let stable = 0
+  await expect
+    .poll(
+      async () => {
+        const current = await shownTile(page)
+        stable = current !== undefined && current === previous ? stable + 1 : 0
+        previous = current
+        // Three consecutive identical reads: the hop queue has drained
+        return stable >= 3
+      },
+      { timeout: 30_000, intervals: [250] }
+    )
+    .toBe(true)
+  return previous
+}
+
 /** Drive the harness to a pawn parked on the gate, board hidden. */
 const walkAndHide = async (page: import('@playwright/test').Page) => {
   await page.goto('/test')
   await expect(page.locator('.replay-controls')).toBeVisible({ timeout: 20_000 })
-  // The board build + fly-in settles before the walk, so the pawn is placed
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(2500)
+  await waitForPawnToSettle(page)
 
   await page.getByRole('button', { name: 'Walk P1 to gate' }).click()
-  // Let the hop queue drain — the pawn must be SEEN at the gate for the
-  // display memory to record it (that memory is the suspected culprit).
-  await page.waitForTimeout(3000)
+  // The pawn must be SEEN at the gate for the display memory to record it —
+  // that memory is what the remount then replays from.
+  await waitForPawnToSettle(page)
 
   await page.getByRole('button', { name: 'Hide board' }).click()
   await expect(page.locator('.board3d canvas')).toBeHidden()
 }
+
+test('a walk dealt to a mounted board still replays on remount', async ({ page }) => {
+  await armTrace(page)
+  await page.goto('/test')
+  await expect(page.locator('.replay-controls')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
+  await waitForPawnToSettle(page)
+
+  // A new round deals a fresh walk while the board is ALREADY MOUNTED, so the
+  // pawn walks live with no restore() in sight. Its tiles must be stamped with
+  // the generation they actually belong to — otherwise the remount below reads
+  // a mismatch and teleports past movement the player is still owed.
+  await page.getByRole('button', { name: 'Deal new walk' }).click()
+  await page.getByRole('button', { name: 'Hop P1 +1' }).click()
+  await waitForPawnToSettle(page)
+
+  await page.getByRole('button', { name: 'Hide board' }).click()
+  await expect(page.locator('.board3d canvas')).toBeHidden()
+
+  // Server walks the pawn on while the board is away
+  await page.getByRole('button', { name: 'Hop P1 +3' }).click()
+  await page.evaluate(() => {
+    ;(window as unknown as { __pawnTrace: unknown[] }).__pawnTrace = []
+  })
+  await page.getByRole('button', { name: 'Show board' }).click()
+  await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
+  await waitForPawnToSettle(page)
+
+  const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
+  console.log('  cross-generation trace:', JSON.stringify(trace))
+
+  const hops = trace.filter(entry => entry.fn === 'hop')
+  expect(hops.length, 'owed movement was swallowed as a generation mismatch').toBeGreaterThan(0)
+  for (const hop of hops) {
+    expect(hop.to, 'the replay must run forward').toBeGreaterThan(hop.from ?? -1)
+  }
+})
 
 test('a lost gate does not replay the walk on remount', async ({ page }) => {
   await armTrace(page)
@@ -52,7 +117,7 @@ test('a lost gate does not replay the walk on remount', async ({ page }) => {
   })
   await page.getByRole('button', { name: 'Show board' }).click()
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(4000)
+  await waitForPawnToSettle(page)
 
   const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
   console.log('  lost-gate remount trace:', JSON.stringify(trace))
@@ -89,7 +154,7 @@ test('a failed gate cuts progress off at the gate', async ({ page }) => {
   })
   await page.getByRole('button', { name: 'Show board' }).click()
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(4000)
+  await waitForPawnToSettle(page)
 
   const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
   console.log('  forfeit trace:', JSON.stringify(trace))
@@ -116,7 +181,7 @@ test('a won gate still replays its leap forward', async ({ page }) => {
   })
   await page.getByRole('button', { name: 'Show board' }).click()
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(4000)
+  await waitForPawnToSettle(page)
 
   const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
   console.log('  won-gate remount trace:', JSON.stringify(trace))

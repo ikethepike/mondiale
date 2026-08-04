@@ -23,12 +23,12 @@ export interface PawnMover {
    * unmounted (challenge win leaps, walks started before the scene loaded):
    * the pawn appears where it was last SEEN and hops to where it IS.
    *
-   * Replay only ever runs FORWARD, and only within `walkSeq` — the walk
-   * generation the memory was recorded under. A pawn is never put back down
-   * ahead of where it truthfully stands, so it cannot retreat over ground it
-   * already covered.
+   * Replay only ever runs FORWARD, and only within the current walk
+   * generation (read via `walkSeqFor`). A pawn is never put back down ahead of
+   * where it truthfully stands, so it cannot retreat over ground it already
+   * covered.
    */
-  restore(playerId: string, tileIndex: number, bounds: { walkSeq: number }): void
+  restore(playerId: string, tileIndex: number): void
   dispose(): void
 }
 
@@ -109,6 +109,13 @@ export const createPawnMover = (options: {
   onLand?: (playerId: string, tile: TileTransform) => void
   /** Key for cross-mount position memory (the game id). */
   memoryKey?: string
+  /**
+   * The walk generation a pawn is currently on (`player.walkSeq`). Read on
+   * every memory write, so a tile walked live — after the server deals a new
+   * walk to an already-mounted board — is stamped with the generation it
+   * actually belongs to rather than whatever the last mount restored under.
+   */
+  walkSeqFor?: (playerId: string) => number
 }): PawnMover => {
   const states = new Map<string, PawnState>()
 
@@ -122,12 +129,14 @@ export const createPawnMover = (options: {
     return displayedMemory.get(options.memoryKey)
   })()
 
-  // The walk generation each pawn is currently displaying, set by restore()
-  // and carried onto every memory write so a later mount can tell whether a
-  // remembered tile belongs to the walk still in progress.
-  const walkSeqs = new Map<string, number>()
+  // Stamp every memory write with the generation the pawn is on RIGHT NOW,
+  // read from live state. Latching this at restore() time instead would go
+  // stale the moment the server deals a new walk to a mounted board: the pawn
+  // then walks live through the position watcher with no restore() in sight,
+  // and the next mount would compare two different generations and discard
+  // movement the player is still owed.
   const remember = (playerId: string, tile: number) => {
-    memory?.set(playerId, { tile, walkSeq: walkSeqs.get(playerId) ?? 0 })
+    memory?.set(playerId, { tile, walkSeq: options.walkSeqFor?.(playerId) ?? 0 })
   }
 
   // Held for dispose(); killing an already-finished tween is a no-op.
@@ -374,9 +383,9 @@ export const createPawnMover = (options: {
     hopNext(playerId)
   }
 
-  const restore = (playerId: string, tileIndex: number, bounds: { walkSeq: number }) => {
+  const restore = (playerId: string, tileIndex: number) => {
     const remembered = memory?.get(playerId)
-    walkSeqs.set(playerId, bounds.walkSeq)
+    const walkSeq = options.walkSeqFor?.(playerId) ?? 0
 
     // A remount may only ever replay FORWARD, and only within the walk the
     // memory was recorded under:
@@ -391,7 +400,7 @@ export const createPawnMover = (options: {
     //    the target puts it down where the server says it is instead of
     //    retreating it onto the gate and hopping back off
     const origin =
-      remembered === undefined || remembered.walkSeq !== bounds.walkSeq
+      remembered === undefined || remembered.walkSeq !== walkSeq
         ? tileIndex
         : Math.min(remembered.tile, tileIndex)
 
@@ -401,7 +410,7 @@ export const createPawnMover = (options: {
       from: remembered?.tile,
       to: tileIndex,
       origin,
-      seq: [remembered?.walkSeq, bounds.walkSeq],
+      seq: [remembered?.walkSeq, walkSeq],
     })
 
     if (origin === tileIndex) return place(playerId, tileIndex)

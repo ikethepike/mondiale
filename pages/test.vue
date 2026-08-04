@@ -15,6 +15,7 @@
          gate resolves while it is gone. These drive that sequence. -->
     <nav class="controls replay-controls">
       <button @click="walkToGate">Walk P1 to gate</button>
+      <button @click="dealWalk(4)">Deal new walk</button>
       <button @click="boardVisible = false">Hide board</button>
       <button @click="loseGate">Lose gate (hidden)</button>
       <button @click="winGate">Win gate (hidden)</button>
@@ -40,6 +41,9 @@ const mockPlayer = (id: string, name: string, color: string, position: number): 
   phase: 'moving',
   moves: [],
   currentPosition: position,
+  // Every real player is on a dealt walk; leaving this unset would pin the
+  // harness to generation 0 and hide the cross-round replay path entirely.
+  walkSeq: 1,
 })
 
 const seed = ref('topo-harness')
@@ -121,6 +125,19 @@ const winGate = () => {
   player.moves.shift()
 }
 
+/**
+ * A new round deals a fresh walk, as startWalk does — bumping the generation
+ * is what retires the previous walk's display memory. Walking after this is
+ * the cross-round path; without a generation bump the harness could only ever
+ * exercise movement inside a single walk.
+ */
+const dealWalk = (steps: number) => {
+  const player = mockGame.players['mock-player-1']
+  const end = mockGame.tiles[Math.min(player.currentPosition + steps, mockGame.tiles.length - 1)]
+  player.moves = [{ endTile: end }]
+  player.walkSeq = (player.walkSeq ?? 0) + 1
+}
+
 // First win is the champion (gold crown), later wins are finishers (silver)
 let winCount = 0
 const win = (playerId: string) => {
@@ -157,6 +174,7 @@ const reseed = () => {
   gap: 0.6rem;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   position: absolute;
 
   button {
@@ -166,5 +184,10 @@ const reseed = () => {
     background: var(--background-color);
     border: 0.1rem solid var(--text-color);
   }
+}
+
+/* Its own row: overlapping the first nav made those buttons unclickable. */
+.replay-controls {
+  top: 4.5rem;
 }
 </style>
