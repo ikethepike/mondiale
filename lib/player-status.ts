@@ -1,4 +1,14 @@
 import type { Player } from '~~/types/player.type'
+import type { PlayerMove } from '~~/types/game.types'
+
+/**
+ * The tile a move actually parks the pawn on. A challenge move stops one tile
+ * SHORT of its gate — the gate tile is entered only by answering it — so the
+ * walk loop, the status label and the board all have to agree here. Single
+ * source for that split; never re-derive `endTile.position - 1` inline.
+ */
+export const moveStopTile = (move: PlayerMove): number =>
+  move.challenge ? move.endTile.position - 1 : move.endTile.position
 
 export interface PlayerStatus {
   /** Short human label, e.g. "Walking · 4 steps left". */
@@ -13,10 +23,14 @@ export interface PlayerStatus {
   steps?: number
 }
 
-/** Tiles left to walk: end of the final queued move minus where the pawn stands. */
+/**
+ * Tiles left to walk: the last queued move's stop tile minus where the pawn
+ * stands. Counting to `endTile` instead would bank a step the walk can never
+ * spend when that move is a challenge gate.
+ */
 const stepsRemaining = (player: Player): number => {
   const lastMove = player.moves[player.moves.length - 1]
-  return lastMove ? Math.max(0, lastMove.endTile.position - player.currentPosition) : 0
+  return lastMove ? Math.max(0, moveStopTile(lastMove) - player.currentPosition) : 0
 }
 
 // Non-breaking spaces keep the steps phrase whole — the label wraps at the

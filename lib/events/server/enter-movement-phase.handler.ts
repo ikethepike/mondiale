@@ -15,6 +15,7 @@ import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
+import { moveStopTile } from '~~/lib/player-status'
 
 /** Phases that no longer take part in a round's movement. */
 export const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
@@ -156,7 +157,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
     if (alreadySettled) {
       // Skip the walk/settle block — go straight to the round-advancement check.
     } else if (move) {
-      const stopAt = move.challenge ? move.endTile.position - 1 : move.endTile.position
+      const stopAt = moveStopTile(move)
 
       // Still tiles to walk: advance ONE step and hand the queue back. The
       // +500ms pace to the next step runs OUTSIDE the queue (via reschedule),
