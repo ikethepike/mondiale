@@ -100,6 +100,25 @@
   }
 }
 
+// World of Change's two-frame loop: the later frame fades in over the earlier
+// one, holds, then fades back. Both frames are stacked and only the top one
+// animates, so the pair never blinks through the background mid-cross. The
+// hold either side is what lets the eye compare — a continuous dissolve reads
+// as a blur, not as change. Period comes from the caller's animation-duration.
+@keyframes frame-cross {
+  0%,
+  38% {
+    opacity: 0;
+  }
+  50%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 // The audio rounds' level meter: bars breathe while a clip plays. Decoration
 // only — driven by the round clock, never by audio analysis.
 // Animates HEIGHT rather than scaleY: scaling a 3px-wide bar stretches its

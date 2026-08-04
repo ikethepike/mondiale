@@ -91,8 +91,12 @@ const value = defineModel<number>({ required: true })
 /** Tape gearing: one drag-pixel per ninth of a step keeps ±1 reachable by
  *  thumb while a full swipe still travels a generation. */
 const PX_PER_STEP = 9
-/** Steps visible either side of the needle. */
+/** Steps visible either side of the needle. Detents, not units: a decade dial
+ *  shows the same number of ticks a year dial does, ten times the span. */
 const DIAL_SPAN = 34
+/** Below this many detents between the rails the tape has room to breathe, so
+ *  the gearing opens up rather than bunching a short scale into the middle. */
+const ROOMY_DETENTS = 40
 /** Momentum time constant, ms — a flick's glide distance is velocity × this. */
 const GLIDE_TAU_MS = 260
 /** Glide duration bounds, seconds — a big flick coasts, a small one settles fast. */
@@ -109,9 +113,18 @@ const WHEEL_SETTLE_MS = 160
 
 const tape = ref<HTMLElement>()
 
-/** Pixels per unit of value — the gearing is per STEP, so a decade dial
- *  travels the same thumb-distance per detent as a year dial does. */
-const pxPerUnit = computed(() => PX_PER_STEP / props.step)
+/**
+ * Pixels per unit of value. The gearing is per STEP, so a decade dial travels
+ * the same thumb-distance per detent as a year dial does — but a scale with
+ * only a handful of detents (six decades, say) would then huddle in the middle
+ * of the rail with dead space either side, so a short scale spreads out to
+ * fill the tape instead.
+ */
+const pxPerUnit = computed(() => {
+  const detents = (props.max - props.min) / props.step
+  const perStep = detents < ROOMY_DETENTS ? PX_PER_STEP * (ROOMY_DETENTS / detents) : PX_PER_STEP
+  return perStep / props.step
+})
 const downJumps = computed(() => props.jumps.map(jump => -jump).reverse())
 
 /** Snap to the nearest whole step measured from the floor, so a decade dial
@@ -232,16 +245,23 @@ const onDialKeys = (event: KeyboardEvent) => {
 const ticks = computed(() => {
   const centre = value.value
   const [fine, coarse] = props.jumps
+  // Labels mark the jump magnitudes, but only where those are COARSER than one
+  // step: a decade dial steps by 10, so `% 10` would label every single tick
+  // and the readouts would collide into a smear.
+  const major = Math.max(fine, props.step * 2)
+  const grand = Math.max(coarse, major * 2)
   const marks: { value: number; offset: number; major: boolean; grand: boolean }[] = []
-  const span = DIAL_SPAN * props.step
+  // Span the same PIXEL width whatever the gearing, so a spread-out short
+  // scale still paints ticks all the way to the masked edges.
+  const span = (DIAL_SPAN * PX_PER_STEP) / pxPerUnit.value
   const first = snap(centre - span)
   for (let tick = first; tick <= centre + span; tick += props.step) {
     if (tick < props.min || tick > props.max) continue
     marks.push({
       value: tick,
       offset: (tick - centre) * pxPerUnit.value,
-      major: tick % fine === 0,
-      grand: tick % coarse === 0,
+      major: tick % major === 0,
+      grand: tick % grand === 0,
     })
   }
   return marks

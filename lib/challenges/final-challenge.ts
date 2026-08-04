@@ -1,8 +1,10 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COMMODITY_EXPORTERS } from '~~/data/commodity-exporters.gen'
+import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
@@ -10,6 +12,7 @@ import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import type {
   BornChallenge,
   BoundaryChallenge,
+  ChangeChallenge,
   CityNocturneChallenge,
   DiasporaChallenge,
   EndonymChallenge,
@@ -39,7 +42,13 @@ import {
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
 import { sample, sampleMany, shuffleArray, weightedPick } from '../arrays'
-import { countryEndonym, isLargeCountry, normalizeCountryName, pickSizedCountry } from '../country'
+import {
+  countryEndonym,
+  isLargeCountry,
+  mentionsCountry,
+  normalizeCountryName,
+  pickSizedCountry,
+} from '../country'
 import {
   corridorMargin,
   corridorsFromOrigin,
@@ -96,6 +105,8 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'diaspora-challenge',
     // Easy-friendly via two-headline years and the widest tolerance
     'yearbook-challenge',
+    // Easy-friendly: the frames wear their years and neighbours are accepted
+    'change-challenge',
   ]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
@@ -144,6 +155,8 @@ const dealChallenge = (
         return getDiasporaChallenge(pool, difficulty)
       case 'yearbook-challenge':
         return getYearbookChallenge(difficulty)
+      case 'change-challenge':
+        return getChangeChallenge(pool, difficulty)
     }
   } catch {
     return undefined
@@ -592,17 +605,20 @@ export const YEARBOOK_LEAK_WINDOW = 5
 export const CENTURY_DENSITY_FLOOR = 3
 
 /**
- * Year-leak filter: an event whose slug, name or description surfaces a year
- * near its own must not make the page. The SLUG is checked too — it travels
- * the wire as the headline key and names the card image
+ * Year-leak filter: does any digit run in `text` land within the window of the
+ * answer year? The SLUG is always one of the strings passed in — it travels the
+ * wire as the round's key and names the card image
  * (`treaty-of-manila-1946.webp` would date the page from devtools alone).
  * BCE years compare against their absolute value ("490 BCE" leaks −490).
  */
-export const yearbookLeaksYear = (slug: string, event: EventEntry): boolean => {
-  const year = Math.abs(event.year)
-  const tokens = `${slug} ${event.name} ${event.description}`.match(/\d{2,4}/g) ?? []
-  return tokens.some(token => Math.abs(Number(token) - year) <= YEARBOOK_LEAK_WINDOW)
+export const leaksYear = (year: number, ...text: string[]): boolean => {
+  const answer = Math.abs(year)
+  const tokens = text.join(' ').match(/\d{2,4}/g) ?? []
+  return tokens.some(token => Math.abs(Number(token) - answer) <= YEARBOOK_LEAK_WINDOW)
 }
+
+export const yearbookLeaksYear = (slug: string, event: EventEntry): boolean =>
+  leaksYear(event.year, slug, event.name, event.description)
 
 /**
  * The page's year, resolved from the dealt headlines — the reveal and the
@@ -679,6 +695,128 @@ const getYearbookChallenge = (difficulty: GameDifficulty): YearbookChallenge | u
     headlines: sampleMany(picked[1], headlineCount),
     tolerance,
     secondsPerHeadline,
+  }
+}
+
+export const CHANGE_TUNING: {
+  [difficulty in GameDifficulty]: {
+    /** Seconds one frame holds before the crossfade. */
+    crossfadeSeconds: number
+    /** Whether the frames wear their years — the strongest hint on offer. */
+    showYears: boolean
+    /** Absent = tap only; set = the decade dial is part of the answer. */
+    decadeTolerance?: number
+    /** Easy widens the accept set to each subject's land neighbours: the
+     *  imagery rarely shows a border, so a tap on the wrong side of one is a
+     *  reading of the picture, not a miss. */
+    acceptNeighbours: boolean
+  }
+} = {
+  easy: { crossfadeSeconds: 3, showYears: true, acceptNeighbours: true },
+  normal: { crossfadeSeconds: 2.4, showYears: true, acceptNeighbours: false },
+  hard: { crossfadeSeconds: 2, showYears: false, decadeTolerance: 10, acceptNeighbours: false },
+}
+
+/** Region weighting treats a region as holding at least this many stories, so
+ *  a thin region's one story doesn't become a fixed share of every deal. */
+export const REGION_DENSITY_FLOOR = 3
+
+/**
+ * Where the change is: the countries whose tap the verdict accepts. Resolved
+ * from the story, never from the snapshot — dealer, verdict and reveal share
+ * this selector so they cannot drift.
+ */
+export const changeAccepted = (challenge: ChangeChallenge): ISOCountryCode[] => {
+  const story = CHANGES[challenge.slug]
+  if (!story) return []
+  const held = story.countries.filter(isValidISOCode)
+  if (!challenge.acceptNeighbours) return held
+  return [
+    ...new Set([
+      ...held,
+      ...ISOCountryCodes.filter(iso => held.some(own => isNeighbour(own, iso))),
+    ]),
+  ]
+}
+
+/** The decade the change began — the dial's answer, derived not shipped. */
+export const changeDecade = (challenge: ChangeChallenge): number | undefined => {
+  const story = CHANGES[challenge.slug]
+  return story ? Math.floor(story.startYear / 10) * 10 : undefined
+}
+
+/** The rails the decade dial spins between, from the stories themselves. */
+export const CHANGE_DIAL_BOUNDS: { min: number; max: number } = (() => {
+  const years = Object.values(CHANGES).flatMap(story => [
+    story.startYear,
+    ...story.frames.map(frame => frame.year),
+  ])
+  if (!years.length) return { min: 1900, max: 2020 }
+  return {
+    min: Math.floor(Math.min(...years) / 10) * 10,
+    max: Math.ceil(Math.max(...years) / 10) * 10,
+  }
+})()
+
+/**
+ * A story is dealable when its accepted countries are on this board and
+ * nothing about it names the answer. The country scrub runs at generate time
+ * too; re-running it here keeps a hand-edited data file from shipping a
+ * giveaway, and the year scrub only bites where the decade is being asked.
+ */
+const changeCandidates = (pool: ISOCountryCode[], difficulty: GameDifficulty): string[] => {
+  const { decadeTolerance } = CHANGE_TUNING[difficulty]
+  return Object.entries(CHANGES)
+    .filter(([slug, story]) => {
+      if (!story.countries.some(iso => isValidISOCode(iso) && pool.includes(iso))) return false
+      if (story.countries.some(iso => isValidISOCode(iso) && mentionsCountry(story.name, iso))) {
+        return false
+      }
+      return !decadeTolerance || !leaksYear(story.startYear, slug, story.name, story.description)
+    })
+    .map(([slug]) => slug)
+}
+
+const getChangeChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): ChangeChallenge | undefined => {
+  const { crossfadeSeconds, showYears, decadeTolerance, acceptNeighbours } =
+    CHANGE_TUNING[difficulty]
+  const candidates = changeCandidates(pool, difficulty)
+  if (!candidates.length) return undefined
+
+  // Region weighting, the yearbook's era trick in space: a story's chance is
+  // inversely proportional to how crowded its region is, so a deck curated
+  // toward one continent can't also deal from it every time.
+  const regionOf = (slug: string) => COUNTRIES[CHANGES[slug].countries[0]]?.region
+  const perRegion = new Map<string, number>()
+  for (const slug of candidates) {
+    const region = regionOf(slug)
+    if (region) perRegion.set(region, (perRegion.get(region) ?? 0) + 1)
+  }
+  const picked = weightedPick(
+    candidates.map(
+      slug =>
+        [
+          slug,
+          1 / Math.max(perRegion.get(regionOf(slug) ?? '') ?? 1, REGION_DENSITY_FLOOR),
+        ] as const
+    )
+  )
+  if (!picked) return undefined
+
+  const story = CHANGES[picked]
+  return {
+    _type: 'change-challenge',
+    slug: picked,
+    frames: [story.frames[0].image, story.frames[1].image],
+    crossfadeSeconds,
+    ...(showYears
+      ? { frameYears: [story.frames[0].year, story.frames[1].year] as [number, number] }
+      : {}),
+    ...(decadeTolerance ? { decadeTolerance } : {}),
+    ...(acceptNeighbours ? { acceptNeighbours } : {}),
   }
 }
 
@@ -1264,6 +1402,21 @@ export const isCorrectFinalAnswer = ({
         Math.abs(submittedAnswer.year - year) <= challenge.tolerance
       )
     }
+    case 'change-challenge': {
+      if (submittedAnswer._type !== 'change-challenge') return throwTypeMismatch()
+      if (!isValidISOCode(submittedAnswer.isoCode)) return false
+      if (!changeAccepted(challenge).includes(submittedAnswer.isoCode)) return false
+      // Tap-only difficulties stop here; where the decade is asked, both halves
+      // must land. A missing dial is a wrong answer, not a malformed one.
+      if (!challenge.decadeTolerance) return true
+      const decade = changeDecade(challenge)
+      return (
+        decade !== undefined &&
+        submittedAnswer.decade !== undefined &&
+        Number.isFinite(submittedAnswer.decade) &&
+        Math.abs(submittedAnswer.decade - decade) <= challenge.decadeTolerance
+      )
+    }
     case 'diaspora-challenge': {
       if (submittedAnswer._type !== 'diaspora-challenge') return throwTypeMismatch()
       // Positional like endonym: pick i answers beat i, so the right country
@@ -1379,6 +1532,12 @@ export const getFinalChallengeDetails = ({
     case 'yearbook-challenge':
       return {
         question: `One year made this front page — dial it in (±${challenge.tolerance} year${challenge.tolerance === 1 ? '' : 's'} counts)`,
+      }
+    case 'change-challenge':
+      return {
+        question: challenge.decadeTolerance
+          ? 'This place changed — tap where on earth, and dial the decade it started'
+          : 'This place changed — tap where on earth it is happening',
       }
     default:
       return {

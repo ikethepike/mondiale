@@ -177,10 +177,15 @@ for (const seed of CHANGE_SEEDS) {
     [seed.beforeUrl, seed.beforeYear, 'before'],
     [seed.afterUrl, seed.afterYear, 'after'],
   ] as const) {
-    const image = await saveImageUrl(url, `${OUTPUT_DIRECTORY}/${slug}-${suffix}`, `/changes/${slug}-${suffix}`, {
-      width: CHANGE_WIDTH,
-      force,
-    })
+    const image = await saveImageUrl(
+      url,
+      `${OUTPUT_DIRECTORY}/${slug}-${suffix}`,
+      `/changes/${slug}-${suffix}`,
+      {
+        width: CHANGE_WIDTH,
+        force,
+      }
+    )
     if (image) frames.push({ image, year })
     // The archive throttles far harder than Commons does; a cached frame
     // short-circuits above, so this only paces genuinely new downloads.
@@ -229,7 +234,11 @@ export const CHANGES: ChangeMapping = ${JSON.stringify(mapping)}
 const shipped = Object.values(mapping)
 const bytes = shipped
   .flatMap(entry => entry.frames)
-  .reduce((total, frame) => total + (existsSync(`public${frame.image}`) ? statSync(`public${frame.image}`).size : 0), 0)
+  .reduce(
+    (total, frame) =>
+      total + (existsSync(`public${frame.image}`) ? statSync(`public${frame.image}`).size : 0),
+    0
+  )
 
 const lines: string[] = [
   `changes: ${shipped.length} shipped of ${CHANGE_SEEDS.length} seeds`,
@@ -250,7 +259,11 @@ const lines: string[] = [
   ).map(([kind, count]) => `  ${kind}\t${count}`),
 ]
 if (thin.length) {
-  lines.push('', `thin regions (want ${MIN_STORIES_PER_REGION}+):`, ...thin.map(([r, c]) => `  ${r}\t${c}`))
+  lines.push(
+    '',
+    `thin regions (want ${MIN_STORIES_PER_REGION}+):`,
+    ...thin.map(([r, c]) => `  ${r}\t${c}`)
+  )
 }
 if (dropped.length) {
   lines.push('', `dropped (${dropped.length}):`, ...dropped.map(d => `  ${d.slug}\t${d.reason}`))
