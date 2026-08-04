@@ -50,9 +50,7 @@ describe('treaties.gen', () => {
       const parties = Object.values(TREATIES[meta.id] ?? {}).filter(
         status => status.standing === 'party'
       ).length
-      expect(`${meta.id}: ${parties}`).toBe(
-        `${meta.id}: ${Math.max(parties, meta.minimumParties)}`
-      )
+      expect(parties, `${meta.id} parties`).toBeGreaterThanOrEqual(meta.minimumParties)
     }
   })
 

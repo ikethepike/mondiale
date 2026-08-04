@@ -25,7 +25,7 @@ import {
   MAX_LINEUP,
   MIN_ROWS_FOR_LETTERS,
 } from '~~/lib/odd-one-out'
-import { type ISOCountryCode } from '~~/types/geography.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import { OrganizationVector } from '~~/types/organization.type'
 
 type OrgId = keyof typeof OrganizationVector
@@ -35,8 +35,6 @@ const membersOf = (org: OrgId) =>
   all.filter(country => country.membership.some(entry => entry.id === org))
 const nonMembersOf = (org: OrgId) =>
   all.filter(country => !country.membership.some(entry => entry.id === org))
-
-
 
 /** Share of legal impostors that would sit alone under their own heading. */
 const strandedShare = (org: OrgId, key: (isoCode: ISOCountryCode) => string) => {
@@ -66,10 +64,8 @@ describe('odd-one-out sheet grouping', () => {
       // BRI is the one org spread across six regions, so region grouping is
       // already safe there; everywhere else the letter key must win outright.
       if (org === 'bri') continue
-      expect(`${org}: letter beats region`).toBe(
-        strandedShare(org, groupKey) < strandedShare(org, regionKey)
-          ? `${org}: letter beats region`
-          : `${org}: region wins — regrouping leaked`
+      expect(strandedShare(org, groupKey), `${org}: letter vs region key`).toBeLessThan(
+        strandedShare(org, regionKey)
       )
     }
   })
@@ -141,5 +137,18 @@ describe('odd-one-out lineup', () => {
   it('lists no country twice when the odd one out is already bound', () => {
     const lineup = buildLineup('SE' as ISOCountryCode, bound)
     expect(lineup.length).toBe(new Set(lineup).size)
+  })
+
+  // Why ViewFinalChallenge gates the map tap on membershipCountries: capping
+  // the lineup leaves plenty of countries that are ALSO genuinely outside the
+  // club but score as wrong. 31 African Union members go unlit; 78 countries
+  // are unbound by the Arms Trade Treaty. An ungated map punishes a player for
+  // correctly naming one of them, so the lineup has to be the whole question.
+  it('leaves countries outside the lineup that a player could defensibly tap', () => {
+    const members = membersOf('au').map(country => country.isoCode)
+    const lineup = buildLineup('PT' as ISOCountryCode, members)
+    const unlitMembers = members.filter(isoCode => !lineup.includes(isoCode))
+    expect(unlitMembers.length).toBeGreaterThan(0)
+    for (const isoCode of unlitMembers) expect(lineup).not.toContain(isoCode)
   })
 })

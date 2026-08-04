@@ -6,6 +6,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
+import { MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
@@ -340,13 +341,19 @@ const isBoundBy = (isoCode: ISOCountryCode, treaty: TreatyId) =>
   TREATIES[treaty]?.[isoCode]?.standing === 'party'
 
 /**
- * Same fairness test as the organizations: enough bound countries to light up,
- * and enough unbound ones for the holdout to hide among.
+ * Enough bound countries to fill a lineup, and at least one holdout to find.
+ *
+ * Unlike the organizations, this does NOT require a large unbound pool. The
+ * lineup is capped and the map tap is gated to it, so the answer hides among
+ * the countries actually shown — the size of the rest of the world is
+ * irrelevant. Requiring four holdouts would rule out the sharpest questions in
+ * the deck: the Convention on the Rights of the Child has exactly one country
+ * outside it, which is the whole reason it is worth asking.
  */
 const eligibleTreaties = (pool: ISOCountryCode[]): TreatyId[] =>
   TREATY_META.filter(meta => {
     const bound = pool.filter(isoCode => isBoundBy(isoCode, meta.id)).length
-    return bound >= 4 && pool.length - bound >= 4
+    return bound >= MIN_LINEUP_BOUND && pool.length - bound >= 1
   }).map(meta => meta.id)
 
 const getTreatyChallenge = (pool: ISOCountryCode[]): TreatyChallenge | undefined => {

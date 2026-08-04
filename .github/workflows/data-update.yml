@@ -54,6 +54,13 @@ jobs:
 
       # Ratifications land most months, and the generator's floors + the
       # CRC/US canary fail the job rather than committing a broken parse.
+      #
+      # Runs BEFORE generate:countries but resolves UN names against the
+      # countries file this step starts with (generators/lib/un-names.ts builds
+      # its index from COUNTRIES). A run that also renames a country therefore
+      # matches treaty rows against the previous vintage; it self-corrects the
+      # following week, and the generator's unresolved-names table is where it
+      # would show up first.
       - name: Update treaty ratifications
         run: bun run generate:treaties
 

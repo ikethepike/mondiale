@@ -178,15 +178,22 @@ describe('treaty challenge', () => {
   // The United States is the only country on earth that signed the Convention
   // on the Rights of the Child and never ratified it — so on any board holding
   // it, the CRC has exactly one legal answer.
-  it('names the United States when the CRC is dealt', () => {
+  //
+  // Asserting the deal COUNT matters: an earlier eligibility gate demanded four
+  // unbound countries, and the CRC has three, so it was never dealt at all and
+  // this test passed by never entering its loop.
+  it('deals the CRC, and names the United States when it does', () => {
+    let dealt = 0
     for (let round = 0; round < DEAL_ROUNDS; round++) {
       const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
       for (const challenge of challenges) {
         if (challenge._type !== 'treaty-challenge' || challenge.treaty !== 'crc') continue
+        dealt++
         expect(challenge.holdout).toBe('US')
         expect(challenge.standing).toBe('signatory')
       }
     }
+    expect(dealt).toBeGreaterThan(0)
   })
 })
 

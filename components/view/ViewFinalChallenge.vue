@@ -413,7 +413,11 @@ const lesson = computed(() => {
         case 'signatory':
           return `${name} signed the ${shortName}${year ? ` in ${year}` : ''} and never ratified it.`
         case 'withdrawn':
-          return `${name} was a party to the ${shortName}, then withdrew.`
+          // The year is only present when a curated entry knew it — the scrape
+          // can't read UNTC's withdrawal footnote.
+          return year
+            ? `${name} was a party to the ${shortName} until ${year}.`
+            : `${name} was a party to the ${shortName}, then withdrew.`
         default:
           return `${name} never joined the ${shortName}.`
       }
@@ -555,24 +559,19 @@ const oddOneOutSubject = computed(() => {
 
 const triggerMembershipChallenge = () => {
   const challenge = currentFinalChallenge.value
-  if (challenge?._type === 'membership-challenge') {
-    const members = Object.values(COUNTRIES)
-      .filter(country =>
-        country.membership.some(organization => organization.id === challenge.organization)
-      )
-      .map(country => country.isoCode)
-    // One set, two consumers: the map lights it, the sheet lists it. A second
-    // derivation that filtered differently would point at the exception.
-    membershipCountries.value = buildLineup(challenge.exception, members)
-    for (const isoCode of membershipCountries.value) gameStore.map.highlighted.add(isoCode)
-  }
-  if (challenge?._type === 'treaty-challenge') {
-    // Capped, unlike membership: the CRC binds 191 countries, and a lineup that
-    // long is a lit planet with a roster nobody reads.
-    const bound = (game.value ? playableCountries(game.value) : []).filter(
-      isoCode => TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
-    )
-    membershipCountries.value = buildLineup(challenge.holdout, bound)
+  // Both odd-one-out questions build their lineup the same way, from the same
+  // board pool: the sheet must never list a country the map isn't showing, and
+  // a second derivation that filtered differently would point at the answer.
+  if (challenge?._type === 'membership-challenge' || challenge?._type === 'treaty-challenge') {
+    const board = game.value ? playableCountries(game.value) : []
+    const isIn = (isoCode: ISOCountryCode) =>
+      challenge._type === 'membership-challenge'
+        ? COUNTRIES[isoCode].membership.some(entry => entry.id === challenge.organization)
+        : TREATIES[challenge.treaty]?.[isoCode]?.standing === 'party'
+    const oddOneOut =
+      challenge._type === 'membership-challenge' ? challenge.exception : challenge.holdout
+
+    membershipCountries.value = buildLineup(oddOneOut, board.filter(isIn))
     for (const isoCode of membershipCountries.value) gameStore.map.highlighted.add(isoCode)
   }
   if (challenge?._type === 'scales-challenge') {
@@ -627,16 +626,30 @@ const clearScalesPicks = () => {
 /**
  * The one odd-one-out submission — the map tap and a sheet row both land here,
  * for the club question and the treaty question alike.
+ *
+ * Taps outside the lineup are ignored, and that guard is load-bearing. Once the
+ * lit set is capped, plenty of countries off it are ALSO genuinely not in the
+ * club — 78 countries are unbound by the Arms Trade Treaty, 31 African Union
+ * members go unlit — so an ungated map would punish a player for correctly
+ * naming one of them. The lineup is the whole question; the map is just another
+ * way to point at it.
  */
 const submitMembership = (isoCode: ISOCountryCode) => {
   const challenge = currentFinalChallenge.value
   if (gameStore.map.status) return
+  if (!membershipCountries.value.includes(isoCode)) return
 
   const answered =
     challenge?._type === 'membership-challenge'
-      ? { submittedAnswer: { _type: challenge._type, isoCode } as const, reveal: challenge.exception }
+      ? {
+          submittedAnswer: { _type: challenge._type, isoCode } as const,
+          reveal: challenge.exception,
+        }
       : challenge?._type === 'treaty-challenge'
-        ? { submittedAnswer: { _type: challenge._type, isoCode } as const, reveal: challenge.holdout }
+        ? {
+            submittedAnswer: { _type: challenge._type, isoCode } as const,
+            reveal: challenge.holdout,
+          }
         : undefined
   if (!answered) return
 

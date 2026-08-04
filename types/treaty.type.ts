@@ -38,10 +38,15 @@ export type TreatyStanding =
 export interface TreatyStatus {
   standing: TreatyStanding
   /**
-   * Year it joined, or signed. Absent on a withdrawal: UNTC brackets the
-   * ORIGINAL dates to mark one and states the effective date in a footnote,
-   * so the only year in the row is the year they joined — recording that as
-   * the year they left would be a lie the reveal repeats.
+   * The year the standing dates from: joined, signed, or — on a withdrawal —
+   * left.
+   *
+   * The SCRAPE never fills it for a withdrawal. UNTC brackets the original
+   * dates to mark one and states the effective date in a footnote it does not
+   * parse, so the only year in the row is the year they joined; writing that
+   * as the year they left would be a lie the reveal repeats. Curated entries
+   * in data/static/treaty-corrections.ts may set it, because there the exit
+   * year is known rather than inferred.
    */
   year?: number
 }
@@ -51,11 +56,7 @@ export type TreatyMapping = {
 }
 
 export type TreatyFamily =
-  | 'human-rights'
-  | 'climate'
-  | 'arms-control'
-  | 'law-of-the-sea'
-  | 'mobility'
+  'human-rights' | 'climate' | 'arms-control' | 'law-of-the-sea' | 'mobility'
 
 export interface TreatyMeta {
   id: TreatyId
@@ -80,29 +81,132 @@ export interface TreatyMeta {
  */
 export const TREATY_META: readonly TreatyMeta[] = [
   // Human rights — where the signed-never-ratified column earns its keep.
-  { id: 'crc', name: 'Convention on the Rights of the Child', shortName: 'Convention on the Rights of the Child', family: 'human-rights', untc: { mtdsg: 'IV-11', chapter: 4 }, minimumParties: 180 },
-  { id: 'cedaw', name: 'Convention on the Elimination of All Forms of Discrimination against Women', shortName: 'Convention on Discrimination against Women', family: 'human-rights', untc: { mtdsg: 'IV-8', chapter: 4 }, minimumParties: 170 },
-  { id: 'iccpr', name: 'International Covenant on Civil and Political Rights', shortName: 'Covenant on Civil and Political Rights', family: 'human-rights', untc: { mtdsg: 'IV-4', chapter: 4 }, minimumParties: 155 },
-  { id: 'icescr', name: 'International Covenant on Economic, Social and Cultural Rights', shortName: 'Covenant on Economic, Social and Cultural Rights', family: 'human-rights', untc: { mtdsg: 'IV-3', chapter: 4 }, minimumParties: 155 },
-  { id: 'cat', name: 'Convention against Torture', shortName: 'Convention against Torture', family: 'human-rights', untc: { mtdsg: 'IV-9', chapter: 4 }, minimumParties: 155 },
-  { id: 'rome-statute', name: 'Rome Statute of the International Criminal Court', shortName: 'Rome Statute', family: 'human-rights', untc: { mtdsg: 'XVIII-10', chapter: 18 }, minimumParties: 110 },
+  {
+    id: 'crc',
+    name: 'Convention on the Rights of the Child',
+    shortName: 'Convention on the Rights of the Child',
+    family: 'human-rights',
+    untc: { mtdsg: 'IV-11', chapter: 4 },
+    minimumParties: 180,
+  },
+  {
+    id: 'cedaw',
+    name: 'Convention on the Elimination of All Forms of Discrimination against Women',
+    shortName: 'Convention on Discrimination against Women',
+    family: 'human-rights',
+    untc: { mtdsg: 'IV-8', chapter: 4 },
+    minimumParties: 170,
+  },
+  {
+    id: 'iccpr',
+    name: 'International Covenant on Civil and Political Rights',
+    shortName: 'Covenant on Civil and Political Rights',
+    family: 'human-rights',
+    untc: { mtdsg: 'IV-4', chapter: 4 },
+    minimumParties: 155,
+  },
+  {
+    id: 'icescr',
+    name: 'International Covenant on Economic, Social and Cultural Rights',
+    shortName: 'Covenant on Economic, Social and Cultural Rights',
+    family: 'human-rights',
+    untc: { mtdsg: 'IV-3', chapter: 4 },
+    minimumParties: 155,
+  },
+  {
+    id: 'cat',
+    name: 'Convention against Torture',
+    shortName: 'Convention against Torture',
+    family: 'human-rights',
+    untc: { mtdsg: 'IV-9', chapter: 4 },
+    minimumParties: 155,
+  },
+  {
+    id: 'rome-statute',
+    name: 'Rome Statute of the International Criminal Court',
+    shortName: 'Rome Statute',
+    family: 'human-rights',
+    untc: { mtdsg: 'XVIII-10', chapter: 18 },
+    minimumParties: 110,
+  },
 
   // Climate and environment.
-  { id: 'paris', name: 'Paris Agreement', shortName: 'Paris Agreement', family: 'climate', untc: { mtdsg: 'XXVII-7-d', chapter: 27 }, minimumParties: 175 },
-  { id: 'kyoto', name: 'Kyoto Protocol', shortName: 'Kyoto Protocol', family: 'climate', untc: { mtdsg: 'XXVII-7-a', chapter: 27 }, minimumParties: 170 },
-  { id: 'cbd', name: 'Convention on Biological Diversity', shortName: 'Convention on Biological Diversity', family: 'climate', untc: { mtdsg: 'XXVII-8', chapter: 27 }, minimumParties: 175 },
+  {
+    id: 'paris',
+    name: 'Paris Agreement',
+    shortName: 'Paris Agreement',
+    family: 'climate',
+    untc: { mtdsg: 'XXVII-7-d', chapter: 27 },
+    minimumParties: 175,
+  },
+  {
+    id: 'kyoto',
+    name: 'Kyoto Protocol',
+    shortName: 'Kyoto Protocol',
+    family: 'climate',
+    untc: { mtdsg: 'XXVII-7-a', chapter: 27 },
+    minimumParties: 170,
+  },
+  {
+    id: 'cbd',
+    name: 'Convention on Biological Diversity',
+    shortName: 'Convention on Biological Diversity',
+    family: 'climate',
+    untc: { mtdsg: 'XXVII-8', chapter: 27 },
+    minimumParties: 175,
+  },
 
   // Arms control.
-  { id: 'mine-ban', name: 'Anti-Personnel Mine Ban Convention', shortName: 'Mine Ban Treaty', family: 'arms-control', untc: { mtdsg: 'XXVI-5', chapter: 26 }, minimumParties: 145 },
-  { id: 'cluster-munitions', name: 'Convention on Cluster Munitions', shortName: 'Convention on Cluster Munitions', family: 'arms-control', untc: { mtdsg: 'XXVI-6', chapter: 26 }, minimumParties: 100 },
-  { id: 'att', name: 'Arms Trade Treaty', shortName: 'Arms Trade Treaty', family: 'arms-control', untc: { mtdsg: 'XXVI-8', chapter: 26 }, minimumParties: 105 },
+  {
+    id: 'mine-ban',
+    name: 'Anti-Personnel Mine Ban Convention',
+    shortName: 'Mine Ban Treaty',
+    family: 'arms-control',
+    untc: { mtdsg: 'XXVI-5', chapter: 26 },
+    minimumParties: 145,
+  },
+  {
+    id: 'cluster-munitions',
+    name: 'Convention on Cluster Munitions',
+    shortName: 'Convention on Cluster Munitions',
+    family: 'arms-control',
+    untc: { mtdsg: 'XXVI-6', chapter: 26 },
+    minimumParties: 100,
+  },
+  {
+    id: 'att',
+    name: 'Arms Trade Treaty',
+    shortName: 'Arms Trade Treaty',
+    family: 'arms-control',
+    untc: { mtdsg: 'XXVI-8', chapter: 26 },
+    minimumParties: 105,
+  },
 
   // Law of the sea.
-  { id: 'unclos', name: 'United Nations Convention on the Law of the Sea', shortName: 'Law of the Sea Convention', family: 'law-of-the-sea', untc: { mtdsg: 'XXI-6', chapter: 21 }, minimumParties: 155 },
+  {
+    id: 'unclos',
+    name: 'United Nations Convention on the Law of the Sea',
+    shortName: 'Law of the Sea Convention',
+    family: 'law-of-the-sea',
+    untc: { mtdsg: 'XXI-6', chapter: 21 },
+    minimumParties: 155,
+  },
 
   // Non-UNTC: Wikidata and the curated list.
-  { id: 'schengen', name: 'Schengen Area', shortName: 'Schengen Area', family: 'mobility', minimumParties: 25 },
-  { id: 'echr', name: 'European Convention on Human Rights', shortName: 'European Convention on Human Rights', family: 'human-rights', minimumParties: 40 },
+  {
+    id: 'schengen',
+    name: 'Schengen Area',
+    shortName: 'Schengen Area',
+    family: 'mobility',
+    minimumParties: 25,
+  },
+  {
+    id: 'echr',
+    name: 'European Convention on Human Rights',
+    shortName: 'European Convention on Human Rights',
+    family: 'human-rights',
+    minimumParties: 40,
+  },
 ]
 
 /** The one place an instrument's names come from — prompt and reveal both. */

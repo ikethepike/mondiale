@@ -28,6 +28,14 @@ export const MIN_ROWS_FOR_LETTERS = 12
 export const MAX_LINEUP = 24
 
 /**
+ * Fewest bound countries a question needs to be worth dealing. Below this the
+ * lineup is too thin to hide the odd one out among — and unlike the size of
+ * the unbound pool, this one matters, because the lineup IS the question: the
+ * map tap is gated to it, so nothing outside is ever a legal answer.
+ */
+export const MIN_LINEUP_BOUND = 4
+
+/**
  * The countries a question actually puts on the board: the odd one out, plus
  * enough of the bound set to hide it in. Sampling keeps a huge instrument
  * playable without changing what is being asked.

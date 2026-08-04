@@ -127,10 +127,13 @@ const fetchUntcStatus = async (
  */
 const fetchSchengen = async (): Promise<{ [iso in ISOCountryCode]?: TreatyStatus }> => {
   const query = 'SELECT ?code WHERE { wd:Q1969730 wdt:P527 ?c . ?c wdt:P297 ?code }'
-  const response = await fetch(`https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}`, {
-    headers: { Accept: 'application/sparql-results+json', 'User-Agent': 'mondiale-generator' },
-    signal: AbortSignal.timeout(60_000),
-  })
+  const response = await fetch(
+    `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}`,
+    {
+      headers: { Accept: 'application/sparql-results+json', 'User-Agent': 'mondiale-generator' },
+      signal: AbortSignal.timeout(60_000),
+    }
+  )
   if (!response.ok) throw new Error(`Wikidata Schengen query returned ${response.status}`)
 
   const json = (await response.json()) as { results: { bindings: { code: { value: string } }[] } }
