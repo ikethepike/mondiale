@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { bleedBox, COMMIT_DRIFT, OVERLAY_BLEED, OVERLAY_BLEED_INSET } from './use-map-viewbox'
+import {
+  bleedBox,
+  COMMIT_DRIFT,
+  createCameraLedger,
+  OVERLAY_BLEED,
+  OVERLAY_BLEED_INSET,
+} from './use-map-viewbox'
 
 describe('camera-bus constants', () => {
   it('bleed exceeds the drift budget, so a ride-along can never show unpainted ground', () => {
@@ -24,5 +30,59 @@ describe('bleedBox', () => {
     // Centre preserved — the bleed must never shift the projection.
     expect(bled.x + bled.w / 2).toBeCloseTo(box.x + box.w / 2)
     expect(bled.y + bled.h / 2).toBeCloseTo(box.y + box.h / 2)
+  })
+})
+
+describe('createCameraLedger', () => {
+  const harness = () => {
+    let running = false
+    let starts = 0
+    const ledger = createCameraLedger(
+      () => {
+        starts += 1
+        running = true
+      },
+      () => {
+        running = false
+      }
+    )
+    return { ledger, isRunning: () => running, startCount: () => starts }
+  }
+
+  it('starts on the first claim and stops when the last claim is released', () => {
+    const { ledger, isRunning } = harness()
+    const a = ledger.claim()
+    const b = ledger.claim()
+    expect(isRunning()).toBe(true)
+    ledger.release(a)
+    expect(isRunning()).toBe(true)
+    ledger.release(b)
+    expect(isRunning()).toBe(false)
+  })
+
+  it('ignores orphan and repeated releases — the empire-ghost freeze', () => {
+    const { ledger, isRunning } = harness()
+    const ghost = ledger.claim()
+    // A consumer unmounted before it ever mounted releases without a claim
+    // (Vue runs onBeforeUnmount unconditionally); a bare counter would hit
+    // zero here and cancel the poller under the still-mounted ghost.
+    ledger.release(undefined)
+    const orphan = ledger.claim()
+    ledger.release(orphan)
+    ledger.release(orphan)
+    expect(isRunning()).toBe(true)
+    ledger.release(ghost)
+    expect(isRunning()).toBe(false)
+  })
+
+  it('never double-starts while claims are live', () => {
+    const { ledger, startCount } = harness()
+    const a = ledger.claim()
+    ledger.claim()
+    ledger.claim()
+    expect(startCount()).toBe(1)
+    ledger.release(a)
+    ledger.claim()
+    expect(startCount()).toBe(1)
   })
 })

@@ -50,7 +50,6 @@ let drifted = false
 let lastRaw = ''
 let frame: number | undefined
 let mapSvg: SVGSVGElement | null = null
-let subscribers = 0
 
 interface PanTracked {
   el: HTMLElement
@@ -120,26 +119,48 @@ const remeasureAll = () => {
   for (const item of tracked) measureTracked(item)
 }
 
-const subscribe = () => {
-  subscribers += 1
-  if (subscribers > 1) return
-  // Force a fresh read — the camera may have moved while nobody polled — and
-  // drop any drift carried over from a mid-pan unmount, or the first frame
-  // could commit a dead camera before the svg is even queryable.
-  lastRaw = ''
-  drifted = false
-  currentBox = undefined
-  window.addEventListener('resize', remeasureAll)
-  frame = requestAnimationFrame(readViewBox)
+/**
+ * Poller lifetime as a token ledger, not a bare counter. Vue runs
+ * onBeforeUnmount even for a consumer torn down before it ever mounted (an
+ * out-in view swap racing a v-if), so a counter can be pushed to zero by an
+ * orphan release while mounted overlays still depend on the poller — the
+ * empire ghost then paints a frozen camera while the map tweens on. A token
+ * pairs every release with its own claim: orphan and double releases are
+ * no-ops, and start/stop fire exactly on the 0↔1 edges.
+ */
+export const createCameraLedger = (start: () => void, stop: () => void) => {
+  const tokens = new Set<symbol>()
+  return {
+    claim: (): symbol => {
+      const token = Symbol('camera-poller')
+      tokens.add(token)
+      if (tokens.size === 1) start()
+      return token
+    },
+    release: (token: symbol | undefined): void => {
+      if (token === undefined || !tokens.delete(token)) return
+      if (!tokens.size) stop()
+    },
+  }
 }
 
-const unsubscribe = () => {
-  subscribers -= 1
-  if (subscribers > 0) return
-  if (frame !== undefined) cancelAnimationFrame(frame)
-  frame = undefined
-  window.removeEventListener('resize', remeasureAll)
-}
+const ledger = createCameraLedger(
+  () => {
+    // Force a fresh read — the camera may have moved while nobody polled — and
+    // drop any drift carried over from a mid-pan unmount, or the first frame
+    // could commit a dead camera before the svg is even queryable.
+    lastRaw = ''
+    drifted = false
+    currentBox = undefined
+    window.addEventListener('resize', remeasureAll)
+    frame = requestAnimationFrame(readViewBox)
+  },
+  () => {
+    if (frame !== undefined) cancelAnimationFrame(frame)
+    frame = undefined
+    window.removeEventListener('resize', remeasureAll)
+  }
+)
 
 /**
  * The camera as of the last polled frame — for imperative readers (interval
@@ -158,8 +179,12 @@ export const currentViewBox = (): MapViewBox | undefined => currentBox ?? commit
  * `cameraScale` counter-scales strokes and glyphs so zoom never balloons them.
  */
 export const useMapViewBox = () => {
-  onMounted(subscribe)
-  onBeforeUnmount(unsubscribe)
+  let token: symbol | undefined
+  onMounted(() => (token ??= ledger.claim()))
+  onBeforeUnmount(() => {
+    ledger.release(token)
+    token = undefined
+  })
 
   const toScreenPercent = (x: number, y: number): { left: number; top: number } | undefined => {
     const vb = committedBox.value
@@ -189,8 +214,9 @@ export const useMapViewBox = () => {
 export const useMapPanTrack = (el: Ref<HTMLElement | undefined>) => {
   const size = reactive({ w: 0, h: 0 })
   let item: PanTracked | undefined
+  let token: symbol | undefined
   onMounted(() => {
-    subscribe()
+    token ??= ledger.claim()
     if (!el.value) return
     item = { el: el.value, size }
     tracked.add(item)
@@ -199,7 +225,8 @@ export const useMapPanTrack = (el: Ref<HTMLElement | undefined>) => {
   onBeforeUnmount(() => {
     if (item) tracked.delete(item)
     item = undefined
-    unsubscribe()
+    ledger.release(token)
+    token = undefined
   })
   return { size }
 }

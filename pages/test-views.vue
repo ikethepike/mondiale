@@ -619,6 +619,25 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'empire-plc',
+    label: 'Ghosts of Empires (Polish–Lithuanian)',
+    component: ViewEmpire,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'empire-challenge',
+          empireId: 'polish-lithuanian-commonwealth',
+          keyframeYears: EMPIRES['polish-lithuanian-commonwealth'].keyframeYears,
+          peakYear: EMPIRES['polish-lithuanian-commonwealth'].peakYear,
+          durationSeconds: 24,
+          tapSeconds: 30,
+          members: EMPIRES['polish-lithuanian-commonwealth'].members.core,
+          partialMembers: EMPIRES['polish-lithuanian-commonwealth'].members.partial,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'empire-hard',
     label: 'Ghosts of Empires (free pick, no flag)',
     component: ViewEmpire,
