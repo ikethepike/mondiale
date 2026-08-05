@@ -29,7 +29,6 @@ export const isValidContinent = (continent: unknown): continent is Region => {
 }
 
 export interface Country {
-  flag: string
   isoCode: ISOCountryCode
   url: string
   region: Region

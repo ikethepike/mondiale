@@ -12,11 +12,7 @@
     <!-- From the final two-thirds: the flag sketches itself across the whole
          background in ink lines — no fills, just its bones — finishing
          exactly as the clock does -->
-    <FlagSketch
-      v-if="sketchStarted"
-      :flag="COUNTRIES[challenge.country].flag"
-      :draw-seconds="drawSeconds"
-    />
+    <FlagSketch v-if="sketchStarted && sketchMarkup" :flag="sketchMarkup" :draw-seconds="drawSeconds" />
     <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">Whose flag has these colours?</h1>
       <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
@@ -59,10 +55,9 @@ import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { COUNTRIES } from '~~/data/countries.gen'
 import { attributionFor } from '~~/lib/attribution'
 import { isFlagPaletteMatch } from '~~/lib/challenges'
-import { countryName } from '~~/lib/country'
+import { countryName, flagMarkup, loadFlags } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
@@ -95,6 +90,16 @@ const clockFraction = remainingFraction
 const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
 const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
 const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
+
+// The sketch needs the raw markup, lazy-loaded — kicked off at mount, ready
+// long before the sketch beat (final two-thirds of the clock) arrives.
+const flagsReady = ref(false)
+loadFlags().then(() => {
+  flagsReady.value = true
+})
+const sketchMarkup = computed(() =>
+  flagsReady.value && challenge.value ? flagMarkup(challenge.value.country) : null
+)
 
 const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   if (submitted.value) return

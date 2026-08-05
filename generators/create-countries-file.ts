@@ -144,12 +144,13 @@ const normalizeCountry = ({
   const names = getNames({ data, isoCode })
   console.log(`Processing: ${names.english}`)
 
+  // Read for the derived national colours only — the markup itself ships in
+  // data/flags.gen.ts (create-flags-file.ts), lazy-loaded via lib/country.ts.
   const flag = readFileSync(`data/static/flags/${isoCode.toLowerCase()}.svg`)
 
   return {
     url,
     name: names,
-    flag: flag.toString(),
     isoCode: isoCode as ISOCountryCode,
     coordinates: data.Geography['Geographic coordinates']?.text || '',
     region: getRegion({ data, isoCode }),

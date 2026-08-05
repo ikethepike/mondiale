@@ -104,6 +104,9 @@
 
 <script lang="ts" setup>
 import { COUNTRIES } from '~~/data/countries.gen'
+// Static import on purpose: this review harness needs the markup synchronously
+// (knobs seed during SSR), and the page chunk only loads on /flags-review.
+import { FLAGS } from '~~/data/flags.gen'
 import { recompose } from '~~/lib/flags/recompose'
 import { classify } from '~~/lib/flags/classify'
 import type { Family } from '~~/lib/flags/types'
@@ -152,7 +155,7 @@ const knobs = reactive<Record<string, Knob>>(
       // seeded to a sensible flush rising-sun; every other flag uses its family default.
       iso === 'AG'
         ? { k: 0.64, dx: 0, dy: -55, exclude: false } // baked into WIDE_SVGS.AG
-        : { k: defaultK(classify(iso, COUNTRIES[iso].flag)), dx: 0, dy: 0, exclude: false },
+        : { k: defaultK(classify(iso, FLAGS[iso])), dx: 0, dy: 0, exclude: false },
     ])
   )
 )
@@ -214,8 +217,7 @@ const composeAntigua = (k: number, dx: number, dy: number): string => {
 // a per-call override so the harness previews tuning without touching the file.
 const rows = computed(() =>
   isos.map(iso => {
-    const country = COUNTRIES[iso]
-    const source = country.flag
+    const source = FLAGS[iso]
     const knob = knobs[iso]
     // Only pass an override once the reviewer has actually touched this flag;
     // an empty object would otherwise mark every row as "override".
