@@ -67,7 +67,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -177,7 +177,8 @@ const onHandleTap = () => {
  */
 function reserve() {
   if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
-  const head = headerEl.value?.offsetHeight ?? 0
+  // Tucked (post-answer) frees the band for the reveal card and its camera.
+  const head = stopIndex.value === 2 ? 0 : (headerEl.value?.offsetHeight ?? 0)
   claimMapBerth(gameStore, 'membership-sheet', { bottom: head + HANDLE_PX + BERTH_GAP_PX })
 }
 
@@ -200,27 +201,42 @@ watch(isPhone, phone => {
   reserve()
 })
 
-// The stops are transforms measured against the sheet's CURRENT height, and
-// filtering changes that height: a transform parked at the old peek can push
-// the whole sheet below the viewport (measured: typing three letters made the
-// drawer vanish). Re-anchor the held stop against the fresh geometry.
-watch(filtered, async () => {
-  if (!isPhone.value || stopIndex.value === 0) return
-  await nextTick()
-  settleTo(stopIndex.value, { immediate: true })
-})
-
+// The answer is in and the rows are dead — tuck down to the bare handle so
+// the reveal card and the lesson own the bottom of the screen. A drag or a
+// handle tap can still pull the roster back up for a second look.
 watch(
   () => props.settled,
-  settled => settled && isPhone.value && settleTo(1)
+  settled => settled && isPhone.value && settleTo(2)
 )
+
+// The stops are transforms measured against the sheet's CURRENT height, and
+// that height moves under the parked sheet: filtering shrinks the list
+// (measured: typing three letters pushed the whole drawer below the viewport)
+// and the keyboard's max-height grant collapses after the settled tuck.
+// Re-anchor the held stop whenever the geometry changes; stop 0 has no
+// transform to go stale.
+let sheetHeight = 0
+let sheetObserver: ResizeObserver | undefined
 
 onMounted(() => {
   if (isPhone.value) settleTo(1, { from: stops()[2] })
   reserve()
+  sheetObserver = new ResizeObserver(() => {
+    const height = sheetEl.value?.offsetHeight ?? 0
+    const first = !sheetHeight
+    if (height === sheetHeight) return
+    sheetHeight = height
+    // The observer's initial fire is the entrance, mid-tween — leave it be.
+    if (first || !isPhone.value || stopIndex.value === 0) return
+    settleTo(stopIndex.value, { immediate: true })
+  })
+  if (sheetEl.value) sheetObserver.observe(sheetEl.value, { box: 'border-box' })
 })
 
-onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
+onBeforeUnmount(() => {
+  sheetObserver?.disconnect()
+  claimMapBerth(gameStore, 'membership-sheet', undefined)
+})
 </script>
 
 <style lang="scss" scoped>
