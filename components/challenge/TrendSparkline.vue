@@ -115,25 +115,30 @@
         <span class="year">{{ last[0] }}</span>
       </span>
     </figcaption>
-    <table v-if="isChart && !hideValues" class="visually-hidden">
-      <caption>
-        {{
-          summary
-        }}
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Year</th>
-          <th scope="col">{{ metricLabel }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="[year, amount] in series" :key="year">
-          <th scope="row">{{ year }}</th>
-          <td>{{ formatTrendValue(amount, metric) }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- The clipping wraps the table: overflow/clip-path on a <table> apply to
+         its grid box only, so a bare visually-hidden table lets the <caption>
+         (in the wrapper box) escape and render over the chart. -->
+    <div v-if="isChart && !hideValues" class="visually-hidden">
+      <table>
+        <caption>
+          {{
+            summary
+          }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Year</th>
+            <th scope="col">{{ metricLabel }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="[year, amount] in series" :key="year">
+            <th scope="row">{{ year }}</th>
+            <td>{{ formatTrendValue(amount, metric) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <ExpandDock v-if="expandable" v-model:open="expanded" tall :label="summary">
       <TrendSparkline
         class="docked-chart"
