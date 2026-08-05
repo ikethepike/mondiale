@@ -37,6 +37,12 @@ FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+# Without a cap V8 sizes its heap off total machine memory, so RSS expands
+# into whatever we provision (144MB on a 256MB machine became 194MB on 512MB
+# with no feature change — issue #110). 256MB bounds the heap well under the
+# 512MB machine while leaving room for code, sockets and the OS; live heap
+# under load measured ~50MB, so the cap is generous, not tight.
+ENV NODE_OPTIONS="--max-old-space-size=256"
 
 # Run as the built-in unprivileged node user.
 COPY --from=build --chown=node:node /app/.output ./.output
