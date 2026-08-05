@@ -1,40 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Redis } from '@upstash/redis'
+import { asRedis, fakeRedis } from './fake-redis'
 import {
   claimGameOwnership,
   machineOwnsGame,
   ownerKey,
   releaseGameOwnership,
 } from './game-ownership'
-
-/** In-memory stand-in for the four commands the lease uses. `eval` mirrors
- *  the RELEASE_SCRIPT's compare-and-delete semantics. */
-const fakeRedis = () => {
-  const store = new Map<string, string>()
-  return {
-    store,
-    async set(key: string, value: string, opts?: { nx?: boolean }) {
-      if (opts?.nx && store.has(key)) return null
-      store.set(key, value)
-      return 'OK'
-    },
-    async get(key: string) {
-      return store.get(key) ?? null
-    },
-    async expire(key: string) {
-      return store.has(key) ? 1 : 0
-    },
-    async eval(_script: string, keys: string[], args: string[]) {
-      if (store.get(keys[0]) === args[0]) {
-        store.delete(keys[0])
-        return 1
-      }
-      return 0
-    },
-  }
-}
-
-const asRedis = (fake: ReturnType<typeof fakeRedis>) => fake as unknown as Redis
 
 describe('claimGameOwnership', () => {
   it('claims an unowned game for the caller', async () => {

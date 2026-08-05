@@ -6,7 +6,9 @@ import { isDraining, type GameServer } from '../server-side'
  * task queue and its engine timers. The lease lives in Redis under the game's
  * own key family and is enforced at the front door (game-routing.ts replays
  * connections to the owner) and at every timer→queue seam (deferred-task.ts
- * drops a fired timer the moment the lease moved). Single-machine deploys and
+ * drops a fired timer when ANOTHER machine holds the lease — but a LAPSED
+ * lease is re-claimed, not just read, so a fired timer can pull an idle room
+ * back to this machine; see machineOwnsGame). Single-machine deploys and
  * local dev have no FLY_MACHINE_ID and skip all of it.
  *
  * The lease heartbeats while sockets are connected and is RELEASED on the
@@ -85,9 +87,12 @@ export const machineOwnsGame = async (redis: Redis, gameId: string): Promise<boo
  * renewing the moment the deploy drain begins — the drain is about to release
  * these leases and must not race its own heartbeat.
  */
+let heartbeatStarted = false
+
 export const startOwnershipHeartbeat = ({ io, redis }: { io: GameServer; redis: Redis }) => {
   const self = thisMachineId()
-  if (!self) return
+  if (!self || heartbeatStarted) return
+  heartbeatStarted = true
 
   setInterval(() => {
     if (isDraining()) return

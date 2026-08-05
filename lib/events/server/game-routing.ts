@@ -1,10 +1,15 @@
 import type { Redis } from '@upstash/redis'
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
-import type { GameServer } from '../server-side'
+import { isDraining, type GameServer } from '../server-side'
 import { claimGameOwnership, thisMachineId } from './game-ownership'
 
 const SOCKET_PATH = '/socket.io/'
+
+/** Claiming mints a Redis key from an unauthenticated query param, so the id
+ *  must at least look like a room id — junk (or unbounded) values are treated
+ *  as no gameId and never touch the lease space. */
+const GAME_ID_PATTERN = /^[\w-]{1,64}$/
 
 /** The subset of engine.io's server the takeover delegates to. */
 interface EngineLike {
@@ -15,7 +20,8 @@ interface EngineLike {
 const gameIdFromUrl = (url: string | undefined): string | undefined => {
   const query = url?.split('?')[1]
   if (!query) return undefined
-  return new URLSearchParams(query).get('gameId') || undefined
+  const gameId = new URLSearchParams(query).get('gameId')
+  return gameId && GAME_ID_PATTERN.test(gameId) ? gameId : undefined
 }
 
 /**
@@ -44,6 +50,8 @@ const gameIdFromUrl = (url: string | undefined): string | undefined => {
  * the whole room, and the timer guard in deferred-task.ts still keeps two
  * machines from writing the same game.
  */
+let routingRegistered = false
+
 export const registerGameRouting = ({
   io,
   redis,
@@ -54,11 +62,21 @@ export const registerGameRouting = ({
   httpServer: HttpServer
 }) => {
   const self = thisMachineId()
-  if (!self) return
+  if (!self || routingRegistered) return
+  routingRegistered = true
 
   const engine = io.engine as unknown as EngineLike
 
   engine.use((req, res, next) => {
+    // A draining machine takes no new sessions: refuse hard, so the client
+    // retries until the lease moves to the live machine (see the drain's
+    // writes-before-release ordering in graceful-shutdown.ts).
+    if (isDraining()) {
+      res.writeHead(503)
+      res.end()
+      return
+    }
+
     const gameId = gameIdFromUrl(req.url)
     const query = req.url?.split('?')[1]
     const transport = query ? new URLSearchParams(query).get('transport') : undefined
@@ -92,6 +110,10 @@ export const registerGameRouting = ({
       }, 1000)
       return
     }
+
+    // Refuse new sessions while draining (same rationale as the middleware
+    // leg above) — the destroyed socket is a retry, not an error, client-side.
+    if (isDraining()) return socket.destroy()
 
     const admit = () => engine.handleUpgrade(req, socket, head)
     const gameId = gameIdFromUrl(req.url)

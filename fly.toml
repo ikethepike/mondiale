@@ -16,7 +16,11 @@
 app = "mondiale"
 primary_region = "arn"
 kill_signal = "SIGINT"
-kill_timeout = 5
+# The graceful drain needs room: settle in-flight writes (capped at 3s in
+# graceful-shutdown.ts) THEN release the room leases (a Redis round-trip per
+# live room). Blue-green means nothing waits on this machine, so generous
+# beats truncated — a drain cut short leaves leases to expire by TTL.
+kill_timeout = 15
 
 [build]
   dockerfile = "Dockerfile"
