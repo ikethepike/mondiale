@@ -79,3 +79,27 @@ export const COMPOSITION_MIN_SLICES = 4
 export const COMPOSITION_CLEAR_MARGIN = 4
 /** Below this the percentages describe a rounding error, not a population. */
 export const COMPOSITION_MIN_TOTAL = 100_000
+
+/**
+ * Countries whose foreign-born population has a shape worth reading: enough
+ * origins to make a bar, a population big enough for the percentages to mean
+ * something, and a leading origin that isn't a coin-flip against the runner-up.
+ *
+ * The margin gate is what keeps the round honest — measured on the 2024
+ * revision it drops 19 of the 121 boards that are otherwise big enough,
+ * the ones where the top two origins sit close enough that "name the
+ * largest" would be a guess dressed as knowledge (the Netherlands at
+ * 1.030×, Canada at 1.215×).
+ */
+export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
+  pool.filter(isoCode => {
+    const origins = corridorsToDestination(isoCode)
+    if (origins.length < COMPOSITION_MIN_SLICES) return false
+    const total = origins.reduce((sum, origin) => sum + origin.value.amount, 0)
+    if (total < COMPOSITION_MIN_TOTAL) return false
+    return corridorMargin(origins) >= COMPOSITION_MIN_MARGIN
+  })
+
+/** Boards whose leading origin dominates outright — the shape alone answers. */
+export const hasClearLeader = (isoCode: ISOCountryCode): boolean =>
+  corridorMargin(corridorsToDestination(isoCode)) >= COMPOSITION_CLEAR_MARGIN

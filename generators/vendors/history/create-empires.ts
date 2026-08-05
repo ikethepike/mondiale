@@ -23,6 +23,7 @@
  *
  * Run after generate:map (projection dependency).
  */
+import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { geoRobinson } from 'd3-geo-projection'
 import { topology } from 'topojson-server'
@@ -770,9 +771,9 @@ ${attribution}
 // index-aligned with EMPIRES[id].keyframeYears. Lazy-import only — this file
 // is heavy and a round needs a single empire.
 
-export const EMPIRE_PATHS: Record<string, string[]> = ${JSON.stringify(sortRecord(allPaths))}
+export const EMPIRE_PATHS: Record<string, string[]> = ${jsonParseLiteral(sortRecord(allPaths))}
 
-export const EMPIRE_KEYFRAME_BOUNDS: Record<string, [number, number, number, number][]> = ${JSON.stringify(sortRecord(allBounds))}
+export const EMPIRE_KEYFRAME_BOUNDS: Record<string, [number, number, number, number][]> = ${jsonParseLiteral(sortRecord(allBounds))}
 
 /** BORDERPRECISION per keyframe (1 approximate … 3 treaty-precise) — the view
  *  renders vaguer frames blurrier. */
@@ -784,7 +785,7 @@ export const EMPIRE_KEYFRAME_PRECISION: Record<string, number[]> = ${JSON.string
 // committed originals in ${FLAG_DIR}/. Split from empires.gen so the dealer's
 // static metadata import never carries flag markup.
 
-export const EMPIRE_FLAGS: Record<string, string> = ${JSON.stringify(sortRecord(flags))}
+export const EMPIRE_FLAGS: Record<string, string> = ${jsonParseLiteral(sortRecord(flags))}
 `
 
   writeFileSync(OUT_META, metaOutput)

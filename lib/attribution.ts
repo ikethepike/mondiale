@@ -681,7 +681,9 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'un-wpp-2024' },
       { source: 'worldbank-wdi' },
       { source: 'ucdp-acd' },
-      { source: 'flag-icons-svg', dataset: 'Country flag SVGs' },
+      // The markup itself lives in the flags dataset; only the derived
+      // national colours (identity.colors) remain here.
+      { source: 'flag-icons-svg', dataset: 'National colours from flag SVGs' },
       { source: 'countries-list-package', dataset: 'Currencies and languages' },
       { source: 'mondiale-editorial', dataset: 'Membership and marriage-rights corrections' },
     ],
@@ -698,9 +700,12 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     ],
   },
   flags: {
-    label: 'Wide flag tiles',
-    files: ['data/flags-wide.gen.ts'],
-    origins: [{ source: 'flag-icons-svg', dataset: 'Recomposed 3:1 variants' }],
+    label: 'Country flags',
+    files: ['data/flags.gen.ts', 'data/flags-wide.gen.ts'],
+    origins: [
+      { source: 'flag-icons-svg', dataset: 'Country flag SVGs' },
+      { source: 'flag-icons-svg', dataset: 'Recomposed 3:1 variants' },
+    ],
   },
   'flag-meanings': {
     label: 'Flag symbolism',
@@ -719,7 +724,8 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   water: {
     label: 'Seas, lakes, rivers and ranges',
-    files: ['data/water.gen.ts', 'data/water-facts.gen.ts'],
+    // sea-lanes is derived adjacency (shared named seas), regenerated with water
+    files: ['data/water.gen.ts', 'data/water-facts.gen.ts', 'data/sea-lanes.gen.ts'],
     origins: [
       { source: 'naturalearth-10m', dataset: '1:10m physical layers' },
       { source: 'cia-factbook', dataset: 'Geography › Major rivers and lakes' },

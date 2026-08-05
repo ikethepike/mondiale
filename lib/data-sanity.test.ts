@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { owidMapping } from '~~/data/owid.gen'
@@ -35,7 +36,7 @@ describe('countries.gen', () => {
   it('every country carries a name and flag markup', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
-      expect(country.flag).toContain('<svg')
+      expect(FLAGS[country.isoCode]).toContain('<svg')
     }
   })
 })

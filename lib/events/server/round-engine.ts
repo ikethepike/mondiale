@@ -70,7 +70,7 @@ export const scheduleRevealTask = (
  * on with the steps their score bought. The caller guards the once-only
  * latch (`round.groupAnswers` non-empty) before calling.
  */
-export const settleRoundScores = ({
+export const settleRoundScores = async ({
   game,
   round,
   order,
@@ -85,7 +85,7 @@ export const settleRoundScores = ({
   maximumPoints: number
   /** Mode-specific scorecard answer; empty submitted/correct when omitted. */
   answerFor?: (playerId: string) => Round['groupAnswers'][string]
-}) => {
+}): Promise<void> => {
   for (const playerId of order) {
     const player = game.players[playerId]
     const scoring = scores[playerId] ?? { scored: 0, maximum: maximumPoints }
@@ -93,7 +93,7 @@ export const settleRoundScores = ({
     round.playerTurns[playerId] = { points: scoring }
     if (player && player.phase === 'group-challenge') {
       player.phase = 'group-scores'
-      startWalk(player, movesForScoredPoints({ game, player, scored: scoring.scored }))
+      startWalk(player, await movesForScoredPoints({ game, player, scored: scoring.scored }))
     }
   }
 }

@@ -12,7 +12,6 @@ import {
   scoreTrendRace,
   speaksTongue,
 } from '~~/lib/challenges'
-import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { blitzScore } from '~~/lib/scoring'
@@ -43,7 +42,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         const banked = currentRound.playerTurns[playerId]?.points
         console.warn(`Healing stranded submitter ${playerId} (answer banked, phase was not)`)
         player.phase = 'group-scores'
-        startWalk(player, movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 }))
+        startWalk(player, await movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 }))
         await server.updateGameState(game)
         server.emit({ event: 'group-challenge-scored', game }, eventTarget)
         return
@@ -283,6 +282,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       currentRound.playerTurns[playerId] = { points: scoring }
       player.phase = 'group-scores'
       player.currentPosition = finalTile.position - 1
+      const { getFinalChallenges } = await import('~~/lib/challenges/final-challenge')
       startWalk(player, [
         {
           endTile: finalTile,
@@ -297,7 +297,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     currentRound.playerTurns[playerId] = { points: scoring }
 
     player.phase = 'group-scores'
-    startWalk(player, movesForScoredPoints({ game, player, scored: scoring.scored }))
+    startWalk(player, await movesForScoredPoints({ game, player, scored: scoring.scored }))
 
     await server.updateGameState(game)
     server.emit({ event: 'group-challenge-scored', game }, eventTarget)

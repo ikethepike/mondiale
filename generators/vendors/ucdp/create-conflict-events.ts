@@ -8,6 +8,7 @@
  *
  *   bun run generate:conflict-events   (requires data/map.gen.ts)
  */
+import { jsonParseLiteral } from '../../lib/emit'
 import { writeFileSync } from 'fs'
 import { geoRobinson } from 'd3-geo-projection'
 import {
@@ -155,9 +156,9 @@ const main = async () => {
 // Source: UCDP GED v${DATASET_VERSION}, projected with the map's fitted Robinson (data/map.gen.ts).
 import type { ConflictFieldMapping } from '../types/vendor/ucdp/ucdp.types'
 
-export const CONFLICT_FIELDS: ConflictFieldMapping = ${JSON.stringify(fields)}
+export const CONFLICT_FIELDS: ConflictFieldMapping = ${jsonParseLiteral(fields)}
 /** Reveal-only: events of a country's conflicts located on foreign soil. */
-export const CONFLICT_FIELDS_ABROAD: ConflictFieldMapping = ${JSON.stringify(abroad)}
+export const CONFLICT_FIELDS_ABROAD: ConflictFieldMapping = ${jsonParseLiteral(abroad)}
 `
   writeFileSync(OUT_FILE, output)
 

@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { memorySnapshot, type MemorySnapshot } from './memory'
 
 export interface DeploymentInfo {
   status: 'ok'
@@ -7,6 +8,7 @@ export interface DeploymentInfo {
   uptimeSeconds: number
   node: string
   env: string
+  memory: MemorySnapshot
   region?: string
   machine?: string
 }
@@ -20,6 +22,7 @@ export const getDeploymentInfo = (event: H3Event): DeploymentInfo => {
     uptimeSeconds: Math.round(process.uptime()),
     node: process.version,
     env: process.env.NODE_ENV ?? 'development',
+    memory: memorySnapshot(),
     ...(process.env.FLY_REGION && {
       region: process.env.FLY_REGION,
       machine: process.env.FLY_MACHINE_ID,

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { compositionBoards, getRoundChallenge } from '~~/lib/challenges'
+import { getRoundChallenge } from '~~/lib/challenges'
 import {
+  compositionBoards,
   COMPOSITION_CLEAR_MARGIN,
   COMPOSITION_MIN_MARGIN,
   COMPOSITION_MIN_SLICES,

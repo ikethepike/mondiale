@@ -3,6 +3,7 @@ import { getCountryDataList } from 'countries-list'
 import { type ISOCountryCode, isValidISOCode } from '../../../types/geography.types'
 import { toTrendSeries, type TrendMapping, type TrendPoint } from '../../lib/trend-series'
 import { parseCSV } from '../../lib/csv'
+import { jsonParseLiteral } from '../../lib/emit'
 
 const OUTPUT_FILE = `data/owid.gen.ts`
 const TRENDS_OUTPUT_FILE = `data/trends.gen.ts`
@@ -309,7 +310,7 @@ export const createOwidMapping = async () => {
     TRENDS_OUTPUT_FILE,
     `
       import type { OwidTrendMapping } from '../generators/vendors/owid/create-owid'
-      export const TRENDS: OwidTrendMapping = ${JSON.stringify(trends)}
+      export const TRENDS: OwidTrendMapping = ${jsonParseLiteral(trends)}
     `
   )
   console.info(`Wrote ${TRENDS_OUTPUT_FILE} (${Object.keys(trends).length} countries)`)

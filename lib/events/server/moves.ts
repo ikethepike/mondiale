@@ -1,5 +1,4 @@
 import { getIndividualChallenge } from '~~/lib/challenges'
-import { getFinalChallenges } from '~~/lib/challenges/final-challenge'
 import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
@@ -24,7 +23,7 @@ export const startWalk = (player: Player, moves: PlayerMove[]) => {
   player.walkSeq = (player.walkSeq ?? 0) + 1
 }
 
-export const movesForScoredPoints = ({
+export const movesForScoredPoints = async ({
   game,
   player,
   scored,
@@ -32,7 +31,7 @@ export const movesForScoredPoints = ({
   game: Game
   player: Player
   scored: number
-}): PlayerMove[] => {
+}): Promise<PlayerMove[]> => {
   const potentialProgress = player.currentPosition + scored
   const potentialTiles = game.tiles.slice(player.currentPosition + 1, potentialProgress + 1)
 
@@ -54,12 +53,17 @@ export const movesForScoredPoints = ({
 
     switch (true) {
       // If player has reached final challenge
-      case moveset.some(tile => tile.type === 'final'):
+      case moveset.some(tile => tile.type === 'final'): {
+        // Deferred module: final-challenge carries ~1.2MB of endgame data
+        // (events, treaties, changes, exporters, map) that the server only
+        // needs once a game actually reaches the gauntlet (issue #110).
+        const { getFinalChallenges } = await import('~~/lib/challenges/final-challenge')
         move = {
           endTile: specialTile,
           challenge: getFinalChallenges({ game }),
         }
         break
+      }
       // If we have an individual challenge in our moveset
       case isValidIndividualChallengeAccessorId(specialTile?.type):
         {
@@ -70,7 +74,7 @@ export const movesForScoredPoints = ({
 
           move = {
             endTile: specialTile,
-            challenge: getIndividualChallenge({
+            challenge: await getIndividualChallenge({
               accessorId,
               difficulty: game.difficulty,
               variant: game.variant,

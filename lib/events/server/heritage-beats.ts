@@ -168,7 +168,7 @@ const advanceHeritageBeat = async (
       ]
     })
   )
-  settleRoundScores({
+  await settleRoundScores({
     game,
     round,
     order: state.order,

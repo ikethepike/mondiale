@@ -1,4 +1,4 @@
-import { WATER_FEATURES } from '~~/data/water.gen'
+import { SEA_NEIGHBOURS } from '~~/data/sea-lanes.gen'
 import type {
   ManhuntChallenge,
   ManhuntClue,
@@ -41,27 +41,14 @@ export interface ManhuntSecret {
 // --- The sea-lane graph -----------------------------------------------------
 
 /**
- * Two countries are sea neighbours when their coasts share a named sea
- * (data/water.gen). A sea passage lets the despot hop between them at the
- * price of a charge — announced to the table, unlike ground movement.
+ * Two countries are sea neighbours when their coasts share a named sea. A sea
+ * passage lets the despot hop between them at the price of a charge —
+ * announced to the table, unlike ground movement. Precomputed from
+ * data/water.gen at generation time (create-sea-lanes-file.ts): a static
+ * import of the geometry here would ride into the eager server bundle.
  */
-const buildSeaNeighbours = (): Map<ISOCountryCode, ISOCountryCode[]> => {
-  const neighbours = new Map<ISOCountryCode, Set<ISOCountryCode>>()
-  for (const feature of Object.values(WATER_FEATURES)) {
-    if (feature.kind !== 'sea') continue
-    for (const shore of feature.countries) {
-      const set = neighbours.get(shore) ?? new Set<ISOCountryCode>()
-      for (const other of feature.countries) if (other !== shore) set.add(other)
-      neighbours.set(shore, set)
-    }
-  }
-  return new Map([...neighbours].map(([isoCode, set]) => [isoCode, [...set]]))
-}
-
-const SEA_NEIGHBOURS = buildSeaNeighbours()
-
 export const seaNeighboursOf = (isoCode: ISOCountryCode): ISOCountryCode[] =>
-  SEA_NEIGHBOURS.get(isoCode) ?? []
+  SEA_NEIGHBOURS[isoCode] ?? []
 
 /** Ground ∪ sea — the widest graph; capture-proximity scoring runs on it so
  *  an island hideout never scores an infinite distance. */

@@ -10,6 +10,7 @@
  * Output paths are pure move/line/close commands — lib/outline.ts
  * parsePolygons drops anything else.
  */
+import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { geoRobinson } from 'd3-geo-projection'
 import { topology } from 'topojson-server'
@@ -537,17 +538,17 @@ export const MAP_VIEWBOX = '0 0 2000 1001'
  */
 export const MAP_PROJECTION = { scale: ${roundTo(scale, 6)}, translate: [${roundTo(translate[0], 4)}, ${roundTo(translate[1], 4)}] as [number, number] }
 
-export const MAP_PATHS = ${JSON.stringify(sortedEntries(mapPaths))} as Record<MapCode, string>
+export const MAP_PATHS = ${jsonParseLiteral(sortedEntries(mapPaths))} as Record<MapCode, string>
 
 /** Projected bounding box per country: [x, y, width, height]. */
-export const MAP_BOUNDS = ${JSON.stringify(sortedEntries(bounds))} as Record<MapCode, [number, number, number, number]>
+export const MAP_BOUNDS = ${jsonParseLiteral(sortedEntries(bounds))} as Record<MapCode, [number, number, number, number]>
 
 /**
  * Boxes of a country's largest rings (up to 8), for visibility testing.
  * The whole-country bbox overstates RU/US-class countries whose islands wrap
  * the antimeridian — use these to decide what is actually in view.
  */
-export const MAP_REGIONS = ${JSON.stringify(sortedEntries(regions))} as Record<MapCode, [number, number, number, number][]>
+export const MAP_REGIONS = ${jsonParseLiteral(sortedEntries(regions))} as Record<MapCode, [number, number, number, number][]>
 
 /** Game countries too small to see or click at world zoom — rendered as dot markers. */
 export const MICRO_COUNTRIES = ${JSON.stringify(sortedEntries(micro))} as Partial<Record<MapCode, { x: number; y: number; footprint: number }>>
@@ -559,7 +560,7 @@ export const MICRO_COUNTRIES = ${JSON.stringify(sortedEntries(micro))} as Partia
 // into the countries inside the camera frame once zoomed past the LOD threshold.
 import type { MapCode } from './map.gen'
 
-export const MAP_PATHS_HD = ${JSON.stringify(sortedEntries(mapPathsHd))} as Record<MapCode, string>
+export const MAP_PATHS_HD = ${jsonParseLiteral(sortedEntries(mapPathsHd))} as Record<MapCode, string>
 `
   writeFileSync(OUT_HD_FILE, hdOutput)
 

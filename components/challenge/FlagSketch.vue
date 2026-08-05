@@ -13,7 +13,7 @@ import { sanitizeSvg } from '~~/lib/svg'
  * vector out — it scales to a full background without a pixel in sight.
  */
 const props = defineProps<{
-  /** The raw flag SVG markup (COUNTRIES[iso].flag). */
+  /** The raw flag SVG markup (flagMarkup() in lib/country.ts, post-loadFlags). */
   flag: string
   /** Seconds the draw-on takes — sync to the remaining clock. */
   drawSeconds: number

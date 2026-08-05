@@ -440,7 +440,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import TrajectoryReveal from '~/components/challenge/TrajectoryReveal.vue'
-import { TRENDS } from '~~/lib/trends'
+import { TRENDS } from '~~/lib/trends-data'
 import { shuffleArray } from '~~/lib/arrays'
 import {
   accessorTopicLabel,

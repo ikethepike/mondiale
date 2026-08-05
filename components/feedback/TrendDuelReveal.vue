@@ -37,7 +37,8 @@
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { TREND_METRICS, TRENDS } from '~~/lib/trends'
+import { TREND_METRICS } from '~~/lib/trends'
+import { TRENDS } from '~~/lib/trends-data'
 import type { TrendDuelOutcome } from '~~/types/challenges/individual-challenge.type'
 
 /**

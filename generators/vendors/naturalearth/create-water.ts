@@ -15,6 +15,7 @@
  *
  *   bun run generate:water
  */
+import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { geoRobinson } from 'd3-geo-projection'
 import type {
@@ -596,7 +597,7 @@ export interface WaterFeature {
   countries: ISOCountryCode[]
 }
 
-export const WATER_FEATURES: Record<string, WaterFeature> = ${JSON.stringify(sorted)}
+export const WATER_FEATURES: Record<string, WaterFeature> = ${jsonParseLiteral(sorted)}
 `
   writeFileSync(OUT_FILE, output)
 

@@ -8,8 +8,43 @@ export const getCountry = (isoCode: ISOCountryCode): Country => COUNTRIES[isoCod
 export const countryName = (country: ISOCountryCode | Country): string =>
   typeof country === 'string' ? COUNTRIES[country].name.english : country.name.english
 
-export const flagDataUri = (country: Country): string =>
-  `data:image/svg+xml;base64,${baseEncode(country.flag)}`
+// The inline flag SVGs are a ~1.3MB generated artifact split out of
+// countries.gen, loaded lazily (like flags-wide below) so COUNTRIES — which
+// every challenge dealer and both server bundle graphs carry — stays markup-
+// free. Only CountryFlag/FlagSketch render flags; both await this load.
+let flags: Partial<Record<ISOCountryCode, string>> | null = null
+let flagsPromise: Promise<void> | null = null
+
+export const loadFlags = (): Promise<void> => {
+  if (flags) return Promise.resolve()
+  if (!flagsPromise) {
+    flagsPromise = import('~~/data/flags.gen')
+      .then(m => {
+        flags = m.FLAGS
+      })
+      .catch(error => {
+        // A failed chunk (redeploy 404, flaky network) must not poison the
+        // loader for the rest of the session — clear the latch so the next
+        // caller retries.
+        console.warn('Flag artifact failed to load — will retry', error)
+        flagsPromise = null
+      })
+  }
+  return flagsPromise
+}
+
+/**
+ * Raw flag SVG markup, or null until the artifact has loaded. Call
+ * `loadFlags()` first and re-read reactively.
+ */
+export const flagMarkup = (country: Country | ISOCountryCode): string | null =>
+  flags?.[typeof country === 'string' ? country : country.isoCode] ?? null
+
+/** Data-URI of the flag, or null until `loadFlags()` has resolved. */
+export const flagDataUri = (country: Country): string | null => {
+  const svg = flagMarkup(country)
+  return svg ? `data:image/svg+xml;base64,${baseEncode(svg)}` : null
+}
 
 // The recomposed 3:1 wide-tile flags are a ~2.8MB generated artifact, loaded
 // lazily (like data/map-hd.gen) so they don't bloat the eager bundle for pages
@@ -20,9 +55,15 @@ let flagsWidePromise: Promise<void> | null = null
 export const loadFlagsWide = (): Promise<void> => {
   if (flagsWide) return Promise.resolve()
   if (!flagsWidePromise) {
-    flagsWidePromise = import('~~/data/flags-wide.gen').then(m => {
-      flagsWide = m.FLAGS_WIDE
-    })
+    flagsWidePromise = import('~~/data/flags-wide.gen')
+      .then(m => {
+        flagsWide = m.FLAGS_WIDE
+      })
+      .catch(error => {
+        // Same retry latch as loadFlags — one bad fetch must not stick.
+        console.warn('Wide-flag artifact failed to load — will retry', error)
+        flagsWidePromise = null
+      })
   }
   return flagsWidePromise
 }

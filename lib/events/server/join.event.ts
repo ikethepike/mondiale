@@ -196,7 +196,7 @@ export const joinEventHandler: EventHandler = async ({
     rejoining.phase = 'group-scores'
     startWalk(
       rejoining,
-      movesForScoredPoints({ game, player: rejoining, scored: banked?.scored ?? 0 })
+      await movesForScoredPoints({ game, player: rejoining, scored: banked?.scored ?? 0 })
     )
   }
 

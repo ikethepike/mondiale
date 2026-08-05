@@ -4,7 +4,7 @@
     v-else
     class="country-flag"
     :style="{
-      backgroundImage: `url('${backgroundUri}')`,
+      backgroundImage: backgroundUri ? `url('${backgroundUri}')` : 'none',
       backgroundSize: effectiveFit,
       backgroundPosition: position,
       backgroundRepeat: 'no-repeat',
@@ -12,7 +12,7 @@
   />
 </template>
 <script lang="ts" setup>
-import { flagDataUri, flagWideDataUri, loadFlagsWide } from '~~/lib/country'
+import { flagDataUri, flagMarkup, flagWideDataUri, loadFlags, loadFlagsWide } from '~~/lib/country'
 import type { Country } from '~~/types/geography.types'
 import { sanitizeSvg } from '~~/lib/svg'
 
@@ -42,8 +42,14 @@ const props = defineProps({
   },
 })
 
-// The wide artifact is lazy; this ref flips once it's loaded so the background
-// URI recomputes. Only fetch it when a wide variant is actually requested.
+// Both flag artifacts are lazy; these refs flip once each is loaded so the
+// markup/URI computeds recompute. The base flags are always needed …
+const flagsReady = ref(false)
+loadFlags().then(() => {
+  flagsReady.value = true
+})
+
+// … the wide artifact only when a wide variant is actually requested.
 const wideReady = ref(false)
 watchEffect(() => {
   if (props.variant === 'wide' && props.mode === 'background') {
@@ -60,7 +66,9 @@ const wideUri = computed(() =>
 // Use the wide flag when available; otherwise the original. When we fall back
 // for an excluded flag, force `contain` so it letterboxes cleanly instead of
 // cropping the untailored original.
-const backgroundUri = computed(() => wideUri.value ?? flagDataUri(props.country))
+const backgroundUri = computed(
+  () => wideUri.value ?? (flagsReady.value ? flagDataUri(props.country) : null)
+)
 const effectiveFit = computed(() =>
   props.variant === 'wide' && !wideUri.value ? 'contain' : props.fit
 )
@@ -76,8 +84,10 @@ const effectiveFit = computed(() =>
  * a marker-mid path).
  */
 const namespacedMarkup = computed(() => {
+  const markup = flagsReady.value ? flagMarkup(props.country) : null
+  if (!markup) return null
   const prefix = `flag-${props.country.isoCode}-`
-  return props.country.flag
+  return markup
     .replaceAll(/\bid="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
     .replaceAll(
       /(xlink:href|href)="#([^"]+)"/g,
@@ -91,7 +101,7 @@ const namespacedMarkup = computed(() => {
 // keeps working even if a hostile flag ever sneaks into the dataset.
 const inlineHost = ref<HTMLElement>()
 watchEffect(() => {
-  if (!inlineHost.value || props.mode !== 'inline') return
+  if (!inlineHost.value || props.mode !== 'inline' || !namespacedMarkup.value) return
 
   // Flags carry all aspect ratios (2:1, 3:2, 1:1, Nepal's pennon, Switzerland's
   // square). Sizing scales to the container; the host box uses `fit` (contain

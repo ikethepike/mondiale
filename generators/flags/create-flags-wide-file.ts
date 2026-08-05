@@ -14,6 +14,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { recompose } from '~~/lib/flags/recompose'
 import { isValidISOCode } from '~~/types/geography.types'
+import { jsonParseLiteral } from '../lib/emit'
 
 const FLAGS_DIR = 'data/static/flags'
 const OUT_FILE = 'data/flags-wide.gen.ts'
@@ -51,7 +52,7 @@ const createFlagsWideFile = () => {
      * that can't be recomposed cleanly are absent; callers fall back to the
      * contained original for those.
      */
-    export const FLAGS_WIDE: Partial<Record<ISOCountryCode, string>> = ${JSON.stringify(wide)}
+    export const FLAGS_WIDE: Partial<Record<ISOCountryCode, string>> = ${jsonParseLiteral(wide)}
   `
 
   writeFileSync(OUT_FILE, output)

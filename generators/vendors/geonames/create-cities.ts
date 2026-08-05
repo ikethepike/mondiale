@@ -1,3 +1,4 @@
+import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { strFromU8, unzipSync } from 'fflate'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
@@ -253,7 +254,7 @@ export const createCitiesFile = async () => {
 import type { CityLight } from '~~/types/city.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-export const CITY_LIGHTS: { [isoCode in ISOCountryCode]?: CityLight[] } = ${JSON.stringify(output)}
+export const CITY_LIGHTS: { [isoCode in ISOCountryCode]?: CityLight[] } = ${jsonParseLiteral(output)}
 `
   )
   console.info(`Finished creating file: ${OUTPUT_FILE} (${Object.keys(output).length} countries)`)

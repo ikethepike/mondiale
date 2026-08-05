@@ -13,9 +13,9 @@
          background in ink lines — no fills, just its bones — finishing
          exactly as the clock does -->
     <FlagSketch
-      v-if="sketchStarted"
-      :flag="COUNTRIES[challenge.country].flag"
-      :draw-seconds="drawSeconds"
+      v-if="sketchStarted && sketchMarkup && sketchSeconds"
+      :flag="sketchMarkup"
+      :draw-seconds="sketchSeconds"
     />
     <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">Whose flag has these colours?</h1>
@@ -59,10 +59,9 @@ import FlagSketch from '~/components/challenge/FlagSketch.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { COUNTRIES } from '~~/data/countries.gen'
 import { attributionFor } from '~~/lib/attribution'
 import { isFlagPaletteMatch } from '~~/lib/challenges'
-import { countryName } from '~~/lib/country'
+import { countryName, flagMarkup, loadFlags } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
@@ -94,7 +93,30 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const clockFraction = remainingFraction
 const regionRevealed = computed(() => clockFraction.value <= 1 / 2)
 const sketchStarted = computed(() => clockFraction.value <= 2 / 3 && !submitted.value)
-const drawSeconds = computed(() => ((challenge.value?.durationSeconds ?? 30) * 2) / 3)
+
+// The sketch needs the raw markup, lazy-loaded — the room page warms it at
+// join, this is the belt-and-braces retry for a cold or once-failed load.
+const flagsReady = ref(false)
+loadFlags().then(() => {
+  flagsReady.value = true
+})
+const sketchMarkup = computed(() =>
+  flagsReady.value && challenge.value ? flagMarkup(challenge.value.country) : null
+)
+
+// The sketch finishes with the clock HOWEVER late it starts: if the markup
+// arrives after the sketch beat opened, drawing the full two-thirds span
+// would tear down mid-animation — clamp to the clock actually left.
+const sketchSeconds = ref<number>()
+watch(
+  [sketchStarted, sketchMarkup],
+  ([started, markup]) => {
+    if (!started || !markup || sketchSeconds.value !== undefined) return
+    const fullDraw = ((challenge.value?.durationSeconds ?? 30) * 2) / 3
+    sketchSeconds.value = Math.min(fullDraw, secondsLeft.value)
+  },
+  { immediate: true }
+)
 
 const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   if (submitted.value) return

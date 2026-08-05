@@ -35,6 +35,7 @@ import ViewSpectate from '~/components/view/ViewSpectate.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewWaitingRoom from '~/components/view/ViewWaitingRoom.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { loadFlags } from '~~/lib/country'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
@@ -44,6 +45,11 @@ import { usePhaseTransition } from '~~/lib/phase-transitions'
 // routing branch on it would drop them into the raw phase switch instead of
 // the booth. `self` is the raw own record.
 const { game, self, currentRound, gameStore } = useClientEvents()
+
+// Warm the flag artifact the moment anyone lands in a room: chips, gates and
+// the flag-palette sketch all read it, and starting the 1.3MB fetch here gives
+// it the whole pre-round runway instead of a round's opening seconds.
+if (import.meta.client) void loadFlags()
 
 // Mounted here, above the view switch: inside a view it would remount on every
 // phase change, lose the previous-phase map, and announce the same moment again.

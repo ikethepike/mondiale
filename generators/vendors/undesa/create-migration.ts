@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { unzipSync, strFromU8 } from 'fflate'
 import type { Amount, ISOCountryCode } from '../../../types/geography.types'
 import { resolveUnLocation } from './m49'
+import { jsonParseLiteral } from '../../lib/emit'
 
 /**
  * Where the world's foreign-born live, from the UN DESA International Migrant
@@ -251,7 +252,7 @@ const createMigrationFile = () => {
     OUTPUT_FILE,
     `
       import type { MigrationMapping } from '../generators/vendors/undesa/create-migration'
-      export const MIGRATION: MigrationMapping = ${JSON.stringify(mapping)}
+      export const MIGRATION: MigrationMapping = ${jsonParseLiteral(mapping)}
     `
   )
   console.info(`Wrote ${OUTPUT_FILE} (${countries} countries)`)

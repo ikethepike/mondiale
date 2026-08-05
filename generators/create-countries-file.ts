@@ -48,6 +48,7 @@ import {
 } from '~~/types/response.type'
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
+import { jsonParseLiteral } from './lib/emit'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -101,7 +102,7 @@ export const createCountriesFile = async (): Promise<{
     `
     import type { ISOCountryCode, Country } from '~~/types/geography.types'
     
-    export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${JSON.stringify(countryVector)}
+    export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${jsonParseLiteral(countryVector)}
   `
   )
   console.log(`Finished creating file: ${COUNTRIES_FILE}`)
@@ -144,12 +145,13 @@ const normalizeCountry = ({
   const names = getNames({ data, isoCode })
   console.log(`Processing: ${names.english}`)
 
+  // Read for the derived national colours only — the markup itself ships in
+  // data/flags.gen.ts (create-flags-file.ts), lazy-loaded via lib/country.ts.
   const flag = readFileSync(`data/static/flags/${isoCode.toLowerCase()}.svg`)
 
   return {
     url,
     name: names,
-    flag: flag.toString(),
     isoCode: isoCode as ISOCountryCode,
     coordinates: data.Geography['Geographic coordinates']?.text || '',
     region: getRegion({ data, isoCode }),
