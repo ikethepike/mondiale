@@ -64,7 +64,23 @@ export type GameServer = Server<DefaultEventsMap, DefaultEventsMap, DefaultEvent
  */
 const gameQueues = new Map<string, Promise<unknown>>()
 
+/**
+ * Deploy drain (graceful-shutdown.ts): once flipped, this process is dying —
+ * no new work may start. Incoming socket events go UNANSWERED (the client's
+ * ack timeout makes it retry, by which point it has reconnected to the new
+ * machine), and freshly fired timers are refused here as the backstop.
+ */
+let draining = false
+export const beginDrain = () => {
+  draining = true
+}
+export const isDraining = () => draining
+
+/** Every queue's tail, for the drain to wait out in-flight writes. */
+export const settleGameQueues = () => Promise.allSettled([...gameQueues.values()])
+
 export const enqueueGameTask = <T>(gameId: string, task: () => T | Promise<T>): Promise<T> => {
+  if (draining) return Promise.reject(new Error(`Draining — refused task for ${gameId}`))
   const tail = gameQueues.get(gameId) ?? Promise.resolve()
   const next = tail.then(task)
   gameQueues.set(

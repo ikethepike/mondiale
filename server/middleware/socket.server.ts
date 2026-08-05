@@ -3,10 +3,14 @@ import { Server } from 'socket.io'
 import {
   enqueueGameTask,
   fetchSecrets,
+  isDraining,
   useServerSideEvents,
   type GameServer,
   type GameSocket,
 } from '~~/lib/events/server-side'
+import { startOwnershipHeartbeat } from '~~/lib/events/server/game-ownership'
+import { registerGameRouting } from '~~/lib/events/server/game-routing'
+import { registerGracefulShutdown } from '~~/lib/events/server/graceful-shutdown'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
 import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
@@ -159,6 +163,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
  * concurrent handler's read-modify-write.
  */
 const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSocket) => {
+  // The deploy drain disconnects EVERY socket at once — none of those are
+  // watchers leaving, and the queue is refusing work anyway.
+  if (isDraining()) return
   const { gameId, playerId } = socket.data
   if (!gameId || !playerId) return
 
@@ -206,9 +213,18 @@ export default defineEventHandler(({ node }) => {
     })
 
     // Create a new Socket.IO server only if it doesn't already exist
-    const io: GameServer = new Server(
-      (node.res.socket as { server?: import('node:http').Server })?.server
-    )
+    const httpServer = (node.res.socket as { server?: import('node:http').Server })?.server
+    const io: GameServer = new Server(httpServer)
+
+    // The multi-machine layer: shard rooms to their owning machine at the
+    // front door, keep the leases warm, and hand rooms over cleanly when a
+    // deploy retires this process. Routing and the heartbeat no-op without a
+    // FLY_MACHINE_ID (single machine, local dev); the drain always applies —
+    // it is what turns a deploy into a ~1s reconnect blip instead of a
+    // frozen board.
+    if (httpServer) registerGameRouting({ io, redis, httpServer })
+    startOwnershipHeartbeat({ io, redis })
+    registerGracefulShutdown({ io, redis })
     io.on('connection', async socket => {
       // Register event handlers synchronously FIRST, so nothing is missed
       // while the async handshake verification below runs.
@@ -222,6 +238,11 @@ export default defineEventHandler(({ node }) => {
           ) => {
             console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
             if (!eventTarget?.gameId) return
+
+            // Deploy drain: this process is dying. No ack — silence makes the
+            // client's retry land on the new machine after the reconnect,
+            // where an 'error' receipt would make it give up for good.
+            if (isDraining()) return
 
             // Authorization: the handshake (or `join`) establishes the
             // socket→player binding; every other event must target the SAME

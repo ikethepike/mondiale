@@ -1,5 +1,6 @@
 import { getRoundChallenge } from '~~/lib/challenges'
-import { defineGameHandler, enqueueGameTask } from '../server-side'
+import { defineGameHandler } from '../server-side'
+import { scheduleGameTask } from './deferred-task'
 import { isBorderChainChallenge, scheduleChainTimeout, startChainClock } from './chain-turns'
 import {
   isHeritageHuntChallenge,
@@ -87,23 +88,21 @@ export const scheduleMovementPhase = (
   ctx: { io: GameServer; redis: Redis; socket: GameSocket; eventTarget: ClientEventTarget },
   options: { continuation?: boolean; watchdogTick?: number; walkSeq?: number } = {}
 ) => {
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, () =>
-      enterMovementPhaseHandler({
-        io: ctx.io,
-        redis: ctx.redis,
-        socket: ctx.socket,
-        eventTarget: ctx.eventTarget,
-        eventKey: 'enter-movement-phase',
-        eventData: {
-          event: 'enter-movement-phase',
-          ...(options.continuation ? { continuation: true } : {}),
-          ...(options.watchdogTick ? { watchdogTick: options.watchdogTick } : {}),
-          ...(options.walkSeq !== undefined ? { walkSeq: options.walkSeq } : {}),
-        },
-      })
-    )
-  }, delay)
+  scheduleGameTask({ redis: ctx.redis, gameId: ctx.eventTarget.gameId }, delay, () =>
+    enterMovementPhaseHandler({
+      io: ctx.io,
+      redis: ctx.redis,
+      socket: ctx.socket,
+      eventTarget: ctx.eventTarget,
+      eventKey: 'enter-movement-phase',
+      eventData: {
+        event: 'enter-movement-phase',
+        ...(options.continuation ? { continuation: true } : {}),
+        ...(options.watchdogTick ? { watchdogTick: options.watchdogTick } : {}),
+        ...(options.walkSeq !== undefined ? { walkSeq: options.walkSeq } : {}),
+      },
+    })
+  )
 }
 
 export const enterMovementPhaseHandler = defineGameHandler(

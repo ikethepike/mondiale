@@ -57,6 +57,8 @@
 
     <CheerToast />
 
+    <ReconnectToast />
+
     <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />
 
     <div v-if="revealCountry && !gameStore.map.atlasMode" ref="revealCard" class="reveal-wrapper">
@@ -89,6 +91,7 @@
 <script lang="ts" setup>
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import CheerToast from '~/components/feedback/CheerToast.vue'
+import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { useChromeTint } from '~~/lib/chrome-tint'

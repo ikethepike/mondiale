@@ -160,6 +160,10 @@ interface GameStoreState {
   /** Spectator booth: hide the answer secrets, pre-settle reveals and map
    *  focus glow — for a screen someone in the room might glance at. */
   spectateHideSpoilers: boolean
+  /** The socket dropped after having been up (deploy, network blip, laptop
+   *  sleep). Written only by the socket plugin's connect/disconnect pair;
+   *  ReconnectToast surfaces it after a grace delay. */
+  disconnected: boolean
   socket?: Socket<DefaultEventsMap, DefaultEventsMap>
 }
 
@@ -177,6 +181,7 @@ export const useGameStore = defineStore('game', {
     spectateFollowId: undefined,
     spectateSeatId: undefined,
     spectateHideSpoilers: false,
+    disconnected: false,
     map: {
       status: undefined,
       reveal: undefined,

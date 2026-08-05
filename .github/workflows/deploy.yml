@@ -22,9 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@1.5
-      # --ha=false keeps Mondiale on a single machine: the Socket.IO server
-      # holds its io instance in per-machine memory, so a second machine
-      # without sticky sessions + a Redis adapter breaks live game sessions.
+      # Blue-green: the replacement machine boots and passes /health BEFORE
+      # traffic flips, so a deploy costs live games a ~1s reconnect blip
+      # (drained gracefully — see lib/events/server/graceful-shutdown.ts)
+      # instead of a ~25s outage. --ha=false keeps the default machine count
+      # at one; scaling out is safe now that game-routing.ts shards each room
+      # to its owning machine.
       # GIT_SHA bakes the commit into /health (.git is dockerignored, so the
       # build can't read it itself — same as bun run deploy).
-      - run: flyctl deploy --remote-only --ha=false --build-arg GIT_SHA=${{ github.sha }}
+      - run: flyctl deploy --remote-only --ha=false --strategy bluegreen --build-arg GIT_SHA=${{ github.sha }}

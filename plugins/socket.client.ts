@@ -119,24 +119,40 @@ export default defineNuxtPlugin(() => {
   // in the join handler) closes the reconnect gap where buffered events flush
   // before the re-join lands — the classic post-deploy room freeze. gameId is
   // added to the auth by the room page so reconnects can be verified.
-  const socket = io({ auth: { playerId: playerId.value, secret } })
+  //
+  // The room id ALSO rides the connection URL (manager `query`): that is what
+  // the server's routing layer (game-routing.ts) reads to steer this socket to
+  // the machine that owns the game BEFORE the connection opens. Websocket-only
+  // makes that routing a single replayable request — the polling→websocket
+  // upgrade dance would need sticky sessions instead. A direct room-page load
+  // seeds the query here; useJoinRoom keeps it honest on navigation.
+  const initialGameId = window.location.pathname.match(/^\/room\/([^/]+)/)?.[1]
+  const socket = io({
+    transports: ['websocket'],
+    auth: { playerId: playerId.value, secret },
+    ...(initialGameId ? { query: { gameId: initialGameId } } : {}),
+  })
   const gameStore = useGameStore()
   gameStore.socket = socket
-  const connected = ref(false)
 
   gameStore.playerId = playerId.value
 
   socket.on('connect', () => {
-    connected.value = socket.connected || false
+    gameStore.disconnected = false
   })
 
   socket.on('connect_error', err => {
     console.warn(`connect_error due to ${err.message}`)
   })
 
-  socket.on('disconnect', () => {
-    console.warn('Disconnected')
-    connected.value = socket.connected || false
+  socket.on('disconnect', reason => {
+    console.warn(`Disconnected (${reason})`)
+    gameStore.disconnected = true
+    // The deploy drain closes every socket server-side; socket.io reads that
+    // as deliberate ('io server disconnect') and will NOT retry on its own.
+    // Reconnect explicitly — by now the proxy routes to the new machine — or
+    // every deploy would strand the whole room on a frozen board.
+    if (reason === 'io server disconnect') socket.connect()
   })
 
   for (const [eventKey, configuration] of Object.entries(CLIENT_SIDE_EVENT_HANDLERS)) {
