@@ -28,7 +28,7 @@
                 <span v-for="fact in findLeaderFacts" :key="fact" class="fact">{{ fact }}</span>
               </span>
             </div>
-            <div v-if="challenge.id === 'flag' && country" class="flag-frame">
+            <div v-if="challenge.id === 'flag' && country && isPhone" class="flag-frame">
               <CountryFlag
                 class="flag ambient-loop"
                 :country="country"
@@ -409,6 +409,21 @@
         </ChallengeResult>
       </Transition>
     </ChallengePrompt>
+    <!-- Desktop/tablet flag gate: the flag docks to the side like the pin-drop
+         photo stage, so the map's high north stays visible and tappable -->
+    <aside
+      v-if="
+        !showInterstitial &&
+        !status &&
+        variant === 'find' &&
+        challenge.id === 'flag' &&
+        country &&
+        !isPhone
+      "
+      class="side-stage flag-stage"
+    >
+      <CountryFlag class="flag ambient-loop" :country="country" mode="background" fit="contain" />
+    </aside>
     <!-- The typed gates' console stands in the shell footer per the layer
          contract — mid-column it falls under the software keyboard and iOS
          chases the caret on every keystroke -->
@@ -1369,6 +1384,35 @@ header .result {
 header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
+}
+
+// Off-phone the flag rides the side-docked stage (templates/_side-stage.scss
+// owns placement and the narrow repark); only its framed surface and the
+// emblem-study swell are bespoke here.
+.flag-stage {
+  padding: 1.2rem;
+  border-radius: 1.2rem;
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
+  animation: flag-arrive var(--motion-slow) var(--ease-out-expressive) 1;
+
+  .flag {
+    display: block;
+    width: clamp(18rem, 22vw, 26rem);
+    aspect-ratio: 26 / 15;
+    filter: drop-shadow(0 0.4rem 0.8rem ink(0.18));
+    animation: flag-float calc(var(--motion-ambient) * 0.7) ease-in-out infinite;
+    transition: width var(--motion-base) var(--ease-out-expressive);
+  }
+
+  // The stage swells under the cursor for studying the emblem, then shrinks
+  // out of the map's way on leave — width, not scale, so the SVG stays sharp.
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+    &:hover .flag {
+      width: clamp(28rem, 36vw, 44rem);
+    }
+  }
 }
 
 // The flag is the question — present it as the hero, framed like the

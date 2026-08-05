@@ -32,7 +32,7 @@
       </article>
     </Transition>
 
-    <aside v-if="!result && !isPhone" class="photo-stage">
+    <aside v-if="!result && !isPhone" class="side-stage side-photo">
       <ZoomableImage :src="challenge.image" alt="A landmark, somewhere on Earth" />
     </aside>
     <MediaDock
@@ -161,34 +161,8 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-// The map is the answer surface, so the photo lives off to one side.
-.photo-stage {
-  top: 50%;
-  left: 3rem;
-  z-index: 2;
-  position: absolute;
-  transform: translateY(-50%);
-  pointer-events: auto;
-  overflow: hidden;
-  border-radius: 0.6rem;
-
-  width: clamp(18rem, 24vw, 24rem);
-  height: clamp(13rem, 22vh, 18rem);
-  transition:
-    width var(--motion-base) var(--ease-out-expressive),
-    height var(--motion-base) var(--ease-out-expressive);
-
-  // Desktop: the stage swells under the cursor for studying detail, then
-  // shrinks out of the map's way on leave. Width/height, not scale — the
-  // photo re-lays out and stays sharp.
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
-    &:hover {
-      z-index: 3;
-      width: clamp(28rem, 44vw, 52rem);
-      height: clamp(20rem, 44vh, 38rem);
-    }
-  }
-}
+// The map is the answer surface, so the photo lives off to one side —
+// placement, frame and hover swell all come from templates/_side-stage.scss.
 
 .dossier {
   left: 3rem;
@@ -214,15 +188,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: $tablet-wide) {
-  .photo-stage {
-    top: auto;
-    left: 50%;
-    bottom: 12rem;
-    transform: translateX(-50%);
-    width: min(80vw, 24rem);
-    height: min(22vh, 18rem);
-  }
-
   // Inset centring, not translateX(-50%): the dossier's enter transition
   // animates `transform`, and the two fought — the card ended up half a width
   // off-screen. Explicit width also stops absolute shrink-to-fit narrowing it.
