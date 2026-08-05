@@ -48,6 +48,7 @@ import {
 } from '~~/types/response.type'
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
+import { jsonParseLiteral } from './lib/emit'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -101,7 +102,7 @@ export const createCountriesFile = async (): Promise<{
     `
     import type { ISOCountryCode, Country } from '~~/types/geography.types'
     
-    export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${JSON.stringify(countryVector)}
+    export const COUNTRIES: { [key in ISOCountryCode]: Country } = ${jsonParseLiteral(countryVector)}
   `
   )
   console.log(`Finished creating file: ${COUNTRIES_FILE}`)

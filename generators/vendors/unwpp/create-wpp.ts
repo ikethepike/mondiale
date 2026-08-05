@@ -1,3 +1,4 @@
+import { jsonParseLiteral } from '../../lib/emit'
 import { writeFileSync } from 'fs'
 import { gunzipSync } from 'zlib'
 import { type ISOCountryCode, isValidISOCode } from '../../../types/geography.types'
@@ -239,7 +240,7 @@ export const createWppMapping = async () => {
     TRENDS_OUTPUT_FILE,
     `
       import type { WppTrendMapping } from '../generators/vendors/unwpp/create-wpp'
-      export const WPP_TRENDS: WppTrendMapping = ${JSON.stringify(trends)}
+      export const WPP_TRENDS: WppTrendMapping = ${jsonParseLiteral(trends)}
     `
   )
   console.info(`Wrote ${TRENDS_OUTPUT_FILE} (${Object.keys(trends).length} countries)`)
