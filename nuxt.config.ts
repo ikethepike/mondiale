@@ -69,6 +69,16 @@ export default defineNuxtConfig({
       },
     },
   },
+  routeRules: {
+    // Static public pages render ONCE at build time: the runtime server then
+    // serves flat HTML and never loads their SSR chunks (the first live render
+    // of `/` measured +62MB RSS — issue #110). Same HTML, same SEO; only
+    // /room/* renders live, since its content arrives over the socket.
+    '/': { prerender: true },
+    '/privacy': { prerender: true },
+    '/sources': { prerender: true },
+    '/atlas': { prerender: true },
+  },
   runtimeConfig: {
     public: {
       commitHash,
