@@ -80,7 +80,18 @@ export const registerGameRouting = ({
   // so a dev server's HMR websocket is never touched.
   httpServer.removeAllListeners('upgrade')
   httpServer.on('upgrade', (req, socket, head) => {
-    if (!req.url?.startsWith(SOCKET_PATH)) return socket.destroy()
+    if (!req.url?.startsWith(SOCKET_PATH)) {
+      // Mirror engine.io's own destroyUpgrade: give any other upgrade
+      // consumer a beat, then end the socket only if nothing answered it.
+      const raw = socket as Duplex & { bytesWritten?: number }
+      setTimeout(() => {
+        if (raw.writable && (raw.bytesWritten ?? 0) <= 0) {
+          raw.on('error', () => {})
+          raw.end()
+        }
+      }, 1000)
+      return
+    }
 
     const admit = () => engine.handleUpgrade(req, socket, head)
     const gameId = gameIdFromUrl(req.url)

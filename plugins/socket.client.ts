@@ -151,8 +151,12 @@ export default defineNuxtPlugin(() => {
     // The deploy drain closes every socket server-side; socket.io reads that
     // as deliberate ('io server disconnect') and will NOT retry on its own.
     // Reconnect explicitly — by now the proxy routes to the new machine — or
-    // every deploy would strand the whole room on a frozen board.
-    if (reason === 'io server disconnect') socket.connect()
+    // every deploy would strand the whole room on a frozen board. NOT after a
+    // terminal refusal (kick, closed door): those close the socket on purpose
+    // and the refusal event lands before the disconnect, so `rejected` is
+    // already set — reconnecting would park a zombie connection against the
+    // proxy's hard limit for the life of the dead-end card.
+    if (reason === 'io server disconnect' && !gameStore.rejected) socket.connect()
   })
 
   for (const [eventKey, configuration] of Object.entries(CLIENT_SIDE_EVENT_HANDLERS)) {

@@ -20,8 +20,10 @@ const gameStore = useGameStore()
 const visible = ref(false)
 let showTimer: ReturnType<typeof setTimeout> | undefined
 
+// `rejected` is a deliberately closed socket (kick, closed door) — the
+// dead-end card explains itself; pulsing "reconnecting…" over it would lie.
 watch(
-  () => gameStore.disconnected && !!gameStore.game,
+  () => gameStore.disconnected && !!gameStore.game && !gameStore.rejected,
   down => {
     if (showTimer) clearTimeout(showTimer)
     if (down) {
