@@ -54,8 +54,9 @@ jobs:
             UPSTASH_REDIS_REST_URL="$PREVIEW_REDIS_URL" \
             UPSTASH_REDIS_REST_TOKEN="$PREVIEW_REDIS_TOKEN"
 
-      # --ha=false for the same reason as deploy.yml: the Socket.IO server
-      # holds its io instance in per-machine memory.
+      # --ha=false keeps previews on one machine (rooms shard per machine via
+      # game-routing.ts, but a preview never needs more than one). Rolling
+      # strategy is fine here — nobody's live game rides a preview.
       - name: Deploy
         run: |
           flyctl deploy --remote-only --ha=false \

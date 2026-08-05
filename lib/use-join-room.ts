@@ -20,6 +20,19 @@ export const useJoinRoom = () => {
     const roomId = route.params.roomId
     if (socket && typeof roomId === 'string') {
       socket.auth = { ...(socket.auth as Record<string, unknown>), gameId: roomId }
+
+      // The room id must also ride the connection URL (manager query) — the
+      // server's routing layer (game-routing.ts) reads it there to steer the
+      // socket to the machine that owns this game. A socket connected under
+      // another (or no) room re-connects so the handshake passes the router;
+      // the join emit below is buffered and flushes once the new connection
+      // is up.
+      const manager = socket.io
+      const query = (manager.opts.query ?? {}) as Record<string, string>
+      if (query.gameId !== roomId) {
+        manager.opts.query = { ...query, gameId: roomId }
+        if (socket.connected) socket.disconnect()
+      }
     }
     if (socket?.disconnected) socket.connect()
 

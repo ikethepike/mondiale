@@ -64,13 +64,42 @@ export type GameServer = Server<DefaultEventsMap, DefaultEventsMap, DefaultEvent
  */
 const gameQueues = new Map<string, Promise<unknown>>()
 
+/**
+ * Deploy drain (graceful-shutdown.ts): once flipped, this process is dying —
+ * no new work may start. Incoming socket events go UNANSWERED (the client's
+ * ack timeout makes it retry, by which point it has reconnected to the new
+ * machine), and freshly fired timers are refused here as the backstop.
+ */
+let draining = false
+export const beginDrain = () => {
+  draining = true
+}
+export const isDraining = () => draining
+/** Test-only: in production the drain is process-terminal and never unflips. */
+export const resetDrainForTests = () => {
+  draining = false
+}
+/** Live-queue count — drain diagnostics and the prune's test seam. */
+export const gameQueueCount = () => gameQueues.size
+
+/** Every LIVE queue's tail, for the drain to wait out in-flight writes. Only
+ *  sound once `beginDrain()` has flipped — the spread snapshots the tails at
+ *  call time, and it is the drain's refusal of new tasks that makes those
+ *  tails final. */
+export const settleGameQueues = () => Promise.allSettled([...gameQueues.values()])
+
 export const enqueueGameTask = <T>(gameId: string, task: () => T | Promise<T>): Promise<T> => {
+  if (draining) return Promise.reject(new Error(`Draining — refused task for ${gameId}`))
   const tail = gameQueues.get(gameId) ?? Promise.resolve()
   const next = tail.then(task)
-  gameQueues.set(
-    gameId,
-    next.catch(error => console.error(`Game task failed for ${gameId}`, error))
-  )
+  const settled = next.catch(error => console.error(`Game task failed for ${gameId}`, error))
+  gameQueues.set(gameId, settled)
+  // A settled tail that is STILL the current tail is a finished queue — drop
+  // the entry, so the map tracks live queues rather than every game this
+  // process ever touched (same growth argument as rearm-round's sweep).
+  settled.then(() => {
+    if (gameQueues.get(gameId) === settled) gameQueues.delete(gameId)
+  })
   return next
 }
 

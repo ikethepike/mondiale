@@ -1,15 +1,26 @@
 # fly.toml — Mondiale (Nuxt + Socket.IO)
 #
-# Single-machine by design: the Socket.IO server holds its `io` instance in
-# per-machine memory (see server/middleware/socket.server.ts) and uses the
-# default polling->websocket upgrade. Running >1 machine without sticky
-# sessions + a Redis pub/sub adapter causes "Session ID unknown" errors, so
-# auto-scaling is intentionally disabled below.
+# Deploys are blue-green (see deploy.yml): the replacement passes /health
+# before traffic flips, then this machine drains — releases its room leases,
+# closes its sockets, settles in-flight writes — and exits
+# (lib/events/server/graceful-shutdown.ts). Live games reconnect in ~1s.
+#
+# Multi-machine is supported by ROOM SHARDING, not shared state: every socket
+# connection carries its gameId, and lib/events/server/game-routing.ts replays
+# it (fly-replay) to the machine that owns that game. One machine owns a room's
+# sockets, task queue and timers, so the single-process invariants hold at any
+# machine count. Scale with `fly scale count N` when capacity needs it; the
+# scaling unit is rooms, and each machine's ceiling is the connection
+# hard_limit below.
 
 app = "mondiale"
 primary_region = "arn"
 kill_signal = "SIGINT"
-kill_timeout = 5
+# The graceful drain needs room: settle in-flight writes (capped at 3s in
+# graceful-shutdown.ts) THEN release the room leases (a Redis round-trip per
+# live room). Blue-green means nothing waits on this machine, so generous
+# beats truncated — a drain cut short leaves leases to expire by TTL.
+kill_timeout = 15
 
 [build]
   dockerfile = "Dockerfile"

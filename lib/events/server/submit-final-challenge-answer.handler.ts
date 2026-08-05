@@ -1,6 +1,7 @@
 import { dealReplacementChallenge, isCorrectFinalAnswer } from '~~/lib/challenges/final-challenge'
 import { playableCountries } from '~~/lib/game-rules'
-import { defineGameHandler, enqueueGameTask } from '../server-side'
+import { defineGameHandler } from '../server-side'
+import { scheduleGameTask } from './deferred-task'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
@@ -143,19 +144,17 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // fresh fetch) before emitting, so the next genuine answer — which can only
     // come after this reveal — is accepted while duplicates fired during the
     // pause were already rejected.
-    setTimeout(() => {
-      enqueueGameTask(eventTarget.gameId, async () => {
-        const fresh = await server.fetchGame(eventTarget.gameId)
-        const freshPlayer = fresh?.players[eventTarget.playerId]
-        if (fresh && freshPlayer?.resolving) {
-          freshPlayer.resolving = false
-          await server.updateGameState(fresh)
-          return server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
-        }
-        // Latch already cleared (or game gone) — just reveal the last state.
-        server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
-      })
-    }, 5000)
+    scheduleGameTask({ redis, gameId: eventTarget.gameId }, 5000, async () => {
+      const fresh = await server.fetchGame(eventTarget.gameId)
+      const freshPlayer = fresh?.players[eventTarget.playerId]
+      if (fresh && freshPlayer?.resolving) {
+        freshPlayer.resolving = false
+        await server.updateGameState(fresh)
+        return server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+      }
+      // Latch already cleared (or game gone) — just reveal the last state.
+      server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
+    })
   },
   { player: 'warn' }
 )

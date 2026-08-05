@@ -1,12 +1,8 @@
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Game, Round } from '~~/types/game.types'
-import {
-  enqueueGameTask,
-  useServerSideEvents,
-  type GameServer,
-  type GameSocket,
-} from '../server-side'
+import { useServerSideEvents, type GameServer, type GameSocket } from '../server-side'
+import { scheduleGameTask } from './deferred-task'
 import { movesForScoredPoints, startWalk } from './moves'
 import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
 
@@ -47,14 +43,12 @@ export const scheduleEngineTask = (
   delayMs: number,
   task: (game: Game, server: ServerSide) => Promise<void>
 ) => {
-  setTimeout(() => {
-    enqueueGameTask(ctx.eventTarget.gameId, async () => {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(ctx.eventTarget.gameId)
-      if (!game) return
-      await task(game, server)
-    })
-  }, delayMs)
+  scheduleGameTask({ redis: ctx.redis, gameId: ctx.eventTarget.gameId }, delayMs, async () => {
+    const server = useServerSideEvents(ctx)
+    const game = await server.fetchGame(ctx.eventTarget.gameId)
+    if (!game) return
+    await task(game, server)
+  })
 }
 
 /** A shot-clock follow-up: fires just after `deadline`, with buzzer slack. */
