@@ -102,7 +102,7 @@
               <ConflictProfileCard :country="flashpointChallenge.country" />
             </section>
 
-            <section v-if="statDetectiveChallenge" class="pane-content ranking">
+            <section v-if="statDetectiveChallenge" class="pane-content ranking right">
               <span class="eyebrow">The Numbers Behind It</span>
               <StatDetectiveReveal :challenge="statDetectiveChallenge" />
             </section>
