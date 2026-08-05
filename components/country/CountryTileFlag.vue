@@ -32,8 +32,11 @@ defineProps({
 // crop shears off the hoist, where Nordic crosses (and most defining
 // elements) live. Call-sites that set an explicit width + height still win
 // (aspect-ratio yields when both axes are constrained) — prefer sizing one
-// axis and letting this hold the other.
-.wide-tile-flag {
+// axis and letting this hold the other. Doubled with .country-flag on
+// purpose: CountryFlag's own 3:2 fallback matches the same element at equal
+// specificity, so without the boost the winner is CSS bundle order — a coin
+// flip that once rendered the phone reveal card full-height.
+.wide-tile-flag.country-flag {
   aspect-ratio: 3 / 1;
 }
 </style>

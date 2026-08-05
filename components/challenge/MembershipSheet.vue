@@ -6,9 +6,15 @@
     role="dialog"
     :aria-label="`Countries lit for ${subject}`"
   >
-    <div v-if="isPhone" class="sheet-handle" aria-hidden="true" @pointerdown="onDragStart" />
+    <div
+      v-if="isPhone"
+      class="sheet-handle"
+      aria-hidden="true"
+      @pointerdown="onSheetDragStart"
+      @click="onHandleTap"
+    />
 
-    <header ref="headerEl" class="sheet-head" @pointerdown="isPhone && onDragStart($event)">
+    <header ref="headerEl" class="sheet-head" @pointerdown="isPhone && onSheetDragStart($event)">
       <span class="eyebrow">{{ countries.length }} on the board</span>
       <div class="search">
         <input
@@ -23,12 +29,23 @@
           @focus="onSearchFocus"
         />
         <span v-if="!query" class="ghost-placeholder" aria-hidden="true">Filter…</span>
+        <button
+          v-if="query"
+          type="button"
+          class="clear-search"
+          aria-label="Clear the filter"
+          @mousedown.prevent="query = ''"
+        >
+          ×
+        </button>
       </div>
     </header>
 
     <div class="sheet-body">
       <p v-if="!groups.length" class="empty">Nothing matches.</p>
-      <template v-for="group in groups" :key="group.letter">
+      <!-- One section per letter: sticky headers hand off to the next section's
+           header instead of all pinning at the scroller's top forever. -->
+      <section v-for="group in groups" :key="group.letter" class="letter-group">
         <h3 v-if="showLetters" class="letter">{{ group.letter }}</h3>
         <ul class="country-chip-list rows">
           <li v-for="isoCode in group.isoCodes" :key="isoCode">
@@ -39,17 +56,18 @@
               class="row"
               :disabled="settled"
               :country="getCountry(isoCode)"
+              @mousedown.prevent="onRowClick(isoCode)"
               @click="onRowClick(isoCode)"
             />
           </li>
         </ul>
-      </template>
+      </section>
     </div>
   </aside>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -118,9 +136,9 @@ const stops = () => {
   return [0, Math.max(0, height - head - HANDLE_PX), Math.max(0, height - HANDLE_PX)]
 }
 
-const { onDragStart, settleTo, release, dragMoved } = useDragSheet({
+const { stopIndex, onDragStart, settleTo, release, dragMoved } = useDragSheet({
   el: () => sheetEl.value,
-  enabled: () => isPhone.value && !props.settled && !keyboardInset.value,
+  enabled: () => isPhone.value,
   stops,
   // A flick carries exactly one stop (lib/use-drag-sheet.ts), so a hard swipe
   // down from full lands on peek, never tucked. Deliberate: the list can't be
@@ -128,6 +146,26 @@ const { onDragStart, settleTo, release, dragMoved } = useDragSheet({
   momentumEase: 'power1.in',
   onSettle: reserve,
 })
+
+/**
+ * Every drag enters here. A press on the search field is typing, not a drag.
+ * With the keyboard up, CSS owns the lift and the measured stops are stale —
+ * a swipe on the chrome dismisses the keyboard instead of dead-dragging the
+ * sheet against it.
+ */
+const onSheetDragStart = (event: PointerEvent) => {
+  // The whole search cluster: the input (typing) and the clear × (which must
+  // keep the keyboard up — its own mousedown.prevent guards the focus).
+  if (event.target instanceof Element && event.target.closest('.search')) return
+  if (keyboardInset.value) return searchEl.value?.blur()
+  onDragStart(event)
+}
+
+/** Tap (not drag) on the grab handle toggles between full and peek. */
+const onHandleTap = () => {
+  if (!isPhone.value || dragMoved() || keyboardInset.value) return
+  settleTo(stopIndex.value === 0 ? 1 : 0)
+}
 
 /**
  * Reserve the PEEK height, not the live one. A full-open sheet is ~70dvh and
@@ -160,6 +198,16 @@ watch(isPhone, phone => {
   // Hand layout back to CSS when the sheet stops being a sheet.
   if (!phone) release()
   reserve()
+})
+
+// The stops are transforms measured against the sheet's CURRENT height, and
+// filtering changes that height: a transform parked at the old peek can push
+// the whole sheet below the viewport (measured: typing three letters made the
+// drawer vanish). Re-anchor the held stop against the fresh geometry.
+watch(filtered, async () => {
+  if (!isPhone.value || stopIndex.value === 0) return
+  await nextTick()
+  settleTo(stopIndex.value, { immediate: true })
 })
 
 watch(
@@ -206,13 +254,16 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
 
 .search-input {
   width: 100%;
-  padding: 0.5rem 0.9rem;
-  border: 0.1rem solid ink(0.15);
+  padding: 0.7rem 3.6rem 0.7rem 1.4rem;
+  border: 0.1rem solid ink(0.2);
   border-radius: 999px;
-  background: glass(0.5);
+  background: glass(0.6);
   color: inherit;
   font: inherit;
-  font-size: 1.4rem;
+  // 16px is the floor: any smaller and iOS zooms the page to the caret on
+  // focus — a scaled viewport reads as a pinch, the keyboard engine stands
+  // down (lib/use-viewport.ts), and the sheet strands under the keyboard.
+  font-size: 1.6rem;
 
   &:focus-visible {
     outline: 0.2rem solid var(--dark-blue);
@@ -222,23 +273,49 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
 
 // The twin sits over a left-aligned input, so override the template's centring.
 .ghost-placeholder {
-  padding-left: 0.9rem;
+  padding-left: 1.4rem;
   justify-content: flex-start;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   opacity: 0.5;
+}
+
+// mousedown.prevent wipes the query without stealing the input's focus — the
+// keyboard stays up and the full list is back under the caret.
+.clear-search {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 999px;
+  background: ink(0.08);
+  color: inherit;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.letter-group + .letter-group {
+  margin-top: 0.8rem;
 }
 
 .letter {
   position: sticky;
   top: 0;
   z-index: 1;
-  margin: 0.6rem 0 0.3rem;
-  padding: 0.1rem 0;
+  margin: 0;
+  padding: 0.2rem 0 0.3rem;
+  // An opaque surface with the fade on the TEXT: element opacity here let the
+  // stuck header show the previous one through itself.
   background: var(--background-color);
+  color: ink(0.55);
   font-size: 1.2rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.55;
 }
 
 // One name per line: the task is finding a name in a list of up to 55, and a
@@ -267,8 +344,9 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
     cursor: default;
   }
 
+  // Toward the 44px tap-target floor — 3.2rem read a smidge too short.
   @media (pointer: coarse) {
-    min-height: 3.2rem;
+    min-height: 4.2rem;
   }
 }
 
@@ -287,6 +365,14 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
     width: 100%;
     max-height: 70dvh;
     border-bottom-left-radius: 1.9rem;
+  }
+
+  // While typing, the keyboard eats the bottom of the box (the clearance
+  // padding keeps content above it) — trade map for list so the matches stay
+  // a readable column instead of a two-row slit. dvh ignores the keyboard on
+  // iOS, so the inset has to be granted back explicitly.
+  :root.keyboard-up .membership-sheet {
+    max-height: calc(100dvh - 8rem);
   }
 }
 </style>

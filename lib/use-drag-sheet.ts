@@ -134,6 +134,13 @@ export const useDragSheet = (options: DragSheetOptions) => {
     if (!dragging || !el) return
     dragging = false
 
+    // A press that never left tap slop is a tap, not a drag. Snapping to the
+    // NEAREST stop here would override any settle another hand started between
+    // down and up (a focus handler opening the sheet) — re-settling to the
+    // recorded stop instead is a no-op at rest and resumes a tween the
+    // drag-start killTweensOf froze mid-flight.
+    if (!moved) return settleTo(stopIndex.value)
+
     const velocity = releaseVelocity(samples)
 
     const stops = options.stops()
@@ -146,6 +153,10 @@ export const useDragSheet = (options: DragSheetOptions) => {
             0
           )
     settleTo(target, { velocity })
+    // The drag's own click (dispatched synchronously after pointerup) must
+    // still read `moved` — but the NEXT tap is not this drag's tail. Without
+    // the reset, one sheet drag swallowed every row tap that followed it.
+    setTimeout(() => (moved = false), 0)
   }
 
   const onDragStart = (event: PointerEvent) => {
