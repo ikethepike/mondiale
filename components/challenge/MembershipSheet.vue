@@ -41,7 +41,12 @@
       </div>
     </header>
 
-    <div class="sheet-body">
+    <div
+      ref="bodyEl"
+      class="sheet-body"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <p v-if="!groups.length" class="empty">Nothing matches.</p>
       <!-- One section per letter: sticky headers hand off to the next section's
            header instead of all pinning at the scroller's top forever. -->
@@ -67,7 +72,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -107,8 +112,21 @@ const { gameStore } = useClientEvents()
 const isPhone = useIsPhone()
 const sheetEl = ref<HTMLElement>()
 const headerEl = ref<HTMLElement>()
+const bodyEl = ref<HTMLElement>()
 const searchEl = ref<HTMLInputElement>()
 const query = ref('')
+
+// Scroll-edge fades: on only when content actually continues past that edge,
+// so a short filtered list never wears a dimmed last row.
+const scrollableUp = ref(false)
+const scrollableDown = ref(false)
+
+const syncScrollEdges = () => {
+  const el = bodyEl.value
+  if (!el) return
+  scrollableUp.value = el.scrollTop > 1
+  scrollableDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+}
 
 const named = computed(() =>
   props.countries.map(isoCode => ({ isoCode, name: countryName(getCountry(isoCode)) }))
@@ -218,10 +236,18 @@ watch(
 let sheetHeight = 0
 let sheetObserver: ResizeObserver | undefined
 
+// Content changed under the scroller — re-judge the edges once it has laid out.
+watch(groups, async () => {
+  await nextTick()
+  syncScrollEdges()
+})
+
 onMounted(() => {
   if (isPhone.value) settleTo(1, { from: stops()[2] })
   reserve()
+  syncScrollEdges()
   sheetObserver = new ResizeObserver(() => {
+    syncScrollEdges()
     const height = sheetEl.value?.offsetHeight ?? 0
     const first = !sheetHeight
     if (height === sheetHeight) return
@@ -334,6 +360,43 @@ onBeforeUnmount(() => {
   }
 }
 
+// Scroll-edge fades: sticky layers riding the scrollport (net-zero in flow via
+// the negative margins), painted over the rows but UNDER the letter headings,
+// so rows dissolve at the edges while a stuck letter floats above the mist.
+// Opacity keys off the fade-top/fade-bottom classes — the fade only shows
+// when content actually continues past that edge.
+.sheet-body::before,
+.sheet-body::after {
+  content: '';
+  position: sticky;
+  z-index: 1;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-quick) var(--ease-out-expressive);
+}
+
+.sheet-body::before {
+  top: 0;
+  height: 3.6rem;
+  margin-bottom: -3.6rem;
+  // Solid for the stuck letter's whole line, then out — the rows slip away
+  // beneath the heading instead of clipping against an opaque bar.
+  background: linear-gradient(to bottom, var(--background-color) 2rem, transparent);
+}
+
+.sheet-body::after {
+  bottom: 0;
+  height: 2.4rem;
+  margin-top: -2.4rem;
+  background: linear-gradient(to top, var(--background-color), transparent);
+}
+
+.sheet-body.fade-top::before,
+.sheet-body.fade-bottom::after {
+  opacity: 1;
+}
+
 .letter-group + .letter-group {
   margin-top: 0.8rem;
 }
@@ -341,12 +404,10 @@ onBeforeUnmount(() => {
 .letter {
   position: sticky;
   top: 0;
-  z-index: 1;
+  // Above the edge fade — the heading floats over the mist the rows sink into.
+  z-index: 2;
   margin: 0;
   padding: 0.2rem 0 0.3rem;
-  // An opaque surface with the fade on the TEXT: element opacity here let the
-  // stuck header show the previous one through itself.
-  background: var(--background-color);
   color: ink(0.55);
   font-size: 1.2rem;
   letter-spacing: 0.12em;
