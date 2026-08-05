@@ -274,16 +274,23 @@ onBeforeUnmount(() => {
   border: 0.1rem solid ink(0.2);
   border-radius: 999px;
   background: glass(0.6);
-  color: inherit;
+  color: var(--dark-blue);
   font: inherit;
   // 16px is the floor: any smaller and iOS zooms the page to the caret on
   // focus — a scaled viewport reads as a pinch, the keyboard engine stands
   // down (lib/use-viewport.ts), and the sheet strands under the keyboard.
   font-size: 1.6rem;
+  transition:
+    border-color var(--motion-quick) var(--ease-out-expressive),
+    box-shadow var(--motion-quick) var(--ease-out-expressive);
 
-  &:focus-visible {
-    outline: 0.2rem solid var(--dark-blue);
-    outline-offset: 0.1rem;
+  // Text inputs match :focus-visible on touch too, so the old 0.2rem outline
+  // rode the pill for the whole typing session — a hairline turn and a soft
+  // ink ring say "live" without shouting.
+  &:focus {
+    outline: none;
+    border-color: var(--dark-blue);
+    box-shadow: 0 0 0 0.3rem ink(0.1);
   }
 }
 
@@ -309,10 +316,22 @@ onBeforeUnmount(() => {
   border: none;
   border-radius: 999px;
   background: ink(0.08);
-  color: inherit;
+  color: var(--dark-blue);
   font-size: 1.6rem;
+  font-family: inherit;
   line-height: 1;
   cursor: pointer;
+  transition: background-color var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover {
+      background: ink(0.15);
+    }
+  }
+
+  &:active {
+    background: ink(0.15);
+  }
 }
 
 .letter-group + .letter-group {
@@ -350,14 +369,39 @@ onBeforeUnmount(() => {
   }
 }
 
+// The quiet-list row, same register as the typed consoles' suggestion lists:
+// CountryChip brings only flag + name (hosts own the surface), and without
+// this dressing the button renders in the browser's own grey-pill chrome —
+// which is exactly what shipped.
 .row {
   width: 100%;
   cursor: pointer;
-  border-radius: 999px;
+  border: none;
+  border-radius: 0.8rem;
+  background: none;
+  color: var(--dark-blue);
+  font: inherit;
   text-align: left;
+  transition: background-color var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: ink(0.08);
+    }
+  }
+
+  &:active:not(:disabled) {
+    background: ink(0.12);
+  }
 
   &:disabled {
     cursor: default;
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 0.2rem solid var(--dark-blue);
+    outline-offset: -0.2rem;
   }
 
   // Toward the 44px tap-target floor — 3.2rem read a smidge too short.
