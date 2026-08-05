@@ -511,13 +511,21 @@ const variant = computed(() => challenge.value?.variant ?? 'find')
 const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
 const isPhone = useIsPhone()
 const BERTH_KEY = 'individual-challenge-prompt'
-onBeforeUnmount(() => claimMapBerth(gameStore, BERTH_KEY, undefined))
+// The claim below lands a tick late; without the latch a claim queued just
+// before unmount would re-register AFTER the release and haunt the next
+// round's camera as an ownerless top berth.
+let berthClosed = false
+onBeforeUnmount(() => {
+  berthClosed = true
+  claimMapBerth(gameStore, BERTH_KEY, undefined)
+})
 const placeMapBerth = () => {
   if (!isPhone.value || variant.value !== 'find' || challenge.value?.id !== 'flag') {
     claimMapBerth(gameStore, BERTH_KEY, undefined)
     return
   }
   nextTick(() => {
+    if (berthClosed) return
     const prompt = promptHost.value?.$el as HTMLElement | undefined
     const bottom = prompt?.getBoundingClientRect().bottom
     claimMapBerth(
