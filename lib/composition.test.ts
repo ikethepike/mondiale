@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
-import { compositionBoards,
+import {
+  compositionBoards,
   COMPOSITION_CLEAR_MARGIN,
   COMPOSITION_MIN_MARGIN,
   COMPOSITION_MIN_SLICES,
   COMPOSITION_MIN_TOTAL,
   corridorMargin,
-  corridorsToDestination } from '~~/lib/migration'
+  corridorsToDestination,
+} from '~~/lib/migration'
 import type { CompositionChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
