@@ -420,7 +420,7 @@
         country &&
         !isPhone
       "
-      class="flag-stage"
+      class="side-stage flag-stage"
     >
       <CountryFlag class="flag ambient-loop" :country="country" mode="background" fit="contain" />
     </aside>
@@ -1386,18 +1386,10 @@ header .result {
   overscroll-behavior: contain;
 }
 
-// Desktop/tablet: the flag docks to the left edge, vertically centred — the
-// pin-drop photo-stage grammar — leaving the whole world frame clear for
-// panning and taps. Centred with auto margins, not translateY: flag-arrive
-// animates transform, and the two would fight (the dossier lesson,
-// ViewPinLandmark).
+// Off-phone the flag rides the side-docked stage (templates/_side-stage.scss
+// owns placement and the narrow repark); only its framed surface and the
+// emblem-study swell are bespoke here.
 .flag-stage {
-  inset: 0 auto 0 3rem;
-  margin: auto 0;
-  height: fit-content;
-  z-index: 2;
-  position: absolute;
-  pointer-events: auto;
   padding: 1.2rem;
   border-radius: 1.2rem;
   backdrop-filter: blur(0.5rem);
@@ -1420,17 +1412,6 @@ header .result {
     &:hover .flag {
       width: clamp(28rem, 36vw, 44rem);
     }
-  }
-}
-
-// Narrow-but-not-phone (portrait tablets): the side dock would crowd the
-// Atlantic — park the flag low and centred instead, clear of the far north.
-@media (max-width: $tablet-wide) {
-  .flag-stage {
-    inset: auto 0 6rem 0;
-    margin: 0 auto;
-    width: fit-content;
-    height: auto;
   }
 }
 

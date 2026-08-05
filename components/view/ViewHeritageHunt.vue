@@ -34,7 +34,7 @@
       </article>
     </Transition>
 
-    <aside v-if="showPhoto && !isPhone" class="photo-stage">
+    <aside v-if="showPhoto && !isPhone" class="side-stage side-photo">
       <ZoomableImage :src="site.image" alt="A World Heritage Site, somewhere on Earth" />
     </aside>
     <MediaDock
@@ -177,33 +177,8 @@ onBeforeUnmount(() => {
   }
 }
 
-.photo-stage {
-  top: 50%;
-  left: 3rem;
-  z-index: 2;
-  position: absolute;
-  transform: translateY(-50%);
-  pointer-events: auto;
-  overflow: hidden;
-  border-radius: 0.6rem;
-  width: clamp(18rem, 24vw, 24rem);
-  height: clamp(13rem, 22vh, 18rem);
-
-  transition:
-    width var(--motion-base) var(--ease-out-expressive),
-    height var(--motion-base) var(--ease-out-expressive);
-
-  // Desktop: the stage swells under the cursor for studying detail, then
-  // shrinks out of the map's way on leave — pin-landmark's recipe. Width/
-  // height, not scale — the photo re-lays out and stays sharp.
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
-    &:hover {
-      z-index: 3;
-      width: clamp(28rem, 44vw, 52rem);
-      height: clamp(20rem, 44vh, 38rem);
-    }
-  }
-}
+// The side-docked photo (placement, frame, hover swell) comes whole from
+// templates/_side-stage.scss — pin-landmark's recipe, shared.
 
 .dossier {
   left: 3rem;
@@ -236,15 +211,6 @@ footer {
 }
 
 @media (max-width: $tablet-wide) {
-  .photo-stage {
-    top: auto;
-    left: 50%;
-    bottom: 12rem;
-    transform: translateX(-50%);
-    width: min(80vw, 24rem);
-    height: min(22vh, 18rem);
-  }
-
   .dossier {
     left: 0;
     right: 0;

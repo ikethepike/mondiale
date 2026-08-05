@@ -30,6 +30,7 @@
 @use 'templates/credit-row';
 @use 'templates/dead-end-card';
 @use 'templates/dock';
+@use 'templates/side-stage';
 // After pane: a sheet wears both, and .sheet's geometry must win.
 @use 'templates/sheet';
 

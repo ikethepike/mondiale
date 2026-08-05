@@ -1,0 +1,64 @@
+@use '../rules/breakpoints' as *;
+
+// The side-docked study stage: the prompt's subject (a photo, a flag) when
+// the ANSWER surface is the map — parked against the left rail, vertically
+// centred, so the world frame stays clear for panning and taps. Views add
+// `side-photo` for the standard photo frame or size a bespoke subject
+// themselves; placement, layering and the narrow repark live only here.
+//
+// Centred with insets + auto margins, never translateY: enter animations own
+// `transform`, and the two fight (the dossier lesson in ViewPinLandmark).
+// Interactive by right — the passthrough shell is pointer-events: none for
+// the map's sake. Under the cursor the stage climbs a layer, so a swelled
+// subject covers nearby chrome instead of sliding beneath it.
+.side-stage {
+  inset: 0 auto 0 3rem;
+  margin: auto 0;
+  height: fit-content;
+  z-index: 2;
+  position: absolute;
+  pointer-events: auto;
+  transition:
+    width var(--motion-base) var(--ease-out-expressive),
+    height var(--motion-base) var(--ease-out-expressive);
+
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+    &:hover {
+      z-index: 3;
+    }
+  }
+}
+
+// The standard photo frame at stage scale (the pin-drop modes). Desktop: the
+// stage swells under the cursor for studying detail, then shrinks out of the
+// map's way on leave. Width/height, not scale — the photo re-lays out and
+// stays sharp.
+.side-stage.side-photo {
+  overflow: hidden;
+  border-radius: 0.6rem;
+  width: clamp(18rem, 24vw, 24rem);
+  height: clamp(13rem, 22vh, 18rem);
+
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+    &:hover {
+      width: clamp(28rem, 44vw, 52rem);
+      height: clamp(20rem, 44vh, 38rem);
+    }
+  }
+}
+
+// No side rail to spare on narrow viewports: the stage parks low and
+// centred, above the footer band.
+@media (max-width: $tablet-wide) {
+  .side-stage {
+    inset: auto 0 12rem 0;
+    margin: 0 auto;
+    width: fit-content;
+    height: auto;
+  }
+
+  .side-stage.side-photo {
+    width: min(80vw, 24rem);
+    height: min(22vh, 18rem);
+  }
+}
