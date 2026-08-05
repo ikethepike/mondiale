@@ -571,11 +571,18 @@ const pinAnswerPoint = computed(() =>
 const WORLD_VIEW = { ...WORLD_BOX }
 const MAX_ZOOM = 40
 /**
- * How far past a world edge the camera may be dragged, as a fraction of the
- * world's height (≈150 units). Enough to slide the high Arctic — Hans Island
- * sits at y≈87 of 1001 — out from under the overlay caption, and no further.
+ * How far past a world edge the camera may be dragged, as a fraction of that
+ * axis's world dimension. Vertical slack (≈350 units) slides the high Arctic —
+ * Hans Island sits at y≈87 of 1001 — out from under the overlay cards even
+ * when they reach a third of the way down the screen; horizontal slack
+ * (≈300 units) frees edge-hugging subjects (Alaska, New Zealand) to be pulled
+ * toward the centre. The overshoot only ever reveals the parchment background.
  */
-const VERTICAL_OVERSCROLL = 0.15
+const VERTICAL_OVERSCROLL = 0.35
+const HORIZONTAL_OVERSCROLL = 0.15
+/** Deep-zoom cap on either axis's slack: a view a few dozen units across must
+ *  never drift more than a fraction of itself off the map. */
+const OVERSCROLL_VIEW_FRACTION = 0.4
 /**
  * The viewBox is kept at the SCREEN's aspect ratio, not the world's, and the
  * svg fills the viewport — so the map is edge-to-edge on any window and
@@ -708,9 +715,20 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   const { maxWidth, centerFraction } = clampCache
   view.width = clamp(view.width, minWidth, maxWidth)
   view.height = view.width / viewAspect
-  // Wider than the world (berth rest): the only legal x is dead centre.
+  // Horizontal slack mirrors the vertical below: a strict clamp pins subjects
+  // at the world's edges to the screen's, and — wider than the world (berth
+  // rest, wide screens at world fit) — killed side-to-side panning outright,
+  // the only legal x being dead centre.
+  const marginX = Math.min(
+    WORLD_VIEW.width * HORIZONTAL_OVERSCROLL,
+    view.width * OVERSCROLL_VIEW_FRACTION
+  )
   const overhang = (WORLD_VIEW.width - view.width) / 2
-  view.x = clamp(view.x, Math.min(0, overhang), Math.max(WORLD_VIEW.width - view.width, overhang))
+  view.x = clamp(
+    view.x,
+    Math.min(0, overhang) - marginX,
+    Math.max(WORLD_VIEW.width - view.width, overhang) + marginX
+  )
 
   // Vertical headroom: a strict [0, world-height] clamp pins the far north
   // (Svalbard, Hans Island at y≈87 of 1001) and the far south to the screen
@@ -723,9 +741,13 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   // (1280x800 → a 2000x1250 viewBox), and 40% of that is 500 units — a full
   // half-world of slack in each direction, enough to drag the planet entirely
   // off screen.
-  // …but at a deep zoom the view is only a few dozen units tall, and 15% of the
-  // world would let it drift far off the map. Take whichever bound is tighter.
-  const margin = Math.min(WORLD_VIEW.height * VERTICAL_OVERSCROLL, view.height * 0.4)
+  // …but at a deep zoom the view is only a few dozen units tall, and a
+  // world-height slack would let it drift far off the map. Take whichever
+  // bound is tighter.
+  const margin = Math.min(
+    WORLD_VIEW.height * VERTICAL_OVERSCROLL,
+    view.height * OVERSCROLL_VIEW_FRACTION
+  )
 
   if (view.height >= WORLD_VIEW.height) {
     // View taller than the world. Hard-centring here (the old behaviour) killed
