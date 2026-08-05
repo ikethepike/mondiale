@@ -854,17 +854,24 @@ const frameFocus = () => {
   tweenToView(target)
 }
 
+// A new subject reclaims the camera even from a player who had taken it.
 watch(
   () => [props.focusCountries, props.focusContext, props.feature],
-  () => nextTick(frameFocus)
+  () => {
+    cameraTaken = false
+    nextTick(frameFocus)
+  }
 )
 
-// A berth arriving or leaving re-aims the camera the same way a focus does.
+// A berth arriving or leaving re-aims the camera the same way a focus does —
+// but only while the framing is still automatic. Once the player has panned
+// or zoomed, chrome growing under the map (guess chips landing, the keyboard
+// rising) must not snatch the camera back to the subject.
 watch(
   () => [props.berth?.top, props.berth?.bottom],
   () => {
     clampCache = undefined
-    nextTick(frameFocus)
+    if (!cameraTaken) nextTick(frameFocus)
   }
 )
 
@@ -1200,7 +1207,11 @@ const applyLod = (effectiveZoom: number) => {
 // rAF-batched writes; hover/fill-transitions suspended while a gesture is
 // live (.is-interacting) so pointer churn never triggers extra repaints.
 let gestureTimer: ReturnType<typeof setTimeout> | undefined
+/** True once the player pans/zooms by hand; the subject watcher resets it.
+ *  While set, berth changes stop re-framing — the view is theirs. */
+let cameraTaken = false
 const beginGesture = () => {
+  cameraTaken = true
   gsap.killTweensOf(viewState)
   if (!loopRunning) {
     Object.assign(targetView, viewState)
