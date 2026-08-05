@@ -72,14 +72,6 @@ import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
 import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
 import { countryName, pickSizedCountry } from './country'
-import {
-  COMPOSITION_CLEAR_MARGIN,
-  COMPOSITION_MIN_MARGIN,
-  COMPOSITION_MIN_SLICES,
-  COMPOSITION_MIN_TOTAL,
-  corridorMargin,
-  corridorsToDestination,
-} from './migration'
 import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
@@ -111,7 +103,6 @@ import {
   relativeGap,
   TREND_METRIC_IDS,
   TREND_METRICS,
-  TRENDS,
 } from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
@@ -954,31 +945,12 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
 
 const COMPOSITION_SECONDS = 30
 
-/**
- * Countries whose foreign-born population has a shape worth reading: enough
- * origins to make a bar, a population big enough for the percentages to mean
- * something, and a leading origin that isn't a coin-flip against the runner-up.
- *
- * The margin gate is what keeps the round honest — measured on the 2024
- * revision it drops 19 of the 121 boards that are otherwise big enough,
- * the ones where the top two origins sit close enough that "name the
- * largest" would be a guess dressed as knowledge (the Netherlands at
- * 1.030×, Canada at 1.215×). The thresholds live in lib/migration.ts.
- */
-export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
-  pool.filter(isoCode => {
-    const origins = corridorsToDestination(isoCode)
-    if (origins.length < COMPOSITION_MIN_SLICES) return false
-    const total = origins.reduce((sum, origin) => sum + origin.value.amount, 0)
-    if (total < COMPOSITION_MIN_TOTAL) return false
-    return corridorMargin(origins) >= COMPOSITION_MIN_MARGIN
-  })
-
-/** Boards whose leading origin dominates outright — the shape alone answers. */
-export const hasClearLeader = (isoCode: ISOCountryCode): boolean =>
-  corridorMargin(corridorsToDestination(isoCode)) >= COMPOSITION_CLEAR_MARGIN
-
-const getCompositionChallenge = (gameState: gameTypes.Game): CompositionChallenge | undefined => {
+const getCompositionChallenge = async (
+  gameState: gameTypes.Game
+): Promise<CompositionChallenge | undefined> => {
+  // Board gates and thresholds live in lib/migration.ts (data rides with it);
+  // loaded lazily so the corridor matrix stays out of the eager bundle.
+  const { compositionBoards, hasClearLeader, corridorsToDestination } = await import('./migration')
   const pool = playableCountries(gameState)
   const boards = compositionBoards(pool)
   if (!boards.length) return undefined
@@ -1479,11 +1451,12 @@ export const scoreNoMansLand = ({
  * be dishonest), and the winner's margin must itself be decisive. Anything
  * ambiguous falls through to the ranking fallback.
  */
-const getTrendRaceChallenge = ({
+const getTrendRaceChallenge = async ({
   game,
 }: {
   game: gameTypes.Game
-}): TrendRaceChallenge | undefined => {
+}): Promise<TrendRaceChallenge | undefined> => {
+  const { TRENDS } = await import('./trends-data')
   const pool = playableCountries(game)
   const optionCount = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
 
@@ -1746,7 +1719,7 @@ const dealRoundChallenge = async (
       break
     }
     case 'composition': {
-      const challenge = getCompositionChallenge(game)
+      const challenge = await getCompositionChallenge(game)
       if (challenge) return challenge
       break
     }
@@ -1771,7 +1744,7 @@ const dealRoundChallenge = async (
       break
     }
     case 'trend-race': {
-      const challenge = getTrendRaceChallenge({ game })
+      const challenge = await getTrendRaceChallenge({ game })
       if (challenge) return challenge
       break
     }
@@ -2381,12 +2354,13 @@ const TREND_DUELS: { [difficulty in gameTypes.GameDifficulty]: number } = {
 
 /** Trend-duel: which of two countries' stat is rising/falling — one decisive
  *  riser + one decisive faller per pair, a fresh metric and countries each. */
-const dealTrendDuels = (
+const dealTrendDuels = async (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
-): Pick<IndividualChallenge, 'trendDuels'> | undefined => {
+): Promise<Pick<IndividualChallenge, 'trendDuels'> | undefined> => {
   if (!isGroupEnabled(settings, 'trends')) return undefined
+  const { TRENDS } = await import('./trends-data')
   const duels = TREND_DUELS[settings.difficulty]
 
   // Small continental pools may not carry a riser AND a faller on enough
@@ -2438,12 +2412,13 @@ const TRAJECTORY_TUNING: {
  *  drama-score top decile so generic diagonals never appear; decoys prefer the
  *  answer's region but must run the opposite direction AND end a difficulty-
  *  scaled gap away, so the right pick is never a coin flip. */
-const dealTrajectoryMatch = (
+const dealTrajectoryMatch = async (
   settings: { difficulty: gameTypes.GameDifficulty; challengeOverrides?: ChallengeOverrides },
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
-): Pick<IndividualChallenge, 'country' | 'trajectory'> | undefined => {
+): Promise<Pick<IndividualChallenge, 'country' | 'trajectory'> | undefined> => {
   if (!isGroupEnabled(settings, 'trends')) return undefined
+  const { TRENDS } = await import('./trends-data')
   const { optionCount, minSeparation } = TRAJECTORY_TUNING[settings.difficulty]
 
   for (const candidates of [countryPool, world]) {
@@ -2586,7 +2561,7 @@ const pickThemedFindCountry = (
   }
 }
 
-export const getIndividualChallenge = ({
+export const getIndividualChallenge = async ({
   accessorId,
   difficulty = 'normal',
   variant = 'world',
@@ -2598,7 +2573,7 @@ export const getIndividualChallenge = ({
   variant?: gameTypes.GameVariant
   includeMicroNations?: boolean
   challengeOverrides?: ChallengeOverrides
-}): IndividualChallenge => {
+}): Promise<IndividualChallenge> => {
   const rules: gameTypes.GameRules = { difficulty, variant, includeMicroNations }
   const pool = playableCountries(rules)
   const world = playableWorldCountries(rules)
@@ -2641,12 +2616,12 @@ export const getIndividualChallenge = ({
         break
       }
       case 'trend-duel': {
-        const dealt = dealTrendDuels(settings, pool, world)
+        const dealt = await dealTrendDuels(settings, pool, world)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
         break
       }
       case 'trajectory-match': {
-        const dealt = dealTrajectoryMatch(settings, pool, world)
+        const dealt = await dealTrajectoryMatch(settings, pool, world)
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
         break
       }
@@ -2720,7 +2695,7 @@ export const getIndividualChallenge = ({
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
       if (roll < 0.85) {
-        const dealt = dealTrajectoryMatch(settings, pool, world)
+        const dealt = await dealTrajectoryMatch(settings, pool, world)
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
       }
       if (roll < 0.95) {
@@ -2748,7 +2723,7 @@ export const getIndividualChallenge = ({
         const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       } else if (roll < 0.95) {
-        const dealt = dealTrendDuels(settings, pool, world)
+        const dealt = await dealTrendDuels(settings, pool, world)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
       }
       break

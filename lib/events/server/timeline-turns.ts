@@ -172,7 +172,7 @@ const scheduleTimelineSettle = (ctx: ChainContext) => {
     // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    settleRoundScores({
+    await settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,

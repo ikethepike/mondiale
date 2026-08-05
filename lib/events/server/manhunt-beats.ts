@@ -416,7 +416,7 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
 
     // The final beat's markers are still in the blob — they price proximity.
     const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
-    settleRoundScores({
+    await settleRoundScores({
       game: fresh,
       round,
       order: [...current.state.detectives, current.despotId],

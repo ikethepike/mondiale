@@ -7,8 +7,6 @@ import type {
   TrendSeries,
 } from '~~/generators/lib/trend-series'
 import { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS } from '~~/generators/lib/trend-series'
-import { TRENDS as OWID_TRENDS } from '~~/data/trends.gen'
-import { WPP_TRENDS } from '~~/data/wpp-trends.gen'
 import { formatCompact, formatNumber } from '~~/lib/number'
 import type { ChallengeScale, ChallengeTopic } from '~~/types/challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -19,18 +17,9 @@ export type TrendMapping = GenericTrendMapping<TrendMetricId>
 export type { TrendPoint, TrendSeries } from '~~/generators/lib/trend-series'
 export { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS }
 
-/** The one merged per-country series table — game code reads this, never a
- *  vendor's gen file directly. */
-export const TRENDS: TrendMapping = (() => {
-  const merged: TrendMapping = {}
-  const sources: TrendMapping[] = [OWID_TRENDS, WPP_TRENDS]
-  for (const source of sources) {
-    for (const isoCode of Object.keys(source) as (keyof TrendMapping)[]) {
-      merged[isoCode] = { ...merged[isoCode], ...source[isoCode] }
-    }
-  }
-  return merged
-})()
+// The merged per-country series table lives in lib/trends-data.ts (~1.2MB of
+// data) so importing these helpers costs nothing — dealers await it, trend
+// views import it statically.
 
 /**
  * Shared decisiveness convention (same as the higher-lower duel gap): bounded

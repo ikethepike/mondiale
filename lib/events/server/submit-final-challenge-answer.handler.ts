@@ -1,4 +1,3 @@
-import { dealReplacementChallenge, isCorrectFinalAnswer } from '~~/lib/challenges/final-challenge'
 import { playableCountries } from '~~/lib/game-rules'
 import { defineGameHandler } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
@@ -15,6 +14,10 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     if (player.phase !== 'final-challenge') {
       return console.warn(`Ignoring stale/duplicate final submit (phase: ${player.phase})`)
     }
+
+    // Deferred module: only loads once a game reaches the gauntlet (#110).
+    const { dealReplacementChallenge, isCorrectFinalAnswer } =
+      await import('~~/lib/challenges/final-challenge')
 
     const currentMove = player.moves[0]
     if (!currentMove) {

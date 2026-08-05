@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { getIndividualChallenge, getRoundChallenge, scoreTrendRace } from '~~/lib/challenges'
-import { readTrend, relativeGap, TRENDS } from '~~/lib/trends'
+import { readTrend, relativeGap } from '~~/lib/trends'
+import { TRENDS } from '~~/lib/trends-data'
 import type { TrendRaceChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 
@@ -19,12 +20,12 @@ afterEach(() => {
 })
 
 describe('dealTrendDuels (via getIndividualChallenge)', () => {
-  it('deals a streak of one-riser-one-faller duels, fresh countries and metrics', () => {
+  it('deals a streak of one-riser-one-faller duels, fresh countries and metrics', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trend-duel'
     const streaks: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 4, hard: 5 }
 
     for (const [difficulty, expected] of Object.entries(streaks)) {
-      const dealt = getIndividualChallenge({
+      const dealt = await getIndividualChallenge({
         accessorId: 'capital.name',
         difficulty: difficulty as GameDifficulty,
         variant: 'world',
@@ -48,9 +49,9 @@ describe('dealTrendDuels (via getIndividualChallenge)', () => {
     }
   })
 
-  it('refuses to deal when the trends group is toggled off', () => {
+  it('refuses to deal when the trends group is toggled off', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trend-duel'
-    const dealt = getIndividualChallenge({
+    const dealt = await getIndividualChallenge({
       accessorId: 'capital.name',
       difficulty: 'normal',
       variant: 'world',
@@ -62,12 +63,12 @@ describe('dealTrendDuels (via getIndividualChallenge)', () => {
 })
 
 describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
-  it('deals a decisive mystery country among its options, sized by difficulty', () => {
+  it('deals a decisive mystery country among its options, sized by difficulty', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
     const optionCounts: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 4, hard: 5 }
 
     for (const [difficulty, expected] of Object.entries(optionCounts)) {
-      const dealt = getIndividualChallenge({
+      const dealt = await getIndividualChallenge({
         accessorId: 'isoCode',
         difficulty: difficulty as GameDifficulty,
         variant: 'world',
@@ -84,7 +85,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
     }
   })
 
-  it('deals decoys that run the other way and end a difficulty-scaled gap apart', () => {
+  it('deals decoys that run the other way and end a difficulty-scaled gap apart', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
     const separations: { [difficulty in GameDifficulty]: number } = {
       easy: 0.45,
@@ -94,7 +95,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
 
     for (const [difficulty, minSeparation] of Object.entries(separations)) {
       for (let deal = 0; deal < 40; deal++) {
-        const dealt = getIndividualChallenge({
+        const dealt = await getIndividualChallenge({
           accessorId: 'isoCode',
           difficulty: difficulty as GameDifficulty,
           variant: 'world',
@@ -119,13 +120,13 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
     }
   })
 
-  it('still fills a board often enough to keep dealing at every difficulty', () => {
+  it('still fills a board often enough to keep dealing at every difficulty', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
 
     for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
       let dealtCount = 0
       for (let deal = 0; deal < 60; deal++) {
-        const dealt = getIndividualChallenge({
+        const dealt = await getIndividualChallenge({
           accessorId: 'isoCode',
           difficulty,
           variant: 'world',
@@ -136,9 +137,9 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
     }
   })
 
-  it('refuses to deal when the trends group is toggled off', () => {
+  it('refuses to deal when the trends group is toggled off', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
-    const dealt = getIndividualChallenge({
+    const dealt = await getIndividualChallenge({
       accessorId: 'isoCode',
       difficulty: 'normal',
       variant: 'world',
@@ -188,7 +189,7 @@ describe('scoreTrendRace', () => {
     maximumPoints: 15,
   }
 
-  it('pays full marks for the winner and tapers to nothing for the weakest', () => {
+  it('pays full marks for the winner and tapers to nothing for the weakest', async () => {
     expect(scoreTrendRace({ challenge, submittedGuesses: ['BD'] })).toEqual({
       scored: 15,
       maximum: 15,
@@ -199,7 +200,7 @@ describe('scoreTrendRace', () => {
     expect(scoreTrendRace({ challenge, submittedGuesses: ['PL'] }).scored).toBe(0)
   })
 
-  it('scores nothing for a foreign pick or an empty submission', () => {
+  it('scores nothing for a foreign pick or an empty submission', async () => {
     expect(scoreTrendRace({ challenge, submittedGuesses: ['SE'] }).scored).toBe(0)
     expect(scoreTrendRace({ challenge, submittedGuesses: [] }).scored).toBe(0)
   })

@@ -28,7 +28,8 @@
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { TRENDS, type TrendMetricId } from '~~/lib/trends'
+import type { TrendMetricId } from '~~/lib/trends'
+import { TRENDS } from '~~/lib/trends-data'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**

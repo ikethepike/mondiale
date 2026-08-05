@@ -72,7 +72,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { TRENDS } from '~~/lib/trends'
+import { TRENDS } from '~~/lib/trends-data'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatAmount, clamp } from '~~/lib/number'
 import { TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
