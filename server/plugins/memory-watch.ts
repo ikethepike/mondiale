@@ -1,7 +1,4 @@
-import {
-  MEMORY_STALL_WARN_THRESHOLD,
-  memorySnapshot,
-} from '../utils/memory'
+import { MEMORY_STALL_WARN_THRESHOLD, memorySnapshot } from '../utils/memory'
 
 /**
  * The 2026-08-04 incident (issue #110) never crashed and never paged anyone:

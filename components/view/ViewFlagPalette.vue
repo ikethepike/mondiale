@@ -12,7 +12,11 @@
     <!-- From the final two-thirds: the flag sketches itself across the whole
          background in ink lines — no fills, just its bones — finishing
          exactly as the clock does -->
-    <FlagSketch v-if="sketchStarted && sketchMarkup" :flag="sketchMarkup" :draw-seconds="drawSeconds" />
+    <FlagSketch
+      v-if="sketchStarted && sketchMarkup"
+      :flag="sketchMarkup"
+      :draw-seconds="drawSeconds"
+    />
     <ChallengePrompt :hint="hint" :attributions="promptSources">
       <h1 class="map-caption">Whose flag has these colours?</h1>
       <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
