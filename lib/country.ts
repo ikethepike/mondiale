@@ -18,9 +18,17 @@ let flagsPromise: Promise<void> | null = null
 export const loadFlags = (): Promise<void> => {
   if (flags) return Promise.resolve()
   if (!flagsPromise) {
-    flagsPromise = import('~~/data/flags.gen').then(m => {
-      flags = m.FLAGS
-    })
+    flagsPromise = import('~~/data/flags.gen')
+      .then(m => {
+        flags = m.FLAGS
+      })
+      .catch(error => {
+        // A failed chunk (redeploy 404, flaky network) must not poison the
+        // loader for the rest of the session — clear the latch so the next
+        // caller retries.
+        console.warn('Flag artifact failed to load — will retry', error)
+        flagsPromise = null
+      })
   }
   return flagsPromise
 }
@@ -47,9 +55,15 @@ let flagsWidePromise: Promise<void> | null = null
 export const loadFlagsWide = (): Promise<void> => {
   if (flagsWide) return Promise.resolve()
   if (!flagsWidePromise) {
-    flagsWidePromise = import('~~/data/flags-wide.gen').then(m => {
-      flagsWide = m.FLAGS_WIDE
-    })
+    flagsWidePromise = import('~~/data/flags-wide.gen')
+      .then(m => {
+        flagsWide = m.FLAGS_WIDE
+      })
+      .catch(error => {
+        // Same retry latch as loadFlags — one bad fetch must not stick.
+        console.warn('Wide-flag artifact failed to load — will retry', error)
+        flagsWidePromise = null
+      })
   }
   return flagsWidePromise
 }
