@@ -158,10 +158,21 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
     onDragStart(event)
   }
 
-  /** Tap (not drag) on the grab handle toggles between full and peek. */
+  /**
+   * Tap (not drag) on the grab handle: deploy, or hide to the bare handle.
+   *
+   * Deliberately NOT full ↔ peek. Peek earns its place as the entrance — a
+   * roster advertising itself without covering the map — but it is a poor
+   * destination for a deliberate tap: it spends real height on a filter field
+   * whose results are off-screen, and hides every row. A tap meaning "hide"
+   * that leaves the chrome behind reads as the sheet catching halfway, and it
+   * also stranded the hidden stop, which a tap could then never return to.
+   * Peek stays reachable by drag, where resting anywhere on the ladder is the
+   * whole point.
+   */
   const onHandleTap = () => {
     if (!options.enabled() || dragMoved() || keyboardInset.value) return
-    settleTo(stopIndex.value === SHEET_FULL ? SHEET_PEEK : SHEET_FULL)
+    settleTo(stopIndex.value === SHEET_FULL ? SHEET_TUCKED : SHEET_FULL)
   }
 
   // Scroll-edge fades: on only when content actually continues past that
