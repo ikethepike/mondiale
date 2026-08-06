@@ -250,6 +250,7 @@ export type RelationsGlyphKey =
   | 'relations.diplomacy'
   | 'relations.embassy'
   | 'relations.exports'
+  | 'relations.maritime'
   | 'relations.passport'
   | 'relations.peace'
   | 'relations.sanctions'
@@ -300,6 +301,17 @@ export const RELATIONS_GLYPHS: Record<RelationsGlyphKey, Glyph> = {
   // Crate outbound.
   'relations.exports': {
     paths: ['M7 11v8.5h10V11', 'M12 14v-9.5', 'M9.3 7.2 12 4.5l2.7 2.7'],
+  },
+  // Anchor: the law of the sea.
+  'relations.maritime': {
+    paths: [
+      'M12 7.5v12',
+      'M8.2 10.5h7.6',
+      'M4.5 14.2c0 3.3 3.3 5.3 7.5 5.3s7.5-2 7.5-5.3',
+      'M3.2 15.8 4.5 14.2l1.3 1.6',
+      'M18.2 15.8l1.3-1.6 1.3 1.6',
+    ],
+    circles: [[12, 5.3, 2]],
   },
   // Passport booklet.
   'relations.passport': {

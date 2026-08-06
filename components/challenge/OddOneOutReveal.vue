@@ -7,11 +7,35 @@
         class="logo"
         :organization="challenge.organization"
       />
+      <TreatySeal
+        v-if="challenge._type === 'treaty-challenge'"
+        class="seal"
+        :treaty="challenge.treaty"
+      />
       <strong class="subject">{{ subject.name }}</strong>
       <span class="meta">{{ subject.meta }}</span>
       <span class="purpose">{{ subject.purpose }}</span>
     </span>
-    <span class="verdict-row">
+    <!-- The four ways to stand toward an instrument, as one bar. A club has
+         no equivalent: you are on its books or you are not. -->
+    <span v-if="census" class="census">
+      <span class="census-bar" aria-hidden="true">
+        <span
+          v-for="band in census"
+          :key="band.key"
+          class="band"
+          :class="band.key"
+          :style="{ width: `${band.share}%` }"
+        />
+      </span>
+      <span class="census-keys">
+        <span v-for="band in census" :key="band.key" class="census-key" :class="band.key">
+          <span class="swatch" aria-hidden="true" />
+          {{ band.count }} {{ band.label }}
+        </span>
+      </span>
+    </span>
+    <span class="verdict-row" :class="standingKey">
       <CountryFlag class="holdout-flag" :country="COUNTRIES[holdout]" mode="background" />
       <span class="holdout">
         <strong class="name">{{ countryName(COUNTRIES[holdout]) }}</strong>
@@ -29,6 +53,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
+import TreatySeal from '~/components/challenge/TreatySeal.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
@@ -39,7 +64,7 @@ import {
   familyPeersBinding,
   organizationSize,
   organizationsOf,
-  treatyPartyCount,
+  treatyCensus,
 } from '~~/lib/odd-one-out'
 import { oddOneOut, type OddOneOutChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -61,6 +86,9 @@ const props = defineProps<{
   picked?: ISOCountryCode
 }>()
 
+/** Smallest slice of the census bar a standing may occupy, in percent. */
+const MIN_BAND_SHARE = 4
+
 const holdout = computed(() => oddOneOut(props.challenge))
 
 const sources = computed(() =>
@@ -78,13 +106,56 @@ const subject = computed(() => {
     }
   }
   const meta = treatyMeta(props.challenge.treaty)
-  const parties = treatyPartyCount(props.challenge.treaty)
+  const { party } = treatyCensus(props.challenge.treaty)
   return {
     name: meta.name,
-    meta: `${parties} countries bound`,
+    // Same shape as the club's "founded 1993 · 27 members" — the two
+    // questions are siblings and should read like it
+    meta: `adopted ${meta.adopted} · ${party} countries bound`,
     purpose: meta.purpose,
   }
 })
+
+/**
+ * The standing spread as bands, widest first among the outsiders so the bar
+ * reads left to right from bound to absent. Empty bands drop out rather than
+ * leaving a legend entry for a count of zero.
+ */
+const census = computed(() => {
+  if (props.challenge._type !== 'treaty-challenge') return undefined
+  const counts = treatyCensus(props.challenge.treaty)
+  const total = counts.party + counts.signatory + counts.withdrawn + counts.absent
+  if (!total) return undefined
+  const bands = [
+    { key: 'party' as const, label: 'bound', count: counts.party },
+    { key: 'signatory' as const, label: 'signed only', count: counts.signatory },
+    { key: 'withdrawn' as const, label: 'withdrew', count: counts.withdrawn },
+    // Not "never joined": this band also holds the places with no standing to
+    // take — Taiwan and Kosovo have no row in a UN depositary's table, and
+    // calling that a choice would be a lie the bar repeats every round.
+    { key: 'absent' as const, label: 'outside it', count: counts.absent },
+  ]
+  const shown = bands.filter(band => band.count > 0)
+  // One country out of 194 is a third of a pixel. Floor each band and take
+  // the room back proportionally, so a band that exists can always be seen
+  // and the widths still sum to the whole.
+  const floor = Math.min(MIN_BAND_SHARE, 100 / shown.length)
+  const slack = 100 - floor * shown.length
+  return shown.map(band => ({
+    ...band,
+    share: floor + (band.count / total) * slack,
+  }))
+})
+
+/** The holdout's band, so the verdict row wears the same colour as the bar
+ *  segment it belongs to. */
+const standingKey = computed(() =>
+  props.challenge._type === 'treaty-challenge'
+    ? props.challenge.standing === 'absent'
+      ? 'absent'
+      : props.challenge.standing
+    : undefined
+)
 
 /** How the holdout stands apart — the club's plain "not a member", or the
  *  instrument's own three ways of not being bound. */
@@ -146,6 +217,10 @@ const pickedLine = computed(() => {
     margin-bottom: 0.2rem;
   }
 
+  .seal {
+    margin-bottom: 0.3rem;
+  }
+
   .subject {
     font-size: 1.7rem;
     line-height: 1.25;
@@ -163,6 +238,76 @@ const pickedLine = computed(() => {
   }
 }
 
+// One hue per standing, shared by the census bar, its legend and the verdict
+// row — the holdout's row is literally the colour of its slice.
+$standings: (
+  'party': hsl(202, 44%, 46%),
+  'signatory': hsl(38, 72%, 54%),
+  'withdrawn': hsl(8, 62%, 54%),
+  // Dark enough to read as a border on the verdict row's amber wash, not
+  // just as a band on the bar's pale track
+  'absent': hsl(215, 16%, 52%),
+);
+
+.census {
+  gap: 0.5rem;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.census-bar {
+  height: 0.8rem;
+  display: flex;
+  overflow: hidden;
+  border-radius: 0.4rem;
+  background: hsla(216, 40%, 25%, 0.1);
+
+  .band {
+    height: 100%;
+    display: block;
+    transform-origin: left center;
+    animation: bar-grow 0.5s var(--ease-smooth) backwards;
+    animation-delay: 220ms;
+  }
+}
+
+.census-keys {
+  gap: 0.3rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 1.2rem;
+  justify-content: center;
+}
+
+.census-key {
+  gap: 0.35rem;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+
+  .swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+  }
+}
+
+@each $standing, $color in $standings {
+  .band.#{$standing} {
+    background: $color;
+  }
+
+  .census-key.#{$standing} .swatch {
+    background: $color;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .census-bar .band {
+    animation: none;
+  }
+}
+
 .verdict-row {
   gap: 0.8rem;
   display: flex;
@@ -170,6 +315,14 @@ const pickedLine = computed(() => {
   align-items: center;
   border-radius: 0.6rem;
   background: hsla(45, 90%, 74%, 0.35);
+
+  // A treaty holdout's row takes its standing's colour as a left edge, so the
+  // census bar above and the country below are visibly the same fact.
+  @each $standing, $color in $standings {
+    &.#{$standing} {
+      border-left: 0.3rem solid $color;
+    }
+  }
 
   .holdout-flag {
     width: 2.8rem;

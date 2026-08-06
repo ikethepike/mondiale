@@ -75,11 +75,41 @@ export const organizationSize = (organization: keyof typeof OrganizationVector):
 export const organizationsOf = (isoCode: ISOCountryCode): (keyof typeof OrganizationVector)[] =>
   COUNTRIES[isoCode].membership.map(entry => entry.id).filter(isOrganizationKey)
 
+/**
+ * The instrument's standing census: how many countries are bound, how many
+ * signed and stopped there, how many walked out, and how many never came at
+ * all.
+ *
+ * This is the texture a club question has no equivalent for — you are in the
+ * EU or you are not, but a treaty has four ways to stand toward it, and the
+ * odd-one-out's own standing only means something against the spread.
+ */
+export interface TreatyCensus {
+  party: number
+  signatory: number
+  withdrawn: number
+  absent: number
+}
+
+export const treatyCensus = (treaty: TreatyId): TreatyCensus => {
+  const statuses = TREATIES[treaty] ?? {}
+  const countryCount = Object.keys(COUNTRIES).length
+  const counted = (standing: TreatyStatus['standing']) =>
+    Object.values(statuses).filter(status => status?.standing === standing).length
+  const party = counted('party')
+  const signatory = counted('signatory')
+  const withdrawn = counted('withdrawn')
+  return {
+    party,
+    signatory,
+    withdrawn,
+    // Not in the table at all — the silent majority on a thin instrument
+    absent: Math.max(0, countryCount - party - signatory - withdrawn),
+  }
+}
+
 /** How many countries the instrument actually binds. */
-export const treatyPartyCount = (treaty: TreatyId): number =>
-  Object.values(TREATIES[treaty] ?? {}).filter(
-    (status): status is TreatyStatus => status?.standing === 'party'
-  ).length
+export const treatyPartyCount = (treaty: TreatyId): number => treatyCensus(treaty).party
 
 /**
  * Instruments in the same family the holdout IS bound by — the counterweight

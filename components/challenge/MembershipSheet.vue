@@ -16,7 +16,7 @@
     />
 
     <header ref="headerEl" class="sheet-head" @pointerdown="isPhone && onSheetDragStart($event)">
-      <span class="eyebrow">{{ countries.length }} on the board</span>
+      <span class="eyebrow">{{ eyebrow }}</span>
       <div class="search">
         <input
           ref="searchEl"
@@ -115,7 +115,17 @@ const props = defineProps<{
   /** What they have in common — an organization or an instrument. Label only. */
   subject: string
   settled: boolean
+  /** How many countries the club or instrument holds worldwide. When the
+   *  lineup is a sample of a bigger set (191 CRC parties on a 24-row sheet),
+   *  the eyebrow says so instead of implying the roster is the whole thing. */
+  total?: number
 }>()
+
+const eyebrow = computed(() =>
+  props.total && props.total > props.countries.length
+    ? `${props.countries.length} of ${props.total} on the board`
+    : `${props.countries.length} on the board`
+)
 
 const emit = defineEmits<{ pick: [isoCode: ISOCountryCode] }>()
 

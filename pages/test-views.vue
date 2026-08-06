@@ -2497,6 +2497,46 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    // Arms control's seal, and the withdrawn standing — the only family with
+    // real exits in the data (five, all recent and all European).
+    id: 'final-treaty-arms',
+    label: 'Final: treaty (withdrew, arms control)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'treaty-challenge',
+          treaty: 'mine-ban',
+          holdout: 'FI',
+          standing: 'withdrawn',
+          lineup: buildLineup(
+            'FI',
+            ISOCountryCodes.filter(isoCode => TREATIES['mine-ban']?.[isoCode]?.standing === 'party')
+          ),
+        },
+      ]),
+  },
+  {
+    // The law-of-the-sea seal, and the absent standing: the US is nowhere in
+    // the UNCLOS table at all.
+    id: 'final-treaty-sea',
+    label: 'Final: treaty (never joined, law of the sea)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'treaty-challenge',
+          treaty: 'unclos',
+          holdout: 'US',
+          standing: 'absent',
+          lineup: buildLineup(
+            'US',
+            ISOCountryCodes.filter(isoCode => TREATIES.unclos?.[isoCode]?.standing === 'party')
+          ),
+        },
+      ]),
+  },
+  {
     id: 'final-scales',
     label: 'Final: tip the scales',
     component: ViewFinalChallenge,

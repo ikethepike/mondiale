@@ -16,6 +16,12 @@
             v-if="currentFinalChallenge?._type === 'membership-challenge'"
             :organization="currentFinalChallenge.organization"
           />
+          <!-- Instruments have no emblem to show, so the question wears its
+               family's seal — the club question's logo, for treaties -->
+          <TreatySeal
+            v-if="currentFinalChallenge?._type === 'treaty-challenge'"
+            :treaty="currentFinalChallenge.treaty"
+          />
           <h2 class="map-caption">{{ details?.question }}</h2>
           <!-- The live beat's endonym rides the top of a staggered card deck —
                the fanned cards behind it are the endonyms still to come -->
@@ -216,6 +222,7 @@
       :key="membershipCountries.join()"
       :countries="membershipCountries"
       :subject="oddOneOutSubject"
+      :total="oddOneOutTotal"
       :settled="!!status"
       @pick="submitMembership"
     />
@@ -238,6 +245,7 @@ import MinMaxReveal from '~/components/challenge/MinMaxReveal.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
 import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
+import TreatySeal from '~/components/challenge/TreatySeal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
@@ -268,6 +276,7 @@ import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
 import { formatAmount, formatCompact } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -577,6 +586,19 @@ const oddOneOutSubject = computed(() => {
     return OrganizationVector[challenge.organization]
   }
   if (challenge?._type === 'treaty-challenge') return treatyMeta(challenge.treaty).shortName
+  return undefined
+})
+
+/** How many countries the club or instrument holds worldwide — the lineup is
+ *  a sample of it, and the roster's eyebrow says which. */
+const oddOneOutTotal = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type === 'membership-challenge') {
+    return organizationSize(challenge.organization)
+  }
+  // The holdout is on the sheet but is not one of the bound — count it in, so
+  // "24 of 192" matches what the roster actually holds.
+  if (challenge?._type === 'treaty-challenge') return treatyPartyCount(challenge.treaty) + 1
   return undefined
 })
 

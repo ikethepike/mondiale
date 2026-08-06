@@ -25,10 +25,12 @@ import {
   MAX_LINEUP,
   organizationSize,
   organizationsOf,
+  treatyCensus,
   treatyPartyCount,
 } from '~~/lib/odd-one-out'
 import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
-import { TREATY_META } from '~~/types/treaty.type'
+import { TREATY_FAMILIES, TREATY_META } from '~~/types/treaty.type'
+import { resolveGlyph } from '~~/lib/stat-glyphs'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -1285,6 +1287,32 @@ describe('reveal selectors', () => {
     }
     // The US signed the Rome Statute and unsigned it, but is a CCPR party
     expect(familyPeersBinding('rome-statute', 'US')).toContain('iccpr')
+  })
+
+  it('censuses every standing toward an instrument without losing a country', () => {
+    const countryCount = Object.keys(COUNTRIES).length
+    for (const meta of TREATY_META) {
+      const census = treatyCensus(meta.id)
+      expect(census.party).toBeGreaterThanOrEqual(meta.minimumParties)
+      // The four bands partition the world — a gap would draw a short bar
+      expect(census.party + census.signatory + census.withdrawn + census.absent).toBe(countryCount)
+      for (const count of Object.values(census)) expect(count).toBeGreaterThanOrEqual(0)
+    }
+    // The signed-never-ratified column is the mode's whole point — at least
+    // one instrument has to populate it, or the standing can never be dealt
+    expect(TREATY_META.some(meta => treatyCensus(meta.id).signatory > 0)).toBe(true)
+  })
+
+  it('gives every instrument an adoption year and a family seal', () => {
+    for (const meta of TREATY_META) {
+      expect(meta.adopted).toBeGreaterThan(1900)
+      expect(meta.adopted).toBeLessThanOrEqual(new Date().getFullYear())
+      const family = TREATY_FAMILIES[meta.family]
+      expect(family).toBeDefined()
+      // The seal renders the glyph through StatTopicIcon's topic channel — a
+      // key the bench doesn't hold silently falls back to a bar chart
+      expect(resolveGlyph(undefined, family.glyph)).not.toBe(resolveGlyph(undefined, 'no-such-key'))
+    }
   })
 
   it('gives every organization its founding year and purpose', () => {
