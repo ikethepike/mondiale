@@ -381,24 +381,42 @@ const markerPartsFor = (
     }
     case 'landmarks': {
       // A map pin: the one shape that means "a place" without having to be
-      // read. It replaces a four-sided cone that the toon ramp turned into a
-      // soft nothing — a sphere shades with a clean terminator where a
-      // low-segment cone smears, and the balloon-and-spike silhouette is
-      // legible at any angle, which a pyramid seen from above is not.
-      const head = new SphereGeometry(0.23 * s, 18, 14)
-      head.translate(0, 0.62 * s, 0)
-      // The spike: a cone point-down, meeting the head's underside.
-      const spike = new ConeGeometry(0.21 * s, 0.5 * s, 18)
-      spike.rotateX(Math.PI)
-      spike.translate(0, 0.32 * s, 0)
-      // The pin's eye, sunk into the face rather than sitting on it.
-      const eye = new CylinderGeometry(0.095 * s, 0.095 * s, 0.3 * s, 14)
+      // read, and it replaces a four-sided cone the toon ramp turned into a
+      // soft nothing.
+      //
+      // ONE lathed surface, not a sphere sitting on a cone. Every part gets
+      // its own inverted-hull outline, so a pin built from two solids wears an
+      // ink ring exactly where they join — the seam reads as a crack across
+      // the head. Revolving a teardrop profile gives one skin and one outline.
+      //
+      // The profile is the tangent construction: a straight flank from the tip
+      // to where it touches the head circle, then the arc over the top. Solved
+      // rather than eyeballed, so the join is smooth by geometry.
+      const RADIUS = 0.23
+      const CENTRE = 0.62
+      const flank = Math.sqrt(CENTRE * CENTRE - RADIUS * RADIUS)
+      const touch = Math.acos(-RADIUS / CENTRE)
+      const profile = [new Vector2(0, 0)]
+      const ARC_STEPS = 12
+      for (let step = 0; step <= ARC_STEPS; step++) {
+        const angle = touch * (1 - step / ARC_STEPS)
+        profile.push(
+          new Vector2(RADIUS * Math.sin(angle) * s, (CENTRE + RADIUS * Math.cos(angle)) * s)
+        )
+      }
+      profile.splice(1, 0, new Vector2(flank * Math.sin(touch) * s, flank * Math.cos(touch) * s))
+
+      // The eye keeps its own outline on purpose — that ring is what makes it
+      // read as a hole punched through rather than a dot painted on. It has to
+      // out-span the head's DIAMETER or it stays buried inside it; the marker's
+      // local +z faces back down the path, so the hole meets an arriving pawn
+      // face-on.
+      const eye = new CylinderGeometry(0.095 * s, 0.095 * s, RADIUS * 2.1 * s, 14)
       eye.rotateX(Math.PI / 2)
-      eye.translate(0, 0.64 * s, 0)
+      eye.translate(0, CENTRE * s, 0)
 
       return [
-        { geometry: spike, color: BOARD_COLORS.warmSand },
-        { geometry: head, color: BOARD_COLORS.warmSand },
+        { geometry: new LatheGeometry(profile, 20), color: BOARD_COLORS.warmSand },
         { geometry: eye, color: BOARD_COLORS.darkBlue },
       ]
     }
@@ -458,24 +476,37 @@ const markerPartsFor = (
       barrel.translate(-0.01 * s, 0.28 * s, 0)
       const nib = new ConeGeometry(0.032 * s, 0.12 * s, 8)
       nib.rotateX(Math.PI)
-      nib.translate(0.01 * s, 0.14 * s, 0)
+      nib.translate(0.01 * s, 0.15 * s, 0)
 
-      // The pot: glass walls over a pool of ink, with a solid rim so the
-      // opening reads.
-      const glass = new CylinderGeometry(0.23 * s, 0.26 * s, 0.3 * s, 16)
-      glass.translate(0, 0.15 * s, 0)
+      // The pot, lathed rather than stacked: a squat belly, a shoulder and a
+      // short neck. A plain cylinder read as a beaker, and stacking a rim on
+      // top of it put an ink outline across the join — the same seam problem
+      // the map pin had. One profile, one skin.
+      const glass = new LatheGeometry(
+        [
+          [0, 0],
+          [0.235, 0],
+          [0.265, 0.06],
+          [0.25, 0.18],
+          [0.198, 0.26],
+          [0.196, 0.32],
+        ].map(([radius, height]) => new Vector2(radius * s, height * s)),
+        18
+      )
       // A shallow pool, so most of the pot is empty and the glass has room to
       // read as glass rather than as a lid on a solid block of ink.
-      const ink = new CylinderGeometry(0.21 * s, 0.235 * s, 0.08 * s, 16)
-      ink.translate(0, 0.04 * s, 0)
-      const rim = new CylinderGeometry(0.24 * s, 0.235 * s, 0.03 * s, 16)
-      rim.translate(0, 0.3 * s, 0)
+      const ink = new CylinderGeometry(0.215 * s, 0.225 * s, 0.09 * s, 16)
+      ink.translate(0, 0.045 * s, 0)
+      // A dark collar at the neck: the mouth needs an edge or the pot fades
+      // out at the top, and the collar is where the quill goes in.
+      const collar = new CylinderGeometry(0.202 * s, 0.202 * s, 0.035 * s, 16)
+      collar.translate(0, 0.305 * s, 0)
 
       return [
         { geometry: ink, color: BOARD_COLORS.darkBlue },
         { geometry: nib, color: BOARD_COLORS.darkBlue },
         { geometry: faceted(rachis), color: BOARD_COLORS.darkBlue },
-        { geometry: rim, color: BOARD_COLORS.darkBlue },
+        { geometry: collar, color: BOARD_COLORS.darkBlue },
         { geometry: barrel, color: BOARD_COLORS.warmSand },
         { geometry: blade, color: BOARD_COLORS.warmSand },
         { geometry: glass, color: BOARD_COLORS.softBlue, opacity: 0.32 },
