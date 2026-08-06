@@ -52,9 +52,16 @@ export interface PointerSample {
 export const releaseVelocity = (samples: PointerSample[], now?: number): number => {
   const last = samples[samples.length - 1]
   if (!last) return 0
+  // Without a release time the window cannot be judged, so the whole buffer is
+  // measured — the pre-window behaviour, kept verbatim for callers that have
+  // not opted in (the yearbook tape).
+  if (now === undefined) {
+    const first = samples[0]!
+    return last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0
+  }
   // The finger rested before lifting — no throw, wherever it was left is the
   // intent.
-  if (now !== undefined && now - last.t > VELOCITY_WINDOW_MS) return 0
+  if (now - last.t > VELOCITY_WINDOW_MS) return 0
   const recent = samples.filter(sample => last.t - sample.t <= VELOCITY_WINDOW_MS)
   const first = (recent.length > 1 ? recent[0] : samples[0])!
   return last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0

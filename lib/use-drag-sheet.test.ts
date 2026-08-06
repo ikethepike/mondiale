@@ -77,4 +77,15 @@ describe('releaseVelocity', () => {
     ]
     expect(releaseVelocity(samples)).toBeCloseTo(2.25)
   })
+
+  // The window is strictly opt-in: callers that pass no release time (the
+  // yearbook tape) must measure exactly as they did before it existed, even
+  // when their buffer spans longer than the window.
+  it('does not window a buffer wider than the window without a release time', () => {
+    const samples = [
+      { p: 0, t: 1000 },
+      { p: 100, t: 1000 + VELOCITY_WINDOW_MS * 2 },
+    ]
+    expect(releaseVelocity(samples)).toBeCloseTo(100 / (VELOCITY_WINDOW_MS * 2))
+  })
 })

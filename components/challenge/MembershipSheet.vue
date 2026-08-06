@@ -29,12 +29,17 @@
           @focus="onSearchFocus"
         />
         <span v-if="!query" class="ghost-placeholder" aria-hidden="true">Filter…</span>
+        <!-- mousedown.prevent wipes the query without stealing focus from the
+             input, so the keyboard stays up; @click is what a keyboard
+             activation (Enter/Space) actually fires, and setting '' twice on a
+             pointer tap is harmless. -->
         <button
           v-if="query"
           type="button"
           class="clear-search"
           aria-label="Clear the filter"
           @mousedown.prevent="query = ''"
+          @click="query = ''"
         >
           ×
         </button>
