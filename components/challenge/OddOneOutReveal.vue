@@ -198,11 +198,16 @@ const pickedLine = computed(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// min-width, never max-width — the same contract .ranked-bars keeps. The
+// lesson pill sizes itself to max-content (capped at 60rem), and this card's
+// own text is what drove it there; capping the card at 42rem left it stranded
+// against the pill's left edge with a dead gutter beside it, because a
+// block-level flex box does not answer the ancestor's text-align: center.
 .odd-one-out-reveal {
   gap: 1rem;
   display: flex;
   flex-flow: column nowrap;
-  max-width: min(42rem, 100%);
+  min-width: min(42rem, 100%);
 }
 
 .dossier {

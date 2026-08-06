@@ -693,6 +693,10 @@ const submitMembership = (isoCode: ISOCountryCode) => {
         : undefined
   if (!answered) return
 
+  // Both entry points record the pick here, not just the map tap: a sheet row
+  // is the only way to answer on a phone, and without this the reveal's
+  // "your pick" line vanished for exactly those players.
+  lastGuess.value = isoCode
   gameStore.map.highlighted.clear()
   // Re-aim the live focus frame at the answer rather than clearing it: an
   // active focus suppresses moveToCountry's fly-in, and clearing it would
