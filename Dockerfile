@@ -22,12 +22,30 @@ COPY . .
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 # Bundling the generated country/water data needs more heap than the container
-# default; 1536 started OOMing as the data grew, then 3584 did too when the
-# WPP/pyramid gen files landed (2026-07-29) — the ceiling tracks data growth.
-# The `build` script carries the same 5120 so a bare `bun run build` on a laptop
-# (Node's own default is ~4 GB, under what the bundle needs) matches deploy.
-# Kept here too: this ENV also covers anything else the image runs.
-ENV NODE_OPTIONS="--max-old-space-size=5120"
+# default, and the ceiling climbed with the data: 1536, then 3584, then 5120.
+# It then went the OTHER WAY, which is the counterintuitive part — 5120 was
+# itself the cause of the intermittent deploy failures.
+#
+# The kill was SIGKILL/139 (the kernel's OOM killer) at "Building Nuxt Nitro
+# server", never V8's own "heap out of memory": the process was not exceeding
+# its budget, the builder was running out of RAM underneath it. V8 only
+# collects in earnest as it approaches ITS OWN limit, so a 5 GB budget on a
+# smaller builder is an instruction to hoard garbage until the kernel
+# intervenes. Prerendering makes it worse — that stage runs the app in-process
+# and its heap is still resident when rollup starts (measured: it lifts the
+# Nitro peak by ~700 MB), which is exactly the garbage a lower ceiling forces
+# V8 to reclaim.
+#
+# Measured on this tree (peak RSS across the whole build process tree):
+#   5120 → 4677 MB, 160s   ← was killed on ~3% of deploys
+#   4096 → 4109 MB, 147s
+#   3072 → 3519 MB, 157s   ← chosen: fits a 4 GB builder, no slower
+#   2048 → real heap OOM, so the live working set is between 2 and 3 GB
+# Raising this number cannot fix a SIGKILL. Lower it, or shrink the data.
+# The `build` script carries the same value so a bare `bun run build` on a
+# laptop matches deploy. Kept here too: this ENV also covers anything else the
+# image runs.
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 RUN bun run build
 
 # ---- Runtime stage ----
