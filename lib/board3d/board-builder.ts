@@ -278,10 +278,6 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
 interface MarkerPart {
   geometry: BufferGeometry
   color: string
-  /** Below 1 the part renders as glass (the lexicon gate's ink pot). Parts
-   *  bucket by colour AND opacity, so one translucent piece doesn't drag its
-   *  whole colour into transparency. */
-  opacity?: number
 }
 
 /**
@@ -440,7 +436,7 @@ const markerPartsFor = (
       ]
     }
     case 'lexicon': {
-      // A quill standing in a clear ink pot — writing names down.
+      // A quill standing in an ink pot — writing names down.
       //
       // The mass IS the feather. Two earlier attempts failed by treating the
       // quill as a shaft with something stuck to it, which reads as a spatula;
@@ -470,19 +466,19 @@ const markerPartsFor = (
       const rachis = new TubeGeometry(spine, 24, 0.016, 6, false)
       rachis.scale(s, s, s)
 
-      // The bare quill below the vane, ending in a nib in the ink.
-      const barrel = new CylinderGeometry(0.022 * s, 0.032 * s, 0.24 * s, 8)
+      // The bare quill between the vane and the pot's mouth.
+      const barrel = new CylinderGeometry(0.022 * s, 0.034 * s, 0.26 * s, 8)
       barrel.rotateZ(0.16)
-      barrel.translate(-0.01 * s, 0.28 * s, 0)
-      const nib = new ConeGeometry(0.032 * s, 0.12 * s, 8)
-      nib.rotateX(Math.PI)
-      nib.translate(0.01 * s, 0.15 * s, 0)
+      barrel.translate(-0.01 * s, 0.29 * s, 0)
 
-      // The pot, lathed rather than stacked: a squat belly, a shoulder and a
-      // short neck. A plain cylinder read as a beaker, and stacking a rim on
-      // top of it put an ink outline across the join — the same seam problem
-      // the map pin had. One profile, one skin.
-      const glass = new LatheGeometry(
+      // The pot: one lathed profile, a squat belly into a shoulder and a short
+      // neck. Solid ink-dark, which puts it in the board's grammar — every
+      // other marker is a dark base carrying a light subject, and here the
+      // feather is the subject. It was glass first; opaque loses nothing (you
+      // could never see into a pot this size anyway) and costs a stacked rim,
+      // an ink pool and the whole transparency path, all of which existed only
+      // to sell a see-through effect nobody was going to read at board scale.
+      const pot = new LatheGeometry(
         [
           [0, 0],
           [0.235, 0],
@@ -493,23 +489,12 @@ const markerPartsFor = (
         ].map(([radius, height]) => new Vector2(radius * s, height * s)),
         18
       )
-      // A shallow pool, so most of the pot is empty and the glass has room to
-      // read as glass rather than as a lid on a solid block of ink.
-      const ink = new CylinderGeometry(0.215 * s, 0.225 * s, 0.09 * s, 16)
-      ink.translate(0, 0.045 * s, 0)
-      // A dark collar at the neck: the mouth needs an edge or the pot fades
-      // out at the top, and the collar is where the quill goes in.
-      const collar = new CylinderGeometry(0.202 * s, 0.202 * s, 0.035 * s, 16)
-      collar.translate(0, 0.305 * s, 0)
 
       return [
-        { geometry: ink, color: BOARD_COLORS.darkBlue },
-        { geometry: nib, color: BOARD_COLORS.darkBlue },
+        { geometry: pot, color: BOARD_COLORS.darkBlue },
         { geometry: faceted(rachis), color: BOARD_COLORS.darkBlue },
-        { geometry: collar, color: BOARD_COLORS.darkBlue },
         { geometry: barrel, color: BOARD_COLORS.warmSand },
         { geometry: blade, color: BOARD_COLORS.warmSand },
-        { geometry: glass, color: BOARD_COLORS.softBlue, opacity: 0.32 },
       ]
     }
     case 'final': {
@@ -567,22 +552,14 @@ const buildChallengeMarkers = (
       const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
       if (geometry !== part.geometry) part.geometry.dispose()
 
-      // Glass gets NO outline. The outline is an opaque inverted hull sitting
-      // 7% behind the part, so a translucent one shows its own black backing
-      // and reads as a dark lump instead of a jar. The solid pieces it holds
-      // (the ink, the rim) keep theirs, which is what gives the pot its
-      // contour.
-      if ((part.opacity ?? 1) === 1) {
-        const outline = outlineOf(geometry)
-        outline.applyMatrix4(matrix)
-        outlines.push(outline)
-      }
+      const outline = outlineOf(geometry)
+      outline.applyMatrix4(matrix)
+      outlines.push(outline)
 
       geometry.applyMatrix4(matrix)
-      const key = `${part.color}|${part.opacity ?? 1}`
-      const bucket = colorBuckets.get(key) ?? []
+      const bucket = colorBuckets.get(part.color) ?? []
       bucket.push(geometry)
-      colorBuckets.set(key, bucket)
+      colorBuckets.set(part.color, bucket)
     }
   }
 
@@ -596,19 +573,8 @@ const buildChallengeMarkers = (
     )
     outlines.forEach(geometry => geometry.dispose())
   }
-  for (const [key, bucket] of colorBuckets) {
-    const [color, rawOpacity] = key.split('|')
-    const opacity = Number(rawOpacity)
-    const mesh = new Mesh(
-      mergeGeometries(bucket),
-      new MeshToonMaterial(
-        opacity < 1 ? { color, transparent: true, opacity, depthWrite: false } : { color }
-      )
-    )
-    // Glass draws after the opaque markers, or the pieces behind it are
-    // z-rejected and the jar renders as a hole.
-    if (opacity < 1) mesh.renderOrder = 1
-    meshes.push(mesh)
+  for (const [color, bucket] of colorBuckets) {
+    meshes.push(new Mesh(mergeGeometries(bucket), new MeshToonMaterial({ color })))
     bucket.forEach(geometry => geometry.dispose())
   }
 

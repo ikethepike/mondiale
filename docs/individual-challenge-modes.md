@@ -123,7 +123,7 @@ giveaway gate working, not a gap — _Dane : Denmark_ is not a question.
 the relation free — working it out from the exemplar _is_ the mode, so below easy it costs
 steps or nothing.
 
-**On the board:** the **lexicon** gate — a quill standing in a clear ink pot, on a vellum top.
+**On the board:** the **lexicon** gate — a quill standing in an ink pot, on a vellum top.
 
 Four attempts got there, and the failures are the useful part. A banded stele was legible and
 mute: distinct from its neighbours, silent about the gate. An open book worked but said
