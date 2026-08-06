@@ -79,8 +79,8 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
-import { useDragSheet } from '~~/lib/use-drag-sheet'
-import { keyboardInset, useIsPhone } from '~~/lib/use-viewport'
+import { SHEET_FULL, SHEET_HANDLE_PX, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
+import { useIsPhone } from '~~/lib/use-viewport'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -105,9 +105,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ pick: [isoCode: ISOCountryCode] }>()
 
-/** Visible height of the grab handle, excluded from the tucked stop. */
-const HANDLE_PX = 28
-
 const { gameStore } = useClientEvents()
 const isPhone = useIsPhone()
 const sheetEl = ref<HTMLElement>()
@@ -115,18 +112,6 @@ const headerEl = ref<HTMLElement>()
 const bodyEl = ref<HTMLElement>()
 const searchEl = ref<HTMLInputElement>()
 const query = ref('')
-
-// Scroll-edge fades: on only when content actually continues past that edge,
-// so a short filtered list never wears a dimmed last row.
-const scrollableUp = ref(false)
-const scrollableDown = ref(false)
-
-const syncScrollEdges = () => {
-  const el = bodyEl.value
-  if (!el) return
-  scrollableUp.value = el.scrollTop > 1
-  scrollableDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
-}
 
 const named = computed(() =>
   props.countries.map(isoCode => ({ isoCode, name: countryName(getCountry(isoCode)) }))
@@ -146,44 +131,32 @@ const showLetters = computed(() => !query.value && props.countries.length >= MIN
 
 const groups = computed(() => groupByLetter(filtered.value, showLetters.value))
 
-// [0] full, [1] peek (handle + search), [2] tucked (handle only). Measured
-// lazily so 54 rows and 7 rows both get honest stops.
-const stops = () => {
-  const height = sheetEl.value?.offsetHeight ?? 0
-  const head = headerEl.value?.offsetHeight ?? 0
-  return [0, Math.max(0, height - head - HANDLE_PX), Math.max(0, height - HANDLE_PX)]
-}
-
-const { stopIndex, onDragStart, settleTo, release, dragMoved } = useDragSheet({
-  el: () => sheetEl.value,
+// The parked full/peek/tucked ladder — entrance, resize re-anchoring, drag
+// guards and the scroll-edge fade state all live in lib/use-bottom-sheet.ts.
+// The search cluster is drag-excluded: the input press is typing, and the
+// clear × keeps the keyboard up (its own mousedown.prevent guards the focus).
+const {
+  stopIndex,
+  settleTo,
+  dragMoved,
+  onSheetDragStart,
+  onHandleTap,
+  scrollableUp,
+  scrollableDown,
+  syncScrollEdges,
+} = useBottomSheet({
+  sheet: () => sheetEl.value,
+  head: () => headerEl.value,
+  body: () => bodyEl.value,
   enabled: () => isPhone.value,
-  stops,
+  dragExclude: '.search',
+  keyboardOwner: () => searchEl.value,
   // A flick carries exactly one stop (lib/use-drag-sheet.ts), so a hard swipe
   // down from full lands on peek, never tucked. Deliberate: the list can't be
   // flung away mid-question.
   momentumEase: 'power1.in',
   onSettle: reserve,
 })
-
-/**
- * Every drag enters here. A press on the search field is typing, not a drag.
- * With the keyboard up, CSS owns the lift and the measured stops are stale —
- * a swipe on the chrome dismisses the keyboard instead of dead-dragging the
- * sheet against it.
- */
-const onSheetDragStart = (event: PointerEvent) => {
-  // The whole search cluster: the input (typing) and the clear × (which must
-  // keep the keyboard up — its own mousedown.prevent guards the focus).
-  if (event.target instanceof Element && event.target.closest('.search')) return
-  if (keyboardInset.value) return searchEl.value?.blur()
-  onDragStart(event)
-}
-
-/** Tap (not drag) on the grab handle toggles between full and peek. */
-const onHandleTap = () => {
-  if (!isPhone.value || dragMoved() || keyboardInset.value) return
-  settleTo(stopIndex.value === 0 ? 1 : 0)
-}
 
 /**
  * Reserve the PEEK height, not the live one. A full-open sheet is ~70dvh and
@@ -196,14 +169,14 @@ const onHandleTap = () => {
 function reserve() {
   if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
   // Tucked (post-answer) frees the band for the reveal card and its camera.
-  const head = stopIndex.value === 2 ? 0 : (headerEl.value?.offsetHeight ?? 0)
-  claimMapBerth(gameStore, 'membership-sheet', { bottom: head + HANDLE_PX + BERTH_GAP_PX })
+  const head = stopIndex.value === SHEET_TUCKED ? 0 : (headerEl.value?.offsetHeight ?? 0)
+  claimMapBerth(gameStore, 'membership-sheet', { bottom: head + SHEET_HANDLE_PX + BERTH_GAP_PX })
 }
 
 const onSearchFocus = () => {
   // Open fully BEFORE the keyboard arrives: at stop 0 the composable strips
   // the inline transform, so CSS owns the element while the keyboard lifts it.
-  if (isPhone.value) settleTo(0)
+  if (isPhone.value) settleTo(SHEET_FULL)
 }
 
 const onRowClick = (isoCode: ISOCountryCode) => {
@@ -213,28 +186,16 @@ const onRowClick = (isoCode: ISOCountryCode) => {
   emit('pick', isoCode)
 }
 
-watch(isPhone, phone => {
-  // Hand layout back to CSS when the sheet stops being a sheet.
-  if (!phone) release()
-  reserve()
-})
+// The composable hands layout back to CSS off-phone; the berth follows suit.
+watch(isPhone, reserve)
 
 // The answer is in and the rows are dead — tuck down to the bare handle so
 // the reveal card and the lesson own the bottom of the screen. A drag or a
 // handle tap can still pull the roster back up for a second look.
 watch(
   () => props.settled,
-  settled => settled && isPhone.value && settleTo(2)
+  settled => settled && isPhone.value && settleTo(SHEET_TUCKED)
 )
-
-// The stops are transforms measured against the sheet's CURRENT height, and
-// that height moves under the parked sheet: filtering shrinks the list
-// (measured: typing three letters pushed the whole drawer below the viewport)
-// and the keyboard's max-height grant collapses after the settled tuck.
-// Re-anchor the held stop whenever the geometry changes; stop 0 has no
-// transform to go stale.
-let sheetHeight = 0
-let sheetObserver: ResizeObserver | undefined
 
 // Content changed under the scroller — re-judge the edges once it has laid out.
 watch(groups, async () => {
@@ -242,27 +203,9 @@ watch(groups, async () => {
   syncScrollEdges()
 })
 
-onMounted(() => {
-  if (isPhone.value) settleTo(1, { from: stops()[2] })
-  reserve()
-  syncScrollEdges()
-  sheetObserver = new ResizeObserver(() => {
-    syncScrollEdges()
-    const height = sheetEl.value?.offsetHeight ?? 0
-    const first = !sheetHeight
-    if (height === sheetHeight) return
-    sheetHeight = height
-    // The observer's initial fire is the entrance, mid-tween — leave it be.
-    if (first || !isPhone.value || stopIndex.value === 0) return
-    settleTo(stopIndex.value, { immediate: true })
-  })
-  if (sheetEl.value) sheetObserver.observe(sheetEl.value, { box: 'border-box' })
-})
+onMounted(reserve)
 
-onBeforeUnmount(() => {
-  sheetObserver?.disconnect()
-  claimMapBerth(gameStore, 'membership-sheet', undefined)
-})
+onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
 </script>
 
 <style lang="scss" scoped>
@@ -360,41 +303,12 @@ onBeforeUnmount(() => {
   }
 }
 
-// Scroll-edge fades: sticky layers riding the scrollport (net-zero in flow via
-// the negative margins), painted over the rows but UNDER the letter headings,
-// so rows dissolve at the edges while a stuck letter floats above the mist.
-// Opacity keys off the fade-top/fade-bottom classes — the fade only shows
-// when content actually continues past that edge.
-.sheet-body::before,
-.sheet-body::after {
-  content: '';
-  position: sticky;
-  z-index: 1;
-  display: block;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--motion-quick) var(--ease-out-expressive);
-}
-
-.sheet-body::before {
-  top: 0;
-  height: 3.6rem;
-  margin-bottom: -3.6rem;
-  // Solid for the stuck letter's whole line, then out — the rows slip away
-  // beneath the heading instead of clipping against an opaque bar.
-  background: linear-gradient(to bottom, var(--background-color) 2rem, transparent);
-}
-
-.sheet-body::after {
-  bottom: 0;
-  height: 2.4rem;
-  margin-top: -2.4rem;
-  background: linear-gradient(to top, var(--background-color), transparent);
-}
-
-.sheet-body.fade-top::before,
-.sheet-body.fade-bottom::after {
-  opacity: 1;
+// The fade recipe lives in templates/_sheet.scss; here only its tuning: a
+// deeper top fade with a solid lead-in the stuck letter's own line sits on,
+// so rows slip away beneath the heading instead of clipping against a bar.
+.sheet-body {
+  --sheet-fade-top: 3.6rem;
+  --sheet-fade-top-solid: 2rem;
 }
 
 .letter-group + .letter-group {

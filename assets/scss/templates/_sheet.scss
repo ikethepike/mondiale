@@ -57,4 +57,51 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
+
+  // Scroll-edge fade geometry — hosts retune per surface (a sheet whose
+  // sticky headings float over the fade deepens the top and gives it a solid
+  // lead-in the heading's own line sits on).
+  --sheet-fade-top: 2.4rem;
+  --sheet-fade-top-solid: 0rem;
+  --sheet-fade-bottom: 2.4rem;
+}
+
+// Scroll-edge fades: sticky net-zero layers riding the scrollport, painted
+// over the rows but under anything the host raises to z-index 2+ (sticky
+// letter headings float above the mist). useBottomSheet's edge state drives
+// the .fade-top/.fade-bottom classes — a fade only shows when content
+// actually continues past that edge, so short lists never wear a dimmed
+// last row.
+.sheet-body::before,
+.sheet-body::after {
+  content: '';
+  position: sticky;
+  z-index: 1;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-quick) var(--ease-out-expressive);
+}
+
+.sheet-body::before {
+  top: 0;
+  height: var(--sheet-fade-top);
+  margin-bottom: calc(-1 * var(--sheet-fade-top));
+  background: linear-gradient(
+    to bottom,
+    var(--background-color) var(--sheet-fade-top-solid),
+    transparent
+  );
+}
+
+.sheet-body::after {
+  bottom: 0;
+  height: var(--sheet-fade-bottom);
+  margin-top: calc(-1 * var(--sheet-fade-bottom));
+  background: linear-gradient(to top, var(--background-color), transparent);
+}
+
+.sheet-body.fade-top::before,
+.sheet-body.fade-bottom::after {
+  opacity: 1;
 }
