@@ -4,16 +4,22 @@ import { EASE, MOTION } from '~~/lib/motion'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { keyboardInset } from '~~/lib/use-viewport'
 
-/** The parked sheet's rest points, in useDragSheet stop order. */
+/**
+ * The parked sheet's rest points, in useDragSheet stop order. Two of them, on
+ * purpose: deployed, or hidden down to the grab handle.
+ *
+ * There was a third in between — the head showing, rows off-screen — and it
+ * was a mistake in every position it could hold. As an entrance it spent real
+ * height on controls whose results were off-screen; as a tap destination it
+ * read as the sheet catching halfway; as a drag rest it was the state a player
+ * had to escape. A surface the player is either reading or not needs exactly
+ * two stops.
+ */
 export const SHEET_FULL = 0
-export const SHEET_PEEK = 1
-export const SHEET_TUCKED = 2
+export const SHEET_TUCKED = 1
 
 /** Fallback grab-handle height, for the frame before one can be measured. */
 export const SHEET_HANDLE_PX = 28
-
-/** Air below the head at peek, so its last control isn't flush with the fold. */
-const PEEK_FOOT_PX = 12
 
 // A parked transform may miss its stop by a frame's worth of geometry churn
 // (the keyboard collapsing right after a settle) — past this drift the rest
@@ -25,9 +31,8 @@ const CORRECTION_GLIDE_PX = 8
 export interface BottomSheetOptions {
   /** The sheet element (usually a fixed `.pane.sheet.split`). */
   sheet: () => HTMLElement | undefined
-  /** The pinned chrome above the scrolling body — peek shows all of it. */
-  head: () => HTMLElement | undefined
-  /** The grab pill. Measured for the tucked stop rather than assumed. */
+  /** The grab pill — all that stays above the fold when hidden. Measured, so
+   *  the sheet's own padding and the pill's margins are accounted for. */
   handle?: () => HTMLElement | undefined
   /** The scrolling `.sheet-body`, watched for the scroll-edge fades. */
   body?: () => HTMLElement | undefined
@@ -82,9 +87,8 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
    * How much of the sheet must stay above the fold to show everything down to
    * `inner`'s bottom edge — MEASURED from the live boxes, so the sheet's own
    * top padding and the handle's margins are included instead of guessed at.
-   * Summing element heights (`head + handle`) silently dropped that padding
-   * and clipped the head's last pixels at peek: a filter field cut off at the
-   * fold, which reads as a sheet stuck half-open.
+   * Summing element heights dropped that padding and left the handle's pill
+   * fractionally short of clearing the fold.
    *
    * Transform-invariant: both rects carry the same translate, so the
    * difference holds mid-drag and mid-tween.
@@ -98,10 +102,7 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
   const stops = () => {
     const height = options.sheet()?.offsetHeight ?? 0
     const throughHandle = throughBottom(options.handle?.()) || SHEET_HANDLE_PX
-    const throughHead = throughBottom(options.head())
-    // Peek holds the head's controls, so it must clear the head entirely.
-    const peek = throughHead ? throughHead + PEEK_FOOT_PX : throughHandle
-    return [0, Math.max(0, height - peek), Math.max(0, height - throughHandle)]
+    return [0, Math.max(0, height - throughHandle)]
   }
 
   /**
@@ -158,18 +159,7 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
     onDragStart(event)
   }
 
-  /**
-   * Tap (not drag) on the grab handle: deploy, or hide to the bare handle.
-   *
-   * Deliberately NOT full ↔ peek. Peek earns its place as the entrance — a
-   * roster advertising itself without covering the map — but it is a poor
-   * destination for a deliberate tap: it spends real height on a filter field
-   * whose results are off-screen, and hides every row. A tap meaning "hide"
-   * that leaves the chrome behind reads as the sheet catching halfway, and it
-   * also stranded the hidden stop, which a tap could then never return to.
-   * Peek stays reachable by drag, where resting anywhere on the ladder is the
-   * whole point.
-   */
+  /** Tap (not drag) on the grab handle: deploy, or hide to the bare handle. */
   const onHandleTap = () => {
     if (!options.enabled() || dragMoved() || keyboardInset.value) return
     settleTo(stopIndex.value === SHEET_FULL ? SHEET_TUCKED : SHEET_FULL)
@@ -190,23 +180,19 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
   let observer: ResizeObserver | undefined
 
   onMounted(() => {
-    if (options.enabled()) settleTo(SHEET_PEEK, { from: stops()[SHEET_TUCKED] })
+    // Enter hidden, rising from fully off-screen: the handle slides up into
+    // view and the map stays clear until the player asks for the roster.
+    if (options.enabled()) {
+      settleTo(SHEET_TUCKED, { from: options.sheet()?.offsetHeight ?? 0 })
+    }
     syncScrollEdges()
     // One rule for every geometry change: re-judge the scroll edges, then let
     // verifyRest decide whether the parked transform still matches its stop.
-    // The HEAD is watched too, and that is the point — a sheet capped by
-    // max-height keeps the same total height while its head grows, so a
-    // sheet-only observer never saw the peek stop move.
     observer = new ResizeObserver(() => {
       syncScrollEdges()
       verifyRest()
     })
-    for (const el of new Set([
-      options.sheet(),
-      options.head(),
-      options.handle?.(),
-      options.body?.(),
-    ])) {
+    for (const el of new Set([options.sheet(), options.handle?.(), options.body?.()])) {
       if (el) observer.observe(el, { box: 'border-box' })
     }
   })
@@ -214,11 +200,11 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
   watch(options.enabled, on => {
     // Hand layout back to CSS when the sheet stops being a sheet …
     if (!on) return release()
-    // … and re-enter at peek when it becomes one again. release() stripped the
+    // … and re-enter hidden when it becomes one again. release() stripped the
     // transform but left stopIndex where it was, so without this a rotation
     // back to phone width renders the whole roster over the map while the
-    // berth claim still describes a tucked handle.
-    settleTo(SHEET_PEEK)
+    // berth claim still describes a bare handle.
+    settleTo(SHEET_TUCKED)
   })
 
   onBeforeUnmount(() => observer?.disconnect())

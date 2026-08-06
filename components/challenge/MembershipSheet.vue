@@ -93,7 +93,7 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { EASE, MOTION } from '~~/lib/motion'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
-import { SHEET_FULL, SHEET_PEEK, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
+import { SHEET_FULL, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -151,7 +151,6 @@ const groups = computed(() => groupByLetter(filtered.value, showLetters.value))
 // The search cluster is drag-excluded: the input press is typing, and the
 // clear × keeps the keyboard up (its own mousedown.prevent guards the focus).
 const {
-  stopIndex,
   settleTo,
   visibleAt,
   dragMoved,
@@ -162,7 +161,6 @@ const {
   syncScrollEdges,
 } = useBottomSheet({
   sheet: () => sheetEl.value,
-  head: () => headerEl.value,
   handle: () => handleEl.value,
   body: () => bodyEl.value,
   enabled: () => isPhone.value,
@@ -171,26 +169,25 @@ const {
   // The flick ease is left at the shared decelerating default. An accelerating
   // one (this sheet had power1.in) restarts the move from a standstill just as
   // the finger lets go at speed — the sheet visibly hesitates, then carries on,
-  // which reads as catching half-open. A flick still carries exactly one stop
-  // (lib/use-drag-sheet.ts), so a hard swipe from full lands on peek, never
-  // tucked: the list can't be flung away mid-question.
+  // which reads as catching halfway. Hiding it is always safe: the grab handle
+  // never leaves the screen, so the roster is one tap away.
   onSettle: reserve,
 })
 
 /**
- * Reserve the PEEK height, not the live one. A full-open sheet is ~70dvh and
- * BERTH_CAP_FRACTION would silently scale that down instead of rejecting it,
- * leaving the camera in a band too tight to read; re-claiming per drag frame
- * would also thrash applyClaims. A player at full open is reading the list,
- * not the map. The claim still rides the shared registry, so the reveal card
- * and any footer keep combining normally.
+ * Reserve the HIDDEN height, whichever stop the sheet is at. A deployed sheet
+ * is ~70dvh and BERTH_CAP_FRACTION would silently scale that down rather than
+ * reject it, leaving the camera in a band too tight to read; re-claiming per
+ * drag frame would also thrash applyClaims. A player with the roster open is
+ * reading names, not the map — and the moment they hide it, the band the
+ * handle occupies is the one that must stay clear. The claim rides the shared
+ * registry, so the reveal card and any footer keep combining normally.
  */
 function reserve() {
   if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
-  // At full open, claim what PEEK would need (see above). Tucked (post-answer)
-  // claims just its handle, freeing the band for the reveal card.
-  const parked = stopIndex.value === SHEET_FULL ? SHEET_PEEK : stopIndex.value
-  claimMapBerth(gameStore, 'membership-sheet', { bottom: visibleAt(parked) + BERTH_GAP_PX })
+  claimMapBerth(gameStore, 'membership-sheet', {
+    bottom: visibleAt(SHEET_TUCKED) + BERTH_GAP_PX,
+  })
 }
 
 const onSearchFocus = () => {
