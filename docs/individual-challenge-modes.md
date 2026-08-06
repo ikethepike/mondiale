@@ -55,11 +55,13 @@ on `/health`. `COMMODITY_EXPORTERS`, `TREATIES`, `CHANGES`, `MIGRATION` — fina
 - **The wire carries one ISO code.** `submit-individual-challenge-answer` takes `isoCode`,
   `remainingFraction`, `hintsUsed`, `gateTile`. Anything else grades client-trust
   (higher-lower's precedent) or needs the payload widened.
-- **Gate tiles are typed by `individualChallengeAccessors`** (`lib/tiles.ts`) — eight of them,
-  since Errata and Rosetta were promoted. A new mode either files under an existing theme
-  (`isoCode` is the catch-all) or becomes an accessor itself, which is the only way it can ever
-  carry a board marker: tiles are dealt at game creation, long before any challenge is, so a
-  marker reflects the tile's theme and never the variant the player will meet there.
+- **Gate tiles are typed by `individualChallengeAccessors`** (`lib/tiles.ts`) — eight of them:
+  six named for the data a gate asks about, plus `errata` and `lexicon`, named for a kind of
+  thinking. A new mode either files under an existing theme (`isoCode` is the catch-all) or
+  joins a category, which is the only way it can carry a board marker: tiles are dealt at game
+  creation, long before any challenge is, so a marker reflects the tile's **theme** and never
+  the variant the player will meet there. Themes are categories, never modes — see _Tile themes
+  are categories_ under Shared work.
 
 ---
 
@@ -84,10 +86,12 @@ accepts either culprit — the same variant-scoped carve-out shape the shared-cu
 **Stakes:** 30s clock, pot of 4, one buyable hint that dims half the innocents (never a
 culprit).
 
-**On the board:** its own gate tile, under a cool paper-grey top — the only near-neutral on the
-board, so the misprint gate reads as a page rather than a place. The marker is a post carrying
-two name plates tilted opposite ways, the upper one in the board's alert red, which no other
-marker uses.
+**On the board:** the **errata** gate, under a foxed-paper top — the only near-neutral on the
+board, so it reads as a page rather than a place. The marker is a post carrying two name plates
+tilted opposite ways, the upper one in the board's alert red, which no other marker uses. Like
+the lexicon gate it is a category tile; Counterfeit belongs here when it lands, and its arrival
+is the point at which the signposts will have to widen into something that also covers a forged
+flag.
 
 ### 2. Rosetta — finish the pair
 
@@ -119,10 +123,15 @@ giveaway gate working, not a gap — _Dane : Denmark_ is not a question.
 the relation free — working it out from the exemplar _is_ the mode, so below easy it costs
 steps or nothing.
 
-**On the board:** its own gate tile — a standing stele, banded like an inscribed stone, on a
-limestone top. Promotion costs the mode nothing: the capital, currency, leader and landmark
-tiles still deal analogies in their own register
-(`ROSETTA_RELATIONS_BY_ACCESSOR`), and the Rosetta tile draws from all of them.
+**On the board:** the **lexicon** gate — an open book on a lectern, on a vellum top. Low and
+wide where every other marker is a post, and from the overhead camera its two broad pages read
+as a spread. (A banded stele was tried first and simply stood there: it differed from its
+neighbours without saying anything about what the gate asks.)
+
+The tile is a category, not this mode — see below. Rosetta is its only tenant today, and
+promotion costs it nothing: the capital, currency, leader and landmark tiles still deal
+analogies in their own register (`ROSETTA_RELATIONS_BY_ACCESSOR`), while the lexicon tile draws
+from all of them.
 
 ---
 
@@ -361,10 +370,23 @@ needs no audio — which sidesteps the collision problem that rules audio gates 
 4. **State that outlives the gate** — Passport Stamps wants `stamps` on `Player`, The Trap
    wants `trap` on `Tile`. Both are public snapshot data, but they are the first gate mechanics
    to persist and deserve one home rather than two ad-hoc fields.
-5. **Tile themes.** Meridian, True Size, Chokepoint and The Forecast fit none of the existing
-   `individualChallengeAccessors` cleanly. Either file them under `isoCode` (already the
-   catch-all) or promote them, which Errata and Rosetta have now done — that is the route to a
-   board marker and a gate-top wash of their own. Passport Stamps argues for promoting: a stamp
+5. **Tile themes are categories, never modes.** A marker can only reflect the tile's theme —
+   tiles are dealt at game creation, long before any challenge is — so a tile named for one
+   mode either strands its siblings on the wrong marker or forces a new tile per mode. The two
+   new themes are named for a kind of thinking and each has room for tenants:
+
+   | Theme     | Means                                | Tenants                           |
+   | --------- | ------------------------------------ | --------------------------------- |
+   | `errata`  | something here is wrong              | Errata; Counterfeit when it lands |
+   | `lexicon` | a term and the country it belongs to | Rosetta; The Naming, Switchboard  |
+
+   A marker has to _name_ its category, not merely differ from its neighbours. Rosetta's first
+   marker was a banded stele — a distinct silhouette that said nothing about the gate. An open
+   book does, and it will still fit a mode about etymologies or matched pairs.
+
+   Meridian, True Size, Chokepoint and The Forecast fit none of the existing themes cleanly.
+   Either file them under `isoCode` (the catch-all) or open a category for them, which is the
+   route to a marker and a gate-top wash. Passport Stamps argues for the latter: a stamp
    set is only interesting if the themes are legible on the board.
 
    Promotion is a typed walk. Five tables are exhaustive over the accessor union

@@ -377,23 +377,30 @@ const markerPartsFor = (
         { geometry: upper, color: BOARD_COLORS.hiorAnge },
       ]
     }
-    case 'rosetta': {
-      // A standing stele, banded like an inscribed stone — the object the mode
-      // is named for. A flat slab reads clear of the capital gate's tapered
-      // four-sided obelisk and its cone cap.
-      const base = new BoxGeometry(0.46 * s, 0.1 * s, 0.22 * s)
-      base.translate(0, 0.05 * s, 0)
-      const slab = new BoxGeometry(0.38 * s, 0.78 * s, 0.12 * s)
-      slab.translate(0, 0.49 * s, 0)
+    case 'lexicon': {
+      // An open book on a lectern — the register of names. Every other marker
+      // is a tall thin thing on a post; this one is low and WIDE, and from the
+      // overhead camera the two broad pages read as a spread where the errata
+      // gate's plates read as two thin lines. A banded stele was tried first
+      // and stood there saying nothing: a shape has to name its category, not
+      // just differ from its neighbours.
+      const post = new BoxGeometry(0.14 * s, 0.34 * s, 0.14 * s)
+      post.translate(0, 0.17 * s, 0)
+      const desk = new BoxGeometry(0.54 * s, 0.06 * s, 0.34 * s)
+      desk.translate(0, 0.36 * s, 0)
+      const spine = new BoxGeometry(0.07 * s, 0.1 * s, 0.4 * s)
+      spine.translate(0, 0.43 * s, 0)
       const parts: MarkerPart[] = [
-        { geometry: base, color: BOARD_COLORS.darkBlue },
-        { geometry: slab, color: BOARD_COLORS.warmSand },
+        { geometry: post, color: BOARD_COLORS.darkBlue },
+        { geometry: desk, color: BOARD_COLORS.darkBlue },
+        { geometry: spine, color: BOARD_COLORS.darkBlue },
       ]
-      // Two incised registers, proud of the face so they catch the toon ramp.
-      for (const height of [0.42, 0.62]) {
-        const band = new BoxGeometry(0.3 * s, 0.05 * s, 0.14 * s)
-        band.translate(0, height * s, 0)
-        parts.push({ geometry: band, color: BOARD_COLORS.darkBlue })
+      // Two pages opening away from the spine in a shallow V.
+      for (const side of [-1, 1]) {
+        const page = new BoxGeometry(0.3 * s, 0.05 * s, 0.4 * s)
+        page.rotateZ(side * -0.3)
+        page.translate(side * 0.17 * s, 0.47 * s, 0)
+        parts.push({ geometry: page, color: BOARD_COLORS.warmSand })
       }
       return parts
     }

@@ -2991,9 +2991,11 @@ export const getIndividualChallenge = async ({
       if (dealt) return { ...base, variant: 'errata', ...dealt }
       break
     }
-    case 'rosetta': {
-      // No accessor restriction here: this tile is the mode's own, so it draws
-      // from every register rather than one themed tile's.
+    case 'lexicon': {
+      // The naming tile. No relation restriction here — unlike the themed
+      // tiles, which each deal their own register, this one draws from all of
+      // them. Rosetta is its only tenant today; Switchboard and The Naming
+      // belong here too when they land.
       const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
       if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       break
@@ -3349,7 +3351,7 @@ const CHALLENGE_DETAILS: {
     topic: 'geography',
     phrasing: 'Where on the map is {countryName}?',
   },
-  rosetta: {
+  lexicon: {
     topic: 'general knowledge',
     phrasing: 'Where on the map is {countryName}?',
   },

@@ -155,11 +155,22 @@ export type IndividualChallengeVariant = (typeof individualChallengeVariants)[nu
  * on the 3D board and a gate-top wash, so this list is what the board is made
  * of — not just what a gate can ask.
  *
- * `errata` and `rosetta` are here rather than living purely as variants
- * because a board marker can only reflect a tile's THEME: tiles are dealt at
- * game creation, long before any challenge is. Their promotion costs the other
- * themes nothing — rosetta still deals from the capital, currency, leader and
- * landmark tiles in each of their own registers (ROSETTA_RELATIONS_BY_ACCESSOR).
+ * A theme is a CATEGORY, never a mode. A marker can only ever reflect the
+ * theme (tiles are dealt at game creation, long before any challenge is), so a
+ * tile named for one mode would either strand its siblings on the wrong marker
+ * or need a new tile per mode. The six data themes above name what the gate is
+ * about; the two below name a kind of thinking, and each has room for more
+ * tenants:
+ *
+ * - `errata` — things that are wrong. Tenants: Errata. Counterfeit belongs
+ *   here when it lands (its marker will have to widen past signposts to cover
+ *   a forged flag).
+ * - `lexicon` — a term and the country it belongs to. Tenants: Rosetta.
+ *   The Naming and Switchboard belong here too.
+ *
+ * Promotion costs the other themes nothing: the capital, currency, leader and
+ * landmark tiles still deal Rosetta in each of their own registers
+ * (ROSETTA_RELATIONS_BY_ACCESSOR), while the lexicon tile draws from all.
  */
 export const individualChallengeAccessors = [
   'flag',
@@ -169,7 +180,7 @@ export const individualChallengeAccessors = [
   'currency',
   'landmarks',
   'errata',
-  'rosetta',
+  'lexicon',
 ] as const
 export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (

@@ -34,5 +34,5 @@ export const TILE_TOP_TINTS: Record<IndividualChallengeAccessorId, string> = {
   // Limestone, echoing the stele's sand slab. A mint was tried first and
   // measured badly too: ΔE 7.9 from the errata top, tighter than the palette's
   // own worst pair (isoCode vs leader, 8.6).
-  rosetta: '#cfc6a8',
+  lexicon: '#cfc6a8',
 }

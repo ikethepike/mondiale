@@ -601,7 +601,7 @@ export const INDIVIDUAL_STAT_ORIGINS: Record<IndividualChallengeAccessorId, Data
   },
   // An analogy's terms are capitals, peaks and currencies from the Factbook,
   // with leaders and landmarks arriving through Wikidata.
-  rosetta: {
+  lexicon: {
     source: 'cia-factbook',
     dataset: 'Capital, Highest point, Currency',
     fallback: ['wikidata-items'],
