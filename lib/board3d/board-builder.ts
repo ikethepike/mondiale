@@ -279,13 +279,37 @@ interface MarkerPart {
 }
 
 /**
- * Local-space marker shapes per challenge type (y up, origin at tile ground,
- * +z pointing along the path). Chunky low-poly forms in the toon language:
- * a flag for flag challenges, an obelisk for capitals, a signpost for ISO
- * codes, a statue for leaders, a standing coin for currencies, a pyramid for
- * landmarks and a full arch spanning the final tile — physical gates that
- * read as a hard border to pass.
+ * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
+ * pointing along the path). Chunky low-poly forms in the toon language: a flag
+ * for flag challenges, an obelisk for capitals, a signpost for ISO codes, a
+ * statue for leaders, a standing coin for currencies, a stepped monument for
+ * landmarks, crossed signposts for errata, an open book for the lexicon, and a
+ * full arch spanning the final tile — physical gates that read as a hard
+ * border to pass.
+ *
+ * Two rules earned the hard way. A marker must NAME its theme, not merely
+ * differ from its neighbours (a blank stele is distinct and says nothing), and
+ * it must survive the board's-eye camera, which looks DOWN: broad forms read,
+ * thin and leaning ones vanish. Detail finer than a tier or a plate is lost to
+ * the flat toon shading, so shapes have to work as silhouettes.
  */
+/**
+ * Flat-shade a geometry by giving every face its own normals.
+ *
+ * three.js interpolates normals across a cone's sides, which is right for a
+ * many-segment cone and wrong for a four-segment one: the toon ramp smears a
+ * gradient over each triangle instead of lighting it as a facet, and the shape
+ * reads as a soft blob. Markers share one material per colour (they are merged
+ * into a handful of draw calls), so `flatShading` on the material is not
+ * available — the fix has to live in the geometry.
+ */
+const faceted = (geometry: BufferGeometry): BufferGeometry => {
+  const flat = geometry.toNonIndexed()
+  flat.computeVertexNormals()
+  geometry.dispose()
+  return flat
+}
+
 const markerPartsFor = (
   type: IndividualChallengeAccessorId | 'final',
   spacing: number
@@ -303,13 +327,15 @@ const markerPartsFor = (
       ]
     }
     case 'capital.name': {
+      // Both are four-segment solids, so both need their own face normals or
+      // the obelisk shades like a smooth taper instead of four flat sides.
       const shaft = new CylinderGeometry(0.09 * s, 0.16 * s, 0.8 * s, 4)
       shaft.translate(0, 0.4 * s, 0)
       const cap = new ConeGeometry(0.13 * s, 0.2 * s, 4)
       cap.translate(0, 0.9 * s, 0)
       return [
-        { geometry: shaft, color: BOARD_COLORS.warmSand },
-        { geometry: cap, color: BOARD_COLORS.darkBlue },
+        { geometry: faceted(shaft), color: BOARD_COLORS.warmSand },
+        { geometry: faceted(cap), color: BOARD_COLORS.darkBlue },
       ]
     }
     case 'isoCode': {
@@ -348,15 +374,30 @@ const markerPartsFor = (
       ]
     }
     case 'landmarks': {
-      const base = new BoxGeometry(0.52 * s, 0.1 * s, 0.52 * s)
-      base.translate(0, 0.05 * s, 0)
-      const pyramid = new ConeGeometry(0.34 * s, 0.55 * s, 4)
-      pyramid.rotateY(Math.PI / 4)
-      pyramid.translate(0, 0.375 * s, 0)
-      return [
-        { geometry: base, color: BOARD_COLORS.darkBlue },
-        { geometry: pyramid, color: BOARD_COLORS.warmSand },
-      ]
+      // A stepped monument. This was a smooth four-sided cone, which the toon
+      // ramp turned into a soft nothing; boxes are flat by construction, so
+      // each tier catches the light as its own facet and the silhouette has
+      // corners to read. The dark plinth and capstone bracket the sand.
+      const plinth = new BoxGeometry(0.56 * s, 0.09 * s, 0.56 * s)
+      plinth.translate(0, 0.045 * s, 0)
+      const parts: MarkerPart[] = [{ geometry: plinth, color: BOARD_COLORS.darkBlue }]
+
+      let height = 0.09
+      for (const tier of [
+        { width: 0.46, rise: 0.17 },
+        { width: 0.34, rise: 0.16 },
+        { width: 0.22, rise: 0.15 },
+      ]) {
+        const step = new BoxGeometry(tier.width * s, tier.rise * s, tier.width * s)
+        step.translate(0, (height + tier.rise / 2) * s, 0)
+        parts.push({ geometry: step, color: BOARD_COLORS.warmSand })
+        height += tier.rise
+      }
+
+      const capstone = new BoxGeometry(0.12 * s, 0.1 * s, 0.12 * s)
+      capstone.translate(0, (height + 0.05) * s, 0)
+      parts.push({ geometry: capstone, color: BOARD_COLORS.darkBlue })
+      return parts
     }
     case 'errata': {
       // Crossed signposts: one post carrying two name plates tilted opposite
@@ -380,10 +421,17 @@ const markerPartsFor = (
     case 'lexicon': {
       // An open book on a lectern — the register of names. Every other marker
       // is a tall thin thing on a post; this one is low and WIDE, and from the
-      // overhead camera the two broad pages read as a spread where the errata
-      // gate's plates read as two thin lines. A banded stele was tried first
-      // and stood there saying nothing: a shape has to name its category, not
-      // just differ from its neighbours.
+      // board's-eye camera the two broad pages read as a spread where the
+      // errata gate's plates read as two thin lines.
+      //
+      // A quill in an inkwell was tried twice, with a slab vane and then a
+      // tapered one, and lost both times. A quill is made of fine detail — the
+      // shaft showing past the barbs, the split tip — and none of it survives
+      // at marker scale under flat toon shading; both attempts read as a
+      // spatula in a pot. It is also a thin leaning object, and the camera
+      // that matters looks down on the board, where thin things present almost
+      // no area. A banded stele failed earlier for the opposite reason: legible
+      // but mute. The book is both broad and specific.
       const post = new BoxGeometry(0.14 * s, 0.34 * s, 0.14 * s)
       post.translate(0, 0.17 * s, 0)
       const desk = new BoxGeometry(0.54 * s, 0.06 * s, 0.34 * s)
@@ -451,13 +499,21 @@ const buildChallengeMarkers = (
     matrix.compose(anchor, quaternion, new Vector3(1, 1, 1))
 
     for (const part of parts) {
-      const outline = outlineOf(part.geometry)
+      // mergeGeometries refuses a bucket where some geometries carry an index
+      // and others don't, and `faceted()` has to drop the index to give a part
+      // its own face normals. Normalising everything to non-indexed keeps the
+      // buckets mergeable; it duplicates vertices but carries the existing
+      // normals across, so nothing that wasn't faceted changes appearance.
+      const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
+      if (geometry !== part.geometry) part.geometry.dispose()
+
+      const outline = outlineOf(geometry)
       outline.applyMatrix4(matrix)
       outlines.push(outline)
 
-      part.geometry.applyMatrix4(matrix)
+      geometry.applyMatrix4(matrix)
       const bucket = colorBuckets.get(part.color) ?? []
-      bucket.push(part.geometry)
+      bucket.push(geometry)
       colorBuckets.set(part.color, bucket)
     }
   }
