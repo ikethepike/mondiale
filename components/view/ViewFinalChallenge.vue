@@ -177,9 +177,14 @@
     </ChallengeResult>
 
     <!-- The lit set, made readable: 54 highlighted countries are a wall at
-         world zoom, so the roster gets its own surface and its rows answer. -->
+         world zoom, so the roster gets its own surface and its rows answer.
+         Keyed on the lineup: a gauntlet can deal two odd-one-out gates back to
+         back (a club then a treaty), and the same mounted sheet would carry its
+         post-answer tuck, its typed filter and its scroll position into the
+         next question — a 28px handle where the roster should be. -->
     <MembershipSheet
       v-if="oddOneOutSubject && !showInterstitial"
+      :key="membershipCountries.join()"
       :countries="membershipCountries"
       :subject="oddOneOutSubject"
       :settled="!!status"

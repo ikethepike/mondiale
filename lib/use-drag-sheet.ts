@@ -10,6 +10,13 @@ export const SHEET_RUBBER = 0.15
 /** Rolling window of pointer samples that decides the release velocity. */
 export const VELOCITY_SAMPLES = 5
 /**
+ * How long after a drag its own synthetic click still counts as the drag's
+ * tail, ms. Time beats task ordering here: `click` after `touchend` is queued
+ * as a separate task, so clearing the flag on a `setTimeout(0)` was a race the
+ * UA got to decide.
+ */
+export const DRAG_TAIL_MS = 120
+/**
  * How recent a sample must be to count toward the release velocity, ms.
  * pointermove stops firing the moment the finger stops, so the window keeps
  * its pre-pause samples: a finger that dragged fast, HELD, then lifted would
@@ -96,7 +103,13 @@ export const useDragSheet = (options: DragSheetOptions) => {
   let moved = false
   let startY = 0
   let baseY = 0
+  let dragEndedAt = 0
   let samples: PointerSample[] = []
+  // The element tweens were last started on, so unmount can kill them even
+  // after Vue has nulled the template ref. GSAP will happily keep animating a
+  // detached node and fire onSettle from it — which re-claims a map berth the
+  // unmounting host has already released.
+  let tweened: HTMLElement | undefined
 
   const settleTo = (
     index: number,
@@ -104,6 +117,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
   ) => {
     const el = options.el()
     if (!el) return
+    tweened = el
     stopIndex.value = index
     const y = options.stops()[index] ?? 0
     // At rest fully open the inline transform comes off, so CSS transitions
@@ -166,9 +180,14 @@ export const useDragSheet = (options: DragSheetOptions) => {
 
   const onDragEnd = () => {
     stopDragListeners()
-    const el = options.el()
-    if (!dragging || !el) return
+    if (!dragging) return
+    // Cleared BEFORE the element check: a ref nulled by an unmount mid-drag
+    // would otherwise leave `dragging` true for good, and the geometry
+    // watchers that stand down during a drag would never stand back up.
     dragging = false
+    dragEndedAt = performance.now()
+    const el = options.el()
+    if (!el) return
 
     // A press that never left tap slop is a tap, not a drag. Snapping to the
     // NEAREST stop here would override any settle another hand started between
@@ -189,10 +208,6 @@ export const useDragSheet = (options: DragSheetOptions) => {
             0
           )
     settleTo(target, { velocity })
-    // The drag's own click (dispatched synchronously after pointerup) must
-    // still read `moved` — but the NEXT tap is not this drag's tail. Without
-    // the reset, one sheet drag swallowed every row tap that followed it.
-    setTimeout(() => (moved = false), 0)
   }
 
   const onDragStart = (event: PointerEvent) => {
@@ -217,10 +232,20 @@ export const useDragSheet = (options: DragSheetOptions) => {
     gsap.set(el, { clearProps: 'transform' })
   }
 
-  onUnmounted(stopDragListeners)
+  onUnmounted(() => {
+    stopDragListeners()
+    // See `tweened`: an in-flight tween on a detached node still lands, and
+    // its onSettle would reach a host that has finished tearing down.
+    if (tweened) gsap.killTweensOf(tweened)
+  })
 
-  /** True when the pointer travelled past tap slop — a handle click can bail. */
-  const dragMoved = () => moved
+  /**
+   * True when this click is a drag's tail rather than a tap — the pointer
+   * travelled past tap slop, and either the drag is still live or it ended
+   * within DRAG_TAIL_MS. Bounded by time, not by task order, so a touch
+   * `click` queued after `touchend` is judged the same way everywhere.
+   */
+  const dragMoved = () => moved && (dragging || performance.now() - dragEndedAt <= DRAG_TAIL_MS)
 
   /** True while a finger owns the surface — geometry watchers must stand down
    *  rather than re-settle the sheet out from under the drag. */

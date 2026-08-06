@@ -8,6 +8,7 @@
   >
     <div
       v-if="isPhone"
+      ref="handleEl"
       class="sheet-handle"
       aria-hidden="true"
       @pointerdown="onSheetDragStart"
@@ -49,7 +50,11 @@
     <div
       ref="bodyEl"
       class="sheet-body"
-      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      :class="{
+        'fade-top': scrollableUp,
+        'fade-bottom': scrollableDown,
+        'has-letters': showLetters,
+      }"
       @scroll.passive="syncScrollEdges"
     >
       <p v-if="!groups.length" class="empty">Nothing matches.</p>
@@ -59,6 +64,10 @@
         <h3 v-if="showLetters" class="letter">{{ group.letter }}</h3>
         <ul class="country-chip-list rows">
           <li v-for="isoCode in group.isoCodes" :key="isoCode">
+            <!-- click only: a mousedown binding here answered on right- and
+                 middle-press too (mousedown carries no button filter), and it
+                 bought nothing on touch, where the compatibility mousedown is
+                 dispatched after touchend anyway. -->
             <CountryChip
               tag="button"
               type="button"
@@ -66,7 +75,6 @@
               class="row"
               :disabled="settled"
               :country="getCountry(isoCode)"
-              @mousedown.prevent="onRowClick(isoCode)"
               @click="onRowClick(isoCode)"
             />
           </li>
@@ -85,7 +93,7 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { EASE, MOTION } from '~~/lib/motion'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
-import { SHEET_FULL, SHEET_HANDLE_PX, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
+import { SHEET_FULL, SHEET_PEEK, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -115,6 +123,7 @@ const { gameStore } = useClientEvents()
 const isPhone = useIsPhone()
 const sheetEl = ref<HTMLElement>()
 const headerEl = ref<HTMLElement>()
+const handleEl = ref<HTMLElement>()
 const bodyEl = ref<HTMLElement>()
 const searchEl = ref<HTMLInputElement>()
 const query = ref('')
@@ -144,6 +153,7 @@ const groups = computed(() => groupByLetter(filtered.value, showLetters.value))
 const {
   stopIndex,
   settleTo,
+  visibleAt,
   dragMoved,
   onSheetDragStart,
   onHandleTap,
@@ -153,6 +163,7 @@ const {
 } = useBottomSheet({
   sheet: () => sheetEl.value,
   head: () => headerEl.value,
+  handle: () => handleEl.value,
   body: () => bodyEl.value,
   enabled: () => isPhone.value,
   dragExclude: '.search',
@@ -176,9 +187,10 @@ const {
  */
 function reserve() {
   if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
-  // Tucked (post-answer) frees the band for the reveal card and its camera.
-  const head = stopIndex.value === SHEET_TUCKED ? 0 : (headerEl.value?.offsetHeight ?? 0)
-  claimMapBerth(gameStore, 'membership-sheet', { bottom: head + SHEET_HANDLE_PX + BERTH_GAP_PX })
+  // At full open, claim what PEEK would need (see above). Tucked (post-answer)
+  // claims just its handle, freeing the band for the reveal card.
+  const parked = stopIndex.value === SHEET_FULL ? SHEET_PEEK : stopIndex.value
+  claimMapBerth(gameStore, 'membership-sheet', { bottom: visibleAt(parked) + BERTH_GAP_PX })
 }
 
 const onSearchFocus = () => {
@@ -318,10 +330,11 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
   }
 }
 
-// The fade recipe lives in templates/_sheet.scss; here only its tuning: a
-// deeper top fade with a solid lead-in the stuck letter's own line sits on,
-// so rows slip away beneath the heading instead of clipping against a bar.
-.sheet-body {
+// The fade recipe lives in templates/_sheet.scss; here only its tuning. The
+// solid lead-in exists to carry a STUCK LETTER's own line, so it is spent only
+// when headings are on — unconditionally it blanked the top of a row while
+// filtering (where headings are off), reading as a row that vanished.
+.sheet-body.has-letters {
   --sheet-fade-top: 3.6rem;
   --sheet-fade-top-solid: 2rem;
 }

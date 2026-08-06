@@ -1,3 +1,4 @@
+import { gsap } from 'gsap'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { EASE, MOTION } from '~~/lib/motion'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
@@ -8,9 +9,11 @@ export const SHEET_FULL = 0
 export const SHEET_PEEK = 1
 export const SHEET_TUCKED = 2
 
-/** Visible height of the grab handle — on screen at EVERY stop, so the sheet
- *  is always recoverable by hand. */
+/** Fallback grab-handle height, for the frame before one can be measured. */
 export const SHEET_HANDLE_PX = 28
+
+/** Air below the head at peek, so its last control isn't flush with the fold. */
+const PEEK_FOOT_PX = 12
 
 // A parked transform may miss its stop by a frame's worth of geometry churn
 // (the keyboard collapsing right after a settle) — past this drift the rest
@@ -22,8 +25,10 @@ const CORRECTION_GLIDE_PX = 8
 export interface BottomSheetOptions {
   /** The sheet element (usually a fixed `.pane.sheet.split`). */
   sheet: () => HTMLElement | undefined
-  /** The pinned chrome above the scrolling body — its height IS the peek stop. */
+  /** The pinned chrome above the scrolling body — peek shows all of it. */
   head: () => HTMLElement | undefined
+  /** The grab pill. Measured for the tucked stop rather than assumed. */
+  handle?: () => HTMLElement | undefined
   /** The scrolling `.sheet-body`, watched for the scroll-edge fades. */
   body?: () => HTMLElement | undefined
   /** Sheet mechanics only apply while this is true (phone widths). */
@@ -73,10 +78,30 @@ export interface BottomSheetOptions {
  * useDragSheet directly — a tuck ladder is not their shape.
  */
 export const useBottomSheet = (options: BottomSheetOptions) => {
+  /**
+   * How much of the sheet must stay above the fold to show everything down to
+   * `inner`'s bottom edge — MEASURED from the live boxes, so the sheet's own
+   * top padding and the handle's margins are included instead of guessed at.
+   * Summing element heights (`head + handle`) silently dropped that padding
+   * and clipped the head's last pixels at peek: a filter field cut off at the
+   * fold, which reads as a sheet stuck half-open.
+   *
+   * Transform-invariant: both rects carry the same translate, so the
+   * difference holds mid-drag and mid-tween.
+   */
+  const throughBottom = (inner?: HTMLElement) => {
+    const sheet = options.sheet()
+    if (!sheet || !inner) return 0
+    return Math.round(inner.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top)
+  }
+
   const stops = () => {
     const height = options.sheet()?.offsetHeight ?? 0
-    const head = options.head()?.offsetHeight ?? 0
-    return [0, Math.max(0, height - head - SHEET_HANDLE_PX), Math.max(0, height - SHEET_HANDLE_PX)]
+    const throughHandle = throughBottom(options.handle?.()) || SHEET_HANDLE_PX
+    const throughHead = throughBottom(options.head())
+    // Peek holds the head's controls, so it must clear the head entirely.
+    const peek = throughHead ? throughHead + PEEK_FOOT_PX : throughHandle
+    return [0, Math.max(0, height - peek), Math.max(0, height - throughHandle)]
   }
 
   /**
@@ -88,7 +113,10 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
    */
   const verifyRest = () => {
     const el = options.sheet()
-    if (!el || !options.enabled() || isDragging()) return
+    // A tween in flight IS the correction in progress — cutting it is what
+    // turned the deliberate post-answer glide into a snap whenever the
+    // keyboard finished collapsing mid-flight.
+    if (!el || !options.enabled() || isDragging() || gsap.isTweening(el)) return
     // `none` at the full stop, where settling strips the inline transform —
     // DOMMatrix rejects it, and that is a resting sheet with nothing to fix.
     const transform = getComputedStyle(el).transform
@@ -148,40 +176,54 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
     scrollableDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
   }
 
-  let sheetHeight = 0
   let observer: ResizeObserver | undefined
 
   onMounted(() => {
     if (options.enabled()) settleTo(SHEET_PEEK, { from: stops()[SHEET_TUCKED] })
     syncScrollEdges()
+    // One rule for every geometry change: re-judge the scroll edges, then let
+    // verifyRest decide whether the parked transform still matches its stop.
+    // The HEAD is watched too, and that is the point — a sheet capped by
+    // max-height keeps the same total height while its head grows, so a
+    // sheet-only observer never saw the peek stop move.
     observer = new ResizeObserver(() => {
       syncScrollEdges()
-      const height = options.sheet()?.offsetHeight ?? 0
-      const first = !sheetHeight
-      if (height === sheetHeight) return
-      sheetHeight = height
-      // The observer's initial fire is the entrance, mid-tween — leave it be.
-      if (first || !options.enabled() || stopIndex.value === SHEET_FULL) return
-      // A finger owns the surface: re-settling here would yank the sheet out
-      // from under the drag mid-gesture — exactly the "catches half-open"
-      // feel. The drag's own release re-measures against fresh stops.
-      if (isDragging()) return
-      settleTo(stopIndex.value, { immediate: true })
+      verifyRest()
     })
-    const sheet = options.sheet()
-    if (sheet) observer.observe(sheet, { box: 'border-box' })
-    const body = options.body?.()
-    if (body && body !== sheet) observer.observe(body, { box: 'border-box' })
+    for (const el of new Set([
+      options.sheet(),
+      options.head(),
+      options.handle?.(),
+      options.body?.(),
+    ])) {
+      if (el) observer.observe(el, { box: 'border-box' })
+    }
   })
 
-  // Hand layout back to CSS when the sheet stops being a sheet.
-  watch(options.enabled, on => !on && release())
+  watch(options.enabled, on => {
+    // Hand layout back to CSS when the sheet stops being a sheet …
+    if (!on) return release()
+    // … and re-enter at peek when it becomes one again. release() stripped the
+    // transform but left stopIndex where it was, so without this a rotation
+    // back to phone width renders the whole roster over the map while the
+    // berth claim still describes a tucked handle.
+    settleTo(SHEET_PEEK)
+  })
 
   onBeforeUnmount(() => observer?.disconnect())
+
+  /** How much of the sheet stands above the fold at a stop — what a camera
+   *  berth has to reserve. Measured, so it agrees with the stop by
+   *  construction rather than by a host repeating the arithmetic. */
+  const visibleAt = (index: number) => {
+    const height = options.sheet()?.offsetHeight ?? 0
+    return Math.max(0, height - (stops()[index] ?? 0))
+  }
 
   return {
     stopIndex,
     settleTo,
+    visibleAt,
     dragMoved,
     onSheetDragStart,
     onHandleTap,
