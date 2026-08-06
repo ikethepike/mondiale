@@ -563,6 +563,10 @@ const triggerMembershipChallenge = () => {
   if (challenge?._type === 'membership-challenge' || challenge?._type === 'treaty-challenge') {
     membershipCountries.value = challenge.lineup
     for (const isoCode of challenge.lineup) gameStore.map.highlighted.add(isoCode)
+    // Open on the lit set, not the whole planet — the water modes' precedent:
+    // the camera sits on its subject. The sheet's berth claim keeps the frame
+    // above the roster.
+    gameStore.map.focus = [...challenge.lineup]
   }
   if (challenge?._type === 'scales-challenge') {
     gameStore.map.tints[challenge.target] = 'endpoint'
@@ -644,6 +648,10 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   if (!answered) return
 
   gameStore.map.highlighted.clear()
+  // Re-aim the live focus frame at the answer rather than clearing it: an
+  // active focus suppresses moveToCountry's fly-in, and clearing it would
+  // queue a rest-view tween that stomps the reveal camera.
+  gameStore.map.focus = [answered.reveal]
   gameStore.map.reveal = answered.reveal
   gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
 
