@@ -79,7 +79,13 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
-import { SHEET_FULL, SHEET_HANDLE_PX, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
+import {
+  SHEET_FULL,
+  SHEET_GONE,
+  SHEET_HANDLE_PX,
+  SHEET_TUCKED,
+  useBottomSheet,
+} from '~~/lib/use-bottom-sheet'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -151,6 +157,8 @@ const {
   enabled: () => isPhone.value,
   dragExclude: '.search',
   keyboardOwner: () => searchEl.value,
+  // Once the answer is in the rows are dead — the sheet may leave entirely.
+  vanish: () => props.settled,
   // A flick carries exactly one stop (lib/use-drag-sheet.ts), so a hard swipe
   // down from full lands on peek, never tucked. Deliberate: the list can't be
   // flung away mid-question.
@@ -167,8 +175,11 @@ const {
  * and any footer keep combining normally.
  */
 function reserve() {
-  if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
-  // Tucked (post-answer) frees the band for the reveal card and its camera.
+  // Off-phone the sheet is a side pane; gone (post-answer) it has left the
+  // screen — either way the band goes back to the camera and the reveal card.
+  if (!isPhone.value || stopIndex.value === SHEET_GONE) {
+    return claimMapBerth(gameStore, 'membership-sheet', undefined)
+  }
   const head = stopIndex.value === SHEET_TUCKED ? 0 : (headerEl.value?.offsetHeight ?? 0)
   claimMapBerth(gameStore, 'membership-sheet', { bottom: head + SHEET_HANDLE_PX + BERTH_GAP_PX })
 }
@@ -189,12 +200,14 @@ const onRowClick = (isoCode: ISOCountryCode) => {
 // The composable hands layout back to CSS off-phone; the berth follows suit.
 watch(isPhone, reserve)
 
-// The answer is in and the rows are dead — tuck down to the bare handle so
-// the reveal card and the lesson own the bottom of the screen. A drag or a
-// handle tap can still pull the roster back up for a second look.
+// The answer is in and the rows are dead — collapse fully away so the reveal
+// card and the lesson own the bottom of the screen. The vanish stop only
+// exists while settled, and re-anchoring keeps it pinned off-screen through
+// the keyboard's collapse (a fixed transform here used to strand a sliver
+// over the fold).
 watch(
   () => props.settled,
-  settled => settled && isPhone.value && settleTo(SHEET_TUCKED)
+  settled => settled && isPhone.value && settleTo(SHEET_GONE)
 )
 
 // Content changed under the scroller — re-judge the edges once it has laid out.

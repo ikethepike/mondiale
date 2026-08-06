@@ -2,13 +2,19 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { keyboardInset } from '~~/lib/use-viewport'
 
-/** The parked sheet's three rest points, in useDragSheet stop order. */
+/** The parked sheet's rest points, in useDragSheet stop order. */
 export const SHEET_FULL = 0
 export const SHEET_PEEK = 1
 export const SHEET_TUCKED = 2
+/** Fully off-screen — only on the ladder while `vanish` allows it. */
+export const SHEET_GONE = 3
 
 /** Visible height of the grab handle, kept above the fold at every stop. */
 export const SHEET_HANDLE_PX = 28
+
+// Past the sheet's own height, so a top border or shadow can't peek back
+// over the fold once the sheet has collapsed away.
+const VANISH_SLACK_PX = 12
 
 export interface BottomSheetOptions {
   /** The sheet element (usually a fixed `.pane.sheet.split`). */
@@ -27,6 +33,12 @@ export interface BottomSheetOptions {
    * swipe dismisses the keyboard instead of dead-dragging the sheet.
    */
   keyboardOwner?: () => { blur: () => void } | undefined
+  /**
+   * While true the ladder grows the SHEET_GONE stop: the sheet may collapse
+   * fully off-screen (settled rounds, dead rosters). Off by default — a live
+   * answering surface must never be flingable beyond its own grab handle.
+   */
+  vanish?: () => boolean
   /** Fires at every rest, with the landed stop — berth claims live here. */
   onSettle?: (index: number) => void
   /** Ease for a flick-carried move between stops (see useDragSheet). */
@@ -50,7 +62,10 @@ export interface BottomSheetOptions {
  *   (templates/_sheet.scss), on only when content continues past that edge;
  * - drag guards: presses inside `dragExclude` never drag, and with the
  *   keyboard up a swipe blurs `keyboardOwner` instead;
- * - a handle tap toggling full ↔ peek.
+ * - a handle tap toggling full ↔ peek;
+ * - the optional SHEET_GONE stop (`vanish`): fully off-screen with slack, and
+ *   because re-anchoring re-measures it, the keyboard collapsing under a
+ *   just-vanished sheet can't strand a sliver back over the fold.
  *
  * Dismiss-only sheets (the history drawer's two-stop open/offscreen) stay on
  * useDragSheet directly — a tuck ladder is not their shape.
@@ -59,7 +74,13 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
   const stops = () => {
     const height = options.sheet()?.offsetHeight ?? 0
     const head = options.head()?.offsetHeight ?? 0
-    return [0, Math.max(0, height - head - SHEET_HANDLE_PX), Math.max(0, height - SHEET_HANDLE_PX)]
+    const ladder = [
+      0,
+      Math.max(0, height - head - SHEET_HANDLE_PX),
+      Math.max(0, height - SHEET_HANDLE_PX),
+    ]
+    if (options.vanish?.()) ladder.push(height + VANISH_SLACK_PX)
+    return ladder
   }
 
   const { stopIndex, onDragStart, settleTo, release, dragMoved } = useDragSheet({
