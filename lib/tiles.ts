@@ -15,6 +15,8 @@ const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
   'government.leader': 1,
   currency: 0.25,
   landmarks: 1,
+  errata: 1,
+  rosetta: 1,
 }
 
 export const TILE_COUNTS: Record<GameLength, number> = {
@@ -45,6 +47,17 @@ const FIRST_GATE_MIN = 4
  *  can never swallow a gate and the finish is always a clean sprint. */
 const FINAL_BUFFER = 3
 const GATE_DRAW_ATTEMPTS = 20
+/**
+ * Gates a drawn board must carry before the seeded rhythm is accepted.
+ *
+ * Deliberately NOT the accessor count. A short board (40 tiles, gates from
+ * ~tile 4 to tile 36 at a mean gap of 5) holds about seven gates, so demanding
+ * one per theme became unsatisfiable the moment the accessor list outgrew that
+ * — every short board would fail all 20 attempts and drop to the fixed
+ * every-5-tiles ladder, quietly losing the varied rhythm the draw exists for.
+ * Coverage is `gateThemes`' problem; this only asks for a board worth walking.
+ */
+const MINIMUM_GATES = 6
 
 /** Walk the board dealing seeded gaps; climax-zone gaps draw tighter. */
 const drawGatePositions = (count: number, random: () => number): number[] => {
@@ -60,12 +73,12 @@ const drawGatePositions = (count: number, random: () => number): number[] => {
   return positions
 }
 
-/** Gate positions for a board: seeded draws, retried until every theme can
- *  appear at least once, with a fixed-stride fallback that always can. */
+/** Gate positions for a board: seeded draws, retried until the board carries
+ *  `MINIMUM_GATES`, with a fixed-stride fallback that always can. */
 const gatePositions = (count: number, random: () => number): number[] => {
   for (let attempt = 0; attempt < GATE_DRAW_ATTEMPTS; attempt++) {
     const positions = drawGatePositions(count, random)
-    if (positions.length >= individualChallengeAccessors.length) return positions
+    if (positions.length >= MINIMUM_GATES) return positions
   }
   const positions: number[] = []
   for (let position = 5; position <= count - 1 - FINAL_BUFFER; position += 5) {
@@ -76,16 +89,24 @@ const gatePositions = (count: number, random: () => number): number[] => {
 
 /**
  * Themes for the dealt gates. Every accessor lands in a random slot first
- * (guaranteed coverage; all six differ, so they can never violate adjacency),
+ * (guaranteed coverage; they all differ, so they can never violate adjacency),
  * then the remaining slots fill by weighted draw excluding both neighbours —
  * adjacent gates differ by construction.
+ *
+ * The accessor list is SHUFFLED before it is sliced. A board with fewer gates
+ * than themes can only guarantee some of them, and taking them in declaration
+ * order would bench the same tail every time — the last themes declared would
+ * never be guaranteed on a short board. Shuffled, which themes are promised
+ * varies per board and still reproduces from the game id.
  */
 const gateThemes = (count: number, random: () => number): IndividualChallengeAccessorId[] => {
   const themes: (IndividualChallengeAccessorId | undefined)[] = Array(count).fill(undefined)
   const slots = shuffleArray([...Array(count).keys()], random)
-  individualChallengeAccessors.slice(0, count).forEach((theme, index) => {
-    themes[slots[index]] = theme
-  })
+  shuffleArray([...individualChallengeAccessors], random)
+    .slice(0, count)
+    .forEach((theme, index) => {
+      themes[slots[index]] = theme
+    })
 
   for (let index = 0; index < count; index++) {
     if (themes[index]) continue

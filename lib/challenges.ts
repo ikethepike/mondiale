@@ -2983,6 +2983,21 @@ export const getIndividualChallenge = async ({
       }
       break
     }
+    // The two mode-named tiles deal their own mode and nothing else — the
+    // marker on the board promises a specific question, so anything but a
+    // `find` fallback when the dealer comes up empty would break that promise.
+    case 'errata': {
+      const dealt = await dealErrata(difficulty, pool, world)
+      if (dealt) return { ...base, variant: 'errata', ...dealt }
+      break
+    }
+    case 'rosetta': {
+      // No accessor restriction here: this tile is the mode's own, so it draws
+      // from every register rather than one themed tile's.
+      const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+      if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      break
+    }
   }
 
   return base
@@ -3325,6 +3340,17 @@ const CHALLENGE_DETAILS: {
   },
   landmarks: {
     topic: 'geography',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  // The two mode-named gates. Their phrasing is only ever read by the `find`
+  // fallback (and the atlas), since the modes themselves write their own
+  // prompts — so it asks the fallback's question, not the mode's.
+  errata: {
+    topic: 'geography',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  rosetta: {
+    topic: 'general knowledge',
     phrasing: 'Where on the map is {countryName}?',
   },
   'infrastructure.internetAccess': {

@@ -4,6 +4,9 @@ import { gameLengths, type Tile } from '~~/types/game.types'
 import { CLIMAX_TILES, generateTiles, TILE_COUNTS } from './tiles'
 
 const SEEDS = [...Array(60)].map((_, index) => `seed-${index}`)
+/** The theme-fairness and rhythm-spread checks are distributional — they need
+ *  enough boards for the tail cases to show up at all. */
+const MANY_SEEDS = [...Array(400)].map((_, index) => `spread-${index}`)
 const FINAL_BUFFER = 3
 const isGate = (tile: Tile) => !['start', 'normal', 'final'].includes(tile.type)
 const gatesOf = (tiles: Tile[]) => tiles.filter(isGate)
@@ -79,19 +82,56 @@ describe('generateTiles', () => {
     }
   })
 
-  it('covers every theme and never repeats a theme on adjacent gates', () => {
+  it('covers every theme it has room for, and never repeats one on adjacent gates', () => {
     for (const length of gameLengths) {
       for (const seed of SEEDS) {
         const gates = gatesOf(generateTiles(length, seed))
         const themes = gates.map(gate => gate.type)
-        for (const accessor of individualChallengeAccessors) {
-          expect(themes).toContain(accessor)
+
+        // A board with fewer gates than themes cannot show them all — what it
+        // must not do is spend a slot twice while a theme goes unshown.
+        const promised = Math.min(themes.length, individualChallengeAccessors.length)
+        expect(new Set(themes).size).toBeGreaterThanOrEqual(promised)
+        if (themes.length >= individualChallengeAccessors.length) {
+          for (const accessor of individualChallengeAccessors) {
+            expect(themes).toContain(accessor)
+          }
         }
+
         for (let index = 1; index < themes.length; index++) {
           expect(themes[index]).not.toBe(themes[index - 1])
         }
       }
     }
+  })
+
+  it('benches a different theme each time a board has no room for them all', () => {
+    // Guaranteed coverage used to be granted in DECLARATION ORDER, so a board
+    // with fewer gates than themes always benched the tail of the list: over
+    // hundreds of short boards only the last two themes declared were ever
+    // left off. Shuffled, any theme can draw the short straw.
+    const benched = new Set<string>()
+    let underCapacity = 0
+    for (const seed of MANY_SEEDS) {
+      const themes = gatesOf(generateTiles('short', seed)).map(gate => gate.type)
+      if (themes.length >= individualChallengeAccessors.length) continue
+      underCapacity++
+      for (const accessor of individualChallengeAccessors) {
+        if (!themes.includes(accessor)) benched.add(accessor)
+      }
+    }
+    expect(underCapacity, 'no short board was under capacity — test is vacuous').toBeGreaterThan(20)
+    expect(benched.size).toBeGreaterThan(individualChallengeAccessors.length / 2)
+  })
+
+  it('keeps the sparse rhythms a short board can draw', () => {
+    // The seeded draw is retried until the board carries MINIMUM_GATES. Tying
+    // that floor to the accessor count silently filtered the distribution:
+    // every draw sparser than the theme list was thrown away, so short boards
+    // could never come up quiet, and once the list outgrew what 40 tiles hold
+    // the fixed every-5-tiles ladder would take over entirely.
+    const counts = MANY_SEEDS.map(seed => gatesOf(generateTiles('short', seed)).length)
+    expect(Math.min(...counts)).toBeLessThan(individualChallengeAccessors.length)
   })
 
   it('keeps currency scarce', () => {
@@ -102,8 +142,8 @@ describe('generateTiles', () => {
       currency += gates.filter(gate => gate.type === 'currency').length
       total += gates.length
     }
-    // One guaranteed deal per board plus a down-weighted trickle — well under
-    // an even 1/6 share
-    expect(currency / total).toBeLessThan(1 / 6)
+    // At most one guaranteed deal per board plus a down-weighted trickle —
+    // well under an even share of the themes.
+    expect(currency / total).toBeLessThan(1 / individualChallengeAccessors.length)
   })
 })

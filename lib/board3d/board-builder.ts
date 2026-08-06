@@ -358,6 +358,45 @@ const markerPartsFor = (
         { geometry: pyramid, color: BOARD_COLORS.warmSand },
       ]
     }
+    case 'errata': {
+      // Crossed signposts: one post carrying two name plates tilted opposite
+      // ways — the swap made physical. Shares the ISO gate's post on purpose
+      // (both are "a sign that names a place"); the tilt and the alert red,
+      // which no other marker uses, are what tell them apart at board scale.
+      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
+      pole.translate(0, 0.475 * s, 0)
+      const lower = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      lower.rotateZ(-0.21)
+      lower.translate(0, 0.5 * s, 0)
+      const upper = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      upper.rotateZ(0.21)
+      upper.translate(0, 0.8 * s, 0)
+      return [
+        { geometry: pole, color: BOARD_COLORS.darkBlue },
+        { geometry: lower, color: BOARD_COLORS.warmSand },
+        { geometry: upper, color: BOARD_COLORS.hiorAnge },
+      ]
+    }
+    case 'rosetta': {
+      // A standing stele, banded like an inscribed stone — the object the mode
+      // is named for. A flat slab reads clear of the capital gate's tapered
+      // four-sided obelisk and its cone cap.
+      const base = new BoxGeometry(0.46 * s, 0.1 * s, 0.22 * s)
+      base.translate(0, 0.05 * s, 0)
+      const slab = new BoxGeometry(0.38 * s, 0.78 * s, 0.12 * s)
+      slab.translate(0, 0.49 * s, 0)
+      const parts: MarkerPart[] = [
+        { geometry: base, color: BOARD_COLORS.darkBlue },
+        { geometry: slab, color: BOARD_COLORS.warmSand },
+      ]
+      // Two incised registers, proud of the face so they catch the toon ramp.
+      for (const height of [0.42, 0.62]) {
+        const band = new BoxGeometry(0.3 * s, 0.05 * s, 0.14 * s)
+        band.translate(0, height * s, 0)
+        parts.push({ geometry: band, color: BOARD_COLORS.darkBlue })
+      }
+      return parts
+    }
     case 'final': {
       const parts: MarkerPart[] = []
       for (const side of [-1, 1]) {

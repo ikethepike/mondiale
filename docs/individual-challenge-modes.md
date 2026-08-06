@@ -55,9 +55,11 @@ on `/health`. `COMMODITY_EXPORTERS`, `TREATIES`, `CHANGES`, `MIGRATION` — fina
 - **The wire carries one ISO code.** `submit-individual-challenge-answer` takes `isoCode`,
   `remainingFraction`, `hintsUsed`, `gateTile`. Anything else grades client-trust
   (higher-lower's precedent) or needs the payload widened.
-- **Gate tiles are typed by the six `individualChallengeAccessors`** (`lib/tiles.ts`). A new
-  mode files under an existing theme — `isoCode` is the catch-all — or adds a seventh
-  accessor, which changes board texture.
+- **Gate tiles are typed by `individualChallengeAccessors`** (`lib/tiles.ts`) — eight of them,
+  since Errata and Rosetta were promoted. A new mode either files under an existing theme
+  (`isoCode` is the catch-all) or becomes an accessor itself, which is the only way it can ever
+  carry a board marker: tiles are dealt at game creation, long before any challenge is, so a
+  marker reflects the tile's theme and never the variant the player will meet there.
 
 ---
 
@@ -81,6 +83,11 @@ accepts either culprit — the same variant-scoped carve-out shape the shared-cu
 
 **Stakes:** 30s clock, pot of 4, one buyable hint that dims half the innocents (never a
 culprit).
+
+**On the board:** its own gate tile, under a cool paper-grey top — the only near-neutral on the
+board, so the misprint gate reads as a page rather than a place. The marker is a post carrying
+two name plates tilted opposite ways, the upper one in the board's alert red, which no other
+marker uses.
 
 ### 2. Rosetta — finish the pair
 
@@ -111,6 +118,11 @@ giveaway gate working, not a gap — _Dane : Denmark_ is not a question.
 **Stakes:** 30s clock, pot of 4, one buyable hint that names the relation. Easy mode is given
 the relation free — working it out from the exemplar _is_ the mode, so below easy it costs
 steps or nothing.
+
+**On the board:** its own gate tile — a standing stele, banded like an inscribed stone, on a
+limestone top. Promotion costs the mode nothing: the capital, currency, leader and landmark
+tiles still deal analogies in their own register
+(`ROSETTA_RELATIONS_BY_ACCESSOR`), and the Rosetta tile draws from all of them.
 
 ---
 
@@ -349,8 +361,23 @@ needs no audio — which sidesteps the collision problem that rules audio gates 
 4. **State that outlives the gate** — Passport Stamps wants `stamps` on `Player`, The Trap
    wants `trap` on `Tile`. Both are public snapshot data, but they are the first gate mechanics
    to persist and deserve one home rather than two ad-hoc fields.
-5. **Tile themes.** Meridian, True Size, Chokepoint and The Forecast fit none of the six
-   `individualChallengeAccessors` cleanly. Either file them under `isoCode` (already carrying
-   eight variants) or add accessors to `lib/tiles.ts` and accept the board-texture change.
-   Passport Stamps argues for the latter: a stamp set is only interesting if the themes are
-   legible on the board.
+5. **Tile themes.** Meridian, True Size, Chokepoint and The Forecast fit none of the existing
+   `individualChallengeAccessors` cleanly. Either file them under `isoCode` (already the
+   catch-all) or promote them, which Errata and Rosetta have now done — that is the route to a
+   board marker and a gate-top wash of their own. Passport Stamps argues for promoting: a stamp
+   set is only interesting if the themes are legible on the board.
+
+   Promotion is a typed walk. Five tables are exhaustive over the accessor union
+   (`GATE_TILE_WEIGHTS`, `TILE_TOP_TINTS`, `markerPartsFor`, `INDIVIDUAL_STAT_ORIGINS`,
+   `CHALLENGE_DETAILS`), so the compiler names every site. Two things it will not tell you:
+
+   - **A board can hold fewer gates than there are themes.** A short board draws 6–10 gates
+     against eight themes, so guaranteed coverage is partial by design. `gateThemes` shuffles
+     the accessor list before slicing so the benched theme varies; taking them in declaration
+     order silently benched the same tail on every board.
+   - **Do not gate the position draw on the theme count.** `gatePositions` retries until the
+     board carries `MINIMUM_GATES`, deliberately a fixed floor. Tying it to the accessor list
+     filters out every rhythm sparser than the theme count — and once the list outgrows what a
+     short board can hold, the fixed every-5-tiles ladder takes over entirely.
+
+   Both are pinned in `lib/tiles.test.ts`.

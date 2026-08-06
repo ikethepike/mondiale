@@ -150,6 +150,17 @@ export const individualChallengeVariants = [
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
+/**
+ * The board's gate themes. Each one is a tile type (`Tile['type']`), a marker
+ * on the 3D board and a gate-top wash, so this list is what the board is made
+ * of — not just what a gate can ask.
+ *
+ * `errata` and `rosetta` are here rather than living purely as variants
+ * because a board marker can only reflect a tile's THEME: tiles are dealt at
+ * game creation, long before any challenge is. Their promotion costs the other
+ * themes nothing — rosetta still deals from the capital, currency, leader and
+ * landmark tiles in each of their own registers (ROSETTA_RELATIONS_BY_ACCESSOR).
+ */
 export const individualChallengeAccessors = [
   'flag',
   'isoCode',
@@ -157,6 +168,8 @@ export const individualChallengeAccessors = [
   'government.leader',
   'currency',
   'landmarks',
+  'errata',
+  'rosetta',
 ] as const
 export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (
