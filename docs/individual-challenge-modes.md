@@ -123,10 +123,15 @@ giveaway gate working, not a gap — _Dane : Denmark_ is not a question.
 the relation free — working it out from the exemplar _is_ the mode, so below easy it costs
 steps or nothing.
 
-**On the board:** the **lexicon** gate — an open book on a lectern, on a vellum top. Low and
-wide where every other marker is a post, and from the overhead camera its two broad pages read
-as a spread. (A banded stele was tried first and simply stood there: it differed from its
-neighbours without saying anything about what the gate asks.)
+**On the board:** the **lexicon** gate — a quill standing in a clear ink pot, on a vellum top.
+
+Four attempts got there, and the failures are the useful part. A banded stele was legible and
+mute: distinct from its neighbours, silent about the gate. An open book worked but said
+"knowledge" rather than "naming". Two quills failed because they were built as a shaft with
+something attached to it, which reads as a spatula in a pot — in a real quill the **feather is
+the mass** and the nib is a detail. The shipped one is a broad swept blade extruded from a
+bezier outline with the rachis curving through it, and the sweep is also what makes it survive
+the board's-eye camera: a curve presents area from above where a straight lean presents none.
 
 The tile is a category, not this mode — see below. Rosetta is its only tenant today, and
 promotion costs it nothing: the capital, currency, leader and landmark tiles still deal
@@ -380,9 +385,15 @@ needs no audio — which sidesteps the collision problem that rules audio gates 
    | `errata`  | something here is wrong              | Errata; Counterfeit when it lands |
    | `lexicon` | a term and the country it belongs to | Rosetta; The Naming, Switchboard  |
 
-   A marker has to _name_ its category, not merely differ from its neighbours. Rosetta's first
-   marker was a banded stele — a distinct silhouette that said nothing about the gate. An open
-   book does, and it will still fit a mode about etymologies or matched pairs.
+   Two rules for the marker, both learned by breaking them (see the lexicon gate's four
+   attempts above, and `markerPartsFor`):
+
+   - It has to **name** the category, not merely differ from its neighbours. A blank slab is
+     distinct and says nothing.
+   - It has to **survive being looked down on**. The board's-eye camera is the one that
+     matters, and up there broad forms read while thin, straight, leaning ones vanish. Detail
+     finer than a tier or a plate is lost to the flat toon shading, so a marker has to work as
+     a silhouette.
 
    Meridian, True Size, Chokepoint and The Forecast fit none of the existing themes cleanly.
    Either file them under `isoCode` (the catch-all) or open a category for them, which is the

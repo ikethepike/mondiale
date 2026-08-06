@@ -16,8 +16,10 @@ import {
   MeshToonMaterial,
   BackSide,
   DoubleSide,
+  ExtrudeGeometry,
   PlaneGeometry,
   Quaternion,
+  Shape,
   SphereGeometry,
   TubeGeometry,
   Vector2,
@@ -276,16 +278,20 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
 interface MarkerPart {
   geometry: BufferGeometry
   color: string
+  /** Below 1 the part renders as glass (the lexicon gate's ink pot). Parts
+   *  bucket by colour AND opacity, so one translucent piece doesn't drag its
+   *  whole colour into transparency. */
+  opacity?: number
 }
 
 /**
  * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
  * pointing along the path). Chunky low-poly forms in the toon language: a flag
  * for flag challenges, an obelisk for capitals, a signpost for ISO codes, a
- * statue for leaders, a standing coin for currencies, a stepped monument for
- * landmarks, crossed signposts for errata, an open book for the lexicon, and a
- * full arch spanning the final tile — physical gates that read as a hard
- * border to pass.
+ * statue for leaders, a standing coin for currencies, a map pin for
+ * landmarks, crossed signposts for errata, a quill in an ink pot for the
+ * lexicon, and a full arch spanning the final tile — physical gates that
+ * read as a hard border to pass.
  *
  * Two rules earned the hard way. A marker must NAME its theme, not merely
  * differ from its neighbours (a blank stele is distinct and says nothing), and
@@ -374,30 +380,27 @@ const markerPartsFor = (
       ]
     }
     case 'landmarks': {
-      // A stepped monument. This was a smooth four-sided cone, which the toon
-      // ramp turned into a soft nothing; boxes are flat by construction, so
-      // each tier catches the light as its own facet and the silhouette has
-      // corners to read. The dark plinth and capstone bracket the sand.
-      const plinth = new BoxGeometry(0.56 * s, 0.09 * s, 0.56 * s)
-      plinth.translate(0, 0.045 * s, 0)
-      const parts: MarkerPart[] = [{ geometry: plinth, color: BOARD_COLORS.darkBlue }]
+      // A map pin: the one shape that means "a place" without having to be
+      // read. It replaces a four-sided cone that the toon ramp turned into a
+      // soft nothing — a sphere shades with a clean terminator where a
+      // low-segment cone smears, and the balloon-and-spike silhouette is
+      // legible at any angle, which a pyramid seen from above is not.
+      const head = new SphereGeometry(0.23 * s, 18, 14)
+      head.translate(0, 0.62 * s, 0)
+      // The spike: a cone point-down, meeting the head's underside.
+      const spike = new ConeGeometry(0.21 * s, 0.5 * s, 18)
+      spike.rotateX(Math.PI)
+      spike.translate(0, 0.32 * s, 0)
+      // The pin's eye, sunk into the face rather than sitting on it.
+      const eye = new CylinderGeometry(0.095 * s, 0.095 * s, 0.3 * s, 14)
+      eye.rotateX(Math.PI / 2)
+      eye.translate(0, 0.64 * s, 0)
 
-      let height = 0.09
-      for (const tier of [
-        { width: 0.46, rise: 0.17 },
-        { width: 0.34, rise: 0.16 },
-        { width: 0.22, rise: 0.15 },
-      ]) {
-        const step = new BoxGeometry(tier.width * s, tier.rise * s, tier.width * s)
-        step.translate(0, (height + tier.rise / 2) * s, 0)
-        parts.push({ geometry: step, color: BOARD_COLORS.warmSand })
-        height += tier.rise
-      }
-
-      const capstone = new BoxGeometry(0.12 * s, 0.1 * s, 0.12 * s)
-      capstone.translate(0, (height + 0.05) * s, 0)
-      parts.push({ geometry: capstone, color: BOARD_COLORS.darkBlue })
-      return parts
+      return [
+        { geometry: spike, color: BOARD_COLORS.warmSand },
+        { geometry: head, color: BOARD_COLORS.warmSand },
+        { geometry: eye, color: BOARD_COLORS.darkBlue },
+      ]
     }
     case 'errata': {
       // Crossed signposts: one post carrying two name plates tilted opposite
@@ -419,38 +422,64 @@ const markerPartsFor = (
       ]
     }
     case 'lexicon': {
-      // An open book on a lectern — the register of names. Every other marker
-      // is a tall thin thing on a post; this one is low and WIDE, and from the
-      // board's-eye camera the two broad pages read as a spread where the
-      // errata gate's plates read as two thin lines.
+      // A quill standing in a clear ink pot — writing names down.
       //
-      // A quill in an inkwell was tried twice, with a slab vane and then a
-      // tapered one, and lost both times. A quill is made of fine detail — the
-      // shaft showing past the barbs, the split tip — and none of it survives
-      // at marker scale under flat toon shading; both attempts read as a
-      // spatula in a pot. It is also a thin leaning object, and the camera
-      // that matters looks down on the board, where thin things present almost
-      // no area. A banded stele failed earlier for the opposite reason: legible
-      // but mute. The book is both broad and specific.
-      const post = new BoxGeometry(0.14 * s, 0.34 * s, 0.14 * s)
-      post.translate(0, 0.17 * s, 0)
-      const desk = new BoxGeometry(0.54 * s, 0.06 * s, 0.34 * s)
-      desk.translate(0, 0.36 * s, 0)
-      const spine = new BoxGeometry(0.07 * s, 0.1 * s, 0.4 * s)
-      spine.translate(0, 0.43 * s, 0)
-      const parts: MarkerPart[] = [
-        { geometry: post, color: BOARD_COLORS.darkBlue },
-        { geometry: desk, color: BOARD_COLORS.darkBlue },
-        { geometry: spine, color: BOARD_COLORS.darkBlue },
+      // The mass IS the feather. Two earlier attempts failed by treating the
+      // quill as a shaft with something stuck to it, which reads as a spatula;
+      // here the blade is a broad swept lens extruded from a bezier outline,
+      // the rachis is a curve drawn through it, and the nib is a detail. The
+      // sweep also solves the board's-eye camera: a curve presents area from
+      // above where a straight lean presents none.
+      const RACHIS: [number, number][] = [
+        [0, 0.24],
+        [-0.04, 0.46],
+        [-0.13, 0.68],
+        [-0.27, 0.86],
+        [-0.46, 0.96],
       ]
-      // Two pages opening away from the spine in a shallow V.
-      for (const side of [-1, 1]) {
-        const page = new BoxGeometry(0.3 * s, 0.05 * s, 0.4 * s)
-        page.rotateZ(side * -0.3)
-        page.translate(side * 0.17 * s, 0.47 * s, 0)
-        parts.push({ geometry: page, color: BOARD_COLORS.warmSand })
-      }
-      return parts
+      const spine = new CatmullRomCurve3(RACHIS.map(([x, y]) => new Vector3(x, y, 0)))
+
+      // The vane: a lens hugging the rachis, fuller on the outer side like a
+      // real feather, tapering to nothing at the tip and at the quill end.
+      const vane = new Shape()
+      vane.moveTo(-0.02, 0.42)
+      vane.quadraticCurveTo(-0.06, 0.84, -0.46, 0.96)
+      vane.quadraticCurveTo(-0.3, 0.63, -0.02, 0.42)
+      const blade = new ExtrudeGeometry(vane, { depth: 0.045, bevelEnabled: false })
+      blade.translate(0, 0, -0.0225)
+      blade.scale(s, s, s)
+
+      const rachis = new TubeGeometry(spine, 24, 0.016, 6, false)
+      rachis.scale(s, s, s)
+
+      // The bare quill below the vane, ending in a nib in the ink.
+      const barrel = new CylinderGeometry(0.022 * s, 0.032 * s, 0.24 * s, 8)
+      barrel.rotateZ(0.16)
+      barrel.translate(-0.01 * s, 0.28 * s, 0)
+      const nib = new ConeGeometry(0.032 * s, 0.12 * s, 8)
+      nib.rotateX(Math.PI)
+      nib.translate(0.01 * s, 0.14 * s, 0)
+
+      // The pot: glass walls over a pool of ink, with a solid rim so the
+      // opening reads.
+      const glass = new CylinderGeometry(0.23 * s, 0.26 * s, 0.3 * s, 16)
+      glass.translate(0, 0.15 * s, 0)
+      // A shallow pool, so most of the pot is empty and the glass has room to
+      // read as glass rather than as a lid on a solid block of ink.
+      const ink = new CylinderGeometry(0.21 * s, 0.235 * s, 0.08 * s, 16)
+      ink.translate(0, 0.04 * s, 0)
+      const rim = new CylinderGeometry(0.24 * s, 0.235 * s, 0.03 * s, 16)
+      rim.translate(0, 0.3 * s, 0)
+
+      return [
+        { geometry: ink, color: BOARD_COLORS.darkBlue },
+        { geometry: nib, color: BOARD_COLORS.darkBlue },
+        { geometry: faceted(rachis), color: BOARD_COLORS.darkBlue },
+        { geometry: rim, color: BOARD_COLORS.darkBlue },
+        { geometry: barrel, color: BOARD_COLORS.warmSand },
+        { geometry: blade, color: BOARD_COLORS.warmSand },
+        { geometry: glass, color: BOARD_COLORS.softBlue, opacity: 0.32 },
+      ]
     }
     case 'final': {
       const parts: MarkerPart[] = []
@@ -507,14 +536,22 @@ const buildChallengeMarkers = (
       const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
       if (geometry !== part.geometry) part.geometry.dispose()
 
-      const outline = outlineOf(geometry)
-      outline.applyMatrix4(matrix)
-      outlines.push(outline)
+      // Glass gets NO outline. The outline is an opaque inverted hull sitting
+      // 7% behind the part, so a translucent one shows its own black backing
+      // and reads as a dark lump instead of a jar. The solid pieces it holds
+      // (the ink, the rim) keep theirs, which is what gives the pot its
+      // contour.
+      if ((part.opacity ?? 1) === 1) {
+        const outline = outlineOf(geometry)
+        outline.applyMatrix4(matrix)
+        outlines.push(outline)
+      }
 
       geometry.applyMatrix4(matrix)
-      const bucket = colorBuckets.get(part.color) ?? []
+      const key = `${part.color}|${part.opacity ?? 1}`
+      const bucket = colorBuckets.get(key) ?? []
       bucket.push(geometry)
-      colorBuckets.set(part.color, bucket)
+      colorBuckets.set(key, bucket)
     }
   }
 
@@ -528,8 +565,19 @@ const buildChallengeMarkers = (
     )
     outlines.forEach(geometry => geometry.dispose())
   }
-  for (const [color, bucket] of colorBuckets) {
-    meshes.push(new Mesh(mergeGeometries(bucket), new MeshToonMaterial({ color })))
+  for (const [key, bucket] of colorBuckets) {
+    const [color, rawOpacity] = key.split('|')
+    const opacity = Number(rawOpacity)
+    const mesh = new Mesh(
+      mergeGeometries(bucket),
+      new MeshToonMaterial(
+        opacity < 1 ? { color, transparent: true, opacity, depthWrite: false } : { color }
+      )
+    )
+    // Glass draws after the opaque markers, or the pieces behind it are
+    // z-rejected and the jar renders as a hole.
+    if (opacity < 1) mesh.renderOrder = 1
+    meshes.push(mesh)
     bucket.forEach(geometry => geometry.dispose())
   }
 
