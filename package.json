@@ -2,7 +2,7 @@
   "name": "mondiale",
   "private": true,
   "scripts": {
-    "build": "NODE_OPTIONS=--max-old-space-size=5120 nuxt build",
+    "build": "NODE_OPTIONS=--max-old-space-size=3072 nuxt build",
     "deploy": "fly deploy --strategy bluegreen --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
     "start": "node .output/server/index.mjs",
     "dev": "nuxt dev --host=0.0.0.0",

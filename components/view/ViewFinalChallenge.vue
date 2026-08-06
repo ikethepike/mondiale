@@ -177,9 +177,14 @@
     </ChallengeResult>
 
     <!-- The lit set, made readable: 54 highlighted countries are a wall at
-         world zoom, so the roster gets its own surface and its rows answer. -->
+         world zoom, so the roster gets its own surface and its rows answer.
+         Keyed on the lineup: a gauntlet can deal two odd-one-out gates back to
+         back (a club then a treaty), and the same mounted sheet would carry its
+         post-answer tuck, its typed filter and its scroll position into the
+         next question — a 28px handle where the roster should be. -->
     <MembershipSheet
       v-if="oddOneOutSubject && !showInterstitial"
+      :key="membershipCountries.join()"
       :countries="membershipCountries"
       :subject="oddOneOutSubject"
       :settled="!!status"
@@ -563,6 +568,10 @@ const triggerMembershipChallenge = () => {
   if (challenge?._type === 'membership-challenge' || challenge?._type === 'treaty-challenge') {
     membershipCountries.value = challenge.lineup
     for (const isoCode of challenge.lineup) gameStore.map.highlighted.add(isoCode)
+    // Open on the lit set, not the whole planet — the water modes' precedent:
+    // the camera sits on its subject. The sheet's berth claim keeps the frame
+    // above the roster.
+    gameStore.map.focus = [...challenge.lineup]
   }
   if (challenge?._type === 'scales-challenge') {
     gameStore.map.tints[challenge.target] = 'endpoint'
@@ -644,6 +653,10 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   if (!answered) return
 
   gameStore.map.highlighted.clear()
+  // Re-aim the live focus frame at the answer rather than clearing it: an
+  // active focus suppresses moveToCountry's fly-in, and clearing it would
+  // queue a rest-view tween that stomps the reveal camera.
+  gameStore.map.focus = [answered.reveal]
   gameStore.map.reveal = answered.reveal
   gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
 
