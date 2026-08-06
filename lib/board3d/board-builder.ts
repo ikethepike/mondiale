@@ -388,27 +388,36 @@ const markerPartsFor = (
       // The profile is the tangent construction: a straight flank from the tip
       // to where it touches the head circle, then the arc over the top. Solved
       // rather than eyeballed, so the join is smooth by geometry.
+      //
+      // `TOUCH` is the tangent point in the CIRCLE's parameter (0 at the crown,
+      // sweeping down the flank), which is where the arc has to start — the
+      // half-angle at the tip is a different number entirely, and using one for
+      // the other splays the flank wider than the head and below the ground.
+      // Lathe wants the profile bottom-up, so the arc runs TOUCH → 0 and the
+      // straight flank is just the segment from the tip to its first point.
       const RADIUS = 0.23
       const CENTRE = 0.62
-      const flank = Math.sqrt(CENTRE * CENTRE - RADIUS * RADIUS)
-      const touch = Math.acos(-RADIUS / CENTRE)
+      const TOUCH = Math.acos(-RADIUS / CENTRE)
       const profile = [new Vector2(0, 0)]
-      const ARC_STEPS = 12
+      const ARC_STEPS = 14
       for (let step = 0; step <= ARC_STEPS; step++) {
-        const angle = touch * (1 - step / ARC_STEPS)
+        const angle = TOUCH * (1 - step / ARC_STEPS)
         profile.push(
           new Vector2(RADIUS * Math.sin(angle) * s, (CENTRE + RADIUS * Math.cos(angle)) * s)
         )
       }
-      profile.splice(1, 0, new Vector2(flank * Math.sin(touch) * s, flank * Math.cos(touch) * s))
 
       // The eye keeps its own outline on purpose — that ring is what makes it
       // read as a hole punched through rather than a dot painted on. It has to
-      // out-span the head's DIAMETER or it stays buried inside it; the marker's
-      // local +z faces back down the path, so the hole meets an arriving pawn
-      // face-on.
-      const eye = new CylinderGeometry(0.095 * s, 0.095 * s, RADIUS * 2.1 * s, 14)
-      eye.rotateX(Math.PI / 2)
+      // clear the head's chord AT ITS OWN RADIUS, not the head's full diameter:
+      // overshoot that and the caps stand off the curved face as two navy tabs
+      // instead of a hole. It is bored ACROSS the path (local x), not down it:
+      // markers are turned so +z runs along the path, and the board camera
+      // watches the path side-on, so a hole down +z is edge-on from every seat.
+      const EYE = 0.088
+      const throughHead = Math.sqrt(RADIUS * RADIUS - EYE * EYE) * 2 + 0.02
+      const eye = new CylinderGeometry(EYE * s, EYE * s, throughHead * s, 14)
+      eye.rotateZ(Math.PI / 2)
       eye.translate(0, CENTRE * s, 0)
 
       return [
