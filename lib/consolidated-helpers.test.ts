@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { sample, sampleMany, weightedPick } from './arrays'
 import { boardProgress, playerDisplayName, seatLabel } from './player'
 import { clampScore, jaccardFraction } from './scoring'
-import { editDistance, normalizeAnswer, sentenceCase, titleCase } from './strings'
+import { editDistance, listJoin, normalizeAnswer, sentenceCase, titleCase } from './strings'
 import { clamp, clamp01, formatKm } from './number'
 import { expectChallengeType, isChallengeOfType, latestRound } from './rounds'
 import type { Game } from '~~/types/game.types'
@@ -49,6 +49,13 @@ describe('editDistance', () => {
 describe('string casings', () => {
   it('titleCase humanizes kebab slugs', () => {
     expect(titleCase('north-america')).toBe('North America')
+  })
+
+  it('listJoin reads as prose, not a spreadsheet cell', () => {
+    expect(listJoin(['Chad', 'Niger', 'Nigeria'])).toBe('Chad, Niger and Nigeria')
+    expect(listJoin(['NATO', 'the OECD'])).toBe('NATO and the OECD')
+    expect(listJoin(['Chad'])).toBe('Chad')
+    expect(listJoin([])).toBe('')
   })
 
   it('sentenceCase lifts only the first letter', () => {

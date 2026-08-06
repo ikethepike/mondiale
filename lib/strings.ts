@@ -110,3 +110,13 @@ export const sentenceCase = (value: string): string =>
 /** "north-america" → "North America" — the one kebab/slug humanizer. */
 export const titleCase = (value: string): string =>
   value.replace(/-/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
+
+/**
+ * "Chad, Niger and Nigeria" — the one prose list join. Reveal copy names
+ * countries, clubs and treaties in runs, and `join(', ')` leaves every one of
+ * them reading like a spreadsheet cell.
+ */
+export const listJoin = (values: string[], conjunction = 'and'): string =>
+  values.length > 1
+    ? `${values.slice(0, -1).join(', ')} ${conjunction} ${values[values.length - 1]}`
+    : (values[0] ?? '')

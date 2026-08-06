@@ -65,6 +65,12 @@ export interface TreatyMeta {
   /** What a prompt calls it. */
   shortName: string
   family: TreatyFamily
+  /**
+   * One line on what the instrument actually obliges. Editorial, like the
+   * organization facts: the standings are generated, this is the caption the
+   * reveal needs so "never joined it" means something.
+   */
+  purpose: string
   /** UNTC coordinates; absent means it comes from elsewhere. */
   untc?: { mtdsg: string; chapter: number }
   /** Refuse to write below this many parties — catches a partial parse. */
@@ -86,6 +92,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Convention on the Rights of the Child',
     shortName: 'Convention on the Rights of the Child',
     family: 'human-rights',
+    purpose:
+      'Sets out the rights every child holds — to schooling, to protection, to a say in decisions about them. The most widely ratified treaty there is.',
     untc: { mtdsg: 'IV-11', chapter: 4 },
     minimumParties: 180,
   },
@@ -94,6 +102,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Convention on the Elimination of All Forms of Discrimination against Women',
     shortName: 'Convention on Discrimination against Women',
     family: 'human-rights',
+    purpose:
+      'Obliges states to write equal rights for women into their own law, and to report on the gaps.',
     untc: { mtdsg: 'IV-8', chapter: 4 },
     minimumParties: 170,
   },
@@ -102,6 +112,7 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'International Covenant on Civil and Political Rights',
     shortName: 'Covenant on Civil and Political Rights',
     family: 'human-rights',
+    purpose: 'The binding half of the Universal Declaration: speech, fair trial, and the vote.',
     untc: { mtdsg: 'IV-4', chapter: 4 },
     minimumParties: 155,
   },
@@ -110,6 +121,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'International Covenant on Economic, Social and Cultural Rights',
     shortName: 'Covenant on Economic, Social and Cultural Rights',
     family: 'human-rights',
+    purpose:
+      'The other half — work, housing, health and education, owed progressively as means allow.',
     untc: { mtdsg: 'IV-3', chapter: 4 },
     minimumParties: 155,
   },
@@ -118,6 +131,7 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Convention against Torture',
     shortName: 'Convention against Torture',
     family: 'human-rights',
+    purpose: 'Bans torture absolutely: no war, no emergency and no order from above excuses it.',
     untc: { mtdsg: 'IV-9', chapter: 4 },
     minimumParties: 155,
   },
@@ -126,6 +140,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Rome Statute of the International Criminal Court',
     shortName: 'Rome Statute',
     family: 'human-rights',
+    purpose:
+      'Created the International Criminal Court, which tries individuals — not states — for genocide, war crimes and crimes against humanity.',
     untc: { mtdsg: 'XVIII-10', chapter: 18 },
     minimumParties: 110,
   },
@@ -136,6 +152,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Paris Agreement',
     shortName: 'Paris Agreement',
     family: 'climate',
+    purpose:
+      'Every party sets its own emissions pledge and revises it upward every five years, aiming to hold warming well below 2°C.',
     untc: { mtdsg: 'XXVII-7-d', chapter: 27 },
     minimumParties: 175,
   },
@@ -144,6 +162,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Kyoto Protocol',
     shortName: 'Kyoto Protocol',
     family: 'climate',
+    purpose:
+      'The first treaty with binding emissions cuts, and it bound only the industrialised countries.',
     untc: { mtdsg: 'XXVII-7-a', chapter: 27 },
     minimumParties: 170,
   },
@@ -152,6 +172,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Convention on Biological Diversity',
     shortName: 'Convention on Biological Diversity',
     family: 'climate',
+    purpose:
+      'Commits states to protect their own species and habitats, and to share what is earned from their genetic resources.',
     untc: { mtdsg: 'XXVII-8', chapter: 27 },
     minimumParties: 175,
   },
@@ -162,6 +184,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Anti-Personnel Mine Ban Convention',
     shortName: 'Mine Ban Treaty',
     family: 'arms-control',
+    purpose:
+      'Bans anti-personnel landmines outright, and obliges parties to clear the ones already in the ground.',
     untc: { mtdsg: 'XXVI-5', chapter: 26 },
     minimumParties: 145,
   },
@@ -170,6 +194,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Convention on Cluster Munitions',
     shortName: 'Convention on Cluster Munitions',
     family: 'arms-control',
+    purpose:
+      'Bans cluster bombs, whose submunitions go on killing civilians long after the war ends.',
     untc: { mtdsg: 'XXVI-6', chapter: 26 },
     minimumParties: 100,
   },
@@ -178,6 +204,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Arms Trade Treaty',
     shortName: 'Arms Trade Treaty',
     family: 'arms-control',
+    purpose:
+      'Regulates the arms trade: a party must refuse a transfer it knows would be used for atrocities.',
     untc: { mtdsg: 'XXVI-8', chapter: 26 },
     minimumParties: 105,
   },
@@ -188,6 +216,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'United Nations Convention on the Law of the Sea',
     shortName: 'Law of the Sea Convention',
     family: 'law-of-the-sea',
+    purpose:
+      'The constitution of the oceans — territorial seas, 200-mile economic zones, and who may mine the seabed.',
     untc: { mtdsg: 'XXI-6', chapter: 21 },
     minimumParties: 155,
   },
@@ -198,6 +228,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'Schengen Area',
     shortName: 'Schengen Area',
     family: 'mobility',
+    purpose:
+      'Abolishes passport checks between its members, making them one travel area behind a shared external border.',
     minimumParties: 25,
   },
   {
@@ -205,6 +237,8 @@ export const TREATY_META: readonly TreatyMeta[] = [
     name: 'European Convention on Human Rights',
     shortName: 'European Convention on Human Rights',
     family: 'human-rights',
+    purpose:
+      'Enforced by the Strasbourg court, which individuals may petition once their own courts are exhausted.',
     minimumParties: 40,
   },
 ]

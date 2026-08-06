@@ -2690,6 +2690,22 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    // The other end of the ranking: the scorecard slices from the tail and
+    // counts its places up from the lowest.
+    id: 'final-min',
+    label: 'Final: min (stat pick)',
+    component: ViewFinalChallenge,
+    build: () =>
+      finalGame([
+        {
+          _type: 'min-challenge',
+          accessorId: 'economics.gdpPerCapita',
+          country: 'BI',
+          hints: ['BI', 'CF', 'SS', 'SO', 'MZ'],
+        },
+      ]),
+  },
+  {
     id: 'final-language',
     label: 'Final: language',
     component: ViewFinalChallenge,

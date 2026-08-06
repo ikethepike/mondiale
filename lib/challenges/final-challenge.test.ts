@@ -19,13 +19,23 @@ import type {
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { oddOneOut } from '~~/types/challenges/final-challenge.type'
-import { MAX_LINEUP } from '~~/lib/odd-one-out'
+import {
+  familyPeersBinding,
+  isMemberOf,
+  MAX_LINEUP,
+  organizationSize,
+  organizationsOf,
+  treatyPartyCount,
+} from '~~/lib/odd-one-out'
+import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
+import { TREATY_META } from '~~/types/treaty.type'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   BORDER_STORIES,
   BOUNDARY_TOLERANCE,
+  buildSortedRanking,
   boundaryScene,
   boundaryStory,
   CHANGE_TUNING,
@@ -44,6 +54,9 @@ import {
   MADE_COMMODITIES,
   madeAcceptedCountries,
   madeTopExporters,
+  languageSpeakers,
+  MINMAX_REVEAL_ROWS,
+  speaksLanguage,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
   yearbookYear,
@@ -1217,6 +1230,70 @@ describe('MADE_COMMODITIES', () => {
         pool: Object.keys(COUNTRIES) as ISOCountryCode[],
       })
       expect(correct, `${commodity}: ${isoCode}`).toBe(true)
+    }
+  })
+})
+
+describe('gauntlet lives', () => {
+  it('gives every difficulty two misses to absorb', () => {
+    // Hard used to run on a single life: one unlucky deal ended the finale
+    // before its reveals could teach anything.
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      expect(GAUNTLET_LIVES[difficulty]).toBe(2)
+    }
+  })
+})
+
+describe('reveal selectors', () => {
+  const pool = Object.keys(COUNTRIES) as ISOCountryCode[]
+
+  it('ranks min/max through the dealer’s own ordering', () => {
+    // The scorecard reads buildSortedRanking; the dealer takes its extremes
+    // from the same call, so the chart's head IS the dealt answer.
+    const ranking = buildSortedRanking('people.population', pool)
+    expect(ranking.length).toBeGreaterThan(MINMAX_REVEAL_ROWS)
+    for (let index = 1; index < ranking.length; index++) {
+      expect(ranking[index - 1].amount.amount).toBeGreaterThanOrEqual(ranking[index].amount.amount)
+    }
+  })
+
+  it('lists a language’s countries, most populous first', () => {
+    const speakers = languageSpeakers('Portuguese')
+    expect(speakers).toContain('BR')
+    expect(speakers).toContain('PT')
+    expect(speakers.every(isoCode => speaksLanguage(isoCode, 'Portuguese'))).toBe(true)
+    for (let index = 1; index < speakers.length; index++) {
+      const previous = COUNTRIES[speakers[index - 1]].people.population?.amount ?? 0
+      expect(previous).toBeGreaterThanOrEqual(
+        COUNTRIES[speakers[index]].people.population?.amount ?? 0
+      )
+    }
+  })
+
+  it('counts a club’s members and the clubs its holdout does sit in', () => {
+    expect(organizationSize('eu')).toBeGreaterThanOrEqual(27)
+    // Norway is the EU question's classic exception and is in NATO regardless
+    expect(isMemberOf('NO', 'eu')).toBe(false)
+    expect(organizationsOf('NO')).toContain('nato')
+  })
+
+  it('counts treaty parties and finds the holdout’s peers in the same family', () => {
+    for (const meta of TREATY_META) {
+      expect(treatyPartyCount(meta.id)).toBeGreaterThanOrEqual(meta.minimumParties)
+      // Editorial copy the reveal renders — a blank one is an empty card
+      expect(meta.purpose.length).toBeGreaterThan(20)
+    }
+    // The US signed the Rome Statute and unsigned it, but is a CCPR party
+    expect(familyPeersBinding('rome-statute', 'US')).toContain('iccpr')
+  })
+
+  it('gives every organization its founding year and purpose', () => {
+    for (const id of Object.keys(OrganizationVector) as (keyof typeof OrganizationVector)[]) {
+      const facts = ORGANIZATION_FACTS[id]
+      expect(facts.founded).toBeGreaterThan(1900)
+      expect(facts.founded).toBeLessThanOrEqual(new Date().getFullYear())
+      expect(facts.purpose.length).toBeGreaterThan(20)
+      expect(facts.shortName.length).toBeGreaterThan(1)
     }
   })
 })
