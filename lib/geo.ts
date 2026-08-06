@@ -82,6 +82,19 @@ export const WORLD_BOX: { x: number; y: number; width: number; height: number } 
 }
 
 /**
+ * A country's map-space bbox must clear this on at least one axis to carry a
+ * written name — below it the label outgrows the country it points at. The
+ * map's label builder skips the specks; any dealer that writes names onto the
+ * map (errata) must draw from the same set, or it deals a question whose
+ * subject never renders.
+ */
+export const LABELABLE_BOX_UNITS = 14
+
+/** Can this map-space box carry a written label? */
+export const isLabelableBox = (box: MapBox | undefined): boolean =>
+  !!box && (box[2] >= LABELABLE_BOX_UNITS || box[3] >= LABELABLE_BOX_UNITS)
+
+/**
  * A country's mainland box. The whole-country bbox lies for RU/US-class
  * countries — antimeridian fragments stretch it across the map, putting the
  * US centre closer to Russia than to Canada. MAP_REGIONS emits per-ring boxes

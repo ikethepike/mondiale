@@ -1,5 +1,8 @@
 <template>
-  <div ref="wrapper" :class="[`game-map`, status, { solo, landmass, 'show-labels': labels }]">
+  <div
+    ref="wrapper"
+    :class="[`game-map`, status, { solo, landmass, 'show-labels': labels || !!countryLabels }]"
+  >
     <!--
       Pan/zoom is viewBox-native (see the camera section in the script):
       repainting one viewport's worth of culled base-tier geometry per frame
@@ -203,6 +206,7 @@ import {
   WORLD_BOX,
   countryLatLng,
   invertRobinson,
+  isLabelableBox,
   mainlandBox,
   projectRobinson,
   type LatLng,
@@ -275,6 +279,13 @@ const props = defineProps({
   labels: {
     type: Boolean,
     default: false,
+  },
+  /** Written names over countries, keyed by the country they sit on — NOT
+   *  necessarily that country's own name (errata mislabels one on purpose).
+   *  Rendered instead of the acronyms, and rebuilt whenever the set changes. */
+  countryLabels: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
   },
   /** Animate the viewBox to frame these countries together. */
   focusCountries: {
@@ -960,31 +971,50 @@ watch(
   { flush: 'post' }
 )
 
-// --- ISO acronym labels (easy-mode traversal aid), built once on demand ----
-let labelsBuilt = false
+// --- Country labels --------------------------------------------------------
+// Two registers through one builder: ISO acronyms over everything (the
+// easy-mode traversal aid) and written names over a named few (errata's
+// mislabelled stage). Text nodes are appended to the svg root and take no part
+// in hit-testing, so a label never intercepts the country click beneath it.
+//
+// Keyed rather than latched: errata deals a new label set per gate, and a
+// build-once flag would leave the previous round's names on the map.
+let builtLabelKey: string | undefined
 const ensureLabels = () => {
-  if (labelsBuilt || !svg.value) return
+  if (!svg.value) return
+  const named = props.countryLabels
+  const key = named ? JSON.stringify(named) : props.labels ? 'acronyms' : ''
+  if (key === builtLabelKey) return
+
+  svg.value.querySelectorAll('.country-label').forEach(label => label.remove())
+  builtLabelKey = key
+  if (!key) return
 
   const namespace = 'http://www.w3.org/2000/svg'
-  for (const [code, [x, y, width, height]] of Object.entries(MAP_BOUNDS)) {
+  const entries = named
+    ? Object.keys(named).map(code => [code, MAP_BOUNDS[code as MapCode]] as const)
+    : Object.entries(MAP_BOUNDS)
+  for (const [code, bounds] of entries) {
     // Microstates can't fit a readable label — skip the clutter
-    if (width < 14 && height < 14) continue
+    if (!isLabelableBox(bounds)) continue
+    const [x, y, width, height] = bounds
 
     const label = document.createElementNS(namespace, 'text')
-    label.textContent = code
+    label.textContent = named ? (named[code as ISOCountryCode] ?? '') : code
     label.setAttribute('x', String(x + width / 2))
     label.setAttribute('y', String(y + height / 2))
     label.classList.add('country-label')
+    if (named) label.classList.add('country-label-name')
     svg.value.appendChild(label)
   }
-  labelsBuilt = true
 }
 
 watch(
-  () => props.labels,
-  value => {
-    if (value) nextTick(ensureLabels)
-  }
+  [() => props.labels, () => props.countryLabels],
+  () => {
+    nextTick(ensureLabels)
+  },
+  { deep: true }
 )
 
 const emit = defineEmits(['countryClick'])
@@ -1493,7 +1523,7 @@ onMounted(async () => {
   // Pan to any country if set
   moveToCountry()
 
-  if (props.labels) ensureLabels()
+  if (props.labels || props.countryLabels) ensureLabels()
   if (props.focusCountries.length) frameFocus()
 })
 
@@ -2079,5 +2109,21 @@ path[id]:hover,
 }
 .show-labels :deep(.country-label) {
   display: block;
+}
+// Written names are read at region zoom, where a font sized in user units
+// would balloon with the camera. `--stroke-zoom` (set at settle, the same
+// inverse the strokes ride) holds them at a constant on-screen size; the
+// fallback covers the first paint, before the first settle has run.
+// Haloed with paint-order so a name stays readable over a tinted country.
+:deep(.country-label-name) {
+  opacity: 1;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #{milk()};
+  stroke-linejoin: round;
+  // In map units at world scale: ~14 CSS px once the frame's own scale is
+  // applied, which is what the eye actually reads.
+  font-size: calc(22px * var(--stroke-zoom, 1));
+  stroke-width: calc(4.4px * var(--stroke-zoom, 1));
 }
 </style>

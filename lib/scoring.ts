@@ -2,6 +2,7 @@
  * Scoring shapes shared by more than one mode. Client-safe: nothing here
  * imports the generated geometry, which must stay out of the client bundle.
  */
+import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import { clamp01 } from './number'
 
 /** A score folded into 0..maximum — the one guard between a scorer and the wire. */
@@ -38,6 +39,24 @@ export const GATE_LEAP_STEPS = 2
 export const GATE_HINT_BITE_STEPS = 2
 
 /**
+ * Variants that pay more than the standard pot. A hint bites
+ * `GATE_HINT_BITE_STEPS`, so a mode whose hint is meant to be a TRADE rather
+ * than a surrender needs a pot deeper than the bite — at `GATE_LEAP_STEPS` a
+ * single hint zeroes the leap outright and can only ever buy safety.
+ */
+const GATE_POTS: Partial<Record<IndividualChallengeVariant, number>> = {
+  // Both carry a buyable hint worth taking: errata's half-lineup cull and
+  // rosetta's named relation still leave something on the table.
+  errata: 4,
+  rosetta: 4,
+}
+
+/** The full-pot leap for a gate variant. Both ends of the wire read the pot
+ *  through this, so a mode's stakes can never differ client to server. */
+export const gatePot = (variant?: IndividualChallengeVariant): number =>
+  (variant && GATE_POTS[variant]) ?? GATE_LEAP_STEPS
+
+/**
  * Steps a correct gate answer moves the pawn. Timed gates report the clock
  * fraction left and the buzz curve scales the leap; every bought hint bites
  * `GATE_HINT_BITE_STEPS`, never below zero. Untimed gates report nothing and
@@ -45,13 +64,17 @@ export const GATE_HINT_BITE_STEPS = 2
  * non-finite fraction falls back to the pot, and a negative or non-finite
  * hint count bites nothing rather than paying extra.
  */
-export const gateLeapSteps = (remainingFraction?: number, hintsUsed = 0): number => {
-  const pot =
+export const gateLeapSteps = (
+  remainingFraction?: number,
+  hintsUsed = 0,
+  pot: number = GATE_LEAP_STEPS
+): number => {
+  const earned =
     remainingFraction !== undefined && Number.isFinite(remainingFraction)
-      ? Math.round(GATE_LEAP_STEPS * buzzFraction(remainingFraction))
-      : GATE_LEAP_STEPS
+      ? Math.round(pot * buzzFraction(remainingFraction))
+      : pot
   const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed)) : 0
-  return Math.max(0, pot - bought * GATE_HINT_BITE_STEPS)
+  return Math.max(0, earned - bought * GATE_HINT_BITE_STEPS)
 }
 
 /** Each bought point-mode hint bites this fraction of the pot. */

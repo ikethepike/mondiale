@@ -1,0 +1,155 @@
+@use '../rules/ink' as *;
+@use '../rules/breakpoints' as *;
+
+// Furniture shared by the individual gates, which are one component each
+// (components/challenge/individual). Before the split these lived in the one
+// 1,800-line view; a gate that needs a ring, a clock or an option grid takes
+// it from here rather than growing a second copy in its own scoped block.
+//
+// Bespoke chrome — the border ring's "?" hint outline, the trajectory chart
+// centre, the money hero — stays with the variant that owns it.
+
+// A gate's option grid, layered over the house `.card-options` recipe.
+.gate-options {
+  gap: 1.4rem;
+  display: grid;
+  margin-top: 1.4rem;
+  pointer-events: auto;
+  grid-template-columns: repeat(2, minmax(16rem, 24rem));
+
+  // Gate cards run larger than the house default — these are the whole stage,
+  // not a strip under a photo.
+  .card-option {
+    gap: 1rem;
+    padding: 1.2rem;
+    font-size: 1.8rem;
+  }
+}
+
+// Gate cards that aren't `.card-option`s — the bare flag plates, which carry
+// an image rather than a flag-and-name pair.
+.gate-option {
+  cursor: pointer;
+  padding: 1.2rem;
+  font-size: 1.8rem;
+  font-family: inherit;
+  border-radius: 1.2rem;
+  color: var(--dark-blue);
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.88);
+  border: 0.1rem solid ink(0.25);
+  transition:
+    transform var(--motion-quick) var(--ease-out-expressive),
+    border-color var(--motion-quick) var(--ease-out-expressive);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-0.3rem);
+      border-color: var(--dark-blue);
+    }
+  }
+  &:active {
+    border-color: var(--dark-blue);
+  }
+}
+
+// The timed gates' round clock, centred between the sub caption and the stage.
+.gate-clock {
+  margin: 0 auto;
+  --clock-size: 5.2rem;
+  --clock-seconds-size: 1.7rem;
+}
+
+// The ring stage: candidates evenly spaced around a subject in the middle.
+// Border Detective keeps neighbour flags around an empty "?"; Trajectory Match
+// keeps its candidate flags around the mystery chart.
+.border-ring {
+  position: relative;
+  width: min(38rem, 78vw);
+  aspect-ratio: 1;
+  margin: 1.6rem auto 0;
+  pointer-events: none;
+}
+
+.ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 4rem;
+  font-weight: 700;
+  color: ink(0.35);
+  border: 0.2rem dashed ink(0.3);
+  background: milk(0.6);
+}
+
+.ring-flag {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+
+  // Let each flag keep its intrinsic aspect ratio — Nepal's pennant is not
+  // 3:2, so forcing a rectangle distorted it and spilled the box-shadow.
+  svg {
+    width: 100%;
+    height: auto;
+    border-radius: 0.3rem;
+    filter: drop-shadow(0 1px 3px ink(0.25));
+  }
+}
+
+// The name rides directly over the map, so it takes the map-caption surface at
+// chip scale — bare ink on a country fill was unreadable.
+.ring-name {
+  font-size: 1.1rem;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--dark-blue);
+  max-width: 12ch;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.6rem;
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
+  box-decoration-break: clone;
+}
+
+// A leader's face, as a thumbnail: the find gate's clue and every leader-pick
+// option wear the same disc.
+.leader-thumb {
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center top;
+  background-color: ink(0.08);
+  border: 0.1rem solid ink(0.2);
+
+  &.placeholder {
+    // A subtle silhouette stand-in when no portrait exists.
+    background-image: radial-gradient(circle at 50% 38%, ink(0.25) 0 1.1rem, transparent 1.2rem);
+  }
+}
+
+@media (max-width: $tablet) {
+  .border-ring {
+    width: min(30rem, 88vw);
+  }
+  .ring-center {
+    font-size: 3rem;
+  }
+  .gate-options {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

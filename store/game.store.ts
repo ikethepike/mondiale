@@ -58,6 +58,10 @@ interface GameStoreState {
     landmass: boolean
     /** Show ISO acronym labels on countries (easy traversal aid). */
     labels: boolean
+    /** Written names over countries, keyed by the country they sit on — NOT
+     *  necessarily that country's own name. Errata mislabels one on purpose,
+     *  which is why the label set rides the store rather than being derived. */
+    countryLabels?: Partial<Record<ISOCountryCode, string>>
     /** Chrome berth (CSS px): the camera frames its subject between these
      *  insets so a header card never covers it. */
     berth?: { top?: number; bottom?: number }
@@ -190,6 +194,7 @@ export const useGameStore = defineStore('game', {
       solo: false,
       landmass: false,
       labels: false,
+      countryLabels: undefined,
       focus: [],
       focusContext: [],
       framePad: undefined,

@@ -1,4 +1,5 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
+import type { RosettaRelationId } from '../../lib/rosetta'
 import type { TrendMetricId } from '../../lib/trends'
 import type { ISOCountryCode } from '../geography.types'
 
@@ -24,6 +25,10 @@ import type { ISOCountryCode } from '../geography.types'
  *   it by typing before the clock runs out — one wrong guess fails the gate
  * - 'leader-portrait': a leader's photo (from the Wikidata-generated leader
  *   data) — pick which of the `options` countries they govern
+ * - 'errata': a labelled cluster of countries with exactly one misprint — tap
+ *   the country wearing the wrong name (either of the two, on a swap)
+ * - 'rosetta': A : B :: C : ? — the exemplar pair fixes which relation is
+ *   meant, and the answer to the second pair is `country`
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -83,7 +88,46 @@ export interface IndividualChallenge {
   /** landmark-quiz: which curated landmark (LANDMARKS key). The reveal shows
    *  its dossier (name, description) and marks its true spot on the map. */
   landmarkSlug?: string
+  /**
+   * errata: the labelled cluster and what's wrong with it.
+   *
+   * The rendered `labels` ride the challenge because they ARE the question,
+   * not a rendering detail — the OddOneOutChallenge posture. That means the
+   * payload carries the answer, which is accepted here for the same reason
+   * silhouette accepts it: the client cannot ask the question without
+   * rendering the corruption, and the SCORE stays the server's.
+   */
+  errata?: {
+    /** The labelled countries, all mutually reachable over land borders. */
+    lineup: ISOCountryCode[]
+    kind: ErrataKind
+    /**
+     * The mislabelled countries — every one of them is an accepted answer
+     * (see `isCorrectIndividualAnswer`). Two for a swap, one for an impostor.
+     * `country` is `culprits[0]` so the reveal zoom needs no special case.
+     */
+    culprits: ISOCountryCode[]
+    /** What each lineup member is labelled as, exactly as shown. */
+    labels: Partial<Record<ISOCountryCode, string>>
+  }
+  /** rosetta: A : B :: C : ? — the answer to the second pair is `country`. */
+  rosetta?: {
+    relation: RosettaRelationId
+    /** The demonstrating pair, resolved to display strings at deal time. */
+    exemplar: { term: string; isoCode: ISOCountryCode }
+    /** The question's left-hand term, whose country is the answer. */
+    term: string
+    /** The relation in words ("its highest mountain") — the buyable hint's
+     *  content, and free on easy. Resolved through ROSETTA_RELATIONS at the
+     *  deal so the question and the reveal's lesson can't drift. */
+    relationLabel: string
+  }
 }
+
+/** How an errata lineup was corrupted. `swap` exchanges two adjacent members'
+ *  names (both guilty); `impostor` gives one member the name of a country
+ *  that isn't on the stage at all. */
+export type ErrataKind = 'swap' | 'impostor'
 
 export const individualChallengeVariants = [
   'find',
@@ -101,6 +145,8 @@ export const individualChallengeVariants = [
   'leader-pick',
   'outline-reveal',
   'leader-portrait',
+  'errata',
+  'rosetta',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 

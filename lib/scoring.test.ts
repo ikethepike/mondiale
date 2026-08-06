@@ -16,6 +16,7 @@ import {
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
+  gatePot,
   HINT_BITE_FRACTION,
   hintDockedScore,
   scorePinDistance,
@@ -179,6 +180,28 @@ describe('gateLeapSteps', () => {
     expect(gateLeapSteps(Number.POSITIVE_INFINITY)).toBe(GATE_LEAP_STEPS)
     expect(gateLeapSteps(7)).toBe(2)
     expect(gateLeapSteps(-3)).toBe(1)
+  })
+
+  it('scales a deeper pot, so a bought hint is a trade and not a surrender', () => {
+    const deep = gatePot('rosetta')
+    expect(deep).toBeGreaterThan(GATE_HINT_BITE_STEPS)
+    expect(gateLeapSteps(1, 0, deep)).toBe(deep)
+    // The whole point of the deeper pot: something survives the hint.
+    expect(gateLeapSteps(1, 1, deep)).toBe(deep - GATE_HINT_BITE_STEPS)
+    expect(gateLeapSteps(1, 1, deep)).toBeGreaterThan(0)
+  })
+})
+
+describe('gatePot', () => {
+  it('pays the standard leap for a variant that declares nothing', () => {
+    expect(gatePot()).toBe(GATE_LEAP_STEPS)
+    expect(gatePot('find')).toBe(GATE_LEAP_STEPS)
+    expect(gatePot('flag-pick')).toBe(GATE_LEAP_STEPS)
+  })
+
+  it('deepens the pot only for the variants that sell a hint worth buying', () => {
+    expect(gatePot('errata')).toBeGreaterThan(GATE_LEAP_STEPS)
+    expect(gatePot('rosetta')).toBeGreaterThan(GATE_LEAP_STEPS)
   })
 })
 
