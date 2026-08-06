@@ -268,7 +268,6 @@ import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
-import { titlecaseLeader } from '~~/lib/leaders'
 import { listJoin } from '~~/lib/strings'
 import { formatAmount, formatCompact } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -435,10 +434,10 @@ const lesson = computed(() => {
     }
     case 'leadership-challenge': {
       // LeaderReveal carries the portrait, party and tenure — this line is
-      // what it can't say: which country the person actually leads
+      // what it can't say: which country the person actually leads. Naming
+      // them again here would just repeat the card's own headline.
       const country = COUNTRIES[challenge.country]
-      const { leader } = country.government
-      return leader ? `${titlecaseLeader(leader)} leads ${countryName(country)}.` : undefined
+      return country.government.leader ? `The country is ${countryName(country)}.` : undefined
     }
     case 'language-challenge':
       // LanguageReveal carries the whole roster and its reach

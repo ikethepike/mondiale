@@ -113,7 +113,9 @@ const insteadLine = computed(() => {
   }
   const peers = familyPeersBinding(challenge.treaty, holdout.value)
   if (!peers.length) return undefined
-  return `It is bound by ${listJoin(peers.map(id => treatyMeta(id).shortName))}.`
+  // Instrument names need their article to read as prose — "bound by the
+  // Covenant and the Convention", not "bound by Covenant and Convention".
+  return `It is bound by ${listJoin(peers.map(id => `the ${treatyMeta(id).shortName}`))}.`
 })
 
 // A wrong pick named a country that does belong — say so, so the mistake lands
