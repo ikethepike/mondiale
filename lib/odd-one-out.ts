@@ -1,6 +1,10 @@
+import { COUNTRIES } from '~~/data/countries.gen'
+import { TREATIES } from '~~/data/treaties.gen'
 import { sampleMany } from '~~/lib/arrays'
 import { countryName, getCountry } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { isOrganizationKey, type OrganizationVector } from '~~/types/organization.type'
+import { TREATY_META, type TreatyId, type TreatyStatus } from '~~/types/treaty.type'
 
 /**
  * How the sheet that lists an odd-one-out question's lit countries orders and
@@ -54,6 +58,72 @@ export const buildLineup = (
   return [...kept, oddOneOut].sort((a, b) =>
     countryName(getCountry(a)).localeCompare(countryName(getCountry(b)))
   )
+}
+
+/** Is the country on the club's books? The one membership test. */
+export const isMemberOf = (
+  isoCode: ISOCountryCode,
+  organization: keyof typeof OrganizationVector
+): boolean => COUNTRIES[isoCode].membership.some(entry => entry.id === organization)
+
+/** How many countries belong worldwide — the scale a sampled lineup hides. */
+export const organizationSize = (organization: keyof typeof OrganizationVector): number =>
+  (Object.keys(COUNTRIES) as ISOCountryCode[]).filter(isoCode => isMemberOf(isoCode, organization))
+    .length
+
+/** The clubs a country IS in — what the odd one out belongs to instead. */
+export const organizationsOf = (isoCode: ISOCountryCode): (keyof typeof OrganizationVector)[] =>
+  COUNTRIES[isoCode].membership.map(entry => entry.id).filter(isOrganizationKey)
+
+/**
+ * The instrument's standing census: how many countries are bound, how many
+ * signed and stopped there, how many walked out, and how many never came at
+ * all.
+ *
+ * This is the texture a club question has no equivalent for — you are in the
+ * EU or you are not, but a treaty has four ways to stand toward it, and the
+ * odd-one-out's own standing only means something against the spread.
+ */
+export interface TreatyCensus {
+  party: number
+  signatory: number
+  withdrawn: number
+  absent: number
+}
+
+export const treatyCensus = (treaty: TreatyId): TreatyCensus => {
+  const statuses = TREATIES[treaty] ?? {}
+  const countryCount = Object.keys(COUNTRIES).length
+  const counted = (standing: TreatyStatus['standing']) =>
+    Object.values(statuses).filter(status => status?.standing === standing).length
+  const party = counted('party')
+  const signatory = counted('signatory')
+  const withdrawn = counted('withdrawn')
+  return {
+    party,
+    signatory,
+    withdrawn,
+    // Not in the table at all — the silent majority on a thin instrument
+    absent: Math.max(0, countryCount - party - signatory - withdrawn),
+  }
+}
+
+/** How many countries the instrument actually binds. */
+export const treatyPartyCount = (treaty: TreatyId): number => treatyCensus(treaty).party
+
+/**
+ * Instruments in the same family the holdout IS bound by — the counterweight
+ * to "never joined this one", and the reason the miss teaches something.
+ */
+export const familyPeersBinding = (treaty: TreatyId, isoCode: ISOCountryCode): TreatyId[] => {
+  const { family } = TREATY_META.find(entry => entry.id === treaty) ?? {}
+  if (!family) return []
+  return TREATY_META.filter(
+    peer =>
+      peer.id !== treaty &&
+      peer.family === family &&
+      TREATIES[peer.id]?.[isoCode]?.standing === 'party'
+  ).map(peer => peer.id)
 }
 
 /** The grouping key: first letter of the displayed name. */

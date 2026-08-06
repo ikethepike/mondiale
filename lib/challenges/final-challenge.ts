@@ -6,7 +6,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
-import { buildLineup, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
+import { buildLineup, isMemberOf, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
@@ -81,7 +81,7 @@ type FinalChallengeType = FinalChallengeItem['_type']
 export const GAUNTLET_LIVES: { [difficulty in GameDifficulty]: number } = {
   easy: 2,
   normal: 2,
-  hard: 1,
+  hard: 2,
 }
 
 const GAUNTLET_LENGTH: { [difficulty in GameDifficulty]: number } = {
@@ -248,10 +248,16 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
   'health.obesity',
 ]
 
+/** Rows the min/max scorecard shows from the extreme end of the board. */
+export const MINMAX_REVEAL_ROWS = 6
+
 /**
- * Returns a sorted array (max -> min) of a given value key
+ * Returns a sorted array (max -> min) of a given value key.
+ *
+ * Exported because the reveal card ranks the same board the dealer ranked —
+ * re-deriving it there would let the scorecard disagree with the question.
  */
-const buildSortedRanking = (
+export const buildSortedRanking = (
   accessorId: MinMaxAccessorKeys | ScalesAccessorKey,
   pool: ISOCountryCode[]
 ) => {
@@ -307,9 +313,6 @@ const getMinChallenge = (pool: ISOCountryCode[]): MinChallenge => {
     hints: shuffleArray(sortedcountries.slice(-5).flatMap(country => country.isoCode)),
   }
 }
-
-const isMemberOf = (isoCode: ISOCountryCode, organization: keyof typeof OrganizationVector) =>
-  COUNTRIES[isoCode].membership.some(entry => entry.id === organization)
 
 /**
  * An organization only makes a fair question when the board holds enough of
@@ -1331,6 +1334,22 @@ export const bornAfter = (isoCode: ISOCountryCode, year: number): boolean => {
 /** Does the country speak this language? */
 export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
   COUNTRIES[isoCode].languages.includes(language)
+
+/** Rows the language scorecard shows before it starts counting the tail. */
+export const LANGUAGE_REVEAL_ROWS = 8
+
+/**
+ * Every country that lists the language, most populous first — the verdict's
+ * accept set and the reveal's roster read the same order.
+ */
+export const languageSpeakers = (language: string): ISOCountryCode[] =>
+  (Object.keys(COUNTRIES) as ISOCountryCode[])
+    .filter(isoCode => speaksLanguage(isoCode, language))
+    .sort(
+      (a, b) =>
+        (COUNTRIES[b].people.population?.amount ?? 0) -
+        (COUNTRIES[a].people.population?.amount ?? 0)
+    )
 
 /** Do the country's top exports include the commodity? */
 export const exportsCommodity = (isoCode: ISOCountryCode, commodity: string): boolean =>

@@ -16,6 +16,12 @@
             v-if="currentFinalChallenge?._type === 'membership-challenge'"
             :organization="currentFinalChallenge.organization"
           />
+          <!-- Instruments have no emblem to show, so the question wears its
+               family's seal — the club question's logo, for treaties -->
+          <TreatySeal
+            v-if="currentFinalChallenge?._type === 'treaty-challenge'"
+            :treaty="currentFinalChallenge.treaty"
+          />
           <h2 class="map-caption">{{ details?.question }}</h2>
           <!-- The live beat's endonym rides the top of a staggered card deck —
                the fanned cards behind it are the endonyms still to come -->
@@ -162,6 +168,35 @@
         :challenge="currentFinalChallenge"
         :picked="lastGuess"
       />
+      <!-- The stat questions' scorecard: where the answer sits among the rest
+           of the board, and where the player's pick landed -->
+      <MinMaxReveal
+        v-if="
+          currentFinalChallenge?._type === 'min-challenge' ||
+          currentFinalChallenge?._type === 'max-challenge'
+        "
+        :challenge="currentFinalChallenge"
+        :pool="challengePool"
+        :variant="game?.variant"
+        :picked="lastGuess"
+      />
+      <LanguageReveal
+        v-if="currentFinalChallenge?._type === 'language-challenge'"
+        :challenge="currentFinalChallenge"
+        :picked="lastGuess"
+      />
+      <OddOneOutReveal
+        v-if="
+          currentFinalChallenge?._type === 'membership-challenge' ||
+          currentFinalChallenge?._type === 'treaty-challenge'
+        "
+        :challenge="currentFinalChallenge"
+        :picked="lastGuess"
+      />
+      <LeaderReveal
+        v-if="currentFinalChallenge?._type === 'leadership-challenge'"
+        :country="currentFinalChallenge.country"
+      />
       <EndonymReveal
         v-if="currentFinalChallenge?._type === 'endonym-challenge'"
         :challenge="currentFinalChallenge"
@@ -187,6 +222,7 @@
       :key="membershipCountries.join()"
       :countries="membershipCountries"
       :subject="oddOneOutSubject"
+      :total="oddOneOutTotal"
       :settled="!!status"
       @pick="submitMembership"
     />
@@ -202,17 +238,22 @@ import DiasporaReveal from '~/components/challenge/DiasporaReveal.vue'
 import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
 import FinalChangeStage from '~/components/challenge/FinalChangeStage.vue'
 import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
+import LanguageReveal from '~/components/challenge/LanguageReveal.vue'
 import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
+import MinMaxReveal from '~/components/challenge/MinMaxReveal.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
+import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
+import TreatySeal from '~/components/challenge/TreatySeal.vue'
+import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
+import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { TREATIES } from '~~/data/treaties.gen'
 import { OrganizationVector } from '~~/types/organization.type'
 import { treatyMeta } from '~~/types/treaty.type'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
@@ -235,8 +276,9 @@ import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
-import { titlecaseLeader } from '~~/lib/leaders'
-import { formatAmount } from '~~/lib/number'
+import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
+import { listJoin } from '~~/lib/strings'
+import { formatAmount, formatCompact } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
 import type {
@@ -256,6 +298,10 @@ const gauntlet = computed(() => {
   return currentMove.value.challenge
 })
 
+/** The board the gauntlet was dealt from — the verdict's scope, and the
+ *  ranking the stat scorecard reads. */
+const challengePool = computed(() => (game.value ? playableCountries(game.value) : []))
+
 /** The result beat's verdict — the same shared function the server runs. */
 const checkAnswer = (submittedAnswer: FinalChallengeAnswer): boolean => {
   const challenge = currentFinalChallenge.value
@@ -263,7 +309,7 @@ const checkAnswer = (submittedAnswer: FinalChallengeAnswer): boolean => {
   return isCorrectFinalAnswer({
     challenge,
     submittedAnswer,
-    pool: game.value ? playableCountries(game.value) : [],
+    pool: challengePool.value,
   })
 }
 
@@ -372,60 +418,44 @@ const lesson = computed(() => {
 
   switch (challenge._type) {
     case 'min-challenge':
-    case 'max-challenge': {
-      const label = FINAL_STAT_LABELS[challenge.accessorId]
-      // A value tie can crown a country other than the dealt extreme — teach
-      // the one the player actually answered with.
-      const answered =
-        status.value === 'correct' && lastGuess.value ? lastGuess.value : challenge.country
-      const answer = getValueByAccessorID(answered, challenge.accessorId)
-      if (!answer) return undefined
-      const answerLine = `${countryName(COUNTRIES[answered])}: ${formatAmount(answer)} ${label.toLowerCase()}`
-      if (status.value === 'correct' || !lastGuess.value || lastGuess.value === challenge.country)
-        return answerLine
-      const guessed = getValueByAccessorID(lastGuess.value, challenge.accessorId)
-      if (!guessed) return answerLine
-      return `${answerLine} — your pick, ${countryName(COUNTRIES[lastGuess.value])}: ${formatAmount(guessed)}`
-    }
+    case 'max-challenge':
+      // MinMaxReveal ranks the whole board — the number alone said nothing
+      // about how far ahead of (or behind) everyone else the answer sits
+      return undefined
     case 'region-challenge': {
+      // "X is part of Europe" restated the question. The region's size and
+      // the country's neighbours in it are the facts worth carrying out.
       const country = COUNTRIES[challenge.country]
-      return `${country.name.english} is part of ${REGION_LABELS[country.region]}.`
+      const region = REGION_LABELS[country.region]
+      const siblings = Object.values(COUNTRIES).filter(other => other.region === country.region)
+      const people = siblings.reduce(
+        (total, other) => total + (other.people.population?.amount ?? 0),
+        0
+      )
+      const neighbours = (BORDERS[challenge.country] ?? [])
+        .filter(isoCode => COUNTRIES[isoCode]?.region === country.region)
+        .slice(0, 3)
+        .map(isoCode => countryName(COUNTRIES[isoCode]))
+      const neighbourLine = neighbours.length
+        ? ` Its neighbours there include ${listJoin(neighbours)}.`
+        : ''
+      return `${countryName(country)} is one of ${siblings.length} countries in ${region}, together home to ${formatCompact(people)} people.${neighbourLine}`
     }
     case 'leadership-challenge': {
+      // LeaderReveal carries the portrait, party and tenure — this line is
+      // what it can't say: which country the person actually leads. Naming
+      // them again here would just repeat the card's own headline.
       const country = COUNTRIES[challenge.country]
-      const { leader } = country.government
-      return leader ? `${titlecaseLeader(leader)} leads ${countryName(country)}.` : undefined
+      return country.government.leader ? `The country is ${countryName(country)}.` : undefined
     }
-    case 'language-challenge': {
-      const speakers = Object.values(COUNTRIES).filter(country =>
-        speaksLanguage(country.isoCode, challenge.language)
-      ).length
-      return `${challenge.language} is spoken in ${speakers} ${speakers === 1 ? 'country' : 'countries'} — they stay lit on the map.`
-    }
-    case 'membership-challenge': {
-      return status.value === 'correct'
-        ? `${countryName(COUNTRIES[challenge.exception])} is the odd one out.`
-        : `The odd one out was ${countryName(COUNTRIES[challenge.exception])}.`
-    }
-    case 'treaty-challenge': {
-      // The lesson is the standing, not the name — "signed it and never
-      // ratified" is the fact worth carrying out of the round.
-      const name = countryName(COUNTRIES[challenge.holdout])
-      const { shortName } = treatyMeta(challenge.treaty)
-      const year = TREATIES[challenge.treaty]?.[challenge.holdout]?.year
-      switch (challenge.standing) {
-        case 'signatory':
-          return `${name} signed the ${shortName}${year ? ` in ${year}` : ''} and never ratified it.`
-        case 'withdrawn':
-          // The year is only present when a curated entry knew it — the scrape
-          // can't read UNTC's withdrawal footnote.
-          return year
-            ? `${name} was a party to the ${shortName} until ${year}.`
-            : `${name} was a party to the ${shortName}, then withdrew.`
-        default:
-          return `${name} never joined the ${shortName}.`
-      }
-    }
+    case 'language-challenge':
+      // LanguageReveal carries the whole roster and its reach
+      return undefined
+    case 'membership-challenge':
+    case 'treaty-challenge':
+      // OddOneOutReveal carries the dossier: what the club or instrument is,
+      // how the holdout stands apart, and what it belongs to instead
+      return undefined
     case 'born-challenge': {
       const qualifying = Object.values(COUNTRIES).filter(country =>
         bornAfter(country.isoCode, challenge.year)
@@ -474,9 +504,7 @@ const lesson = computed(() => {
       // Four countries hold Lake Chad, so this is a list, not a pair:
       // "Chad, Niger, Nigeria and Cameroon" rather than three ands.
       const names = story.countries.filter(isValidISOCode).map(iso => countryName(COUNTRIES[iso]))
-      const where =
-        names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
-      return `${story.name}, ${where} — ${story.description}`
+      return `${story.name}, ${listJoin(names)} — ${story.description}`
     }
     case 'yearbook-challenge': {
       // The stamped page carries the stories — this line lands the
@@ -558,6 +586,19 @@ const oddOneOutSubject = computed(() => {
     return OrganizationVector[challenge.organization]
   }
   if (challenge?._type === 'treaty-challenge') return treatyMeta(challenge.treaty).shortName
+  return undefined
+})
+
+/** How many countries the club or instrument holds worldwide — the lineup is
+ *  a sample of it, and the roster's eyebrow says which. */
+const oddOneOutTotal = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type === 'membership-challenge') {
+    return organizationSize(challenge.organization)
+  }
+  // The holdout is on the sheet but is not one of the bound — count it in, so
+  // "24 of 192" matches what the roster actually holds.
+  if (challenge?._type === 'treaty-challenge') return treatyPartyCount(challenge.treaty) + 1
   return undefined
 })
 
@@ -652,6 +693,10 @@ const submitMembership = (isoCode: ISOCountryCode) => {
         : undefined
   if (!answered) return
 
+  // Both entry points record the pick here, not just the map tap: a sheet row
+  // is the only way to answer on a phone, and without this the reveal's
+  // "your pick" line vanished for exactly those players.
+  lastGuess.value = isoCode
   gameStore.map.highlighted.clear()
   // Re-aim the live focus frame at the answer rather than clearing it: an
   // active focus suppresses moveToCountry's fly-in, and clearing it would
