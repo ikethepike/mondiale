@@ -1,4 +1,5 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { EASE, MOTION } from '~~/lib/motion'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { keyboardInset } from '~~/lib/use-viewport'
 
@@ -13,8 +14,10 @@ export const SHEET_HANDLE_PX = 28
 
 // A parked transform may miss its stop by a frame's worth of geometry churn
 // (the keyboard collapsing right after a settle) — past this drift the rest
-// is re-snapped.
+// is corrected.
 const REST_DRIFT_PX = 1
+/** Past this the correction is visible, so it glides instead of snapping. */
+const CORRECTION_GLIDE_PX = 8
 
 export interface BottomSheetOptions {
   /** The sheet element (usually a fixed `.pane.sheet.split`). */
@@ -58,9 +61,13 @@ export interface BottomSheetOptions {
  *   keyboard up a swipe blurs `keyboardOwner` instead;
  * - a handle tap toggling full ↔ peek;
  * - a post-rest drift check: a settle that lands mid-geometry-churn (the
- *   keyboard collapsing right after an answer) is re-snapped a frame later,
- *   so a collapse can never park with extra sheet over the fold. The handle
- *   itself stays on screen at every stop — the sheet is always recoverable.
+ *   keyboard collapsing right after an answer) is corrected a frame later —
+ *   snapped if it is a hair, glided if the gap is visible — so a collapse
+ *   can never park half-open. The handle itself stays on screen at every
+ *   stop, so the sheet is always recoverable by hand.
+ *
+ * Every geometry watcher stands down while a finger owns the surface: a
+ * re-settle mid-drag is the classic "the sheet fought me" bug.
  *
  * Dismiss-only sheets (the history drawer's two-stop open/offscreen) stay on
  * useDragSheet directly — a tuck ladder is not their shape.
@@ -81,13 +88,25 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
    */
   const verifyRest = () => {
     const el = options.sheet()
-    if (!el || !options.enabled()) return
-    const y = new DOMMatrixReadOnly(getComputedStyle(el).transform).m42
+    if (!el || !options.enabled() || isDragging()) return
+    // `none` at the full stop, where settling strips the inline transform —
+    // DOMMatrix rejects it, and that is a resting sheet with nothing to fix.
+    const transform = getComputedStyle(el).transform
+    if (transform === 'none') return
+    const y = new DOMMatrixReadOnly(transform).m42
     const target = stops()[stopIndex.value] ?? 0
-    if (Math.abs(y - target) > REST_DRIFT_PX) settleTo(stopIndex.value, { immediate: true })
+    if (Math.abs(y - target) <= REST_DRIFT_PX) return
+    // Correct the miss in kind: a hair of drift is snapped, a real gap
+    // (the keyboard's collapse moved the floor) is glided so the correction
+    // reads as the same movement finishing rather than a second lurch.
+    settleTo(stopIndex.value, {
+      immediate: Math.abs(y - target) < CORRECTION_GLIDE_PX,
+      ease: EASE.cross,
+      duration: MOTION.quick,
+    })
   }
 
-  const { stopIndex, onDragStart, settleTo, release, dragMoved } = useDragSheet({
+  const { stopIndex, onDragStart, settleTo, release, dragMoved, isDragging } = useDragSheet({
     el: options.sheet,
     enabled: options.enabled,
     stops,
@@ -143,6 +162,10 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
       sheetHeight = height
       // The observer's initial fire is the entrance, mid-tween — leave it be.
       if (first || !options.enabled() || stopIndex.value === SHEET_FULL) return
+      // A finger owns the surface: re-settling here would yank the sheet out
+      // from under the drag mid-gesture — exactly the "catches half-open"
+      // feel. The drag's own release re-measures against fresh stops.
+      if (isDragging()) return
       settleTo(stopIndex.value, { immediate: true })
     })
     const sheet = options.sheet()

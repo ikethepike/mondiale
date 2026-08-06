@@ -9,6 +9,13 @@ export const FLICK_PX_PER_MS = 0.55
 export const SHEET_RUBBER = 0.15
 /** Rolling window of pointer samples that decides the release velocity. */
 export const VELOCITY_SAMPLES = 5
+/**
+ * How recent a sample must be to count toward the release velocity, ms.
+ * pointermove stops firing the moment the finger stops, so the window keeps
+ * its pre-pause samples: a finger that dragged fast, HELD, then lifted would
+ * otherwise release at its pre-pause speed and be carried onward as a flick.
+ */
+export const VELOCITY_WINDOW_MS = 120
 const TAP_SLOP_PX = 6
 /** Momentum snap bounds, seconds — a flick lands fast but never blinks. */
 const SNAP_MIN_S = 0.12
@@ -33,12 +40,24 @@ export interface PointerSample {
   t: number
 }
 
-/** Release velocity in px/ms from a rolling sample window — the one home for
- *  flick math; the sheet and the yearbook tape both read it. */
-export const releaseVelocity = (samples: PointerSample[]): number => {
-  const first = samples[0]
+/**
+ * Release velocity in px/ms from a rolling sample window — the one home for
+ * flick math; the sheet and the yearbook tape both read it.
+ *
+ * Pass `now` (release time) to honour VELOCITY_WINDOW_MS: samples that predate
+ * the window are a finger that had already stopped, and reporting their speed
+ * as the release velocity is what makes a deliberate slow drag occasionally
+ * jump a stop on let-go.
+ */
+export const releaseVelocity = (samples: PointerSample[], now?: number): number => {
   const last = samples[samples.length - 1]
-  return first && last && last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0
+  if (!last) return 0
+  // The finger rested before lifting — no throw, wherever it was left is the
+  // intent.
+  if (now !== undefined && now - last.t > VELOCITY_WINDOW_MS) return 0
+  const recent = samples.filter(sample => last.t - sample.t <= VELOCITY_WINDOW_MS)
+  const first = (recent.length > 1 ? recent[0] : samples[0])!
+  return last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0
 }
 
 export interface SettleOptions {
@@ -47,6 +66,14 @@ export interface SettleOptions {
   /** Start the move from this translateY (programmatic entrances). */
   from?: number
   immediate?: boolean
+  /**
+   * Override the ease for THIS move. Programmatic exits want a plain glide —
+   * the default spring's elastic tail reads as a wobble on a dismissal nobody
+   * asked to be playful.
+   */
+  ease?: string
+  /** Override the duration, seconds. Pairs with `ease`. */
+  duration?: number
 }
 
 /**
@@ -66,7 +93,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
 
   const settleTo = (
     index: number,
-    { velocity = 0, from, immediate = false }: SettleOptions = {}
+    { velocity = 0, from, immediate = false, ease, duration }: SettleOptions = {}
   ) => {
     const el = options.el()
     if (!el) return
@@ -90,17 +117,19 @@ export const useDragSheet = (options: DragSheetOptions) => {
     gsap.to(el, {
       y,
       duration:
-        from !== undefined
+        duration ??
+        (from !== undefined
           ? MOTION.slow
           : flicked
             ? clamp(remaining / Math.max(Math.abs(velocity) * 1000, 900), SNAP_MIN_S, SNAP_MAX_S)
-            : SPRING_S,
+            : SPRING_S),
       ease:
-        from !== undefined
+        ease ??
+        (from !== undefined
           ? EASE.enter
           : flicked
             ? (options.momentumEase ?? 'power2.out')
-            : SPRING_EASE,
+            : SPRING_EASE),
       onComplete: land,
     })
   }
@@ -141,7 +170,7 @@ export const useDragSheet = (options: DragSheetOptions) => {
     // drag-start killTweensOf froze mid-flight.
     if (!moved) return settleTo(stopIndex.value)
 
-    const velocity = releaseVelocity(samples)
+    const velocity = releaseVelocity(samples, performance.now())
 
     const stops = options.stops()
     const y = Number(gsap.getProperty(el, 'y'))
@@ -186,5 +215,9 @@ export const useDragSheet = (options: DragSheetOptions) => {
   /** True when the pointer travelled past tap slop — a handle click can bail. */
   const dragMoved = () => moved
 
-  return { stopIndex, onDragStart, settleTo, release, dragMoved }
+  /** True while a finger owns the surface — geometry watchers must stand down
+   *  rather than re-settle the sheet out from under the drag. */
+  const isDragging = () => dragging
+
+  return { stopIndex, onDragStart, settleTo, release, dragMoved, isDragging }
 }

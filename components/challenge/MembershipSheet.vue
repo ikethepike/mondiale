@@ -77,6 +77,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
+import { EASE, MOTION } from '~~/lib/motion'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
 import { SHEET_FULL, SHEET_HANDLE_PX, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
@@ -151,10 +152,12 @@ const {
   enabled: () => isPhone.value,
   dragExclude: '.search',
   keyboardOwner: () => searchEl.value,
-  // A flick carries exactly one stop (lib/use-drag-sheet.ts), so a hard swipe
-  // down from full lands on peek, never tucked. Deliberate: the list can't be
-  // flung away mid-question.
-  momentumEase: 'power1.in',
+  // The flick ease is left at the shared decelerating default. An accelerating
+  // one (this sheet had power1.in) restarts the move from a standstill just as
+  // the finger lets go at speed — the sheet visibly hesitates, then carries on,
+  // which reads as catching half-open. A flick still carries exactly one stop
+  // (lib/use-drag-sheet.ts), so a hard swipe from full lands on peek, never
+  // tucked: the list can't be flung away mid-question.
   onSettle: reserve,
 })
 
@@ -196,7 +199,12 @@ watch(isPhone, reserve)
 // keyboard's geometry churn.
 watch(
   () => props.settled,
-  settled => settled && isPhone.value && settleTo(SHEET_TUCKED)
+  settled =>
+    settled &&
+    isPhone.value &&
+    // A plain glide, not the drag spring: nobody flicked this, so its elastic
+    // tail would read as a wobble on the way out.
+    settleTo(SHEET_TUCKED, { ease: EASE.cross, duration: MOTION.base })
 )
 
 // Content changed under the scroller — re-judge the edges once it has laid out.
