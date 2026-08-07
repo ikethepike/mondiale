@@ -27,6 +27,13 @@ kill_timeout = 15
 
 [env]
   PORT = "3000"
+  # One shutdown owner: Nitro's bundled http-graceful-shutdown also traps
+  # SIGINT/SIGTERM and calls process.exit the moment open connections hit
+  # zero — which is instantly, because the drain just closed them. That exit
+  # lands BEFORE the drain's lease releases reach Redis, stranding every live
+  # room on a dead machine id until the ownership TTL (~90s of failed
+  # fly-replay reconnects). graceful-shutdown.ts owns the whole sequence.
+  NITRO_SHUTDOWN_DISABLED = "1"
 
 [http_service]
   internal_port = 3000

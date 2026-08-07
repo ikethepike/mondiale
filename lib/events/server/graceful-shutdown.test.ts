@@ -78,6 +78,22 @@ describe('drainForShutdown', () => {
     await slow
   })
 
+  it('logs a failed release instead of swallowing it', async () => {
+    vi.stubEnv('FLY_MACHINE_ID', 'machine-a')
+    const redis = fakeRedis()
+    await claimGameOwnership(asRedis(redis), 'game-4', 'machine-a')
+    redis.eval = async () => {
+      throw new Error('redis unreachable')
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const io = fakeIo(['game-4'])
+    await drainForShutdown({ io: io as unknown as GameServer, redis: asRedis(redis) })
+
+    expect(warn).toHaveBeenCalledWith('Drain: 1/1 lease release(s) failed — expiring by TTL')
+    warn.mockRestore()
+  })
+
   it('refuses new game tasks once the drain has begun', async () => {
     const redis = fakeRedis()
     const io = fakeIo([])

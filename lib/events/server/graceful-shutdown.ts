@@ -14,6 +14,13 @@ let registered = false
  * sockets until the TCP reset (players staring at a frozen board) and hold
  * its ownership leases until the TTL lapses (reconnects replayed to a corpse).
  *
+ * This handler must be the ONLY signal owner — NITRO_SHUTDOWN_DISABLED in
+ * fly.toml keeps Nitro's bundled http-graceful-shutdown off SIGINT/SIGTERM.
+ * With both registered, Nitro sees zero open connections the moment step 3
+ * closes the sockets and process.exits before the releases in step 5 reach
+ * Redis: the exact replayed-to-a-corpse stall this drain exists to prevent,
+ * wearing a clean exit code.
+ *
  * The order below is load-bearing, and the invariant is WRITES BEFORE
  * RELEASE: a queue task that passed its lease check is still allowed to save,
  * so the lease must not move until every in-flight task has settled.
@@ -61,9 +68,13 @@ export const drainForShutdown = async ({
   ])
 
   if (machine && settled) {
-    await Promise.allSettled(
+    const releases = await Promise.allSettled(
       [...gameIds].map(gameId => releaseGameOwnership(redis, gameId, machine))
     )
+    const failed = releases.filter(release => release.status === 'rejected').length
+    if (failed) {
+      console.warn(`Drain: ${failed}/${releases.length} lease release(s) failed — expiring by TTL`)
+    }
   } else if (!settled) {
     console.warn(`Drain settle cap hit — leaving ${gameIds.size} lease(s) to expire by TTL`)
   }
