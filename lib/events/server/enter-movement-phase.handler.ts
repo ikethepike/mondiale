@@ -11,6 +11,7 @@ import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
+import { armFinalQuestionCap, armIndividualGateCap } from './seat-exits'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -179,6 +180,14 @@ export const enterMovementPhaseHandler = defineGameHandler(
       }
       await server.updateGameState(game)
       server.emit({ event: 'update', game }, eventTarget)
+      // A gate only a submit resolves gets its server-owned cap the moment
+      // the seat lands on it.
+      if (move.challenge?._type === 'individual-challenge') {
+        armIndividualGateCap({ io, redis, socket, eventTarget }, player)
+      }
+      if (move.challenge?._type === 'final-challenge') {
+        armFinalQuestionCap({ io, redis, socket, eventTarget }, player)
+      }
     } else {
       player.phase = 'movement-summary'
       await server.updateGameState(game)

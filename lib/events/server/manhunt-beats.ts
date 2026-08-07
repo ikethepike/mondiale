@@ -27,6 +27,7 @@ import {
   settleRoundScores,
   type RearmOptions,
 } from './round-engine'
+import { armGroupScoresCap } from './seat-exits'
 
 /**
  * Manhunt's beat engine: chain-turns' single-actor clock (the despot's move
@@ -416,7 +417,7 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
 
     // The final beat's markers are still in the blob — they price proximity.
     const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
-    await settleRoundScores({
+    const advanced = await settleRoundScores({
       game: fresh,
       round,
       order: [...current.state.detectives, current.despotId],
@@ -428,6 +429,12 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
     // Not 'group-challenge-scored': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'manhunt-updated', game: fresh }, ctx.eventTarget)
+    // Every advanced seat now owes the table a movement request only a
+    // click sends — cap each so a dead tab can't freeze the room here.
+    for (const playerId of advanced) {
+      const seat = fresh.players[playerId]
+      if (seat) armGroupScoresCap(ctx, seat)
+    }
     // The secret has served its round; the trail lives on in the outcome.
     await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
   })

@@ -23,6 +23,7 @@ import {
   settleRoundScores,
   type RearmOptions,
 } from './round-engine'
+import { armGroupScoresCap } from './seat-exits'
 
 /**
  * Unique or Bust's beat engine: manhunt's briefing gate (rules cards every
@@ -199,7 +200,7 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    await settleRoundScores({
+    const advanced = await settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,
@@ -211,6 +212,12 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     // Not 'group-challenge-scored': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'unique-updated', game: fresh }, ctx.eventTarget)
+    // Every advanced seat now owes the table a movement request only a
+    // click sends — cap each so a dead tab can't freeze the room here.
+    for (const playerId of advanced) {
+      const seat = fresh.players[playerId]
+      if (seat) armGroupScoresCap(ctx, seat)
+    }
     // The sheet has served its round; the words live on in `state.results`.
     await ctx.redis.del(uniqueKey(fresh.id, roundIndexOf(fresh)))
   })

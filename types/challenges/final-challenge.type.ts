@@ -15,6 +15,10 @@ export const GAUNTLET_LENGTH: { [difficulty in GameDifficulty]: number } = {
 
 export interface FinalChallenge {
   _type: 'final-challenge'
+  /** Monotonic question counter — the staleness token for the gauntlet's
+   *  server-owned question cap. Bumps on every consumed answer or cap miss;
+   *  absent on older persisted gauntlets (treated as 0). */
+  turn?: number
   difficulty: GameDifficulty
   /** Remaining questions; the head is the live one. Redeals may replace it. */
   challenges: FinalChallengeItem[]

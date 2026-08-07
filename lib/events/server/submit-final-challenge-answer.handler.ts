@@ -1,8 +1,46 @@
 import { playableCountries } from '~~/lib/game-rules'
+import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
+import type { Game } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
+import { armFinalQuestionCap } from './seat-exits'
 import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+
+/**
+ * One missed question, one shape: burn a life and advance (a missed LAST
+ * question is replaced, never skipped — victory must end on a correct
+ * answer), or report the run is over. Shared by the wrong-answer branch
+ * below and the gauntlet's question cap (seat-exits.ts). Bumps the
+ * gauntlet's turn token; the caller owns the save and what follows a
+ * knockout.
+ */
+export const applyFinalMiss = async ({
+  game,
+  gauntlet,
+}: {
+  game: Game
+  gauntlet: FinalChallenge
+}): Promise<{ survives: boolean }> => {
+  const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
+  const currentChallenge = gauntlet.challenges[0]
+  gauntlet.turn = (gauntlet.turn ?? 0) + 1
+  let survives = gauntlet.lives > 0
+  if (survives) {
+    gauntlet.lives -= 1
+    if (gauntlet.challenges.length > 1) {
+      gauntlet.challenges.shift()
+    } else if (currentChallenge) {
+      const replacement = dealReplacementChallenge({
+        game,
+        exclude: [currentChallenge._type],
+      })
+      if (replacement) gauntlet.challenges[0] = replacement
+      else survives = false
+    }
+  }
+  return { survives }
+}
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
   'submit-final-challenge-answer',
@@ -17,8 +55,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
 
     // Deferred module: only loads once a game reaches the gauntlet (#110).
-    const { dealReplacementChallenge, isCorrectFinalAnswer } =
-      await import('~~/lib/challenges/final-challenge')
+    const { isCorrectFinalAnswer } = await import('~~/lib/challenges/final-challenge')
 
     const currentMove = player.moves[0]
     if (!currentMove) {
@@ -80,27 +117,11 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     const gauntlet = currentMove.challenge
     if (correct) {
       // Correct: the question is now consumed.
+      gauntlet.turn = (gauntlet.turn ?? 0) + 1
       gauntlet.answeredCorrect += 1
       gauntlet.challenges.shift()
     } else {
-      // A life absorbs the miss: burn the question and advance. Victory must
-      // end on a correct answer, so a missed LAST question is replaced with a
-      // fresh one instead of skipped — burn-and-advance can never empty the
-      // queue.
-      let survives = gauntlet.lives > 0
-      if (survives) {
-        gauntlet.lives -= 1
-        if (gauntlet.challenges.length > 1) {
-          gauntlet.challenges.shift()
-        } else {
-          const replacement = dealReplacementChallenge({
-            game,
-            exclude: [currentChallenge._type],
-          })
-          if (replacement) gauntlet.challenges[0] = replacement
-          else survives = false
-        }
-      }
+      const { survives } = await applyFinalMiss({ game, gauntlet })
 
       // Out of lives: knocked out of the gauntlet. The result pause runs
       // OUTSIDE the per-game queue — holding the lock for five seconds would
@@ -154,10 +175,14 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       if (fresh && freshPlayer?.resolving) {
         freshPlayer.resolving = false
         await server.updateGameState(fresh)
-        return server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+        server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+      } else {
+        // Latch already cleared (or game gone) — just reveal the last state.
+        server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
       }
-      // Latch already cleared (or game gone) — just reveal the last state.
-      server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
+      // The next question is live from here: its cap starts now.
+      const seated = fresh?.players[eventTarget.playerId]
+      if (seated) armFinalQuestionCap({ io, redis, socket, eventTarget }, seated)
     })
   },
   { player: 'warn' }

@@ -1,9 +1,33 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
+import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 import { defineGameHandler } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+
+/**
+ * A blocked gate: the record lands before the moves are forfeited — without
+ * it a blocked walk is indistinguishable from a clean one, on the board and
+ * in the round history. Shared by the wrong-answer branch below and the
+ * gate cap's timeout (seat-exits.ts), so a forfeit is one shape everywhere.
+ */
+export const forfeitGate = (
+  game: Game,
+  player: Player,
+  currentMove: NonNullable<Player['moves']>[number]
+) => {
+  const turn = latestRound(game)?.playerTurns[player.id]
+  const lastMove = player.moves[player.moves.length - 1]
+  if (turn && lastMove) {
+    turn.blocked = {
+      atTile: currentMove.endTile.position,
+      forfeitedSteps: lastMove.endTile.position - player.currentPosition,
+    }
+  }
+  player.moves = []
+}
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
@@ -55,18 +79,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
       )
       player.moves.shift()
     } else {
-      // The block goes on the record before the moves are forfeited — without
-      // it a blocked walk is indistinguishable from a clean one, on the board
-      // and in the round history.
-      const turn = latestRound(game)?.playerTurns[player.id]
-      const lastMove = player.moves[player.moves.length - 1]
-      if (turn && lastMove) {
-        turn.blocked = {
-          atTile: currentMove.endTile.position,
-          forfeitedSteps: lastMove.endTile.position - player.currentPosition,
-        }
-      }
-      player.moves = []
+      forfeitGate(game, player, currentMove)
     }
 
     await server.updateGameState(game)
