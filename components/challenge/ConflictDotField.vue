@@ -1,14 +1,17 @@
 <template>
-  <div ref="root" class="conflict-dot-field" aria-hidden="true">
+  <div ref="root" class="conflict-dot-field" :style="frameStyle" aria-hidden="true">
     <!-- Mirrors the committed camera box (pans in between ride the container's
-         compositor transform), preserveAspectRatio=none so map coordinates
-         land exactly where the map draws them. The svg paints a bleed past
-         every edge so the ride-along never slides unpainted ground into view.
-         Dot radius counter-scales so zoom never balloons it. -->
+         compositor transform). `boxStyle` pins this to the map's PAINTED rect,
+         so preserveAspectRatio=none is an exact identity and map coordinates
+         land where the map draws them — anchoring to our own containing block
+         instead let the map's recede scale slide the dots off their country.
+         The svg paints a bleed past every edge so the ride-along never slides
+         unpainted ground into view. Dot radius counter-scales so zoom never
+         balloons it. -->
     <svg
       v-if="fieldBox"
       :viewBox="`${fieldBox.x} ${fieldBox.y} ${fieldBox.w} ${fieldBox.h}`"
-      :style="{ inset: OVERLAY_BLEED_INSET }"
+      :style="boxStyle"
       preserveAspectRatio="none"
     >
       <circle
@@ -42,13 +45,7 @@
 </template>
 <script lang="ts" setup>
 import { CONFLICT_ERAS, type ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
-import {
-  bleedBox,
-  OVERLAY_BLEED_INSET,
-  useMapPanTrack,
-  useMapViewBox,
-  WORLD_MAP_WIDTH,
-} from '~~/lib/use-map-viewbox'
+import { bleedBox, useMapPanTrack, useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
 
 /**
  * A country's recorded conflict history as dots in map space, arriving one era
@@ -69,7 +66,7 @@ const props = defineProps<{
 
 const { viewBox } = useMapViewBox()
 const root = ref<HTMLElement>()
-useMapPanTrack(root)
+const { boxStyle, frameStyle } = useMapPanTrack(root)
 
 /** The committed camera grown by the overlay bleed — what the svg draws. */
 const fieldBox = computed(() => (viewBox.value?.w ? bleedBox(viewBox.value) : undefined))
@@ -120,12 +117,13 @@ const chips = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+// Both boxes come inline from useMapPanTrack, pinned to the map's painted
+// rect — one source. These are only the pre-measurement fallback.
 .conflict-dot-field {
   inset: 0;
   position: absolute;
   pointer-events: none;
 
-  // The bleed inset comes inline from OVERLAY_BLEED_INSET — one source.
   svg {
     position: absolute;
     display: block;

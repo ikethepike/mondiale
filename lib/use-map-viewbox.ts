@@ -26,7 +26,8 @@ export const COMMIT_DRIFT = 0.2
  * painted edge into view before the next commit repaints it.
  */
 export const OVERLAY_BLEED = 0.25
-/** The bleed as a CSS inset — same constant, for the overlay's own box. */
+/** The bleed as a CSS inset — the first-frame fallback, before the map's
+ *  painted rect has been measured (see `overlayBox`). */
 export const OVERLAY_BLEED_INSET = `${-OVERLAY_BLEED * 100}%`
 
 /** `box` grown by the bleed on every side — the viewBox a bled overlay draws. */
@@ -35,6 +36,34 @@ export const bleedBox = (box: MapViewBox): MapViewBox => ({
   y: box.y - box.h * OVERLAY_BLEED,
   w: box.w * (1 + OVERLAY_BLEED * 2),
   h: box.h * (1 + OVERLAY_BLEED * 2),
+})
+
+/** A screen-space box in CSS pixels, viewport-relative (a DOMRect's shape). */
+export interface ScreenRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * The map's PAINTED rect grown by the bleed per side — the box a bled overlay
+ * must occupy for its `bleedBox` viewBox to land on the map's own projection.
+ *
+ * Anchoring to the painted rect (not to whatever containing block the overlay
+ * happens to inherit) is the whole fix: an overlay is a SIBLING of the map, so
+ * it sees neither `.game-map`'s recede `transform: scale(.8)` nor a harness
+ * that offsets the map's box. Both displaced the ghost off its own countries.
+ *
+ * Pairs with `bleedBox`: same fraction, same centre, so aspect is preserved and
+ * the svg's `preserveAspectRatio="none"` is an exact identity rather than a
+ * stretch.
+ */
+export const overlayBox = (rect: ScreenRect) => ({
+  left: rect.x - rect.width * OVERLAY_BLEED,
+  top: rect.y - rect.height * OVERLAY_BLEED,
+  width: rect.width * (1 + OVERLAY_BLEED * 2),
+  height: rect.height * (1 + OVERLAY_BLEED * 2),
 })
 
 // --- The singleton poller -----------------------------------------------------
@@ -51,15 +80,50 @@ let lastRaw = ''
 let frame: number | undefined
 let mapSvg: SVGSVGElement | null = null
 
+/**
+ * The map svg's painted rect, re-read every frame it moves. Deliberately
+ * `getBoundingClientRect` on the SVG, not `clientWidth` on a wrapper: it
+ * returns the POST-transform box, so the recede scale and any containing-block
+ * offset both land in one read. Per-frame on purpose — the recede is a CSS
+ * transition, so a resize-gated measurement would lag it for its whole run.
+ *
+ * (GameMap's own `measureMapRect` reads the UNtransformed wrapper, because the
+ * camera's aspect must not follow a mid-recede scale. Opposite needs, opposite
+ * measurements — both correct for their purpose.)
+ */
+const paintedRect = ref<ScreenRect>()
+
 interface PanTracked {
   el: HTMLElement
   size: { w: number; h: number }
 }
 const tracked = new Set<PanTracked>()
 
+/** The pan ride-along converts map-space drift to pixels with this size, so it
+ *  must be the PAINTED size — `clientWidth` is pre-transform and would drift the
+ *  slide by the recede's scale factor. */
 const measureTracked = (item: PanTracked) => {
-  item.size.w = item.el.clientWidth
-  item.size.h = item.el.clientHeight
+  const rect = paintedRect.value
+  item.size.w = rect ? rect.width : item.el.clientWidth
+  item.size.h = rect ? rect.height : item.el.clientHeight
+}
+
+const readPaintedRect = () => {
+  if (!mapSvg?.isConnected) return
+  const rect = mapSvg.getBoundingClientRect()
+  if (!rect.width || !rect.height) return
+  const previous = paintedRect.value
+  if (
+    previous &&
+    previous.x === rect.x &&
+    previous.y === rect.y &&
+    previous.width === rect.width &&
+    previous.height === rect.height
+  ) {
+    return
+  }
+  paintedRect.value = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  for (const item of tracked) measureTracked(item)
 }
 
 /** Slide every tracked overlay by the pan since the last commit — compositor
@@ -89,6 +153,10 @@ const commit = () => {
 const readViewBox = () => {
   frame = requestAnimationFrame(readViewBox)
   if (!mapSvg?.isConnected) mapSvg = document.querySelector('.game-map svg')
+  // Before the viewBox early-out: the map's box moves on its own (recede
+  // transition, resize, a harness offset) while the camera holds perfectly
+  // still, and an overlay anchored to a stale rect drifts off the map.
+  readPaintedRect()
   const attribute = mapSvg?.getAttribute('viewBox') ?? ''
   if (attribute === lastRaw) {
     // The camera held still for a frame: land any outstanding pan drift.
@@ -152,6 +220,7 @@ const ledger = createCameraLedger(
     lastRaw = ''
     drifted = false
     currentBox = undefined
+    paintedRect.value = undefined
     window.addEventListener('resize', remeasureAll)
     frame = requestAnimationFrame(readViewBox)
   },
@@ -210,6 +279,11 @@ export const useMapViewBox = () => {
  * Reactive on purpose: the mount-time measurement lands after the first
  * render, and a consumer's computed must re-run when it does — it only
  * mutates at mount/resize, so the poller's per-frame proxy reads stay cheap.
+ *
+ * `boxStyle` is the overlay's own box, pinned to the map's PAINTED rect (see
+ * `overlayBox`). Bled overlays bind it instead of a bare `inset` so they stay
+ * registered with the map through the recede scale and any containing-block
+ * offset — never their own parent's box, which is a different element.
  */
 export const useMapPanTrack = (el: Ref<HTMLElement | undefined>) => {
   const size = reactive({ w: 0, h: 0 })
@@ -228,5 +302,32 @@ export const useMapPanTrack = (el: Ref<HTMLElement | undefined>) => {
     ledger.release(token)
     token = undefined
   })
-  return { size }
+
+  const pinned = (box: { left: number; top: number; width: number; height: number }) => ({
+    position: 'fixed' as const,
+    inset: 'auto',
+    left: `${box.left}px`,
+    top: `${box.top}px`,
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+  })
+
+  /** The BLED svg box — pairs with a `bleedBox` viewBox. */
+  const boxStyle = computed(() => {
+    const rect = paintedRect.value
+    // Until the map is measurable, fall back to the old containing-block
+    // inset: right whenever the boxes already agree, and only ever a frame.
+    if (!rect) return { inset: OVERLAY_BLEED_INSET }
+    return pinned(overlayBox(rect))
+  })
+
+  /** The map's painted rect exactly — for layers positioned in PERCENT of the
+   *  unbled camera box (`toScreenPercent`), which the bleed would rescale. */
+  const frameStyle = computed(() => {
+    const rect = paintedRect.value
+    if (!rect) return {}
+    return pinned({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
+  })
+
+  return { size, boxStyle, frameStyle }
 }
