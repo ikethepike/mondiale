@@ -216,8 +216,13 @@
          world zoom, so the roster gets its own surface and its rows answer.
          Keyed on the lineup: a gauntlet can deal two odd-one-out gates back to
          back (a club then a treaty), and the same mounted sheet would carry its
-         post-answer tuck, its typed filter and its scroll position into the
-         next question — a 28px handle where the roster should be. -->
+         typed filter and its scroll position into the next question.
+
+         It leaves on the answer rather than parking as a handle — the roster
+         is the question's surface and its rows are dead the moment one is
+         picked. The exit lives in the sheet itself (`settled`): the parked
+         transform and the tween that owns it are the composable's, so nothing
+         out here can slide the sheet without being fought for the element. -->
     <MembershipSheet
       v-if="oddOneOutSubject && !showInterstitial"
       :key="membershipCountries.join()"
