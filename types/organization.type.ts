@@ -23,10 +23,6 @@ export type Organization = {
   regions: Region[]
 }
 
-export interface OrganizationMembership {
-  organization: Organization
-}
-
 /**
  * What each club actually is — the fact a membership question is really
  * teaching, and the one "X is the odd one out" never says. Editorial, like

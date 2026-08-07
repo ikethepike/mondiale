@@ -47,7 +47,7 @@ const GROUPS: Record<ChallengeGroupId, ChallengeGroup> = CHALLENGE_GROUPS
 
 export type ChallengeOverrides = Partial<Record<ChallengeGroupId, boolean>>
 
-export const isValidChallengeGroupId = (value: unknown): value is ChallengeGroupId =>
+const isValidChallengeGroupId = (value: unknown): value is ChallengeGroupId =>
   // Object.hasOwn, not `in` — `in` walks the prototype chain, so keys like
   // 'toString' would validate and be stored into game state.
   typeof value === 'string' && Object.hasOwn(CHALLENGE_GROUPS, value)

@@ -353,8 +353,6 @@ export type ServerEventData =
       at: number
     }
 
-export type ServerEvent = ServerEventData['event']
-
 /** The server events that carry a full game snapshot. */
 export type GameServerEvent = Extract<ServerEventData, { game: Game }>
 
