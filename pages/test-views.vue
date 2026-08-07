@@ -3051,6 +3051,11 @@ $harness-bar-height: 3.4rem;
   @media screen and (max-width: $phone) {
     height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
+
+    // The scene inside is sized from --viewport-height, so shortening the
+    // frame alone leaves it a bar's-worth too tall and its footer lands
+    // under the fold. Re-point the variable for the subtree instead.
+    --viewport-height: calc(100dvh - #{$harness-bar-height});
   }
 }
 

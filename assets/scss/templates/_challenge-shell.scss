@@ -26,6 +26,28 @@
     pointer-events: none;
   }
 
+  // A fixed-height flex column whose items default to `min-height: auto`
+  // can't shrink below its content, so on a short viewport the tail — the
+  // empire scrubber's year edges, a tall option grid, a photo dock — slides
+  // under the fold and the board's `overflow: hidden` clips it. The middle
+  // gives way first: the stage yields its room, and only then does the
+  // footer scroll internally, so the console never leaves the screen.
+  > * {
+    min-height: 0;
+  }
+
+  > .stage,
+  > section:not(.shell-footer) {
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  > footer,
+  .shell-footer {
+    flex-shrink: 1;
+    overflow-y: auto;
+  }
+
   // The action strip against the bottom edge. Views add their own layout;
   // the berth and the bottom clearance (home indicator or software keyboard,
   // via --bottom-clearance) live here. The lift wears a FAST ease for feel —
