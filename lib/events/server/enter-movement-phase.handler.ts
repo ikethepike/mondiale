@@ -17,15 +17,7 @@ import type { ClientEventTarget } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
 import { moveStopTile } from '~~/lib/player-status'
-
-/** Phases that no longer take part in a round's movement. */
-export const SETTLED_PHASES = ['movement-summary', 'victory', 'kicked']
-
-/** Phases that live INSIDE the round (or before the game): never walkable.
- *  Walking one ejects the seat to 'movement-summary' mid-round — the reveal
- *  flips seats to 'group-challenge' with `moves: []`, and a watchdog tick
- *  armed before the reveal (up to 8s earlier) lands exactly there. */
-export const ROUND_BOUND_PHASES = ['naming', 'waiting-for-game', 'tutorial', 'group-challenge']
+import { ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
 
 const STEP_INTERVAL = 500
 const NEW_ROUND_PAUSE = 2000

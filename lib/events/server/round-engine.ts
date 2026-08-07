@@ -4,7 +4,7 @@ import type { Game, Round } from '~~/types/game.types'
 import { useServerSideEvents, type GameServer, type GameSocket } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { movesForScoredPoints, startWalk } from './moves'
-import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from './turn-timing'
+import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 
 /**
  * The scaffolding every clocked round engine (chain-turns, timeline-turns,

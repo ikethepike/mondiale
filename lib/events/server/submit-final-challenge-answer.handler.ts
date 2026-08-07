@@ -2,7 +2,7 @@ import { playableCountries } from '~~/lib/game-rules'
 import { defineGameHandler } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { GATE_RESULT_HOLD_MS } from './turn-timing'
+import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
   'submit-final-challenge-answer',

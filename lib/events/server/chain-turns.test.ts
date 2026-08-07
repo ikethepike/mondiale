@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyChainMove, currentBorderChain, rearmBorderChain } from './chain-turns'
 import { submitChainMoveHandler } from './submit-chain-move.handler'
-import { BRIEFING_CAP_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'

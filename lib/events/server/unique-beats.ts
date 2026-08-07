@@ -15,7 +15,7 @@ import type { UniqueCategoryId, UniqueOrBustChallenge } from '~~/types/challenge
 import type { Game } from '~~/types/game.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from '~~/lib/round-beats'
 import {
   scheduleDeadlineTask,
   scheduleEngineTask,

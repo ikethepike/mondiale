@@ -18,7 +18,7 @@ import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,

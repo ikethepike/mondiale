@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
-import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from '~~/lib/events/server/turn-timing'
+import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from '~~/lib/round-beats'
 
 /**
  * The gate shell's relatch, which is the only thing that hands a still-mounted

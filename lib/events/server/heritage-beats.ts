@@ -7,7 +7,7 @@ import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { scheduleDeadlineTask, scheduleRevealTask, settleRoundScores } from './round-engine'
-import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from './turn-timing'
+import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from '~~/lib/round-beats'
 
 /**
  * Heritage Hunt's beat engine, the pattern sibling of chain-turns: one photo

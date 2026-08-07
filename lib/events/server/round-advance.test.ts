@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   ADVANCE_WATCHDOG_MAX_TICKS,
-  ROUND_BOUND_PHASES,
-  SETTLED_PHASES,
   shouldArmAdvanceWatchdog,
   tableIsSettled,
 } from './enter-movement-phase.handler'
+import { ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
 import { isStrandedSubmitter } from './join.event'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 
@@ -115,7 +114,7 @@ describe('the phase partition', () => {
 
   it('agrees with the exported sets, exhaustively over every phase', () => {
     const buckets = Object.values(PARTITION)
-    for (const [phase, bucket] of Object.entries(PARTITION)) {
+    for (const [phase, bucket] of Object.entries(PARTITION) as [PlayerPhase, string][]) {
       expect(ROUND_BOUND_PHASES.includes(phase)).toBe(bucket === 'round-bound')
       expect(SETTLED_PHASES.includes(phase)).toBe(bucket === 'settled')
     }

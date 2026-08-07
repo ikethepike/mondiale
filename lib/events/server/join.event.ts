@@ -5,11 +5,8 @@ import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
-import {
-  scheduleMovementPhase,
-  SETTLED_PHASES,
-  tableIsSettled,
-} from './enter-movement-phase.handler'
+import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
+import { SETTLED_PHASES } from '~~/lib/round-beats'
 import { movesForScoredPoints, startWalk } from './moves'
 import { rearmLiveRound } from './rearm-round'
 

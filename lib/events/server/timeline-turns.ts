@@ -12,7 +12,7 @@ import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS } from './turn-timing'
+import { FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,

@@ -3,7 +3,7 @@ import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { GATE_RESULT_HOLD_MS } from './turn-timing'
+import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
