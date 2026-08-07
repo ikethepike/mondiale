@@ -63,6 +63,8 @@ export interface GateChallengeContext {
   duelOutcomes: Ref<DuelOutcome[]>
   trendDuelOutcomes: Ref<TrendDuelOutcome[]>
   submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
+  /** Hand the gate back when its clock expires — see `giveUp` below. */
+  giveUp: (hintsUsed?: number) => void
 }
 
 const GATE_CHALLENGE: InjectionKey<GateChallengeContext> = Symbol('gate-challenge')
@@ -155,6 +157,23 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   }
 
   /**
+   * The clock ran out. ONE path for it, because every timed gate needs the
+   * same two things right and four of them had only the first: a token the
+   * verdict rejects, and `remainingFraction: 0`.
+   *
+   * Omitting the clock is the quiet half. `gateLeapSteps` reads a missing
+   * fraction as "untimed" and pays the pot WHOLE, so a give-up token that
+   * ever turns out to be a right answer collects the largest leap in the game
+   * — which is exactly the errata swap bug, one layer down. The token is
+   * verified today, so this is the belt to that braces.
+   */
+  const giveUp = (hintsUsed?: number) => {
+    const active = currentMove.value?.challenge
+    if (active?._type !== 'individual-challenge') return
+    submitAnswer(wrongTokenFor(active), { remainingFraction: 0, hintsUsed })
+  }
+
+  /**
    * Back-to-back gates reach a still-mounted shell (the walk between them is
    * quick). Relatch and bump `gateSeq`; the variant component remounts and its
    * own state goes with it.
@@ -192,6 +211,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     duelOutcomes,
     trendDuelOutcomes,
     submitAnswer,
+    giveUp,
   }
 
   provide(GATE_CHALLENGE, context)

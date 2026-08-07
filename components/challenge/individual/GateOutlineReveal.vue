@@ -15,7 +15,7 @@
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { wait } from '~~/lib/time'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { OUTLINE_REVEAL_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -24,7 +24,7 @@ import type { Country } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer } = useGateChallenge()
+const { status, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
 // Preview flash → sweep-away → clock-synced border draw, all size-relative.
 const {
@@ -70,7 +70,7 @@ watch(
         clearInterval(timer)
         if (status.value) return
         gameStore.map.solo = false
-        submitAnswer(wrongTokenFor(props.challenge))
+        giveUp()
       }, 1000)
     })
   },

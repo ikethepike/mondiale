@@ -313,8 +313,12 @@ export const poleOfInaccessibility = (
     }
   }
 
+  // The loop only shrinks its step when NO direction improves, so a ring that
+  // keeps offering tiny gains could climb for a long time — on the client's
+  // main thread. The guard trades a possible hang for a slightly coarser
+  // anchor; real rings converge in a few dozen passes.
   const precision = cell / 64
-  for (let step = cell / 2; step > precision;) {
+  for (let step = cell / 2, guard = 0; step > precision && guard < ANCHOR_MAX_PASSES; guard++) {
     let climbed = false
     for (const [dx, dy] of ANCHOR_STEPS) {
       const x = best[0] + dx * step
@@ -329,8 +333,16 @@ export const poleOfInaccessibility = (
     if (!climbed) step /= 2
   }
 
-  return { point: best, radius: Math.max(0, bestDistance) }
+  // A non-positive distance means the search never got inside the ring, so
+  // `best` sits on someone else's land. Saying so lets the caller fall back to
+  // its box centre; clamping the radius to 0 instead would hand back an anchor
+  // that looks usable and is not.
+  if (bestDistance <= 0) return undefined
+  return { point: best, radius: bestDistance }
 }
+
+/** Hill-climb passes before the anchor is called good enough. */
+const ANCHOR_MAX_PASSES = 200
 
 const ANCHOR_STEPS = [
   [1, 0],

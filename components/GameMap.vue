@@ -988,13 +988,22 @@ watch(
  * any country that curves around another (Norway, Sweden, Chile, Croatia,
  * Vietnam), and errata's stage IS the labels.
  *
- * Memoized because the acronym register asks for all ~219 at once — a measured
- * ~180ms sweep that must happen exactly one time.
+ * Memoized because the acronym register asks for ~150 of them in one go, and
+ * the search is the expensive part of this whole feature: ~180ms desktop for
+ * the full sweep, against ~10ms for a settle's overlap solve and 2.8ms for its
+ * layout. The cache lives with GameMap, which the layout keeps mounted, so
+ * that sweep is once per SESSION and only in easy mode — accepted rather than
+ * engineered away, because the alternative is handing the acronyms back their
+ * box centres and Norway's "NO" back to Sweden.
+ *
+ * Rings are resampled to 128 points before the search (see ANCHOR_RING_POINTS).
+ * Coarser budgets were measured: 96 and below still land inside every country,
+ * but move some anchors ~48 units, where 128 reproduces the full-resolution
+ * answer exactly. Not a trade worth the milliseconds.
  */
 const anchorCache = new Map<string, { point: [number, number]; radius: number } | undefined>()
 const labelAnchorFor = (code: MapCode) => {
-  const cached = anchorCache.get(code)
-  if (cached !== undefined || anchorCache.has(code)) return cached
+  if (anchorCache.has(code)) return anchorCache.get(code)
 
   const path = MAP_PATHS[code]
   const ring = path ? largestRing(path) : undefined
@@ -1064,8 +1073,6 @@ const ensureLabels = () => {
   settleSoon()
 }
 
-/** Offsets a crowded label tries, nearest first. Vertical before horizontal —
- *  the cartographic convention, and it keeps a name over its own latitude. */
 /** Directions a crowded label tries, nearest first. Vertical before horizontal —
  *  the cartographic convention, and it keeps a name over its own latitude. */
 const LABEL_NUDGES: [number, number][] = [
@@ -1127,14 +1134,37 @@ const placeLabels = () => {
   const shiftCap = (named: boolean) =>
     (named ? LABEL_MAX_NAME_SHIFT_PX : LABEL_MAX_SHIFT_PX) * unitsPerPx
 
-  // Biggest country first: it keeps its natural spot and the small ones move.
-  const ordered = labels
-    .map(label => ({ label, room: Number(label.dataset.room) || 0 }))
-    .sort((a, b) => b.room - a.room)
-
   type Box = { x: number; y: number; width: number; height: number }
+
+  // Measure everything BEFORE placing anything. Reading a box between writes
+  // makes each read flush layout; batched, the whole sweep is one.
+  const measured = labels.map(label => {
+    label.style.display = ''
+    label.setAttribute('x', label.dataset.anchorX ?? '0')
+    label.setAttribute('y', label.dataset.anchorY ?? '0')
+    return label
+  })
+  const entries = measured.map(label => ({
+    label,
+    room: Number(label.dataset.room) || 0,
+    size: label.getBBox(),
+  }))
+
+  // Biggest country first: it keeps its natural spot and the small ones move.
+  const ordered = entries.sort((a, b) => b.room - a.room)
+
+  /**
+   * Overlap area against everything already placed — 0 means a clean slot.
+   *
+   * A plain scan, deliberately. The acronym register puts 150+ labels on the
+   * map and this is quadratic, so it was rebuilt on a spatial grid — which cut
+   * the comparisons 28× (558k → 20k) and the wall clock by 4%, because the
+   * bucket lookups cost what the skipped comparisons saved. Warm, the whole
+   * search is ~10ms for 153 labels, once per settle rather than per frame.
+   * The grid was measured and thrown away; don't build it again.
+   */
   const placed: Box[] = []
-  /** Overlap area against everything already placed — 0 means a clean slot. */
+  const place = (box: Box) => placed.push(box)
   const overlap = (box: Box) =>
     placed.reduce((total, other) => {
       const wide =
@@ -1144,13 +1174,9 @@ const placeLabels = () => {
       return total + (wide > 0 && tall > 0 ? wide * tall : 0)
     }, 0)
 
-  for (const { label, room } of ordered) {
-    label.style.display = ''
+  for (const { label, room, size } of ordered) {
     const anchorX = Number(label.dataset.anchorX)
     const anchorY = Number(label.dataset.anchorY)
-    label.setAttribute('x', String(anchorX))
-    label.setAttribute('y', String(anchorY))
-    const size = label.getBBox()
     const boxAt = (x: number, y: number): Box => ({
       x: x - size.width / 2,
       y: y - size.height / 2,
@@ -1188,7 +1214,7 @@ const placeLabels = () => {
 
     label.setAttribute('x', String(chosen[0]))
     label.setAttribute('y', String(chosen[1]))
-    placed.push(boxAt(chosen[0], chosen[1]))
+    place(boxAt(chosen[0], chosen[1]))
 
     // A name that left its own land has to say where it belongs. `room` is the
     // inscribed radius, so a shift past it means the anchor is no longer under

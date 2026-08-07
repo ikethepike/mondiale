@@ -29,7 +29,7 @@
           @click="buyRelationHint"
         >
           <StatTopicIcon class="hint-icon" topic="question" />
-          Name the link (−{{ GATE_HINT_BITE_STEPS }} steps)
+          Name the link (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
     </div>
@@ -47,14 +47,14 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { countryName } from '~~/lib/country'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import { ROSETTA_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, isEasy, showInterstitial, submitAnswer } = useGateChallenge()
+const { status, isEasy, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
 const secondsLeft = ref(ROSETTA_SECONDS)
 const boughtRelation = ref(false)
@@ -89,7 +89,7 @@ watch(
       secondsLeft.value--
       if (secondsLeft.value > 0) return
       clearInterval(timer)
-      if (!status.value) submitAnswer(wrongTokenFor(props.challenge))
+      if (!status.value) giveUp(hintsUsed.value)
     }, 1000)
   },
   { immediate: true }

@@ -42,7 +42,7 @@
           @click="showStrikeHint"
         >
           <StatTopicIcon class="hint-icon" topic="reveal" />
-          Strike out half (−{{ GATE_HINT_BITE_STEPS }} steps)
+          Strike out half (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
     </div>
@@ -58,7 +58,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { TREND_METRICS } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
 import { TRAJECTORY_MATCH_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -69,7 +69,7 @@ const props = defineProps<{ challenge: IndividualChallenge }>()
 /** Non-hard games get the y-axis values free in the final third. */
 const VALUES_REVEAL_ELAPSED = 2 / 3
 
-const { status, isHard, showInterstitial, submitAnswer } = useGateChallenge()
+const { status, isHard, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
 const secondsLeft = ref(TRAJECTORY_MATCH_SECONDS)
 const struck = ref(new Set<ISOCountryCode>())
@@ -101,7 +101,7 @@ watch(
       secondsLeft.value--
       if (secondsLeft.value > 0) return
       clearInterval(timer)
-      if (!status.value) submitAnswer(wrongTokenFor(props.challenge))
+      if (!status.value) giveUp()
     }, 1000)
   },
   { immediate: true }

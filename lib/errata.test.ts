@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
+import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
 import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import { largestRing, poleOfInaccessibility, ringContains } from '~~/lib/outline'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { gameDifficulties, type GameDifficulty } from '~~/types/game.types'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -99,24 +100,23 @@ describe('dealErrata', () => {
   })
 
   it('anchors every label on the country it names', async () => {
-    // The whole-country bbox is stretched across the map by antimeridian
-    // fragments: Russia's is 1560 units wide of 2000, so its centre — where
-    // the renderer hangs the name — is (989, 196), the Baltic. The stage IS
-    // the labels, so a member whose name lands on someone else is a broken
-    // question. Both ends read `labelBoxFor`; this is what says so.
+    // The renderer hangs each name at `poleOfInaccessibility` — the centre of
+    // the largest circle that fits inside the country — precisely because a
+    // rectangle's centre lands on the NEIGHBOUR for anything that curves
+    // around another. So the assertion has to be point-in-polygon against the
+    // real outline, not containment in some box: Norway's box centre is in
+    // Sweden and every box test in the world calls that fine.
     for (const difficulty of gameDifficulties) {
       for (let attempt = 0; attempt < 10; attempt++) {
         const { errata } = await dealErrata(difficulty)
         for (const isoCode of errata.lineup) {
-          const box = labelBoxFor(MAP_BOUNDS[isoCode], MAP_REGIONS[isoCode])
-          if (!box) throw new Error(`${isoCode} has no map box`)
-          const anchor = [box[0] + box[2] / 2, box[1] + box[3] / 2]
-          const rings = MAP_REGIONS[isoCode] ?? [box]
-          const onOwnLand = rings.some(
-            ([x, y, width, height]) =>
-              anchor[0] >= x && anchor[0] <= x + width && anchor[1] >= y && anchor[1] <= y + height
-          )
-          expect(onOwnLand, `${isoCode}'s label lands off ${isoCode}`).toBe(true)
+          const ring = largestRing(MAP_PATHS[isoCode])
+          if (!ring) throw new Error(`${isoCode} has no outline`)
+          const anchor = poleOfInaccessibility(ring)
+          // `undefined` is the honest failure — it means no interior point was
+          // found, and the stage would fall back to a box centre off the land.
+          expect(anchor, `${isoCode} has no interior anchor`).toBeTruthy()
+          expect(ringContains(ring, anchor!.point), `${isoCode}'s name lands off it`).toBe(true)
         }
       }
     }

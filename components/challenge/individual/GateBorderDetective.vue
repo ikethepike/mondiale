@@ -35,7 +35,7 @@
           @click="showOutlineHint"
         >
           <StatTopicIcon class="hint-icon" topic="reveal" />
-          Outline (−{{ GATE_HINT_BITE_STEPS }} steps)
+          Outline (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
       <Transition name="caption">
@@ -46,7 +46,7 @@
           @click="showIsoHint"
         >
           <StatTopicIcon class="hint-icon" topic="question" />
-          Country code (−{{ GATE_HINT_BITE_STEPS }} steps)
+          Country code (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
     </div>
@@ -74,7 +74,7 @@ import {
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_SECOND_ELAPSED,
 } from '~~/lib/scoring'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
 // Timed like the other mystery gates: the clock scales the leap (buzz curve,
 // applied server-side from the reported fraction) and runs out into a miss.
@@ -85,7 +85,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, isHard, showInterstitial, submitAnswer } = useGateChallenge()
+const { status, isHard, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
 const secondsLeft = ref(BORDER_DETECTIVE_SECONDS)
 let timer: ReturnType<typeof setInterval> | undefined
@@ -119,7 +119,7 @@ watch(
       clearInterval(timer)
       if (status.value) return
       gameStore.map.solo = false
-      submitAnswer(wrongTokenFor(props.challenge))
+      giveUp()
     }, 1000)
   },
   { immediate: true }

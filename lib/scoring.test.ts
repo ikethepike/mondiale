@@ -16,6 +16,7 @@ import {
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
+  HINT_UNLOCK_FIRST_ELAPSED,
   gatePot,
   HINT_BITE_FRACTION,
   hintDockedScore,
@@ -191,9 +192,36 @@ describe('gateLeapSteps', () => {
     const deep = gatePot('rosetta')
     expect(deep).toBeGreaterThan(GATE_HINT_BITE_STEPS)
     expect(gateLeapSteps(1, 0, deep)).toBe(deep)
-    // The whole point of the deeper pot: something survives the hint.
-    expect(gateLeapSteps(1, 1, deep)).toBe(deep - GATE_HINT_BITE_STEPS)
-    expect(gateLeapSteps(1, 1, deep)).toBeGreaterThan(0)
+
+    // Assert where a player can actually stand. The hint unlocks only after
+    // HINT_UNLOCK_FIRST_ELAPSED of the clock is gone, so a hinted answer can
+    // never be reported with more than that fraction left — pinning this at
+    // remainingFraction 1 passed while the property was false everywhere real.
+    const mostLeft = 1 - HINT_UNLOCK_FIRST_ELAPSED
+    for (const fraction of [mostLeft, 0.5, 0.25, 0]) {
+      expect(gateLeapSteps(fraction, 1, deep), `hint at ${fraction} left`).toBeGreaterThan(0)
+    }
+    // It costs something everywhere except the very bottom of the curve, where
+    // both the full pot and the hinted one round down to the same floor — at
+    // the buzzer you were getting the minimum either way.
+    for (const fraction of [mostLeft, 0.5, 0.25]) {
+      expect(gateLeapSteps(fraction, 1, deep), `cost at ${fraction}`).toBeLessThan(
+        gateLeapSteps(fraction, 0, deep)
+      )
+    }
+    expect(gateLeapSteps(0, 1, deep)).toBe(gateLeapSteps(0, 0, deep))
+    // Buying every hint on offer still can, and should, zero it.
+    expect(gateLeapSteps(mostLeft, 2, deep)).toBe(0)
+  })
+
+  it('leaves the standard pot exactly where it was when a hint is bought', () => {
+    // Biting off the pot rather than the decayed leap is a no-op at pot 2:
+    // there is nothing left to scale either way. Guards the deep-pot fix from
+    // quietly re-tuning every gate that never asked for it.
+    const standard = gatePot('find')
+    for (const fraction of [1, 0.66, 0.5, 0.25, 0]) {
+      expect(gateLeapSteps(fraction, 1, standard), `standard at ${fraction}`).toBe(0)
+    }
   })
 })
 

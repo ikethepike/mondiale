@@ -21,7 +21,7 @@
           @click="clearHalf"
         >
           <StatTopicIcon class="hint-icon" topic="reveal" />
-          Clear half (−{{ GATE_HINT_BITE_STEPS }} steps)
+          Clear half (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
     </div>

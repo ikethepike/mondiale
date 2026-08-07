@@ -1,0 +1,9 @@
+# Source is text, always. A single stray control byte is enough for git to
+# call a file binary, and a binary file has no reviewable diff, no line
+# comments and no blame — lib/rosetta.ts shipped that way for a day because a
+# cache-key separator was written as a literal NUL instead of an escape.
+*.ts text
+*.vue text
+*.scss text
+*.md text
+*.json text

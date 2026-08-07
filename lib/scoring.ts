@@ -40,9 +40,10 @@ export const GATE_HINT_BITE_STEPS = 2
 
 /**
  * Variants that pay more than the standard pot. A hint bites
- * `GATE_HINT_BITE_STEPS`, so a mode whose hint is meant to be a TRADE rather
- * than a surrender needs a pot deeper than the bite — at `GATE_LEAP_STEPS` a
- * single hint zeroes the leap outright and can only ever buy safety.
+ * `GATE_HINT_BITE_STEPS` off the pot, so a mode whose hint is meant to be a
+ * TRADE rather than a surrender needs a pot deeper than the bite — at
+ * `GATE_LEAP_STEPS` there is nothing left to stake and the hint can only ever
+ * buy safety.
  */
 const GATE_POTS: Partial<Record<IndividualChallengeVariant, number>> = {
   // Both carry a buyable hint worth taking: errata's half-lineup cull and
@@ -57,12 +58,19 @@ export const gatePot = (variant?: IndividualChallengeVariant): number =>
   (variant && GATE_POTS[variant]) ?? GATE_LEAP_STEPS
 
 /**
- * Steps a correct gate answer moves the pawn. Timed gates report the clock
- * fraction left and the buzz curve scales the leap; every bought hint bites
- * `GATE_HINT_BITE_STEPS`, never below zero. Untimed gates report nothing and
- * pay the whole pot. Hostile or buggy payloads can't help themselves: a
- * non-finite fraction falls back to the pot, and a negative or non-finite
- * hint count bites nothing rather than paying extra.
+ * Steps a correct gate answer moves the pawn. Hints come off the POT, then the
+ * buzz curve scales what's left; untimed gates report no clock and pay the
+ * remaining pot whole. Hostile or buggy payloads can't help themselves: a
+ * non-finite fraction falls back to the pot, and a negative or non-finite hint
+ * count bites nothing rather than paying extra.
+ *
+ * The order is the whole point. Biting AFTER the curve subtracts a flat 2 from
+ * an already-decayed number, so on a 30s gate at pot 4 the hint paid 1 step for
+ * seven seconds and zero for the rest of the clock — the surrender this pot was
+ * raised to prevent, and worst exactly when errata's cull is most wanted, late.
+ * Biting first leaves a floor: `(4 - 2) * BUZZ_FLOOR` still rounds to 1 at the
+ * buzzer. It changes nothing at the standard pot, where `(2 - 2)` is zero at
+ * every clock reading, same as before.
  */
 export const gateLeapSteps = (
   remainingFraction: number | undefined,
@@ -72,12 +80,11 @@ export const gateLeapSteps = (
   // pay the standard leap for a deep-pot gate instead of failing to compile.
   pot: number
 ): number => {
-  const earned =
-    remainingFraction !== undefined && Number.isFinite(remainingFraction)
-      ? Math.round(pot * buzzFraction(remainingFraction))
-      : pot
   const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed ?? 0)) : 0
-  return Math.max(0, earned - bought * GATE_HINT_BITE_STEPS)
+  const staked = Math.max(0, pot - bought * GATE_HINT_BITE_STEPS)
+  return remainingFraction !== undefined && Number.isFinite(remainingFraction)
+    ? Math.max(0, Math.round(staked * buzzFraction(remainingFraction)))
+    : staked
 }
 
 /** Each bought point-mode hint bites this fraction of the pot. */

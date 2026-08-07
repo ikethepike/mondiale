@@ -76,9 +76,9 @@ borrowed from off the stage. Tap the mistake.
 **Verb:** error detection in a composite. Two truths does this for stats; nothing did it
 spatially.
 
-**Data:** `map.gen` (`MAP_BOUNDS`), `BORDERS`. The lineup is grown outward over land borders,
-and every member must clear `isLabelableBox` — the same threshold the map's label builder
-uses, so a lineup member the renderer would skip can never be dealt.
+**Data:** `map.gen` (`MAP_BOUNDS`, `MAP_REGIONS`), `BORDERS`. The lineup is grown outward over
+land borders, and every member must clear `isLabelableBox` over the same `labelBoxFor` box the
+map's label builder measures — so a lineup member the renderer would skip can never be dealt.
 
 **Grading:** plain ISO submit. A swap makes two countries wrong, so `isCorrectIndividualAnswer`
 accepts either culprit — the same variant-scoped carve-out shape the shared-currency gate uses.
@@ -95,11 +95,15 @@ flag.
 
 ### 2. Rosetta — finish the pair
 
-> **Everest : Nepal :: Aconcagua : \_\_\_**
+> **K2 : Pakistan :: Cerro Aconcagua : \_\_\_**
 
 The exemplar pair is what tells you which relation is meant, so the same country can head
 three different questions (_Tokyo : Japan_, _Fuji : Japan_, _Yen : Japan_) without either
 being ambiguous.
+
+Not every pair survives the deal, and that is the uniqueness guard working rather than a gap
+to repair: Everest heads no question because the Factbook gives it to both China and Nepal,
+and the yen heads none because "Japanese yen" names its own country.
 
 **Verb:** pattern completion. It is reasoning rather than recall, and the only gate where the
 player has to infer the _question_ as well as the answer.
