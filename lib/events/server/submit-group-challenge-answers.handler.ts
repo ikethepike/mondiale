@@ -1,7 +1,8 @@
 import { latestRound } from '~~/lib/rounds'
 import { defineGameHandler } from '../server-side'
 import { gradeGroupAnswer } from './grade-group-answer'
-import { movesForScoredPoints, startWalk } from './moves'
+import { advanceScoredSeat } from './round-engine'
+import { startWalk } from './moves'
 
 export const submitGroupChallengeAnswersHandler = defineGameHandler(
   'submit-group-challenge-answers',
@@ -22,8 +23,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       if (player.phase === 'group-challenge') {
         const banked = currentRound.playerTurns[playerId]?.points
         console.warn(`Healing stranded submitter ${playerId} (answer banked, phase was not)`)
-        player.phase = 'group-scores'
-        startWalk(player, await movesForScoredPoints({ game, player, scored: banked?.scored ?? 0 }))
+        await advanceScoredSeat(game, player, banked?.scored ?? 0)
         await server.updateGameState(game)
         server.emit({ event: 'group-challenge-scored', game }, eventTarget)
         return
@@ -60,8 +60,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
 
     currentRound.playerTurns[playerId] = { points: scoring }
 
-    player.phase = 'group-scores'
-    startWalk(player, await movesForScoredPoints({ game, player, scored: scoring.scored }))
+    await advanceScoredSeat(game, player, scoring.scored)
 
     await server.updateGameState(game)
     server.emit({ event: 'group-challenge-scored', game }, eventTarget)

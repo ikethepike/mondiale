@@ -1,10 +1,11 @@
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Game, Round } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 import { useServerSideEvents, type GameServer, type GameSocket } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { movesForScoredPoints, startWalk } from './moves'
-import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { REVEAL_HOLD_MS, ROUND_BOUND_PHASES, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 
 /**
  * The scaffolding every clocked round engine (chain-turns, timeline-turns,
@@ -65,10 +66,23 @@ export const scheduleRevealTask = (
 ) => scheduleEngineTask(ctx, REVEAL_HOLD_MS, task)
 
 /**
+ * THE per-seat advance out of a scored round: flip to the scorecard and walk
+ * the steps the score bought. Every path that moves a seat past its answer —
+ * the submit handler's flip, its stranded-submitter heal, whole-table
+ * settles, the classic reveal flip — runs through here, never a private
+ * phase-and-walk of its own.
+ */
+export const advanceScoredSeat = async (game: Game, player: Player, scored: number) => {
+  player.phase = 'group-scores'
+  startWalk(player, await movesForScoredPoints({ game, player, scored }))
+}
+
+/**
  * Bank the finished round for the whole table: every seat's answer and
  * points land on the round, and players still parked in the challenge move
  * on with the steps their score bought. The caller guards the once-only
- * latch (`round.groupAnswers` non-empty) before calling.
+ * latch (`round.groupAnswers` non-empty) before calling. Returns the seats
+ * it advanced, so callers can arm their scorecard caps after the save.
  */
 export const settleRoundScores = async ({
   game,
@@ -85,15 +99,22 @@ export const settleRoundScores = async ({
   maximumPoints: number
   /** Mode-specific scorecard answer; empty submitted/correct when omitted. */
   answerFor?: (playerId: string) => Round['groupAnswers'][string]
-}): Promise<void> => {
+}): Promise<string[]> => {
+  const advanced: string[] = []
   for (const playerId of order) {
     const player = game.players[playerId]
     const scoring = scores[playerId] ?? { scored: 0, maximum: maximumPoints }
     round.groupAnswers[playerId] = answerFor?.(playerId) ?? { submitted: [], correct: [] }
     round.playerTurns[playerId] = { points: scoring }
-    if (player && player.phase === 'group-challenge') {
-      player.phase = 'group-scores'
-      startWalk(player, await movesForScoredPoints({ game, player, scored: scoring.scored }))
+    // Any round-bound seat advances — not just 'group-challenge'. A seat that
+    // rejoined into 'tutorial' (the round-1 seam) is scored on the round like
+    // everyone else, and leaving it parked would hold `tableIsSettled` false
+    // forever. Walkable phases ('moving', 'group-scores') already banked and
+    // are mid-walk — re-walking one is the mid-round ejection class.
+    if (player && ROUND_BOUND_PHASES.includes(player.phase)) {
+      await advanceScoredSeat(game, player, scoring.scored)
+      advanced.push(playerId)
     }
   }
+  return advanced
 }
