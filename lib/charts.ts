@@ -86,3 +86,37 @@ export const niceTicks = (min: number, max: number, count = 3): number[] => {
   }
   return ticks
 }
+
+/** Shortest bar that still draws — a 0%-wide bar reads as missing data rather
+ *  than as the lowest value. */
+export const MIN_BAR_PERCENT = 6
+
+/**
+ * Bar widths (percent) for a ranked set, normalized across the set's own
+ * min–max rather than from zero.
+ *
+ * A zero baseline lies about domains that never approach zero — five
+ * legalization years span 2001–2025, so every bar lands within 1.2% of the
+ * others — and goes NEGATIVE when a value is (net migration, GDP growth),
+ * which CSS drops silently, erasing the bar. The ranking reveal's job is to
+ * justify the order, so the set's own minimum is the honest origin.
+ *
+ * The domain is computed here, not by callers: two components hand-rolled this
+ * and drifted apart, one growing a floor and an `Math.abs`, the other neither.
+ */
+export const rankedBarWidths = (values: readonly (number | undefined)[]): number[] => {
+  const present = values.filter((value): value is number => Number.isFinite(value))
+  if (!present.length) return values.map(() => 0)
+
+  const min = Math.min(...present)
+  const max = Math.max(...present)
+  const span = max - min
+
+  return values.map(value => {
+    if (!Number.isFinite(value)) return 0
+    // A whole-set tie is five equal bars, not five empty ones.
+    if (span <= 0) return 100
+    const fraction = ((value as number) - min) / span
+    return MIN_BAR_PERCENT + fraction * (100 - MIN_BAR_PERCENT)
+  })
+}

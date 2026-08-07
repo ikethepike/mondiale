@@ -46,6 +46,7 @@ import {
   FINAL_STAT_LABELS,
   MINMAX_REVEAL_ROWS,
 } from '~~/lib/challenges/final-challenge'
+import { rankedBarWidths } from '~~/lib/charts'
 import { countryName } from '~~/lib/country'
 import { formatAmount, formatOrdinal } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -97,13 +98,13 @@ const subtitle = computed(() => {
 
 const rows = computed(() => {
   const shown = extremeEnd.value
-  const largest = Math.max(...shown.map(entry => Math.abs(entry.amount.amount)), 1)
+  const widths = rankedBarWidths(shown.map(entry => entry.amount.amount))
   return shown.map((entry, index) => ({
     isoCode: entry.isoCode,
     place: index + 1,
     name: countryName(COUNTRIES[entry.isoCode]),
     isAnswer: entry.isoCode === props.challenge.country,
-    width: Math.max(3, (Math.abs(entry.amount.amount) / largest) * 100),
+    width: widths[index],
     display: formatAmount(entry.amount),
   }))
 })

@@ -40,7 +40,7 @@
             <!-- Without this a "1" repeated five times reads as a bug -->
             <span v-if="row.tied" class="tied">tied ×{{ row.tiedCount }}</span>
             <span class="scale" aria-hidden="true">
-              <span class="fill" :style="{ width: `${row.share * 100}%` }" />
+              <span class="fill" :style="{ width: `${row.width}%` }" />
             </span>
           </div>
         </div>
@@ -101,6 +101,7 @@ import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { getChallengeDetails, MAXIMUM_SCORE_PER_COUNTRY, rankingBreakdown } from '~~/lib/challenges'
+import { rankedBarWidths } from '~~/lib/charts'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -138,8 +139,7 @@ const rows = computed(() => {
   const amounts = breakdown.map(({ isoCode }) =>
     accessorId.value ? getValueByAccessorID(isoCode, accessorId.value) : undefined
   )
-  // The correct order is descending, but a data hiccup shouldn't break the bars
-  const largest = Math.max(...amounts.map(amount => amount?.amount ?? 0), 0)
+  const widths = rankedBarWidths(amounts.map(amount => amount?.amount))
 
   return breakdown.map((row, index) => {
     const country = getCountry(row.isoCode)
@@ -149,7 +149,7 @@ const rows = computed(() => {
       country,
       name: country ? countryName(country) : row.isoCode,
       amount,
-      share: largest > 0 && amount ? amount.amount / largest : 0,
+      width: widths[index],
     }
   })
 })
@@ -290,10 +290,11 @@ const rows = computed(() => {
     background: hsla(197.6, 51.2%, 41.8%, 0.15);
   }
 
+  // No min-width: the shortest bar's floor is MIN_BAR_PERCENT in lib/charts.ts.
+  // A CSS floor on top would make the real floor whichever is larger.
   .fill {
     display: block;
     height: 100%;
-    min-width: 0.4rem;
     border-radius: 999px;
     background: var(--soft-blue);
   }

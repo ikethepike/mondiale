@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { monotoneCurvePath, niceTicks, type ChartPoint } from './charts'
+import {
+  MIN_BAR_PERCENT,
+  monotoneCurvePath,
+  niceTicks,
+  rankedBarWidths,
+  type ChartPoint,
+} from './charts'
 
 /** Every coordinate in a path's `C`/`M` commands, in order. */
 const coordinates = (path: string): number[] => path.match(/-?\d+\.?\d*/g)?.map(Number) ?? []
@@ -93,5 +99,57 @@ describe('niceTicks', () => {
     expect(niceTicks(NaN, 10, 3)).toEqual([])
     expect(niceTicks(0, Infinity, 3)).toEqual([])
     expect(niceTicks(0, 10, 1)).toEqual([])
+  })
+})
+
+describe('rankedBarWidths', () => {
+  it('spreads a year domain that a zero baseline flattens', () => {
+    // Real legalization years. Divided by the largest these span 0.9 points —
+    // five bars the eye cannot tell apart.
+    const widths = rankedBarWidths([2019, 2017, 2005, 2003, 2001])
+    expect(Math.max(...widths) - Math.min(...widths)).toBeGreaterThanOrEqual(90)
+  })
+
+  it('never returns a negative width', () => {
+    // A real net-migration slate: Lebanon is negative and used to render
+    // width:-18.38%, which CSS drops — the bar simply vanished.
+    const widths = rankedBarWidths([32.1, 28.2, 13.4, 3.9, -5.9])
+    for (const width of widths) expect(width).toBeGreaterThanOrEqual(0)
+    expect(widths.indexOf(Math.min(...widths))).toBe(4)
+  })
+
+  it('survives an all-negative set', () => {
+    const widths = rankedBarWidths([-2.7, -10.8, -6.6])
+    expect(Math.max(...widths)).toBe(100)
+    expect(widths.indexOf(Math.min(...widths))).toBe(1)
+  })
+
+  it('floors the smallest so it still draws', () => {
+    expect(Math.min(...rankedBarWidths([2019, 2017, 2001]))).toBe(MIN_BAR_PERCENT)
+  })
+
+  it('draws a whole-set tie as equal full bars', () => {
+    expect(rankedBarWidths([1, 1, 1, 1, 1])).toEqual([100, 100, 100, 100, 100])
+  })
+
+  it('leaves a missing amount at zero, distinct from the floor', () => {
+    const widths = rankedBarWidths([10, undefined, 5])
+    expect(widths[1]).toBe(0)
+    expect(widths[2]).toBe(MIN_BAR_PERCENT)
+  })
+
+  it('orders widths with the values', () => {
+    const values = [8, 1, 5, 300, 42]
+    const widths = rankedBarWidths(values)
+    const byValue = [...values].sort((a, b) => a - b)
+    const byWidth = [...values].sort(
+      (a, b) => widths[values.indexOf(a)] - widths[values.indexOf(b)]
+    )
+    expect(byWidth).toEqual(byValue)
+  })
+
+  it('returns a width per value, even with nothing to plot', () => {
+    expect(rankedBarWidths([undefined, undefined])).toEqual([0, 0])
+    expect(rankedBarWidths([])).toEqual([])
   })
 })

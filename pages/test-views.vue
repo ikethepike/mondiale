@@ -375,6 +375,17 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    // Lebanon is negative here — the case that used to render width:-18% and
+    // vanish. Keeps the floored-shortest-bar behaviour under a live eye.
+    id: 'ranking-negative-bars',
+    label: 'Ranking reveal (negative values)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        settledRound('people.netMigration', ['SY', 'LB', 'AE', 'QA', 'US']),
+      ]),
+  },
+  {
     id: 'anthem-scores',
     label: 'Opening Ceremony scores (buzz race)',
     component: ViewGroupScores,
