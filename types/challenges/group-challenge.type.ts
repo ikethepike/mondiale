@@ -10,437 +10,89 @@ export interface GroupChallenge {
   countriesPerPlayer: { [playerId: string]: ISOCountryCode[] }
 }
 
+/** The one list. The union and GROUP_CHALLENGES are both derived from it. */
+export const GROUP_CHALLENGE_ACCESSOR_IDS = [
+  'economics.gdpPerCapita',
+  'economics.militarySpending',
+  'economics.populationBelowPovertyLine',
+  'economics.equality',
+  'geography.area.land',
+  'geography.area.water',
+  'geography.area.total',
+  'geography.area.arable',
+  'geography.area.forested',
+  'geography.highestPeak',
+  'unemployment.youth',
+  'unemployment.total',
+  'infrastructure.rail',
+  'infrastructure.internetAccess',
+  'gender.womenInParliament',
+  'gender.motherMeanAgeAtBirth',
+  'health.obesity',
+  'people.lifeExpectancy',
+  'people.medianAge',
+  'people.childrenPerWoman',
+  'education.literacy',
+  'people.population',
+  'people.populationGrowthRate',
+  'education.averageYearsOfStudy',
+  'health.doctors',
+  'health.hospitalBeds',
+  'health.accessToContraceptives',
+  'health.tobaccoUse',
+  'health.alcoholConsumption',
+  'religion.atheism',
+  'religion.believers',
+  'environment.CO2Emissions',
+  'environment.renewables',
+  'humanRights.gayMarriageLegalized',
+  'humanRights.refugees',
+  'economics.inflation',
+  'government.amountOfMilitaryConflicts',
+  'government.conflictsFought',
+  'government.yearsAtWar',
+  'government.recentConflicts',
+  'government.democracyIndex',
+  'government.corruptionIndex',
+  'government.humanDevelopmentIndex',
+  'government.happiness',
+  'economics.gdpTotal',
+  'economics.gdpGrowth',
+  'economics.publicDebt',
+  'infrastructure.mobileSubscriptions',
+  'infrastructure.airports',
+  'energy.electricityAccess',
+  'energy.fossilFuels',
+  'people.netMigration',
+  'people.birthRate',
+  'people.urbanization',
+  'environment.methaneEmissions',
+  'economics.touristArrivals',
+  'economics.workingHours',
+  'energy.consumptionPerCapita',
+  'health.meatConsumption',
+  'health.maleHeight',
+  'health.roadDeaths',
+  'environment.airPollution',
+  'environment.redListIndex',
+  'environment.threatenedMammals',
+  'environment.protectedLand',
+  'environment.freshwaterPerCapita',
+  'environment.evSalesShare',
+  'people.deathRate',
+  'people.density',
+  'people.share65Plus',
+  'people.sexRatio',
+] as const
+
+export type GroupChallengeAccessorId = (typeof GROUP_CHALLENGE_ACCESSOR_IDS)[number]
+
+/** Entries are module singletons — getGroupChallenge clones before dealing. */
 export const GROUP_CHALLENGES: {
   [AccessorId in GroupChallengeAccessorId]: GroupChallenge
-} = {
-  'economics.gdpPerCapita': {
-    _type: 'group-challenge',
-    id: 'economics.gdpPerCapita',
-    countriesPerPlayer: {},
-  },
-  'economics.militarySpending': {
-    _type: 'group-challenge',
-    id: 'economics.militarySpending',
-    countriesPerPlayer: {},
-  },
-  'economics.populationBelowPovertyLine': {
-    _type: 'group-challenge',
-    id: 'economics.populationBelowPovertyLine',
-    countriesPerPlayer: {},
-  },
-  'economics.equality': {
-    _type: 'group-challenge',
-    id: 'economics.equality',
-    countriesPerPlayer: {},
-  },
-  'geography.area.land': {
-    _type: 'group-challenge',
-    id: 'geography.area.land',
-    countriesPerPlayer: {},
-  },
-  'geography.area.water': {
-    _type: 'group-challenge',
-    id: 'geography.area.water',
-    countriesPerPlayer: {},
-  },
-  'geography.area.total': {
-    _type: 'group-challenge',
-    id: 'geography.area.total',
-    countriesPerPlayer: {},
-  },
-  'geography.area.arable': {
-    _type: 'group-challenge',
-    id: 'geography.area.arable',
-    countriesPerPlayer: {},
-  },
-  'geography.area.forested': {
-    _type: 'group-challenge',
-    id: 'geography.area.forested',
-    countriesPerPlayer: {},
-  },
-  'geography.highestPeak': {
-    _type: 'group-challenge',
-    id: 'geography.highestPeak',
-    countriesPerPlayer: {},
-  },
-  'unemployment.youth': {
-    _type: 'group-challenge',
-    id: 'unemployment.youth',
-    countriesPerPlayer: {},
-  },
-  'unemployment.total': {
-    _type: 'group-challenge',
-    id: 'unemployment.total',
-    countriesPerPlayer: {},
-  },
-  'infrastructure.rail': {
-    _type: 'group-challenge',
-    id: 'infrastructure.rail',
-    countriesPerPlayer: {},
-  },
-  'infrastructure.internetAccess': {
-    _type: 'group-challenge',
-    id: 'infrastructure.internetAccess',
-    countriesPerPlayer: {},
-  },
-  'gender.womenInParliament': {
-    _type: 'group-challenge',
-    id: 'gender.womenInParliament',
-    countriesPerPlayer: {},
-  },
-  'gender.motherMeanAgeAtBirth': {
-    _type: 'group-challenge',
-    id: 'gender.motherMeanAgeAtBirth',
-    countriesPerPlayer: {},
-  },
-  'health.obesity': {
-    _type: 'group-challenge',
-    id: 'health.obesity',
-    countriesPerPlayer: {},
-  },
-  'people.lifeExpectancy': {
-    _type: 'group-challenge',
-    id: 'people.lifeExpectancy',
-    countriesPerPlayer: {},
-  },
-  'people.medianAge': {
-    _type: 'group-challenge',
-    id: 'people.medianAge',
-    countriesPerPlayer: {},
-  },
-  'people.childrenPerWoman': {
-    _type: 'group-challenge',
-    id: 'people.childrenPerWoman',
-    countriesPerPlayer: {},
-  },
-  'people.population': {
-    _type: 'group-challenge',
-    id: 'people.population',
-    countriesPerPlayer: {},
-  },
-  'education.literacy': {
-    _type: 'group-challenge',
-    id: 'education.literacy',
-    countriesPerPlayer: {},
-  },
-  'education.averageYearsOfStudy': {
-    _type: 'group-challenge',
-    id: 'education.averageYearsOfStudy',
-    countriesPerPlayer: {},
-  },
-  'health.doctors': {
-    _type: 'group-challenge',
-    id: 'health.doctors',
-    countriesPerPlayer: {},
-  },
-  'health.hospitalBeds': {
-    _type: 'group-challenge',
-    id: 'health.hospitalBeds',
-    countriesPerPlayer: {},
-  },
-  'health.alcoholConsumption': {
-    _type: 'group-challenge',
-    id: 'health.alcoholConsumption',
-    countriesPerPlayer: {},
-  },
-  'health.tobaccoUse': {
-    _type: 'group-challenge',
-    id: 'health.tobaccoUse',
-    countriesPerPlayer: {},
-  },
-  'health.accessToContraceptives': {
-    _type: 'group-challenge',
-    id: 'health.accessToContraceptives',
-    countriesPerPlayer: {},
-  },
-  'religion.atheism': {
-    _type: 'group-challenge',
-    id: 'religion.atheism',
-    countriesPerPlayer: {},
-  },
-  'religion.believers': {
-    _type: 'group-challenge',
-    id: 'religion.believers',
-    countriesPerPlayer: {},
-  },
-  'environment.CO2Emissions': {
-    _type: 'group-challenge',
-    id: 'environment.CO2Emissions',
-    countriesPerPlayer: {},
-  },
-  'environment.renewables': {
-    _type: 'group-challenge',
-    id: 'environment.renewables',
-    countriesPerPlayer: {},
-  },
-  'humanRights.gayMarriageLegalized': {
-    _type: 'group-challenge',
-    id: 'humanRights.gayMarriageLegalized',
-    countriesPerPlayer: {},
-  },
-  'people.populationGrowthRate': {
-    _type: 'group-challenge',
-    id: 'people.populationGrowthRate',
-    countriesPerPlayer: {},
-  },
-  'humanRights.refugees': {
-    _type: 'group-challenge',
-    id: 'humanRights.refugees',
-    countriesPerPlayer: {},
-  },
-  'economics.inflation': {
-    _type: 'group-challenge',
-    id: 'economics.inflation',
-    countriesPerPlayer: {},
-  },
-  // Legacy — no country carries this value anymore, so it can never be dealt;
-  // kept so in-flight games keep rendering.
-  'government.amountOfMilitaryConflicts': {
-    _type: 'group-challenge',
-    id: 'government.amountOfMilitaryConflicts',
-    countriesPerPlayer: {},
-  },
-  'government.conflictsFought': {
-    _type: 'group-challenge',
-    id: 'government.conflictsFought',
-    countriesPerPlayer: {},
-  },
-  'government.yearsAtWar': {
-    _type: 'group-challenge',
-    id: 'government.yearsAtWar',
-    countriesPerPlayer: {},
-  },
-  'government.recentConflicts': {
-    _type: 'group-challenge',
-    id: 'government.recentConflicts',
-    countriesPerPlayer: {},
-  },
-  'government.democracyIndex': {
-    _type: 'group-challenge',
-    id: 'government.democracyIndex',
-    countriesPerPlayer: {},
-  },
-  'government.corruptionIndex': {
-    _type: 'group-challenge',
-    id: 'government.corruptionIndex',
-    countriesPerPlayer: {},
-  },
-  'government.humanDevelopmentIndex': {
-    _type: 'group-challenge',
-    id: 'government.humanDevelopmentIndex',
-    countriesPerPlayer: {},
-  },
-  'government.happiness': {
-    _type: 'group-challenge',
-    id: 'government.happiness',
-    countriesPerPlayer: {},
-  },
-  'economics.gdpTotal': {
-    _type: 'group-challenge',
-    id: 'economics.gdpTotal',
-    countriesPerPlayer: {},
-  },
-  'economics.gdpGrowth': {
-    _type: 'group-challenge',
-    id: 'economics.gdpGrowth',
-    countriesPerPlayer: {},
-  },
-  'economics.publicDebt': {
-    _type: 'group-challenge',
-    id: 'economics.publicDebt',
-    countriesPerPlayer: {},
-  },
-  'infrastructure.mobileSubscriptions': {
-    _type: 'group-challenge',
-    id: 'infrastructure.mobileSubscriptions',
-    countriesPerPlayer: {},
-  },
-  'infrastructure.airports': {
-    _type: 'group-challenge',
-    id: 'infrastructure.airports',
-    countriesPerPlayer: {},
-  },
-  'energy.electricityAccess': {
-    _type: 'group-challenge',
-    id: 'energy.electricityAccess',
-    countriesPerPlayer: {},
-  },
-  'energy.fossilFuels': {
-    _type: 'group-challenge',
-    id: 'energy.fossilFuels',
-    countriesPerPlayer: {},
-  },
-  'people.netMigration': {
-    _type: 'group-challenge',
-    id: 'people.netMigration',
-    countriesPerPlayer: {},
-  },
-  'people.birthRate': {
-    _type: 'group-challenge',
-    id: 'people.birthRate',
-    countriesPerPlayer: {},
-  },
-  'people.urbanization': {
-    _type: 'group-challenge',
-    id: 'people.urbanization',
-    countriesPerPlayer: {},
-  },
-  'environment.methaneEmissions': {
-    _type: 'group-challenge',
-    id: 'environment.methaneEmissions',
-    countriesPerPlayer: {},
-  },
-  'economics.touristArrivals': {
-    _type: 'group-challenge',
-    id: 'economics.touristArrivals',
-    countriesPerPlayer: {},
-  },
-  'economics.workingHours': {
-    _type: 'group-challenge',
-    id: 'economics.workingHours',
-    countriesPerPlayer: {},
-  },
-  'energy.consumptionPerCapita': {
-    _type: 'group-challenge',
-    id: 'energy.consumptionPerCapita',
-    countriesPerPlayer: {},
-  },
-  'health.meatConsumption': {
-    _type: 'group-challenge',
-    id: 'health.meatConsumption',
-    countriesPerPlayer: {},
-  },
-  'health.maleHeight': {
-    _type: 'group-challenge',
-    id: 'health.maleHeight',
-    countriesPerPlayer: {},
-  },
-  'health.roadDeaths': {
-    _type: 'group-challenge',
-    id: 'health.roadDeaths',
-    countriesPerPlayer: {},
-  },
-  'environment.airPollution': {
-    _type: 'group-challenge',
-    id: 'environment.airPollution',
-    countriesPerPlayer: {},
-  },
-  'environment.redListIndex': {
-    _type: 'group-challenge',
-    id: 'environment.redListIndex',
-    countriesPerPlayer: {},
-  },
-  'environment.threatenedMammals': {
-    _type: 'group-challenge',
-    id: 'environment.threatenedMammals',
-    countriesPerPlayer: {},
-  },
-  'environment.protectedLand': {
-    _type: 'group-challenge',
-    id: 'environment.protectedLand',
-    countriesPerPlayer: {},
-  },
-  'environment.freshwaterPerCapita': {
-    _type: 'group-challenge',
-    id: 'environment.freshwaterPerCapita',
-    countriesPerPlayer: {},
-  },
-  'environment.evSalesShare': {
-    _type: 'group-challenge',
-    id: 'environment.evSalesShare',
-    countriesPerPlayer: {},
-  },
-  'people.deathRate': {
-    _type: 'group-challenge',
-    id: 'people.deathRate',
-    countriesPerPlayer: {},
-  },
-  'people.density': {
-    _type: 'group-challenge',
-    id: 'people.density',
-    countriesPerPlayer: {},
-  },
-  'people.share65Plus': {
-    _type: 'group-challenge',
-    id: 'people.share65Plus',
-    countriesPerPlayer: {},
-  },
-  'people.sexRatio': {
-    _type: 'group-challenge',
-    id: 'people.sexRatio',
-    countriesPerPlayer: {},
-  },
-} as const
-
-export type GroupChallengeAccessorId =
-  | 'economics.gdpPerCapita'
-  | 'economics.militarySpending'
-  | 'economics.populationBelowPovertyLine'
-  | 'economics.equality'
-  | 'geography.area.land'
-  | 'geography.area.water'
-  | 'geography.area.total'
-  | 'geography.area.arable'
-  | 'geography.area.forested'
-  | 'geography.highestPeak'
-  | 'unemployment.youth'
-  | 'unemployment.total'
-  | 'infrastructure.rail'
-  | 'infrastructure.internetAccess'
-  | 'gender.womenInParliament'
-  | 'gender.motherMeanAgeAtBirth'
-  | 'health.obesity'
-  | 'people.lifeExpectancy'
-  | 'people.medianAge'
-  | 'people.childrenPerWoman'
-  | 'education.literacy'
-  | 'people.population'
-  | 'people.populationGrowthRate'
-  | 'education.averageYearsOfStudy'
-  | 'health.doctors'
-  | 'health.hospitalBeds'
-  | 'health.accessToContraceptives'
-  | 'health.tobaccoUse'
-  | 'health.alcoholConsumption'
-  | 'religion.atheism'
-  | 'religion.believers'
-  | 'environment.CO2Emissions'
-  | 'environment.renewables'
-  | 'humanRights.gayMarriageLegalized'
-  | 'humanRights.refugees'
-  | 'economics.inflation'
-  | 'government.amountOfMilitaryConflicts'
-  | 'government.conflictsFought'
-  | 'government.yearsAtWar'
-  | 'government.recentConflicts'
-  | 'government.democracyIndex'
-  | 'government.corruptionIndex'
-  | 'government.humanDevelopmentIndex'
-  | 'government.happiness'
-  | 'economics.gdpTotal'
-  | 'economics.gdpGrowth'
-  | 'economics.publicDebt'
-  | 'infrastructure.mobileSubscriptions'
-  | 'infrastructure.airports'
-  | 'energy.electricityAccess'
-  | 'energy.fossilFuels'
-  | 'people.netMigration'
-  | 'people.birthRate'
-  | 'people.urbanization'
-  | 'environment.methaneEmissions'
-  | 'economics.touristArrivals'
-  | 'economics.workingHours'
-  | 'energy.consumptionPerCapita'
-  | 'health.meatConsumption'
-  | 'health.maleHeight'
-  | 'health.roadDeaths'
-  | 'environment.airPollution'
-  | 'environment.redListIndex'
-  | 'environment.threatenedMammals'
-  | 'environment.protectedLand'
-  | 'environment.freshwaterPerCapita'
-  | 'environment.evSalesShare'
-  | 'people.deathRate'
-  | 'people.density'
-  | 'people.share65Plus'
-  | 'people.sexRatio'
+} = Object.fromEntries(
+  GROUP_CHALLENGE_ACCESSOR_IDS.map(id => [
+    id,
+    { _type: 'group-challenge', id, countriesPerPlayer: {} },
+  ])
+) as { [AccessorId in GroupChallengeAccessorId]: GroupChallenge }
