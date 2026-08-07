@@ -34,15 +34,6 @@ export const HINT_UNLOCK_AT = {
  *  the same round. Shared so the two views can't drift apart. */
 export const BUZZ_LOCKOUT_MS = 3000
 
-/**
- * How long the answer stays on screen before the scorecard takes over.
- *
- * Generous because the anthem round spends the first 1.6s of it lifting masks
- * and turning the verse to English — at 4s that left barely two seconds to
- * read the translation, which is the beat the whole wall builds toward.
- */
-export const BUZZ_REVEAL_HOLD_MS = 7000
-
 export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: {
@@ -69,10 +60,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
      *  colour field covers it); the silhouette blanks it — the outline IS the
      *  question. */
     solo?: boolean
-    /** How long the answer holds before the scorecard. Defaults to the audio
-     *  rounds' generous beat; the silhouette shortens it — it has no verse to
-     *  translate, so four seconds of framed map is the whole reveal. */
-    revealHoldMs?: number
   }
 ) => {
   const round = useGroupChallenge(typeName, { solo: options.solo ?? false })
@@ -104,10 +91,8 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   }))
 
   let lockoutTimer: ReturnType<typeof setTimeout> | undefined
-  let revealTimer: ReturnType<typeof setTimeout> | undefined
   registerCleanup(() => {
     if (lockoutTimer) clearTimeout(lockoutTimer)
-    if (revealTimer) clearTimeout(revealTimer)
   })
 
   const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
@@ -116,9 +101,10 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     stopCountdown()
     options.onResolve?.(guess)
 
-    revealTimer = setTimeout(() => {
-      submitOnce(guess ? [guess] : [], clientScore, buzzedAt.value)
-    }, options.revealHoldMs ?? BUZZ_REVEAL_HOLD_MS)
+    // Submit at the resolve — the reveal (mask lifts, the translated verse)
+    // is pure display, and the server's flip (the kind's reveal hold in
+    // ROUND_BEATS) ends the beat.
+    submitOnce(guess ? [guess] : [], clientScore, buzzedAt.value)
   }
 
   /**

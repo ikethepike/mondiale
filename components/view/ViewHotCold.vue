@@ -138,8 +138,6 @@ const submitRound = () => {
   submitOnce(probes.value.map(probe => probe.isoCode))
 }
 
-let outOfProbesTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => outOfProbesTimer && clearTimeout(outOfProbesTimer))
 
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
@@ -193,7 +191,9 @@ const onMapClick = (event: Event) => {
   if (probes.value.length >= active.maximumGuesses) {
     gameStore.map.status = 'incorrect'
     feedback.value = 'Out of probes!'
-    outOfProbesTimer = setTimeout(submitRound, 1200)
+    // Submit at once — the server's flip (the kind's reveal hold in
+    // ROUND_BEATS) gives the verdict its beat before the scorecard.
+    submitRound()
   }
 }
 

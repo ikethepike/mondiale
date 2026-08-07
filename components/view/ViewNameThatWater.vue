@@ -208,14 +208,11 @@ const shoreLine = computed(() => {
 })
 
 let countdown: ReturnType<typeof setInterval> | undefined
-let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (countdown) clearInterval(countdown)
-  if (revealTimer) clearTimeout(revealTimer)
 })
 
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
-const REVEAL_HOLD_MS = 4200
 const resolve = (correct: boolean, guess?: SuggestOption) => {
   const active = challenge.value
   if (!active || resolved.value) return
@@ -240,10 +237,9 @@ const resolve = (correct: boolean, guess?: SuggestOption) => {
   // score alone proves nothing.
   const water = guess ? { guessedId: guess.id, guessedName: guess.name } : undefined
 
-  revealTimer = setTimeout(
-    () => submitOnce([], clientScore, undefined, water ? { water } : undefined),
-    REVEAL_HOLD_MS
-  )
+  // Submit at the resolve — the reveal is pure display, and the server's
+  // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
+  submitOnce([], clientScore, undefined, water ? { water } : undefined)
 }
 
 const begin = () => {

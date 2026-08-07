@@ -97,6 +97,37 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
 }
 
 /**
+ * The per-player reveal beat: a submit on a kind with a reveal hold banks at
+ * once but keeps the seat in the challenge while the view plays its reveal
+ * (pure display now — the answer is already server-side), then THIS flips
+ * the seat to its scorecard. Early buzzers get their beat immediately; the
+ * round-level settle stays the backstop for tabs that die mid-hold. Tokens:
+ * same round, seat still in 'group-challenge', answer banked.
+ */
+export const scheduleRevealFlip = (ctx: EngineContext, game: Game, playerId: string) => {
+  const round = latestRound(game)
+  if (!round) return
+  const hold = revealHoldMsFor(round.groupChallenge)
+  if (!hold) return
+  const roundIndex = game.rounds.length - 1
+  scheduleEngineTask(ctx, hold, async (fresh, server) => {
+    if (fresh.rounds.length - 1 !== roundIndex) return
+    const freshRound = latestRound(fresh)
+    const seat = fresh.players[playerId]
+    if (!freshRound?.groupAnswers[playerId]) return
+    if (!seat || seat.phase !== 'group-challenge') return
+    const banked = freshRound.playerTurns[playerId]?.points
+    await advanceScoredSeat(fresh, seat, banked?.scored ?? 0)
+    await server.updateGameState(fresh)
+    server.emit(
+      { event: 'group-challenge-scored', game: fresh },
+      { gameId: ctx.eventTarget.gameId, playerId }
+    )
+    armGroupScoresCap(ctx, seat)
+  })
+}
+
+/**
  * Round-1 seam: the natural first round never passes the reveal block in
  * enter-movement-phase (start-game stages it, tutorials gate it), so the
  * clock stamps on the FIRST tutorial close instead — the same re-entry the
@@ -124,6 +155,13 @@ export const rearmClassicRound = (ctx: EngineContext, game: Game) => {
   if (game.pendingRoundStart) return
   const inRound = Object.values(game.players).some(seat => seat.phase === 'group-challenge')
   if (!inRound) return
+  // Seats whose answer banked but whose reveal flip died with the restart:
+  // restore their beat (the settle would catch them anyway, later).
+  for (const seat of Object.values(game.players)) {
+    if (seat.phase === 'group-challenge' && round.groupAnswers[seat.id]) {
+      scheduleRevealFlip(ctx, game, seat.id)
+    }
+  }
   if (!round.deadline) {
     const budget = classicBudgetMs(round)
     if (!budget) return

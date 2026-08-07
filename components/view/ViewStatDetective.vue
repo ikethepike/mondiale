@@ -184,11 +184,9 @@ const displayClues = computed(() => {
 // Paced by `secondsPerClue`, not a round countdown — the clue interval is local
 let clueTimer: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
-let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (clueTimer) clearInterval(clueTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
-  if (revealTimer) clearTimeout(revealTimer)
 })
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
@@ -196,7 +194,6 @@ const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => 
 }
 
 /** Same resolution beat as the silhouette: land the answer as a PLACE. */
-const REVEAL_HOLD_MS = 4000
 const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
   const active = challenge.value
   if (!active || resolved.value) return
@@ -214,7 +211,9 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
     gameStore.map.tints[neighbour] = 'inefficient'
   }
 
-  revealTimer = setTimeout(() => submitRound(guess, clientScore), REVEAL_HOLD_MS)
+  // Submit at the resolve — the reveal is pure display, and the server's
+  // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
+  submitRound(guess, clientScore)
 }
 
 const begin = () => {
