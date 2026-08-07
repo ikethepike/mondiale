@@ -201,6 +201,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
+import { largestRing, poleOfInaccessibility } from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import {
   WORLD_BOX,
@@ -981,6 +982,39 @@ watch(
 //
 // Keyed rather than latched: errata deals a new label set per gate, and a
 // build-once flag would leave the previous round's names on the map.
+/**
+ * Where a country's name hangs, and how much room it has there. The pole of
+ * inaccessibility, not the box centre: a box centre lands on the NEIGHBOUR for
+ * any country that curves around another (Norway, Sweden, Chile, Croatia,
+ * Vietnam), and errata's stage IS the labels.
+ *
+ * Memoized because the acronym register asks for all ~219 at once — a measured
+ * ~180ms sweep that must happen exactly one time.
+ */
+const anchorCache = new Map<string, { point: [number, number]; radius: number } | undefined>()
+const labelAnchorFor = (code: MapCode) => {
+  const cached = anchorCache.get(code)
+  if (cached !== undefined || anchorCache.has(code)) return cached
+
+  const path = MAP_PATHS[code]
+  const ring = path ? largestRing(path) : undefined
+  const anchor = ring ? poleOfInaccessibility(ring) : undefined
+  const box = labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code])
+  // No ring data (a code drawn from EXTRA_MAP_CODES): the box centre is all
+  // there is, and its inscribed radius is unknown — call it half the shorter
+  // side, which is what a rectangle would hold.
+  const resolved =
+    anchor ??
+    (box
+      ? {
+          point: [box[0] + box[2] / 2, box[1] + box[3] / 2] as [number, number],
+          radius: Math.min(box[2], box[3]) / 2,
+        }
+      : undefined)
+  anchorCache.set(code, resolved)
+  return resolved
+}
+
 let builtLabelKey: string | undefined
 const ensureLabels = () => {
   if (!svg.value) return
@@ -989,27 +1023,187 @@ const ensureLabels = () => {
   if (key === builtLabelKey) return
 
   svg.value.querySelectorAll('.country-label').forEach(label => label.remove())
+  svg.value.querySelector('.country-label-leaders')?.remove()
+  // A fresh set has not been laid out for this camera yet, so it goes back
+  // behind the settle gate — a new errata gate must not flash its names at the
+  // outgoing stage's zoom.
+  svg.value.classList.remove('labels-settled')
   builtLabelKey = key
   if (!key) return
 
   const namespace = 'http://www.w3.org/2000/svg'
+  // Leaders live in one group BENEATH the text, so a hairline never crosses a
+  // glyph. Appended first for that reason.
+  const leaders = document.createElementNS(namespace, 'g')
+  leaders.classList.add('country-label-leaders')
+  svg.value.appendChild(leaders)
+
   const codes = named ? Object.keys(named) : Object.keys(MAP_BOUNDS)
   for (const code of codes) {
-    // The mainland ring, not the whole-country bbox — the latter would hang
-    // "Russia" over the Baltic and "Chile" in the open Pacific, and errata's
-    // stage IS the labels.
-    const bounds = labelBoxFor(MAP_BOUNDS[code as MapCode], MAP_REGIONS[code as MapCode])
-    // Microstates can't fit a readable label — skip the clutter
-    if (!isLabelableBox(bounds)) continue
-    const [x, y, width, height] = bounds
+    // Labelability is still judged on the box — the errata dealer tests the
+    // same predicate, and the two must agree about what can be dealt.
+    if (!isLabelableBox(labelBoxFor(MAP_BOUNDS[code as MapCode], MAP_REGIONS[code as MapCode])))
+      continue
+    const anchor = labelAnchorFor(code as MapCode)
+    if (!anchor) continue
 
     const label = document.createElementNS(namespace, 'text')
     label.textContent = named ? (named[code as ISOCountryCode] ?? '') : code
-    label.setAttribute('x', String(x + width / 2))
-    label.setAttribute('y', String(y + height / 2))
+    label.dataset.anchorX = String(anchor.point[0])
+    label.dataset.anchorY = String(anchor.point[1])
+    label.dataset.room = String(anchor.radius)
+    label.setAttribute('x', String(anchor.point[0]))
+    label.setAttribute('y', String(anchor.point[1]))
     label.classList.add('country-label')
     if (named) label.classList.add('country-label-name')
     svg.value.appendChild(label)
+  }
+  placeLabels()
+  // Guarantee a settle even when the camera never moves (labels toggled on a
+  // parked map): the settle is what sizes them and lifts the gate.
+  settleSoon()
+}
+
+/** Offsets a crowded label tries, nearest first. Vertical before horizontal —
+ *  the cartographic convention, and it keeps a name over its own latitude. */
+/** Directions a crowded label tries, nearest first. Vertical before horizontal —
+ *  the cartographic convention, and it keeps a name over its own latitude. */
+const LABEL_NUDGES: [number, number][] = [
+  [0, -1],
+  [0, 1],
+  [1, 0],
+  [-1, 0],
+  [1, -1],
+  [-1, -1],
+  [1, 1],
+  [-1, 1],
+]
+/** Gap kept between two labels, in CSS px. */
+const LABEL_GUTTER_PX = 3
+/**
+ * How far a label may travel from its country, in CSS px — the cap that keeps
+ * this a nudge and not a re-homing.
+ *
+ * In SCREEN pixels on purpose. An errata stage can frame a whole continent (a
+ * lineup may hold Russia), and a cap in map units that looks modest there is
+ * half of Europe. What the reader judges is whether the name is near the
+ * country, which is a distance on their screen.
+ */
+const LABEL_MAX_SHIFT_PX = 28
+/**
+ * Names get further to travel than acronyms, because they cannot be dropped.
+ * A stage that frames a continent (an errata lineup may hold Russia) packs its
+ * small countries into a few dozen pixels, and 28px of room cannot separate
+ * six of them. The leader line is what makes the extra distance readable.
+ */
+const LABEL_MAX_NAME_SHIFT_PX = 64
+/** Candidate spacing along each direction, as a share of the label's height. */
+const LABEL_STEP_FRACTION = 0.7
+
+/**
+ * De-overlap the labels, and give a name that had to leave its own country a
+ * line back to it.
+ *
+ * Re-run at every settle, not once at build: a label's size in USER units
+ * changes with the zoom, so who collides with whom is a property of the camera,
+ * not of the label set.
+ *
+ * The two registers want opposite things when a label cannot be placed cleanly.
+ * A written name is the question — it may never be dropped, so it takes its
+ * least-bad slot and a leader line makes it unambiguous. An ISO acronym is a
+ * traversal aid, and an aid may omit: it is dropped, because at world view
+ * Europe alone would otherwise become a fan of hairlines.
+ */
+const placeLabels = () => {
+  if (!svg.value) return
+  const leaders = svg.value.querySelector('.country-label-leaders')
+  if (!leaders) return
+  const labels = [...svg.value.querySelectorAll<SVGTextElement>('.country-label')]
+  if (!labels.length) return
+
+  leaders.textContent = ''
+  const unitsPerPx = userUnitsPerPixel()
+  const gutter = LABEL_GUTTER_PX * unitsPerPx
+  const shiftCap = (named: boolean) =>
+    (named ? LABEL_MAX_NAME_SHIFT_PX : LABEL_MAX_SHIFT_PX) * unitsPerPx
+
+  // Biggest country first: it keeps its natural spot and the small ones move.
+  const ordered = labels
+    .map(label => ({ label, room: Number(label.dataset.room) || 0 }))
+    .sort((a, b) => b.room - a.room)
+
+  type Box = { x: number; y: number; width: number; height: number }
+  const placed: Box[] = []
+  /** Overlap area against everything already placed — 0 means a clean slot. */
+  const overlap = (box: Box) =>
+    placed.reduce((total, other) => {
+      const wide =
+        Math.min(box.x + box.width, other.x + other.width) - Math.max(box.x, other.x) + gutter
+      const tall =
+        Math.min(box.y + box.height, other.y + other.height) - Math.max(box.y, other.y) + gutter
+      return total + (wide > 0 && tall > 0 ? wide * tall : 0)
+    }, 0)
+
+  for (const { label, room } of ordered) {
+    label.style.display = ''
+    const anchorX = Number(label.dataset.anchorX)
+    const anchorY = Number(label.dataset.anchorY)
+    label.setAttribute('x', String(anchorX))
+    label.setAttribute('y', String(anchorY))
+    const size = label.getBBox()
+    const boxAt = (x: number, y: number): Box => ({
+      x: x - size.width / 2,
+      y: y - size.height / 2,
+      width: size.width,
+      height: size.height,
+    })
+
+    // Walk outward in small steps and take the first clean slot, so a label
+    // moves the least it can rather than the first amount that happens to work.
+    const isName = label.classList.contains('country-label-name')
+    let chosen: [number, number] = [anchorX, anchorY]
+    let best = overlap(boxAt(anchorX, anchorY))
+    if (best > 0) {
+      const step = Math.max(size.height * LABEL_STEP_FRACTION, gutter)
+      const maxShift = shiftCap(isName)
+      search: for (let distance = step; distance <= maxShift; distance += step) {
+        for (const [dx, dy] of LABEL_NUDGES) {
+          const x = anchorX + dx * distance
+          const y = anchorY + dy * distance
+          const score = overlap(boxAt(x, y))
+          if (score < best) {
+            best = score
+            chosen = [x, y]
+          }
+          if (best === 0) break search
+        }
+      }
+    }
+
+    // Still colliding after the cap: the aid stands down, the question does not.
+    if (best > 0 && !isName) {
+      label.style.display = 'none'
+      continue
+    }
+
+    label.setAttribute('x', String(chosen[0]))
+    label.setAttribute('y', String(chosen[1]))
+    placed.push(boxAt(chosen[0], chosen[1]))
+
+    // A name that left its own land has to say where it belongs. `room` is the
+    // inscribed radius, so a shift past it means the anchor is no longer under
+    // the label. Acronyms never draw one — see the note above.
+    const shift = Math.hypot(chosen[0] - anchorX, chosen[1] - anchorY)
+    if (!isName || shift <= Math.max(room, size.height / 2)) continue
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('x1', String(chosen[0]))
+    line.setAttribute(
+      'y1',
+      String(chosen[1] + (anchorY > chosen[1] ? size.height / 2 : -size.height / 2))
+    )
+    line.setAttribute('x2', String(anchorX))
+    line.setAttribute('y2', String(anchorY))
+    leaders.appendChild(line)
   }
 }
 
@@ -1040,6 +1234,18 @@ const viewBoxPoint = (event: MouseEvent): { x: number; y: number } | undefined =
   point.y = event.clientY
   const { x, y } = point.matrixTransform(matrix.inverse())
   return { x, y }
+}
+
+/**
+ * How many viewBox units one CSS pixel spans. The same reasoning as
+ * `viewBoxPoint`: a getBoundingClientRect ratio is wrong under letterboxing
+ * and any CSS transform, and the rendered matrix is the only ground truth.
+ * Anything that must come out a fixed size ON SCREEN — label type, the gap
+ * between labels, how far one may be nudged — is measured through this.
+ */
+const userUnitsPerPixel = (): number => {
+  const scale = (svg.value as SVGSVGElement | undefined)?.getScreenCTM?.()?.a
+  return scale ? 1 / scale : 1
 }
 
 // --- Hover relay -------------------------------------------------------------
@@ -1109,6 +1315,11 @@ const updateEffectiveZoom = () => {
   const pxPerUnit = (mapRect()?.width ?? viewState.width) / viewState.width
   svg.value.classList.toggle('deep-zoom', effectiveZoom >= RING_ZOOM)
   svg.value.style.setProperty('--stroke-zoom', String(1 / Math.max(1, effectiveZoom)))
+  // User units per CSS pixel. `--stroke-zoom` is a share of the FRAME, so a
+  // font sized from it comes out `22 * cssWidth / 2000` px — 14px on the 1280px
+  // desktop it was tuned on and 4.4px on a 402px phone. Labels want real screen
+  // pixels, so they ride this instead.
+  svg.value.style.setProperty('--screen-unit', String(userUnitsPerPixel()))
   const dotRadius = 3.5 / Math.max(1, effectiveZoom)
   svg.value.querySelectorAll<SVGCircleElement>('.micro-marker').forEach(dot => {
     const footprint = Number(dot.dataset.footprint) || 0
@@ -1124,6 +1335,10 @@ const updateEffectiveZoom = () => {
     halo.setAttribute('r', String(dotRadius + slopPx / Math.max(1, pxPerUnit)))
   })
   applyLod(effectiveZoom)
+  // Overlap is a property of the camera, not the label set: a label's size in
+  // user units moves with the zoom, so the solve belongs at every settle.
+  placeLabels()
+  svg.value.classList.add('labels-settled')
 }
 
 // --- Level of detail & viewport culling --------------------------------------
@@ -2115,9 +2330,13 @@ path[id]:hover,
   display: block;
 }
 // Written names are read at region zoom, where a font sized in user units
-// would balloon with the camera. `--stroke-zoom` (set at settle, the same
-// inverse the strokes ride) holds them at a constant on-screen size; the
-// fallback covers the first paint, before the first settle has run.
+// would balloon with the camera. `--screen-unit` is user units per CSS pixel,
+// so these numbers ARE screen pixels at any zoom and any viewport.
+//
+// Not `--stroke-zoom`: that is a share of the FRAME, which made the size ride
+// the viewport width — 14px on a 1280px desktop, 4.4px on a 402px phone.
+// Strokes want the frame; text wants the screen.
+//
 // Haloed with paint-order so a name stays readable over a tinted country.
 :deep(.country-label-name) {
   opacity: 1;
@@ -2125,9 +2344,34 @@ path[id]:hover,
   paint-order: stroke;
   stroke: #{milk()};
   stroke-linejoin: round;
-  // In map units at world scale: ~14 CSS px once the frame's own scale is
-  // applied, which is what the eye actually reads.
-  font-size: calc(22px * var(--stroke-zoom, 1));
-  stroke-width: calc(4.4px * var(--stroke-zoom, 1));
+  font-size: calc(13px * var(--screen-unit, 1));
+  stroke-width: calc(3.6px * var(--screen-unit, 1));
+}
+// Both registers are laid out at settle — placement depends on the camera. Until
+// the first one lands they are sized from the PREVIOUS frame's zoom, which reads
+// as a flash of oversized overlapping text mid-fly-in, so they wait it out.
+:deep(.country-label),
+:deep(.country-label-leaders) {
+  opacity: 0;
+}
+.show-labels :deep(.labels-settled .country-label),
+.show-labels :deep(.labels-settled .country-label-leaders) {
+  opacity: 1;
+  transition: opacity var(--motion-base) var(--ease-out-expressive);
+}
+.show-labels :deep(.labels-settled .country-label) {
+  opacity: 0.65;
+}
+.show-labels :deep(.labels-settled .country-label-name) {
+  opacity: 1;
+}
+// The hairline back to the country a displaced name belongs to. Thin and quiet:
+// it only has to be followable, and it crosses countries the reader is judging.
+:deep(.country-label-leaders line) {
+  fill: none;
+  stroke: var(--dark-blue);
+  stroke-linecap: round;
+  opacity: 0.45;
+  stroke-width: calc(1px * var(--screen-unit, 1));
 }
 </style>

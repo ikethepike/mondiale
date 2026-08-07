@@ -5,16 +5,19 @@ import {
   drawnFraction,
   largestRing,
   normalizeOutline,
+  poleOfInaccessibility,
   polylineLength,
   previewSweepSeconds,
   resampleClosed,
   resampleOpen,
+  ringContains,
   scoreSketch,
   sharedBoundary,
   unsharedRuns,
 } from './outline'
 import type { OutlinePoint } from './outline'
-import { MAP_PATHS } from '~~/data/map.gen'
+import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
+import { labelBoxFor } from './geo'
 
 // Grading calibration tests: honest finger drawings must earn real points,
 // lazy blobs must not, and better drawings must always beat worse ones.
@@ -328,5 +331,49 @@ describe('drawnFraction', () => {
   it('completes exactly at zero when completeAt is 1 — the closing line is the deadline', () => {
     expect(drawnFraction(0, 25, 22, 1)).toBe(1)
     expect(drawnFraction(1, 25, 22, 1)).toBeLessThan(1)
+  })
+})
+
+describe('poleOfInaccessibility', () => {
+  // The bounding-box centre — what the map hung its labels on — lands outside
+  // any country that curves around another. These five are the ones that bite.
+  const BOX_CENTRE_MISSES = ['NO', 'SE', 'CL', 'HR', 'VN'] as const
+
+  // The anchor the map used before: the centre of `labelBoxFor`'s rectangle.
+  const boxCentre = (code: keyof typeof MAP_PATHS): OutlinePoint => {
+    const box = labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code])
+    if (!box) throw new ReferenceError(`No box for ${code}`)
+    return [box[0] + box[2] / 2, box[1] + box[3] / 2]
+  }
+
+  it('rescues the countries whose box centre is on a neighbour', () => {
+    for (const code of BOX_CENTRE_MISSES) {
+      const mainland = ring(code)
+      // Guard the premise: if this ever stops being outside, the case is stale.
+      expect(ringContains(mainland, boxCentre(code)), `${code} box centre`).toBe(false)
+      const anchor = poleOfInaccessibility(mainland)
+      expect(anchor, `${code} has no anchor`).toBeTruthy()
+      expect(ringContains(mainland, anchor!.point), `${code} anchor`).toBe(true)
+    }
+  })
+
+  it('anchors every mapped country inside its own outline', () => {
+    // Judged against the FULL-resolution ring, not the resampled one the
+    // search runs on — the shortcut has to survive the real geometry.
+    const adrift: string[] = []
+    for (const code of Object.keys(MAP_PATHS) as (keyof typeof MAP_PATHS)[]) {
+      const mainland = largestRing(MAP_PATHS[code])
+      if (!mainland || mainland.length < 3) continue
+      const anchor = poleOfInaccessibility(mainland)
+      if (!anchor || !ringContains(mainland, anchor.point)) adrift.push(code)
+    }
+    expect(adrift).toEqual([])
+  })
+
+  it('reports the room a country has, so a placement pass can tell them apart', () => {
+    const roomFor = (code: keyof typeof MAP_PATHS) => poleOfInaccessibility(ring(code))!.radius
+    // Russia can hold a name outright; Estonia cannot, and must be moved.
+    expect(roomFor('RU')).toBeGreaterThan(roomFor('EE') * 5)
+    expect(roomFor('EE')).toBeGreaterThan(0)
   })
 })
