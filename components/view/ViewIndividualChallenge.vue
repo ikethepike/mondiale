@@ -41,6 +41,7 @@
       v-if="GATE_VIEWS[variant].typedConsole"
       v-show="!status"
       id="gate-footer"
+      ref="gateFooter"
       class="suggest-berth"
     />
   </div>
@@ -62,6 +63,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { formatAmount } from '~~/lib/number'
 import { listJoin } from '~~/lib/strings'
 import { provideGateChallenge } from '~~/lib/use-gate-challenge'
@@ -91,6 +93,15 @@ const {
 const details = computed(() =>
   challenge.value ? getChallengeDetails(challenge.value.id) : undefined
 )
+
+// The typed console stands in this footer, so the camera has to frame its
+// subject in the band ABOVE it — and keep doing so as the software keyboard
+// grows the footer's padding. `useFooterBerth` owns that (ResizeObserver on the
+// border box); the four typed gates had no bottom reservation at all before.
+// Its own claim key, because the berth registry lets the prompt hold the top
+// band at the same time.
+const gateFooter = ref<HTMLElement>()
+useFooterBerth(gateFooter, 'individual-challenge-footer')
 
 // The flag gate's hero card floats over the map; on phones the world-fit
 // camera parks the subject band right beneath it. Measure the prompt and

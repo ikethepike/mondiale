@@ -34,7 +34,7 @@ import { shuffleArray } from '~~/lib/arrays'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ERRATA_SECONDS } from './timing'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -43,16 +43,22 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer } = useGateChallenge()
+const { status, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
-const secondsLeft = ref(ERRATA_SECONDS)
 const showDoubleTapHint = ref(false)
 /** Innocents the bought hint has struck off — dimmed and no longer tappable. */
 const cleared = ref(new Set<ISOCountryCode>())
-let timer: ReturnType<typeof setInterval> | undefined
 
-const elapsed = computed(() => 1 - secondsLeft.value / ERRATA_SECONDS)
-const hintUnlocked = computed(() => elapsed.value >= HINT_UNLOCK_FIRST_ELAPSED)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(ERRATA_SECONDS, {
+  // The map has to be put right even when nobody answered — the stage taught
+  // the lie either way.
+  onExpire: () => {
+    restoreStage()
+    giveUp(hintsUsed())
+  },
+})
+const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
+const hintsUsed = () => (cleared.value.size ? 1 : 0)
 
 /**
  * The stage IS the labels: frame the cluster and write the (partly wrong)
@@ -70,32 +76,17 @@ onMounted(() => {
   document.addEventListener('mapClick', onMapClick)
 })
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
   document.removeEventListener('mapClick', onMapClick)
 })
 
-watch(
-  showInterstitial,
-  value => {
-    if (value || timer) return
-    timer = setInterval(() => {
-      secondsLeft.value--
-      if (secondsLeft.value > 0) return
-      clearInterval(timer)
-      if (!status.value) resolve(wrongTokenFor(props.challenge))
-    }, 1000)
-  },
-  { immediate: true }
-)
-
 /**
- * Every way out of the gate goes through here, so the map always corrects
- * itself: the misprint is replaced with the true names and the hint's dimming
- * lifts. The stage taught the lie, so the stage has to take it back — leaving
- * the swapped labels up through the reveal would teach it twice.
+ * Put the map right: the misprint is replaced with the true names and the
+ * hint's dimming lifts. The stage taught the lie, so the stage has to take it
+ * back — leaving the swapped labels up through the reveal would teach it twice.
+ * Returns undefined so an expiry can chain straight into `giveUp`.
  */
-const resolve = (isoCode: ISOCountryCode) => {
-  if (timer) clearInterval(timer)
+const restoreStage = () => {
+  stop()
   const errata = props.challenge.errata
   if (errata) {
     gameStore.map.countryLabels = Object.fromEntries(
@@ -103,13 +94,14 @@ const resolve = (isoCode: ISOCountryCode) => {
     )
   }
   gameStore.map.dimmed = []
-  // The clock is reported on EVERY exit, expiry included — it reads 0 there,
-  // which is what a timeout should pay. Exempting that path handed a timeout
-  // the undiminished pot on the day the token turned out to be a right answer.
-  submitAnswer(isoCode, {
-    remainingFraction: Math.max(0, secondsLeft.value) / ERRATA_SECONDS,
-    hintsUsed: cleared.value.size ? 1 : 0,
-  })
+  return undefined
+}
+
+/** Every ANSWERED way out. Expiry goes through the clock's `giveUp` instead,
+ *  which reports the same zero clock this would. */
+const resolve = (isoCode: ISOCountryCode) => {
+  restoreStage()
+  submitAnswer(isoCode, { remainingFraction: remainingFraction.value, hintsUsed: hintsUsed() })
 }
 
 /** Strike out half the innocents. Never a culprit — the hint narrows the

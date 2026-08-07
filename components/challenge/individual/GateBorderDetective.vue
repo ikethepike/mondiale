@@ -74,7 +74,7 @@ import {
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_SECOND_ELAPSED,
 } from '~~/lib/scoring'
-import { useGateChallenge } from '~~/lib/use-gate-challenge'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
 // Timed like the other mystery gates: the clock scales the leap (buzz curve,
 // applied server-side from the reported fraction) and runs out into a miss.
@@ -85,10 +85,8 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, isHard, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
+const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
 
-const secondsLeft = ref(BORDER_DETECTIVE_SECONDS)
-let timer: ReturnType<typeof setInterval> | undefined
 /** The bought outline hint, drawn in the ring's centre. Every hint bites steps. */
 const outlineHint = ref<Awaited<ReturnType<typeof mainlandOutline>>>()
 let outlineHintLoading = false
@@ -96,7 +94,17 @@ let outlineHintLoading = false
 const isoHint = ref<ISOCountryCode>()
 const footerReady = ref(false)
 
-const elapsedFraction = computed(() => 1 - secondsLeft.value / BORDER_DETECTIVE_SECONDS)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
+  BORDER_DETECTIVE_SECONDS,
+  {
+    onExpire: () => {
+      // Bring the world back before the result lands — the same restore the
+      // answered path does, and the reason a timeout can't just call giveUp.
+      gameStore.map.solo = false
+      giveUp()
+    },
+  }
+)
 const outlineHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const isoHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED)
 const hintsUsed = computed(() => (outlineHint.value ? 1 : 0) + (isoHint.value ? 1 : 0))
@@ -106,27 +114,6 @@ const hintsUsed = computed(() => (outlineHint.value ? 1 : 0) + (isoHint.value ? 
 onMounted(() => {
   gameStore.map.solo = true
   footerReady.value = true
-})
-
-// The race starts the moment the interstitial clears.
-watch(
-  showInterstitial,
-  value => {
-    if (value || timer) return
-    timer = setInterval(() => {
-      secondsLeft.value--
-      if (secondsLeft.value > 0) return
-      clearInterval(timer)
-      if (status.value) return
-      gameStore.map.solo = false
-      giveUp()
-    }, 1000)
-  },
-  { immediate: true }
-)
-
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
 })
 
 const showOutlineHint = async () => {
@@ -149,11 +136,11 @@ const showIsoHint = () => {
 
 const onGuess = (country: Country) => {
   if (status.value) return
-  if (timer) clearInterval(timer)
+  stop()
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
   submitAnswer(country.isoCode, {
-    remainingFraction: Math.max(0, secondsLeft.value) / BORDER_DETECTIVE_SECONDS,
+    remainingFraction: remainingFraction.value,
     hintsUsed: hintsUsed.value,
   })
 }

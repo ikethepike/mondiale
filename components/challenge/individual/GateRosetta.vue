@@ -47,22 +47,22 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { countryName } from '~~/lib/country'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
-import { useGateChallenge } from '~~/lib/use-gate-challenge'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ROSETTA_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, isEasy, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
+const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
 
-const secondsLeft = ref(ROSETTA_SECONDS)
 const boughtRelation = ref(false)
 const footerReady = ref(false)
-let timer: ReturnType<typeof setInterval> | undefined
 
-const elapsed = computed(() => 1 - secondsLeft.value / ROSETTA_SECONDS)
-const hintUnlocked = computed(() => elapsed.value >= HINT_UNLOCK_FIRST_ELAPSED)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(ROSETTA_SECONDS, {
+  onExpire: () => giveUp(hintsUsed.value),
+})
+const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
 /** Easy mode is told what the link is for free; everyone else can buy it.
  *  Working out the relation from the exemplar IS the mode, so on hard it
@@ -77,24 +77,6 @@ const hintsUsed = computed(() => (boughtRelation.value ? 1 : 0))
 onMounted(() => {
   footerReady.value = true
 })
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
-})
-
-watch(
-  showInterstitial,
-  value => {
-    if (value || timer) return
-    timer = setInterval(() => {
-      secondsLeft.value--
-      if (secondsLeft.value > 0) return
-      clearInterval(timer)
-      if (!status.value) giveUp(hintsUsed.value)
-    }, 1000)
-  },
-  { immediate: true }
-)
-
 const buyRelationHint = () => {
   if (boughtRelation.value || status.value) return
   boughtRelation.value = true
@@ -102,9 +84,9 @@ const buyRelationHint = () => {
 
 const onGuess = (country: Country) => {
   if (status.value) return
-  if (timer) clearInterval(timer)
+  stop()
   submitAnswer(country.isoCode, {
-    remainingFraction: Math.max(0, secondsLeft.value) / ROSETTA_SECONDS,
+    remainingFraction: remainingFraction.value,
     hintsUsed: hintsUsed.value,
   })
 }

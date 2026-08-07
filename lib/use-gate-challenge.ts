@@ -13,7 +13,19 @@
  * (timer) clearInterval(timer)` per variant, and every new mode had to
  * remember to add its own.
  */
-import { computed, inject, provide, ref, toRef, type InjectionKey, type Ref } from 'vue'
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  onScopeDispose,
+  provide,
+  ref,
+  toRef,
+  watch,
+  type ComputedRef,
+  type InjectionKey,
+  type Ref,
+} from 'vue'
 import type {
   DuelOutcome,
   IndividualChallenge,
@@ -23,8 +35,9 @@ import type {
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
-import { useClientEvents } from './events/client-side'
+import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
 import { isEasyMode, isHardMode } from './game-rules'
+import { clamp01 } from './number'
 import { gateLeapSteps, gatePot } from './scoring'
 
 export interface GateSubmitOptions {
@@ -117,6 +130,30 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
 
+  /**
+   * A gate answer is a critical event, so it rides `update`'s ack and is resent
+   * until it lands — the same contract `useGroupChallenge` keeps for its own
+   * submit, and the one thing the two siblings disagreed on.
+   *
+   * Dropping the boolean is silent and total: the view has already painted the
+   * verdict and the leap by the time delivery fails, so a socket blip leaves
+   * the player looking at a win the server never heard about.
+   */
+  let disposed = false
+  let resubmitTimer: ReturnType<typeof setTimeout> | undefined
+  const deliver = async (payload: Parameters<typeof update>[0], attempt = 1): Promise<void> => {
+    const delivered = await update(payload).catch(() => false)
+    if (delivered || disposed) return
+    if (attempt >= REDELIVER_MAX_BATCHES) {
+      return console.error('Giving up on gate answer delivery — a rejoin heals the seat from here')
+    }
+    resubmitTimer = setTimeout(() => void deliver(payload, attempt + 1), REDELIVER_PAUSE_MS)
+  }
+  onScopeDispose(() => {
+    disposed = true
+    if (resubmitTimer) clearTimeout(resubmitTimer)
+  })
+
   const submitAnswer = (isoCode: ISOCountryCode, options: GateSubmitOptions = {}) => {
     // Watch mode: the gates' own timers (outline countdown, zoom-out safety,
     // miss timer) reach here with NO user input, so inert can't block them and
@@ -129,7 +166,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
 
     submittedISOCode.value = isoCode
     gameStore.map.highlighted.clear()
-    update({
+    void deliver({
       event: 'submit-individual-challenge-answer',
       isoCode,
       remainingFraction: options.remainingFraction,
@@ -216,6 +253,75 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
 
   provide(GATE_CHALLENGE, context)
   return { ...context, relatch }
+}
+
+/**
+ * A timed gate's clock: the countdown, the fractions the leap is scaled by, and
+ * the interval that drives them.
+ *
+ * `useGroupChallenge` owns exactly this for the group side, and the rule is
+ * explicit — never divide `secondsLeft / duration` in a view. Five gates were
+ * each hand-rolling the ref, the interval, its teardown, the start-on-
+ * interstitial-close watch, and the division, under three different names
+ * (`elapsed`, `elapsedFraction`, and an inline `Math.max(0, secondsLeft) / X`
+ * at every submit). This is that, once.
+ *
+ * The clock starts when the interstitial clears, not on mount: the player
+ * cannot see the question until then, and a gate that counts behind its own
+ * briefing is spending someone's clock for them. `manualStart` is for the one
+ * gate that needs to wait longer still — the outline race holds its clock
+ * until the geometry is armed, so it calls `start` itself.
+ */
+export interface GateClockOptions {
+  /** The clock reached zero and nobody had answered. */
+  onExpire: () => void
+  /** Runs every tick, after `secondsLeft` drops — the outline draw rides it. */
+  onTick?: (secondsLeft: number) => void
+  /** Skip the interstitial watch; the caller decides when to start. */
+  manualStart?: boolean
+}
+
+export const useGateClock = (
+  seconds: number,
+  options: GateClockOptions
+): {
+  secondsLeft: Ref<number>
+  remainingFraction: ComputedRef<number>
+  elapsedFraction: ComputedRef<number>
+  start: () => void
+  stop: () => void
+} => {
+  const { status, showInterstitial } = useGateChallenge()
+  const secondsLeft = ref(seconds)
+  const remainingFraction = computed(() => clamp01(secondsLeft.value / seconds))
+  const elapsedFraction = computed(() => 1 - remainingFraction.value)
+
+  let timer: ReturnType<typeof setInterval> | undefined
+  let disposed = false
+  const stop = () => {
+    if (timer) clearInterval(timer)
+    timer = undefined
+  }
+  const start = () => {
+    if (timer || disposed || status.value) return
+    timer = setInterval(() => {
+      secondsLeft.value--
+      options.onTick?.(secondsLeft.value)
+      if (secondsLeft.value > 0) return
+      stop()
+      if (!status.value) options.onExpire()
+    }, 1000)
+  }
+  onBeforeUnmount(() => {
+    disposed = true
+    stop()
+  })
+
+  if (!options.manualStart) {
+    watch(showInterstitial, briefing => !briefing && start(), { immediate: true })
+  }
+
+  return { secondsLeft, remainingFraction, elapsedFraction, start, stop }
 }
 
 /** Injected by every `Gate*` view. Throws rather than silently no-op'ing: a

@@ -58,7 +58,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { TREND_METRICS } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
-import { useGateChallenge } from '~~/lib/use-gate-challenge'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
 import { TRAJECTORY_MATCH_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -69,14 +69,14 @@ const props = defineProps<{ challenge: IndividualChallenge }>()
 /** Non-hard games get the y-axis values free in the final third. */
 const VALUES_REVEAL_ELAPSED = 2 / 3
 
-const { status, isHard, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
+const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
 
-const secondsLeft = ref(TRAJECTORY_MATCH_SECONDS)
 const struck = ref(new Set<ISOCountryCode>())
-let timer: ReturnType<typeof setInterval> | undefined
-
-const elapsed = computed(() => 1 - secondsLeft.value / TRAJECTORY_MATCH_SECONDS)
-const strikeHintUnlocked = computed(() => elapsed.value >= HINT_UNLOCK_FIRST_ELAPSED)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
+  TRAJECTORY_MATCH_SECONDS,
+  { onExpire: () => giveUp() }
+)
+const strikeHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const metricLabel = computed(() =>
   props.challenge.trajectory ? TREND_METRICS[props.challenge.trajectory.metric].label : ''
 )
@@ -90,25 +90,7 @@ const valuesRevealed = computed(() => {
   if (!trajectory) return false
   // Result beat always shows values; during play hard mode stays shape-only.
   if (status.value) return true
-  return trajectory.valuesHint && elapsed.value >= VALUES_REVEAL_ELAPSED
-})
-
-watch(
-  showInterstitial,
-  value => {
-    if (value || timer) return
-    timer = setInterval(() => {
-      secondsLeft.value--
-      if (secondsLeft.value > 0) return
-      clearInterval(timer)
-      if (!status.value) giveUp()
-    }, 1000)
-  },
-  { immediate: true }
-)
-
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+  return trajectory.valuesHint && elapsedFraction.value >= VALUES_REVEAL_ELAPSED
 })
 
 const showStrikeHint = () => {
@@ -122,9 +104,9 @@ const showStrikeHint = () => {
 
 const onPick = (isoCode: ISOCountryCode) => {
   if (status.value || struck.value.has(isoCode)) return
-  if (timer) clearInterval(timer)
+  stop()
   submitAnswer(isoCode, {
-    remainingFraction: Math.max(0, secondsLeft.value) / TRAJECTORY_MATCH_SECONDS,
+    remainingFraction: remainingFraction.value,
     hintsUsed: struck.value.size ? 1 : 0,
   })
 }

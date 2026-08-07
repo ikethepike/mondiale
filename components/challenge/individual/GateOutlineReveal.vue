@@ -15,7 +15,7 @@
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { wait } from '~~/lib/time'
-import { useGateChallenge } from '~~/lib/use-gate-challenge'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import { OUTLINE_REVEAL_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -37,9 +37,17 @@ const {
   resetOutlineReveal,
 } = useOutlineReveal()
 
-const secondsLeft = ref(OUTLINE_REVEAL_SECONDS)
+// Manual start: the clock waits for the preview to be armed (below), not just
+// for the interstitial — the geometry chunk must not burn answer time.
+const { secondsLeft, start, stop } = useGateClock(OUTLINE_REVEAL_SECONDS, {
+  manualStart: true,
+  onTick: left => tickOutlineReveal(left),
+  onExpire: () => {
+    gameStore.map.solo = false
+    giveUp()
+  },
+})
 const footerReady = ref(false)
-let timer: ReturnType<typeof setInterval> | undefined
 /** Flipped on unmount so a held clock-start can't arm a dead round. */
 let alive = true
 /** Cap on holding the clock for the geometry chunk — bounded dead air. */
@@ -51,10 +59,14 @@ onMounted(() => {
   footerReady.value = true
 })
 
+// The preview is armed once per gate; `start` is idempotent but preparing the
+// outline twice is not.
+let armed = false
 watch(
   showInterstitial,
   value => {
-    if (value || timer) return
+    if (value || armed) return
+    armed = true
     prepareOutline(props.challenge.country)
 
     // Hold the clock until the preview is armed — the geometry chunk mustn't
@@ -62,16 +74,7 @@ watch(
     // without its timeout just because the geometry was slow or missing.
     // completeAt 1: in this race the closing line IS the deadline.
     Promise.race([beginOutlineDraw(OUTLINE_REVEAL_SECONDS, 1), wait(CLOCK_HOLD_MS)]).then(() => {
-      if (!alive || timer || status.value) return
-      timer = setInterval(() => {
-        secondsLeft.value--
-        tickOutlineReveal(secondsLeft.value)
-        if (secondsLeft.value > 0) return
-        clearInterval(timer)
-        if (status.value) return
-        gameStore.map.solo = false
-        giveUp()
-      }, 1000)
+      if (alive) start()
     })
   },
   { immediate: true }
@@ -79,7 +82,6 @@ watch(
 
 onBeforeUnmount(() => {
   alive = false
-  if (timer) clearInterval(timer)
   resetOutlineReveal()
 })
 
@@ -99,7 +101,7 @@ const subCopy = computed(() => {
 
 const onGuess = (country: Country) => {
   if (status.value) return
-  if (timer) clearInterval(timer)
+  stop()
   // One shot: right or wrong, this is the answer — the server validates.
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false

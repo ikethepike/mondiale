@@ -974,6 +974,9 @@ watch(
   { flush: 'post' }
 )
 
+/** The SVG namespace, for the label nodes built by hand below. */
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
 // --- Country labels --------------------------------------------------------
 // Two registers through one builder: ISO acronyms over everything (the
 // easy-mode traversal aid) and written names over a named few (errata's
@@ -1040,10 +1043,9 @@ const ensureLabels = () => {
   builtLabelKey = key
   if (!key) return
 
-  const namespace = 'http://www.w3.org/2000/svg'
   // Leaders live in one group BENEATH the text, so a hairline never crosses a
   // glyph. Appended first for that reason.
-  const leaders = document.createElementNS(namespace, 'g')
+  const leaders = document.createElementNS(SVG_NS, 'g')
   leaders.classList.add('country-label-leaders')
   svg.value.appendChild(leaders)
 
@@ -1056,7 +1058,7 @@ const ensureLabels = () => {
     const anchor = labelAnchorFor(code as MapCode)
     if (!anchor) continue
 
-    const label = document.createElementNS(namespace, 'text')
+    const label = document.createElementNS(SVG_NS, 'text')
     label.textContent = named ? (named[code as ISOCountryCode] ?? '') : code
     label.dataset.anchorX = String(anchor.point[0])
     label.dataset.anchorY = String(anchor.point[1])
@@ -1221,7 +1223,7 @@ const placeLabels = () => {
     // the label. Acronyms never draw one — see the note above.
     const shift = Math.hypot(chosen[0] - anchorX, chosen[1] - anchorY)
     if (!isName || shift <= Math.max(room, size.height / 2)) continue
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    const line = document.createElementNS(SVG_NS, 'line')
     line.setAttribute('x1', String(chosen[0]))
     line.setAttribute(
       'y1',
