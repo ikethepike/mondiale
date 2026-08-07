@@ -159,7 +159,7 @@ describe('group-challenge scoring coverage', () => {
     const [{ ROUND_WEIGHTS }, handler] = await Promise.all([
       import('~~/lib/round-mix'),
       import('node:fs/promises').then(fs =>
-        fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+        fs.readFile(new URL('./grade-group-answer.ts', import.meta.url), 'utf8')
       ),
     ])
     const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
@@ -172,7 +172,7 @@ describe('group-challenge scoring coverage', () => {
 
   it('keeps the exemption list free of kinds that grew their own arm', async () => {
     const handler = await import('node:fs/promises').then(fs =>
-      fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+      fs.readFile(new URL('./grade-group-answer.ts', import.meta.url), 'utf8')
     )
     const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
     expect(SCORED_ELSEWHERE.filter(kind => arms.has(kind))).toEqual([])
