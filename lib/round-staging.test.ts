@@ -116,6 +116,25 @@ describe('round staging', () => {
     expect(error).toHaveBeenCalled()
   })
 
+  it('takes the floor when an ASYNC dealer rejects, same as a sync throw', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    // empire's dealer is async — a rejected promise must reach the same floor
+    // as a synchronous throw, not slip past as "nothing viable".
+    const empires = await import('./empires')
+    vi.spyOn(empires, 'subsampleKeyframes').mockImplementation(() => {
+      throw new Error('drifted keyframes')
+    })
+    dealsInOrder('empire', 'silhouette')
+
+    const dealt = await getRoundChallenge({ game: game(4) })
+
+    expect(roundChallengeKind(dealt)).toBe('ranking')
+    expect(pickRoundKind).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalled()
+  })
+
   it('keeps FORCE_ROUND_TYPE bypassing the mix entirely', async () => {
     process.env.FORCE_ROUND_TYPE = 'silhouette'
     dealsInOrder('sketch')
