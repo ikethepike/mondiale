@@ -2,9 +2,8 @@ import { playableCountries } from '~~/lib/game-rules'
 import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
-import { scheduleGameTask } from './deferred-task'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { armFinalQuestionCap } from './seat-exits'
+import { clearFinalResultBeat } from './seat-exits'
 import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 
 /**
@@ -164,26 +163,12 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
 
     // Pace the reveal: the client shows its own result beat first, then the
-    // next question (or victory) lands. The pause runs OUTSIDE the queue. The
-    // follow-up re-enters the queue to CLEAR the `resolving` latch (with a
-    // fresh fetch) before emitting, so the next genuine answer — which can only
-    // come after this reveal — is accepted while duplicates fired during the
-    // pause were already rejected.
-    scheduleGameTask({ redis, gameId: eventTarget.gameId }, GATE_RESULT_HOLD_MS, async () => {
-      const fresh = await server.fetchGame(eventTarget.gameId)
-      const freshPlayer = fresh?.players[eventTarget.playerId]
-      if (fresh && freshPlayer?.resolving) {
-        freshPlayer.resolving = false
-        await server.updateGameState(fresh)
-        server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
-      } else {
-        // Latch already cleared (or game gone) — just reveal the last state.
-        server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
-      }
-      // The next question is live from here: its cap starts now.
-      const seated = fresh?.players[eventTarget.playerId]
-      if (seated) armFinalQuestionCap({ io, redis, socket, eventTarget }, seated)
-    })
+    // next question (or victory) lands. The shared follow-up clears the
+    // `resolving` latch (with a fresh fetch), reveals, and starts the next
+    // question's cap — so the next genuine answer, which can only come after
+    // this reveal, is accepted while duplicates fired during the pause were
+    // already rejected.
+    await clearFinalResultBeat({ io, redis, socket, eventTarget }, eventTarget.playerId)
   },
   { player: 'warn' }
 )

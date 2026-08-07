@@ -7,6 +7,7 @@ import {
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
+import { roundBeats } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
@@ -264,30 +265,38 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     // replace the clock, never stack a second interval beside it
     if (countdown) clearInterval(countdown)
     const total = duration.value
-    const deadline = currentRound.value?.round.deadline
-    const expire = () => {
-      if (countdown) clearInterval(countdown)
-      countdown = undefined
-      hooks.onTimeout?.()
-    }
+    // The stamped deadline drives the clock ONLY when it measures this very
+    // countdown — a kind with a derived multi-beat budget (empire) stamps
+    // the WHOLE round's window, and pinning beat 1's clock to it would
+    // freeze the display at full for the later beats' share. Those kinds
+    // keep the local decrement; the server settle still backstops them.
+    const deadline =
+      roundBeats(challenge.value).playSeconds === undefined
+        ? currentRound.value?.round.deadline
+        : undefined
     if (deadline) {
-      // The stamp includes the opening grace, so right after the reveal the
-      // clock reads FULL and holds there while the grace burns.
       secondsLeft.value = Math.min(total, secondsOnDeadline(deadline))
-      countdown = setInterval(() => {
-        const next = Math.min(total, secondsOnDeadline(deadline))
-        if (next === secondsLeft.value) return
-        secondsLeft.value = next
-        hooks.onTick?.(next)
-        if (next <= 0) expire()
-      }, 1000)
-      return
+      // Already expired at begin() (a rejoin landing after the window): the
+      // dedupe guard below would swallow every tick, so fire the timeout now.
+      if (secondsLeft.value <= 0) return hooks.onTimeout?.()
+    } else {
+      secondsLeft.value = total
     }
-    secondsLeft.value = total
     countdown = setInterval(() => {
-      secondsLeft.value--
-      hooks.onTick?.(secondsLeft.value)
-      if (secondsLeft.value <= 0) expire()
+      // Deadline-driven: re-derive from the wall clock every tick, so a
+      // throttled tab snaps to true time the moment it wakes. (The stamp
+      // includes the opening grace, so the clock holds FULL while it burns.)
+      const next = deadline
+        ? Math.min(total, secondsOnDeadline(deadline))
+        : secondsLeft.value - 1
+      if (next === secondsLeft.value) return
+      secondsLeft.value = next
+      hooks.onTick?.(next)
+      if (next <= 0) {
+        if (countdown) clearInterval(countdown)
+        countdown = undefined
+        hooks.onTimeout?.()
+      }
     }, 1000)
   }
 

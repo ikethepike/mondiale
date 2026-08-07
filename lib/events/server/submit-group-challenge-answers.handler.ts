@@ -24,11 +24,20 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       // score instead of bailing, so the retry the client is already sending
       // becomes the cure. Idempotent: the score is read, never recomputed.
       if (player.phase === 'group-challenge') {
+        // On a kind with a reveal beat this state is NORMAL mid-hold — a
+        // redelivered duplicate must not cut the reveal short. Re-arm the
+        // flip instead (idempotent): a flip lost to a restart still lands,
+        // and a live one wins on its own clock.
+        if (revealHoldMsFor(currentRound.groupChallenge)) {
+          scheduleRevealFlip({ io, redis, socket, eventTarget }, game, playerId)
+          return
+        }
         const banked = currentRound.playerTurns[playerId]?.points
         console.warn(`Healing stranded submitter ${playerId} (answer banked, phase was not)`)
         await advanceScoredSeat(game, player, banked?.scored ?? 0)
         await server.updateGameState(game)
         server.emit({ event: 'group-challenge-scored', game }, eventTarget)
+        armGroupScoresCap({ io, redis, socket, eventTarget }, player)
         return
       }
       return console.warn(`Duplicate round submission ignored for player: ${playerId}`)

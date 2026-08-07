@@ -31,21 +31,34 @@ import { forfeitGate } from './submit-individual-challenge-answer.handler'
  * walked seat is a client-driven chain the cap must not double-step — and
  * on the same walk generation it was armed against.
  */
-export const armGroupScoresCap = (ctx: EngineContext, player: Player) => {
-  if (!SERVER_CONTROLLED_CAPS) return
-  const { walkSeq, id: playerId } = player
+const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
+  if (!SERVER_CONTROLLED_CAPS || !seats.length) return
+  const walkSeqs = seats.map(seat => [seat.id, seat.walkSeq] as const)
   scheduleEngineTask(ctx, GROUP_SCORES_CAP_MS, async fresh => {
-    const parked = fresh.players[playerId]
-    if (!parked || parked.phase !== 'group-scores') return
-    if (parked.walkSeq !== walkSeq) return
-    console.warn(`Scores cap walking parked seat ${playerId} in ${ctx.eventTarget.gameId}`)
-    scheduleMovementPhase(
-      0,
-      { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
-      { continuation: true, walkSeq }
-    )
+    for (const [playerId, walkSeq] of walkSeqs) {
+      const parked = fresh.players[playerId]
+      if (!parked || parked.phase !== 'group-scores') continue
+      if (parked.walkSeq !== walkSeq) continue
+      console.warn(`Scores cap walking parked seat ${playerId} in ${ctx.eventTarget.gameId}`)
+      scheduleMovementPhase(
+        0,
+        { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
+        { continuation: true, walkSeq }
+      )
+    }
   })
 }
+
+export const armGroupScoresCap = (ctx: EngineContext, player: Player) =>
+  armParkedWalks(ctx, [player])
+
+/** The whole-cohort form every settle uses: ONE task per settle, walking
+ *  whichever of the advanced seats are still parked when it fires. */
+export const armGroupScoresCaps = (ctx: EngineContext, game: Game, playerIds: string[]) =>
+  armParkedWalks(
+    ctx,
+    playerIds.flatMap(id => game.players[id] ?? [])
+  )
 
 /**
  * A round-1 rules card only a click closes. Cap it through the close
@@ -133,6 +146,27 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
 }
 
 /**
+ * The gauntlet's post-answer follow-up: clear the `resolving` latch so the
+ * next genuine answer lands, reveal the fresh state, and start the next
+ * question's cap. ONE shape for the live result beat (the submit handler's
+ * pause) and the rearm recovery — two private copies of this beat is how a
+ * revived seat drifts from a live one.
+ */
+export const clearFinalResultBeat = async (ctx: EngineContext, playerId: string) => {
+  scheduleEngineTask(ctx, GATE_RESULT_HOLD_MS, async (fresh, server) => {
+    const seat = fresh.players[playerId]
+    if (!seat) return
+    const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
+    if (seat.phase === 'final-challenge' && seat.resolving) {
+      seat.resolving = false
+      await server.updateGameState(fresh)
+    }
+    server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+    if (seat.phase === 'final-challenge') armFinalQuestionCap(ctx, seat)
+  })
+}
+
+/**
  * Restart recovery for every seat exit, the last call in rearmLiveRound:
  * every occupiable parked phase re-arms its cap, and — NOT gated by the cap
  * switch, it is a defect fix — a seat whose `resolving` latch outlived its
@@ -165,15 +199,8 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
         break
       case 'final-challenge':
         if (seat.resolving) {
-          // The latch-clear task died: clear it so the next answer lands.
-          scheduleEngineTask(ctx, GATE_RESULT_HOLD_MS, async (fresh, server) => {
-            const parked = fresh.players[seat.id]
-            if (parked?.phase !== 'final-challenge' || !parked.resolving) return
-            parked.resolving = false
-            await server.updateGameState(fresh)
-            server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
-            armFinalQuestionCap(ctx, parked)
-          })
+          // The latch-clear task died with the restart: re-run the beat.
+          void clearFinalResultBeat(ctx, seat.id)
         } else {
           armFinalQuestionCap(ctx, seat)
         }

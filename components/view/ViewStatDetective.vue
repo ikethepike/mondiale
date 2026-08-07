@@ -95,6 +95,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -166,7 +167,9 @@ const photoRevealed = computed(
 
 // The whole round on one clock: the last clue lands one interval before zero,
 // so the tail interval is the grace period the old timer chain gave.
-const totalSeconds = computed(() => totalClues.value * (challenge.value?.secondsPerClue ?? 0))
+// The ONE derivation (photo clue included) — the server's settle backstop
+// budgets with the same number, so the window can never run a clue short.
+const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
 
 // Phones read newest-first — a new clue lands on top of the pile and old
 // ones are a calm scroll below, never a forced one (the old auto-scroll

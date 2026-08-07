@@ -1,3 +1,4 @@
+import { isChallengeOfType } from '~~/lib/rounds'
 import {
   roundChallengeKind,
   type RoundChallenge,
@@ -42,6 +43,13 @@ export const ROUND_BOUND_PHASES: readonly PlayerPhase[] = [
   'group-challenge',
 ]
 
+/** Phases a round SETTLE may force-grade and advance — the seats actually in
+ *  (or gated behind the rules card of) the live round. Deliberately narrower
+ *  than ROUND_BOUND_PHASES: a late joiner still typing their name is
+ *  walk-exempt but was never dealt into the round, and banking it a zero
+ *  would hand it a scorecard for a round it never saw. */
+export const ROUND_SETTLE_PHASES: readonly PlayerPhase[] = ['tutorial', 'group-challenge']
+
 /**
  * Master switch for the seam caps below — the timers that force-advance a
  * seat parked OUTSIDE a round's own clock (an unread scorecard, an open
@@ -72,9 +80,11 @@ export const GATE_RESULT_WIRE_GRACE_MS = 750
 /** Ceiling for classic kinds that carry no clock of their own (a ranking
  *  being dragged, a sketch being drawn) — only armed under the cap switch. */
 export const UNTIMED_CLASSIC_CAP_SECONDS = 180
-/** Settle grace behind a classic round's deadline + reveal hold, so a live
- *  client's own timeout submit always wins the race against the backstop. */
-export const CLASSIC_SETTLE_SLACK_MS = 2000
+/** Settle grace behind a classic round's deadline + reveal budget, so a live
+ *  client's own timeout submit always wins the race against the backstop —
+ *  generous, because a throttled-but-alive tab's intervals drift late and a
+ *  browse cap's 60 one-second ticks compound that drift. */
+export const CLASSIC_SETTLE_SLACK_MS = 8000
 
 /** Empire's beat-1 → beat-2 memorize hold (the sweep freezing at the peak). */
 export const EMPIRE_INTERBEAT_HOLD_MS = 1800
@@ -84,13 +94,18 @@ export interface RoundBeatSpec {
    *  taxonomy; nothing else may hand-roll a list of engine `_type`s. */
   owner: 'classic' | 'engine'
   /** Play length for kinds whose clock is NOT the challenge's own
-   *  `durationSeconds` (a derived multi-beat total, say). Omitted =
-   *  `durationSeconds` when the challenge carries one, else untimed. */
-  playSeconds?: (challenge: RoundChallenge) => number
-  /** Post-answer reveal beat before the seat flips to scores; 0 = immediate
-   *  flip. User-paced reveals (trend-race's browsable outcome) put their CAP
-   *  here — the early exit is the player's own submit. */
+   *  `durationSeconds` (a derived multi-beat total, say). Undefined result =
+   *  fall through to `durationSeconds` when the challenge carries one, else
+   *  untimed. */
+  playSeconds?: (challenge: RoundChallenge) => number | undefined
+  /** SERVER-paced post-answer reveal beat: the seat submits at the answer,
+   *  the view plays its (display-only) reveal, and the server flips to the
+   *  scorecard after exactly this hold. 0 = immediate flip. */
   revealHoldMs: number
+  /** PLAYER-paced reveal cap (trend-race's browsable outcome): the player's
+   *  own submit is the exit and flips inline; this cap is consumed ONLY by
+   *  the settle backstop's budget, never as a post-submit park. */
+  browseCapMs?: number
   /** Click-away rules card before play (manhunt/unique pattern); capped. */
   briefingCapMs?: number
   // Future beats (a twist, a bonus, a second guess window) are added HERE as
@@ -98,8 +113,8 @@ export interface RoundBeatSpec {
   // constant. Every beat needs a server-owned exit and a rearm branch.
 }
 
-const engine = (spec: Omit<RoundBeatSpec, 'owner'> = { revealHoldMs: REVEAL_HOLD_MS }) =>
-  ({ owner: 'engine', ...spec }) satisfies RoundBeatSpec
+const engine = (spec: Partial<Omit<RoundBeatSpec, 'owner'>> = {}) =>
+  ({ owner: 'engine', revealHoldMs: REVEAL_HOLD_MS, ...spec }) satisfies RoundBeatSpec
 
 /**
  * Per-kind beat schedule. Reveal holds are the exact values the views used to
@@ -119,10 +134,13 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'stat-detective': {
     owner: 'classic',
     revealHoldMs: 4000,
+    // The photo counts as a clue interval of its own — the view's console
+    // shows the same total, imported from here, so the server window can
+    // never run a clue short of the on-screen clock.
     playSeconds: challenge =>
-      '_type' in challenge && challenge._type === 'stat-detective-challenge'
-        ? challenge.clues.length * challenge.secondsPerClue
-        : 0,
+      isChallengeOfType(challenge, 'stat-detective-challenge')
+        ? (challenge.clues.length + (challenge.photo ? 1 : 0)) * challenge.secondsPerClue
+        : undefined,
   },
   'two-truths': { owner: 'classic', revealHoldMs: 4500 },
   'river-run': { owner: 'classic', revealHoldMs: 0 },
@@ -137,24 +155,24 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'ghost-state': { owner: 'classic', revealHoldMs: 0 },
   'no-mans-land': { owner: 'classic', revealHoldMs: 0 },
   'pin-landmark': { owner: 'classic', revealHoldMs: 6000 },
-  // The trend-race outcome is browsable: the hold is a CAP, the player's own
-  // submit (Continue) is the early exit.
-  'trend-race': { owner: 'classic', revealHoldMs: 60000 },
+  // The trend-race outcome is browsable: Continue submits and flips inline;
+  // the cap only pads the settle budget for tabs that never click.
+  'trend-race': { owner: 'classic', revealHoldMs: 0, browseCapMs: 60000 },
   empire: {
     owner: 'classic',
     revealHoldMs: 12000,
     playSeconds: challenge =>
-      '_type' in challenge && challenge._type === 'empire-challenge'
+      isChallengeOfType(challenge, 'empire-challenge')
         ? challenge.durationSeconds +
           challenge.tapSeconds +
           Math.ceil(EMPIRE_INTERBEAT_HOLD_MS / 1000)
-        : 0,
+        : undefined,
   },
-  'border-chain': engine({ revealHoldMs: REVEAL_HOLD_MS, briefingCapMs: BRIEFING_CAP_MS }),
+  'border-chain': engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'heritage-hunt': engine(),
   timeline: engine(),
-  manhunt: engine({ revealHoldMs: REVEAL_HOLD_MS, briefingCapMs: BRIEFING_CAP_MS }),
-  'unique-or-bust': engine({ revealHoldMs: REVEAL_HOLD_MS, briefingCapMs: BRIEFING_CAP_MS }),
+  manhunt: engine({ briefingCapMs: BRIEFING_CAP_MS }),
+  'unique-or-bust': engine({ briefingCapMs: BRIEFING_CAP_MS }),
 }
 
 export const roundBeats = (challenge: RoundChallenge | undefined): RoundBeatSpec =>
@@ -168,6 +186,13 @@ export const isClassicGroupRound = (challenge: RoundChallenge | undefined): bool
 export const revealHoldMsFor = (challenge: RoundChallenge | undefined): number =>
   roundBeats(challenge).revealHoldMs
 
+/** The full reveal allowance the settle backstop budgets with: the
+ *  server-paced hold plus any player-paced browse cap. */
+export const revealBudgetMsFor = (challenge: RoundChallenge | undefined): number => {
+  const spec = roundBeats(challenge)
+  return spec.revealHoldMs + (spec.browseCapMs ?? 0)
+}
+
 /**
  * A classic round's play length in seconds, or undefined when the kind is
  * untimed (no challenge clock, no derived total) — the server then applies
@@ -176,7 +201,7 @@ export const revealHoldMsFor = (challenge: RoundChallenge | undefined): number =
 export const classicPlaySeconds = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge) return undefined
   const derived = roundBeats(challenge).playSeconds?.(challenge)
-  if (derived) return derived
+  if (derived !== undefined) return derived
   if ('durationSeconds' in challenge && challenge.durationSeconds) return challenge.durationSeconds
   return undefined
 }

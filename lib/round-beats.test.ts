@@ -64,7 +64,10 @@ describe('round beats', () => {
     expect(ROUND_BEATS['anthem-buzz'].revealHoldMs).toBe(7000)
     expect(ROUND_BEATS['tongue-buzz'].revealHoldMs).toBe(7000)
     expect(ROUND_BEATS.empire.revealHoldMs).toBe(12000)
-    expect(ROUND_BEATS['trend-race'].revealHoldMs).toBe(60000)
+    // Trend-race's reveal is PLAYER-paced: Continue flips inline (hold 0);
+    // the browse cap only pads the settle budget.
+    expect(ROUND_BEATS['trend-race'].revealHoldMs).toBe(0)
+    expect(ROUND_BEATS['trend-race'].browseCapMs).toBe(60000)
   })
 
   it('derives play length where the challenge clock is not durationSeconds', () => {

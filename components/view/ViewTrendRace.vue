@@ -220,10 +220,10 @@ const scrollToOutcome = () => {
 }
 
 // The reveal is browsable: the player leaves via Continue (the submit IS the
-// early exit), and the cap — the kind's reveal hold in ROUND_BEATS, which the
-// server's settle backstop budgets with — only exists so an AFK player can't
-// hold up the room's next-round barrier.
-const BROWSE_CAP_S = ROUND_BEATS['trend-race'].revealHoldMs / 1000
+// exit and flips inline), and the cap — the kind's browseCapMs in
+// ROUND_BEATS, which the server's settle backstop budgets with — only exists
+// so an AFK player can't hold up the room's next-round barrier.
+const BROWSE_CAP_S = (ROUND_BEATS['trend-race'].browseCapMs ?? 60000) / 1000
 const BROWSE_HINT_S = 10
 const browseSecondsLeft = ref(BROWSE_CAP_S)
 

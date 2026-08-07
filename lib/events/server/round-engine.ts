@@ -5,7 +5,7 @@ import type { Player } from '~~/types/player.type'
 import { useServerSideEvents, type GameServer, type GameSocket } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { movesForScoredPoints, startWalk } from './moves'
-import { REVEAL_HOLD_MS, ROUND_BOUND_PHASES, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { REVEAL_HOLD_MS, ROUND_SETTLE_PHASES, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 
 /**
  * The scaffolding every clocked round engine (chain-turns, timeline-turns,
@@ -106,12 +106,13 @@ export const settleRoundScores = async ({
     const scoring = scores[playerId] ?? { scored: 0, maximum: maximumPoints }
     round.groupAnswers[playerId] = answerFor?.(playerId) ?? { submitted: [], correct: [] }
     round.playerTurns[playerId] = { points: scoring }
-    // Any round-bound seat advances — not just 'group-challenge'. A seat that
-    // rejoined into 'tutorial' (the round-1 seam) is scored on the round like
-    // everyone else, and leaving it parked would hold `tableIsSettled` false
-    // forever. Walkable phases ('moving', 'group-scores') already banked and
-    // are mid-walk — re-walking one is the mid-round ejection class.
-    if (player && ROUND_BOUND_PHASES.includes(player.phase)) {
+    // Any seat IN the round advances — 'group-challenge' or parked behind
+    // the round-1 rules card ('tutorial'), which would otherwise hold
+    // `tableIsSettled` false forever. NOT the wider walk-exemption bucket:
+    // a late joiner still typing their name was never dealt in, and walkable
+    // phases ('moving', 'group-scores') already banked and are mid-walk —
+    // re-walking one is the mid-round ejection class.
+    if (player && ROUND_SETTLE_PHASES.includes(player.phase)) {
       await advanceScoredSeat(game, player, scoring.scored)
       advanced.push(playerId)
     }

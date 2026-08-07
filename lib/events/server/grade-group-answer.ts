@@ -241,9 +241,11 @@ export const gradeGroupAnswer = async ({
     case 'sketch': {
       const challenge = expectChallengeType(roundChallenge, 'sketch-challenge')
       answer = {
-        submitted: [challenge.country],
+        // An absent seat drew nothing — the scorecard must not show it as
+        // having "submitted" the answer.
+        submitted: absent ? [] : [challenge.country],
         correct: [challenge.country],
-        sketch: submission.sketch,
+        ...(submission.sketch ? { sketch: submission.sketch } : {}),
       }
       // Sketches always "count" — the client-computed similarity IS the score
       scoring = clampClientScore(submission.clientScore, challenge.maximumPoints, true)

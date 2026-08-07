@@ -25,10 +25,10 @@ export const useDeadlineClock = (
   const fractionLeft = ref(1)
 
   const repaint = () => {
-    const remaining = (toValue(deadline) ?? 0) - Date.now()
-    secondsOnClock.value = secondsOnDeadline(toValue(deadline) ?? 0)
+    const at = toValue(deadline) ?? 0
+    secondsOnClock.value = secondsOnDeadline(at)
     const total = (toValue(totalSeconds) ?? 0) * 1000
-    fractionLeft.value = total ? clamp01(remaining / total) : 1
+    fractionLeft.value = total ? clamp01((at - Date.now()) / total) : 1
   }
 
   repaint()

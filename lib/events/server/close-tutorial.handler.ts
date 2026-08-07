@@ -1,19 +1,26 @@
 import { defineGameHandler } from '../server-side'
 import { currentBorderChain, scheduleChainTimeout } from './chain-turns'
-import { scheduleClassicSettle, startClassicClockOnFirstClose } from './classic-rounds'
+import { scheduleClassicSettle, startClassicClockOnLastClose } from './classic-rounds'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(
   'close-tutorial',
   async ({ game, player, server, eventTarget, io, redis, socket }) => {
+    // A seat the round already advanced (a settle banked it, the tutorial cap
+    // beat the click) must not be dragged back into a spent round — a late
+    // "Let's go" is a resync, not a phase change.
+    if (player.phase !== 'tutorial') {
+      return server.emit({ event: 'update', game }, eventTarget)
+    }
     player.phase = 'group-challenge'
 
     // Round 1 never passes the enter-movement-phase reveal, so a classic
-    // round's clock stamps on the FIRST tutorial close instead (the same
-    // seam the turn engines' briefings use below). Later closes see a live
-    // deadline and change nothing.
-    const startsClassicClock = startClassicClockOnFirstClose(game)
+    // round's clock stamps here instead (the same seam the turn engines'
+    // briefings use below) — on the close that empties the rules cards, so
+    // no live reader's window starts under someone else's card. This seat's
+    // phase already flipped above, so a solo table stamps on its own close.
+    const startsClassicClock = startClassicClockOnLastClose(game)
 
     // A manhunt dealt as round 1 (FORCE_ROUND_TYPE — natural round 1 is always
     // ranking) never passes the enter-movement-phase reveal, so its secret

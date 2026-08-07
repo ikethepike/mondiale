@@ -3,7 +3,7 @@ import { rearmClassicRound, scheduleClassicSettle, startClassicClock } from './c
 import {
   CLASSIC_SETTLE_SLACK_MS,
   FIRST_TURN_GRACE_MS,
-  revealHoldMsFor,
+  revealBudgetMsFor,
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
 import type { TwoTruthsChallenge } from '~~/types/challenges/group-modes.type'
@@ -78,7 +78,7 @@ afterEach(() => vi.useRealTimers())
 /** Let the full settle budget elapse and drain the queue it re-enters. */
 const elapseSettle = async (round: Round) => {
   const fireAt =
-    round.deadline! + revealHoldMsFor(round.groupChallenge) + CLASSIC_SETTLE_SLACK_MS
+    round.deadline! + revealBudgetMsFor(round.groupChallenge) + CLASSIC_SETTLE_SLACK_MS
   await vi.advanceTimersByTimeAsync(fireAt - Date.now() + TIMEOUT_SLACK_MS + 10)
   await vi.runAllTicks()
 }
@@ -136,6 +136,23 @@ describe('scheduleClassicSettle', () => {
 
     expect(store.get(game.id)!.players.b.phase).toBe('group-scores')
     expect(roundOf(game.id).playerTurns.b.points).toEqual({ scored: 6, maximum: 10 })
+  })
+
+  it('never sweeps a seat that was never dealt into the round', async () => {
+    // A late joiner still typing their name is walk-exempt but NOT in the
+    // round — banking it a zero would hand it a scorecard for a round it
+    // never saw.
+    const game = buildGame({ a: 'group-scores', b: 'naming' })
+    const round = game.rounds[0]
+    round.groupAnswers.a = { submitted: ['SE'], correct: ['SE'] }
+    startClassicClock(round)
+    const ctx = context(game)
+
+    scheduleClassicSettle(ctx, game)
+    await elapseSettle(round)
+
+    expect(roundOf(game.id).groupAnswers.b).toBeUndefined()
+    expect(store.get(game.id)!.players.b.phase).toBe('naming')
   })
 
   it('settles nothing when every seat already advanced', async () => {
