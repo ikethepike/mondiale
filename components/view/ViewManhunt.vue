@@ -312,9 +312,9 @@ onMounted(() => {
   refetchPosition()
   // Capture the instance so mount and unmount address the same socket (the
   // room page's precedent), whatever the store holds by teardown time.
-  const socket = gameStore.socket
-  socket?.io.on('reconnect', refetchPosition)
-  onUnmounted(() => socket?.io.off('reconnect', refetchPosition))
+  const manager = gameStore.socket?.io
+  manager?.on('reconnect', refetchPosition)
+  onUnmounted(() => manager?.off('reconnect', refetchPosition))
 })
 
 // Off-board and benched (micro-nation) countries both fade — the despot can
