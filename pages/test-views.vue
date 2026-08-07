@@ -181,7 +181,9 @@ const installStubSocket = () => {
     lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
     if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
   }
-  // Critical events go through timeout().emitWithAck() — stub both paths
+  // Critical events go through timeout().emitWithAck() — stub both paths.
+  // `io` is the manager views subscribe to for reconnects; it never fires in
+  // the harness, but its absence would crash any view that listens.
   const stub = {
     emit: record,
     timeout: () => stub,
@@ -189,6 +191,7 @@ const installStubSocket = () => {
       record(event, eventData)
       return { ok: true }
     },
+    io: { on: () => {}, off: () => {} },
   }
   gameStore.socket = stub as never
 }

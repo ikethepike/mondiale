@@ -32,8 +32,8 @@
  * Any subject, blown up on the dock's stage: scrim behind, framed content,
  * close button on the corner — the same grammar MediaDock gives a photo, for
  * things that aren't photos. Teleported to <body> because hosts live inside
- * clipping panes and paragraphs (ChallengeResult's lesson is a <p>, which
- * would hoist a nested stage right out of the layout).
+ * clipping panes, where a nested stage would be cropped by an ancestor instead
+ * of covering the screen.
  *
  * `tall` buys the taller frame a chart's axes need over a photo's.
  */

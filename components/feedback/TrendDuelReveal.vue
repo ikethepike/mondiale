@@ -44,7 +44,7 @@ import type { TrendDuelOutcome } from '~~/types/challenges/individual-challenge.
 /**
  * The trend-duel gate's ledger: every duel faced, both series side by side —
  * DuelReveal's shape for trends. Renders inside ChallengeResult's lesson
- * paragraph, so spans throughout.
+ * body, and stays span-built to match its siblings.
  */
 const props = defineProps<{
   outcomes: TrendDuelOutcome[]

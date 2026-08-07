@@ -1,6 +1,6 @@
 <template>
   <!-- Spans throughout: this also renders inside ChallengeResult's lesson
-       paragraph, where block elements would be invalid markup. -->
+       body. Blocks would be legal there now; the spans stay because they work. -->
   <span class="flag-meaning-reveal">
     <span v-if="entry.meaning" class="meaning-line">{{ entry.meaning }}</span>
     <span v-if="entry.history" class="history-line">
@@ -22,7 +22,7 @@ import type { FlagMeaning } from '~~/data/flag-meanings.gen'
  * What the flag stands for. The entry comes from the lazy flag-meanings table —
  * the PARENT loads it (via loadFlagMeaning, lib/flag-meanings.ts) and gates on
  * the result, because an empty reveal must render nothing at all: hosts like
- * ChallengeResult's lesson pill treat any slotted component as content. Only
+ * ChallengeResult's lesson body treat any slotted component as content. Only
  * hand this a country's entry when `meaning` or `history` exists — the visual
  * `description` must never stand in for symbolism.
  */

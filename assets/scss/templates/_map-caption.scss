@@ -3,27 +3,31 @@
 // against any country fill (correct/incorrect washes, highlights, region
 // colors): dark-blue type on a translucent cream scrim with backdrop blur.
 .map-caption {
+  @include caption-surface;
   color: var(--dark-blue);
   display: inline-block;
   padding: 1rem 2.2rem;
-  border-radius: 1.2rem;
   max-width: calc(100vw - 3.2rem);
-  backdrop-filter: blur(0.5rem);
-  background: milk(0.85);
-  border: 0.1rem solid ink(0.2);
   box-decoration-break: clone;
 }
 
 // Fluid display scale for caption headings: full size on desktop, shrinking
-// with the viewport so prompts never dominate a phone. The class also dresses
-// spans/chips/forms, which keep their inherited size — only headings scale.
-// Views must not re-declare a fixed font-size on caption headings.
+// with the viewport so prompts never dominate a phone. A token because the
+// verdict dossier's heading needs the same scale without the pill around it.
+//
+// The shallow slope keeps the scale genuinely fluid through intermediate
+// widths — a bare 4.5vw slammed into the cap by 711px, leaving every
+// desktop size at the maximum.
+:root {
+  --caption-display: clamp(1.8rem, 1rem + 1.8vw, 3.2rem);
+}
+
+// The class also dresses spans/chips/forms, which keep their inherited size —
+// only headings scale. Views must not re-declare a fixed font-size on caption
+// headings; read --caption-display instead.
 h1.map-caption,
 h2.map-caption {
-  // The shallow slope keeps the scale genuinely fluid through intermediate
-  // widths — a bare 4.5vw slammed into the cap by 711px, leaving every
-  // desktop size at the maximum.
-  font-size: clamp(1.8rem, 1rem + 1.8vw, 3.2rem);
+  font-size: var(--caption-display);
 }
 
 // Question/result swaps over the map (Vue <Transition name="caption">)

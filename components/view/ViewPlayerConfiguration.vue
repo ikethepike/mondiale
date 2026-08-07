@@ -259,8 +259,7 @@
             <div class="challenge-meta">
               <span class="challenge-name">Spectators</span>
               <span class="challenge-caption"
-                >Friends with the link can watch — from the balcony now, live once you start. Off
-                seals the room.</span
+                >Friends with the link can watch.</span
               >
             </div>
             <SegmentedControl

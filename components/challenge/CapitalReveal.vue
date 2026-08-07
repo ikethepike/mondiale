@@ -1,6 +1,6 @@
 <template>
   <!-- Spans throughout: this also renders inside ChallengeResult's lesson
-       paragraph, where block elements would be invalid markup. -->
+       body. Blocks would be legal there now; the spans stay because they work. -->
   <span class="capital-reveal">
     <span class="capital-head">
       <strong class="capital-name">{{ capitalName }}</strong>

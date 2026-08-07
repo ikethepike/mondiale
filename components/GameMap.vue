@@ -874,20 +874,49 @@ const frameBoxFor = (isoCode: ISOCountryCode) => {
     : bounds
 }
 
+/** The revealed country's frame box. Always the mainland ring, not the
+ *  whole-country bbox: RU/US antimeridian fragments would otherwise zoom the
+ *  camera out to the whole planet. */
+const revealBox = () => {
+  const isoCode = props.highlightCountry
+  if (!isoCode) return undefined
+  const mainland = mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])
+  if (!mainland) console.warn(`Country does not exist: ${isoCode}`)
+  return mainland
+}
+
+/**
+ * The camera's automatic subject, in precedence order: an explicit focus frame
+ * (with its context countries as centre points), then the revealed country,
+ * then the world.
+ *
+ * ONE resolver, because three separate things re-aim the camera — a new focus,
+ * a reveal landing, a berth arriving — and every one of them must land on the
+ * same shot. The berth path used to resolve the subject by itself and knew only
+ * about `focusCountries`, so on a reveal-only round (every individual gate, the
+ * final's answer beat) the reveal card's own berth claim re-framed the camera to
+ * the WORLD a beat after the fly-in: the country was named and the map was back
+ * to a whole-planet view, with the reveal card sitting under it.
+ */
+const autoCameraView = () => {
+  const boxes = [
+    ...props.focusCountries.map(frameBoxFor).filter(Boolean),
+    ...(props.feature?.bounds ? [props.feature.bounds] : []),
+  ]
+  if (boxes.length) {
+    return frameForBoxes(boxes, props.focusContext.map(frameBoxFor).filter(Boolean))
+  }
+  const revealed = revealBox()
+  return revealed ? frameForBoxes([revealed], []) : restView()
+}
+
 const frameFocus = () => {
   if (!svg.value) return
 
   // The camera may fly anywhere — everything must be drawable on arrival.
   uncullAll()
 
-  const boxes = [
-    ...props.focusCountries.map(frameBoxFor).filter(Boolean),
-    ...(props.feature?.bounds ? [props.feature.bounds] : []),
-  ]
-  const target = boxes.length
-    ? frameForBoxes(boxes, props.focusContext.map(frameBoxFor).filter(Boolean))
-    : restView()
-  tweenToView(target)
+  tweenToView(autoCameraView())
 }
 
 // A new subject reclaims the camera even from a player who had taken it.
@@ -1915,34 +1944,29 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   })
 }
 
+/**
+ * The reveal landed (or cleared). Rides the shared resolver, so a focus frame
+ * still owns the shot where one is set (silhouette/traversal reveals), and
+ * clearing the reveal returns the camera to whatever is left — the world on an
+ * ordinary round, the focus frame on a round that holds one.
+ */
 const moveToCountry = () => {
   if (!wrapper.value || !svg.value) {
     return console.warn('Map not initialized yet')
   }
-
-  // When a focus frame is active (silhouette/traversal reveals) that camera
-  // owns the shot — the fly-in would fight it.
-  if (props.focusCountries.length) return
-
-  const { highlightCountry } = props
-  if (!highlightCountry) return
-
-  // Frame the mainland, not the whole-country bbox: RU/US antimeridian
-  // fragments would otherwise zoom the camera out to the whole planet.
-  const mainland = mainlandBox(MAP_REGIONS[highlightCountry], MAP_BOUNDS[highlightCountry])
-  if (!mainland) {
-    return console.warn(`Country does not exist: ${highlightCountry}`)
-  }
-  tweenToView(frameForBoxes([mainland], []))
+  // A reveal is a new subject: it reclaims the camera even from a player who
+  // panned during the question, the same way a new focus does.
+  cameraTaken = false
+  frameFocus()
 }
 
 const gameStore = useGameStore()
 
-// Registered before the two reveal-driven watchers below: Vue flushes watchers
-// in creation order, and answering a zoom-out gate clears `map.zoomOut` and
-// sets `map.reveal` in the same tick. Releasing the camera first lets the
-// result fly-to through; the reverse order would see `revealLocked` still set
-// and silently drop it.
+// Registered before the reveal-driven watcher below: Vue flushes watchers in
+// creation order, and answering a zoom-out gate clears `map.zoomOut` and sets
+// `map.reveal` in the same tick. Releasing the camera first lets the result
+// fly-to through; the reverse order would see `revealLocked` still set and
+// silently drop it.
 watch(
   () => gameStore.map.zoomOut,
   zoomOut => {
@@ -1956,14 +1980,10 @@ watch(
   },
   { immediate: true }
 )
+// Both the landing and the clearing between rounds — `moveToCountry` resolves
+// the shot either way, so a reveal cleared while a focus frame is still set no
+// longer world-fits over that frame.
 watch(() => props.highlightCountry, moveToCountry)
-watch(
-  () => gameStore.map.reveal,
-  reveal => {
-    // Reveal cleared between rounds: return the camera to the world view.
-    if (!reveal) tweenToView(restView())
-  }
-)
 </script>
 
 <style lang="scss" scoped>

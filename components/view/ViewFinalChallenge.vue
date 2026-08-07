@@ -209,6 +209,8 @@
         :picks="diasporaPicks"
       />
       <template v-if="lesson">{{ lesson }}</template>
+      <!-- Stakes, not a fact: it rides the card's body so it keeps the cream
+           scrim's contrast. -->
       <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
 
@@ -1168,10 +1170,20 @@ header .prompt {
   margin-top: 4rem;
 }
 
+// Stakes, not a fact. It takes its own rule to separate it from the teachable
+// lines above — but only when there ARE lines above: as the body's first child it
+// would otherwise draw a second hairline directly under .lesson's own, with an
+// empty band between them.
 .lives-line {
   display: block;
-  opacity: 0.75;
-  margin-top: 0.6rem;
+  opacity: 0.7;
+  font-size: 0.85em;
+
+  &:not(:first-child) {
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 0.1rem solid $hairline;
+  }
 }
 
 .sunset-fade-leave-active {

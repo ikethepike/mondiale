@@ -125,7 +125,6 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     revealProps: ({ challenge, submittedISOCode }) =>
       challenge.trajectory
         ? {
-            class: 'result-trajectory',
             metric: challenge.trajectory.metric,
             options: challenge.trajectory.options,
             answer: challenge.country,
