@@ -62,6 +62,7 @@ import type {
   RoundChallengeKind,
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
+import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -102,6 +103,7 @@ import {
   rosettaTerms,
   type RosettaRelationId,
 } from './rosetta'
+import { organizationsOf } from './odd-one-out'
 import { isNeighbour, isRouteComplete, pickTraversal } from './traversal'
 import {
   dramaScore,
@@ -2269,28 +2271,30 @@ const dealOddOneOut = (
         }
       }
       case 'organization': {
-        const byOrganization = new Map<string, { name: string; members: ISOCountryCode[] }>()
+        // Membership ids are read through `organizationsOf`, which drops any
+        // the typed table doesn't know — a club with no entry has no name to
+        // ask about.
+        const byOrganization = new Map<keyof typeof OrganizationVector, ISOCountryCode[]>()
         for (const isoCode of countryPool) {
-          for (const organization of COUNTRIES[isoCode].membership ?? []) {
-            const bucket = byOrganization.get(organization.id) ?? {
-              name: organization.id === 'nato' ? 'NATO' : organization.name.trim(),
-              members: [],
-            }
-            bucket.members.push(isoCode)
-            byOrganization.set(organization.id, bucket)
+          for (const organization of organizationsOf(isoCode)) {
+            const members = byOrganization.get(organization) ?? []
+            members.push(isoCode)
+            byOrganization.set(organization, members)
           }
         }
         const viableOrganizations = shuffleArray(
-          [...byOrganization.entries()].filter(([, { members }]) => members.length >= 3)
+          [...byOrganization.entries()].filter(([, members]) => members.length >= 3)
         )
         const entry = viableOrganizations[0]
         if (!entry) return undefined
-        const [organizationId, { name, members }] = entry
+        const [organizationId, members] = entry
+        // The shorthand, not the enum's formal name: "the OECD", never
+        // "Organisation for Economic Co-operation and Development".
+        const name = ORGANIZATION_FACTS[organizationId].shortName
         const memberSet = new Set(members)
         const same = sampleMany(members, 3)
         const odd = shuffleArray([...countryPool]).find(isoCode => !memberSet.has(isoCode))
         if (!odd) return undefined
-        void organizationId
         return {
           country: odd,
           oddOneOut: {

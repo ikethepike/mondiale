@@ -63,6 +63,7 @@ import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { formatAmount } from '~~/lib/number'
+import { listJoin } from '~~/lib/strings'
 import { provideGateChallenge } from '~~/lib/use-gate-challenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { processReplacements } from '~~/lib/values'
@@ -296,7 +297,7 @@ const gateLesson = computed(() => {
       const neighbours = BORDERS[active.country] ?? []
       if (!neighbours.length) return undefined
       const shown = active.neighbours?.length ?? 0
-      const roster = neighbours.map(isoCode => countryName(isoCode)).join(', ')
+      const roster = listJoin(neighbours.map(isoCode => countryName(isoCode)))
       const benched = neighbours.length - shown
       return `${countryName(answer)} borders ${neighbours.length}: ${roster}${
         benched > 0 ? ` — the ring showed ${shown} of them` : ''
@@ -317,7 +318,7 @@ const gateLesson = computed(() => {
         case 'region':
           return `${countryName(answer)} is in ${REGION_LABELS[answer.region]} — the other three are in ${shared.value}.`
         case 'language': {
-          const spoken = (answer.languages ?? []).slice(0, 3).join(', ')
+          const spoken = listJoin(answer.languages?.slice(0, 3) ?? [])
           return spoken
             ? `${countryName(answer)} speaks ${spoken} — the other three share ${shared.value}.`
             : `${countryName(answer)} doesn't speak ${shared.value}.`

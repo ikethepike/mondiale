@@ -7,6 +7,7 @@ import {
   individualChallengeAccessors,
   individualChallengeVariants,
 } from '~~/types/challenges/individual-challenge.type'
+import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
 
 afterEach(() => {
   delete process.env.FORCE_INDIVIDUAL_VARIANT
@@ -104,5 +105,37 @@ describe('isCorrectIndividualAnswer', () => {
     expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'FI')).toBe(
       true
     )
+  })
+})
+
+describe('dealOddOneOut (via forced variant)', () => {
+  it('names a club the way a sentence would, not the way the enum does', async () => {
+    // The gate used to read the club's formal name straight off the country's
+    // membership entry, with one hardcoded exception for NATO — so it asked
+    // about "Organisation for Economic Co-operation and Development" where a
+    // person would say "the OECD". ORGANIZATION_FACTS is the one home for that.
+    // Alliances are a hard-mode register — the other difficulties ask about
+    // region and language only.
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'odd-one-out'
+    const shorthands = Object.values(ORGANIZATION_FACTS).map(facts => facts.shortName)
+    const formal = Object.values(OrganizationVector)
+
+    let sawOrganization = false
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'isoCode', difficulty: 'hard' })
+      if (dealt.oddOneOut?.kind !== 'organization') continue
+      sawOrganization = true
+      const { value, propertyLabel } = dealt.oddOneOut
+      expect(shorthands, `dealt "${value}"`).toContain(value)
+      expect(propertyLabel).toBe(`Three of these are members of ${value}`)
+      // A formal name reaching the prompt is the bug — but some shorthands
+      // ARE the formal name ("NATO") or contain it ("the African Union"), so
+      // only the ones that genuinely differ can be checked this way.
+      for (const name of formal) {
+        if (shorthands.some(short => short.includes(name))) continue
+        expect(propertyLabel, `formal name leaked: ${name}`).not.toContain(name)
+      }
+    }
+    expect(sawOrganization, 'no organization question was dealt — test is vacuous').toBe(true)
   })
 })
