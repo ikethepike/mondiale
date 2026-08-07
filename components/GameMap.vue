@@ -2159,15 +2159,20 @@ path.sea-glow-country {
 }
 
 // Marks a contested territory that is too small to draw. Sized in screen
-// pixels via --stroke-zoom, so it stays legible from world view down to a
+// pixels via --screen-unit, so it stays legible from world view down to a
 // deep zoom on a nine-metre rock.
+//
+// Not --stroke-zoom: that is a share of the FRAME, so the r=6 ring came out
+// `6 * cssWidth / 2000` — 7.7px on a 1280px desktop but 2.6px on a 430px
+// phone, a blue speck pointing at Hans Island. Strokes want the frame;
+// a marker the eye has to FIND wants the screen (same split as the labels).
 .feature-marker {
   pointer-events: none;
   color: ink(1, 41%);
 }
 
 .feature-marker-scale {
-  transform: scale(var(--stroke-zoom, 1));
+  transform: scale(var(--screen-unit, 1));
 }
 
 .feature-marker-ring {
