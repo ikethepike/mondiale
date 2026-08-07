@@ -258,9 +258,7 @@
           <div class="challenge-row">
             <div class="challenge-meta">
               <span class="challenge-name">Spectators</span>
-              <span class="challenge-caption"
-                >Friends with the link can watch.</span
-              >
+              <span class="challenge-caption">Friends with the link can watch.</span>
             </div>
             <SegmentedControl
               name="game-spectators"
