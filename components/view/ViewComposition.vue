@@ -11,7 +11,7 @@
 
     <ChallengePrompt :hint="hint">
       <h1 class="map-caption">
-        {{ countryName(challenge.country) }}'s residents born abroad — where were most of them born?
+        {{ countryName(challenge.country) }}'s residents born abroad — where are most from?
       </h1>
     </ChallengePrompt>
 
