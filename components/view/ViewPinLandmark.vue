@@ -15,12 +15,20 @@
       attribution-label="Photo"
     >
       <h1 v-if="!result" class="map-caption">Where in the world is this?</h1>
-      <h1 v-else class="map-caption">{{ verdict }}</h1>
-      <span v-if="result" class="map-caption sub">
+      <!-- The graded line stays the head, all four shades of it — the stamp only
+           splits it into a hit or a miss. The landmark dossier keeps its own
+           corner pane: it is a docked panel with its own transition, not a
+           caption-sized fact, so only the distance rides the card's body. -->
+      <ChallengeResult
+        v-else
+        :status="resolvedCorrectly ? 'correct' : 'incorrect'"
+        :correct-message="verdict"
+        :incorrect-message="verdict"
+      >
         {{ formatKm(result.distanceKm) }} from the mark
-      </span>
-      <span v-else-if="pin" class="map-caption sub pinned">{{ formatLatLng(pin) }}</span>
-      <span v-else class="map-caption sub">Click the map to drop your pin</span>
+      </ChallengeResult>
+      <span v-if="!result && pin" class="map-caption sub pinned">{{ formatLatLng(pin) }}</span>
+      <span v-else-if="!result" class="map-caption sub">Click the map to drop your pin</span>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
@@ -64,6 +72,7 @@ import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import MediaDock from '~/components/challenge/MediaDock.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
@@ -117,6 +126,18 @@ const verdict = computed(() => {
   if (distanceKm <= active.perfectDistanceKm * 4) return 'Close.'
   if (distanceKm >= active.zeroDistanceKm) return 'Wrong part of the world.'
   return 'Not quite.'
+})
+
+/**
+ * A pin drop is graded on a curve, but a stamp is binary — so the win band is
+ * the two verdicts that read as one ("Dead on." and "Close."), which is the same
+ * `perfectDistanceKm * 4` boundary the copy above already turns on. The head
+ * keeps all four shades; only the stamp collapses them.
+ */
+const resolvedCorrectly = computed(() => {
+  const active = challenge.value
+  if (!result.value || !active) return false
+  return result.value.distanceKm <= active.perfectDistanceKm * 4
 })
 
 /**

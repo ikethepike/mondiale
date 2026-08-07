@@ -1,6 +1,9 @@
 @use '../rules/breakpoints' as *;
+@use '../rules/ink' as *;
 
-$paneBorderRadius: 1.9rem;
+// Kept as an alias so existing references read naturally; the value has exactly
+// one declaration, in rules/_ink.scss.
+$paneBorderRadius: $cardRadius;
 
 .pane {
   position: relative;

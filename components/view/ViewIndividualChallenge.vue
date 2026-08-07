@@ -19,7 +19,6 @@
           key="result"
           class="result"
           :status="status"
-          :leap-steps="earnedLeapSteps ?? 0"
           :incorrect-message="incorrectMessage"
         >
           <component :is="reveal.component" v-if="reveal" v-bind="reveal.props" />
@@ -81,7 +80,6 @@ const {
   isHard,
   submittedISOCode,
   submittedCountry,
-  earnedLeapSteps,
   gateSeq,
   showInterstitial,
   missNote,
@@ -411,11 +409,5 @@ header .result {
 header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
-}
-
-// Four curves need more width than one — the lesson pill's own max-width caps it.
-:deep(.result-trajectory) {
-  width: min(56rem, 100%);
-  margin: 0.8rem auto 0;
 }
 </style>

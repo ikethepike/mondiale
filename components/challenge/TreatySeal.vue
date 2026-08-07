@@ -1,6 +1,6 @@
 <template>
   <!-- A span, not a div: this stands in the gauntlet prompt and inside
-       ChallengeResult's lesson <p>. -->
+       ChallengeResult's lesson body. -->
   <span class="treaty-seal" :class="{ compact }" :style="{ '--family-hue': family.hue }">
     <span class="wax" aria-hidden="true">
       <StatTopicIcon class="glyph" :topic="family.glyph" />

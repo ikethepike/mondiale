@@ -36,7 +36,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * Act two of the trajectory-match reveal: every candidate's curve kept side by
  * side after the ring has turned, so the shape that won is read against the
  * three it beat rather than alone. Renders inside ChallengeResult's lesson
- * paragraph, so spans throughout — the same contract TrendDuelReveal keeps.
+ * body, and stays span-built — the same shape TrendDuelReveal keeps.
  *
  * The dealer only admits options with a readable series, so no column is empty.
  */
@@ -61,12 +61,17 @@ const candidates = computed(() =>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// Four curves need more room than one line of prose, so this reveal asks for its
+// own width rather than having the host reach in through :deep(). Stays inside
+// the verdict card's own cap, which is the only other authority on this box.
 .trajectory-reveal {
   display: block;
   text-align: left;
+  width: min(56rem, 100%);
+  margin: 0.8rem auto 0;
 }
 
-// Four abreast on desktop, 2×2 once the lesson pill narrows — a four-column
+// Four abreast on desktop, 2×2 once the lesson body narrows — a four-column
 // row of curves turns to slivers on a phone.
 .candidates {
   gap: 0.7rem;
