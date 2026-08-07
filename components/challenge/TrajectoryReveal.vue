@@ -61,9 +61,14 @@ const candidates = computed(() =>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// Four curves need more room than one line of prose, so this reveal asks for its
+// own width rather than having the host reach in through :deep(). Stays inside
+// the verdict card's own cap, which is the only other authority on this box.
 .trajectory-reveal {
   display: block;
   text-align: left;
+  width: min(56rem, 100%);
+  margin: 0.8rem auto 0;
 }
 
 // Four abreast on desktop, 2×2 once the lesson body narrows — a four-column

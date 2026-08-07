@@ -410,10 +410,4 @@ header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
 }
-
-// Four curves need more width than one — the dossier's own max-width caps it.
-:deep(.result-trajectory) {
-  width: min(56rem, 100%);
-  margin: 0.8rem auto 0;
-}
 </style>

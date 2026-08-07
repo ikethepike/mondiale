@@ -18,12 +18,20 @@
       />
 
       <ChallengePrompt :hint="hint" :attributions="dotSources">
-        <h1 class="map-caption">
-          {{ submitted ? verdictHeadline : 'Where did this happen?' }}
-        </h1>
-        <span v-if="submitted && abroadField" class="map-caption sub"
-          >Amber dots — recorded clashes abroad, in conflicts it joined.</span
+        <h1 v-if="!submitted" class="map-caption">Where did this happen?</h1>
+        <!-- `status` is this card's own prop, so the verdict still stamps a miss
+             even though gameStore.map.status stays undefined on one: washing the
+             whole world orange reads as "the world is wrong", not "you missed". -->
+        <ChallengeResult
+          v-else
+          :status="resolvedCorrectly ? 'correct' : 'incorrect'"
+          :correct-message="verdictHeadline"
+          :incorrect-message="verdictHeadline"
         >
+          <template v-if="abroadField">
+            Amber dots — recorded clashes abroad, in conflicts it joined.
+          </template>
+        </ChallengeResult>
         <span v-if="!submitted" class="map-caption sub"
           >One dot, one recorded clash since 1989 — where it happened, not how many died.</span
         >
@@ -88,6 +96,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import ConflictDotField from '~/components/challenge/ConflictDotField.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
@@ -118,6 +127,9 @@ const field = ref<ConflictField>()
 const abroadField = ref<ConflictField>()
 const shownWaves = ref(1)
 const verdictHeadline = ref('')
+/** Per-seat, and read by the verdict card — the map wash deliberately stays
+ *  undefined on a miss, so it cannot double as the card's status. */
+const resolvedCorrectly = ref(false)
 
 /** Padded bbox of a set of dot layers, in map space. */
 const fieldBounds = (
@@ -187,6 +199,7 @@ const submitRound = (score: number) => {
   stopCountdown()
 
   const correct = score > 0
+  resolvedCorrectly.value = correct
   verdictHeadline.value = !correct
     ? `It was ${countryName(active.country)}`
     : `Well read — ${countryName(active.country)}`

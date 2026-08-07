@@ -209,6 +209,9 @@
         :picks="diasporaPicks"
       />
       <template v-if="lesson">{{ lesson }}</template>
+      <!-- Stakes, not a fact: it rides the card's body so it keeps the cream
+           scrim's contrast, but takes its own rule so it never reads as one of
+           the teachable lines above it. -->
       <span v-if="livesLine" class="lives-line">{{ livesLine }}</span>
     </ChallengeResult>
 
@@ -1170,8 +1173,11 @@ header .prompt {
 
 .lives-line {
   display: block;
-  opacity: 0.75;
-  margin-top: 0.6rem;
+  opacity: 0.7;
+  font-size: 0.85em;
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 0.1rem solid $hairline;
 }
 
 .sunset-fade-leave-active {

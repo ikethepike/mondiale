@@ -21,15 +21,17 @@
         Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
         {{ challenge.windowStartYear }}?
       </h1>
-      <span v-if="revealed && pickedWinner" class="map-caption sub verdict correct">
-        Called it — {{ winnerName }} moved the most
-      </span>
-      <span v-else-if="revealed && picked !== undefined" class="map-caption sub verdict incorrect">
+      <!-- The verdict is the shared dossier; the world-context strip stays on the
+           stage below. It is a full-width chart, not a caption-sized fact, and the
+           card's 60rem cap would only squeeze it. -->
+      <ChallengeResult
+        v-if="revealed"
+        :status="pickedWinner ? 'correct' : 'incorrect'"
+        correct-message="Called it"
+        :incorrect-message="picked === undefined ? `Time's up` : 'Not this time'"
+      >
         {{ winnerName }} moved the most
-      </span>
-      <span v-else-if="revealed" class="map-caption sub verdict incorrect">
-        Time's up — {{ winnerName }} moved the most
-      </span>
+      </ChallengeResult>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
@@ -102,6 +104,7 @@ import StatCard from '~/components/challenge/StatCard.vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
@@ -256,13 +259,6 @@ const pick = (isoCode: ISOCountryCode) => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
-
-header .verdict.correct {
-  color: var(--dark-blue);
-}
-header .verdict.incorrect {
-  color: var(--hior-ange);
-}
 
 .race-stage {
   flex: 1;

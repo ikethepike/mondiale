@@ -17,13 +17,25 @@
           <h1 class="map-caption">{{ territory?.name }}</h1>
           <span class="map-caption sub">{{ teaser }}</span>
         </template>
-        <template v-else-if="territory">
-          <h1 class="map-caption">{{ verdictHeadline }}</h1>
-          <span class="map-caption sub">{{ statusLine }}</span>
-        </template>
+        <!-- Verdict head and the facts pill in the footer were two surfaces for
+             one beat; the card holds both. Only a perfect set reads as correct —
+             the partial-credit lines ("3 of 5 claimants") ride the head. -->
+        <ChallengeResult
+          v-else-if="territory"
+          :status="resolvedCorrectly ? 'correct' : 'incorrect'"
+          :correct-message="verdictHeadline"
+          :incorrect-message="verdictHeadline"
+        >
+          <span class="facts">
+            <span v-if="territory.administrator">
+              <strong>Administered by</strong> {{ countryName(territory.administrator) }}
+            </span>
+            <span><strong>Claimed by</strong> {{ claimantNames }}</span>
+          </span>
+        </ChallengeResult>
       </ChallengePrompt>
 
-      <footer>
+      <footer v-if="!submitted">
         <template v-if="!submitted">
           <p class="map-caption ask">Who claims it?</p>
           <ul v-if="picks.length" class="chips country-chip-list">
@@ -54,15 +66,6 @@
             />
           </div>
         </template>
-
-        <template v-else-if="territory">
-          <p class="map-caption facts">
-            <span v-if="territory.administrator">
-              <strong>Administered by</strong> {{ countryName(territory.administrator) }}
-            </span>
-            <span><strong>Claimed by</strong> {{ claimantNames }}</span>
-          </p>
-        </template>
       </footer>
     </template>
   </section>
@@ -73,6 +76,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -103,18 +107,9 @@ const territory = ref<RecognitionTerritory>()
 const picks = ref<ISOCountryCode[]>([])
 /** Mirrors ViewNameThatWater's reveal: praise, or a plain statement of fact. */
 const verdictHeadline = ref('')
-
-/**
- * "Admin. by Denmark; Claimed by Canada" → "Administered by Denmark. Claimed
- * by Canada." Reveal-only: administrator ∪ claimants is the answer set, so
- * this line is a complete solution and must never precede the guess.
- */
-const statusLine = computed(() =>
-  (territory.value?.status ?? '')
-    .replace(/^Admin(?:\.|istered)?\s+[Bb]y/i, 'Administered by')
-    .replace(/\.?;\s*/g, '. ')
-    .replace(/\.?$/, '.')
-)
+/** Only a perfect claimant set is a win; partial credit reads as a miss whose
+ *  head still names how close it was. */
+const resolvedCorrectly = ref(false)
 
 /**
  * Below this projected footprint a territory is a smudge at world zoom and
@@ -200,7 +195,9 @@ const submitRound = () => {
   const hit = [...guess].filter(isoCode => truth.has(isoCode)).length
   const union = new Set([...guess, ...truth]).size
 
+  // Covers Bir Tawil too: an empty truth and an empty guess are both size 0.
   const perfect = hit === truth.size && guess.size === truth.size
+  resolvedCorrectly.value = perfect
 
   if (!truth.size && !guess.size)
     // The whole point of Bir Tawil: naming nobody is a real, correct answer.
@@ -306,13 +303,11 @@ footer {
   }
 }
 
-// The reveal, in the shared map-caption idiom.
+// The reveal, stacked inside the verdict card's body.
 .facts {
   gap: 0.4rem 2rem;
-  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
 
   strong {
     opacity: 0.55;

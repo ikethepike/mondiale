@@ -22,12 +22,14 @@
           <span v-if="letterHint" class="map-caption sub clue">{{ letterHint }}</span>
         </Transition>
       </template>
-      <template v-else>
-        <h1 class="map-caption">
-          {{ resolvedCorrectly ? 'Well spotted' : 'It was' }} — the {{ challenge.featureName }}
-        </h1>
-        <span class="map-caption sub">{{ shoreLine }}</span>
-      </template>
+      <ChallengeResult
+        v-else
+        :status="resolvedCorrectly ? 'correct' : 'incorrect'"
+        :correct-message="`Well spotted — the ${challenge.featureName}`"
+        :incorrect-message="`It was the ${challenge.featureName}`"
+      >
+        {{ shoreLine }}
+      </ChallengeResult>
     </ChallengePrompt>
 
     <footer v-if="!resolved" ref="consoleFooter" class="suggest-berth">
@@ -77,6 +79,7 @@ import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'

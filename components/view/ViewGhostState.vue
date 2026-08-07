@@ -25,20 +25,23 @@
           <h1 class="map-caption">Where on Earth is this?</h1>
           <span class="map-caption sub">{{ teaser }}</span>
         </template>
-        <template v-else-if="territory">
-          <h1 class="map-caption">{{ verdictHeadline }} — {{ territory.name }}</h1>
-          <span class="map-caption sub">{{ statusLine }}</span>
-        </template>
+        <!-- Verdict head and dossier body were two separate surfaces — a caption
+             pill up here and a footer of facts pills down there. One card now. -->
+        <ChallengeResult
+          v-else-if="territory"
+          :status="resolvedCorrectly ? 'correct' : 'incorrect'"
+          :correct-message="`Well placed — ${territory.name}`"
+          :incorrect-message="missHeadline"
+        >
+          <span class="facts">
+            <span><strong>Status</strong> Self administered</span>
+            <span><strong>Claimed by</strong> {{ parentName }}</span>
+            <span><strong>Internationally recognized by</strong> {{ recogniserNames }}</span>
+            <span v-if="population"><strong>People</strong> {{ population }}</span>
+          </span>
+          <span v-for="line in recognitionLines" :key="line" class="note">{{ line }}</span>
+        </ChallengeResult>
       </ChallengePrompt>
-
-      <footer v-if="submitted && territory" class="dossier">
-        <p class="map-caption facts">
-          <span><strong>Claimed by</strong> {{ parentName }}</span>
-          <span><strong>Internationally recognized by</strong> {{ recogniserNames }}</span>
-          <span v-if="population"><strong>People</strong> {{ population }}</span>
-        </p>
-        <p v-for="line in recognitionLines" :key="line" class="map-caption note">{{ line }}</p>
-      </footer>
     </template>
   </section>
 </template>
@@ -47,6 +50,7 @@
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -79,6 +83,8 @@ const flagSvg = ref('')
 const flagHost = ref<HTMLElement>()
 /** Mirrors ViewNameThatWater's reveal: praise, or a plain "It was". */
 const verdictHeadline = ref('')
+/** Per-seat, and read by the verdict card — `correct` was local to submitRound. */
+const resolvedCorrectly = ref(false)
 
 /**
  * Parse and sanitize before the flag enters the DOM — no scripts, no
@@ -95,15 +101,6 @@ watchEffect(() => {
 
   flagHost.value.replaceChildren(svg)
 })
-
-/**
- * Rebuilt from our own resolved data rather than echoing Natural Earth's
- * prose, which abbreviates ("Claimed by Azer.") and punctuates inconsistently.
- * Reveal-only: it names the claimant, which IS the answer.
- */
-const statusLine = computed(() =>
-  parentName.value ? `Self administered. Claimed by ${parentName.value}.` : ''
-)
 
 const population = computed(() =>
   territory.value?.pop ? new Intl.NumberFormat().format(territory.value.pop) : ''
@@ -220,11 +217,23 @@ const start = async () => {
   begin({ onTimeout: () => submitRound(undefined) })
 }
 
+/**
+ * "It was" wants the name to follow it directly; "Out of time" wants the dash,
+ * because the name is a separate thought rather than the object of the sentence.
+ */
+const missHeadline = computed(() => {
+  const name = territory.value?.name ?? ''
+  return verdictHeadline.value === 'It was'
+    ? `It was ${name}`
+    : `${verdictHeadline.value} — ${name}`
+})
+
 const submitRound = (isoCode: ISOCountryCode | undefined) => {
   const active = challenge.value
   if (!active || submitted.value) return
 
   const correct = isoCode === active.parent
+  resolvedCorrectly.value = correct
   verdictHeadline.value = !isoCode ? 'Out of time' : correct ? 'Well placed' : 'It was'
 
   // Reveal: bloom the outline (a marker when it's too small to draw), highlight
@@ -264,7 +273,6 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
-@use '~/assets/scss/rules/breakpoints' as *;
 
 header .sub {
   max-width: min(80vw, 40rem);
@@ -283,26 +291,17 @@ header .sub {
   }
 }
 
-// The reveal dossier's berth; while guessing, the round clock floats in the
-// shared .round-clock corner instead.
-footer {
-  display: flex;
-  padding: 0 2rem 2rem;
-  align-items: center;
-  flex-flow: column nowrap;
-}
-
-// The reveal: what the round withheld, in the map-caption idiom.
-.dossier {
-  gap: 0.6rem;
+// The reveal: what the round withheld, now stacked inside the verdict card's
+// body rather than in a footer of its own pills.
+.facts,
+.note {
+  display: block;
 }
 
 .facts {
   gap: 0.4rem 2rem;
-  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
 
   strong {
     opacity: 0.55;
@@ -315,19 +314,9 @@ footer {
 }
 
 .note {
-  margin: 0;
-  max-width: min(90vw, 44rem);
-  font-size: 1rem;
-  text-align: center;
+  font-size: 0.8em;
   line-height: 1.55;
-  padding: 0.6rem 1.6rem;
-}
-
-// Phone: the dossier's bespoke desktop padding above would otherwise beat the
-// shell's safe-area rule — restate it clear of the home indicator.
-@media screen and (max-width: $tablet) {
-  footer {
-    padding: 1.2rem 1.6rem calc(1.2rem + var(--safe-bottom));
-  }
+  margin-top: 0.6rem;
+  opacity: 0.75;
 }
 </style>

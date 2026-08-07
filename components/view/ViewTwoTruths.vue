@@ -10,25 +10,30 @@
     />
 
     <ChallengePrompt :attributions="claimSources" attribution-label="Sources">
-      <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-      <span v-if="!revealed" class="map-caption sub"> Tap the claim that doesn't belong </span>
-      <span v-else-if="foundLie" class="map-caption sub verdict correct">
-        Caught it — that's {{ countryName(challenge.lieSource) }}'s number. The truth:
-        {{ truthDisplay }}
-      </span>
-      <span v-else-if="timedOut" class="map-caption sub verdict incorrect">
-        Time ran out — the lie was {{ lieLabel }}, which belongs to
-        {{ countryName(challenge.lieSource) }}
-      </span>
-      <span v-else class="map-caption sub verdict incorrect">
-        That one was true — the lie was {{ lieLabel }}, which belongs to
-        {{ countryName(challenge.lieSource) }}
-      </span>
+      <template v-if="!revealed">
+        <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
+        <span class="map-caption sub"> Tap the claim that doesn't belong </span>
+      </template>
+      <!-- The question title steps aside for the verdict rather than standing above
+           it: the dossier's own head is the heading once the round has resolved, and
+           its body already names the country. -->
+      <ChallengeResult
+        v-else
+        :status="foundLie ? 'correct' : 'incorrect'"
+        correct-message="Caught it"
+        :incorrect-message="timedOut ? 'Time ran out' : 'That one was true'"
+      >
+        <template v-if="foundLie">
+          That's {{ countryName(challenge.lieSource) }}'s number. The truth: {{ truthDisplay }}
+        </template>
+        <template v-else>
+          The lie was {{ lieLabel }}, which belongs to {{ countryName(challenge.lieSource) }}
+        </template>
+      </ChallengeResult>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
     <section class="claim-stage">
-      <ContourRipple v-if="foundLie" class="stage-ripple" tone="success" :delay="0.15" />
       <!-- Before the pick: the flag. After: the lie's stat as a world strip,
            so the reveal SHOWS where the truth and the borrowed number sit. -->
       <Transition name="caption" mode="out-in">
@@ -113,7 +118,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import StatCard from '~/components/challenge/StatCard.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
-import ContourRipple from '~/components/feedback/ContourRipple.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import ScalePlot from '~/components/feedback/ScalePlot.vue'
@@ -267,13 +272,6 @@ const pick = (index: number) => {
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-header .verdict.correct {
-  color: var(--dark-blue);
-}
-header .verdict.incorrect {
-  color: var(--hior-ange);
-}
-
 .claim-stage {
   flex: 1;
   gap: 2.4rem;
@@ -283,16 +281,6 @@ header .verdict.incorrect {
   align-items: center;
   flex-flow: column nowrap;
   justify-content: center;
-}
-
-.stage-ripple {
-  top: 50%;
-  left: 50%;
-  width: min(34rem, 90vw);
-  height: min(34rem, 90vw);
-  position: absolute;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
 }
 
 .plot-frame {
