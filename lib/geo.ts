@@ -7,7 +7,7 @@ export interface LatLng {
 }
 
 /** Parse the factbook coordinate strings, e.g. "62 00 N, 15 00 E". */
-export const parseCoordinates = (raw: string | undefined): LatLng | undefined => {
+const parseCoordinates = (raw: string | undefined): LatLng | undefined => {
   if (!raw) return undefined
   const match = raw.match(/(\d+)\s+(\d+)\s*([NS])\s*,\s*(\d+)\s+(\d+)\s*([EW])/i)
   if (!match) return undefined

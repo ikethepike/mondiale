@@ -13,13 +13,6 @@ export const parseViewBox = (value: string | undefined): ViewBox => {
   return { minX: 0, minY: 0, width: 1, height: 1 }
 }
 
-export const TARGET_VIEWBOX: ViewBox = {
-  minX: 0,
-  minY: 0,
-  width: TARGET_WIDTH,
-  height: TARGET_HEIGHT,
-}
-
 /**
  * Resolve a named target region to a rectangle in target space. Regions encode
  * the conventional layout fractions used by the family rules — `field` is the

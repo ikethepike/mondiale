@@ -76,9 +76,6 @@ export type RosettaRelationId = keyof typeof ROSETTA_RELATIONS
 
 export const rosettaRelationIds = Object.keys(ROSETTA_RELATIONS) as RosettaRelationId[]
 
-export const isValidRosettaRelationId = (value: unknown): value is RosettaRelationId =>
-  typeof value === 'string' && Object.hasOwn(ROSETTA_RELATIONS, value)
-
 /** One dealable side of an analogy: a term and the country it points at. */
 export interface RosettaTerm {
   isoCode: ISOCountryCode
