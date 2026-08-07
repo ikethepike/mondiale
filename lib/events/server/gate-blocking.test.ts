@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { gateLeapSteps } from '~~/lib/scoring'
+import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
@@ -146,7 +146,7 @@ describe('a failed gate blocks the walk', () => {
     } as never)
 
     expect(store.get(game.id)!.rounds[0].playerTurns.a.blocked).toBeUndefined()
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1))
+    expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1, 0, gatePot('find')))
     expect(playerOf(game.id, 'a').moves).toHaveLength(1)
   })
 

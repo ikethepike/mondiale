@@ -26,7 +26,7 @@
 </template>
 <script lang="ts" setup>
 import { PLAYER_COLORS } from '~~/data/palette'
-import { gateLeapSteps } from '~~/lib/scoring'
+import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { generateTiles } from '~~/lib/tiles'
 import { gameLengths, type Game, type GameLength, type Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -121,7 +121,7 @@ const loseGate = () => {
 const winGate = () => {
   const player = mockGame.players['mock-player-1']
   if (!player.moves.length) return
-  player.currentPosition += gateLeapSteps()
+  player.currentPosition += gateLeapSteps(undefined, undefined, gatePot())
   player.moves.shift()
 }
 

@@ -66,6 +66,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
+import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
 import { TRENDS } from '~~/lib/trends-data'
@@ -2411,6 +2412,119 @@ const scenarios: Scenario[] = [
         options: ['FR', 'IT', 'ES', 'GB'],
         image: landmark?.image ?? '/landmarks/eiffel-tower.webp',
         landmarkSlug: 'eiffel-tower',
+      }),
+  },
+  {
+    id: 'individual-errata-swap',
+    label: 'Individual: errata (swapped neighbours)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'isoCode',
+        variant: 'errata',
+        country: 'ZM',
+        errata: {
+          lineup: ['ZM', 'ZW', 'MZ', 'BW', 'NA', 'AO', 'MW', 'TZ'],
+          kind: 'swap',
+          culprits: ['ZM', 'ZW'],
+          labels: {
+            ZM: 'Zimbabwe',
+            ZW: 'Zambia',
+            MZ: 'Mozambique',
+            BW: 'Botswana',
+            NA: 'Namibia',
+            AO: 'Angola',
+            MW: 'Malawi',
+            TZ: 'Tanzania',
+          },
+        },
+      }),
+  },
+  {
+    id: 'individual-errata-impostor',
+    label: 'Individual: errata (one borrowed name)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'isoCode',
+        variant: 'errata',
+        country: 'SK',
+        errata: {
+          lineup: ['PL', 'CZ', 'SK', 'HU', 'AT', 'DE'],
+          kind: 'impostor',
+          culprits: ['SK'],
+          labels: {
+            PL: 'Poland',
+            CZ: 'Czechia',
+            SK: 'Slovenia',
+            HU: 'Hungary',
+            AT: 'Austria',
+            DE: 'Germany',
+          },
+        },
+      }),
+  },
+  {
+    // The regression case for label placement. Russia's whole-country bbox is
+    // 1560 of the map's 2000 units wide, so its centre — where the renderer
+    // hangs the name — sits in the Baltic. Every name here must land on its
+    // own country; if one is adrift, `labelBoxFor` has come undone.
+    id: 'individual-errata-stretched',
+    label: 'Individual: errata (antimeridian neighbours)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'errata',
+        variant: 'errata',
+        country: 'FI',
+        errata: {
+          lineup: ['RU', 'FI', 'NO', 'SE', 'EE', 'LV', 'BY'],
+          kind: 'impostor',
+          culprits: ['FI'],
+          labels: {
+            RU: 'Russia',
+            FI: 'Denmark',
+            NO: 'Norway',
+            SE: 'Sweden',
+            EE: 'Estonia',
+            LV: 'Latvia',
+            BY: 'Belarus',
+          },
+        },
+      }),
+  },
+  {
+    id: 'individual-rosetta-peak',
+    label: 'Individual: rosetta (analogy, typed)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'isoCode',
+        variant: 'rosetta',
+        country: 'AR',
+        rosetta: {
+          relation: 'peak',
+          exemplar: { term: 'Everest', isoCode: 'NP' },
+          term: 'Aconcagua',
+          relationLabel: ROSETTA_RELATIONS.peak.label,
+        },
+      }),
+  },
+  {
+    id: 'individual-rosetta-capital',
+    label: 'Individual: rosetta (capital register)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'capital.name',
+        variant: 'rosetta',
+        country: 'PE',
+        rosetta: {
+          relation: 'capital',
+          exemplar: { term: 'Nairobi', isoCode: 'KE' },
+          term: 'Lima',
+          relationLabel: ROSETTA_RELATIONS.capital.label,
+        },
       }),
   },
   {

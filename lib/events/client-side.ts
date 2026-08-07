@@ -104,6 +104,7 @@ export const useClientEvents = () => {
     gameStore.map.solo = false
     gameStore.map.landmass = false
     gameStore.map.labels = false
+    gameStore.map.countryLabels = undefined
     // Drop the claims too, or a released slot would be re-applied by the
     // next claimant's recompute from stale owners.
     releaseAllMapBerths()

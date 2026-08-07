@@ -1,6 +1,6 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { latestRound } from '~~/lib/rounds'
-import { gateLeapSteps } from '~~/lib/scoring'
+import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 
@@ -45,7 +45,13 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     const correct = isCorrectIndividualAnswer(currentMove.challenge, eventData.isoCode)
     if (correct) {
       // Timed gates scale the leap by the clock; bought hints bite steps off.
-      player.currentPosition += gateLeapSteps(eventData.remainingFraction, eventData.hintsUsed)
+      // The pot is the variant's, read through the shared `gatePot` so the
+      // steps the client promised and the steps the server pays can't drift.
+      player.currentPosition += gateLeapSteps(
+        eventData.remainingFraction,
+        eventData.hintsUsed,
+        gatePot(currentMove.challenge.variant)
+      )
       player.moves.shift()
     } else {
       // The block goes on the record before the moves are forfeited — without

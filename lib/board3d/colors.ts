@@ -26,4 +26,15 @@ export const TILE_TOP_TINTS: Record<IndividualChallengeAccessorId, string> = {
   'government.leader': '#b6bdc9', // darkBlue wash
   currency: '#d9a675', // deeper sand — gold at board scale
   landmarks: '#90bcb5', // softMint
+  // The only near-neutral top on the board — foxed paper, so the misprint gate
+  // reads as a page rather than a place. A lighter grey was tried and measured
+  // badly: at ΔE 14.3 from a plain sourMilk tile it barely announced itself as
+  // a gate at all, where every other top sits 21+ away. This one sits at 27.
+  errata: '#bfada7',
+  // Limestone — vellum under the quill. A mint was tried first and measured
+  // badly: ΔE 7.9 from the errata top, tighter than the palette's own worst
+  // pair (isoCode vs leader, 8.6). Limestone's tightest neighbour is not
+  // errata (15.1) but capital.name, at 12.2 — clear of the floor, and the
+  // closest any pair involving a new tint gets.
+  lexicon: '#cfc6a8',
 }

@@ -16,8 +16,10 @@ import {
   MeshToonMaterial,
   BackSide,
   DoubleSide,
+  ExtrudeGeometry,
   PlaneGeometry,
   Quaternion,
+  Shape,
   SphereGeometry,
   TubeGeometry,
   Vector2,
@@ -279,13 +281,37 @@ interface MarkerPart {
 }
 
 /**
- * Local-space marker shapes per challenge type (y up, origin at tile ground,
- * +z pointing along the path). Chunky low-poly forms in the toon language:
- * a flag for flag challenges, an obelisk for capitals, a signpost for ISO
- * codes, a statue for leaders, a standing coin for currencies, a pyramid for
- * landmarks and a full arch spanning the final tile — physical gates that
+ * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
+ * pointing along the path). Chunky low-poly forms in the toon language: a flag
+ * for flag challenges, an obelisk for capitals, a signpost for ISO codes, a
+ * statue for leaders, a standing coin for currencies, a map pin for
+ * landmarks, crossed signposts for errata, a quill in an ink pot for the
+ * lexicon, and a full arch spanning the final tile — physical gates that
  * read as a hard border to pass.
+ *
+ * Two rules earned the hard way. A marker must NAME its theme, not merely
+ * differ from its neighbours (a blank stele is distinct and says nothing), and
+ * it must survive the board's-eye camera, which looks DOWN: broad forms read,
+ * thin and leaning ones vanish. Detail finer than a tier or a plate is lost to
+ * the flat toon shading, so shapes have to work as silhouettes.
  */
+/**
+ * Flat-shade a geometry by giving every face its own normals.
+ *
+ * three.js interpolates normals across a cone's sides, which is right for a
+ * many-segment cone and wrong for a four-segment one: the toon ramp smears a
+ * gradient over each triangle instead of lighting it as a facet, and the shape
+ * reads as a soft blob. Markers share one material per colour (they are merged
+ * into a handful of draw calls), so `flatShading` on the material is not
+ * available — the fix has to live in the geometry.
+ */
+const faceted = (geometry: BufferGeometry): BufferGeometry => {
+  const flat = geometry.toNonIndexed()
+  flat.computeVertexNormals()
+  geometry.dispose()
+  return flat
+}
+
 const markerPartsFor = (
   type: IndividualChallengeAccessorId | 'final',
   spacing: number
@@ -303,13 +329,15 @@ const markerPartsFor = (
       ]
     }
     case 'capital.name': {
+      // Both are four-segment solids, so both need their own face normals or
+      // the obelisk shades like a smooth taper instead of four flat sides.
       const shaft = new CylinderGeometry(0.09 * s, 0.16 * s, 0.8 * s, 4)
       shaft.translate(0, 0.4 * s, 0)
       const cap = new ConeGeometry(0.13 * s, 0.2 * s, 4)
       cap.translate(0, 0.9 * s, 0)
       return [
-        { geometry: shaft, color: BOARD_COLORS.warmSand },
-        { geometry: cap, color: BOARD_COLORS.darkBlue },
+        { geometry: faceted(shaft), color: BOARD_COLORS.warmSand },
+        { geometry: faceted(cap), color: BOARD_COLORS.darkBlue },
       ]
     }
     case 'isoCode': {
@@ -348,14 +376,134 @@ const markerPartsFor = (
       ]
     }
     case 'landmarks': {
-      const base = new BoxGeometry(0.52 * s, 0.1 * s, 0.52 * s)
-      base.translate(0, 0.05 * s, 0)
-      const pyramid = new ConeGeometry(0.34 * s, 0.55 * s, 4)
-      pyramid.rotateY(Math.PI / 4)
-      pyramid.translate(0, 0.375 * s, 0)
+      // A map pin: the one shape that means "a place" without having to be
+      // read, and it replaces a four-sided cone the toon ramp turned into a
+      // soft nothing.
+      //
+      // ONE lathed surface, not a sphere sitting on a cone. Every part gets
+      // its own inverted-hull outline, so a pin built from two solids wears an
+      // ink ring exactly where they join — the seam reads as a crack across
+      // the head. Revolving a teardrop profile gives one skin and one outline.
+      //
+      // The profile is the tangent construction: a straight flank from the tip
+      // to where it touches the head circle, then the arc over the top. Solved
+      // rather than eyeballed, so the join is smooth by geometry.
+      //
+      // `TOUCH` is the tangent point in the CIRCLE's parameter (0 at the crown,
+      // sweeping down the flank), which is where the arc has to start — the
+      // half-angle at the tip is a different number entirely, and using one for
+      // the other splays the flank wider than the head and below the ground.
+      // Lathe wants the profile bottom-up, so the arc runs TOUCH → 0 and the
+      // straight flank is just the segment from the tip to its first point.
+      const RADIUS = 0.23
+      const CENTRE = 0.62
+      const TOUCH = Math.acos(-RADIUS / CENTRE)
+      const profile = [new Vector2(0, 0)]
+      const ARC_STEPS = 14
+      for (let step = 0; step <= ARC_STEPS; step++) {
+        const angle = TOUCH * (1 - step / ARC_STEPS)
+        profile.push(
+          new Vector2(RADIUS * Math.sin(angle) * s, (CENTRE + RADIUS * Math.cos(angle)) * s)
+        )
+      }
+
+      // The eye keeps its own outline on purpose — that ring is what makes it
+      // read as a hole punched through rather than a dot painted on. It has to
+      // clear the head's chord AT ITS OWN RADIUS, not the head's full diameter:
+      // overshoot that and the caps stand off the curved face as two navy tabs
+      // instead of a hole. It is bored ACROSS the path (local x), not down it:
+      // markers are turned so +z runs along the path, and the board camera
+      // watches the path side-on, so a hole down +z is edge-on from every seat.
+      const EYE = 0.088
+      const throughHead = Math.sqrt(RADIUS * RADIUS - EYE * EYE) * 2 + 0.02
+      const eye = new CylinderGeometry(EYE * s, EYE * s, throughHead * s, 14)
+      eye.rotateZ(Math.PI / 2)
+      eye.translate(0, CENTRE * s, 0)
+
       return [
-        { geometry: base, color: BOARD_COLORS.darkBlue },
-        { geometry: pyramid, color: BOARD_COLORS.warmSand },
+        { geometry: new LatheGeometry(profile, 20), color: BOARD_COLORS.warmSand },
+        { geometry: eye, color: BOARD_COLORS.darkBlue },
+      ]
+    }
+    case 'errata': {
+      // Crossed signposts: one post carrying two name plates tilted opposite
+      // ways — the swap made physical. Shares the ISO gate's post on purpose
+      // (both are "a sign that names a place"); the tilt and the alert red,
+      // which no other marker uses, are what tell them apart at board scale.
+      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
+      pole.translate(0, 0.475 * s, 0)
+      const lower = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      lower.rotateZ(-0.21)
+      lower.translate(0, 0.5 * s, 0)
+      const upper = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      upper.rotateZ(0.21)
+      upper.translate(0, 0.8 * s, 0)
+      return [
+        { geometry: pole, color: BOARD_COLORS.darkBlue },
+        { geometry: lower, color: BOARD_COLORS.warmSand },
+        { geometry: upper, color: BOARD_COLORS.hiorAnge },
+      ]
+    }
+    case 'lexicon': {
+      // A quill standing in an ink pot — writing names down.
+      //
+      // The mass IS the feather. Two earlier attempts failed by treating the
+      // quill as a shaft with something stuck to it, which reads as a spatula;
+      // here the blade is a broad swept lens extruded from a bezier outline,
+      // the rachis is a curve drawn through it, and the nib is a detail. The
+      // sweep also solves the board's-eye camera: a curve presents area from
+      // above where a straight lean presents none.
+      const RACHIS: [number, number][] = [
+        [0, 0.24],
+        [-0.04, 0.46],
+        [-0.13, 0.68],
+        [-0.27, 0.86],
+        [-0.46, 0.96],
+      ]
+      const spine = new CatmullRomCurve3(RACHIS.map(([x, y]) => new Vector3(x, y, 0)))
+
+      // The vane: a lens hugging the rachis, fuller on the outer side like a
+      // real feather, tapering to nothing at the tip and at the quill end.
+      const vane = new Shape()
+      vane.moveTo(-0.02, 0.42)
+      vane.quadraticCurveTo(-0.06, 0.84, -0.46, 0.96)
+      vane.quadraticCurveTo(-0.3, 0.63, -0.02, 0.42)
+      const blade = new ExtrudeGeometry(vane, { depth: 0.045, bevelEnabled: false })
+      blade.translate(0, 0, -0.0225)
+      blade.scale(s, s, s)
+
+      const rachis = new TubeGeometry(spine, 24, 0.016, 6, false)
+      rachis.scale(s, s, s)
+
+      // The bare quill between the vane and the pot's mouth.
+      const barrel = new CylinderGeometry(0.022 * s, 0.034 * s, 0.26 * s, 8)
+      barrel.rotateZ(0.16)
+      barrel.translate(-0.01 * s, 0.29 * s, 0)
+
+      // The pot: one lathed profile, a squat belly into a shoulder and a short
+      // neck. Solid ink-dark, which puts it in the board's grammar — every
+      // other marker is a dark base carrying a light subject, and here the
+      // feather is the subject. It was glass first; opaque loses nothing (you
+      // could never see into a pot this size anyway) and costs a stacked rim,
+      // an ink pool and the whole transparency path, all of which existed only
+      // to sell a see-through effect nobody was going to read at board scale.
+      const pot = new LatheGeometry(
+        [
+          [0, 0],
+          [0.235, 0],
+          [0.265, 0.06],
+          [0.25, 0.18],
+          [0.198, 0.26],
+          [0.196, 0.32],
+        ].map(([radius, height]) => new Vector2(radius * s, height * s)),
+        18
+      )
+
+      return [
+        { geometry: pot, color: BOARD_COLORS.darkBlue },
+        { geometry: faceted(rachis), color: BOARD_COLORS.darkBlue },
+        { geometry: barrel, color: BOARD_COLORS.warmSand },
+        { geometry: blade, color: BOARD_COLORS.warmSand },
       ]
     }
     case 'final': {
@@ -405,13 +553,21 @@ const buildChallengeMarkers = (
     matrix.compose(anchor, quaternion, new Vector3(1, 1, 1))
 
     for (const part of parts) {
-      const outline = outlineOf(part.geometry)
+      // mergeGeometries refuses a bucket where some geometries carry an index
+      // and others don't, and `faceted()` has to drop the index to give a part
+      // its own face normals. Normalising everything to non-indexed keeps the
+      // buckets mergeable; it duplicates vertices but carries the existing
+      // normals across, so nothing that wasn't faceted changes appearance.
+      const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
+      if (geometry !== part.geometry) part.geometry.dispose()
+
+      const outline = outlineOf(geometry)
       outline.applyMatrix4(matrix)
       outlines.push(outline)
 
-      part.geometry.applyMatrix4(matrix)
+      geometry.applyMatrix4(matrix)
       const bucket = colorBuckets.get(part.color) ?? []
-      bucket.push(part.geometry)
+      bucket.push(geometry)
       colorBuckets.set(part.color, bucket)
     }
   }

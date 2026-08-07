@@ -16,6 +16,8 @@ import {
   GATE_HINT_BITE_STEPS,
   GATE_LEAP_STEPS,
   gateLeapSteps,
+  HINT_UNLOCK_FIRST_ELAPSED,
+  gatePot,
   HINT_BITE_FRACTION,
   hintDockedScore,
   scorePinDistance,
@@ -151,34 +153,88 @@ describe('buzzFraction', () => {
 })
 
 describe('gateLeapSteps', () => {
+  // The pot is a required argument — `gatePot` exists so both ends of the wire
+  // read the same one, and a default would let a caller quietly underpay a
+  // deep-pot gate. These read it the way the handler does.
+  const standard = gatePot('find')
+
   it('pays the whole pot when no clock is reported (untimed gates)', () => {
-    expect(gateLeapSteps()).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(undefined, undefined, standard)).toBe(GATE_LEAP_STEPS)
   })
 
   it('pays the pot for a fast answer, one step for a slow one', () => {
-    expect(gateLeapSteps(1)).toBe(2)
-    expect(gateLeapSteps(0.7)).toBe(2)
-    expect(gateLeapSteps(0.5)).toBe(1)
-    expect(gateLeapSteps(0)).toBe(1)
+    expect(gateLeapSteps(1, 0, standard)).toBe(2)
+    expect(gateLeapSteps(0.7, 0, standard)).toBe(2)
+    expect(gateLeapSteps(0.5, 0, standard)).toBe(1)
+    expect(gateLeapSteps(0, 0, standard)).toBe(1)
   })
 
   it('bites GATE_HINT_BITE_STEPS per bought hint, never below zero', () => {
-    expect(gateLeapSteps(1, 1)).toBe(Math.max(0, GATE_LEAP_STEPS - GATE_HINT_BITE_STEPS))
-    expect(gateLeapSteps(0, 1)).toBe(0)
-    expect(gateLeapSteps(1, 2)).toBe(0)
+    expect(gateLeapSteps(1, 1, standard)).toBe(Math.max(0, GATE_LEAP_STEPS - GATE_HINT_BITE_STEPS))
+    expect(gateLeapSteps(0, 1, standard)).toBe(0)
+    expect(gateLeapSteps(1, 2, standard)).toBe(0)
   })
 
   it('never lets a negative or garbage hint count inflate the leap', () => {
-    expect(gateLeapSteps(1, -3)).toBe(GATE_LEAP_STEPS)
-    expect(gateLeapSteps(1, Number.NaN)).toBe(GATE_LEAP_STEPS)
-    expect(gateLeapSteps(1, 0.4)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(1, -3, standard)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(1, Number.NaN, standard)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(1, 0.4, standard)).toBe(GATE_LEAP_STEPS)
   })
 
   it('shrugs off a garbage fraction instead of walking the pawn NaN steps', () => {
-    expect(gateLeapSteps(Number.NaN)).toBe(GATE_LEAP_STEPS)
-    expect(gateLeapSteps(Number.POSITIVE_INFINITY)).toBe(GATE_LEAP_STEPS)
-    expect(gateLeapSteps(7)).toBe(2)
-    expect(gateLeapSteps(-3)).toBe(1)
+    expect(gateLeapSteps(Number.NaN, 0, standard)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(Number.POSITIVE_INFINITY, 0, standard)).toBe(GATE_LEAP_STEPS)
+    expect(gateLeapSteps(7, 0, standard)).toBe(2)
+    expect(gateLeapSteps(-3, 0, standard)).toBe(1)
+  })
+
+  it('scales a deeper pot, so a bought hint is a trade and not a surrender', () => {
+    const deep = gatePot('rosetta')
+    expect(deep).toBeGreaterThan(GATE_HINT_BITE_STEPS)
+    expect(gateLeapSteps(1, 0, deep)).toBe(deep)
+
+    // Assert where a player can actually stand. The hint unlocks only after
+    // HINT_UNLOCK_FIRST_ELAPSED of the clock is gone, so a hinted answer can
+    // never be reported with more than that fraction left — pinning this at
+    // remainingFraction 1 passed while the property was false everywhere real.
+    const mostLeft = 1 - HINT_UNLOCK_FIRST_ELAPSED
+    for (const fraction of [mostLeft, 0.5, 0.25, 0]) {
+      expect(gateLeapSteps(fraction, 1, deep), `hint at ${fraction} left`).toBeGreaterThan(0)
+    }
+    // It costs something everywhere except the very bottom of the curve, where
+    // both the full pot and the hinted one round down to the same floor — at
+    // the buzzer you were getting the minimum either way.
+    for (const fraction of [mostLeft, 0.5, 0.25]) {
+      expect(gateLeapSteps(fraction, 1, deep), `cost at ${fraction}`).toBeLessThan(
+        gateLeapSteps(fraction, 0, deep)
+      )
+    }
+    expect(gateLeapSteps(0, 1, deep)).toBe(gateLeapSteps(0, 0, deep))
+    // Buying every hint on offer still can, and should, zero it.
+    expect(gateLeapSteps(mostLeft, 2, deep)).toBe(0)
+  })
+
+  it('leaves the standard pot exactly where it was when a hint is bought', () => {
+    // Biting off the pot rather than the decayed leap is a no-op at pot 2:
+    // there is nothing left to scale either way. Guards the deep-pot fix from
+    // quietly re-tuning every gate that never asked for it.
+    const standard = gatePot('find')
+    for (const fraction of [1, 0.66, 0.5, 0.25, 0]) {
+      expect(gateLeapSteps(fraction, 1, standard), `standard at ${fraction}`).toBe(0)
+    }
+  })
+})
+
+describe('gatePot', () => {
+  it('pays the standard leap for a variant that declares nothing', () => {
+    expect(gatePot()).toBe(GATE_LEAP_STEPS)
+    expect(gatePot('find')).toBe(GATE_LEAP_STEPS)
+    expect(gatePot('flag-pick')).toBe(GATE_LEAP_STEPS)
+  })
+
+  it('deepens the pot only for the variants that sell a hint worth buying', () => {
+    expect(gatePot('errata')).toBeGreaterThan(GATE_LEAP_STEPS)
+    expect(gatePot('rosetta')).toBeGreaterThan(GATE_LEAP_STEPS)
   })
 })
 

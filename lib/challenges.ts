@@ -53,6 +53,7 @@ import type {
 } from '~~/types/challenges/group-modes.type'
 import { individualChallengeVariants } from '~~/types/challenges/individual-challenge.type'
 import type {
+  ErrataKind,
   IndividualChallenge,
   IndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
@@ -61,6 +62,7 @@ import type {
   RoundChallengeKind,
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
+import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -84,7 +86,7 @@ import { flagSwatches } from './audio-palette'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
-import { haversineKm, mainlandBox, type LatLng } from './geo'
+import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -95,7 +97,14 @@ import {
   scorePinDistance,
 } from './scoring'
 import { dealTimelineDeck, TIMELINE_TUNING } from './timeline'
-import { isRouteComplete, pickTraversal } from './traversal'
+import {
+  ROSETTA_RELATIONS,
+  rosettaRelationIds,
+  rosettaTerms,
+  type RosettaRelationId,
+} from './rosetta'
+import { organizationsOf } from './odd-one-out'
+import { isNeighbour, isRouteComplete, pickTraversal } from './traversal'
 import {
   dramaScore,
   isDecisiveGap,
@@ -2110,20 +2119,27 @@ const dealMoneyMatch = (
 
 /**
  * The single verdict for an individual gate answer, shared by the server
- * handler and the client's result beat. Strict ISO equality, with one
- * carve-out: currency questions ("Which country spends the euro?") have many
- * right answers when the currency is shared (the Euro-zone alone spans 20+
+ * handler and the client's result beat. Strict ISO equality, with two
+ * carve-outs.
+ *
+ * Currency questions ("Which country spends the euro?") have many right
+ * answers when the currency is shared (the Euro-zone alone spans 20+
  * countries), so any submitted country spending the challenge currency wins.
  * Scoped to the currency-asking variants only — other variants on the money
  * gate (e.g. higher-lower) submit wrong-answer tokens that may coincidentally
  * share a currency with the subject.
+ *
+ * Errata's swap makes TWO countries wrong — they are wearing each other's
+ * names — and the question is "find the mistake", so either one is the
+ * mistake. `culprits` is the answer key; `country` is only its head.
  */
 export const isCorrectIndividualAnswer = (
-  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant'>,
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata'>,
   isoCode: ISOCountryCode
 ): boolean => {
   if (isoCode === challenge.country) return true
   const variant = challenge.variant ?? 'find'
+  if (variant === 'errata') return !!challenge.errata?.culprits.includes(isoCode)
   const asksForCurrency =
     variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
   if (!asksForCurrency) return false
@@ -2255,28 +2271,30 @@ const dealOddOneOut = (
         }
       }
       case 'organization': {
-        const byOrganization = new Map<string, { name: string; members: ISOCountryCode[] }>()
+        // Membership ids are read through `organizationsOf`, which drops any
+        // the typed table doesn't know — a club with no entry has no name to
+        // ask about.
+        const byOrganization = new Map<keyof typeof OrganizationVector, ISOCountryCode[]>()
         for (const isoCode of countryPool) {
-          for (const organization of COUNTRIES[isoCode].membership ?? []) {
-            const bucket = byOrganization.get(organization.id) ?? {
-              name: organization.id === 'nato' ? 'NATO' : organization.name.trim(),
-              members: [],
-            }
-            bucket.members.push(isoCode)
-            byOrganization.set(organization.id, bucket)
+          for (const organization of organizationsOf(isoCode)) {
+            const members = byOrganization.get(organization) ?? []
+            members.push(isoCode)
+            byOrganization.set(organization, members)
           }
         }
         const viableOrganizations = shuffleArray(
-          [...byOrganization.entries()].filter(([, { members }]) => members.length >= 3)
+          [...byOrganization.entries()].filter(([, members]) => members.length >= 3)
         )
         const entry = viableOrganizations[0]
         if (!entry) return undefined
-        const [organizationId, { name, members }] = entry
+        const [organizationId, members] = entry
+        // The shorthand, not the enum's formal name: "the OECD", never
+        // "Organisation for Economic Co-operation and Development".
+        const name = ORGANIZATION_FACTS[organizationId].shortName
         const memberSet = new Set(members)
         const same = sampleMany(members, 3)
         const odd = shuffleArray([...countryPool]).find(isoCode => !memberSet.has(isoCode))
         if (!odd) return undefined
-        void organizationId
         return {
           country: odd,
           oddOneOut: {
@@ -2522,6 +2540,184 @@ const dealLeaderPortrait = (
   return { country, options: shuffleArray([country, ...decoys]), portrait }
 }
 
+/** Countries on an errata stage. A bigger cluster is more to read, not more
+ *  to know — the real difficulty lever is `ERRATA_KIND_BY_DIFFICULTY`. */
+const ERRATA_LINEUP_SIZE: Record<gameTypes.GameDifficulty, number> = {
+  easy: 6,
+  normal: 8,
+  hard: 10,
+}
+
+/** Below this the stage is too thin to hide a misprint in. */
+const ERRATA_MINIMUM_LINEUP = 5
+
+/** An impostor is one wrong name to catch; a swap is two names that are each
+ *  other's, which reads as right until you know the region. */
+const ERRATA_KIND_BY_DIFFICULTY: Record<gameTypes.GameDifficulty, ErrataKind> = {
+  easy: 'impostor',
+  normal: 'impostor',
+  hard: 'swap',
+}
+
+/**
+ * Errata: a connected cluster of countries wearing written names, exactly one
+ * of which is wrong.
+ *
+ * Every member must be big enough on the map to CARRY a name — the stage is
+ * the labels, so a lineup member the renderer skips is a question with a hole
+ * in it. Dealer and renderer read the same `isLabelableBox` threshold over the
+ * same `labelBoxFor`.
+ */
+const dealErrata = async (
+  difficulty: gameTypes.GameDifficulty,
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
+): Promise<Pick<IndividualChallenge, 'country' | 'errata'> | undefined> => {
+  // Dynamic, like the water and ghost-state dealers: the map geometry must
+  // not ride into client bundles through this module.
+  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
+
+  const onBoard = new Set(pool)
+  // `labelBoxFor`, not the raw bbox — the renderer hangs the name in the
+  // middle of the box it can point at, so the dealer has to ask whether THAT
+  // box can carry a name. Testing the whole-country bbox would pass a country
+  // whose mainland ring is too small to label, and deal a question the stage
+  // then renders with a hole in it.
+  const canLabel = (isoCode: ISOCountryCode) => {
+    const code = isoCode as keyof typeof MAP_BOUNDS
+    return onBoard.has(isoCode) && isLabelableBox(labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code]))
+  }
+  const neighbours = (isoCode: ISOCountryCode) => (BORDERS[isoCode] ?? []).filter(canLabel)
+
+  const size = ERRATA_LINEUP_SIZE[difficulty]
+  // Grow outward over land borders so every member touches the stage — a
+  // scattered lineup would read as a quiz, not a map.
+  const grow = (seed: ISOCountryCode): ISOCountryCode[] => {
+    const cluster = [seed]
+    const frontier = [seed]
+    while (cluster.length < size && frontier.length) {
+      const current = frontier.shift() as ISOCountryCode
+      for (const next of shuffleArray(neighbours(current))) {
+        if (cluster.length >= size) break
+        if (cluster.includes(next)) continue
+        cluster.push(next)
+        frontier.push(next)
+      }
+    }
+    return cluster
+  }
+
+  // Grown lazily, first workable cluster wins — a `.map().find()` would run a
+  // BFS from all ~190 seeds to use one.
+  let lineup: ISOCountryCode[] | undefined
+  for (const seed of shuffleArray(
+    pool.filter(isoCode => canLabel(isoCode) && neighbours(isoCode).length >= 2)
+  )) {
+    const cluster = grow(seed)
+    if (cluster.length >= ERRATA_MINIMUM_LINEUP) {
+      lineup = cluster
+      break
+    }
+  }
+  if (!lineup) return undefined
+
+  const labels: Partial<Record<ISOCountryCode, string>> = {}
+  for (const isoCode of lineup) labels[isoCode] = countryName(isoCode)
+
+  const kind = ERRATA_KIND_BY_DIFFICULTY[difficulty]
+  if (kind === 'swap') {
+    // Two members that actually border each other — a swap across the stage
+    // is spotted by distance alone, without knowing either country.
+    const pairs = lineup.flatMap(isoCode =>
+      lineup.filter(other => isNeighbour(isoCode, other)).map(other => [isoCode, other] as const)
+    )
+    const pair = sample(pairs)
+    if (!pair) return undefined
+    const [first, second] = pair
+    labels[first] = countryName(second)
+    labels[second] = countryName(first)
+    return { country: first, errata: { lineup, kind, culprits: [first, second], labels } }
+  }
+
+  const victim = sample(lineup)
+  if (!victim) return undefined
+  // Easy borrows a name from another continent (wrong at a glance); normal
+  // borrows one from the neighbourhood, where it could almost belong.
+  const region = COUNTRIES[victim].region
+  const offStage = world.filter(isoCode => !lineup.includes(isoCode))
+  const sameRegion = offStage.filter(isoCode => COUNTRIES[isoCode].region === region)
+  const elsewhere = offStage.filter(isoCode => COUNTRIES[isoCode].region !== region)
+  const preferred = difficulty === 'easy' ? elsewhere : sameRegion
+  const impostor = sample(preferred.length ? preferred : offStage)
+  if (!impostor) return undefined
+
+  labels[victim] = countryName(impostor)
+  return { country: victim, errata: { lineup, kind, culprits: [victim], labels } }
+}
+
+/** Which relations a gate theme deals. A themed tile stays in its own
+ *  register; the tiles absent from this table (isoCode and lexicon, the only
+ *  other two that deal Rosetta) fall back to all of them. */
+const ROSETTA_RELATIONS_BY_ACCESSOR: Partial<
+  Record<IndividualChallengeAccessorId, RosettaRelationId[]>
+> = {
+  'capital.name': ['capital'],
+  currency: ['currency'],
+  'government.leader': ['leader'],
+  landmarks: ['landmark'],
+}
+
+/**
+ * Rosetta: A : B :: C : ? — the exemplar pair fixes which relation is meant.
+ *
+ * Uniqueness and the giveaway scrub are `rosettaTerms`' job (lib/rosetta); the
+ * dealer only picks. The exemplar comes from ANOTHER region and prefers a big,
+ * well-known country, so the pair reads as a demonstration rather than a
+ * second question.
+ */
+const dealRosetta = (
+  accessorId: IndividualChallengeAccessorId,
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
+): Pick<IndividualChallenge, 'country' | 'rosetta'> | undefined => {
+  const onBoard = new Set(pool)
+  const relations = shuffleArray([
+    ...(ROSETTA_RELATIONS_BY_ACCESSOR[accessorId] ?? rosettaRelationIds),
+  ])
+
+  for (const relation of relations) {
+    // Unique across the whole atlas, not the board: a term shared with a
+    // country that happens to be off this board is still a shared term.
+    const terms = rosettaTerms(relation, world)
+    const answers = shuffleArray(terms.filter(entry => onBoard.has(entry.isoCode)))
+    const answer = answers[0]
+    if (!answer) continue
+
+    const answerRegion = COUNTRIES[answer.isoCode].region
+    const candidates = terms.filter(
+      entry => entry.isoCode !== answer.isoCode && COUNTRIES[entry.isoCode].region !== answerRegion
+    )
+    if (!candidates.length) continue
+    const exemplarCountry = pickSizedCountry(
+      candidates.map(entry => entry.isoCode),
+      'large'
+    )
+    const exemplar = candidates.find(entry => entry.isoCode === exemplarCountry) ?? candidates[0]
+
+    return {
+      country: answer.isoCode,
+      rosetta: {
+        relation,
+        exemplar: { term: exemplar.term, isoCode: exemplar.isoCode },
+        term: answer.term,
+        relationLabel: ROSETTA_RELATIONS[relation].label,
+      },
+    }
+  }
+
+  return undefined
+}
+
 /**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
@@ -2653,6 +2849,16 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
         break
       }
+      case 'errata': {
+        const dealt = await dealErrata(difficulty, pool, world)
+        if (dealt) return { ...base, variant: 'errata', ...dealt }
+        break
+      }
+      case 'rosetta': {
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -2676,29 +2882,37 @@ export const getIndividualChallenge = async ({
     case 'isoCode': {
       // Two kinetic "name the country" gates on this tile: outline-reveal (the
       // border draws itself) and zoom-out (the map zooms out from a coastline).
-      if (difficulty === 'hard' && roll < 0.25) {
+      if (difficulty === 'hard' && roll < 0.2) {
         return {
           ...base,
           variant: 'outline-reveal',
           country: pickShapeFriendlyCountry(pool, world),
         }
       }
-      if (roll < 0.35) {
+      if (roll < 0.3) {
         return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
       }
-      if (roll < 0.55) {
+      if (roll < 0.42) {
+        const dealt = await dealErrata(difficulty, pool, world)
+        if (dealt) return { ...base, variant: 'errata', ...dealt }
+      }
+      if (roll < 0.54) {
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      }
+      if (roll < 0.66) {
         const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
-      if (roll < 0.7) {
+      if (roll < 0.78) {
         const dealt = dealBorderDetective(pool, world)
         if (dealt) return { ...base, variant: 'border-detective', ...dealt }
       }
-      if (roll < 0.85) {
+      if (roll < 0.88) {
         const dealt = await dealTrajectoryMatch(settings, pool, world)
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
       }
-      if (roll < 0.95) {
+      if (roll < 0.96) {
         const dealt = dealOddOneOut(difficulty, pool, isWorld)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
@@ -2713,16 +2927,20 @@ export const getIndividualChallenge = async ({
       if (roll < 0.2) {
         const dealt = dealCapitalMatch(pool, world)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
-      } else if (roll < 0.4) {
+      } else if (roll < 0.32) {
+        // "Tokyo : Japan :: Lima : ?" — the capital register, asked sideways.
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      } else if (roll < 0.48) {
         const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
-      } else if (roll < 0.6) {
+      } else if (roll < 0.62) {
         const dealt = dealLeaderPick(pool, world)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
-      } else if (roll < 0.8) {
+      } else if (roll < 0.78) {
         const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
-      } else if (roll < 0.95) {
+      } else if (roll < 0.93) {
         const dealt = await dealTrendDuels(settings, pool, world)
         if (dealt) return { ...base, variant: 'trend-duel', ...dealt }
       }
@@ -2735,35 +2953,64 @@ export const getIndividualChallenge = async ({
         const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       }
-      if (roll < 0.9) {
+      if (roll < 0.85) {
         const dealt = dealLeaderPick(pool, world)
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
+      }
+      if (roll < 0.95) {
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       }
       break
     }
     case 'currency': {
       // The money gate: money-match headlines here (not hard-only, unlike the
       // knowledge tile); a stat duel backs it up when a note can't be dealt.
-      if (roll < 0.65) {
+      if (roll < 0.6) {
         const dealt = dealMoneyMatch(pool, world)
         if (dealt) return { ...base, variant: 'money-match', ...dealt }
       }
-      if (roll < 0.85) {
+      if (roll < 0.8) {
         const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
+      }
+      if (roll < 0.92) {
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       }
       break
     }
     case 'landmarks': {
       // The landmark gate: photo quizzes, with the capital skyline sibling.
-      if (roll < 0.6) {
+      if (roll < 0.55) {
         const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
-      if (roll < 0.9) {
+      if (roll < 0.82) {
         const dealt = dealCapitalMatch(pool, world)
         if (dealt) return { ...base, variant: 'capital-match', ...dealt }
       }
+      if (roll < 0.94) {
+        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      }
+      break
+    }
+    // The two mode-named tiles deal their own mode and nothing else — the
+    // marker on the board promises a specific question, so anything but a
+    // `find` fallback when the dealer comes up empty would break that promise.
+    case 'errata': {
+      const dealt = await dealErrata(difficulty, pool, world)
+      if (dealt) return { ...base, variant: 'errata', ...dealt }
+      break
+    }
+    case 'lexicon': {
+      // The naming tile. No relation restriction here — unlike the themed
+      // tiles, which each deal their own register, this one draws from all of
+      // them. Rosetta is its only tenant today; Switchboard and The Naming
+      // belong here too when they land.
+      const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+      if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       break
     }
   }
@@ -3108,6 +3355,17 @@ const CHALLENGE_DETAILS: {
   },
   landmarks: {
     topic: 'geography',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  // The two mode-named gates. Their phrasing is only ever read by the `find`
+  // fallback (and the atlas), since the modes themselves write their own
+  // prompts — so it asks the fallback's question, not the mode's.
+  errata: {
+    topic: 'geography',
+    phrasing: 'Where on the map is {countryName}?',
+  },
+  lexicon: {
+    topic: 'general knowledge',
     phrasing: 'Where on the map is {countryName}?',
   },
   'infrastructure.internetAccess': {

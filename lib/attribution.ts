@@ -592,6 +592,20 @@ export const INDIVIDUAL_STAT_ORIGINS: Record<IndividualChallengeAccessorId, Data
   },
   currency: { source: 'countries-list-package', dataset: 'ISO 4217 code per country' },
   landmarks: { source: 'wikidata-items', fallback: ['commons-media'] },
+  // The misprint is drawn on the projected map and its lineup grown over the
+  // border graph; the names themselves are the Factbook's.
+  errata: {
+    source: 'naturalearth-10m',
+    dataset: 'Admin 0 countries',
+    fallback: ['cia-factbook'],
+  },
+  // An analogy's terms are capitals, peaks and currencies from the Factbook,
+  // with leaders and landmarks arriving through Wikidata.
+  lexicon: {
+    source: 'cia-factbook',
+    dataset: 'Capital, Highest point, Currency',
+    fallback: ['wikidata-items'],
+  },
 }
 
 /** Every stored trend series, by the id it is keyed under in TRENDS. */

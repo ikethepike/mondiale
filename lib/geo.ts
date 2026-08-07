@@ -82,6 +82,20 @@ export const WORLD_BOX: { x: number; y: number; width: number; height: number } 
 }
 
 /**
+ * A country's map-space bbox must clear this on at least one axis to carry a
+ * written name — below it the label outgrows the country it points at. The
+ * map's label builder skips the specks; any dealer that writes names onto the
+ * map (errata) must draw from the same set, or it deals a question whose
+ * subject never renders.
+ */
+export const LABELABLE_BOX_UNITS = 14
+
+/** Can this map-space box carry a written label? Narrows, so a caller that
+ *  clears the gate can read the box without a second existence check. */
+export const isLabelableBox = (box: MapBox | undefined): box is MapBox =>
+  !!box && (box[2] >= LABELABLE_BOX_UNITS || box[3] >= LABELABLE_BOX_UNITS)
+
+/**
  * A country's mainland box. The whole-country bbox lies for RU/US-class
  * countries — antimeridian fragments stretch it across the map, putting the
  * US centre closer to Russia than to Canada. MAP_REGIONS emits per-ring boxes
@@ -92,6 +106,23 @@ export const mainlandBox = <T extends MapBox | undefined>(
   rings: MapBox[] | undefined,
   fallback: T
 ): MapBox | T => rings?.[0] ?? fallback
+
+/**
+ * The box to hang a written name in the middle of — ALWAYS the mainland ring
+ * where there is one, which is a stricter rule than framing uses.
+ *
+ * A camera can afford the whole-country bbox until it world-fits, so
+ * `frameBoxFor` only swaps in the mainland past half the map's width. A label
+ * cannot: it is a point, not a window, and any outlying territory drags that
+ * point off the country. Russia's bbox is world-spanning and puts "Russia" in
+ * the Baltic, but Chile's is merely 281 units wide — nowhere near the framing
+ * threshold — and Easter Island still drags its anchor into the open Pacific.
+ * Ring 0 is the largest landmass, so its centre is on the country itself.
+ */
+export const labelBoxFor = (
+  bounds: MapBox | undefined,
+  rings: MapBox[] | undefined
+): MapBox | undefined => mainlandBox(rings, bounds)
 
 // --- Robinson projection ------------------------------------------------------
 //
