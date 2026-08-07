@@ -70,7 +70,7 @@ watch(
         clearInterval(timer)
         if (status.value) return
         gameStore.map.solo = false
-        submitAnswer(wrongTokenFor(props.challenge.country))
+        submitAnswer(wrongTokenFor(props.challenge))
       }, 1000)
     })
   },

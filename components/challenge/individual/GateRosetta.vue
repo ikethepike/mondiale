@@ -89,7 +89,7 @@ watch(
       secondsLeft.value--
       if (secondsLeft.value > 0) return
       clearInterval(timer)
-      if (!status.value) submitAnswer(wrongTokenFor(props.challenge.country))
+      if (!status.value) submitAnswer(wrongTokenFor(props.challenge))
     }, 1000)
   },
   { immediate: true }

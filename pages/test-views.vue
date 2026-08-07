@@ -2465,6 +2465,35 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    // The regression case for label placement. Russia's whole-country bbox is
+    // 1560 of the map's 2000 units wide, so its centre — where the renderer
+    // hangs the name — sits in the Baltic. Every name here must land on its
+    // own country; if one is adrift, `labelBoxFor` has come undone.
+    id: 'individual-errata-stretched',
+    label: 'Individual: errata (antimeridian neighbours)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'errata',
+        variant: 'errata',
+        country: 'FI',
+        errata: {
+          lineup: ['RU', 'FI', 'NO', 'SE', 'EE', 'LV', 'BY'],
+          kind: 'impostor',
+          culprits: ['FI'],
+          labels: {
+            RU: 'Russia',
+            FI: 'Denmark',
+            NO: 'Norway',
+            SE: 'Sweden',
+            EE: 'Estonia',
+            LV: 'Latvia',
+            BY: 'Belarus',
+          },
+        },
+      }),
+  },
+  {
     id: 'individual-rosetta-peak',
     label: 'Individual: rosetta (analogy, typed)',
     component: ViewIndividualChallenge,

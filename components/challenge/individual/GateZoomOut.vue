@@ -40,7 +40,7 @@ watch(
     // zoom-out so the pawn doesn't stall.
     missTimer = setTimeout(
       () => {
-        if (!status.value) submitAnswer(wrongTokenFor(props.challenge.country))
+        if (!status.value) submitAnswer(wrongTokenFor(props.challenge))
       },
       (ZOOM_OUT_SECONDS + 6) * 1000
     )

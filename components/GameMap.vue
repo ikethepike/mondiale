@@ -207,6 +207,7 @@ import {
   countryLatLng,
   invertRobinson,
   isLabelableBox,
+  labelBoxFor,
   mainlandBox,
   projectRobinson,
   type LatLng,
@@ -862,7 +863,8 @@ const frameForBoxes = (
 /**
  * A country's box for framing. Antimeridian fragments stretch the whole-country
  * bbox across the map for RU/US/NZ/FJ-class countries — framing one would
- * world-fit the camera — so those fall back to the mainland ring.
+ * world-fit the camera — so those fall back to the mainland ring. Labels want
+ * a stricter rule and take `labelBoxFor` instead.
  */
 const frameBoxFor = (isoCode: ISOCountryCode) => {
   const bounds = MAP_BOUNDS[isoCode]
@@ -991,10 +993,12 @@ const ensureLabels = () => {
   if (!key) return
 
   const namespace = 'http://www.w3.org/2000/svg'
-  const entries = named
-    ? Object.keys(named).map(code => [code, MAP_BOUNDS[code as MapCode]] as const)
-    : Object.entries(MAP_BOUNDS)
-  for (const [code, bounds] of entries) {
+  const codes = named ? Object.keys(named) : Object.keys(MAP_BOUNDS)
+  for (const code of codes) {
+    // The mainland ring, not the whole-country bbox — the latter would hang
+    // "Russia" over the Baltic and "Chile" in the open Pacific, and errata's
+    // stage IS the labels.
+    const bounds = labelBoxFor(MAP_BOUNDS[code as MapCode], MAP_REGIONS[code as MapCode])
     // Microstates can't fit a readable label — skip the clutter
     if (!isLabelableBox(bounds)) continue
     const [x, y, width, height] = bounds

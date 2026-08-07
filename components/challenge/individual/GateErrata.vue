@@ -55,9 +55,12 @@ const elapsed = computed(() => 1 - secondsLeft.value / ERRATA_SECONDS)
 const hintUnlocked = computed(() => elapsed.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
 /**
- * The stage IS the labels: frame the cluster, write the (partly wrong) names
- * onto it, and dim the rest of the world so the lineup reads as one page of an
- * atlas. `clearBoard` on the next gate takes all of it back down.
+ * The stage IS the labels: frame the cluster and write the (partly wrong)
+ * names onto it. `clearBoard` on the next gate takes all of it back down.
+ *
+ * Nothing is dimmed at mount, deliberately. `map.dimmed` is the hint's channel
+ * — `clearHalf` uses it to strike innocents out — and a world already dimmed
+ * would leave the hint with nothing to say.
  */
 onMounted(() => {
   const errata = props.challenge.errata
@@ -79,7 +82,7 @@ watch(
       secondsLeft.value--
       if (secondsLeft.value > 0) return
       clearInterval(timer)
-      if (!status.value) resolve(wrongTokenFor(props.challenge.country))
+      if (!status.value) resolve(wrongTokenFor(props.challenge))
     }, 1000)
   },
   { immediate: true }
@@ -91,7 +94,7 @@ watch(
  * lifts. The stage taught the lie, so the stage has to take it back — leaving
  * the swapped labels up through the reveal would teach it twice.
  */
-const resolve = (isoCode: ISOCountryCode, options: { timed?: boolean } = {}) => {
+const resolve = (isoCode: ISOCountryCode) => {
   if (timer) clearInterval(timer)
   const errata = props.challenge.errata
   if (errata) {
@@ -100,15 +103,13 @@ const resolve = (isoCode: ISOCountryCode, options: { timed?: boolean } = {}) => 
     )
   }
   gameStore.map.dimmed = []
-  submitAnswer(
-    isoCode,
-    options.timed
-      ? {
-          remainingFraction: Math.max(0, secondsLeft.value) / ERRATA_SECONDS,
-          hintsUsed: cleared.value.size ? 1 : 0,
-        }
-      : {}
-  )
+  // The clock is reported on EVERY exit, expiry included — it reads 0 there,
+  // which is what a timeout should pay. Exempting that path handed a timeout
+  // the undiminished pot on the day the token turned out to be a right answer.
+  submitAnswer(isoCode, {
+    remainingFraction: Math.max(0, secondsLeft.value) / ERRATA_SECONDS,
+    hintsUsed: cleared.value.size ? 1 : 0,
+  })
 }
 
 /** Strike out half the innocents. Never a culprit — the hint narrows the
@@ -133,12 +134,13 @@ const onMapClick = (event: Event) => {
   if (!errata) return
 
   const isoCode = event.detail.isoCode as ISOCountryCode
-  // Only the lineup is in play; a tap on the dimmed world is a slip, not an
-  // answer, and must not forfeit the gate.
+  // Only the lineup is in play; a tap off the stage — or on an innocent the
+  // hint already struck out — is a slip, not an answer, and must not forfeit
+  // the gate.
   if (!errata.lineup.includes(isoCode) || cleared.value.has(isoCode)) return
 
   if (gameStore.map.highlighted.has(isoCode)) {
-    resolve(isoCode, { timed: true })
+    resolve(isoCode)
   } else {
     showDoubleTapHint.value = true
     gameStore.map.highlighted.clear()

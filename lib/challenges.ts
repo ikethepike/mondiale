@@ -85,7 +85,7 @@ import { flagSwatches } from './audio-palette'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
-import { haversineKm, isLabelableBox, mainlandBox, type LatLng } from './geo'
+import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -2561,7 +2561,8 @@ const ERRATA_KIND_BY_DIFFICULTY: Record<gameTypes.GameDifficulty, ErrataKind> = 
  *
  * Every member must be big enough on the map to CARRY a name — the stage is
  * the labels, so a lineup member the renderer skips is a question with a hole
- * in it. Dealer and renderer read the same `isLabelableBox` threshold.
+ * in it. Dealer and renderer read the same `isLabelableBox` threshold over the
+ * same `labelBoxFor`.
  */
 const dealErrata = async (
   difficulty: gameTypes.GameDifficulty,
@@ -2570,11 +2571,18 @@ const dealErrata = async (
 ): Promise<Pick<IndividualChallenge, 'country' | 'errata'> | undefined> => {
   // Dynamic, like the water and ghost-state dealers: the map geometry must
   // not ride into client bundles through this module.
-  const { MAP_BOUNDS } = await import('~~/data/map.gen')
+  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
 
   const onBoard = new Set(pool)
-  const canLabel = (isoCode: ISOCountryCode) =>
-    onBoard.has(isoCode) && isLabelableBox(MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS])
+  // `labelBoxFor`, not the raw bbox — the renderer hangs the name in the
+  // middle of the box it can point at, so the dealer has to ask whether THAT
+  // box can carry a name. Testing the whole-country bbox would pass a country
+  // whose mainland ring is too small to label, and deal a question the stage
+  // then renders with a hole in it.
+  const canLabel = (isoCode: ISOCountryCode) => {
+    const code = isoCode as keyof typeof MAP_BOUNDS
+    return onBoard.has(isoCode) && isLabelableBox(labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code]))
+  }
   const neighbours = (isoCode: ISOCountryCode) => (BORDERS[isoCode] ?? []).filter(canLabel)
 
   const size = ERRATA_LINEUP_SIZE[difficulty]
@@ -2643,8 +2651,9 @@ const dealErrata = async (
   return { country: victim, errata: { lineup, kind, culprits: [victim], labels } }
 }
 
-/** Which relations a gate theme deals. The name-the-country and flag tiles
- *  deal every register; a themed tile stays in its own. */
+/** Which relations a gate theme deals. A themed tile stays in its own
+ *  register; the tiles absent from this table (isoCode and lexicon, the only
+ *  other two that deal Rosetta) fall back to all of them. */
 const ROSETTA_RELATIONS_BY_ACCESSOR: Partial<
   Record<IndividualChallengeAccessorId, RosettaRelationId[]>
 > = {

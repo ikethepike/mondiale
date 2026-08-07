@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { MAP_BOUNDS } from '~~/data/map.gen'
+import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
-import { isLabelableBox } from '~~/lib/geo'
+import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { gameDifficulties, type GameDifficulty } from '~~/types/game.types'
+import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 afterEach(() => {
@@ -34,8 +36,10 @@ describe('dealErrata', () => {
 
         for (const isoCode of errata.lineup) {
           expect(inPlay.has(isoCode), `${isoCode} is benched`).toBe(true)
-          // A member the renderer would skip is a hole in the question.
-          expect(isLabelableBox(MAP_BOUNDS[isoCode]), `${isoCode} can't carry a label`).toBe(true)
+          // A member the renderer would skip is a hole in the question — and
+          // it judges the box it can POINT at, not the whole-country bbox.
+          const box = labelBoxFor(MAP_BOUNDS[isoCode], MAP_REGIONS[isoCode])
+          expect(isLabelableBox(box), `${isoCode} can't carry a label`).toBe(true)
         }
 
         // Every member past the seed reaches the stage over a land border.
@@ -90,6 +94,64 @@ describe('dealErrata', () => {
         expect(Object.values(COUNTRIES).some(country => country.name.english === borrowed)).toBe(
           true
         )
+      }
+    }
+  })
+
+  it('anchors every label on the country it names', async () => {
+    // The whole-country bbox is stretched across the map by antimeridian
+    // fragments: Russia's is 1560 units wide of 2000, so its centre — where
+    // the renderer hangs the name — is (989, 196), the Baltic. The stage IS
+    // the labels, so a member whose name lands on someone else is a broken
+    // question. Both ends read `labelBoxFor`; this is what says so.
+    for (const difficulty of gameDifficulties) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const { errata } = await dealErrata(difficulty)
+        for (const isoCode of errata.lineup) {
+          const box = labelBoxFor(MAP_BOUNDS[isoCode], MAP_REGIONS[isoCode])
+          if (!box) throw new Error(`${isoCode} has no map box`)
+          const anchor = [box[0] + box[2] / 2, box[1] + box[3] / 2]
+          const rings = MAP_REGIONS[isoCode] ?? [box]
+          const onOwnLand = rings.some(
+            ([x, y, width, height]) =>
+              anchor[0] >= x && anchor[0] <= x + width && anchor[1] >= y && anchor[1] <= y + height
+          )
+          expect(onOwnLand, `${isoCode}'s label lands off ${isoCode}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  // The give-up token a timed gate submits when its clock expires must be
+  // WRONG. Errata's swap accepts EITHER culprit and its culprits border each
+  // other, so a token that only dodged `challenge.country` handed a {CH, AT}
+  // swap the win — for letting the clock run out, at the undiminished pot.
+  it('never gives up into a right answer, even on the CH/AT swap', () => {
+    for (const [country, other] of [
+      ['CH', 'AT'],
+      ['AT', 'CH'],
+    ] as const) {
+      const dealt = {
+        id: 'errata',
+        country,
+        variant: 'errata',
+        errata: {
+          lineup: [country, other, 'DE', 'FR', 'IT'],
+          kind: 'swap',
+          culprits: [country, other],
+          labels: { [country]: countryName(other), [other]: countryName(country) },
+        },
+      } as const satisfies Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata'>
+
+      expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
+    }
+  })
+
+  it('never gives up into a right answer on a dealt gate', async () => {
+    for (const difficulty of gameDifficulties) {
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const { dealt } = await dealErrata(difficulty)
+        expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
       }
     }
   })

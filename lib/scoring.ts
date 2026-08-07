@@ -65,15 +65,18 @@ export const gatePot = (variant?: IndividualChallengeVariant): number =>
  * hint count bites nothing rather than paying extra.
  */
 export const gateLeapSteps = (
-  remainingFraction?: number,
-  hintsUsed = 0,
-  pot: number = GATE_LEAP_STEPS
+  remainingFraction: number | undefined,
+  hintsUsed: number | undefined,
+  // Required, with no default: `gatePot` exists so a mode's stakes can't
+  // differ client to server, and a defaulted pot would let a call site quietly
+  // pay the standard leap for a deep-pot gate instead of failing to compile.
+  pot: number
 ): number => {
   const earned =
     remainingFraction !== undefined && Number.isFinite(remainingFraction)
       ? Math.round(pot * buzzFraction(remainingFraction))
       : pot
-  const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed)) : 0
+  const bought = Number.isFinite(hintsUsed) ? Math.max(0, Math.floor(hintsUsed ?? 0)) : 0
   return Math.max(0, earned - bought * GATE_HINT_BITE_STEPS)
 }
 

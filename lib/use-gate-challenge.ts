@@ -67,9 +67,25 @@ export interface GateChallengeContext {
 
 const GATE_CHALLENGE: InjectionKey<GateChallengeContext> = Symbol('gate-challenge')
 
-/** Any ISO that isn't the answer — a failed gate submits a can't-match token. */
-export const wrongTokenFor = (correct: ISOCountryCode): ISOCountryCode =>
-  correct === 'CH' ? 'AT' : 'CH'
+/**
+ * A can't-match token: the ISO a gate submits when its clock runs out.
+ *
+ * Verified through `isCorrectIndividualAnswer` rather than merely differing
+ * from `challenge.country`, because a variant can have more than one right
+ * answer. Errata's hard swap accepts EITHER culprit, and its two culprits
+ * border each other — so a `{CH, AT}` swap turned "dodge the answer" into
+ * "submit the other one", and letting the clock expire won the gate at the
+ * full pot.
+ *
+ * Three candidates is always enough to find a loser: they spend three
+ * different currencies (so the shared-currency carve-out can clear at most
+ * one) and errata deals at most two culprits.
+ */
+const GIVE_UP_TOKENS = ['CH', 'AT', 'NZ'] as const
+
+export const wrongTokenFor = (
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata'>
+): ISOCountryCode => GIVE_UP_TOKENS.find(token => !isCorrectIndividualAnswer(challenge, token))!
 
 /** Created ONCE, by ViewIndividualChallenge. `relatch` is the shell's alone —
  *  it is what advances `gateSeq`, and a gate view calling it would remount
