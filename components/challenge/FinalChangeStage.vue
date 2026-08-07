@@ -1,59 +1,53 @@
 <template>
-  <div class="final-change">
-    <article class="frame-stage" :class="{ dialing: dialed }">
-      <!-- Both frames are stacked and identically framed; only the later one
-           animates, so the pair never blinks through to the page mid-cross. -->
-      <img class="frame" :src="challenge.frames[0]" :alt="EARLIER_ALT" />
-      <img
-        ref="laterFrame"
-        class="frame later"
-        :class="{ still: paused || reducedMotion, shown: manualLater }"
-        :src="challenge.frames[1]"
-        :alt="LATER_ALT"
-        :style="{ animationDuration: `${challenge.crossfadeSeconds * 2}s` }"
-      />
-      <span v-if="challenge.frameYears" class="years" aria-hidden="true">
-        <em :class="{ lit: !showingLater }">{{ challenge.frameYears[0] }}</em>
-        <i>→</i>
-        <em :class="{ lit: showingLater }">{{ challenge.frameYears[1] }}</em>
-      </span>
-      <!-- Reduced motion swaps the loop for a control the player drives -->
-      <button
-        v-if="reducedMotion && !paused"
-        type="button"
-        class="swap map-caption"
-        @click="manualLater = !manualLater"
-      >
-        {{ manualLater ? 'Show the earlier frame' : 'Show the later frame' }}
-      </button>
-    </article>
+  <div class="final-change" :class="{ dialing: dialed && !committed }">
+    <!-- The subject is the same at both sizes; only where it stands differs.
+         Desktop parks it on the side rail beside a clickable map; a phone has
+         no rail to spare, so it rides MediaDock — studied over a scrim, then
+         docked to a thumb so the map underneath can be tapped at all. -->
+    <aside v-if="!isPhone" class="side-stage change-stage">
+      <FinalChangeFrames v-bind="frameProps" />
+    </aside>
+    <MediaDock
+      v-else
+      v-model:expanded="framesExpanded"
+      class="change-dock"
+      :src="challenge.frames[1]"
+      :alt="LATER_ALT"
+    >
+      <FinalChangeFrames v-bind="frameProps" />
+    </MediaDock>
 
+    <!-- The berth and the bottom clearance ride .shell-footer untouched; the
+         card look lives on the console inside it. Re-padding the footer is
+         what severs the keyboard lift. -->
     <footer v-if="dialed && !committed" ref="consoleFooter" class="shell-footer">
-      <DragDial
-        v-model="dialDecade"
-        :min="DIAL_MIN"
-        :max="DIAL_MAX"
-        :step="10"
-        :jumps="[10, 50]"
-        :format="formatDecade"
-        :disabled="paused"
-        label="Decade dial"
-      />
-      <div class="commit-row">
-        <ButtonFilled :disabled="paused || !tapped" @click="commit">
-          <span class="commit-label">
-            {{ tapped ? `Commit ${formatDecade(shownDecade)}` : 'Tap the map first' }}
-          </span>
-          <!-- Invisible widest labels hold the button's width still -->
-          <span
-            v-for="bound in [DIAL_MIN, DIAL_MAX]"
-            :key="bound"
-            class="commit-sizer"
-            aria-hidden="true"
-            >Commit {{ formatDecade(bound) }}</span
-          >
-        </ButtonFilled>
-        <CountryChip v-if="tapped" :country="COUNTRIES[tapped]" />
+      <div class="change-console">
+        <DragDial
+          v-model="dialDecade"
+          :min="DIAL_MIN"
+          :max="DIAL_MAX"
+          :step="10"
+          :jumps="[10, 50]"
+          :format="formatDecade"
+          :disabled="paused"
+          label="Decade dial"
+        />
+        <div class="commit-row">
+          <ButtonFilled :disabled="paused || !tapped" @click="commit">
+            <span class="commit-label">
+              {{ tapped ? `Commit ${formatDecade(shownDecade)}` : 'Tap the map first' }}
+            </span>
+            <!-- Invisible widest labels hold the button's width still -->
+            <span
+              v-for="bound in [DIAL_MIN, DIAL_MAX]"
+              :key="bound"
+              class="commit-sizer"
+              aria-hidden="true"
+              >Commit {{ formatDecade(bound) }}</span
+            >
+          </ButtonFilled>
+          <CountryChip v-if="tapped" :country="COUNTRIES[tapped]" />
+        </div>
       </div>
     </footer>
   </div>
@@ -61,11 +55,13 @@
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import DragDial from '~/components/challenge/DragDial.vue'
+import FinalChangeFrames from '~/components/challenge/FinalChangeFrames.vue'
+import MediaDock from '~/components/challenge/MediaDock.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { CHANGE_DIAL_BOUNDS } from '~~/lib/challenges/final-challenge'
-import { prefersReducedMotion } from '~~/lib/motion'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { useIsPhone } from '~~/lib/use-viewport'
 import type { ChangeChallenge } from '~~/types/challenges/final-challenge.type'
 import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -78,12 +74,17 @@ import { isMapClickEvent } from '~~/types/events.types'
  * On tap-only difficulties the view's own map handler submits and this stage
  * is pure spectacle. Where the dial is in play the answer needs two halves, so
  * the stage holds the tapped country until commit and emits them as one.
+ *
+ * This component is placement and answer flow only; the frames themselves are
+ * FinalChangeFrames. The split is what lets the same subject stand on the
+ * desktop side rail and inside the phone's dock — it used to be one bespoke
+ * column at both sizes, a square frame over the middle of the screen with no
+ * way to move it, which on a phone left no map to tap and no way to answer.
  */
 const props = defineProps<{ challenge: ChangeChallenge; paused: boolean }>()
 
 const emit = defineEmits<{ finished: [answer: { isoCode: ISOCountryCode; decade: number }] }>()
 
-const EARLIER_ALT = 'Satellite view of a place, the earlier of two frames'
 const LATER_ALT = 'The same place years later, the second of two frames'
 
 const DIAL_MIN = CHANGE_DIAL_BOUNDS.min
@@ -94,56 +95,21 @@ const DIAL_MAX = CHANGE_DIAL_BOUNDS.max
  *  dial", and truthiness reads those two the same way. */
 const dialed = computed(() => props.challenge.decadeTolerance !== undefined)
 
-const reducedMotion = prefersReducedMotion()
+const isPhone = useIsPhone()
 const committed = ref(false)
-const manualLater = ref(false)
 const tapped = ref<ISOCountryCode>()
-const laterFrame = ref<HTMLImageElement>()
 const dialDecade = ref(Math.round((DIAL_MIN + DIAL_MAX) / 2 / 10) * 10)
 const consoleFooter = ref<HTMLElement>()
+
+/** Open to study, then docked to a thumb — the pin-drop modes' choreography. */
+const framesExpanded = ref(true)
+
+const frameProps = computed(() => ({ challenge: props.challenge, paused: props.paused }))
 
 useFooterBerth(consoleFooter)
 
 const formatDecade = (year: number) => `${year}s`
 const shownDecade = computed(() => Math.round(dialDecade.value / 10) * 10)
-
-/**
- * Which frame the year chips light. Read from the fading element itself rather
- * than a timer beside it: a `setInterval` at half the period drifts against
- * the compositor, and even in phase it disagreed with the picture for the
- * tail of every cycle, since the frame starts fading back at 88% while a
- * half-period tick only flips at 100%.
- */
-const showingLater = ref(false)
-let raf: number | undefined
-
-const trackFrame = () => {
-  const el = laterFrame.value
-  if (el) {
-    const [animation] = el.getAnimations()
-    const period = props.challenge.crossfadeSeconds * 2 * 1000
-    const t = Number(animation?.currentTime ?? 0) % period
-    // The later frame is opaque across the keyframe's 50%–88% hold
-    showingLater.value = t / period >= 0.5 && t / period < 0.88
-  }
-  raf = requestAnimationFrame(trackFrame)
-}
-
-watch(
-  [() => props.paused, () => props.challenge.slug],
-  () => {
-    if (raf) cancelAnimationFrame(raf)
-    raf = undefined
-    showingLater.value = false
-    if (props.paused || reducedMotion) return
-    raf = requestAnimationFrame(trackFrame)
-  },
-  { immediate: true }
-)
-
-watch(manualLater, value => {
-  if (reducedMotion) showingLater.value = value
-})
 
 const commit = () => {
   if (committed.value || !tapped.value) return
@@ -151,127 +117,104 @@ const commit = () => {
   emit('finished', { isoCode: tapped.value, decade: shownDecade.value })
 }
 
-/** Only the dial difficulties listen: elsewhere the view submits the tap. */
+/**
+ * Only the dial difficulties hold the tap: elsewhere the view submits it.
+ *
+ * The dock is closed by then either way — its scrim covers the map — so the
+ * collapse here is the belt to that brace, and it keeps the thumb honest if
+ * the player reopens the frames between the tap and the commit.
+ */
 const onMapClick = (event: Event) => {
   if (!dialed.value || committed.value || props.paused) return
   if (!isMapClickEvent(event)) return
   const { isoCode } = event.detail
-  if (isValidISOCode(isoCode)) tapped.value = isoCode
+  if (!isValidISOCode(isoCode)) return
+  tapped.value = isoCode
+  framesExpanded.value = false
 }
 
 onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
-onBeforeUnmount(() => {
-  document.removeEventListener('mapClick', onMapClick)
-  if (raf) cancelAnimationFrame(raf)
-})
+onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-// Bespoke positioned stage per the challenge-shell contract (the yearbook
-// precedent): the frames stand above the map and opt back in.
+// Placement only. The shell is pointer-events: none for the map's sake, and
+// the surfaces inside opt themselves back in, so this wrapper must not — a
+// full-bleed `pointer-events: auto` here is what would swallow map taps.
+//
+// A column that ends at the bottom, never a hand-rolled `bottom:` — the
+// footer's berth and its --bottom-clearance are the shell's to give.
 .final-change {
-  gap: 1rem;
-  left: 50%;
-  bottom: 2.4rem;
-  display: flex;
-  position: absolute;
-  align-items: stretch;
-  pointer-events: auto;
-  flex-flow: column nowrap;
-  transform: translateX(-50%);
-  width: min(46rem, calc(100vw - 2.4rem));
-}
-
-.frame-stage {
-  position: relative;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 0.6rem;
-  background: ink(0.08);
-  border: 0.1rem solid ink(0.25);
-  box-shadow: 0 0.4rem 2.4rem ink(0.18);
-}
-
-.frame {
   inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  position: absolute;
-}
-
-// Only the later frame moves; `frame-cross` lives in rules/_animations.scss.
-// The period is the round's own crossfadeSeconds, bound inline.
-.frame.later {
-  opacity: 0;
-  animation: frame-cross 5s var(--ease-smooth) infinite;
-
-  &.still {
-    animation: none;
-  }
-
-  &.shown {
-    opacity: 1;
-  }
-}
-
-.years {
-  gap: 0.6rem;
-  left: 50%;
-  bottom: 0.8rem;
   display: flex;
   position: absolute;
-  padding: 0.3rem 1rem;
-  align-items: center;
-  border-radius: 0.6rem;
-  background: milk(0.88);
-  color: var(--dark-blue);
-  transform: translateX(-50%);
-  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
+}
 
-  em {
-    opacity: 0.4;
-    font-style: normal;
-    font-size: 1.4rem;
-    transition: opacity var(--motion-base) var(--ease-smooth);
+// The frames are not the standard photo frame: satellite imagery is square,
+// and the side-photo recipe's landscape box would letterbox it. Sized here,
+// placed by .side-stage.
+.side-stage.change-stage {
+  width: clamp(16rem, 20vw, 22rem);
+  height: clamp(16rem, 20vw, 22rem);
 
-    &.lit {
-      opacity: 1;
-      font-weight: bold;
+  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+    &:hover {
+      width: clamp(26rem, 38vw, 40rem);
+      height: clamp(26rem, 38vw, 40rem);
     }
   }
-
-  i {
-    opacity: 0.5;
-    font-style: normal;
-  }
 }
 
-.swap {
-  top: 0.8rem;
-  right: 0.8rem;
-  cursor: pointer;
+// The docked thumb stands bottom-left, clear of the console when there is one
+// — the map between them is the answer surface and must stay tappable.
+.change-dock {
+  --dock-lift: 2rem;
+
+  left: 1.2rem;
+  z-index: 2;
   position: absolute;
-  padding: 0.4rem 0.9rem;
-  border-radius: 0.6rem;
-  background: milk(0.9);
-  color: var(--dark-blue);
-  border: 0.1rem solid ink(0.2);
+  bottom: calc(var(--dock-lift) + var(--safe-bottom));
+}
+
+// Lifted clear of the console while there is one — and back down once the
+// commit takes it away, so the thumb is not left floating at the reveal.
+.final-change.dialing .change-dock {
+  --dock-lift: 14rem;
+}
+
+// The dock's frame is landscape by default; the satellite pair wants its
+// square back, within what a phone can spare. One dimension drives both —
+// capping height separately would letterbox the imagery it is here to show,
+// and leave scrim the player thinks is frame.
+.change-dock :deep(.dock-frame) {
+  --frame-size: min(92vw, 46dvh, 40rem);
+
+  width: var(--frame-size);
+  height: var(--frame-size);
 }
 
 .shell-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.change-console {
   gap: 1rem;
   display: flex;
   padding: 1.2rem 1.4rem;
   align-items: center;
+  pointer-events: auto;
   flex-flow: column nowrap;
   border-radius: 1.2rem;
   background: milk(0.92);
   backdrop-filter: blur(0.6rem);
   box-shadow: 0 0.4rem 2.4rem ink(0.18);
+  width: min(46rem, 100%);
 }
 
 // The commit button owns dead centre; the tapped chip stands beside it
@@ -307,9 +250,8 @@ onBeforeUnmount(() => {
 }
 
 @media screen and (max-width: $tablet) {
-  .final-change {
-    bottom: 1.2rem;
-    width: min(34rem, calc(100vw - 2.4rem));
+  .change-console {
+    width: min(34rem, 100%);
   }
 }
 </style>
