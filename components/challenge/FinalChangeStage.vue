@@ -170,21 +170,30 @@ onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
   }
 }
 
-// The docked thumb stands bottom-left, clear of the console when there is one
-// — the map between them is the answer surface and must stay tappable.
-.change-dock {
-  --dock-lift: 2rem;
-
-  left: 1.2rem;
-  z-index: 2;
-  position: absolute;
-  bottom: calc(var(--dock-lift) + var(--safe-bottom));
+// Below the side rail the shared stage reparks to a fixed `bottom: 12rem`,
+// which clears the pin-drop modes' one-line lock row but not this mode's dial
+// plus commit row. Joining the column instead keeps the two apart by layout
+// rather than by a number that has to match the console's height.
+@media screen and (max-width: $tablet-wide) {
+  .side-stage.change-stage {
+    inset: auto;
+    position: static;
+    align-self: center;
+    margin: 0 0 1rem;
+    width: min(60vw, 22rem);
+    height: min(60vw, 22rem);
+  }
 }
 
-// Lifted clear of the console while there is one — and back down once the
-// commit takes it away, so the thumb is not left floating at the reveal.
-.final-change.dialing .change-dock {
-  --dock-lift: 14rem;
+// The docked thumb rides the column, immediately above the footer — in flow
+// rather than bottom-offset, so it cannot overlap the decade dial whatever
+// that console happens to measure. An offset would have to guess at the
+// dial's height plus the commit row plus the shell's own padding, and be
+// re-guessed every time one of them changed.
+.change-dock {
+  z-index: 2;
+  align-self: flex-start;
+  margin: 0 0 0.8rem 1.2rem;
 }
 
 // The dock's frame is landscape by default; the satellite pair wants its
