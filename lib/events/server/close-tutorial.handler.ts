@@ -1,5 +1,6 @@
 import { defineGameHandler } from '../server-side'
 import { currentBorderChain, scheduleChainTimeout } from './chain-turns'
+import { scheduleClassicSettle, startClassicClockOnFirstClose } from './classic-rounds'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
@@ -7,6 +8,12 @@ export const closeTutorialHandler = defineGameHandler(
   'close-tutorial',
   async ({ game, player, server, eventTarget, io, redis, socket }) => {
     player.phase = 'group-challenge'
+
+    // Round 1 never passes the enter-movement-phase reveal, so a classic
+    // round's clock stamps on the FIRST tutorial close instead (the same
+    // seam the turn engines' briefings use below). Later closes see a live
+    // deadline and change nothing.
+    const startsClassicClock = startClassicClockOnFirstClose(game)
 
     // A manhunt dealt as round 1 (FORCE_ROUND_TYPE — natural round 1 is always
     // ranking) never passes the enter-movement-phase reveal, so its secret
@@ -24,6 +31,7 @@ export const closeTutorialHandler = defineGameHandler(
     if (startsManhunt && !manhunt.state.finished) {
       scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)
     }
+    if (startsClassicClock) scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
 
     // Same round-1 FORCE_ROUND_TYPE seam for Unique or Bust: its briefing cap
     // normally arms at the enter-movement-phase reveal, which round 1 never

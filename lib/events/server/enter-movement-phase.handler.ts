@@ -10,6 +10,7 @@ import {
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
+import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
 
 import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
@@ -251,10 +252,15 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // The clocked rounds (Border Chain's shot clock, Heritage Hunt's beat
       // clock): stamp the first deadline into the snapshot being revealed,
       // and arm the timeout after the save.
-      const revealed = latestRound(game)?.groupChallenge
+      const revealedRound = latestRound(game)
+      const revealed = revealedRound?.groupChallenge
       if (isBorderChainChallenge(revealed)) startChainClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
+      // Everything else is a classic round: the SAME contract, one level up —
+      // the play window stamps onto the round itself, and the settle backstop
+      // banks whoever never answers.
+      if (revealedRound) startClassicClock(revealedRound)
       // Manhunt's start is async: the despot's trail seeds into its secret
       // redis blob (never the snapshot) before the reveal saves.
       if (isManhuntChallenge(revealed)) {
@@ -279,6 +285,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       if (isUniqueOrBustChallenge(revealed)) {
         scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, revealed)
       }
+      scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
     }
   }
 )

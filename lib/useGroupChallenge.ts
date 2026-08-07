@@ -7,6 +7,7 @@ import {
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
+import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, GuessKind } from '~~/types/events.types'
@@ -244,28 +245,50 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /**
    * Leave the interstitial and start the round. `onTimeout` (if a countdown
    * exists) fires once when the clock hits zero — typically a fail-submit.
-   * `onTick` runs each second for mode-specific reveals.
+   * `onTick` runs on each new second for mode-specific reveals.
+   *
+   * The clock's truth is the server-stamped `round.deadline` when one rides
+   * the snapshot: every repaint re-derives from the wall clock, so a
+   * backgrounded tab whose intervals were throttled snaps to the true time
+   * the moment it wakes — the round can no longer silently outlive its
+   * window in browser memory. Rounds without a stamp (older snapshots,
+   * booth ambience) keep the local decrement as a fallback.
    */
   const begin = (
     hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
   ) => {
     showInterstitial.value = false
     started.value = true
-    if (duration.value) {
-      // Re-entrant callers (the watch-mode round-boundary restart) must
-      // replace the clock, never stack a second interval beside it
+    if (!duration.value) return
+    // Re-entrant callers (the watch-mode round-boundary restart) must
+    // replace the clock, never stack a second interval beside it
+    if (countdown) clearInterval(countdown)
+    const total = duration.value
+    const deadline = currentRound.value?.round.deadline
+    const expire = () => {
       if (countdown) clearInterval(countdown)
-      secondsLeft.value = duration.value
-      countdown = setInterval(() => {
-        secondsLeft.value--
-        hooks.onTick?.(secondsLeft.value)
-        if (secondsLeft.value <= 0) {
-          if (countdown) clearInterval(countdown)
-          countdown = undefined
-          hooks.onTimeout?.()
-        }
-      }, 1000)
+      countdown = undefined
+      hooks.onTimeout?.()
     }
+    if (deadline) {
+      // The stamp includes the opening grace, so right after the reveal the
+      // clock reads FULL and holds there while the grace burns.
+      secondsLeft.value = Math.min(total, secondsOnDeadline(deadline))
+      countdown = setInterval(() => {
+        const next = Math.min(total, secondsOnDeadline(deadline))
+        if (next === secondsLeft.value) return
+        secondsLeft.value = next
+        hooks.onTick?.(next)
+        if (next <= 0) expire()
+      }, 1000)
+      return
+    }
+    secondsLeft.value = total
+    countdown = setInterval(() => {
+      secondsLeft.value--
+      hooks.onTick?.(secondsLeft.value)
+      if (secondsLeft.value <= 0) expire()
+    }, 1000)
   }
 
   /**
