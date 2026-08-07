@@ -1,7 +1,7 @@
 <template>
   <!-- A span, not a div: this stands in the gauntlet prompt and inside
        ChallengeResult's lesson <p>. -->
-  <span class="treaty-seal" :style="{ '--family-hue': family.hue }">
+  <span class="treaty-seal" :class="{ compact }" :style="{ '--family-hue': family.hue }">
     <span class="wax" aria-hidden="true">
       <StatTopicIcon class="glyph" :topic="family.glyph" />
     </span>
@@ -21,7 +21,13 @@ import { treatyMeta, TREATY_FAMILIES, type TreatyId } from '~~/types/treaty.type
  * wall of text, and it tells the player what KIND of instrument this is
  * before they know anything else about it.
  */
-const props = defineProps<{ treaty: TreatyId }>()
+const props = defineProps<{
+  treaty: TreatyId
+  /** Row layout with a smaller disc, for the prompt. Stacked, the seal costs
+   *  the question ~65px of header — enough to push a tall reveal card off the
+   *  bottom of a phone. The card itself has the room for the full version. */
+  compact?: boolean
+}>()
 
 const family = computed(() => TREATY_FAMILIES[treatyMeta(props.treaty).family])
 </script>
@@ -31,6 +37,25 @@ const family = computed(() => TREATY_FAMILIES[treatyMeta(props.treaty).family])
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+
+  &.compact {
+    gap: 0.6rem;
+    flex-flow: row nowrap;
+
+    .wax {
+      width: 2.8rem;
+      height: 2.8rem;
+
+      &::after {
+        inset: 0.35rem;
+      }
+
+      .glyph {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+    }
+  }
 }
 
 // The scallop is a conic gradient masked to a ring — cheaper than 16 paths,

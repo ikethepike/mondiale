@@ -208,6 +208,15 @@ const pickedLine = computed(() => {
   display: flex;
   flex-flow: column nowrap;
   min-width: min(42rem, 100%);
+  // .ranked-bars' ceiling, taken in a little. A treaty dossier runs tall —
+  // seal, name, purpose, census, holdout, peers — and the shell does not
+  // scroll, so past this the card has to scroll inside itself or lose its tail
+  // off the bottom of the screen. 52vh is the sibling cards' figure and it is
+  // too generous here: those sit under a two-line prompt, this one under a
+  // three-line instrument name, and the difference is exactly the credit row.
+  max-height: min(46vh, 46rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dossier {
