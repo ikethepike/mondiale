@@ -192,6 +192,7 @@ export type SourceId =
   | 'cia-world-leaders'
   | 'cepii-baci'
   | 'owid-grapher'
+  | 'equaldex-marriage'
   | 'worldbank-wdi'
   | 'un-wpp-2024'
   | 'un-migrant-stock-2024'
@@ -251,6 +252,13 @@ export const SOURCES: Record<SourceId, Source> = {
     title: 'Grapher datasets',
     url: 'https://ourworldindata.org/charts',
     edition: 'full CSV downloads',
+    license: 'CC BY 4.0',
+  },
+  'equaldex-marriage': {
+    provider: 'owid',
+    title: 'Marriage for same-sex partners',
+    url: 'https://ourworldindata.org/grapher/marriage-same-sex-partners-equaldex',
+    edition: '2026',
     license: 'CC BY 4.0',
   },
   'worldbank-wdi': {
@@ -575,8 +583,9 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
 
   'humanRights.refugees': factbook('Transnational Issues › Refugees'),
   'humanRights.gayMarriageLegalized': {
-    source: 'mondiale-editorial',
-    dataset: 'data/static/marriage-rights.ts',
+    source: 'equaldex-marriage',
+    originator: 'Equaldex',
+    dataset: 'Marriage for same-sex partners',
   },
 }
 
@@ -672,6 +681,7 @@ export type DataSetId =
   | 'conflict-events'
   | 'commodity-exporters'
   | 'owid'
+  | 'marriage-rights'
   | 'worldbank'
   | 'wpp'
 
@@ -885,6 +895,11 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     label: 'Indices and long series',
     files: ['data/owid.gen.ts', 'data/trends.gen.ts'],
     origins: [{ source: 'owid-grapher' }],
+  },
+  'marriage-rights': {
+    label: 'Same-sex marriage legalization',
+    files: ['data/marriage-rights.gen.ts'],
+    origins: [{ source: 'equaldex-marriage', originator: 'Equaldex' }],
   },
   worldbank: {
     label: 'World Bank indicators',

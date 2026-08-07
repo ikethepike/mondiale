@@ -39,9 +39,12 @@ export const formatOrdinal = (position: number): string => {
   return `${position}${ORDINAL_SUFFIXES[rule] ?? 'th'}`
 }
 
-/** "12.34m people", "61.3 %" — a country stat with its unit, for lessons. */
+/** "12.34m people", "61.3 %" — a country stat with its unit, for lessons.
+ *  A `year` is a label, not a quantity: it takes no thousands separator and no
+ *  trailing unit, so 2001 reads "2001" and never "2,001 year". */
 export const formatAmount = (amount: { amount: number; unit: string }): string => {
   const unit = String(amount.unit ?? '').trim()
+  if (unit === 'year') return String(Math.round(amount.amount))
   return unit ? `${formatNumber(amount.amount)} ${unit}` : formatNumber(amount.amount)
 }
 

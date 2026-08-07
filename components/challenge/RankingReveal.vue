@@ -30,6 +30,13 @@
           <strong class="name">{{ row.name }}</strong>
           <div v-if="row.amount" class="measure">
             <span class="amount">{{ formatAmount(row.amount) }}</span>
+            <!-- Only the countries whose year needs qualifying carry one -->
+            <SourceInfo
+              v-if="row.amount.note"
+              icon="question"
+              label="Note"
+              :definition="row.amount.note"
+            />
             <!-- Without this a "1" repeated five times reads as a bug -->
             <span v-if="row.tied" class="tied">tied ×{{ row.tiedCount }}</span>
             <span class="scale" aria-hidden="true">
@@ -92,6 +99,7 @@
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { getChallengeDetails, MAXIMUM_SCORE_PER_COUNTRY, rankingBreakdown } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'

@@ -5,7 +5,7 @@ import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { wppMapping } from '~~/data/wpp.gen'
-import { MARRIAGE_RIGHTS } from '~~/data/static/marriage-rights'
+import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { LEADERS } from '~~/data/leaders.gen'
 import {
@@ -412,13 +412,7 @@ const normalizeCountry = ({
     },
     humanRights: {
       refugees: getRefugees(data, isoCode),
-      gayMarriageLegalized: MARRIAGE_RIGHTS[isoCode]
-        ? {
-            amount: MARRIAGE_RIGHTS[isoCode].yearAllowed,
-            unit: 'year',
-            source: 'mondiale-editorial',
-          }
-        : undefined,
+      gayMarriageLegalized: gayMarriageAmount(isoCode),
     },
   }
 }
@@ -540,6 +534,14 @@ const worldBankAmount = <Unit>(
     amount: unit === '$' ? Math.round(value.amount) : Math.round(value.amount * 10) / 10,
     source: 'worldbank-wdi',
   }
+}
+
+/** Year same-sex marriage became legal nationwide. `note` carries the reason
+ *  the year differs from the source's, for the countries that need one. */
+const gayMarriageAmount = (isoCode: string): Amount<'year'> | undefined => {
+  const right = MARRIAGE_RIGHTS[isoCode as ISOCountryCode]
+  if (!right) return undefined
+  return { amount: right.year, unit: 'year', source: 'equaldex-marriage', note: right.note }
 }
 
 /** Pull a UN WPP metric for a country and wrap it as an Amount. */

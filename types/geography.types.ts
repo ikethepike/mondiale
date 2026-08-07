@@ -12,6 +12,9 @@ export interface Amount<Unit> {
   /** Which source won this value's fallback chain — stamped by the generator,
    *  read back through `attributionFor` (lib/attribution.ts). */
   source?: SourceId
+  /** Qualifier shown at reveal when the bare number needs context — stamped by
+   *  the generator, so the reason travels with the value it explains. */
+  note?: string
 }
 
 export const worldRegions = [

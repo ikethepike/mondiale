@@ -97,6 +97,7 @@ import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.typ
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Game, GameDifficulty, PlayerColor, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { Component } from 'vue'
 
@@ -225,9 +226,10 @@ const mockGame = (phase: PlayerPhase, rounds: unknown[]): Game => {
 
 /** A settled ranking round, for score/standings screens. Answers and points
  *  come from the real scorer, so the reveal breakdown always adds up. */
-const settledRound = (): Round => {
-  const accessorId = 'economics.gdpPerCapita'
-  const dealt: ISOCountryCode[] = ['FR', 'BR', 'JP', 'NG', 'SE']
+const settledRound = (
+  accessorId: GroupChallengeAccessorId = 'economics.gdpPerCapita',
+  dealt: ISOCountryCode[] = ['FR', 'BR', 'JP', 'NG', 'SE']
+): Round => {
   const correct = getCorrectRanking({ groupChallengeAccessorId: accessorId, isoCodes: dealt })
   const submissions: { [playerId: string]: ISOCountryCode[] } = {
     [ME]: ['SE', 'BR', 'JP', 'FR', 'NG'],
@@ -360,6 +362,17 @@ const scenarios: Scenario[] = [
     label: 'Group scores (reveal)',
     component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledRound()]),
+  },
+  {
+    // GB and FI carry a note; the other three don't, so one scenario shows
+    // both the qualified and the bare row.
+    id: 'ranking-marriage-notes',
+    label: 'Ranking reveal (per-country notes)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        settledRound('humanRights.gayMarriageLegalized', ['GB', 'FI', 'NL', 'SE', 'MX']),
+      ]),
   },
   {
     id: 'anthem-scores',

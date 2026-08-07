@@ -52,6 +52,11 @@ jobs:
       - name: Update leaders
         run: bun run generate:leaders
 
+      # Equaldex refreshes annually, but the fetch is deterministic and its
+      # country floor fails the job rather than shrinking the round.
+      - name: Update same-sex marriage legalization
+        run: bun run generate:marriage-rights
+
       # Ratifications land most months, and the generator's floors + the
       # CRC/US canary fail the job rather than committing a broken parse.
       #

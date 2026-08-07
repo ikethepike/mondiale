@@ -10,6 +10,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
@@ -25,6 +26,9 @@ const CONFLICT_ACTIVE_FLOOR = 80
 // 303 conflict profiles / 123 mapped-event countries today.
 const CONFLICT_PROFILE_FLOOR = 200
 const CONFLICT_FIELD_FLOOR = 90
+// 38 countries have legalized same-sex marriage; mirrors the generator's own
+// floor, so a shrunken Equaldex fetch fails here too.
+const MARRIAGE_COUNTRY_FLOOR = 35
 
 describe('countries.gen', () => {
   const countries = Object.values(COUNTRIES)
@@ -37,6 +41,26 @@ describe('countries.gen', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
       expect(FLAGS[country.isoCode]).toContain('<svg')
+    }
+  })
+})
+
+describe('marriage-rights.gen', () => {
+  const years = Object.values(MARRIAGE_RIGHTS)
+
+  it('keeps the ranking round stocked', () => {
+    expect(years.length).toBeGreaterThanOrEqual(MARRIAGE_COUNTRY_FLOOR)
+  })
+
+  // The Netherlands went first; a run that loses it has lost the ISO join.
+  it('starts with the Netherlands in 2001', () => {
+    expect(MARRIAGE_RIGHTS.NL?.year).toBe(2001)
+  })
+
+  it('carries plausible years only', () => {
+    for (const right of years) {
+      expect(right.year).toBeGreaterThanOrEqual(2001)
+      expect(right.year).toBeLessThanOrEqual(new Date().getFullYear() + 1)
     }
   })
 })
