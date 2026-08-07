@@ -4,7 +4,13 @@
       <div v-if="expanded" key="stage" class="dock-stage">
         <div class="dock-scrim" aria-hidden="true" @click="expanded = false" />
         <div class="dock-frame">
-          <ZoomableImage :src="src" :alt="alt" />
+          <!-- A single photo is the common case and its own default. A subject
+               that is not one still image (World of Change's crossfading pair)
+               supplies its own stage here and keeps the scrim, the frame, the
+               close button and the thumb. -->
+          <slot>
+            <ZoomableImage :src="src" :alt="alt" />
+          </slot>
           <SourceInfo
             v-if="attributions?.length"
             class="dock-source on-photo"
@@ -38,11 +44,15 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import type { Attribution } from '~~/lib/attribution'
 
 /**
- * Phone presentation for a photo prompt whose ANSWER surface is the map:
- * expanded, the photo takes the stage (map dimmed behind a tap-to-close
+ * Phone presentation for a media prompt whose ANSWER surface is the map:
+ * expanded, the subject takes the stage (map dimmed behind a tap-to-close
  * scrim) for studying; collapsed, it docks as a corner thumbnail so the map
  * is fully unobscured. The host view decides when to auto-collapse (e.g. on
  * the first pin drop) via v-model:expanded.
+ *
+ * `src` is the dock's subject: the thumbnail always, and the expanded frame
+ * unless the default slot replaces it — a prompt that is not one still image
+ * stages itself there rather than reimplementing the scrim and the thumb.
  *
  * `attributions`/`itemCredit` put the photo's provenance ⓘ on the expanded
  * frame (the thumbnail has no room). Hold `itemCredit` back while the
