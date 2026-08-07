@@ -1611,6 +1611,11 @@ export const getRoundChallenge = async ({
   return getGroupChallenge({ game })
 }
 
+/** Compile error if a RoundChallengeKind ever loses its dealer. */
+const assertNoUndealtKind = (kind: never): never => {
+  throw new Error(`Round kind '${String(kind)}' has no dealer`)
+}
+
 /**
  * One attempt at one kind. Undefined means "nothing viable for this table" —
  * the caller decides whether that buys another kind or the ranking floor, so
@@ -1757,6 +1762,9 @@ const dealRoundChallenge = async (
       if (challenge) return challenge
       break
     }
+    default:
+      // A kind with no dealer is a compile error, not a silent ranking round.
+      return assertNoUndealtKind(kind)
   }
 
   return undefined
