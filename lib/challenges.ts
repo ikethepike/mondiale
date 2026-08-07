@@ -2572,9 +2572,17 @@ const ROSETTA_RELATIONS_BY_ACCESSOR: Partial<
  * Rosetta: A : B :: C : ? — the exemplar pair fixes which relation is meant.
  *
  * Uniqueness and the giveaway scrub are `rosettaTerms`' job (lib/rosetta); the
- * dealer only picks. The exemplar comes from ANOTHER region and prefers a big,
- * well-known country, so the pair reads as a demonstration rather than a
- * second question.
+ * dealer only picks. BOTH halves of the analogy come off the board: the
+ * exemplar is a demonstration, and a Europe game teaching the link with
+ * "Tripoli → Libya" is demonstrating on a country that isn't on the player's
+ * map. Off-board terms still count for the uniqueness index — they just can't
+ * be the teacher.
+ *
+ * Within the board the exemplar prefers ANOTHER region and a big, well-known
+ * country, so the pair reads as a demonstration rather than a second question
+ * or a nudge towards where to look. A single-region board can't offer one, and
+ * there the nudge is worth nothing anyway — every answer is that region — so
+ * the preference yields rather than sending the dealer off the map.
  */
 const dealRosetta = (
   accessorId: IndividualChallengeAccessorId,
@@ -2595,9 +2603,11 @@ const dealRosetta = (
     if (!answer) continue
 
     const answerRegion = COUNTRIES[answer.isoCode].region
-    const candidates = terms.filter(
-      entry => entry.isoCode !== answer.isoCode && COUNTRIES[entry.isoCode].region !== answerRegion
+    const others = terms.filter(
+      entry => entry.isoCode !== answer.isoCode && onBoard.has(entry.isoCode)
     )
+    const abroad = others.filter(entry => COUNTRIES[entry.isoCode].region !== answerRegion)
+    const candidates = abroad.length ? abroad : others
     if (!candidates.length) continue
     const exemplarCountry = pickSizedCountry(
       candidates.map(entry => entry.isoCode),
