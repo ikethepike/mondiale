@@ -36,36 +36,34 @@
       </ChallengePrompt>
 
       <footer v-if="!submitted">
-        <template v-if="!submitted">
-          <p class="map-caption ask">Who claims it?</p>
-          <ul v-if="picks.length" class="chips country-chip-list">
-            <li v-for="isoCode in picks" :key="isoCode">
-              <CountryChip
-                tag="button"
-                type="button"
-                compact
-                class="pick map-caption"
-                :country="getCountry(isoCode)"
-                @click="toggle(isoCode)"
-              >
-                <span class="remove">×</span>
-              </CountryChip>
-            </li>
-          </ul>
-          <!-- The round clock docks beside the lock — the action and the time
-               to act read as one row, as in the guess consoles. -->
-          <div class="lock-row">
-            <ButtonFilled class="lock" @click="submitRound">
-              {{ picks.length ? 'Lock it in' : 'Nobody claims it' }}
-            </ButtonFilled>
-            <ChallengeTimerRadial
-              v-if="challenge"
-              class="lock-clock"
-              :value="secondsLeft"
-              :total="challenge.durationSeconds"
-            />
-          </div>
-        </template>
+        <p class="map-caption ask">Who claims it?</p>
+        <ul v-if="picks.length" class="chips country-chip-list">
+          <li v-for="isoCode in picks" :key="isoCode">
+            <CountryChip
+              tag="button"
+              type="button"
+              compact
+              class="pick map-caption"
+              :country="getCountry(isoCode)"
+              @click="toggle(isoCode)"
+            >
+              <span class="remove">×</span>
+            </CountryChip>
+          </li>
+        </ul>
+        <!-- The round clock docks beside the lock — the action and the time
+             to act read as one row, as in the guess consoles. -->
+        <div class="lock-row">
+          <ButtonFilled class="lock" @click="submitRound">
+            {{ picks.length ? 'Lock it in' : 'Nobody claims it' }}
+          </ButtonFilled>
+          <ChallengeTimerRadial
+            v-if="challenge"
+            class="lock-clock"
+            :value="secondsLeft"
+            :total="challenge.durationSeconds"
+          />
+        </div>
       </footer>
     </template>
   </section>

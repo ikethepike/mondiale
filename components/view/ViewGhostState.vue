@@ -81,7 +81,8 @@ const DURATION_SECONDS = 25
 const territory = ref<RecognitionTerritory>()
 const flagSvg = ref('')
 const flagHost = ref<HTMLElement>()
-/** Mirrors ViewNameThatWater's reveal: praise, or a plain "It was". */
+/** The MISS line only — 'Out of time' or 'It was'. The win says "Well placed"
+ *  from the card's own correct-message, so this is never read on that path. */
 const verdictHeadline = ref('')
 /** Per-seat, and read by the verdict card — `correct` was local to submitRound. */
 const resolvedCorrectly = ref(false)
@@ -234,7 +235,7 @@ const submitRound = (isoCode: ISOCountryCode | undefined) => {
 
   const correct = isoCode === active.parent
   resolvedCorrectly.value = correct
-  verdictHeadline.value = !isoCode ? 'Out of time' : correct ? 'Well placed' : 'It was'
+  verdictHeadline.value = isoCode ? 'It was' : 'Out of time'
 
   // Reveal: bloom the outline (a marker when it's too small to draw), highlight
   // the state that claims it, and frame the two together.
@@ -293,7 +294,6 @@ header .sub {
 
 // The reveal: what the round withheld, now stacked inside the verdict card's
 // body rather than in a footer of its own pills.
-.facts,
 .note {
   display: block;
 }

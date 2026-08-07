@@ -35,11 +35,18 @@
 // The hairline divider under card headers — near-black at 12%, one token.
 $hairline: hsla(0, 0%, 7.5%, 0.12);
 
+// The radius of a full card surface (panes, sheets, the verdict dossier). Lives in
+// this pure module because templates/_pane.scss emits CSS, so a scoped block cannot
+// @use it for the value alone without duplicating the .pane recipe.
+$cardRadius: 1.9rem;
+
 // The cream scrim itself: the four properties that make type legible over any
 // country fill (correct/incorrect washes, highlights, region colours). Lives here
 // rather than in templates/_map-caption.scss so a surface that needs the recipe
 // without the pill's padding and radius — the verdict dossier — can take it
-// without @use'ing a file that emits CSS. .map-caption is its other consumer.
+// without @use'ing a file that emits CSS. `.map-caption` and the verdict dossier read
+// it today; other surfaces still hand-inline the same four properties, and should move
+// onto this as they are touched.
 @mixin caption-surface($radius: 1.2rem) {
   border-radius: $radius;
   backdrop-filter: blur(0.5rem);

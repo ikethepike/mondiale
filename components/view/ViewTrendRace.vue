@@ -17,13 +17,15 @@
     />
 
     <ChallengePrompt :attributions="[trendAttribution(challenge.metric)]">
-      <h1 class="map-caption">
+      <h1 v-if="!revealed" class="map-caption">
         Which country's {{ metricLabel }} has {{ challenge.direction }} the most since
         {{ challenge.windowStartYear }}?
       </h1>
-      <!-- The verdict is the shared dossier; the world-context strip stays on the
-           stage below. It is a full-width chart, not a caption-sized fact, and the
-           card's 60rem cap would only squeeze it. -->
+      <!-- The verdict is the shared dossier, and the question steps aside for it so
+           there is only ever one h1 on screen. The metric is not lost with it: the
+           strip below is labelled "Every country's {metric} today". That strip stays
+           on the stage — a full-width chart, not a caption-sized fact, and the card's
+           60rem cap would only squeeze it. -->
       <ChallengeResult
         v-if="revealed"
         :status="pickedWinner ? 'correct' : 'incorrect'"

@@ -14,9 +14,11 @@
         <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
         <span class="map-caption sub"> Tap the claim that doesn't belong </span>
       </template>
-      <!-- The question title steps aside for the verdict rather than standing above
-           it: the dossier's own head is the heading once the round has resolved, and
-           its body already names the country. -->
+      <!-- The question title steps aside so the dossier's head is the only heading
+           once the round resolves. That drops the one mention of the SUBJECT
+           country, so the body names it: the lie belongs to `lieSource`, and
+           without naming `country` too the reveal never says what the three claims
+           were even about. -->
       <ChallengeResult
         v-else
         :status="foundLie ? 'correct' : 'incorrect'"
@@ -24,10 +26,12 @@
         :incorrect-message="timedOut ? 'Time ran out' : 'That one was true'"
       >
         <template v-if="foundLie">
-          That's {{ countryName(challenge.lieSource) }}'s number. The truth: {{ truthDisplay }}
+          That's {{ countryName(challenge.lieSource) }}'s number, not
+          {{ countryName(challenge.country) }}'s. The truth: {{ truthDisplay }}
         </template>
         <template v-else>
-          The lie was {{ lieLabel }}, which belongs to {{ countryName(challenge.lieSource) }}
+          The lie was {{ lieLabel }} — {{ countryName(challenge.lieSource) }}'s number, not
+          {{ countryName(challenge.country) }}'s
         </template>
       </ChallengeResult>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />

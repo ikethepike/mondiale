@@ -21,9 +21,14 @@
         <h1 v-if="!submitted" class="map-caption">Where did this happen?</h1>
         <!-- `status` is this card's own prop, so the verdict still stamps a miss
              even though gameStore.map.status stays undefined on one: washing the
-             whole world orange reads as "the world is wrong", not "you missed". -->
+             whole world orange reads as "the world is wrong", not "you missed".
+             Gated on the headline, NOT on `submitted`: the spectator booth flips
+             `submitted` from groupAnswers without ever running submitRound, so
+             those two refs are still at their defaults there — and a card keyed
+             off `submitted` alone stamps a confident "incorrect" on a racer who
+             may well have been right. -->
         <ChallengeResult
-          v-else
+          v-else-if="verdictHeadline"
           :status="resolvedCorrectly ? 'correct' : 'incorrect'"
           :correct-message="verdictHeadline"
           :incorrect-message="verdictHeadline"

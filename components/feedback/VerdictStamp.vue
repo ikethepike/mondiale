@@ -1,10 +1,10 @@
 <template>
   <svg class="verdict-stamp" :class="status" viewBox="0 0 48 48" aria-hidden="true">
-    <!-- The stamp's own paper: the verdict washes the whole map in the
-         stamp's ink hue (soft-mint / hi-orange), so bare strokes vanish into
-         the ground wherever they overhang the heading pill — same guaranteed
-         contrast rule as .map-caption -->
-    <circle class="paper" cx="24" cy="24" r="23" />
+    <!-- No backing disc: this used to carry its own milk() paper so the strokes
+         could not vanish into the map wash where the stamp overhung the heading
+         pill. It stands inside ChallengeResult's card now and never overhangs, so
+         the disc only added a lighter cream blob on cream. Restore it if the stamp
+         is ever placed straight over the map again. -->
     <circle cx="24" cy="24" r="21" />
     <circle cx="24" cy="24" r="16.5" />
     <path v-if="status === 'correct'" d="M15.5 24.5l6 6 11-12" />
@@ -17,6 +17,11 @@
  * result heading — teal ring and check for a correct call, flame ring and
  * cross for a miss. Size from the host via width/height (default 5.2rem);
  * the thump plays on mount, so re-key to replay.
+ *
+ * The thump animates opacity to 1 with `both` fill, so a host cannot knock the
+ * stamp back with its own `opacity` — that value would only hold until the thump
+ * landed, then reappear wherever reduced motion disables the animation. Change the
+ * strength here.
  */
 defineProps({
   status: {
@@ -39,11 +44,6 @@ defineProps({
   transform: rotate(-8deg);
   animation: stamp-thump 0.45s var(--ease-out-expressive) both;
   animation-delay: 0.3s;
-
-  .paper {
-    stroke: none;
-    fill: milk(0.85);
-  }
 
   &.correct {
     color: hsl(170.5, 44%, 32%);

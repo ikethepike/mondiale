@@ -106,10 +106,6 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 
-// Matches $paneBorderRadius in templates/_pane.scss. Inlined rather than @use'd:
-// importing that file into a scoped block would re-emit the whole .pane recipe.
-$dossierRadius: 1.9rem;
-
 .challenge-result {
   position: relative;
 }
@@ -119,7 +115,7 @@ $dossierRadius: 1.9rem;
 // asymmetric reserve pushed the visible verdict 1.2rem off the axis the lesson
 // and the ripple were centred on.
 .verdict-dossier {
-  @include caption-surface($dossierRadius);
+  @include caption-surface($cardRadius);
   display: block;
   width: max-content;
   // 100% keeps it inside (and centred in) padded ancestors — the host view's
@@ -145,12 +141,15 @@ $dossierRadius: 1.9rem;
 // the ink from ever landing on the words (the old corner stamp did, at phone
 // width), removes the need for any clipping ancestor — which the slotted
 // scrollers would have had to live inside — and leaves the card free to centre.
+// No justify-content: the card is width: max-content, so a wide lesson body sets
+// the card's width and space-between would fling the stamp to the far edge, tens
+// of rem from the verdict it is supposed to sit beside. Left-packed with a gap
+// keeps it as ink next to the words at every body width.
 .verdict {
   gap: 2rem;
   display: flex;
   align-items: center;
   padding: 1rem 2.2rem;
-  justify-content: space-between;
 }
 
 .verdict-line {
