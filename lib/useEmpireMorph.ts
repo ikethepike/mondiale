@@ -7,12 +7,13 @@ import { parsePolygons, ringArea, ringCentroid as centroid } from '~~/lib/outlin
  * one continuously-morphing `d` stream, with the year and the ghost's ink
  * opacity riding the same clock.
  *
- * flubber does the ring interpolation (including 1→n splits and n→1 merges —
- * an empire fragmenting into republics); GSAP drives progress on a numeric
- * proxy because only Chromium animates geometry attributes (the MapInset
- * lesson). Every frame goes out through `onFrame` for a direct
- * `setAttribute('d', …)` write — Vue's vnode diff never sees per-frame
- * geometry (the GameMap discipline).
+ * flubber does the ring interpolation, and EVERY group is 1→1 by construction
+ * (see `pairRings`) — never separate()/combine(), which earcut the parent ring
+ * into abutting tiles whose shared cut chord gets stroked straight through the
+ * silhouette. GSAP drives progress on a numeric proxy because only Chromium
+ * animates geometry attributes (the MapInset lesson). Every frame goes out
+ * through `onFrame` for a direct `setAttribute('d', …)` write — Vue's vnode
+ * diff never sees per-frame geometry (the GameMap discipline).
  */
 
 type Ring = [number, number][]
@@ -20,8 +21,6 @@ type RingInterpolator = (t: number) => string
 
 interface Flubber {
   interpolate: (from: Ring | string, to: Ring | string, options?: object) => RingInterpolator
-  separate: (from: Ring | string, to: (Ring | string)[], options?: object) => RingInterpolator
-  combine: (from: (Ring | string)[], to: Ring | string, options?: object) => RingInterpolator
 }
 
 /** Ink levels the sweep narrates with: rise → peak dwell → decline. The
@@ -39,15 +38,33 @@ const SEGMENT_POOL_SECONDS = 9
 const distance = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1])
 
 /**
- * Pair rings across two keyframes for morphing: the min(n,m) largest rings
- * pair greedily by centroid distance; every leftover ring on the larger side
- * joins its nearest pair's group. Each group is then 1→1, 1→k or k→1 —
- * exactly the cases flubber's interpolate/separate/combine cover, with no
- * dependence on interpolateAll's unequal-length behaviour.
+ * Seed for an unpaired ring: a collapsed triangle at the ring's OWN centroid,
+ * so a 1→1 interpolate grows it from / shrinks it to a point in place. Not a
+ * point on the mainland's edge — the large unpaired rings here are real islands
+ * across open water (Majapahit's Sumatra, Almoravid's Iberia across the strait),
+ * and budding them off a coast would drag ink across the sea.
  */
-const pairRings = (from: Ring[], to: Ring[]): { from: Ring[]; to: Ring[] }[] => {
+const collapsedSeed = (ring: Ring): Ring => {
+  const [x, y] = centroid(ring)
+  return [
+    [x, y],
+    [x, y],
+    [x, y],
+  ]
+}
+
+/**
+ * Pair rings across two keyframes for morphing: the min(n,m) largest rings pair
+ * greedily by centroid distance; every leftover ring pairs with a collapsed seed
+ * at its own centroid. EVERY group is therefore exactly 1→1, which is the whole
+ * point — a 1→k or k→1 group would go to flubber's separate()/combine(), and
+ * those earcut the single ring into abutting tiles that tile the original blob.
+ * The chord they cut along is interior, and `.ghost-extent` strokes it darker
+ * than its own fill: that is the diagonal seam through the silhouette.
+ */
+export const pairRings = (from: Ring[], to: Ring[]): { from: Ring; to: Ring }[] => {
   const paired = Math.min(from.length, to.length)
-  const groups: { from: Ring[]; to: Ring[]; centre: [number, number] }[] = []
+  const groups: { from: Ring; to: Ring }[] = []
   const takenTo = new Set<number>()
 
   for (let i = 0; i < paired; i++) {
@@ -63,23 +80,14 @@ const pairRings = (from: Ring[], to: Ring[]): { from: Ring[]; to: Ring[] }[] => 
       }
     }
     takenTo.add(best)
-    groups.push({ from: [from[i]], to: [to[best]], centre: fromCentre })
+    groups.push({ from: from[i], to: to[best] })
   }
 
-  for (let i = paired; i < from.length; i++) {
-    const centre = centroid(from[i])
-    const nearest = groups.reduce((a, b) =>
-      distance(centre, a.centre) <= distance(centre, b.centre) ? a : b
-    )
-    nearest.from.push(from[i])
-  }
+  for (let i = paired; i < from.length; i++)
+    groups.push({ from: from[i], to: collapsedSeed(from[i]) })
   for (let j = 0; j < to.length; j++) {
     if (takenTo.has(j)) continue
-    const centre = centroid(to[j])
-    const nearest = groups.reduce((a, b) =>
-      distance(centre, a.centre) <= distance(centre, b.centre) ? a : b
-    )
-    nearest.to.push(to[j])
+    groups.push({ from: collapsedSeed(to[j]), to: to[j] })
   }
 
   return groups
@@ -157,13 +165,9 @@ export const useEmpireMorph = (hooks: EmpireMorphHooks) => {
     segments = []
     for (let index = 0; index < frames.length - 1; index++) {
       const groups = pairRings(frames[index], frames[index + 1])
-      const parts = groups.map(group => {
-        if (group.from.length === 1 && group.to.length === 1)
-          return flubber.interpolate(group.from[0], group.to[0], { maxSegmentLength })
-        if (group.from.length === 1)
-          return flubber.separate(group.from[0], group.to, { maxSegmentLength, single: true })
-        return flubber.combine(group.from, group.to[0], { maxSegmentLength, single: true })
-      })
+      const parts = groups.map(group =>
+        flubber.interpolate(group.from, group.to, { maxSegmentLength })
+      )
       segments.push(parts.length === 1 ? parts[0] : t => parts.map(part => part(t)).join(' '))
       await Promise.resolve()
     }

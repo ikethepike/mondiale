@@ -663,6 +663,25 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'empire-majapahit',
+    label: 'Ghosts of Empires (island archipelago)',
+    component: ViewEmpire,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'empire-challenge',
+          empireId: 'majapahit',
+          keyframeYears: EMPIRES['majapahit'].keyframeYears,
+          peakYear: EMPIRES['majapahit'].peakYear,
+          durationSeconds: 24,
+          tapSeconds: 30,
+          members: EMPIRES['majapahit'].members.core,
+          partialMembers: EMPIRES['majapahit'].members.partial,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'empire-hard',
     label: 'Ghosts of Empires (free pick, no flag)',
     component: ViewEmpire,
