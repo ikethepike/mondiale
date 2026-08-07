@@ -122,6 +122,31 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
   return types
 }
 
+type FinalDealer = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+) => FinalChallengeItem | undefined
+
+const FINAL_DEALERS: Record<FinalChallengeType, FinalDealer> = {
+  'region-challenge': pool => getRegionChallenge(pool),
+  'leadership-challenge': pool => getLeadershipChallenge(pool),
+  'language-challenge': pool => getLanguageChallenge(pool),
+  'min-challenge': pool => getMinChallenge(pool),
+  'max-challenge': pool => getMaxChallenge(pool),
+  'membership-challenge': pool => getMembershipChallenge(pool),
+  'treaty-challenge': pool => getTreatyChallenge(pool),
+  'scales-challenge': pool => getScalesChallenge(pool),
+  'sunset-blitz-challenge': pool => getSunsetBlitzChallenge(pool),
+  'born-challenge': (pool, difficulty) => getBornChallenge(pool, difficulty),
+  'made-challenge': pool => getMadeChallenge(pool),
+  'city-nocturne-challenge': (pool, difficulty) => getCityNocturneChallenge(pool, difficulty),
+  'boundary-challenge': (pool, difficulty) => getBoundaryChallenge(pool, difficulty),
+  'endonym-challenge': (pool, difficulty) => getEndonymChallenge(pool, difficulty),
+  'diaspora-challenge': (pool, difficulty) => getDiasporaChallenge(pool, difficulty),
+  'yearbook-challenge': (_pool, difficulty) => getYearbookChallenge(difficulty),
+  'change-challenge': (pool, difficulty) => getChangeChallenge(pool, difficulty),
+}
+
 // A dealer returns undefined (or throws, on source-data gaps) when the board
 // can't support its type — the draw just moves on to the next type.
 const dealChallenge = (
@@ -130,42 +155,7 @@ const dealChallenge = (
   difficulty: GameDifficulty
 ): FinalChallengeItem | undefined => {
   try {
-    switch (type) {
-      case 'region-challenge':
-        return getRegionChallenge(pool)
-      case 'leadership-challenge':
-        return getLeadershipChallenge(pool)
-      case 'language-challenge':
-        return getLanguageChallenge(pool)
-      case 'min-challenge':
-        return getMinChallenge(pool)
-      case 'max-challenge':
-        return getMaxChallenge(pool)
-      case 'membership-challenge':
-        return getMembershipChallenge(pool)
-      case 'treaty-challenge':
-        return getTreatyChallenge(pool)
-      case 'scales-challenge':
-        return getScalesChallenge(pool)
-      case 'sunset-blitz-challenge':
-        return getSunsetBlitzChallenge(pool)
-      case 'born-challenge':
-        return getBornChallenge(pool, difficulty)
-      case 'made-challenge':
-        return getMadeChallenge(pool)
-      case 'city-nocturne-challenge':
-        return getCityNocturneChallenge(pool, difficulty)
-      case 'boundary-challenge':
-        return getBoundaryChallenge(pool, difficulty)
-      case 'endonym-challenge':
-        return getEndonymChallenge(pool, difficulty)
-      case 'diaspora-challenge':
-        return getDiasporaChallenge(pool, difficulty)
-      case 'yearbook-challenge':
-        return getYearbookChallenge(difficulty)
-      case 'change-challenge':
-        return getChangeChallenge(pool, difficulty)
-    }
+    return FINAL_DEALERS[type](pool, difficulty)
   } catch {
     return undefined
   }
