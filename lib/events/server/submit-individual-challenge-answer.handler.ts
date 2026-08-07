@@ -3,6 +3,7 @@ import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
+import { GATE_RESULT_HOLD_MS } from './turn-timing'
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
@@ -78,7 +79,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // own resumption, so it travels as a continuation under the current walk
     // generation.
     scheduleMovementPhase(
-      5000,
+      GATE_RESULT_HOLD_MS,
       { io, redis, socket, eventTarget },
       { continuation: true, walkSeq: player.walkSeq }
     )

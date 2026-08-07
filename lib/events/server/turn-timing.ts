@@ -18,3 +18,13 @@ export const BRIEFING_CAP_MS = 30000
  *  doors and see that the trapped player truly had no move. The client's
  *  overlay reads this too — one beat, one constant. */
 export const TRAP_HOLD_MS = 5500
+/** A gate's result beat: how long the seat basks in its verdict before the
+ *  walk resumes. The gate shell reads it too — the beat normally ends by the
+ *  view unmounting (the seat walks on), but a leap that lands the pawn at the
+ *  NEXT gate's stop tile re-enters the same phase with nothing to walk, so the
+ *  shell has to time the beat's end itself. One beat, one constant. */
+export const GATE_RESULT_HOLD_MS = 5000
+/** Wire grace on the shell's copy of the beat, so the server's own resume —
+ *  which unmounts the view in the ordinary walked case — lands first and the
+ *  shell's fallback stays a fallback. */
+export const GATE_RESULT_WIRE_GRACE_MS = 750

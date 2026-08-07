@@ -15,13 +15,13 @@ import { submitIndividualChallengeAnswersHandler } from './submit-individual-cha
 
 const tile = (position: number, type: Tile['type'] = 'normal'): Tile => ({ position, type })
 
-const gateMove = (position: number): PlayerMove => ({
+const gateMove = (position: number, variant = 'find'): PlayerMove => ({
   endTile: tile(position, 'flag'),
   challenge: {
     _type: 'individual-challenge',
     id: 'flag',
     country: 'FI',
-    variant: 'find',
+    variant,
   } as PlayerMove['challenge'],
 })
 
@@ -148,6 +148,52 @@ describe('a failed gate blocks the walk', () => {
     expect(store.get(game.id)!.rounds[0].playerTurns.a.blocked).toBeUndefined()
     expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1, 0, gatePot('find')))
     expect(playerOf(game.id, 'a').moves).toHaveLength(1)
+  })
+
+  /**
+   * The precondition behind the gate shell's beat fallback (use-gate-challenge):
+   * a deep-pot leap can cover the whole walk to the NEXT gate, and then the
+   * result beat settles the seat straight back into 'individual-challenge'
+   * with no 'moving' step in between. Nothing on the wire changes phase, so a
+   * client that ends its result beat by unmounting would never end it.
+   */
+  it('re-enters the next gate with no walk when the leap covers it', async () => {
+    const game = buildGame({
+      // Rosetta's pot is 4 and the gates are three tiles apart: a full-clock
+      // win lands the pawn ON gate 8, past its stop tile at 7.
+      a: seat('a', {
+        phase: 'individual-challenge',
+        currentPosition: 4,
+        moves: [gateMove(5, 'rosetta'), gateMove(8)],
+      }),
+      b: seat('b'),
+    })
+    const ctx = context(game)
+
+    await submitIndividualChallengeAnswersHandler({
+      ...ctx,
+      eventKey: 'submit-individual-challenge-answer',
+      eventData: {
+        event: 'submit-individual-challenge-answer',
+        isoCode: 'FI',
+        remainingFraction: 1,
+        gateTile: 5,
+      },
+      eventTarget: { gameId: game.id, playerId: 'a' },
+    } as never)
+    expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1, 0, gatePot('rosetta')))
+
+    const phases: string[] = []
+    for (let elapsed = 0; elapsed < 8000; elapsed += 250) {
+      await vi.advanceTimersByTimeAsync(250)
+      phases.push(playerOf(game.id, 'a').phase)
+    }
+
+    // Parked on the next gate, and the seat was never 'moving' on the way —
+    // the phase the client renders from never changed at all.
+    expect(playerOf(game.id, 'a').phase).toBe('individual-challenge')
+    expect(playerOf(game.id, 'a').moves[0].endTile.position).toBe(8)
+    expect(phases).not.toContain('moving')
   })
 
   it('rejects a submit whose gate-tile echo no longer matches the head gate', async () => {

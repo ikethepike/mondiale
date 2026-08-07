@@ -48,6 +48,17 @@
     overflow-y: auto;
   }
 
+  // …except a typed console's, whose suggestion list is positioned OUTSIDE
+  // the footer's own box — UPWARD over the stage on every touch device (and
+  // whenever the keyboard is up), into the reserved berth otherwise. A scroll
+  // container clips it away entirely, so the list never appears and the
+  // console reads as broken. These footers are an input pill tall and have
+  // nothing to scroll; they shrink without clipping instead.
+  > footer.suggest-berth,
+  .shell-footer.suggest-berth {
+    overflow: visible;
+  }
+
   // The action strip against the bottom edge. Views add their own layout;
   // the berth and the bottom clearance (home indicator or software keyboard,
   // via --bottom-clearance) live here. The lift wears a FAST ease for feel —
