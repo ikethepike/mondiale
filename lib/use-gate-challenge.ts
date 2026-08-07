@@ -36,6 +36,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
+import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from './events/server/turn-timing'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 
@@ -143,6 +144,12 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   // longer the head gate — but an uncancellable timer is not something to
   // leave behind on unmount.
   const resubmits = new Set<ReturnType<typeof setTimeout>>()
+  /** The result beat's fallback end — armed by `relatch`, see its note. */
+  let beatTimer: ReturnType<typeof setTimeout> | undefined
+  const stopBeatTimer = () => {
+    if (beatTimer) clearTimeout(beatTimer)
+    beatTimer = undefined
+  }
   const deliver = async (payload: Parameters<typeof update>[0], attempt = 1): Promise<void> => {
     const delivered = await update(payload).catch(() => false)
     if (delivered || disposed) return
@@ -159,6 +166,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     disposed = true
     resubmits.forEach(clearTimeout)
     resubmits.clear()
+    stopBeatTimer()
   })
 
   const submitAnswer = (isoCode: ISOCountryCode, options: GateSubmitOptions = {}) => {
@@ -215,12 +223,34 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * Back-to-back gates reach a still-mounted shell (the walk between them is
    * quick). Relatch and bump `gateSeq`; the variant component remounts and its
    * own state goes with it.
+   *
+   * An arrival behind a live result beat is DEFERRED, never dropped. A beat
+   * normally ends by the view UNMOUNTING: the server holds it for
+   * `GATE_RESULT_HOLD_MS`, then walks the seat on, and the phase flip to
+   * 'moving' tears the shell down (clearing `status` with it). But a win's
+   * leap can land the pawn AT or PAST the next gate's stop tile, and then
+   * there is nothing to walk — the server settles straight back into
+   * 'individual-challenge', the phase never changes and nothing unmounts. A
+   * dropped arrival there is a dead room: the shell holds the answered gate's
+   * verdict for the rest of the game while the server waits on the next gate.
    */
   const relatch = () => {
     const next = latched()
     if (!next || next === challenge.value) return
-    // Never tear down a result beat in progress — the view unmounts after it.
-    if (status.value) return
+    // Never tear down a beat in progress — take the arrival when it is spent.
+    if (status.value) {
+      if (!beatTimer && !disposed) {
+        beatTimer = setTimeout(() => {
+          beatTimer = undefined
+          // The server resumed the walk a wire-hop ago, so anything it was
+          // going to unmount is already gone: this shell is the no-walk case.
+          status.value = undefined
+          relatch()
+        }, GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+      }
+      return
+    }
+    stopBeatTimer()
 
     challenge.value = next
     clearBoard()

@@ -3,6 +3,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { mentionsCountry } from '~~/lib/country'
+import { playableCountries } from '~~/lib/game-rules'
 import { ROSETTA_RELATIONS, rosettaRelationIds, rosettaTerms } from '~~/lib/rosetta'
 import { normalizeAnswer } from '~~/lib/strings'
 import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
@@ -66,7 +67,9 @@ describe('dealRosetta', () => {
         expect(rosettaRelationIds).toContain(rosetta.relation)
         expect(rosetta.relationLabel).toBe(ROSETTA_RELATIONS[rosetta.relation].label)
 
-        // The exemplar demonstrates; it must not BE the question.
+        // The exemplar demonstrates; it must not BE the question. On the world
+        // board there is always another region to demonstrate from, so the
+        // exemplar never nudges at where the answer lives either.
         expect(rosetta.exemplar.isoCode).not.toBe(dealt.country)
         expect(COUNTRIES[rosetta.exemplar.isoCode].region).not.toBe(COUNTRIES[dealt.country].region)
 
@@ -79,6 +82,25 @@ describe('dealRosetta', () => {
           ROSETTA_RELATIONS[rosetta.relation].terms(isoCode)
         expect(supplied(dealt.country)).toContain(rosetta.term)
         expect(supplied(rosetta.exemplar.isoCode)).toContain(rosetta.exemplar.term)
+      }
+    }
+  })
+
+  it('keeps both halves of the analogy on a continental board', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'rosetta'
+    // Europe and Africa are single-region boards, where the exemplar's
+    // "another region" preference cannot be met and used to send the dealer
+    // off the map ("Tripoli → Libya" taught a Europe game its link). Asia
+    // folds the Middle East in, so it can still meet it — both must stay on
+    // the board the player is actually looking at.
+    for (const variant of ['europe', 'africa', 'asia'] as const) {
+      const board = new Set(playableCountries({ variant, difficulty: 'normal' }))
+      for (const accessorId of individualChallengeAccessors) {
+        const dealt = await getIndividualChallenge({ accessorId, variant })
+        const exemplar = dealt.rosetta?.exemplar.isoCode
+        if (!exemplar) continue // relation too thin for this board — a legal fallback
+        expect(board.has(dealt.country), `${variant}/${accessorId} answer`).toBe(true)
+        expect(board.has(exemplar), `${variant}/${accessorId} exemplar ${exemplar}`).toBe(true)
       }
     }
   })

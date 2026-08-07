@@ -2,6 +2,7 @@ import { playableCountries } from '~~/lib/game-rules'
 import { defineGameHandler } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
+import { GATE_RESULT_HOLD_MS } from './turn-timing'
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
   'submit-final-challenge-answer',
@@ -109,7 +110,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         player.moves = []
         await server.updateGameState(game)
         scheduleMovementPhase(
-          5000,
+          GATE_RESULT_HOLD_MS,
           { io, redis, socket, eventTarget },
           { continuation: true, walkSeq: player.walkSeq }
         )
@@ -147,7 +148,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // fresh fetch) before emitting, so the next genuine answer — which can only
     // come after this reveal — is accepted while duplicates fired during the
     // pause were already rejected.
-    scheduleGameTask({ redis, gameId: eventTarget.gameId }, 5000, async () => {
+    scheduleGameTask({ redis, gameId: eventTarget.gameId }, GATE_RESULT_HOLD_MS, async () => {
       const fresh = await server.fetchGame(eventTarget.gameId)
       const freshPlayer = fresh?.players[eventTarget.playerId]
       if (fresh && freshPlayer?.resolving) {
