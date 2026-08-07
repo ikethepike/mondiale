@@ -1,5 +1,7 @@
 <template>
-  <!-- Spans throughout: renders inside ChallengeResult's lesson <p>. -->
+  <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
+       a <div> now, so blocks would be legal here — the spans stay because they
+       work and churning them buys nothing. -->
   <span class="ranked-bars diaspora-reveal">
     <span class="header">
       <!-- Beats past the verdict were never asked, so the denominator is what

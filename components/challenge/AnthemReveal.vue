@@ -142,7 +142,7 @@ import type { Player } from '~~/types/player.type'
  * the points. The bar length IS `buzzFraction` at each player's buzz — the
  * same curve that paid them — so the decay is visible rather than asserted.
  *
- * Renders inside ChallengeResult's <p class="lesson">, so every element here
+ * Renders inside ChallengeResult's <div class="lesson">, so every element here
  * is a span. Geometry and the row stagger come from templates/_ranked-bars.scss.
  */
 const props = defineProps<{

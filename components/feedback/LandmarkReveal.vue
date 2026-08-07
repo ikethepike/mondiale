@@ -44,7 +44,7 @@ const sources = datasetAttribution('landmarks')
 </script>
 <style lang="scss" scoped>
 // Spans throughout: the reveal also renders inside ChallengeResult's lesson
-// <p>, where block elements would be invalid markup.
+// body. Blocks would be legal there now; the spans stay because they work.
 .landmark-reveal {
   gap: 1.2rem;
   display: flex;

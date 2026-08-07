@@ -1,28 +1,26 @@
 <template>
   <header class="challenge-result" :class="status">
-    <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
-    <!-- One stamped document: the heading pill is the paper, the stamp inks
-         its corner, and the earned steps (one dot per board step, shown not
-         counted) trim its bottom edge. Rises as a single element. -->
-    <div ref="heading" class="verdict-card">
-      <h1 class="map-caption">{{ message }}</h1>
-      <VerdictStamp :key="status" class="stamp" :status="status" />
-      <div v-if="status === 'correct' && leapSteps" class="leap-track" aria-hidden="true">
-        <span
-          v-for="step in leapSteps"
-          :key="step"
-          class="hop"
-          :style="{ '--hop-index': step - 1 }"
-        />
+    <!-- One stamped document. The verdict is the card's head, the facts are its
+         body under a hairline, and the stamp rides the head row as ink beside the
+         words. The card is a single block centred by margin, so the verdict, the
+         lesson and the ripple all share one axis — the centring is computed on
+         the card, never on a padding box the stamp gets to widen. -->
+    <div ref="dossier" class="verdict-dossier">
+      <div class="head-zone">
+        <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
+        <div class="verdict">
+          <h1 ref="verdictLine" class="verdict-line">{{ message }}</h1>
+          <VerdictStamp :key="status" class="stamp" :status="status" />
+        </div>
+      </div>
+      <!-- The teachable moment: the actual facts behind the verdict. Gate on
+           rendered content, not just slot presence — the slotted reveals are
+           themselves v-if'd, so $slots.default is truthy even when it renders
+           nothing, which would leave an empty body and a stray divider. -->
+      <div v-if="hasLesson" class="lesson">
+        <slot />
       </div>
     </div>
-    <!-- The teachable moment: the actual facts behind the verdict. Gate on
-         rendered content, not just slot presence — the slotted reveals are
-         themselves v-if'd, so $slots.default is truthy even when it renders
-         nothing, which would leave an empty pill behind. -->
-    <p v-if="hasLesson" class="lesson map-caption">
-      <slot />
-    </p>
   </header>
 </template>
 <script lang="ts" setup>
@@ -35,7 +33,7 @@ import VerdictStamp from './VerdictStamp.vue'
 /**
  * Shared correct/incorrect result moment. The choreography around it:
  * t=0 the map wash starts (the parent sets gameStore.map.status just before
- * mounting this), t≈0.15s this heading rises in, t≈0.3s the reveal card in
+ * mounting this), t≈0.15s the dossier rises in, t≈0.3s the reveal card in
  * layouts/default.vue slides up (CSS delay), t≈0.45s the ripple plays.
  */
 const props = defineProps({
@@ -51,11 +49,6 @@ const props = defineProps({
     type: String,
     default: 'Correct!',
   },
-  /** Board steps this win earned — rendered as landing hop dots, never text. */
-  leapSteps: {
-    type: Number,
-    default: 0,
-  },
 })
 
 const message = computed(() =>
@@ -65,7 +58,7 @@ const message = computed(() =>
 // Whether the slot renders any real content. $slots.default is always truthy
 // when the parent supplies slot markup, but the slotted reveals are v-if'd —
 // so we inspect the produced VNodes and ignore comment placeholders (from
-// v-if) and whitespace-only text, which otherwise leave an empty lesson pill.
+// v-if) and whitespace-only text, which otherwise leave an empty lesson body.
 const slots = useSlots()
 const hasLesson = computed(() => {
   const nodes = slots.default?.() ?? []
@@ -76,17 +69,26 @@ const hasLesson = computed(() => {
   })
 })
 
-const heading = ref<HTMLElement>()
+const dossier = ref<HTMLElement>()
+const verdictLine = ref<HTMLElement>()
 
 onMounted(() => {
-  if (!heading.value || prefersReducedMotion()) return
+  if (!dossier.value || prefersReducedMotion()) return
 
+  // The card rises as one unit; the letter-spacing settle is the verdict line's
+  // alone. Tweening it on the card would smear the lesson body's text too — the
+  // body is inside the animated element now, which it was not before.
   gsap.fromTo(
-    heading.value,
-    { opacity: 0, y: 16, letterSpacing: '0.06em' },
+    dossier.value,
+    { opacity: 0, y: 16 },
+    { opacity: 1, y: 0, delay: 0.15, duration: 0.4, ease: EASE.enter }
+  )
+
+  if (!verdictLine.value) return
+  gsap.fromTo(
+    verdictLine.value,
+    { letterSpacing: '0.06em' },
     {
-      opacity: 1,
-      y: 0,
       letterSpacing: '0em',
       delay: 0.15,
       duration: 0.4,
@@ -97,110 +99,98 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (heading.value) gsap.killTweensOf(heading.value)
+  if (dossier.value) gsap.killTweensOf(dossier.value)
+  if (verdictLine.value) gsap.killTweensOf(verdictLine.value)
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
+
+// Matches $paneBorderRadius in templates/_pane.scss. Inlined rather than @use'd:
+// importing that file into a scoped block would re-emit the whole .pane recipe.
+$dossierRadius: 1.9rem;
+
 .challenge-result {
   position: relative;
-  text-align: center;
+}
 
-  // The stamped document. The card is the animated unit (gsap rises it as
-  // one); the stamp thumps onto its corner in the shared choreography
-  // between the rise (0.15s) and the ripple (0.45s). The overlaps live
-  // INSIDE the card's padding box — negative offsets would clip against the
-  // viewport when the prompt sits at the top edge.
-  .verdict-card {
-    position: relative;
-    display: inline-block;
-    padding: 1.9rem 0 0.65rem 2.4rem;
+// The document. Centred as a BLOCK via margin, which is the whole fix: the old
+// card was an inline-block whose padding box got centred, so the stamp's
+// asymmetric reserve pushed the visible verdict 1.2rem off the axis the lesson
+// and the ripple were centred on.
+.verdict-dossier {
+  @include caption-surface($dossierRadius);
+  display: block;
+  width: max-content;
+  // 100% keeps it inside (and centred in) padded ancestors — the host view's
+  // header padding also lands on this nested header's border box.
+  max-width: min(60rem, 100%, calc(100vw - 3.2rem));
+  margin-inline: auto;
+  color: var(--dark-blue);
+  // Hosts render under .main-board's pointer-events: none — the slotted reveals
+  // (sunset/nocturne/made) are scroll containers and need touches.
+  pointer-events: auto;
+  // A document reads ragged-right. This is the one place the inherited centring
+  // from ChallengePrompt is overridden, and it carries the lesson body with it.
+  text-align: left;
+}
 
-    .stamp {
-      top: 0;
-      left: 0;
-      z-index: 1;
-      position: absolute;
-    }
-  }
+// Exists so the ripple gets a box that is exactly the head's box: the flourish
+// belongs to the verdict, not to the middle of a dossier that may be tall.
+.head-zone {
+  position: relative;
+}
 
-  h1 {
-    margin: 0;
-    position: relative;
-  }
+// The stamp is an in-flow flex item, not an absolute overlay. That is what keeps
+// the ink from ever landing on the words (the old corner stamp did, at phone
+// width), removes the need for any clipping ancestor — which the slotted
+// scrollers would have had to live inside — and leaves the card free to centre.
+.verdict {
+  gap: 2rem;
+  display: flex;
+  align-items: center;
+  padding: 1rem 2.2rem;
+  justify-content: space-between;
+}
 
-  &.incorrect h1 {
+.verdict-line {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--caption-display);
+
+  .challenge-result.incorrect & {
     color: var(--hior-ange);
   }
-
-  .lesson {
-    // Hosts render under .main-board's pointer-events: none — the slotted
-    // reveals (sunset/nocturne/made) are scroll containers and need touches.
-    pointer-events: auto;
-    // .map-caption is inline-block — without this the lesson pill lands on
-    // the SAME line as the "Correct!" pill whenever the two fit side by side
-    display: block;
-    position: relative;
-    margin: 1.2rem auto 0;
-    width: max-content;
-    // 100% keeps it inside (and centered in) padded ancestors — the host
-    // view's header padding also lands on this nested header's border box.
-    max-width: min(60rem, 100%, calc(100vw - 3.2rem));
-    font-size: 1.7rem;
-    line-height: 1.5;
-    padding: 0.6rem 1.6rem;
-  }
-
-  .ripple {
-    top: 50%;
-    left: 50%;
-    width: 22rem;
-    height: 22rem;
-    position: absolute;
-    transform: translate(-50%, -50%);
-  }
-
-  .leap-track {
-    gap: 0.8rem;
-    // Centred on the pill (the card's left padding hosts the stamp), sitting
-    // half over the pill's bottom border inside the card's padding box.
-    left: calc(50% + 1.2rem);
-    bottom: 0;
-    display: flex;
-    position: absolute;
-    transform: translateX(-50%);
-  }
-
-  // Each earned step arcs in and settles, left to right — the same forward
-  // rhythm the pawn is about to walk on the board. Slots into the shared
-  // choreography after the ripple (heading 0.15s, card 0.3s, ripple 0.45s).
-  .hop {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 50%;
-    background: var(--dark-blue);
-    animation: hop-land 0.5s var(--ease-out-expressive) both;
-    animation-delay: calc(0.55s + var(--hop-index) * 0.16s);
-  }
 }
 
-@keyframes hop-land {
-  from {
-    opacity: 0;
-    transform: translateY(-1.6rem) scale(0.6);
-  }
-  65% {
-    opacity: 1;
-    transform: translateY(0.2rem) scale(1.08);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+// flex: none so a long verdict squeezes the words, never the stamp.
+//
+// Deliberately no `opacity` here: VerdictStamp's own stamp-thump keyframes end at
+// opacity 1 with `both` fill, so a knocked-back value would win only until the
+// thump lands — and would then persist under prefers-reduced-motion, where the
+// animation is off. The result was a stamp that looked faded in one motion mode
+// and solid in the other. Restyle the stamp inside VerdictStamp, not from here.
+.stamp {
+  flex: none;
+  width: 4.8rem;
+  height: 4.8rem;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .challenge-result .hop {
-    animation: none;
-  }
+// The divider belongs to the body, so a verdict with no lesson is just a head
+// with no stray rule under it.
+.lesson {
+  font-size: 1.7rem;
+  line-height: 1.5;
+  padding: 0.9rem 2.2rem 1.1rem;
+  border-top: 0.1rem solid $hairline;
+}
+
+.ripple {
+  top: 50%;
+  left: 50%;
+  width: 22rem;
+  height: 22rem;
+  position: absolute;
+  transform: translate(-50%, -50%);
 }
 </style>

@@ -34,3 +34,15 @@
 
 // The hairline divider under card headers — near-black at 12%, one token.
 $hairline: hsla(0, 0%, 7.5%, 0.12);
+
+// The cream scrim itself: the four properties that make type legible over any
+// country fill (correct/incorrect washes, highlights, region colours). Lives here
+// rather than in templates/_map-caption.scss so a surface that needs the recipe
+// without the pill's padding and radius — the verdict dossier — can take it
+// without @use'ing a file that emits CSS. .map-caption is its other consumer.
+@mixin caption-surface($radius: 1.2rem) {
+  border-radius: $radius;
+  backdrop-filter: blur(0.5rem);
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.2);
+}

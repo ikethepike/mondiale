@@ -38,7 +38,6 @@ import { getCountry } from './country'
 import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
-import { gateLeapSteps, gatePot } from './scoring'
 
 export interface GateSubmitOptions {
   /** Skip the map reveal zoom — the duel gates paint their own board first. */
@@ -61,8 +60,6 @@ export interface GateChallengeContext {
   isEasy: Ref<boolean>
   submittedISOCode: Ref<ISOCountryCode | undefined>
   submittedCountry: Ref<Country | undefined>
-  /** Steps the win is about to walk, mirrored from the server's own maths. */
-  earnedLeapSteps: Ref<number | undefined>
   /** Bumped on every fresh gate — the variant component's `:key`. */
   gateSeq: Ref<number>
   showInterstitial: Ref<boolean>
@@ -123,7 +120,6 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const submittedCountry = computed(() =>
     submittedISOCode.value ? getCountry(submittedISOCode.value) : undefined
   )
-  const earnedLeapSteps = ref<number>()
   const gateSeq = ref(0)
   const showInterstitial = ref(true)
   const missNote = ref<string>()
@@ -189,13 +185,6 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     if (active?._type !== 'individual-challenge') return
 
     const correct = isCorrectIndividualAnswer(active, isoCode)
-    if (correct) {
-      earnedLeapSteps.value = gateLeapSteps(
-        options.remainingFraction,
-        options.hintsUsed,
-        gatePot(active.variant)
-      )
-    }
     if (options.reveal !== false) {
       // A shared-currency gate can be won on a country other than the dealt
       // subject — zoom the reveal to the country the player actually got right.
@@ -209,10 +198,11 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * same two things right and four of them had only the first: a token the
    * verdict rejects, and `remainingFraction: 0`.
    *
-   * Omitting the clock is the quiet half. `gateLeapSteps` reads a missing
-   * fraction as "untimed" and pays the pot WHOLE, so a give-up token that
-   * ever turns out to be a right answer collects the largest leap in the game
-   * — which is exactly the errata swap bug, one layer down. The token is
+   * Omitting the clock is the quiet half. The server's own leap maths
+   * (`gateLeapSteps`, called from submit-individual-challenge-answer.handler.ts)
+   * reads a missing fraction as "untimed" and pays the pot WHOLE, so a give-up
+   * token that ever turns out to be a right answer collects the largest leap in
+   * the game — which is exactly the errata swap bug, one layer down. The token is
    * verified today, so this is the belt to that braces.
    */
   const giveUp = (hintsUsed?: number) => {
@@ -235,7 +225,6 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     challenge.value = next
     clearBoard()
     submittedISOCode.value = undefined
-    earnedLeapSteps.value = undefined
     missNote.value = undefined
     duelOutcomes.value = []
     trendDuelOutcomes.value = []
@@ -252,7 +241,6 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     isEasy: computed(() => isEasyMode(gameStore.game)),
     submittedISOCode,
     submittedCountry,
-    earnedLeapSteps,
     gateSeq,
     showInterstitial,
     missNote,

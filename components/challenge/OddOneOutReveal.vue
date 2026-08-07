@@ -1,5 +1,7 @@
 <template>
-  <!-- Spans throughout: renders inside ChallengeResult's lesson <p>. -->
+  <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
+       a <div> now, so blocks would be legal here — the spans stay because they
+       work and churning them buys nothing. -->
   <span class="odd-one-out-reveal">
     <span class="dossier">
       <OrganizationLogo
@@ -199,7 +201,7 @@ const pickedLine = computed(() => {
 @use '~/assets/scss/rules/breakpoints' as *;
 
 // min-width, never max-width — the same contract .ranked-bars keeps. The
-// lesson pill sizes itself to max-content (capped at 60rem), and this card's
+// lesson body sizes itself to max-content (capped at 60rem), and this card's
 // own text is what drove it there; capping the card at 42rem left it stranded
 // against the pill's left edge with a dead gutter beside it, because a
 // block-level flex box does not answer the ancestor's text-align: center.

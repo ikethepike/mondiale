@@ -1,5 +1,7 @@
 <template>
-  <!-- Spans throughout: renders inside ChallengeResult's lesson <p>. -->
+  <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
+       a <div> now, so blocks would be legal here — the spans stay because they
+       work and churning them buys nothing. -->
   <span class="sunset-reveal">
     <span class="headline">
       You lit {{ named.length }} before the dark — {{ quota }} were needed
