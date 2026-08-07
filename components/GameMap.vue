@@ -1336,18 +1336,38 @@ const HIT_SLOP_PX = 22
 const FINE_SLOP_PX = 8
 /** Past this zoom the halo renders as a visible ring marking the tap area. */
 const RING_ZOOM = 4
+/** How far a screen-sized marker may grow with the camera. Uncapped, a ring
+ *  pinned to a nine-metre rock ends up larger than the island. */
+const MARKER_MAX_GROWTH = 2
 
 const updateEffectiveZoom = () => {
   if (!wrapper.value || !svg.value) return
   const effectiveZoom = WORLD_VIEW.width / viewState.width
   const pxPerUnit = (mapRect()?.width ?? viewState.width) / viewState.width
   svg.value.classList.toggle('deep-zoom', effectiveZoom >= RING_ZOOM)
+  // THREE sizing registers, and picking the wrong one is the recurring bug
+  // here — pick by what the element IS, not by which var is nearest:
+  //
+  //   --stroke-zoom  a share of the FRAME. Hairlines that must thin out as
+  //                  the camera closes in: coastlines, borders, dashes.
+  //   --screen-unit  real CSS pixels, fixed at any zoom or viewport. Type,
+  //                  which should never grow with the camera.
+  //   --marker-unit  screen pixels that still grow with the camera (capped).
+  //                  Anything the eye must FIND: the no-man's-land marker,
+  //                  the map pin, the sea chip.
+  //
+  // The trap: --stroke-zoom is `1` at world view, so a frame-sized element
+  // comes out `r * cssWidth / 2000` — fine on the 1280px desktop it was tuned
+  // on, a speck on a 430px phone.
   svg.value.style.setProperty('--stroke-zoom', String(1 / Math.max(1, effectiveZoom)))
-  // User units per CSS pixel. `--stroke-zoom` is a share of the FRAME, so a
-  // font sized from it comes out `22 * cssWidth / 2000` px — 14px on the 1280px
-  // desktop it was tuned on and 4.4px on a 402px phone. Labels want real screen
-  // pixels, so they ride this instead.
   svg.value.style.setProperty('--screen-unit', String(userUnitsPerPixel()))
+  // The third register, for anything the eye must FIND (the no-man's-land
+  // marker, the map pin, the sea chip): a screen-pixel floor that still grows
+  // with the camera, so zooming in feels like approaching the thing rather
+  // than watching it hold still. Capped — past MARKER_MAX_GROWTH the ring
+  // would swallow the nine-metre rock it points at.
+  const markerGrowth = clamp(Math.max(1, effectiveZoom), 1, MARKER_MAX_GROWTH)
+  svg.value.style.setProperty('--marker-unit', String(userUnitsPerPixel() * markerGrowth))
   const dotRadius = 3.5 / Math.max(1, effectiveZoom)
   svg.value.querySelectorAll<SVGCircleElement>('.micro-marker').forEach(dot => {
     const footprint = Number(dot.dataset.footprint) || 0
@@ -2062,7 +2082,7 @@ path[id],
 }
 
 .map-pin-scale {
-  transform: scale(var(--stroke-zoom, 1));
+  transform: scale(var(--marker-unit, 1));
 }
 
 .map-pin-halo {
@@ -2129,13 +2149,13 @@ path.sea-glow-country {
 }
 
 // The sail chip at the arc's crown: same cream-disc language as the walk
-// numbers (MapYearLabels), sized in screen pixels via --stroke-zoom.
+// numbers (MapYearLabels), sized in screen pixels via --marker-unit.
 .map-sea-chip {
   pointer-events: none;
 }
 
 .map-sea-chip-scale {
-  transform: scale(var(--stroke-zoom, 1));
+  transform: scale(var(--marker-unit, 1));
 }
 
 .chip-disc {
@@ -2158,21 +2178,20 @@ path.sea-glow-country {
   }
 }
 
-// Marks a contested territory that is too small to draw. Sized in screen
-// pixels via --screen-unit, so it stays legible from world view down to a
-// deep zoom on a nine-metre rock.
+// Marks a contested territory that is too small to draw. Rides --marker-unit:
+// a screen-pixel floor that still grows with the camera, so it reads at world
+// view on a phone AND rewards zooming in.
 //
 // Not --stroke-zoom: that is a share of the FRAME, so the r=6 ring came out
 // `6 * cssWidth / 2000` — 7.7px on a 1280px desktop but 2.6px on a 430px
-// phone, a blue speck pointing at Hans Island. Strokes want the frame;
-// a marker the eye has to FIND wants the screen (same split as the labels).
+// phone, a blue speck pointing at Hans Island.
 .feature-marker {
   pointer-events: none;
   color: ink(1, 41%);
 }
 
 .feature-marker-scale {
-  transform: scale(var(--screen-unit, 1));
+  transform: scale(var(--marker-unit, 1));
 }
 
 .feature-marker-ring {
