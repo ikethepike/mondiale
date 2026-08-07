@@ -182,7 +182,12 @@ onBeforeUnmount(() => morph.dispose())
   stroke: hsl(16, 58%, 30%);
   stroke-opacity: 0.6;
   stroke-linejoin: round;
-  stroke-linecap: round;
+  // butt, not round: an unpaired ring morphs from a collapsed seed, and a
+  // zero-length subpath under a round cap paints a dot the size of the stroke
+  // (SVG 1.1 §11.4). Reduced motion seeks integer keyframes only, so every
+  // frame it shows would be one. Every subpath is a closed ring, so the cap is
+  // otherwise unobservable.
+  stroke-linecap: butt;
 }
 
 .revealed .ghost-extent {
