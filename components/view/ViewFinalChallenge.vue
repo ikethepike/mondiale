@@ -20,6 +20,7 @@
                family's seal — the club question's logo, for treaties -->
           <TreatySeal
             v-if="currentFinalChallenge?._type === 'treaty-challenge'"
+            compact
             :treaty="currentFinalChallenge.treaty"
           />
           <h2 class="map-caption">{{ details?.question }}</h2>
@@ -263,7 +264,6 @@ import {
   changeAccepted,
   COLOR_CODED_REGIONS,
   madeAcceptedCountries,
-  FINAL_STAT_LABELS,
   GAUNTLET_LIVES,
   getFinalChallengeDetails,
   isCorrectFinalAnswer,
@@ -279,7 +279,6 @@ import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
 import { formatAmount, formatCompact } from '~~/lib/number'
-import { getValueByAccessorID } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
 import type {
   ChangeChallenge,
@@ -702,7 +701,11 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   // active focus suppresses moveToCountry's fly-in, and clearing it would
   // queue a rest-view tween that stomps the reveal camera.
   gameStore.map.focus = [answered.reveal]
-  gameStore.map.reveal = answered.reveal
+  // Lit rather than revealed. No map.reveal here, on the scales' precedent:
+  // OddOneOutReveal already names the holdout, shows its flag and says how it
+  // stands apart, so the dossier adds only a capital and a population — and
+  // on a phone it sits over the card that did the teaching.
+  gameStore.map.highlighted.add(answered.reveal)
   gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
 
   update({ event: 'submit-final-challenge-answer', submittedAnswer: answered.submittedAnswer })
@@ -841,20 +844,14 @@ const onMapClick = (event: Event) => {
       // got right, not the dealt extreme it happens to equal.
       const revealIso =
         correct && isValidISOCode(isoCode) ? isoCode : currentFinalChallenge.value.country
-      gameStore.map.reveal = revealIso
+      // Lit and framed, not revealed. Both of these questions now end on a
+      // card that already carries the answer — MinMaxReveal ranks it with its
+      // number, LeaderReveal shows who runs it — so the dossier only repeats
+      // them, from on top of them. Focus does the camera work map.reveal used
+      // to; the highlight does its tint.
+      gameStore.map.focus = [revealIso]
+      gameStore.map.highlighted.add(revealIso)
       gameStore.map.status = correct ? 'correct' : 'incorrect'
-
-      // Surface the stat on the reveal card — the number is the lesson
-      if (currentFinalChallenge.value._type !== 'leadership-challenge') {
-        const { accessorId } = currentFinalChallenge.value
-        const amount = getValueByAccessorID(revealIso, accessorId)
-        if (amount) {
-          gameStore.map.revealStat = {
-            label: FINAL_STAT_LABELS[accessorId],
-            value: formatAmount(amount),
-          }
-        }
-      }
 
       update({ event: 'submit-final-challenge-answer', submittedAnswer })
       break
