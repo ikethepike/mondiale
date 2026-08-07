@@ -33,7 +33,13 @@ No gate anywhere produces a graded outcome.
 **The hint economy could not function.** `GATE_HINT_BITE_STEPS` (2) equalled
 `GATE_LEAP_STEPS` (2) — buying one hint on an untimed gate zeroed the leap outright. Hints
 could only ever buy safety, never value, because no pot was large enough to make a hint a
-_trade_. (`gatePot` now lets a variant declare a deeper pot; Errata and Rosetta both do.)
+_trade_. `gatePot` now lets a variant declare a deeper pot, and Errata and Rosetta both do —
+but the pot alone was not enough, and the order matters. Subtracting the bite _after_ the buzz
+curve takes it off an already-decayed number: at pot 4 on a 30s clock that paid 1 step for a
+seven-second window and zero for the rest of the clock, worst exactly where Errata's cull is
+most wanted. The bite comes off the **pot**, and the curve scales what is left, which floors a
+hinted answer at 1. Nothing changes at the standard pot, where `(2 - 2)` leaves nothing to
+scale either way.
 
 **Zero agency.** The player chooses nothing at a gate except the answer itself. No stake, no
 route, no line of questioning.

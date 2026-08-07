@@ -140,18 +140,29 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * the player looking at a win the server never heard about.
    */
   let disposed = false
-  let resubmitTimer: ReturnType<typeof setTimeout> | undefined
+  // A SET, not one handle: back-to-back gates share this shell, so a second
+  // answer can start retrying while the first is still in the air, and one
+  // variable would leave the earlier chain running unreferenced. A late
+  // delivery is harmless — the handler drops a submit whose `gateTile` is no
+  // longer the head gate — but an uncancellable timer is not something to
+  // leave behind on unmount.
+  const resubmits = new Set<ReturnType<typeof setTimeout>>()
   const deliver = async (payload: Parameters<typeof update>[0], attempt = 1): Promise<void> => {
     const delivered = await update(payload).catch(() => false)
     if (delivered || disposed) return
     if (attempt >= REDELIVER_MAX_BATCHES) {
       return console.error('Giving up on gate answer delivery — a rejoin heals the seat from here')
     }
-    resubmitTimer = setTimeout(() => void deliver(payload, attempt + 1), REDELIVER_PAUSE_MS)
+    const timer = setTimeout(() => {
+      resubmits.delete(timer)
+      void deliver(payload, attempt + 1)
+    }, REDELIVER_PAUSE_MS)
+    resubmits.add(timer)
   }
   onScopeDispose(() => {
     disposed = true
-    if (resubmitTimer) clearTimeout(resubmitTimer)
+    resubmits.forEach(clearTimeout)
+    resubmits.clear()
   })
 
   const submitAnswer = (isoCode: ISOCountryCode, options: GateSubmitOptions = {}) => {

@@ -147,13 +147,16 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
   errata: {
     component: GateErrata,
     reveal: ErrataReveal,
-    revealProps: ({ challenge }) => ({ challenge }),
+    // Empty when the payload is missing, so the shell falls through to its
+    // lesson line — the landmark gate's contract, and the reason a card with
+    // a hole in it never mounts.
+    revealProps: ({ challenge }) => (challenge.errata ? { challenge } : {}),
   },
   rosetta: {
     component: GateRosetta,
     typedConsole: true,
     reveal: RosettaReveal,
-    revealProps: ({ challenge }) => ({ challenge }),
+    revealProps: ({ challenge }) => (challenge.rosetta ? { challenge } : {}),
   },
 }
 
