@@ -1611,9 +1611,46 @@ export const getRoundChallenge = async ({
   return getGroupChallenge({ game })
 }
 
-/** Compile error if a RoundChallengeKind ever loses its dealer. */
-const assertNoUndealtKind = (kind: never): never => {
-  throw new Error(`Round kind '${String(kind)}' has no dealer`)
+/** Undefined buys another kind; a THROW takes the ranking floor — never catch here. */
+type RoundDealer = (
+  game: gameTypes.Game
+) => RoundChallenge | undefined | Promise<RoundChallenge | undefined>
+
+// Ranking is a first-class pick in the mix, not a fallback — its dealer always
+// returns, so a pick never reads as a miss and burns an attempt.
+const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
+  ranking: game => getGroupChallenge({ game }),
+  traversal: game => getTraversalChallenge({ game }),
+  'border-chain': game => getBorderChainChallenge({ game }),
+  manhunt: game => getManhuntChallenge({ game }),
+  'unique-or-bust': game => getUniqueOrBustChallenge({ game }),
+  timeline: game => getTimelineChallenge({ game }),
+  empire: game => getEmpireChallenge(game),
+  'heritage-hunt': game => getHeritageHuntChallenge({ game }),
+  'neighbour-blitz': game => getNeighbourBlitzChallenge({ game }),
+  silhouette: game => getSilhouetteChallenge({ game }),
+  'anthem-buzz': game => getAnthemBuzzChallenge({ game }),
+  'tongue-buzz': game => getTongueBuzzChallenge({ game }),
+  'hot-cold': game => getHotColdChallenge({ game }),
+  sketch: game => getSketchChallenge({ game }),
+  'stat-detective': game => getStatDetectiveChallenge({ game }),
+  'two-truths': game => getTwoTruthsChallenge({ game }),
+  'river-run': game => getWaterBlitzChallenge(game, ['river']),
+  'shared-shores': game => getWaterBlitzChallenge(game, ['sea', 'lake']),
+  highlands: game => {
+    const tier = HIGHLANDS_TIERS[game.difficulty]
+    return getWaterBlitzChallenge(game, tier.kinds, tier.poolFraction)
+  },
+  'name-that-water': game => getNameWaterChallenge(game),
+  'mother-tongue': game => getMotherTongueChallenge(game),
+  'flag-palette': game => getFlagPaletteChallenge(game),
+  'capital-guess': game => getCapitalGuessChallenge(game),
+  composition: game => getCompositionChallenge(game),
+  flashpoint: game => getFlashpointChallenge(game),
+  'ghost-state': game => getGhostStateChallenge(game),
+  'no-mans-land': game => getNoMansLandChallenge(game),
+  'pin-landmark': game => getPinLandmarkChallenge(game),
+  'trend-race': game => getTrendRaceChallenge({ game }),
 }
 
 /**
@@ -1624,151 +1661,7 @@ const assertNoUndealtKind = (kind: never): never => {
 const dealRoundChallenge = async (
   kind: RoundChallengeKind,
   game: gameTypes.Game
-): Promise<RoundChallenge | undefined> => {
-  switch (kind) {
-    // Not a fallback here — ranking is a first-class pick in the mix, and the
-    // dealer must say so, or the pick would read as a miss and burn an attempt.
-    case 'ranking':
-      return getGroupChallenge({ game })
-    case 'traversal': {
-      const challenge = getTraversalChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'border-chain': {
-      const challenge = getBorderChainChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'manhunt': {
-      const challenge = getManhuntChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'unique-or-bust': {
-      const challenge = await getUniqueOrBustChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'timeline': {
-      const challenge = getTimelineChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'empire': {
-      const challenge = await getEmpireChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'heritage-hunt': {
-      const challenge = getHeritageHuntChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'neighbour-blitz': {
-      const challenge = getNeighbourBlitzChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'silhouette':
-      return getSilhouetteChallenge({ game })
-    case 'anthem-buzz': {
-      const challenge = getAnthemBuzzChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'tongue-buzz': {
-      const challenge = getTongueBuzzChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'hot-cold':
-      return getHotColdChallenge({ game })
-    case 'sketch':
-      return getSketchChallenge({ game })
-    case 'stat-detective': {
-      const challenge = getStatDetectiveChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'two-truths': {
-      const challenge = getTwoTruthsChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    case 'river-run': {
-      const challenge = await getWaterBlitzChallenge(game, ['river'])
-      if (challenge) return challenge
-      break
-    }
-    case 'shared-shores': {
-      const challenge = await getWaterBlitzChallenge(game, ['sea', 'lake'])
-      if (challenge) return challenge
-      break
-    }
-    case 'highlands': {
-      const tier = HIGHLANDS_TIERS[game.difficulty]
-      const challenge = await getWaterBlitzChallenge(game, tier.kinds, tier.poolFraction)
-      if (challenge) return challenge
-      break
-    }
-    case 'name-that-water': {
-      const challenge = await getNameWaterChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'mother-tongue': {
-      const challenge = getMotherTongueChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'flag-palette': {
-      const challenge = getFlagPaletteChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'capital-guess': {
-      const challenge = getCapitalGuessChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'composition': {
-      const challenge = await getCompositionChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'flashpoint': {
-      const challenge = await getFlashpointChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'ghost-state': {
-      const challenge = await getGhostStateChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'no-mans-land': {
-      const challenge = await getNoMansLandChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'pin-landmark': {
-      const challenge = getPinLandmarkChallenge(game)
-      if (challenge) return challenge
-      break
-    }
-    case 'trend-race': {
-      const challenge = await getTrendRaceChallenge({ game })
-      if (challenge) return challenge
-      break
-    }
-    default:
-      // A kind with no dealer is a compile error, not a silent ranking round.
-      return assertNoUndealtKind(kind)
-  }
-
-  return undefined
-}
+): Promise<RoundChallenge | undefined> => await ROUND_DEALERS[kind](game)
 
 /**
  * Score a traversal round from the player's full guess list (Travle rules):
