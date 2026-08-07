@@ -24,7 +24,7 @@
 <script lang="ts" setup>
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
-import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three'
+import { Mesh, MeshBasicMaterial, Quaternion, RingGeometry, Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
@@ -33,6 +33,7 @@ import {
   buildPawn,
   type CrownVariant,
   disposePawn,
+  finalClimbAnchor,
   getBoardBuild,
 } from '~~/lib/board3d/board-builder'
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
@@ -42,6 +43,7 @@ import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-ca
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
+import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
@@ -321,6 +323,73 @@ watch(
   () => syncPathPreview()
 )
 
+// --- Final-gauntlet climb: the mountain marker makes progress physical -----
+// Gauntlet progress rides the public snapshot (moves[0].challenge), so every
+// client can stand a challenger's pawn on the ledge matching their cleared
+// count. The mover never fights this: position only changes on entry (its
+// own hop) and on knockout/victory, where the display position shifts and
+// its tween takes over from wherever the pawn stands.
+const gauntletFor = (player: Player) => {
+  const challenge = player.moves[0]?.challenge
+  return challenge?._type === 'final-challenge' ? challenge : undefined
+}
+
+const syncClimbs = () => {
+  const build = board.value
+  if (!build) return
+  const finalIndex = props.game.tiles.length - 1
+
+  for (const player of Object.values(props.game.players)) {
+    const pawn = pawns.get(player.id)
+    if (!pawn || displayPositionFor(player) !== finalIndex) continue
+    const gauntlet = gauntletFor(player)
+    const victor = player.phase === 'victory'
+    if (!gauntlet && !victor) continue
+
+    const stages = GAUNTLET_LENGTH[props.game.difficulty]
+    const anchor = victor
+      ? finalClimbAnchor(1, 1, build.spacing, stages)
+      : finalClimbAnchor(gauntlet!.answeredCorrect, gauntlet!.totalCount, build.spacing, stages)
+    const tile = tileFor(finalIndex)
+    if (!anchor || !tile) continue
+
+    // Same yaw the marker was planted with — ledges are in its local space
+    anchor
+      .applyQuaternion(
+        new Quaternion().setFromAxisAngle(
+          new Vector3(0, 1, 0),
+          Math.atan2(tile.tangent.x, tile.tangent.z)
+        )
+      )
+      .add(tile.position)
+    if (prefersReducedMotion()) {
+      pawn.position.copy(anchor)
+    } else {
+      gsap.to(pawn.position, {
+        x: anchor.x,
+        y: anchor.y,
+        z: anchor.z,
+        duration: 0.7,
+        ease: 'power2.inOut',
+        overwrite: 'auto',
+      })
+    }
+  }
+}
+
+watch(
+  () =>
+    Object.values(props.game.players)
+      .map(player => {
+        const gauntlet = gauntletFor(player)
+        if (player.phase === 'victory') return `${player.id}:peak`
+        return gauntlet ? `${player.id}:${gauntlet.answeredCorrect}/${gauntlet.totalCount}` : ''
+      })
+      .filter(Boolean)
+      .join('|'),
+  syncClimbs
+)
+
 const removePawns = () => {
   stuckTweens.forEach(tween => tween.kill())
   stuckTweens.clear()
@@ -403,7 +472,7 @@ const rebuild = () => {
   disposeHighlight()
 
   // Cached across mounts — the board reappears every round
-  const build = getBoardBuild(props.game.id, props.game.tiles)
+  const build = getBoardBuild(props.game.id, props.game.tiles, props.game.difficulty)
   board.value = build
 
   mover = createPawnMover({
@@ -428,11 +497,16 @@ const rebuild = () => {
   syncPawns()
   syncPathPreview()
   syncHighlight()
+  // After restore(): a remount mid-gauntlet must put the climber back on
+  // their ledge, not on the tile top
+  syncClimbs()
 }
 
 // Fingerprint the tile types: with seeded gate rhythm, same-length boards
 // differ — a count-based key would serve a stale build after regeneration
-watch(() => boardBuildKey(props.game.id, props.game.tiles), rebuild, { immediate: true })
+watch(() => boardBuildKey(props.game.id, props.game.tiles, props.game.difficulty), rebuild, {
+  immediate: true,
+})
 
 // New players joining / colors changing
 watch(

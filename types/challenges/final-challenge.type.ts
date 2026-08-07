@@ -4,6 +4,15 @@ import type { OrganizationVector } from '../organization.type'
 import type { TreatyId, TreatyStanding } from '../treaty.type'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 
+/** Gauntlet questions dealt per difficulty. Lives here (not the dealer) so
+ *  the 3D board can size the final mountain's climb without pulling the
+ *  dealer's endgame data into the scene bundle. */
+export const GAUNTLET_LENGTH: { [difficulty in GameDifficulty]: number } = {
+  easy: 2,
+  normal: 3,
+  hard: 5,
+}
+
 export interface FinalChallenge {
   _type: 'final-challenge'
   difficulty: GameDifficulty

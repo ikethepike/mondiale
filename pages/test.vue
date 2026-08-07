@@ -21,12 +21,20 @@
       <button @click="winGate">Win gate (hidden)</button>
       <button @click="boardVisible = true">Show board</button>
     </nav>
+    <!-- Final-gauntlet climb: drive P1 up the mountain marker stage by stage. -->
+    <nav class="controls gauntlet-controls">
+      <button @click="startGauntlet">Start gauntlet P1</button>
+      <button @click="clearStage">Clear stage</button>
+      <button @click="missStage">Miss stage</button>
+    </nav>
     <Board3D v-if="boardVisible" :game="mockGame" player-id="mock-player-1" />
   </div>
 </template>
 <script lang="ts" setup>
 import { PLAYER_COLORS } from '~~/data/palette'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
+import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
+import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import { generateTiles } from '~~/lib/tiles'
 import { gameLengths, type Game, type GameLength, type Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -138,6 +146,61 @@ const dealWalk = (steps: number) => {
   player.walkSeq = (player.walkSeq ?? 0) + 1
 }
 
+// --- Final-gauntlet climb demo --------------------------------------------
+// The board only reads _type / answeredCorrect / totalCount / lives off the
+// gauntlet, so the question items can stay empty husks.
+const GAUNTLET_STAGES = GAUNTLET_LENGTH['normal']
+
+const startGauntlet = () => {
+  const player = mockGame.players['mock-player-1']
+  const finalTile = mockGame.tiles[mockGame.tiles.length - 1]
+  player.currentPosition = finalTile.position - 1
+  player.phase = 'final-challenge'
+  player.moves = [
+    {
+      endTile: finalTile,
+      challenge: {
+        _type: 'final-challenge',
+        difficulty: 'normal',
+        challenges: Array.from({ length: GAUNTLET_STAGES }, () => ({}) as FinalChallengeItem),
+        lives: 2,
+        totalCount: GAUNTLET_STAGES,
+        answeredCorrect: 0,
+      } satisfies FinalChallenge,
+    },
+  ]
+}
+
+const liveGauntlet = () => {
+  const challenge = mockGame.players['mock-player-1'].moves[0]?.challenge
+  return challenge?._type === 'final-challenge' ? challenge : undefined
+}
+
+/** As the server does: bump the numerator, consume the head; empty → victory. */
+const clearStage = () => {
+  const gauntlet = liveGauntlet()
+  if (!gauntlet) return
+  gauntlet.answeredCorrect += 1
+  gauntlet.challenges.shift()
+  if (!gauntlet.challenges.length) {
+    const player = mockGame.players['mock-player-1']
+    player.phase = 'victory'
+    player.completedAtRound = ++winCount
+  }
+}
+
+/** A miss burns a life; out of lives wipes the moves — the knockout descent. */
+const missStage = () => {
+  const gauntlet = liveGauntlet()
+  if (!gauntlet) return
+  gauntlet.lives -= 1
+  if (gauntlet.lives < 0) {
+    const player = mockGame.players['mock-player-1']
+    player.moves = []
+    player.phase = 'moving'
+  }
+}
+
 // First win is the champion (gold crown), later wins are finishers (silver)
 let winCount = 0
 const win = (playerId: string) => {
@@ -189,5 +252,9 @@ const reseed = () => {
 /* Its own row: overlapping the first nav made those buttons unclickable. */
 .replay-controls {
   top: 4.5rem;
+}
+
+.gauntlet-controls {
+  top: 8rem;
 }
 </style>

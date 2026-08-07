@@ -16,7 +16,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { sample } from '~~/lib/arrays'
 import type { Tile } from '~~/types/game.types'
 import { BOARD_COLORS } from './colors'
-import { outlineOf } from './ink-outline'
+import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import type { TilePathResult } from './path'
 import { type HeightSampler, smoothstep } from './terrain'
 
@@ -185,7 +185,7 @@ export const buildPondMeshes = (site: PondSite, spacing: number, tileTopY: numbe
 
   for (const part of [...planks, ...rails]) {
     part.applyMatrix4(matrix)
-    outlines.push(outlineOf(part))
+    outlines.push(outlineOf(part, spacing * OUTLINE_WIDTH_RATIO))
   }
 
   meshes.push(

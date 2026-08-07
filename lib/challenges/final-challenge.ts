@@ -36,7 +36,7 @@ import type {
   SunsetBlitzChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
-import { oddOneOut } from '~~/types/challenges/final-challenge.type'
+import { GAUNTLET_LENGTH, oddOneOut } from '~~/types/challenges/final-challenge.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
   type Amount,
@@ -82,12 +82,6 @@ export const GAUNTLET_LIVES: { [difficulty in GameDifficulty]: number } = {
   easy: 2,
   normal: 2,
   hard: 2,
-}
-
-const GAUNTLET_LENGTH: { [difficulty in GameDifficulty]: number } = {
-  easy: 2,
-  normal: 3,
-  hard: 5,
 }
 
 // "Which region is X in?" answers itself on a continental board, and the

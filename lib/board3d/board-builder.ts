@@ -21,19 +21,21 @@ import {
   Quaternion,
   Shape,
   SphereGeometry,
+  TorusGeometry,
   TubeGeometry,
   Vector2,
   Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
-import type { Tile } from '~~/types/game.types'
+import type { GameDifficulty, Tile } from '~~/types/game.types'
 import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
-import { outlineOf } from './ink-outline'
+import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, type TileTransform } from './path'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
 import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
@@ -55,16 +57,21 @@ export interface BoardBuild {
 let cachedBuild: { key: string; build: BoardBuild } | undefined
 
 /** Tile types vary independently of length (seeded gate rhythm), so the cache
- *  key fingerprints every type — a same-length regeneration still rebuilds. */
-export const boardBuildKey = (seed: string, tiles: Tile[]): string =>
-  `${seed}:${tiles.map(tile => tile.type).join(',')}`
+ *  key fingerprints every type — a same-length regeneration still rebuilds.
+ *  Difficulty is in the key because it sizes the final mountain's ledges. */
+export const boardBuildKey = (seed: string, tiles: Tile[], difficulty: GameDifficulty): string =>
+  `${seed}:${difficulty}:${tiles.map(tile => tile.type).join(',')}`
 
-export const getBoardBuild = (seed: string, tiles: Tile[]): BoardBuild => {
-  const key = boardBuildKey(seed, tiles)
+export const getBoardBuild = (
+  seed: string,
+  tiles: Tile[],
+  difficulty: GameDifficulty
+): BoardBuild => {
+  const key = boardBuildKey(seed, tiles, difficulty)
   if (cachedBuild?.key === key) return cachedBuild.build
 
   cachedBuild?.build.dispose()
-  cachedBuild = { key, build: buildBoard(seed, tiles) }
+  cachedBuild = { key, build: buildBoard(seed, tiles, difficulty) }
   return cachedBuild.build
 }
 
@@ -73,12 +80,17 @@ export const getBoardBuild = (seed: string, tiles: Tile[]): BoardBuild => {
 // horizon so the world melts into the cream background.
 const TERRAIN_OVERHANG = 2.6
 
+/** Tile-disc proportions — shared with the /test-markers mock discs. */
+export const TILE_RADIUS_RATIO = 0.42
+export const TILE_RIM_HEIGHT = 0.55
+export const TILE_TOP_INSET = 0.09
+
 /**
  * Assemble the full static board: shelved contour terrain, the serpentine
  * track ribbon, instanced tile discs, tile numbers and challenge icons.
  * Deterministic per (seed, tiles) — every client builds the same board.
  */
-const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
+const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): BoardBuild => {
   const group = new Group()
 
   // Edge falloff wraps the base field so hills subside into the page at the
@@ -151,8 +163,8 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   group.add(new Mesh(ribbonGeometry, ribbonMaterial))
 
   // --- Tile discs (two instanced meshes: ink rim + colored top) -------------
-  const tileRadius = spacing * 0.42
-  const rimHeight = 0.55
+  const tileRadius = spacing * TILE_RADIUS_RATIO
+  const rimHeight = TILE_RIM_HEIGHT
 
   const unitDisc = new CylinderGeometry(1, 1, 1, 28)
   const rimMesh = new InstancedMesh(
@@ -191,7 +203,7 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
     rimMesh.setMatrixAt(index, matrix)
 
     matrix.compose(
-      new Vector3(position.x, position.y + rimHeight / 2 + 0.09, position.z),
+      new Vector3(position.x, position.y + rimHeight / 2 + TILE_TOP_INSET, position.z),
       quaternion,
       new Vector3(tileRadius * emphasis * 0.9, rimHeight, tileRadius * emphasis * 0.9)
     )
@@ -251,11 +263,13 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   }
 
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
-  buildChallengeMarkers(tiles, transforms, spacing, tileRadius).forEach(mesh => group.add(mesh))
+  buildChallengeMarkers(tiles, transforms, spacing, tileRadius, difficulty).forEach(mesh =>
+    group.add(mesh)
+  )
 
   // --- Pond + bridge (when this board drew one) ------------------------------
   if (pondSite) {
-    const tileTopY = pondSite.center.y + rimHeight + 0.09
+    const tileTopY = pondSite.center.y + rimHeight + TILE_TOP_INSET
     buildPondMeshes(pondSite, spacing, tileTopY).forEach(mesh => group.add(mesh))
   }
 
@@ -275,19 +289,27 @@ const buildBoard = (seed: string, tiles: Tile[]): BoardBuild => {
   return { group, transforms, spacing, contourMaterial, dispose }
 }
 
-interface MarkerPart {
+export interface MarkerPart {
   geometry: BufferGeometry
   color: string
+  /** Opt out of the ink hull. For parts meeting another surface at a grazing
+   *  angle, the inflated shell surfaces through the neighbour as black
+   *  gashes — flush hardware (the lectern's mic mount) skips it. */
+  outline?: boolean
 }
+
+export type MarkerType = IndividualChallengeAccessorId | 'final'
+
+type MarkerRecipe = (s: number, stages?: number) => MarkerPart[]
 
 /**
  * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
- * pointing along the path). Chunky low-poly forms in the toon language: a flag
- * for flag challenges, an obelisk for capitals, a signpost for ISO codes, a
- * statue for leaders, a standing coin for currencies, a map pin for
- * landmarks, crossed signposts for errata, a quill in an ink pot for the
- * lexicon, and a full arch spanning the final tile — physical gates that
- * read as a hard border to pass.
+ * pointing along the path). Chunky low-poly forms in the toon language: a
+ * waving flag, a skyline for capitals, a compass rose for ISO codes, a
+ * lectern for leaders, a bored coin for currencies, a sightseer's camera for
+ * landmarks, crossed signposts for errata, a plume in an ink pot for the
+ * lexicon, and a checkered finish gate spanning the final tile — physical
+ * gates that read as a hard border to pass.
  *
  * Two rules earned the hard way. A marker must NAME its theme, not merely
  * differ from its neighbours (a blank stele is distinct and says nothing), and
@@ -312,119 +334,427 @@ const faceted = (geometry: BufferGeometry): BufferGeometry => {
   return flat
 }
 
-const markerPartsFor = (
-  type: IndividualChallengeAccessorId | 'final',
-  spacing: number
+/**
+ * The closed ink pot every lexicon variant stands its quill in: a squat belly
+ * into a shoulder, then the rim curls inward to a recessed flat ink surface
+ * on the axis. Watertight on purpose — an open mouth shows the outline
+ * hull's backfaces as a ragged black maw.
+ */
+const inkPot = (s: number): BufferGeometry =>
+  new LatheGeometry(
+    [
+      [0, 0],
+      [0.235, 0],
+      [0.265, 0.06],
+      [0.25, 0.18],
+      [0.198, 0.26],
+      [0.196, 0.32],
+      [0.155, 0.33],
+      [0.145, 0.295],
+      [0, 0.295],
+    ].map(([radius, height]) => new Vector2(radius * s, height * s)),
+    18
+  )
+
+/** Turns a quill so its blade quarters toward both the path-side and the
+ *  board's-eye cameras — a flat blade parked in the x/y plane stands edge-on
+ *  to the seat the game is actually watched from. */
+const QUILL_YAW = 0.6
+
+// A quill standing in an ink pot — writing names down. The mass IS the
+// feather (a shaft with something stuck to it reads as a spatula): one broad
+// upright plume. Picked over a swept-rachis quill and a bottle-and-nib in
+// the 2026-08 marker review.
+const lexiconPlume: MarkerRecipe = s => {
+  // The barb separation is TWO overlapping vanes stacked in depth, never
+  // notches cut into one outline. The separation line is then the front
+  // vane's own silhouette ink over the back vane — constant width from
+  // every seat, like every other part-over-part boundary in the set.
+  // Notched single-outline versions were tried three ways (notched hull,
+  // bridged envelope, valley envelope): each either filled the gap with an
+  // ink slab or collapsed to a stray hairline at oblique angles.
+  // The lobes are cut from the ORIGINAL notched outline: the front lobe
+  // keeps the leading edge, tip and first barb verbatim; the back lobe is
+  // the second barb and the lower sweep, tucked in under the valley. Their
+  // union projects the original silhouette exactly.
+  const front = new Shape()
+  front.moveTo(0.02, 0.3)
+  front.quadraticCurveTo(0.2, 0.6, 0.08, 1.0)
+  front.quadraticCurveTo(0.04, 1.08, -0.03, 1.06)
+  front.quadraticCurveTo(-0.1, 0.98, -0.11, 0.88)
+  front.lineTo(-0.19, 0.9)
+  front.quadraticCurveTo(-0.15, 0.76, -0.13, 0.66)
+  front.quadraticCurveTo(-0.09, 0.5, -0.06, 0.36)
+  // Stop SHORT of the start point — a duplicated first/last vertex hands the
+  // triangulator a degenerate seam
+  front.quadraticCurveTo(-0.03, 0.32, -0.005, 0.306)
+
+  const back = new Shape()
+  back.moveTo(-0.125, 0.665)
+  back.lineTo(-0.21, 0.68)
+  back.quadraticCurveTo(-0.15, 0.5, -0.06, 0.36)
+  back.quadraticCurveTo(-0.095, 0.5, -0.125, 0.66)
+
+  // Flat extrudes on purpose: a bevel folds over itself at reflex corners
+  const frontVane = new ExtrudeGeometry(front, { depth: 0.06, bevelEnabled: false })
+  frontVane.translate(0, 0, -0.03)
+  const backVane = new ExtrudeGeometry(back, { depth: 0.06, bevelEnabled: false })
+  backVane.translate(0, 0, -0.075)
+  for (const vane of [frontVane, backVane]) {
+    vane.scale(s, s, s)
+    vane.rotateY(QUILL_YAW)
+  }
+
+  return [
+    { geometry: inkPot(s), color: BOARD_COLORS.darkBlue },
+    { geometry: backVane, color: BOARD_COLORS.warmSand },
+    { geometry: frontVane, color: BOARD_COLORS.warmSand },
+  ]
+}
+
+// Cloth caught mid-ripple: an S-waved band drawn in plan and extruded
+// upward, so the wave survives the board's-eye camera as a curling edge.
+const flagWaving: MarkerRecipe = s => {
+  const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
+  pole.translate(0, 0.475 * s, 0)
+
+  const band = new Shape()
+  band.moveTo(0.02, 0.025)
+  band.quadraticCurveTo(0.18, 0.115, 0.3, 0.025)
+  band.quadraticCurveTo(0.42, -0.065, 0.5, -0.005)
+  band.lineTo(0.5, -0.045)
+  band.quadraticCurveTo(0.42, -0.105, 0.3, -0.02)
+  band.quadraticCurveTo(0.18, 0.07, 0.02, -0.02)
+  band.closePath()
+  const cloth = new ExtrudeGeometry(band, { depth: 0.26, bevelEnabled: false })
+  cloth.scale(s, s, s)
+  cloth.rotateX(-Math.PI / 2)
+  cloth.translate(0, 0.62 * s, 0)
+
+  return [
+    { geometry: pole, color: BOARD_COLORS.darkBlue },
+    { geometry: cloth, color: BOARD_COLORS.hiorAnge },
+  ]
+}
+
+// A compass rose lying face-up on a raised drum — wayfinding presented to
+// the board's-eye camera: long cardinals, short diagonals. Picked over
+// signposts, stamps, letter blocks, a luggage tag and two other compasses in
+// the 2026-08 marker review.
+const isoCompassRose: MarkerRecipe = s => {
+  const drum = new CylinderGeometry(0.34 * s, 0.38 * s, 0.38 * s, 12)
+  drum.translate(0, 0.19 * s, 0)
+
+  const rose = new Shape()
+  const POINTS = 16
+  for (let point = 0; point < POINTS; point++) {
+    const angle = (point / POINTS) * Math.PI * 2
+    const radius = point % 2 ? 0.08 : point % 4 ? 0.18 : 0.31
+    const x = Math.cos(angle) * radius
+    const y = Math.sin(angle) * radius
+    if (point === 0) rose.moveTo(x, y)
+    else rose.lineTo(x, y)
+  }
+  rose.closePath()
+  const star = new ExtrudeGeometry(rose, { depth: 0.07, bevelEnabled: false })
+  star.scale(s, s, s)
+  star.rotateX(-Math.PI / 2)
+  star.translate(0, 0.37 * s, 0)
+
+  const pip = new CylinderGeometry(0.05 * s, 0.05 * s, 0.1 * s, 10)
+  pip.translate(0, 0.43 * s, 0)
+  return [
+    { geometry: faceted(drum), color: BOARD_COLORS.warmSand },
+    { geometry: faceted(star), color: BOARD_COLORS.darkBlue },
+    { geometry: pip, color: BOARD_COLORS.warmSand },
+  ]
+}
+
+// Sightseeing made physical: a camera on a post, lens boring ACROSS the path
+// (local x) for the same reason as the pin's eye — the board camera watches
+// the path side-on.
+const landmarksCamera: MarkerRecipe = s => {
+  const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.5 * s, 10)
+  pole.translate(0, 0.25 * s, 0)
+  const body = new BoxGeometry(0.22 * s, 0.3 * s, 0.46 * s)
+  body.translate(0, 0.62 * s, 0)
+  const lens = new CylinderGeometry(0.12 * s, 0.14 * s, 0.16 * s, 12)
+  lens.rotateZ(Math.PI / 2)
+  lens.translate(0.17 * s, 0.62 * s, 0)
+  const shutter = new CylinderGeometry(0.045 * s, 0.045 * s, 0.06 * s, 8)
+  shutter.translate(0, 0.8 * s, 0.14 * s)
+  return [
+    { geometry: pole, color: BOARD_COLORS.darkBlue },
+    { geometry: body, color: BOARD_COLORS.darkBlue },
+    { geometry: lens, color: BOARD_COLORS.warmSand },
+    { geometry: shutter, color: BOARD_COLORS.warmSand },
+  ]
+}
+
+// A fat coin stood on its edge — MINTED, not turned: a faceted rim, a struck
+// border ring on each face, and the cash-coin square bored through the
+// middle (the piece's own outline ring makes it read punched-through, not
+// painted — the old pin's-eye trick). The slight yaw keeps a face catching
+// light off-axis.
+const currencyCoin: MarkerRecipe = s => {
+  const plinth = new BoxGeometry(0.42 * s, 0.14 * s, 0.24 * s)
+  plinth.translate(0, 0.07 * s, 0)
+  const coin = new CylinderGeometry(0.28 * s, 0.28 * s, 0.11 * s, 14)
+  coin.rotateX(Math.PI / 2)
+  const hole = new BoxGeometry(0.13 * s, 0.13 * s, 0.16 * s)
+  const pieces: MarkerPart[] = [
+    { geometry: faceted(coin), color: BOARD_COLORS.warmSand },
+    { geometry: hole, color: BOARD_COLORS.darkBlue },
+  ]
+  for (const side of [-1, 1]) {
+    const ring = new TorusGeometry(0.21 * s, 0.02 * s, 8, 14)
+    ring.translate(0, 0, side * 0.06 * s)
+    pieces.push({ geometry: faceted(ring), color: BOARD_COLORS.darkBlue })
+  }
+  for (const piece of pieces) {
+    piece.geometry.rotateY(0.2)
+    piece.geometry.translate(0, 0.44 * s, 0)
+  }
+  return [{ geometry: plinth, color: BOARD_COLORS.darkBlue }, ...pieces]
+}
+
+// The address to the nation: a lectern with a microphone. Picked over the
+// statue, sash, bust and throne in the 2026-08 marker review.
+//
+// The wand-thin mic keeps its original proportions; the fix for the awkward
+// joint is the mount puck — a small desk-tilt-aligned cylinder swallowing
+// the oblique stem/desk intersection so it reads as bolted-on hardware.
+const leaderLectern: MarkerRecipe = s => {
+  const DESK_TILT = -0.3
+  const foot = new BoxGeometry(0.3 * s, 0.08 * s, 0.24 * s)
+  foot.translate(0, 0.04 * s, 0)
+  const post = new BoxGeometry(0.13 * s, 0.42 * s, 0.13 * s)
+  post.translate(0, 0.25 * s, 0)
+  const desk = new BoxGeometry(0.42 * s, 0.1 * s, 0.3 * s)
+  desk.rotateX(DESK_TILT)
+  desk.translate(0, 0.5 * s, 0)
+
+  const mount = new CylinderGeometry(0.04 * s, 0.05 * s, 0.05 * s, 10)
+  mount.rotateX(DESK_TILT)
+  mount.translate(0, 0.545 * s, -0.093 * s)
+  const stem = new CylinderGeometry(0.014 * s, 0.014 * s, 0.22 * s, 6)
+  stem.rotateX(0.35)
+  stem.translate(0, 0.63 * s, -0.05 * s)
+  const mic = new SphereGeometry(0.035 * s, 8, 6)
+  mic.translate(0, 0.73 * s, -0.09 * s)
+
+  return [
+    { geometry: foot, color: BOARD_COLORS.darkBlue },
+    { geometry: post, color: BOARD_COLORS.darkBlue },
+    { geometry: desk, color: BOARD_COLORS.warmSand },
+    { geometry: mount, color: BOARD_COLORS.darkBlue, outline: false },
+    { geometry: stem, color: BOARD_COLORS.darkBlue },
+    { geometry: mic, color: BOARD_COLORS.darkBlue },
+  ]
+}
+
+// The arch wearing a finish-line: a two-row checkered lintel over the pillars.
+const finalCheckerGate: MarkerRecipe = s => {
+  const parts: MarkerPart[] = []
+  for (const side of [-1, 1]) {
+    const pillar = new BoxGeometry(0.16 * s, 1.15 * s, 0.16 * s)
+    pillar.translate(side * 0.5 * s, 0.575 * s, 0)
+    parts.push({ geometry: pillar, color: BOARD_COLORS.darkBlue })
+  }
+  const COLUMNS = 7
+  const cell = 0.16
+  for (let row = 0; row < 2; row++) {
+    for (let column = 0; column < COLUMNS; column++) {
+      const square = new BoxGeometry(cell * s, cell * s, 0.2 * s)
+      square.translate((column - (COLUMNS - 1) / 2) * cell * s, (1.16 + row * cell) * s, 0)
+      parts.push({
+        geometry: square,
+        color: (row + column) % 2 ? BOARD_COLORS.sourMilk : BOARD_COLORS.ink,
+      })
+    }
+  }
+  return parts
+}
+
+// The capital as metropolis: three clustered towers, the tallest antennaed.
+const capitalSkyline: MarkerRecipe = s => {
+  const TOWERS: [number, number, number, string][] = [
+    [-0.24, 0.5, -0.06, BOARD_COLORS.warmSand],
+    [0, 0.88, 0.05, BOARD_COLORS.darkBlue],
+    [0.24, 0.66, -0.04, BOARD_COLORS.warmSand],
+  ]
+  const parts: MarkerPart[] = TOWERS.map(([x, height, z, color]) => {
+    const tower = new BoxGeometry(0.2 * s, height * s, 0.2 * s)
+    tower.translate(x * s, (height / 2) * s, z * s)
+    return { geometry: tower, color }
+  })
+  const antenna = new CylinderGeometry(0.018 * s, 0.018 * s, 0.16 * s, 8)
+  antenna.translate(0, 0.96 * s, 0.05 * s)
+  parts.push({ geometry: antenna, color: BOARD_COLORS.darkBlue })
+  return parts
+}
+
+// The main peak of the final mountain: a faceted frustum, so the summit is a
+// flat plateau a winner's pawn can actually stand on. Offset from the tile
+// centre so the massif reads asymmetric. Steep on purpose — a squat cone
+// reads as a lump, not a mountain.
+const MOUNTAIN_PEAK = { x: 0.06, z: -0.05, radius: 0.46, height: 1.5, top: 0.07 }
+/** Height where rock gives way to snow on the main peak. */
+const SNOWLINE = 1.02
+
+/**
+ * Pawn-base anchors up the final mountain for an n-stage gauntlet: one flank
+ * ledge per stage spiralling the main peak's +x face (the side the path
+ * camera watches), then the summit plateau as the last entry. Local marker
+ * space in spacing units. `finalMountain` carves a slab under each flank
+ * anchor from this same list — sculpt and climb cannot drift.
+ */
+const mountainLedges = (stages: number): [number, number, number][] => {
+  const flanks = Math.max(1, stages)
+  const anchors: [number, number, number][] = []
+  for (let step = 0; step < flanks; step++) {
+    const t = flanks === 1 ? 0.5 : step / (flanks - 1)
+    const y = 0.3 + 0.8 * t
+    const angle = -0.7 + 1.4 * t
+    const reach = MOUNTAIN_PEAK.radius * (1 - y / MOUNTAIN_PEAK.height) + 0.13
+    anchors.push([
+      MOUNTAIN_PEAK.x + Math.cos(angle) * reach,
+      y,
+      MOUNTAIN_PEAK.z + Math.sin(angle) * reach,
+    ])
+  }
+  anchors.push([MOUNTAIN_PEAK.x, 1.56, MOUNTAIN_PEAK.z])
+  return anchors
+}
+
+// Mount Olympus for the final tile: an asymmetric three-peak massif — snow
+// on the two tall peaks — with one carved ledge per gauntlet stage
+// spiralling the main face. TopoScene stands a challenger's pawn on the
+// ledge matching their cleared-stage count (finalClimbAnchor), so the whole
+// room watches the climb; the summit plateau is the victory stand.
+const finalMountain: MarkerRecipe = (s, stages = GAUNTLET_LENGTH.normal) => {
+  const parts: MarkerPart[] = []
+
+  const peak = new CylinderGeometry(
+    MOUNTAIN_PEAK.top * s,
+    MOUNTAIN_PEAK.radius * s,
+    MOUNTAIN_PEAK.height * s,
+    7
+  )
+  peak.translate(MOUNTAIN_PEAK.x * s, (MOUNTAIN_PEAK.height / 2) * s, MOUNTAIN_PEAK.z * s)
+  parts.push({ geometry: faceted(peak), color: BOARD_COLORS.warmSand })
+
+  // The snow CONTINUES the peak's own taper — computed from the rock's radius
+  // at the snowline plus a hair, so it caps the summit instead of flaring
+  // over it like a lampshade. Half a facet out of phase → the snowline
+  // zigzags. Its flat top is the summit plateau.
+  const snowBottom = MOUNTAIN_PEAK.radius * (1 - SNOWLINE / MOUNTAIN_PEAK.height) + 0.03
+  const snowHeight = MOUNTAIN_PEAK.height + 0.06 - SNOWLINE
+  const snow = new CylinderGeometry(
+    (MOUNTAIN_PEAK.top + 0.03) * s,
+    snowBottom * s,
+    snowHeight * s,
+    7
+  )
+  snow.rotateY(Math.PI / 7)
+  snow.translate(MOUNTAIN_PEAK.x * s, (SNOWLINE + snowHeight / 2) * s, MOUNTAIN_PEAK.z * s)
+  parts.push({ geometry: faceted(snow), color: BOARD_COLORS.sourMilk })
+
+  const shoulder = new ConeGeometry(0.3 * s, 0.95 * s, 6)
+  shoulder.translate(-0.38 * s, 0.475 * s, 0.16 * s)
+  parts.push({ geometry: faceted(shoulder), color: BOARD_COLORS.warmSand })
+  const shoulderSnow = new ConeGeometry(0.11 * s, 0.3 * s, 6)
+  shoulderSnow.translate(-0.38 * s, 0.83 * s, 0.16 * s)
+  parts.push({ geometry: faceted(shoulderSnow), color: BOARD_COLORS.sourMilk })
+
+  const foothill = new ConeGeometry(0.24 * s, 0.5 * s, 6)
+  foothill.translate(0.14 * s, 0.25 * s, -0.42 * s)
+  parts.push({ geometry: faceted(foothill), color: BOARD_COLORS.warmSand })
+
+  mountainLedges(stages)
+    .slice(0, -1)
+    .forEach(([x, y, z]) => {
+      const inward = Math.atan2(z - MOUNTAIN_PEAK.z, x - MOUNTAIN_PEAK.x)
+      const slab = new BoxGeometry(0.26 * s, 0.07 * s, 0.26 * s)
+      slab.rotateY(-inward)
+      slab.translate(
+        (x - Math.cos(inward) * 0.08) * s,
+        (y - 0.035) * s,
+        (z - Math.sin(inward) * 0.08) * s
+      )
+      parts.push({ geometry: slab, color: BOARD_COLORS.darkBlue })
+    })
+  return parts
+}
+
+/**
+ * Where a climbing pawn stands after clearing `cleared` of `total` gauntlet
+ * stages on a `stages`-ledge mountain: one ledge per stage when the deal is
+ * full-length, a proportional ledge when a thin board dealt fewer, and the
+ * summit at `cleared >= total` (victory). Local marker space — callers
+ * rotate by the tile's path yaw and add the tile position. Returns undefined
+ * while the shipping final marker has no ledges to stand on.
+ */
+export const finalClimbAnchor = (
+  cleared: number,
+  total: number,
+  spacing: number,
+  stages: number
+): Vector3 | undefined => {
+  if (Object.keys(MARKER_VARIANTS.final)[0] !== 'mountain') return undefined
+  if (cleared <= 0 || total <= 0) return undefined
+
+  const anchors = mountainLedges(stages)
+  const flankCount = anchors.length - 1
+  const ledge =
+    cleared >= total
+      ? anchors[anchors.length - 1]
+      : anchors[Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)]
+  return new Vector3(ledge[0], ledge[1], ledge[2]).multiplyScalar(spacing)
+}
+
+/** Candidate sculpts under review — the FIRST entry of each set is the
+ *  production default; /test-markers flips between them live. Once a winner
+ *  is picked it gets baked into its `markerPartsFor` case and its set leaves
+ *  this map (picked 2026-08: lexicon plume, waving flag, capital skyline,
+ *  landmarks camera, currency coin). `final` leads with the mountain so the
+ *  gauntlet climb is live — see finalClimbAnchor. */
+export const MARKER_VARIANTS = {
+  // Checker-gate ships; the mountain stays as the lab alternate carrying the
+  // dormant gauntlet-climb feature (finalClimbAnchor only activates when the
+  // mountain leads this set).
+  final: {
+    'checker-gate': finalCheckerGate,
+    mountain: finalMountain,
+  },
+} as const
+
+export const markerPartsFor = (
+  type: MarkerType,
+  spacing: number,
+  variant?: string,
+  stages?: number
 ): MarkerPart[] => {
   const s = spacing
   switch (type) {
-    case 'flag': {
-      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
-      pole.translate(0, 0.475 * s, 0)
-      const pennant = new BoxGeometry(0.42 * s, 0.24 * s, 0.05 * s)
-      pennant.translate(0.24 * s, 0.78 * s, 0)
-      return [
-        { geometry: pole, color: BOARD_COLORS.darkBlue },
-        { geometry: pennant, color: BOARD_COLORS.hiorAnge },
-      ]
+    case 'final': {
+      const variants: Record<string, MarkerRecipe> = MARKER_VARIANTS[type]
+      return ((variant ? variants[variant] : undefined) ?? Object.values(variants)[0])(s, stages)
     }
-    case 'capital.name': {
-      // Both are four-segment solids, so both need their own face normals or
-      // the obelisk shades like a smooth taper instead of four flat sides.
-      const shaft = new CylinderGeometry(0.09 * s, 0.16 * s, 0.8 * s, 4)
-      shaft.translate(0, 0.4 * s, 0)
-      const cap = new ConeGeometry(0.13 * s, 0.2 * s, 4)
-      cap.translate(0, 0.9 * s, 0)
-      return [
-        { geometry: faceted(shaft), color: BOARD_COLORS.warmSand },
-        { geometry: faceted(cap), color: BOARD_COLORS.darkBlue },
-      ]
-    }
-    case 'isoCode': {
-      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.85 * s, 10)
-      pole.translate(0, 0.425 * s, 0)
-      const plate = new BoxGeometry(0.55 * s, 0.32 * s, 0.05 * s)
-      plate.translate(0, 0.72 * s, 0)
-      return [
-        { geometry: pole, color: BOARD_COLORS.darkBlue },
-        { geometry: plate, color: BOARD_COLORS.warmSand },
-      ]
-    }
-    case 'government.leader': {
-      const plinth = new BoxGeometry(0.34 * s, 0.22 * s, 0.34 * s)
-      plinth.translate(0, 0.11 * s, 0)
-      const torso = new CylinderGeometry(0.07 * s, 0.13 * s, 0.42 * s, 10)
-      torso.translate(0, 0.43 * s, 0)
-      const head = new SphereGeometry(0.1 * s, 12, 10)
-      head.translate(0, 0.72 * s, 0)
-      return [
-        { geometry: plinth, color: BOARD_COLORS.warmSand },
-        { geometry: torso, color: BOARD_COLORS.darkBlue },
-        { geometry: head, color: BOARD_COLORS.darkBlue },
-      ]
-    }
-    case 'currency': {
-      const plinth = new BoxGeometry(0.4 * s, 0.14 * s, 0.2 * s)
-      plinth.translate(0, 0.07 * s, 0)
-      // A fat disc stood on its edge — reads as a coin at board scale
-      const coin = new CylinderGeometry(0.26 * s, 0.26 * s, 0.09 * s, 20)
-      coin.rotateX(Math.PI / 2)
-      coin.translate(0, 0.42 * s, 0)
-      return [
-        { geometry: plinth, color: BOARD_COLORS.darkBlue },
-        { geometry: coin, color: BOARD_COLORS.warmSand },
-      ]
-    }
-    case 'landmarks': {
-      // A map pin: the one shape that means "a place" without having to be
-      // read, and it replaces a four-sided cone the toon ramp turned into a
-      // soft nothing.
-      //
-      // ONE lathed surface, not a sphere sitting on a cone. Every part gets
-      // its own inverted-hull outline, so a pin built from two solids wears an
-      // ink ring exactly where they join — the seam reads as a crack across
-      // the head. Revolving a teardrop profile gives one skin and one outline.
-      //
-      // The profile is the tangent construction: a straight flank from the tip
-      // to where it touches the head circle, then the arc over the top. Solved
-      // rather than eyeballed, so the join is smooth by geometry.
-      //
-      // `TOUCH` is the tangent point in the CIRCLE's parameter (0 at the crown,
-      // sweeping down the flank), which is where the arc has to start — the
-      // half-angle at the tip is a different number entirely, and using one for
-      // the other splays the flank wider than the head and below the ground.
-      // Lathe wants the profile bottom-up, so the arc runs TOUCH → 0 and the
-      // straight flank is just the segment from the tip to its first point.
-      const RADIUS = 0.23
-      const CENTRE = 0.62
-      const TOUCH = Math.acos(-RADIUS / CENTRE)
-      const profile = [new Vector2(0, 0)]
-      const ARC_STEPS = 14
-      for (let step = 0; step <= ARC_STEPS; step++) {
-        const angle = TOUCH * (1 - step / ARC_STEPS)
-        profile.push(
-          new Vector2(RADIUS * Math.sin(angle) * s, (CENTRE + RADIUS * Math.cos(angle)) * s)
-        )
-      }
-
-      // The eye keeps its own outline on purpose — that ring is what makes it
-      // read as a hole punched through rather than a dot painted on. It has to
-      // clear the head's chord AT ITS OWN RADIUS, not the head's full diameter:
-      // overshoot that and the caps stand off the curved face as two navy tabs
-      // instead of a hole. It is bored ACROSS the path (local x), not down it:
-      // markers are turned so +z runs along the path, and the board camera
-      // watches the path side-on, so a hole down +z is edge-on from every seat.
-      const EYE = 0.088
-      const throughHead = Math.sqrt(RADIUS * RADIUS - EYE * EYE) * 2 + 0.02
-      const eye = new CylinderGeometry(EYE * s, EYE * s, throughHead * s, 14)
-      eye.rotateZ(Math.PI / 2)
-      eye.translate(0, CENTRE * s, 0)
-
-      return [
-        { geometry: new LatheGeometry(profile, 20), color: BOARD_COLORS.warmSand },
-        { geometry: eye, color: BOARD_COLORS.darkBlue },
-      ]
-    }
+    case 'isoCode':
+      return isoCompassRose(s)
+    case 'government.leader':
+      return leaderLectern(s)
+    case 'flag':
+      return flagWaving(s)
+    case 'capital.name':
+      return capitalSkyline(s)
+    case 'landmarks':
+      return landmarksCamera(s)
+    case 'currency':
+      return currencyCoin(s)
+    case 'lexicon':
+      return lexiconPlume(s)
     case 'errata': {
       // Crossed signposts: one post carrying two name plates tilted opposite
       // ways — the swap made physical. Shares the ISO gate's post on purpose
@@ -444,80 +774,6 @@ const markerPartsFor = (
         { geometry: upper, color: BOARD_COLORS.hiorAnge },
       ]
     }
-    case 'lexicon': {
-      // A quill standing in an ink pot — writing names down.
-      //
-      // The mass IS the feather. Two earlier attempts failed by treating the
-      // quill as a shaft with something stuck to it, which reads as a spatula;
-      // here the blade is a broad swept lens extruded from a bezier outline,
-      // the rachis is a curve drawn through it, and the nib is a detail. The
-      // sweep also solves the board's-eye camera: a curve presents area from
-      // above where a straight lean presents none.
-      const RACHIS: [number, number][] = [
-        [0, 0.24],
-        [-0.04, 0.46],
-        [-0.13, 0.68],
-        [-0.27, 0.86],
-        [-0.46, 0.96],
-      ]
-      const spine = new CatmullRomCurve3(RACHIS.map(([x, y]) => new Vector3(x, y, 0)))
-
-      // The vane: a lens hugging the rachis, fuller on the outer side like a
-      // real feather, tapering to nothing at the tip and at the quill end.
-      const vane = new Shape()
-      vane.moveTo(-0.02, 0.42)
-      vane.quadraticCurveTo(-0.06, 0.84, -0.46, 0.96)
-      vane.quadraticCurveTo(-0.3, 0.63, -0.02, 0.42)
-      const blade = new ExtrudeGeometry(vane, { depth: 0.045, bevelEnabled: false })
-      blade.translate(0, 0, -0.0225)
-      blade.scale(s, s, s)
-
-      const rachis = new TubeGeometry(spine, 24, 0.016, 6, false)
-      rachis.scale(s, s, s)
-
-      // The bare quill between the vane and the pot's mouth.
-      const barrel = new CylinderGeometry(0.022 * s, 0.034 * s, 0.26 * s, 8)
-      barrel.rotateZ(0.16)
-      barrel.translate(-0.01 * s, 0.29 * s, 0)
-
-      // The pot: one lathed profile, a squat belly into a shoulder and a short
-      // neck. Solid ink-dark, which puts it in the board's grammar — every
-      // other marker is a dark base carrying a light subject, and here the
-      // feather is the subject. It was glass first; opaque loses nothing (you
-      // could never see into a pot this size anyway) and costs a stacked rim,
-      // an ink pool and the whole transparency path, all of which existed only
-      // to sell a see-through effect nobody was going to read at board scale.
-      const pot = new LatheGeometry(
-        [
-          [0, 0],
-          [0.235, 0],
-          [0.265, 0.06],
-          [0.25, 0.18],
-          [0.198, 0.26],
-          [0.196, 0.32],
-        ].map(([radius, height]) => new Vector2(radius * s, height * s)),
-        18
-      )
-
-      return [
-        { geometry: pot, color: BOARD_COLORS.darkBlue },
-        { geometry: faceted(rachis), color: BOARD_COLORS.darkBlue },
-        { geometry: barrel, color: BOARD_COLORS.warmSand },
-        { geometry: blade, color: BOARD_COLORS.warmSand },
-      ]
-    }
-    case 'final': {
-      const parts: MarkerPart[] = []
-      for (const side of [-1, 1]) {
-        const pillar = new BoxGeometry(0.16 * s, 1.15 * s, 0.16 * s)
-        pillar.translate(side * 0.5 * s, 0.575 * s, 0)
-        parts.push({ geometry: pillar, color: BOARD_COLORS.darkBlue })
-      }
-      const lintel = new BoxGeometry(1.25 * s, 0.16 * s, 0.2 * s)
-      lintel.translate(0, 1.2 * s, 0)
-      parts.push({ geometry: lintel, color: BOARD_COLORS.hiorAnge })
-      return parts
-    }
   }
 }
 
@@ -529,10 +785,12 @@ const buildChallengeMarkers = (
   tiles: Tile[],
   transforms: TileTransform[],
   spacing: number,
-  tileRadius: number
+  tileRadius: number,
+  difficulty: GameDifficulty
 ): Mesh[] => {
   const colorBuckets = new Map<string, BufferGeometry[]>()
   const outlines: BufferGeometry[] = []
+  const outlineWidth = spacing * OUTLINE_WIDTH_RATIO
   const matrix = new Matrix4()
   const quaternion = new Quaternion()
   const up = new Vector3(0, 1, 0)
@@ -542,7 +800,12 @@ const buildChallengeMarkers = (
 
     const { position, tangent } = transforms[tile.position]
     const isFinal = tile.type === 'final'
-    const parts = markerPartsFor(isFinal ? 'final' : tile.type, spacing)
+    const parts = markerPartsFor(
+      isFinal ? 'final' : tile.type,
+      spacing,
+      undefined,
+      GAUNTLET_LENGTH[difficulty]
+    )
 
     // Gates stand at the tile's exit edge, facing across the path — the
     // final arch spans the tile itself
@@ -561,9 +824,11 @@ const buildChallengeMarkers = (
       const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
       if (geometry !== part.geometry) part.geometry.dispose()
 
-      const outline = outlineOf(geometry)
-      outline.applyMatrix4(matrix)
-      outlines.push(outline)
+      if (part.outline !== false) {
+        const outline = outlineOf(geometry, outlineWidth)
+        outline.applyMatrix4(matrix)
+        outlines.push(outline)
+      }
 
       geometry.applyMatrix4(matrix)
       const bucket = colorBuckets.get(part.color) ?? []
@@ -612,6 +877,9 @@ export const buildPawn = (color: string, height: number): Group => {
 
   const geometry = new LatheGeometry(profile, 32)
   const body = new Mesh(geometry, new MeshToonMaterial({ color }))
+  // Deliberately NOT outlineOf: reusing the body geometry and scaling the
+  // mesh costs zero extra buffers per pawn, and a scaled hull is sound on
+  // this convex closed lathe.
   const outline = new Mesh(
     geometry,
     new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
@@ -641,6 +909,10 @@ export const buildPawn = (color: string, height: number): Group => {
 }
 
 export type CrownVariant = 'champion' | 'finisher'
+
+/** Crowns draw with a finer pen — the spikes are the smallest outlined solids
+ *  on the board, and the marker-width stroke would drown them. */
+const CROWN_OUTLINE_RATIO = 0.01
 
 /**
  * A victory crown resting on the pawn's head: full-size gold for the
@@ -673,7 +945,7 @@ export const buildCrown = (height: number, variant: CrownVariant): Group => {
     parts.push(spike)
   }
 
-  const outlines = parts.map(outlineOf)
+  const outlines = parts.map(part => outlineOf(part, height * CROWN_OUTLINE_RATIO))
   const outline = new Mesh(
     mergeGeometries(outlines),
     new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
