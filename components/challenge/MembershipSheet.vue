@@ -2,7 +2,7 @@
   <aside
     ref="sheetEl"
     class="pane tl membership-sheet"
-    :class="{ sheet: isPhone, split: isPhone }"
+    :class="{ sheet: isPhone, split: isPhone, leaving }"
     role="dialog"
     :aria-label="`Countries lit for ${subject}`"
   >
@@ -85,12 +85,13 @@
 </template>
 
 <script lang="ts" setup>
+import { gsap } from 'gsap'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
-import { EASE, MOTION } from '~~/lib/motion'
+import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { groupByLetter, MIN_ROWS_FOR_LETTERS } from '~~/lib/odd-one-out'
 import { normalizeAnswer } from '~~/lib/strings'
 import { SHEET_FULL, SHEET_TUCKED, useBottomSheet } from '~~/lib/use-bottom-sheet'
@@ -114,11 +115,12 @@ const props = defineProps<{
   countries: ISOCountryCode[]
   /** What they have in common — an organization or an instrument. Label only. */
   subject: string
-  settled: boolean
   /** How many countries the club or instrument holds worldwide. When the
    *  lineup is a sample of a bigger set (191 CRC parties on a 24-row sheet),
    *  the eyebrow says so instead of implying the roster is the whole thing. */
   total?: number
+  /** The answer is in. The roster has done its job, so the sheet leaves. */
+  settled: boolean
 }>()
 
 const eyebrow = computed(() =>
@@ -137,6 +139,10 @@ const handleEl = ref<HTMLElement>()
 const bodyEl = ref<HTMLElement>()
 const searchEl = ref<HTMLInputElement>()
 const query = ref('')
+// Declared up here, not beside its watcher below: `enabled` closes over it and
+// useBottomSheet evaluates that getter during setup, which would land in the
+// const's temporal dead zone.
+const leaving = ref(false)
 
 const named = computed(() =>
   props.countries.map(isoCode => ({ isoCode, name: countryName(getCountry(isoCode)) }))
@@ -173,7 +179,13 @@ const {
   sheet: () => sheetEl.value,
   handle: () => handleEl.value,
   body: () => bodyEl.value,
-  enabled: () => isPhone.value,
+  // Off once the sheet is leaving: this hands the element back (release()
+  // kills the in-flight tween and clears the parked transform) and stands
+  // verifyRest down, so the exit below is the only thing moving it. Without
+  // that the composable finishes its own settle straight over the exit —
+  // measured: the sheet was still mid-deploy from the search focus when the
+  // answer landed, and its settle stripped the transform mid-slide.
+  enabled: () => isPhone.value && !leaving.value,
   dragExclude: '.search',
   keyboardOwner: () => searchEl.value,
   // The flick ease is left at the shared decelerating default. An accelerating
@@ -194,7 +206,9 @@ const {
  * registry, so the reveal card and any footer keep combining normally.
  */
 function reserve() {
-  if (!isPhone.value) return claimMapBerth(gameStore, 'membership-sheet', undefined)
+  if (!isPhone.value || leaving.value) {
+    return claimMapBerth(gameStore, 'membership-sheet', undefined)
+  }
   claimMapBerth(gameStore, 'membership-sheet', {
     bottom: visibleAt(SHEET_TUCKED) + BERTH_GAP_PX,
   })
@@ -216,19 +230,39 @@ const onRowClick = (isoCode: ISOCountryCode) => {
 // The composable hands layout back to CSS off-phone; the berth follows suit.
 watch(isPhone, reserve)
 
-// The answer is in and the rows are dead — collapse to the bare handle so the
-// reveal card and the lesson own the bottom of the screen, while the handle
-// stays on screen to pull the roster back for a second look. The composable's
-// re-anchor + post-rest drift check keep the collapse honest through the
-// keyboard's geometry churn.
+/**
+ * The exit. This used to collapse to the bare handle so the roster could be
+ * pulled back for a second look; it leaves outright now, because the rows are
+ * dead once an answer lands and the reveal card wants the whole bottom band —
+ * the handle's own berth included.
+ *
+ * Order matters. Flipping `leaving` stands the composable down, and its
+ * `enabled` watcher calls release() — killing whatever tween it had in flight
+ * and clearing the parked transform. Only after that (nextTick, so the pre-flush
+ * watcher has run) is the element ours to slide.
+ *
+ * Which is why the stop it was sitting at is read FIRST and handed to fromTo:
+ * release() clears the transform, so a sheet answered from the tucked stop
+ * would otherwise snap fully open for a frame and slide down from there — the
+ * whole roster flashing over the reveal on its way out.
+ */
 watch(
   () => props.settled,
-  settled =>
-    settled &&
-    isPhone.value &&
-    // A plain glide, not the drag spring: nobody flicked this, so its elastic
-    // tail would read as a wobble on the way out.
-    settleTo(SHEET_TUCKED, { ease: EASE.cross, duration: MOTION.base })
+  async settled => {
+    if (!settled || leaving.value) return
+    const sheet = sheetEl.value
+    const from = sheet ? Number(gsap.getProperty(sheet, 'y')) : 0
+    leaving.value = true
+    // Hand the band back now rather than at the end of the slide: the camera
+    // opens up as the sheet clears, instead of a beat behind it.
+    claimMapBerth(gameStore, 'membership-sheet', undefined)
+    await nextTick()
+    if (!sheet) return
+    // Its own height clears the fold from any stop, parked or deployed.
+    const y = sheet.offsetHeight
+    if (prefersReducedMotion()) return void gsap.set(sheet, { y, opacity: 0 })
+    gsap.fromTo(sheet, { y: from }, { y, opacity: 0, duration: MOTION.base, ease: EASE.exit })
+  }
 )
 
 // Content changed under the scroller — re-judge the edges once it has laid out.
@@ -335,6 +369,11 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
   &:active {
     background: ink(0.15);
   }
+}
+
+// On its way out: inert, and never a scroll target under the reveal card.
+.membership-sheet.leaving {
+  pointer-events: none;
 }
 
 // The fade recipe lives in templates/_sheet.scss; here only its tuning. The
