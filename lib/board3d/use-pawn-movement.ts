@@ -313,7 +313,12 @@ export const createPawnMover = (options: {
     // Catch-up pacing: a deep queue means the pawn is replaying steps it took
     // while the board was covered — quick-fire hops keep every step visible
     // without dragging the replay out longer than the live walk.
-    const duration = state.queue.length >= 3 ? 0.22 : state.queue.length ? 0.3 : 0.38
+    // Catch-up may only NUDGE ahead of the server's 500ms step cadence,
+    // never race it: replayed backlogs got common on the server-driven
+    // walks (full-snapshot resyncs, remounts over a result beat), and the
+    // old 0.22s tier played them at 2.3x live pace — a pawn visibly flying
+    // across the board, then stalling for the next step.
+    const duration = state.queue.length >= 3 ? 0.32 : state.queue.length ? 0.35 : 0.38
     const proxy = { t: 0 }
     state.activeTween = track(
       gsap.to(proxy, {

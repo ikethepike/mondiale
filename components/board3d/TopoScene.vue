@@ -546,7 +546,22 @@ watch(
   (signature, previousSignature) => {
     const previous = new Map(positionSignatureEntries(previousSignature ?? ''))
     for (const [playerId, position] of positionSignatureEntries(signature)) {
-      if (previous.get(playerId) === position) continue
+      const before = previous.get(playerId)
+      if (before === position) continue
+      // A backward display delta is the gate fiction unwinding. For a FAILED
+      // gate that retreat is a real beat (the pawn bounced off — the blocked
+      // record is on the round) and the mover plays it. A WON gate must stay
+      // monotonic: the win's leap resolves from the gate tile forward, and
+      // without this guard a zero-step win hopped BACKWARD off a gate it had
+      // just cleared. Holding is safe — the mover measures its next forward
+      // step from what is displayed.
+      if (
+        before !== undefined &&
+        position < before &&
+        !props.game.rounds[props.game.rounds.length - 1]?.playerTurns[playerId]?.blocked
+      ) {
+        continue
+      }
       mover?.moveTo(playerId, position)
       if (playerId === cameraTargetId.value && !cameraHeld()) {
         const tile = tileFor(position)
