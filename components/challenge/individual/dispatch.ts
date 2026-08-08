@@ -51,6 +51,9 @@ export interface GateView {
   /** The reveal's props. Lives here rather than in the shell so a variant's
    *  question and its lesson are declared in one place. */
   revealProps?: (context: GateRevealContext) => Record<string, unknown>
+  /** Lifts ChallengeResult's prose cap so a ledger reveal can lay its cards
+   *  out horizontally. The reveal still declares its own width. */
+  wideReveal?: boolean
   /** Teleports a typed console into the shell footer. Declared here because
    *  the SHELL owns the footer: `.suggest-berth` reserves room for a downward
    *  suggestion list, and a variant that never types must not pay for it. */
@@ -116,6 +119,7 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
   'trend-duel': {
     component: GateTrendDuel,
     reveal: TrendDuelReveal,
+    wideReveal: true,
     revealProps: ({ trendDuelOutcomes }) =>
       trendDuelOutcomes.length ? { outcomes: trendDuelOutcomes } : {},
   },
@@ -165,10 +169,10 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
 export const gateRevealFor = (
   variant: IndividualChallengeVariant,
   context: GateRevealContext
-): { component: Component; props: Record<string, unknown> } | undefined => {
+): { component: Component; props: Record<string, unknown>; wide: boolean } | undefined => {
   const view = GATE_VIEWS[variant]
   if (!view.reveal) return undefined
   const props = view.revealProps?.(context) ?? {}
   if (view.revealProps && !Object.keys(props).length) return undefined
-  return { component: view.reveal, props }
+  return { component: view.reveal, props, wide: !!view.wideReveal }
 }

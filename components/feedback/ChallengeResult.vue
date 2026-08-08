@@ -5,7 +5,7 @@
          words. The card is a single block centred by margin, so the verdict, the
          lesson and the ripple all share one axis — the centring is computed on
          the card, never on a padding box the stamp gets to widen. -->
-    <div ref="dossier" class="verdict-dossier">
+    <div ref="dossier" class="verdict-dossier" :class="{ wide }">
       <div class="head-zone">
         <ContourRipple v-if="status === 'correct'" class="ripple" :delay="0.45" />
         <div class="verdict">
@@ -48,6 +48,13 @@ const props = defineProps({
   correctMessage: {
     type: String,
     default: 'Correct!',
+  },
+  /** Lifts the prose cap for a ledger reveal that lays its cards out
+   *  horizontally — the reveal then owns its own width, the way
+   *  TrajectoryReveal and TrendDuelReveal do. */
+  wide: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -129,6 +136,14 @@ onUnmounted(() => {
   // A document reads ragged-right. This is the one place the inherited centring
   // from ChallengePrompt is overridden, and it carries the lesson body with it.
   text-align: left;
+}
+
+// A ledger reveal (a grid of duel cards, a row of curves) is not prose, and the
+// 60rem measure that keeps a paragraph readable strands it in a narrow column
+// on a laptop. `wide` drops the prose cap only — the card is still max-content,
+// so it grows exactly as far as the reveal's own width asks and no further.
+.verdict-dossier.wide {
+  max-width: min(100%, calc(100vw - 3.2rem));
 }
 
 // Exists so the ripple gets a box that is exactly the head's box: the flourish
