@@ -5,6 +5,7 @@ import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-ans
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import {
   WALK_LEAD_MS,
+  WALK_RESUME_LEAD_MS,
   CLASSIC_SETTLE_SLACK_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -280,9 +281,12 @@ describe('walk stepping contract', () => {
   const walkMove = (to: number) =>
     ({ endTile: { position: to } }) as unknown as Player['moves'][number]
 
-  it('a server-initiated walk announces before it steps, then keeps cadence', async () => {
+  it('a turn-opening walk announces, holds the long lead, then keeps cadence', async () => {
     const initial = buildGame(
-      [seat('a', 'group-scores', { moves: [walkMove(6)] }), seat('b', 'group-challenge')],
+      [
+        seat('a', 'group-scores', { moves: [walkMove(6)], walkIntro: true }),
+        seat('b', 'group-challenge'),
+      ],
       TWO_TRUTHS
     )
     const ctx = context(initial, 'a')
@@ -291,17 +295,57 @@ describe('walk stepping contract', () => {
     await vi.advanceTimersByTimeAsync(50)
     await vi.runAllTicks()
 
-    // The announce: phase flipped, but NOT a single tile consumed yet.
+    // The announce: phase flipped, but NOT a single tile consumed yet, and
+    // the intro marker still rides the snapshot (the client's cue for the
+    // "On the move!" beat).
     let fresh = store.get(initial.id)!
     expect(fresh.players.a.phase).toBe('moving')
     expect(fresh.players.a.currentPosition).toBe(0)
+    expect(fresh.players.a.walkIntro).toBe(true)
 
-    // Steps begin only after the mount grace, one per cadence tick.
-    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 100)
+    // The resume lead alone is NOT enough for a turn opener…
+    await vi.advanceTimersByTimeAsync(WALK_RESUME_LEAD_MS + 100)
+    expect(store.get(initial.id)!.players.a.currentPosition).toBe(0)
+
+    // …steps begin only after the full announce lead, one per cadence tick,
+    // and the first step retires the intro.
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS - WALK_RESUME_LEAD_MS)
     fresh = store.get(initial.id)!
     expect(fresh.players.a.currentPosition).toBe(1)
+    expect(fresh.players.a.walkIntro).toBe(false)
     await vi.advanceTimersByTimeAsync(500)
     expect(store.get(initial.id)!.players.a.currentPosition).toBe(2)
+
+    expectClientConvergence()
+  })
+
+  it('a between-gates resume announces with the short lead and no intro', async () => {
+    // A gate result resumes the walk: the seat is still on the result beat
+    // ('individual-challenge'), the intro was spent on the walk's first step.
+    const initial = buildGame(
+      [
+        seat('a', 'individual-challenge', { moves: [walkMove(6)], currentPosition: 2 }),
+        seat('b', 'group-challenge'),
+      ],
+      TWO_TRUTHS
+    )
+    const ctx = context(initial, 'a')
+
+    scheduleMovementPhase(0, ctx, { continuation: true, walkSeq: 1 })
+    await vi.advanceTimersByTimeAsync(50)
+    await vi.runAllTicks()
+
+    // Announce rode its own snapshot, intro-less.
+    let fresh = store.get(initial.id)!
+    expect(fresh.players.a.phase).toBe('moving')
+    expect(fresh.players.a.currentPosition).toBe(2)
+    expect(fresh.players.a.walkIntro).toBeFalsy()
+
+    // Steps resume after just the short lead — the gate verdict WAS the
+    // announcement; only the view transition needs covering.
+    await vi.advanceTimersByTimeAsync(WALK_RESUME_LEAD_MS + 100)
+    fresh = store.get(initial.id)!
+    expect(fresh.players.a.currentPosition).toBe(3)
 
     expectClientConvergence()
   })

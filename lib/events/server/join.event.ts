@@ -208,7 +208,10 @@ export const joinEventHandler: EventHandler = async ({
     // The walk guard rejects 'moving' re-entry; hand the phase back first
     if (wedgedMoving) rejoining.phase = 'group-scores'
 
-    scheduleMovementPhase(1500, { io, redis, socket, eventTarget })
+    // A heal is server-originated: it must travel as a continuation to pass
+    // the group-scores-only entry guard. No walkSeq — it targets whatever
+    // walk generation is current when it lands.
+    scheduleMovementPhase(1500, { io, redis, socket, eventTarget }, { continuation: true })
   }
 
   // The clocked round engines pace themselves on in-memory timers too — a

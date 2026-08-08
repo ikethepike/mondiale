@@ -21,6 +21,10 @@ import type { Player } from '~~/types/player.type'
 export const startWalk = (player: Player, moves: PlayerMove[]) => {
   player.moves = moves
   player.walkSeq = (player.walkSeq ?? 0) + 1
+  // The one moveset dealer, so every turn-OPENING walk carries the intro
+  // marker by construction; the walk's first step (or a zero-tile arrival)
+  // clears it. Between-gates resumes never pass here and stay intro-less.
+  player.walkIntro = true
 }
 
 export const movesForScoredPoints = async ({

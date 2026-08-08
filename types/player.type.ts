@@ -24,6 +24,11 @@ export interface Player {
    *  the live timer) both carry a valid walkSeq; whichever ticks early gets
    *  dropped here, so a pawn can never step faster than the walk cadence. */
   lastStepAt?: number
+  /** TRUE from the moveset deal (startWalk) until the walk's first step: this
+   *  is a turn-OPENING walk, owed the long announce lead and the "On the
+   *  move!" beat. Between-gates resumes carry false — their announcement is
+   *  the gate verdict the player just watched. */
+  walkIntro?: boolean
 }
 
 export type PlayerPhase =

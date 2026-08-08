@@ -26,6 +26,7 @@ import {
   STEP_INTERVAL_MS,
   STEP_LATCH_SLACK_MS,
   WALK_LEAD_MS,
+  WALK_RESUME_LEAD_MS,
 } from '~~/lib/round-beats'
 
 /**
@@ -106,13 +107,17 @@ export const scheduleMovementPhase = (
 export const enterMovementPhaseHandler = defineGameHandler(
   'enter-movement-phase',
   async ({ game, player, server, eventData, eventTarget, io, redis, socket }) => {
-    // A duplicate external event while a walk is already in flight would start
-    // a second stepping chain and double-advance the pawn. Only the walk's own
-    // rescheduled continuations (continuation: true) are allowed to proceed
-    // while the phase is 'moving'; anything else bails. Continuations are
-    // server-originated — they bypass the wire middleware — so a client cannot
-    // forge one to advance another player (Fix #1 already binds playerId).
-    if (player.phase === 'moving' && !eventData.continuation) return
+    // The scorecard is the ONLY legitimate client entry point: everything
+    // else that moves a seat (gate resumes, caps, heals, the watchdog, the
+    // walk's own steps) re-enters as a server-originated continuation, which
+    // bypasses the wire middleware — a client cannot forge one. This one
+    // guard covers the old duplicate-while-moving case AND stray/replayed
+    // client events landing on gates or settled seats.
+    if (!eventData.continuation && player.phase !== 'group-scores') {
+      return console.warn(
+        `Ignoring enter-movement-phase from phase '${player.phase}' for ${eventTarget.playerId}`
+      )
+    }
 
     // Staleness token: a continuation armed under an older walk generation is
     // a dead timer's tick (a watchdog re-check outliving its round, a result
@@ -153,33 +158,35 @@ export const enterMovementPhaseHandler = defineGameHandler(
     // Challenge moves stop on the tile before their gate.
     if (alreadySettled) {
       // Skip the walk/settle block — go straight to the round-advancement check.
-    } else if (move) {
-      const stopAt = moveStopTile(move)
+    } else if (move || player.walkIntro) {
+      const stopAt = move ? moveStopTile(move) : player.currentPosition
+      const tilesRemain = player.currentPosition < stopAt
+
+      // THE WALK PROTOCOL: every walk — client- or server-initiated — first
+      // ANNOUNCES (phase 'moving' rides its own snapshot so the stage is on
+      // screen), lets the lead pass, then steps. A turn-opening walk
+      // (walkIntro, stamped by startWalk) leads long enough for the "On the
+      // move!" beat; a between-gates resume leads only a view transition —
+      // the gate verdict was its announcement. A zero-tile opening still
+      // announces ("your pawn stays put" is a real beat); the no-walk leap
+      // resume (no intro, nothing to walk) settles below with NO phase flip,
+      // which the gate shell's deferred relatch depends on.
+      if (player.phase !== 'moving' && (player.walkIntro || tilesRemain)) {
+        player.phase = 'moving'
+        await server.updateGameState(game)
+        server.emit({ event: 'update', game }, eventTarget)
+        scheduleMovementPhase(
+          player.walkIntro ? WALK_LEAD_MS : WALK_RESUME_LEAD_MS,
+          { io, redis, socket, eventTarget },
+          { continuation: true, walkSeq: player.walkSeq }
+        )
+        return
+      }
 
       // Still tiles to walk: advance ONE step and hand the queue back. The
-      // +500ms pace to the next step runs OUTSIDE the queue (via reschedule),
-      // so a slow walker never blocks other players' events for this game.
-      if (player.currentPosition < stopAt) {
-        // A SERVER-initiated walk start (a gate-result resume, a rearm, a
-        // heal — any continuation reaching a seat not yet 'moving') announces
-        // itself first: the phase flip rides its own snapshot so the board
-        // mounts, and the steps only start after the mount grace — otherwise
-        // a short walk finishes before the client ever presents the board
-        // and the whole movement beat is skipped. Client-driven entries (not
-        // continuations) come from a board already on screen; cap walks
-        // pre-announce in armParkedWalks and arrive here already 'moving'.
-        if (eventData.continuation && player.phase !== 'moving') {
-          player.phase = 'moving'
-          await server.updateGameState(game)
-          server.emit({ event: 'update', game }, eventTarget)
-          scheduleMovementPhase(
-            WALK_LEAD_MS,
-            { io, redis, socket, eventTarget },
-            { continuation: true, walkSeq: player.walkSeq }
-          )
-          return
-        }
-
+      // pace to the next step runs OUTSIDE the queue (via reschedule), so a
+      // slow walker never blocks other players' events for this game.
+      if (move && tilesRemain) {
         // The single-stepper latch: duplicate continuations for the SAME walk
         // (a rejoin re-armed a resume beside the live timer) both pass the
         // walkSeq guard, and two chains would step the pawn at double pace.
@@ -190,9 +197,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
           return
         }
 
-        player.phase = 'moving'
         player.currentPosition++
         player.lastStepAt = now
+        // The first step ends the intro: later announces on this walk are
+        // resumes and take the short lead.
+        player.walkIntro = false
         await server.updateGameState(game)
         server.emit({ event: 'update', game }, eventTarget)
 
@@ -204,8 +213,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
         return
       }
 
-      // Arrived at the stop tile — settle the move.
-      if (move.challenge) {
+      // Arrived at the stop tile (or a zero-tile opening) — settle the move.
+      player.walkIntro = false
+      if (move?.challenge) {
         player.phase = move.challenge._type
       } else {
         player.phase = 'movement-summary'
@@ -217,10 +227,10 @@ export const enterMovementPhaseHandler = defineGameHandler(
       server.emit({ event: 'update', game }, eventTarget)
       // A gate only a submit resolves gets its server-owned cap the moment
       // the seat lands on it.
-      if (move.challenge?._type === 'individual-challenge') {
+      if (move?.challenge?._type === 'individual-challenge') {
         armIndividualGateCap({ io, redis, socket, eventTarget }, player)
       }
-      if (move.challenge?._type === 'final-challenge') {
+      if (move?.challenge?._type === 'final-challenge') {
         armFinalQuestionCap({ io, redis, socket, eventTarget }, player)
       }
     } else {
