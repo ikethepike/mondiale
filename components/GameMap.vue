@@ -2065,14 +2065,30 @@ path[id],
   // walked chain's fills arrive in sequence, one hop after another.
   transition-delay: calc(var(--chain-index, 0) * 60ms);
 
-  // Off the current board (a continental variant) — visibly not in play.
-  // Not element opacity: neighbouring dimmed countries repaint their shared
-  // border, and two 50% strokes stack back to near-solid ink. Fills never
-  // overlap, so fill-opacity dims them safely; the stroke gets a solid
-  // pre-blended colour that overdraws itself without accumulating.
+  // Not in play, for either reason: off the current board (a continental
+  // variant), or benched for the whole game (a micro-nation). One softened
+  // outline says both. Not stroke-opacity: neighbouring quiet countries
+  // repaint their shared border, and two 50% strokes stack back to near-solid
+  // ink — a solid pre-blended colour overdraws itself without accumulating.
+  //
+  // This fades a shape's OWN outline only. An enclave's border is also its
+  // host's — Italy draws the Vatican's and San Marino's, Spain and France draw
+  // Andorra's — so AD/LI/MC/SM/VA stay traced as ordinary terrain; the island
+  // micro-nations (AG, DM, KN, NR, PW, TV) own their whole coastline and do
+  // fade. Either way their dot markers and tap halos are already gone (see
+  // microCountries), so nothing that invites a tap survives.
+  &.dimmed-country,
+  &.unselectable-country {
+    stroke: color-mix(in srgb, currentColor 50%, var(--background-color));
+  }
+
+  // A whole off-board region pales together, so its fill can recede too —
+  // fills never overlap, so fill-opacity dims them safely. A lone benched
+  // micro-nation must NOT: --map-not-highlight is a 10%-alpha wash, and
+  // halving it against the cream page turns Andorra into a bright hole in the
+  // Pyrenees — louder than the border the fade was meant to quieten.
   &.dimmed-country {
     fill-opacity: 0.5;
-    stroke: color-mix(in srgb, currentColor 50%, var(--background-color));
   }
 
   // The chain head breathes ember → yellow; frames without a fill fall back
