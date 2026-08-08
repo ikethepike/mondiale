@@ -485,10 +485,18 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
-    // A backward display delta is the on-gate stance unwinding: only the
-    // FAILED half (the round's blocked record) may play as a bounce — a won
-    // gate's short leap must never hop the pawn backward off it.
-    retreatAllowedFor: playerId => Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
+    // A backward display delta is the on-gate stance unwinding, and only a
+    // LOSS may play it: a failed gate empties the moves (and stamps the
+    // round's blocked record), a gauntlet knockout just empties them — that
+    // hop is the thrown-off-the-mountain descent. A WON gate keeps its plan
+    // (or victory), so its short leap must never hop the pawn backward off
+    // a tile it just cleared.
+    retreatAllowedFor: playerId => {
+      const player = props.game.players[playerId]
+      if (!player) return false
+      if (!player.moves.length) return true
+      return Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked)
+    },
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {

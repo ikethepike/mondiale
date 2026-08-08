@@ -69,7 +69,7 @@ export const GROUP_SCORES_CAP_MS = 45000
  * view transition — the gate verdict the player just watched IS the
  * announcement.
  */
-export const WALK_LEAD_MS = 3500
+export const WALK_LEAD_MS = 3200
 export const WALK_RESUME_LEAD_MS = 900
 /** Snapshot delivery grace inside the lead, so a slow wire can't push the
  *  announcement beat past the first step. */
@@ -78,14 +78,14 @@ export const WALK_ANNOUNCE_WIRE_GRACE_MS = 350
 /** The "On the move!" interstitial, sized to FIT INSIDE the walk lead by
  *  construction (enforced in round-beats.test.ts): the reading hold plus
  *  the intro/stagger/outro choreography budget. */
-export const MOVE_INTERSTITIAL_HOLD_MS = 1500
+export const MOVE_INTERSTITIAL_HOLD_MS = 1200
 export const MOVE_INTERSTITIAL_OVERHEAD_MS = 1650
 export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
 
 /** One tile's hop tween; catch-up tiers derive from it (use-pawn-movement). */
 export const PAWN_HOP_MS = 380
 /** How long a pawn rests with an empty queue before it counts as LANDED
- *  (squash + ripple) — server steps arrive ~500ms apart, so the queue is
+ *  (squash + ripple) — server steps arrive a cadence apart, so the queue is
  *  briefly empty between every step. */
 export const LANDING_SETTLE_MS = 650
 /** The challenge-tile alert ripple's sweep. */

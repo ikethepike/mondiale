@@ -144,9 +144,9 @@
       :entries="endonymLabelEntries"
     />
     <ChallengeResult
-      v-if="status"
+      v-if="status || knockedOut"
       :key="currentChallengeCount"
-      :status="status"
+      :status="status || 'incorrect'"
       :correct-message="
         currentFinalChallenge?._type === 'city-nocturne-challenge' ? 'Success!' : undefined
       "
@@ -318,6 +318,13 @@ const gauntlet = computed(() =>
     ? currentMove.value.challenge
     : lastGauntlet.value
 )
+
+// The knockout as the WIRE tells it: the miss that ends the gauntlet (a
+// wrong answer, or the question cap burning an unanswered one) empties
+// `moves` while the phase holds for the verdict pause. A cap-resolved miss
+// never set a local status, so without this the shell stood bare — progress
+// pill, no prompt, no verdict — for the whole beat.
+const knockedOut = computed(() => !!lastGauntlet.value && !currentMove.value)
 
 /** The board the gauntlet was dealt from — the verdict's scope, and the
  *  ranking the stat scorecard reads. */
@@ -544,8 +551,8 @@ const lesson = computed(() => {
 
 // Optimistic: the payload still holds pre-answer lives during the reveal
 const livesLine = computed(() => {
-  if (status.value !== 'incorrect') return undefined
-  return livesRemaining.value > 0
+  if (status.value !== 'incorrect' && !knockedOut.value) return undefined
+  return livesRemaining.value > 0 && !knockedOut.value
     ? `A life is spent — ${livesRemaining.value - 1} left.`
     : 'Out of lives — back to the board race.'
 })
