@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getGroupChallenge, isFlagPaletteMatch } from '~~/lib/challenges'
+import { getValueByAccessorID } from '~~/lib/values'
 import { isValidGameConfiguration } from '~~/types/game.types'
 import {
   autoEnabledKinds,
@@ -164,6 +165,31 @@ describe('conflicts stay a rare find', () => {
     expect(HEAVY_ACCESSORS.has('people.population')).toBe(false)
     // Everything-grouped must not mean everything-heavy.
     expect(HEAVY_ACCESSORS.size).toBe(CHALLENGE_GROUP_ACCESSORS.conflicts.length)
+  })
+})
+
+describe('ranking hands split the field', () => {
+  it('never deals a hand where every country shares the value', () => {
+    // Europe is the pool that bites: electricity access is 100% across the
+    // continent, and a flat hand scores itself.
+    const game = {
+      variant: 'europe',
+      difficulty: 'normal',
+      rounds: [],
+      players: { p1: {}, p2: {} },
+    } as unknown as Parameters<typeof getGroupChallenge>[0]['game']
+    for (let deal = 0; deal < 50; deal++) {
+      const challenge = getGroupChallenge({ game })
+      for (const hand of Object.values(challenge.countriesPerPlayer)) {
+        const amounts = new Set(
+          hand.map(isoCode => getValueByAccessorID(isoCode, challenge.id)?.amount)
+        )
+        expect(
+          amounts.size,
+          `${challenge.id} dealt a flat hand: ${hand.join(', ')}`
+        ).toBeGreaterThan(1)
+      }
+    }
   })
 })
 

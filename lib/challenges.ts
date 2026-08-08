@@ -1775,6 +1775,9 @@ export const isCorrectWaterGuess = (
   return normalize(guess.guessedName) === normalize(challenge.featureName)
 }
 
+/** Shuffles a flat hand gets before the dealer tries another stat. */
+const FLAT_HAND_REDEALS = 6
+
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const playerIds = Object.keys(game.players)
   const pool = playableCountries(game)
@@ -1792,14 +1795,23 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
 
   // Source data drifts between regenerations and some accessors end up with
   // little or no data — only ever deal a challenge that can fill the round,
-  // otherwise players get a question with zero countries to rank.
+  // otherwise players get a question with zero countries to rank. A stat the
+  // whole pool agrees on is no question either (a continental pool's
+  // electricity access is 100% across the board, and the round would score
+  // itself): the accessor must fill the round AND split the field.
   const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
     if (!isAccessorEnabled(game, challenge.id)) return false
     if (opener && HEAVY_ACCESSORS.has(challenge.id)) return false
     let available = 0
+    let firstAmount: number | undefined
+    let splits = false
     for (const isoCode of pool) {
-      if (getValueByAccessorID(isoCode, challenge.id)) available++
-      if (available >= required) return true
+      const value = getValueByAccessorID(isoCode, challenge.id)
+      if (!value) continue
+      available++
+      if (firstAmount === undefined) firstAmount = value.amount
+      else if (value.amount !== firstAmount) splits = true
+      if (available >= required && splits) return true
     }
     return false
   })
@@ -1808,21 +1820,40 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
     throw new EvalError('No group challenge has enough country data to fill a round')
   }
 
-  const base = sample(viable)!
+  const flatHand = (hand: ISOCountryCode[], accessorId: GroupChallengeAccessorId) =>
+    new Set(hand.map(isoCode => getValueByAccessorID(isoCode, accessorId)?.amount)).size <= 1
 
-  const isoCodes = shuffleArray<ISOCountryCode>([...pool]).filter(
-    isoCode => !!getValueByAccessorID(isoCode, base.id)
-  )
+  const dealHands = (accessorId: GroupChallengeAccessorId) => {
+    const deck = shuffleArray<ISOCountryCode>([...pool]).filter(
+      isoCode => !!getValueByAccessorID(isoCode, accessorId)
+    )
+    const hands: Record<string, ISOCountryCode[]> = {}
+    for (const playerId of playerIds) hands[playerId] = deck.splice(0, perPlayer)
+    return hands
+  }
+
+  // A viable accessor can still shuffle a flat hand (most of Europe ties on
+  // internet access too) — re-deal, then try the other accessors, before
+  // settling for the first deal. Ranking is the round mix's floor, so a
+  // degenerate hand beats refusing to deal, but only as the last resort.
+  let base = sample(viable)!
+  let hands = dealHands(base.id)
+  deal: for (const candidate of shuffleArray([...viable])) {
+    for (let attempt = 0; attempt < FLAT_HAND_REDEALS; attempt++) {
+      const dealt = dealHands(candidate.id)
+      if (Object.values(dealt).every(hand => !flatHand(hand, candidate.id))) {
+        base = candidate
+        hands = dealt
+        break deal
+      }
+    }
+  }
 
   // Clone — GROUP_CHALLENGES entries are module singletons shared across
   // every game and round on this server; mutating them bleeds state.
   const challenge: (typeof GROUP_CHALLENGES)[keyof typeof GROUP_CHALLENGES] = {
     ...base,
-    countriesPerPlayer: {},
-  }
-
-  for (const playerId of playerIds) {
-    challenge.countriesPerPlayer[playerId] = isoCodes.splice(0, perPlayer)
+    countriesPerPlayer: hands,
   }
 
   return challenge
