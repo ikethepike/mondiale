@@ -488,8 +488,7 @@ const rebuild = () => {
     // A backward display delta is the on-gate stance unwinding: only the
     // FAILED half (the round's blocked record) may play as a bounce — a won
     // gate's short leap must never hop the pawn backward off it.
-    retreatAllowedFor: playerId =>
-      Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
+    retreatAllowedFor: playerId => Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {
