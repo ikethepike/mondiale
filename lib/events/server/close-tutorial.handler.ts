@@ -1,7 +1,9 @@
 import { defineGameHandler } from '../server-side'
 import { currentBorderChain, scheduleChainTimeout } from './chain-turns'
 import { scheduleClassicSettle, startClassicClockOnLastClose } from './classic-rounds'
+import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from './heritage-beats'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
+import { currentTimeline, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(
@@ -33,14 +35,37 @@ export const closeTutorialHandler = defineGameHandler(
       await startManhunt({ io, redis, socket, eventTarget }, game, manhunt)
     }
 
+    // Heritage Hunt / Timeline dealt as round 1 (the same FORCE_ROUND_TYPE
+    // seam): their beat clocks stamp in the enter-movement-phase reveal,
+    // which round 1 never passes — left at deadline 0 the round never ticks
+    // and rearm refuses it (a dead round). Stamp on the close that empties
+    // the rules cards, arm after the save.
+    const lastClose = !Object.values(game.players).some(seat => seat.phase === 'tutorial')
+    const heritage = currentHeritageHunt(game)
+    const startsHeritage = Boolean(
+      lastClose && heritage && !heritage.state.finished && heritage.state.deadline === 0
+    )
+    if (startsHeritage && heritage) startHeritageClock(heritage)
+    const timeline = currentTimeline(game)
+    const startsTimeline = Boolean(
+      lastClose && timeline && !timeline.state.finished && timeline.state.deadline === 0
+    )
+    if (startsTimeline && timeline) startTimelineClock(timeline)
+
     await server.updateGameState(game)
-    // The last close stamps ROUND-level state (`round.deadline`) — a seat
-    // slice would drop it and leave every client's countdown unstamped while
-    // the server's settle backstop already ticks against it.
-    if (startsClassicClock) {
+    // The last close stamps ROUND-level state (`round.deadline`, an engine's
+    // `state.deadline`) — a seat slice would drop it and leave every
+    // client's countdown unstamped while the server's backstop ticks.
+    if (startsClassicClock || startsHeritage || startsTimeline) {
       server.emit({ event: 'table-updated', game }, eventTarget)
     } else {
       server.emit({ event: 'update', game }, eventTarget)
+    }
+    if (startsHeritage && heritage) {
+      scheduleHeritageTimeout({ io, redis, socket, eventTarget }, heritage)
+    }
+    if (startsTimeline && timeline) {
+      scheduleTimelineTimeout({ io, redis, socket, eventTarget }, timeline)
     }
     if (startsManhunt && !manhunt.state.finished) {
       scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)

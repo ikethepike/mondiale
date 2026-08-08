@@ -13,17 +13,22 @@ import { gameVariants, isValidGameVariant } from '~~/types/game.types'
  */
 /** Collapse the mount-join and the connect-listener join (or a reconnect
  *  burst) into one wire event — each join answers with a full snapshot, and
- *  back-to-back replaces re-trigger every identity-sensitive watcher. */
+ *  back-to-back replaces re-trigger every identity-sensitive watcher. Keyed
+ *  by the socket CONNECTION: a join that died on a closing socket must not
+ *  dedupe away the fresh connection's join 100ms later. */
 const JOIN_DEDUPE_MS = 250
 let lastJoinAt = 0
+let lastJoinSocketId: string | undefined
 
 export const useJoinRoom = () => {
   const route = useRoute()
   const { update, gameStore } = useClientEvents()
 
   return () => {
-    if (Date.now() - lastJoinAt < JOIN_DEDUPE_MS) return
+    const socketId = gameStore.socket?.id
+    if (socketId === lastJoinSocketId && Date.now() - lastJoinAt < JOIN_DEDUPE_MS) return
     lastJoinAt = Date.now()
+    lastJoinSocketId = socketId
     const socket = gameStore.socket
     const roomId = route.params.roomId
     if (socket && typeof roomId === 'string') {

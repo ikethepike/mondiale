@@ -6,7 +6,7 @@ import type { Player } from '~~/types/player.type'
 import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { clearFinalResultBeat } from './seat-exits'
-import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+import { FINAL_REVEAL_HOLD_MS, GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 
 /**
  * One missed question, one shape: burn a life and advance (a missed LAST
@@ -109,10 +109,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // Staleness echo, like the gates' `gateTile`: an answer that lost the
     // race with the question cap (or any redeal) must not be graded against
     // a question the player never saw.
-    if (
-      eventData.turn !== undefined &&
-      eventData.turn !== (currentMove.challenge.turn ?? 0)
-    ) {
+    if (eventData.turn !== undefined && eventData.turn !== (currentMove.challenge.turn ?? 0)) {
       return console.warn(
         `Ignoring final submit for turn ${eventData.turn} — the gauntlet is on turn ${currentMove.challenge.turn ?? 0}`
       )
@@ -190,8 +187,12 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // the winner's own result beat, or the staged round's `new-round` full
     // snapshot can land before the victory beat it should follow.
     if (won) {
+      // BEHIND the winner's reveal: the reveal emit lands at
+      // FINAL_REVEAL_HOLD_MS, so the advancement re-check (whose staged
+      // `new-round` full snapshot would cut the reveal short) must not fire
+      // sooner. Riding the same token keeps the order by construction.
       scheduleMovementPhase(
-        GATE_RESULT_HOLD_MS,
+        FINAL_REVEAL_HOLD_MS,
         { io, redis, socket, eventTarget },
         { continuation: true, walkSeq: player.walkSeq }
       )

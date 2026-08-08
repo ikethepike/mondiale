@@ -1,5 +1,5 @@
 import { hasGame } from '~~/types/events.types'
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /**
  * Seat + that seat's round slice: the acting player's record, answer and

@@ -3,6 +3,9 @@ import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
 import { enterMovementPhaseHandler, scheduleMovementPhase } from './enter-movement-phase.handler'
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
+import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
+import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
+import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
 import {
   STEP_INTERVAL_MS,
   WALK_LEAD_MS,
@@ -34,13 +37,22 @@ import type { EngineContext } from './round-engine'
  * paths named, before any room ever renders the divergence.
  */
 
-/** Client applier semantics, mirrored from plugins/socket.client.ts. */
-const SEAT_SLICE_EVENTS = new Set(['update'])
-const SEAT_ROUND_SLICE_EVENTS = new Set([
-  'group-challenge-scored',
-  'individual-challenge-checked',
-  'final-challenge-checked',
-])
+/**
+ * Client applier semantics DERIVED from the real registry by handler
+ * identity — never a hand-kept copy (the copy drifted on
+ * 'final-challenge-checked' and silently voided the harness for the
+ * gauntlet family). A new event routes here automatically.
+ */
+const SEAT_SLICE_EVENTS = new Set(
+  Object.entries(CLIENT_SIDE_EVENT_HANDLERS)
+    .filter(([, config]) => config.handler === playerUpdateEvent)
+    .map(([event]) => event)
+)
+const SEAT_ROUND_SLICE_EVENTS = new Set(
+  Object.entries(CLIENT_SIDE_EVENT_HANDLERS)
+    .filter(([, config]) => config.handler === groupChallengeScoredEvent)
+    .map(([event]) => event)
+)
 
 type Emit = { event: string; game: Game; targetId: string }
 
@@ -126,12 +138,16 @@ const context = (game: Game, playerId = 'a'): EngineContext => {
   return {
     io: {
       in: () => ({
-        emit: (_event: string, payload: ServerEventData) => {
+        // The REAL wire shape (server-side.ts emit): the third argument is
+        // the target. Capturing it — instead of stamping the scenario's
+        // actor — makes a seat slice addressed to the WRONG player a
+        // divergence the replay can catch.
+        emit: (_event: string, payload: ServerEventData, target?: { playerId?: string }) => {
           if ('game' in payload && payload.game) {
             emits.push({
               event: payload.event,
               game: structuredClone(payload.game),
-              targetId: playerId,
+              targetId: target?.playerId ?? playerId,
             })
           }
         },

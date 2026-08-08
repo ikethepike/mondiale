@@ -749,14 +749,17 @@ const isPersonalScorecard = computed(() => {
 })
 
 const closeScores = () => {
+  // The booth guard comes FIRST: a finisher-watcher resolves `playerId` to
+  // the followed seat, and flipping before the guard would corrupt their
+  // own local record on a stray click (today only SpectateMount's `inert`
+  // stands between that click and this body).
+  if (gameStore.watching) return
+
   // Optimistic flip for the instant view transition; the server's announce
   // snapshot confirms it and the walk lead covers the board coming up.
   if (gameStore.game?.players[playerId.value]) {
     gameStore.game.players[playerId.value].phase = 'moving'
   }
-
-  // A booth watcher never owes the server a movement request.
-  if (gameStore.watching) return
 
   // Delivery is update()'s job (ack + retry — this is a critical event); a
   // fully lost request falls to the server's group-scores cap.

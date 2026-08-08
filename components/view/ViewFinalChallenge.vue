@@ -1,7 +1,10 @@
 <template>
   <div class="view-final-challenge challenge-shell">
+    <!-- Never without a gauntlet: a reload during the knockout hold mounts
+         with empty moves and no latch, and the intro read "0 questions,
+         0 lives" for the rest of the beat. -->
     <GauntletIntro
-      v-if="showInterstitial"
+      v-if="showInterstitial && gauntlet"
       :questions="totalChallengeCount"
       :lives="livesRemaining"
       @done="showInterstitial = false"

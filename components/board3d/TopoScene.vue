@@ -496,8 +496,7 @@ const rebuild = () => {
     // failed gate AND the gauntlet knockout — is the license. A won gate's
     // short leap (a hint-drained pot can be zero) carries no record and
     // holds instead of hopping backward off a tile it just cleared.
-    retreatAllowedFor: playerId =>
-      Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
+    retreatAllowedFor: playerId => Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {
@@ -714,62 +713,62 @@ watch(
 // SCREEN: while the stage is hidden the watcher holds without latching, and
 // the show pass re-runs the sync so the moment isn't consumed invisibly.
 const syncStuckBeats = () => {
-    const blocked = new Set(
-      Object.values(props.game.players)
-        .filter(isBlockedByChallenge)
-        .map(player => player.id)
-    )
+  const blocked = new Set(
+    Object.values(props.game.players)
+      .filter(isBlockedByChallenge)
+      .map(player => player.id)
+  )
 
-    for (const [playerId, tween] of stuckTweens) {
-      if (blocked.has(playerId)) continue
-      tween.kill()
-      stuckTweens.delete(playerId)
-      challengeAlerted.delete(playerId)
-      const pawn = pawns.get(playerId)
-      if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
-    }
+  for (const [playerId, tween] of stuckTweens) {
+    if (blocked.has(playerId)) continue
+    tween.kill()
+    stuckTweens.delete(playerId)
+    challengeAlerted.delete(playerId)
+    const pawn = pawns.get(playerId)
+    if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
+  }
 
-    // A pawn that STARTS its turn already blocked (no landing hop to fire
-    // onLand) still deserves the challenge-hit moment. Only pawns settled on
-    // the challenge tile qualify — walkers get theirs from onLand. Delayed a
-    // beat so it plays after the movement interstitial clears.
-    for (const playerId of blocked) {
-      const player = props.game.players[playerId]
-      const pawn = pawns.get(playerId)
-      const tile = player ? tileFor(displayPositionFor(player)) : undefined
-      if (!player || !pawn || !tile || challengeAlerted.has(playerId)) continue
+  // A pawn that STARTS its turn already blocked (no landing hop to fire
+  // onLand) still deserves the challenge-hit moment. Only pawns settled on
+  // the challenge tile qualify — walkers get theirs from onLand. Delayed a
+  // beat so it plays after the movement interstitial clears.
+  for (const playerId of blocked) {
+    const player = props.game.players[playerId]
+    const pawn = pawns.get(playerId)
+    const tile = player ? tileFor(displayPositionFor(player)) : undefined
+    if (!player || !pawn || !tile || challengeAlerted.has(playerId)) continue
 
-      const spacing = board.value?.spacing ?? 8
-      const settled = pawn.position.distanceTo(tile.position) < spacing * 0.6
-      if (!settled) continue
+    const spacing = board.value?.spacing ?? 8
+    const settled = pawn.position.distanceTo(tile.position) < spacing * 0.6
+    if (!settled) continue
 
-      const settledPlayerId = playerId
-      const settledTile = tile
-      schedule(() => {
-        const current = props.game.players[settledPlayerId]
-        if (current && isBlockedByChallenge(current)) {
-          playChallengeHit(settledPlayerId, settledTile)
-        }
-      }, MOVE_INTERSTITIAL_TOTAL_MS)
-    }
+    const settledPlayerId = playerId
+    const settledTile = tile
+    schedule(() => {
+      const current = props.game.players[settledPlayerId]
+      if (current && isBlockedByChallenge(current)) {
+        playChallengeHit(settledPlayerId, settledTile)
+      }
+    }, MOVE_INTERSTITIAL_TOTAL_MS)
+  }
 
-    if (prefersReducedMotion()) return
+  if (prefersReducedMotion()) return
 
-    for (const playerId of blocked) {
-      if (stuckTweens.has(playerId)) continue
-      const pawn = pawns.get(playerId)
-      if (!pawn) continue
+  for (const playerId of blocked) {
+    if (stuckTweens.has(playerId)) continue
+    const pawn = pawns.get(playerId)
+    if (!pawn) continue
 
-      stuckTweens.set(
-        playerId,
-        gsap.fromTo(
-          pawn.rotation,
-          { z: -0.07 },
-          // Delay lets the landing hop settle before the struggle starts
-          { z: 0.07, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.6 }
-        )
+    stuckTweens.set(
+      playerId,
+      gsap.fromTo(
+        pawn.rotation,
+        { z: -0.07 },
+        // Delay lets the landing hop settle before the struggle starts
+        { z: 0.07, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.6 }
       )
-    }
+    )
+  }
 }
 watch(
   () =>
@@ -793,28 +792,28 @@ watch(
 // player per round, delayed a breath so the remount's placement settles.
 const blockedBeatsPlayed = new Set<string>()
 const syncBlockedBeats = () => {
-    const round = latestRound(props.game)
-    if (!round) return
-    const roundKey = props.game.rounds.length - 1
+  const round = latestRound(props.game)
+  if (!round) return
+  const roundKey = props.game.rounds.length - 1
 
-    for (const player of Object.values(props.game.players)) {
-      const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
-      if (blockedAt === undefined || player.phase !== 'movement-summary') continue
-      const key = `${player.id}:${roundKey}`
-      if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
-      blockedBeatsPlayed.add(key)
+  for (const player of Object.values(props.game.players)) {
+    const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
+    if (blockedAt === undefined || player.phase !== 'movement-summary') continue
+    const key = `${player.id}:${roundKey}`
+    if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
+    blockedBeatsPlayed.add(key)
 
-      const beatPlayerId = player.id
-      schedule(() => {
-        const gateTile = tileFor(blockedAt)
-        if (!gateTile) return
-        triggerRipple(gateTile, 'alert')
-        knockPawn(beatPlayerId)
-        if (beatPlayerId === cameraTargetId.value) {
-          boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
-        }
-      }, 700)
-    }
+    const beatPlayerId = player.id
+    schedule(() => {
+      const gateTile = tileFor(blockedAt)
+      if (!gateTile) return
+      triggerRipple(gateTile, 'alert')
+      knockPawn(beatPlayerId)
+      if (beatPlayerId === cameraTargetId.value) {
+        boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
+      }
+    }, 700)
+  }
 }
 watch(
   () =>

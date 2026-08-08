@@ -74,10 +74,15 @@ const onContextLost = () => {
 onMounted(() => stageEl.value?.addEventListener('webglcontextlost', onContextLost, true))
 onBeforeUnmount(() => {
   stageEl.value?.removeEventListener('webglcontextlost', onContextLost, true)
-  // Leaving the room retires the stage — the next game starts cold.
+  // Leaving the room retires the stage — the next game starts cold. The
+  // intro memory resets too: playerId persists across games while walkSeq
+  // restarts, so a stale key silently ate the next game's first
+  // "On the move!". The follow target is per-game state as well.
   gameStore.board.stageReady = false
   gameStore.board.stageFailed = false
   gameStore.board.stageActive = false
+  gameStore.board.introSeenKey = undefined
+  gameStore.board.spectateTargetId = undefined
 })
 </script>
 <style scoped>

@@ -1,5 +1,5 @@
 import { CHEER_EMOJIS } from '~~/types/events.types'
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /** Bounds the list between prune ticks, so a burst can't grow the scene. */
 const MAX_ENTRIES = 16
