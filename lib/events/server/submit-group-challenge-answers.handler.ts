@@ -14,6 +14,17 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
     const currentRound = latestRound(game)
     if (!currentRound) throw new ReferenceError('No round in play to submit answers for')
 
+    // Staleness echo: a socket-buffered answer flushing after the classic
+    // settle auto-advanced the table belongs to a FINISHED round — grading
+    // it against whatever round now heads the list banks a nonsense answer
+    // (and, mid-staging, would write into a round nobody has seen). Late
+    // answers are discarded by design.
+    if (eventData.roundIndex !== undefined && eventData.roundIndex !== game.rounds.length - 1) {
+      return console.warn(
+        `Ignoring group submit for round ${eventData.roundIndex} — grading round is ${game.rounds.length - 1}`
+      )
+    }
+
     // A repeat submission (double-click, reconnect replay) would re-score the
     // round and rebuild the player's moves — possibly mid-walk.
     if (currentRound.groupAnswers[playerId]) {

@@ -34,6 +34,11 @@ const stub = vi.hoisted(() => {
 vi.mock('~~/lib/events/client-side', () => ({
   REDELIVER_MAX_BATCHES: 15,
   REDELIVER_PAUSE_MS: 4000,
+  // The real loop shape, minus pacing detail the shell tests don't assert.
+  createRedeliver: () => ({
+    deliver: (send: () => Promise<boolean>) => send().catch(() => false),
+    dispose: () => {},
+  }),
   useClientEvents: () => stub,
 }))
 

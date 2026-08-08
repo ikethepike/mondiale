@@ -225,6 +225,31 @@ describe('every emit leaves the simulated client equal to server truth', () => {
     expect(client.rounds[0].playerTurns.b.points.scored).toBe(0)
   })
 
+  it('drops a group answer whose round echo is stale — no grade, no emit', async () => {
+    const initial = buildGame([seat('a', 'group-challenge')], CAPITAL_GUESS)
+    const ctx = context(initial, 'a')
+
+    await submitGroupChallengeAnswersHandler({
+      io: ctx.io,
+      redis: ctx.redis,
+      socket: ctx.socket,
+      eventKey: 'submit-group-challenge-answers',
+      eventTarget: { gameId: initial.id, playerId: 'a' },
+      eventData: {
+        event: 'submit-group-challenge-answers',
+        ranking: ['SE'],
+        clientScore: 5,
+        // A buffered answer from a round the settle already closed.
+        roundIndex: 5,
+      },
+    } as never)
+
+    expect(emits).toHaveLength(0)
+    const fresh = store.get(initial.id)!
+    expect(fresh.players.a.phase).toBe('group-challenge')
+    expect(fresh.rounds[0].groupAnswers.a).toBeUndefined()
+  })
+
   it('hold-0 flow: the inline flip rides one seat+round slice', async () => {
     const initial = buildGame([seat('a', 'group-challenge')], CAPITAL_GUESS)
     const ctx = context(initial, 'a')

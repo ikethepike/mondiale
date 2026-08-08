@@ -41,6 +41,10 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
+      /** Staleness echo: the round this answer belongs to. A socket-buffered
+       *  submit flushing after the settle auto-advanced the table must not be
+       *  graded against the NEXT round's challenge. */
+      roundIndex?: number
       /**
        * Client-computed points for modes the server can't reproduce (sketch
        * similarity, silhouette buzz timing). The server clamps it; correctness
@@ -191,6 +195,10 @@ export type ClientEventData =
   | {
       event: 'submit-final-challenge-answer'
       submittedAnswer: FinalChallengeAnswer
+      /** Staleness echo, the gates' `gateTile` posture: the gauntlet turn
+       *  this answer was given on. An answer that lost the race with the
+       *  question cap must not consume the replacement question. */
+      turn?: number
     }
   | {
       event: 'update-configuration'
@@ -264,8 +272,11 @@ export const isCriticalClientEvent = (event: ClientEvent): event is CriticalClie
 export type ClientEventAck =
   | { ok: true }
   /** 'unbound': the socket lost its player binding (reconnect before re-join)
-   *  — the client should re-join, then retry. 'error': the handler threw. */
-  | { ok: false; reason: 'unbound' | 'error' }
+   *  — the client should re-join, then retry. 'error': the handler threw
+   *  (fail fast, a retry fails identically). 'resolving': a RetryableReject —
+   *  the seat's result-beat latch is up; the same payload lands once the
+   *  hold clears, so KEEP retrying. */
+  | { ok: false; reason: 'unbound' | 'error' | 'resolving' }
 
 export interface ClientEventTarget {
   gameId: string

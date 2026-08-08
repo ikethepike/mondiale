@@ -22,6 +22,40 @@ export const REDELIVER_PAUSE_MS = 4000
  *  recovery (a refresh re-enters the round or re-banks the seat). */
 export const REDELIVER_MAX_BATCHES = 15
 
+/**
+ * THE redeliver loop: keep a critical payload alive past update()'s own ack
+ * batch, re-sending in paced batches until delivered, disposed, or the cap.
+ * One home — a composable or view must never grow a private timer chain
+ * (two of them had, and they'd already drifted). Retryable server rejects
+ * (a `resolving` latch mid-hold) resolve here too: the batch pacing outlasts
+ * every result hold, so the answer lands once the beat clears.
+ */
+export const createRedeliver = (label: string) => {
+  let disposed = false
+  const timers = new Set<ReturnType<typeof setTimeout>>()
+
+  const deliver = async (send: () => Promise<boolean>, attempt = 1): Promise<void> => {
+    const delivered = await send().catch(() => false)
+    if (delivered || disposed) return
+    if (attempt >= REDELIVER_MAX_BATCHES) {
+      return console.error(`Giving up on ${label} delivery — a rejoin heals the seat from here`)
+    }
+    const timer = setTimeout(() => {
+      timers.delete(timer)
+      void deliver(send, attempt + 1)
+    }, REDELIVER_PAUSE_MS)
+    timers.add(timer)
+  }
+
+  const dispose = () => {
+    disposed = true
+    timers.forEach(clearTimeout)
+    timers.clear()
+  }
+
+  return { deliver, dispose }
+}
+
 /** The only events a booth watcher may emit: their own (re)admission and the
  *  sanctioned crowd cheer. Everything else a mounted read-only view attempts
  *  is swallowed by update()'s watch gate.

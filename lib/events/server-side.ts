@@ -56,6 +56,19 @@ export type GameSocket = Socket<DefaultEventsMap, DefaultEventsMap, DefaultEvent
 export type GameServer = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>
 
 /**
+ * A handler rejection the CLIENT should retry: the state that blocked it is
+ * transient (a `resolving` latch mid-hold), so the same payload will be
+ * accepted once the beat clears. Thrown instead of warn-returned because a
+ * warn-return acks `{ok: true}` — which told the client its answer ran when
+ * it was actually dropped (the audit's eaten-answer bug: a post-reload
+ * answer to the NEXT question died in the latch with a success ack, and the
+ * question cap later burned it as a miss). The middleware acks these
+ * `{ok: false, reason}`, which the client's retry loop treats as retryable
+ * (only 'error' — a genuine throw — fails fast).
+ */
+export class RetryableReject extends Error {}
+
+/**
  * Handlers read-modify-write the whole game to Redis, so two of them running
  * concurrently for the same game clobber each other's saves. One process
  * serves all games — a per-game promise chain fully serializes them. Pacing

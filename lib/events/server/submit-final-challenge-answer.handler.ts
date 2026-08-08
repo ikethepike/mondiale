@@ -1,7 +1,7 @@
 import { playableCountries } from '~~/lib/game-rules'
 import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
-import { defineGameHandler } from '../server-side'
+import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { clearFinalResultBeat } from './seat-exits'
 import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
@@ -86,7 +86,22 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // the question just answered — is rejected; the next genuine answer arrives
     // after the reveal, with the latch already cleared.
     if (player.resolving) {
-      return console.warn(`Final challenge answer already being processed — ignoring duplicate`)
+      // Retryable, not a dead duplicate: a post-reload answer to the NEXT
+      // question lands inside this hold too. The retry outlasts the hold; a
+      // true duplicate then dies on its stale `turn` echo instead.
+      throw new RetryableReject('resolving')
+    }
+
+    // Staleness echo, like the gates' `gateTile`: an answer that lost the
+    // race with the question cap (or any redeal) must not be graded against
+    // a question the player never saw.
+    if (
+      eventData.turn !== undefined &&
+      eventData.turn !== (currentMove.challenge.turn ?? 0)
+    ) {
+      return console.warn(
+        `Ignoring final submit for turn ${eventData.turn} — the gauntlet is on turn ${currentMove.challenge.turn ?? 0}`
+      )
     }
 
     // An odd-one-out question offers a lineup, and only the lineup. Off it sit

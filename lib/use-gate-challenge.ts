@@ -35,7 +35,7 @@ import type {
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
-import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
+import { createRedeliver, useClientEvents } from './events/client-side'
 import { GATE_RESULT_FALLBACK_MS } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
@@ -142,36 +142,21 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * verdict and the leap by the time delivery fails, so a socket blip leaves
    * the player looking at a win the server never heard about.
    */
+  // Delivery rides the ONE redeliver home; a late delivery is harmless — the
+  // handler drops a submit whose `gateTile` is no longer the head gate.
+  const redeliver = createRedeliver('gate answer')
   let disposed = false
-  // A SET, not one handle: back-to-back gates share this shell, so a second
-  // answer can start retrying while the first is still in the air, and one
-  // variable would leave the earlier chain running unreferenced. A late
-  // delivery is harmless — the handler drops a submit whose `gateTile` is no
-  // longer the head gate — but an uncancellable timer is not something to
-  // leave behind on unmount.
-  const resubmits = new Set<ReturnType<typeof setTimeout>>()
   /** The result beat's fallback end — armed by `relatch`, see its note. */
   let beatTimer: ReturnType<typeof setTimeout> | undefined
   const stopBeatTimer = () => {
     if (beatTimer) clearTimeout(beatTimer)
     beatTimer = undefined
   }
-  const deliver = async (payload: Parameters<typeof update>[0], attempt = 1): Promise<void> => {
-    const delivered = await update(payload).catch(() => false)
-    if (delivered || disposed) return
-    if (attempt >= REDELIVER_MAX_BATCHES) {
-      return console.error('Giving up on gate answer delivery — a rejoin heals the seat from here')
-    }
-    const timer = setTimeout(() => {
-      resubmits.delete(timer)
-      void deliver(payload, attempt + 1)
-    }, REDELIVER_PAUSE_MS)
-    resubmits.add(timer)
-  }
+  const deliver = (payload: Parameters<typeof update>[0]) =>
+    redeliver.deliver(() => update(payload))
   onScopeDispose(() => {
     disposed = true
-    resubmits.forEach(clearTimeout)
-    resubmits.clear()
+    redeliver.dispose()
     stopBeatTimer()
   })
 

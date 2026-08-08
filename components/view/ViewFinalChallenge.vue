@@ -281,7 +281,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
@@ -348,6 +348,19 @@ watch(
 const currentFinalChallenge = computed(
   () => liveFinalChallenge.value ?? (knockedOut.value ? lastFinalItem.value : undefined)
 )
+
+// ONE exit for every answer: the redeliver loop keeps it alive past socket
+// blips AND the server's `resolving` hold (a retryable reject), and the turn
+// echo — captured at answer time — pins it to the question it was given on,
+// so a delivery that loses the race with the question cap dies cleanly.
+const finalRedeliver = createRedeliver('final answer')
+onBeforeUnmount(() => finalRedeliver.dispose())
+const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
+  const turn = gauntlet.value?.turn ?? 0
+  return finalRedeliver.deliver(() =>
+    update({ event: 'submit-final-challenge-answer', submittedAnswer, turn })
+  )
+}
 
 /** The board the gauntlet was dealt from — the verdict's scope, and the
  *  ranking the stat scorecard reads. */
@@ -760,7 +773,7 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   gameStore.map.highlighted.add(answered.reveal)
   gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer: answered.submittedAnswer })
+  submitFinalAnswer(answered.submittedAnswer)
 }
 
 const submitScales = () => {
@@ -787,7 +800,7 @@ const submitScales = () => {
   // dossier would just shout the target's population over it
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 const onNocturneFinished = (namedCities: string[]) => {
@@ -798,7 +811,7 @@ const onNocturneFinished = (namedCities: string[]) => {
   const submittedAnswer = { _type: 'city-nocturne-challenge', namedCities } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 const onBoundaryFinished = (drawn: [number, number][]) => {
@@ -808,7 +821,7 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 /** Only the dial difficulties come through here — the stage holds the tapped
@@ -820,7 +833,7 @@ const onChangeFinished = ({ isoCode, decade }: { isoCode: ISOCountryCode; decade
   const submittedAnswer = { _type: 'change-challenge', isoCode, decade } as const
   revealChange(challenge, isoCode)
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 /** Light every accepted country and drop the truth pin on the subject. */
@@ -839,7 +852,7 @@ const onYearbookFinished = (year: number) => {
   const submittedAnswer = { _type: 'yearbook-challenge', year } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => {
@@ -850,7 +863,7 @@ const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => 
   const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-  update({ event: 'submit-final-challenge-answer', submittedAnswer })
+  submitFinalAnswer(submittedAnswer)
 }
 
 const onMapClick = (event: Event) => {
@@ -881,7 +894,7 @@ const onMapClick = (event: Event) => {
         gameStore.map.reveal = currentFinalChallenge.value.country
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'max-challenge':
@@ -905,7 +918,7 @@ const onMapClick = (event: Event) => {
       gameStore.map.highlighted.add(revealIso)
       gameStore.map.status = correct ? 'correct' : 'incorrect'
 
-      update({ event: 'submit-final-challenge-answer', submittedAnswer })
+      submitFinalAnswer(submittedAnswer)
       break
     }
     case 'language-challenge':
@@ -922,7 +935,7 @@ const onMapClick = (event: Event) => {
         const submittedAnswer = { _type: 'language-challenge', isoCode } as const
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'born-challenge':
@@ -951,7 +964,7 @@ const onMapClick = (event: Event) => {
           isoCodes: [...bornPicks.value],
         }
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'diaspora-challenge':
@@ -989,7 +1002,7 @@ const onMapClick = (event: Event) => {
           isoCodes: [...diasporaPicks.value],
         }
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'endonym-challenge':
@@ -1023,7 +1036,7 @@ const onMapClick = (event: Event) => {
           isoCodes: [...endonymPicks.value],
         }
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'change-challenge':
@@ -1038,7 +1051,7 @@ const onMapClick = (event: Event) => {
         revealChange(currentFinalChallenge.value, isoCode)
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'made-challenge':
@@ -1056,7 +1069,7 @@ const onMapClick = (event: Event) => {
         gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
         madeRevealTimeout = setTimeout(() => (madeRevealReady.value = true), 1200)
 
-        update({ event: 'submit-final-challenge-answer', submittedAnswer })
+        submitFinalAnswer(submittedAnswer)
       }
       break
     case 'membership-challenge':

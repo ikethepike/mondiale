@@ -4,7 +4,7 @@ import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import { defineGameHandler } from '../server-side'
+import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 
@@ -64,7 +64,10 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // is also the only path that reaches the next gate; a duplicate fired
     // during the pause is rejected. Stamp it BEFORE any await.
     if (player.resolving) {
-      return console.warn(`Individual challenge already being processed — ignoring duplicate`)
+      // Retryable, not a dead duplicate: a post-reload answer to the NEXT
+      // gate lands inside this hold too. The retry outlasts the hold; a true
+      // duplicate then dies on its stale `gateTile` echo instead.
+      throw new RetryableReject('resolving')
     }
     player.resolving = true
 

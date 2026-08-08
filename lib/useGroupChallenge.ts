@@ -1,9 +1,5 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
-import {
-  REDELIVER_MAX_BATCHES,
-  REDELIVER_PAUSE_MS,
-  useClientEvents,
-} from '~~/lib/events/client-side'
+import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
@@ -141,36 +137,29 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * heal make every re-send safe, and the `submitted` latch stays up so the
    * view never offers a second answer.
    */
-  let disposed = false
-  let resubmitTimer: ReturnType<typeof setTimeout> | undefined
-  let deliveryBatches = 0
-  const deliverAnswer = async (
+  const redeliver = createRedeliver('group answer')
+  const deliverAnswer = (
     ranking: ISOCountryCode[],
     clientScore?: number,
     buzzAt?: number,
     extras?: SubmitExtras
   ) => {
-    deliveryBatches++
-    const delivered = await update({
-      event: 'submit-group-challenge-answers',
-      ranking,
-      clientScore,
-      buzzAt,
-      ...extras,
-    }).catch(() => false)
-    if (delivered || disposed) return
-    if (deliveryBatches >= REDELIVER_MAX_BATCHES) {
-      return console.error('Giving up on answer delivery — a rejoin heals the seat from here')
-    }
-    resubmitTimer = setTimeout(
-      () => deliverAnswer(ranking, clientScore, buzzAt, extras),
-      REDELIVER_PAUSE_MS
+    // The round echo is captured HERE, when the answer is given: a buffered
+    // redelivery flushing after the settle advanced the table then dies on
+    // the mismatch instead of being graded against the next round.
+    const roundIndex = (gameStore.game?.rounds.length ?? 1) - 1
+    return redeliver.deliver(() =>
+      update({
+        event: 'submit-group-challenge-answers',
+        ranking,
+        clientScore,
+        buzzAt,
+        roundIndex,
+        ...extras,
+      })
     )
   }
-  cleanups.push(() => {
-    disposed = true
-    if (resubmitTimer) clearTimeout(resubmitTimer)
-  })
+  cleanups.push(() => redeliver.dispose())
 
   /**
    * A wrong guess, a duplicate, a name that matched nothing. `hint` renders
