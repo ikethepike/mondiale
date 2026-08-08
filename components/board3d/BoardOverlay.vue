@@ -52,9 +52,12 @@ const subject = computed(() => game.value?.players[subjectId.value])
 
 // A failed gate settles the walk with no hop to see — the banner says what
 // the knock animation alone can't: the gate held, the banked steps are gone.
+// Zero forfeited steps is the gauntlet knockout's stamp (it licenses the
+// descent), not a gate story — the verdict card already told that one.
 const blockedTurn = computed(() => {
   if (subject.value?.phase !== 'movement-summary') return undefined
-  return currentRound.value?.round.playerTurns[subjectId.value]?.blocked
+  const blocked = currentRound.value?.round.playerTurns[subjectId.value]?.blocked
+  return blocked && blocked.forfeitedSteps > 0 ? blocked : undefined
 })
 
 // The "On the move!" beat plays once per walk: only over a turn-OPENING walk

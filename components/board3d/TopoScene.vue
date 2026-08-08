@@ -171,6 +171,9 @@ const knockPawn = (playerId: string) => {
 /** One challenge-hit moment per blocked episode: coral ripple, knock, push-in. */
 const challengeAlerted = new Set<string>()
 const playChallengeHit = (playerId: string, tile: TileTransform) => {
+  // A hidden stage must not CONSUME the moment: skip without latching, and
+  // the show pass's beat sync plays it when there is someone to see it.
+  if (!props.active) return
   if (challengeAlerted.has(playerId)) return
   challengeAlerted.add(playerId)
 
@@ -449,12 +452,15 @@ const syncPawns = () => {
   const players = Object.values(props.game.players)
   const liveIds = new Set(players.map(player => player.id))
 
-  // Remove pawns for departed players
+  // Remove pawns for departed players — the MOVER too: its occupancy state
+  // is per-game now, and a kicked seat's ghost otherwise shrinks and orbits
+  // every pawn that later shares its tile.
   for (const [playerId, pawn] of pawns) {
     if (liveIds.has(playerId)) continue
     build.group.remove(pawn)
     disposePawn(pawn)
     pawns.delete(playerId)
+    mover.remove(playerId)
   }
 
   for (const player of players) {
@@ -485,18 +491,13 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
-    // A backward display delta is the on-gate stance unwinding, and only a
-    // LOSS may play it: a failed gate empties the moves (and stamps the
-    // round's blocked record), a gauntlet knockout just empties them — that
-    // hop is the thrown-off-the-mountain descent. A WON gate keeps its plan
-    // (or victory), so its short leap must never hop the pawn backward off
-    // a tile it just cleared.
-    retreatAllowedFor: playerId => {
-      const player = props.game.players[playerId]
-      if (!player) return false
-      if (!player.moves.length) return true
-      return Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked)
-    },
+    // A short backward display delta is the on-gate stance unwinding, and
+    // only a LOSS may play it: the round's blocked record — stamped by the
+    // failed gate AND the gauntlet knockout — is the license. A won gate's
+    // short leap (a hint-drained pot can be zero) carries no record and
+    // holds instead of hopping backward off a tile it just cleared.
+    retreatAllowedFor: playerId =>
+      Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {
@@ -541,6 +542,17 @@ watch(
       .map(player => `${player.id}:${player.phase}`)
       .join('|'),
   () => syncCrowns(true)
+)
+
+// The scene's subject can change in place now (a director cut, a status-
+// panel spectate): the highlight ring and path preview key off the OWN pawn
+// and must re-aim, or they sit under the previous subject for the shot.
+watch(
+  () => props.playerId,
+  () => {
+    syncHighlight()
+    syncPathPreview()
+  }
 )
 
 // Server-driven movement: one socket update per 500ms step. String signature
@@ -594,6 +606,10 @@ watch(
       syncHighlight()
       syncPathPreview()
       syncClimbs()
+      // One-shot beats the hold skipped (a blocked opponent's knock, a
+      // forfeit's ripple) play now, on screen, instead of never.
+      syncStuckBeats()
+      syncBlockedBeats()
       highlightTween?.play()
       stuckTweens.forEach(tween => tween.play())
       if (hasFlownIn && !cameraHeld()) {
@@ -640,11 +656,13 @@ watch(
       const targetId = cheer.targetPlayerId
       const slot = cheersInFlight.get(targetId) ?? 0
       cheersInFlight.set(targetId, slot + 1)
-      cheerCleanups.add(
-        spawnCheerSprite(pawn, cheer.emoji, build.spacing, slot, () => {
-          cheersInFlight.set(targetId, Math.max(0, (cheersInFlight.get(targetId) ?? 1) - 1))
-        })
-      )
+      const cleanup: () => void = spawnCheerSprite(pawn, cheer.emoji, build.spacing, slot, () => {
+        cheersInFlight.set(targetId, Math.max(0, (cheersInFlight.get(targetId) ?? 1) - 1))
+        // Finished sprites leave the teardown set — it otherwise grows one
+        // retained closure per cheer for the whole session.
+        cheerCleanups.delete(cleanup)
+      })
+      cheerCleanups.add(cleanup)
     }
   }
 )
@@ -691,16 +709,16 @@ watch(
   }
 )
 
-// Stuck-at-a-challenge wobble: a slow, repeating rock while blocked
-watch(
-  () =>
-    Object.values(props.game.players)
-      .filter(isBlockedByChallenge)
-      .map(player => player.id)
-      .sort()
-      .join('|'),
-  blockedSignature => {
-    const blocked = new Set(blockedSignature ? blockedSignature.split('|') : [])
+// Stuck-at-a-challenge wobble: a slow, repeating rock while blocked. A named
+// sync (not just a watcher body) because the beat must only ever play ON
+// SCREEN: while the stage is hidden the watcher holds without latching, and
+// the show pass re-runs the sync so the moment isn't consumed invisibly.
+const syncStuckBeats = () => {
+    const blocked = new Set(
+      Object.values(props.game.players)
+        .filter(isBlockedByChallenge)
+        .map(player => player.id)
+    )
 
     for (const [playerId, tween] of stuckTweens) {
       if (blocked.has(playerId)) continue
@@ -752,6 +770,17 @@ watch(
         )
       )
     }
+}
+watch(
+  () =>
+    Object.values(props.game.players)
+      .filter(isBlockedByChallenge)
+      .map(player => player.id)
+      .sort()
+      .join('|'),
+  () => {
+    if (!props.active) return
+    syncStuckBeats()
   },
   { immediate: true }
 )
@@ -763,12 +792,7 @@ watch(
 // carries the fact — play the challenge-hit language at the gate once per
 // player per round, delayed a breath so the remount's placement settles.
 const blockedBeatsPlayed = new Set<string>()
-watch(
-  () =>
-    Object.values(props.game.players)
-      .map(player => `${player.id}:${player.phase}`)
-      .join('|'),
-  () => {
+const syncBlockedBeats = () => {
     const round = latestRound(props.game)
     if (!round) return
     const roundKey = props.game.rounds.length - 1
@@ -791,6 +815,15 @@ watch(
         }
       }, 700)
     }
+}
+watch(
+  () =>
+    Object.values(props.game.players)
+      .map(player => `${player.id}:${player.phase}`)
+      .join('|'),
+  () => {
+    if (!props.active) return
+    syncBlockedBeats()
   },
   { immediate: true }
 )
@@ -844,7 +877,10 @@ watch([cameraRef, controlsRef, board], () => {
 })
 
 onUnmounted(() => {
-  gameStore.board.spectateTargetId = undefined
+  // NOT spectateTargetId: a context-loss epoch remount unmounts this scene
+  // while the booth lives on — clearing the follow target here dropped the
+  // HUD and silently reset a racer's spectate. Its owners are the release
+  // watcher above, the booth, and BoardStage's teardown.
   pendingTimers.forEach(id => clearTimeout(id))
   pendingTimers.clear()
   mover?.dispose()

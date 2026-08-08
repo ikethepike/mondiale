@@ -150,7 +150,7 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     console.warn(
       `Final cap burning unanswered question for ${playerId} in ${ctx.eventTarget.gameId}`
     )
-    const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet })
+    const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet, player: seat })
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []
     await server.updateGameState(fresh)

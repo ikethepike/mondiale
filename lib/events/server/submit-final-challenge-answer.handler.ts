@@ -1,6 +1,8 @@
 import { playableCountries } from '~~/lib/game-rules'
 import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
+import { latestRound } from '~~/lib/rounds'
 import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { clearFinalResultBeat } from './seat-exits'
@@ -17,9 +19,11 @@ import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
 export const applyFinalMiss = async ({
   game,
   gauntlet,
+  player,
 }: {
   game: Game
   gauntlet: FinalChallenge
+  player: Player
 }): Promise<{ survives: boolean }> => {
   const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
   const currentChallenge = gauntlet.challenges[0]
@@ -36,6 +40,16 @@ export const applyFinalMiss = async ({
       })
       if (replacement) gauntlet.challenges[0] = replacement
       else survives = false
+    }
+  }
+  if (!survives) {
+    // The knockout's durable trace, the forfeitGate posture with zero
+    // forfeited steps: it licenses the board's descent-off-the-mountain
+    // retreat (the display guard only plays retreats against a blocked
+    // record) and marks the run's end in the round history.
+    const turn = latestRound(game)?.playerTurns[player.id]
+    if (turn) {
+      turn.blocked = { atTile: game.tiles.length - 1, forfeitedSteps: 0 }
     }
   }
   return { survives }
@@ -135,7 +149,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       gauntlet.answeredCorrect += 1
       gauntlet.challenges.shift()
     } else {
-      const { survives } = await applyFinalMiss({ game, gauntlet })
+      const { survives } = await applyFinalMiss({ game, gauntlet, player })
 
       // Out of lives: knocked out of the gauntlet. The result pause runs
       // OUTSIDE the per-game queue — holding the lock for five seconds would

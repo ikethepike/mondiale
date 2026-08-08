@@ -190,4 +190,45 @@ describe('retreat guard', () => {
     expect(hoppedTiles()).toEqual([8, 9])
     mover.dispose()
   })
+
+  it('never holds a DEEP backward jump — resets snap to truth, guard or not', () => {
+    const { mover } = moverFor({ retreatAllowedFor: () => false })
+    mover.place(PLAYER, 20)
+
+    // A rollback/reconnect far behind the display: guarding this froze the
+    // pawn ahead of reality for whole rounds.
+    resetTrace()
+    mover.moveTo(PLAYER, 3)
+    drainHops()
+
+    expect(hoppedTiles()).toEqual([])
+    const placed = traceSink().filter(entry => entry.fn === 'place')
+    expect(placed.at(-1)?.to).toBe(3)
+    mover.dispose()
+  })
+})
+
+describe('remove', () => {
+  it('forgets a departed player so tile occupancy heals', () => {
+    const pawnA = stubPawn()
+    const pawnB = stubPawn()
+    const mover = createPawnMover({
+      pawnFor: id => (id === 'a' ? pawnA : pawnB) as never,
+      tileFor,
+      slotRadius: 1,
+      hopHeight: 1,
+    })
+    mover.place('a', 5)
+    mover.place('b', 5)
+    drainHops()
+    // Sharing the tile: both pawns sit offset and shrunk.
+    expect(pawnB.scale.x).toBeLessThan(1)
+
+    mover.remove('a')
+    drainHops()
+    // The survivor re-centres at full size — no ghost cohabitant.
+    expect(pawnB.scale.x).toBe(1)
+    expect(pawnB.position.x).toBe(5)
+    mover.dispose()
+  })
 })

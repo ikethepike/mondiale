@@ -94,8 +94,11 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'index-update': {
     handler: indexUpdateEvent,
   },
+  // Seat + round slice, the gate verdict's posture: a gauntlet KNOCKOUT also
+  // stamps `playerTurns[].blocked` (the descent's license) — a bare seat
+  // slice dropped it and the pawn never played its fall off the mountain.
   'final-challenge-checked': {
-    handler: playerUpdateEvent,
+    handler: groupChallengeScoredEvent,
   },
   'player-guessing': {
     handler: playerGuessingEvent,

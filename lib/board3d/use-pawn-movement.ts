@@ -19,6 +19,9 @@ export interface PawnMover {
   place(playerId: string, tileIndex: number): void
   /** Queue animated hops toward a new tile index. */
   moveTo(playerId: string, tileIndex: number): void
+  /** Forget a departed player: the mover is persistent now, and a kicked
+   *  seat's stale state otherwise haunts tile occupancy forever. */
+  remove(playerId: string): void
   dispose(): void
 }
 
@@ -88,6 +91,12 @@ export const createPawnMover = (options: {
   const tweens = new Set<gsap.core.Tween>()
 
   const track = (tween: gsap.core.Tween) => {
+    // The mover lives for the whole game now — prune dead tweens as new ones
+    // arrive, or hours of hops pin thousands of finished tween objects.
+    // (Idle loops report active and are kept.)
+    for (const held of tweens) {
+      if (!held.isActive()) tweens.delete(held)
+    }
     tweens.add(tween)
     return tween
   }
@@ -301,18 +310,18 @@ export const createPawnMover = (options: {
     if (tileIndex === committed) return
 
     if (tileIndex < committed) {
-      // The retreat guard: a backward delta with no failed gate behind it is
-      // the on-gate stance unwinding after a WIN — hold instead of hopping
-      // backward off a cleared gate. The next forward move measures from
-      // what's displayed, so holding is always safe.
-      if (options.retreatAllowedFor && !options.retreatAllowedFor(playerId)) return
-
-      // A short retreat is a real gameplay beat — a pawn bounced off a failed
-      // challenge — so play it as a single backward hop. Bigger jumps back
-      // are resets (reconnects) and just snap.
-      if (committed - tileIndex <= 2 && !prefersReducedMotion()) {
-        state.queue = [tileIndex]
-        return hopNext(playerId)
+      // A SHORT retreat is the on-gate stance unwinding, and only a LOSS may
+      // play it (the retreat guard): a won gate's short leap must hold, not
+      // hop backward off a cleared gate — the next forward move measures
+      // from what's displayed, so holding is always safe. A DEEP backward
+      // jump is a reset (reconnect, rollback) and ALWAYS snaps to truth —
+      // guarding it too froze the pawn ahead of reality for whole rounds.
+      if (committed - tileIndex <= 2) {
+        if (options.retreatAllowedFor && !options.retreatAllowedFor(playerId)) return
+        if (!prefersReducedMotion()) {
+          state.queue = [tileIndex]
+          return hopNext(playerId)
+        }
       }
 
       state.queue = []
@@ -335,9 +344,20 @@ export const createPawnMover = (options: {
     hopNext(playerId)
   }
 
+  const remove = (playerId: string) => {
+    const state = states.get(playerId)
+    if (!state) return
+    stopActiveHop(state)
+    cancelLanding(state)
+    states.delete(playerId)
+    // The tile just lost an occupant — surviving cohabitants re-centre.
+    relayout()
+  }
+
   return {
     place,
     moveTo,
+    remove,
     dispose() {
       for (const state of states.values()) {
         cancelLanding(state)
