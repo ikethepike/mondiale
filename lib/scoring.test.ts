@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  answerBreakdown,
   capitalGuessScore,
   getCorrectRanking,
   rankingBreakdown,
@@ -492,6 +493,109 @@ describe('blitzScore', () => {
 
   it('never pays below zero', () => {
     expect(blitzScore(answers, ['ES', 'PT', 'IT', 'GB'], 15)).toEqual({ scored: 0, maximum: 15 })
+  })
+})
+
+// The scorecard's answers-vs-truth rows render answerBreakdown. Its tally is
+// shown next to the score, so it has to count the way blitzScore charges.
+describe('answerBreakdown', () => {
+  // ISO-code order, exactly as data/borders.gen.ts ships it — the point of the
+  // sort is that this is NOT the order the reveal shows.
+  const neighbours: ISOCountryCode[] = [
+    'AZ',
+    'BY',
+    'CN',
+    'EE',
+    'FI',
+    'GE',
+    'KP',
+    'KZ',
+    'LT',
+    'LV',
+    'MN',
+    'NO',
+    'PL',
+    'UA',
+  ]
+
+  it('sorts a set round by display name, not by ISO code', () => {
+    const { truth } = answerBreakdown({
+      submitted: [],
+      correct: neighbours,
+      kind: 'neighbour-blitz',
+    })
+    expect(truth.map(row => row.isoCode).slice(0, 8)).toEqual([
+      'AZ', // Azerbaijan
+      'BY', // Belarus
+      'CN', // China
+      'EE', // Estonia
+      'FI', // Finland
+      'GE', // Georgia
+      'KZ', // Kazakhstan — ISO order would have put North Korea (KP) here
+      'LV', // Latvia
+    ])
+    expect(truth.every(row => row.verdict === 'missed')).toBe(true)
+  })
+
+  it('pipes strays to the tail and marks the rest', () => {
+    const { yours } = answerBreakdown({
+      submitted: ['KZ', 'AM', 'BY', 'AZ'],
+      correct: neighbours,
+      kind: 'neighbour-blitz',
+    })
+    expect(yours).toEqual([
+      { isoCode: 'AZ', verdict: 'found' },
+      { isoCode: 'BY', verdict: 'found' },
+      { isoCode: 'KZ', verdict: 'found' },
+      { isoCode: 'AM', verdict: 'stray' },
+    ])
+  })
+
+  it("counts duplicates once, so the tally can't contradict the points paid", () => {
+    const submitted: ISOCountryCode[] = ['KZ', 'AM', 'BY', 'AM', 'BY']
+    const { tally, yours } = answerBreakdown({
+      submitted,
+      correct: neighbours,
+      kind: 'neighbour-blitz',
+    })
+    expect(tally).toEqual({ found: 2, total: 14, wrong: 1 })
+    expect(yours).toHaveLength(3)
+    // The tally's own arithmetic, run through the real scorer.
+    expect(blitzScore(neighbours, submitted, 15)).toEqual({
+      scored: Math.round((15 * tally.found) / tally.total) - tally.wrong,
+      maximum: 15,
+    })
+  })
+
+  it('leaves a sequence round in its own order — a route is its order', () => {
+    const { yours, truth } = answerBreakdown({
+      submitted: ['FR', 'ES', 'PT'],
+      correct: ['FR', 'DE', 'PL'],
+      kind: 'traversal',
+    })
+    expect(yours).toEqual([
+      { isoCode: 'FR', verdict: 'found' },
+      { isoCode: 'ES', verdict: 'stray' },
+      { isoCode: 'PT', verdict: 'stray' },
+    ])
+    expect(truth.map(row => row.isoCode)).toEqual(['FR', 'DE', 'PL'])
+  })
+
+  it('marks a single-answer round without reordering anything', () => {
+    expect(answerBreakdown({ submitted: ['ES'], correct: ['FR'], kind: 'silhouette' })).toEqual({
+      yours: [{ isoCode: 'ES', verdict: 'stray' }],
+      truth: [{ isoCode: 'FR', verdict: 'missed' }],
+      tally: { found: 0, total: 1, wrong: 1 },
+    })
+  })
+
+  // heritage-hunt, unique-or-bust, manhunt and pin-landmark bank empty lists.
+  it('survives a round that banks nothing', () => {
+    expect(answerBreakdown({ submitted: [], correct: [], kind: 'manhunt' })).toEqual({
+      yours: [],
+      truth: [],
+      tally: { found: 0, total: 0, wrong: 0 },
+    })
   })
 })
 
