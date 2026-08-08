@@ -7,7 +7,7 @@
       power-preference="high-performance"
       antialias
     >
-      <TopoScene :game="resolvedGame" :player-id="resolvedPlayerId" @ready="onSceneReady" />
+      <TopoScene :game="resolvedGame" :player-id="resolvedPlayerId" />
     </TresCanvas>
     <BoardFallback v-else-if="resolvedGame" :game="resolvedGame" />
 
@@ -28,8 +28,8 @@
       :kicker="`Round ${currentRound?.number ?? 1}`"
       title="On the move!"
       :stakes="interstitialStakes"
-      :hold-for="2.4"
-      @done="onInterstitialDone"
+      :hold-for="MOVE_INTERSTITIAL_HOLD_MS / 1000"
+      @done="showMoveInterstitial = false"
     />
   </div>
 </template>
@@ -37,7 +37,7 @@
 import { TresCanvas } from '@tresjs/core'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { useMovementRequest } from '~~/lib/use-movement-request'
+import { MOVE_INTERSTITIAL_HOLD_MS } from '~~/lib/round-beats'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { Game } from '~~/types/game.types'
 import BoardFallback from './BoardFallback.vue'
@@ -91,17 +91,12 @@ onBeforeMount(() => {
   }
 })
 
-// Closing the group scores defers 'enter-movement-phase' to us: an "On the
-// move!" interstitial plays over the board, and the server's 500ms step
-// ticks only start once the scene is on screen AND the interstitial is done —
-// every step lands as a visible hop. A SERVER-driven walk (the scores cap)
-// never sets the flag but announces itself by mounting us with the seat
-// already in 'moving' and holding its first step for the mount grace — the
-// same interstitial covers that beat, or the grace reads as a hung board.
-const sceneReady = ref(false)
+// Purely visual: the server's announce lead is what actually holds the first
+// step; the interstitial just fills it (its total fits inside the lead by
+// construction — see round-beats' fit test). It never gates or requests
+// anything.
 const showMoveInterstitial = ref(
-  gameStore.pendingMovementRequest ||
-    resolvedGame.value?.players[resolvedPlayerId.value]?.phase === 'moving'
+  resolvedGame.value?.players[resolvedPlayerId.value]?.phase === 'moving'
 )
 
 // Name the player's actual conversion — "7 points → 7 tiles" lands better than
@@ -116,39 +111,6 @@ const interstitialStakes = computed(() => {
   return `You scored ${scored} — your pawn walks ${tiles}. Challenges block the path.`
 })
 
-// Delivery (ack, retry, flag clearing) lives in the shared composable —
-// ModalMoving holds the safety net, so the request survives this chunk
-// failing to load entirely. This component only handles pacing.
-const { requestMovementIfPending } = useMovementRequest()
-
-const maybeRequestMovement = () => {
-  if (webglAvailable.value && !sceneReady.value) return
-  if (showMoveInterstitial.value) return
-  requestMovementIfPending()
-}
-
-// A request flagged while the board is already mounted (a view flip raced a
-// server snapshot) must still be consumed — mount-time reads alone miss it.
-watch(
-  () => gameStore.pendingMovementRequest,
-  pending => {
-    if (pending) maybeRequestMovement()
-  }
-)
-
-const onSceneReady = () => {
-  sceneReady.value = true
-  maybeRequestMovement()
-}
-
-const onInterstitialDone = () => {
-  showMoveInterstitial.value = false
-  maybeRequestMovement()
-}
-
-onMounted(() => {
-  if (!webglAvailable.value) maybeRequestMovement()
-})
 </script>
 <style scoped>
 .board3d {

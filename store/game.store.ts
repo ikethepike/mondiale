@@ -125,13 +125,6 @@ interface GameStoreState {
     historyOpen: boolean
   }
   /**
-   * Set when the player closes the group scores; the 3D board clears it and
-   * emits 'enter-movement-phase' once the scene is actually ready, so every
-   * server step tick lands as a visible pawn hop instead of being swallowed
-   * while the board is still loading.
-   */
-  pendingMovementRequest: boolean
-  /**
    * The server refused the join — the game was already underway ('started'),
    * the table was at capacity ('full'), or the host removed this player
    * ('removed'). Terminal, with one exception: a spectatable 'full' refusal
@@ -177,7 +170,6 @@ export const useGameStore = defineStore('game', {
     playerId: '',
     manhunt: undefined,
     socket: undefined,
-    pendingMovementRequest: false,
     rejected: false,
     spectatable: false,
     joinAsSpectator: false,

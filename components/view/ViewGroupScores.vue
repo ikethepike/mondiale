@@ -257,7 +257,7 @@ import {
 } from '~~/types/challenges/traversal-challenge.type'
 import { routeHops, routeThrough, shortestRoute, traversalWithin } from '~~/lib/traversal'
 
-const { currentRound, playerId, gameStore } = useClientEvents()
+const { currentRound, playerId, gameStore, update } = useClientEvents()
 
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
@@ -749,14 +749,18 @@ const isPersonalScorecard = computed(() => {
 })
 
 const closeScores = () => {
+  // Optimistic flip for the instant view transition; the server's announce
+  // snapshot confirms it and the walk lead covers the board coming up.
   if (gameStore.game?.players[playerId.value]) {
     gameStore.game.players[playerId.value].phase = 'moving'
   }
 
-  // The board emits 'enter-movement-phase' once its scene is ready — asking
-  // the server to start stepping now would race the board load and swallow
-  // the first hops.
-  gameStore.pendingMovementRequest = true
+  // A booth watcher never owes the server a movement request.
+  if (gameStore.watching) return
+
+  // Delivery is update()'s job (ack + retry — this is a critical event); a
+  // fully lost request falls to the server's group-scores cap.
+  update({ event: 'enter-movement-phase' })
 }
 </script>
 <style lang="scss" scoped>

@@ -32,13 +32,11 @@ import {
 /**
  * Backstop for a table that is ready to advance but has nobody left to ask.
  *
- * Round staging only happens inside this handler, and the only thing that
- * calls it after a scorecard is a CLIENT flag (`pendingMovementRequest`, set
- * in browser memory when the group-scores modal closes). A player who
- * refreshes, whose board chunk fails to load, or who closes scores at the
- * wrong moment drops that flag — and if they were the last seat the table
- * needed, the round never stages and the room freezes on "Finished this
- * turn" with every seat settled and no client willing to speak.
+ * Round staging only happens inside this handler. The scorecard's close is
+ * the one client-driven entry (acked and retried), and the scores cap walks
+ * an unresponsive seat — but a seat that settles while the table still
+ * waits on others has NO live timer left pointed at the advancement check,
+ * and a lost final entry would freeze the room on "Finished this turn".
  *
  * So: whenever a seat settles without the table being ready, arm a
  * server-owned re-check. It re-enters this handler as a continuation, which
