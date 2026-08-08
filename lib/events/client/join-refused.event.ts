@@ -1,4 +1,4 @@
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /**
  * The join was refused: the game was underway before this player arrived, the

@@ -39,6 +39,7 @@ import { loadFlags } from '~~/lib/country'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
+import { BOARD_TO_CHALLENGE_HOLD_MS } from '~~/lib/round-beats'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
@@ -125,20 +126,28 @@ const activeView = computed<ActiveView | undefined>(() => {
  * alert ripple finish on the board before the challenge takes over.
  */
 const presentedView = shallowRef<ActiveView | undefined>(activeView.value)
-const BOARD_TO_CHALLENGE_HOLD_MS = 1600
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(activeView, (next, previous) => {
+watch(activeView, next => {
+  // What's ON SCREEN is the stable truth; `previous` flips to the challenge
+  // on the first snapshot of a burst even though the board is still shown.
+  const fromBoard = presentedView.value?.key === 'board'
+  const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
+
   if (holdTimer) {
+    // A hold in flight owns the swap — the timer reads the LIVE activeView
+    // when it fires, so mid-hold snapshots that still point at a challenge
+    // change nothing. Only a different destination re-decides; clearing on
+    // every snapshot let routine broadcast bursts starve the hold and cut
+    // the arrival beat short.
+    if (fromBoard && toChallenge) return
     clearTimeout(holdTimer)
     holdTimer = undefined
   }
 
-  const fromBoard = previous?.key === 'board' && presentedView.value?.key === 'board'
-  const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
-
   if (fromBoard && toChallenge) {
     holdTimer = setTimeout(() => {
+      holdTimer = undefined
       presentedView.value = activeView.value
     }, BOARD_TO_CHALLENGE_HOLD_MS)
     return
@@ -150,6 +159,41 @@ watch(activeView, (next, previous) => {
 onUnmounted(() => {
   if (holdTimer) clearTimeout(holdTimer)
 })
+
+// The persistent stage lives in the layout; the presented view only aims it.
+// Keyed on the KEY (snapshots rebuild the view object every evaluation), so
+// the booth — whose own key never changes while it drives the stage — is
+// never stomped by broadcast bursts. The board→challenge hold above is what
+// keeps the stage up through the arrival beat: the key flips only after it.
+watch(
+  () => presentedView.value?.key,
+  key => {
+    // The booth writes the stage itself (ViewSpectate); every other key
+    // means the board is on exactly when the presented view is the board.
+    if (key === 'spectate') return
+    gameStore.board.stageActive = key === 'board'
+  },
+  { immediate: true }
+)
+
+// Test instrumentation, armed by `?viewlog=1`: record every presented view
+// swap so the e2e transition-grammar assertions can catch a wrong view that
+// flashes too briefly for selector polling to ever see.
+if (import.meta.client && 'viewlog' in useRoute().query) {
+  watch(
+    presentedView,
+    view => {
+      const scope = window as unknown as { __viewLog?: { key: string; at: number }[] }
+      const log = (scope.__viewLog ??= [])
+      const key = view?.key ?? 'none'
+      // Snapshots rebuild the resolved-view object every evaluation; only a
+      // KEY change is a real swap (the Transition is keyed the same way).
+      if (log[log.length - 1]?.key === key) return
+      log.push({ key, at: Date.now() })
+    },
+    { immediate: true }
+  )
+}
 
 const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition(
   () => presentedView.value?.kind ?? 'card'
@@ -163,14 +207,22 @@ onMounted(() => {
   // Socket.IO drops a socket's room membership when it reconnects (a server
   // restart, network blip, laptop sleep). Without re-joining, the socket is
   // silently out of the game room and misses every broadcast — the classic
-  // "one client stuck while the other advances" desync. `join` is idempotent
-  // server-side, so re-firing it on every (re)connect is safe and re-adds us
-  // to the room. `.io.on('reconnect')` fires only on RE-connects, not the
-  // first — the initial join is handled by onMounted above.
+  // "one client stuck while the other advances" desync — and, since the join
+  // is also what re-arms a live round's lost timers (rearmLiveRound), a
+  // reconnect that skips it leaves the room wedged on whatever the dead
+  // machine's timer owed. Listen at the SOCKET level: the manager's
+  // 'reconnect' fires only for socket.io's automatic recovery, and a deploy
+  // drain disconnects with 'io server disconnect', which the plugin recovers
+  // from with a MANUAL socket.connect() that never emits it — that gap held
+  // a room mid-result-beat for two minutes on the PR preview. 'connect'
+  // fires on every successful connection; `join` is idempotent server-side
+  // and the rearm sweep is debounced, so re-firing is always safe. The
+  // initial join is the onMounted call above (the socket usually connected
+  // before this page mounted).
   const socket = gameStore.socket
-  socket?.io.on('reconnect', joinRoom)
+  socket?.on('connect', joinRoom)
   onUnmounted(() => {
-    socket?.io.off('reconnect', joinRoom)
+    socket?.off('connect', joinRoom)
     // Watch intent must not leak into the next room this client opens
     gameStore.joinAsSpectator = false
   })

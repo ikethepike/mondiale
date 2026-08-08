@@ -235,7 +235,9 @@ const submitGuess = (country: Country) => {
   if (guesses.value.length >= active.maximumClicks) {
     gameStore.map.status = 'incorrect'
     announce({ hint: 'Out of guesses!' })
-    setTimeout(submitRound, 1200)
+    // Submit at once — the server's flip (the kind's reveal hold in
+    // ROUND_BEATS) gives the verdict its beat before the scorecard.
+    submitRound()
   }
 }
 

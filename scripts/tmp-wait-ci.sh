@@ -1,0 +1,1 @@
+until runs=$(gh run list --branch ike/round-beats --limit 4 --json status,conclusion,workflowName,headSha --jq "[.[] | select(.headSha | startswith(\"$(git rev-parse --short HEAD)\"))]" 2>/dev/null); [ -n "$runs" ] && [ "$runs" != "[]" ] && ! echo "$runs" | grep -q "in_progress\|queued\|pending"; do sleep 45; done; echo "$runs"

@@ -12,7 +12,12 @@ import type { BorderChainChallenge, BorderChainOutcome } from '~~/types/challeng
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from './turn-timing'
+import {
+  BRIEFING_CAP_MS,
+  FIRST_TURN_GRACE_MS,
+  TIMEOUT_SLACK_MS,
+  TRAP_HOLD_MS,
+} from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,
@@ -22,6 +27,7 @@ import {
   type EngineContext,
   type RearmOptions,
 } from './round-engine'
+import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Border Chain's turn engine. The game's only turn-based round: state lives on
@@ -296,7 +302,7 @@ const scheduleChainSettle = (ctx: ChainContext) => {
     // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    await settleRoundScores({
+    const advanced = await settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,
@@ -312,6 +318,9 @@ const scheduleChainSettle = (ctx: ChainContext) => {
     // Not 'group-challenge-scored': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'chain-updated', game: fresh }, ctx.eventTarget)
+    // The advanced seats now owe the table a movement request only a click
+    // sends — one cohort cap so a dead tab can't freeze the room here.
+    armGroupScoresCaps(ctx, fresh, advanced)
   })
 }
 

@@ -151,7 +151,6 @@ const {
   announce,
   entries,
   submitOnce,
-  registerCleanup,
   gameStore,
   secondsLeft,
   remainingFraction,
@@ -162,8 +161,6 @@ const {
 const picked = ref<number>()
 const timedOut = ref(false)
 const revealed = computed(() => picked.value !== undefined || timedOut.value)
-let submitTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => submitTimer && clearTimeout(submitTimer))
 
 const start = () =>
   begin({
@@ -245,7 +242,6 @@ const claimClass = (index: number) => {
   return 'is-truth'
 }
 
-const REVEAL_HOLD_MS = 4500
 const pick = (index: number) => {
   const active = challenge.value
   if (!active || revealed.value || showInterstitial.value) return
@@ -267,9 +263,9 @@ const pick = (index: number) => {
         hintsUsed.value
       )
     : 0
-  submitTimer = setTimeout(() => {
-    submitOnce(correct ? [active.country] : [], score, fraction)
-  }, REVEAL_HOLD_MS)
+  // Submit at the pick — the reveal is pure display, and the server's flip
+  // (the kind's reveal hold in ROUND_BEATS) ends the beat.
+  submitOnce(correct ? [active.country] : [], score, fraction)
 }
 </script>
 <style lang="scss" scoped>

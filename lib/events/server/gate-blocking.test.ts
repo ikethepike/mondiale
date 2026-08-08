@@ -4,6 +4,8 @@ import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { startWalk } from './moves'
+import { RetryableReject } from '../server-side'
+import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answer.handler'
 import { submitIndividualChallengeAnswersHandler } from './submit-individual-challenge-answer.handler'
 
 /**
@@ -160,7 +162,8 @@ describe('a failed gate blocks the walk', () => {
   it('re-enters the next gate with no walk when the leap covers it', async () => {
     const game = buildGame({
       // Rosetta's pot is 4 and the gates are three tiles apart: a full-clock
-      // win lands the pawn ON gate 8, past its stop tile at 7.
+      // win WOULD land the pawn on gate 8 itself — the leap clamps to the
+      // stop tile at 7, or the seat stands past a gate it never answered.
       a: seat('a', {
         phase: 'individual-challenge',
         currentPosition: 4,
@@ -181,7 +184,8 @@ describe('a failed gate blocks the walk', () => {
       },
       eventTarget: { gameId: game.id, playerId: 'a' },
     } as never)
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1, 0, gatePot('rosetta')))
+    // Clamped to gate 8's stop tile, not 4 + the full pot.
+    expect(playerOf(game.id, 'a').currentPosition).toBe(7)
 
     const phases: string[] = []
     for (let elapsed = 0; elapsed < 8000; elapsed += 250) {
@@ -250,5 +254,73 @@ describe('walk generations', () => {
     expect(player.walkSeq).toBe(1)
     startWalk(player, [{ endTile: tile(6) }])
     expect(player.walkSeq).toBe(2)
+  })
+})
+
+/**
+ * The answer-integrity seams the audit added: a latch mid-hold is a
+ * RETRYABLE reject (an ok:true ack told the client its eaten answer ran),
+ * and staleness echoes pin an answer to the question/round it was given on.
+ */
+describe('answer integrity', () => {
+  it('rejects a latched submit as retryable, never as a success', async () => {
+    const game = buildGame({
+      a: seat('a', {
+        phase: 'individual-challenge',
+        currentPosition: 4,
+        resolving: true,
+        moves: [gateMove(5)],
+      }),
+      b: seat('b'),
+    })
+    const ctx = context(game)
+
+    await expect(
+      submitIndividualChallengeAnswersHandler({
+        ...ctx,
+        eventKey: 'submit-individual-challenge-answer',
+        eventData: { event: 'submit-individual-challenge-answer', isoCode: 'FI', gateTile: 5 },
+        eventTarget: { gameId: game.id, playerId: 'a' },
+      } as never)
+    ).rejects.toBeInstanceOf(RetryableReject)
+    // Nothing consumed: the retry will be judged fresh once the hold clears.
+    expect(playerOf(game.id, 'a').moves).toHaveLength(1)
+  })
+
+  it('drops a final answer whose turn echo is stale instead of grading it', async () => {
+    const gauntletMove = {
+      endTile: tile(11, 'final'),
+      challenge: {
+        _type: 'final-challenge',
+        difficulty: 'hard',
+        challenges: [{ _type: 'membership-challenge', lineup: ['SE', 'FI'], exception: 'SE' }],
+        lives: 1,
+        turn: 3,
+        totalCount: 5,
+        answeredCorrect: 2,
+      },
+    } as unknown as PlayerMove
+    const game = buildGame({
+      a: seat('a', { phase: 'final-challenge', currentPosition: 10, moves: [gauntletMove] }),
+      b: seat('b'),
+    })
+    const ctx = context(game)
+
+    await submitFinalChallengeAnswerHandler({
+      ...ctx,
+      eventKey: 'submit-final-challenge-answer',
+      eventData: {
+        event: 'submit-final-challenge-answer',
+        submittedAnswer: { _type: 'membership-challenge', isoCode: 'SE' },
+        // The cap already burned turn 2 — this answer lost the race.
+        turn: 2,
+      },
+      eventTarget: { gameId: game.id, playerId: 'a' },
+    } as never)
+
+    const challenge = playerOf(game.id, 'a').moves[0]?.challenge
+    expect(challenge?._type === 'final-challenge' && challenge.answeredCorrect).toBe(2)
+    expect(challenge?._type === 'final-challenge' && challenge.challenges).toHaveLength(1)
+    expect(playerOf(game.id, 'a').resolving).toBeFalsy()
   })
 })

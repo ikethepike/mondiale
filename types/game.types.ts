@@ -85,6 +85,11 @@ export interface Round {
   playerTurns: {
     [playerId: string]: PlayerTurn
   }
+  /** Epoch ms the classic play window closes — stamped at the reveal by
+   *  `startClassicClock`, read by the client's shared countdown and the
+   *  server's settle backstop alike. The turn engines keep their own
+   *  `state.deadline` and leave this undefined; absent = not yet revealed. */
+  deadline?: number
 }
 
 export interface GroupChallengeAnswer {

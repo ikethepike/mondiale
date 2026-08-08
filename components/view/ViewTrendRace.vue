@@ -111,6 +111,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { trendAttribution } from '~~/lib/attribution'
+import { ROUND_BEATS } from '~~/lib/round-beats'
 import { countryName, getCountry } from '~~/lib/country'
 import { prefersReducedMotion, REVEAL_BEAT_MS } from '~~/lib/motion'
 import { TREND_METRICS } from '~~/lib/trends'
@@ -218,9 +219,11 @@ const scrollToOutcome = () => {
   })
 }
 
-// The reveal is browsable: the player leaves via Continue, the cap only
-// exists so an AFK player can't hold up the room's next-round barrier.
-const BROWSE_CAP_S = 60
+// The reveal is browsable: the player leaves via Continue (the submit IS the
+// exit and flips inline), and the cap — the kind's browseCapMs in
+// ROUND_BEATS, which the server's settle backstop budgets with — only exists
+// so an AFK player can't hold up the room's next-round barrier.
+const BROWSE_CAP_S = (ROUND_BEATS['trend-race'].browseCapMs ?? 60000) / 1000
 const BROWSE_HINT_S = 10
 const browseSecondsLeft = ref(BROWSE_CAP_S)
 

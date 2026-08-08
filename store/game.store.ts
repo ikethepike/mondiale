@@ -123,14 +123,20 @@ interface GameStoreState {
     panelFolded?: boolean
     /** Round-history drawer visibility (board phases only). */
     historyOpen: boolean
+    /** The persistent stage is the presented scene: the layout cross-fades
+     *  it in over the parked world map. Written only by the room page's
+     *  presented-view watch and the booth (ViewSpectate). */
+    stageActive: boolean
+    /** The stage has drawn its first frame (flips once per stage epoch) —
+     *  until then the overlay covers the cold path with a pending pane. */
+    stageReady: boolean
+    /** WebGL missing or the board chunk failed for good: the overlay swaps
+     *  in the 2D fallback board instead. */
+    stageFailed: boolean
+    /** `playerId:walkSeq` whose "On the move!" beat already played, so an
+     *  overlay remount mid-lead can't replay the interstitial. */
+    introSeenKey?: string
   }
-  /**
-   * Set when the player closes the group scores; the 3D board clears it and
-   * emits 'enter-movement-phase' once the scene is actually ready, so every
-   * server step tick lands as a visible pawn hop instead of being swallowed
-   * while the board is still loading.
-   */
-  pendingMovementRequest: boolean
   /**
    * The server refused the join — the game was already underway ('started'),
    * the table was at capacity ('full'), or the host removed this player
@@ -177,7 +183,6 @@ export const useGameStore = defineStore('game', {
     playerId: '',
     manhunt: undefined,
     socket: undefined,
-    pendingMovementRequest: false,
     rejected: false,
     spectatable: false,
     joinAsSpectator: false,
@@ -220,19 +225,30 @@ export const useGameStore = defineStore('game', {
       cheers: [],
       panelFolded: undefined,
       historyOpen: false,
+      stageActive: false,
+      stageReady: false,
+      stageFailed: false,
+      introSeenKey: undefined,
     },
   }),
   actions: {},
   getters: {
     currentRound: (state): { round: Round; number: number } | undefined => {
       if (!state.game) return undefined
-      const index = state.game.rounds.length - 1
+      // A staged-but-unrevealed round (the 2s settle pause) is not the live
+      // round: seats are still on the finished round's scorecards, and
+      // pointing them at the fresh empty round blanks every score and swaps
+      // the reveal to a challenge nobody has seen. Staging always pushes
+      // onto an existing round, so the fallback index is safe.
+      const index = state.game.pendingRoundStart
+        ? state.game.rounds.length - 2
+        : state.game.rounds.length - 1
       const round = state.game.rounds[index]
       if (!round) return undefined
 
       return {
         round,
-        number: state.game.rounds.length,
+        number: index + 1,
       }
     },
     /** The identity this UI renders as: the booth's followed seat, or self.

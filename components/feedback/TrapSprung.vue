@@ -35,7 +35,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { EASE } from '~~/lib/motion'
 import { playerDisplayName } from '~~/lib/player'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
-import { TRAP_HOLD_MS } from '~~/lib/events/server/turn-timing'
+import { TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { BorderChainTrap, ClosedDoor } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 

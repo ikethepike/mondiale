@@ -1,5 +1,5 @@
 import { hasGame } from '~~/types/events.types'
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 export const genericUpdateEvent: ClientSideEventHandler = async ({ gameStore, payload }) => {
   if (!hasGame(payload)) return

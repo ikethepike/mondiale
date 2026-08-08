@@ -1,8 +1,10 @@
 import type { Game } from '~~/types/game.types'
 import type { EngineContext, RearmOptions } from './round-engine'
 import { rearmBorderChain } from './chain-turns'
+import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
 import { rearmManhunt } from './manhunt-beats'
+import { rearmSeatExits } from './seat-exits'
 import { rearmTimeline } from './timeline-turns'
 import { rearmUniqueOrBust } from './unique-beats'
 
@@ -48,4 +50,8 @@ export const rearmLiveRound = (
   rearmTimeline(ctx, game)
   rearmManhunt(ctx, game, options)
   rearmUniqueOrBust(ctx, game, options)
+  rearmClassicRound(ctx, game)
+  // Not a round engine: the parked-seat exits (scorecards, tutorials, gates,
+  // the gauntlet) and the resolving-latch recovery.
+  rearmSeatExits(ctx, game)
 }

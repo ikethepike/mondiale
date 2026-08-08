@@ -71,7 +71,7 @@ import { useIsPhone } from '~~/lib/use-viewport'
 import { processReplacements } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
 
-const { currentMove, update, gameStore, clearBoard } = useClientEvents()
+const { currentMove, gameStore, clearBoard } = useClientEvents()
 
 const {
   challenge,
@@ -367,14 +367,6 @@ onBeforeMount(() => {
   // Clear out our global state — each gate view then sets what it needs
   // (solo for the shape mysteries, labels and focus for errata).
   clearBoard()
-
-  // Recovery: in this phase with no challenge to show (a reload landed in
-  // the pause between answering and moving on, or the server lost its
-  // pacing timer) the view would render a bare map forever. Asking to
-  // re-enter the movement flow is idempotent, so nudge the server.
-  if (!challenge.value) {
-    update({ event: 'enter-movement-phase' })
-  }
 })
 onBeforeUnmount(clearBoard)
 </script>

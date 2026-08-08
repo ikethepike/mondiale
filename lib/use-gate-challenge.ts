@@ -35,8 +35,8 @@ import type {
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
-import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
-import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from './events/server/turn-timing'
+import { createRedeliver, useClientEvents } from './events/client-side'
+import { GATE_RESULT_FALLBACK_MS } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 
@@ -112,6 +112,12 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
       : undefined
 
   const challenge = ref(latched())
+  // A gate's durable identity is the stop tile it guards — never the
+  // challenge's object reference: every full snapshot rebuilds the whole
+  // blob, so reference equality reads ANY mid-gate broadcast (a rejoin's
+  // resync, another seat's cap settling) as a new gate and replays the
+  // interstitial over a live answer.
+  let latchedTile = challenge.value ? currentMove.value?.endTile.position : undefined
   const variant = computed<IndividualChallengeVariant>(() => challenge.value?.variant ?? 'find')
   const country = computed(() =>
     challenge.value ? getCountry(challenge.value.country) : undefined
@@ -136,36 +142,21 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * verdict and the leap by the time delivery fails, so a socket blip leaves
    * the player looking at a win the server never heard about.
    */
+  // Delivery rides the ONE redeliver home; a late delivery is harmless — the
+  // handler drops a submit whose `gateTile` is no longer the head gate.
+  const redeliver = createRedeliver('gate answer')
   let disposed = false
-  // A SET, not one handle: back-to-back gates share this shell, so a second
-  // answer can start retrying while the first is still in the air, and one
-  // variable would leave the earlier chain running unreferenced. A late
-  // delivery is harmless — the handler drops a submit whose `gateTile` is no
-  // longer the head gate — but an uncancellable timer is not something to
-  // leave behind on unmount.
-  const resubmits = new Set<ReturnType<typeof setTimeout>>()
   /** The result beat's fallback end — armed by `relatch`, see its note. */
   let beatTimer: ReturnType<typeof setTimeout> | undefined
   const stopBeatTimer = () => {
     if (beatTimer) clearTimeout(beatTimer)
     beatTimer = undefined
   }
-  const deliver = async (payload: Parameters<typeof update>[0], attempt = 1): Promise<void> => {
-    const delivered = await update(payload).catch(() => false)
-    if (delivered || disposed) return
-    if (attempt >= REDELIVER_MAX_BATCHES) {
-      return console.error('Giving up on gate answer delivery — a rejoin heals the seat from here')
-    }
-    const timer = setTimeout(() => {
-      resubmits.delete(timer)
-      void deliver(payload, attempt + 1)
-    }, REDELIVER_PAUSE_MS)
-    resubmits.add(timer)
-  }
+  const deliver = (payload: Parameters<typeof update>[0]) =>
+    redeliver.deliver(() => update(payload))
   onScopeDispose(() => {
     disposed = true
-    resubmits.forEach(clearTimeout)
-    resubmits.clear()
+    redeliver.dispose()
     stopBeatTimer()
   })
 
@@ -236,7 +227,13 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    */
   const relatch = () => {
     const next = latched()
-    if (!next || next === challenge.value) return
+    if (!next) return
+    // Same gate, fresh object identity: refresh the reference quietly (never
+    // mid-beat — the beat's view holds the answered gate) and re-arm nothing.
+    if (challenge.value && currentMove.value?.endTile.position === latchedTile) {
+      if (!status.value) challenge.value = next
+      return
+    }
     // Never tear down a beat in progress — take the arrival when it is spent.
     if (status.value) {
       if (!beatTimer && !disposed) {
@@ -246,13 +243,14 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
           // going to unmount is already gone: this shell is the no-walk case.
           status.value = undefined
           relatch()
-        }, GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+        }, GATE_RESULT_FALLBACK_MS)
       }
       return
     }
     stopBeatTimer()
 
     challenge.value = next
+    latchedTile = currentMove.value?.endTile.position
     clearBoard()
     submittedISOCode.value = undefined
     missNote.value = undefined

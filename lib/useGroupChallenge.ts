@@ -1,12 +1,10 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
-import {
-  REDELIVER_MAX_BATCHES,
-  REDELIVER_PAUSE_MS,
-  useClientEvents,
-} from '~~/lib/events/client-side'
+import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
+import { roundBeats } from '~~/lib/round-beats'
+import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, GuessKind } from '~~/types/events.types'
@@ -58,22 +56,30 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   clearBoard({ preserveLiveGuesses: gameStore.watching })
   if (options.solo !== false) gameStore.map.solo = true
 
+  // A remount whose answer is already banked (a refresh mid-reveal-hold) is
+  // NOT a fresh round: the seat answered, the server's flip is pending, and
+  // replaying the interstitial + an empty console would let the player
+  // "answer" a question they already spent.
+  const answeredOnMount = !!currentRound.value?.round.groupAnswers[gameStore.playerId]
+
   // Watch mode (the booth mounting this view read-only): no interstitial —
   // every director cut would replay the 2.4s beat — and the round counts as
-  // started, since the racers are already in it.
-  const showInterstitial = ref(!gameStore.watching)
-  const started = ref(gameStore.watching)
+  // started, since the racers are already in it. Same for a banked remount.
+  const showInterstitial = ref(!gameStore.watching && !answeredOnMount)
+  const started = ref(gameStore.watching || answeredOnMount)
 
-  // The submit latch. For a racer it's local state; in watch mode the
-  // followed SEAT's banked answer joins it — snapshot truth drives the
-  // reveal, while local writes (views latch `submitted.value = true` as a
-  // re-entrancy guard) still stick. The OR matters: a getter that ignored
-  // the local side would silently break every such guard in the booth.
+  // The submit latch. Local state ORed with the snapshot's banked answer —
+  // the followed seat's in watch mode, our OWN otherwise (the reveal-hold
+  // flow banks while the phase stays in-challenge, so a remount must read
+  // the round, not browser memory). The OR matters: a getter that ignored
+  // the local side would silently break every re-entrancy guard.
   const submittedLocal = ref(false)
   const submitted = computed({
     get: () =>
       submittedLocal.value ||
-      (gameStore.watching && !!currentRound.value?.round.groupAnswers[gameStore.seatId]),
+      !!currentRound.value?.round.groupAnswers[
+        gameStore.watching ? gameStore.seatId : gameStore.playerId
+      ],
     set: value => {
       submittedLocal.value = value
     },
@@ -131,36 +137,29 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * heal make every re-send safe, and the `submitted` latch stays up so the
    * view never offers a second answer.
    */
-  let disposed = false
-  let resubmitTimer: ReturnType<typeof setTimeout> | undefined
-  let deliveryBatches = 0
-  const deliverAnswer = async (
+  const redeliver = createRedeliver('group answer')
+  const deliverAnswer = (
     ranking: ISOCountryCode[],
     clientScore?: number,
     buzzAt?: number,
     extras?: SubmitExtras
   ) => {
-    deliveryBatches++
-    const delivered = await update({
-      event: 'submit-group-challenge-answers',
-      ranking,
-      clientScore,
-      buzzAt,
-      ...extras,
-    }).catch(() => false)
-    if (delivered || disposed) return
-    if (deliveryBatches >= REDELIVER_MAX_BATCHES) {
-      return console.error('Giving up on answer delivery — a rejoin heals the seat from here')
-    }
-    resubmitTimer = setTimeout(
-      () => deliverAnswer(ranking, clientScore, buzzAt, extras),
-      REDELIVER_PAUSE_MS
+    // The round echo is captured HERE, when the answer is given: a buffered
+    // redelivery flushing after the settle advanced the table then dies on
+    // the mismatch instead of being graded against the next round.
+    const roundIndex = (gameStore.game?.rounds.length ?? 1) - 1
+    return redeliver.deliver(() =>
+      update({
+        event: 'submit-group-challenge-answers',
+        ranking,
+        clientScore,
+        buzzAt,
+        roundIndex,
+        ...extras,
+      })
     )
   }
-  cleanups.push(() => {
-    disposed = true
-    if (resubmitTimer) clearTimeout(resubmitTimer)
-  })
+  cleanups.push(() => redeliver.dispose())
 
   /**
    * A wrong guess, a duplicate, a name that matched nothing. `hint` renders
@@ -244,28 +243,56 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /**
    * Leave the interstitial and start the round. `onTimeout` (if a countdown
    * exists) fires once when the clock hits zero — typically a fail-submit.
-   * `onTick` runs each second for mode-specific reveals.
+   * `onTick` runs on each new second for mode-specific reveals.
+   *
+   * The clock's truth is the server-stamped `round.deadline` when one rides
+   * the snapshot: every repaint re-derives from the wall clock, so a
+   * backgrounded tab whose intervals were throttled snaps to the true time
+   * the moment it wakes — the round can no longer silently outlive its
+   * window in browser memory. Rounds without a stamp (older snapshots,
+   * booth ambience) keep the local decrement as a fallback.
    */
   const begin = (
     hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
   ) => {
     showInterstitial.value = false
     started.value = true
-    if (duration.value) {
-      // Re-entrant callers (the watch-mode round-boundary restart) must
-      // replace the clock, never stack a second interval beside it
-      if (countdown) clearInterval(countdown)
-      secondsLeft.value = duration.value
-      countdown = setInterval(() => {
-        secondsLeft.value--
-        hooks.onTick?.(secondsLeft.value)
-        if (secondsLeft.value <= 0) {
-          if (countdown) clearInterval(countdown)
-          countdown = undefined
-          hooks.onTimeout?.()
-        }
-      }, 1000)
+    if (!duration.value) return
+    // Re-entrant callers (the watch-mode round-boundary restart) must
+    // replace the clock, never stack a second interval beside it
+    if (countdown) clearInterval(countdown)
+    const total = duration.value
+    // The stamped deadline drives the clock ONLY when it measures this very
+    // countdown — a kind with a derived multi-beat budget (empire) stamps
+    // the WHOLE round's window, and pinning beat 1's clock to it would
+    // freeze the display at full for the later beats' share. Those kinds
+    // keep the local decrement; the server settle still backstops them.
+    const deadline =
+      roundBeats(challenge.value).playSeconds === undefined
+        ? currentRound.value?.round.deadline
+        : undefined
+    if (deadline) {
+      secondsLeft.value = Math.min(total, secondsOnDeadline(deadline))
+      // Already expired at begin() (a rejoin landing after the window): the
+      // dedupe guard below would swallow every tick, so fire the timeout now.
+      if (secondsLeft.value <= 0) return hooks.onTimeout?.()
+    } else {
+      secondsLeft.value = total
     }
+    countdown = setInterval(() => {
+      // Deadline-driven: re-derive from the wall clock every tick, so a
+      // throttled tab snaps to true time the moment it wakes. (The stamp
+      // includes the opening grace, so the clock holds FULL while it burns.)
+      const next = deadline ? Math.min(total, secondsOnDeadline(deadline)) : secondsLeft.value - 1
+      if (next === secondsLeft.value) return
+      secondsLeft.value = next
+      hooks.onTick?.(next)
+      if (next <= 0) {
+        if (countdown) clearInterval(countdown)
+        countdown = undefined
+        hooks.onTimeout?.()
+      }
+    }, 1000)
   }
 
   /**

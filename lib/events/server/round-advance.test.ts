@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   ADVANCE_WATCHDOG_MAX_TICKS,
-  ROUND_BOUND_PHASES,
-  SETTLED_PHASES,
   shouldArmAdvanceWatchdog,
   tableIsSettled,
 } from './enter-movement-phase.handler'
+import { ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
 import { isStrandedSubmitter } from './join.event'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 
@@ -115,7 +114,7 @@ describe('the phase partition', () => {
 
   it('agrees with the exported sets, exhaustively over every phase', () => {
     const buckets = Object.values(PARTITION)
-    for (const [phase, bucket] of Object.entries(PARTITION)) {
+    for (const [phase, bucket] of Object.entries(PARTITION) as [PlayerPhase, string][]) {
       expect(ROUND_BOUND_PHASES.includes(phase)).toBe(bucket === 'round-bound')
       expect(SETTLED_PHASES.includes(phase)).toBe(bucket === 'settled')
     }
@@ -160,7 +159,7 @@ describe('group-challenge scoring coverage', () => {
     const [{ ROUND_WEIGHTS }, handler] = await Promise.all([
       import('~~/lib/round-mix'),
       import('node:fs/promises').then(fs =>
-        fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+        fs.readFile(new URL('./grade-group-answer.ts', import.meta.url), 'utf8')
       ),
     ])
     const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
@@ -173,7 +172,7 @@ describe('group-challenge scoring coverage', () => {
 
   it('keeps the exemption list free of kinds that grew their own arm', async () => {
     const handler = await import('node:fs/promises').then(fs =>
-      fs.readFile(new URL('./submit-group-challenge-answers.handler.ts', import.meta.url), 'utf8')
+      fs.readFile(new URL('./grade-group-answer.ts', import.meta.url), 'utf8')
     )
     const arms = new Set([...handler.matchAll(/case '([a-z-]+)':/g)].map(match => match[1]))
     expect(SCORED_ELSEWHERE.filter(kind => arms.has(kind))).toEqual([])
@@ -210,5 +209,124 @@ describe('isStrandedSubmitter', () => {
     // must never both fire, or the seat would ping-pong on every rejoin.
     const demoted = { phase: 'movement-summary', answered: false } as const
     expect(isStrandedSubmitter(demoted)).toBe(false)
+  })
+})
+
+/**
+ * The stuck-after-challenge class, closed structurally: the partition above
+ * proves phases are CLASSIFIED; this matrix proves each is ESCAPABLE — every
+ * phase a seated player can occupy names the server-owned mechanism that
+ * ends it, and the Record over the union makes a NEW phase a compile error
+ * until it declares one. 'client-only' is not a legal value.
+ */
+describe('phase escapability', () => {
+  type ExitMechanism =
+    | 'pre-game/no-exit-needed' // not seated in a started game
+    | 'round-clock' // classic-rounds settle or a turn engine's deadline
+    | 'tutorial-cap' // seat-exits armTutorialCap
+    | 'scores-cap' // seat-exits armGroupScoresCap
+    | 'walk-continuation' // the stepper reschedules itself (walkSeq-tokened)
+    | 'gate-cap' // seat-exits armIndividualGateCap
+    | 'gauntlet-cap' // seat-exits armFinalQuestionCap
+    | 'advance-watchdog' // enter-movement-phase's bounded re-check
+    | 'terminal' // nothing to escape
+
+  const EXIT_OWNER: Record<PlayerPhase, ExitMechanism> = {
+    naming: 'pre-game/no-exit-needed',
+    'waiting-for-game': 'pre-game/no-exit-needed',
+    tutorial: 'tutorial-cap',
+    'group-challenge': 'round-clock',
+    'group-scores': 'scores-cap',
+    moving: 'walk-continuation',
+    'individual-challenge': 'gate-cap',
+    'final-challenge': 'gauntlet-cap',
+    'movement-summary': 'advance-watchdog',
+    victory: 'terminal',
+    kicked: 'terminal',
+  }
+
+  it('backs every named mechanism with a live export', async () => {
+    const beats = await import('~~/lib/round-beats')
+    const exits = await import('./seat-exits')
+    const classic = await import('./classic-rounds')
+    const backing: Record<ExitMechanism, unknown> = {
+      'pre-game/no-exit-needed': true,
+      'round-clock': classic.scheduleClassicSettle,
+      'tutorial-cap': exits.armTutorialCap,
+      'scores-cap': exits.armGroupScoresCap,
+      // The live chain self-reschedules; the restart path is rearmSeatExits'
+      // 'moving' arm — the export that makes a dead walk revivable from
+      // persisted state by ANY player's rejoin.
+      'walk-continuation': exits.rearmSeatExits,
+      'gate-cap': exits.armIndividualGateCap,
+      'gauntlet-cap': exits.armFinalQuestionCap,
+      'advance-watchdog': ADVANCE_WATCHDOG_MAX_TICKS,
+      terminal: true,
+    }
+    for (const mechanism of Object.values(EXIT_OWNER)) {
+      expect(backing[mechanism], mechanism).toBeTruthy()
+    }
+    // The caps the mechanisms fire on must be real, finite waits.
+    for (const cap of [
+      beats.TUTORIAL_CAP_MS,
+      beats.GROUP_SCORES_CAP_MS,
+      beats.INDIVIDUAL_GATE_CAP_MS,
+      beats.FINAL_QUESTION_CAP_MS,
+      beats.UNTIMED_CLASSIC_CAP_SECONDS,
+    ]) {
+      expect(cap).toBeGreaterThan(0)
+      expect(Number.isFinite(cap)).toBe(true)
+    }
+  })
+})
+
+/**
+ * Every round family the reveal block arms must be revivable after a
+ * restart: an engine armed at the reveal with no rearm entry is a room
+ * frozen the first deploy that catches it mid-round. Scraped from source,
+ * the same posture as the scoring-arm coverage above.
+ */
+describe('rearm coverage', () => {
+  it('gives every armed round family a rearm entry', async () => {
+    const fs = await import('node:fs/promises')
+    const [reveal, rearm] = await Promise.all([
+      fs.readFile(new URL('./enter-movement-phase.handler.ts', import.meta.url), 'utf8'),
+      fs.readFile(new URL('./rearm-round.ts', import.meta.url), 'utf8'),
+    ])
+    const armed = [...reveal.matchAll(/schedule([A-Z][A-Za-z]+?)(?:Timeout|Settle)\(/g)].map(
+      match => match[1]
+    )
+    const rearms = [...rearm.matchAll(/rearm([A-Z][A-Za-z]+)\(ctx/g)].map(match => match[1])
+    expect(armed.length).toBeGreaterThan(0)
+    for (const family of new Set(armed)) {
+      // The arm name is a fragment of its rearm ('Chain' ⊂ 'BorderChain',
+      // 'Unique' ⊂ 'UniqueOrBust') — containment, not equality.
+      expect(
+        rearms.some(name => name.includes(family)),
+        `rearm entry for ${family} (have: ${rearms.join(', ')})`
+      ).toBe(true)
+    }
+  })
+})
+
+/**
+ * The group submit rides submitOnce (latch + redelivery) — a view that
+ * hand-rolls the event skips both, which is how answers got lost and seats
+ * stranded before the inversion. Mechanical backstop over the view sources.
+ */
+describe('view submit discipline', () => {
+  it('lets no view send the group submit outside submitOnce', async () => {
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const { fileURLToPath } = await import('node:url')
+    const viewsDir = fileURLToPath(new URL('../../../components/view/', import.meta.url))
+    const entries = await fs.readdir(viewsDir)
+    for (const entry of entries.filter(name => name.endsWith('.vue'))) {
+      const source = await fs.readFile(path.join(viewsDir, entry), 'utf8')
+      expect(
+        source.includes(`'submit-group-challenge-answers'`),
+        `${entry} must submit via submitOnce`
+      ).toBe(false)
+    }
   })
 })

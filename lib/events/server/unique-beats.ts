@@ -15,7 +15,7 @@ import type { UniqueCategoryId, UniqueOrBustChallenge } from '~~/types/challenge
 import type { Game } from '~~/types/game.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from './turn-timing'
+import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS } from '~~/lib/round-beats'
 import {
   scheduleDeadlineTask,
   scheduleEngineTask,
@@ -23,6 +23,7 @@ import {
   settleRoundScores,
   type RearmOptions,
 } from './round-engine'
+import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Unique or Bust's beat engine: manhunt's briefing gate (rules cards every
@@ -199,7 +200,7 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    await settleRoundScores({
+    const advanced = await settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,
@@ -211,6 +212,9 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     // Not 'group-challenge-scored': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'unique-updated', game: fresh }, ctx.eventTarget)
+    // The advanced seats now owe the table a movement request only a click
+    // sends — one cohort cap so a dead tab can't freeze the room here.
+    armGroupScoresCaps(ctx, fresh, advanced)
     // The sheet has served its round; the words live on in `state.results`.
     await ctx.redis.del(uniqueKey(fresh.id, roundIndexOf(fresh)))
   })

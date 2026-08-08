@@ -5,11 +5,8 @@ import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
-import {
-  scheduleMovementPhase,
-  SETTLED_PHASES,
-  tableIsSettled,
-} from './enter-movement-phase.handler'
+import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
+import { revealHoldMsFor, SETTLED_PHASES } from '~~/lib/round-beats'
 import { movesForScoredPoints, startWalk } from './moves'
 import { rearmLiveRound } from './rearm-round'
 
@@ -191,7 +188,13 @@ export const joinEventHandler: EventHandler = async ({
     answered: !!game.rounds[index]?.groupAnswers[playerId],
   })
 
-  if (game.started && strandedSubmitter) {
+  // On a kind with a reveal beat, answer-banked-but-still-in-challenge is
+  // the NORMAL mid-hold state — the flip task (or rearmClassicRound's
+  // banked-seat sweep below) owns the advance, and healing here would yank
+  // the rejoiner to the scorecard mid-beat. Only heal where the flip is
+  // inline (hold 0) and the state really is a lost advance.
+  const midRevealHold = !!revealHoldMsFor(game.rounds[index]?.groupChallenge)
+  if (game.started && strandedSubmitter && !midRevealHold) {
     console.warn(`Healing stranded submitter ${playerId} on rejoin (answer banked, phase was not)`)
     rejoining.phase = 'group-scores'
     startWalk(
@@ -202,10 +205,14 @@ export const joinEventHandler: EventHandler = async ({
 
   if (game.started && (orphanedInChallenge || wedgedMoving || tableSettledButStuck)) {
     console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)
-    // The walk guard rejects 'moving' re-entry; hand the phase back first
-    if (wedgedMoving) rejoining.phase = 'group-scores'
-
-    scheduleMovementPhase(1500, { io, redis, socket, eventTarget })
+    // A heal is server-originated: it travels as a continuation, which may
+    // re-enter ANY walkable phase — including 'moving' directly, where it
+    // steps or arrives in place. (The old phase reset to 'group-scores' was
+    // a relic of the pre-continuation guard, and it flashed a healthy
+    // walker back to their scorecard on every mid-walk reconnect.) A
+    // surviving step chain beside this heal is deduped by the single-stepper
+    // latch. No walkSeq — the heal targets whatever generation is current.
+    scheduleMovementPhase(1500, { io, redis, socket, eventTarget }, { continuation: true })
   }
 
   // The clocked round engines pace themselves on in-memory timers too — a

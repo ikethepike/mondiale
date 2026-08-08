@@ -1,5 +1,5 @@
 import { MANHUNT_TAUNTS } from '~~/lib/manhunt'
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /**
  * A relayed taunt lands in the live-guess ticker as its own kind — the text

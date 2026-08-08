@@ -4,6 +4,12 @@ import { clamp01 } from './number'
 /** Repaint cadence — fast enough that a 1s tick never visibly stutters. */
 const REPAINT_MS = 200
 
+/** Seconds left on a server-stamped deadline: the ceiled remainder, never
+ *  negative. THE deadline→seconds math — useGroupChallenge's countdown reads
+ *  it too, so the two clocks can never round differently. */
+export const secondsOnDeadline = (deadline: number): number =>
+  Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+
 /**
  * The shot clock for server-owned deadlines (border-chain, timeline,
  * heritage-hunt, manhunt): the server stamps `deadline`, the client only
@@ -19,10 +25,10 @@ export const useDeadlineClock = (
   const fractionLeft = ref(1)
 
   const repaint = () => {
-    const remaining = (toValue(deadline) ?? 0) - Date.now()
-    secondsOnClock.value = Math.max(0, Math.ceil(remaining / 1000))
+    const at = toValue(deadline) ?? 0
+    secondsOnClock.value = secondsOnDeadline(at)
     const total = (toValue(totalSeconds) ?? 0) * 1000
-    fractionLeft.value = total ? clamp01(remaining / total) : 1
+    fractionLeft.value = total ? clamp01((at - Date.now()) / total) : 1
   }
 
   repaint()

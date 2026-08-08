@@ -6,7 +6,7 @@
       :kicker="`Round ${currentRound?.number ?? 1} — Sketch`"
       :title="`Draw ${countryName(challenge.country)} from memory`"
       stakes="One continuous line — the closer your outline matches the real shape, the more points you earn."
-      @done="showInterstitial = false"
+      @done="begin()"
     />
 
     <ChallengePrompt>
@@ -39,7 +39,7 @@
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import {
   countryPathData,
   largestRing,
@@ -49,24 +49,14 @@ import {
   scoreSketch,
 } from '~~/lib/outline'
 
-const { gameStore, update, currentRound, clearBoard } = useClientEvents()
+// The shared scaffolding blanks the map (no reference material while
+// sketching), runs the interstitial, and owns the submit latch + redelivery.
+const { gameStore, challenge, currentRound, showInterstitial, submitted, begin, submitOnce } =
+  useGroupChallenge('sketch-challenge')
 
-const challenge = computed(() => {
-  const roundChallenge = currentRound.value?.round.groupChallenge
-  return roundChallenge && '_type' in roundChallenge && roundChallenge._type === 'sketch-challenge'
-    ? roundChallenge
-    : undefined
-})
-
-const showInterstitial = ref(true)
-const submitted = ref(false)
 const canvas = ref<HTMLCanvasElement>()
 const points = ref<OutlinePoint[]>([])
 let drawing = false
-
-// Blank map: no reference material while sketching
-clearBoard()
-gameStore.map.solo = true
 
 const contextOf = () => {
   const element = canvas.value
@@ -135,7 +125,6 @@ const clearCanvas = () => {
 const submitSketch = () => {
   const active = challenge.value
   if (!active || submitted.value || points.value.length < 12) return
-  submitted.value = true
 
   const pathData = countryPathData(active.country)
   const target = pathData ? largestRing(pathData) : undefined
@@ -147,17 +136,8 @@ const submitSketch = () => {
   )
 
   gameStore.map.status = clientScore > active.maximumPoints * 0.4 ? 'correct' : 'incorrect'
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: [active.country],
-    clientScore,
-    sketch: normalized,
-  })
+  submitOnce([active.country], clientScore, undefined, { sketch: normalized })
 }
-
-onBeforeUnmount(() => {
-  clearBoard()
-})
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

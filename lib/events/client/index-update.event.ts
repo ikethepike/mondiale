@@ -1,5 +1,5 @@
 import { setByAccessorPath } from '~~/lib/values'
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 export const indexUpdateEvent: ClientSideEventHandler = async ({ gameStore, payload }) => {
   if (payload.event !== 'index-update') return

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
-import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from '~~/lib/events/server/turn-timing'
+import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from '~~/lib/round-beats'
 
 /**
  * The gate shell's relatch, which is the only thing that hands a still-mounted
@@ -34,6 +34,11 @@ const stub = vi.hoisted(() => {
 vi.mock('~~/lib/events/client-side', () => ({
   REDELIVER_MAX_BATCHES: 15,
   REDELIVER_PAUSE_MS: 4000,
+  // The real loop shape, minus pacing detail the shell tests don't assert.
+  createRedeliver: () => ({
+    deliver: (send: () => Promise<boolean>) => send().catch(() => false),
+    dispose: () => {},
+  }),
   useClientEvents: () => stub,
 }))
 
@@ -69,6 +74,25 @@ describe('the gate shell relatches its next gate', () => {
 
     expect(challenge.value?.country).toBe('PE')
     expect(gateSeq.value).toBe(1)
+    unmount()
+  })
+
+  it('never re-arms for a fresh snapshot identity of the SAME gate', () => {
+    // Every full broadcast rebuilds the blob — same gate, new objects. A
+    // rejoin's resync (or another seat's cap settling) mid-answer must not
+    // replay the interstitial or remount the variant component.
+    const { challenge, gateSeq, showInterstitial, relatch, unmount } = mountShell()
+    showInterstitial.value = false
+    const before = challenge.value
+
+    stub.currentMove.value = gate(5, 'FI')
+    relatch()
+
+    expect(gateSeq.value).toBe(0)
+    expect(showInterstitial.value).toBe(false)
+    // The latch still refreshes to the live snapshot's object quietly.
+    expect(challenge.value).not.toBe(before)
+    expect(challenge.value?.country).toBe('FI')
     unmount()
   })
 

@@ -7,7 +7,8 @@ import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { scheduleDeadlineTask, scheduleRevealTask, settleRoundScores } from './round-engine'
-import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from './turn-timing'
+import { armGroupScoresCaps } from './seat-exits'
+import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from '~~/lib/round-beats'
 
 /**
  * Heritage Hunt's beat engine, the pattern sibling of chain-turns: one photo
@@ -148,9 +149,22 @@ const advanceHeritageBeat = async (
     return
   }
 
-  // Round over: everyone banks what their pins earned.
+  // Round over: everyone banks what their pins earned — in this same task,
+  // preserving the beat rhythm (the last reveal hold IS the basking beat).
   state.finished = true
   state.revealing = false
+  await settleHeritageRound(ctx, game, challenge)
+}
+
+/** Bank the finished round. Latched on `groupAnswers` like every sibling
+ *  settle, so running it twice — or from a rearm — settles nothing twice. */
+const settleHeritageRound = async (
+  ctx: ChainContext,
+  game: Game,
+  challenge: HeritageHuntChallenge
+) => {
+  const { state } = challenge
+  const server = useServerSideEvents(ctx)
   const round = latestRound(game)
   if (!round) return
   // The once-only latch every sibling engine carries (round-engine.ts):
@@ -168,7 +182,7 @@ const advanceHeritageBeat = async (
       ]
     })
   )
-  await settleRoundScores({
+  const advanced = await settleRoundScores({
     game,
     round,
     order: state.order,
@@ -178,6 +192,19 @@ const advanceHeritageBeat = async (
 
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
+  // The advanced seats now owe the table a movement request only a click
+  // sends — one cohort cap so a dead tab can't freeze the room here.
+  armGroupScoresCaps(ctx, game, advanced)
+}
+
+/** Re-arm the settle for a finished-but-unsettled round (the save threw once
+ *  the reveal timer was already spent, or a restart ate it). */
+const scheduleHeritageSettle = (ctx: ChainContext) => {
+  scheduleRevealTask(ctx, async fresh => {
+    const current = currentHeritageHunt(fresh)
+    if (!current?.state.finished) return
+    await settleHeritageRound(ctx, fresh, current)
+  })
 }
 
 /**
@@ -185,12 +212,14 @@ const advanceHeritageBeat = async (
  * in-process timer was lost (restart, or a save that threw once the timer was
  * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
  * alongside a live timer — every task dies on its (beat, revealing) token.
- * Heritage settles in the same task that finishes, so `finished` needs no
- * settle re-arm: the last beat's wedge shape is `revealing` on the last beat.
  */
 export const rearmHeritageHunt = (ctx: ChainContext, game: Game) => {
   const challenge = currentHeritageHunt(game)
-  if (!challenge || challenge.state.finished) return
+  if (!challenge) return
+  // Finished but never banked (the wedge every sibling engine recovers):
+  // re-run the settle behind a reveal beat. The groupAnswers latch makes it
+  // a no-op when the round DID settle.
+  if (challenge.state.finished) return scheduleHeritageSettle(ctx)
   if (challenge.state.revealing) return scheduleHeritageReveal(ctx, challenge.state.beat)
   // A zero deadline is the staged-but-unrevealed shape (the clock stamps at
   // the reveal) — arming against it would resolve beat 0 before anyone saw it.

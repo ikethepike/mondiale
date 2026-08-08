@@ -98,7 +98,7 @@ const {
   registerCleanup,
   stopCountdown,
   gameStore,
-  update,
+  submitOnce,
   clearBoard,
 } = useGroupChallenge('pin-landmark-challenge', { solo: false })
 
@@ -142,17 +142,13 @@ const resolvedCorrectly = computed(() => {
 
 /**
  * Resolution beat, as in the silhouette view: the true point lands on the map
- * and the dossier opens, then the scorecard follows after the hold — enough
- * time to read the miss distance and where the landmark actually is.
+ * and the dossier opens — enough time to read the miss distance and where the
+ * landmark actually is. The submit lands at the lock; the server's flip (the
+ * kind's reveal hold in ROUND_BEATS) brings the scorecard.
  */
-const REVEAL_HOLD_MS = 6000
-let submitTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => submitTimer && clearTimeout(submitTimer))
-
 const lockIn = () => {
   const active = challenge.value
   if (!active || !pin.value || submitted.value) return
-  submitted.value = true
   stopCountdown()
 
   const answer = LANDMARKS[active.slug]?.coordinates
@@ -161,11 +157,7 @@ const lockIn = () => {
     result.value = { distanceKm: haversineKm(pin.value, answer) }
   }
 
-  const pinned = pin.value
-  submitTimer = setTimeout(
-    () => update({ event: 'submit-group-challenge-answers', ranking: [], pin: pinned }),
-    REVEAL_HOLD_MS
-  )
+  submitOnce([], undefined, undefined, { pin: pin.value })
 }
 
 watch(secondsLeft, seconds => {

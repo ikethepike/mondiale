@@ -1,8 +1,59 @@
 import { playableCountries } from '~~/lib/game-rules'
-import { defineGameHandler } from '../server-side'
-import { scheduleGameTask } from './deferred-task'
+import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
+import { latestRound } from '~~/lib/rounds'
+import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
+import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { GATE_RESULT_HOLD_MS } from './turn-timing'
+import { clearFinalResultBeat } from './seat-exits'
+import { FINAL_REVEAL_HOLD_MS, GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+
+/**
+ * One missed question, one shape: burn a life and advance (a missed LAST
+ * question is replaced, never skipped — victory must end on a correct
+ * answer), or report the run is over. Shared by the wrong-answer branch
+ * below and the gauntlet's question cap (seat-exits.ts). Bumps the
+ * gauntlet's turn token; the caller owns the save and what follows a
+ * knockout.
+ */
+export const applyFinalMiss = async ({
+  game,
+  gauntlet,
+  player,
+}: {
+  game: Game
+  gauntlet: FinalChallenge
+  player: Player
+}): Promise<{ survives: boolean }> => {
+  const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
+  const currentChallenge = gauntlet.challenges[0]
+  gauntlet.turn = (gauntlet.turn ?? 0) + 1
+  let survives = gauntlet.lives > 0
+  if (survives) {
+    gauntlet.lives -= 1
+    if (gauntlet.challenges.length > 1) {
+      gauntlet.challenges.shift()
+    } else if (currentChallenge) {
+      const replacement = dealReplacementChallenge({
+        game,
+        exclude: [currentChallenge._type],
+      })
+      if (replacement) gauntlet.challenges[0] = replacement
+      else survives = false
+    }
+  }
+  if (!survives) {
+    // The knockout's durable trace, the forfeitGate posture with zero
+    // forfeited steps: it licenses the board's descent-off-the-mountain
+    // retreat (the display guard only plays retreats against a blocked
+    // record) and marks the run's end in the round history.
+    const turn = latestRound(game)?.playerTurns[player.id]
+    if (turn) {
+      turn.blocked = { atTile: game.tiles.length - 1, forfeitedSteps: 0 }
+    }
+  }
+  return { survives }
+}
 
 export const submitFinalChallengeAnswerHandler = defineGameHandler(
   'submit-final-challenge-answer',
@@ -17,8 +68,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
 
     // Deferred module: only loads once a game reaches the gauntlet (#110).
-    const { dealReplacementChallenge, isCorrectFinalAnswer } =
-      await import('~~/lib/challenges/final-challenge')
+    const { isCorrectFinalAnswer } = await import('~~/lib/challenges/final-challenge')
 
     const currentMove = player.moves[0]
     if (!currentMove) {
@@ -50,7 +100,19 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // the question just answered — is rejected; the next genuine answer arrives
     // after the reveal, with the latch already cleared.
     if (player.resolving) {
-      return console.warn(`Final challenge answer already being processed — ignoring duplicate`)
+      // Retryable, not a dead duplicate: a post-reload answer to the NEXT
+      // question lands inside this hold too. The retry outlasts the hold; a
+      // true duplicate then dies on its stale `turn` echo instead.
+      throw new RetryableReject('resolving')
+    }
+
+    // Staleness echo, like the gates' `gateTile`: an answer that lost the
+    // race with the question cap (or any redeal) must not be graded against
+    // a question the player never saw.
+    if (eventData.turn !== undefined && eventData.turn !== (currentMove.challenge.turn ?? 0)) {
+      return console.warn(
+        `Ignoring final submit for turn ${eventData.turn} — the gauntlet is on turn ${currentMove.challenge.turn ?? 0}`
+      )
     }
 
     // An odd-one-out question offers a lineup, and only the lineup. Off it sit
@@ -80,27 +142,11 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     const gauntlet = currentMove.challenge
     if (correct) {
       // Correct: the question is now consumed.
+      gauntlet.turn = (gauntlet.turn ?? 0) + 1
       gauntlet.answeredCorrect += 1
       gauntlet.challenges.shift()
     } else {
-      // A life absorbs the miss: burn the question and advance. Victory must
-      // end on a correct answer, so a missed LAST question is replaced with a
-      // fresh one instead of skipped — burn-and-advance can never empty the
-      // queue.
-      let survives = gauntlet.lives > 0
-      if (survives) {
-        gauntlet.lives -= 1
-        if (gauntlet.challenges.length > 1) {
-          gauntlet.challenges.shift()
-        } else {
-          const replacement = dealReplacementChallenge({
-            game,
-            exclude: [currentChallenge._type],
-          })
-          if (replacement) gauntlet.challenges[0] = replacement
-          else survives = false
-        }
-      }
+      const { survives } = await applyFinalMiss({ game, gauntlet, player })
 
       // Out of lives: knocked out of the gauntlet. The result pause runs
       // OUTSIDE the per-game queue — holding the lock for five seconds would
@@ -109,6 +155,10 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       if (!survives) {
         player.moves = []
         await server.updateGameState(game)
+        // The knockout verdict must reach the client NOW — with no emit the
+        // view sits on its last frame for the whole result pause, and the
+        // shell's wire-grace fallback ends up carrying the primary case.
+        server.emit({ event: 'final-challenge-checked', game }, eventTarget)
         scheduleMovementPhase(
           GATE_RESULT_HOLD_MS,
           { io, redis, socket, eventTarget },
@@ -131,34 +181,31 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // Reaching victory here happens OUTSIDE enter-movement-phase, so nobody
     // re-checks round advancement. If this winner was the LAST player to
     // settle, everyone else is parked in movement-summary waiting for a
-    // `new-round` that would never fire. Re-enter the movement phase (which now
-    // skips settled players and only runs the advancement check) so it stages
-    // and reveals the next round for the remaining players.
+    // `new-round` that would never fire. Re-enter the movement phase (which
+    // now skips settled players and only runs the advancement check) so it
+    // stages and reveals the next round for the remaining players — BEHIND
+    // the winner's own result beat, or the staged round's `new-round` full
+    // snapshot can land before the victory beat it should follow.
+
+    // Pace the reveal: the client shows its own result beat first, then the
+    // next question (or victory) lands. The shared follow-up clears the
+    // `resolving` latch (with a fresh fetch), reveals, and starts the next
+    // question's cap — so the next genuine answer, which can only come after
+    // this reveal, is accepted while duplicates fired during the pause were
+    // already rejected.
+    await clearFinalResultBeat({ io, redis, socket, eventTarget }, player)
+
+    // The winner's advancement re-check rides the SAME hold, armed AFTER the
+    // reveal task so it runs behind it: the reveal emit then carries the
+    // pre-staging snapshot (a true seat+round slice) and the staged round
+    // still travels only on `new-round`, 2s later.
     if (won) {
       scheduleMovementPhase(
-        0,
+        FINAL_REVEAL_HOLD_MS,
         { io, redis, socket, eventTarget },
         { continuation: true, walkSeq: player.walkSeq }
       )
     }
-
-    // Pace the reveal: the client shows its own result beat first, then the
-    // next question (or victory) lands. The pause runs OUTSIDE the queue. The
-    // follow-up re-enters the queue to CLEAR the `resolving` latch (with a
-    // fresh fetch) before emitting, so the next genuine answer — which can only
-    // come after this reveal — is accepted while duplicates fired during the
-    // pause were already rejected.
-    scheduleGameTask({ redis, gameId: eventTarget.gameId }, GATE_RESULT_HOLD_MS, async () => {
-      const fresh = await server.fetchGame(eventTarget.gameId)
-      const freshPlayer = fresh?.players[eventTarget.playerId]
-      if (fresh && freshPlayer?.resolving) {
-        freshPlayer.resolving = false
-        await server.updateGameState(fresh)
-        return server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
-      }
-      // Latch already cleared (or game gone) — just reveal the last state.
-      server.emit({ event: 'final-challenge-checked', game: fresh ?? game }, eventTarget)
-    })
   },
   { player: 'warn' }
 )
