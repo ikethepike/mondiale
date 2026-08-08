@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
+import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import {
+  BOARD_MOUNT_GRACE_MS,
   CLASSIC_SETTLE_SLACK_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -266,5 +268,65 @@ describe('every emit leaves the simulated client equal to server truth', () => {
     const client = expectClientConvergence()
     expect(client.players.a.moves).toEqual([])
     expect(client.rounds[0].playerTurns.a.blocked).toEqual({ atTile: 5, forfeitedSteps: 5 })
+  })
+})
+
+/**
+ * The stepping half of the contract: a walk plays as an announce (the board
+ * mounts on the phase flip), then EXACTLY one step per cadence tick — no
+ * matter how many duplicate continuations are in flight.
+ */
+describe('walk stepping contract', () => {
+  const walkMove = (to: number) =>
+    ({ endTile: { position: to } }) as unknown as Player['moves'][number]
+
+  it('a server-initiated walk announces before it steps, then keeps cadence', async () => {
+    const initial = buildGame(
+      [seat('a', 'group-scores', { moves: [walkMove(6)] }), seat('b', 'group-challenge')],
+      TWO_TRUTHS
+    )
+    const ctx = context(initial, 'a')
+
+    scheduleMovementPhase(0, ctx, { continuation: true, walkSeq: 1 })
+    await vi.advanceTimersByTimeAsync(50)
+    await vi.runAllTicks()
+
+    // The announce: phase flipped, but NOT a single tile consumed yet.
+    let fresh = store.get(initial.id)!
+    expect(fresh.players.a.phase).toBe('moving')
+    expect(fresh.players.a.currentPosition).toBe(0)
+
+    // Steps begin only after the mount grace, one per cadence tick.
+    await vi.advanceTimersByTimeAsync(BOARD_MOUNT_GRACE_MS + 100)
+    fresh = store.get(initial.id)!
+    expect(fresh.players.a.currentPosition).toBe(1)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(store.get(initial.id)!.players.a.currentPosition).toBe(2)
+
+    expectClientConvergence()
+  })
+
+  it('duplicate continuations can never double the stepping pace', async () => {
+    const initial = buildGame(
+      [seat('a', 'moving', { moves: [walkMove(9)] }), seat('b', 'group-challenge')],
+      TWO_TRUTHS
+    )
+    const ctx = context(initial, 'a')
+
+    // A rejoin re-armed a resume beside the live timer: two chains, same walk.
+    scheduleMovementPhase(0, ctx, { continuation: true, walkSeq: 1 })
+    scheduleMovementPhase(0, ctx, { continuation: true, walkSeq: 1 })
+    await vi.advanceTimersByTimeAsync(120)
+    await vi.runAllTicks()
+
+    // Both fired at ~t0; the latch dropped the second — one tile, not two.
+    expect(store.get(initial.id)!.players.a.currentPosition).toBe(1)
+
+    // Three cadence ticks later the pawn has walked three MORE tiles — the
+    // surviving single chain's pace, not a doubled one.
+    await vi.advanceTimersByTimeAsync(1_500)
+    expect(store.get(initial.id)!.players.a.currentPosition).toBe(4)
+
+    expectClientConvergence()
   })
 })

@@ -19,6 +19,11 @@ export interface Player {
    *  under and die on a mismatch, so a stale timer (a watchdog tick from a
    *  previous round) can never start a second stepping chain. */
   walkSeq?: number
+  /** When this seat last stepped a tile (epoch ms) — the single-stepper
+   *  latch. Duplicate walk continuations (a rejoin re-arming a resume beside
+   *  the live timer) both carry a valid walkSeq; whichever ticks early gets
+   *  dropped here, so a pawn can never step faster than the walk cadence. */
+  lastStepAt?: number
 }
 
 export type PlayerPhase =

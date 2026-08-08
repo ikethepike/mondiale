@@ -19,9 +19,12 @@ import type { ClientEventTarget } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
 import { moveStopTile } from '~~/lib/player-status'
-import { ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
+import { BOARD_MOUNT_GRACE_MS, ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
 
 const STEP_INTERVAL = 500
+/** How much earlier than the cadence a step tick may land before it reads
+ *  as a duplicate chain's tick (see the single-stepper latch below). */
+const STEP_LATCH_SLACK_MS = 150
 const NEW_ROUND_PAUSE = 2000
 
 /**
@@ -156,8 +159,39 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // +500ms pace to the next step runs OUTSIDE the queue (via reschedule),
       // so a slow walker never blocks other players' events for this game.
       if (player.currentPosition < stopAt) {
+        // A SERVER-initiated walk start (a gate-result resume, a rearm, a
+        // heal — any continuation reaching a seat not yet 'moving') announces
+        // itself first: the phase flip rides its own snapshot so the board
+        // mounts, and the steps only start after the mount grace — otherwise
+        // a short walk finishes before the client ever presents the board
+        // and the whole movement beat is skipped. Client-driven entries (not
+        // continuations) come from a board already on screen; cap walks
+        // pre-announce in armParkedWalks and arrive here already 'moving'.
+        if (eventData.continuation && player.phase !== 'moving') {
+          player.phase = 'moving'
+          await server.updateGameState(game)
+          server.emit({ event: 'update', game }, eventTarget)
+          scheduleMovementPhase(
+            BOARD_MOUNT_GRACE_MS,
+            { io, redis, socket, eventTarget },
+            { continuation: true, walkSeq: player.walkSeq }
+          )
+          return
+        }
+
+        // The single-stepper latch: duplicate continuations for the SAME walk
+        // (a rejoin re-armed a resume beside the live timer) both pass the
+        // walkSeq guard, and two chains would step the pawn at double pace.
+        // A tick landing early against the last step is the duplicate — drop
+        // it WITHOUT rescheduling and the surviving chain keeps the cadence.
+        const now = Date.now()
+        if (player.lastStepAt && now - player.lastStepAt < STEP_INTERVAL - STEP_LATCH_SLACK_MS) {
+          return
+        }
+
         player.phase = 'moving'
         player.currentPosition++
+        player.lastStepAt = now
         await server.updateGameState(game)
         server.emit({ event: 'update', game }, eventTarget)
 
