@@ -125,6 +125,11 @@ export const GATE_RESULT_WIRE_GRACE_MS = 750
 /** The gate shell's fallback end of the result beat — DERIVED, never an
  *  ad-hoc sum at the call site. */
 export const GATE_RESULT_FALLBACK_MS = GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS
+/** The mid-gauntlet reveal (clearFinalResultBeat): the teachable scorecards —
+ *  rankings, lessons, the fact you missed — need longer on screen than a
+ *  gate's verdict pill. The knockout keeps the shorter gate hold: its exit
+ *  line says everything. */
+export const FINAL_REVEAL_HOLD_MS = 8000
 
 /** Ceiling for classic kinds that carry no clock of their own (a ranking
  *  being dragged, a sketch being drawn) — only armed under the cap switch. */

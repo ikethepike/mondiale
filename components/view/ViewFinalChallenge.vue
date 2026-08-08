@@ -295,8 +295,14 @@ import type {
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
-const { currentFinalChallenge, clearBoard, update, gameStore, currentMove, game } =
-  useClientEvents()
+const {
+  currentFinalChallenge: liveFinalChallenge,
+  clearBoard,
+  update,
+  gameStore,
+  currentMove,
+  game,
+} = useClientEvents()
 
 const status = toRef(gameStore.map, 'status')
 
@@ -325,6 +331,23 @@ const gauntlet = computed(() =>
 // never set a local status, so without this the shell stood bare — progress
 // pill, no prompt, no verdict — for the whole beat.
 const knockedOut = computed(() => !!lastGauntlet.value && !currentMove.value)
+
+// The QUESTION survives the knockout hold too: the same wipe strips the live
+// item, and every prompt piece (question caption, logos, the reveal cards)
+// keys off it — without the latch the verdict played over a bare counter and
+// an empty caption. The live value always wins; the latch only ever fills
+// the knockout beat.
+const lastFinalItem = shallowRef<NonNullable<typeof liveFinalChallenge.value>>()
+watch(
+  liveFinalChallenge,
+  item => {
+    if (item) lastFinalItem.value = item
+  },
+  { immediate: true }
+)
+const currentFinalChallenge = computed(
+  () => liveFinalChallenge.value ?? (knockedOut.value ? lastFinalItem.value : undefined)
+)
 
 /** The board the gauntlet was dealt from — the verdict's scope, and the
  *  ranking the stat scorecard reads. */

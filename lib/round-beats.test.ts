@@ -19,6 +19,7 @@ import {
   classicPlaySeconds,
   EMPIRE_INTERBEAT_HOLD_MS,
   FINAL_QUESTION_CAP_MS,
+  FINAL_REVEAL_HOLD_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
   isClassicGroupRound,
@@ -145,6 +146,10 @@ describe('round beats', () => {
     expect(GATE_RESULT_FALLBACK_MS).toBe(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
     // The hop must undercut the step cadence, or live walks stall mid-hop.
     expect(PAWN_HOP_MS).toBeLessThan(STEP_INTERVAL_MS)
+    // The gauntlet's reveal outlasts a gate verdict by design, and stays
+    // well inside the question cap armed after it.
+    expect(FINAL_REVEAL_HOLD_MS).toBeGreaterThan(GATE_RESULT_HOLD_MS)
+    expect(FINAL_REVEAL_HOLD_MS).toBeLessThan(FINAL_QUESTION_CAP_MS)
   })
 
   it('backs every cap with a live value', () => {

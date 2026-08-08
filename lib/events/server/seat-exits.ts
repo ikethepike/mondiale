@@ -1,6 +1,7 @@
 import {
   WALK_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
+  FINAL_REVEAL_HOLD_MS,
   GATE_RESULT_HOLD_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -173,7 +174,9 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
  * revived seat drifts from a live one.
  */
 export const clearFinalResultBeat = async (ctx: EngineContext, playerId: string) => {
-  scheduleEngineTask(ctx, GATE_RESULT_HOLD_MS, async (fresh, server) => {
+  // The longer hold: gauntlet reveals teach (rankings, the missed fact) and
+  // outlast a gate's verdict pill. The next question lands on this emit.
+  scheduleEngineTask(ctx, FINAL_REVEAL_HOLD_MS, async (fresh, server) => {
     const seat = fresh.players[playerId]
     if (!seat) return
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
