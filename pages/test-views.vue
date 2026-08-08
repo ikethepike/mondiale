@@ -2395,6 +2395,22 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    id: 'individual-trend-duel-hard',
+    label: 'Individual: trend duel (hard — five duels, the ledger at its widest)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'trend-duel',
+        trendDuels: [
+          { metric: 'co2PerCapita', seek: 'rising', a: 'SE', b: 'IN' },
+          { metric: 'homicideRate', seek: 'falling', a: 'SV', b: 'US' },
+          { metric: 'politicalCorruption', seek: 'rising', a: 'HU', b: 'EE' },
+          { metric: 'gini', seek: 'rising', a: 'US', b: 'FR' },
+          { metric: 'lifeExpectancy', seek: 'rising', a: 'RW', b: 'UA' },
+        ],
+      }),
+  },
+  {
     id: 'individual-trajectory-match',
     label: 'Individual: trajectory match (timed, strike hint)',
     component: ViewIndividualChallenge,

@@ -20,6 +20,7 @@
           class="result"
           :status="status"
           :incorrect-message="incorrectMessage"
+          :wide="reveal?.wide"
         >
           <component :is="reveal.component" v-if="reveal" v-bind="reveal.props" />
           <span v-else-if="gateLesson">{{ gateLesson }}</span>

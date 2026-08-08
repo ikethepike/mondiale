@@ -1,7 +1,13 @@
 <template>
-  <div class="trend-duel-reveal">
+  <div class="trend-duel-reveal" :style="{ '--duel-columns': columns }">
     <ol class="duels">
-      <li v-for="(row, index) in rows" :key="index" class="duel">
+      <li
+        v-for="(row, index) in rows"
+        :key="index"
+        class="duel"
+        :class="{ missed: !row.correct }"
+        :style="{ '--i': index }"
+      >
         <span class="duel-head">
           {{ row.label }} — {{ row.answerName }} is the one {{ row.seek }}
         </span>
@@ -50,11 +56,17 @@ const props = defineProps<{
   outcomes: TrendDuelOutcome[]
 }>()
 
+/** How wide the ledger may ask to be: a lost first duel is a one-card ledger and
+ *  must not stretch a card across the screen. Three abreast is the ceiling —
+ *  past that a duel's two charts go to slivers. */
+const columns = computed(() => Math.min(props.outcomes.length, 3))
+
 const rows = computed(() =>
   props.outcomes.map(outcome => ({
     metric: outcome.metric,
     label: TREND_METRICS[outcome.metric].label,
     seek: outcome.seek,
+    correct: outcome.correct,
     answerName: countryName(outcome.answer),
     sides: [outcome.answer, outcome.other].map(isoCode => ({
       isoCode,
@@ -70,41 +82,84 @@ const rows = computed(() =>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// Five duels × two annotated charts is a wall, not a paragraph: one duel per row
+// ran ~120rem tall and the shell does not scroll, so the verdict head above and
+// the last duels below both fell off the screen. The ledger takes its own width
+// from the `wide` host (ChallengeResult drops its prose cap for it) and spends
+// it across rather than down.
+//
+// The width is DEFINITE and counted off the duels: the host card is
+// `width: max-content` and a sparkline has no intrinsic width of its own (its
+// svg is `width: 100%`), so an auto-sized ledger collapses onto the head line's
+// measure — the narrow column this reveal used to render as. The count comes
+// from the script rather than a breakpoint because it is the ledger's content,
+// not the viewport, that says how many cards there are to stand side by side.
 .trend-duel-reveal {
   gap: 0.8rem;
   display: flex;
+  max-width: 100%;
   text-align: left;
   flex-flow: column nowrap;
+  width: calc(var(--duel-columns, 3) * 38rem);
 }
 
+// Duels abreast where there is room, one per row on a phone — and whatever
+// still runs past the fold scrolls inside the card rather than off the screen.
 .duels {
   gap: 0.7rem;
   margin: 0;
-  padding: 0;
+  // The scroller's own padding, so a card's border and the sparkline's
+  // edge-kissing end dot aren't shaved by the overflow.
+  padding: 0.2rem;
   display: grid;
   list-style: none;
+  // The column count follows the width the ledger actually got, not the
+  // viewport: three duels abreast on a laptop, two on a tablet, one on a phone.
+  // It resolves at all only because the reveal above declares a definite width.
+  // 34rem is the floor a duel needs — two annotated charts share the card, and
+  // under ~17rem apiece the year row runs its outer labels into the middle one.
+  grid-template-columns: repeat(auto-fit, minmax(34rem, 1fr));
+  // Whatever still runs past the fold scrolls inside the card. The card stands
+  // under the verdict head in a shell that does not scroll, so this ceiling is
+  // what keeps the head — and the last duel — on the screen.
+  max-height: min(70vh, 68rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .duel {
   gap: 0.6rem;
   display: flex;
+  min-width: 0;
   padding: 0.7rem 1rem;
   border-radius: 1.2rem;
   flex-flow: column nowrap;
   background: glass(0.55);
   border: 1px solid ink(0.1);
+  // The cards land in sequence, the shape TrajectoryReveal's rows keep.
+  animation: row-land var(--motion-base) var(--ease-out-expressive) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+
+  // The duels that cost the streak, legible at a glance across the grid —
+  // scanning ten curves for an orange country name is not reading.
+  &.missed {
+    border-color: var(--hior-ange);
+    background: flame(0.12);
+  }
 }
 
 .duel-head {
   font-size: 1.3rem;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--dark-blue);
 }
 
 .sides {
   gap: 1rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .side {
@@ -127,9 +182,13 @@ const rows = computed(() =>
   }
 }
 
+// The pick marker wraps under the name rather than squeezing it — a half-card
+// column leaves "Bosnia and Herzegovina" no room to share its row.
 .side-id {
-  gap: 0.6rem;
+  gap: 0.1rem 0.6rem;
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
 }
 
@@ -142,6 +201,7 @@ const rows = computed(() =>
 }
 
 .side-name {
+  min-width: 0;
   font-size: 1.3rem;
   overflow: hidden;
   white-space: nowrap;
@@ -160,9 +220,17 @@ const rows = computed(() =>
   justify-content: center;
 }
 
-@media (max-width: $tablet) {
+// Below the phone squeeze two annotated charts abreast are slivers — the duel
+// stacks, and the ledger is a single scrolling column of them.
+@media (max-width: $phone) {
   .sides {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .duel {
+    animation: none;
   }
 }
 </style>
