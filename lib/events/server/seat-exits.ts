@@ -1,4 +1,5 @@
 import {
+  BOARD_MOUNT_GRACE_MS,
   FINAL_QUESTION_CAP_MS,
   GATE_RESULT_HOLD_MS,
   GROUP_SCORES_CAP_MS,
@@ -34,14 +35,28 @@ import { forfeitGate } from './submit-individual-challenge-answer.handler'
 const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
   if (!SERVER_CONTROLLED_CAPS || !seats.length) return
   const walkSeqs = seats.map(seat => [seat.id, seat.walkSeq] as const)
-  scheduleEngineTask(ctx, GROUP_SCORES_CAP_MS, async fresh => {
+  scheduleEngineTask(ctx, GROUP_SCORES_CAP_MS, async (fresh, server) => {
+    // Announce the walk FIRST: flip the cohort to 'moving' in one save so
+    // every client mounts its board, then start the steps after the mount
+    // grace — otherwise the walk outruns the board and reads as a teleport,
+    // with the challenge-tile arrival beat lost with it. The client's own
+    // Close-Scores path needs none of this (its board is already up), and
+    // its non-continuation entry still bounces off the 'moving' guard.
+    const walkers: (readonly [string, number | undefined])[] = []
     for (const [playerId, walkSeq] of walkSeqs) {
       const parked = fresh.players[playerId]
       if (!parked || parked.phase !== 'group-scores') continue
       if (parked.walkSeq !== walkSeq) continue
       console.warn(`Scores cap walking parked seat ${playerId} in ${ctx.eventTarget.gameId}`)
+      parked.phase = 'moving'
+      walkers.push([playerId, walkSeq] as const)
+    }
+    if (!walkers.length) return
+    await server.updateGameState(fresh)
+    server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
+    for (const [playerId, walkSeq] of walkers) {
       scheduleMovementPhase(
-        0,
+        BOARD_MOUNT_GRACE_MS,
         { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
         { continuation: true, walkSeq }
       )

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armFinalQuestionCap, armGroupScoresCap, armIndividualGateCap } from './seat-exits'
 import {
+  BOARD_MOUNT_GRACE_MS,
   FINAL_QUESTION_CAP_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -31,9 +32,15 @@ const seat = (id: string, phase: PlayerPhase, extra: Partial<Player> = {}): Play
     ...extra,
   }) as unknown as Player
 
+// Unique per test: the per-game task queue (server-side.ts) is module state
+// keyed by gameId and outlives each test — a leftover chain from one test
+// firing into the next test's same-id store is nondeterministic pollution.
+// Against a unique id, a straggler's fresh fetch finds nothing and dies.
+let gameSeq = 0
+
 const buildGame = (players: Player[]): Game =>
   ({
-    id: 'test-game',
+    id: `test-game-${++gameSeq}`,
     host: players[0]?.id,
     tiles: [],
     variant: 'world',
@@ -80,9 +87,14 @@ describe('armGroupScoresCap', () => {
     const game = buildGame([parked])
     armGroupScoresCap(context(game), parked)
 
+    // The cap announces the walk first — 'moving' rides a snapshot so the
+    // board mounts — and the steps only start after the mount grace.
     await vi.advanceTimersByTimeAsync(GROUP_SCORES_CAP_MS + 100)
     await vi.runAllTicks()
+    expect(store.get(game.id)!.players.a.phase).toBe('moving')
 
+    await vi.advanceTimersByTimeAsync(BOARD_MOUNT_GRACE_MS + 100)
+    await vi.runAllTicks()
     // Nothing left to walk → the movement re-entry settles the seat.
     expect(store.get(game.id)!.players.a.phase).toBe('movement-summary')
   })

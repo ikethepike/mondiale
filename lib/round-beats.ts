@@ -60,6 +60,12 @@ export const SERVER_CONTROLLED_CAPS = true
 
 /** A scorecard left unread force-walks its seat. */
 export const GROUP_SCORES_CAP_MS = 45000
+/** Server-driven walks flip the seat to 'moving' and let this beat pass
+ *  BEFORE the first step, so the board mounts and the steps (and the
+ *  challenge-tile arrival) play on screen — a walk that starts stepping in
+ *  the same write it announces itself outruns the board and reads as a
+ *  teleport. Client-driven walks need none: the board is already up. */
+export const BOARD_MOUNT_GRACE_MS = 2500
 /** A round-1 tutorial card left open force-closes. */
 export const TUTORIAL_CAP_MS = 60000
 /** An unanswered stop-tile gate forfeits. */
