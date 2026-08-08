@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
-import { scheduleMovementPhase } from './enter-movement-phase.handler'
+import { enterMovementPhaseHandler, scheduleMovementPhase } from './enter-movement-phase.handler'
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import {
@@ -280,6 +280,78 @@ describe('every emit leaves the simulated client equal to server truth', () => {
 describe('walk stepping contract', () => {
   const walkMove = (to: number) =>
     ({ endTile: { position: to } }) as unknown as Player['moves'][number]
+
+  /** The one client-driven entry: the scorecard's close, no continuation. */
+  const clientEnter = async (ctx: EngineContext, game: Game, playerId: string) =>
+    enterMovementPhaseHandler({
+      io: ctx.io,
+      redis: ctx.redis,
+      socket: ctx.socket,
+      eventKey: 'enter-movement-phase',
+      eventTarget: { gameId: game.id, playerId },
+      eventData: { event: 'enter-movement-phase' },
+    } as never)
+
+  it('a client entry from the scorecard announces, then the walk runs itself', async () => {
+    const initial = buildGame(
+      [
+        seat('a', 'group-scores', { moves: [walkMove(3)], walkIntro: true }),
+        seat('b', 'group-challenge'),
+      ],
+      TWO_TRUTHS
+    )
+    const ctx = context(initial, 'a')
+
+    await clientEnter(ctx, initial, 'a')
+    await vi.runAllTicks()
+
+    // The announce rode the entry itself — no step yet.
+    let fresh = store.get(initial.id)!
+    expect(fresh.players.a.phase).toBe('moving')
+    expect(fresh.players.a.currentPosition).toBe(0)
+
+    // The rest of the walk is server-owned: lead, steps, arrival.
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 3 * 500 + 200)
+    fresh = store.get(initial.id)!
+    expect(fresh.players.a.currentPosition).toBe(3)
+    expect(fresh.players.a.phase).toBe('movement-summary')
+
+    // Exactly ONE intro announce per walk generation: the first emit carries
+    // walkIntro (the client's cue for the "On the move!" beat), every
+    // emit after the first step has it retired.
+    const introEmits = emits.filter(entry => entry.game.players.a.walkIntro)
+    expect(introEmits).toHaveLength(1)
+    expect(introEmits[0].game.players.a.currentPosition).toBe(0)
+    for (const entry of emits) {
+      if (entry.game.players.a.currentPosition > 0) {
+        expect(entry.game.players.a.walkIntro, 'a step must retire the intro').toBeFalsy()
+      }
+    }
+
+    expectClientConvergence()
+  })
+
+  it('a client entry from any phase but the scorecard is refused', async () => {
+    const initial = buildGame(
+      [
+        seat('a', 'individual-challenge', { moves: [walkMove(5)], currentPosition: 2 }),
+        seat('b', 'group-challenge'),
+      ],
+      TWO_TRUTHS
+    )
+    const ctx = context(initial, 'a')
+
+    await clientEnter(ctx, initial, 'a')
+    await vi.runAllTicks()
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 1_000)
+
+    // No phase flip, no steps, not a single emit — a stray or replayed
+    // client event cannot eject a seat from a gate.
+    const fresh = store.get(initial.id)!
+    expect(fresh.players.a.phase).toBe('individual-challenge')
+    expect(fresh.players.a.currentPosition).toBe(2)
+    expect(emits).toHaveLength(0)
+  })
 
   it('a turn-opening walk announces, holds the long lead, then keeps cadence', async () => {
     const initial = buildGame(

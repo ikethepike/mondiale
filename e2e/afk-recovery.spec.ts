@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { BOARD_TO_CHALLENGE_HOLD_MS } from '~~/lib/round-beats'
 
 /**
  * The stuck-after-challenge class, asserted end to end: a classic round's
@@ -80,14 +81,34 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   expect(viewLog.length).toBeGreaterThan(2)
   for (const [index, entry] of viewLog.entries()) {
     if (index === 0) continue
+    const previous = viewLog[index - 1]
     expect(entry.key, `blank view mid-session at #${index}`).not.toBe('none')
-    expect(entry.key, `self-swap at #${index}`).not.toBe(viewLog[index - 1].key)
+    expect(entry.key, `self-swap at #${index}`).not.toBe(previous.key)
     if (index >= 2) {
-      const bounce = entry.key === viewLog[index - 2].key && entry.at - viewLog[index - 1].at < 500
+      const bounce = entry.key === viewLog[index - 2].key && entry.at - previous.at < 500
       expect(
         bounce,
-        `view flashed: ${viewLog[index - 2].key}→${viewLog[index - 1].key}→${entry.key}`
+        `view flashed: ${viewLog[index - 2].key}→${previous.key}→${entry.key}`
       ).toBe(false)
+    }
+
+    // The walk protocol on screen: a scorecard only ever closes onto the
+    // board (the announce snapshot), never straight into a challenge.
+    if (previous.key === 'group-scores') {
+      expect(entry.key, `group-scores must hand over to the board, not ${entry.key}`).toBe('board')
+    }
+
+    // The arrival beat: a board → gate swap is held so the final hop, knock
+    // and ripple play out — a shorter dwell means the hold was cut.
+    if (
+      previous.key === 'board' &&
+      (entry.key === 'individual-challenge' || entry.key === 'final-challenge')
+    ) {
+      const dwell = entry.at - previous.at
+      expect(
+        dwell,
+        `the board→${entry.key} swap cut the arrival hold (${dwell}ms)`
+      ).toBeGreaterThanOrEqual(BOARD_TO_CHALLENGE_HOLD_MS - 250)
     }
   }
 
