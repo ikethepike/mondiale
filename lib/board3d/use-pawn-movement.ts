@@ -19,35 +19,8 @@ export interface PawnMover {
   place(playerId: string, tileIndex: number): void
   /** Queue animated hops toward a new tile index. */
   moveTo(playerId: string, tileIndex: number): void
-  /**
-   * Mount-time placement that replays movement missed while the board was
-   * unmounted (challenge win leaps, walks started before the scene loaded):
-   * the pawn appears where it was last SEEN and hops to where it IS.
-   *
-   * Replay only ever runs FORWARD, and only within the current walk
-   * generation (read via `walkSeqFor`). A pawn is never put back down ahead of
-   * where it truthfully stands, so it cannot retreat over ground it already
-   * covered.
-   */
-  restore(playerId: string, tileIndex: number): void
   dispose(): void
 }
-
-/**
- * Where each pawn was last shown, per game — module state so it survives the
- * board unmounting for challenge views. Without it a remounted board places
- * pawns at their latest position and any steps in between are never seen.
- *
- * Stamped with the walk generation it was recorded under: a remembered tile
- * from an older `walkSeq` describes a walk that is over, and replaying toward
- * it would animate ground the pawn already covered.
- */
-interface RememberedTile {
-  tile: number
-  walkSeq: number
-}
-
-const displayedMemory = new Map<string, Map<string, RememberedTile>>()
 
 /**
  * Debug seam for the pawn-replay e2e harness: records what the mover was ASKED
@@ -56,14 +29,10 @@ const displayedMemory = new Map<string, Map<string, RememberedTile>>()
  * (`window.__pawnTrace = []`), and it must never influence a tween.
  */
 export interface PawnTraceEntry {
-  fn: 'place' | 'moveTo' | 'restore' | 'hop'
+  fn: 'place' | 'moveTo' | 'hop'
   playerId: string
   from: number | undefined
   to: number
-  /** restore() only: the clamped origin it actually replayed from. */
-  origin?: number
-  /** restore() only: remembered vs requested walk generation. */
-  seq?: [number | undefined, number]
 }
 
 const trace = (entry: PawnTraceEntry) => {
@@ -73,6 +42,10 @@ const trace = (entry: PawnTraceEntry) => {
 
 const PAWN_REST_Y = 0.6
 const SHARED_TILE_SCALE = 0.72
+
+/** How far a blocked pawn leans toward its gate: a fraction of the distance
+ *  from the stop tile to the gate tile — "pressed against", never on. */
+const PRESS_IN_FRACTION = 0.3
 
 /**
  * Backlog size beyond which a walk stops replaying hop-by-hop and snaps.
@@ -100,37 +73,14 @@ export const createPawnMover = (options: {
   hopHeight: number
   /** Fired when a pawn settles at the end of a run of hops. */
   onLand?: (playerId: string, tile: TileTransform) => void
-  /** Key for cross-mount position memory (the game id). */
-  memoryKey?: string
   /**
-   * The walk generation a pawn is currently on (`player.walkSeq`). Read on
-   * every memory write, so a tile walked live — after the server deals a new
-   * walk to an already-mounted board — is stamped with the generation it
-   * actually belongs to rather than whatever the last mount restored under.
+   * The gate tile a blocked pawn stands against, or undefined when free. A
+   * blocked pawn rests nudged toward that tile's near edge — server truth
+   * (the stop tile) plus body language, never the old on-gate fiction.
    */
-  walkSeqFor?: (playerId: string) => number
+  pressTowardFor?: (playerId: string) => number | undefined
 }): PawnMover => {
   const states = new Map<string, PawnState>()
-
-  const memory = (() => {
-    if (!options.memoryKey) return undefined
-    if (!displayedMemory.has(options.memoryKey)) {
-      // One game per client — starting a new game drops stale memories
-      displayedMemory.clear()
-      displayedMemory.set(options.memoryKey, new Map())
-    }
-    return displayedMemory.get(options.memoryKey)
-  })()
-
-  // Stamp every memory write with the generation the pawn is on RIGHT NOW,
-  // read from live state. Latching this at restore() time instead would go
-  // stale the moment the server deals a new walk to a mounted board: the pawn
-  // then walks live through the position watcher with no restore() in sight,
-  // and the next mount would compare two different generations and discard
-  // movement the player is still owed.
-  const remember = (playerId: string, tile: number) => {
-    memory?.set(playerId, { tile, walkSeq: options.walkSeqFor?.(playerId) ?? 0 })
-  }
 
   // Held for dispose(); killing an already-finished tween is a no-op.
   // NOTE: never use tween.eventCallback('onComplete', ...) for cleanup here —
@@ -176,10 +126,21 @@ export const createPawnMover = (options: {
     const tile = options.tileFor(tileIndex)
     if (!tile) return undefined
     const slot = slotFor(playerId, tileIndex)
+
+    // A blocked pawn leans toward the gate holding it — the press-in.
+    const gateIndex = options.pressTowardFor?.(playerId)
+    const gate = gateIndex !== undefined ? options.tileFor(gateIndex) : undefined
+    const press = gate
+      ? {
+          x: (gate.position.x - tile.position.x) * PRESS_IN_FRACTION,
+          z: (gate.position.z - tile.position.z) * PRESS_IN_FRACTION,
+        }
+      : { x: 0, z: 0 }
+
     return {
-      x: tile.position.x + slot.x,
+      x: tile.position.x + slot.x + press.x,
       y: tile.position.y + PAWN_REST_Y,
-      z: tile.position.z + slot.z,
+      z: tile.position.z + slot.z + press.z,
       scale: slot.scale,
     }
   }
@@ -268,7 +229,6 @@ export const createPawnMover = (options: {
     }
 
     states.set(playerId, { displayed: tileIndex, queue: [], hopping: false })
-    remember(playerId, tileIndex)
 
     const pawn = options.pawnFor(playerId)
     const resting = restingPosition(playerId, tileIndex)
@@ -329,7 +289,6 @@ export const createPawnMover = (options: {
         onComplete() {
           trace({ fn: 'hop', playerId, from: state.displayed, to: next })
           state.displayed = next
-          remember(playerId, next)
           state.hopping = false
           state.hopTarget = undefined
           state.activeTween = undefined
@@ -381,48 +340,9 @@ export const createPawnMover = (options: {
     hopNext(playerId)
   }
 
-  const restore = (playerId: string, tileIndex: number) => {
-    const remembered = memory?.get(playerId)
-    const walkSeq = options.walkSeqFor?.(playerId) ?? 0
-
-    // A remount may only ever replay FORWARD, and only within the walk the
-    // memory was recorded under:
-    //
-    //  - an older generation is a finished walk — replaying toward it would
-    //    re-animate a previous round's tiles, so it is not an origin at all
-    //  - a remembered tile BEHIND the target is movement the player never saw
-    //    (a win leap, a walk begun before the scene loaded) — still owed, so
-    //    the pawn reappears there and walks the rest
-    //  - a remembered tile AHEAD of the target is the gate fiction: the board
-    //    showed the pawn ON a gate it truthfully stands short of. Clamping to
-    //    the target puts it down where the server says it is instead of
-    //    retreating it onto the gate and hopping back off
-    const origin =
-      remembered === undefined || remembered.walkSeq !== walkSeq
-        ? tileIndex
-        : Math.min(remembered.tile, tileIndex)
-
-    trace({
-      fn: 'restore',
-      playerId,
-      from: remembered?.tile,
-      to: tileIndex,
-      origin,
-      seq: [remembered?.walkSeq, walkSeq],
-    })
-
-    if (origin === tileIndex) return place(playerId, tileIndex)
-
-    // Reappear where the pawn was last seen, then walk the missed stretch
-    // (moveTo fast-forwards long backlogs and plays short retreats)
-    place(playerId, origin)
-    moveTo(playerId, tileIndex)
-  }
-
   return {
     place,
     moveTo,
-    restore,
     dispose() {
       for (const state of states.values()) {
         cancelLanding(state)

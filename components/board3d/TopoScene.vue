@@ -42,10 +42,11 @@ import type { TileTransform } from '~~/lib/board3d/path'
 import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { ARRIVAL_RIPPLE_MS } from '~~/lib/round-beats'
+import { ARRIVAL_RIPPLE_MS, MOVE_INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
+import { moveStopTile } from '~~/lib/player-status'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
@@ -60,9 +61,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  // False while the persistent stage is hidden: live movement holds (the
+  // sync-on-show pass replays it) and idle tweens pause with the render loop.
+  active: {
+    type: Boolean,
+    default: true,
+  },
 })
-
-const emit = defineEmits<{ ready: [] }>()
 
 // Allocated per instance: the board camera mutates `camera.position` in place
 // (see use-board-camera's flyTo), so this vector must not be shared across
@@ -110,17 +115,22 @@ const cameraHeld = () => Date.now() < grabHeldUntil
 
 /**
  * A pawn blocked by an individual challenge sits at endTile - 1 in server
- * data (it must beat the challenge to pass). Visually that reads as "stuck
- * one tile short", so we display blocked pawns ON the challenge tile; a
- * failed challenge clears the move and the pawn visibly bounces back.
+ * data (it must beat the challenge to pass). The display is server truth —
+ * the pawn stands AT its stop tile, pressed toward the gate (the mover's
+ * press-in), never on it.
  */
 const isBlockedByChallenge = (player: Player) => {
   const move = player.moves[0]
   return Boolean(move?.challenge && move.endTile.position === player.currentPosition + 1)
 }
 
-const displayPositionFor = (player: Player) =>
-  isBlockedByChallenge(player) ? player.moves[0].endTile.position : player.currentPosition
+// Server truth, clamped to the stop tile when a gate heads the plan — the
+// clamp also covers a leap that overshot its gate in a stale snapshot.
+const displayPositionFor = (player: Player) => {
+  const move = player.moves[0]
+  if (!move?.challenge) return player.currentPosition
+  return Math.min(player.currentPosition, moveStopTile(move))
+}
 
 const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success') => {
   const material = board.value?.contourMaterial
@@ -457,10 +467,9 @@ const syncPawns = () => {
     const pawn = buildPawn(player.color, build.spacing * 0.85)
     pawns.set(player.id, pawn)
     build.group.add(pawn)
-    // restore() replays any steps taken while the board was unmounted
-    // (challenge-win leaps, walks begun before the scene finished loading),
-    // bounded by server truth so it can never re-walk settled ground
-    mover.restore(player.id, displayPositionFor(player))
+    // Straight to truth: the scene is persistent, so a NEW pawn has no
+    // missed movement to replay — the sync-on-show pass owns catch-up.
+    mover.place(player.id, displayPositionFor(player))
   }
 
   syncCrowns()
@@ -479,8 +488,11 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
-    memoryKey: props.game.id,
-    walkSeqFor: playerId => props.game.players[playerId]?.walkSeq ?? 0,
+    pressTowardFor: playerId => {
+      const player = props.game.players[playerId]
+      if (!player || !isBlockedByChallenge(player)) return undefined
+      return player.moves[0].endTile.position
+    },
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {
@@ -498,7 +510,7 @@ const rebuild = () => {
   syncPawns()
   syncPathPreview()
   syncHighlight()
-  // After restore(): a remount mid-gauntlet must put the climber back on
+  // After placement: a rebuild mid-gauntlet must put the climber back on
   // their ledge, not on the tile top
   syncClimbs()
 }
@@ -545,30 +557,49 @@ watch(
       .map(player => `${player.id}:${displayPositionFor(player)}`)
       .join('|'),
   (signature, previousSignature) => {
+    // Hidden stage: hold — snapshots keep landing, but the movement they
+    // carry belongs to the sync-on-show pass, where it plays as a visible
+    // catch-up instead of hopping behind a challenge view.
+    if (!props.active) return
     const previous = new Map(positionSignatureEntries(previousSignature ?? ''))
     for (const [playerId, position] of positionSignatureEntries(signature)) {
       const before = previous.get(playerId)
       if (before === position) continue
-      // A backward display delta is the gate fiction unwinding. For a FAILED
-      // gate that retreat is a real beat (the pawn bounced off — the blocked
-      // record is on the round) and the mover plays it. A WON gate must stay
-      // monotonic: the win's leap resolves from the gate tile forward, and
-      // without this guard a zero-step win hopped BACKWARD off a gate it had
-      // just cleared. Holding is safe — the mover measures its next forward
-      // step from what is displayed.
-      if (
-        before !== undefined &&
-        position < before &&
-        !props.game.rounds[props.game.rounds.length - 1]?.playerTurns[playerId]?.blocked
-      ) {
-        continue
-      }
       mover?.moveTo(playerId, position)
       if (playerId === cameraTargetId.value && !cameraHeld()) {
         const tile = tileFor(position)
         if (tile) boardCamera?.follow(tile.position)
       }
       if (playerId === props.playerId) syncHighlight()
+    }
+  }
+)
+
+// The show moment: replay whatever the hold above banked (win leaps, steps
+// taken behind a view) — the mover fast-forwards true resets — and nudge the
+// camera back onto its subject. gsap's global ticker keeps running while the
+// render loop is parked, so idle loops (highlight pulse, stuck wobble) pause
+// with the stage instead of burning frames nobody sees.
+watch(
+  () => props.active,
+  active => {
+    if (active) {
+      for (const player of Object.values(props.game.players)) {
+        mover?.moveTo(player.id, displayPositionFor(player))
+      }
+      syncHighlight()
+      syncPathPreview()
+      syncClimbs()
+      highlightTween?.play()
+      stuckTweens.forEach(tween => tween.play())
+      if (hasFlownIn && !cameraHeld()) {
+        const focus = props.game.players[cameraTargetId.value]
+        const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
+        if (tile) boardCamera?.follow(tile.position)
+      }
+    } else {
+      highlightTween?.pause()
+      stuckTweens.forEach(tween => tween.pause())
     }
   }
 )
@@ -697,7 +728,7 @@ watch(
         if (current && isBlockedByChallenge(current)) {
           playChallengeHit(settledPlayerId, settledTile)
         }
-      }, 2900)
+      }, MOVE_INTERSTITIAL_TOTAL_MS)
     }
 
     if (prefersReducedMotion()) return
@@ -807,8 +838,6 @@ watch([cameraRef, controlsRef, board], () => {
     }, 400)
   }
 })
-
-onMounted(() => emit('ready'))
 
 onUnmounted(() => {
   gameStore.board.spectateTargetId = undefined

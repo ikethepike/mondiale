@@ -11,8 +11,10 @@
         <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
       </select>
     </nav>
-    <!-- Pawn-replay repro: the board unmounts for challenge views, and the
-         gate resolves while it is gone. These drive that sequence. -->
+    <!-- Pawn-replay repro: the persistent stage hides for challenge views
+         (active=false holds the position watcher), and the gate resolves
+         while it is hidden. These drive that lifecycle; the remount button
+         covers the context-loss escape hatch. -->
     <nav class="controls replay-controls">
       <button @click="walkToGate">Walk P1 to gate</button>
       <button @click="dealWalk(4)">Deal new walk</button>
@@ -20,6 +22,7 @@
       <button @click="loseGate">Lose gate (hidden)</button>
       <button @click="winGate">Win gate (hidden)</button>
       <button @click="boardVisible = true">Show board</button>
+      <button @click="boardEpoch++">Remount board</button>
     </nav>
     <!-- Final-gauntlet climb: drive P1 up the mountain marker stage by stage. -->
     <nav class="controls gauntlet-controls">
@@ -27,7 +30,13 @@
       <button @click="clearStage">Clear stage</button>
       <button @click="missStage">Miss stage</button>
     </nav>
-    <Board3D v-if="boardVisible" :game="mockGame" player-id="mock-player-1" />
+    <Board3D
+      v-show="boardVisible"
+      :key="boardEpoch"
+      :active="boardVisible"
+      :game="mockGame"
+      player-id="mock-player-1"
+    />
   </div>
 </template>
 <script lang="ts" setup>
@@ -105,11 +114,12 @@ const step = (playerId: string, steps: number) => {
 }
 
 // --- Pawn-replay repro controls -------------------------------------------
-// The board unmounts while a challenge view is up, and the gate resolves in
-// that window. These reproduce that sequence against the same mock game id,
-// so the mover's cross-mount display memory (keyed by game id) survives —
-// reseeding instead would clear it and mask what we're testing.
+// The persistent stage hides while a challenge view is up (active=false, the
+// scene stays mounted), and the gate resolves in that window. Show-time is
+// the sync pass that replays whatever the hold banked; the epoch bump is the
+// context-loss hard remount, which places at truth with no replay.
 const boardVisible = ref(true)
+const boardEpoch = ref(0)
 
 /** Walk to the tile before the gate, as the server's stepper would. */
 const walkToGate = () => {

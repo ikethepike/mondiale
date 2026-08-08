@@ -8,7 +8,7 @@
       antialias
     >
       <RenderLoopGate :active="active" @ready="onFirstFrame" />
-      <TopoScene :game="resolvedGame" :player-id="resolvedPlayerId" />
+      <TopoScene :game="resolvedGame" :player-id="resolvedPlayerId" :active="active" />
     </TresCanvas>
   </div>
 </template>
