@@ -54,8 +54,16 @@
   // container clips it away entirely, so the list never appears and the
   // console reads as broken. These footers are an input pill tall and have
   // nothing to scroll; they shrink without clipping instead.
+  //
+  // Keyed on the console itself, not on `.suggest-berth`: the modes that flip
+  // the list upward by default (empire, stat detective, sunset blitz) carry no
+  // berth, and were clipped to the sliver of list that happened to fall inside
+  // the footer's padding. Footers with no typed console keep their scroller —
+  // an option grid or a photo dock still needs it.
   > footer.suggest-berth,
-  .shell-footer.suggest-berth {
+  .shell-footer.suggest-berth,
+  > footer:has(.guess-form),
+  .shell-footer:has(.guess-form) {
     overflow: visible;
   }
 
