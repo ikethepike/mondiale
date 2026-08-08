@@ -164,7 +164,9 @@ const MENTION_MIN_TOKEN_CHARS = 3
  * question outright. Tokens match on a shared stem so "Senegal" catches
  * "Senegalese" and "España" catches "Español"; irregulars (Swiss, Dutch,
  * Spaniard) ride `name.demonyms` — the Factbook's nationality fields — so
- * no exception list lives here.
+ * no exception list lives here. Generic tokens mark no country alone, but a
+ * consecutive pair of them can ("United States dollar") — name pairs match
+ * as phrases before the single-token filter drops them.
  */
 export const mentionsCountry = (text: string, isoCode: ISOCountryCode): boolean => {
   const country = COUNTRIES[isoCode]
@@ -173,14 +175,15 @@ export const mentionsCountry = (text: string, isoCode: ISOCountryCode): boolean 
     normalizeCountryName(value)
       .split(' ')
       .filter(token => token.length >= MENTION_MIN_TOKEN_CHARS)
-  const markers = [
-    country.name.english,
-    ...localNameVariants(country),
-    ...(country.name.demonyms ?? []),
-  ]
+  const pairs = (parts: string[]) => parts.slice(1).map((part, index) => `${parts[index]} ${part}`)
+  const names = [country.name.english, ...localNameVariants(country)]
+  const markers = [...names, ...(country.name.demonyms ?? [])]
     .flatMap(tokens)
     .filter(token => !GENERIC_NAME_TOKENS.has(token))
-  return tokens(text).some(token =>
+  const textTokens = tokens(text)
+  const namePairs = new Set(names.map(tokens).flatMap(pairs))
+  if (pairs(textTokens).some(pair => namePairs.has(pair))) return true
+  return textTokens.some(token =>
     markers.some(
       marker =>
         token.startsWith(marker.slice(0, MENTION_STEM_CHARS)) ||

@@ -2,6 +2,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
 import type { CurrencyCode } from '~~/types/currency.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { mentionsCountry } from './country'
 
 /**
  * Currency symbols for the Money Match gate — the data only carries 3-letter
@@ -57,3 +58,15 @@ export const countriesSpending = (code?: CurrencyCode): ISOCountryCode[] =>
         .filter(country => country.currency === code)
         .map(country => country.isoCode)
     : []
+
+/**
+ * Does the currency's name betray an accepted answer? "Danish krone" names
+ * Denmark outright — and since the shared-currency carve-out accepts ANY
+ * spender, "Australian dollar" dealt for Kiribati is the same giveaway.
+ * Written questions naming the currency must pass this gate.
+ */
+export const currencyNamesASpender = (code?: CurrencyCode): boolean => {
+  if (!code) return false
+  const name = currencyName(code)
+  return countriesSpending(code).some(isoCode => mentionsCountry(name, isoCode))
+}

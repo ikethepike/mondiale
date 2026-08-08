@@ -10,6 +10,7 @@ import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
+import { currencyNamesASpender } from '~~/lib/currency'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import {
   ANSWER_SHAPE_BY_KIND,
@@ -2667,7 +2668,12 @@ const pickThemedFindCountry = (
     case 'government.leader':
       return withProperty(isoCode => !!COUNTRIES[isoCode].government?.leader)
     case 'currency':
-      return withProperty(isoCode => !!COUNTRIES[isoCode].currency)
+      // "Which country spends the Danish krone?" answers itself — only deal
+      // currencies whose name betrays no spender
+      return withProperty(isoCode => {
+        const currency = COUNTRIES[isoCode].currency
+        return !!currency && !currencyNamesASpender(currency)
+      })
     default:
       return pickSizedCountry(pool, 'large')!
   }
