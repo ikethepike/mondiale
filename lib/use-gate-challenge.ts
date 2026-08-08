@@ -36,7 +36,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
-import { GATE_RESULT_FALLBACK_MS, GATE_RESULT_HOLD_MS } from './round-beats'
+import { GATE_RESULT_FALLBACK_MS } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 

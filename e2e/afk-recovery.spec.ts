@@ -86,10 +86,9 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
     expect(entry.key, `self-swap at #${index}`).not.toBe(previous.key)
     if (index >= 2) {
       const bounce = entry.key === viewLog[index - 2].key && entry.at - previous.at < 500
-      expect(
-        bounce,
-        `view flashed: ${viewLog[index - 2].key}→${previous.key}→${entry.key}`
-      ).toBe(false)
+      expect(bounce, `view flashed: ${viewLog[index - 2].key}→${previous.key}→${entry.key}`).toBe(
+        false
+      )
     }
 
     // The walk protocol on screen: a scorecard only ever closes onto the

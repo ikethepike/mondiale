@@ -97,6 +97,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import BoardStage from '~/components/board3d/BoardStage.client.vue'
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import CheerToast from '~/components/feedback/CheerToast.vue'
 import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
