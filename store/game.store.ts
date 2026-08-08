@@ -123,6 +123,19 @@ interface GameStoreState {
     panelFolded?: boolean
     /** Round-history drawer visibility (board phases only). */
     historyOpen: boolean
+    /** The persistent stage is the presented scene: the layout cross-fades
+     *  it in over the parked world map. Written only by the room page's
+     *  presented-view watch and the booth (ViewSpectate). */
+    stageActive: boolean
+    /** The stage has drawn its first frame (flips once per stage epoch) —
+     *  until then the overlay covers the cold path with a pending pane. */
+    stageReady: boolean
+    /** WebGL missing or the board chunk failed for good: the overlay swaps
+     *  in the 2D fallback board instead. */
+    stageFailed: boolean
+    /** `playerId:walkSeq` whose "On the move!" beat already played, so an
+     *  overlay remount mid-lead can't replay the interstitial. */
+    introSeenKey?: string
   }
   /**
    * The server refused the join — the game was already underway ('started'),
@@ -212,6 +225,10 @@ export const useGameStore = defineStore('game', {
       cheers: [],
       panelFolded: undefined,
       historyOpen: false,
+      stageActive: false,
+      stageReady: false,
+      stageFailed: false,
+      introSeenKey: undefined,
     },
   }),
   actions: {},

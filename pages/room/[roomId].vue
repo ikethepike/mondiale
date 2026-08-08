@@ -160,6 +160,22 @@ onUnmounted(() => {
   if (holdTimer) clearTimeout(holdTimer)
 })
 
+// The persistent stage lives in the layout; the presented view only aims it.
+// Keyed on the KEY (snapshots rebuild the view object every evaluation), so
+// the booth — whose own key never changes while it drives the stage — is
+// never stomped by broadcast bursts. The board→challenge hold above is what
+// keeps the stage up through the arrival beat: the key flips only after it.
+watch(
+  () => presentedView.value?.key,
+  key => {
+    // The booth writes the stage itself (ViewSpectate); every other key
+    // means the board is on exactly when the presented view is the board.
+    if (key === 'spectate') return
+    gameStore.board.stageActive = key === 'board'
+  },
+  { immediate: true }
+)
+
 // Test instrumentation, armed by `?viewlog=1`: record every presented view
 // swap so the e2e transition-grammar assertions can catch a wrong view that
 // flashes too briefly for selector polling to ever see.
