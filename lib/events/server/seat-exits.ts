@@ -174,12 +174,27 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
  * pause) and the rearm recovery — two private copies of this beat is how a
  * revived seat drifts from a live one.
  */
-export const clearFinalResultBeat = async (ctx: EngineContext, playerId: string) => {
+export const clearFinalResultBeat = async (ctx: EngineContext, player: Player) => {
+  const playerId = player.id
+  // Staleness token, like every other arm: the beat belongs to the gauntlet
+  // turn it was armed on. A rejoin re-arms this routinely — untokenized, the
+  // duplicate landed mid-way through the NEXT answer's hold and cut its
+  // reveal short.
+  const gauntlet = player.moves[0]?.challenge
+  const armedTurn = gauntlet?._type === 'final-challenge' ? (gauntlet.turn ?? 0) : undefined
   // The longer hold: gauntlet reveals teach (rankings, the missed fact) and
   // outlast a gate's verdict pill. The next question lands on this emit.
   scheduleEngineTask(ctx, FINAL_REVEAL_HOLD_MS, async (fresh, server) => {
     const seat = fresh.players[playerId]
     if (!seat) return
+    const liveGauntlet = seat.moves[0]?.challenge
+    if (
+      armedTurn !== undefined &&
+      liveGauntlet?._type === 'final-challenge' &&
+      (liveGauntlet.turn ?? 0) !== armedTurn
+    ) {
+      return
+    }
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (seat.phase === 'final-challenge' && seat.resolving) {
       seat.resolving = false
@@ -213,9 +228,12 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
         // chain, and if the walker's own tab never returns, nobody else's
         // rejoin used to revive it: the one unwalkable seat froze the table
         // for good. Re-arming beside a surviving chain is safe (walkSeq +
-        // the single-stepper latch dedupe).
+        // the single-stepper latch dedupe). An intro walk gets the FULL
+        // announce lead: the latch dedupes cadence, not the lead, and a
+        // short-lead entrant during a live announce stepped under the
+        // "On the move!" interstitial.
         scheduleMovementPhase(
-          WALK_RESUME_LEAD_MS,
+          seat.walkIntro ? WALK_LEAD_MS : WALK_RESUME_LEAD_MS,
           { ...ctx, eventTarget },
           { continuation: true, walkSeq: seat.walkSeq }
         )
@@ -247,7 +265,7 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
           )
         } else if (seat.resolving) {
           // The latch-clear task died with the restart: re-run the beat.
-          void clearFinalResultBeat(ctx, seat.id)
+          void clearFinalResultBeat(ctx, seat)
         } else {
           armFinalQuestionCap(ctx, seat)
         }

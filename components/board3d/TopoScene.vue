@@ -801,10 +801,14 @@ const syncBlockedBeats = () => {
     if (blockedAt === undefined || player.phase !== 'movement-summary') continue
     const key = `${player.id}:${roundKey}`
     if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
-    blockedBeatsPlayed.add(key)
 
     const beatPlayerId = player.id
     schedule(() => {
+      // Latch only when the beat actually PLAYS on an active stage — a hide
+      // inside this delay must not consume it (the show pass re-runs the
+      // sync); the has() re-check keeps overlapping syncs single-shot.
+      if (!props.active || blockedBeatsPlayed.has(key)) return
+      blockedBeatsPlayed.add(key)
       const gateTile = tileFor(blockedAt)
       if (!gateTile) return
       triggerRipple(gateTile, 'alert')

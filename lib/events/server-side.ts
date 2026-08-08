@@ -105,7 +105,14 @@ export const enqueueGameTask = <T>(gameId: string, task: () => T | Promise<T>): 
   if (draining) return Promise.reject(new Error(`Draining — refused task for ${gameId}`))
   const tail = gameQueues.get(gameId) ?? Promise.resolve()
   const next = tail.then(task)
-  const settled = next.catch(error => console.error(`Game task failed for ${gameId}`, error))
+  const settled = next.catch(error => {
+    // A RetryableReject is a deliberate, acked deferral (the middleware
+    // already warns) — not a failed task; logging it as one would page on
+    // every latch retry.
+    if (!(error instanceof RetryableReject)) {
+      console.error(`Game task failed for ${gameId}`, error)
+    }
+  })
   gameQueues.set(gameId, settled)
   // A settled tail that is STILL the current tail is a finished queue — drop
   // the entry, so the map tracks live queues rather than every game this

@@ -359,6 +359,11 @@ const currentFinalChallenge = computed(
 const finalRedeliver = createRedeliver('final answer')
 onBeforeUnmount(() => finalRedeliver.dispose())
 const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
+  // The booth mounts this stage read-only, and the auto-finishing modes'
+  // clocks call here with no user input: a watcher must not arm a minute of
+  // doomed redelivery against the write gate (same guard as submitOnce and
+  // the gate shell).
+  if (gameStore.watching) return
   const turn = gauntlet.value?.turn ?? 0
   return finalRedeliver.deliver(() =>
     update({ event: 'submit-final-challenge-answer', submittedAnswer, turn })

@@ -749,10 +749,11 @@ const isPersonalScorecard = computed(() => {
 })
 
 const closeScores = () => {
-  // The booth guard comes FIRST: a finisher-watcher resolves `playerId` to
-  // the followed seat, and flipping before the guard would corrupt their
-  // own local record on a stray click (today only SpectateMount's `inert`
-  // stands between that click and this body).
+  // The booth guard comes FIRST: `playerId` is the raw OWN id, so a
+  // finisher-watcher reaching this body would flip their own local
+  // 'victory' record to 'moving' and eject themselves from the booth
+  // (today only SpectateMount's `inert` stands between that click and
+  // this body).
   if (gameStore.watching) return
 
   // Optimistic flip for the instant view transition; the server's announce

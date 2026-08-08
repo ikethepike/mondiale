@@ -186,17 +186,6 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // stages and reveals the next round for the remaining players — BEHIND
     // the winner's own result beat, or the staged round's `new-round` full
     // snapshot can land before the victory beat it should follow.
-    if (won) {
-      // BEHIND the winner's reveal: the reveal emit lands at
-      // FINAL_REVEAL_HOLD_MS, so the advancement re-check (whose staged
-      // `new-round` full snapshot would cut the reveal short) must not fire
-      // sooner. Riding the same token keeps the order by construction.
-      scheduleMovementPhase(
-        FINAL_REVEAL_HOLD_MS,
-        { io, redis, socket, eventTarget },
-        { continuation: true, walkSeq: player.walkSeq }
-      )
-    }
 
     // Pace the reveal: the client shows its own result beat first, then the
     // next question (or victory) lands. The shared follow-up clears the
@@ -204,7 +193,19 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // question's cap — so the next genuine answer, which can only come after
     // this reveal, is accepted while duplicates fired during the pause were
     // already rejected.
-    await clearFinalResultBeat({ io, redis, socket, eventTarget }, eventTarget.playerId)
+    await clearFinalResultBeat({ io, redis, socket, eventTarget }, player)
+
+    // The winner's advancement re-check rides the SAME hold, armed AFTER the
+    // reveal task so it runs behind it: the reveal emit then carries the
+    // pre-staging snapshot (a true seat+round slice) and the staged round
+    // still travels only on `new-round`, 2s later.
+    if (won) {
+      scheduleMovementPhase(
+        FINAL_REVEAL_HOLD_MS,
+        { io, redis, socket, eventTarget },
+        { continuation: true, walkSeq: player.walkSeq }
+      )
+    }
   },
   { player: 'warn' }
 )
