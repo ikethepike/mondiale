@@ -163,14 +163,22 @@ onMounted(() => {
   // Socket.IO drops a socket's room membership when it reconnects (a server
   // restart, network blip, laptop sleep). Without re-joining, the socket is
   // silently out of the game room and misses every broadcast — the classic
-  // "one client stuck while the other advances" desync. `join` is idempotent
-  // server-side, so re-firing it on every (re)connect is safe and re-adds us
-  // to the room. `.io.on('reconnect')` fires only on RE-connects, not the
-  // first — the initial join is handled by onMounted above.
+  // "one client stuck while the other advances" desync — and, since the join
+  // is also what re-arms a live round's lost timers (rearmLiveRound), a
+  // reconnect that skips it leaves the room wedged on whatever the dead
+  // machine's timer owed. Listen at the SOCKET level: the manager's
+  // 'reconnect' fires only for socket.io's automatic recovery, and a deploy
+  // drain disconnects with 'io server disconnect', which the plugin recovers
+  // from with a MANUAL socket.connect() that never emits it — that gap held
+  // a room mid-result-beat for two minutes on the PR preview. 'connect'
+  // fires on every successful connection; `join` is idempotent server-side
+  // and the rearm sweep is debounced, so re-firing is always safe. The
+  // initial join is the onMounted call above (the socket usually connected
+  // before this page mounted).
   const socket = gameStore.socket
-  socket?.io.on('reconnect', joinRoom)
+  socket?.on('connect', joinRoom)
   onUnmounted(() => {
-    socket?.io.off('reconnect', joinRoom)
+    socket?.off('connect', joinRoom)
     // Watch intent must not leak into the next room this client opens
     gameStore.joinAsSpectator = false
   })
