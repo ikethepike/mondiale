@@ -18,6 +18,9 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   await host.getByRole('button', { name: 'Create Game' }).click()
   await host.waitForURL(/\/room\//)
   const roomUrl = host.url()
+  // Arm the transition-grammar recorder before play begins (the created
+  // room's URL already carries `?variant=…`).
+  await host.goto(`${roomUrl}${roomUrl.includes('?') ? '&' : '?'}viewlog=1`)
 
   await host.locator('.input-text input').fill('Host')
   await host.getByRole('button', { name: 'Save' }).click()
@@ -66,6 +69,27 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   // goes live even though the dead seat never sent another event. Budget:
   // settle ≈36s after the first tutorial close + scores cap 45s + staging.
   await expect(host.locator('.claim-stage')).toBeVisible({ timeout: 150_000 })
+
+  // The transition grammar across the whole run: the sequencing is only
+  // rock solid if no view ever flashed. 'none' (no resolvable view) may
+  // only open the session, a view never swaps to itself, and an A→B→A
+  // bounce where B lived under half a second is a flash by definition.
+  const viewLog = await host.evaluate(
+    () => (window as unknown as { __viewLog?: { key: string; at: number }[] }).__viewLog ?? []
+  )
+  expect(viewLog.length).toBeGreaterThan(2)
+  for (const [index, entry] of viewLog.entries()) {
+    if (index === 0) continue
+    expect(entry.key, `blank view mid-session at #${index}`).not.toBe('none')
+    expect(entry.key, `self-swap at #${index}`).not.toBe(viewLog[index - 1].key)
+    if (index >= 2) {
+      const bounce = entry.key === viewLog[index - 2].key && entry.at - viewLog[index - 1].at < 500
+      expect(
+        bounce,
+        `view flashed: ${viewLog[index - 2].key}→${viewLog[index - 1].key}→${entry.key}`
+      ).toBe(false)
+    }
+  }
 
   await hostContext.close()
 })

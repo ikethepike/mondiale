@@ -163,6 +163,25 @@ onUnmounted(() => {
   if (holdTimer) clearTimeout(holdTimer)
 })
 
+// Test instrumentation, armed by `?viewlog=1`: record every presented view
+// swap so the e2e transition-grammar assertions can catch a wrong view that
+// flashes too briefly for selector polling to ever see.
+if (import.meta.client && 'viewlog' in useRoute().query) {
+  watch(
+    presentedView,
+    view => {
+      const scope = window as unknown as { __viewLog?: { key: string; at: number }[] }
+      const log = (scope.__viewLog ??= [])
+      const key = view?.key ?? 'none'
+      // Snapshots rebuild the resolved-view object every evaluation; only a
+      // KEY change is a real swap (the Transition is keyed the same way).
+      if (log[log.length - 1]?.key === key) return
+      log.push({ key, at: Date.now() })
+    },
+    { immediate: true }
+  )
+}
+
 const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition(
   () => presentedView.value?.kind ?? 'card'
 )
