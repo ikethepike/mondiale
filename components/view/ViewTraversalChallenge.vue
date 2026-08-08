@@ -64,7 +64,13 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
-import { distancesFrom, isNeighbour, isRouteComplete } from '~~/lib/traversal'
+import {
+  distancesFrom,
+  isRouteComplete,
+  linkedGuesses,
+  neighboursWithin,
+  traversalWithin,
+} from '~~/lib/traversal'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { MapTint } from '~~/store/game.store'
@@ -103,36 +109,32 @@ const excluded = computed(() =>
 )
 
 /**
+ * The graph this round was dealt on — corridor rounds and benched
+ * micro-nations narrow it. Everything below classifies guesses through it, so
+ * the chips, the tints and the round's end read the same map the dealer did.
+ */
+const within = computed(() =>
+  gameStore.game ? traversalWithin(gameStore.game, challenge.value?.corridor?.members) : undefined
+)
+
+/**
  * Guesses connected (through other guesses) to either endpoint — everything
  * else renders as a stray so mistakes are visible immediately.
  */
 const linkedSet = computed(() => {
   const active = challenge.value
   if (!active) return new Set<ISOCountryCode>()
-
-  const allowed = new Set([active.start, active.target, ...guesses.value])
-  const linked = new Set<ISOCountryCode>()
-  const queue = [active.start, active.target]
-  const visited = new Set(queue)
-  while (queue.length) {
-    const current = queue.shift() as ISOCountryCode
-    for (const isoCode of allowed) {
-      if (visited.has(isoCode) || !isNeighbour(current, isoCode)) continue
-      visited.add(isoCode)
-      linked.add(isoCode)
-      queue.push(isoCode)
-    }
-  }
-  return linked
+  return linkedGuesses(active.start, active.target, guesses.value, within.value)
 })
 
 // BFS distance fields from both endpoints, for classifying guesses
 const distanceMaps = computed(() => {
   const active = challenge.value
   if (!active) return undefined
+  const neighboursOf = neighboursWithin(within.value)
   return {
-    fromStart: distancesFrom(active.start),
-    fromTarget: distancesFrom(active.target),
+    fromStart: distancesFrom(active.start, neighboursOf),
+    fromTarget: distancesFrom(active.target, neighboursOf),
   }
 })
 
@@ -145,17 +147,13 @@ const promptSources = computed(() =>
   ])
 )
 
-const corridorSet = computed(() =>
-  challenge.value?.corridor ? new Set(challenge.value.corridor.members) : undefined
-)
-
-/** optimal = lies on a shortest route; inefficient = connected detour; stray = neither. */
+/** optimal = lies on a shortest route; inefficient = connected detour; stray = neither.
+ *  Off-corridor and benched countries are unreachable in the round's graph, so
+ *  they simply have no distance — no separate rule needed to call them strays. */
 const tintFor = (isoCode: ISOCountryCode): MapTint => {
   const active = challenge.value
   const maps = distanceMaps.value
   if (!active || !maps) return 'stray'
-  // Outside the corridor a guess can never help
-  if (corridorSet.value && !corridorSet.value.has(isoCode)) return 'stray'
 
   const toStart = maps.fromStart.get(isoCode)
   const toTarget = maps.fromTarget.get(isoCode)
@@ -229,7 +227,7 @@ const submitGuess = (country: Country) => {
   })
 
   // Resolve the moment the guessed countries bridge the endpoints
-  if (isRouteComplete(active.start, active.target, guesses.value, corridorSet.value)) {
+  if (isRouteComplete(active.start, active.target, guesses.value, within.value)) {
     gameStore.map.status = 'correct'
     return submitRound()
   }

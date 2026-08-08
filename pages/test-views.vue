@@ -73,7 +73,13 @@ import { TRENDS } from '~~/lib/trends-data'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
-import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import {
+  getCorrectRanking,
+  scoreChallengeSubmission,
+  scoreTraversalSubmission,
+} from '~~/lib/challenges'
+import { shortestRoute, traversalWithin } from '~~/lib/traversal'
+import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { latestChallengeOfType } from '~~/lib/rounds'
 import {
   drawnCard,
@@ -267,6 +273,45 @@ const settledRound = (
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
 
+/**
+ * A settled Border Run, for the reveal that has to make a detour LOOK like a
+ * detour: Russia → Albania in four crossings, answered with a five-crossing
+ * Balkan route plus one guess that never joined it.
+ */
+const settledTraversalRound = (): Round => {
+  const rules = { variant: 'world', difficulty: 'normal' } as const
+  const challenge: TraversalChallenge = {
+    _type: 'traversal-challenge',
+    start: 'RU',
+    target: 'AL',
+    optimalHops: 4,
+    optimalPath: shortestRoute('RU', 'AL', { within: traversalWithin(rules) })!,
+    maximumClicks: 8,
+    maximumPoints: MAXIMUM_POINTS,
+  }
+  const submissions: { [playerId: string]: ISOCountryCode[] } = {
+    [ME]: ['UA', 'RO', 'RS', 'XK'],
+    [RIVAL]: ['GE', 'TR', 'GR'],
+    [THIRD]: ['BY', 'PL', 'SK', 'HU'],
+  }
+
+  return {
+    groupChallenge: challenge,
+    groupAnswers: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { submitted, correct: challenge.optimalPath },
+      ])
+    ),
+    playerTurns: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { points: scoreTraversalSubmission({ challenge, submittedGuesses: submitted, rules }) },
+      ])
+    ),
+  } as unknown as Round
+}
+
 interface Scenario {
   id: string
   label: string
@@ -365,6 +410,14 @@ const scenarios: Scenario[] = [
     label: 'Group scores (reveal)',
     component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledRound()]),
+  },
+  {
+    // The row-vs-row comparison: four guessed flags used to sit above a
+    // five-flag optimum and read as the shorter journey.
+    id: 'traversal-scores',
+    label: 'Border Run reveal (route vs shortest)',
+    component: ViewGroupScores,
+    build: () => mockGame('group-scores', [settledTraversalRound()]),
   },
   {
     // GB and FI carry a note; the other three don't, so one scenario shows

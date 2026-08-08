@@ -89,12 +89,19 @@
             <p v-if="empireVerdict" class="pane-content empire-verdict">{{ empireVerdict }}</p>
             <section class="pane-content ranking">
               <span class="eyebrow">{{ sectionLabels.submitted }}</span>
-              <ViewRanking :iso-codes="selectedScorecard.answers.submitted" />
+              <ViewRanking :iso-codes="submittedIsoCodes" />
+            </section>
+
+            <!-- Guesses that never joined the route. Left in the row above they
+                 would pad it into looking like a longer journey than it was. -->
+            <section v-if="traversalReveal?.strays.length" class="pane-content ranking">
+              <span class="eyebrow">Strays</span>
+              <ViewRanking :iso-codes="traversalReveal.strays" />
             </section>
 
             <section class="pane-content ranking">
               <span class="eyebrow">{{ sectionLabels.correct }}</span>
-              <ViewRanking :iso-codes="selectedScorecard.answers.correct" />
+              <ViewRanking :iso-codes="correctIsoCodes" />
             </section>
 
             <section v-if="flashpointChallenge" class="pane-content ranking">
@@ -226,6 +233,7 @@ import {
   isTraversalChallenge,
   roundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
+import { routeHops, routeThrough, shortestRoute, traversalWithin } from '~~/lib/traversal'
 
 const { currentRound, playerId, gameStore } = useClientEvents()
 
@@ -262,6 +270,43 @@ const traversalChallenge = computed(() => {
   const challenge = roundChallenge.value
   return isTraversalChallenge(challenge) ? challenge : undefined
 })
+
+/**
+ * The traversal reveal compares two ROUTES, so both rows have to be routes:
+ * the bridge the guesses actually built (endpoints included, strays lifted
+ * out) against a shortest one. Listing bare guesses against a full route is
+ * what makes a four-flag detour look shorter than a five-flag optimum.
+ *
+ * The shortest shown is the shortest that keeps as much of the player's route
+ * as it can, so the two rows diverge only where the player did.
+ */
+const traversalReveal = computed(() => {
+  const challenge = traversalChallenge.value
+  const guesses = selectedScorecard.value?.answers?.submitted
+  if (!challenge || !guesses || !gameStore.game) return undefined
+
+  const within = traversalWithin(gameStore.game, challenge.corridor?.members)
+  const route = routeThrough(challenge.start, challenge.target, guesses, within)
+  const onRoute = new Set(route ?? [])
+
+  return {
+    route,
+    // Only worth lifting out against a route to compare them to — with no
+    // bridge the whole guess row is already the strays.
+    strays: route ? guesses.filter(isoCode => !onRoute.has(isoCode)) : [],
+    shortest:
+      shortestRoute(challenge.start, challenge.target, { within, prefer: guesses }) ??
+      challenge.optimalPath,
+  }
+})
+
+const submittedIsoCodes = computed(
+  () => traversalReveal.value?.route ?? selectedScorecard.value?.answers?.submitted ?? []
+)
+
+const correctIsoCodes = computed(
+  () => traversalReveal.value?.shortest ?? selectedScorecard.value?.answers?.correct ?? []
+)
 
 const sketchChallenge = computed(() => {
   const challenge = roundChallenge.value
@@ -462,8 +507,20 @@ const empireVerdict = computed(() => {
 const explainer = computed(() => {
   switch (kind.value) {
     case 'traversal': {
-      const between = Math.max(0, (traversalChallenge.value?.optimalHops ?? 1) - 1)
-      return `The shortest link needs ${between} ${between === 1 ? 'country' : 'countries'} in between — every extra or stray guess costs points.`
+      // Border crossings, not flags — the count the score is actually charged
+      // on, and the one the two rows below can be compared by.
+      const shortest = routeHops(
+        traversalReveal.value?.shortest ?? traversalChallenge.value?.optimalPath ?? []
+      )
+      // Voiced about the round, not the reader — the card flips between seats.
+      const walked = traversalReveal.value?.route
+      const crossings = (hops: number) => `${hops} ${hops === 1 ? 'border' : 'borders'}`
+      if (!walked) {
+        return `The guesses never bridged the two — the shortest link crosses ${crossings(shortest)}.`
+      }
+      return routeHops(walked) === shortest
+        ? `That link crosses ${crossings(shortest)}, as short as it gets — only stray guesses cost points.`
+        : `That link crosses ${crossings(routeHops(walked))}; the shortest crosses ${shortest} — every extra crossing and stray guess costs points.`
     }
     case 'neighbour-blitz':
       return 'Points scale with neighbours found — wrong names each cost one.'
@@ -526,7 +583,10 @@ const explainer = computed(() => {
 const sectionLabels = computed(() => {
   switch (kind.value) {
     case 'traversal':
-      return { submitted: 'Your Guesses', correct: 'A Shortest Route' }
+      return {
+        submitted: traversalReveal.value?.route ? 'Your Route' : 'Your Guesses',
+        correct: 'A Shortest Route',
+      }
     case 'neighbour-blitz':
       return { submitted: 'Your Answers', correct: 'All the Neighbours' }
     case 'silhouette':
