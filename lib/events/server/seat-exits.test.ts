@@ -205,3 +205,78 @@ describe('armFinalQuestionCap', () => {
     expect((store.get(game.id)!.players.a.moves[0]!.challenge as { lives: number }).lives).toBe(1)
   })
 })
+
+/**
+ * The restart-recovery sweep: every parked shape a dead timer can leave
+ * behind must be revivable by ANY player's rejoin — the audit found three
+ * that weren't (a mid-walk seat, the gate-forfeit hold, the knockout hold).
+ */
+describe('rearmSeatExits', () => {
+  const walkMove = (to: number) =>
+    ({ endTile: { position: to } }) as unknown as Player['moves'][number]
+
+  it('revives a dead mid-walk seat without the walker rejoining', async () => {
+    const walker = seat('a', 'moving', { moves: [walkMove(2)], walkSeq: 4 })
+    const bystander = seat('b', 'group-challenge')
+    const game = buildGame([walker, bystander])
+    const { rearmSeatExits } = await import('./seat-exits')
+    rearmSeatExits(context(game), game)
+
+    // Resume lead, two steps, arrival.
+    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!
+    expect(fresh.players.a.currentPosition).toBe(2)
+    expect(fresh.players.a.phase).toBe('movement-summary')
+  })
+
+  it('walks a gate-cap forfeit whose result hold died (moves empty, no latch)', async () => {
+    const forfeited = seat('a', 'individual-challenge', { moves: [], walkSeq: 2 })
+    const bystander = seat('b', 'group-challenge')
+    const game = buildGame([forfeited, bystander])
+    const { rearmSeatExits } = await import('./seat-exits')
+    rearmSeatExits(context(game), game)
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.runAllTicks()
+
+    expect(store.get(game.id)!.players.a.phase).toBe('movement-summary')
+  })
+
+  it('settles a gauntlet knockout whose verdict hold died', async () => {
+    const knocked = seat('a', 'final-challenge', { moves: [], resolving: true, walkSeq: 2 })
+    const bystander = seat('b', 'group-challenge')
+    const game = buildGame([knocked, bystander])
+    const { rearmSeatExits } = await import('./seat-exits')
+    rearmSeatExits(context(game), game)
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!
+    expect(fresh.players.a.phase).toBe('movement-summary')
+    expect(fresh.players.a.resolving).toBe(false)
+  })
+
+  it('never ejects a live gauntlet: an intact seat only re-arms its cap', async () => {
+    const climbing = seat('a', 'final-challenge', {
+      moves: [
+        {
+          endTile: { position: 9 },
+          challenge: { _type: 'final-challenge', challenges: [{}], lives: 1 },
+        } as unknown as Player['moves'][number],
+      ],
+    })
+    const bystander = seat('b', 'group-challenge')
+    const game = buildGame([climbing, bystander])
+    const { rearmSeatExits } = await import('./seat-exits')
+    rearmSeatExits(context(game), game)
+
+    // Well past every hold, but short of the 90s question cap.
+    await vi.advanceTimersByTimeAsync(30_000)
+    await vi.runAllTicks()
+
+    expect(store.get(game.id)!.players.a.phase).toBe('final-challenge')
+  })
+})

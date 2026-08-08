@@ -254,7 +254,10 @@ describe('phase escapability', () => {
       'round-clock': classic.scheduleClassicSettle,
       'tutorial-cap': exits.armTutorialCap,
       'scores-cap': exits.armGroupScoresCap,
-      'walk-continuation': ADVANCE_WATCHDOG_MAX_TICKS,
+      // The live chain self-reschedules; the restart path is rearmSeatExits'
+      // 'moving' arm — the export that makes a dead walk revivable from
+      // persisted state by ANY player's rejoin.
+      'walk-continuation': exits.rearmSeatExits,
       'gate-cap': exits.armIndividualGateCap,
       'gauntlet-cap': exits.armFinalQuestionCap,
       'advance-watchdog': ADVANCE_WATCHDOG_MAX_TICKS,

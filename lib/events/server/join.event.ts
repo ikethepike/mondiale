@@ -205,12 +205,13 @@ export const joinEventHandler: EventHandler = async ({
 
   if (game.started && (orphanedInChallenge || wedgedMoving || tableSettledButStuck)) {
     console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)
-    // The walk guard rejects 'moving' re-entry; hand the phase back first
-    if (wedgedMoving) rejoining.phase = 'group-scores'
-
-    // A heal is server-originated: it must travel as a continuation to pass
-    // the group-scores-only entry guard. No walkSeq — it targets whatever
-    // walk generation is current when it lands.
+    // A heal is server-originated: it travels as a continuation, which may
+    // re-enter ANY walkable phase — including 'moving' directly, where it
+    // steps or arrives in place. (The old phase reset to 'group-scores' was
+    // a relic of the pre-continuation guard, and it flashed a healthy
+    // walker back to their scorecard on every mid-walk reconnect.) A
+    // surviving step chain beside this heal is deduped by the single-stepper
+    // latch. No walkSeq — the heal targets whatever generation is current.
     scheduleMovementPhase(1500, { io, redis, socket, eventTarget }, { continuation: true })
   }
 

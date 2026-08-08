@@ -1,4 +1,5 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { moveStopTile } from '~~/lib/player-status'
 import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import type { Game } from '~~/types/game.types'
@@ -78,6 +79,13 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
         gatePot(currentMove.challenge.variant)
       )
       player.moves.shift()
+      // A deep-pot leap can overshoot the NEXT gate's stop tile (pot 4 over a
+      // gap-3 gate lands ON it): clamp to the stop, or the seat stands past a
+      // gate it never answered and a later forfeit records zero steps.
+      const nextMove = player.moves[0]
+      if (nextMove?.challenge) {
+        player.currentPosition = Math.min(player.currentPosition, moveStopTile(nextMove))
+      }
     } else {
       forfeitGate(game, player, currentMove)
     }

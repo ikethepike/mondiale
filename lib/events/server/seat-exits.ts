@@ -1,5 +1,6 @@
 import {
   WALK_LEAD_MS,
+  WALK_RESUME_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
   FINAL_REVEAL_HOLD_MS,
   GATE_RESULT_HOLD_MS,
@@ -207,10 +208,24 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
       case 'tutorial':
         if (game.started) armTutorialCap(ctx, seat.id)
         break
+      case 'moving':
+        // A walk rides in-memory continuations only — a restart kills the
+        // chain, and if the walker's own tab never returns, nobody else's
+        // rejoin used to revive it: the one unwalkable seat froze the table
+        // for good. Re-arming beside a surviving chain is safe (walkSeq +
+        // the single-stepper latch dedupe).
+        scheduleMovementPhase(
+          WALK_RESUME_LEAD_MS,
+          { ...ctx, eventTarget },
+          { continuation: true, walkSeq: seat.walkSeq }
+        )
+        break
       case 'individual-challenge':
-        if (seat.resolving) {
+        if (seat.resolving || seat.moves[0]?.challenge?._type !== 'individual-challenge') {
           // Result beat's continuation died: resume the walk (clears the
-          // latch on re-entry) after the hold it was owed.
+          // latch on re-entry) after the hold it was owed. The moves-empty
+          // shape is the cap forfeit's hold (resolving stays false there) —
+          // without this arm it had no exit at all.
           scheduleMovementPhase(
             GATE_RESULT_HOLD_MS,
             { ...ctx, eventTarget },
@@ -221,7 +236,16 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
         }
         break
       case 'final-challenge':
-        if (seat.resolving) {
+        if (seat.moves[0]?.challenge?._type !== 'final-challenge') {
+          // The knockout hold (moves emptied, verdict pause): its movement
+          // continuation died — the cap can't re-arm on a missing gauntlet,
+          // so this was a frozen seat.
+          scheduleMovementPhase(
+            GATE_RESULT_HOLD_MS,
+            { ...ctx, eventTarget },
+            { continuation: true, walkSeq: seat.walkSeq }
+          )
+        } else if (seat.resolving) {
           // The latch-clear task died with the restart: re-run the beat.
           void clearFinalResultBeat(ctx, seat.id)
         } else {
