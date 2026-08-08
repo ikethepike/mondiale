@@ -644,6 +644,8 @@ watch(currentFinalChallenge, (challenge, previous) => {
   gameStore.map.pinAnswer = undefined
   gameStore.map.highlighted.clear()
   gameStore.map.tints = {}
+  // The diaspora reveal draws its journeys here — the next gate starts clean
+  gameStore.map.landRoutes = []
   gameStore.map.focus = []
   gameStore.map.focusContext = []
   lastGuess.value = undefined
