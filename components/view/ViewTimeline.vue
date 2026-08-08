@@ -340,7 +340,10 @@ const cardDragging = ref(false)
 // The drop is settling into its slot — the card keeps flying (and the line
 // keeps its opened-up size) until the story beat takes over.
 const cardLanding = ref(false)
-const cardInFlight = computed(() => cardDragging.value || cardLanding.value)
+// A miss: the card is springing back to the stage. Still in flight, or the
+// stage would clip it away mid-spring.
+const cardHoming = ref(false)
+const cardInFlight = computed(() => cardDragging.value || cardLanding.value || cardHoming.value)
 let grabPoint = { x: 0, y: 0 }
 let lastPoint = { x: 0, y: 0 }
 
@@ -429,7 +432,8 @@ const onCardDragEnd = () => {
   selectedSlot.value = undefined
   if (!el) return
   if (prefersReducedMotion()) gsap.set(el, { clearProps: 'transform' })
-  else
+  else {
+    cardHoming.value = true
     gsap.to(el, {
       x: 0,
       y: 0,
@@ -437,8 +441,12 @@ const onCardDragEnd = () => {
       rotation: 0,
       duration: MOTION.base,
       ease: 'elastic.out(0.8, 0.6)',
-      onComplete: () => gsap.set(el, { clearProps: 'transform' }),
+      onComplete: () => {
+        cardHoming.value = false
+        gsap.set(el, { clearProps: 'transform' })
+      },
     })
+  }
 }
 
 const onCardDragStart = (event: PointerEvent) => {
@@ -448,7 +456,9 @@ const onCardDragStart = (event: PointerEvent) => {
   lastPoint = { ...grabPoint }
   const el = cardEl.value
   if (el) {
+    // A re-grab mid-spring kills the tween, so its onComplete never lands.
     gsap.killTweensOf(el)
+    cardHoming.value = false
     // The ledger sizes up the moment the card lifts (the .dragging class), and
     // the reflow moves the card's transform origin — re-anchor the grab so the
     // card doesn't jump out from under the finger.
@@ -543,6 +553,9 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
   grid-template-rows: auto minmax(0, 1fr) auto;
   // One full-width column — the shell's space-between must not shrink-wrap it.
   grid-template-columns: minmax(0, 1fr);
+  // The one clip a card in flight answers to: the viewport. A dragged card's
+  // below-the-fold tail must not grow the document's scroll area.
+  overflow: hidden;
 }
 
 // --- Centre stage ---------------------------------------------------------------
@@ -555,9 +568,14 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
   flex-flow: column nowrap;
   justify-content: center;
 
-  // The card in flight rides above the line it is about to join.
+  // The card in flight rides above the line it is about to join. The shell
+  // clips the stage so it can never outgrow its row — but a card carried
+  // toward the footer leaves that box, and the clip cut it off dead straight
+  // at the line's top edge. In flight the stage stops clipping; the root's
+  // own overflow still keeps the tail out of the document.
   &.dragging {
     z-index: 3;
+    overflow: visible;
   }
 }
 
@@ -974,11 +992,6 @@ footer {
 
 // --- Phones: the line stands upright and scrolls like a ledger -------------------
 @media screen and (max-width: $tablet) {
-  // A dragged card's below-viewport tail must not grow the document's scroll area.
-  .timeline-round {
-    overflow: hidden;
-  }
-
   header {
     // Side gutters keep the headline pill clear of the round clock's berth.
     padding: 1.2rem 6rem;
