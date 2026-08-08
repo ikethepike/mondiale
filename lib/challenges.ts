@@ -12,6 +12,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { WaterFeature } from '~~/data/water.gen'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import {
+  ANSWER_SHAPE_BY_KIND,
   HEAVY_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
@@ -3128,6 +3129,66 @@ export const rankingBreakdown = ({
       (a.submittedPosition ?? Infinity) - (b.submittedPosition ?? Infinity) ||
       a.correctPosition - b.correctPosition
   )
+}
+
+/** A country's standing in the scorecard's answer rows: named and in the set,
+ *  in the set but never named, or named and not in the set. The ledger's row
+ *  classes are these words, so the vocabulary is declared exactly once. */
+export type AnswerVerdict = 'found' | 'missed' | 'stray'
+
+export interface AnswerBreakdown {
+  /** What the player named. A guess is either in the set or it is a stray. */
+  yours: { isoCode: ISOCountryCode; verdict: Exclude<AnswerVerdict, 'missed'> }[]
+  /** The answer key. A country in it was either found or it was missed. */
+  truth: { isoCode: ISOCountryCode; verdict: Exclude<AnswerVerdict, 'stray'> }[]
+  tally: { found: number; total: number; wrong: number }
+}
+
+/**
+ * The scorecard's answers-vs-truth ledger, for every round kind that banks two
+ * country lists. Both rows come out of one function so the reveal can never
+ * mark one list by a rule the other doesn't share.
+ *
+ * Duplicates collapse because `blitzScore` collapses them before charging — a
+ * tally that counted a repeated name twice would contradict the points paid.
+ * Set-shaped kinds sort both rows by display name so the player's row reads as
+ * a subsequence of the truth (the gaps ARE the misses) and pipe wrong names to
+ * the tail; sequence-shaped kinds keep their order untouched.
+ */
+export const answerBreakdown = ({
+  submitted,
+  correct,
+  kind,
+}: {
+  submitted: ISOCountryCode[]
+  correct: ISOCountryCode[]
+  kind: RoundChallengeKind
+}): AnswerBreakdown => {
+  const answers = new Set(correct)
+  const named = new Set(submitted)
+  const unique = [...named]
+
+  const yours: AnswerBreakdown['yours'] = unique.map(isoCode => ({
+    isoCode,
+    verdict: answers.has(isoCode) ? 'found' : 'stray',
+  }))
+  const truth: AnswerBreakdown['truth'] = [...answers].map(isoCode => ({
+    isoCode,
+    verdict: named.has(isoCode) ? 'found' : 'missed',
+  }))
+
+  if (ANSWER_SHAPE_BY_KIND[kind] === 'set') {
+    const byName = (a: { isoCode: ISOCountryCode }, b: { isoCode: ISOCountryCode }) =>
+      countryName(a.isoCode).localeCompare(countryName(b.isoCode))
+    truth.sort(byName)
+    // Hits first in the shared order, then the strays piped to the tail.
+    yours.sort(
+      (a, b) => Number(a.verdict === 'stray') - Number(b.verdict === 'stray') || byName(a, b)
+    )
+  }
+
+  const found = yours.filter(row => row.verdict === 'found').length
+  return { yours, truth, tally: { found, total: answers.size, wrong: unique.length - found } }
 }
 
 /**

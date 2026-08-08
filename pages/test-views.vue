@@ -1190,8 +1190,9 @@ const scenarios: Scenario[] = [
             maximumPoints: MAXIMUM_POINTS,
           },
           groupAnswers: {
-            [ME]: { submitted: ['DE', 'NL'], correct: ['CH', 'DE', 'FR', 'NL'] },
-            [RIVAL]: { submitted: ['CH'], correct: ['CH', 'DE', 'FR', 'NL'] },
+            // BE and AT are on nobody's Rhine — the strays the reveal marks.
+            [ME]: { submitted: ['DE', 'NL', 'BE'], correct: ['CH', 'DE', 'FR', 'NL'] },
+            [RIVAL]: { submitted: ['CH', 'AT'], correct: ['CH', 'DE', 'FR', 'NL'] },
             [THIRD]: { submitted: [], correct: ['CH', 'DE', 'FR', 'NL'] },
           },
           playerTurns: {
@@ -1217,7 +1218,8 @@ const scenarios: Scenario[] = [
             maximumPoints: MAXIMUM_POINTS,
           },
           groupAnswers: {
-            [ME]: { submitted: ['KE', 'TZ'], correct: ['KE', 'TZ', 'UG'] },
+            // Swahili is not official in Ethiopia — the stray to mark.
+            [ME]: { submitted: ['KE', 'TZ', 'ET'], correct: ['KE', 'TZ', 'UG'] },
             [RIVAL]: { submitted: ['KE'], correct: ['KE', 'TZ', 'UG'] },
             [THIRD]: { submitted: [], correct: ['KE', 'TZ', 'UG'] },
           },
@@ -1342,6 +1344,124 @@ const scenarios: Scenario[] = [
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
+      ]),
+  },
+  {
+    // The screenshot that started this: eleven of Russia's fourteen neighbours
+    // found, three names that don't border it at all (Armenia, Kyrgyzstan,
+    // Turkmenistan), and one repeat. The points are what blitzScore really
+    // pays on this pot — round(21 × 11/14) − 3 = 14 — so the tally beside the
+    // score can be read against the score itself.
+    id: 'neighbour-scores',
+    label: 'Neighbour blitz (scorecard — hits, misses, strays)',
+    component: ViewGroupScores,
+    build: () =>
+      mockGame('group-scores', [
+        {
+          groupChallenge: {
+            _type: 'neighbour-blitz-challenge',
+            country: 'RU',
+            neighbours: [
+              'AZ',
+              'BY',
+              'CN',
+              'EE',
+              'FI',
+              'GE',
+              'KP',
+              'KZ',
+              'LT',
+              'LV',
+              'MN',
+              'NO',
+              'PL',
+              'UA',
+            ],
+            durationSeconds: 60,
+            maximumPoints: MAXIMUM_POINTS,
+          },
+          groupAnswers: {
+            [ME]: {
+              submitted: [
+                'AM',
+                'KZ',
+                'KG',
+                'TM',
+                'PL',
+                'LT',
+                'FI',
+                'NO',
+                'EE',
+                'LV',
+                'BY',
+                'UA',
+                'CN',
+                'MN',
+                'KZ',
+              ],
+              correct: [
+                'AZ',
+                'BY',
+                'CN',
+                'EE',
+                'FI',
+                'GE',
+                'KP',
+                'KZ',
+                'LT',
+                'LV',
+                'MN',
+                'NO',
+                'PL',
+                'UA',
+              ],
+            },
+            [RIVAL]: {
+              submitted: ['CN', 'MN', 'IN'],
+              correct: [
+                'AZ',
+                'BY',
+                'CN',
+                'EE',
+                'FI',
+                'GE',
+                'KP',
+                'KZ',
+                'LT',
+                'LV',
+                'MN',
+                'NO',
+                'PL',
+                'UA',
+              ],
+            },
+            [THIRD]: {
+              submitted: [],
+              correct: [
+                'AZ',
+                'BY',
+                'CN',
+                'EE',
+                'FI',
+                'GE',
+                'KP',
+                'KZ',
+                'LT',
+                'LV',
+                'MN',
+                'NO',
+                'PL',
+                'UA',
+              ],
+            },
+          },
+          playerTurns: {
+            // round(21 × 11/14) − 3 = 14, and round(21 × 2/14) − 1 = 2.
+            [ME]: { points: { scored: 14, maximum: MAXIMUM_POINTS } },
+            [RIVAL]: { points: { scored: 2, maximum: MAXIMUM_POINTS } },
+            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
+          },
+        } as unknown as Round,
       ]),
   },
   {

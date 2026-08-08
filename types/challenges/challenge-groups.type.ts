@@ -106,6 +106,69 @@ export const CHALLENGE_GROUP_BY_KIND = {
   empire: 'empires',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
+/**
+ * How a round's answer list reads, for the scorecard's reveal. A 'set' has no
+ * meaningful order, so the reveal sorts both the player's answers and the
+ * truth by name — that shared order is what makes the two directly
+ * comparable — and pipes wrong names to the tail. A 'sequence' IS its order
+ * (a route, a probe trail, a chronology): the reveal marks it in place and
+ * never reorders, because piping a stray out of a route destroys the route.
+ *
+ * Single-answer kinds are 'set': the sort is a no-op on one country, and the
+ * marking is the whole point. Every RoundChallengeKind MUST appear here.
+ */
+export const ANSWER_SHAPE_BY_KIND = {
+  // Collect-a-set: name everything that qualifies, in any order.
+  'neighbour-blitz': 'set',
+  'river-run': 'set',
+  'shared-shores': 'set',
+  highlands: 'set',
+  'mother-tongue': 'set',
+  'no-mans-land': 'set',
+  empire: 'set',
+  // One buzz against a set of acceptable answers.
+  'tongue-buzz': 'set',
+  'name-that-water': 'set',
+  // Single answer — sorting is a no-op, marking is not.
+  silhouette: 'set',
+  'anthem-buzz': 'set',
+  'capital-guess': 'set',
+  flashpoint: 'set',
+  'flag-palette': 'set',
+  'stat-detective': 'set',
+  'two-truths': 'set',
+  'ghost-state': 'set',
+  composition: 'set',
+  'trend-race': 'set',
+  // The order is the answer.
+  traversal: 'sequence',
+  'hot-cold': 'sequence',
+  timeline: 'sequence',
+  'border-chain': 'sequence',
+  // Never reach the answer rows: ranking has its own ledger (RankingReveal),
+  // sketch its overlay, and these four bank empty lists.
+  ranking: 'sequence',
+  sketch: 'sequence',
+  'pin-landmark': 'sequence',
+  'heritage-hunt': 'sequence',
+  'unique-or-bust': 'sequence',
+  manhunt: 'sequence',
+} as const satisfies Record<RoundChallengeKind, 'set' | 'sequence'>
+
+/**
+ * Kinds whose scorer literally subtracts a point per wrong name — the blitz
+ * family, via `blitzScore`'s `- wrong`. Only these may show the cost in the
+ * scorecard's tally: no-man's-land and empire score by set overlap
+ * (`jaccardFraction`) and tongue-buzz by membership, so a "−2" would be a lie.
+ */
+export const WRONG_COSTS_A_POINT = new Set<RoundChallengeKind>([
+  'neighbour-blitz',
+  'river-run',
+  'shared-shores',
+  'highlands',
+  'mother-tongue',
+])
+
 /** Kinds reserved for hard games unless their group is force-enabled. Lives
  *  with the taxonomy (not the dealer) because the lobby renders it too. */
 export const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([

@@ -39,6 +39,7 @@
                 }}
               </p>
               <p class="explainer">{{ explainer }}</p>
+              <p v-if="tallyLine" class="tally">{{ tallyLine }}</p>
             </div>
           </div>
 
@@ -87,22 +88,38 @@
           </template>
           <template v-else>
             <p v-if="empireVerdict" class="pane-content empire-verdict">{{ empireVerdict }}</p>
-            <section class="pane-content ranking">
-              <span class="eyebrow">{{ sectionLabels.submitted }}</span>
-              <ViewRanking :iso-codes="submittedIsoCodes" />
-            </section>
 
-            <!-- Guesses that never joined the route. Left in the row above they
-                 would pad it into looking like a longer journey than it was. -->
-            <section v-if="traversalReveal?.strays.length" class="pane-content ranking">
-              <span class="eyebrow">Strays</span>
-              <ViewRanking :iso-codes="traversalReveal.strays" />
-            </section>
+            <!-- Set-shaped rounds: one merged ledger, every answer on its own
+                 row with its verdict, wrong names below the rule. -->
+            <AnswerLedger
+              v-if="breakdown"
+              :breakdown="breakdown"
+              :truth-label="sectionLabels.correct"
+              :stray-label="sectionLabels.stray"
+              :cost="strayCost"
+            />
 
-            <section class="pane-content ranking">
-              <span class="eyebrow">{{ sectionLabels.correct }}</span>
-              <ViewRanking :iso-codes="correctIsoCodes" />
-            </section>
+            <!-- Sequence-shaped rounds keep the rails: their order IS the
+                 answer, and both rows are real sequences that can differ in
+                 membership, so neither collapses into the other's ledger. -->
+            <template v-else-if="showsAnswerRails">
+              <section class="pane-content ranking">
+                <span class="eyebrow">{{ sectionLabels.submitted }}</span>
+                <ViewRanking :iso-codes="submittedIsoCodes" />
+              </section>
+
+              <!-- Guesses that never joined the route. Left in the row above they
+                   would pad it into looking like a longer journey than it was. -->
+              <section v-if="traversalReveal?.strays.length" class="pane-content ranking">
+                <span class="eyebrow">Strays</span>
+                <ViewRanking :iso-codes="traversalReveal.strays" />
+              </section>
+
+              <section class="pane-content ranking">
+                <span class="eyebrow">{{ sectionLabels.correct }}</span>
+                <ViewRanking :iso-codes="correctIsoCodes" />
+              </section>
+            </template>
 
             <section v-if="flashpointChallenge" class="pane-content ranking">
               <span class="eyebrow">The Conflict Behind the Dots</span>
@@ -220,11 +237,16 @@ import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
+import AnswerLedger from '~/components/challenge/AnswerLedger.vue'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
-import { getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
+import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
-import { CHALLENGE_GROUP_ACCESSORS } from '~~/types/challenges/challenge-groups.type'
+import {
+  ANSWER_SHAPE_BY_KIND,
+  CHALLENGE_GROUP_ACCESSORS,
+  WRONG_COSTS_A_POINT,
+} from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { rankingAccessorId } from '~~/lib/rounds'
@@ -580,7 +602,59 @@ const explainer = computed(() => {
   }
 })
 
-const sectionLabels = computed(() => {
+/**
+ * The ledger's rows, classified and ordered once — set-shaped rounds only.
+ *
+ * A sequence round's two lists are both real routes, and a country on the
+ * player's route that is missing from the shortest one is a detour, not a
+ * wrong name; folding them into one ledger would either drop it or libel it.
+ * Those keep the rails below. Undefined too when the round banks nothing
+ * (heritage hunt, manhunt, unique-or-bust), which reveals through its own
+ * beats and must not render an empty ledger.
+ */
+const breakdown = computed(() => {
+  const answers = selectedScorecard.value?.answers
+  if (ANSWER_SHAPE_BY_KIND[kind.value] !== 'set') return undefined
+  if (!answers || (!answers.submitted.length && !answers.correct.length)) return undefined
+  return answerBreakdown({
+    submitted: answers.submitted,
+    correct: answers.correct,
+    kind: kind.value,
+  })
+})
+
+/** The sequence rounds' fallback: rails, but only with something to put in
+ *  them — the empty-payload kinds stay silent here as they do in the ledger. */
+const showsAnswerRails = computed(
+  () => submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0
+)
+
+/** Only the blitz family really pays a point per wrong name (`blitzScore`'s
+ *  `- wrong`). Set overlap and membership rounds charge differently, so they
+ *  count the misses without quoting a price. */
+const strayCost = computed(() =>
+  WRONG_COSTS_A_POINT.has(kind.value) ? breakdown.value?.tally.wrong || undefined : undefined
+)
+
+/** The score's own arithmetic, in words. A one-country answer has nothing to
+ *  tally — the marked tile already says it. */
+const tallyLine = computed(() => {
+  const tally = breakdown.value?.tally
+  if (!tally || tally.total <= 1) return undefined
+
+  const parts = [`${tally.found} of ${tally.total} found`]
+  if (tally.wrong) {
+    const named = `${tally.wrong} wrong ${tally.wrong === 1 ? 'name' : 'names'}`
+    parts.push(strayCost.value ? `${named} · −${strayCost.value}` : named)
+  }
+  return parts.join(' · ')
+})
+
+/** The stray tail reads the same everywhere: whatever the round asked for,
+ *  these are names the player gave that weren't in the set. */
+const sectionLabels = computed(() => ({ stray: 'Wrong Names', ...answerLabels.value }))
+
+const answerLabels = computed(() => {
   switch (kind.value) {
     case 'traversal':
       return {
@@ -776,6 +850,13 @@ const closeScores = () => {
       opacity: 0.6;
       font-size: 1.4rem;
     }
+    // The same arithmetic the explainer describes, run on this round.
+    .tally {
+      margin: 0.5rem 0 0;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: var(--dark-blue);
+    }
   }
 
   .empire-verdict {
@@ -796,7 +877,10 @@ const closeScores = () => {
   }
 }
 
-.ranking {
+// `:deep` too — the answer presenters render their own `.ranking` sections,
+// and the recipe stays declared once.
+.ranking,
+:deep(.ranking) {
   padding-top: 2rem;
   padding-right: 0;
   padding-bottom: 2rem;

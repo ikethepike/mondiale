@@ -1,7 +1,8 @@
 import { gsap } from 'gsap'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { EASE, MOTION } from '~~/lib/motion'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { keyboardInset } from '~~/lib/use-viewport'
 
 /**
@@ -165,17 +166,11 @@ export const useBottomSheet = (options: BottomSheetOptions) => {
     settleTo(stopIndex.value === SHEET_FULL ? SHEET_TUCKED : SHEET_FULL)
   }
 
-  // Scroll-edge fades: on only when content actually continues past that
-  // edge, so a short list never wears a dimmed last row.
-  const scrollableUp = ref(false)
-  const scrollableDown = ref(false)
-
-  const syncScrollEdges = () => {
-    const el = options.body?.()
-    if (!el) return
-    scrollableUp.value = el.scrollTop > 1
-    scrollableDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
-  }
+  // Scroll-edge fades. The observer below already fires on every geometry
+  // change, so this takes the state and the math and leaves the watching here.
+  const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => options.body?.(), {
+    observe: false,
+  })
 
   let observer: ResizeObserver | undefined
 
