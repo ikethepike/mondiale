@@ -60,12 +60,51 @@ export const SERVER_CONTROLLED_CAPS = true
 
 /** A scorecard left unread force-walks its seat. */
 export const GROUP_SCORES_CAP_MS = 45000
-/** Server-driven walks flip the seat to 'moving' and let this beat pass
- *  BEFORE the first step, so the board mounts and the steps (and the
- *  challenge-tile arrival) play on screen — a walk that starts stepping in
- *  the same write it announces itself outruns the board and reads as a
- *  teleport. Client-driven walks need none: the board is already up. */
-export const BOARD_MOUNT_GRACE_MS = 2500
+/**
+ * The walk protocol's leads: EVERY walk (client- or server-initiated)
+ * announces itself — phase 'moving' rides its own snapshot — then lets the
+ * lead pass before the first step, so the stage is on screen and the steps
+ * play in view. A turn-OPENING walk (walkIntro) leads long enough for the
+ * "On the move!" beat to fit inside it; a between-gates resume leads only a
+ * view transition — the gate verdict the player just watched IS the
+ * announcement.
+ */
+export const WALK_LEAD_MS = 3500
+export const WALK_RESUME_LEAD_MS = 900
+/** Snapshot delivery grace inside the lead, so a slow wire can't push the
+ *  announcement beat past the first step. */
+export const WALK_ANNOUNCE_WIRE_GRACE_MS = 350
+
+/** The "On the move!" interstitial, sized to FIT INSIDE the walk lead by
+ *  construction (enforced in round-beats.test.ts): the reading hold plus
+ *  the intro/stagger/outro choreography budget. */
+export const MOVE_INTERSTITIAL_HOLD_MS = 1500
+export const MOVE_INTERSTITIAL_OVERHEAD_MS = 1650
+export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
+
+/** One tile's hop tween; catch-up tiers derive from it (use-pawn-movement). */
+export const PAWN_HOP_MS = 380
+/** How long a pawn rests with an empty queue before it counts as LANDED
+ *  (squash + ripple) — server steps arrive ~500ms apart, so the queue is
+ *  briefly empty between every step. */
+export const LANDING_SETTLE_MS = 650
+/** The challenge-tile alert ripple's sweep. */
+export const ARRIVAL_RIPPLE_MS = 1400
+/** Slack on the arrival flourish before the view may take the stage away. */
+export const ARRIVAL_PAD_MS = 170
+/** How long the board holds after a gate arrival before the challenge view
+ *  swaps in — the full arrival flourish, composed so it can't drift. */
+export const BOARD_TO_CHALLENGE_HOLD_MS =
+  PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
+
+/** One tile per tick — the walk cadence. */
+export const STEP_INTERVAL_MS = 500
+/** How much earlier than the cadence a step tick may land before it reads
+ *  as a duplicate chain's tick (the single-stepper latch in
+ *  enter-movement-phase). */
+export const STEP_LATCH_SLACK_MS = 150
+/** Staged round → reveal settle pause. */
+export const NEW_ROUND_PAUSE_MS = 2000
 /** A round-1 tutorial card left open force-closes. */
 export const TUTORIAL_CAP_MS = 60000
 /** An unanswered stop-tile gate forfeits. */
@@ -82,6 +121,9 @@ export const GATE_RESULT_HOLD_MS = 5000
  *  which unmounts the view in the ordinary walked case — lands first and the
  *  shell's fallback stays a fallback. */
 export const GATE_RESULT_WIRE_GRACE_MS = 750
+/** The gate shell's fallback end of the result beat — DERIVED, never an
+ *  ad-hoc sum at the call site. */
+export const GATE_RESULT_FALLBACK_MS = GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS
 
 /** Ceiling for classic kinds that carry no clock of their own (a ranking
  *  being dragged, a sketch being drawn) — only armed under the cap switch. */

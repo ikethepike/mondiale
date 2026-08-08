@@ -42,6 +42,7 @@ import type { TileTransform } from '~~/lib/board3d/path'
 import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { ARRIVAL_RIPPLE_MS } from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
@@ -134,7 +135,7 @@ const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success
     { value: 0 },
     {
       value: 1,
-      duration: tone === 'alert' ? 1.4 : 1.1,
+      duration: tone === 'alert' ? ARRIVAL_RIPPLE_MS / 1000 : 1.1,
       ease: 'power1.out',
       onComplete() {
         material.uniforms.uRippleProgress.value = -1

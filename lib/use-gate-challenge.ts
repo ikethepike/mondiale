@@ -36,7 +36,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { REDELIVER_MAX_BATCHES, REDELIVER_PAUSE_MS, useClientEvents } from './events/client-side'
-import { GATE_RESULT_HOLD_MS, GATE_RESULT_WIRE_GRACE_MS } from './round-beats'
+import { GATE_RESULT_FALLBACK_MS, GATE_RESULT_HOLD_MS } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 
@@ -258,7 +258,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
           // going to unmount is already gone: this shell is the no-walk case.
           status.value = undefined
           relatch()
-        }, GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+        }, GATE_RESULT_FALLBACK_MS)
       }
       return
     }

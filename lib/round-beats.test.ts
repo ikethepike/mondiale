@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ARRIVAL_PAD_MS,
+  ARRIVAL_RIPPLE_MS,
+  BOARD_TO_CHALLENGE_HOLD_MS,
   CLASSIC_SETTLE_SLACK_MS,
+  GATE_RESULT_FALLBACK_MS,
+  GATE_RESULT_HOLD_MS,
+  GATE_RESULT_WIRE_GRACE_MS,
+  LANDING_SETTLE_MS,
+  MOVE_INTERSTITIAL_HOLD_MS,
+  MOVE_INTERSTITIAL_OVERHEAD_MS,
+  MOVE_INTERSTITIAL_TOTAL_MS,
+  PAWN_HOP_MS,
+  STEP_INTERVAL_MS,
+  WALK_ANNOUNCE_WIRE_GRACE_MS,
+  WALK_LEAD_MS,
+  WALK_RESUME_LEAD_MS,
   classicPlaySeconds,
   EMPIRE_INTERBEAT_HOLD_MS,
   FINAL_QUESTION_CAP_MS,
@@ -108,6 +123,28 @@ describe('round beats', () => {
     } as const
     expect(classicPlaySeconds(hotCold)).toBeUndefined()
     expect(UNTIMED_CLASSIC_CAP_SECONDS).toBeGreaterThan(0)
+  })
+
+  it('fits the move interstitial inside the walk lead by construction', () => {
+    // The announcement beat must END before the first step can land — a
+    // hold retune that outgrows the lead fails here, not on screen.
+    expect(MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS).toBeLessThanOrEqual(
+      WALK_LEAD_MS
+    )
+    expect(MOVE_INTERSTITIAL_TOTAL_MS).toBe(
+      MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
+    )
+    // The resume lead carries no overlay — only the view transition.
+    expect(WALK_RESUME_LEAD_MS).toBeLessThan(WALK_LEAD_MS)
+  })
+
+  it('composes the arrival hold and gate fallback from their parts', () => {
+    expect(BOARD_TO_CHALLENGE_HOLD_MS).toBe(
+      PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
+    )
+    expect(GATE_RESULT_FALLBACK_MS).toBe(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+    // The hop must undercut the step cadence, or live walks stall mid-hop.
+    expect(PAWN_HOP_MS).toBeLessThan(STEP_INTERVAL_MS)
   })
 
   it('backs every cap with a live value', () => {

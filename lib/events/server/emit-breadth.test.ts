@@ -4,7 +4,7 @@ import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import {
-  BOARD_MOUNT_GRACE_MS,
+  WALK_LEAD_MS,
   CLASSIC_SETTLE_SLACK_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -297,7 +297,7 @@ describe('walk stepping contract', () => {
     expect(fresh.players.a.currentPosition).toBe(0)
 
     // Steps begin only after the mount grace, one per cadence tick.
-    await vi.advanceTimersByTimeAsync(BOARD_MOUNT_GRACE_MS + 100)
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 100)
     fresh = store.get(initial.id)!
     expect(fresh.players.a.currentPosition).toBe(1)
     await vi.advanceTimersByTimeAsync(500)

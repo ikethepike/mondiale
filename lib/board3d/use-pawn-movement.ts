@@ -1,6 +1,7 @@
 import { gsap } from 'gsap'
 import type { Object3D } from 'three'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { LANDING_SETTLE_MS, PAWN_HOP_MS } from '~~/lib/round-beats'
 import type { TileTransform } from './path'
 
 interface PawnState {
@@ -81,14 +82,6 @@ const SHARED_TILE_SCALE = 0.72
  * long gap) is big enough to snap.
  */
 const REPLAY_SNAP_STEPS = 12
-
-/**
- * How long a pawn waits on a tile with an empty queue before it counts as
- * having *landed* (squash + ripple). Server steps arrive ~500ms apart, so the
- * queue is briefly empty between every step — the debounce keeps the landing
- * flourish for the true end of a run.
- */
-const LANDING_SETTLE_MS = 650
 
 /**
  * Turns server-pushed `currentPosition` updates (one socket message per
@@ -313,12 +306,12 @@ export const createPawnMover = (options: {
     // Catch-up pacing: a deep queue means the pawn is replaying steps it took
     // while the board was covered — quick-fire hops keep every step visible
     // without dragging the replay out longer than the live walk.
-    // Catch-up may only NUDGE ahead of the server's 500ms step cadence,
-    // never race it: replayed backlogs got common on the server-driven
-    // walks (full-snapshot resyncs, remounts over a result beat), and the
-    // old 0.22s tier played them at 2.3x live pace — a pawn visibly flying
-    // across the board, then stalling for the next step.
-    const duration = state.queue.length >= 3 ? 0.32 : state.queue.length ? 0.35 : 0.38
+    // Catch-up may only NUDGE ahead of the server's step cadence, never
+    // race it: replayed backlogs are routine (resyncs, walks dealt while the
+    // stage was hidden), and a faster tier reads as a pawn flying across the
+    // board, then stalling. All tiers derive from the ONE hop token.
+    const base = PAWN_HOP_MS / 1000
+    const duration = state.queue.length >= 3 ? base - 0.06 : state.queue.length ? base - 0.03 : base
     const proxy = { t: 0 }
     state.activeTween = track(
       gsap.to(proxy, {

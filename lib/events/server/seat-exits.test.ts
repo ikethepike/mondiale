@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armFinalQuestionCap, armGroupScoresCap, armIndividualGateCap } from './seat-exits'
 import {
-  BOARD_MOUNT_GRACE_MS,
+  WALK_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
@@ -93,7 +93,7 @@ describe('armGroupScoresCap', () => {
     await vi.runAllTicks()
     expect(store.get(game.id)!.players.a.phase).toBe('moving')
 
-    await vi.advanceTimersByTimeAsync(BOARD_MOUNT_GRACE_MS + 100)
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 100)
     await vi.runAllTicks()
     // Nothing left to walk → the movement re-entry settles the seat.
     expect(store.get(game.id)!.players.a.phase).toBe('movement-summary')

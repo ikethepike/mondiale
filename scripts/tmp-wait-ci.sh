@@ -1,1 +1,1 @@
-until state=$(gh pr checks 126 2>/dev/null); [ -n "$state" ] && ! echo "$state" | grep -q pending; do sleep 30; done; gh pr checks 126
+until runs=$(gh run list --branch ike/round-beats --limit 2 --json status,conclusion,workflowName,headSha --jq "[.[] | select(.headSha | startswith(\"8212904\"))]" 2>/dev/null); [ -n "$runs" ] && [ "$runs" != "[]" ] && ! echo "$runs" | grep -q "in_progress\|queued\|pending"; do sleep 45; done; echo "$runs"

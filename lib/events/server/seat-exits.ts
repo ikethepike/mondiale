@@ -1,5 +1,5 @@
 import {
-  BOARD_MOUNT_GRACE_MS,
+  WALK_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
   GATE_RESULT_HOLD_MS,
   GROUP_SCORES_CAP_MS,
@@ -59,7 +59,7 @@ const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
     server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
     for (const [playerId, walkSeq] of walkers) {
       scheduleMovementPhase(
-        BOARD_MOUNT_GRACE_MS,
+        WALK_LEAD_MS,
         { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
         { continuation: true, walkSeq }
       )

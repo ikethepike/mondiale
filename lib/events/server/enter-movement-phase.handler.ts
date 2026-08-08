@@ -19,13 +19,14 @@ import type { ClientEventTarget } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
 import { moveStopTile } from '~~/lib/player-status'
-import { BOARD_MOUNT_GRACE_MS, ROUND_BOUND_PHASES, SETTLED_PHASES } from '~~/lib/round-beats'
-
-const STEP_INTERVAL = 500
-/** How much earlier than the cadence a step tick may land before it reads
- *  as a duplicate chain's tick (see the single-stepper latch below). */
-const STEP_LATCH_SLACK_MS = 150
-const NEW_ROUND_PAUSE = 2000
+import {
+  NEW_ROUND_PAUSE_MS,
+  ROUND_BOUND_PHASES,
+  SETTLED_PHASES,
+  STEP_INTERVAL_MS,
+  STEP_LATCH_SLACK_MS,
+  WALK_LEAD_MS,
+} from '~~/lib/round-beats'
 
 /**
  * Backstop for a table that is ready to advance but has nobody left to ask.
@@ -172,7 +173,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
           await server.updateGameState(game)
           server.emit({ event: 'update', game }, eventTarget)
           scheduleMovementPhase(
-            BOARD_MOUNT_GRACE_MS,
+            WALK_LEAD_MS,
             { io, redis, socket, eventTarget },
             { continuation: true, walkSeq: player.walkSeq }
           )
@@ -185,7 +186,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
         // A tick landing early against the last step is the duplicate — drop
         // it WITHOUT rescheduling and the surviving chain keeps the cadence.
         const now = Date.now()
-        if (player.lastStepAt && now - player.lastStepAt < STEP_INTERVAL - STEP_LATCH_SLACK_MS) {
+        if (player.lastStepAt && now - player.lastStepAt < STEP_INTERVAL_MS - STEP_LATCH_SLACK_MS) {
           return
         }
 
@@ -196,7 +197,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
         server.emit({ event: 'update', game }, eventTarget)
 
         scheduleMovementPhase(
-          STEP_INTERVAL,
+          STEP_INTERVAL_MS,
           { io, redis, socket, eventTarget },
           { continuation: true, walkSeq: player.walkSeq }
         )
@@ -247,7 +248,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       await server.updateGameState(game)
 
       scheduleMovementPhase(
-        NEW_ROUND_PAUSE,
+        NEW_ROUND_PAUSE_MS,
         { io, redis, socket, eventTarget },
         { continuation: true, walkSeq: player.walkSeq }
       )

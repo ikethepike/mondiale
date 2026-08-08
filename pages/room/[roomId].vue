@@ -39,6 +39,7 @@ import { loadFlags } from '~~/lib/country'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
+import { BOARD_TO_CHALLENGE_HOLD_MS } from '~~/lib/round-beats'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
@@ -125,10 +126,6 @@ const activeView = computed<ActiveView | undefined>(() => {
  * alert ripple finish on the board before the challenge takes over.
  */
 const presentedView = shallowRef<ActiveView | undefined>(activeView.value)
-// Covers the pawn's whole arrival flourish: the final hop (~380ms), the
-// landing settle (LANDING_SETTLE_MS 650), and the tile-hit ripple (~1.4s).
-// Shorter and the challenge view tears the board down mid-ripple.
-const BOARD_TO_CHALLENGE_HOLD_MS = 2600
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 
 watch(activeView, next => {
