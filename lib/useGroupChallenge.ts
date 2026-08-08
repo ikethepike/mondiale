@@ -60,22 +60,30 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   clearBoard({ preserveLiveGuesses: gameStore.watching })
   if (options.solo !== false) gameStore.map.solo = true
 
+  // A remount whose answer is already banked (a refresh mid-reveal-hold) is
+  // NOT a fresh round: the seat answered, the server's flip is pending, and
+  // replaying the interstitial + an empty console would let the player
+  // "answer" a question they already spent.
+  const answeredOnMount = !!currentRound.value?.round.groupAnswers[gameStore.playerId]
+
   // Watch mode (the booth mounting this view read-only): no interstitial —
   // every director cut would replay the 2.4s beat — and the round counts as
-  // started, since the racers are already in it.
-  const showInterstitial = ref(!gameStore.watching)
-  const started = ref(gameStore.watching)
+  // started, since the racers are already in it. Same for a banked remount.
+  const showInterstitial = ref(!gameStore.watching && !answeredOnMount)
+  const started = ref(gameStore.watching || answeredOnMount)
 
-  // The submit latch. For a racer it's local state; in watch mode the
-  // followed SEAT's banked answer joins it — snapshot truth drives the
-  // reveal, while local writes (views latch `submitted.value = true` as a
-  // re-entrancy guard) still stick. The OR matters: a getter that ignored
-  // the local side would silently break every such guard in the booth.
+  // The submit latch. Local state ORed with the snapshot's banked answer —
+  // the followed seat's in watch mode, our OWN otherwise (the reveal-hold
+  // flow banks while the phase stays in-challenge, so a remount must read
+  // the round, not browser memory). The OR matters: a getter that ignored
+  // the local side would silently break every re-entrancy guard.
   const submittedLocal = ref(false)
   const submitted = computed({
     get: () =>
       submittedLocal.value ||
-      (gameStore.watching && !!currentRound.value?.round.groupAnswers[gameStore.seatId]),
+      !!currentRound.value?.round.groupAnswers[
+        gameStore.watching ? gameStore.seatId : gameStore.playerId
+      ],
     set: value => {
       submittedLocal.value = value
     },

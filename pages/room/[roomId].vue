@@ -125,20 +125,32 @@ const activeView = computed<ActiveView | undefined>(() => {
  * alert ripple finish on the board before the challenge takes over.
  */
 const presentedView = shallowRef<ActiveView | undefined>(activeView.value)
-const BOARD_TO_CHALLENGE_HOLD_MS = 1600
+// Covers the pawn's whole arrival flourish: the final hop (~380ms), the
+// landing settle (LANDING_SETTLE_MS 650), and the tile-hit ripple (~1.4s).
+// Shorter and the challenge view tears the board down mid-ripple.
+const BOARD_TO_CHALLENGE_HOLD_MS = 2600
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(activeView, (next, previous) => {
+watch(activeView, next => {
+  // What's ON SCREEN is the stable truth; `previous` flips to the challenge
+  // on the first snapshot of a burst even though the board is still shown.
+  const fromBoard = presentedView.value?.key === 'board'
+  const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
+
   if (holdTimer) {
+    // A hold in flight owns the swap — the timer reads the LIVE activeView
+    // when it fires, so mid-hold snapshots that still point at a challenge
+    // change nothing. Only a different destination re-decides; clearing on
+    // every snapshot let routine broadcast bursts starve the hold and cut
+    // the arrival beat short.
+    if (fromBoard && toChallenge) return
     clearTimeout(holdTimer)
     holdTimer = undefined
   }
 
-  const fromBoard = previous?.key === 'board' && presentedView.value?.key === 'board'
-  const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
-
   if (fromBoard && toChallenge) {
     holdTimer = setTimeout(() => {
+      holdTimer = undefined
       presentedView.value = activeView.value
     }, BOARD_TO_CHALLENGE_HOLD_MS)
     return

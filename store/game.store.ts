@@ -226,13 +226,20 @@ export const useGameStore = defineStore('game', {
   getters: {
     currentRound: (state): { round: Round; number: number } | undefined => {
       if (!state.game) return undefined
-      const index = state.game.rounds.length - 1
+      // A staged-but-unrevealed round (the 2s settle pause) is not the live
+      // round: seats are still on the finished round's scorecards, and
+      // pointing them at the fresh empty round blanks every score and swaps
+      // the reveal to a challenge nobody has seen. Staging always pushes
+      // onto an existing round, so the fallback index is safe.
+      const index = state.game.pendingRoundStart
+        ? state.game.rounds.length - 2
+        : state.game.rounds.length - 1
       const round = state.game.rounds[index]
       if (!round) return undefined
 
       return {
         round,
-        number: state.game.rounds.length,
+        number: index + 1,
       }
     },
     /** The identity this UI renders as: the booth's followed seat, or self.

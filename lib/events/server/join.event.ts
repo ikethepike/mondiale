@@ -6,7 +6,7 @@ import { createPlayer, joinVerdict } from '../../../lib/player'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
-import { SETTLED_PHASES } from '~~/lib/round-beats'
+import { revealHoldMsFor, SETTLED_PHASES } from '~~/lib/round-beats'
 import { movesForScoredPoints, startWalk } from './moves'
 import { rearmLiveRound } from './rearm-round'
 
@@ -188,7 +188,13 @@ export const joinEventHandler: EventHandler = async ({
     answered: !!game.rounds[index]?.groupAnswers[playerId],
   })
 
-  if (game.started && strandedSubmitter) {
+  // On a kind with a reveal beat, answer-banked-but-still-in-challenge is
+  // the NORMAL mid-hold state — the flip task (or rearmClassicRound's
+  // banked-seat sweep below) owns the advance, and healing here would yank
+  // the rejoiner to the scorecard mid-beat. Only heal where the flip is
+  // inline (hold 0) and the state really is a lost advance.
+  const midRevealHold = !!revealHoldMsFor(game.rounds[index]?.groupChallenge)
+  if (game.started && strandedSubmitter && !midRevealHold) {
     console.warn(`Healing stranded submitter ${playerId} on rejoin (answer banked, phase was not)`)
     rejoining.phase = 'group-scores'
     startWalk(

@@ -34,7 +34,14 @@ export const closeTutorialHandler = defineGameHandler(
     }
 
     await server.updateGameState(game)
-    server.emit({ event: 'update', game }, eventTarget)
+    // The last close stamps ROUND-level state (`round.deadline`) — a seat
+    // slice would drop it and leave every client's countdown unstamped while
+    // the server's settle backstop already ticks against it.
+    if (startsClassicClock) {
+      server.emit({ event: 'table-updated', game }, eventTarget)
+    } else {
+      server.emit({ event: 'update', game }, eventTarget)
+    }
     if (startsManhunt && !manhunt.state.finished) {
       scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)
     }

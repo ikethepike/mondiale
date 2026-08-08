@@ -11,11 +11,19 @@ import { gameVariants, isValidGameVariant } from '~~/types/game.types'
  * `connect()` belt covers the disconnected shapes (socket.io buffers the
  * emit and flushes it once the connection is up).
  */
+/** Collapse the mount-join and the connect-listener join (or a reconnect
+ *  burst) into one wire event — each join answers with a full snapshot, and
+ *  back-to-back replaces re-trigger every identity-sensitive watcher. */
+const JOIN_DEDUPE_MS = 250
+let lastJoinAt = 0
+
 export const useJoinRoom = () => {
   const route = useRoute()
   const { update, gameStore } = useClientEvents()
 
   return () => {
+    if (Date.now() - lastJoinAt < JOIN_DEDUPE_MS) return
+    lastJoinAt = Date.now()
     const socket = gameStore.socket
     const roomId = route.params.roomId
     if (socket && typeof roomId === 'string') {

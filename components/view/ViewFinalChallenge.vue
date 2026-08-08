@@ -289,6 +289,7 @@ import { formatAmount, formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import type {
   ChangeChallenge,
+  FinalChallenge,
   FinalChallengeAnswer,
 } from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -299,10 +300,24 @@ const { currentFinalChallenge, clearBoard, update, gameStore, currentMove, game 
 
 const status = toRef(gameStore.map, 'status')
 
-const gauntlet = computed(() => {
-  if (currentMove.value?.challenge?._type !== 'final-challenge') return undefined
-  return currentMove.value.challenge
-})
+// Held through the result beat: a knockout clears `moves` server-side while
+// the phase stays 'final-challenge' for the 5s verdict pause — computing
+// straight off currentMove would blank the whole shell for that beat. The
+// latch keeps the last live gauntlet on screen until the phase flip unmounts
+// us.
+const lastGauntlet = shallowRef<FinalChallenge>()
+watch(
+  currentMove,
+  move => {
+    if (move?.challenge?._type === 'final-challenge') lastGauntlet.value = move.challenge
+  },
+  { immediate: true }
+)
+const gauntlet = computed(() =>
+  currentMove.value?.challenge?._type === 'final-challenge'
+    ? currentMove.value.challenge
+    : lastGauntlet.value
+)
 
 /** The board the gauntlet was dealt from — the verdict's scope, and the
  *  ranking the stat scorecard reads. */

@@ -102,7 +102,10 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
     })
 
     await server.updateGameState(fresh)
-    server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
+    // Whole-table change → whole-snapshot event. 'update' is a SEAT slice
+    // client-side; riding it here would flip one arbitrary seat and leave
+    // every other straggler visually frozen on the challenge.
+    server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
     // The advanced seats now owe the table a walk only a click normally
     // sends — one cohort cap so a dead tab's scorecard can't freeze the room.
     armGroupScoresCaps(ctx, fresh, advanced)
@@ -189,7 +192,8 @@ export const rearmClassicRound = (ctx: EngineContext, game: Game) => {
       if (fresh.rounds.length !== game.rounds.length) return
       freshRound.deadline = round.deadline
       await server.updateGameState(fresh)
-      server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
+      // Round-level stamp → whole-snapshot event (a seat slice drops it).
+      server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
     })
   }
   scheduleClassicSettle(ctx, game)

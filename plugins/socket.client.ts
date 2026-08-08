@@ -51,6 +51,11 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   update: {
     handler: playerUpdateEvent,
   },
+  // Whole-table change with no mode event of its own — full replace, like
+  // the engines' '*-updated' family below.
+  'table-updated': {
+    handler: genericUpdateEvent,
+  },
   'configuration-updated': {
     handler: genericUpdateEvent,
   },
@@ -81,8 +86,10 @@ const CLIENT_SIDE_EVENT_HANDLERS: {
   'manhunt-taunt': {
     handler: manhuntTauntEvent,
   },
+  // Seat + round slice: a gate verdict also writes the seat's
+  // `playerTurns[].blocked` record, which the bare seat slice drops.
   'individual-challenge-checked': {
-    handler: playerUpdateEvent,
+    handler: groupChallengeScoredEvent,
   },
   'index-update': {
     handler: indexUpdateEvent,

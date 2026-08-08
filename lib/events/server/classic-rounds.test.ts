@@ -117,7 +117,7 @@ describe('scheduleClassicSettle', () => {
     // 'a' is untouched — no rescore, no re-walk.
     expect(settled.playerTurns.a.points).toEqual({ scored: 8, maximum: 10 })
     expect(store.get(game.id)!.players.a.phase).toBe('group-scores')
-    expect(emitted).toContain('update')
+    expect(emitted).toContain('table-updated')
   })
 
   it('advances a stranded submitter from the banked score without rescoring', async () => {
@@ -163,7 +163,7 @@ describe('scheduleClassicSettle', () => {
     await elapseSettle(round)
 
     expect(roundOf(game.id).groupAnswers.b).toBeUndefined()
-    expect(emitted).not.toContain('update')
+    expect(emitted).not.toContain('table-updated')
   })
 
   it('dies on the round-index token when a newer round staged', async () => {

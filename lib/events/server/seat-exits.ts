@@ -53,7 +53,10 @@ const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
     }
     if (!walkers.length) return
     await server.updateGameState(fresh)
-    server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
+    // Whole-cohort change → whole-snapshot event ('update' is a seat slice:
+    // it would announce ONE walker and leave the rest parked client-side,
+    // defeating the mount grace for exactly the seats it exists to serve).
+    server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
     for (const [playerId, walkSeq] of walkers) {
       scheduleMovementPhase(
         BOARD_MOUNT_GRACE_MS,

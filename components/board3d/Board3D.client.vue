@@ -94,10 +94,15 @@ onBeforeMount(() => {
 // Closing the group scores defers 'enter-movement-phase' to us: an "On the
 // move!" interstitial plays over the board, and the server's 500ms step
 // ticks only start once the scene is on screen AND the interstitial is done —
-// every step lands as a visible hop. (The post-challenge movement phase is
-// re-entered by the server itself and never sets the flag.)
+// every step lands as a visible hop. A SERVER-driven walk (the scores cap)
+// never sets the flag but announces itself by mounting us with the seat
+// already in 'moving' and holding its first step for the mount grace — the
+// same interstitial covers that beat, or the grace reads as a hung board.
 const sceneReady = ref(false)
-const showMoveInterstitial = ref(gameStore.pendingMovementRequest)
+const showMoveInterstitial = ref(
+  gameStore.pendingMovementRequest ||
+    resolvedGame.value?.players[resolvedPlayerId.value]?.phase === 'moving'
+)
 
 // Name the player's actual conversion — "7 points → 7 tiles" lands better than
 // the abstract rule. Falls back to the rule when the score isn't known yet.

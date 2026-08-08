@@ -129,6 +129,10 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       if (!survives) {
         player.moves = []
         await server.updateGameState(game)
+        // The knockout verdict must reach the client NOW — with no emit the
+        // view sits on its last frame for the whole result pause, and the
+        // shell's wire-grace fallback ends up carrying the primary case.
+        server.emit({ event: 'final-challenge-checked', game }, eventTarget)
         scheduleMovementPhase(
           GATE_RESULT_HOLD_MS,
           { io, redis, socket, eventTarget },
@@ -151,12 +155,14 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     // Reaching victory here happens OUTSIDE enter-movement-phase, so nobody
     // re-checks round advancement. If this winner was the LAST player to
     // settle, everyone else is parked in movement-summary waiting for a
-    // `new-round` that would never fire. Re-enter the movement phase (which now
-    // skips settled players and only runs the advancement check) so it stages
-    // and reveals the next round for the remaining players.
+    // `new-round` that would never fire. Re-enter the movement phase (which
+    // now skips settled players and only runs the advancement check) so it
+    // stages and reveals the next round for the remaining players — BEHIND
+    // the winner's own result beat, or the staged round's `new-round` full
+    // snapshot can land before the victory beat it should follow.
     if (won) {
       scheduleMovementPhase(
-        0,
+        GATE_RESULT_HOLD_MS,
         { io, redis, socket, eventTarget },
         { continuation: true, walkSeq: player.walkSeq }
       )

@@ -297,7 +297,15 @@ export type ServerEventData =
   /** Join refused — the host removed this player from the game. Terminal;
    *  same no-`game` contract as the other refusals. */
   | { event: 'removed-from-room' }
+  /** ONE seat changed (the acting player): the client applies only
+   *  `players[actor]`. A write that touched more than one seat — or any
+   *  round-level field — must ride 'table-updated' instead, or every other
+   *  change is silently dropped on every client. */
   | { event: 'update'; game: Game }
+  /** Whole-table change outside a mode's own `*-updated` event (a settle
+   *  advancing a cohort, a cap flipping several seats, a round-level stamp) —
+   *  full snapshot replace client-side. */
+  | { event: 'table-updated'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
   /** Border Chain: a turn advanced (move, strike, elimination, fresh chain,
