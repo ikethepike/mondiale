@@ -83,6 +83,7 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
       } else {
         console.warn(`Classic settle banking absent seat ${seat.id} in ${fresh.id}`)
         const { scoring, answer } = await gradeGroupAnswer({
+          game: fresh,
           round: freshRound,
           playerId: seat.id,
           submission: ABSENT_SUBMISSION,
