@@ -111,8 +111,11 @@ describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
  * below hard.
  */
 describe('the three-country floor and benched micro-nations', () => {
-  const shores = (id: string, rules: GameRules, features: Record<string, { countries: string[] }>) =>
-    features[id].countries.filter(isoCode => isCountryInPlay(rules, isoCode as ISOCountryCode))
+  const shores = (
+    id: string,
+    rules: GameRules,
+    features: Record<string, { countries: string[] }>
+  ) => features[id].countries.filter(isoCode => isCountryInPlay(rules, isoCode as ISOCountryCode))
 
   it('measures the floor on the in-play key, not the shipped one', async () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
