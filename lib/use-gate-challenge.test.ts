@@ -72,6 +72,25 @@ describe('the gate shell relatches its next gate', () => {
     unmount()
   })
 
+  it('never re-arms for a fresh snapshot identity of the SAME gate', () => {
+    // Every full broadcast rebuilds the blob — same gate, new objects. A
+    // rejoin's resync (or another seat's cap settling) mid-answer must not
+    // replay the interstitial or remount the variant component.
+    const { challenge, gateSeq, showInterstitial, relatch, unmount } = mountShell()
+    showInterstitial.value = false
+    const before = challenge.value
+
+    stub.currentMove.value = gate(5, 'FI')
+    relatch()
+
+    expect(gateSeq.value).toBe(0)
+    expect(showInterstitial.value).toBe(false)
+    // The latch still refreshes to the live snapshot's object quietly.
+    expect(challenge.value).not.toBe(before)
+    expect(challenge.value?.country).toBe('FI')
+    unmount()
+  })
+
   it('holds the beat, then takes the arrival the walk never came to collect', async () => {
     const { challenge, gateSeq, status, showInterstitial, relatch, unmount } = mountShell()
 

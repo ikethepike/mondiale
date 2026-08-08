@@ -112,6 +112,12 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
       : undefined
 
   const challenge = ref(latched())
+  // A gate's durable identity is the stop tile it guards — never the
+  // challenge's object reference: every full snapshot rebuilds the whole
+  // blob, so reference equality reads ANY mid-gate broadcast (a rejoin's
+  // resync, another seat's cap settling) as a new gate and replays the
+  // interstitial over a live answer.
+  let latchedTile = challenge.value ? currentMove.value?.endTile.position : undefined
   const variant = computed<IndividualChallengeVariant>(() => challenge.value?.variant ?? 'find')
   const country = computed(() =>
     challenge.value ? getCountry(challenge.value.country) : undefined
@@ -236,7 +242,13 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    */
   const relatch = () => {
     const next = latched()
-    if (!next || next === challenge.value) return
+    if (!next) return
+    // Same gate, fresh object identity: refresh the reference quietly (never
+    // mid-beat — the beat's view holds the answered gate) and re-arm nothing.
+    if (challenge.value && currentMove.value?.endTile.position === latchedTile) {
+      if (!status.value) challenge.value = next
+      return
+    }
     // Never tear down a beat in progress — take the arrival when it is spent.
     if (status.value) {
       if (!beatTimer && !disposed) {
@@ -253,6 +265,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     stopBeatTimer()
 
     challenge.value = next
+    latchedTile = currentMove.value?.endTile.position
     clearBoard()
     submittedISOCode.value = undefined
     missNote.value = undefined
