@@ -58,7 +58,7 @@ const waitForPawnToSettle = async (page: import('@playwright/test').Page) => {
   return previous
 }
 
-/** Drive the harness to a pawn parked against the gate, board hidden. */
+/** Drive the harness to a pawn standing ON its gate, board hidden. */
 const walkAndHide = async (page: import('@playwright/test').Page) => {
   await page.goto('/test')
   await expect(page.locator('.replay-controls')).toBeVisible({ timeout: 20_000 })
@@ -66,13 +66,13 @@ const walkAndHide = async (page: import('@playwright/test').Page) => {
   await waitForPawnToSettle(page)
 
   await page.getByRole('button', { name: 'Walk P1 to gate' }).click()
-  // The pawn parks at its STOP tile (server truth, pressed toward the gate) —
-  // capture where the board actually shows it before hiding.
-  const stopTile = await waitForPawnToSettle(page)
+  // Blocked pawns display ON the challenge tile (the deliberate display
+  // rule) — capture the gate the board shows it standing on before hiding.
+  const gateTile = await waitForPawnToSettle(page)
 
   await page.getByRole('button', { name: 'Hide board' }).click()
   await expect(page.locator('.board3d canvas')).toBeHidden()
-  return stopTile as number
+  return gateTile as number
 }
 
 test('movement banked while hidden replays as visible hops on show', async ({ page }) => {
@@ -108,9 +108,9 @@ test('movement banked while hidden replays as visible hops on show', async ({ pa
   }
 })
 
-test('a lost gate leaves the pawn at its stop tile with nothing to replay', async ({ page }) => {
+test('a lost gate bounces the pawn back one — and only one', async ({ page }) => {
   await armTrace(page)
-  const stopTile = await walkAndHide(page)
+  const gateTile = await walkAndHide(page)
 
   await page.getByRole('button', { name: 'Lose gate (hidden)' }).click()
 
@@ -118,38 +118,29 @@ test('a lost gate leaves the pawn at its stop tile with nothing to replay', asyn
   await resetTrace(page)
   await page.getByRole('button', { name: 'Show board' }).click()
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
+  await waitForPawnToSettle(page)
 
-  // A lost gate leaves nothing to walk: the pawn already stands at its stop
-  // tile (server truth — the on-gate fiction is dead), so the show may not
-  // animate a single hop, forward or back.
-  await page.waitForTimeout(2_000)
+  // The bump-back beat: the pawn stood ON the gate, the loss retreats it
+  // exactly one tile — a single backward hop, nothing more.
   const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
   console.log('  lost-gate show trace:', JSON.stringify(trace))
 
   const hops = trace.filter(entry => entry.fn === 'hop')
-  expect(hops, `show animated ${hops.length} hop(s) after a lost gate`).toHaveLength(0)
-
-  // And nothing may have moved it off the stop tile.
-  const rendered = trace
-    .filter(entry => entry.fn === 'place' || entry.fn === 'hop')
-    .map(entry => entry.to)
-  for (const tile of rendered) {
-    expect(tile, 'the pawn must stay on its stop tile').toBe(stopTile)
-  }
+  expect(hops, 'the loss must play as exactly one backward hop').toHaveLength(1)
+  expect(hops[0].to, 'the bounce must land one short of the gate').toBe(gateTile - 1)
 })
 
 test('a failed gate never renders the forfeited stretch', async ({ page }) => {
   await armTrace(page)
   // The mock's walk runs PAST the gate: losing it forfeits that tail. The
-  // pawn parks at the stop tile (gate − 1); the gate and everything beyond
-  // must never be rendered.
-  const stopTile = await walkAndHide(page)
+  // bounce may retreat off the gate, but nothing beyond it may ever render.
+  const gateTile = await walkAndHide(page)
 
   await page.getByRole('button', { name: 'Lose gate (hidden)' }).click()
   await resetTrace(page)
   await page.getByRole('button', { name: 'Show board' }).click()
   await expect(page.locator('.board3d canvas')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(2_000)
+  await waitForPawnToSettle(page)
 
   const trace = (await readTrace(page)).filter(entry => entry.playerId === P1)
   console.log('  forfeit trace:', JSON.stringify(trace))
@@ -158,10 +149,10 @@ test('a failed gate never renders the forfeited stretch', async ({ page }) => {
     .filter(entry => entry.fn === 'place' || entry.fn === 'hop')
     .map(entry => entry.to)
   for (const tile of rendered) {
-    expect(tile, 'the board rendered forfeited ground past the stop tile').toBeLessThanOrEqual(
-      stopTile
-    )
+    expect(tile, 'the board rendered forfeited ground past the gate').toBeLessThanOrEqual(gateTile)
   }
+  // …and the pawn ends the beat at gate − 1, where the server has it.
+  expect(rendered.at(-1), 'the pawn must settle one short of the gate').toBe(gateTile - 1)
 })
 
 test('a won gate still replays its leap forward', async ({ page }) => {

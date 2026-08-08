@@ -4,6 +4,7 @@ import { enterMovementPhaseHandler, scheduleMovementPhase } from './enter-moveme
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import {
+  STEP_INTERVAL_MS,
   WALK_LEAD_MS,
   WALK_RESUME_LEAD_MS,
   CLASSIC_SETTLE_SLACK_MS,
@@ -311,7 +312,7 @@ describe('walk stepping contract', () => {
     expect(fresh.players.a.currentPosition).toBe(0)
 
     // The rest of the walk is server-owned: lead, steps, arrival.
-    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 3 * 500 + 200)
+    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 3 * STEP_INTERVAL_MS + 200)
     fresh = store.get(initial.id)!
     expect(fresh.players.a.currentPosition).toBe(3)
     expect(fresh.players.a.phase).toBe('movement-summary')
@@ -385,7 +386,7 @@ describe('walk stepping contract', () => {
     fresh = store.get(initial.id)!
     expect(fresh.players.a.currentPosition).toBe(1)
     expect(fresh.players.a.walkIntro).toBe(false)
-    await vi.advanceTimersByTimeAsync(500)
+    await vi.advanceTimersByTimeAsync(STEP_INTERVAL_MS)
     expect(store.get(initial.id)!.players.a.currentPosition).toBe(2)
 
     expectClientConvergence()
@@ -440,7 +441,7 @@ describe('walk stepping contract', () => {
 
     // Three cadence ticks later the pawn has walked three MORE tiles — the
     // surviving single chain's pace, not a doubled one.
-    await vi.advanceTimersByTimeAsync(1_500)
+    await vi.advanceTimersByTimeAsync(3 * STEP_INTERVAL_MS)
     expect(store.get(initial.id)!.players.a.currentPosition).toBe(4)
 
     expectClientConvergence()

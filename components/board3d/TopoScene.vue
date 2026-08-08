@@ -46,7 +46,6 @@ import { ARRIVAL_RIPPLE_MS, MOVE_INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beat
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
-import { moveStopTile } from '~~/lib/player-status'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
@@ -115,22 +114,20 @@ const cameraHeld = () => Date.now() < grabHeldUntil
 
 /**
  * A pawn blocked by an individual challenge sits at endTile - 1 in server
- * data (it must beat the challenge to pass). The display is server truth —
- * the pawn stands AT its stop tile, pressed toward the gate (the mover's
- * press-in), never on it.
+ * data (it must beat the challenge to pass). Visually that reads as "stuck
+ * one tile short", so blocked pawns display ON the challenge tile — a
+ * DELIBERATE display rule (Isaac's call, 2026-08-08): a failed gate clears
+ * the move and the pawn visibly bounces back one; the won-gate half of the
+ * unwinding is held by the mover's retreat guard. This is the only place
+ * display and `currentPosition` may disagree.
  */
 const isBlockedByChallenge = (player: Player) => {
   const move = player.moves[0]
   return Boolean(move?.challenge && move.endTile.position === player.currentPosition + 1)
 }
 
-// Server truth, clamped to the stop tile when a gate heads the plan — the
-// clamp also covers a leap that overshot its gate in a stale snapshot.
-const displayPositionFor = (player: Player) => {
-  const move = player.moves[0]
-  if (!move?.challenge) return player.currentPosition
-  return Math.min(player.currentPosition, moveStopTile(move))
-}
+const displayPositionFor = (player: Player) =>
+  isBlockedByChallenge(player) ? player.moves[0].endTile.position : player.currentPosition
 
 const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success') => {
   const material = board.value?.contourMaterial
@@ -488,11 +485,11 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
-    pressTowardFor: playerId => {
-      const player = props.game.players[playerId]
-      if (!player || !isBlockedByChallenge(player)) return undefined
-      return player.moves[0].endTile.position
-    },
+    // A backward display delta is the on-gate stance unwinding: only the
+    // FAILED half (the round's blocked record) may play as a bounce — a won
+    // gate's short leap must never hop the pawn backward off it.
+    retreatAllowedFor: playerId =>
+      Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {

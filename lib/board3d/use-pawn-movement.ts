@@ -43,10 +43,6 @@ const trace = (entry: PawnTraceEntry) => {
 const PAWN_REST_Y = 0.6
 const SHARED_TILE_SCALE = 0.72
 
-/** How far a blocked pawn leans toward its gate: a fraction of the distance
- *  from the stop tile to the gate tile — "pressed against", never on. */
-const PRESS_IN_FRACTION = 0.3
-
 /**
  * Backlog size beyond which a walk stops replaying hop-by-hop and snaps.
  * Post-challenge catch-ups (a win leap plus the steps consumed while the
@@ -74,11 +70,15 @@ export const createPawnMover = (options: {
   /** Fired when a pawn settles at the end of a run of hops. */
   onLand?: (playerId: string, tile: TileTransform) => void
   /**
-   * The gate tile a blocked pawn stands against, or undefined when free. A
-   * blocked pawn rests nudged toward that tile's near edge — server truth
-   * (the stop tile) plus body language, never the old on-gate fiction.
+   * May this pawn's display move BACKWARD right now? The on-gate stance shows
+   * a blocked pawn one tile ahead of server truth, so a backward delta means
+   * one of two things: the gate was LOST (the bounce-back is the beat — the
+   * round's blocked record exists, retreat allowed) or the gate was WON with
+   * a short leap (no blocked record — hold, or the pawn hops backward off a
+   * gate it just cleared; the next forward move measures from the display).
+   * Absent, every retreat plays (the /test harness and unit rigs).
    */
-  pressTowardFor?: (playerId: string) => number | undefined
+  retreatAllowedFor?: (playerId: string) => boolean
 }): PawnMover => {
   const states = new Map<string, PawnState>()
 
@@ -126,21 +126,10 @@ export const createPawnMover = (options: {
     const tile = options.tileFor(tileIndex)
     if (!tile) return undefined
     const slot = slotFor(playerId, tileIndex)
-
-    // A blocked pawn leans toward the gate holding it — the press-in.
-    const gateIndex = options.pressTowardFor?.(playerId)
-    const gate = gateIndex !== undefined ? options.tileFor(gateIndex) : undefined
-    const press = gate
-      ? {
-          x: (gate.position.x - tile.position.x) * PRESS_IN_FRACTION,
-          z: (gate.position.z - tile.position.z) * PRESS_IN_FRACTION,
-        }
-      : { x: 0, z: 0 }
-
     return {
-      x: tile.position.x + slot.x + press.x,
+      x: tile.position.x + slot.x,
       y: tile.position.y + PAWN_REST_Y,
-      z: tile.position.z + slot.z + press.z,
+      z: tile.position.z + slot.z,
       scale: slot.scale,
     }
   }
@@ -312,6 +301,12 @@ export const createPawnMover = (options: {
     if (tileIndex === committed) return
 
     if (tileIndex < committed) {
+      // The retreat guard: a backward delta with no failed gate behind it is
+      // the on-gate stance unwinding after a WIN — hold instead of hopping
+      // backward off a cleared gate. The next forward move measures from
+      // what's displayed, so holding is always safe.
+      if (options.retreatAllowedFor && !options.retreatAllowedFor(playerId)) return
+
       // A short retreat is a real gameplay beat — a pawn bounced off a failed
       // challenge — so play it as a single backward hop. Bigger jumps back
       // are resets (reconnects) and just snap.

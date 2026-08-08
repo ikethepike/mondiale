@@ -129,10 +129,22 @@ const walkToGate = () => {
   player.currentPosition = gate - 1
 }
 
-/** Wrong answer: the server clears the moves and leaves the pawn at gate − 1. */
+/** Wrong answer: the server clears the moves, leaves the pawn at gate − 1
+ *  and stamps the round's blocked record — which is what licenses the
+ *  bounce-back under the mover's retreat guard. */
 const loseGate = () => {
   const player = mockGame.players['mock-player-1']
+  const gate = player.moves[0]?.endTile.position
   player.moves = []
+  if (gate === undefined) return
+  mockGame.rounds = [
+    {
+      groupAnswers: {},
+      playerTurns: {
+        'mock-player-1': { blocked: { atTile: gate, forfeitedSteps: 5 } },
+      },
+    } as unknown as Game['rounds'][number],
+  ]
 }
 
 /** Correct answer: the leap advances the pawn and the gate move is consumed. */

@@ -97,8 +97,9 @@ export const ARRIVAL_PAD_MS = 170
 export const BOARD_TO_CHALLENGE_HOLD_MS =
   PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
 
-/** One tile per tick — the walk cadence. */
-export const STEP_INTERVAL_MS = 500
+/** One tile per tick — the walk cadence. 500 read as trudging once every
+ *  step became live and visible; the hop (PAWN_HOP_MS) must stay under it. */
+export const STEP_INTERVAL_MS = 400
 /** How much earlier than the cadence a step tick may land before it reads
  *  as a duplicate chain's tick (the single-stepper latch in
  *  enter-movement-phase). */

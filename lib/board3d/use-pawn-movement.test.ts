@@ -57,12 +57,12 @@ const hoppedTiles = () =>
     .filter(entry => entry.fn === 'hop')
     .map(entry => entry.to)
 
-const moverFor = (options: { pressTowardFor?: (playerId: string) => number | undefined } = {}) => {
+const moverFor = (options: { retreatAllowedFor?: (playerId: string) => boolean } = {}) => {
   const pawn = stubPawn()
   const mover = createPawnMover({
     pawnFor: () => pawn as never,
     tileFor,
-    pressTowardFor: options.pressTowardFor,
+    retreatAllowedFor: options.retreatAllowedFor,
     slotRadius: 1,
     hopHeight: 1,
   })
@@ -159,25 +159,35 @@ describe('moveTo', () => {
   })
 })
 
-describe('press-in', () => {
-  it('rests a blocked pawn nudged toward its gate, never on it', () => {
-    const { mover, pawn } = moverFor({ pressTowardFor: () => 6 })
-    mover.place(PLAYER, 5)
+describe('retreat guard', () => {
+  it('plays the bounce when the gate was lost (blocked record present)', () => {
+    const { mover } = moverFor({ retreatAllowedFor: () => true })
+    mover.place(PLAYER, 7)
+
+    resetTrace()
+    mover.moveTo(PLAYER, 6)
     drainHops()
 
-    // Tiles sit 1 apart on x here: pressed past the stop tile's centre but
-    // clearly short of the gate's.
-    expect(pawn.position.x).toBeGreaterThan(5)
-    expect(pawn.position.x).toBeLessThan(5.5)
+    expect(hoppedTiles()).toEqual([6])
     mover.dispose()
   })
 
-  it('keeps a free pawn centred on its tile', () => {
-    const { mover, pawn } = moverFor({ pressTowardFor: () => undefined })
-    mover.place(PLAYER, 5)
-    drainHops()
+  it('holds a won gate: no backward hop off a cleared gate', () => {
+    const { mover, pawn } = moverFor({ retreatAllowedFor: () => false })
+    mover.place(PLAYER, 7)
 
-    expect(pawn.position.x).toBe(5)
+    // A short leap resolved the gate to a truth BEHIND the on-gate display —
+    // the pawn must stand its ground…
+    resetTrace()
+    mover.moveTo(PLAYER, 6)
+    drainHops()
+    expect(hoppedTiles()).toEqual([])
+    expect(pawn.position.x).toBe(7)
+
+    // …and the next forward move measures from the display.
+    mover.moveTo(PLAYER, 9)
+    drainHops()
+    expect(hoppedTiles()).toEqual([8, 9])
     mover.dispose()
   })
 })
