@@ -104,7 +104,7 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
-import { isNeighbour, isRouteComplete, pickTraversal } from './traversal'
+import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
   dramaScore,
   isDecisiveGap,
@@ -728,8 +728,7 @@ const getTraversalChallenge = ({
     // The source data mislabels NATO — patch until the generator is fixed
     if (organizationId === 'nato') organizationName = 'NATO'
 
-    const within = new Set(members)
-    const pick = pickTraversal(game, within)
+    const pick = pickTraversal(game, members)
     if (pick) {
       return {
         _type: 'traversal-challenge',
@@ -1672,12 +1671,17 @@ const dealRoundChallenge = async (
 export const scoreTraversalSubmission = ({
   challenge,
   submittedGuesses,
+  rules,
 }: {
   challenge: TraversalChallenge
   submittedGuesses: ISOCountryCode[]
+  rules: gameTypes.GameRules
 }): { scored: number; maximum: number } => {
   const maximum = challenge.maximumPoints
-  const within = challenge.corridor ? new Set(challenge.corridor.members) : undefined
+  // The dealer's graph, re-derived — a guess off the board can't bridge here
+  // any more than it could have shortened the route the round was dealt from.
+  // It still counts against the guess budget: naming it was the mistake.
+  const within = traversalWithin(rules, challenge.corridor?.members)
 
   if (!isRouteComplete(challenge.start, challenge.target, submittedGuesses, within)) {
     return { scored: 0, maximum }

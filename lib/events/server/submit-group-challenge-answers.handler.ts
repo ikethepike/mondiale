@@ -82,6 +82,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
         scoring = scoreTraversalSubmission({
           challenge,
           submittedGuesses: eventData.ranking,
+          rules: game,
         })
         break
       }

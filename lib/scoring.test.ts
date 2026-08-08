@@ -25,6 +25,7 @@ import {
 import { getValueByAccessorID } from './values'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
+import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 // Characterization tests: these pin the point outcomes the game produces TODAY,
@@ -39,6 +40,8 @@ const hotCold = (maximumPoints: number): HotColdChallenge => ({
 })
 
 // FR -> DE -> PL is a real border route: optimalHops 2, so minimumGuesses is 1.
+const rules: GameRules = { variant: 'world', difficulty: 'normal' }
+
 const traversal = (maximumPoints: number): TraversalChallenge => ({
   _type: 'traversal-challenge',
   start: 'FR',
@@ -95,19 +98,19 @@ describe('scoreHotCold', () => {
 describe('scoreTraversalSubmission', () => {
   it('pays nothing when the guesses never bridge start to target', () => {
     expect(
-      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['ES', 'PT'] })
+      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['ES', 'PT'], rules })
     ).toEqual({ scored: 0, maximum: 21 })
   })
 
   it('pays full marks for the optimal single-country bridge', () => {
     expect(
-      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['DE'] })
+      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['DE'], rules })
     ).toEqual({ scored: 21, maximum: 21 })
   })
 
   it('docks two points per guess beyond the minimum', () => {
     expect(
-      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['BE', 'DE'] })
+      scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses: ['BE', 'DE'], rules })
     ).toEqual({ scored: 19, maximum: 21 })
   })
 
@@ -126,10 +129,12 @@ describe('scoreTraversalSubmission', () => {
       'CZ',
       'DE',
     ]
-    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses })).toEqual({
-      scored: 2,
-      maximum: 21,
-    })
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      {
+        scored: 2,
+        maximum: 21,
+      }
+    )
   })
 })
 
