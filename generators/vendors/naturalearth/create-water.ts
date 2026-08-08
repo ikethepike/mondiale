@@ -292,6 +292,55 @@ const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   return ordered
 }
 
+const boundsOverlap = (
+  [ax, ay, aw, ah]: [number, number, number, number],
+  [bx, by, bw, bh]: [number, number, number, number]
+) => ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
+
+/** Landform rosters whose two failure directions are worth pinning — see the
+ *  check in the drift defenses. Andorra and Liechtenstein are benched below
+ *  hard, so the gate in waterFeaturePool drops them from the dealt key; they
+ *  still have to be IN the shipped roster for a hard game to ask for them. */
+const REGION_ROSTER_EXPECTATIONS: Record<
+  string,
+  { includes: ISOCountryCode[]; excludes: ISOCountryCode[] }
+> = {
+  // Across the Strait of Gibraltar, not on the peninsula.
+  'plateau-iberian-peninsula': { includes: ['AD', 'ES', 'FR', 'PT'], excludes: ['MA'] },
+  // Wholly inside the range, so its outline never crosses them.
+  'range-pyrenees': { includes: ['AD', 'ES', 'FR'], excludes: [] },
+  'range-alps': { includes: ['AT', 'CH', 'IT', 'LI'], excludes: [] },
+}
+
+/**
+ * Which countries a landform actually overlaps — the whole question for a
+ * range, desert or plateau. A country either holds some of it or does not, so
+ * this is an overlap test with no proximity term: "near" is what put Morocco
+ * on the Iberian Peninsula, 0.7 units of Strait of Gibraltar away, and no
+ * land-border check can undo that (Ceuta and Melilla make ES–MA a land
+ * border). A shore is the opposite case and still measures distance — a sea
+ * touches coastlines rather than covering them, so marine features keep
+ * countriesNear.
+ *
+ * Overlap is tested both ways because either side can be the one inside:
+ * the outline is walked at full decimated resolution rather than resampled
+ * coarser, so a sliver of a range still registers, and countries are then
+ * checked against the region so an enclave the outline never touches is not
+ * lost (Andorra sits in the middle of the Iberian Peninsula and the Pyrenees,
+ * Liechtenstein in the middle of the Alps).
+ */
+const regionHosts = (rings: Point[][]): ISOCountryCode[] => {
+  const bounds = boundsOf(rings)
+  const hosts = new Set<ISOCountryCode>(countriesContaining(rings.flat()))
+  for (const shape of countryShapes) {
+    if (hosts.has(shape.code)) continue
+    if (!boundsOverlap(shape.bounds, bounds)) continue
+    if (shape.rings.some(ring => ring.some(point => pointInRings(point, rings))))
+      hosts.add(shape.code)
+  }
+  return [...hosts]
+}
+
 /** Resample an open polyline at a fixed step for crossing tests. */
 const sampleAlong = (lines: Point[][], step: number): Point[] => {
   const samples: Point[] = []
@@ -543,13 +592,7 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    // Hosts: countries whose territory the region actually overlaps
-    const hosts = countriesContaining(sampleAlong(rings, 2.5)).filter(code => {
-      void code
-      return true
-    })
-    const nearby = countriesNear(rings.flat(), 1.2)
-    const countries = [...new Set([...hosts, ...nearby])].sort()
+    const countries = regionHosts(rings).sort()
     if (!countries.length) continue
 
     add({
@@ -569,6 +612,25 @@ const main = async () => {
   }
   for (const raw of Object.keys(WATER_NAME_FIXES)) {
     if (!usedNameFixes.has(raw)) console.warn(`water-name-fixes: entry matched nothing: ${raw}`)
+  }
+  // A landform's roster fails in two silent directions, and both shipped once:
+  // a proximity term reaches across water (Morocco on the Iberian Peninsula),
+  // and an outline-only overlap test drops the countries the outline never
+  // touches (Andorra, Liechtenstein). Neither shows up as a crash or a bad
+  // name — only as a round asking for a country that isn't there, or not
+  // asking for one that is. Pin the three that caught it.
+  for (const [id, { includes, excludes }] of Object.entries(REGION_ROSTER_EXPECTATIONS)) {
+    const feature = features[id]
+    if (!feature) throw new Error(`Region roster check: ${id} no longer deals`)
+    const missing = includes.filter(code => !feature.countries.includes(code))
+    const surplus = excludes.filter(code => feature.countries.includes(code))
+    if (missing.length || surplus.length) {
+      throw new Error(
+        `Region roster drifted for ${id} (${feature.countries.join(' ')})` +
+          `${missing.length ? ` — missing ${missing.join(',')}` : ''}` +
+          `${surplus.length ? ` — should not include ${surplus.join(',')}` : ''}`
+      )
+    }
   }
 
   // --- Emit --------------------------------------------------------------------
