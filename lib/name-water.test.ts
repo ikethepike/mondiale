@@ -6,8 +6,9 @@ import {
   nameWaterCandidates,
   prominenceCandidates,
 } from '~~/lib/challenges'
+import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
 import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
-import type { Game } from '~~/types/game.types'
+import { gameDifficulties, type Game, type GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** A feature whose prominence (footprint × shores) is exactly `rank`. */
@@ -77,6 +78,50 @@ describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
       const dealt = (await getRoundChallenge({ game: game('easy') })) as WaterBlitzChallenge
       expect(dealt._type).toBe('water-blitz-challenge')
       expect(['range', 'desert']).toContain(dealt.kind)
+    }
+  })
+
+  // The dealt list is the answer key AND the "n of m found" counter, so a
+  // benched micro-nation in it is an unreachable round: the typed console and
+  // the map both refuse to select what the game has taken out of play.
+  it('never requires a country the game has benched', async () => {
+    for (const kind of ['river-run', 'shared-shores', 'highlands'] as const) {
+      process.env.FORCE_ROUND_TYPE = kind
+      for (const difficulty of gameDifficulties) {
+        const rules = game(difficulty)
+        const inPlay = new Set(playableWorldCountries(rules))
+        for (let deal = 0; deal < 15; deal++) {
+          const dealt = (await getRoundChallenge({ game: rules })) as WaterBlitzChallenge
+          expect(dealt._type).toBe('water-blitz-challenge')
+          for (const isoCode of dealt.countries) {
+            expect(inPlay.has(isoCode), `${dealt.featureId} requires benched ${isoCode}`).toBe(true)
+          }
+        }
+      }
+    }
+  })
+})
+
+/**
+ * The three-country floor is measured on the key the table can actually reach,
+ * never on the shipped list — otherwise benching a micro-nation would leave a
+ * "name 3" round with two reachable answers and no third to find. The Ligurian
+ * (FR/IT/MC) and Tyrrhenian (FR/IT/VA) seas are the shipped keys that fall
+ * under it once Monaco and the Vatican are out, so they simply don't deal
+ * below hard.
+ */
+describe('the three-country floor and benched micro-nations', () => {
+  const shores = (id: string, rules: GameRules, features: Record<string, { countries: string[] }>) =>
+    features[id].countries.filter(isoCode => isCountryInPlay(rules, isoCode as ISOCountryCode))
+
+  it('measures the floor on the in-play key, not the shipped one', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    for (const id of ['ligurian-sea', 'tyrrhenian-sea']) {
+      expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
+      expect(shores(id, { variant: 'world', difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
+      expect(
+        shores(id, { variant: 'world', difficulty: 'hard' }, WATER_FEATURES).length
+      ).toBeGreaterThanOrEqual(3)
     }
   })
 })
