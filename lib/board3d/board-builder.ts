@@ -437,13 +437,19 @@ const flagWaving: MarkerRecipe = s => {
   ]
 }
 
-// A compass rose lying face-up on a raised drum — wayfinding presented to
-// the board's-eye camera: long cardinals, short diagonals. Picked over
+/** Leans the ISO gate's rose off flat, face quartering back toward the
+ *  arriving player — resting against its pedestal, not lying on it. */
+const ROSE_TILT = 0.6
+
+// A compass rose propped at a lean on a slim pedestal — wayfinding presented
+// to the board's-eye camera: long cardinals, short diagonals. Picked over
 // signposts, stamps, letter blocks, a luggage tag and two other compasses in
-// the 2026-08 marker review.
+// the 2026-08 marker review. The pedestal stays inside the inter-tile gap
+// (markers anchor at tileRadius * 1.05 ≈ 0.44 * s, the next tile's disc
+// starts at 0.58 * s) — the old 0.38 * s drum sat well onto the neighbour.
 const isoCompassRose: MarkerRecipe = s => {
-  const drum = new CylinderGeometry(0.34 * s, 0.38 * s, 0.38 * s, 12)
-  drum.translate(0, 0.19 * s, 0)
+  const drum = new CylinderGeometry(0.12 * s, 0.135 * s, 0.34 * s, 12)
+  drum.translate(0, 0.17 * s, 0)
 
   const rose = new Shape()
   const POINTS = 16
@@ -458,11 +464,17 @@ const isoCompassRose: MarkerRecipe = s => {
   rose.closePath()
   const star = new ExtrudeGeometry(rose, { depth: 0.07, bevelEnabled: false })
   star.scale(s, s, s)
-  star.rotateX(-Math.PI / 2)
-  star.translate(0, 0.37 * s, 0)
 
+  // The hub pip rides the face, so it shares the star's lean.
   const pip = new CylinderGeometry(0.05 * s, 0.05 * s, 0.1 * s, 10)
-  pip.translate(0, 0.43 * s, 0)
+  pip.rotateX(Math.PI / 2)
+  pip.translate(0, 0, 0.11 * s)
+
+  for (const piece of [star, pip]) {
+    piece.rotateX(-Math.PI / 2 - ROSE_TILT)
+    piece.translate(0, 0.47 * s, 0)
+  }
+
   return [
     { geometry: faceted(drum), color: BOARD_COLORS.warmSand },
     { geometry: faceted(star), color: BOARD_COLORS.darkBlue },

@@ -131,8 +131,12 @@ const strays = computed(() =>
   margin: 0;
   padding: 0;
   list-style: none;
-  // Long sets (Russia's fourteen) stay a card, not a page.
-  max-height: 34rem;
+  // Long sets (Russia's fourteen) stay a card, not a page. Sized to whole
+  // rows: nine full rows (3.8rem + 8 × 3.9rem = 35rem) plus a 1.7rem peek of
+  // the tenth, so the fade covers only the last full row's padding and the
+  // faded sliver reads as "more below" — never a complete row cut through
+  // its flag.
+  max-height: 36.8rem;
   overflow-y: auto;
   scrollbar-width: thin;
   // The section gives its right padding up to `.ranking`, so the verdict chips
