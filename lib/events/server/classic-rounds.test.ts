@@ -42,9 +42,7 @@ const buildGame = (phases: { [playerId: string]: PlayerPhase }): Game =>
     variant: 'world',
     difficulty: 'normal',
     started: true,
-    players: Object.fromEntries(
-      Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])
-    ),
+    players: Object.fromEntries(Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])),
     rounds: [{ groupChallenge: { ...CHALLENGE }, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
@@ -77,8 +75,7 @@ afterEach(() => vi.useRealTimers())
 
 /** Let the full settle budget elapse and drain the queue it re-enters. */
 const elapseSettle = async (round: Round) => {
-  const fireAt =
-    round.deadline! + revealBudgetMsFor(round.groupChallenge) + CLASSIC_SETTLE_SLACK_MS
+  const fireAt = round.deadline! + revealBudgetMsFor(round.groupChallenge) + CLASSIC_SETTLE_SLACK_MS
   await vi.advanceTimersByTimeAsync(fireAt - Date.now() + TIMEOUT_SLACK_MS + 10)
   await vi.runAllTicks()
 }

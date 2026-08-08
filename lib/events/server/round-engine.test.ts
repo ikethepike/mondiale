@@ -17,9 +17,7 @@ const buildGame = (phases: { [playerId: string]: PlayerPhase }): { game: Game; r
   const game = {
     id: 'test-game',
     tiles: [],
-    players: Object.fromEntries(
-      Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])
-    ),
+    players: Object.fromEntries(Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])),
     rounds: [round],
   } as unknown as Game
   return { game, round }

@@ -138,7 +138,6 @@ const submitRound = () => {
   submitOnce(probes.value.map(probe => probe.isoCode))
 }
 
-
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event)) return
   if (showInterstitial.value || submitted.value) return

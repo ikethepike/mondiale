@@ -12,7 +12,12 @@ import type { BorderChainChallenge, BorderChainOutcome } from '~~/types/challeng
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
-import { BRIEFING_CAP_MS, FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from '~~/lib/round-beats'
+import {
+  BRIEFING_CAP_MS,
+  FIRST_TURN_GRACE_MS,
+  TIMEOUT_SLACK_MS,
+  TRAP_HOLD_MS,
+} from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,

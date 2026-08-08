@@ -288,7 +288,8 @@ export const gradeGroupAnswer = async ({
   // Reveal-only, and only meaningful where a buzz happened: the score is
   // already settled above, so this needs no trust — it just lets the buzz
   // race show WHEN each player committed.
-  if (typeof submission.buzzAt === 'number') answer = { ...answer, buzzAt: clamp01(submission.buzzAt) }
+  if (typeof submission.buzzAt === 'number')
+    answer = { ...answer, buzzAt: clamp01(submission.buzzAt) }
 
   return { scoring, answer }
 }

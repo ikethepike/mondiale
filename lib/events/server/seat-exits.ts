@@ -127,7 +127,9 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     const liveGauntlet = seat.moves[0]?.challenge
     if (liveGauntlet?._type !== 'final-challenge') return
     if ((liveGauntlet.turn ?? 0) !== turn) return
-    console.warn(`Final cap burning unanswered question for ${playerId} in ${ctx.eventTarget.gameId}`)
+    console.warn(
+      `Final cap burning unanswered question for ${playerId} in ${ctx.eventTarget.gameId}`
+    )
     const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet })
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []

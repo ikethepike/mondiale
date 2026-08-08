@@ -286,9 +286,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       // Deadline-driven: re-derive from the wall clock every tick, so a
       // throttled tab snaps to true time the moment it wakes. (The stamp
       // includes the opening grace, so the clock holds FULL while it burns.)
-      const next = deadline
-        ? Math.min(total, secondsOnDeadline(deadline))
-        : secondsLeft.value - 1
+      const next = deadline ? Math.min(total, secondsOnDeadline(deadline)) : secondsLeft.value - 1
       if (next === secondsLeft.value) return
       secondsLeft.value = next
       hooks.onTick?.(next)

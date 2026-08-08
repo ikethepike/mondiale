@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  armFinalQuestionCap,
-  armGroupScoresCap,
-  armIndividualGateCap,
-} from './seat-exits'
+import { armFinalQuestionCap, armGroupScoresCap, armIndividualGateCap } from './seat-exits'
 import {
   FINAL_QUESTION_CAP_MS,
   GROUP_SCORES_CAP_MS,
@@ -44,7 +40,13 @@ const buildGame = (players: Player[]): Game =>
     difficulty: 'normal',
     started: true,
     players: Object.fromEntries(players.map(entry => [entry.id, entry])),
-    rounds: [{ groupChallenge: {}, groupAnswers: {}, playerTurns: { a: { points: { scored: 0, maximum: 1 } } } }],
+    rounds: [
+      {
+        groupChallenge: {},
+        groupAnswers: {},
+        playerTurns: { a: { points: { scored: 0, maximum: 1 } } },
+      },
+    ],
   }) as unknown as Game
 
 const store = new Map<string, Game>()
