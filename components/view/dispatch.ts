@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import ModalMoving from '~/components/modal/ModalMoving.vue'
+import BoardOverlay from '~/components/board3d/BoardOverlay.vue'
 import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
@@ -111,7 +111,7 @@ export const resolveChallengeView = (
       return { component: ViewGroupScores, kind: 'score', key: 'group-scores' }
     case 'moving':
     case 'movement-summary':
-      return { component: ModalMoving, kind: 'board', key: 'board' }
+      return { component: BoardOverlay, kind: 'board', key: 'board' }
     case 'individual-challenge':
       return { component: ViewIndividualChallenge, kind: 'challenge', key: 'individual-challenge' }
     case 'final-challenge':

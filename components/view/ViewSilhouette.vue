@@ -70,10 +70,6 @@ const {
   resetOutlineReveal,
 } = useOutlineReveal()
 
-/** Shorter than the audio rounds' hold: no verse to translate, so four
- *  seconds of the country framed among its neighbours is the whole reveal. */
-const OUTLINE_REVEAL_HOLD_MS = 4000
-
 const {
   challenge,
   currentRound,
@@ -100,11 +96,12 @@ const {
   onTick: tickOutlineReveal,
   // Blank the world map — the silhouette IS the whole question.
   solo: true,
-  revealHoldMs: OUTLINE_REVEAL_HOLD_MS,
   /**
    * Resolution beat: whether buzzed right or timed out, drop the shapes-only
    * veil and frame the country among its neighbours — the answer lands as a
-   * place on the map, not just a name. The scorecard follows after the hold.
+   * place on the map, not just a name. The server's flip (the kind's reveal
+   * hold in ROUND_BEATS — shorter than the audio rounds': no verse to
+   * translate) brings the scorecard.
    */
   onResolve: winningGuess => {
     const active = challenge.value

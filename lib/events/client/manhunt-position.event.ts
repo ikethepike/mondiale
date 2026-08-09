@@ -1,4 +1,4 @@
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /**
  * Manhunt: the despot's own trail, delivered over a single-socket emit (no

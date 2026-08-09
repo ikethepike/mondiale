@@ -6,7 +6,7 @@
       :kicker="`Round ${currentRound?.number ?? 1}`"
       :title="details?.phrasing || 'Group Challenge'"
       stakes="The better your ranking, the more steps you take."
-      @done="showInterstitial = false"
+      @done="begin()"
     />
     <form id="active-round" @submit.prevent="submitRanking">
       <header>
@@ -48,7 +48,7 @@
             </svg>
             <span class="pole-label">{{ details?.markers?.most }}</span>
           </span>
-          <ButtonFilled>Submit Ranking</ButtonFilled>
+          <ButtonFilled :disabled="submitted">Submit Ranking</ButtonFilled>
           <span class="pole pole-least">
             <span class="pole-label">{{ details?.markers?.least }}</span>
             <svg class="pole-arrow" viewBox="0 0 40 16" aria-hidden="true">
@@ -89,15 +89,17 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { attributionFor } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
-import { useClientEvents } from '~~/lib/events/client-side'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { rankingAccessorId } from '~~/lib/rounds'
 import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
-const { gameStore, update, currentRound } = useClientEvents()
+// The board stays visible behind the ranking form (solo: false); the shared
+// scaffolding still owns the interstitial and the submit latch + redelivery.
+const { gameStore, currentRound, showInterstitial, submitted, begin, submitOnce } =
+  useGroupChallenge('group-challenge', { solo: false })
 const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
-const showInterstitial = ref(true)
 
 const ranking = ref<ISOCountryCode[]>(gameStore.currentGroupChallengeForPlayer || [])
 watch(
@@ -136,12 +138,7 @@ const updateRanking = (event: Event) => {
   }
 }
 
-const submitRanking = () => {
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: ranking.value,
-  })
-}
+const submitRanking = () => submitOnce(ranking.value)
 
 // No touch delay: the tiles refuse the browser's pan gestures entirely (the
 // dense layout keeps even 7-tile hands on screen without scrolling), so a

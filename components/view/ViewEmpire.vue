@@ -166,6 +166,7 @@ import {
   normalizeEmpireAnswer,
 } from '~~/lib/empires'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { EMPIRE_INTERBEAT_HOLD_MS } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -190,7 +191,7 @@ const {
   announce,
   entries,
   gameStore,
-  update,
+  submitOnce,
   registerCleanup,
 } = useGroupChallenge('empire-challenge')
 
@@ -241,9 +242,8 @@ let beat1Score = 0
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let beatTimer: ReturnType<typeof setTimeout> | undefined
 let tapClock: ReturnType<typeof setInterval> | undefined
-let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
-  for (const timer of [lockoutTimer, beatTimer, revealTimer]) if (timer) clearTimeout(timer)
+  for (const timer of [lockoutTimer, beatTimer]) if (timer) clearTimeout(timer)
   if (tapClock) clearInterval(tapClock)
 })
 
@@ -401,7 +401,7 @@ const resolveBeat1 = (guessedId: string | undefined, clientScore: number) => {
   ghostField.value?.freezeAtPeak()
   if (yearEl.value) yearEl.value.textContent = formatEventYear(active.peakYear)
 
-  const hold = prefersReducedMotion() ? 400 : 1800
+  const hold = prefersReducedMotion() ? 400 : EMPIRE_INTERBEAT_HOLD_MS
   beatTimer = setTimeout(() => {
     ghostField.value?.fadeOut()
     gameStore.map.solo = false
@@ -442,9 +442,9 @@ const foundCount = computed(() => {
 /**
  * Beat 2 locks (or times out): verdict tints land, the extent returns over
  * modern borders in the reveal treatment, and the scrubber hands the timeline
- * to the player. The submit follows after the reveal hold.
+ * to the player. The submit lands at the lock — the reveal is pure display,
+ * and the server's flip (the kind's reveal hold in ROUND_BEATS) ends it.
  */
-const REVEAL_HOLD_MS = 12000
 const lockIn = () => {
   const active = challenge.value
   if (!active || beat.value !== 'tap' || submitted.value) return
@@ -470,19 +470,15 @@ const lockIn = () => {
   ghostField.value?.freezeAtPeak()
   ghostField.value?.fadeIn()
 
-  revealTimer = setTimeout(submitRound, REVEAL_HOLD_MS)
+  submitRound()
 }
 
 const onScrub = (t: number) => ghostField.value?.seek(t)
 
-/** One submit carries both beats: taps in `ranking`, the buzz in `empire`.
- *  Mirrors submitOnce, which can't carry the extra field. */
+/** One submit carries both beats: taps in `ranking`, the buzz through
+ *  SubmitExtras' `empire` field. */
 const submitRound = () => {
-  if (submitted.value) return
-  submitted.value = true
-  update({
-    event: 'submit-group-challenge-answers',
-    ranking: picks.value,
+  submitOnce(picks.value, undefined, undefined, {
     empire: { ...(beat1Guess ? { guessedId: beat1Guess } : {}), clientScore: beat1Score },
   })
 }

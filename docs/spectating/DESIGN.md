@@ -171,10 +171,11 @@ holds the logic, `components/spectate/` the two surfaces:
   watchers hold no pawn, and room snapshots carry the data regardless.
 - **Scores stage**: the round's scorecard the moment it settles, with the
   reveal headline.
-- **Board stage**: the real 3D board (`SpectateBoard` mounts `Board3D` with
-  the followed racer as the scene's "own pawn"), so the entry framing,
-  follow-cam, path preview and gate knocks all track them. Spectators can
-  grab and orbit the camera like any player.
+- **Board stage**: the real 3D board (the booth aims the persistent
+  `BoardStage` via `board.spectateTargetId`, handing the followed racer the
+  scene's "own pawn" role), so the entry framing, follow-cam, path preview
+  and gate knocks all track them. Spectators can grab and orbit the camera
+  like any player.
 - **Gate / gauntlet stages**: the actual question at the followed player's
   gate (`gateStory`), banked steps, and for the final gauntlet a cleared/lives
   progress bar (`finalStory` per question type). Each variant mirrors what the

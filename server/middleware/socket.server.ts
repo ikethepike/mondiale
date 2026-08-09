@@ -4,6 +4,7 @@ import {
   enqueueGameTask,
   fetchSecrets,
   isDraining,
+  RetryableReject,
   useServerSideEvents,
   type GameServer,
   type GameSocket,
@@ -279,6 +280,14 @@ export default defineEventHandler(({ node }) => {
             ).then(
               () => ack?.({ ok: true }),
               error => {
+                // A transient rejection (a `resolving` latch mid-hold) is the
+                // client's cue to RETRY the same payload — never ack it ok,
+                // or the answer dies with a success receipt.
+                if (error instanceof RetryableReject) {
+                  console.warn(`${eventKey} deferred (${error.message}) in ${eventTarget.gameId}`)
+                  ack?.({ ok: false, reason: 'resolving' })
+                  return
+                }
                 console.error(`Handler failed for ${eventKey} in ${eventTarget.gameId}`, error)
                 ack?.({ ok: false, reason: 'error' })
               }

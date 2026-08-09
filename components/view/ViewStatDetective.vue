@@ -95,6 +95,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -166,7 +167,9 @@ const photoRevealed = computed(
 
 // The whole round on one clock: the last clue lands one interval before zero,
 // so the tail interval is the grace period the old timer chain gave.
-const totalSeconds = computed(() => totalClues.value * (challenge.value?.secondsPerClue ?? 0))
+// The ONE derivation (photo clue included) — the server's settle backstop
+// budgets with the same number, so the window can never run a clue short.
+const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
 
 // Phones read newest-first — a new clue lands on top of the pile and old
 // ones are a calm scroll below, never a forced one (the old auto-scroll
@@ -184,11 +187,9 @@ const displayClues = computed(() => {
 // Paced by `secondsPerClue`, not a round countdown — the clue interval is local
 let clueTimer: ReturnType<typeof setInterval> | undefined
 let lockoutTimer: ReturnType<typeof setTimeout> | undefined
-let revealTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (clueTimer) clearInterval(clueTimer)
   if (lockoutTimer) clearTimeout(lockoutTimer)
-  if (revealTimer) clearTimeout(revealTimer)
 })
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
@@ -196,7 +197,6 @@ const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => 
 }
 
 /** Same resolution beat as the silhouette: land the answer as a PLACE. */
-const REVEAL_HOLD_MS = 4000
 const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
   const active = challenge.value
   if (!active || resolved.value) return
@@ -214,7 +214,9 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
     gameStore.map.tints[neighbour] = 'inefficient'
   }
 
-  revealTimer = setTimeout(() => submitRound(guess, clientScore), REVEAL_HOLD_MS)
+  // Submit at the resolve — the reveal is pure display, and the server's
+  // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
+  submitRound(guess, clientScore)
 }
 
 const begin = () => {

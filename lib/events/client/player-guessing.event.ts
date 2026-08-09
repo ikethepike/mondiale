@@ -1,4 +1,4 @@
-import type { ClientSideEventHandler } from '~~/plugins/socket.client'
+import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /** Bounds the list between prune ticks, so a burst can't grow the DOM. */
 const MAX_ENTRIES = 24

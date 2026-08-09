@@ -1,5 +1,5 @@
 <template>
-  <div class="layout" :class="[phaseClass]">
+  <div class="layout" :class="[phaseClass, { 'stage-active': gameStore.board.stageActive }]">
     <header v-if="diagnostics" id="diagnostic-bar">
       <div>
         <h3>Player</h3>
@@ -45,6 +45,13 @@
           : gameStore.map.countryGroupings
       "
     />
+
+    <!-- The persistent 3D stage: mounted once the game starts and alive until
+         the room is left. Board phases cross-fade it in over the parked map
+         (`stage-active`) instead of cold-starting a WebGL context per walk.
+         DOM order is the stacking: over the map, under the view layer. -->
+    <BoardStage v-if="game?.started" />
+
     <slot />
 
     <PlayerStatusPanel
@@ -90,6 +97,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import BoardStage from '~/components/board3d/BoardStage.client.vue'
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import CheerToast from '~/components/feedback/CheerToast.vue'
 import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
@@ -299,6 +307,32 @@ onMounted(() => {
 
 .phase-group-scores .game-map {
   overflow: hidden;
+}
+
+// The stage rides hidden under every non-board view (visibility keeps the
+// canvas from resize churn — never display:none) and cross-fades in over the
+// map for board phases. The map fully yields: without the opacity drop it
+// lingers, visibly shrinking, under the stage's own fade.
+.board-stage {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-slow) var(--ease-smooth),
+    visibility 0s linear var(--motion-slow);
+}
+
+.stage-active {
+  .board-stage {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity var(--motion-slow) var(--ease-smooth);
+  }
+
+  .game-map {
+    opacity: 0;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

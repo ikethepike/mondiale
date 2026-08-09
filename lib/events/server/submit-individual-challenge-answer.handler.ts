@@ -1,9 +1,34 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { moveStopTile } from '~~/lib/player-status'
 import { latestRound } from '~~/lib/rounds'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
-import { defineGameHandler } from '../server-side'
+import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
+import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { GATE_RESULT_HOLD_MS } from './turn-timing'
+import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+
+/**
+ * A blocked gate: the record lands before the moves are forfeited — without
+ * it a blocked walk is indistinguishable from a clean one, on the board and
+ * in the round history. Shared by the wrong-answer branch below and the
+ * gate cap's timeout (seat-exits.ts), so a forfeit is one shape everywhere.
+ */
+export const forfeitGate = (
+  game: Game,
+  player: Player,
+  currentMove: NonNullable<Player['moves']>[number]
+) => {
+  const turn = latestRound(game)?.playerTurns[player.id]
+  const lastMove = player.moves[player.moves.length - 1]
+  if (turn && lastMove) {
+    turn.blocked = {
+      atTile: currentMove.endTile.position,
+      forfeitedSteps: lastMove.endTile.position - player.currentPosition,
+    }
+  }
+  player.moves = []
+}
 
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
@@ -39,7 +64,10 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // is also the only path that reaches the next gate; a duplicate fired
     // during the pause is rejected. Stamp it BEFORE any await.
     if (player.resolving) {
-      return console.warn(`Individual challenge already being processed — ignoring duplicate`)
+      // Retryable, not a dead duplicate: a post-reload answer to the NEXT
+      // gate lands inside this hold too. The retry outlasts the hold; a true
+      // duplicate then dies on its stale `gateTile` echo instead.
+      throw new RetryableReject('resolving')
     }
     player.resolving = true
 
@@ -54,19 +82,15 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
         gatePot(currentMove.challenge.variant)
       )
       player.moves.shift()
-    } else {
-      // The block goes on the record before the moves are forfeited — without
-      // it a blocked walk is indistinguishable from a clean one, on the board
-      // and in the round history.
-      const turn = latestRound(game)?.playerTurns[player.id]
-      const lastMove = player.moves[player.moves.length - 1]
-      if (turn && lastMove) {
-        turn.blocked = {
-          atTile: currentMove.endTile.position,
-          forfeitedSteps: lastMove.endTile.position - player.currentPosition,
-        }
+      // A deep-pot leap can overshoot the NEXT gate's stop tile (pot 4 over a
+      // gap-3 gate lands ON it): clamp to the stop, or the seat stands past a
+      // gate it never answered and a later forfeit records zero steps.
+      const nextMove = player.moves[0]
+      if (nextMove?.challenge) {
+        player.currentPosition = Math.min(player.currentPosition, moveStopTile(nextMove))
       }
-      player.moves = []
+    } else {
+      forfeitGate(game, player, currentMove)
     }
 
     await server.updateGameState(game)

@@ -91,7 +91,7 @@ import {
 import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
 import { sample } from '~~/lib/arrays'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { TRAP_HOLD_MS } from '~~/lib/events/server/turn-timing'
+import { TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { AtlasChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
 import {
   drawnCard,

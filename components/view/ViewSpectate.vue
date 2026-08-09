@@ -1,8 +1,9 @@
 <template>
   <div v-if="game" class="spectate-stage" :class="`stage-${stage}`">
-    <!-- The 3D board rides under everything while pawns are on the move -->
+    <!-- The persistent stage (layout) renders the board; the booth only aims
+         it — this hosts what's drawn over it for a watched walk. -->
     <Transition name="stage-fade">
-      <SpectateBoard v-if="stage === 'board' && followed" :followed-id="followed.id" />
+      <SpectateHud v-if="stage === 'board' && followed" :game="game" />
     </Transition>
 
     <!-- Centre stage: what the followed racer is looking at right now. Keyed
@@ -48,7 +49,7 @@
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import SpectateBar from '~/components/spectate/SpectateBar.vue'
-import SpectateBoard from '~/components/spectate/SpectateBoard.vue'
+import SpectateHud from '~/components/board3d/SpectateHud.vue'
 import SpectateMount from '~/components/spectate/SpectateMount.vue'
 import SpectateStage from '~/components/spectate/SpectateStage.vue'
 import { resolveChallengeView } from '~/components/view/dispatch'
@@ -114,10 +115,28 @@ watch(
   { immediate: true }
 )
 
+// While the booth is up it drives the persistent stage: the followed seat
+// plays the "own pawn" role (spectateTargetId is TopoScene's camera line),
+// and the stage lights only for the director's board shots. The room page's
+// presented-view watch skips the 'spectate' key, so these writes hold.
+watch(
+  [() => followed.value?.id, stage],
+  ([id, liveStage]) => {
+    gameStore.board.spectateTargetId = id
+    gameStore.board.stageActive = liveStage === 'board' && !!id
+  },
+  { immediate: true }
+)
+onBeforeUnmount(() => {
+  gameStore.board.spectateTargetId = undefined
+  gameStore.board.stageActive = false
+})
+
 /** The real challenge view for the followed seat. Question stages mount when
  *  the round kind is on the verified allowlist; scores, gates and the final
  *  gauntlet mount unconditionally (all snapshot-driven). Board stays
- *  SpectateBoard, idle stages stay cards, race-over keeps final standings. */
+ *  the persistent stage, idle stages stay cards, race-over keeps final
+ *  standings. */
 const MOUNTED_STAGES = ['question', 'scores', 'gate', 'final']
 const mountedView = computed(() => {
   if (!followed.value || raceOver.value) return undefined

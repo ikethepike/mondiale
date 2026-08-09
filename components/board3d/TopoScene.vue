@@ -42,6 +42,7 @@ import type { TileTransform } from '~~/lib/board3d/path'
 import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { ARRIVAL_RIPPLE_MS, MOVE_INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
@@ -59,9 +60,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  // False while the persistent stage is hidden: live movement holds (the
+  // sync-on-show pass replays it) and idle tweens pause with the render loop.
+  active: {
+    type: Boolean,
+    default: true,
+  },
 })
-
-const emit = defineEmits<{ ready: [] }>()
 
 // Allocated per instance: the board camera mutates `camera.position` in place
 // (see use-board-camera's flyTo), so this vector must not be shared across
@@ -110,8 +115,11 @@ const cameraHeld = () => Date.now() < grabHeldUntil
 /**
  * A pawn blocked by an individual challenge sits at endTile - 1 in server
  * data (it must beat the challenge to pass). Visually that reads as "stuck
- * one tile short", so we display blocked pawns ON the challenge tile; a
- * failed challenge clears the move and the pawn visibly bounces back.
+ * one tile short", so blocked pawns display ON the challenge tile — a
+ * DELIBERATE display rule (Isaac's call, 2026-08-08): a failed gate clears
+ * the move and the pawn visibly bounces back one; the won-gate half of the
+ * unwinding is held by the mover's retreat guard. This is the only place
+ * display and `currentPosition` may disagree.
  */
 const isBlockedByChallenge = (player: Player) => {
   const move = player.moves[0]
@@ -134,7 +142,7 @@ const triggerRipple = (tile: TileTransform, tone: 'success' | 'alert' = 'success
     { value: 0 },
     {
       value: 1,
-      duration: tone === 'alert' ? 1.4 : 1.1,
+      duration: tone === 'alert' ? ARRIVAL_RIPPLE_MS / 1000 : 1.1,
       ease: 'power1.out',
       onComplete() {
         material.uniforms.uRippleProgress.value = -1
@@ -163,6 +171,9 @@ const knockPawn = (playerId: string) => {
 /** One challenge-hit moment per blocked episode: coral ripple, knock, push-in. */
 const challengeAlerted = new Set<string>()
 const playChallengeHit = (playerId: string, tile: TileTransform) => {
+  // A hidden stage must not CONSUME the moment: skip without latching, and
+  // the show pass's beat sync plays it when there is someone to see it.
+  if (!props.active) return
   if (challengeAlerted.has(playerId)) return
   challengeAlerted.add(playerId)
 
@@ -441,12 +452,15 @@ const syncPawns = () => {
   const players = Object.values(props.game.players)
   const liveIds = new Set(players.map(player => player.id))
 
-  // Remove pawns for departed players
+  // Remove pawns for departed players — the MOVER too: its occupancy state
+  // is per-game now, and a kicked seat's ghost otherwise shrinks and orbits
+  // every pawn that later shares its tile.
   for (const [playerId, pawn] of pawns) {
     if (liveIds.has(playerId)) continue
     build.group.remove(pawn)
     disposePawn(pawn)
     pawns.delete(playerId)
+    mover.remove(playerId)
   }
 
   for (const player of players) {
@@ -456,10 +470,9 @@ const syncPawns = () => {
     const pawn = buildPawn(player.color, build.spacing * 0.85)
     pawns.set(player.id, pawn)
     build.group.add(pawn)
-    // restore() replays any steps taken while the board was unmounted
-    // (challenge-win leaps, walks begun before the scene finished loading),
-    // bounded by server truth so it can never re-walk settled ground
-    mover.restore(player.id, displayPositionFor(player))
+    // Straight to truth: the scene is persistent, so a NEW pawn has no
+    // missed movement to replay — the sync-on-show pass owns catch-up.
+    mover.place(player.id, displayPositionFor(player))
   }
 
   syncCrowns()
@@ -478,8 +491,12 @@ const rebuild = () => {
   mover = createPawnMover({
     pawnFor: playerId => pawns.get(playerId),
     tileFor,
-    memoryKey: props.game.id,
-    walkSeqFor: playerId => props.game.players[playerId]?.walkSeq ?? 0,
+    // A short backward display delta is the on-gate stance unwinding, and
+    // only a LOSS may play it: the round's blocked record — stamped by the
+    // failed gate AND the gauntlet knockout — is the license. A won gate's
+    // short leap (a hint-drained pot can be zero) carries no record and
+    // holds instead of hopping backward off a tile it just cleared.
+    retreatAllowedFor: playerId => Boolean(latestRound(props.game)?.playerTurns[playerId]?.blocked),
     slotRadius: build.spacing * 0.19,
     hopHeight: build.spacing * 0.35,
     onLand(playerId, tile) {
@@ -497,7 +514,7 @@ const rebuild = () => {
   syncPawns()
   syncPathPreview()
   syncHighlight()
-  // After restore(): a remount mid-gauntlet must put the climber back on
+  // After placement: a rebuild mid-gauntlet must put the climber back on
   // their ledge, not on the tile top
   syncClimbs()
 }
@@ -526,6 +543,17 @@ watch(
   () => syncCrowns(true)
 )
 
+// The scene's subject can change in place now (a director cut, a status-
+// panel spectate): the highlight ring and path preview key off the OWN pawn
+// and must re-aim, or they sit under the previous subject for the shot.
+watch(
+  () => props.playerId,
+  () => {
+    syncHighlight()
+    syncPathPreview()
+  }
+)
+
 // Server-driven movement: one socket update per 500ms step. String signature
 // (like the sibling watchers) so the callback runs only when a position
 // actually changes — an object getter re-fires on every reactive touch of the
@@ -544,15 +572,53 @@ watch(
       .map(player => `${player.id}:${displayPositionFor(player)}`)
       .join('|'),
   (signature, previousSignature) => {
+    // Hidden stage: hold — snapshots keep landing, but the movement they
+    // carry belongs to the sync-on-show pass, where it plays as a visible
+    // catch-up instead of hopping behind a challenge view.
+    if (!props.active) return
     const previous = new Map(positionSignatureEntries(previousSignature ?? ''))
     for (const [playerId, position] of positionSignatureEntries(signature)) {
-      if (previous.get(playerId) === position) continue
+      const before = previous.get(playerId)
+      if (before === position) continue
       mover?.moveTo(playerId, position)
       if (playerId === cameraTargetId.value && !cameraHeld()) {
         const tile = tileFor(position)
         if (tile) boardCamera?.follow(tile.position)
       }
       if (playerId === props.playerId) syncHighlight()
+    }
+  }
+)
+
+// The show moment: replay whatever the hold above banked (win leaps, steps
+// taken behind a view) — the mover fast-forwards true resets — and nudge the
+// camera back onto its subject. gsap's global ticker keeps running while the
+// render loop is parked, so idle loops (highlight pulse, stuck wobble) pause
+// with the stage instead of burning frames nobody sees.
+watch(
+  () => props.active,
+  active => {
+    if (active) {
+      for (const player of Object.values(props.game.players)) {
+        mover?.moveTo(player.id, displayPositionFor(player))
+      }
+      syncHighlight()
+      syncPathPreview()
+      syncClimbs()
+      // One-shot beats the hold skipped (a blocked opponent's knock, a
+      // forfeit's ripple) play now, on screen, instead of never.
+      syncStuckBeats()
+      syncBlockedBeats()
+      highlightTween?.play()
+      stuckTweens.forEach(tween => tween.play())
+      if (hasFlownIn && !cameraHeld()) {
+        const focus = props.game.players[cameraTargetId.value]
+        const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
+        if (tile) boardCamera?.follow(tile.position)
+      }
+    } else {
+      highlightTween?.pause()
+      stuckTweens.forEach(tween => tween.pause())
     }
   }
 )
@@ -589,11 +655,13 @@ watch(
       const targetId = cheer.targetPlayerId
       const slot = cheersInFlight.get(targetId) ?? 0
       cheersInFlight.set(targetId, slot + 1)
-      cheerCleanups.add(
-        spawnCheerSprite(pawn, cheer.emoji, build.spacing, slot, () => {
-          cheersInFlight.set(targetId, Math.max(0, (cheersInFlight.get(targetId) ?? 1) - 1))
-        })
-      )
+      const cleanup: () => void = spawnCheerSprite(pawn, cheer.emoji, build.spacing, slot, () => {
+        cheersInFlight.set(targetId, Math.max(0, (cheersInFlight.get(targetId) ?? 1) - 1))
+        // Finished sprites leave the teardown set — it otherwise grows one
+        // retained closure per cheer for the whole session.
+        cheerCleanups.delete(cleanup)
+      })
+      cheerCleanups.add(cleanup)
     }
   }
 )
@@ -640,7 +708,68 @@ watch(
   }
 )
 
-// Stuck-at-a-challenge wobble: a slow, repeating rock while blocked
+// Stuck-at-a-challenge wobble: a slow, repeating rock while blocked. A named
+// sync (not just a watcher body) because the beat must only ever play ON
+// SCREEN: while the stage is hidden the watcher holds without latching, and
+// the show pass re-runs the sync so the moment isn't consumed invisibly.
+const syncStuckBeats = () => {
+  const blocked = new Set(
+    Object.values(props.game.players)
+      .filter(isBlockedByChallenge)
+      .map(player => player.id)
+  )
+
+  for (const [playerId, tween] of stuckTweens) {
+    if (blocked.has(playerId)) continue
+    tween.kill()
+    stuckTweens.delete(playerId)
+    challengeAlerted.delete(playerId)
+    const pawn = pawns.get(playerId)
+    if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
+  }
+
+  // A pawn that STARTS its turn already blocked (no landing hop to fire
+  // onLand) still deserves the challenge-hit moment. Only pawns settled on
+  // the challenge tile qualify — walkers get theirs from onLand. Delayed a
+  // beat so it plays after the movement interstitial clears.
+  for (const playerId of blocked) {
+    const player = props.game.players[playerId]
+    const pawn = pawns.get(playerId)
+    const tile = player ? tileFor(displayPositionFor(player)) : undefined
+    if (!player || !pawn || !tile || challengeAlerted.has(playerId)) continue
+
+    const spacing = board.value?.spacing ?? 8
+    const settled = pawn.position.distanceTo(tile.position) < spacing * 0.6
+    if (!settled) continue
+
+    const settledPlayerId = playerId
+    const settledTile = tile
+    schedule(() => {
+      const current = props.game.players[settledPlayerId]
+      if (current && isBlockedByChallenge(current)) {
+        playChallengeHit(settledPlayerId, settledTile)
+      }
+    }, MOVE_INTERSTITIAL_TOTAL_MS)
+  }
+
+  if (prefersReducedMotion()) return
+
+  for (const playerId of blocked) {
+    if (stuckTweens.has(playerId)) continue
+    const pawn = pawns.get(playerId)
+    if (!pawn) continue
+
+    stuckTweens.set(
+      playerId,
+      gsap.fromTo(
+        pawn.rotation,
+        { z: -0.07 },
+        // Delay lets the landing hop settle before the struggle starts
+        { z: 0.07, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.6 }
+      )
+    )
+  }
+}
 watch(
   () =>
     Object.values(props.game.players)
@@ -648,59 +777,9 @@ watch(
       .map(player => player.id)
       .sort()
       .join('|'),
-  blockedSignature => {
-    const blocked = new Set(blockedSignature ? blockedSignature.split('|') : [])
-
-    for (const [playerId, tween] of stuckTweens) {
-      if (blocked.has(playerId)) continue
-      tween.kill()
-      stuckTweens.delete(playerId)
-      challengeAlerted.delete(playerId)
-      const pawn = pawns.get(playerId)
-      if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
-    }
-
-    // A pawn that STARTS its turn already blocked (no landing hop to fire
-    // onLand) still deserves the challenge-hit moment. Only pawns settled on
-    // the challenge tile qualify — walkers get theirs from onLand. Delayed a
-    // beat so it plays after the movement interstitial clears.
-    for (const playerId of blocked) {
-      const player = props.game.players[playerId]
-      const pawn = pawns.get(playerId)
-      const tile = player ? tileFor(displayPositionFor(player)) : undefined
-      if (!player || !pawn || !tile || challengeAlerted.has(playerId)) continue
-
-      const spacing = board.value?.spacing ?? 8
-      const settled = pawn.position.distanceTo(tile.position) < spacing * 0.6
-      if (!settled) continue
-
-      const settledPlayerId = playerId
-      const settledTile = tile
-      schedule(() => {
-        const current = props.game.players[settledPlayerId]
-        if (current && isBlockedByChallenge(current)) {
-          playChallengeHit(settledPlayerId, settledTile)
-        }
-      }, 2900)
-    }
-
-    if (prefersReducedMotion()) return
-
-    for (const playerId of blocked) {
-      if (stuckTweens.has(playerId)) continue
-      const pawn = pawns.get(playerId)
-      if (!pawn) continue
-
-      stuckTweens.set(
-        playerId,
-        gsap.fromTo(
-          pawn.rotation,
-          { z: -0.07 },
-          // Delay lets the landing hop settle before the struggle starts
-          { z: 0.07, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.6 }
-        )
-      )
-    }
+  () => {
+    if (!props.active) return
+    syncStuckBeats()
   },
   { immediate: true }
 )
@@ -712,34 +791,42 @@ watch(
 // carries the fact — play the challenge-hit language at the gate once per
 // player per round, delayed a breath so the remount's placement settles.
 const blockedBeatsPlayed = new Set<string>()
+const syncBlockedBeats = () => {
+  const round = latestRound(props.game)
+  if (!round) return
+  const roundKey = props.game.rounds.length - 1
+
+  for (const player of Object.values(props.game.players)) {
+    const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
+    if (blockedAt === undefined || player.phase !== 'movement-summary') continue
+    const key = `${player.id}:${roundKey}`
+    if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
+
+    const beatPlayerId = player.id
+    schedule(() => {
+      // Latch only when the beat actually PLAYS on an active stage — a hide
+      // inside this delay must not consume it (the show pass re-runs the
+      // sync); the has() re-check keeps overlapping syncs single-shot.
+      if (!props.active || blockedBeatsPlayed.has(key)) return
+      blockedBeatsPlayed.add(key)
+      const gateTile = tileFor(blockedAt)
+      if (!gateTile) return
+      triggerRipple(gateTile, 'alert')
+      knockPawn(beatPlayerId)
+      if (beatPlayerId === cameraTargetId.value) {
+        boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
+      }
+    }, 700)
+  }
+}
 watch(
   () =>
     Object.values(props.game.players)
       .map(player => `${player.id}:${player.phase}`)
       .join('|'),
   () => {
-    const round = latestRound(props.game)
-    if (!round) return
-    const roundKey = props.game.rounds.length - 1
-
-    for (const player of Object.values(props.game.players)) {
-      const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
-      if (blockedAt === undefined || player.phase !== 'movement-summary') continue
-      const key = `${player.id}:${roundKey}`
-      if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
-      blockedBeatsPlayed.add(key)
-
-      const beatPlayerId = player.id
-      schedule(() => {
-        const gateTile = tileFor(blockedAt)
-        if (!gateTile) return
-        triggerRipple(gateTile, 'alert')
-        knockPawn(beatPlayerId)
-        if (beatPlayerId === cameraTargetId.value) {
-          boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
-        }
-      }, 700)
-    }
+    if (!props.active) return
+    syncBlockedBeats()
   },
   { immediate: true }
 )
@@ -792,10 +879,11 @@ watch([cameraRef, controlsRef, board], () => {
   }
 })
 
-onMounted(() => emit('ready'))
-
 onUnmounted(() => {
-  gameStore.board.spectateTargetId = undefined
+  // NOT spectateTargetId: a context-loss epoch remount unmounts this scene
+  // while the booth lives on — clearing the follow target here dropped the
+  // HUD and silently reset a racer's spectate. Its owners are the release
+  // watcher above, the booth, and BoardStage's teardown.
   pendingTimers.forEach(id => clearTimeout(id))
   pendingTimers.clear()
   mover?.dispose()
