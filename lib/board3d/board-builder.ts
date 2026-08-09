@@ -412,6 +412,47 @@ const lexiconPlume: MarkerRecipe = s => {
   ]
 }
 
+// An hourglass — time made furniture, for the history gate. The mass is the
+// two sand cones meeting at the waist (warmSand, so the theme reads as SAND
+// and not as a vase); the frame is two broad plates on three posts. From the
+// board's-eye seat the plates and the waist silhouette carry it; the glass
+// itself is omitted — a transparent shell is invisible to the toon ramp and
+// a solid one reads as a barrel.
+const historyHourglass: MarkerRecipe = s => {
+  const plate = () => {
+    const disc = new CylinderGeometry(0.32 * s, 0.34 * s, 0.08 * s, 14)
+    return faceted(disc)
+  }
+  const base = plate()
+  base.translate(0, 0.04 * s, 0)
+  const cap = plate()
+  cap.rotateX(Math.PI)
+  cap.translate(0, 0.84 * s, 0)
+
+  const posts: BufferGeometry[] = []
+  for (let i = 0; i < 3; i++) {
+    const post = new CylinderGeometry(0.035 * s, 0.035 * s, 0.72 * s, 8)
+    const angle = (i / 3) * Math.PI * 2 + Math.PI / 6
+    post.translate(Math.cos(angle) * 0.28 * s, 0.44 * s, Math.sin(angle) * 0.28 * s)
+    posts.push(post)
+  }
+
+  // Lower pile (point up) and upper charge (point down), pinched at the waist.
+  const sandDown = faceted(new ConeGeometry(0.23 * s, 0.3 * s, 12))
+  sandDown.translate(0, 0.23 * s, 0)
+  const sandUp = faceted(new ConeGeometry(0.23 * s, 0.3 * s, 12))
+  sandUp.rotateX(Math.PI)
+  sandUp.translate(0, 0.65 * s, 0)
+
+  return [
+    { geometry: base, color: BOARD_COLORS.darkBlue },
+    { geometry: cap, color: BOARD_COLORS.darkBlue },
+    ...posts.map(geometry => ({ geometry, color: BOARD_COLORS.darkBlue })),
+    { geometry: sandDown, color: BOARD_COLORS.warmSand },
+    { geometry: sandUp, color: BOARD_COLORS.warmSand },
+  ]
+}
+
 // Cloth caught mid-ripple: an S-waved band drawn in plan and extruded
 // upward, so the wave survives the board's-eye camera as a curling edge.
 const flagWaving: MarkerRecipe = s => {
@@ -767,6 +808,8 @@ export const markerPartsFor = (
       return currencyCoin(s)
     case 'lexicon':
       return lexiconPlume(s)
+    case 'history':
+      return historyHourglass(s)
     case 'errata': {
       // Crossed signposts: one post carrying two name plates tilted opposite
       // ways — the swap made physical. Shares the ISO gate's post on purpose

@@ -75,6 +75,9 @@ export interface GateChallengeContext {
   trendDuelOutcomes: Ref<TrendDuelOutcome[]>
   /** The atlas gate's chain (seed first), kept for the same reason. */
   atlasChain: Ref<ISOCountryCode[]>
+  /** The chronicle gate's submitted order (event slugs), kept for the same
+   *  reason — the reveal ghosts where each card had been placed. */
+  chronicleOrder: Ref<string[]>
   submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
   /** Hand the gate back when its clock expires — see `giveUp` below. */
   giveUp: (hintsUsed?: number) => void
@@ -94,12 +97,13 @@ const GATE_CHALLENGE: InjectionKey<GateChallengeContext> = Symbol('gate-challeng
  *
  * Three candidates is always enough to find a loser: they spend three
  * different currencies (so the shared-currency carve-out can clear at most
- * one) and errata deals at most two culprits.
+ * one), errata deals at most two culprits, and scriptorium's set answers are
+ * non-Latin-script languages — none of which is official in any of the three.
  */
 const GIVE_UP_TOKENS = ['CH', 'AT', 'NZ'] as const
 
 export const wrongTokenFor = (
-  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata'>
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata' | 'scriptorium'>
 ): ISOCountryCode => GIVE_UP_TOKENS.find(token => !isCorrectIndividualAnswer(challenge, token))!
 
 /** Created ONCE, by ViewIndividualChallenge. `relatch` is the shell's alone —
@@ -135,6 +139,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
   const atlasChain = ref<ISOCountryCode[]>([])
+  const chronicleOrder = ref<string[]>([])
 
   /**
    * A gate answer is a critical event, so it rides `update`'s ack and is resent
@@ -260,6 +265,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     duelOutcomes.value = []
     trendDuelOutcomes.value = []
     atlasChain.value = []
+    chronicleOrder.value = []
     gateSeq.value++
     showInterstitial.value = true
   }
@@ -279,6 +285,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     duelOutcomes,
     trendDuelOutcomes,
     atlasChain,
+    chronicleOrder,
     submitAnswer,
     giveUp,
   }

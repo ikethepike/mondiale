@@ -2,16 +2,21 @@ import type { Component } from 'vue'
 import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
 import TrajectoryReveal from '~/components/challenge/TrajectoryReveal.vue'
 import AtlasReveal from '~/components/feedback/AtlasReveal.vue'
+import ChronicleReveal from '~/components/feedback/ChronicleReveal.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import ErrataReveal from '~/components/feedback/ErrataReveal.vue'
+import FarFlungReveal from '~/components/feedback/FarFlungReveal.vue'
 import FlagMeaningGateReveal from '~/components/feedback/FlagMeaningGateReveal.vue'
 import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import RosettaReveal from '~/components/feedback/RosettaReveal.vue'
+import ScriptoriumReveal from '~/components/feedback/ScriptoriumReveal.vue'
 import TrendDuelReveal from '~/components/feedback/TrendDuelReveal.vue'
 import GateAtlas from './GateAtlas.vue'
 import GateBorderDetective from './GateBorderDetective.vue'
+import GateChronicle from './GateChronicle.vue'
 import GateErrata from './GateErrata.vue'
+import GateFarFlung from './GateFarFlung.vue'
 import GateFind from './GateFind.vue'
 import GateFlagPick from './GateFlagPick.vue'
 import GateHigherLower from './GateHigherLower.vue'
@@ -21,6 +26,7 @@ import GateOddOneOut from './GateOddOneOut.vue'
 import GateOutlineReveal from './GateOutlineReveal.vue'
 import GatePhotoPick from './GatePhotoPick.vue'
 import GateRosetta from './GateRosetta.vue'
+import GateScriptorium from './GateScriptorium.vue'
 import GateTrajectoryMatch from './GateTrajectoryMatch.vue'
 import GateTrendDuel from './GateTrendDuel.vue'
 import GateZoomOut from './GateZoomOut.vue'
@@ -42,6 +48,8 @@ export interface GateRevealContext {
   duelOutcomes: DuelOutcome[]
   trendDuelOutcomes: TrendDuelOutcome[]
   atlasChain: ISOCountryCode[]
+  /** The chronicle gate's locked-in order (event slugs). */
+  chronicleOrder: string[]
 }
 
 export interface GateView {
@@ -179,6 +187,30 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     wideReveal: true,
     revealProps: ({ challenge, atlasChain }) =>
       challenge.atlas ? { challenge, chain: atlasChain } : {},
+  },
+  scriptorium: {
+    component: GateScriptorium,
+    typedConsole: true,
+    reveal: ScriptoriumReveal,
+    wideReveal: true,
+    revealProps: ({ challenge, submittedISOCode }) =>
+      challenge.scriptorium ? { challenge, submitted: submittedISOCode } : {},
+  },
+  chronicle: {
+    component: GateChronicle,
+    reveal: ChronicleReveal,
+    wideReveal: true,
+    revealProps: ({ challenge, chronicleOrder }) =>
+      challenge.chronicle ? { challenge, order: chronicleOrder } : {},
+  },
+  'far-flung': {
+    component: GateFarFlung,
+    // Typed on hard; a dealt option table means a card console instead, and
+    // the shell skips the footer for it (see the options rule there).
+    typedConsole: true,
+    reveal: FarFlungReveal,
+    revealProps: ({ challenge, submittedISOCode }) =>
+      challenge.farFlung ? { challenge, submitted: submittedISOCode } : {},
   },
 }
 

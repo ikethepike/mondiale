@@ -12,7 +12,9 @@ export interface CountryColorGrouping {
  */
 export interface MapFeatureOverlay {
   d: string
-  kind: 'line' | 'area'
+  /** 'line' rivers, 'area' seas/lakes/ranges — and 'land' for a tinted piece
+   *  of a country (Far Flung's fragment), warm instead of water-blue. */
+  kind: 'line' | 'area' | 'land'
   /** Projected bbox — included in the camera frame when present. */
   bounds?: [number, number, number, number]
   /**

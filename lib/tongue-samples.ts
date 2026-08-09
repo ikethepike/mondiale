@@ -44,11 +44,14 @@ const SAMPLE_LINES = 2
  * languages without a seed: the anthem of a country that sings in it.
  * Deterministic (first listed country), so every player reads the same lines.
  * `TONGUES` keys speech locales like `sv-SE`; the anthem index keys base
- * codes, so the region tag is dropped before the lookup.
+ * codes, so the region tag is dropped before the lookup. Callers that know
+ * their language's BCP-47 tag already (the Scriptorium pool) pass `code` and
+ * skip the TONGUES hop — Common Voice covers far fewer languages than the
+ * lyric walls do.
  */
-export const tongueSampleSource = (language: string): string | undefined => {
+export const tongueSampleSource = (language: string, code?: string): string | undefined => {
   if (BY_LANGUAGE.has(language)) return undefined
-  const locale = TONGUES[language]?.locale
+  const locale = code ?? TONGUES[language]?.locale
   if (!locale) return undefined
   const isoCode = ANTHEM_LYRICS_BY_LANGUAGE[locale.split('-')[0]]?.[0]
   return isoCode ? `/anthems/lyrics/${isoCode}-anthem.json` : undefined

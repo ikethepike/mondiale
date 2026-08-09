@@ -66,6 +66,15 @@ export const TOPIC_GLYPHS: Record<ChallengeTopic, Glyph> = {
       'M18.5 7l-2.4 5.5a2.4 2.4 0 0 0 4.8 0z',
     ],
   },
+  // An hourglass — the history tile's marker, in stroke form.
+  history: {
+    paths: [
+      'M6.5 4h11',
+      'M6.5 20h11',
+      'M8 4v1.8c0 2.6 2 3.7 4 6.2 2-2.5 4-3.6 4-6.2V4',
+      'M8 20v-1.8c0-2.6 2-3.7 4-6.2 2 2.5 4 3.6 4 6.2V20',
+    ],
+  },
   infrastructure: {
     paths: ['M3 17h18', 'M6 17v-6', 'M18 17v-6', 'M4 11c3.5-4 12.5-4 16 0'],
   },

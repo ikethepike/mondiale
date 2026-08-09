@@ -1832,52 +1832,97 @@ let zoomOutTween: gsap.core.Tween | undefined
 // While a reveal is animating it owns the camera — manual wheel/pinch zoom is
 // locked out so the player can't cheat the reveal by zooming out early.
 let revealLocked = false
-const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
+const startZoomOut = (
+  isoCode: MapCode,
+  durationSeconds: number,
+  box?: [number, number, number, number]
+) => {
   if (!wrapper.value || !svg.value) return
-  const mainland = mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])
-  if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
 
-  // The country's full (recognisable) frame is the END; the START is a tight
-  // crop centred on it. A fixed fraction of the frame alone breaks for huge
-  // countries — 18% of Russia's bbox is still half the planet — so the start is
-  // also capped to an absolute deep zoom, giving every country a comparably
-  // tight sliver regardless of its size. Sized against the frame's LARGER
-  // dimension: on a portrait screen the frame is tall, and a width-based crop
-  // would span enough latitude to show the whole country plus its neighbours.
-  const wide = frameForBoxes([mainland], [])
-  const cx = wide.x + wide.width / 2
-  const cy = wide.y + wide.height / 2
-  const TIGHT_FRACTION = 0.13
-  const TIGHT_MAX_SPAN = WORLD_VIEW.width / 18 // absolute deep-zoom ceiling
-  const TIGHT_MIN_SPAN = WORLD_VIEW.width / 200 // geometry-legibility floor
-  /** At least one axis must show less than this much of the country. */
-  const COUNTRY_MAX_VISIBLE = 0.6
-  const wideSpan = Math.max(wide.width, wide.height)
-  let startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
-  // Small countries (The Gambia) are dwarfed by the frame's minimum padding, so
-  // a fraction of THAT frame still contains them whole and the shape gives the
-  // answer away at the first frame. Shrink until one axis crops the country —
-  // one is enough: a crop across the narrow axis hides the outline just as well.
-  const [, , mainlandWidth, mainlandHeight] = mainland
-  const shrink = Math.max(
-    (mainlandWidth * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, viewAspect)),
-    (mainlandHeight * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, 1 / viewAspect))
-  )
-  startSpan = Math.max(startSpan * Math.min(1, shrink), TIGHT_MIN_SPAN)
-  const startWidth = startSpan * Math.min(1, viewAspect)
-  const startHeight = startWidth / viewAspect
-  const tightView = {
-    x: cx - startWidth / 2,
-    y: cy - startHeight / 2,
-    width: startWidth,
-    height: startHeight,
+  let wide: { x: number; y: number; width: number; height: number }
+  let tightView: { x: number; y: number; width: number; height: number }
+  if (box) {
+    // Far Flung: the fragment IS the subject, so the camera OPENS on its
+    // frame — the shape is shown, the owner is the question — and eases out
+    // to the fragment's neighbourhood. Tiny fragments (Easter Island spans a
+    // unit) still buy a real pull-out via the minimum end span. No
+    // `.zoom-out-target` ink emphasis here: lighting the owner's mainland up
+    // as the camera clears it would answer the question.
+    const FRAGMENT_CONTEXT_FACTOR = 9
+    const MIN_END_SPAN = WORLD_VIEW.width / 6
+    const [x, y, width, height] = box
+    const inflate = Math.max(FRAGMENT_CONTEXT_FACTOR, MIN_END_SPAN / Math.max(width, height))
+    const context: [number, number, number, number] = [
+      x - (width * (inflate - 1)) / 2,
+      y - (height * (inflate - 1)) / 2,
+      width * inflate,
+      height * inflate,
+    ]
+    wide = frameForBoxes([context], [])
+    // NOT frameForBoxes for the start: its pad floor outgrows a small
+    // fragment (the framePad note) and leaves Cabinda a smudge behind the
+    // chrome. Fit the box itself with a slim margin in both axes, floored
+    // for sub-unit specks (Easter Island), so the fragment OWNS the frame.
+    const FRAGMENT_START_PAD = 1.9
+    const FRAGMENT_MIN_START_WIDTH = 4 // map units ≈ 80 km — legibility floor
+    const startWidth = Math.max(
+      width * FRAGMENT_START_PAD,
+      height * FRAGMENT_START_PAD * viewAspect,
+      FRAGMENT_MIN_START_WIDTH
+    )
+    const startHeight = startWidth / viewAspect
+    tightView = {
+      x: x + width / 2 - startWidth / 2,
+      y: y + height / 2 - startHeight / 2,
+      width: startWidth,
+      height: startHeight,
+    }
+  } else {
+    const mainland = mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])
+    if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
+
+    // The country's full (recognisable) frame is the END; the START is a tight
+    // crop centred on it. A fixed fraction of the frame alone breaks for huge
+    // countries — 18% of Russia's bbox is still half the planet — so the start is
+    // also capped to an absolute deep zoom, giving every country a comparably
+    // tight sliver regardless of its size. Sized against the frame's LARGER
+    // dimension: on a portrait screen the frame is tall, and a width-based crop
+    // would span enough latitude to show the whole country plus its neighbours.
+    wide = frameForBoxes([mainland], [])
+    const cx = wide.x + wide.width / 2
+    const cy = wide.y + wide.height / 2
+    const TIGHT_FRACTION = 0.13
+    const TIGHT_MAX_SPAN = WORLD_VIEW.width / 18 // absolute deep-zoom ceiling
+    const TIGHT_MIN_SPAN = WORLD_VIEW.width / 200 // geometry-legibility floor
+    /** At least one axis must show less than this much of the country. */
+    const COUNTRY_MAX_VISIBLE = 0.6
+    const wideSpan = Math.max(wide.width, wide.height)
+    let startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
+    // Small countries (The Gambia) are dwarfed by the frame's minimum padding, so
+    // a fraction of THAT frame still contains them whole and the shape gives the
+    // answer away at the first frame. Shrink until one axis crops the country —
+    // one is enough: a crop across the narrow axis hides the outline just as well.
+    const [, , mainlandWidth, mainlandHeight] = mainland
+    const shrink = Math.max(
+      (mainlandWidth * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, viewAspect)),
+      (mainlandHeight * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, 1 / viewAspect))
+    )
+    startSpan = Math.max(startSpan * Math.min(1, shrink), TIGHT_MIN_SPAN)
+    const startWidth = startSpan * Math.min(1, viewAspect)
+    const startHeight = startWidth / viewAspect
+    tightView = {
+      x: cx - startWidth / 2,
+      y: cy - startHeight / 2,
+      width: startWidth,
+      height: startHeight,
+    }
+
+    // A tight crop can hold several borders at once (The Gambia inside Senegal):
+    // fade the neighbours' ink so the crop reads as ONE country being asked
+    // about, not a border collage. Cleared when the gate ends (watcher below).
+    svg.value.classList.add('zoom-out-reveal')
+    pathEls.get(isoCode)?.classList.add('zoom-out-target')
   }
-
-  // A tight crop can hold several borders at once (The Gambia inside Senegal):
-  // fade the neighbours' ink so the crop reads as ONE country being asked
-  // about, not a border collage. Cleared when the gate ends (watcher below).
-  svg.value.classList.add('zoom-out-reveal')
-  pathEls.get(isoCode)?.classList.add('zoom-out-target')
 
   loopRunning = false
   momentum.x = 0
@@ -1910,7 +1955,7 @@ const startZoomOut = (isoCode: MapCode, durationSeconds: number) => {
   // screen needs a narrower width for the same latitude span) — clamp only to
   // the world bounds, not the zoom floor. Manual zoom is locked for the whole
   // reveal, so the camera can't be left stranded past the gesture limit.
-  clampView(startView, startWidth)
+  clampView(startView, startView.width)
   Object.assign(viewState, startView)
   writeViewBox()
   // The reveal starts deeply zoomed, so run the LOD pass now (and periodically
@@ -1970,7 +2015,7 @@ const gameStore = useGameStore()
 watch(
   () => gameStore.map.zoomOut,
   zoomOut => {
-    if (zoomOut) startZoomOut(zoomOut.isoCode as MapCode, zoomOut.durationSeconds)
+    if (zoomOut) startZoomOut(zoomOut.isoCode as MapCode, zoomOut.durationSeconds, zoomOut.box)
     else {
       zoomOutTween?.kill()
       revealLocked = false
@@ -2281,6 +2326,15 @@ path.sea-glow-country {
     stroke: ink(1, 35%);
     stroke-width: calc(1.2px * var(--stroke-zoom, 1));
     fill: hsla(199, 68%, 62%, 0.38);
+    animation: feature-wash var(--motion-slow) var(--ease-out-expressive) 1;
+  }
+
+  // A tinted piece of LAND (Far Flung's fragment): warm, not water-blue, so
+  // the subject reads as territory being asked about rather than a lake.
+  &.land {
+    stroke: ink(1, 35%);
+    stroke-width: calc(1.2px * var(--stroke-zoom, 1));
+    fill: ember(0.5);
     animation: feature-wash var(--motion-slow) var(--ease-out-expressive) 1;
   }
 }

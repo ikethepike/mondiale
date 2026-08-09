@@ -46,12 +46,13 @@ export const GATE_HINT_BITE_STEPS = 2
  * buy safety.
  */
 const GATE_POTS: Partial<Record<IndividualChallengeVariant, number>> = {
-  // All three carry a buyable hint worth taking: errata's half-lineup cull,
-  // rosetta's named relation and atlas's one-that-works still leave something
-  // on the table.
+  // All four carry a buyable hint worth taking: errata's half-lineup cull,
+  // rosetta's named relation, atlas's one-that-works and chronicle's anchored
+  // earliest card still leave something on the table.
   errata: 4,
   rosetta: 4,
   atlas: 4,
+  chronicle: 4,
 }
 
 /** The full-pot leap for a gate variant. Both ends of the wire read the pot
