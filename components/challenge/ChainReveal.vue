@@ -27,27 +27,34 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions, type Attribution } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
-import type { BorderChainState } from '~~/types/challenges/group-modes.type'
+import type { ChainTurnState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
 const MAX_DOORS_SHOWN = 6
 
-/** The chain's legality comes from two registries: land adjacency and the
- *  named strait crossings. */
-const sources = dedupeAttributions([
+/** Border Chain's legality registries — the default; Atlas hands in its own. */
+const BORDER_SOURCES = dedupeAttributions([
   ...datasetAttribution('borders'),
   ...datasetAttribution('straits'),
 ])
 
 const props = defineProps<{
-  state: BorderChainState
+  /** Either turn-chain mode's settled state — the reveal reads only the
+   *  shared fields (placements, outcomes, links, missed outs). */
+  state: ChainTurnState<unknown>
   players: { [playerId: string]: Player }
   playerId: string
+  /** The mode's provenance line; defaults to Border Chain's registries. */
+  attributions?: Attribution[]
+  /** The 'wrong answer' fate line; defaults to Border Chain's map idiom. */
+  wrongFate?: string
 }>()
+
+const sources = computed(() => props.attributions ?? BORDER_SOURCES)
 
 const nameOf = (playerId: string) => playerDisplayName(props.players[playerId])
 
@@ -74,7 +81,7 @@ const rows = computed(() => {
             : 'walked into a dead end'
           : outcome === 'timeout'
             ? 'ran out of clock'
-            : 'stepped off the map'
+            : (props.wrongFate ?? 'stepped off the map')
     const links = props.state.named[playerId]?.length ?? 0
     return {
       playerId,

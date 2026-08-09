@@ -24,6 +24,7 @@ export const ROUND_WEIGHTS = {
   ranking: 0.2,
   traversal: 0.13,
   'border-chain': 0.09,
+  atlas: 0.07,
   'heritage-hunt': 0.07,
   'neighbour-blitz': 0.1,
   silhouette: 0.09,
@@ -86,6 +87,7 @@ export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
   traversal: 'typed',
   'border-chain': 'typed',
+  atlas: 'typed',
   'neighbour-blitz': 'typed',
   silhouette: 'typed',
   'mother-tongue': 'typed',

@@ -54,6 +54,7 @@ export type RoundChallengeKind =
   | 'ranking'
   | 'traversal'
   | 'border-chain'
+  | 'atlas'
   | 'heritage-hunt'
   | 'neighbour-blitz'
   | 'silhouette'
@@ -89,6 +90,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'traversal'
     case 'border-chain-challenge':
       return 'border-chain'
+    case 'atlas-challenge':
+      return 'atlas'
     case 'heritage-hunt-challenge':
       return 'heritage-hunt'
     case 'neighbour-blitz-challenge':

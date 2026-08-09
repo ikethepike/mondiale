@@ -140,6 +140,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   ranking: true,
   traversal: true,
   'border-chain': true,
+  atlas: true,
   'heritage-hunt': true,
   'neighbour-blitz': true,
   silhouette: true,

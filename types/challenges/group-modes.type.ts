@@ -351,9 +351,22 @@ export interface BorderChainChallenge {
   state: BorderChainState
 }
 
-export type BorderChainOutcome = 'wrong' | 'timeout' | 'trapped' | 'won'
+export type ChainTurnOutcome = 'wrong' | 'timeout' | 'trapped' | 'won'
+export type BorderChainOutcome = ChainTurnOutcome
 
-export interface BorderChainState {
+/**
+ * The turn-chain rounds' common contract: what the shared engine
+ * (lib/events/server/chain-engine) advances, regardless of the link rule.
+ * Border Chain and Atlas both satisfy it structurally.
+ */
+export interface ChainTurnChallenge<Trap = unknown> {
+  turnSeconds: number
+  maximumPoints: number
+  strikes: number
+  state: ChainTurnState<Trap>
+}
+
+export interface ChainTurnState<Trap = unknown> {
   /** The round opens on a briefing: a rules card each player must explicitly
    *  dismiss. No shot clock runs until everyone is ready (or the cap forces it). */
   briefing?: boolean
@@ -377,7 +390,7 @@ export interface BorderChainState {
   /** Elimination order, first out first. The winner never appears here. */
   eliminated: string[]
   /** How each player's round ended, for the reveal. */
-  outcomes: { [playerId: string]: BorderChainOutcome }
+  outcomes: { [playerId: string]: ChainTurnOutcome }
   /** Open moves at each player's fatal miss — the reveal's teaching beat. */
   missedOuts: { [playerId: string]: ISOCountryCode[] }
   /** Who made the most recent move; credits the trap-setter in the reveal. */
@@ -386,10 +399,44 @@ export interface BorderChainState {
   trappedBy?: { [playerId: string]: string }
   /** The dead-end pause: the whole table holds on the trap before the fresh
    *  chain is dealt. Transient — set when the trap springs, cleared when the
-   *  hold elapses. The durable record stays in `outcomes`/`trappedBy`. */
-  trap?: BorderChainTrap
+   *  hold elapses. The durable record stays in `outcomes`/`trappedBy`. The
+   *  payload is the mode's own proof shape. */
+  trap?: Trap
   /** Set when the round resolves; freezes the clock and starts the reveal. */
   finished?: boolean
+}
+
+export interface BorderChainState extends ChainTurnState<BorderChainTrap> {}
+
+/**
+ * Atlas — Border Chain's letter-rule sibling (lib/atlas-chain): name a
+ * country whose name starts where the head's ended. Same engine, same state,
+ * different link rule; on hard any shared ending chains (`overlaps`) and
+ * scoring is placement-only.
+ */
+export interface AtlasChallenge {
+  _type: 'atlas-challenge'
+  turnSeconds: number
+  maximumPoints: number
+  /** Misses a player survives before elimination. 0 = sudden death. */
+  strikes: number
+  /** Hard's rule: any k-letter shared ending chains, not just the tail. */
+  overlaps: boolean
+  state: ChainTurnState<AtlasTrap>
+}
+
+/** The letter dead-end's proof: what sealed the trapped player's turn. */
+export interface AtlasTrap {
+  /** The player who never got a move. */
+  playerId: string
+  /** The head whose ending nothing could chain from. */
+  head: ISOCountryCode
+  /** Who closed it — absent when they walked into their own dead end. */
+  byPlayerId?: string
+  /** The head's required opening letter. */
+  letter: string
+  /** Countries that would have chained, all already walked. */
+  spent: ISOCountryCode[]
 }
 
 /** Why a connection of the dead head was shut. */
@@ -739,6 +786,7 @@ export interface UniqueOrBustState {
 export type GroupModeChallenge =
   | EmpireChallenge
   | BorderChainChallenge
+  | AtlasChallenge
   | ManhuntChallenge
   | TimelineChallenge
   | HeritageHuntChallenge

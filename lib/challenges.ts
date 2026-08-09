@@ -26,6 +26,7 @@ import {
 } from '~~/types/challenges/group-challenge.type'
 import type {
   AnthemBuzzChallenge,
+  AtlasChallenge,
   BorderChainChallenge,
   CapitalGuessChallenge,
   CompositionChallenge,
@@ -72,7 +73,12 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
-import { ATLAS_TARGET_LINKS, hasAtlasChain, pickAtlasSeed } from './atlas-chain'
+import {
+  ATLAS_TABLE_SEED_OPTIONS,
+  ATLAS_TARGET_LINKS,
+  hasAtlasChain,
+  pickAtlasSeed,
+} from './atlas-chain'
 import { getChallengeDetails } from './challenge-details'
 import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
@@ -227,6 +233,46 @@ const getBorderChainChallenge = ({
       activeIndex: 0,
       turn: 0,
       // Stamped when the briefing lifts (chain-turns) — staging pauses first.
+      deadline: 0,
+      named: {},
+      strikesLeft: Object.fromEntries(contenders.map(playerId => [playerId, strikes])),
+      eliminated: [],
+      outcomes: {},
+      missedOuts: {},
+    },
+  }
+}
+
+/**
+ * Atlas dealer — Border Chain's letter-rule sibling; the two share the server
+ * engine (chain-engine.ts) and this state shape. The seed guard lives in
+ * lib/atlas-chain: a healthy opening letter over the world pool, since the
+ * letters game is global even on a region board.
+ */
+const getAtlasChallenge = ({ game }: { game: gameTypes.Game }): AtlasChallenge | undefined => {
+  const contenders = chainContenders(game)
+  // Solo, there is nobody to outlast.
+  if (contenders.length < 2) return undefined
+  const seed = pickAtlasSeed(game, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
+  if (!seed) return undefined
+
+  const strikes = game.difficulty === 'easy' ? 1 : 0
+  return {
+    _type: 'atlas-challenge',
+    turnSeconds: DIFFICULTY_CONFIGURATION[game.difficulty].chainTurnSeconds,
+    maximumPoints: maximumRoundPoints(game),
+    strikes,
+    // Hard's twin knives: any shared ending chains, and only placement pays.
+    overlaps: game.difficulty === 'hard',
+    state: {
+      // The rules card holds the opening shot clock until the table is ready.
+      briefing: true,
+      ready: [],
+      chains: [[seed]],
+      order: shuffleArray(contenders),
+      activeIndex: 0,
+      turn: 0,
+      // Stamped when the briefing lifts (atlas-turns) — staging pauses first.
       deadline: 0,
       named: {},
       strikesLeft: Object.fromEntries(contenders.map(playerId => [playerId, strikes])),
@@ -1624,6 +1670,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   ranking: game => getGroupChallenge({ game }),
   traversal: game => getTraversalChallenge({ game }),
   'border-chain': game => getBorderChainChallenge({ game }),
+  atlas: game => getAtlasChallenge({ game }),
   manhunt: game => getManhuntChallenge({ game }),
   'unique-or-bust': game => getUniqueOrBustChallenge({ game }),
   timeline: game => getTimelineChallenge({ game }),
