@@ -1,4 +1,5 @@
 import { defineGameHandler } from '../server-side'
+import { currentAtlasChain, scheduleAtlasTimeout } from './atlas-turns'
 import { currentBorderChain, scheduleChainTimeout } from './chain-turns'
 import { scheduleClassicSettle, startClassicClockOnLastClose } from './classic-rounds'
 import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from './heritage-beats'
@@ -81,11 +82,15 @@ export const closeTutorialHandler = defineGameHandler(
       scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, unique)
     }
 
-    // And for Border Chain's briefing, which holds its first shot clock the
+    // And for the turn-chain briefings, which hold their first shot clock the
     // same way (deadline 0 until the table is ready).
     const chain = currentBorderChain(game)
     if (chain && !chain.state.finished && chain.state.briefing) {
       scheduleChainTimeout({ io, redis, socket, eventTarget }, chain)
+    }
+    const atlas = currentAtlasChain(game)
+    if (atlas && !atlas.state.finished && atlas.state.briefing) {
+      scheduleAtlasTimeout({ io, redis, socket, eventTarget }, atlas)
     }
   }
 )

@@ -12,3 +12,5 @@ export const OUTLINE_REVEAL_SECONDS = 25
 export const ZOOM_OUT_SECONDS = 20
 export const ERRATA_SECONDS = 30
 export const ROSETTA_SECONDS = 30
+// Several full names typed with no autocomplete — long, but under the ceiling.
+export const ATLAS_SECONDS = 35

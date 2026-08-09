@@ -12,7 +12,7 @@ import {
   liveChain,
   openMoves,
   pickChainSeed,
-  scoreBorderChain,
+  scoreChainRound,
   standingPlayers,
 } from './chain'
 
@@ -197,9 +197,9 @@ describe('standingPlayers / chain accessors', () => {
   })
 })
 
-describe('scoreBorderChain', () => {
+describe('scoreChainRound', () => {
   it('pays the winner the full ceiling and the first out only link share', () => {
-    const scores = scoreBorderChain(
+    const scores = scoreChainRound(
       challenge({
         eliminated: ['a', 'b'], // a out first, c wins
         named: { a: [], b: ['SE'], c: ['FI', 'RU'] },
@@ -212,7 +212,7 @@ describe('scoreBorderChain', () => {
   })
 
   it('rewards links within equal placement', () => {
-    const scores = scoreBorderChain(
+    const scores = scoreChainRound(
       challenge({
         order: ['a', 'b'],
         eliminated: ['a'],
@@ -227,7 +227,7 @@ describe('scoreBorderChain', () => {
   })
 
   it('never exceeds the ceiling', () => {
-    const scores = scoreBorderChain(
+    const scores = scoreChainRound(
       challenge({ order: ['a', 'b'], eliminated: ['b'], named: { a: ['SE'], b: [] } })
     )
     for (const { scored, maximum } of Object.values(scores)) {

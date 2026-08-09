@@ -3,9 +3,18 @@
     <h2 class="headline">
       {{ headline }}
     </h2>
+    <dl v-if="stats?.length" class="stat-row">
+      <div v-for="stat in stats" :key="stat.label" class="stat">
+        <dt class="eyebrow stat-label">{{ stat.label }}</dt>
+        <dd class="stat-value">{{ stat.value }}</dd>
+      </div>
+    </dl>
+    <!-- The round's story: whatever rails the mode wants to lay out — every
+         chain walked, ties and all. -->
+    <slot />
     <PlacementList :rows="rows" :players="players" />
     <div v-if="myOuts.length" class="outs">
-      <p class="outs-lead">You had {{ myOuts.length === 1 ? 'an open door' : 'open doors' }}:</p>
+      <p class="outs-lead">{{ outsLine }}</p>
       <ul class="doors country-chip-list">
         <CountryChip
           v-for="isoCode in shownOuts"
@@ -27,27 +36,47 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
+import { datasetAttribution, dedupeAttributions, type Attribution } from '~~/lib/attribution'
 import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
-import type { BorderChainState } from '~~/types/challenges/group-modes.type'
+import type { ChainTurnState } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
 const MAX_DOORS_SHOWN = 6
 
-/** The chain's legality comes from two registries: land adjacency and the
- *  named strait crossings. */
-const sources = dedupeAttributions([
+/** Border Chain's legality registries — the default; Atlas hands in its own. */
+const BORDER_SOURCES = dedupeAttributions([
   ...datasetAttribution('borders'),
   ...datasetAttribution('straits'),
 ])
 
 const props = defineProps<{
-  state: BorderChainState
+  /** Either turn-chain mode's settled state — the reveal reads only the
+   *  shared fields (placements, outcomes, links, missed outs). */
+  state: ChainTurnState<unknown>
   players: { [playerId: string]: Player }
   playerId: string
+  /** The mode's provenance line; defaults to Border Chain's registries. */
+  attributions?: Attribution[]
+  /** The 'wrong answer' fate line; defaults to Border Chain's map idiom. */
+  wrongFate?: string
+  /** Lead-in for the missed-outs teach; defaults to Border Chain's doors. */
+  outsLead?: string
+  /** Per-player fate lines that outrank the generic copy — the atlas card
+   *  names the fatal letter ("broke the chain on “N”"). */
+  fates?: { [playerId: string]: string }
+  /** Small facts strip under the headline — links walked, longest run… */
+  stats?: { label: string; value: string }[]
 }>()
+
+const outsLine = computed(
+  () =>
+    props.outsLead ??
+    `You had ${(props.state.missedOuts[props.playerId]?.length ?? 0) === 1 ? 'an open door' : 'open doors'}:`
+)
+
+const sources = computed(() => props.attributions ?? BORDER_SOURCES)
 
 const nameOf = (playerId: string) => playerDisplayName(props.players[playerId])
 
@@ -66,7 +95,8 @@ const rows = computed(() => {
     const outcome = props.state.outcomes[playerId]
     const trapper = props.state.trappedBy?.[playerId]
     const fate =
-      outcome === 'won'
+      props.fates?.[playerId] ??
+      (outcome === 'won'
         ? 'Last one standing'
         : outcome === 'trapped'
           ? trapper
@@ -74,7 +104,7 @@ const rows = computed(() => {
             : 'walked into a dead end'
           : outcome === 'timeout'
             ? 'ran out of clock'
-            : 'stepped off the map'
+            : (props.wrongFate ?? 'stepped off the map'))
     const links = props.state.named[playerId]?.length ?? 0
     return {
       playerId,
@@ -97,7 +127,46 @@ const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS
   display: flex;
   padding: 1.8rem 2.2rem 1.6rem;
   flex-flow: column nowrap;
-  pointer-events: none;
+  // The round is resolved: the card takes its own scrolls and taps.
+  pointer-events: auto;
+  overscroll-behavior: contain;
+}
+
+// The shell stretches bare sections to fill the stage (`> section` gets
+// flex: 1 1 auto) — this card must hug its content instead, sit centered in
+// whatever room the round left, and scroll INSIDE itself on short screens
+// rather than run under the fold.
+.challenge-shell > section.chain-reveal {
+  flex: 0 1 auto;
+  margin: auto;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.stat-row {
+  margin: 0;
+  gap: 0.4rem 1.6rem;
+  display: flex;
+  flex-flow: row wrap;
+
+  .stat {
+    gap: 0.8rem;
+    display: flex;
+    align-items: baseline;
+  }
+
+  // The shared .eyebrow recipe carries the small caps; a dt in a facts row
+  // only trims the block margins and steps down a size.
+  .stat-label {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .stat-value {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.25rem;
+  }
 }
 
 .headline {

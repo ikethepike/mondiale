@@ -1,8 +1,18 @@
 // The dismissible rules card fronting tutorial-style rounds (The Despot's
-// role cards, Unique or Bust). One scroll recipe for every host: the card
-// centers itself in the shell's column, caps below the viewport and scrolls
-// its own overflow — a phone-height card must never trap its dismiss button
-// off-screen. Views keep only their flavor (palettes, hats, point lists).
+// role cards, Unique or Bust, the turn chains). One scroll recipe for every
+// host: the card centers itself in the shell's column, caps below the
+// viewport and scrolls its own overflow — a phone-height card must never trap
+// its dismiss button off-screen. Views keep only their flavor (palettes,
+// hats, point lists).
+//
+// The shell stretches bare sections to fill the stage (`> section` gets
+// flex: 1 1 auto), which pinned a void under the dismiss button — this card
+// hugs its content instead. Same specificity as the shell's rule, so the
+// import order in main.scss (shell first, this card after) is load-bearing.
+.challenge-shell > section.briefing-card {
+  flex: 0 1 auto;
+}
+
 .briefing-card {
   gap: 1rem;
   z-index: 3;

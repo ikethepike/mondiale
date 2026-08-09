@@ -1,5 +1,6 @@
 import type { Game } from '~~/types/game.types'
 import type { EngineContext, RearmOptions } from './round-engine'
+import { rearmAtlasChain } from './atlas-turns'
 import { rearmBorderChain } from './chain-turns'
 import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
@@ -46,6 +47,7 @@ export const rearmLiveRound = (
 
   // Each rearm self-guards on its own mode; at most one acts per round.
   rearmBorderChain(ctx, game, options)
+  rearmAtlasChain(ctx, game, options)
   rearmHeritageHunt(ctx, game)
   rearmTimeline(ctx, game)
   rearmManhunt(ctx, game, options)

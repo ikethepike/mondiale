@@ -1,8 +1,9 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { STRAITS } from '~~/data/straits.gen'
 import type {
-  BorderChainChallenge,
   BorderChainState,
+  ChainTurnChallenge,
+  ChainTurnState,
   ClosedDoor,
 } from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
@@ -36,10 +37,10 @@ export const walkColor = (index: number, count: number, head = false): string =>
   return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
 }
 
-export const liveChain = (state: BorderChainState): ISOCountryCode[] =>
+export const liveChain = (state: ChainTurnState<unknown>): ISOCountryCode[] =>
   state.chains[state.chains.length - 1] ?? []
 
-export const chainHead = (state: BorderChainState): ISOCountryCode | undefined => {
+export const chainHead = (state: ChainTurnState<unknown>): ISOCountryCode | undefined => {
   const chain = liveChain(state)
   return chain[chain.length - 1]
 }
@@ -78,9 +79,9 @@ export const closedDoors = (state: BorderChainState, rules: GameRules): ClosedDo
   return doors
 }
 
-export const activePlayerId = (state: BorderChainState): string => state.order[state.activeIndex]
+export const activePlayerId = (state: ChainTurnState<unknown>): string => state.order[state.activeIndex]
 
-export const standingPlayers = (state: BorderChainState): string[] => {
+export const standingPlayers = (state: ChainTurnState<unknown>): string[] => {
   const out = new Set(state.eliminated)
   return state.order.filter(playerId => !out.has(playerId))
 }
@@ -115,8 +116,11 @@ export const pickChainSeed = (
  */
 const PLACEMENT_SHARE = 0.75
 
-export const scoreBorderChain = (
-  challenge: BorderChainChallenge
+export const scoreChainRound = (
+  challenge: ChainTurnChallenge<unknown>,
+  // Atlas on hard is sheer elimination: placement is everything, no link
+  // consolation — pass 1. Everyone else keeps the 75/25 split.
+  placementShare: number = PLACEMENT_SHARE
 ): { [playerId: string]: { scored: number; maximum: number } } => {
   const { state, maximumPoints } = challenge
   const players = state.order
@@ -134,7 +138,7 @@ export const scoreBorderChain = (
     const placementFraction = count > 1 ? placement / (count - 1) : 1
     const linkFraction = (state.named[playerId]?.length ?? 0) / maxLinks
     const scored = Math.round(
-      maximumPoints * (PLACEMENT_SHARE * placementFraction + (1 - PLACEMENT_SHARE) * linkFraction)
+      maximumPoints * (placementShare * placementFraction + (1 - placementShare) * linkFraction)
     )
     scores[playerId] = { scored: clampScore(scored, maximumPoints), maximum: maximumPoints }
   }

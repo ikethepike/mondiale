@@ -69,6 +69,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
   flashpoint: 'conflicts',
   traversal: 'navigation',
   'border-chain': 'navigation',
+  atlas: 'culture',
   'neighbour-blitz': 'navigation',
   'hot-cold': 'navigation',
   manhunt: 'navigation',
@@ -145,6 +146,7 @@ export const ANSWER_SHAPE_BY_KIND = {
   'hot-cold': 'sequence',
   timeline: 'sequence',
   'border-chain': 'sequence',
+  atlas: 'sequence',
   // Never reach the answer rows: ranking has its own ledger (RankingReveal),
   // sketch its overlay, and these four bank empty lists.
   ranking: 'sequence',

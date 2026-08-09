@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  resolveTypedCountry,
   countryEndonym,
   findCountryByName,
   localCountryName,
@@ -186,3 +187,23 @@ describe('mentionsCountry', () => {
 /** Every haystack the search can match a country through, normalized-ish. */
 const countrySearchableNames = (country: { name: { english: string; local: string } }): string =>
   `${country.name.english} ${country.name.local}`.toLowerCase()
+
+describe('resolveTypedCountry', () => {
+  it('resolves exact names, aliases and typos of the whole name', () => {
+    expect(resolveTypedCountry('sweden')?.isoCode).toBe('SE')
+    expect(resolveTypedCountry('swden')?.isoCode).toBe('SE')
+    expect(resolveTypedCountry('Austira')?.isoCode).toBe('AT')
+  })
+
+  it('never completes a prefix', () => {
+    expect(resolveTypedCountry('aus')).toBeUndefined()
+    expect(resolveTypedCountry('swe')).toBeUndefined()
+    expect(resolveTypedCountry('united')).toBeUndefined()
+  })
+
+  it('refuses ambiguous near-misses', () => {
+    // One edit from both Iran and Iraq — no silent coin flip.
+    expect(resolveTypedCountry('irak')).toBeUndefined()
+    expect(resolveTypedCountry('iras')).toBeUndefined()
+  })
+})

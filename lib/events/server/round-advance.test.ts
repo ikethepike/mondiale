@@ -148,6 +148,7 @@ describe('group-challenge scoring coverage', () => {
   const SCORED_ELSEWHERE = [
     'ranking',
     'border-chain',
+    'atlas',
     'heritage-hunt',
     'timeline',
     'manhunt',

@@ -1,6 +1,7 @@
 import { getRoundChallenge } from '~~/lib/challenges'
 import { defineGameHandler } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
+import { isAtlasChallenge, scheduleAtlasTimeout, startAtlasClock } from './atlas-turns'
 import { isBorderChainChallenge, scheduleChainTimeout, startChainClock } from './chain-turns'
 import {
   isHeritageHuntChallenge,
@@ -307,6 +308,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       const revealedRound = latestRound(game)
       const revealed = revealedRound?.groupChallenge
       if (isBorderChainChallenge(revealed)) startChainClock(revealed)
+      if (isAtlasChallenge(revealed)) startAtlasClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
       // Everything else is a classic round: the SAME contract, one level up —
@@ -322,6 +324,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
       server.emit({ event: 'new-round', game }, eventTarget)
       if (isBorderChainChallenge(revealed)) {
         scheduleChainTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      if (isAtlasChallenge(revealed)) {
+        scheduleAtlasTimeout({ io, redis, socket, eventTarget }, revealed)
       }
       if (isHeritageHuntChallenge(revealed)) {
         scheduleHeritageTimeout({ io, redis, socket, eventTarget }, revealed)

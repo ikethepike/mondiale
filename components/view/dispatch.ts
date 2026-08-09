@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import BoardOverlay from '~/components/board3d/BoardOverlay.vue'
 import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
+import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewComposition from '~/components/view/ViewComposition.vue'
@@ -55,6 +56,7 @@ export interface ResolvedView {
 const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   ranking: ViewGroupChallenge,
   traversal: ViewTraversalChallenge,
+  atlas: ViewAtlas,
   'border-chain': ViewBorderChain,
   'heritage-hunt': ViewHeritageHunt,
   'neighbour-blitz': ViewNeighbourBlitz,

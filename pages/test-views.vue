@@ -30,6 +30,7 @@
  */
 import { computed, defineComponent, h, ref } from 'vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
+import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
 import ViewComposition from '~/components/view/ViewComposition.vue'
@@ -81,6 +82,17 @@ import {
 import { shortestRoute, traversalWithin } from '~~/lib/traversal'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { latestChallengeOfType } from '~~/lib/rounds'
+import {
+  ATLAS_TABLE_SEED_OPTIONS,
+  atlasContinuations,
+  atlasTailLetter,
+  pickAtlasSeed,
+} from '~~/lib/atlas-chain'
+import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
+import { sample } from '~~/lib/arrays'
+import { playableWorldCountries } from '~~/lib/game-rules'
+import { TRAP_HOLD_MS } from '~~/lib/round-beats'
+import type { AtlasChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
 import {
   drawnCard,
   activeTimelinePlayerId,
@@ -181,11 +193,203 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
   }, SIM_LATENCY_MS)
 }
 
+/**
+ * Mirror of atlas-turns on the pinned game, through the same lib/atlas-chain
+ * rule the server grades with — so the atlas scenarios play the full rhythm
+ * (turn handoff, rival moves, strikes, the letter trap, reveal) without a
+ * server. Rivals answer after a beat with a valid continuation; the local
+ * shot clock burns a strike or eliminates exactly like the engine. Every
+ * timer re-reads the pinned challenge and dies when the scenario was redealt
+ * or the turn moved on — the engine's own staleness posture.
+ */
+const RIVAL_BEAT_MS = 1600
+
+const atlasOf = () => {
+  const game = gameStore.game
+  return game ? latestChallengeOfType(game, 'atlas-challenge') : undefined
+}
+
+const atlasPool = () =>
+  playableWorldCountries(gameStore.game ?? { variant: 'world', difficulty: 'normal' })
+
+const atlasOpenMoves = (challenge: AtlasChallenge) => {
+  const head = liveChain(challenge.state).at(-1)
+  if (!head) return []
+  return atlasContinuations(head, challenge.state.chains.flat(), atlasPool(), {
+    overlaps: challenge.overlaps,
+  })
+}
+
+const atlasAdvanceTurn = (challenge: AtlasChallenge) => {
+  const { state } = challenge
+  const standing = new Set(standingPlayers(state))
+  for (let step = 1; step <= state.order.length; step++) {
+    const index = (state.activeIndex + step) % state.order.length
+    if (standing.has(state.order[index])) {
+      state.activeIndex = index
+      break
+    }
+  }
+  state.turn++
+  state.deadline = Date.now() + challenge.turnSeconds * 1000
+}
+
+const atlasFinish = (challenge: AtlasChallenge) => {
+  const winner = standingPlayers(challenge.state)[0]
+  if (winner) challenge.state.outcomes[winner] = 'won'
+  challenge.state.finished = true
+}
+
+const atlasEliminate = (
+  challenge: AtlasChallenge,
+  playerId: string,
+  outcome: ChainTurnOutcome,
+  outs: ISOCountryCode[]
+) => {
+  challenge.state.eliminated.push(playerId)
+  challenge.state.outcomes[playerId] = outcome
+  challenge.state.missedOuts[playerId] = outs
+}
+
+const atlasSpringTrap = (challenge: AtlasChallenge) => {
+  const { state } = challenge
+  const trappedId = activePlayerId(state)
+  atlasEliminate(challenge, trappedId, 'trapped', [])
+  const byPlayerId =
+    state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
+  if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
+  const head = liveChain(state).at(-1)!
+  const used = new Set(state.chains.flat())
+  state.trap = {
+    playerId: trappedId,
+    head,
+    byPlayerId,
+    letter: atlasTailLetter(head),
+    spent: atlasContinuations(head, [], atlasPool(), { overlaps: challenge.overlaps }).filter(
+      isoCode => used.has(isoCode)
+    ),
+  }
+  state.deadline = 0
+  armAtlasTrapResume(challenge)
+}
+
+const armAtlasTrapResume = (challenge: AtlasChallenge) => {
+  const heldTurn = challenge.state.turn
+  window.setTimeout(() => {
+    const current = atlasOf()
+    if (current !== challenge || !current?.state.trap || current.state.finished) return
+    if (current.state.turn !== heldTurn) return
+    const { state } = current
+    state.trap = undefined
+    if (standingPlayers(state).length <= 1) return atlasFinish(current)
+    const seed =
+      pickAtlasSeed(gameStore.game!, {
+        minOptions: ATLAS_TABLE_SEED_OPTIONS,
+        exclude: new Set(state.chains.flat()),
+      }) ?? pickAtlasSeed(gameStore.game!, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
+    if (!seed) return atlasFinish(current)
+    state.chains.push([seed])
+    atlasAdvanceTurn(current)
+    atlasContinueTurn(current)
+  }, TRAP_HOLD_MS)
+}
+
+const atlasApplyMove = (challenge: AtlasChallenge, isoCode: ISOCountryCode) => {
+  const { state } = challenge
+  const moverId = activePlayerId(state)
+  liveChain(state).push(isoCode)
+  ;(state.named[moverId] ??= []).push(isoCode)
+  state.lastMoverId = moverId
+  atlasAdvanceTurn(challenge)
+  if (!atlasOpenMoves(challenge).length) return atlasSpringTrap(challenge)
+  atlasContinueTurn(challenge)
+}
+
+const atlasResolveMiss = (challenge: AtlasChallenge, kind: 'wrong' | 'timeout') => {
+  const { state } = challenge
+  const missedId = activePlayerId(state)
+  if ((state.strikesLeft[missedId] ?? 0) > 0) {
+    state.strikesLeft[missedId]--
+  } else {
+    atlasEliminate(challenge, missedId, kind, atlasOpenMoves(challenge))
+    if (standingPlayers(state).length <= 1) return atlasFinish(challenge)
+  }
+  atlasAdvanceTurn(challenge)
+  atlasContinueTurn(challenge)
+}
+
+/** After each committed turn: arm the local shot clock, and let a rival act. */
+const atlasContinueTurn = (challenge: AtlasChallenge) => {
+  if (challenge.state.finished) return
+  const { turn } = challenge.state
+  window.setTimeout(() => {
+    const current = atlasOf()
+    if (current !== challenge || current.state.finished || current.state.trap) return
+    if (current.state.turn !== turn) return
+    atlasResolveMiss(current, 'timeout')
+  }, challenge.turnSeconds * 1000 + 400)
+
+  const activeId = activePlayerId(challenge.state)
+  if (activeId === ME) return
+  window.setTimeout(() => {
+    const current = atlasOf()
+    if (current !== challenge || current.state.finished || current.state.trap) return
+    if (current.state.turn !== turn || activePlayerId(current.state) !== activeId) return
+    const move = sample(atlasOpenMoves(current))
+    if (move) atlasApplyMove(current, move)
+  }, RIVAL_BEAT_MS)
+}
+
+const simulateAtlasReady = () => {
+  const challenge = atlasOf()
+  if (!challenge?.state.briefing || challenge.state.finished) return
+  window.setTimeout(() => {
+    const current = atlasOf()
+    if (current !== challenge || !current.state.briefing) return
+    current.state.ready = [...current.state.order]
+    current.state.briefing = false
+    current.state.deadline = Date.now() + current.turnSeconds * 1000
+    atlasContinueTurn(current)
+  }, SIM_LATENCY_MS)
+}
+
+const simulateAtlasMove = (eventData: Record<string, unknown>) => {
+  const challenge = atlasOf()
+  if (!challenge || challenge.state.finished) return
+  const { state } = challenge
+  if (state.briefing || state.trap) return
+  if (eventData.turn !== state.turn) return
+  if (activePlayerId(state) !== ME) return
+  const isoCode = String(eventData.isoCode ?? '') as ISOCountryCode
+  window.setTimeout(() => {
+    const current = atlasOf()
+    if (current !== challenge || current.state.finished || current.state.trap) return
+    if (current.state.turn !== state.turn) return
+    if (atlasOpenMoves(current).includes(isoCode)) {
+      atlasApplyMove(current, isoCode)
+    } else {
+      atlasResolveMiss(current, 'wrong')
+    }
+  }, SIM_LATENCY_MS)
+}
+
+/** Redealt atlas scenarios come alive at once: a live turn arms its clock (and
+ *  a rival's move), a parked trap arms its resume. */
+const armAtlasScenario = () => {
+  const challenge = atlasOf()
+  if (!challenge || challenge.state.finished || challenge.state.briefing) return
+  if (challenge.state.trap) return armAtlasTrapResume(challenge)
+  challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000
+  atlasContinueTurn(challenge)
+}
+
 const installStubSocket = () => {
   gameStore.playerId = ME
   const record = (event: string, eventData: Record<string, unknown>) => {
     lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
     if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
+    if (event === 'submit-chain-move') simulateAtlasMove(eventData ?? {})
+    if (event === 'chain-ready') simulateAtlasReady()
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
@@ -377,6 +581,65 @@ const trendGallery = (detail: 'spark' | 'chart') =>
 
 const TrendGallery = trendGallery('spark')
 const TrendChartGallery = trendGallery('chart')
+
+/** A marathon chain grown greedily through the real letter rule — the same
+ *  `atlasContinuations` the round grades with, so every tie is legit. */
+const longAtlasGame = (finished: boolean): Game => {
+  const chain: ISOCountryCode[] = ['NP']
+  const pool = [...ISOCountryCodes]
+  while (chain.length < 40) {
+    const moves = atlasContinuations(chain[chain.length - 1], chain, pool)
+    if (!moves.length) break
+    // Max-degree greedy: take the move that leaves the most onward options,
+    // so the walk skirts the drained letters and actually runs long.
+    let next = moves[0]
+    let best = -1
+    for (const candidate of moves) {
+      const onward = atlasContinuations(candidate, [...chain, candidate], pool).length
+      if (onward > best) {
+        best = onward
+        next = candidate
+      }
+    }
+    chain.push(next)
+  }
+  const order = [RIVAL, ME, THIRD]
+  // The settled cut breaks the walk into two stanzas at a pretend dead end,
+  // so the reveal card shows a trap boundary and a fresh chain.
+  const cut = Math.floor(chain.length * 0.55)
+  const chains = finished ? [chain.slice(0, cut), chain.slice(cut)] : [chain]
+  const named: { [playerId: string]: ISOCountryCode[] } = {}
+  for (const walkedChain of chains) {
+    walkedChain.slice(1).forEach((isoCode, index) => {
+      const playerId = order[index % order.length]
+      ;(named[playerId] ??= []).push(isoCode)
+    })
+  }
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'atlas-challenge',
+      turnSeconds: 14,
+      maximumPoints: MAXIMUM_POINTS,
+      strikes: 0,
+      overlaps: false,
+      state: {
+        ready: order,
+        chains,
+        order,
+        activeIndex: 1,
+        turn: chain.length - 1,
+        deadline: finished ? 0 : Date.now() + 14000,
+        named,
+        strikesLeft: {},
+        eliminated: finished ? [ME, THIRD] : [],
+        outcomes: finished ? { [RIVAL]: 'won', [ME]: 'trapped', [THIRD]: 'timeout' } : {},
+        missedOuts: finished ? { [THIRD]: ['NA', 'NG', 'NL'] } : {},
+        trappedBy: finished ? { [ME]: RIVAL } : undefined,
+        finished,
+      },
+    }),
+  ])
+}
 
 const scenarios: Scenario[] = [
   {
@@ -2763,6 +3026,246 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    id: 'individual-atlas',
+    label: 'Individual: atlas (name chain, 4 links)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'lexicon',
+        variant: 'atlas',
+        country: 'NP',
+        atlas: { seed: 'NP', target: 4, overlaps: false },
+      }),
+  },
+  {
+    // Mexico seeds the O trap: after Oman, every -o ending is a dead end.
+    id: 'individual-atlas-hard',
+    label: 'Individual: atlas (hard — overlaps pay, hazard seed)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'lexicon',
+        variant: 'atlas',
+        country: 'MX',
+        atlas: { seed: 'MX', target: 6, overlaps: true },
+      }),
+  },
+  {
+    id: 'atlas-long',
+    label: 'Atlas (marathon chain — folded live rail)',
+    component: ViewAtlas,
+    build: () => longAtlasGame(false),
+  },
+  {
+    id: 'atlas-long-reveal',
+    label: 'Atlas (marathon chain — reveal card scroll)',
+    component: ViewAtlas,
+    build: () => longAtlasGame(true),
+  },
+  {
+    id: 'individual-atlas-easy',
+    label: 'Individual: atlas (easy — suggestions from 3 letters)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const game = individualGame({
+        id: 'lexicon',
+        variant: 'atlas',
+        country: 'NP',
+        atlas: { seed: 'NP', target: 3, overlaps: false },
+      })
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
+    id: 'atlas-easy',
+    label: 'Atlas (easy — 20s turns, ringed answers, suggestions)',
+    component: ViewAtlas,
+    build: () => {
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 20,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          overlaps: false,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['NP', 'LA', 'SE']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 2,
+            deadline: Date.now() + 20000,
+            named: { [RIVAL]: ['LA'], [THIRD]: ['SE'] },
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ])
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
+    id: 'atlas',
+    label: 'Atlas (your turn, letter ties)',
+    component: ViewAtlas,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 14,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          overlaps: false,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['NP', 'LA', 'SE', 'NO']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 3,
+            deadline: Date.now() + 14000,
+            named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'] },
+            strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    // Nepal → Palestine: the 3-letter overlap badge, ember-tinted.
+    id: 'atlas-hard',
+    label: 'Atlas (hard — overlap rule, deep tie badge)',
+    component: ViewAtlas,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 10,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          overlaps: true,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['NP', 'PS', 'ET']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 2,
+            deadline: Date.now() + 10000,
+            named: { [RIVAL]: ['PS'], [THIRD]: ['ET'] },
+            strikesLeft: {},
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'atlas-briefing',
+    label: 'Atlas (briefing — rules card, one rival ready)',
+    component: ViewAtlas,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 14,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          overlaps: false,
+          state: {
+            briefing: true,
+            ready: [RIVAL],
+            chains: [['NP']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 0,
+            deadline: 0,
+            named: {},
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ]),
+  },
+  {
+    // Iraq seals the letter chain: Qatar is the only Q and it opened the walk.
+    id: 'atlas-trap',
+    label: 'Atlas (trap — the letter Q is spent)',
+    component: ViewAtlas,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 14,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          overlaps: false,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['QA', 'RU', 'AZ', 'NP', 'LU', 'GW', 'GB', 'ML', 'IQ']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 2,
+            turn: 8,
+            deadline: 0,
+            named: {
+              [RIVAL]: ['RU', 'NP', 'GB', 'IQ'],
+              [ME]: ['AZ', 'GW'],
+              [THIRD]: ['LU', 'ML'],
+            },
+            strikesLeft: {},
+            eliminated: [THIRD],
+            outcomes: { [THIRD]: 'trapped' },
+            missedOuts: { [THIRD]: [] },
+            lastMoverId: RIVAL,
+            trappedBy: { [THIRD]: RIVAL },
+            trap: {
+              playerId: THIRD,
+              head: 'IQ',
+              byPlayerId: RIVAL,
+              letter: 'q',
+              spent: ['QA'],
+            },
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'atlas-reveal',
+    label: 'Atlas (reveal — placements and missed outs)',
+    component: ViewAtlas,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 14,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 0,
+          overlaps: false,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['NP', 'LA', 'SE', 'NO', 'YE']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 0,
+            turn: 6,
+            deadline: 0,
+            named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'], [THIRD]: ['YE'] },
+            strikesLeft: {},
+            eliminated: [ME, THIRD],
+            outcomes: { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' },
+            missedOuts: { [ME]: ['NA', 'NG', 'NL'], [THIRD]: ['EE', 'EG', 'ES'] },
+            finished: true,
+          },
+        }),
+      ]),
+  },
+  {
     id: 'final-gauntlet-easy',
     label: 'Final gauntlet (easy, dealt)',
     component: ViewFinalChallenge,
@@ -3218,6 +3721,7 @@ const deal = () => {
   gameStore.game = scenario.build()
   renderKey.value += 1
   ready.value = true
+  armAtlasScenario()
 }
 
 /** Push a few opponent guesses so ticker chrome can be previewed. */
