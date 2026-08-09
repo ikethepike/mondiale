@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { ATLAS_TARGET_LINKS, hasAtlasChain } from '~~/lib/atlas-chain'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { countryLedBy } from '~~/lib/leaders'
 import { processReplacements } from '~~/lib/values'
@@ -137,5 +139,23 @@ describe('dealOddOneOut (via forced variant)', () => {
       }
     }
     expect(sawOrganization, 'no organization question was dealt — test is vacuous').toBe(true)
+  })
+})
+
+describe('atlas gate dealing', () => {
+  it('deals a solvable chain for every difficulty', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'atlas'
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'lexicon', difficulty })
+        expect(dealt.variant).toBe('atlas')
+        expect(dealt.atlas?.seed).toBe(dealt.country)
+        expect(dealt.atlas?.overlaps).toBe(difficulty === 'hard')
+        const target = dealt.atlas?.target ?? 0
+        expect(target).toBe(ATLAS_TARGET_LINKS[difficulty])
+        // The guard's promise: the target is reachable under the plain rule.
+        expect(hasAtlasChain(dealt.country, target, [...ISOCountryCodes])).toBe(true)
+      }
+    }
   })
 })

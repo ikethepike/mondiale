@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
 import TrajectoryReveal from '~/components/challenge/TrajectoryReveal.vue'
+import AtlasReveal from '~/components/feedback/AtlasReveal.vue'
 import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import ErrataReveal from '~/components/feedback/ErrataReveal.vue'
 import FlagMeaningGateReveal from '~/components/feedback/FlagMeaningGateReveal.vue'
@@ -8,6 +9,7 @@ import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import RosettaReveal from '~/components/feedback/RosettaReveal.vue'
 import TrendDuelReveal from '~/components/feedback/TrendDuelReveal.vue'
+import GateAtlas from './GateAtlas.vue'
 import GateBorderDetective from './GateBorderDetective.vue'
 import GateErrata from './GateErrata.vue'
 import GateFind from './GateFind.vue'
@@ -39,6 +41,7 @@ export interface GateRevealContext {
   submittedISOCode?: ISOCountryCode
   duelOutcomes: DuelOutcome[]
   trendDuelOutcomes: TrendDuelOutcome[]
+  atlasChain: ISOCountryCode[]
 }
 
 export interface GateView {
@@ -58,6 +61,9 @@ export interface GateView {
    *  the SHELL owns the footer: `.suggest-berth` reserves room for a downward
    *  suggestion list, and a variant that never types must not pay for it. */
   typedConsole?: boolean
+  /** false = the console types with NO dropdown (pure recall), so the footer
+   *  skips `.suggest-berth` too — there is no downward list to reserve for. */
+  suggestions?: boolean
   /** Teleports a wide-screen subject into the shell's side stage. */
   sideStage?: boolean
 }
@@ -160,6 +166,15 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     typedConsole: true,
     reveal: RosettaReveal,
     revealProps: ({ challenge }) => (challenge.rosetta ? { challenge } : {}),
+  },
+  atlas: {
+    component: GateAtlas,
+    typedConsole: true,
+    suggestions: false,
+    reveal: AtlasReveal,
+    wideReveal: true,
+    revealProps: ({ challenge, atlasChain }) =>
+      challenge.atlas ? { challenge, chain: atlasChain } : {},
   },
 }
 

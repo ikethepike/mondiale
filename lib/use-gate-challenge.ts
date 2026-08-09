@@ -73,6 +73,8 @@ export interface GateChallengeContext {
   /** Duel ledgers, kept because their reveals outlive the question. */
   duelOutcomes: Ref<DuelOutcome[]>
   trendDuelOutcomes: Ref<TrendDuelOutcome[]>
+  /** The atlas gate's chain (seed first), kept for the same reason. */
+  atlasChain: Ref<ISOCountryCode[]>
   submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
   /** Hand the gate back when its clock expires — see `giveUp` below. */
   giveUp: (hintsUsed?: number) => void
@@ -126,6 +128,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const missNote = ref<string>()
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
+  const atlasChain = ref<ISOCountryCode[]>([])
 
   /**
    * A gate answer is a critical event, so it rides `update`'s ack and is resent
@@ -258,6 +261,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     missNote.value = undefined
     duelOutcomes.value = []
     trendDuelOutcomes.value = []
+    atlasChain.value = []
     gateSeq.value++
     showInterstitial.value = true
   }
@@ -276,6 +280,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     missNote,
     duelOutcomes,
     trendDuelOutcomes,
+    atlasChain,
     submitAnswer,
     giveUp,
   }

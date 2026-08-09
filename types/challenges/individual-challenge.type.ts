@@ -29,6 +29,9 @@ import type { ISOCountryCode } from '../geography.types'
  *   the country wearing the wrong name (either of the two, on a swap)
  * - 'rosetta': A : B :: C : ? — the exemplar pair fixes which relation is
  *   meant, and the answer to the second pair is `country`
+ * - 'atlas': chain countries where each name starts where the last one ended
+ *   (Nepal → Laos); the chain is client-validated through lib/atlas-chain and
+ *   `country` holds the seed as the winning token (higher-lower's trust model)
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -110,6 +113,19 @@ export interface IndividualChallenge {
     /** What each lineup member is labelled as, exactly as shown. */
     labels: Partial<Record<ISOCountryCode, string>>
   }
+  /** atlas: the name chain. `country` doubles as the seed; links are graded
+   *  client-side through lib/atlas-chain (the rule, the credit and the hint
+   *  all read that one module, on both formats). */
+  atlas?: {
+    /** The dealt opening country — the chain's zeroth chip. */
+    seed: ISOCountryCode
+    /** Links to bank. With `overlaps`, each junction pays its overlap length. */
+    target: number
+    /** Hard's rule: any shared ending chains (Nepal → Palestine), not just the
+     *  tail letter. Rides the deal so the view and the reveal grade the same
+     *  rule by construction. */
+    overlaps: boolean
+  }
   /** rosetta: A : B :: C : ? — the answer to the second pair is `country`. */
   rosetta?: {
     relation: RosettaRelationId
@@ -147,6 +163,7 @@ export const individualChallengeVariants = [
   'leader-portrait',
   'errata',
   'rosetta',
+  'atlas',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
@@ -165,8 +182,8 @@ export type IndividualChallengeVariant = (typeof individualChallengeVariants)[nu
  * - `errata` — things that are wrong. Tenants: Errata. Counterfeit belongs
  *   here when it lands (its marker will have to widen past signposts to cover
  *   a forged flag).
- * - `lexicon` — a term and the country it belongs to. Tenants: Rosetta.
- *   The Naming and Switchboard belong here too.
+ * - `lexicon` — a term and the country it belongs to. Tenants: Rosetta and
+ *   Atlas (the name chain). The Naming and Switchboard belong here too.
  *
  * Promotion costs the other themes nothing: the capital, currency, leader and
  * landmark tiles still deal Rosetta in each of their own registers

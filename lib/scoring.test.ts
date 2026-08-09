@@ -241,6 +241,7 @@ describe('gatePot', () => {
   it('deepens the pot only for the variants that sell a hint worth buying', () => {
     expect(gatePot('errata')).toBeGreaterThan(GATE_LEAP_STEPS)
     expect(gatePot('rosetta')).toBeGreaterThan(GATE_LEAP_STEPS)
+    expect(gatePot('atlas')).toBeGreaterThan(GATE_LEAP_STEPS)
   })
 })
 

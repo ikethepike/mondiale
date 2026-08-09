@@ -42,7 +42,7 @@
       v-show="!status"
       id="gate-footer"
       ref="gateFooter"
-      class="suggest-berth"
+      :class="{ 'suggest-berth': GATE_VIEWS[variant].suggestions !== false }"
     />
   </div>
 </template>
@@ -86,6 +86,7 @@ const {
   missNote,
   duelOutcomes,
   trendDuelOutcomes,
+  atlasChain,
   relatch,
 } = provideGateChallenge()
 
@@ -163,6 +164,7 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('currencies')
     case 'odd-one-out':
     case 'rosetta':
+    case 'atlas':
       return datasetAttribution('countries')
     case 'leader-pick':
       return datasetAttribution('leaders')
@@ -217,6 +219,8 @@ const interstitialTitle = computed(() => {
       return 'One of these countries is wearing the wrong name'
     case 'rosetta':
       return 'Finish the pair — the first one shows you the link'
+    case 'atlas':
+      return 'Chain countries — each begins where the last one ended'
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
@@ -231,6 +235,7 @@ const reveal = computed(() => {
     submittedISOCode: submittedISOCode.value,
     duelOutcomes: duelOutcomes.value,
     trendDuelOutcomes: trendDuelOutcomes.value,
+    atlasChain: atlasChain.value,
   })
 })
 
@@ -277,6 +282,9 @@ const incorrectMessage = computed(() => {
       return 'Not the misprint.'
     case 'rosetta':
       return active ? `The pair was ${countryName(active.country)}` : 'Time ran out.'
+    case 'atlas':
+      // The gate always phrases its own missNote; this is the safety line.
+      return 'The chain broke.'
     default:
       // Currency find gate: name what the pressed country actually spends —
       // clearer than the reveal zoom alone, since shared currencies mean the

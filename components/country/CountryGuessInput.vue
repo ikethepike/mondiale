@@ -47,6 +47,7 @@ import {
   countryName,
   findCountryByName,
   localCountryName,
+  resolveTypedCountry,
   searchCountriesByName,
 } from '~~/lib/country'
 import { excludedMicroNations } from '~~/lib/game-rules'
@@ -75,6 +76,13 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** false = pure recall: no dropdown ever renders, and Enter resolves the
+   *  typed name through `resolveTypedCountry` (exact, then unambiguous-fuzzy —
+   *  never completion). The atlas modes ride this. */
+  suggest: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits<{ guess: [country: Country]; miss: [input: string] }>()
@@ -92,7 +100,7 @@ const gameStore = useGameStore()
 const benched = computed(() => new Set(gameStore.game ? excludedMicroNations(gameStore.game) : []))
 
 const suggestions = computed(() => {
-  if (props.disabled) return []
+  if (props.disabled || !props.suggest) return []
   return searchCountriesByName(query.value, 6, new Set([...props.excluded, ...benched.value]))
 })
 
@@ -151,15 +159,12 @@ const pick = (country: Country) => {
 
 const submitTyped = () => {
   if (!query.value.trim()) return
+  const direct = findCountryByName(query.value)
+  const country =
+    direct ?? (props.suggest ? highlighted.value : resolveTypedCountry(query.value))
   // A typed-out benched country ("vatican") must not fall through to the
   // highlighted suggestion — that would silently commit a different country.
-  const direct = findCountryByName(query.value)
-  if (direct && benched.value.has(direct.isoCode)) {
-    emit('miss', query.value)
-    return
-  }
-  const country = direct ?? highlighted.value
-  if (!country) {
+  if (!country || benched.value.has(country.isoCode)) {
     emit('miss', query.value)
     return
   }

@@ -270,6 +270,33 @@ export const findCountryByName = (input: string): Country | undefined => {
   return isoCode ? COUNTRIES[isoCode] : undefined
 }
 
+/**
+ * Resolve a typed name with typo tolerance but NO completion: the input must
+ * be a whole name or alias (within a small edit budget), and the best match
+ * must be unambiguous. This is the no-suggestions console's resolver — where
+ * `searchCountriesByName` would happily complete "aus" to Austria, this
+ * refuses anything short of a real attempt at the full name.
+ */
+export const resolveTypedCountry = (input: string): Country | undefined => {
+  const direct = findCountryByName(input)
+  if (direct) return direct
+  const normalized = normalizeCountryName(input)
+  const maxEdits = normalized.length >= 7 ? 2 : normalized.length >= 4 ? 1 : 0
+  if (!maxEdits) return undefined
+
+  const hits = new Map<ISOCountryCode, number>()
+  for (const [name, isoCode] of getNameIndex()) {
+    const edits = editDistance(normalized, name, maxEdits)
+    if (edits > maxEdits) continue
+    const current = hits.get(isoCode)
+    if (current === undefined || edits < current) hits.set(isoCode, edits)
+  }
+  if (!hits.size) return undefined
+  const bestEdits = Math.min(...hits.values())
+  const best = [...hits.entries()].filter(([, edits]) => edits === bestEdits)
+  return best.length === 1 ? COUNTRIES[best[0][0]] : undefined
+}
+
 /** How a candidate name matched: tier, edits spent, name length — lower wins. */
 type MatchRank = [tier: number, edits: number, length: number]
 

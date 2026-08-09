@@ -72,6 +72,7 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
+import { ATLAS_TARGET_LINKS, hasAtlasChain, pickAtlasSeed } from './atlas-chain'
 import { getChallengeDetails } from './challenge-details'
 import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
@@ -2667,6 +2668,24 @@ const dealRosetta = (
 }
 
 /**
+ * Atlas: the name chain (Nepal → Laos → …). The letter rule, the credit and
+ * the solvability proof live in lib/atlas-chain; the dealer only picks a seed
+ * the rule can carry. The chain plays on the WORLD pool even in region games —
+ * the letters game is global by nature — and the guard proves the target
+ * reachable under the plain single-letter rule, so hard's overlap credit
+ * (each junction pays its overlap length) is pure upside on a solvable deal.
+ */
+const dealAtlas = (
+  rules: gameTypes.GameRules
+): Pick<IndividualChallenge, 'country' | 'atlas'> | undefined => {
+  const target = ATLAS_TARGET_LINKS[rules.difficulty]
+  const seed = pickAtlasSeed(rules)
+  if (!seed) return undefined
+  if (!hasAtlasChain(seed, target, playableWorldCountries(rules))) return undefined
+  return { country: seed, atlas: { seed, target, overlaps: rules.difficulty === 'hard' } }
+}
+
+/**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
  * variant through `isCorrectIndividualAnswer`.
@@ -2812,6 +2831,11 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'rosetta', ...dealt }
         break
       }
+      case 'atlas': {
+        const dealt = dealAtlas(rules)
+        if (dealt) return { ...base, variant: 'atlas', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -2849,9 +2873,13 @@ export const getIndividualChallenge = async ({
         const dealt = await dealErrata(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'errata', ...dealt }
       }
-      if (roll < 0.54) {
+      if (roll < 0.48) {
         const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
         if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      }
+      if (roll < 0.54) {
+        const dealt = dealAtlas(rules)
+        if (dealt) return { ...base, variant: 'atlas', ...dealt }
       }
       if (roll < 0.66) {
         const dealt = dealLandmarkQuiz(pool, world)
@@ -2958,10 +2986,14 @@ export const getIndividualChallenge = async ({
       break
     }
     case 'lexicon': {
-      // The naming tile. No relation restriction here — unlike the themed
-      // tiles, which each deal their own register, this one draws from all of
-      // them. Rosetta is its only tenant today; Switchboard and The Naming
-      // belong here too when they land.
+      // The naming tile, now two tenants: Atlas (the name chain) and Rosetta.
+      // No relation restriction on Rosetta here — unlike the themed tiles,
+      // which each deal their own register, this one draws from all of them.
+      // Switchboard and The Naming belong here too when they land.
+      if (roll < 0.45) {
+        const dealt = dealAtlas(rules)
+        if (dealt) return { ...base, variant: 'atlas', ...dealt }
+      }
       const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
       if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       break
