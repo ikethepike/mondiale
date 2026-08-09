@@ -96,18 +96,25 @@
       wrong-fate="broke the chain"
       outs-lead="You still had:"
       :stats="revealStats"
+      :fates="revealFates"
     >
-      <!-- The round's story: every chain walked, ties and all — a trap's
-           retired chain reads as its own stanza. -->
+      <!-- The round's story: every chain walked, ties and all — and between
+           stanzas, the dead end that ended one and seeded the next. -->
       <div class="reveal-chains">
-        <AtlasChainRail
-          v-for="(walkedChain, index) in state!.chains"
-          :key="index"
-          :chain="walkedChain"
-          :overlaps="challenge.overlaps"
-          finished
-          compact
-        />
+        <template v-for="(stanza, index) in revealStanzas" :key="index">
+          <span v-if="index > 0" class="chain-start eyebrow">Fresh chain</span>
+          <AtlasChainRail
+            :chain="stanza.chain"
+            :overlaps="challenge.overlaps"
+            finished
+            compact
+          />
+          <p v-if="stanza.brokeAt" class="chain-break">
+            Dead end — every “{{ stanza.brokeAt.letter }}” was spent:
+            {{ seatName(stanza.brokeAt.playerId) }}
+            {{ stanza.brokeAt.playerId === gameStore.seatId ? 'were' : 'was' }} knocked out
+          </p>
+        </template>
       </div>
     </ChainReveal>
 
@@ -156,6 +163,7 @@ import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import {
   atlasContinuations,
+  atlasHeadLetter,
   atlasKey,
   atlasLinkOverlap,
   atlasTailLetter,
@@ -332,6 +340,46 @@ const revealStats = computed<{ label: string; value: string }[]>(() => {
   }
 
   return stats
+})
+
+/** The ledger's stanzas: each chain walked, plus the dead end that ended it.
+ *  Every trap ends exactly one chain, so the trapped players in elimination
+ *  order map one-to-one onto the chain boundaries — the letter is simply the
+ *  dead head's tail. */
+const revealStanzas = computed<
+  { chain: ISOCountryCode[]; brokeAt?: { playerId: string; letter: string } }[]
+>(() => {
+  const current = state.value
+  if (!current?.finished) return []
+  const trapped = current.eliminated.filter(playerId => current.outcomes[playerId] === 'trapped')
+  return current.chains.map((walkedChain, index) => {
+    const playerId = trapped[index]
+    const head = walkedChain[walkedChain.length - 1]
+    return {
+      chain: walkedChain,
+      brokeAt:
+        playerId && head
+          ? { playerId, letter: atlasTailLetter(head).toUpperCase() }
+          : undefined,
+    }
+  })
+})
+
+/** Fate lines that name the fatal letter — derivable from the missed outs,
+ *  which all open with the letter the player died on. */
+const revealFates = computed<{ [playerId: string]: string } | undefined>(() => {
+  const current = state.value
+  if (!current?.finished) return undefined
+  const fates: { [playerId: string]: string } = {}
+  for (const playerId of current.eliminated) {
+    const outcome = current.outcomes[playerId]
+    const firstOut = current.missedOuts[playerId]?.[0]
+    if (!firstOut) continue
+    const letter = atlasHeadLetter(firstOut).toUpperCase()
+    if (outcome === 'wrong') fates[playerId] = `broke the chain on “${letter}”`
+    if (outcome === 'timeout') fates[playerId] = `ran out of clock on “${letter}”`
+  }
+  return fates
 })
 
 const { secondsOnClock } = useDeadlineClock(
@@ -553,5 +601,29 @@ footer {
   gap: 0.7rem;
   display: flex;
   flex-flow: column nowrap;
+}
+
+// The stanza break: the dead end gets said out loud where it happened, and
+// the next rail opens under a fresh-chain label rather than running on.
+.chain-break {
+  margin: 0;
+  gap: 0.8rem;
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  color: var(--hior-ange);
+
+  &::before,
+  &::after {
+    content: '';
+    height: 0;
+    flex: 1 1 1.2rem;
+    border-top: 0.1rem dashed flame(0.4);
+  }
+}
+
+.chain-start {
+  margin: 0;
+  font-size: 1.05rem;
 }
 </style>

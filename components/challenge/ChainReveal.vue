@@ -63,6 +63,9 @@ const props = defineProps<{
   wrongFate?: string
   /** Lead-in for the missed-outs teach; defaults to Border Chain's doors. */
   outsLead?: string
+  /** Per-player fate lines that outrank the generic copy — the atlas card
+   *  names the fatal letter ("broke the chain on “N”"). */
+  fates?: { [playerId: string]: string }
   /** Small facts strip under the headline — links walked, longest run… */
   stats?: { label: string; value: string }[]
 }>()
@@ -92,7 +95,8 @@ const rows = computed(() => {
     const outcome = props.state.outcomes[playerId]
     const trapper = props.state.trappedBy?.[playerId]
     const fate =
-      outcome === 'won'
+      props.fates?.[playerId] ??
+      (outcome === 'won'
         ? 'Last one standing'
         : outcome === 'trapped'
           ? trapper
@@ -100,7 +104,7 @@ const rows = computed(() => {
             : 'walked into a dead end'
           : outcome === 'timeout'
             ? 'ran out of clock'
-            : (props.wrongFate ?? 'stepped off the map')
+            : (props.wrongFate ?? 'stepped off the map'))
     const links = props.state.named[playerId]?.length ?? 0
     return {
       playerId,

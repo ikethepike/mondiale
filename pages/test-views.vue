@@ -604,11 +604,17 @@ const longAtlasGame = (finished: boolean): Game => {
     chain.push(next)
   }
   const order = [RIVAL, ME, THIRD]
+  // The settled cut breaks the walk into two stanzas at a pretend dead end,
+  // so the reveal card shows a trap boundary and a fresh chain.
+  const cut = Math.floor(chain.length * 0.55)
+  const chains = finished ? [chain.slice(0, cut), chain.slice(cut)] : [chain]
   const named: { [playerId: string]: ISOCountryCode[] } = {}
-  chain.slice(1).forEach((isoCode, index) => {
-    const playerId = order[index % order.length]
-    ;(named[playerId] ??= []).push(isoCode)
-  })
+  for (const walkedChain of chains) {
+    walkedChain.slice(1).forEach((isoCode, index) => {
+      const playerId = order[index % order.length]
+      ;(named[playerId] ??= []).push(isoCode)
+    })
+  }
   return mockGame('group-challenge', [
     groupRound({
       _type: 'atlas-challenge',
@@ -618,7 +624,7 @@ const longAtlasGame = (finished: boolean): Game => {
       overlaps: false,
       state: {
         ready: order,
-        chains: [chain],
+        chains,
         order,
         activeIndex: 1,
         turn: chain.length - 1,
@@ -626,8 +632,9 @@ const longAtlasGame = (finished: boolean): Game => {
         named,
         strikesLeft: {},
         eliminated: finished ? [ME, THIRD] : [],
-        outcomes: finished ? { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' } : {},
-        missedOuts: finished ? { [ME]: ['NA', 'NG', 'NL'] } : {},
+        outcomes: finished ? { [RIVAL]: 'won', [ME]: 'trapped', [THIRD]: 'timeout' } : {},
+        missedOuts: finished ? { [THIRD]: ['NA', 'NG', 'NL'] } : {},
+        trappedBy: finished ? { [ME]: RIVAL } : undefined,
         finished,
       },
     }),
