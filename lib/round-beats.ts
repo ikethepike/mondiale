@@ -222,6 +222,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
           Math.ceil(EMPIRE_INTERBEAT_HOLD_MS / 1000)
         : undefined,
   },
+  atlas: engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'border-chain': engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'heritage-hunt': engine(),
   timeline: engine(),

@@ -39,11 +39,12 @@ import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge
 /**
  * ROUND_BEATS is a Record over RoundChallengeKind, so a NEW kind without a
  * beat spec is a compile error. These tests guard the runtime half: every
- * dealable kind resolves sane beats, and the five engines keep their
+ * dealable kind resolves sane beats, and the six engines keep their
  * ownership — a dealer must never find a kind the clocks disagree about.
  */
 describe('round beats', () => {
   const ENGINE_KINDS: RoundChallengeKind[] = [
+    'atlas',
     'border-chain',
     'heritage-hunt',
     'timeline',

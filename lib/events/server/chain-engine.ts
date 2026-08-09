@@ -73,12 +73,7 @@ export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
    *  goes through `handleMove`, which guards and validates first. */
   applyMove(ctx: ChainContext, game: Game, challenge: C, isoCode: ISOCountryCode): Promise<void>
   /** A wrong answer or an expired clock — burn a strike or eliminate. */
-  resolveMiss(
-    ctx: ChainContext,
-    game: Game,
-    challenge: C,
-    kind: 'wrong' | 'timeout'
-  ): Promise<void>
+  resolveMiss(ctx: ChainContext, game: Game, challenge: C, kind: 'wrong' | 'timeout'): Promise<void>
   /** Re-arm whatever follow-up the live round is waiting on (rejoin recovery). */
   rearm(ctx: ChainContext, game: Game, options?: RearmOptions): void
 }
