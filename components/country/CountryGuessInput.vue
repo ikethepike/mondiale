@@ -83,6 +83,12 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  /** Suggestions stay hidden until this many characters are typed — easy-mode
+   *  atlas (3): you must recall how a name STARTS, the list saves the typing. */
+  suggestFrom: {
+    type: Number,
+    default: 0,
+  },
 })
 
 const emit = defineEmits<{ guess: [country: Country]; miss: [input: string] }>()
@@ -101,6 +107,7 @@ const benched = computed(() => new Set(gameStore.game ? excludedMicroNations(gam
 
 const suggestions = computed(() => {
   if (props.disabled || !props.suggest) return []
+  if (query.value.trim().length < props.suggestFrom) return []
   return searchCountriesByName(query.value, 6, new Set([...props.excluded, ...benched.value]))
 })
 

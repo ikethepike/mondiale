@@ -184,7 +184,13 @@ the same `atlasContinuations` both clients use as a courtesy check.
 **Console:** typed with **no suggestion dropdown** — pure recall.
 `CountryGuessInput`'s `suggest: false` mode resolves whole names (exact, then
 unambiguous fuzzy via `resolveTypedCountry`), and the gate footer skips
-`.suggest-berth` via the dispatch table's `suggestions: false` flag.
+`.suggest-berth` via the dispatch table's `suggestions: false` flag. Easy mode
+alone gets the dropdown back from the third typed character
+(`ATLAS_EASY_SUGGEST_FROM`) — you still recall how a name starts, the list
+only saves the typing — and the footer re-earns its berth there
+(`easySuggestions` in the dispatch table). Atlas always plays the WORLD pool:
+the letter graph is healthy in no region but Asia (Europe averages 1.7 moves a
+turn with a five-link ceiling), so region boards deal it with world answers.
 
 **Stakes:** gate pot 4, buzz-scaled; one buyable hint ("name one that works",
 picked to never hand out a dead end). **On the board:** the lexicon tile's

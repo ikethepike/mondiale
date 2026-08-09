@@ -118,9 +118,12 @@
       </div>
     </ChainReveal>
 
-    <!-- Berth never: the console types with no dropdown, so there is no
-         downward suggestion list to reserve for. -->
-    <footer ref="consoleFooter">
+    <!-- Berth only on easy, where the console's dropdown returns — below
+         easy there is no downward suggestion list to reserve for. -->
+    <footer
+      ref="consoleFooter"
+      :class="{ 'suggest-berth': isEasyGame && myTurn && !finished && !briefing }"
+    >
       <!-- The live rail stands down at the reveal — the card carries the
            full story (every chain, ties and all) from there. -->
       <AtlasChainRail
@@ -135,9 +138,12 @@
            turns the header's turn-line chip carries the countdown. -->
       <div v-if="myTurn && !finished && !briefing" class="guess-box">
         <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
+          <!-- Pure recall — except on easy, where suggestions return from the
+               third typed character (lib/atlas-chain's one constant). -->
           <CountryGuessInput
             ref="guessInput"
-            :suggest="false"
+            :suggest="isEasyGame"
+            :suggest-from="ATLAS_EASY_SUGGEST_FROM"
             :disabled="pending"
             :excluded="walked"
             :placeholder="`Starts with ${nextLetter.toUpperCase()}…`"
@@ -162,6 +168,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import {
+  ATLAS_EASY_SUGGEST_FROM,
   atlasContinuations,
   atlasHeadLetter,
   atlasKey,
@@ -227,6 +234,7 @@ const myTurn = computed(() => !finished.value && !trap.value && activeId.value =
 const walked = computed(() => state.value?.chains.flat() ?? [])
 
 const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+const isEasyGame = computed(() => gameStore.game?.difficulty === 'easy')
 const rule = computed(() => ({ overlaps: !!challenge.value?.overlaps }))
 
 const head = computed(() => chain.value[chain.value.length - 1])

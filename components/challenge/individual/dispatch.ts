@@ -64,6 +64,9 @@ export interface GateView {
   /** false = the console types with NO dropdown (pure recall), so the footer
    *  skips `.suggest-berth` too — there is no downward list to reserve for. */
   suggestions?: boolean
+  /** With `suggestions: false`: easy mode alone gets the dropdown back (from
+   *  the third typed character), so the footer re-earns its berth there. */
+  easySuggestions?: boolean
   /** Teleports a wide-screen subject into the shell's side stage. */
   sideStage?: boolean
 }
@@ -171,6 +174,7 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     component: GateAtlas,
     typedConsole: true,
     suggestions: false,
+    easySuggestions: true,
     reveal: AtlasReveal,
     wideReveal: true,
     revealProps: ({ challenge, atlasChain }) =>

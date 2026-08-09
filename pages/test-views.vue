@@ -3063,6 +3063,52 @@ const scenarios: Scenario[] = [
     build: () => longAtlasGame(true),
   },
   {
+    id: 'individual-atlas-easy',
+    label: 'Individual: atlas (easy — suggestions from 3 letters)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const game = individualGame({
+        id: 'lexicon',
+        variant: 'atlas',
+        country: 'NP',
+        atlas: { seed: 'NP', target: 3, overlaps: false },
+      })
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
+    id: 'atlas-easy',
+    label: 'Atlas (easy — 20s turns, ringed answers, suggestions)',
+    component: ViewAtlas,
+    build: () => {
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'atlas-challenge',
+          turnSeconds: 20,
+          maximumPoints: MAXIMUM_POINTS,
+          strikes: 1,
+          overlaps: false,
+          state: {
+            ready: [RIVAL, ME, THIRD],
+            chains: [['NP', 'LA', 'SE']],
+            order: [RIVAL, ME, THIRD],
+            activeIndex: 1,
+            turn: 2,
+            deadline: Date.now() + 20000,
+            named: { [RIVAL]: ['LA'], [THIRD]: ['SE'] },
+            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+            eliminated: [],
+            outcomes: {},
+            missedOuts: {},
+          },
+        }),
+      ])
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
     id: 'atlas',
     label: 'Atlas (your turn, letter ties)',
     component: ViewAtlas,

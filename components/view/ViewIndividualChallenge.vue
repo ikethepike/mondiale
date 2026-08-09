@@ -42,7 +42,11 @@
       v-show="!status"
       id="gate-footer"
       ref="gateFooter"
-      :class="{ 'suggest-berth': GATE_VIEWS[variant].suggestions !== false }"
+      :class="{
+        'suggest-berth':
+          GATE_VIEWS[variant].suggestions !== false ||
+          (GATE_VIEWS[variant].easySuggestions && isEasy),
+      }"
     />
   </div>
 </template>
@@ -79,6 +83,7 @@ const {
   country,
   status,
   isHard,
+  isEasy,
   submittedISOCode,
   submittedCountry,
   gateSeq,

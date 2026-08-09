@@ -136,6 +136,11 @@ export const hasAtlasChain = (
 export const ATLAS_GATE_SEED_OPTIONS = 3
 export const ATLAS_TABLE_SEED_OPTIONS = 5
 
+/** Easy mode's console assist, both formats: the suggestion dropdown returns
+ *  once this many characters are typed — you still recall how a name STARTS,
+ *  the list only saves the typing. Below easy the console stays pure recall. */
+export const ATLAS_EASY_SUGGEST_FROM = 3
+
 /**
  * A seed whose tail letter offers real play under the PLAIN rule (the
  * conservative guard — overlaps only widen it). Atlas plays on the world

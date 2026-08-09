@@ -37,9 +37,13 @@
 
     <Teleport v-if="footerReady" to="#gate-footer">
       <div class="guess-box">
+        <!-- Pure recall — except on easy, where the dropdown returns from the
+             third typed character: you still recall how a name STARTS, the
+             list only saves the typing. -->
         <CountryGuessInput
           ref="guessInput"
-          :suggest="false"
+          :suggest="isEasy"
+          :suggest-from="ATLAS_EASY_SUGGEST_FROM"
           :excluded="atlasChain"
           :placeholder="`Starts with ${letter}…`"
           @guess="onGuess"
@@ -55,6 +59,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import {
+  ATLAS_EASY_SUGGEST_FROM,
   atlasChainCredit,
   atlasTailLetter,
   isAtlasLink,
@@ -72,7 +77,7 @@ import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, missNote, atlasChain, submitAnswer, giveUp } = useGateChallenge()
+const { status, missNote, atlasChain, isEasy, submitAnswer, giveUp } = useGateChallenge()
 const { gameStore } = useClientEvents()
 
 const rule = computed(() => ({ overlaps: !!props.challenge.atlas?.overlaps }))
