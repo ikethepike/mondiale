@@ -406,7 +406,7 @@ export interface ChainTurnState<Trap = unknown> {
   finished?: boolean
 }
 
-export interface BorderChainState extends ChainTurnState<BorderChainTrap> {}
+export type BorderChainState = ChainTurnState<BorderChainTrap>
 
 /**
  * Atlas — Border Chain's letter-rule sibling (lib/atlas-chain): name a

@@ -1,28 +1,31 @@
 <template>
   <TransitionGroup tag="ol" name="chain" class="atlas-rail country-chip-list">
-    <template v-for="(isoCode, index) in chain">
-      <li
+    <!-- One cell per link: a new name lands TOGETHER with the letter that
+         ties it to the chain. -->
+    <li v-for="(isoCode, index) in chain" :key="isoCode" class="rail-cell">
+      <span
         v-if="index > 0"
-        :key="`tie-${isoCode}`"
         class="letter-tie"
         :class="{ deep: tieOverlap(index) > 1 }"
         aria-hidden="true"
       >
         {{ tieFragment(index) }}
         <sup v-if="tieOverlap(index) > 1" class="bonus">+{{ tieOverlap(index) }}</sup>
-      </li>
+      </span>
       <CountryChip
-        :key="isoCode"
+        tag="span"
         class="linked map-caption"
         :class="{ head: !finished && index === chain.length - 1 }"
         :style="{ '--stop-color': walkColor(index, chain.length) }"
         :country="getCountry(isoCode)"
       />
-    </template>
-    <li v-if="nextLetter && !finished" key="ghost" class="ghost-chip map-caption">
-      <span v-if="overlaps && ghostLead" class="lead">{{ ghostLead }}</span>
-      <span class="letter">{{ nextLetter.toUpperCase() }}</span>
-      <span class="rest">…</span>
+    </li>
+    <li v-if="nextLetter && !finished" key="ghost" class="rail-cell">
+      <span class="ghost-chip map-caption">
+        <span v-if="overlaps && ghostLead" class="lead">{{ ghostLead }}</span>
+        <span class="letter">{{ nextLetter.toUpperCase() }}</span>
+        <span class="rest">…</span>
+      </span>
     </li>
   </TransitionGroup>
 </template>
@@ -73,6 +76,12 @@ const ghostLead = computed(() => {
 
 .atlas-rail {
   row-gap: 0.8rem;
+}
+
+.rail-cell {
+  gap: 0.6rem;
+  display: flex;
+  align-items: center;
 }
 
 // Chip and list recipes come from templates/_country-chip.scss; only the

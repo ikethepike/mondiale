@@ -83,7 +83,8 @@ export type ClientEventData =
       gateTile?: number
     }
   | {
-      /** Border Chain: the active player extends the chain. `turn` echoes the
+      /** Turn-chain rounds (Border Chain, Atlas): the active player extends
+     *  the chain. `turn` echoes the
        *  state's turn counter so a retried/duplicated send can never land as a
        *  second move. */
       event: 'submit-chain-move'
@@ -153,7 +154,7 @@ export type ClientEventData =
       event: 'unique-ready'
     }
   | {
-      /** Border Chain: a player dismissed their briefing card. The first shot
+      /** Turn-chain rounds: a player dismissed their briefing card. The first shot
        *  clock starts when everyone has (or the briefing cap forces it). */
       event: 'chain-ready'
     }
@@ -300,7 +301,7 @@ export type ServerEventData =
   | { event: 'update'; game: Game }
   | { event: 'configuration-updated'; game: Game }
   | { event: 'individual-challenge-checked'; game: Game }
-  /** Border Chain: a turn advanced (move, strike, elimination, fresh chain,
+  /** Turn-chain rounds (Border Chain, Atlas): a turn advanced (move, strike, elimination, fresh chain,
    *  or finish) — the whole room re-renders the chain from the snapshot. */
   | { event: 'chain-updated'; game: Game }
   /** Heritage Hunt: a beat resolved or advanced — whole-table state. */

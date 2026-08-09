@@ -7,8 +7,9 @@ a night sweep you type against (sunset blitz). The individual gates have not kep
 
 This document diagnoses why, then proposes twenty modes that each introduce a **verb or a
 stakes shape the gate does not currently have**, grounded in data the repo already ships.
-Two of them — **Errata** and **Rosetta** — are built; the other eighteen are on the record
-here rather than lost in a chat log.
+Two of them — **Errata** and **Rosetta** — are built, joined later by **Atlas** (the name
+chain, from a second ideation round — built in BOTH formats); the other eighteen are on
+the record here rather than lost in a chat log.
 
 ---
 
@@ -147,6 +148,48 @@ The tile is a category, not this mode — see below. Rosetta is its only tenant 
 promotion costs it nothing: the capital, currency, leader and landmark tiles still deal
 analogies in their own register (`ROSETTA_RELATIONS_BY_ACCESSOR`), while the lexicon tile draws
 from all of them.
+
+### 3. Atlas — the country name chain
+
+> **Nepal → Laos → Sweden → …**
+
+The classic circle game, from a later ideation round (not among the twenty
+below): each country's name must start with the last letter of the one before.
+The gate is a solo sprint — bank `ATLAS_TARGET_LINKS` links (3/4/6) in 35s —
+and the same rule seats a whole table as the **atlas group round**, riding
+Border Chain's turn engine (extracted into `chain-engine.ts` for the purpose:
+elimination turns, strikes, the dead-end trap — here, a sealed letter).
+
+**Verb:** generative chaining under a clock. Every other typed gate has one
+fixed answer; this one has thousands of valid lines and the player authors one.
+
+**Data:** none — `lib/atlas-chain.ts` runs entirely on country names via
+`normalizeCountryName` (space-stripped, so overlaps cross word boundaries).
+The letter graph has no dead letters, but four are near-dead (`-o` → Oman,
+`-y` → Yemen, `-q` → Qatar, `-r` → 3), which is where the trap play lives:
+burn Qatar, then play Iraq.
+
+**Hard's overlap rule:** any shared ending chains — Ne**pal** → **Pal**estine
+(3) as well as Nepa**l** → **L**aos (1). A superset of the base rule, so it is
+*rewarded*, not just allowed: the gate pays each junction its overlap length
+(`atlasChainCredit`, always derived from the chain, never stored). The group
+round on hard is sheer elimination instead — placement is everything
+(`scoreChainRound` with the placement share at 1) — so overlaps there pay in
+survival: escape space and sharper traps.
+
+**Grading:** client-trust (higher-lower's model) on the gate — the chain can't
+ride the one-ISO wire; the group round is server-validated per move through
+the same `atlasContinuations` both clients use as a courtesy check.
+
+**Console:** typed with **no suggestion dropdown** — pure recall.
+`CountryGuessInput`'s `suggest: false` mode resolves whole names (exact, then
+unambiguous fuzzy via `resolveTypedCountry`), and the gate footer skips
+`.suggest-berth` via the dispatch table's `suggestions: false` flag.
+
+**Stakes:** gate pot 4, buzz-scaled; one buyable hint ("name one that works",
+picked to never hand out a dead end). **On the board:** the lexicon tile's
+second tenant, splitting the roll with Rosetta, plus a slot in the `isoCode`
+ladder.
 
 ---
 
