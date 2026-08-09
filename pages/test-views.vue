@@ -582,6 +582,58 @@ const trendGallery = (detail: 'spark' | 'chart') =>
 const TrendGallery = trendGallery('spark')
 const TrendChartGallery = trendGallery('chart')
 
+/** A marathon chain grown greedily through the real letter rule — the same
+ *  `atlasContinuations` the round grades with, so every tie is legit. */
+const longAtlasGame = (finished: boolean): Game => {
+  const chain: ISOCountryCode[] = ['NP']
+  const pool = [...ISOCountryCodes]
+  while (chain.length < 40) {
+    const moves = atlasContinuations(chain[chain.length - 1], chain, pool)
+    if (!moves.length) break
+    // Max-degree greedy: take the move that leaves the most onward options,
+    // so the walk skirts the drained letters and actually runs long.
+    let next = moves[0]
+    let best = -1
+    for (const candidate of moves) {
+      const onward = atlasContinuations(candidate, [...chain, candidate], pool).length
+      if (onward > best) {
+        best = onward
+        next = candidate
+      }
+    }
+    chain.push(next)
+  }
+  const order = [RIVAL, ME, THIRD]
+  const named: { [playerId: string]: ISOCountryCode[] } = {}
+  chain.slice(1).forEach((isoCode, index) => {
+    const playerId = order[index % order.length]
+    ;(named[playerId] ??= []).push(isoCode)
+  })
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'atlas-challenge',
+      turnSeconds: 14,
+      maximumPoints: MAXIMUM_POINTS,
+      strikes: 0,
+      overlaps: false,
+      state: {
+        ready: order,
+        chains: [chain],
+        order,
+        activeIndex: 1,
+        turn: chain.length - 1,
+        deadline: finished ? 0 : Date.now() + 14000,
+        named,
+        strikesLeft: {},
+        eliminated: finished ? [ME, THIRD] : [],
+        outcomes: finished ? { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' } : {},
+        missedOuts: finished ? { [ME]: ['NA', 'NG', 'NL'] } : {},
+        finished,
+      },
+    }),
+  ])
+}
+
 const scenarios: Scenario[] = [
   {
     id: 'ranking',
@@ -2990,6 +3042,18 @@ const scenarios: Scenario[] = [
         country: 'MX',
         atlas: { seed: 'MX', target: 6, overlaps: true },
       }),
+  },
+  {
+    id: 'atlas-long',
+    label: 'Atlas (marathon chain — folded live rail)',
+    component: ViewAtlas,
+    build: () => longAtlasGame(false),
+  },
+  {
+    id: 'atlas-long-reveal',
+    label: 'Atlas (marathon chain — reveal card scroll)',
+    component: ViewAtlas,
+    build: () => longAtlasGame(true),
   },
   {
     id: 'atlas',

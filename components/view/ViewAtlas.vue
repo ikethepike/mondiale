@@ -94,17 +94,35 @@
       :player-id="gameStore.seatId"
       :attributions="promptSources"
       wrong-fate="broke the chain"
-    />
+      outs-lead="You still had:"
+      :stats="revealStats"
+    >
+      <!-- The round's story: every chain walked, ties and all — a trap's
+           retired chain reads as its own stanza. -->
+      <div class="reveal-chains">
+        <AtlasChainRail
+          v-for="(walkedChain, index) in state!.chains"
+          :key="index"
+          :chain="walkedChain"
+          :overlaps="challenge.overlaps"
+          finished
+          compact
+        />
+      </div>
+    </ChainReveal>
 
     <!-- Berth never: the console types with no dropdown, so there is no
          downward suggestion list to reserve for. -->
     <footer ref="consoleFooter">
+      <!-- The live rail stands down at the reveal — the card carries the
+           full story (every chain, ties and all) from there. -->
       <AtlasChainRail
+        v-if="!finished"
         class="route"
         :chain="chain"
         :overlaps="challenge.overlaps"
-        :next-letter="finished || briefing ? undefined : nextLetter"
-        :finished="finished"
+        :next-letter="briefing ? undefined : nextLetter"
+        :tail="LIVE_RAIL_TAIL"
       />
       <!-- On your turn the shot clock lives inside the guess console; between
            turns the header's turn-line chip carries the countdown. -->
@@ -138,6 +156,7 @@ import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import {
   atlasContinuations,
+  atlasKey,
   atlasLinkOverlap,
   atlasTailLetter,
   isAtlasLink,
@@ -154,6 +173,10 @@ import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const promptSources = datasetAttribution('countries')
+
+/** The live rail folds a marathon chain to its last links — only the head is
+ *  playable, and the reveal card carries the full ledger. */
+const LIVE_RAIL_TAIL = 10
 
 // The whole world stays visible — a letters game is played over the map's
 // names, and the walked path needs it for context.
@@ -248,6 +271,67 @@ const turnLabel = computed(() => {
   const needs = nextLetter.value ? ` — needs “${nextLetter.value.toUpperCase()}”` : ''
   if (myTurn.value) return `Your move${needs}`
   return `${playerDisplayName(activePlayer.value)} is on the clock${needs}`
+})
+
+/** The settled round's facts strip. Everything derives from the state the
+ *  reveal already holds — links from the chains, runs from `named`, and the
+ *  deepest overlap straight from `atlasLinkOverlap`, so the card can never
+ *  disagree with the rule that graded the round. */
+const revealStats = computed<{ label: string; value: string }[]>(() => {
+  const current = state.value
+  if (!current?.finished) return []
+  const stats: { label: string; value: string }[] = []
+
+  const links = current.chains.reduce((total, walkedChain) => total + walkedChain.length - 1, 0)
+  stats.push({ label: 'Links', value: String(links) })
+  if (current.chains.length > 1) {
+    stats.push({ label: 'Chains', value: String(current.chains.length) })
+  }
+
+  // Longest run: consecutive links by one player — only possible while the
+  // rest of the table burns strikes and clocks, which is what makes it a stat.
+  const moverOf = (isoCode: ISOCountryCode) =>
+    Object.keys(current.named).find(playerId => current.named[playerId]?.includes(isoCode))
+  let bestRun = 0
+  let bestRunner: string | undefined
+  for (const walkedChain of current.chains) {
+    let run = 0
+    let previous: string | undefined
+    for (let index = 1; index < walkedChain.length; index++) {
+      const mover = moverOf(walkedChain[index])
+      run = mover && mover === previous ? run + 1 : 1
+      previous = mover
+      if (mover && run > bestRun) {
+        bestRun = run
+        bestRunner = mover
+      }
+    }
+  }
+  if (bestRunner && bestRun >= 2) {
+    stats.push({ label: 'Longest run', value: `${seatName(bestRunner)} · ${bestRun}` })
+  }
+
+  if (challenge.value?.overlaps) {
+    let deepest = 1
+    let deepestLink: [ISOCountryCode, ISOCountryCode] | undefined
+    for (const walkedChain of current.chains) {
+      for (let index = 1; index < walkedChain.length; index++) {
+        const overlap = atlasLinkOverlap(walkedChain[index - 1], walkedChain[index])
+        if (overlap > deepest) {
+          deepest = overlap
+          deepestLink = [walkedChain[index - 1], walkedChain[index]]
+        }
+      }
+    }
+    if (deepestLink) {
+      stats.push({
+        label: 'Deepest link',
+        value: `${atlasKey(deepestLink[1]).slice(0, deepest).toUpperCase()} · ${countryName(deepestLink[1])}`,
+      })
+    }
+  }
+
+  return stats
 })
 
 const { secondsOnClock } = useDeadlineClock(
@@ -462,7 +546,12 @@ footer {
 
 .reveal {
   z-index: 2;
-  margin: 0 auto;
-  max-width: min(34rem, calc(100% - 2.4rem));
+  max-width: min(46rem, calc(100% - 2.4rem));
+}
+
+.reveal-chains {
+  gap: 0.7rem;
+  display: flex;
+  flex-flow: column nowrap;
 }
 </style>

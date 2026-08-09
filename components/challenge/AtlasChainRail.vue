@@ -1,23 +1,31 @@
 <template>
-  <TransitionGroup tag="ol" name="chain" class="atlas-rail country-chip-list">
+  <TransitionGroup tag="ol" name="chain" class="atlas-rail country-chip-list" :class="{ compact }">
+    <!-- A marathon chain shows only its live tail here — the head is what the
+         next move plays off; the reveal card tells the whole story. -->
+    <li v-if="hiddenCount" key="earlier" class="rail-cell">
+      <span class="earlier map-caption">+ {{ hiddenCount }} earlier</span>
+    </li>
     <!-- One cell per link: a new name lands TOGETHER with the letter that
          ties it to the chain. -->
-    <li v-for="(isoCode, index) in chain" :key="isoCode" class="rail-cell">
+    <li v-for="(isoCode, index) in shownChain" :key="isoCode" class="rail-cell">
       <span
-        v-if="index > 0"
+        v-if="hiddenCount + index > 0"
         class="letter-tie"
-        :class="{ deep: tieOverlap(index) > 1 }"
+        :class="{ deep: tieOverlap(hiddenCount + index) > 1 }"
         aria-hidden="true"
       >
-        {{ tieFragment(index) }}
-        <sup v-if="tieOverlap(index) > 1" class="bonus">+{{ tieOverlap(index) }}</sup>
+        {{ tieFragment(hiddenCount + index) }}
+        <sup v-if="tieOverlap(hiddenCount + index) > 1" class="bonus">
+          +{{ tieOverlap(hiddenCount + index) }}
+        </sup>
       </span>
       <CountryChip
         tag="span"
         class="linked map-caption"
-        :class="{ head: !finished && index === chain.length - 1 }"
-        :style="{ '--stop-color': walkColor(index, chain.length) }"
+        :class="{ head: !finished && hiddenCount + index === chain.length - 1 }"
+        :style="{ '--stop-color': walkColor(hiddenCount + index, chain.length) }"
         :country="getCountry(isoCode)"
+        :compact="compact"
       />
     </li>
     <li v-if="nextLetter && !finished" key="ghost" class="rail-cell">
@@ -55,7 +63,17 @@ const props = defineProps<{
   nextLetter?: string
   /** A settled rail (reveals): no live head, no ghost chip. */
   finished?: boolean
+  /** Card-sized: compact chips and quieter ties, for reveal ledgers. */
+  compact?: boolean
+  /** Show only the last N links (plus a "+N earlier" pill) — the live rail's
+   *  guard against marathon chains eating the stage. Unset shows everything. */
+  tail?: number
 }>()
+
+const hiddenCount = computed(() =>
+  props.tail && props.chain.length > props.tail ? props.chain.length - props.tail : 0
+)
+const shownChain = computed(() => props.chain.slice(hiddenCount.value))
 
 const tieOverlap = (index: number): number => {
   const overlap = atlasLinkOverlap(props.chain[index - 1], props.chain[index])
@@ -82,6 +100,27 @@ const ghostLead = computed(() => {
   gap: 0.6rem;
   display: flex;
   align-items: center;
+}
+
+// The reveal-card cut: chips step down (CountryChip's own compact), the ties
+// follow, and the rail lines up left like the card's other rows.
+.compact {
+  row-gap: 0.5rem;
+  justify-content: flex-start;
+
+  .rail-cell {
+    gap: 0.4rem;
+  }
+
+  .letter-tie {
+    height: 1.9rem;
+    min-width: 1.9rem;
+    font-size: 1.05rem;
+
+    &.deep {
+      font-size: 1.2rem;
+    }
+  }
 }
 
 // Chip and list recipes come from templates/_country-chip.scss; only the
@@ -123,6 +162,18 @@ const ghostLead = computed(() => {
 .bonus {
   font-size: 0.7em;
   margin-left: 0.3rem;
+}
+
+// The folded prologue of a marathon chain — a count, not a control; the
+// reveal card carries the full ledger.
+.earlier {
+  opacity: 0.65;
+  font-size: 1.2rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 1.2rem;
+  border: 0.1rem dashed ink(0.35);
+  background: milk(0.6);
+  white-space: nowrap;
 }
 
 // The live question: a chip-shaped hole waiting for the next name.
