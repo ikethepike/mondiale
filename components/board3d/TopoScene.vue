@@ -39,10 +39,23 @@ import {
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
 import { BOARD_COLORS } from '~~/lib/board3d/colors'
 import type { TileTransform } from '~~/lib/board3d/path'
-import { type BoardCamera, createBoardCamera } from '~~/lib/board3d/use-board-camera'
+import {
+  ALERT_TILES,
+  type BoardCamera,
+  createBoardCamera,
+  FRAME_TILES,
+  type FrameOptions,
+  USER_IDLE_RESUME_MS,
+} from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { ARRIVAL_RIPPLE_MS, MOVE_INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beats'
+import {
+  ARRIVAL_RIPPLE_MS,
+  MOVE_INTERSTITIAL_TOTAL_MS,
+  WALK_FRAME_LEAD_MS,
+  WALK_FRAME_MS,
+  WALK_RESUME_FRAME_MS,
+} from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
@@ -69,7 +82,7 @@ const props = defineProps({
 })
 
 // Allocated per instance: the board camera mutates `camera.position` in place
-// (see use-board-camera's flyTo), so this vector must not be shared across
+// (see use-board-camera's frameOn), so this vector must not be shared across
 // mounts or the starting framing would drift.
 const cameraPosition = shallowRef(new Vector3(0, 105, 88))
 // Safe to share — the directional light is never animated.
@@ -94,7 +107,6 @@ const schedule = (callback: () => void, delay: number) => {
 }
 let mover: PawnMover | undefined
 let boardCamera: BoardCamera | undefined
-let hasFlownIn = false
 
 const tileFor = (index: number): TileTransform | undefined => board.value?.transforms[index]
 
@@ -107,10 +119,9 @@ const cameraTargetId = computed(() => gameStore.board.spectateTargetId ?? props.
 // The booth (a latecomer watcher or a finisher in the spectate view) has no
 // own pawn to release the camera to — the followed pawn IS home, so the
 // auto-release below is skipped and a manual grab only holds the follow-cam
-// off temporarily instead of unfollowing for good.
+// off temporarily instead of unfollowing for good. The hold itself belongs to
+// the rig (one mechanism, two lengths — see `resumeDelayMs`).
 const boothMode = computed(() => gameStore.isSpectator || gameStore.spectating)
-let grabHeldUntil = 0
-const cameraHeld = () => Date.now() < grabHeldUntil
 
 /**
  * A pawn blocked by an individual challenge sits at endTile - 1 in server
@@ -180,7 +191,7 @@ const playChallengeHit = (playerId: string, tile: TileTransform) => {
   triggerRipple(tile, 'alert')
   knockPawn(playerId)
   if (playerId === cameraTargetId.value) {
-    boardCamera?.flyTo(tile.position, (board.value?.spacing ?? 8) * 3.2)
+    boardCamera?.frameOn(tile.position, { tiles: ALERT_TILES })
   }
 }
 
@@ -507,7 +518,7 @@ const rebuild = () => {
       }
 
       triggerRipple(tile, 'success')
-      if (playerId === cameraTargetId.value && !cameraHeld()) boardCamera?.follow(tile.position)
+      if (playerId === cameraTargetId.value) boardCamera?.follow(tile.position)
     },
   })
 
@@ -554,6 +565,97 @@ watch(
   }
 )
 
+// --- The camera's framing beat ---------------------------------------------
+// The one shot that RE-FRAMES: `follow` only translates the rig, so without
+// this nothing ever resets the distance and a walk plays out at whatever shot
+// the camera has held since the game began (the persistent stage means that
+// is one shot for the whole game).
+
+/** Whether this camera has framed anything yet on this stage. */
+let hasFramed = false
+/** The announce this camera has already framed. */
+let framedAnnounce: string | undefined
+
+/**
+ * Subject + walk generation + LEGS LEFT: stable across a walk's steps (a
+ * moveset only changes at a gate boundary) and different for every announce,
+ * so the sync can re-run on the show pass without replaying a beat and can
+ * never re-fire mid-walk. `currentPosition` must stay OUT of it — a gauntlet
+ * knockout descends with an empty moveset and would re-frame on every step.
+ */
+const announceTokenFor = (subject: Player | undefined) =>
+  subject?.phase === 'moving'
+    ? `${subject.id}:${subject.walkSeq ?? 0}:${subject.moves.length}`
+    : undefined
+
+const subjectTile = () => {
+  const subject = props.game.players[cameraTargetId.value]
+  return subject ? tileFor(displayPositionFor(subject)) : undefined
+}
+
+const followSubject = () => {
+  const tile = subjectTile()
+  if (tile) boardCamera?.follow(tile.position)
+}
+
+/** The framing shot, latched to the announce it belongs to so a director cut
+ *  and the walk sync can never sweep twice for the same beat. */
+const frameSubject = (options: FrameOptions & { delayMs?: number }) => {
+  if (!boardCamera || !subjectTile()) return false
+
+  hasFramed = true
+  framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
+
+  const sweep = () => {
+    const tile = subjectTile()
+    if (tile) boardCamera?.frameOn(tile.position, options)
+  }
+  // The lead re-checks `active`: a hide inside it must not sweep off screen.
+  if (options.delayMs) schedule(() => props.active && sweep(), options.delayMs)
+  else sweep()
+  return true
+}
+
+/**
+ * A named sync, not just a watcher body, for the same reason as the stuck and
+ * blocked beats: a hidden stage must not CONSUME the shot — it holds without
+ * latching and the show pass re-runs this, so the sweep plays where it can be
+ * seen. Timed off the server's announce leads (round-beats): a turn-opening
+ * walk holds the overview a breath and sweeps in behind the "On the move!"
+ * beat, a between-gates resume re-frames inside the short resume lead.
+ */
+const syncCameraFraming = () => {
+  if (!props.active || !boardCamera) return false
+
+  const subject = props.game.players[cameraTargetId.value]
+  // First time the board is actually ON SCREEN: sweep off the entry overview.
+  if (!hasFramed) {
+    return frameSubject({
+      tiles: FRAME_TILES,
+      durationMs: WALK_FRAME_MS,
+      delayMs: WALK_FRAME_LEAD_MS,
+    })
+  }
+
+  const token = announceTokenFor(subject)
+  if (!token || token === framedAnnounce) return false
+
+  return subject?.walkIntro
+    ? frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS, delayMs: WALK_FRAME_LEAD_MS })
+    : frameSubject({ tiles: FRAME_TILES, durationMs: WALK_RESUME_FRAME_MS })
+}
+
+watch(
+  () => {
+    const subject = props.game.players[cameraTargetId.value]
+    return subject
+      ? `${subject.id}:${subject.phase}:${subject.walkSeq ?? 0}:${subject.moves.length}`
+      : ''
+  },
+  () => syncCameraFraming(),
+  { immediate: true }
+)
+
 // Server-driven movement: one socket update per 500ms step. String signature
 // (like the sibling watchers) so the callback runs only when a position
 // actually changes — an object getter re-fires on every reactive touch of the
@@ -581,7 +683,7 @@ watch(
       const before = previous.get(playerId)
       if (before === position) continue
       mover?.moveTo(playerId, position)
-      if (playerId === cameraTargetId.value && !cameraHeld()) {
+      if (playerId === cameraTargetId.value) {
         const tile = tileFor(position)
         if (tile) boardCamera?.follow(tile.position)
       }
@@ -611,11 +713,9 @@ watch(
       syncBlockedBeats()
       highlightTween?.play()
       stuckTweens.forEach(tween => tween.play())
-      if (hasFlownIn && !cameraHeld()) {
-        const focus = props.game.players[cameraTargetId.value]
-        const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
-        if (tile) boardCamera?.follow(tile.position)
-      }
+      // A framing shot owed to a walk announced behind a challenge view plays
+      // HERE, on screen; otherwise just re-aim on the subject.
+      if (!syncCameraFraming()) followSubject()
     } else {
       highlightTween?.pause()
       stuckTweens.forEach(tween => tween.pause())
@@ -672,12 +772,15 @@ const SPECTATE_RELEASE_PHASES = ['movement-summary', 'victory']
 
 watch(
   () => gameStore.board.spectateTargetId,
-  () => {
-    // An explicit follow change (pin, director cut) overrides a grab hold
-    grabHeldUntil = 0
-    const focus = props.game.players[cameraTargetId.value]
-    const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
-    if (tile) boardCamera?.flyTo(tile.position, (board.value?.spacing ?? 8) * 5.5)
+  targetId => {
+    // A SET is an explicit act (a pin, a director cut) and outranks a grab —
+    // it takes the camera back and reclaims automatic framing. A CLEAR must
+    // not: a racer's drag clears the target from inside onUserGrab, which
+    // re-enters this watcher, and taking over there would wrestle the camera
+    // out of the hand still dragging it. That clear rides the rig's own hold
+    // and lands as a re-aim when it lifts.
+    if (targetId) boardCamera?.takeOver()
+    frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS })
   }
 )
 
@@ -814,7 +917,7 @@ const syncBlockedBeats = () => {
       triggerRipple(gateTile, 'alert')
       knockPawn(beatPlayerId)
       if (beatPlayerId === cameraTargetId.value) {
-        boardCamera?.flyTo(gateTile.position, (board.value?.spacing ?? 8) * 3.2)
+        boardCamera?.frameOn(gateTile.position, { tiles: ALERT_TILES })
       }
     }, 700)
   }
@@ -854,29 +957,24 @@ watch([cameraRef, controlsRef, board], () => {
   if (!camera?.isCamera || !controls || typeof controls.update !== 'function') return
 
   boardCamera = createBoardCamera(camera, controls, {
+    spacing: () => board.value?.spacing ?? 8,
+    // A booth grab is a look-around, so it holds the follow-cam off longer
+    // (permanently unfollowing left the booth camera lost); a racer's is
+    // shorter. One hold, two lengths — the rig owns both.
+    resumeDelayMs: () => (boothMode.value ? GRAB_HOLD_MS : USER_IDLE_RESUME_MS),
     // A racer's grab means "I'll drive" — spectating shouldn't wrestle back.
-    // A booth grab is a look-around: hold the follow-cam off briefly, then
-    // resume following (permanently unfollowing left the booth camera lost).
+    // Only a CONFIRMED drag reaches here, so a stray tap can no longer unpin
+    // a rival the player chose to watch.
     onUserGrab: () => {
-      if (boothMode.value) {
-        grabHeldUntil = Date.now() + GRAB_HOLD_MS
-        return
-      }
-      gameStore.board.spectateTargetId = undefined
+      if (!boothMode.value) gameStore.board.spectateTargetId = undefined
     },
   })
 
-  // Entry framing: hold the overview a beat, then settle on the tracked pawn
-  // (a spectate target chosen before the camera existed is honoured here)
-  if (!hasFlownIn) {
-    hasFlownIn = true
-    const spacing = board.value?.spacing ?? 8
-    schedule(() => {
-      const focus = props.game.players[cameraTargetId.value]
-      const tile = focus ? tileFor(displayPositionFor(focus)) : undefined
-      if (tile) boardCamera?.flyTo(tile.position, spacing * 5.5)
-    }, 400)
-  }
+  // The rig can be built while the stage is still hidden (it is, every game —
+  // the persistent stage mounts on idle behind round 1), which is precisely
+  // how the entry sweep used to be consumed off screen. Frame through the
+  // sync instead: it holds until the board is actually on screen.
+  syncCameraFraming()
 })
 
 onUnmounted(() => {

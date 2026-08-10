@@ -166,6 +166,11 @@ const dealWalk = (steps: number) => {
   const end = mockGame.tiles[Math.min(player.currentPosition + steps, mockGame.tiles.length - 1)]
   player.moves = [{ endTile: end }]
   player.walkSeq = (player.walkSeq ?? 0) + 1
+  // The ANNOUNCE, as the walk protocol opens every walk with: the phase flip
+  // is what the camera's framing beat keys off, so without it the harness
+  // could only ever exercise the stepping half.
+  player.phase = 'moving'
+  player.walkIntro = true
 }
 
 // --- Final-gauntlet climb demo --------------------------------------------
