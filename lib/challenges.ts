@@ -527,22 +527,21 @@ const getAnthemBuzzChallenge = ({
     clip: { webm: anthem.webm, m4a: anthem.m4a },
     durationSeconds: ANTHEM_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
-    // Non-hard mode unlocks these as the clip runs; hard mode hears it cold.
-    ...(game.difficulty !== 'hard'
-      ? {
-          region: REGION_LABELS[COUNTRIES[country].region],
-          // The flag's OWN hues, not the snapped names: `simplifiedColors`
-          // holds strings like "blue", which CSS renders as generic web blue
-          // rather than Sweden's. Same source the flag-palette round uses, and
-          // it never comes back empty (22 emblem-heavy flags simplify to none).
-          // Through the palette home, never a raw slice: on a crest-heavy flag
-          // the raw list's first six entries are mostly emblem gradient.
-          swatches: flagSwatches(country),
-          initial: countryName(country).slice(0, 1).toUpperCase(),
-          ...(ANTHEM_LYRICS.has(country)
-            ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
-            : {}),
-        }
+    // Every difficulty unlocks these as the clip runs. An anthem gives the ear
+    // nothing to reason from when it draws a blank, so hard mode keeps the
+    // same ladder as normal rather than sitting in silence — the clock still
+    // prices them (see HINT_UNLOCK_AT).
+    region: REGION_LABELS[COUNTRIES[country].region],
+    // The flag's OWN hues, not the snapped names: `simplifiedColors`
+    // holds strings like "blue", which CSS renders as generic web blue
+    // rather than Sweden's. Same source the flag-palette round uses, and
+    // it never comes back empty (22 emblem-heavy flags simplify to none).
+    // Through the palette home, never a raw slice: on a crest-heavy flag
+    // the raw list's first six entries are mostly emblem gradient.
+    swatches: flagSwatches(country),
+    initial: countryName(country).slice(0, 1).toUpperCase(),
+    ...(ANTHEM_LYRICS.has(country)
+      ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
       : {}),
   }
 }
@@ -584,8 +583,9 @@ const getTongueBuzzChallenge = ({
     countries,
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
-    // Non-hard mode unlocks these as the clip runs, mirroring the anthem
-    // round's ladder. Hard mode listens cold.
+    // Non-hard mode unlocks these as the clip runs; hard mode listens cold.
+    // Unlike the anthem round (which hints on every difficulty), a speech clip
+    // leaves the ear plenty to work with — the language itself is the clue.
     ...(game.difficulty !== 'hard' && countries[0]
       ? {
           region: REGION_LABELS[COUNTRIES[countries[0]].region],

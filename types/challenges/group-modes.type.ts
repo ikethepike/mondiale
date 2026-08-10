@@ -36,7 +36,9 @@ export interface SilhouetteChallenge {
 }
 
 /** An anthem plays from the top — buzz early with the country for more points.
- *  Hints unlock as the clip runs; all three are absent in hard mode. */
+ *  Hints unlock as the clip runs, on every difficulty: a cold anthem gives the
+ *  ear nothing to reason from, so hard mode keeps the same ladder. Optional
+ *  because a country may ship no lyric wall. */
 export interface AnthemBuzzChallenge {
   _type: 'anthem-buzz-challenge'
   country: ISOCountryCode
