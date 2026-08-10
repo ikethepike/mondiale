@@ -218,7 +218,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'capital-guess': { owner: 'classic', revealHoldMs: 0 },
   composition: { owner: 'classic', revealHoldMs: 0 },
   flashpoint: { owner: 'classic', revealHoldMs: 0 },
-  'ghost-state': { owner: 'classic', revealHoldMs: 0 },
+  // The reveal draws the territory's outline, highlights the claimant and
+  // frames the two together — at 0 the scorecard covered all of it before the
+  // bloom finished. The hold is the time to actually find the place on Earth.
+  'ghost-state': { owner: 'classic', revealHoldMs: 4500 },
   'no-mans-land': { owner: 'classic', revealHoldMs: 0 },
   'pin-landmark': { owner: 'classic', revealHoldMs: 6000 },
   // The trend-race outcome is browsable: Continue submits and flips inline;
