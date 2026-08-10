@@ -23,6 +23,12 @@ export const useCollectSetRound = (
     answers: MaybeRefOrGetter<readonly ISOCountryCode[]>
     /** "X doesn't border Y", "X doesn't speak Z" — the miss copy. */
     wrongHint: (country: Country) => string
+    /** What the room's chip calls a wrong guess, when the country's own name
+     *  isn't what the player typed. The Star Chart's answers are CITIES that
+     *  score as countries, so its ticker must say "Bratislava", not "Slovakia".
+     *  Omitted everywhere the guess IS the country (the chip then wears the
+     *  flag, resolved from `isoCode` as before). */
+    wrongLabel?: (country: Country) => string
     /** Pre-guess veto: return a hint to bounce the pick (e.g. the centre country). */
     reject?: (country: Country) => string | undefined
     /** Extra painting per repaint (highlights, endpoints, camera focus). */
@@ -75,7 +81,13 @@ export const useCollectSetRound = (
     // Only the misses are named; a hit says just that somebody found one.
     announce({
       kind: correct ? 'correct' : 'wrong',
-      ...(correct ? {} : { isoCode: country.isoCode, hint: options.wrongHint(country) }),
+      ...(correct
+        ? {}
+        : {
+            isoCode: country.isoCode,
+            ...(options.wrongLabel ? { label: options.wrongLabel(country) } : {}),
+            hint: options.wrongHint(country),
+          }),
     })
 
     // Everything found — no reason to run out the clock

@@ -44,6 +44,9 @@ export const ROUND_WEIGHTS = {
   'mother-tongue': 0.09,
   'flag-palette': 0.08,
   'capital-guess': 0.08,
+  // Shy of its mirror on purpose: the dark map asks more of a player than a
+  // skyline photo does, and two city rounds in a game is plenty.
+  'star-chart': 0.06,
   composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
@@ -92,6 +95,7 @@ export const MECHANIC_BY_KIND = {
   silhouette: 'typed',
   'mother-tongue': 'typed',
   'capital-guess': 'typed',
+  'star-chart': 'typed',
   composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',

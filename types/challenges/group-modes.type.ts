@@ -243,6 +243,28 @@ export interface CapitalGuessChallenge {
   maximumPoints: number
 }
 
+/**
+ * The Star Chart — capital-guess's mirror, at map scale. The world goes
+ * nocturne-dark and a few stars pulse at their capitals' TRUE coordinates:
+ * type which city each one is. Capital-guess asks *which country owns this
+ * skyline*; this asks *which city sits at this spot* — map-reading rather
+ * than map-writing, and the one mode that tests name↔place.
+ *
+ * Only the ISO codes travel: both ends resolve the city, its spellings and
+ * its coordinates through `capitalStar` (lib/capitals.ts), so the dealer's
+ * geometry and the view's dots can never disagree. Ordered by obscurity —
+ * star 1 is the gimme, the last one is the deep cut.
+ */
+export interface StarChartChallenge {
+  _type: 'star-chart-challenge'
+  stars: ISOCountryCode[]
+  /** Non-hard aid: each star's capital initial, in `stars` order. Absent in
+   *  hard mode, where the dark sky gives nothing but position. */
+  initials?: string[]
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** Only a flag's colour swatches are shown — name the country (live guesses). */
 export interface FlagPaletteChallenge {
   _type: 'flag-palette-challenge'
@@ -830,6 +852,7 @@ export type GroupModeChallenge =
   | MotherTongueChallenge
   | FlagPaletteChallenge
   | CapitalGuessChallenge
+  | StarChartChallenge
   | FlashpointChallenge
   | CompositionChallenge
   | GhostStateChallenge

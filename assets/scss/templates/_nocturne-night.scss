@@ -1,0 +1,46 @@
+// The night skin, shared by every nocturne mode (City Nocturne, the Star
+// Chart). Unscoped on purpose and body-level: the night restyles the REAL map
+// paths, so it pans and zooms with the camera natively instead of an overlay
+// chasing the viewBox. `lib/use-nocturne.ts` owns the class and the browser
+// chrome tint; nothing else may add or remove them.
+//
+// The ocean darkens via body only — .main-board/.harness are SIBLINGS painted
+// ABOVE the map, so giving them a background blacks out the world.
+body.nocturne-night {
+  background: var(--night-page);
+
+  // The night holds still: no panning or zooming mid-round — the dots and the
+  // framed subject stay exactly where the camera settled them.
+  .game-map {
+    pointer-events: none;
+  }
+
+  // !important on purpose: the map engine writes fill/stroke-width inline, and
+  // the night skin must win over it. Strokes go screen-space (non-scaling)
+  // because the engine's zoom-scaled widths render sub-pixel under the skin's
+  // static values.
+  .game-map path[data-id] {
+    fill: var(--night-land) !important;
+    stroke: var(--night-stroke) !important;
+    stroke-width: 1.1px !important;
+    vector-effect: non-scaling-stroke;
+    transition:
+      fill 0.8s var(--ease-smooth),
+      stroke 0.8s var(--ease-smooth);
+  }
+
+  // The spotlit country: the framed subject in City Nocturne, a country whose
+  // capital has been named in the Star Chart. Stamped by `useNocturne`.
+  .game-map path[data-id].nocturne-target {
+    fill: hsl(216, 36%, 20%) !important;
+    stroke: hsla(45, 90%, 72%, 0.8) !important;
+    stroke-width: 1.6px !important;
+    filter: drop-shadow(0 0 0.25rem hsla(45, 96%, 65%, 0.2));
+  }
+
+  // The dots chase the camera on a timer — hide them mid-gesture instead of
+  // letting them trail behind the pan.
+  &:has(.is-interacting) .night-lights {
+    opacity: 0;
+  }
+}

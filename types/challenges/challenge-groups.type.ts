@@ -90,6 +90,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Countries, capitals, rivers and megacities in one board — places at large.
   'unique-or-bust': 'culture',
   'capital-guess': 'culture',
+  // Capital-guess's mirror: the same cities, read off the map instead of a
+  // photo, so it shares the toggle a table that wants city content flips.
+  'star-chart': 'culture',
   // 'society' would read closer, but its group is hidden — hidden groups
   // classify stat accessors and can't be toggled, so a round kind filed there
   // could never be switched off. Culture is the visible home for the people.
@@ -129,6 +132,9 @@ export const ANSWER_SHAPE_BY_KIND = {
   highlands: 'set',
   'mother-tongue': 'set',
   'no-mans-land': 'set',
+  // Three stars in any order — the answers are cities, but each one scores as
+  // the country it belongs to, so the ledger shape is a plain set.
+  'star-chart': 'set',
   empire: 'set',
   // One buzz against a set of acceptable answers.
   'tongue-buzz': 'set',
@@ -172,6 +178,7 @@ export const WRONG_COSTS_A_POINT = new Set<RoundChallengeKind>([
   'shared-shores',
   'highlands',
   'mother-tongue',
+  'star-chart',
 ])
 
 /** Kinds reserved for hard games unless their group is force-enabled. Lives

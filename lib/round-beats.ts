@@ -290,6 +290,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'mother-tongue': { owner: 'classic', revealHoldMs: 0 },
   'flag-palette': { owner: 'classic', revealHoldMs: 0 },
   'capital-guess': { owner: 'classic', revealHoldMs: 0 },
+  // The reveal IS the lesson: every star — found and missed alike — names
+  // itself on the dark map at its true spot, which is the one beat that
+  // teaches position. At 0 the scorecard covered it before it landed.
+  'star-chart': { owner: 'classic', revealHoldMs: 6000 },
   composition: { owner: 'classic', revealHoldMs: 0 },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots

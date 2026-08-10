@@ -97,6 +97,7 @@ import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
+import ViewStarChart from '~/components/view/ViewStarChart.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -152,6 +153,8 @@ import {
   GAUNTLET_LIVES,
   getFinalChallenges,
 } from '~~/lib/challenges/final-challenge'
+import { blitzScore } from '~~/lib/scoring'
+import { starChartInitials, STAR_CHART_SECONDS } from '~~/lib/star-chart'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -516,6 +519,45 @@ const settledRound = (
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
+
+/**
+ * A settled Star Chart, for the reveal that has to make a GROUP round's
+ * outcome legible: one star everybody found, one only a rival did, one nobody
+ * reached — plus a wrong capital on your sheet. Answers and points come from
+ * the real grader, so the ledger and the score always agree.
+ */
+const settledStarChartRound = (): Round => {
+  const stars: ISOCountryCode[] = ['AT', 'PL', 'BA']
+  const challenge = {
+    _type: 'star-chart-challenge',
+    stars,
+    initials: starChartInitials(stars),
+    durationSeconds: STAR_CHART_SECONDS,
+    maximumPoints: MAXIMUM_POINTS,
+  }
+  const submissions: { [playerId: string]: ISOCountryCode[] } = {
+    // Vienna and Warsaw named, Sarajevo missed, and Bratislava cost a point.
+    [ME]: ['AT', 'PL', 'SK'],
+    [RIVAL]: ['AT', 'BA'],
+    [THIRD]: ['AT'],
+  }
+
+  return {
+    groupChallenge: challenge,
+    groupAnswers: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { submitted, correct: stars },
+      ])
+    ),
+    playerTurns: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { points: blitzScore(stars, submitted, MAXIMUM_POINTS) },
+      ])
+    ),
+  } as unknown as Round
+}
 
 /**
  * A settled Border Run, for the reveal that has to make a detour LOOK like a
@@ -1256,6 +1298,48 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    // Three stars over Europe, mutually distant: Vienna, Warsaw, Sarajevo —
+    // the near-pair guard's own shape, wide enough to read at one framing.
+    id: 'star-chart',
+    label: 'Star chart (nocturne, initials aid)',
+    component: ViewStarChart,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'star-chart-challenge',
+          stars: ['AT', 'PL', 'BA'],
+          initials: starChartInitials(['AT', 'PL', 'BA']),
+          durationSeconds: STAR_CHART_SECONDS,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    // Hard mode: no initials, and the stars reach for the deeper field —
+    // Asunción, Windhoek, Tashkent.
+    id: 'star-chart-hard',
+    label: 'Star chart (hard, no aid)',
+    component: ViewStarChart,
+    build: () => {
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'star-chart-challenge',
+          stars: ['PY', 'NA', 'UZ'],
+          durationSeconds: STAR_CHART_SECONDS,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ])
+      game.difficulty = 'hard'
+      return game
+    },
+  },
+  {
+    id: 'star-chart-scores',
+    label: 'Star chart reveal (who named which star)',
+    component: ViewGroupScores,
+    build: () => mockGame('group-scores', [settledStarChartRound()]),
   },
   {
     id: 'flashpoint',
@@ -3898,6 +3982,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Ghosts of Empires', ['empire']],
   ['Flashpoint', ['flashpoint']],
   ['Capital Guess', ['capital-guess']],
+  ['Star Chart', ['star-chart']],
   ['Stat Detective', ['stat-detective']],
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],

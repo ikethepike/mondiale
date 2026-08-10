@@ -68,6 +68,18 @@
               />
             </section>
           </template>
+          <!-- The star chart's own ledger replaces the generic one: its answers
+               are CITIES scored as countries, and a row of bare flags would
+               drop the very names the round was about. -->
+          <template v-else-if="starChartChallenge && currentRound">
+            <StarChartReveal
+              :challenge="starChartChallenge"
+              :answers="currentRound.round.groupAnswers"
+              :players="gameStore.game?.players ?? {}"
+              :player-id="selectedPlayer"
+              :viewer-id="gameStore.seatId"
+            />
+          </template>
           <!-- `right` restores the pane padding the tile rows give up to scroll
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
@@ -217,6 +229,7 @@ import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
 import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
+import StarChartReveal from '~/components/challenge/StarChartReveal.vue'
 import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
@@ -249,7 +262,7 @@ import {
 } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
-import { rankingAccessorId } from '~~/lib/rounds'
+import { isChallengeOfType, rankingAccessorId } from '~~/lib/rounds'
 import { useCountUp } from '~~/lib/use-count-up'
 import {
   isTraversalChallenge,
@@ -343,6 +356,10 @@ const capitalGuessChallenge = computed(() => {
     ? challenge
     : undefined
 })
+
+const starChartChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'star-chart-challenge') ? roundChallenge.value : undefined
+)
 
 const flashpointChallenge = computed(() => {
   const challenge = roundChallenge.value
@@ -572,6 +589,8 @@ const explainer = computed(() => {
         : "The earlier you name it, the more it's worth."
     case 'flag-palette':
       return "The sooner you name it, the more it's worth."
+    case 'star-chart':
+      return 'Points scale with stars named — wrong capitals each cost one. Where a city sits is the whole question.'
     case 'river-run':
     case 'shared-shores':
     case 'highlands':
@@ -673,6 +692,10 @@ const answerLabels = computed(() => {
       return { submitted: 'Your Verdict', correct: 'The Country' }
     case 'capital-guess':
       return { submitted: 'Your Answer', correct: 'The Country' }
+    // The star chart renders StarChartReveal instead of the shared ledger, so
+    // these only ever reach the tally line beneath the score.
+    case 'star-chart':
+      return { submitted: 'Capitals You Named', correct: 'The Stars' }
     case 'flashpoint':
       return { submitted: 'Your Answer', correct: 'The Country' }
     case 'flag-palette':

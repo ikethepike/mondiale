@@ -15,6 +15,7 @@ import {
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore } from '~~/lib/scoring'
+import { starChartAnswers } from '~~/lib/star-chart'
 import { clamp01 } from '~~/lib/number'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData } from '~~/types/events.types'
@@ -151,6 +152,19 @@ export const gradeGroupAnswer = async ({
     }
     case 'capital-guess': {
       buzzOn(expectChallengeType(roundChallenge, 'capital-guess-challenge'))
+      break
+    }
+    case 'star-chart': {
+      // The typed answers were CITIES, but each one resolves to the country
+      // whose capital it is before it leaves the view (`capitalCountryByName`),
+      // so the round grades as a plain collect-a-set: the stars are the answer
+      // list, and the server re-derives the overlap rather than trusting a
+      // claimed score. Nothing about the round needs a `clientScore`.
+      const challenge = expectChallengeType(roundChallenge, 'star-chart-challenge')
+      blitzOn({
+        countries: starChartAnswers(challenge),
+        maximumPoints: challenge.maximumPoints,
+      })
       break
     }
     case 'flashpoint': {
