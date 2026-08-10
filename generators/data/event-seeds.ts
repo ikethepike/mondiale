@@ -5298,4 +5298,549 @@ export const EVENT_SEEDS: EventSeed[] = [
     description:
       'A creeping mutiny of soldiers ended three thousand years of Ethiopian monarchy, deposing Haile Selassie and installing the Derg. Famine had been hidden, and the hiding is what finally broke the throne.',
   },
+
+  // --- The 2026-08 worldwide backfill ---------------------------------------
+  // Non-western history beyond the battlefield: statecraft, culture, science,
+  // engineering and the earth itself. Zero battles on purpose — the library
+  // already carried nearly a hundred conflicts, and the curation rule stands:
+  // an invention or a founding beats a battle of the same year.
+
+  // Africa
+  {
+    name: 'Things Fall Apart',
+    title: "'Things Fall Apart' is published",
+    country: 'NG',
+    kind: 'culture',
+    year: 1958,
+    description:
+      "Chinua Achebe's novel of an Igbo village meeting colonialism became the most-read book in African literature, translated into some sixty languages — the story told from the inside at last.",
+  },
+  {
+    name: 'FESTAC 77',
+    title: 'Lagos throws a festival for a continent',
+    country: 'NG',
+    kind: 'culture',
+    year: 1977,
+    description:
+      'Lagos hosted the Second World Black and African Festival of Arts and Culture — a month of music, art and ideas that drew tens of thousands of artists from across Africa and its diaspora, Stevie Wonder among them.',
+  },
+  {
+    name: 'Kenya',
+    commons: 'Jomo Kenyatta (cropped) in June 15th, 1966.jpg',
+    title: 'Kenya wins independence',
+    country: 'KE',
+    kind: 'nation',
+    year: 1963,
+    description:
+      'At midnight in Nairobi the Union Jack came down and Jomo Kenyatta — imprisoned by the British only years earlier — led the new nation as its first prime minister.',
+  },
+  {
+    name: 'Green Belt Movement',
+    title: 'Wangari Maathai starts planting trees',
+    country: 'KE',
+    kind: 'science',
+    year: 1977,
+    description:
+      "Wangari Maathai's movement paid rural Kenyan women to plant trees against deforestation — tens of millions of them. It carried her to the Nobel Peace Prize, the first for an African woman.",
+  },
+  {
+    name: 'Ineos 1:59 Challenge',
+    title: 'The two-hour marathon falls',
+    country: 'KE',
+    kind: 'culture',
+    year: 2019,
+    description:
+      'Pacers rotating in formation around him, Eliud Kipchoge ran 42.2 kilometres in Vienna in 1:59:40 — the first human under two hours, on a morning watched live across Kenya.',
+  },
+  {
+    name: 'Akosombo Dam',
+    title: 'The Akosombo Dam is completed',
+    country: 'GH',
+    kind: 'engineering',
+    year: 1965,
+    description:
+      "Damming the Volta created Lake Volta, the largest reservoir on Earth by surface area — Nkrumah's bid to power an industrial Ghana within a decade of independence.",
+  },
+  {
+    name: 'Serengeti National Park',
+    title: 'The Serengeti is set aside',
+    country: 'TZ',
+    kind: 'science',
+    year: 1940,
+    description:
+      "The plains of the great wildebeest migration were put under protection, growing into the country's oldest national park — over a million animals still cross it in a loop older than any border.",
+  },
+  {
+    name: 'Zanzibar Revolution',
+    title: 'Revolution on the spice island',
+    country: 'TZ',
+    kind: 'revolution',
+    year: 1964,
+    // The article's own page image is a locator map; Karume — the revolution's
+    // leader and the union's first vice-president — is the story in a face.
+    // (Source filename's year never ships: images re-encode to slug.webp.)
+    commons: 'Abeid Karume 1964.jpg',
+    description:
+      'The sultanate of Zanzibar fell in a single January night. Within months the island federated with mainland Tanganyika — the union whose blended name is on every map today.',
+  },
+  {
+    name: 'University of al-Qarawiyyin',
+    title: 'The oldest university opens in Fez',
+    country: 'MA',
+    kind: 'culture',
+    year: 859,
+    description:
+      'Founded by Fatima al-Fihri with her inheritance, al-Qarawiyyin in Fez has taught continuously for over a millennium — recognised as the oldest existing degree-granting university on Earth.',
+  },
+  {
+    name: 'Carthage',
+    commons: "Sulight through Carthage's ruins.jpg",
+    title: 'Carthage is founded',
+    country: 'TN',
+    kind: 'nation',
+    year: -814,
+    description:
+      "Phoenician settlers — legend says Queen Dido, tracing an oxhide's worth of shoreline — founded the city that would rule the western Mediterranean and take on Rome itself.",
+  },
+  {
+    name: 'Mozambique',
+    commons: 'Samora Moises Machel detail DF-SC-88-01383.jpg',
+    title: 'Mozambique wins independence',
+    country: 'MZ',
+    kind: 'nation',
+    year: 1975,
+    description:
+      'After a decade of armed struggle led by FRELIMO, Portuguese rule ended and Samora Machel entered Maputo as the first president of a free Mozambique.',
+  },
+  {
+    name: 'Cyclone Idai',
+    title: 'Cyclone Idai drowns a coastline',
+    country: 'MZ',
+    kind: 'disaster',
+    year: 2019,
+    description:
+      'Idai came ashore at Beira and put an area the size of Luxembourg underwater across Mozambique, Zimbabwe and Malawi — one of the worst storms ever recorded in the southern hemisphere.',
+  },
+
+  // Middle East & Central Asia
+  {
+    name: 'Unification of Saudi Arabia',
+    commons: 'Ibn Saud.png',
+    title: 'The Saudi kingdom is proclaimed',
+    country: 'SA',
+    kind: 'nation',
+    year: 1932,
+    qid: 'Q251600',
+    description:
+      'After three decades of conquest that began with a night raid on Riyadh, Abdulaziz Ibn Saud unified the Hejaz and Nejd into a single kingdom bearing his family name.',
+  },
+  {
+    name: 'Israel–Jordan peace treaty',
+    title: 'Jordan signs the desert peace',
+    country: 'JO',
+    kind: 'politics',
+    year: 1994,
+    description:
+      'In the Arava desert, King Hussein and Yitzhak Rabin signed only the second peace treaty between Israel and an Arab state, ending a forty-six-year state of war.',
+  },
+  {
+    name: 'Phoenician alphabet',
+    title: 'The alphabet sets sail',
+    country: 'LB',
+    kind: 'culture',
+    year: -1050,
+    description:
+      'Traders of Tyre and Byblos pared writing down to a couple of dozen letters anyone could learn. Carried port to port, their alphabet became the ancestor of Greek, Latin, Arabic and this very text.',
+  },
+  {
+    name: 'Persepolis',
+    title: 'Persepolis is founded',
+    country: 'IR',
+    kind: 'engineering',
+    year: -510,
+    description:
+      'Darius the Great began a ceremonial capital of grand stairways and hundred-column halls, where subject nations carved in stone still file past bearing tribute to the Persian king of kings.',
+  },
+  {
+    name: 'Timurid Empire',
+    commons: 'Gur-e Amir 01.jpg',
+    title: 'Timur builds an empire from Samarkand',
+    country: 'UZ',
+    kind: 'nation',
+    year: 1370,
+    description:
+      'From Samarkand, Timur conquered from Delhi to the Mediterranean — and marched captured artisans home to raise the turquoise-domed city that still stuns visitors on the old Silk Road.',
+  },
+  {
+    name: 'Ulugh Beg Observatory',
+    title: 'A sultan measures the stars',
+    country: 'UZ',
+    kind: 'science',
+    year: 1420,
+    description:
+      "Ulugh Beg — Timur's grandson, a ruler who preferred astronomy to conquest — built a forty-metre sextant into a Samarkand hillside and charted a thousand stars more precisely than anyone before the telescope.",
+  },
+  {
+    name: 'Baikonur Cosmodrome',
+    title: 'Baikonur opens for business',
+    country: 'KZ',
+    kind: 'engineering',
+    year: 1955,
+    description:
+      'A secret launch site rose on the Kazakh steppe. Sputnik, Laika and Gagarin all left Earth from Baikonur — and every crewed Soyuz still does.',
+  },
+  {
+    name: 'Christianization of Armenia',
+    title: 'Armenia adopts Christianity first',
+    country: 'AM',
+    kind: 'culture',
+    year: 301,
+    description:
+      'King Tiridates III made Armenia the first state to adopt Christianity as its official religion — a dozen years before Rome even tolerated it — an identity the nation has kept through every empire since.',
+  },
+
+  // South & Southeast Asia
+  {
+    name: 'Faisal Mosque',
+    title: 'The Faisal Mosque opens',
+    country: 'PK',
+    kind: 'engineering',
+    year: 1986,
+    description:
+      "Shaped like a Bedouin tent in concrete against the Margalla Hills, Islamabad's Faisal Mosque was for years the largest mosque in the world, a gift bearing the Saudi king's name.",
+  },
+  {
+    name: '2014 Nobel Peace Prize',
+    title: 'Malala wins the Nobel Peace Prize',
+    country: 'PK',
+    kind: 'politics',
+    year: 2014,
+    description:
+      'Two years after being shot by the Taliban for going to school, seventeen-year-old Malala Yousafzai became the youngest Nobel laureate in history, sharing the peace prize with Kailash Satyarthi.',
+  },
+  {
+    name: 'Grameen Bank',
+    title: 'The bank for the poor opens',
+    country: 'BD',
+    kind: 'politics',
+    year: 1983,
+    description:
+      "Muhammad Yunus's Grameen Bank lent tiny sums to landless villagers — overwhelmingly women — without collateral. Microcredit spread worldwide and won the bank and its founder the Nobel Peace Prize.",
+  },
+  {
+    name: '1970 Bhola cyclone',
+    title: 'The Bhola cyclone strikes the delta',
+    country: 'BD',
+    kind: 'disaster',
+    year: 1970,
+    description:
+      "A storm surge swept the Ganges delta's low islands and killed hundreds of thousands — the deadliest tropical cyclone ever recorded, and a spark for the independence struggle that followed.",
+  },
+  {
+    name: 'Kingdom of Nepal',
+    commons: 'Prithvi Narayan Shah.jpg',
+    title: 'Nepal is unified from Gorkha',
+    country: 'NP',
+    kind: 'nation',
+    year: 1768,
+    description:
+      'Prithvi Narayan Shah of tiny Gorkha took the Kathmandu valley and stitched dozens of hill states into one kingdom — a Nepal that was never colonised and kept its Shah kings into the twenty-first century.',
+  },
+  {
+    name: 'April 2015 Nepal earthquake',
+    commons: 'Kathmandu Durbar Square after 2nd Earthquake hit 11.JPG',
+    title: 'The Gorkha earthquake',
+    country: 'NP',
+    kind: 'disaster',
+    year: 2015,
+    description:
+      'A magnitude-7.8 quake flattened villages, toppled Kathmandu monuments that had stood for centuries, and set off an avalanche on Everest itself — nearly nine thousand people died.',
+  },
+  {
+    name: 'Pagan kingdom',
+    title: 'Bagan begins its temple age',
+    country: 'MM',
+    kind: 'nation',
+    year: 849,
+    description:
+      'The kingdom at Bagan united the Irrawaddy valley and set off a temple-building fever: thousands of brick pagodas rose on one river plain, and thousands still stand.',
+  },
+  {
+    name: 'Angkor Wat',
+    title: 'The god-kings of Angkor',
+    country: 'KH',
+    kind: 'nation',
+    year: 802,
+    description:
+      'Jayavarman II was crowned god-king on a mountain above Angkor, founding the Khmer Empire — whose capital would one day raise the largest religious monument on Earth, moat-ringed Angkor Wat.',
+  },
+  {
+    name: 'Sukhothai Kingdom',
+    title: 'Sukhothai breaks free',
+    country: 'TH',
+    kind: 'nation',
+    year: 1238,
+    description:
+      'Tai chiefs threw off the Khmer empire and founded Sukhothai, remembered as the first Thai kingdom — the era credited with the Thai script and the classic image of a land of plenty.',
+  },
+  {
+    name: 'Bangkok',
+    title: 'Bangkok becomes the capital',
+    country: 'TH',
+    kind: 'nation',
+    year: 1782,
+    description:
+      'Rama I moved his capital across the river to a defensible bend and founded both Bangkok and the Chakri dynasty — the same house that reigns in Thailand today.',
+  },
+  {
+    name: 'Hanoi',
+    commons: 'Main gate of the Temple of Literature, Hanoi, Vietnam, 20240123 0929 3068.jpg',
+    title: 'The rising dragon capital',
+    country: 'VN',
+    kind: 'nation',
+    year: 1010,
+    description:
+      'Emperor Lý Thái Tổ moved his court to a citadel he named Thăng Long — "rising dragon". A thousand years on, the same city governs Vietnam as Hanoi.',
+  },
+  {
+    name: 'Đổi Mới',
+    title: 'Vietnam opens its economy',
+    country: 'VN',
+    kind: 'politics',
+    year: 1986,
+    description:
+      'A decade after the war, the party launched Đổi Mới — "renovation" — swapping collectivised planning for market reforms that turned one of the poorest countries in Asia into an export powerhouse.',
+  },
+  {
+    name: 'Borobudur',
+    title: 'Borobudur is raised in stone',
+    country: 'ID',
+    kind: 'engineering',
+    year: 800,
+    description:
+      'On the Kedu plain, builders stacked two million volcanic stones into a mountain-shaped mandala wrapped in kilometres of carved reliefs — the largest Buddhist monument in the world.',
+  },
+  {
+    name: 'Petronas Towers',
+    title: 'The Petronas Towers top out',
+    country: 'MY',
+    kind: 'engineering',
+    year: 1998,
+    description:
+      'Twin steel-and-glass towers joined by a skybridge took the title of tallest buildings on Earth — the first time the record had left the West in over a century.',
+  },
+  {
+    name: '1991 eruption of Mount Pinatubo',
+    title: 'Pinatubo blows its top',
+    country: 'PH',
+    kind: 'disaster',
+    year: 1991,
+    description:
+      'The second-largest eruption of the century blew six hundred years of slumber apart in an afternoon — its ash veil circled the globe and cooled the whole planet by half a degree.',
+  },
+  {
+    name: 'Philippine Revolution',
+    title: 'The Philippines rises against Spain',
+    country: 'PH',
+    kind: 'revolution',
+    year: 1896,
+    description:
+      "The secret Katipunan society tore up their tax certificates and rose against three centuries of Spanish rule — the revolution that led to Asia's first declared republic.",
+  },
+  {
+    name: '1988 Summer Olympics',
+    title: 'Seoul hosts the world',
+    country: 'KR',
+    kind: 'culture',
+    year: 1988,
+    description:
+      "A generation after war left it in ruins, Seoul staged the Olympics as a coming-out party — the games that showed the world the 'miracle on the Han River', broadcast from a brand-new democracy.",
+  },
+
+  // Latin America & the Caribbean
+  {
+    name: 'Brasília',
+    title: 'A capital built from nothing',
+    country: 'BR',
+    kind: 'engineering',
+    year: 1960,
+    description:
+      "In under four years, Oscar Niemeyer's curves and Lúcio Costa's aeroplane-shaped plan turned empty savanna into Brazil's new capital — a whole modernist city, inaugurated at once.",
+  },
+  {
+    name: 'Santos-Dumont 14-bis',
+    title: 'The 14-bis hops into the air',
+    country: 'BR',
+    kind: 'science',
+    year: 1906,
+    description:
+      'Before a Paris crowd and official judges, Alberto Santos-Dumont flew his boxkite-like 14-bis without catapults or rails — the first officially certified aeroplane flight in Europe, and a Brazilian national triumph.',
+  },
+  {
+    name: '1950 FIFA World Cup',
+    title: 'The Maracanazo',
+    country: 'BR',
+    kind: 'culture',
+    year: 1950,
+    description:
+      'Brazil built the largest stadium on Earth and needed only a draw in the final match — then Uruguay silenced two hundred thousand people at the Maracanã, a defeat Brazilians still call a national tragedy.',
+  },
+  {
+    name: '1978 FIFA World Cup',
+    title: 'Argentina lifts the cup at home',
+    country: 'AR',
+    kind: 'culture',
+    year: 1978,
+    description:
+      "In a blizzard of ticker tape at the Monumental, Mario Kempes drove Argentina past the Netherlands for the country's first World Cup — joy and controversy tangled together under a military regime.",
+  },
+  {
+    name: '1946 Argentine general election',
+    commons: 'Perón recibe los atributos (1946).JPG',
+    title: 'Perón wins power',
+    country: 'AR',
+    kind: 'politics',
+    year: 1946,
+    description:
+      "Freed from prison by mass demonstrations months earlier, Juan Perón swept the election with the descamisados — the 'shirtless ones' — behind him, founding the movement that has defined Argentine politics since.",
+  },
+  {
+    name: 'Chilean Declaration of Independence',
+    title: 'Chile declares independence',
+    country: 'CL',
+    kind: 'nation',
+    year: 1818,
+    description:
+      "A year after San Martín's army crossed the Andes by mule track, Bernardo O'Higgins proclaimed Chile's independence — sealed within weeks at the battle of Maipú.",
+  },
+  {
+    name: '1960 Valdivia earthquake',
+    title: 'The largest earthquake ever recorded',
+    country: 'CL',
+    kind: 'disaster',
+    year: 1960,
+    description:
+      'Magnitude 9.5 — the strongest earthquake ever instrumentally recorded — tore six hundred kilometres of Chilean coast and sent a Pacific-wide tsunami as far as Japan and Hawaii.',
+  },
+  {
+    name: 'Cartagena, Colombia',
+    title: 'Cartagena de Indias is founded',
+    country: 'CO',
+    kind: 'nation',
+    year: 1533,
+    description:
+      'Founded on a Caribbean bay, Cartagena became the treasure port of Spanish America — so rich in silver that pirates besieged it for centuries, and so fortified that its walls still stand whole.',
+  },
+  {
+    name: 'Machu Picchu',
+    title: 'Machu Picchu is built',
+    country: 'PE',
+    kind: 'engineering',
+    year: 1450,
+    description:
+      'Inca builders fitted stone to stone without mortar on a ridge above the Urubamba — a royal estate the Spanish never found, revealed to the world only four centuries later.',
+  },
+  {
+    name: 'Bolivian National Revolution',
+    title: "Bolivia's revolution",
+    country: 'BO',
+    kind: 'revolution',
+    year: 1952,
+    description:
+      'Armed miners and peasants broke the army in three days of fighting. The revolution nationalised the tin mines, broke up the great estates and gave every Bolivian adult the vote.',
+  },
+  {
+    name: 'Gran Colombia',
+    commons: 'Portrait of Simón Bolívar by Arturo Michelena.jpg',
+    title: "Bolívar's great republic",
+    country: 'VE',
+    kind: 'nation',
+    year: 1819,
+    description:
+      "At Angostura on the Orinoco, Bolívar proclaimed a single republic spanning today's Venezuela, Colombia, Ecuador and Panama — a decade-long experiment whose break-up drew the region's modern borders.",
+  },
+  {
+    name: 'Itaipu Dam',
+    title: 'Itaipu dams the Paraná',
+    country: 'PY',
+    kind: 'engineering',
+    year: 1982,
+    description:
+      'Paraguay and Brazil dammed the Paraná together and built what was then the most powerful hydroelectric plant on Earth — it still supplies the overwhelming share of Paraguay’s electricity.',
+  },
+  {
+    name: 'Havana',
+    title: 'Havana is founded',
+    country: 'CU',
+    kind: 'nation',
+    year: 1515,
+    description:
+      'Founded by Spain and soon moved to its deep northern bay, Havana became the assembly point for every treasure fleet sailing home to Seville — one of the great port cities of the Americas.',
+  },
+  {
+    name: 'Citadelle Laferrière',
+    title: 'A fortress for a free nation',
+    country: 'HT',
+    kind: 'engineering',
+    year: 1813,
+    description:
+      'On a mountaintop after the revolution, Henri Christophe raised the largest fortress in the Americas — built by a nation of freed slaves daring France to return.',
+  },
+  {
+    name: 'One Love Peace Concert',
+    title: 'Marley joins two rivals on stage',
+    country: 'JM',
+    kind: 'culture',
+    year: 1978,
+    description:
+      'With Kingston in the grip of political gang war, Bob Marley called the rival party leaders on stage and clasped their hands together over his head as the band played.',
+  },
+
+  {
+    name: 'Karachi',
+    title: 'Karachi is founded',
+    country: 'PK',
+    kind: 'nation',
+    year: 1729,
+    description:
+      'A fishing village called Kolachi fortified its harbour on the Arabian Sea — the seed of the megacity that would become the port, first capital and commercial engine of Pakistan.',
+  },
+  {
+    name: 'Islamabad',
+    title: 'A capital built from scratch',
+    country: 'PK',
+    kind: 'engineering',
+    year: 1960,
+    description:
+      'Pakistan moved its capital from coastal Karachi to a master-planned grid at the foot of the Margalla Hills — a purpose-built seat of government, like Brasília rising the very same decade.',
+  },
+  // Oceania
+  {
+    name: "Women's suffrage in New Zealand",
+    title: 'New Zealand women vote first',
+    country: 'NZ',
+    kind: 'politics',
+    year: 1893,
+    description:
+      "After Kate Sheppard's petitions gathered signatures from a quarter of the country's adult women, New Zealand became the first self-governing nation where women could vote.",
+  },
+  {
+    name: 'The Lord of the Rings: The Fellowship of the Ring',
+    commons: 'Hobbit holes reflected in water.jpg',
+    title: 'Middle-earth opens in cinemas',
+    country: 'NZ',
+    kind: 'culture',
+    year: 2001,
+    description:
+      "Peter Jackson shot all three Lord of the Rings films at once across New Zealand's mountains and plains — the trilogy rebuilt the country's film industry and its tourism posters alike.",
+  },
+  {
+    name: '2022 Hunga Tonga–Hunga Haʻapai eruption and tsunami',
+    title: 'A volcano heard around the world',
+    country: 'TO',
+    kind: 'disaster',
+    year: 2022,
+    description:
+      'An undersea volcano near Tonga erupted with a blast heard in Alaska, snapped the kingdom’s only internet cable, and sent a pressure wave that lapped the entire planet several times.',
+  },
 ]

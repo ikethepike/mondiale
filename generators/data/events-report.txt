@@ -1,5 +1,14 @@
-events: 570 shipped of 570 seeds
+events: 627 shipped of 627 seeds
 
 dropped (0) — fix the year or pin a qid:
 
-no image (0) — add a commons/imageUrl override:
+no image (9) — add a commons/imageUrl override:
+  green-belt-movement
+  ineos-1-59-challenge
+  phoenician-alphabet
+  christianization-of-armenia
+  2014-nobel-peace-prize
+  1970-bhola-cyclone
+  pagan-kingdom
+  chilean-declaration-of-independence
+  one-love-peace-concert
