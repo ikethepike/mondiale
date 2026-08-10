@@ -106,6 +106,8 @@ export const createBoardCamera = (
   let cameraTaken = false
   let idleTimer: ReturnType<typeof setTimeout> | undefined
   const downAt = new Map<number, { x: number; y: number }>()
+  /** When a pointer last did anything — the liveness signal `release` trusts. */
+  let lastPointerAt = 0
   const tweens = new Set<gsap.core.Tween>()
   /** The framing sweep's own tweens — a step must not shoot one down. */
   const frameTweens = new Set<gsap.core.Tween>()
@@ -121,12 +123,19 @@ export const createBoardCamera = (
     frameTweens.clear()
   }
 
-  const framingInFlight = () => [...frameTweens].some(tween => tween.isActive())
+  // Membership, NOT `tween.isActive()`: gsap reports a fresh tween inactive
+  // until its first render, so a follow in the SAME tick as the sweep read
+  // "nothing framing" and killed it — which is the live announce path, where
+  // one snapshot flips the seat to 'moving' and the stage to active, so the
+  // framing watcher and the show pass both run in one flush.
+  const framingInFlight = () => frameTweens.size > 0
   const held = () => userHasControl || gestureActive
+
+  const holdMs = () => options.resumeDelayMs?.() ?? USER_IDLE_RESUME_MS
 
   const armResume = () => {
     if (idleTimer) clearTimeout(idleTimer)
-    idleTimer = setTimeout(release, options.resumeDelayMs?.() ?? USER_IDLE_RESUME_MS)
+    idleTimer = setTimeout(release, holdMs())
   }
 
   /**
@@ -143,12 +152,22 @@ export const createBoardCamera = (
     if (lastPoint) follow(lastPoint)
   }
 
+  /**
+   * Keep the camera only while the gesture is DEMONSTRABLY live — pointer
+   * activity inside the last hold window. Neither flag can be trusted alone:
+   * OrbitControls binds pointercancel to the CANVAS, so a cancel over an
+   * overlay leaves its 'end' unfired and `gestureActive` stuck true, while a
+   * pointerup the browser never delivers leaves `downAt` stuck full. Either
+   * one, held on its own, would suppress the follow-cam for the rest of the
+   * game. Activity cannot get stuck, so the state resets around it.
+   */
   const release = () => {
     idleTimer = undefined
-    // Still on the glass: keep the hold rather than wrestling the finger that
-    // is driving. A drag longer than the hold would otherwise have the camera
-    // resume mid-gesture, since `claim` arms the timer at the grab.
-    if (gestureActive || downAt.size) return armResume()
+    if (downAt.size && Date.now() - lastPointerAt < holdMs()) return armResume()
+
+    gestureActive = false
+    claimed = false
+    downAt.clear()
     userHasControl = false
     resume()
   }
@@ -181,6 +200,9 @@ export const createBoardCamera = (
   }
 
   const onControlsEnd = () => {
+    // The controls are authoritative that their gesture segment ended.
+    gestureActive = false
+
     // three-stdlib dispatches 'end' on EVERY pointerup, not only the last one
     // (its dispatch sits outside the `pointers.length === 0` branch), so a
     // pinch fires it twice. Grade only once the last finger is up: a verdict
@@ -188,32 +210,38 @@ export const createBoardCamera = (
     // pinch just earned. Re-arming meanwhile keeps the hold alive.
     if (downAt.size) return armResume()
 
-    gestureActive = false
     if (claimed) {
       claimed = false
       // Re-arm from the release of the finger, not from the claim.
       armResume()
       return
     }
-    // A tap: hand the camera straight back and re-aim now. Clearing the timer
-    // as well — a tap must never leave a release pending behind it.
-    if (idleTimer) clearTimeout(idleTimer)
-    idleTimer = undefined
+    // A tap. It hands the camera straight back — but only its OWN: a hold
+    // still running belongs to an earlier real gesture, and a stray tap
+    // inside it must not cut that short.
+    if (idleTimer) return
     userHasControl = false
     resume()
   }
 
   const onPointerDown = (event: PointerEventLike) => {
+    lastPointerAt = Date.now()
     downAt.set(event.pointerId, { x: event.clientX, y: event.clientY })
   }
 
   const onPointerMove = (event: PointerEventLike) => {
     const from = downAt.get(event.pointerId)
-    if (!from || !gestureActive || claimed) return
+    if (!from) return
+    lastPointerAt = Date.now()
+    // Movement inside a claimed gesture keeps the hold fresh, so a drag longer
+    // than the hold is never resumed out from under the finger driving it.
+    if (claimed) return armResume()
+    if (!gestureActive) return
     if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > CAMERA_DRAG_SLOP_PX) claim()
   }
 
   const onPointerUp = (event: PointerEventLike) => {
+    lastPointerAt = Date.now()
     downAt.delete(event.pointerId)
   }
 
@@ -296,6 +324,11 @@ export const createBoardCamera = (
         frameTweens.clear()
         // A step banked behind the sweep applies the instant it lands.
         if (!held() && pendingFocus) resume()
+      },
+      // A kill from outside this module would otherwise leave the set full and
+      // every later follow banking against a sweep that no longer exists.
+      onInterrupt() {
+        frameTweens.clear()
       },
     })
     tweens.add(targetTween)

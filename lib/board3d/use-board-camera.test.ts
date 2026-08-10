@@ -274,18 +274,66 @@ describe('gesture arbitration', () => {
     expect(controls.target.x).toBeCloseTo(22, 1)
   })
 
+  it('lets no stray tap cut short a hold an earlier drag earned', () => {
+    const { start, end, pointerDown, pointerMove, pointerUp, rig, controls } = rigFor()
+
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    pointerUp()
+    end()
+    rig.follow(new Vector3(31, 0, 0))
+
+    // A tap a moment later, well inside the hold.
+    vi.advanceTimersByTime(1000)
+    pointerDown(10, 10)
+    start()
+    pointerUp()
+    end()
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(0, 5)
+
+    // The ORIGINAL hold still governs when the camera comes back.
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS)
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(31, 1)
+  })
+
+  it('recovers when neither the pointerup nor the end ever lands', () => {
+    // Both signals can get stuck: OrbitControls binds pointercancel to the
+    // CANVAS, so a cancel over an overlay never fires its 'end', and a
+    // pointerup the browser drops leaves `downAt` full. Holding on either
+    // alone would leave the follow-cam dead until a remount.
+    const { start, pointerDown, pointerMove, rig, controls, grabCount } = rigFor()
+
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    expect(grabCount()).toBe(1)
+    // ...and then nothing at all: no move, no up, no end.
+    rig.follow(new Vector3(9, 0, 0))
+
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS * 2 + 10)
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(9, 1)
+  })
+
   it('never resumes under a finger that is still driving', () => {
     // The hold is armed at the grab, so a drag longer than the hold would
-    // otherwise have the camera resume and fight the gesture.
+    // otherwise have the camera resume and fight the gesture. A live drag
+    // keeps reporting movement, and that is what holds it off.
     const { start, pointerDown, pointerMove, pointerUp, end, rig, controls, grabCount } = rigFor()
 
     pointerDown(0, 0)
     start()
     pointerMove(200, 200)
-    // The hold must actually be armed for this to test anything.
     expect(grabCount()).toBe(1)
 
-    vi.advanceTimersByTime(USER_IDLE_RESUME_MS * 3)
+    // Three hold windows of continuous dragging.
+    for (let step = 0; step < 12; step++) {
+      vi.advanceTimersByTime(USER_IDLE_RESUME_MS / 4)
+      pointerMove(200 + step * 10, 200 + step * 10)
+    }
     rig.follow(new Vector3(18, 0, 0))
     drainTweens()
     expect(controls.target.x).toBeCloseTo(0, 5)
@@ -396,6 +444,27 @@ describe('frameOn and follow', () => {
 
     // The sweep reached its distance AND the banked step was applied after.
     expect(controls.target.x).toBeCloseTo(11, 1)
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(FRAME_TILES * SPACING, 0)
+  })
+
+  it('survives a follow issued in the SAME tick as the sweep', () => {
+    // The live announce path: one snapshot flips the seat to 'moving' and the
+    // stage to active, so the framing watcher and the show pass both run in a
+    // single flush. gsap reports a fresh tween inactive until its first
+    // render, so an in-flight test built on isActive() read "nothing framing"
+    // here and the follow killed the sweep — the very shot being added.
+    // Straight from the opening overview, so a killed sweep leaves the camera
+    // at that distance and the assertion can tell the difference — the whole
+    // point of the beat is resetting it.
+    const { rig, camera, controls } = rigFor()
+    const overview = distanceOf(camera, controls.target)
+    expect(overview).toBeGreaterThan(FRAME_TILES * SPACING * 1.5)
+
+    rig.frameOn(new Vector3(10, 0, 0))
+    rig.follow(new Vector3(10, 0, 0)) // same tick, no render in between
+    drainTweens()
+
+    expect(controls.target.x).toBeCloseTo(10, 1)
     expect(distanceOf(camera, controls.target)).toBeCloseTo(FRAME_TILES * SPACING, 0)
   })
 
