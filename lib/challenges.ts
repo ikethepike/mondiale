@@ -547,9 +547,7 @@ const getAnthemBuzzChallenge = ({
     // the raw list's first six entries are mostly emblem gradient.
     swatches: flagSwatches(country),
     initial: countryName(country).slice(0, 1).toUpperCase(),
-    ...(ANTHEM_LYRICS.has(country)
-      ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` }
-      : {}),
+    ...(ANTHEM_LYRICS.has(country) ? { lyricsUrl: `/anthems/lyrics/${country}-anthem.json` } : {}),
   }
 }
 

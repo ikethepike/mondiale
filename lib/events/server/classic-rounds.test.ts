@@ -8,10 +8,7 @@ import {
   revealBudgetMsFor,
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
-import type {
-  AnthemBuzzChallenge,
-  TwoTruthsChallenge,
-} from '~~/types/challenges/group-modes.type'
+import type { AnthemBuzzChallenge, TwoTruthsChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
