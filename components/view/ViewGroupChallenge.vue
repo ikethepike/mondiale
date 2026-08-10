@@ -141,7 +141,7 @@ const updateRanking = (event: Event) => {
 
 const submitRanking = () => submitOnce(ranking.value)
 
-// The dense layout keeps even 7-tile hands on screen without scrolling, so
+// The dense layout keeps even 6-tile hands on screen without scrolling, so
 // the tiles refuse the browser's pan gestures entirely and the shared no-delay
 // drag config applies as-is.
 const options = ref({ ...DRAG_LIST_OPTIONS })
@@ -343,7 +343,7 @@ footer {
   display: grid;
   pointer-events: all;
   justify-content: center;
-  // One row of N equal columns without knowing N (hands are 4/5/7 by
+  // One row of N equal columns without knowing N (hands are 4/5/6 by
   // difficulty) — implicit tracks replace the old inline repeat(N, 1fr).
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
@@ -362,7 +362,7 @@ footer {
   }
 
   // The hand's air scales with the footer, and each tile scales with its own
-  // track (see CountryTile's container) — 7-tile hands at intermediate
+  // track (see CountryTile's container) — 6-tile hands at intermediate
   // widths tighten instead of clipping names.
   footer {
     container: rank-hand / inline-size;
@@ -452,14 +452,14 @@ footer {
     flex-shrink: 0;
   }
 
-  // Every hand fits on screen (dense sizing covers 7-tile hard hands), so
+  // Every hand fits on screen (dense sizing covers 6-tile hard hands), so
   // there is never anything to scroll: refuse the pan entirely and drags
   // start the instant a finger lands.
   .country {
     touch-action: none;
   }
 
-  // Hard hands (6–7 tiles): tighter rows, gaps and flags so the whole hand
+  // Hard hands (6 tiles): tighter rows, gaps and flags so the whole hand
   // still shares one screen with the poles and submit — scroll-free.
   .countries.dense {
     gap: 0.6rem;

@@ -705,14 +705,14 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'ranking-long',
-    label: 'Ranking (7 tiles, overflow)',
+    label: 'Ranking (6 tiles, overflow)',
     component: ViewGroupChallenge,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
           _type: 'group-challenge',
           id: 'people.population',
-          countriesPerPlayer: { [ME]: ['FR', 'BR', 'JP', 'NG', 'SE', 'MX', 'VN'] },
+          countriesPerPlayer: { [ME]: ['FR', 'BR', 'JP', 'NG', 'SE', 'MX'] },
         }),
       ]),
   },

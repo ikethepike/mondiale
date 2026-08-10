@@ -38,7 +38,7 @@ export const DIFFICULTY_CONFIGURATION: {
     microNations: false,
   },
   hard: {
-    rankingChallengeCountries: 7,
+    rankingChallengeCountries: 6,
     chainTurnSeconds: 10,
     microNations: true,
   },

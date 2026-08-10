@@ -98,7 +98,7 @@ article {
 
 @media screen and (min-width: $tablet) {
   .country-tile {
-    // The tile is the responsive unit, not the viewport: hands deal 4/5/7
+    // The tile is the responsive unit, not the viewport: hands deal 4/5/6
     // tiles by difficulty, so the same screen width leaves very different
     // tracks. Everything inside scales off the tile's own inline size.
     container: country-tile / inline-size;
@@ -134,7 +134,7 @@ article {
     font-size: clamp(1.1rem, 6.5cqw, 1.6rem);
   }
 
-  // On the narrowest tracks (7-tile hands at intermediate widths) the
+  // On the narrowest tracks (6-tile hands at intermediate widths) the
   // capital yields before the country name has to.
   @container country-tile (max-width: 130px) {
     .subtitle {
