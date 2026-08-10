@@ -124,9 +124,12 @@ const resolve = (expired = false) => {
   stop()
   chronicleOrder.value = [...order.value]
   const correct = isChronicleOrdered(order.value)
+  // reveal: false — the record card IS the reveal; the map's terse country
+  // card under it doubled the answer and collided with the record on phones.
   submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
     remainingFraction: expired ? 0 : remainingFraction.value,
     hintsUsed: hintsUsed.value,
+    reveal: false,
   })
 }
 const submitOrder = () => resolve()

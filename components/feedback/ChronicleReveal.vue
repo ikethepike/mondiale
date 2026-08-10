@@ -57,6 +57,11 @@ const spanYears = computed(() => chronicleSpanYears(props.challenge.chronicle?.e
   display: flex;
   align-items: stretch;
   flex-flow: column nowrap;
+  // Four storied rows outgrow a small phone: the record scrolls inside its
+  // own card (the verdict head above stays put), never past the viewport.
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(var(--viewport-height) - 18rem);
 }
 
 .record {
