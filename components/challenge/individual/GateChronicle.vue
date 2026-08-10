@@ -138,8 +138,11 @@ const submitOrder = () => resolve()
   margin-top: 1rem;
 }
 
-// The direction poles, the ranking round's language turned vertical.
+// The direction poles, the ranking round's language turned vertical. They
+// label the card column, so they start where the cards do — the padding only
+// lands there once the header's inherited centring is dropped.
 .pole {
+  text-align: left;
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -258,11 +261,15 @@ const submitOrder = () => resolve()
   background: ink(0.07);
 }
 
+// A chapter reads ragged-right against its plate: the header's inherited
+// centring (ChallengePrompt) set a wrapped title drifting away from the photo
+// edge, and left every card's first word starting at its own indent.
 .card-body {
   gap: 0.3rem;
   display: flex;
   min-width: 0;
   padding: 1rem 0;
+  text-align: left;
   align-self: center;
   flex-flow: column nowrap;
 }
