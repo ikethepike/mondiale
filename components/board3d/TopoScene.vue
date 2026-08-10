@@ -52,7 +52,6 @@ import { prefersReducedMotion } from '~~/lib/motion'
 import {
   ARRIVAL_RIPPLE_MS,
   MOVE_INTERSTITIAL_TOTAL_MS,
-  WALK_FRAME_LEAD_MS,
   WALK_FRAME_MS,
   WALK_RESUME_FRAME_MS,
 } from '~~/lib/round-beats'
@@ -598,21 +597,19 @@ const followSubject = () => {
   if (tile) boardCamera?.follow(tile.position)
 }
 
-/** The framing shot, latched to the announce it belongs to so a director cut
- *  and the walk sync can never sweep twice for the same beat. */
-const frameSubject = (options: FrameOptions & { delayMs?: number }) => {
-  if (!boardCamera || !subjectTile()) return false
+/**
+ * The framing shot. Synchronous on purpose: latch and sweep in the same tick,
+ * so a beat can never be marked played and then dropped. (A scheduled lead
+ * did exactly that — a hide inside the delay skipped the sweep while the latch
+ * stood, and the show pass then read the beat as already played.)
+ */
+const frameSubject = (options: FrameOptions) => {
+  const tile = subjectTile()
+  if (!boardCamera || !tile) return false
 
   hasFramed = true
   framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
-
-  const sweep = () => {
-    const tile = subjectTile()
-    if (tile) boardCamera?.frameOn(tile.position, options)
-  }
-  // The lead re-checks `active`: a hide inside it must not sweep off screen.
-  if (options.delayMs) schedule(() => props.active && sweep(), options.delayMs)
-  else sweep()
+  boardCamera.frameOn(tile.position, options)
   return true
 }
 
@@ -620,29 +617,24 @@ const frameSubject = (options: FrameOptions & { delayMs?: number }) => {
  * A named sync, not just a watcher body, for the same reason as the stuck and
  * blocked beats: a hidden stage must not CONSUME the shot — it holds without
  * latching and the show pass re-runs this, so the sweep plays where it can be
- * seen. Timed off the server's announce leads (round-beats): a turn-opening
- * walk holds the overview a breath and sweeps in behind the "On the move!"
- * beat, a between-gates resume re-frames inside the short resume lead.
+ * seen. Lengths come from the server's announce leads (round-beats): a
+ * turn-opening walk sweeps behind the "On the move!" beat, a between-gates
+ * resume re-frames inside the short resume lead.
  */
 const syncCameraFraming = () => {
   if (!props.active || !boardCamera) return false
 
   const subject = props.game.players[cameraTargetId.value]
   // First time the board is actually ON SCREEN: sweep off the entry overview.
-  if (!hasFramed) {
-    return frameSubject({
-      tiles: FRAME_TILES,
-      durationMs: WALK_FRAME_MS,
-      delayMs: WALK_FRAME_LEAD_MS,
-    })
-  }
+  if (!hasFramed) return frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS })
 
   const token = announceTokenFor(subject)
   if (!token || token === framedAnnounce) return false
 
-  return subject?.walkIntro
-    ? frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS, delayMs: WALK_FRAME_LEAD_MS })
-    : frameSubject({ tiles: FRAME_TILES, durationMs: WALK_RESUME_FRAME_MS })
+  return frameSubject({
+    tiles: FRAME_TILES,
+    durationMs: subject?.walkIntro ? WALK_FRAME_MS : WALK_RESUME_FRAME_MS,
+  })
 }
 
 watch(
@@ -780,6 +772,15 @@ watch(
     // out of the hand still dragging it. That clear rides the rig's own hold
     // and lands as a re-aim when it lifts.
     if (targetId) boardCamera?.takeOver()
+
+    // The roster rail lives in the layout, so a spectate tap can land while a
+    // challenge view holds the screen: framing here would sweep off screen and
+    // consume the very shot this beat exists to hold. Retire the latch instead
+    // and let the show pass frame the new subject when the board returns.
+    if (!props.active) {
+      framedAnnounce = undefined
+      return
+    }
     frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS })
   }
 )

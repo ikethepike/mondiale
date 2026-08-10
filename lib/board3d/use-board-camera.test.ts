@@ -30,9 +30,15 @@ interface PointerEventLike {
   clientY: number
 }
 
+/**
+ * Canvas and document are SEPARATE surfaces here, as they are in the browser:
+ * OrbitControls takes no pointer capture and binds its own move/up to
+ * `ownerDocument`, so a drag that leaves the canvas only reports there.
+ */
 const controlsStub = (options: { withPointerHost?: boolean } = {}) => {
   const listeners = new Map<string, Set<Listener>>()
-  const pointerListeners = new Map<string, Set<Listener>>()
+  const canvasListeners = new Map<string, Set<Listener>>()
+  const documentListeners = new Map<string, Set<Listener>>()
 
   const on = (map: Map<string, Set<Listener>>) => (type: string, listener: Listener) => {
     const set = map.get(type) ?? new Set()
@@ -52,8 +58,12 @@ const controlsStub = (options: { withPointerHost?: boolean } = {}) => {
       options.withPointerHost === false
         ? undefined
         : {
-            addEventListener: on(pointerListeners),
-            removeEventListener: off(pointerListeners),
+            addEventListener: on(canvasListeners),
+            removeEventListener: off(canvasListeners),
+            ownerDocument: {
+              addEventListener: on(documentListeners),
+              removeEventListener: off(documentListeners),
+            },
           },
   }
 
@@ -63,15 +73,19 @@ const controlsStub = (options: { withPointerHost?: boolean } = {}) => {
 
   return {
     controls,
+    canvasListeners,
+    documentListeners,
     start: () => fire(listeners, 'start'),
     end: () => fire(listeners, 'end'),
+    // A gesture only counts if it STARTED on the board, so pointerdown is the
+    // canvas; everything after it lands on the document.
     pointerDown: (x = 0, y = 0, pointerId = 1) =>
-      fire(pointerListeners, 'pointerdown', { pointerId, clientX: x, clientY: y }),
+      fire(canvasListeners, 'pointerdown', { pointerId, clientX: x, clientY: y }),
     pointerMove: (x: number, y: number, pointerId = 1) =>
-      fire(pointerListeners, 'pointermove', { pointerId, clientX: x, clientY: y }),
+      fire(documentListeners, 'pointermove', { pointerId, clientX: x, clientY: y }),
     pointerUp: (pointerId = 1) =>
-      fire(pointerListeners, 'pointerup', { pointerId, clientX: 0, clientY: 0 }),
-    wheel: () => fire(pointerListeners, 'wheel'),
+      fire(documentListeners, 'pointerup', { pointerId, clientX: 0, clientY: 0 }),
+    wheel: () => fire(canvasListeners, 'wheel'),
   }
 }
 
@@ -215,6 +229,73 @@ describe('gesture arbitration', () => {
     start()
     expect(grabCount()).toBe(1)
   })
+
+  it('reads travel from the document, where a drag off the canvas still lands', () => {
+    // OrbitControls never calls setPointerCapture, so once a finger crosses an
+    // overlay its pointermove targets THAT element. Travel read from the canvas
+    // would stop and the rotate would be graded a tap.
+    const { canvasListeners, documentListeners } = rigFor()
+
+    expect(canvasListeners.has('pointermove')).toBe(false)
+    expect(documentListeners.get('pointermove')?.size).toBe(1)
+    expect(documentListeners.get('pointerup')?.size).toBe(1)
+    expect(documentListeners.get('pointercancel')?.size).toBe(1)
+    // The gesture must still have to START on the board.
+    expect(canvasListeners.get('pointerdown')?.size).toBe(1)
+    expect(canvasListeners.get('wheel')?.size).toBe(1)
+  })
+
+  it('keeps a pinch held when the first of two fingers lifts', () => {
+    // three-stdlib dispatches 'end' on EVERY pointerup, not only the last, so
+    // grading on the first lift read the second as a tap and cancelled the
+    // hold the pinch had just earned — the camera snapped back mid-gesture.
+    const { start, end, pointerDown, pointerMove, pointerUp, rig, controls, grabCount } = rigFor()
+
+    pointerDown(100, 100, 1)
+    pointerDown(200, 200, 2)
+    start()
+    pointerMove(160, 160, 1)
+    expect(grabCount()).toBe(1)
+
+    pointerUp(1)
+    end()
+    rig.follow(new Vector3(21, 0, 0))
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(0, 5)
+
+    pointerUp(2)
+    end()
+    rig.follow(new Vector3(22, 0, 0))
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(0, 5)
+
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS + 10)
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(22, 1)
+  })
+
+  it('never resumes under a finger that is still driving', () => {
+    // The hold is armed at the grab, so a drag longer than the hold would
+    // otherwise have the camera resume and fight the gesture.
+    const { start, pointerDown, pointerMove, pointerUp, end, rig, controls, grabCount } = rigFor()
+
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    // The hold must actually be armed for this to test anything.
+    expect(grabCount()).toBe(1)
+
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS * 3)
+    rig.follow(new Vector3(18, 0, 0))
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(0, 5)
+
+    pointerUp()
+    end()
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS + 10)
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(18, 1)
+  })
 })
 
 describe('release', () => {
@@ -316,6 +397,27 @@ describe('frameOn and follow', () => {
     // The sweep reached its distance AND the banked step was applied after.
     expect(controls.target.x).toBeCloseTo(11, 1)
     expect(distanceOf(camera, controls.target)).toBeCloseTo(FRAME_TILES * SPACING, 0)
+  })
+
+  it('lets a fresh frame supersede a step banked behind the sweep it kills', () => {
+    // A gate's push-in lands over a walk's sweep. The step banked behind that
+    // sweep must not be replayed by the push-in's completion, or the camera
+    // slides straight off the gate tile it just framed.
+    const { rig, camera, controls } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+
+    rig.frameOn(new Vector3(10, 0, 0))
+    clock += 0.1
+    gsap.globalTimeline.totalTime(clock)
+    rig.follow(new Vector3(11, 0, 0))
+    // The gate hit: a tighter push-in that kills the walk sweep mid-flight.
+    rig.frameOn(new Vector3(12, 0, 0), { tiles: ALERT_TILES })
+    drainTweens()
+
+    expect(controls.target.x).toBeCloseTo(12, 1)
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(ALERT_TILES * SPACING, 0)
   })
 })
 

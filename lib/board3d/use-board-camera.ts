@@ -22,6 +22,8 @@ interface PointerHost {
     listener: (event: PointerEventLike) => void,
     options?: unknown
   ): void
+  /** Where a drag's later events actually land — see the binding note below. */
+  ownerDocument?: PointerHost
 }
 
 /** The slice of three-stdlib OrbitControls this composable relies on. */
@@ -30,7 +32,7 @@ interface OrbitControlsLike {
   addEventListener(type: string, listener: () => void): void
   removeEventListener(type: string, listener: () => void): void
   update(): void
-  /** The canvas OrbitControls binds its own pointer listeners to. */
+  /** The canvas OrbitControls binds its own pointerdown/wheel listeners to. */
   domElement?: PointerHost
 }
 
@@ -143,6 +145,10 @@ export const createBoardCamera = (
 
   const release = () => {
     idleTimer = undefined
+    // Still on the glass: keep the hold rather than wrestling the finger that
+    // is driving. A drag longer than the hold would otherwise have the camera
+    // resume mid-gesture, since `claim` arms the timer at the grab.
+    if (gestureActive || downAt.size) return armResume()
     userHasControl = false
     resume()
   }
@@ -175,16 +181,24 @@ export const createBoardCamera = (
   }
 
   const onControlsEnd = () => {
+    // three-stdlib dispatches 'end' on EVERY pointerup, not only the last one
+    // (its dispatch sits outside the `pointers.length === 0` branch), so a
+    // pinch fires it twice. Grade only once the last finger is up: a verdict
+    // on the first lift reads the second as a TAP and cancels the hold the
+    // pinch just earned. Re-arming meanwhile keeps the hold alive.
+    if (downAt.size) return armResume()
+
     gestureActive = false
-    downAt.clear()
     if (claimed) {
       claimed = false
       // Re-arm from the release of the finger, not from the claim.
       armResume()
       return
     }
-    // A tap: hand the camera straight back and re-aim now. Clearing the hold
-    // explicitly — a tap must never be able to leave the camera held.
+    // A tap: hand the camera straight back and re-aim now. Clearing the timer
+    // as well — a tap must never leave a release pending behind it.
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = undefined
     userHasControl = false
     resume()
   }
@@ -213,16 +227,23 @@ export const createBoardCamera = (
   controls.addEventListener('start', onControlsStart)
   controls.addEventListener('end', onControlsEnd)
 
-  // Capture phase: OrbitControls takes pointer capture on the canvas, so a
-  // drag that leaves it still reports here.
+  // Where each listener goes matters. OrbitControls never takes pointer
+  // capture, so once a finger moves off the canvas its pointermove/up land on
+  // whatever is under it — an overlay chip, the roster rail — and travel read
+  // from the CANVAS would stop, grading a real rotate as a tap. three-stdlib
+  // binds its own move/up to `ownerDocument` for exactly this reason; match
+  // it. pointerdown and wheel stay on the canvas: a gesture only counts as a
+  // camera grab if it STARTED on the board. Capture phase throughout, so the
+  // bookkeeping runs before OrbitControls dispatches 'start'/'end'.
   const pointerHost = controls.domElement
+  const travelHost = pointerHost?.ownerDocument ?? pointerHost
   const POINTER_OPTIONS = { capture: true, passive: true }
-  if (pointerHost) {
+  if (pointerHost && travelHost) {
     pointerHost.addEventListener('pointerdown', onPointerDown, POINTER_OPTIONS)
-    pointerHost.addEventListener('pointermove', onPointerMove, POINTER_OPTIONS)
-    pointerHost.addEventListener('pointerup', onPointerUp, POINTER_OPTIONS)
-    pointerHost.addEventListener('pointercancel', onPointerUp, POINTER_OPTIONS)
     pointerHost.addEventListener('wheel', onWheel, POINTER_OPTIONS)
+    travelHost.addEventListener('pointermove', onPointerMove, POINTER_OPTIONS)
+    travelHost.addEventListener('pointerup', onPointerUp, POINTER_OPTIONS)
+    travelHost.addEventListener('pointercancel', onPointerUp, POINTER_OPTIONS)
   }
 
   const frameOn = (point: Vector3, frameOptions: FrameOptions = {}) => {
@@ -233,6 +254,12 @@ export const createBoardCamera = (
     }
     // The shot belongs to the player now — track, never re-frame.
     if (cameraTaken) return follow(point)
+
+    // This aim supersedes anything banked: a step held behind a sweep that
+    // this call is about to kill (a gate's push-in over a walk's sweep) would
+    // otherwise be replayed by THIS sweep's onComplete, sliding the camera off
+    // the tile it just framed.
+    pendingFocus = undefined
 
     const distance = (frameOptions.tiles ?? FRAME_TILES) * (options.spacing?.() ?? DEFAULT_SPACING)
     const seconds = (frameOptions.durationMs ?? WALK_FRAME_MS) / 1000
@@ -289,6 +316,8 @@ export const createBoardCamera = (
       pendingFocus = { point: lastPoint, mode: 'follow' }
       return
     }
+    // Executing: this aim is the current one, so nothing banked survives it.
+    pendingFocus = undefined
 
     const delta = new Vec3().subVectors(camera.position, controls.target)
 
@@ -332,12 +361,12 @@ export const createBoardCamera = (
       if (idleTimer) clearTimeout(idleTimer)
       controls.removeEventListener('start', onControlsStart)
       controls.removeEventListener('end', onControlsEnd)
-      if (!pointerHost) return
+      if (!pointerHost || !travelHost) return
       pointerHost.removeEventListener('pointerdown', onPointerDown, POINTER_OPTIONS)
-      pointerHost.removeEventListener('pointermove', onPointerMove, POINTER_OPTIONS)
-      pointerHost.removeEventListener('pointerup', onPointerUp, POINTER_OPTIONS)
-      pointerHost.removeEventListener('pointercancel', onPointerUp, POINTER_OPTIONS)
       pointerHost.removeEventListener('wheel', onWheel, POINTER_OPTIONS)
+      travelHost.removeEventListener('pointermove', onPointerMove, POINTER_OPTIONS)
+      travelHost.removeEventListener('pointerup', onPointerUp, POINTER_OPTIONS)
+      travelHost.removeEventListener('pointercancel', onPointerUp, POINTER_OPTIONS)
     },
   }
 }

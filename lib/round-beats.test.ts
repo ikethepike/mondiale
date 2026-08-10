@@ -14,7 +14,6 @@ import {
   PAWN_HOP_MS,
   STEP_INTERVAL_MS,
   WALK_ANNOUNCE_WIRE_GRACE_MS,
-  WALK_FRAME_LEAD_MS,
   WALK_FRAME_MS,
   WALK_LEAD_MS,
   WALK_RESUME_FRAME_MS,
@@ -148,7 +147,7 @@ describe('round beats', () => {
     // the beat that hides it lifts, or the camera is seen moving under the
     // card. There is no room after the interstitial — the fit above pins it
     // to the whole lead.
-    expect(WALK_FRAME_LEAD_MS + WALK_FRAME_MS).toBeLessThan(MOVE_INTERSTITIAL_TOTAL_MS)
+    expect(WALK_FRAME_MS).toBeLessThan(MOVE_INTERSTITIAL_TOTAL_MS)
     // A between-gates resume has no interstitial and a short lead: the
     // re-frame must land before the first step, whose follow banks behind it.
     expect(WALK_RESUME_FRAME_MS).toBeLessThanOrEqual(WALK_RESUME_LEAD_MS)

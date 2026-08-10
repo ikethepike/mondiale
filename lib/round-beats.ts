@@ -84,14 +84,13 @@ export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTER
 
 /**
  * The camera's framing sweep onto the walking pawn, sized to land INSIDE the
- * announce lead (enforced in round-beats.test.ts). A turn-OPENING walk holds
- * the overview a breath and then sweeps in behind the "On the move!" beat, so
- * the pawn is already framed when the interstitial lifts; a between-gates
- * resume re-frames inside the short lead the gate verdict earned. Without a
- * sweep per announce the persistent stage never re-frames at all — `follow`
- * is a pure translation and keeps whatever shot the camera has held all game.
+ * announce lead (enforced in round-beats.test.ts). A turn-OPENING walk sweeps
+ * behind the "On the move!" beat, so the pawn is already framed when the
+ * interstitial lifts; a between-gates resume re-frames inside the short lead
+ * the gate verdict earned. Without a sweep per announce the persistent stage
+ * never re-frames at all — `follow` is a pure translation and keeps whatever
+ * shot the camera has held all game.
  */
-export const WALK_FRAME_LEAD_MS = 400
 export const WALK_FRAME_MS = 1200
 export const WALK_RESUME_FRAME_MS = 700
 
