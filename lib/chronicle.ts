@@ -5,6 +5,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
 import { isCountryPlayable } from './game-rules'
+import { isEventDealable } from './timeline'
 
 /**
  * Chronicle's pure logic: which countries have enough history on file, which
@@ -28,8 +29,10 @@ export const CHRONICLE_TUNING: {
   hard: { cards: 5, minimumYearGap: 10 },
 }
 
-const eventsOf = (isoCode: ISOCountryCode): [string, EventEntry][] =>
-  Object.entries(EVENTS).filter(([, event]) => event.country === isoCode)
+const eventsOf = (isoCode: ISOCountryCode, difficulty: GameDifficulty): [string, EventEntry][] =>
+  Object.entries(EVENTS).filter(
+    ([slug, event]) => event.country === isoCode && isEventDealable(slug, difficulty)
+  )
 
 /** Largest subset of pairwise-spaced years, greedily over the sorted list. */
 const spacedCount = (years: number[], gap: number): number => {
@@ -51,8 +54,11 @@ export const chronicleCountries = (
 ): ISOCountryCode[] => {
   const { cards, minimumYearGap } = CHRONICLE_TUNING[difficulty]
   const tally = new Map<ISOCountryCode, number[]>()
-  for (const event of Object.values(EVENTS)) {
+  // Fame-gated the same way the hand is dealt, or a country could clear the
+  // bar on cards this difficulty will never actually deal.
+  for (const [slug, event] of Object.entries(EVENTS)) {
     if (!isValidISOCode(event.country)) continue
+    if (!isEventDealable(slug, difficulty)) continue
     const years = tally.get(event.country) ?? []
     years.push(event.year)
     tally.set(event.country, years)
@@ -75,7 +81,7 @@ export const dealChronicleEvents = (
   difficulty: GameDifficulty
 ): string[] | undefined => {
   const { cards, minimumYearGap } = CHRONICLE_TUNING[difficulty]
-  const deck = eventsOf(isoCode)
+  const deck = eventsOf(isoCode, difficulty)
 
   const ATTEMPTS = 8
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {

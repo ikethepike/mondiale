@@ -1,0 +1,2922 @@
+{
+  "|-490|Battle of Marathon": {
+    "qid": "Q31900",
+    "matchedYear": -490
+  },
+  "|-480|Battle of Thermopylae": {
+    "qid": "Q131969",
+    "matchedYear": -480
+  },
+  "|-323|Death of Alexander the Great": {
+    "qid": "Q5247391",
+    "matchedYear": -323
+  },
+  "|-221|Qin's wars of unification": {
+    "qid": "Q2986801",
+    "matchedYear": -221
+  },
+  "|-44|Assassination of Julius Caesar": {
+    "qid": "Q1025466",
+    "matchedYear": -44
+  },
+  "|-31|Battle of Actium": {
+    "qid": "Q160387",
+    "matchedYear": -31
+  },
+  "|79|Eruption of Mount Vesuvius in 79 AD": {
+    "qid": "Q2411998",
+    "matchedYear": 79
+  },
+  "|313|Edict of Milan": {
+    "qid": "Q180764",
+    "matchedYear": 313
+  },
+  "|476|Fall of the Western Roman Empire": {
+    "qid": "Q608613",
+    "matchedYear": 476
+  },
+  "|622|Hegira": {
+    "qid": "Q131482",
+    "matchedYear": 622
+  },
+  "|800|Coronation of Charlemagne": {
+    "qid": "Q1450935",
+    "matchedYear": 800
+  },
+  "|930|Althing": {
+    "qid": "Q131279",
+    "matchedYear": 930
+  },
+  "|988|Christianization of Kievan Rus'": {
+    "qid": "Q573211",
+    "matchedYear": 988
+  },
+  "|1054|East–West Schism": {
+    "qid": "Q51648",
+    "matchedYear": 1054
+  },
+  "|1066|Battle of Hastings": {
+    "qid": "Q83224",
+    "matchedYear": 1066
+  },
+  "|1088|University of Bologna": {
+    "qid": "Q131262",
+    "matchedYear": 1088
+  },
+  "|1099|Siege of Jerusalem (1099)": {
+    "qid": "Q456993",
+    "matchedYear": 1099
+  },
+  "|1206|Mongol Empire": {
+    "qid": "Q12557",
+    "matchedYear": 1206
+  },
+  "|1215|Magna Carta": {
+    "qid": "Q12519",
+    "matchedYear": 1215
+  },
+  "|1299|Ottoman Empire": {
+    "qid": "Q12560",
+    "matchedYear": 1299
+  },
+  "|1347|Black Death": {
+    "qid": "Q42005",
+    "matchedYear": 1346
+  },
+  "|1397|Kalmar Union": {
+    "qid": "Q62623",
+    "matchedYear": 1397
+  },
+  "|1410|Battle of Grunwald": {
+    "qid": "Q33570",
+    "matchedYear": 1410
+  },
+  "|1405|Ming treasure voyages": {
+    "qid": "Q699127",
+    "matchedYear": 1405
+  },
+  "|1420|Forbidden City": {
+    "qid": "Q80290",
+    "matchedYear": 1420
+  },
+  "|1431|Execution of Joan of Arc": {
+    "qid": "Q4201115",
+    "matchedYear": 1431
+  },
+  "|1453|Fall of Constantinople": {
+    "qid": "Q160077",
+    "matchedYear": 1453
+  },
+  "|1455|Gutenberg Bible": {
+    "qid": "Q62052030",
+    "matchedYear": 1455
+  },
+  "|1492|Granada War": {
+    "qid": "Q1552718",
+    "matchedYear": 1492
+  },
+  "|1492|First voyage of Christopher Columbus": {
+    "qid": "Q3771259",
+    "matchedYear": 1492
+  },
+  "|1494|Treaty of Tordesillas": {
+    "qid": "Q180897",
+    "matchedYear": 1494
+  },
+  "|1498|Portuguese discovery of the sea route to India": {
+    "qid": "Q951383",
+    "matchedYear": 1498
+  },
+  "|1517|Ninety-five Theses": {
+    "qid": "Q157506",
+    "matchedYear": 1517
+  },
+  "|1521|Fall of Tenochtitlan": {
+    "qid": "Q593267",
+    "matchedYear": 1521
+  },
+  "|1522|Magellan expedition": {
+    "qid": "Q1225170",
+    "matchedYear": 1522
+  },
+  "|1526|First Battle of Panipat": {
+    "qid": "Q605321",
+    "matchedYear": 1526
+  },
+  "|1532|Battle of Cajamarca": {
+    "qid": "Q1425362",
+    "matchedYear": 1532
+  },
+  "|1543|De revolutionibus orbium coelestium": {
+    "qid": "Q845981",
+    "matchedYear": 1543
+  },
+  "|1565|Great Siege of Malta": {
+    "qid": "Q58732",
+    "matchedYear": 1565
+  },
+  "|1571|Battle of Lepanto": {
+    "qid": "Q165425",
+    "matchedYear": 1571
+  },
+  "|1588|Spanish Armada": {
+    "qid": "Q179684",
+    "matchedYear": 1588
+  },
+  "|1600|Battle of Sekigahara": {
+    "qid": "Q234188",
+    "matchedYear": 1600
+  },
+  "|1602|Dutch East India Company": {
+    "qid": "Q159766",
+    "matchedYear": 1602
+  },
+  "|1607|Jamestown": {
+    "qid": "Q323813",
+    "matchedYear": 1607
+  },
+  "|1618|Second Defenestration of Prague": {
+    "qid": "Q13365740",
+    "matchedYear": 1618
+  },
+  "Q41967248|1620|Mayflower": {
+    "qid": "Q41967248",
+    "matchedYear": 1620
+  },
+  "|1648|Peace of Westphalia": {
+    "qid": "Q150995",
+    "matchedYear": 1648
+  },
+  "|1666|Great Fire of London": {
+    "qid": "Q164679",
+    "matchedYear": 1666
+  },
+  "|1683|Battle of Vienna": {
+    "qid": "Q200855",
+    "matchedYear": 1683
+  },
+  "|1687|Philosophiæ Naturalis Principia Mathematica": {
+    "qid": "Q205921",
+    "matchedYear": 1687
+  },
+  "|1688|Glorious Revolution": {
+    "qid": "Q189508",
+    "matchedYear": 1688
+  },
+  "|1703|Saint Petersburg": {
+    "qid": "Q656",
+    "matchedYear": 1703
+  },
+  "|1707|Acts of Union 1707": {
+    "qid": "Q193515",
+    "matchedYear": 1707
+  },
+  "|1709|Battle of Poltava": {
+    "qid": "Q152486",
+    "matchedYear": 1709
+  },
+  "|1755|1755 Lisbon earthquake": {
+    "qid": "Q191055",
+    "matchedYear": 1755
+  },
+  "|1757|Battle of Plassey": {
+    "qid": "Q203233",
+    "matchedYear": 1757
+  },
+  "|1773|Boston Tea Party": {
+    "qid": "Q19024",
+    "matchedYear": 1773
+  },
+  "|1776|United States Declaration of Independence": {
+    "qid": "Q127912",
+    "matchedYear": 1776
+  },
+  "Q3130|1788|Sydney": {
+    "qid": "Q3130",
+    "matchedYear": 1788
+  },
+  "|1789|Storming of the Bastille": {
+    "qid": "Q6539",
+    "matchedYear": 1789
+  },
+  "|1791|Haitian Revolution": {
+    "qid": "Q689128",
+    "matchedYear": 1791
+  },
+  "|1799|Rosetta Stone": {
+    "qid": "Q48584",
+    "matchedYear": 1799
+  },
+  "|1804|Coronation of Napoleon I": {
+    "qid": "Q973118",
+    "matchedYear": 1804
+  },
+  "|1805|Battle of Trafalgar": {
+    "qid": "Q171416",
+    "matchedYear": 1805
+  },
+  "|1807|Slave Trade Act 1807": {
+    "qid": "Q770832",
+    "matchedYear": 1807
+  },
+  "|1812|French invasion of Russia": {
+    "qid": "Q179250",
+    "matchedYear": 1812
+  },
+  "|1815|Battle of Waterloo": {
+    "qid": "Q48314",
+    "matchedYear": 1815
+  },
+  "|1815|Congress of Vienna": {
+    "qid": "Q46362",
+    "matchedYear": 1815
+  },
+  "|1816|Argentine Declaration of Independence": {
+    "qid": "Q3248484",
+    "matchedYear": 1816
+  },
+  "|1819|Battle of Boyacá": {
+    "qid": "Q1150410",
+    "matchedYear": 1819
+  },
+  "|1821|Greek War of Independence": {
+    "qid": "Q182062",
+    "matchedYear": 1821
+  },
+  "|1821|Mexican War of Independence": {
+    "qid": "Q68750",
+    "matchedYear": 1821
+  },
+  "|1822|Independence of Brazil": {
+    "qid": "Q1548600",
+    "matchedYear": 1822
+  },
+  "|1824|Battle of Ayacucho": {
+    "qid": "Q934157",
+    "matchedYear": 1824
+  },
+  "|1825|Stockton and Darlington Railway": {
+    "qid": "Q375044",
+    "matchedYear": 1825
+  },
+  "|1830|Belgian Revolution": {
+    "qid": "Q223933",
+    "matchedYear": 1831
+  },
+  "|1833|Slavery Abolition Act 1833": {
+    "qid": "Q487420",
+    "matchedYear": 1833
+  },
+  "|1839|First Opium War": {
+    "qid": "Q191282",
+    "matchedYear": 1839
+  },
+  "|1840|Treaty of Waitangi": {
+    "qid": "Q472802",
+    "matchedYear": 1840
+  },
+  "|1845|Great Famine (Ireland)": {
+    "qid": "Q188371",
+    "matchedYear": 1845
+  },
+  "|1847|Liberian Declaration of Independence": {
+    "qid": "Q6541120",
+    "matchedYear": 1847
+  },
+  "|1848|Revolutions of 1848": {
+    "qid": "Q3588",
+    "matchedYear": 1848
+  },
+  "|1848|The Communist Manifesto": {
+    "qid": "Q40591",
+    "matchedYear": 1848
+  },
+  "|1850|Taiping Rebellion": {
+    "qid": "Q192408",
+    "matchedYear": 1850
+  },
+  "|1851|Great Exhibition": {
+    "qid": "Q273095",
+    "matchedYear": 1851
+  },
+  "|1853|Crimean War": {
+    "qid": "Q254106",
+    "matchedYear": 1853
+  },
+  "|1857|Indian Rebellion of 1857": {
+    "qid": "Q129864",
+    "matchedYear": 1857
+  },
+  "|1859|On the Origin of Species": {
+    "qid": "Q20124",
+    "matchedYear": 1859
+  },
+  "|1861|Kingdom of Italy": {
+    "qid": "Q172579",
+    "matchedYear": 1861
+  },
+  "|1861|American Civil War": {
+    "qid": "Q8676",
+    "matchedYear": 1861
+  },
+  "|1861|Emancipation reform of 1861": {
+    "qid": "Q1192212",
+    "matchedYear": 1861
+  },
+  "|1863|International Committee of the Red Cross": {
+    "qid": "Q5987345",
+    "matchedYear": 1863
+  },
+  "|1867|Alaska Purchase": {
+    "qid": "Q309029",
+    "matchedYear": 1867
+  },
+  "|1867|Canadian Confederation": {
+    "qid": "Q1520743",
+    "matchedYear": 1867
+  },
+  "|1868|Meiji Restoration": {
+    "qid": "Q8707",
+    "matchedYear": 1868
+  },
+  "|1869|Suez Canal": {
+    "qid": "Q899",
+    "matchedYear": 1869
+  },
+  "|1869|First transcontinental railroad": {
+    "qid": "Q1753108",
+    "matchedYear": 1869
+  },
+  "|1871|Paris Commune": {
+    "qid": "Q133132",
+    "matchedYear": 1871
+  },
+  "|1871|Unification of Germany": {
+    "qid": "Q154705",
+    "matchedYear": 1871
+  },
+  "|1884|Berlin Conference": {
+    "qid": "Q13582",
+    "matchedYear": 1884
+  },
+  "|1883|1883 eruption of Krakatoa": {
+    "qid": "Q8094772",
+    "matchedYear": 1883
+  },
+  "|1886|Statue of Liberty": {
+    "qid": "Q9202",
+    "matchedYear": 1886
+  },
+  "|1888|Lei Áurea": {
+    "qid": "Q1519167",
+    "matchedYear": 1888
+  },
+  "|1889|Eiffel Tower": {
+    "qid": "Q243",
+    "matchedYear": 1889
+  },
+  "|1896|Battle of Adwa": {
+    "qid": "Q302519",
+    "matchedYear": 1896
+  },
+  "|1896|1896 Summer Olympics": {
+    "qid": "Q8080",
+    "matchedYear": 1896
+  },
+  "|1896|Klondike Gold Rush": {
+    "qid": "Q631489",
+    "matchedYear": 1896
+  },
+  "|1898|Spanish–American War": {
+    "qid": "Q12583",
+    "matchedYear": 1898
+  },
+  "|1899|Second Boer War": {
+    "qid": "Q215112",
+    "matchedYear": 1899
+  },
+  "|1900|Boxer Rebellion": {
+    "qid": "Q150229",
+    "matchedYear": 1899
+  },
+  "|1901|Federation of Australia": {
+    "qid": "Q21003602",
+    "matchedYear": 1902
+  },
+  "|1901|Nobel Prize": {
+    "qid": "Q7191",
+    "matchedYear": 1901
+  },
+  "|1903|Wright Flyer": {
+    "qid": "Q688605",
+    "matchedYear": 1903
+  },
+  "|1904|Russo-Japanese War": {
+    "qid": "Q159950",
+    "matchedYear": 1904
+  },
+  "|1905|Dissolution of the union between Norway and Sweden": {
+    "qid": "Q2264910",
+    "matchedYear": 1905
+  },
+  "|1906|1906 San Francisco earthquake": {
+    "qid": "Q211386",
+    "matchedYear": 1906
+  },
+  "|1908|Young Turk Revolution": {
+    "qid": "Q4298662",
+    "matchedYear": 1908
+  },
+  "|1910|Mexican Revolution": {
+    "qid": "Q214426",
+    "matchedYear": 1910
+  },
+  "|1911|Amundsen's South Pole expedition": {
+    "qid": "Q8414",
+    "matchedYear": 1910
+  },
+  "|1911|Xinhai Revolution": {
+    "qid": "Q190517",
+    "matchedYear": 1911
+  },
+  "|1912|Sinking of the Titanic": {
+    "qid": "Q2577588",
+    "matchedYear": 1912
+  },
+  "|1914|Panama Canal": {
+    "qid": "Q7350",
+    "matchedYear": 1914
+  },
+  "|1914|Assassination of Archduke Franz Ferdinand": {
+    "qid": "Q192050",
+    "matchedYear": 1914
+  },
+  "|1915|Gallipoli campaign": {
+    "qid": "Q164983",
+    "matchedYear": 1915
+  },
+  "|1915|Armenian genocide": {
+    "qid": "Q80034",
+    "matchedYear": 1915
+  },
+  "|1916|Easter Rising": {
+    "qid": "Q193689",
+    "matchedYear": 1916
+  },
+  "|1917|October Revolution": {
+    "qid": "Q42976",
+    "matchedYear": 1917
+  },
+  "|1917|Finnish Declaration of Independence": {
+    "qid": "Q1994771",
+    "matchedYear": 1917
+  },
+  "|1918|Armistice of 11 November 1918": {
+    "qid": "Q253224",
+    "matchedYear": 1918
+  },
+  "|1918|Spanish flu": {
+    "qid": "Q178275",
+    "matchedYear": 1918
+  },
+  "|1919|Treaty of Versailles": {
+    "qid": "Q8736",
+    "matchedYear": 1919
+  },
+  "|1919|Jallianwala Bagh massacre": {
+    "qid": "Q208855",
+    "matchedYear": 1919
+  },
+  "|1920|League of Nations": {
+    "qid": "Q38130",
+    "matchedYear": 1919
+  },
+  "|1921|Anglo-Irish Treaty": {
+    "qid": "Q541191",
+    "matchedYear": 1921
+  },
+  "|1922|March on Rome": {
+    "qid": "Q468823",
+    "matchedYear": 1922
+  },
+  "|1922|Tomb of Tutankhamun": {
+    "qid": "Q835309",
+    "matchedYear": 1922
+  },
+  "|1922|Soviet Union": {
+    "qid": "Q15180",
+    "matchedYear": 1922
+  },
+  "|1923|1923 Great Kantō earthquake": {
+    "qid": "Q274498",
+    "matchedYear": 1923
+  },
+  "|1923|Republic of Türkiye": {
+    "qid": "Q43",
+    "matchedYear": 1923
+  },
+  "Q12190|1928|Discovery of penicillin": {
+    "qid": "Q12190",
+    "matchedYear": 1928
+  },
+  "|1929|Wall Street Crash of 1929": {
+    "qid": "Q201684",
+    "matchedYear": 1929
+  },
+  "|1930|Salt March": {
+    "qid": "Q239344",
+    "matchedYear": 1930
+  },
+  "|1930|1930 FIFA World Cup": {
+    "qid": "Q48432",
+    "matchedYear": 1930
+  },
+  "|1931|Empire State Building": {
+    "qid": "Q9188",
+    "matchedYear": 1931
+  },
+  "|1932|Siamese revolution of 1932": {
+    "qid": "Q2120252",
+    "matchedYear": 1932
+  },
+  "|1933|Machtergreifung": {
+    "qid": "Q328271",
+    "matchedYear": 1933
+  },
+  "|1934|Long March": {
+    "qid": "Q46333",
+    "matchedYear": 1934
+  },
+  "|1935|Second Italo-Ethiopian War": {
+    "qid": "Q94916",
+    "matchedYear": 1935
+  },
+  "|1936|Spanish Civil War": {
+    "qid": "Q10859",
+    "matchedYear": 1936
+  },
+  "|1937|Golden Gate Bridge": {
+    "qid": "Q44440",
+    "matchedYear": 1937
+  },
+  "|1937|Hindenburg disaster": {
+    "qid": "Q3182723",
+    "matchedYear": 1937
+  },
+  "|1937|Nanjing Massacre": {
+    "qid": "Q192055",
+    "matchedYear": 1937
+  },
+  "|1938|Kristallnacht": {
+    "qid": "Q36756",
+    "matchedYear": 1938
+  },
+  "|1939|Invasion of Poland": {
+    "qid": "Q150812",
+    "matchedYear": 1939
+  },
+  "|1940|Battle of Britain": {
+    "qid": "Q154720",
+    "matchedYear": 1940
+  },
+  "|1941|Attack on Pearl Harbor": {
+    "qid": "Q52418",
+    "matchedYear": 1941
+  },
+  "|1942|Battle of Stalingrad": {
+    "qid": "Q38789",
+    "matchedYear": 1942
+  },
+  "|1944|Normandy landings": {
+    "qid": "Q16470",
+    "matchedYear": 1944
+  },
+  "|1944|Bretton Woods Conference": {
+    "qid": "Q1194052",
+    "matchedYear": 1944
+  },
+  "|1944|Iceland": {
+    "qid": "Q189",
+    "matchedYear": 1944
+  },
+  "|1945|Atomic bombings of Hiroshima and Nagasaki": {
+    "qid": "Q488",
+    "matchedYear": 1945
+  },
+  "|1945|United Nations": {
+    "qid": "Q1065",
+    "matchedYear": 1945
+  },
+  "|1945|Nuremberg trials": {
+    "qid": "Q80130",
+    "matchedYear": 1945
+  },
+  "|1946|Treaty of Manila (1946)": {
+    "qid": "Q7837141",
+    "matchedYear": 1946
+  },
+  "|1947|Partition of India": {
+    "qid": "Q129053",
+    "matchedYear": 1947
+  },
+  "|1948|Marshall Plan": {
+    "qid": "Q4576",
+    "matchedYear": 1948
+  },
+  "|1948|Assassination of Mahatma Gandhi": {
+    "qid": "Q3350154",
+    "matchedYear": 1948
+  },
+  "|1948|Israeli Declaration of Independence": {
+    "qid": "Q223732",
+    "matchedYear": 1948
+  },
+  "|1948|Berlin Blockade": {
+    "qid": "Q151349",
+    "matchedYear": 1948
+  },
+  "|1948|Universal Declaration of Human Rights": {
+    "qid": "Q7813",
+    "matchedYear": 1948
+  },
+  "|1949|NATO": {
+    "qid": "Q7184",
+    "matchedYear": 1949
+  },
+  "|1949|Proclamation of the People's Republic of China": {
+    "qid": "Q10872057",
+    "matchedYear": 1949
+  },
+  "|1950|Korean War": {
+    "qid": "Q8663",
+    "matchedYear": 1950
+  },
+  "|1952|Egyptian revolution of 1952": {
+    "qid": "Q1780431",
+    "matchedYear": 1952
+  },
+  "|1953|1953 British Mount Everest expedition": {
+    "qid": "Q4567715",
+    "matchedYear": 1953
+  },
+  "|1953|Molecular Structure of Nucleic Acids: A Structure for Deoxyribose Nucleic Acid": {
+    "qid": "Q1895685",
+    "matchedYear": 1953
+  },
+  "|1954|Battle of Dien Bien Phu": {
+    "qid": "Q604897",
+    "matchedYear": 1954
+  },
+  "|1955|Warsaw Pact": {
+    "qid": "Q41644",
+    "matchedYear": 1955
+  },
+  "|1955|Montgomery bus boycott": {
+    "qid": "Q249367",
+    "matchedYear": 1956
+  },
+  "|1955|Bandung Conference": {
+    "qid": "Q208191",
+    "matchedYear": 1955
+  },
+  "|1956|Hungarian Revolution of 1956": {
+    "qid": "Q164348",
+    "matchedYear": 1956
+  },
+  "|1956|Suez Crisis": {
+    "qid": "Q49101",
+    "matchedYear": 1957
+  },
+  "|1957|Independence of Ghana": {
+    "qid": "Q96379430",
+    "matchedYear": 1957
+  },
+  "|1957|Treaty of Rome": {
+    "qid": "Q167457",
+    "matchedYear": 1957
+  },
+  "|1957|Sputnik 1": {
+    "qid": "Q80811",
+    "matchedYear": 1957
+  },
+  "|1957|Malayan Declaration of Independence": {
+    "qid": "Q1475298",
+    "matchedYear": 1957
+  },
+  "|1959|Cuban Revolution": {
+    "qid": "Q11264",
+    "matchedYear": 1959
+  },
+  "|1960|Independence of Nigeria": {
+    "qid": "Q140119414",
+    "matchedYear": 1960
+  },
+  "Q974|1960|Independence of the Democratic Republic of the Congo": {
+    "qid": "Q974",
+    "matchedYear": 1960
+  },
+  "|1961|Vostok 1": {
+    "qid": "Q182524",
+    "matchedYear": 1961
+  },
+  "|1961|Berlin Wall": {
+    "qid": "Q5086",
+    "matchedYear": 1961
+  },
+  "|1962|Évian Accords": {
+    "qid": "Q2319117",
+    "matchedYear": 1962
+  },
+  "|1962|Cuban Missile Crisis": {
+    "qid": "Q128160",
+    "matchedYear": 1962
+  },
+  "|1962|Independence of Jamaica": {
+    "qid": "Q17080530",
+    "matchedYear": 1962
+  },
+  "|1963|Assassination of John F. Kennedy": {
+    "qid": "Q193484",
+    "matchedYear": 1963
+  },
+  "|1963|March on Washington for Jobs and Freedom": {
+    "qid": "Q1128871",
+    "matchedYear": 1963
+  },
+  "|1965|Independence of Singapore": {
+    "qid": "Q15991222",
+    "matchedYear": 1965
+  },
+  "|1967|Six-Day War": {
+    "qid": "Q49077",
+    "matchedYear": 1967
+  },
+  "|1967|First heart transplant": {
+    "qid": "Q70092878",
+    "matchedYear": 1968
+  },
+  "|1968|Prague Spring": {
+    "qid": "Q162401",
+    "matchedYear": 1968
+  },
+  "|1968|Assassination of Martin Luther King Jr.": {
+    "qid": "Q757963",
+    "matchedYear": 1968
+  },
+  "|1969|Apollo 11": {
+    "qid": "Q43653",
+    "matchedYear": 1969
+  },
+  "Q164815|1969|Woodstock": {
+    "qid": "Q164815",
+    "matchedYear": 1969
+  },
+  "|1969|Concorde": {
+    "qid": "Q6505",
+    "matchedYear": 1969
+  },
+  "Q38891|1960|Aswan Dam": {
+    "qid": "Q38891",
+    "matchedYear": 1960
+  },
+  "|1971|Bangladesh Liberation War": {
+    "qid": "Q371394",
+    "matchedYear": 1971
+  },
+  "|1971|1971 Ugandan coup d'état": {
+    "qid": "Q3653895",
+    "matchedYear": 1971
+  },
+  "|1972|Munich massacre": {
+    "qid": "Q229007",
+    "matchedYear": 1972
+  },
+  "|1973|Sydney Opera House": {
+    "qid": "Q45178",
+    "matchedYear": 1973
+  },
+  "|1973|1973 Chilean coup d'état": {
+    "qid": "Q856670",
+    "matchedYear": 1973
+  },
+  "|1973|1973 oil crisis": {
+    "qid": "Q316817",
+    "matchedYear": 1973
+  },
+  "|1974|Carnation Revolution": {
+    "qid": "Q193245",
+    "matchedYear": 1974
+  },
+  "|1974|Turkish invasion of Cyprus": {
+    "qid": "Q1050999",
+    "matchedYear": 1974
+  },
+  "|1975|Fall of Saigon": {
+    "qid": "Q482456",
+    "matchedYear": 1975
+  },
+  "|1975|Independence of Angola": {
+    "qid": "Q1780216",
+    "matchedYear": 1975
+  },
+  "Q51753258|1975|Death of Francisco Franco": {
+    "qid": "Q51753258",
+    "matchedYear": 1975
+  },
+  "|1976|Soweto uprising": {
+    "qid": "Q153081",
+    "matchedYear": 1976
+  },
+  "|1976|1976 Tangshan earthquake": {
+    "qid": "Q462195",
+    "matchedYear": 1976
+  },
+  "|1977|Voyager 1": {
+    "qid": "Q48469",
+    "matchedYear": 1977
+  },
+  "|1978|Camp David Accords": {
+    "qid": "Q309204",
+    "matchedYear": 1978
+  },
+  "|1979|Iranian Revolution": {
+    "qid": "Q126065",
+    "matchedYear": 1978
+  },
+  "|1979|Soviet–Afghan War": {
+    "qid": "Q83085",
+    "matchedYear": 1979
+  },
+  "|1980|Independence of Zimbabwe": {
+    "qid": "Q99579304",
+    "matchedYear": 1981
+  },
+  "|1980|Solidarity (Polish trade union)": {
+    "qid": "Q1003",
+    "matchedYear": 1980
+  },
+  "|1980|Iran–Iraq War": {
+    "qid": "Q82664",
+    "matchedYear": 1980
+  },
+  "|1982|Falklands War": {
+    "qid": "Q48249",
+    "matchedYear": 1982
+  },
+  "|1984|Bhopal disaster": {
+    "qid": "Q129029",
+    "matchedYear": 1984
+  },
+  "|1985|Live Aid": {
+    "qid": "Q193740",
+    "matchedYear": 1985
+  },
+  "|1985|1985 Mexico City earthquake": {
+    "qid": "Q1798567",
+    "matchedYear": 1985
+  },
+  "|1986|Chernobyl disaster": {
+    "qid": "Q486",
+    "matchedYear": 1986
+  },
+  "|1986|Space Shuttle Challenger disaster": {
+    "qid": "Q858145",
+    "matchedYear": 1986
+  },
+  "|1986|People Power Revolution": {
+    "qid": "Q1274389",
+    "matchedYear": 1986
+  },
+  "|1989|World Wide Web": {
+    "qid": "Q466",
+    "matchedYear": 1989
+  },
+  "|1989|Baltic Way": {
+    "qid": "Q389646",
+    "matchedYear": 1989
+  },
+  "|1989|1989 Tiananmen Square protests and massacre": {
+    "qid": "Q99717",
+    "matchedYear": 1989
+  },
+  "|1989|Fall of the Berlin Wall": {
+    "qid": "Q69163529",
+    "matchedYear": 1989
+  },
+  "|1989|Velvet Revolution": {
+    "qid": "Q182817",
+    "matchedYear": 1989
+  },
+  "|1989|Romanian Revolution": {
+    "qid": "Q204213",
+    "matchedYear": 1989
+  },
+  "|1995|1995 Rugby World Cup": {
+    "qid": "Q1130017",
+    "matchedYear": 1995
+  },
+  "|1990|German reunification": {
+    "qid": "Q56039",
+    "matchedYear": 1991
+  },
+  "|1990|Independence of Namibia": {
+    "qid": "Q7302655",
+    "matchedYear": 1990
+  },
+  "|1990|Hubble Space Telescope": {
+    "qid": "Q2513",
+    "matchedYear": 1990
+  },
+  "|1990|Gulf War": {
+    "qid": "Q37643",
+    "matchedYear": 1990
+  },
+  "|1991|Croatian War of Independence": {
+    "qid": "Q68969",
+    "matchedYear": 1991
+  },
+  "|1991|Dissolution of the Soviet Union": {
+    "qid": "Q5167679",
+    "matchedYear": 1991
+  },
+  "|1992|Maastricht Treaty": {
+    "qid": "Q11146",
+    "matchedYear": 1992
+  },
+  "|1993|Dissolution of Czechoslovakia": {
+    "qid": "Q1059215",
+    "matchedYear": 1992
+  },
+  "|1993|Oslo I Accord": {
+    "qid": "Q49107",
+    "matchedYear": 1993
+  },
+  "|1993|Independence of Eritrea": {
+    "qid": "Q5389607",
+    "matchedYear": 1993
+  },
+  "|1994|Rwandan genocide": {
+    "qid": "Q131297",
+    "matchedYear": 1994
+  },
+  "|1994|1994 South African general election": {
+    "qid": "Q957012",
+    "matchedYear": 1994
+  },
+  "|1994|Channel Tunnel": {
+    "qid": "Q10257",
+    "matchedYear": 1993
+  },
+  "|1995|Dayton Agreement": {
+    "qid": "Q190315",
+    "matchedYear": 1995
+  },
+  "Q171433|1996|Dolly the Sheep": {
+    "qid": "Q171433",
+    "matchedYear": 1996
+  },
+  "|1997|Handover of Hong Kong": {
+    "qid": "Q15251",
+    "matchedYear": 1997
+  },
+  "|1997|1997 Asian financial crisis": {
+    "qid": "Q80880",
+    "matchedYear": 1997
+  },
+  "|1998|Good Friday Agreement": {
+    "qid": "Q208958",
+    "matchedYear": 1998
+  },
+  "|1998|International Space Station": {
+    "qid": "Q25271",
+    "matchedYear": 1998
+  },
+  "|1999|Euro": {
+    "qid": "Q131239",
+    "matchedYear": 2000
+  },
+  "Q277343|1977|Torrijos–Carter Treaties": {
+    "qid": "Q277343",
+    "matchedYear": 1977
+  },
+  "|2001|September 11 attacks": {
+    "qid": "Q10806",
+    "matchedYear": 2001
+  },
+  "|2001|Wikipedia": {
+    "qid": "Q52",
+    "matchedYear": 2001
+  },
+  "Q332358|2002|East Timor": {
+    "qid": "Q332358",
+    "matchedYear": 2002
+  },
+  "|2003|Iraq War": {
+    "qid": "Q545449",
+    "matchedYear": 2003
+  },
+  "|2003|Human Genome Project": {
+    "qid": "Q192446",
+    "matchedYear": 2003
+  },
+  "|2004|2004 Indian Ocean earthquake and tsunami": {
+    "qid": "Q130754",
+    "matchedYear": 2004
+  },
+  "|2004|2004 enlargement of the European Union": {
+    "qid": "Q1230874",
+    "matchedYear": 2004
+  },
+  "|2004|Orange Revolution": {
+    "qid": "Q836386",
+    "matchedYear": 2004
+  },
+  "|2005|Hurricane Katrina": {
+    "qid": "Q16422",
+    "matchedYear": 2005
+  },
+  "|2006|2006 Montenegrin independence referendum": {
+    "qid": "Q1131784",
+    "matchedYear": 2006
+  },
+  "|2007|iPhone (1st generation)": {
+    "qid": "Q621427",
+    "matchedYear": 2007
+  },
+  "|2008|2008 Kosovo declaration of independence": {
+    "qid": "Q861510",
+    "matchedYear": 2008
+  },
+  "|2008|Bankruptcy of Lehman Brothers": {
+    "qid": "Q3269580",
+    "matchedYear": 2008
+  },
+  "|2008|Russo-Georgian War": {
+    "qid": "Q620735",
+    "matchedYear": 2008
+  },
+  "|2009|First inauguration of Barack Obama": {
+    "qid": "Q25094",
+    "matchedYear": 2009
+  },
+  "|2010|2010 Haiti earthquake": {
+    "qid": "Q43777",
+    "matchedYear": 2010
+  },
+  "|2010|Burj Khalifa": {
+    "qid": "Q12495",
+    "matchedYear": 2010
+  },
+  "|2010|Tunisian Revolution": {
+    "qid": "Q46959",
+    "matchedYear": 2010
+  },
+  "|2011|2011 Tōhoku earthquake and tsunami": {
+    "qid": "Q36204",
+    "matchedYear": 2011
+  },
+  "|2011|Independence of South Sudan": {
+    "qid": "Q112730187",
+    "matchedYear": 2011
+  },
+  "|2011|Syrian civil war": {
+    "qid": "Q178810",
+    "matchedYear": 2011
+  },
+  "|2012|Higgs boson": {
+    "qid": "Q402",
+    "matchedYear": 2012
+  },
+  "|2013|2013 papal conclave": {
+    "qid": "Q4422669",
+    "matchedYear": 2013
+  },
+  "|2014|Annexation of Crimea by the Russian Federation": {
+    "qid": "Q15920546",
+    "matchedYear": 2014
+  },
+  "|2014|Western African Ebola virus epidemic": {
+    "qid": "Q15989108",
+    "matchedYear": 2013
+  },
+  "|2015|Paris Agreement": {
+    "qid": "Q21707860",
+    "matchedYear": 2015
+  },
+  "|2016|2016 United Kingdom European Union membership referendum": {
+    "qid": "Q21812812",
+    "matchedYear": 2016
+  },
+  "|2016|Colombian peace agreement": {
+    "qid": "Q26840027",
+    "matchedYear": 2016
+  },
+  "|2019|Notre-Dame fire": {
+    "qid": "Q63167656",
+    "matchedYear": 2019
+  },
+  "|2020|COVID-19 pandemic": {
+    "qid": "Q81068910",
+    "matchedYear": 2019
+  },
+  "|2020|2020 Beirut explosion": {
+    "qid": "Q98073118",
+    "matchedYear": 2020
+  },
+  "|2021|Fall of Kabul": {
+    "qid": "Q108102583",
+    "matchedYear": 2021
+  },
+  "|2021|James Webb Space Telescope": {
+    "qid": "Q186447",
+    "matchedYear": 2021
+  },
+  "|2022|Russian invasion of Ukraine": {
+    "qid": "Q110999040",
+    "matchedYear": 2022
+  },
+  "|2022|Death and state funeral of Elizabeth II": {
+    "qid": "Q113846055",
+    "matchedYear": 2022
+  },
+  "|2022|2022 FIFA World Cup": {
+    "qid": "Q284163",
+    "matchedYear": 2022
+  },
+  "|2023|2023 Turkey–Syria earthquakes": {
+    "qid": "Q116691303",
+    "matchedYear": 2023
+  },
+  "|1990|1990 Mongolian revolution": {
+    "qid": "Q2302974",
+    "matchedYear": 1990
+  },
+  "|1997|Kyoto Protocol": {
+    "qid": "Q47359",
+    "matchedYear": 1997
+  },
+  "|-202|Battle of Zama": {
+    "qid": "Q200056",
+    "matchedYear": -202
+  },
+  "|9|Battle of the Teutoburg Forest": {
+    "qid": "Q87779",
+    "matchedYear": 9
+  },
+  "Q96377989|541|Plague of Justinian": {
+    "qid": "Q96377989",
+    "matchedYear": 541
+  },
+  "|732|Battle of Tours": {
+    "qid": "Q173077",
+    "matchedYear": 732
+  },
+  "|762|Baghdad": {
+    "qid": "Q1530",
+    "matchedYear": 762
+  },
+  "|843|Treaty of Verdun": {
+    "qid": "Q134840",
+    "matchedYear": 843
+  },
+  "|1071|Battle of Manzikert": {
+    "qid": "Q200032",
+    "matchedYear": 1071
+  },
+  "|1086|Domesday Book": {
+    "qid": "Q19867",
+    "matchedYear": 1086
+  },
+  "|1187|Siege of Jerusalem (1187)": {
+    "qid": "Q815161",
+    "matchedYear": 1187
+  },
+  "|1204|Sack of Constantinople": {
+    "qid": "Q1750892",
+    "matchedYear": 1204
+  },
+  "|1260|Battle of Ain Jalut": {
+    "qid": "Q244356",
+    "matchedYear": 1260
+  },
+  "|1314|Battle of Bannockburn": {
+    "qid": "Q222520",
+    "matchedYear": 1314
+  },
+  "|1337|Hundred Years' War": {
+    "qid": "Q12551",
+    "matchedYear": 1337
+  },
+  "|1415|Battle of Agincourt": {
+    "qid": "Q188495",
+    "matchedYear": 1415
+  },
+  "|1480|Great Stand on the Ugra River": {
+    "qid": "Q25628",
+    "matchedYear": 1480
+  },
+  "|1501|Safavid Iran": {
+    "qid": "Q18234383",
+    "matchedYear": 1501
+  },
+  "|1503|Mona Lisa": {
+    "qid": "Q12418",
+    "matchedYear": 1503
+  },
+  "|1508|Sistine Chapel ceiling": {
+    "qid": "Q844675",
+    "matchedYear": 1508
+  },
+  "|1545|Potosí": {
+    "qid": "Q35045",
+    "matchedYear": 1545
+  },
+  "|1582|Gregorian calendar": {
+    "qid": "Q12138",
+    "matchedYear": 1582
+  },
+  "|1637|Tulip mania": {
+    "qid": "Q219217",
+    "matchedYear": 1637
+  },
+  "|1644|Battle of Shanhai Pass": {
+    "qid": "Q4520158",
+    "matchedYear": 1644
+  },
+  "|1692|Salem witch trials": {
+    "qid": "Q219698",
+    "matchedYear": 1692
+  },
+  "|1756|Seven Years' War": {
+    "qid": "Q33143",
+    "matchedYear": 1756
+  },
+  "|1787|Constitution of the United States": {
+    "qid": "Q11698",
+    "matchedYear": 1787
+  },
+  "|1803|Louisiana Purchase": {
+    "qid": "Q193155",
+    "matchedYear": 1803
+  },
+  "|1831|Second voyage of HMS Beagle": {
+    "qid": "Q1564366",
+    "matchedYear": 1831
+  },
+  "|1821|Battle of Carabobo": {
+    "qid": "Q388210",
+    "matchedYear": 1821
+  },
+  "|1826|View from the Window at Le Gras": {
+    "qid": "Q616159",
+    "matchedYear": 1827
+  },
+  "|1846|Neptune": {
+    "qid": "Q332",
+    "matchedYear": 1846
+  },
+  "|1867|Dynamite": {
+    "qid": "Q80728",
+    "matchedYear": 1867
+  },
+  "|1883|Brooklyn Bridge": {
+    "qid": "Q125006",
+    "matchedYear": 1883
+  },
+  "|1886|Benz Patent-Motorwagen": {
+    "qid": "Q326248",
+    "matchedYear": 1886
+  },
+  "|1895|Workers Leaving the Lumière Factory": {
+    "qid": "Q8665",
+    "matchedYear": 1895
+  },
+  "|1898|Radium": {
+    "qid": "Q1128",
+    "matchedYear": 1898
+  },
+  "|1903|1903 Tour de France": {
+    "qid": "Q506911",
+    "matchedYear": 1903
+  },
+  "|1905|Annus Mirabilis papers": {
+    "qid": "Q51497",
+    "matchedYear": 1905
+  },
+  "|1907|Great Mosque of Djenné": {
+    "qid": "Q683632",
+    "matchedYear": 1906
+  },
+  "|1908|Ford Model T": {
+    "qid": "Q182323",
+    "matchedYear": 1908
+  },
+  "|1912|African National Congress": {
+    "qid": "Q83162",
+    "matchedYear": 1912
+  },
+  "|1917|Balfour Declaration": {
+    "qid": "Q187152",
+    "matchedYear": 1917
+  },
+  "|1920|Prohibition in the United States": {
+    "qid": "Q399999",
+    "matchedYear": 1920
+  },
+  "|1924|1924 Winter Olympics": {
+    "qid": "Q9583",
+    "matchedYear": 1924
+  },
+  "|1927|Spirit of St. Louis": {
+    "qid": "Q939784",
+    "matchedYear": 1927
+  },
+  "|1936|Hoover Dam": {
+    "qid": "Q172822",
+    "matchedYear": 1936
+  },
+  "|1936|1936 Summer Olympics": {
+    "qid": "Q8150",
+    "matchedYear": 1936
+  },
+  "|1939|Winter War": {
+    "qid": "Q134949",
+    "matchedYear": 1939
+  },
+  "|1943|Warsaw Ghetto Uprising": {
+    "qid": "Q160161",
+    "matchedYear": 1943
+  },
+  "|1943|Colossus computer": {
+    "qid": "Q770597",
+    "matchedYear": 1943
+  },
+  "|1946|ENIAC": {
+    "qid": "Q169399",
+    "matchedYear": 1946
+  },
+  "|1947|The Diary of a Young Girl": {
+    "qid": "Q6911",
+    "matchedYear": 1947
+  },
+  "|1948|Dominion of Ceylon": {
+    "qid": "Q2670092",
+    "matchedYear": 1948
+  },
+  "|1948|Myanmar": {
+    "qid": "Q836",
+    "matchedYear": 1948
+  },
+  "|1953|Cambodia": {
+    "qid": "Q424",
+    "matchedYear": 1953
+  },
+  "|1952|Mau Mau rebellion": {
+    "qid": "Q476855",
+    "matchedYear": 1952
+  },
+  "|1956|Eurovision Song Contest 1956": {
+    "qid": "Q171784",
+    "matchedYear": 1956
+  },
+  "|1960|Laser": {
+    "qid": "Q38867",
+    "matchedYear": 1960
+  },
+  "|1960|The Beatles": {
+    "qid": "Q1299",
+    "matchedYear": 1960
+  },
+  "|1963|Vostok 6": {
+    "qid": "Q269668",
+    "matchedYear": 1963
+  },
+  "|1964|Tōkaidō Shinkansen": {
+    "qid": "Q660895",
+    "matchedYear": 1964
+  },
+  "|1969|Boeing 747": {
+    "qid": "Q179",
+    "matchedYear": 1969
+  },
+  "|1971|Intel 4004": {
+    "qid": "Q205509",
+    "matchedYear": 1971
+  },
+  "|1972|Watergate scandal": {
+    "qid": "Q42761",
+    "matchedYear": 1972
+  },
+  "|1974|Rubik's Cube": {
+    "qid": "Q47043",
+    "matchedYear": 1974
+  },
+  "|1976|Apple Inc.": {
+    "qid": "Q312",
+    "matchedYear": 1976
+  },
+  "|1977|Star Wars": {
+    "qid": "Q17738",
+    "matchedYear": 1977
+  },
+  "|1979|Premiership of Margaret Thatcher": {
+    "qid": "Q7240397",
+    "matchedYear": 1979
+  },
+  "|1979|Walkman": {
+    "qid": "Q622493",
+    "matchedYear": 1979
+  },
+  "|1981|IBM Personal Computer": {
+    "qid": "Q202712",
+    "matchedYear": 1981
+  },
+  "|1985|Schengen Agreement": {
+    "qid": "Q2822795",
+    "matchedYear": 1985
+  },
+  "|1986|1986 FIFA World Cup": {
+    "qid": "Q46938",
+    "matchedYear": 1986
+  },
+  "|1951|Libya": {
+    "qid": "Q1016",
+    "matchedYear": 1951
+  },
+  "|1954|1954 Guatemalan coup d'état": {
+    "qid": "Q976887",
+    "matchedYear": 1954
+  },
+  "|1956|Sudan": {
+    "qid": "Q1049",
+    "matchedYear": 1956
+  },
+  "|1960|Somalia": {
+    "qid": "Q1045",
+    "matchedYear": 1960
+  },
+  "|1960|Madagascar": {
+    "qid": "Q1019",
+    "matchedYear": 1960
+  },
+  "|1964|Tanzania": {
+    "qid": "Q924",
+    "matchedYear": 1964
+  },
+  "|1964|Zambia": {
+    "qid": "Q953",
+    "matchedYear": 1964
+  },
+  "|1966|Botswana": {
+    "qid": "Q963",
+    "matchedYear": 1966
+  },
+  "|1970|Fiji": {
+    "qid": "Q712",
+    "matchedYear": 1970
+  },
+  "|1975|Papua New Guinea": {
+    "qid": "Q691",
+    "matchedYear": 1975
+  },
+  "|1975|Suriname": {
+    "qid": "Q730",
+    "matchedYear": 1975
+  },
+  "|1975|Green March": {
+    "qid": "Q870684",
+    "matchedYear": 1975
+  },
+  "|1979|Nicaraguan Revolution": {
+    "qid": "Q1463516",
+    "matchedYear": 1978
+  },
+  "|1978|Dakar Rally": {
+    "qid": "Q181336",
+    "matchedYear": 1979
+  },
+  "|1989|1989 Paraguayan coup d'état": {
+    "qid": "Q19601700",
+    "matchedYear": 1989
+  },
+  "|1991|Kazakhstan": {
+    "qid": "Q232",
+    "matchedYear": 1991
+  },
+  "Q1783607|1992|Chapultepec Peace Accords": {
+    "qid": "Q1783607",
+    "matchedYear": 1992
+  },
+  "|1966|Barbados": {
+    "qid": "Q244",
+    "matchedYear": 1966
+  },
+  "Q864684|2008|2008 Bhutanese National Assembly election": {
+    "qid": "Q864684",
+    "matchedYear": 2008
+  },
+  "Q10677|1994|PlayStation": {
+    "qid": "Q10677",
+    "matchedYear": 1994
+  },
+  "Q2631085|1997|Deep Blue versus Garry Kasparov": {
+    "qid": "Q2631085",
+    "matchedYear": 1997
+  },
+  "|1998|Google": {
+    "qid": "Q95",
+    "matchedYear": 1998
+  },
+  "|2003|Shenzhou 5": {
+    "qid": "Q378417",
+    "matchedYear": 2003
+  },
+  "|2004|Facebook": {
+    "qid": "Q355",
+    "matchedYear": 2004
+  },
+  "|2006|IAU definition of planet": {
+    "qid": "Q2361306",
+    "matchedYear": 2006
+  },
+  "|2010|2010 eruptions of Eyjafjallajökull": {
+    "qid": "Q269442",
+    "matchedYear": 2010
+  },
+  "|2010|2010 Copiapó mining accident": {
+    "qid": "Q214790",
+    "matchedYear": 2010
+  },
+  "|2015|First observation of gravitational waves": {
+    "qid": "Q22683173",
+    "matchedYear": 2015
+  },
+  "|2016|AlphaGo versus Lee Sedol": {
+    "qid": "Q23016184",
+    "matchedYear": 2016
+  },
+  "|2018|Tham Luang cave rescue": {
+    "qid": "Q55301634",
+    "matchedYear": 2018
+  },
+  "|2018|School Strike for Climate": {
+    "qid": "Q60674974",
+    "matchedYear": 2018
+  },
+  "|2021|2021 Suez Canal obstruction": {
+    "qid": "Q106185868",
+    "matchedYear": 2021
+  },
+  "|2023|Chandrayaan-3": {
+    "qid": "Q65049774",
+    "matchedYear": 2023
+  },
+  "|1770|First voyage of James Cook": {
+    "qid": "Q3178839",
+    "matchedYear": 1771
+  },
+  "|1804|Lewis and Clark Expedition": {
+    "qid": "Q505802",
+    "matchedYear": 1804
+  },
+  "|1872|Challenger expedition": {
+    "qid": "Q644521",
+    "matchedYear": 1872
+  },
+  "|1915|Imperial Trans-Antarctic Expedition": {
+    "qid": "Q1162294",
+    "matchedYear": 1914
+  },
+  "Q58952739|1960|Bathyscaphe Trieste": {
+    "qid": "Q58952739",
+    "matchedYear": 1960
+  },
+  "|1959|Luna 2": {
+    "qid": "Q1159927",
+    "matchedYear": 1959
+  },
+  "|1965|Voskhod 2": {
+    "qid": "Q722791",
+    "matchedYear": 1965
+  },
+  "|1968|Apollo 8": {
+    "qid": "Q184201",
+    "matchedYear": 1968
+  },
+  "|1970|Apollo 13": {
+    "qid": "Q182252",
+    "matchedYear": 1970
+  },
+  "|1971|Salyut 1": {
+    "qid": "Q211761",
+    "matchedYear": 1971
+  },
+  "|1975|Apollo–Soyuz": {
+    "qid": "Q208759",
+    "matchedYear": 1975
+  },
+  "|1976|Viking 1": {
+    "qid": "Q210199",
+    "matchedYear": 1975
+  },
+  "|1986|Mir (space station)": {
+    "qid": "Q48604",
+    "matchedYear": 1986
+  },
+  "|1997|Mars Pathfinder": {
+    "qid": "Q201771",
+    "matchedYear": 1996
+  },
+  "|2004|Rosetta (spacecraft)": {
+    "qid": "Q48572",
+    "matchedYear": 2004
+  },
+  "|2012|Curiosity (rover)": {
+    "qid": "Q48485",
+    "matchedYear": 2011
+  },
+  "|2015|Falcon 9 flight 20": {
+    "qid": "Q21738197",
+    "matchedYear": 2015
+  },
+  "|2021|Ingenuity (helicopter)": {
+    "qid": "Q48814715",
+    "matchedYear": 2020
+  },
+  "Q1037810|1798|Smallpox vaccine": {
+    "qid": "Q1037810",
+    "matchedYear": 1798
+  },
+  "|1866|Experiments on Plant Hybridization": {
+    "qid": "Q5421194",
+    "matchedYear": 1866
+  },
+  "|1869|Periodic table": {
+    "qid": "Q10693",
+    "matchedYear": 1869
+  },
+  "Q123318211|1895|X-ray": {
+    "qid": "Q123318211",
+    "matchedYear": 1895
+  },
+  "|1897|Electron": {
+    "qid": "Q2225",
+    "matchedYear": 1897
+  },
+  "|1915|General relativity": {
+    "qid": "Q11452",
+    "matchedYear": 1916
+  },
+  "|1930|Pluto": {
+    "qid": "Q339",
+    "matchedYear": 1930
+  },
+  "|1940|Lascaux": {
+    "qid": "Q172125",
+    "matchedYear": 1940
+  },
+  "|1964|Cosmic microwave background": {
+    "qid": "Q15605",
+    "matchedYear": 1964
+  },
+  "|1974|Lucy (Australopithecus)": {
+    "qid": "Q245388",
+    "matchedYear": 1974
+  },
+  "|1974|Terracotta Army": {
+    "qid": "Q47672",
+    "matchedYear": 1974
+  },
+  "|1995|51 Pegasi b": {
+    "qid": "Q242309",
+    "matchedYear": 1995
+  },
+  "|1817|Dandy horse": {
+    "qid": "Q1255515",
+    "matchedYear": 1817
+  },
+  "|1858|Transatlantic telegraph cable": {
+    "qid": "Q2395922",
+    "matchedYear": 1858
+  },
+  "|1863|London Underground": {
+    "qid": "Q20075",
+    "matchedYear": 1863
+  },
+  "|1876|Telephone": {
+    "qid": "Q11035",
+    "matchedYear": 1876
+  },
+  "|1877|Phonograph": {
+    "qid": "Q116434",
+    "matchedYear": 1877
+  },
+  "|1900|Zeppelin LZ 1": {
+    "qid": "Q1146890",
+    "matchedYear": 1900
+  },
+  "|1939|Heinkel He 178": {
+    "qid": "Q161540",
+    "matchedYear": 1939
+  },
+  "|1947|Transistor": {
+    "qid": "Q5339",
+    "matchedYear": 1947
+  },
+  "Q177524|1969|ARPANET": {
+    "qid": "Q177524",
+    "matchedYear": 1969
+  },
+  "|1982|Compact disc": {
+    "qid": "Q7982",
+    "matchedYear": 1982
+  },
+  "|1605|Don Quixote": {
+    "qid": "Q480",
+    "matchedYear": 1605
+  },
+  "|1607|L'Orfeo": {
+    "qid": "Q724008",
+    "matchedYear": 1607
+  },
+  "|1623|First Folio": {
+    "qid": "Q833645",
+    "matchedYear": 1623
+  },
+  "|1778|La Scala": {
+    "qid": "Q5471",
+    "matchedYear": 1778
+  },
+  "|1824|Symphony No. 9 (Beethoven)": {
+    "qid": "Q11989",
+    "matchedYear": 1824
+  },
+  "|1877|1877 Wimbledon Championship": {
+    "qid": "Q1934049",
+    "matchedYear": 1877
+  },
+  "|1889|The Starry Night": {
+    "qid": "Q45585",
+    "matchedYear": 1889
+  },
+  "|1893|The Scream": {
+    "qid": "Q471379",
+    "matchedYear": 1893
+  },
+  "|1913|Raja Harishchandra": {
+    "qid": "Q2985396",
+    "matchedYear": 1913
+  },
+  "|1928|Steamboat Willie": {
+    "qid": "Q816038",
+    "matchedYear": 1928
+  },
+  "|1929|1st Academy Awards": {
+    "qid": "Q109886",
+    "matchedYear": 1929
+  },
+  "|1937|Snow White and the Seven Dwarfs (1937 film)": {
+    "qid": "Q134430",
+    "matchedYear": 1937
+  },
+  "|1937|Guernica (Picasso)": {
+    "qid": "Q175036",
+    "matchedYear": 1937
+  },
+  "|1954|The Lord of the Rings": {
+    "qid": "Q15228",
+    "matchedYear": 1954
+  },
+  "|1955|Disneyland": {
+    "qid": "Q181185",
+    "matchedYear": 1955
+  },
+  "|1967|One Hundred Years of Solitude": {
+    "qid": "Q178869",
+    "matchedYear": 1967
+  },
+  "|1982|Thriller (album)": {
+    "qid": "Q44320",
+    "matchedYear": 1982
+  },
+  "|1984|Tetris": {
+    "qid": "Q71910",
+    "matchedYear": 1984
+  },
+  "|1989|Game Boy": {
+    "qid": "Q186437",
+    "matchedYear": 1989
+  },
+  "Q43361|1997|Harry Potter and the Philosopher's Stone": {
+    "qid": "Q43361",
+    "matchedYear": 1997
+  },
+  "|2005|YouTube": {
+    "qid": "Q18157148",
+    "matchedYear": 2005
+  },
+  "|1821|Death of Napoleon": {
+    "qid": "Q1452017",
+    "matchedYear": 1821
+  },
+  "|1867|Das Kapital": {
+    "qid": "Q58784",
+    "matchedYear": 1867
+  },
+  "|1869|War and Peace": {
+    "qid": "Q161531",
+    "matchedYear": 1869
+  },
+  "Q1206847|1917|Fountain (Duchamp)": {
+    "qid": "Q1206847",
+    "matchedYear": 1917
+  },
+  "|1922|Ulysses": {
+    "qid": "Q6511",
+    "matchedYear": 1922
+  },
+  "|2003|Space Shuttle Columbia disaster": {
+    "qid": "Q580867",
+    "matchedYear": 2003
+  },
+  "|2004|Taipei 101": {
+    "qid": "Q83101",
+    "matchedYear": 2005
+  },
+  "|2015|Joint Comprehensive Plan of Action": {
+    "qid": "Q17001802",
+    "matchedYear": 2015
+  },
+  "|2021|Squid Game": {
+    "qid": "Q106582931",
+    "matchedYear": 2021
+  },
+  "|1815|Eruption of Mount Tambora": {
+    "qid": "Q3591483",
+    "matchedYear": 1815
+  },
+  "Q903779|1815|United Kingdom of Portugal, Brazil and the Algarves": {
+    "qid": "Q903779",
+    "matchedYear": 1815
+  },
+  "Q8004|1868|Traffic light": {
+    "qid": "Q8004",
+    "matchedYear": 1868
+  },
+  "|1905|Battle of Tsushima": {
+    "qid": "Q208127",
+    "matchedYear": 1905
+  },
+  "Q4126381|1905|Potemkin uprising": {
+    "qid": "Q4126381",
+    "matchedYear": 1905
+  },
+  "|1914|First Battle of the Marne": {
+    "qid": "Q190712",
+    "matchedYear": 1914
+  },
+  "|1914|Christmas truce": {
+    "qid": "Q163730",
+    "matchedYear": 1914
+  },
+  "|1919|Transatlantic flight of Alcock and Brown": {
+    "qid": "Q431538",
+    "matchedYear": 1919
+  },
+  "|1919|Bauhaus": {
+    "qid": "Q124354",
+    "matchedYear": 1919
+  },
+  "|2001|iPod": {
+    "qid": "Q9479",
+    "matchedYear": 2001
+  },
+  "|2001|Enron scandal": {
+    "qid": "Q2723024",
+    "matchedYear": 2001
+  },
+  "|2022|ChatGPT": {
+    "qid": "Q115564437",
+    "matchedYear": 2022
+  },
+  "|2022|Artemis 1": {
+    "qid": "Q3389152",
+    "matchedYear": 2022
+  },
+  "|1871|Great Chicago Fire": {
+    "qid": "Q70520",
+    "matchedYear": 1871
+  },
+  "|1871|Royal Albert Hall": {
+    "qid": "Q193639",
+    "matchedYear": 1871
+  },
+  "|1453|Battle of Castillon": {
+    "qid": "Q932613",
+    "matchedYear": 1453
+  },
+  "|1455|Wars of the Roses": {
+    "qid": "Q127751",
+    "matchedYear": 1455
+  },
+  "|1521|Diet of Worms": {
+    "qid": "Q536822",
+    "matchedYear": 1521
+  },
+  "|1543|De humani corporis fabrica": {
+    "qid": "Q1233009",
+    "matchedYear": 1543
+  },
+  "|1582|Honnō-ji Incident": {
+    "qid": "Q169598",
+    "matchedYear": 1582
+  },
+  "|1571|Manila": {
+    "qid": "Q1461",
+    "matchedYear": 1571
+  },
+  "Q585046|1620|Novum Organum": {
+    "qid": "Q585046",
+    "matchedYear": 1620
+  },
+  "|1637|Discourse on the Method": {
+    "qid": "Q731224",
+    "matchedYear": 1637
+  },
+  "|1600|East India Company": {
+    "qid": "Q83164",
+    "matchedYear": 1600
+  },
+  "|1602|Bodleian Library": {
+    "qid": "Q82133",
+    "matchedYear": 1602
+  },
+  "|1776|The Wealth of Nations": {
+    "qid": "Q233562",
+    "matchedYear": 1776
+  },
+  "|1799|Coup of 18 Brumaire": {
+    "qid": "Q620965",
+    "matchedYear": 1799
+  },
+  "|1770|Boston Massacre": {
+    "qid": "Q215687",
+    "matchedYear": 1770
+  },
+  "|1791|The Magic Flute": {
+    "qid": "Q5064",
+    "matchedYear": 1791
+  },
+  "|1492|Alhambra Decree": {
+    "qid": "Q1061030",
+    "matchedYear": 1492
+  },
+  "|2005|Airbus A380": {
+    "qid": "Q5830",
+    "matchedYear": 2005
+  },
+  "|2008|Beijing Olympics": {
+    "qid": "Q8567",
+    "matchedYear": 2008
+  },
+  "|2010|Instagram": {
+    "qid": "Q41689793",
+    "matchedYear": 2010
+  },
+  "|2011|Killing of Osama bin Laden": {
+    "qid": "Q19085",
+    "matchedYear": 2011
+  },
+  "|-480|Battle of Salamis": {
+    "qid": "Q178850",
+    "matchedYear": -480
+  },
+  "|2014|Malaysia Airlines Flight 370": {
+    "qid": "Q15908324",
+    "matchedYear": 2014
+  },
+  "|2016|Panama Papers": {
+    "qid": "Q23702848",
+    "matchedYear": 2016
+  },
+  "|2018|Falcon Heavy test flight": {
+    "qid": "Q64214785",
+    "matchedYear": 2019
+  },
+  "|1066|Battle of Stamford Bridge": {
+    "qid": "Q203225",
+    "matchedYear": 1066
+  },
+  "|1054|Crab Nebula supernova": {
+    "qid": "Q32037",
+    "matchedYear": 1054
+  },
+  "|1215|Fourth Council of the Lateran": {
+    "qid": "Q719992",
+    "matchedYear": 1215
+  },
+  "|1206|Delhi Sultanate": {
+    "qid": "Q229411",
+    "matchedYear": 1206
+  },
+  "|1212|Battle of Las Navas de Tolosa": {
+    "qid": "Q219697",
+    "matchedYear": 1212
+  },
+  "|1212|Children's Crusade": {
+    "qid": "Q51658",
+    "matchedYear": 1212
+  },
+  "|1291|Fall of Acre": {
+    "qid": "Q117446403",
+    "matchedYear": 1291
+  },
+  "|1291|Swiss Federal Charter": {
+    "qid": "Q662637",
+    "matchedYear": 1291
+  },
+  "|1789|First inauguration of George Washington": {
+    "qid": "Q5454184",
+    "matchedYear": 1789
+  },
+  "|1900|Paris Métro": {
+    "qid": "Q50716",
+    "matchedYear": 1900
+  },
+  "Q9500|1863|The Football Association": {
+    "qid": "Q9500",
+    "matchedYear": 1863
+  },
+  "|1886|Coca-Cola": {
+    "qid": "Q3295867",
+    "matchedYear": 1886
+  },
+  "|1908|Tunguska event": {
+    "qid": "Q125953",
+    "matchedYear": 1908
+  },
+  "|1821|Peruvian Declaration of Independence": {
+    "qid": "Q7251405",
+    "matchedYear": 1821
+  },
+  "|1804|Haitian Declaration of Independence": {
+    "qid": "Q17502440",
+    "matchedYear": 1804
+  },
+  "|1810|Cry of Dolores": {
+    "qid": "Q1145411",
+    "matchedYear": 1810
+  },
+  "|1810|May Revolution": {
+    "qid": "Q838980",
+    "matchedYear": 1810
+  },
+  "|1258|Siege of Baghdad": {
+    "qid": "Q369560",
+    "matchedYear": 1258
+  },
+  "|1325|Tenochtitlan": {
+    "qid": "Q13695",
+    "matchedYear": 1325
+  },
+  "Q184536|1235|Mali Empire": {
+    "qid": "Q184536",
+    "matchedYear": 1235
+  },
+  "|1632|Taj Mahal": {
+    "qid": "Q9141",
+    "matchedYear": 1631
+  },
+  "Q191703|1963|Organisation of African Unity": {
+    "qid": "Q191703",
+    "matchedYear": 1963
+  },
+  "|1879|Battle of Isandlwana": {
+    "qid": "Q747589",
+    "matchedYear": 1879
+  },
+  "|1446|Hunminjeongeum": {
+    "qid": "Q18990",
+    "matchedYear": 1446
+  },
+  "|751|Battle of Talas": {
+    "qid": "Q492415",
+    "matchedYear": 751
+  },
+  "|-9500|Göbekli Tepe": {
+    "qid": "Q214944",
+    "matchedYear": -9999
+  },
+  "|-3500|Domestication of the horse": {
+    "qid": "Q468739",
+    "matchedYear": -3500
+  },
+  "|-3200|Cuneiform": {
+    "qid": "Q401",
+    "matchedYear": -3000
+  },
+  "|-2560|Great Pyramid of Giza": {
+    "qid": "Q37200",
+    "matchedYear": -2560
+  },
+  "|-1755|Code of Hammurabi": {
+    "qid": "Q93304",
+    "matchedYear": -1752
+  },
+  "Q8269|1010|The Tale of Genji": {
+    "qid": "Q8269",
+    "matchedYear": 1010
+  },
+  "|-776|Ancient Olympic Games": {
+    "qid": "Q188468",
+    "matchedYear": -776
+  },
+  "|-753|Founding of Rome": {
+    "qid": "Q1247524",
+    "matchedYear": -753
+  },
+  "Q4604|-551|Confucius": {
+    "qid": "Q4604",
+    "matchedYear": -552
+  },
+  "Q405008|-530|Cyrus Cylinder": {
+    "qid": "Q405008",
+    "matchedYear": -530
+  },
+  "Q9441|-563|Gautama Buddha": {
+    "qid": "Q9441",
+    "matchedYear": -563
+  },
+  "Q435|-300|Library of Alexandria": {
+    "qid": "Q435",
+    "matchedYear": -300
+  },
+  "Q8589|-232|Ashoka": {
+    "qid": "Q8589",
+    "matchedYear": -232
+  },
+  "Q12501|-700|Great Wall of China": {
+    "qid": "Q12501",
+    "matchedYear": -700
+  },
+  "Q11184|-45|Julian calendar": {
+    "qid": "Q11184",
+    "matchedYear": -45
+  },
+  "|-114|Zhang Qian": {
+    "qid": "Q197276",
+    "matchedYear": -114
+  },
+  "Q182324|-100|Antikythera mechanism": {
+    "qid": "Q182324",
+    "matchedYear": -100
+  },
+  "Q2620036|-200|Nazca Lines": {
+    "qid": "Q2620036",
+    "matchedYear": -200
+  },
+  "Q139377|-400|Kingdom of Aksum": {
+    "qid": "Q139377",
+    "matchedYear": -400
+  },
+  "Q1290001|628|Brahmasphutasiddhanta": {
+    "qid": "Q1290001",
+    "matchedYear": 628
+  },
+  "Q837561|-2450000000|Great Oxidation Event": {
+    "qid": "Q837561",
+    "matchedYear": -2450000000
+  },
+  "Q32919|-543000000|Cambrian explosion": {
+    "qid": "Q32919",
+    "matchedYear": -543000000
+  },
+  "Q141118|-251900000|Permian–Triassic extinction event": {
+    "qid": "Q141118",
+    "matchedYear": -251900000
+  },
+  "Q55811|-66000000|Cretaceous–Paleogene extinction event": {
+    "qid": "Q55811",
+    "matchedYear": -66000000
+  },
+  "Q180548|-9000|Neolithic Revolution": {
+    "qid": "Q180548",
+    "matchedYear": -9000
+  },
+  "Q1979625|-19000|Last Glacial Maximum": {
+    "qid": "Q1979625",
+    "matchedYear": -19000
+  },
+  "Q82542|1968|Tet Offensive": {
+    "qid": "Q82542",
+    "matchedYear": 1968
+  },
+  "|1968|May 68": {
+    "qid": "Q6743",
+    "matchedYear": 1968
+  },
+  "|1968|Assassination of Robert F. Kennedy": {
+    "qid": "Q1187550",
+    "matchedYear": 1968
+  },
+  "Q16932404|1974|Resignation of Richard Nixon": {
+    "qid": "Q16932404",
+    "matchedYear": 1974
+  },
+  "Q939560|1974|The Rumble in the Jungle": {
+    "qid": "Q939560",
+    "matchedYear": 1974
+  },
+  "Q9068538|1974|Ethiopian Revolution": {
+    "qid": "Q9068538",
+    "matchedYear": 1974
+  },
+  "|1958|Things Fall Apart": {
+    "qid": "Q622400",
+    "matchedYear": 1958
+  },
+  "|1977|FESTAC 77": {
+    "qid": "Q25040886",
+    "matchedYear": 1977
+  },
+  "|1963|Kenya": {
+    "qid": "Q114",
+    "matchedYear": 1963
+  },
+  "|1977|Green Belt Movement": {
+    "qid": "Q1193718",
+    "matchedYear": 1977
+  },
+  "|2019|Ineos 1:59 Challenge": {
+    "qid": "Q70636879",
+    "matchedYear": 2019
+  },
+  "|1965|Akosombo Dam": {
+    "qid": "Q1282314",
+    "matchedYear": 1965
+  },
+  "|1940|Serengeti National Park": {
+    "qid": "Q11812902",
+    "matchedYear": 1940
+  },
+  "|1964|Zanzibar Revolution": {
+    "qid": "Q75844",
+    "matchedYear": 1964
+  },
+  "|859|University of al-Qarawiyyin": {
+    "qid": "Q378014",
+    "matchedYear": 859
+  },
+  "|-814|Carthage": {
+    "qid": "Q2429397",
+    "matchedYear": -814
+  },
+  "|1975|Mozambique": {
+    "qid": "Q1029",
+    "matchedYear": 1975
+  },
+  "|2019|Cyclone Idai": {
+    "qid": "Q62023294",
+    "matchedYear": 2019
+  },
+  "Q251600|1932|Unification of Saudi Arabia": {
+    "qid": "Q251600",
+    "matchedYear": 1932
+  },
+  "|1994|Israel–Jordan peace treaty": {
+    "qid": "Q620988",
+    "matchedYear": 1994
+  },
+  "|-1050|Phoenician alphabet": {
+    "qid": "Q26752",
+    "matchedYear": -1200
+  },
+  "|-510|Persepolis": {
+    "qid": "Q129072",
+    "matchedYear": -510
+  },
+  "|1370|Timurid Empire": {
+    "qid": "Q484195",
+    "matchedYear": 1370
+  },
+  "|1420|Ulugh Beg Observatory": {
+    "qid": "Q608580",
+    "matchedYear": 1420
+  },
+  "|1955|Baikonur Cosmodrome": {
+    "qid": "Q177477",
+    "matchedYear": 1955
+  },
+  "|301|Christianization of Armenia": {
+    "qid": "Q16402123",
+    "matchedYear": 301
+  },
+  "|1986|Faisal Mosque": {
+    "qid": "Q500983",
+    "matchedYear": 1986
+  },
+  "|2014|2014 Nobel Peace Prize": {
+    "qid": "Q18204229",
+    "matchedYear": 2014
+  },
+  "|1983|Grameen Bank": {
+    "qid": "Q188567",
+    "matchedYear": 1983
+  },
+  "|1970|1970 Bhola cyclone": {
+    "qid": "Q245551",
+    "matchedYear": 1970
+  },
+  "|1768|Kingdom of Nepal": {
+    "qid": "Q1078602",
+    "matchedYear": 1768
+  },
+  "|2015|April 2015 Nepal earthquake": {
+    "qid": "Q19830062",
+    "matchedYear": 2015
+  },
+  "|849|Pagan kingdom": {
+    "qid": "Q888574",
+    "matchedYear": 849
+  },
+  "|802|Angkor Wat": {
+    "qid": "Q43473",
+    "matchedYear": 802
+  },
+  "|1238|Sukhothai Kingdom": {
+    "qid": "Q863279",
+    "matchedYear": 1238
+  },
+  "|1782|Bangkok": {
+    "qid": "Q1861",
+    "matchedYear": 1782
+  },
+  "|1010|Hanoi": {
+    "qid": "Q1858",
+    "matchedYear": 1010
+  },
+  "|1986|Đổi Mới": {
+    "qid": "Q342587",
+    "matchedYear": 1986
+  },
+  "|800|Borobudur": {
+    "qid": "Q42798",
+    "matchedYear": 800
+  },
+  "|1998|Petronas Towers": {
+    "qid": "Q83063",
+    "matchedYear": 1999
+  },
+  "|1991|1991 eruption of Mount Pinatubo": {
+    "qid": "Q31191031",
+    "matchedYear": 1991
+  },
+  "|1896|Philippine Revolution": {
+    "qid": "Q422082",
+    "matchedYear": 1896
+  },
+  "|1988|1988 Summer Olympics": {
+    "qid": "Q8470",
+    "matchedYear": 1988
+  },
+  "|1960|Brasília": {
+    "qid": "Q2844",
+    "matchedYear": 1960
+  },
+  "|1906|Santos-Dumont 14-bis": {
+    "qid": "Q647341",
+    "matchedYear": 1905
+  },
+  "|1950|1950 FIFA World Cup": {
+    "qid": "Q132515",
+    "matchedYear": 1950
+  },
+  "|1978|1978 FIFA World Cup": {
+    "qid": "Q46943",
+    "matchedYear": 1978
+  },
+  "|1946|1946 Argentine general election": {
+    "qid": "Q4789443",
+    "matchedYear": 1946
+  },
+  "|1818|Chilean Declaration of Independence": {
+    "qid": "Q1657253",
+    "matchedYear": 1818
+  },
+  "|1960|1960 Valdivia earthquake": {
+    "qid": "Q212618",
+    "matchedYear": 1960
+  },
+  "|1533|Cartagena, Colombia": {
+    "qid": "Q657461",
+    "matchedYear": 1533
+  },
+  "|1450|Machu Picchu": {
+    "qid": "Q676203",
+    "matchedYear": 1450
+  },
+  "|1952|Bolivian National Revolution": {
+    "qid": "Q4414118",
+    "matchedYear": 1952
+  },
+  "|1819|Gran Colombia": {
+    "qid": "Q199821",
+    "matchedYear": 1819
+  },
+  "|1982|Itaipu Dam": {
+    "qid": "Q244169",
+    "matchedYear": 1982
+  },
+  "|1515|Havana": {
+    "qid": "Q1563",
+    "matchedYear": 1515
+  },
+  "|1813|Citadelle Laferrière": {
+    "qid": "Q930795",
+    "matchedYear": 1813
+  },
+  "|1978|One Love Peace Concert": {
+    "qid": "Q1746265",
+    "matchedYear": 1978
+  },
+  "|1729|Karachi": {
+    "qid": "Q8660",
+    "matchedYear": 1729
+  },
+  "|1960|Islamabad": {
+    "qid": "Q1362",
+    "matchedYear": 1960
+  },
+  "|1893|Women's suffrage in New Zealand": {
+    "qid": "Q3412052",
+    "matchedYear": 1893
+  },
+  "|2001|The Lord of the Rings: The Fellowship of the Ring": {
+    "qid": "Q127367",
+    "matchedYear": 2001
+  },
+  "|2022|2022 Hunga Tonga–Hunga Haʻapai eruption and tsunami": {
+    "qid": "Q110567218",
+    "matchedYear": 2022
+  },
+  "Q699127|1405|Treasure Voyages": {
+    "qid": "Q699127",
+    "matchedYear": 1405
+  },
+  "Q1146069|646|Record of the Western Regions": {
+    "qid": "Q1146069",
+    "matchedYear": 646
+  },
+  "|1718|Republic of Pirates": {
+    "qid": "Q18085321",
+    "matchedYear": 1718
+  },
+  "Q4191082|1692|1692 Jamaica earthquake": {
+    "qid": "Q4191082",
+    "matchedYear": 1692
+  },
+  "Q226032|1865|Morant Bay rebellion": {
+    "qid": "Q226032",
+    "matchedYear": 1865
+  },
+  "Q1166080|1698|Darien scheme": {
+    "qid": "Q1166080",
+    "matchedYear": 1698
+  },
+  "Q749811|1789|Mutiny on the Bounty": {
+    "qid": "Q749811",
+    "matchedYear": 1789
+  },
+  "Q2065299|1808|Rum Rebellion": {
+    "qid": "Q2065299",
+    "matchedYear": 1808
+  },
+  "Q1806552|1780|Rebellion of Túpac Amaru II": {
+    "qid": "Q1806552",
+    "matchedYear": 1780
+  },
+  "Q66666935|1947|Kon-Tiki expedition": {
+    "qid": "Q66666935",
+    "matchedYear": 1947
+  },
+  "Q202687|1464|Songhai Empire": {
+    "qid": "Q202687",
+    "matchedYear": 1464
+  },
+  "|1670|Ashanti Empire": {
+    "qid": "Q722071",
+    "matchedYear": 1670
+  },
+  "|1395|Kingdom of Kongo": {
+    "qid": "Q796583",
+    "matchedYear": 1395
+  },
+  "Q1014|1822|Liberia": {
+    "qid": "Q1014",
+    "matchedYear": 1822
+  },
+  "|-715|Twenty-fifth Dynasty of Egypt": {
+    "qid": "Q737648",
+    "matchedYear": -715
+  },
+  "|-1200|Late Bronze Age collapse": {
+    "qid": "Q1059758",
+    "matchedYear": -1200
+  },
+  "|800|House of Wisdom": {
+    "qid": "Q33018",
+    "matchedYear": 800
+  },
+  "Q8279|1010|Shahnameh": {
+    "qid": "Q8279",
+    "matchedYear": 1011
+  },
+  "Q467627|1747|Durrani Empire": {
+    "qid": "Q467627",
+    "matchedYear": 1747
+  },
+  "Q715257|668|Later Silla": {
+    "qid": "Q715257",
+    "matchedYear": 668
+  },
+  "Q49326|1293|Majapahit": {
+    "qid": "Q49326",
+    "matchedYear": 1293
+  },
+  "Q46652|1400|Malacca Sultanate": {
+    "qid": "Q46652",
+    "matchedYear": 1400
+  },
+  "Q841364|1350|Ayutthaya Kingdom": {
+    "qid": "Q841364",
+    "matchedYear": 1350
+  },
+  "Q729768|1816|Zulu Kingdom": {
+    "qid": "Q729768",
+    "matchedYear": 1816
+  },
+  "Q917|1907|Bhutan": {
+    "qid": "Q917",
+    "matchedYear": 1907
+  },
+  "Q901371|1990|Vasa Museum": {
+    "qid": "Q901371",
+    "matchedYear": 1990
+  },
+  "Q215443|1611|Swedish Empire": {
+    "qid": "Q215443",
+    "matchedYear": 1611
+  },
+  "Q185246|1477|Uppsala University": {
+    "qid": "Q185246",
+    "matchedYear": 1477
+  },
+  "Q156556|1814|Treaty of Kiel": {
+    "qid": "Q156556",
+    "matchedYear": 1814
+  },
+  "Q52618|1876|Ericsson": {
+    "qid": "Q52618",
+    "matchedYear": 1876
+  },
+  "Q108700860|1954|Dag Hammarskjold": {
+    "qid": "Q108700860",
+    "matchedYear": 1954
+  },
+  "Q689141|2006|Spotify": {
+    "qid": "Q689141",
+    "matchedYear": 2006
+  },
+  "Q747314|1885|Bechuanaland Protectorate": {
+    "qid": "Q747314",
+    "matchedYear": 1885
+  },
+  "Q859817|1971|Orapa diamond mine": {
+    "qid": "Q859817",
+    "matchedYear": 1971
+  },
+  "Q62633|1809|Grand Duchy of Finland": {
+    "qid": "Q62633",
+    "matchedYear": 1809
+  },
+  "Q1418|1865|Nokia": {
+    "qid": "Q1418",
+    "matchedYear": 1865
+  },
+  "Q8407|1952|1952 Summer Olympics": {
+    "qid": "Q8407",
+    "matchedYear": 1952
+  },
+  "Q318161|1975|Helsinki Accords": {
+    "qid": "Q318161",
+    "matchedYear": 1975
+  },
+  "Q204221|800|Book of Kells": {
+    "qid": "Q204221",
+    "matchedYear": 800
+  },
+  "Q208297|1919|Irish War of Independence": {
+    "qid": "Q208297",
+    "matchedYear": 1919
+  },
+  "Q719883|1931|Statute of Westminster 1931": {
+    "qid": "Q719883",
+    "matchedYear": 1931
+  },
+  "Q746606|1915|Chuquicamata": {
+    "qid": "Q746606",
+    "matchedYear": 1915
+  },
+  "Q2890760|938|Battle of Bach Dang River": {
+    "qid": "Q2890760",
+    "matchedYear": 938
+  },
+  "Q6500483|1802|Nguyen dynasty": {
+    "qid": "Q6500483",
+    "matchedYear": 1802
+  },
+  "Q1486|1580|Buenos Aires": {
+    "qid": "Q1486",
+    "matchedYear": 1580
+  },
+  "Q3326225|1985|Trial of the Juntas": {
+    "qid": "Q3326225",
+    "matchedYear": 1985
+  },
+  "Q56064|1680|Colonia del Sacramento": {
+    "qid": "Q56064",
+    "matchedYear": 1680
+  },
+  "Q1335|1726|Montevideo": {
+    "qid": "Q1335",
+    "matchedYear": 1726
+  },
+  "Q2889112|1811|Battle of Las Piedras": {
+    "qid": "Q2889112",
+    "matchedYear": 1811
+  },
+  "Q5801144|1825|Uruguayan Declaration of Independence": {
+    "qid": "Q5801144",
+    "matchedYear": 1825
+  },
+  "Q2672972|1839|Uruguayan Civil War": {
+    "qid": "Q2672972",
+    "matchedYear": 1839
+  },
+  "Q113215|1847|Carlsberg Group": {
+    "qid": "Q113215",
+    "matchedYear": 1847
+  },
+  "Q1063455|1932|Lego": {
+    "qid": "Q1063455",
+    "matchedYear": 1932
+  },
+  "Q514188|1943|Rescue of the Danish Jews": {
+    "qid": "Q514188",
+    "matchedYear": 1943
+  },
+  "Q297871|1999|Øresund Bridge": {
+    "qid": "Q297871",
+    "matchedYear": 1999
+  },
+  "Q2363601|1212|Golden Bull of Sicily": {
+    "qid": "Q2363601",
+    "matchedYear": 1212
+  },
+  "Q31519|1348|Charles University": {
+    "qid": "Q31519",
+    "matchedYear": 1348
+  },
+  "Q204871|1357|Charles Bridge": {
+    "qid": "Q204871",
+    "matchedYear": 1357
+  },
+  "Q729370|1410|Prague Astronomical Clock": {
+    "qid": "Q729370",
+    "matchedYear": 1410
+  },
+  "Q688082|1894|Bata Limited": {
+    "qid": "Q688082",
+    "matchedYear": 1894
+  },
+  "Q1164094|1920|R.U.R.": {
+    "qid": "Q1164094",
+    "matchedYear": 1920
+  },
+  "Q1260137|1889|Mayerling incident": {
+    "qid": "Q1260137",
+    "matchedYear": 1889
+  },
+  "Q868027|1014|Battle of Clontarf": {
+    "qid": "Q868027",
+    "matchedYear": 1014
+  },
+  "Q210551|1776|Viceroyalty of the Río de la Plata": {
+    "qid": "Q210551",
+    "matchedYear": 1776
+  },
+  "Q209937|1869|Vienna State Opera house": {
+    "qid": "Q209937",
+    "matchedYear": 1869
+  },
+  "Q306535|1955|Austrian State Treaty": {
+    "qid": "Q306535",
+    "matchedYear": 1955
+  },
+  "Q258464|1592|Trinity College, Dublin": {
+    "qid": "Q258464",
+    "matchedYear": 1592
+  },
+  "Q548520|1884|Gaelic Athletic Association": {
+    "qid": "Q548520",
+    "matchedYear": 1884
+  },
+  "Q859389|1967|Chobe National Park": {
+    "qid": "Q859389",
+    "matchedYear": 1967
+  },
+  "Q493141|1982|University of Botswana": {
+    "qid": "Q493141",
+    "matchedYear": 1982
+  },
+  "Q7853205|1956|Tunisian independence": {
+    "qid": "Q7853205",
+    "matchedYear": 1956
+  },
+  "Q3045696|1516|Regency of Algiers": {
+    "qid": "Q3045696",
+    "matchedYear": 1516
+  },
+  "Q2629782|1830|French conquest of Algeria": {
+    "qid": "Q2629782",
+    "matchedYear": 1830
+  },
+  "Q200790|1954|Algerian War": {
+    "qid": "Q200790",
+    "matchedYear": 1954
+  },
+  "Q75613|1040|Almoravid dynasty": {
+    "qid": "Q75613",
+    "matchedYear": 1040
+  },
+  "Q199688|1121|Almohad Caliphate": {
+    "qid": "Q199688",
+    "matchedYear": 1121
+  },
+  "Q931982|1912|Treaty of Fes": {
+    "qid": "Q931982",
+    "matchedYear": 1912
+  },
+  "Q76048|1885|Congo Free State": {
+    "qid": "Q76048",
+    "matchedYear": 1885
+  },
+  "Q3838|1881|Kinshasa": {
+    "qid": "Q3838",
+    "matchedYear": 1881
+  },
+  "Q1037|1962|Rwanda": {
+    "qid": "Q1037",
+    "matchedYear": 1962
+  },
+  "Q4162685|1959|Rwandan Revolution": {
+    "qid": "Q4162685",
+    "matchedYear": 1959
+  },
+  "Q179570|670|Kairouan": {
+    "qid": "Q179570",
+    "matchedYear": 670
+  },
+  "Q752662|1229|Hafsid dynasty": {
+    "qid": "Q752662",
+    "matchedYear": 1229
+  },
+  "Q3591817|1832|Emirate of Abdelkader": {
+    "qid": "Q3591817",
+    "matchedYear": 1832
+  },
+  "Q6500954|1971|Zaire": {
+    "qid": "Q6500954",
+    "matchedYear": 1971
+  },
+  "Q131297|1994|1994 Genocide against Tutsi": {
+    "qid": "Q131297",
+    "matchedYear": 1994
+  },
+  "Q1356828|2004|Nyungwe Forest": {
+    "qid": "Q1356828",
+    "matchedYear": 2004
+  },
+  "Q654562|1298|The Travels of Marco Polo": {
+    "qid": "Q654562",
+    "matchedYear": 1298
+  },
+  "Q28573|1438|Inca Empire": {
+    "qid": "Q28573",
+    "matchedYear": 1438
+  },
+  "Q80330|1642|English Civil War": {
+    "qid": "Q80330",
+    "matchedYear": 1642
+  },
+  "Q3099902|1776|Watt steam engine": {
+    "qid": "Q3099902",
+    "matchedYear": 1776
+  },
+  "Q494611|1377|Jikji": {
+    "qid": "Q494611",
+    "matchedYear": 1377
+  },
+  "Q154577|1555|Peace of Augsburg": {
+    "qid": "Q154577",
+    "matchedYear": 1555
+  },
+  "Q172991|1545|Council of Trent": {
+    "qid": "Q172991",
+    "matchedYear": 1545
+  },
+  "Q41304|1918|Weimar Republic": {
+    "qid": "Q41304",
+    "matchedYear": 1918
+  },
+  "Q695052|1923|Hyperinflation in the Weimar Republic": {
+    "qid": "Q695052",
+    "matchedYear": 1923
+  },
+  "Q153992|1933|Reichstag fire": {
+    "qid": "Q153992",
+    "matchedYear": 1933
+  },
+  "Q130783|1934|Night of the Long Knives": {
+    "qid": "Q130783",
+    "matchedYear": 1934
+  },
+  "Q154255|1938|Munich agreement": {
+    "qid": "Q154255",
+    "matchedYear": 1938
+  },
+  "Q536822|1521|Diet of Worms": {
+    "qid": "Q536822",
+    "matchedYear": 1521
+  },
+  "Q737542|1180|Genpei War": {
+    "qid": "Q737542",
+    "matchedYear": 1180
+  },
+  "Q731494|-4000|Uruk period": {
+    "qid": "Q731494",
+    "matchedYear": -4000
+  },
+  "Q1398696|1830|Liverpool and Manchester Railway": {
+    "qid": "Q1398696",
+    "matchedYear": 1830
+  },
+  "Q1425658|1817|Battle of Chacabuco": {
+    "qid": "Q1425658",
+    "matchedYear": 1817
+  },
+  "Q55014217|1872|Henry Morton Stanley": {
+    "qid": "Q55014217",
+    "matchedYear": 1872
+  }
+}

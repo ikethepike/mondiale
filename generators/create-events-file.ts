@@ -1,6 +1,6 @@
 import { jsonParseLiteral } from './lib/emit'
-import { existsSync, writeFileSync } from 'node:fs'
-import { EVENT_SEEDS, type EventKind, type EventSeed } from './data/event-seeds'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { EVENT_SEEDS, type EventFame, type EventKind, type EventSeed } from './data/event-seeds'
 import {
   captureImageCredit,
   fetchImageDimensions,
@@ -30,7 +30,7 @@ import type { ISOCountryCode } from '../types/geography.types'
  * the Commons author + licence captured for the card's credit line. Merges
  * with the previous run so a transient failure never erases a captured event.
  *
- *   bun run generate:events [--force]
+ *   bun run generate:events [--force] [--refresh-verdicts]
  */
 
 const OUTPUT_DIRECTORY = 'public/events'
@@ -97,6 +97,9 @@ export interface EventEntry extends MediaCredit {
   description: string
   /** Public path of the card photo, when one was captured. */
   image?: string
+  /** Recognisability tier — the difficulty lever a year can't provide.
+   *  Absent means `minor` (see EventFame in data/event-seeds). */
+  fame?: EventFame
 }
 
 /** Keyed by a slug of the event's seed name. */
@@ -111,6 +114,27 @@ const slugify = (name: string) =>
     .replace(/^-|-$/g, '')
 
 const force = process.argv.includes('--force')
+
+/**
+ * Verification cache: Wikidata verdicts keyed by the only three seed fields
+ * `verifySeed` reads. Re-verifying ~700 seeds costs ten minutes of throttled
+ * API calls, and editing ONE seed used to pay it in full — so a run now
+ * re-asks Wikidata only about seeds whose name, year or pinned qid changed.
+ *
+ * Committed on purpose: it makes a fresh clone's first generate fast, and the
+ * key means a stale entry is impossible — change any input and the key misses.
+ * `--force` ignores it (and `--refresh-verdicts` clears it without touching
+ * the image cache), for when Wikidata itself has moved on.
+ */
+const VERIFY_CACHE_PATH = 'generators/data/event-verify-cache.json'
+type CachedVerdict = { qid: string; matchedYear: number } | { failure: string }
+const verifyKey = (seed: EventSeed) => `${seed.qid ?? ''}|${seed.year}|${seed.name}`
+
+const refreshVerdicts = process.argv.includes('--refresh-verdicts')
+const verifyCache: Record<string, CachedVerdict> =
+  force || refreshVerdicts || !existsSync(VERIFY_CACHE_PATH)
+    ? {}
+    : JSON.parse(readFileSync(VERIFY_CACHE_PATH, 'utf8'))
 
 // Bun runs this file without typechecking, so the ISOCountryCode annotation on
 // EventSeed.country proves nothing at runtime. A code outside the playable set
@@ -258,17 +282,31 @@ interface VerifiedSeed {
 const verified: VerifiedSeed[] = []
 const dropped: { seed: EventSeed; reason: string }[] = []
 
+let asked = 0
 for (const seed of EVENT_SEEDS) {
   const slug = slugify(seed.name)
-  const result = await verifySeed(seed)
+  const key = verifyKey(seed)
+  const cached = verifyCache[key]
+  const result = cached ?? (await verifySeed(seed))
+  verifyCache[key] = result
   if ('failure' in result) {
     dropped.push({ seed, reason: result.failure })
     console.warn(`  ✗ ${seed.name} (${seed.year}): ${result.failure}`)
   } else {
     verified.push({ seed, slug, qid: result.qid })
   }
-  await wait(150)
+  // Only a live call needs the courtesy pause; a cache hit is free.
+  if (!cached) {
+    asked++
+    await wait(150)
+  }
 }
+
+// Prune verdicts whose seed is gone, so the file tracks the seed list.
+const liveKeys = new Set(EVENT_SEEDS.map(verifyKey))
+for (const key of Object.keys(verifyCache)) if (!liveKeys.has(key)) delete verifyCache[key]
+writeFileSync(VERIFY_CACHE_PATH, `${JSON.stringify(verifyCache, null, 2)}\n`)
+console.log(`  (${EVENT_SEEDS.length - asked} verdicts from cache, ${asked} asked of Wikidata)`)
 
 console.log(`Verified ${verified.length}/${EVENT_SEEDS.length}; resolving photos…`)
 
@@ -326,6 +364,7 @@ for (const { seed, slug, qid } of verified) {
     name: seed.title ?? seed.name,
     country: seed.country,
     kind: seed.kind,
+    ...(seed.fame ? { fame: seed.fame } : {}),
     year: seed.year,
     description: seed.description,
     ...(image ? { image } : {}),

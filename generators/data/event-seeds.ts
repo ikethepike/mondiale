@@ -27,6 +27,16 @@ export type EventKind =
   | 'science'
   | 'culture'
 
+/**
+ * How famous the event is — the difficulty lever the year alone can't give.
+ * `major` is the shared canon a pub quiz would use; `minor` rewards a reader
+ * of history; `obscure` is fair but genuinely hard, and should never crowd a
+ * beginner's hand. Dealers weight by this (see EVENT_FAME_BY_DIFFICULTY in
+ * lib/timeline.ts); unset means `minor`, so an unrated seed is never dealt to
+ * an easy table by accident.
+ */
+export type EventFame = 'major' | 'minor' | 'obscure'
+
 export interface EventSeed {
   /** Wikidata-searchable name, disambiguating words included. */
   name: string
@@ -39,6 +49,8 @@ export interface EventSeed {
   year: number
   /** One or two lines for the post-placement reveal. */
   description: string
+  /** Recognisability tier; defaults to `minor`. See EventFame. */
+  fame?: EventFame
   /** Pin the exact Wikidata item, e.g. `Q6939`, when name search misfires. */
   qid?: string
   /** Image overrides, tried before the Wikidata page image: a direct file
@@ -53,6 +65,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Marathon',
     country: 'GR',
     kind: 'conflict',
+    fame: 'major',
     year: -490,
     description:
       'Athens beat back the first Persian invasion of Greece on the plain of Marathon. The modern 42-kilometre race is named for the messenger legend that grew out of it.',
@@ -61,6 +74,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Thermopylae',
     country: 'GR',
     kind: 'conflict',
+    fame: 'major',
     year: -480,
     description:
       'King Leonidas and his rearguard — the famous three hundred Spartans among them — held the mountain pass at Thermopylae for days against the vast Persian army before being wiped out.',
@@ -69,6 +83,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Death of Alexander the Great',
     country: 'IQ',
     kind: 'politics',
+    fame: 'major',
     year: -323,
     description:
       'Alexander died in Babylon at thirty-two, ruler of an empire reaching from Greece to India. His generals immediately carved it apart.',
@@ -78,6 +93,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'China is unified under its First Emperor',
     country: 'CN',
     kind: 'nation',
+    fame: 'major',
     year: -221,
     description:
       'The state of Qin swallowed the last of its rival kingdoms and its king proclaimed himself Qin Shi Huang — First Emperor. Standard script, currency and measures followed; so did the first Great Wall.',
@@ -86,6 +102,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Assassination of Julius Caesar',
     country: 'IT',
     kind: 'politics',
+    fame: 'major',
     year: -44,
     description:
       "Rome's dictator was stabbed by dozens of senators at a Senate meeting on the Ides of March. The republic they claimed to save died with him — his heir became the first emperor.",
@@ -94,6 +111,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Actium',
     country: 'GR',
     kind: 'conflict',
+    fame: 'major',
     year: -31,
     description:
       "Octavian's fleet crushed Antony and Cleopatra off the west coast of Greece. Egypt fell, both lovers died by suicide, and Octavian ruled Rome alone as Augustus.",
@@ -103,6 +121,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Vesuvius buries Pompeii',
     country: 'IT',
     kind: 'disaster',
+    fame: 'major',
     year: 79,
     description:
       'Vesuvius erupted and buried Pompeii and Herculaneum under metres of ash, freezing two Roman towns mid-breath. They stayed sealed for over 1,500 years.',
@@ -111,6 +130,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Edict of Milan',
     country: 'IT',
     kind: 'politics',
+    fame: 'minor',
     year: 313,
     description:
       'Constantine and his co-emperor agreed to tolerate Christianity across the Roman Empire, ending centuries of persecution. Within a century it was the state religion.',
@@ -119,6 +139,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Fall of the Western Roman Empire',
     country: 'IT',
     kind: 'nation',
+    fame: 'major',
     year: 476,
     description:
       'The Germanic commander Odoacer deposed the teenage emperor Romulus Augustulus and did not bother appointing another. The eastern half of the empire carried on from Constantinople for another thousand years.',
@@ -128,6 +149,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Hegira — Muhammad leaves Mecca for Medina',
     country: 'SA',
     kind: 'culture',
+    fame: 'major',
     year: 622,
     description:
       'Muhammad and his followers left Mecca for Medina to escape persecution. The journey counts as year one of the Islamic calendar.',
@@ -137,6 +159,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Charlemagne is crowned emperor',
     country: 'FR',
     kind: 'politics',
+    fame: 'major',
     year: 800,
     description:
       'Pope Leo III crowned the Frankish king Charlemagne emperor in Rome on Christmas Day — the first western emperor in three centuries, and the seed of the Holy Roman Empire.',
@@ -146,6 +169,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Iceland founds the Althing',
     country: 'IS',
     kind: 'culture',
+    fame: 'minor',
     year: 930,
     description:
       "Icelandic chieftains began meeting each summer at Þingvellir in an assembly called the Althing. It still sits today — the world's oldest surviving parliament.",
@@ -154,6 +178,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: "Christianization of Kievan Rus'",
     country: 'UA',
     kind: 'culture',
+    fame: 'minor',
     year: 988,
     description:
       "Grand Prince Vladimir of Kyiv had himself and his people baptised into Byzantine Christianity, mass-christening them in the Dnieper. Eastern Europe's religious map was drawn that day.",
@@ -165,6 +190,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Schism splits Christianity',
     country: 'VA',
     kind: 'culture',
+    fame: 'major',
     year: 1054,
     description:
       'Rome and Constantinople excommunicated each other, splitting Christianity into Catholic and Orthodox halves. The mutual excommunications were only lifted in 1965.',
@@ -173,6 +199,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Hastings',
     country: 'GB',
     kind: 'conflict',
+    fame: 'major',
     year: 1066,
     description:
       'William of Normandy killed King Harold and took England in a single October day. The conquest rewired the English language, law and aristocracy.',
@@ -182,6 +209,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first university opens in Bologna',
     country: 'IT',
     kind: 'culture',
+    fame: 'major',
     year: 1088,
     description:
       "Law students in Bologna organised the institution now counted as the world's first university. The word universitas was coined for it.",
@@ -191,6 +219,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The First Crusade takes Jerusalem',
     country: 'IL',
     kind: 'conflict',
+    fame: 'major',
     year: 1099,
     description:
       'After a three-year march across Europe and Anatolia, the First Crusade stormed Jerusalem and massacred much of the city, founding a crusader kingdom that lasted not quite two centuries.',
@@ -200,6 +229,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Genghis Khan founds the Mongol Empire',
     country: 'MN',
     kind: 'nation',
+    fame: 'major',
     year: 1206,
     description:
       'Temüjin united the feuding steppe tribes and took the title Genghis Khan. His descendants built the largest contiguous land empire in history.',
@@ -208,6 +238,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Magna Carta',
     country: 'GB',
     kind: 'politics',
+    fame: 'major',
     year: 1215,
     description:
       'Rebel barons cornered King John at Runnymede and made him seal a charter putting the king himself under the law. He repudiated it within weeks — but the idea never went away.',
@@ -217,6 +248,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Osman founds the Ottoman state',
     country: 'TR',
     kind: 'nation',
+    fame: 'major',
     year: 1299,
     description:
       'A frontier warlord named Osman began carving a state out of crumbling Byzantine Anatolia. His house went on to rule an empire on three continents for six centuries.',
@@ -226,6 +258,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Black Death reaches Europe',
     country: 'IT',
     kind: 'disaster',
+    fame: 'major',
     year: 1347,
     description:
       'Plague arrived in Sicily aboard Genoese ships and burned through the continent, killing perhaps a third to a half of Europe within five years.',
@@ -235,6 +268,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Scandinavia unites under one crown',
     country: 'DK',
     kind: 'politics',
+    fame: 'minor',
     year: 1397,
     description:
       'Denmark, Sweden and Norway were joined under a single monarch at Kalmar, run for most of its life from Copenhagen. Sweden fought its way out in 1523.',
@@ -243,6 +277,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Grunwald',
     country: 'PL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1410,
     description:
       "A combined Polish–Lithuanian army destroyed the Teutonic Knights in one of medieval Europe's largest battles, breaking the crusading order's power for good.",
@@ -252,6 +287,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Zheng He's treasure fleet sets sail",
     country: 'CN',
     kind: 'science',
+    fame: 'minor',
     year: 1405,
     description:
       'The admiral Zheng He led enormous Ming fleets — some ships several times the size of anything in Europe — across the Indian Ocean as far as East Africa, decades before Columbus.',
@@ -261,6 +297,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Forbidden City is completed',
     country: 'CN',
     kind: 'engineering',
+    fame: 'major',
     year: 1420,
     description:
       'The Yongle Emperor moved the Ming capital to Beijing and into a brand-new walled palace of nearly a thousand buildings. Emperors ruled from it for the next five centuries.',
@@ -270,6 +307,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Joan of Arc is burned at the stake',
     country: 'FR',
     kind: 'conflict',
+    fame: 'major',
     year: 1431,
     description:
       "The nineteen-year-old who had turned the Hundred Years' War for France was burned as a heretic in English-held Rouen. A church court annulled the verdict 25 years later; she is now a saint.",
@@ -278,6 +316,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Fall of Constantinople',
     country: 'TR',
     kind: 'conflict',
+    fame: 'major',
     year: 1453,
     description:
       "Mehmed II's cannon breached the walls that had held for a thousand years, ending the Byzantine Empire. Constantinople became the Ottoman capital.",
@@ -287,6 +326,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Gutenberg prints his Bible',
     country: 'DE',
     kind: 'science',
+    fame: 'major',
     year: 1455,
     description:
       'Johannes Gutenberg finished the first major book printed with movable metal type in Mainz. Printing made books cheap, and cheap books remade Europe.',
@@ -296,6 +336,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Granada falls — the Reconquista ends',
     country: 'ES',
     kind: 'conflict',
+    fame: 'major',
     year: 1492,
     description:
       'The last Muslim emirate on the Iberian Peninsula surrendered to Ferdinand and Isabella, ending nearly eight centuries of Reconquista — months before the same monarchs funded Columbus.',
@@ -307,6 +348,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Columbus reaches the Americas',
     country: 'BS',
     kind: 'science',
+    fame: 'major',
     year: 1492,
     description:
       'Sailing west for Asia under the Spanish crown, Columbus made landfall in the Bahamas. He insisted to his death that he had reached the Indies.',
@@ -316,6 +358,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Spain and Portugal divide the world',
     country: 'ES',
     kind: 'politics',
+    fame: 'major',
     year: 1494,
     description:
       'Spain and Portugal drew a meridian down the Atlantic and split all newly found lands between them. The line is why Brazil speaks Portuguese and most of Latin America Spanish.',
@@ -325,6 +368,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Vasco da Gama reaches India by sea',
     country: 'IN',
     kind: 'science',
+    fame: 'major',
     year: 1498,
     description:
       'Vasco da Gama rounded Africa and anchored off Calicut, opening the first all-sea route between Europe and Asia and breaking the overland spice monopoly.',
@@ -334,6 +378,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Luther posts his Ninety-five Theses',
     country: 'DE',
     kind: 'culture',
+    fame: 'major',
     year: 1517,
     description:
       'Martin Luther published ninety-five arguments against the sale of indulgences in Wittenberg. The printing press did the rest — the Reformation split western Christianity.',
@@ -342,6 +387,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Fall of Tenochtitlan',
     country: 'MX',
     kind: 'conflict',
+    fame: 'major',
     year: 1521,
     description:
       'Cortés, his indigenous allies and a smallpox epidemic brought down the Aztec capital after a brutal siege. Mexico City rose on its ruins.',
@@ -351,6 +397,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first circumnavigation of the Earth',
     country: 'ES',
     kind: 'science',
+    fame: 'major',
     year: 1522,
     description:
       'Of the five ships and roughly 270 men who left Spain, one ship and 18 men returned three years later, having sailed all the way around the world. Magellan himself died in the Philippines.',
@@ -360,6 +407,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Babur founds the Mughal Empire',
     country: 'IN',
     kind: 'nation',
+    fame: 'major',
     year: 1526,
     description:
       "Babur's cannon and cavalry destroyed the Delhi Sultanate's much larger army at Panipat. The Mughal dynasty he founded ruled most of India into the era of the British.",
@@ -369,6 +417,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Pizarro captures the Inca emperor',
     country: 'PE',
     kind: 'conflict',
+    fame: 'major',
     year: 1532,
     description:
       'Francisco Pizarro ambushed the emperor Atahualpa at Cajamarca with fewer than 200 men. A room full of gold was paid in ransom; Atahualpa was executed anyway, and the Inca Empire fell.',
@@ -378,6 +427,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Copernicus puts the Sun at the centre',
     country: 'PL',
     kind: 'science',
+    fame: 'major',
     year: 1543,
     description:
       "Copernicus's book placing the Sun, not the Earth, at the centre of the universe was published as he lay dying. It took a century — and Galileo's trial — for the idea to win.",
@@ -386,6 +436,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Great Siege of Malta',
     country: 'MT',
     kind: 'conflict',
+    fame: 'minor',
     year: 1565,
     description:
       'A few thousand Knights of St John and Maltese defenders held the island against a massive Ottoman armada for four months. The capital Valletta was founded on the victory.',
@@ -394,6 +445,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Lepanto',
     country: 'GR',
     kind: 'conflict',
+    fame: 'major',
     year: 1571,
     description:
       'A Holy League fleet shattered the Ottoman navy off western Greece in the last great battle between rowed galleys. Cervantes lost the use of a hand there, years before writing Don Quixote.',
@@ -403,6 +455,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Spanish Armada is defeated',
     country: 'GB',
     kind: 'conflict',
+    fame: 'major',
     year: 1588,
     description:
       "Philip II's invasion fleet was beaten in the Channel and wrecked by storms on the long way home around Scotland and Ireland. England stayed Protestant, and stayed uninvaded.",
@@ -411,6 +464,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Sekigahara',
     country: 'JP',
     kind: 'conflict',
+    fame: 'major',
     year: 1600,
     description:
       'Tokugawa Ieyasu won the decisive battle for control of Japan. The shogunate his victory founded kept the country at peace — and closed to most of the world — for over 250 years.',
@@ -420,6 +474,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Dutch East India Company is founded',
     country: 'NL',
     kind: 'politics',
+    fame: 'major',
     year: 1602,
     description:
       'The Dutch merged their Asia traders into the VOC, the first company to issue shares to the public — armed with its own fleets, forts and colonies.',
@@ -429,6 +484,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Jamestown — England lands in America',
     country: 'US',
     kind: 'nation',
+    fame: 'major',
     year: 1607,
     description:
       'The first permanent English settlement in the Americas was planted on a Virginia river island. Two-thirds of the first colonists were dead within a year, but the foothold held.',
@@ -438,6 +494,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Prague throws its governors out the window',
     country: 'CZ',
     kind: 'conflict',
+    fame: 'minor',
     year: 1618,
     description:
       "Protestant nobles hurled two imperial governors from a castle window in Prague — they survived the drop — and lit the fuse of the Thirty Years' War, which devastated Central Europe.",
@@ -447,6 +504,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Mayflower sails',
     country: 'US',
     kind: 'nation',
+    fame: 'major',
     year: 1620,
     // The ship item carries no dates; the voyage item does.
     qid: 'Q41967248',
@@ -457,6 +515,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Peace of Westphalia',
     country: 'DE',
     kind: 'politics',
+    fame: 'major',
     year: 1648,
     description:
       "The treaties ending the Thirty Years' War fixed the principle that each state is sovereign within its own borders — the operating system of international politics ever since.",
@@ -465,6 +524,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Great Fire of London',
     country: 'GB',
     kind: 'disaster',
+    fame: 'major',
     year: 1666,
     description:
       "A bakery fire on Pudding Lane burned four-fifths of the walled city over four days, destroying more than 13,000 houses and old St Paul's Cathedral — yet recorded deaths were few.",
@@ -474,6 +534,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Ottomans are turned back at Vienna',
     country: 'AT',
     kind: 'conflict',
+    fame: 'major',
     year: 1683,
     description:
       "The second and last Ottoman siege of Vienna was broken by a relief army under the Polish king Jan Sobieski, whose winged hussars delivered one of history's largest cavalry charges.",
@@ -483,6 +544,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Newton publishes the Principia',
     country: 'GB',
     kind: 'science',
+    fame: 'major',
     year: 1687,
     description:
       "Newton's Principia set out the laws of motion and universal gravitation — one mathematics for a falling apple and an orbiting Moon.",
@@ -491,6 +553,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Glorious Revolution',
     country: 'GB',
     kind: 'revolution',
+    fame: 'major',
     year: 1688,
     description:
       "Parliament's allies invited William of Orange to invade and King James II fled without a battle. The Bill of Rights that followed made the English crown answer to Parliament.",
@@ -500,6 +563,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Peter the Great founds Saint Petersburg',
     country: 'RU',
     kind: 'nation',
+    fame: 'major',
     year: 1703,
     description:
       'Peter the Great founded a new capital on Baltic marshland seized from Sweden — his "window to Europe", built at enormous human cost and modelled on the West.',
@@ -509,6 +573,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'England and Scotland become Great Britain',
     country: 'GB',
     kind: 'nation',
+    fame: 'major',
     year: 1707,
     description:
       'The English and Scottish parliaments voted themselves into a single Kingdom of Great Britain with one parliament at Westminster.',
@@ -519,6 +584,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Poltava',
     country: 'UA',
     kind: 'conflict',
+    fame: 'minor',
     year: 1709,
     description:
       "Peter the Great destroyed Charles XII's invading Swedish army deep in Ukraine. Sweden's run as a great power ended on that field; Russia's began.",
@@ -528,6 +594,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An earthquake destroys Lisbon',
     country: 'PT',
     kind: 'disaster',
+    fame: 'major',
     year: 1755,
     description:
       "An earthquake, tsunami and days of fire destroyed most of Lisbon on All Saints' Day. The catastrophe shook European philosophy — Voltaire wrote Candide in its shadow.",
@@ -537,6 +604,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The East India Company takes Bengal',
     country: 'IN',
     kind: 'conflict',
+    fame: 'major',
     year: 1757,
     description:
       "Robert Clive's small Company army — helped by a bought-off commander — defeated the Nawab of Bengal at Plassey. A trading company began ruling the richest province in India.",
@@ -547,6 +615,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Boston Tea Party',
     country: 'US',
     kind: 'revolution',
+    fame: 'major',
     year: 1773,
     description:
       "Colonists disguised as Mohawks dumped 342 chests of East India Company tea into Boston Harbor rather than pay Parliament's tax on it. Britain's crackdown pushed the colonies toward war.",
@@ -555,6 +624,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'United States Declaration of Independence',
     country: 'US',
     kind: 'nation',
+    fame: 'major',
     year: 1776,
     description:
       'Thirteen British colonies declared themselves free and independent states, resting the claim on the self-evident truth that all men are created equal.',
@@ -565,6 +635,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The First Fleet reaches Australia',
     country: 'AU',
     kind: 'nation',
+    fame: 'major',
     year: 1788,
     qid: 'Q3130',
     description:
@@ -574,6 +645,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Storming of the Bastille',
     country: 'FR',
     kind: 'revolution',
+    fame: 'major',
     year: 1789,
     description:
       "A Paris crowd stormed the royal fortress-prison of the Bastille, found just seven prisoners, and started the French Revolution anyway. July 14 is still France's national day.",
@@ -582,6 +654,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Haitian Revolution',
     country: 'HT',
     kind: 'revolution',
+    fame: 'major',
     year: 1791,
     description:
       "The enslaved people of France's richest colony rose, defeated their enslavers and the armies of three empires, and by 1804 had founded Haiti — history's only successful slave revolution to birth a state.",
@@ -591,6 +664,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Rosetta Stone is found',
     country: 'EG',
     kind: 'science',
+    fame: 'major',
     year: 1799,
     description:
       'French soldiers rebuilding a fort in the Nile Delta dug up a slab carrying the same decree in three scripts. It became the key that unlocked Egyptian hieroglyphs.',
@@ -600,6 +674,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Napoleon crowns himself emperor',
     country: 'FR',
     kind: 'politics',
+    fame: 'major',
     year: 1804,
     description:
       'In Notre-Dame, with the Pope watching, Napoleon took the crown and set it on his own head. The republic born of the Revolution had become an empire.',
@@ -608,6 +683,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Trafalgar',
     country: 'GB',
     kind: 'conflict',
+    fame: 'major',
     year: 1805,
     description:
       'Nelson destroyed the combined French and Spanish fleets off Cape Trafalgar and died aboard Victory in the doing. Britain ruled the waves for the next century.',
@@ -617,6 +693,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Britain abolishes the slave trade',
     country: 'GB',
     kind: 'politics',
+    fame: 'major',
     year: 1807,
     description:
       'Parliament outlawed the Atlantic slave trade across the British Empire, and the Royal Navy began intercepting slave ships. Slavery itself in the colonies lasted until 1833.',
@@ -626,6 +703,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Napoleon marches on Moscow',
     country: 'RU',
     kind: 'conflict',
+    fame: 'major',
     year: 1812,
     description:
       'Napoleon led some 600,000 men into Russia and reached a burning, empty Moscow. Winter, hunger and Cossacks destroyed the Grande Armée on the way home — a tenth of it returned.',
@@ -634,6 +712,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Waterloo',
     country: 'BE',
     kind: 'conflict',
+    fame: 'major',
     year: 1815,
     description:
       'Escaped from Elba, Napoleon gambled everything on one battle in Belgium and lost it to Wellington and Blücher. He spent his last six years on Saint Helena in the South Atlantic.',
@@ -642,6 +721,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Congress of Vienna',
     country: 'AT',
     kind: 'politics',
+    fame: 'major',
     year: 1815,
     description:
       "Europe's powers redrew the map after Napoleon, restoring monarchs and balancing power. The settlement kept the continent free of a general war for nearly a century.",
@@ -650,6 +730,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Argentine Declaration of Independence',
     country: 'AR',
     kind: 'nation',
+    fame: 'minor',
     year: 1816,
     description:
       'Delegates meeting in Tucumán declared the Provinces of the Río de la Plata independent of Spain, formalising a revolution that had been fighting since 1810.',
@@ -659,6 +740,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bolívar frees New Granada',
     country: 'CO',
     kind: 'revolution',
+    fame: 'minor',
     year: 1819,
     description:
       'Simón Bolívar surprised the Spanish after a brutal march over the Andes and broke their army at Boyacá, freeing Bogotá. Gran Colombia was proclaimed months later.',
@@ -667,6 +749,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Greek War of Independence',
     country: 'GR',
     kind: 'revolution',
+    fame: 'major',
     year: 1821,
     description:
       "Greece rose against four centuries of Ottoman rule. Europe's romantics rallied to the cause — Lord Byron died for it — and an independent Greek state emerged within a decade.",
@@ -676,6 +759,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mexico wins independence',
     country: 'MX',
     kind: 'nation',
+    fame: 'major',
     year: 1821,
     description:
       "Eleven years after the priest Hidalgo's dawn call to revolt, the Army of the Three Guarantees rode into Mexico City and New Spain became independent Mexico.",
@@ -684,6 +768,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Independence of Brazil',
     country: 'BR',
     kind: 'nation',
+    fame: 'major',
     year: 1822,
     description:
       'The Portuguese crown prince Pedro, ruling from Rio, declared "Independence or death!" on the banks of the Ipiranga and became Brazil\'s first emperor — independence via the royal family itself.',
@@ -693,6 +778,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Spanish rule in South America ends',
     country: 'PE',
     kind: 'revolution',
+    fame: 'minor',
     year: 1824,
     description:
       "Sucre's patriot army defeated the last Spanish royalist force in the Peruvian highlands at Ayacucho, sealing the independence of Spanish South America.",
@@ -702,6 +788,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first public steam railway opens',
     country: 'GB',
     kind: 'engineering',
+    fame: 'major',
     year: 1825,
     description:
       'The Stockton and Darlington in northern England became the first public railway worked by steam locomotives. Within a generation, railways had shrunk the world.',
@@ -711,6 +798,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Belgium breaks away',
     country: 'BE',
     kind: 'nation',
+    fame: 'minor',
     year: 1830,
     description:
       'A revolt that began after an opera performance in Brussels drove out the Dutch and created an independent, neutral Belgium with its own king.',
@@ -720,6 +808,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Britain abolishes slavery',
     country: 'GB',
     kind: 'politics',
+    fame: 'major',
     year: 1833,
     description:
       'Parliament abolished slavery across most of the British Empire, freeing some 800,000 people — while paying slave-owners, not the enslaved, £20 million in compensation.',
@@ -728,6 +817,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'First Opium War',
     country: 'CN',
     kind: 'conflict',
+    fame: 'major',
     year: 1839,
     description:
       "China's destruction of British opium stocks brought gunboats. Defeat forced open treaty ports and ceded Hong Kong — the start of what China calls its century of humiliation.",
@@ -736,6 +826,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Treaty of Waitangi',
     country: 'NZ',
     kind: 'politics',
+    fame: 'major',
     year: 1840,
     description:
       "British officials and some 540 Māori chiefs signed New Zealand's founding document. Its English and Māori texts differ on the crucial word — sovereignty — and the argument continues today.",
@@ -745,6 +836,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Famine strikes Ireland',
     country: 'IE',
     kind: 'disaster',
+    fame: 'major',
     year: 1845,
     description:
       "Potato blight destroyed the crop that fed Ireland's poor. A million people died and over a million emigrated while food exports continued — the island's population has never recovered.",
@@ -754,6 +846,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Liberia declares independence',
     country: 'LR',
     kind: 'nation',
+    fame: 'minor',
     year: 1847,
     description:
       "The West African colony founded for freed Black Americans declared itself a republic — Africa's first — with a constitution and flag modelled on the United States.",
@@ -763,6 +856,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Revolutions sweep Europe',
     country: 'FR',
     kind: 'revolution',
+    fame: 'major',
     year: 1848,
     description:
       'Uprisings toppled the French king and shook thrones from Berlin to Vienna to Palermo in the most widespread revolutionary wave Europe has seen. Nearly all were crushed within a year.',
@@ -771,6 +865,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'The Communist Manifesto',
     country: 'GB',
     kind: 'culture',
+    fame: 'major',
     year: 1848,
     description:
       'Marx and Engels published their pamphlet in London weeks before revolution swept Europe. "Workers of the world, unite!" went on to reorganise half the planet.',
@@ -779,6 +874,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Taiping Rebellion',
     country: 'CN',
     kind: 'revolution',
+    fame: 'major',
     year: 1850,
     description:
       'A failed exam candidate who believed himself the younger brother of Jesus raised a rebel Heavenly Kingdom against the Qing. The fourteen-year civil war killed some twenty million people.',
@@ -788,6 +884,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Exhibition opens in the Crystal Palace',
     country: 'GB',
     kind: 'culture',
+    fame: 'major',
     year: 1851,
     description:
       "The first world's fair filled a vast prefabricated glass hall in Hyde Park with the machines and goods of the industrial age. Six million people came — a third of Britain's population.",
@@ -796,6 +893,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Crimean War',
     country: 'UA',
     kind: 'conflict',
+    fame: 'major',
     year: 1853,
     description:
       "Britain, France and the Ottomans fought Russia, mostly on the Crimean peninsula. It gave the world the Charge of the Light Brigade, war photography and Florence Nightingale's nursing reforms.",
@@ -805,6 +903,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The sepoys rise against the East India Company',
     country: 'IN',
     kind: 'revolution',
+    fame: 'major',
     year: 1857,
     description:
       'Sepoy regiments rose against the East India Company and the revolt spread across northern India. After its brutal suppression, the British Crown took direct rule of India from the Company.',
@@ -814,6 +913,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Darwin publishes On the Origin of Species',
     country: 'GB',
     kind: 'science',
+    fame: 'major',
     year: 1859,
     description:
       "Darwin's book laid out evolution by natural selection after twenty years of hesitation. The first print run sold out to booksellers on day one.",
@@ -823,6 +923,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Italy is unified',
     country: 'IT',
     kind: 'nation',
+    fame: 'major',
     year: 1861,
     description:
       "After Garibaldi's thousand red-shirted volunteers took the south, the Kingdom of Italy was proclaimed under Victor Emmanuel II — the peninsula's first single state since Rome. Venice and Rome itself joined within a decade.",
@@ -831,6 +932,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'American Civil War',
     country: 'US',
     kind: 'conflict',
+    fame: 'major',
     year: 1861,
     description:
       'Eleven slave states seceded and the Union fought them back over four years — the deadliest war in American history. It ended slavery by the Thirteenth Amendment.',
@@ -840,6 +942,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Russia frees the serfs',
     country: 'RU',
     kind: 'politics',
+    fame: 'major',
     year: 1861,
     description:
       'Tsar Alexander II emancipated more than twenty million serfs — bound peasants who could be bought and sold with the land. Freedom came with debts that kept most of them poor.',
@@ -849,6 +952,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Red Cross is founded',
     country: 'CH',
     kind: 'politics',
+    fame: 'major',
     year: 1863,
     description:
       'Horrified by the untended wounded at Solferino, the Geneva businessman Henry Dunant founded the Red Cross. The first Geneva Convention followed a year later.',
@@ -858,6 +962,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The United States buys Alaska',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1867,
     description:
       'Russia sold Alaska to the United States for $7.2 million — about two cents an acre. Critics called it "Seward\'s Folly" until the gold and oil turned up.',
@@ -866,6 +971,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Canadian Confederation',
     country: 'CA',
     kind: 'nation',
+    fame: 'major',
     year: 1867,
     description:
       'Three British North American colonies federated into the Dominion of Canada — a country assembled by conference and statute rather than revolution.',
@@ -874,6 +980,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Meiji Restoration',
     country: 'JP',
     kind: 'revolution',
+    fame: 'major',
     year: 1868,
     description:
       'Samurai from the southwest toppled the shogunate and restored the young Meiji emperor. Japan then industrialised at a sprint, going from feudal isolation to great power in one generation.',
@@ -883,6 +990,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Suez Canal opens',
     country: 'EG',
     kind: 'engineering',
+    fame: 'major',
     year: 1869,
     description:
       "Ten years of digging joined the Mediterranean to the Red Sea, cutting the Europe–Asia voyage by weeks. Verdi's Aida was commissioned for the Cairo opera house that opened alongside it.",
@@ -892,6 +1000,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "America's coasts are joined by rail",
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1869,
     description:
       'A golden spike at Promontory Summit, Utah joined the tracks built east from Sacramento and west from Omaha. A months-long wagon crossing became a week by train.',
@@ -900,6 +1009,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Paris Commune',
     country: 'FR',
     kind: 'revolution',
+    fame: 'minor',
     year: 1871,
     description:
       "After France's defeat by Prussia, Paris rose and governed itself as a radical commune for 72 days before the army retook the city street by street, killing thousands in Bloody Week.",
@@ -909,6 +1019,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Germany is unified',
     country: 'DE',
     kind: 'nation',
+    fame: 'major',
     year: 1871,
     description:
       "After Prussia's victory over France, the German Empire was proclaimed — pointedly — in the Hall of Mirrors at Versailles, with the Prussian king as Kaiser and Bismarck as chancellor.",
@@ -918,6 +1029,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Europe carves up Africa',
     country: 'DE',
     kind: 'politics',
+    fame: 'major',
     year: 1884,
     description:
       'European powers met in Berlin to set the rules for claiming African territory — no African was at the table. Within two decades the continent was almost entirely colonised.',
@@ -927,6 +1039,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Krakatoa blows itself apart',
     country: 'ID',
     kind: 'disaster',
+    fame: 'major',
     year: 1883,
     description:
       'The island volcano between Java and Sumatra blew itself apart with a blast heard 4,800 kilometres away. Its tsunamis killed tens of thousands, and its dust reddened sunsets worldwide for years.',
@@ -936,6 +1049,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Statue of Liberty is dedicated',
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1886,
     description:
       "France's copper colossus — designed by Bartholdi, engineered inside by Eiffel — was unveiled in New York Harbor, greeting the greatest wave of immigration in American history.",
@@ -945,6 +1059,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Brazil abolishes slavery',
     country: 'BR',
     kind: 'politics',
+    fame: 'major',
     year: 1888,
     description:
       "Princess Isabel signed the Golden Law, freeing Brazil's remaining enslaved people with a single sentence. Brazil was the last country in the Americas to abolish slavery.",
@@ -954,6 +1069,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Eiffel Tower opens',
     country: 'FR',
     kind: 'engineering',
+    fame: 'major',
     year: 1889,
     description:
       "Built as the entrance arch to a Paris World's Fair and meant to stand twenty years, it was then the tallest structure on Earth. The city's artists petitioned furiously against it.",
@@ -963,6 +1079,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ethiopia defeats an invading empire',
     country: 'ET',
     kind: 'conflict',
+    fame: 'major',
     year: 1896,
     description:
       "Emperor Menelik II's army routed the invading Italians at Adwa. Ethiopia became the great exception of the colonial age — an African state that beat a European power and kept its independence.",
@@ -972,6 +1089,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first modern Olympics',
     country: 'GR',
     kind: 'culture',
+    fame: 'major',
     year: 1896,
     description:
       'The Olympic Games returned after fifteen centuries, staged in Athens with 14 nations. A Greek water-carrier, Spyridon Louis, won the first marathon and became a national hero.',
@@ -980,6 +1098,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Klondike Gold Rush',
     country: 'CA',
     kind: 'culture',
+    fame: 'minor',
     year: 1896,
     description:
       'Gold found in a Yukon creek sent a hundred thousand stampeders over frozen mountain passes toward Dawson City. Most arrived to find the good claims long staked.',
@@ -988,6 +1107,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Spanish–American War',
     country: 'CU',
     kind: 'conflict',
+    fame: 'major',
     year: 1898,
     description:
       "A ten-week war fought over Cuba ended Spain's empire in the Americas and the Pacific. The United States emerged with Puerto Rico, Guam and the Philippines — a colonial power itself.",
@@ -996,6 +1116,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Second Boer War',
     country: 'ZA',
     kind: 'conflict',
+    fame: 'major',
     year: 1899,
     description:
       'Britain fought the Boer republics for three years over southern Africa and its gold. The war introduced the world to the term "concentration camp", where tens of thousands died.',
@@ -1004,6 +1125,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Boxer Rebellion',
     country: 'CN',
     kind: 'revolution',
+    fame: 'major',
     year: 1900,
     description:
       "An anti-foreign uprising besieged Beijing's diplomatic quarter for 55 days until an eight-nation army marched on the capital. The indemnities imposed helped bring down the Qing a decade later.",
@@ -1014,6 +1136,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Federation of Australia',
     country: 'AU',
     kind: 'nation',
+    fame: 'major',
     year: 1901,
     description:
       'Six self-governing British colonies federated into the Commonwealth of Australia on the first day of the new century — nationhood by referendum rather than revolution.',
@@ -1023,6 +1146,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Nobel Prizes are awarded',
     country: 'SE',
     kind: 'culture',
+    fame: 'major',
     year: 1901,
     description:
       'The fortune of Alfred Nobel — the inventor of dynamite — funded the first prizes for physics, chemistry, medicine, literature and peace, awarded in Stockholm and Oslo.',
@@ -1032,6 +1156,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Wright brothers fly',
     country: 'US',
     kind: 'science',
+    fame: 'major',
     year: 1903,
     description:
       "On a North Carolina beach, the Wright brothers made the first controlled, powered aeroplane flights. The longest of the day covered 260 metres — less than a modern jet's wingspan-to-tail walk.",
@@ -1040,6 +1165,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Russo-Japanese War',
     country: 'JP',
     kind: 'conflict',
+    fame: 'major',
     year: 1904,
     description:
       'Japan fought Russia over Korea and Manchuria and won on land and at sea, annihilating the Baltic Fleet at Tsushima — the first modern defeat of a European great power by an Asian one.',
@@ -1049,6 +1175,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Norway leaves its union with Sweden',
     country: 'NO',
     kind: 'nation',
+    fame: 'minor',
     year: 1905,
     description:
       'Norway voted itself out of the union with Sweden — 368,208 for, 184 against — and both sides let it happen peacefully. A Danish prince became King Haakon VII.',
@@ -1058,6 +1185,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'San Francisco burns after the earthquake',
     country: 'US',
     kind: 'disaster',
+    fame: 'major',
     year: 1906,
     description:
       "The earthquake and the three days of fire that followed destroyed most of San Francisco, leaving over half the city's population homeless.",
@@ -1066,6 +1194,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Young Turk Revolution',
     country: 'TR',
     kind: 'revolution',
+    fame: 'minor',
     year: 1908,
     description:
       "Army officers of the Young Turk movement forced the sultan to restore the constitution and parliament, beginning the Ottoman Empire's last, turbulent decade.",
@@ -1074,6 +1203,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Mexican Revolution',
     country: 'MX',
     kind: 'revolution',
+    fame: 'major',
     year: 1910,
     description:
       'What began as a revolt against the thirty-year rule of Porfirio Díaz became a decade of civil war — Zapata and Villa among its generals — that killed perhaps a million Mexicans.',
@@ -1083,6 +1213,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Amundsen reaches the South Pole',
     country: 'NO',
     kind: 'science',
+    fame: 'major',
     year: 1911,
     description:
       "Roald Amundsen's ski-and-dog-sled team reached the South Pole five weeks ahead of Robert Scott, whose entire party died on the return march.",
@@ -1092,6 +1223,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "China's last dynasty falls",
     country: 'CN',
     kind: 'revolution',
+    fame: 'major',
     year: 1911,
     description:
       'A mutiny at Wuchang cascaded into national revolution, and within months the six-year-old Puyi abdicated. Two thousand years of imperial rule ended; the Republic of China began.',
@@ -1100,6 +1232,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Sinking of the Titanic',
     country: 'GB',
     kind: 'disaster',
+    fame: 'major',
     year: 1912,
     description:
       'The largest ship afloat, promoted as practically unsinkable, struck an iceberg on her maiden voyage and sank with around 1,500 people — lifeboats had seats for barely half of those aboard.',
@@ -1109,6 +1242,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Panama Canal opens',
     country: 'PA',
     kind: 'engineering',
+    fame: 'major',
     year: 1914,
     description:
       'The canal cut through the isthmus joined the Atlantic and Pacific, sparing ships the 13,000-kilometre voyage around Cape Horn. France had tried first and lost some 20,000 workers to disease.',
@@ -1118,6 +1252,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Shots at Sarajevo — the spark of WWI',
     country: 'BA',
     kind: 'conflict',
+    fame: 'major',
     year: 1914,
     description:
       'A Bosnian Serb student shot the Austro-Hungarian heir and his wife in Sarajevo. Five weeks of ultimatums and mobilisations later, most of Europe was at war.',
@@ -1126,6 +1261,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Gallipoli campaign',
     country: 'TR',
     kind: 'conflict',
+    fame: 'major',
     year: 1915,
     description:
       "The Allied attempt to force the Dardanelles and take Constantinople died on the Gallipoli beaches. The defence made Mustafa Kemal's name; the landings are founding memory for Australia and New Zealand.",
@@ -1134,6 +1270,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Armenian genocide',
     country: 'AM',
     kind: 'conflict',
+    fame: 'major',
     year: 1915,
     description:
       'The Ottoman government deported the empire\'s Armenians into the Syrian desert through massacre and death march, killing perhaps a million or more. The word "genocide" was later coined largely for it.',
@@ -1142,6 +1279,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Easter Rising',
     country: 'IE',
     kind: 'revolution',
+    fame: 'major',
     year: 1916,
     description:
       'Irish republicans seized central Dublin and proclaimed a republic from the General Post Office. The rising was crushed in six days, but the execution of its leaders turned the country against British rule.',
@@ -1150,6 +1288,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'October Revolution',
     country: 'RU',
     kind: 'revolution',
+    fame: 'major',
     year: 1917,
     description:
       "Lenin's Bolsheviks seized Petrograd's key points and the Winter Palace in a nearly bloodless coup, eight months after the tsar had fallen. The world's first communist state followed.",
@@ -1159,6 +1298,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Finland declares independence',
     country: 'FI',
     kind: 'nation',
+    fame: 'minor',
     year: 1917,
     description:
       "As revolutionary Russia collapsed, Finland's parliament declared independence after a century as a Russian grand duchy — recognised, remarkably, by Lenin's new government within a month.",
@@ -1168,6 +1308,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Armistice ends the First World War',
     country: 'FR',
     kind: 'conflict',
+    fame: 'major',
     year: 1918,
     description:
       'In a railway carriage in the forest of Compiègne, the guns of the First World War fell silent at the eleventh hour of the eleventh day of the eleventh month. Some 17 million people were dead.',
@@ -1177,6 +1318,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The great flu pandemic sweeps the world',
     country: 'US',
     kind: 'disaster',
+    fame: 'major',
     year: 1918,
     description:
       'The influenza pandemic at the close of the Great War infected a third of humanity and killed at least 50 million — more than the war it rode in on. It was called "Spanish" only because Spain\'s uncensored press reported it first.',
@@ -1185,6 +1327,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Treaty of Versailles',
     country: 'FR',
     kind: 'politics',
+    fame: 'major',
     year: 1919,
     description:
       'The peace signed in the Hall of Mirrors stripped Germany of territory and empire and billed it for the war. Its "war guilt" terms became tinder for the next one.',
@@ -1193,6 +1336,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Jallianwala Bagh massacre',
     country: 'IN',
     kind: 'conflict',
+    fame: 'major',
     year: 1919,
     description:
       'British troops fired without warning into a trapped crowd in a walled garden in Amritsar, killing hundreds. The massacre broke Indian faith in the empire and swelled the independence movement.',
@@ -1202,6 +1346,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The League of Nations convenes',
     country: 'CH',
     kind: 'politics',
+    fame: 'major',
     year: 1920,
     description:
       'The first world organisation for collective security assembled in Geneva — without the United States, whose Senate refused to join the body its own president had championed.',
@@ -1211,6 +1356,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Irish Free State is born',
     country: 'IE',
     kind: 'nation',
+    fame: 'major',
     year: 1921,
     description:
       'The treaty ending the Irish War of Independence created a self-governing Free State of 26 counties, with six remaining British. The split over its terms led straight into civil war.',
@@ -1220,6 +1366,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mussolini takes power',
     country: 'IT',
     kind: 'revolution',
+    fame: 'major',
     year: 1922,
     description:
       "Mussolini's blackshirts converged on the capital and the king, rather than order the army to stop them, invited the Fascist leader to form a government. Europe had its first fascist state.",
@@ -1229,6 +1376,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Tutankhamun's tomb is opened",
     country: 'EG',
     kind: 'science',
+    fame: 'major',
     year: 1922,
     description:
       'Howard Carter found the one royal tomb in the Valley of the Kings that robbers had barely touched. Asked if he could see anything through the breach, he answered: "Yes, wonderful things."',
@@ -1238,6 +1386,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Soviet Union is formed',
     country: 'RU',
     kind: 'nation',
+    fame: 'major',
     year: 1922,
     description:
       'Russia, Ukraine, Belarus and the Transcaucasus signed themselves into the Union of Soviet Socialist Republics — on paper a federation, in practice ruled from Moscow. It lasted 69 years.',
@@ -1247,6 +1396,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Kantō earthquake levels Tokyo',
     country: 'JP',
     kind: 'disaster',
+    fame: 'major',
     year: 1923,
     description:
       "The earthquake and firestorms that followed destroyed Tokyo and Yokohama, killing over 100,000 people — Japan's deadliest disaster, struck at lunchtime while the city's stoves were lit.",
@@ -1256,6 +1406,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Atatürk proclaims the Turkish republic',
     country: 'TR',
     kind: 'nation',
+    fame: 'major',
     year: 1923,
     description:
       'From the Ottoman Empire\'s ruins, Mustafa Kemal — later Atatürk, "father of the Turks" — proclaimed a republic with its capital at Ankara, then remade alphabet, dress and law at speed.',
@@ -1265,6 +1416,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Fleming discovers penicillin',
     country: 'GB',
     kind: 'science',
+    fame: 'major',
     year: 1928,
     // The penicillin item itself holds the discovery date (P575).
     qid: 'Q12190',
@@ -1276,6 +1428,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Wall Street crashes',
     country: 'US',
     kind: 'disaster',
+    fame: 'major',
     year: 1929,
     description:
       'The New York stock market collapsed over a handful of October days, erasing fortunes and confidence together. The Great Depression that followed put a quarter of Americans out of work.',
@@ -1287,6 +1440,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Gandhi marches to the sea for salt',
     country: 'IN',
     kind: 'revolution',
+    fame: 'major',
     year: 1930,
     description:
       'Gandhi walked 385 kilometres to the sea and picked up a handful of salt, breaking the British monopoly law. The gesture ignited mass civil disobedience across India.',
@@ -1296,6 +1450,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first football World Cup',
     country: 'UY',
     kind: 'culture',
+    fame: 'major',
     year: 1930,
     description:
       'Uruguay hosted and won the first World Cup, beating Argentina 4–2 in Montevideo. Only thirteen teams came — every European entrant had to be talked into the boat journey.',
@@ -1305,6 +1460,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Empire State Building opens',
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1931,
     description:
       "Built in a Depression-defying 13 months, the 102-storey tower took the title of world's tallest building and held it for four decades.",
@@ -1314,6 +1470,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Siam ends absolute monarchy',
     country: 'TH',
     kind: 'revolution',
+    fame: 'minor',
     year: 1932,
     description:
       'A bloodless dawn coup by young officers and officials ended seven centuries of absolute monarchy in Siam, forcing the king to accept a constitution.',
@@ -1323,6 +1480,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Hitler comes to power',
     country: 'DE',
     kind: 'revolution',
+    fame: 'major',
     year: 1933,
     description:
       'Hitler was appointed chancellor by President Hindenburg, and within months the Nazis had burned out the Reichstag opposition, banned rival parties and ruled by decree.',
@@ -1331,6 +1489,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Long March',
     country: 'CN',
     kind: 'conflict',
+    fame: 'major',
     year: 1934,
     description:
       "Encircled by Nationalist armies, the Chinese communists broke out and marched thousands of kilometres over mountains and rivers to a new base at Yan'an. Mao emerged from it as the party's leader.",
@@ -1340,6 +1499,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Italy invades Ethiopia',
     country: 'ET',
     kind: 'conflict',
+    fame: 'minor',
     year: 1935,
     description:
       "Mussolini invaded Ethiopia with tanks, bombers and poison gas, avenging Adwa forty years on. The League of Nations' failure to stop it exposed collective security as a dead letter.",
@@ -1348,6 +1508,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Spanish Civil War',
     country: 'ES',
     kind: 'conflict',
+    fame: 'major',
     year: 1936,
     description:
       "A generals' rising against the republic tore Spain apart for three years, with Hitler and Mussolini arming Franco and volunteers from fifty countries fighting for the other side. Franco's dictatorship lasted until 1975.",
@@ -1357,6 +1518,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Golden Gate Bridge opens',
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1937,
     description:
       'The longest suspension span yet built crossed the fog-swept strait at the mouth of San Francisco Bay. Its "international orange" paint was meant to be temporary.',
@@ -1365,6 +1527,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Hindenburg disaster',
     country: 'US',
     kind: 'disaster',
+    fame: 'major',
     year: 1937,
     description:
       'The hydrogen-filled German airship burst into flames while landing in New Jersey, killing 36 — with newsreel cameras rolling. The age of the great passenger airships ended in that minute.',
@@ -1373,6 +1536,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Nanjing Massacre',
     country: 'CN',
     kind: 'conflict',
+    fame: 'major',
     year: 1937,
     description:
       "After the fall of China's capital, Japanese troops spent weeks massacring prisoners and civilians and raping tens of thousands. The death toll is contested; the horror is not.",
@@ -1381,6 +1545,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Kristallnacht',
     country: 'DE',
     kind: 'conflict',
+    fame: 'major',
     year: 1938,
     description:
       'In a single organised November night, Nazi mobs burned over a thousand synagogues and smashed Jewish shops and homes across Germany and Austria. The name mocks the broken glass in the streets.',
@@ -1390,6 +1555,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Second World War begins',
     country: 'PL',
     kind: 'conflict',
+    fame: 'major',
     year: 1939,
     description:
       'Germany invaded Poland from the west; the Soviet Union followed from the east under their secret pact. Britain and France declared war on Germany two days in — the Second World War had begun.',
@@ -1398,6 +1564,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Britain',
     country: 'GB',
     kind: 'conflict',
+    fame: 'major',
     year: 1940,
     description:
       'The Luftwaffe spent a summer trying to break the RAF as the prelude to invasion, and failed — the war\'s first check on Germany. "Never was so much owed by so many to so few."',
@@ -1406,6 +1573,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Attack on Pearl Harbor',
     country: 'US',
     kind: 'conflict',
+    fame: 'major',
     year: 1941,
     description:
       'Japanese carrier aircraft struck the US Pacific Fleet at anchor in Hawaii on a Sunday morning, sinking battleships and killing over 2,400 Americans. The United States entered the war the next day.',
@@ -1414,6 +1582,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Stalingrad',
     country: 'RU',
     kind: 'conflict',
+    fame: 'major',
     year: 1942,
     description:
       'The Wehrmacht bled out in five months of street fighting on the Volga, and the encircled Sixth Army surrendered in the ruins. It was the turning point of the war in Europe.',
@@ -1423,6 +1592,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'D-Day — the Allies land in Normandy',
     country: 'FR',
     kind: 'conflict',
+    fame: 'major',
     year: 1944,
     description:
       "On the sixth of June, some 156,000 Allied troops crossed the Channel onto five Normandy beaches in history's largest seaborne invasion. Paris was free within three months.",
@@ -1431,6 +1601,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Bretton Woods Conference',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1944,
     description:
       'Delegates from 44 Allied nations, meeting at a New Hampshire resort hotel, designed the postwar money system — fixed exchange rates, the IMF and the World Bank.',
@@ -1440,6 +1611,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Iceland becomes a republic',
     country: 'IS',
     kind: 'nation',
+    fame: 'minor',
     year: 1944,
     description:
       'With Denmark under German occupation, Icelanders voted almost unanimously to dissolve the union with the Danish crown and founded a republic at Þingvellir, seat of their thousand-year-old assembly.',
@@ -1449,6 +1621,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Atomic bombs fall on Japan',
     country: 'JP',
     kind: 'conflict',
+    fame: 'major',
     year: 1945,
     description:
       "The first nuclear weapons used in war destroyed Hiroshima and, three days later, Nagasaki, killing well over a hundred thousand people by year's end. Japan surrendered within a week of the second bomb.",
@@ -1458,6 +1631,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The United Nations is founded',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1945,
     description:
       'Fifty-one nations signed the UN Charter in San Francisco, determined — its opening words say — "to save succeeding generations from the scourge of war".',
@@ -1466,6 +1640,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Nuremberg trials',
     country: 'DE',
     kind: 'politics',
+    fame: 'major',
     year: 1945,
     description:
       'The surviving Nazi leadership was tried by an international tribunal in Nuremberg for crimes against humanity — the founding precedent that following orders is no defence.',
@@ -1475,6 +1650,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Philippines becomes independent',
     country: 'PH',
     kind: 'nation',
+    fame: 'minor',
     year: 1946,
     description:
       'The United States recognised Philippine independence on 4 July 1946, closing nearly half a century of American rule that had followed three centuries of Spanish rule.',
@@ -1484,6 +1660,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'India and Pakistan are born',
     country: 'IN',
     kind: 'nation',
+    fame: 'major',
     year: 1947,
     description:
       'British India was split at midnight into independent India and Pakistan. The partition uprooted some 15 million people along hastily drawn lines and killed perhaps a million in the violence.',
@@ -1492,6 +1669,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Marshall Plan',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1948,
     description:
       "The United States poured about $13 billion into rebuilding Western Europe's shattered economies — and binding them to the West as the Cold War hardened.",
@@ -1500,6 +1678,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Assassination of Mahatma Gandhi',
     country: 'IN',
     kind: 'politics',
+    fame: 'major',
     year: 1948,
     description:
       'Five months into independence, Gandhi was shot dead at his evening prayer meeting in Delhi by a Hindu nationalist who blamed him for partition and for conciliating Muslims.',
@@ -1509,6 +1688,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The State of Israel is declared',
     country: 'IL',
     kind: 'nation',
+    fame: 'major',
     year: 1948,
     description:
       "David Ben-Gurion proclaimed the State of Israel in Tel Aviv as the British mandate expired. Five Arab armies crossed the borders the next day; the war's displacements shape the region still.",
@@ -1518,6 +1698,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Berlin Airlift begins',
     country: 'DE',
     kind: 'conflict',
+    fame: 'major',
     year: 1948,
     description:
       'The Soviets cut every road and rail line into West Berlin, and the Western allies fed two million people by air for eleven months — a plane landing roughly every minute at the peak.',
@@ -1526,6 +1707,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Universal Declaration of Human Rights',
     country: 'FR',
     kind: 'politics',
+    fame: 'major',
     year: 1948,
     description:
       'The UN General Assembly, meeting in Paris, adopted thirty articles of rights belonging to every human being — drafted by a committee chaired by Eleanor Roosevelt.',
@@ -1535,6 +1717,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'NATO is founded',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1949,
     description:
       'Twelve North Atlantic nations signed a treaty in Washington making an attack on one an attack on all. Article 5 has been invoked once — after September 11.',
@@ -1543,6 +1726,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: "Proclamation of the People's Republic of China",
     country: 'CN',
     kind: 'nation',
+    fame: 'major',
     year: 1949,
     description:
       "From the Tiananmen gate, Mao proclaimed the People's Republic after the communists' civil-war victory. The defeated Nationalists withdrew to Taiwan — both governments still claim to be China.",
@@ -1553,6 +1737,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Korean War',
     country: 'KR',
     kind: 'conflict',
+    fame: 'major',
     year: 1950,
     description:
       'North Korea invaded the South and a UN force led by the United States fought it — and then China — to a stalemate near where the war began. An armistice, never a peace treaty, holds the line today.',
@@ -1562,6 +1747,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Free Officers topple Egypt's king",
     country: 'EG',
     kind: 'revolution',
+    fame: 'minor',
     year: 1952,
     description:
       "Army officers led by Nasser and Naguib deposed King Farouk in a night, ending the monarchy and British-era rule. Nasser's Egypt became the pole star of Arab nationalism.",
@@ -1571,6 +1757,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Everest is climbed',
     country: 'NP',
     kind: 'science',
+    fame: 'major',
     year: 1953,
     description:
       'Edmund Hillary and Tenzing Norgay stood on the summit of Everest on 29 May 1953 — the first people on the highest point on Earth. News reached London on Coronation morning.',
@@ -1580,6 +1767,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The DNA double helix is revealed',
     country: 'GB',
     kind: 'science',
+    fame: 'major',
     year: 1953,
     description:
       "Watson and Crick published DNA's double-helix structure, built on Rosalind Franklin's X-ray images. The paper's closing understatement — the structure \"suggests a possible copying mechanism\" — opened modern genetics.",
@@ -1589,6 +1777,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'France falls at Dien Bien Phu',
     country: 'VN',
     kind: 'conflict',
+    fame: 'major',
     year: 1954,
     description:
       'The Viet Minh dragged artillery up jungle mountains and crushed the French garrison in its valley fortress. French Indochina ended at the conference table weeks later, with Vietnam divided at the 17th parallel.',
@@ -1597,6 +1786,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Warsaw Pact',
     country: 'PL',
     kind: 'politics',
+    fame: 'minor',
     year: 1955,
     description:
       'The Soviet Union bound its Eastern European satellites into a military alliance answering NATO. Its only joint invasion was of one of its own members — Czechoslovakia, 1968.',
@@ -1606,6 +1796,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Rosa Parks keeps her seat',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1955,
     description:
       "Rosa Parks was arrested for refusing to give up her bus seat, and Black Montgomery walked for 381 days until the buses were desegregated. The boycott's young spokesman was Martin Luther King Jr.",
@@ -1614,6 +1805,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Bandung Conference',
     country: 'ID',
     kind: 'politics',
+    fame: 'minor',
     year: 1955,
     description:
       'Twenty-nine newly independent Asian and African states met in Bandung to chart a course between the Cold War blocs — the seedbed of the Non-Aligned Movement.',
@@ -1623,6 +1815,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Budapest rises against Soviet rule',
     country: 'HU',
     kind: 'revolution',
+    fame: 'minor',
     year: 1956,
     description:
       'Budapest rose against Soviet rule and for a few days Hungary was free — until the tanks returned. Thousands died and 200,000 fled west while the world watched.',
@@ -1631,6 +1824,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Suez Crisis',
     country: 'EG',
     kind: 'conflict',
+    fame: 'major',
     year: 1956,
     description:
       'When Nasser nationalised the Suez Canal, Britain, France and Israel invaded — and were forced out by American and Soviet pressure. The end of empire had a date on it after Suez.',
@@ -1640,6 +1834,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ghana leads Africa to independence',
     country: 'GH',
     kind: 'nation',
+    fame: 'major',
     year: 1957,
     description:
       'The Gold Coast became Ghana under Kwame Nkrumah — the first sub-Saharan colony to win independence. "Our independence is meaningless," he said that night, "unless it is linked up with the total liberation of Africa."',
@@ -1651,6 +1846,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Six nations found the Common Market',
     country: 'IT',
     kind: 'politics',
+    fame: 'minor',
     year: 1957,
     description:
       "France, West Germany, Italy and the Benelux countries signed the Treaty of Rome, creating the European Economic Community — the six-member seed of today's European Union.",
@@ -1660,6 +1856,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Sputnik opens the Space Age',
     country: 'RU',
     kind: 'science',
+    fame: 'major',
     year: 1957,
     description:
       'The Soviet Union lofted a beeping 58-centimetre metal sphere into orbit — the first artificial satellite. Its radio signal, audible to amateurs worldwide, started the space race.',
@@ -1669,6 +1866,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Malaya becomes independent',
     country: 'MY',
     kind: 'nation',
+    fame: 'minor',
     year: 1957,
     description:
       'At midnight in Kuala Lumpur\'s Merdeka Stadium, the Federation of Malaya became independent of Britain to shouts of "Merdeka!" — freedom. Malaysia was formed six years later.',
@@ -1677,6 +1875,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Cuban Revolution',
     country: 'CU',
     kind: 'revolution',
+    fame: 'minor',
     year: 1959,
     description:
       "Fidel Castro's guerrillas came down from the Sierra Maestra and took Havana on New Year's Day as Batista fled. Within two years Cuba was a communist state ninety miles from Florida.",
@@ -1686,6 +1885,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Nigeria becomes independent',
     country: 'NG',
     kind: 'nation',
+    fame: 'minor',
     year: 1960,
     description:
       'Africa\'s most populous country took independence from Britain in the "Year of Africa", when seventeen African nations raised new flags.',
@@ -1695,6 +1895,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Congo becomes independent',
     country: 'CD',
     kind: 'nation',
+    fame: 'minor',
     year: 1960,
     // No event item; the country's inception carries the year.
     qid: 'Q974',
@@ -1706,6 +1907,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Gagarin — the first human in space',
     country: 'RU',
     kind: 'science',
+    fame: 'major',
     year: 1961,
     description:
       'Yuri Gagarin orbited the Earth once in 108 minutes aboard Vostok 1 and landed by parachute a national hero. He was 27, and the first human being to see the planet whole.',
@@ -1715,6 +1917,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Berlin Wall goes up',
     country: 'DE',
     kind: 'conflict',
+    fame: 'major',
     year: 1961,
     description:
       'East Germany sealed West Berlin overnight with barbed wire that hardened into a concrete wall, to stop the exodus of its own citizens — about one in six had already left. It stood for 28 years.',
@@ -1724,6 +1927,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Algeria wins independence',
     country: 'DZ',
     kind: 'nation',
+    fame: 'minor',
     year: 1962,
     description:
       "The accords signed at Évian ended an eight-year war that had killed hundreds of thousands and brought down France's Fourth Republic. A million French settlers left Algeria within months.",
@@ -1732,6 +1936,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Cuban Missile Crisis',
     country: 'CU',
     kind: 'conflict',
+    fame: 'major',
     year: 1962,
     description:
       'For thirteen October days the superpowers stood at the edge of nuclear war over Soviet missiles in Cuba, until Khrushchev withdrew them — and the US quietly pulled its own from Turkey.',
@@ -1741,6 +1946,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Jamaica becomes independent',
     country: 'JM',
     kind: 'nation',
+    fame: 'minor',
     year: 1962,
     description:
       'Jamaica left the failed West Indies Federation and took full independence from Britain, the first of the anglophone Caribbean islands to do so.',
@@ -1749,6 +1955,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Assassination of John F. Kennedy',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1963,
     description:
       "President Kennedy was shot dead in an open car in Dallas. The murder, caught on a bystander's home-movie camera, has fed six decades of grief and conspiracy alike.",
@@ -1758,6 +1965,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: '"I Have a Dream" — the March on Washington',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1963,
     description:
       'A quarter of a million people filled the Mall to demand civil rights, and Martin Luther King Jr. told them his dream from the Lincoln Memorial steps. The Civil Rights Act passed the next year.',
@@ -1767,6 +1975,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Singapore goes it alone',
     country: 'SG',
     kind: 'nation',
+    fame: 'minor',
     year: 1965,
     description:
       "Expelled from Malaysia after two years, Singapore became a sovereign city-state against its own wishes — Lee Kuan Yew wept announcing it. It became one of the world's richest places anyway.",
@@ -1775,6 +1984,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Six-Day War',
     country: 'IL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1967,
     description:
       "Israel destroyed the Egyptian air force on the ground in the war's opening hours and in six days took Sinai, Gaza, the West Bank, East Jerusalem and the Golan — territories at the heart of the conflict since.",
@@ -1784,6 +1994,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first human heart transplant',
     country: 'ZA',
     kind: 'science',
+    fame: 'minor',
     year: 1967,
     description:
       "Christiaan Barnard's team at Cape Town's Groote Schuur Hospital transplanted a human heart for the first time. The patient lived 18 days; the operation changed what surgery believed possible.",
@@ -1792,6 +2003,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Prague Spring',
     country: 'CZ',
     kind: 'revolution',
+    fame: 'minor',
     year: 1968,
     description:
       'Czechoslovakia\'s reform communists promised "socialism with a human face" — until half a million Warsaw Pact troops arrived in August to shut it down. The thaw was over in a night.',
@@ -1800,6 +2012,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Assassination of Martin Luther King Jr.',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1968,
     description:
       'King was shot on a Memphis motel balcony at 39, in town to support striking sanitation workers. Riots broke out in over a hundred American cities in the week that followed.',
@@ -1809,6 +2022,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Apollo 11 — humans walk on the Moon',
     country: 'US',
     kind: 'science',
+    fame: 'major',
     year: 1969,
     description:
       'Armstrong and Aldrin landed on the Sea of Tranquility with about 25 seconds of fuel to spare while some 600 million people watched. Twelve people have walked the Moon; the last left three years later, and no one has been back.',
@@ -1817,6 +2031,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Woodstock',
     country: 'US',
     kind: 'culture',
+    fame: 'major',
     year: 1969,
     // Bare name search finds the town, not the festival.
     qid: 'Q164815',
@@ -1828,6 +2043,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Concorde's first flight",
     country: 'FR',
     kind: 'engineering',
+    fame: 'minor',
     year: 1969,
     description:
       'The Anglo-French supersonic airliner flew for the first time from Toulouse. It crossed the Atlantic in under three and a half hours for 27 years — no passenger aircraft has gone supersonic since 2003.',
@@ -1839,6 +2055,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Work begins on the Aswan High Dam',
     country: 'EG',
     kind: 'engineering',
+    fame: 'minor',
     year: 1960,
     qid: 'Q38891',
     description:
@@ -1849,6 +2066,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bangladesh is born',
     country: 'BD',
     kind: 'nation',
+    fame: 'minor',
     year: 1971,
     description:
       "East Pakistan broke from the West in a nine-month war marked by genocide and ten million refugees. With India's intervention it ended in the birth of Bangladesh.",
@@ -1858,6 +2076,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Idi Amin seizes Uganda',
     country: 'UG',
     kind: 'revolution',
+    fame: 'minor',
     year: 1971,
     description:
       "General Idi Amin took Uganda while the president was abroad. His eight years killed perhaps 300,000 people and expelled the country's entire Asian community on ninety days' notice.",
@@ -1866,6 +2085,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Munich massacre',
     country: 'DE',
     kind: 'conflict',
+    fame: 'major',
     year: 1972,
     description:
       'Palestinian gunmen took the Israeli team hostage at the Munich Olympics; eleven athletes and coaches died, most in a botched rescue at the airport. The Games controversially went on.',
@@ -1875,6 +2095,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Sydney Opera House opens',
     country: 'AU',
     kind: 'engineering',
+    fame: 'minor',
     year: 1973,
     description:
       "Jørn Utzon's sail-roofed masterpiece opened ten years late and fourteen times over budget — its Danish architect had resigned and never returned to see it finished.",
@@ -1884,6 +2105,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Pinochet's coup in Chile",
     country: 'CL',
     kind: 'revolution',
+    fame: 'minor',
     year: 1973,
     description:
       "The armed forces bombed the presidential palace, President Allende died there, and General Pinochet's junta ruled for 17 years — thousands were executed, tortured or disappeared.",
@@ -1893,6 +2115,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The oil embargo quadruples the price of crude',
     country: 'SA',
     kind: 'politics',
+    fame: 'minor',
     year: 1973,
     description:
       'Arab oil producers embargoed the West over the October war with Israel and prices quadrupled in months — queues at petrol pumps, speed limits, and the end of the postwar boom.',
@@ -1901,6 +2124,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Carnation Revolution',
     country: 'PT',
     kind: 'revolution',
+    fame: 'minor',
     year: 1974,
     description:
       "Junior officers toppled Europe's oldest dictatorship in a day, signalled by songs on the radio, and crowds put carnations in the soldiers' rifle barrels. Portugal's African colonies were free within two years.",
@@ -1910,6 +2134,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cyprus is divided',
     country: 'CY',
     kind: 'conflict',
+    fame: 'minor',
     year: 1974,
     description:
       "After a Greek-backed coup aimed at union with Greece, Turkey invaded and took the island's north. A UN buffer zone has split Cyprus — and its capital Nicosia — ever since.",
@@ -1919,6 +2144,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Vietnam War ends',
     country: 'VN',
     kind: 'conflict',
+    fame: 'major',
     year: 1975,
     description:
       "North Vietnamese tanks broke through the gates of Saigon's Presidential Palace as the last Americans left by helicopter from an embassy roof. Vietnam was reunified after thirty years of war.",
@@ -1928,6 +2154,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Angola becomes independent',
     country: 'AO',
     kind: 'nation',
+    fame: 'minor',
     year: 1975,
     description:
       "Angola took independence as Portugal's empire collapsed after the Carnation Revolution — and slid straight into a superpower-fuelled civil war that ran, with pauses, until 2002.",
@@ -1937,6 +2164,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Franco dies — Spain turns to democracy',
     country: 'ES',
     kind: 'politics',
+    fame: 'minor',
     year: 1975,
     qid: 'Q51753258',
     description:
@@ -1946,6 +2174,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Soweto uprising',
     country: 'ZA',
     kind: 'revolution',
+    fame: 'major',
     year: 1976,
     description:
       "Soweto's schoolchildren marched against being taught in Afrikaans and the police opened fire. Hundreds died in the months that followed, and a generation was radicalised against apartheid.",
@@ -1955,6 +2184,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An earthquake flattens Tangshan',
     country: 'CN',
     kind: 'disaster',
+    fame: 'minor',
     year: 1976,
     description:
       'An earthquake flattened the industrial city of Tangshan before dawn, killing at least 240,000 people by official count — the deadliest earthquake of the twentieth century.',
@@ -1964,6 +2194,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Voyager 1 leaves for the outer planets',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1977,
     description:
       "Launched to fly past Jupiter and Saturn, Voyager 1 kept going — now the most distant human-made object, carrying a golden record of Earth's sounds, and still calling home from interstellar space.",
@@ -1972,6 +2203,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Camp David Accords',
     country: 'EG',
     kind: 'politics',
+    fame: 'minor',
     year: 1978,
     description:
       'Thirteen secret days at the US presidential retreat produced a framework for peace between Egypt and Israel — the first Arab state to recognise Israel. Sadat paid for it with his life three years later.',
@@ -1980,6 +2212,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Iranian Revolution',
     country: 'IR',
     kind: 'revolution',
+    fame: 'major',
     year: 1979,
     description:
       'Mass protests drove out the Shah, and Ayatollah Khomeini returned from exile to found an Islamic republic. The US embassy hostage crisis began within the year.',
@@ -1989,6 +2222,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Soviets invade Afghanistan',
     country: 'AF',
     kind: 'conflict',
+    fame: 'minor',
     year: 1979,
     description:
       'Soviet troops took Kabul in the last week of the year and stayed nine more, fighting US-armed mujahideen. The war helped exhaust the USSR — and seeded the conflicts that followed.',
@@ -1998,6 +2232,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Zimbabwe becomes independent',
     country: 'ZW',
     kind: 'nation',
+    fame: 'minor',
     year: 1980,
     description:
       'White-ruled Rhodesia became independent Zimbabwe after a long guerrilla war and the Lancaster House settlement. Robert Mugabe won the first elections — and held power for 37 years.',
@@ -2007,6 +2242,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Solidarity is born in the Gdańsk shipyard',
     country: 'PL',
     kind: 'revolution',
+    fame: 'minor',
     year: 1980,
     description:
       "Striking Gdańsk shipyard workers led by Lech Wałęsa forced the communist state to accept the Soviet bloc's first independent trade union. Ten million Poles joined within a year.",
@@ -2015,6 +2251,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Iran–Iraq War',
     country: 'IQ',
     kind: 'conflict',
+    fame: 'minor',
     year: 1980,
     description:
       'Saddam Hussein invaded revolutionary Iran expecting a quick win and got eight years of trench warfare, poison gas and perhaps half a million dead — borders ending where they began.',
@@ -2023,6 +2260,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Falklands War',
     country: 'AR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1982,
     description:
       "Argentina's junta seized the Falkland Islands and Britain took them back in a ten-week war fought 13,000 kilometres from home. Defeat brought down the junta within a year.",
@@ -2031,6 +2269,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Bhopal disaster',
     country: 'IN',
     kind: 'disaster',
+    fame: 'minor',
     year: 1984,
     description:
       "A Union Carbide pesticide plant leaked toxic gas over sleeping Bhopal, killing thousands within days and injuring hundreds of thousands — the world's deadliest industrial disaster.",
@@ -2039,6 +2278,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Live Aid',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1985,
     description:
       "Twin concerts at Wembley and Philadelphia — sixteen hours, broadcast to well over a billion people — raised over £100 million for Ethiopia's famine. Queen's twenty minutes became rock legend.",
@@ -2048,6 +2288,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An earthquake collapses Mexico City',
     country: 'MX',
     kind: 'disaster',
+    fame: 'minor',
     year: 1985,
     description:
       'A magnitude-8 earthquake collapsed hundreds of buildings in Mexico City, killing at least ten thousand people. Citizen rescue brigades, organised where the state failed, reshaped Mexican civil society.',
@@ -2056,6 +2297,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Chernobyl disaster',
     country: 'UA',
     kind: 'disaster',
+    fame: 'major',
     year: 1986,
     description:
       'Reactor 4 exploded during a botched safety test, spreading fallout across Europe while Moscow stayed silent for days. Gorbachev later called it a true cause of the Soviet collapse.',
@@ -2064,6 +2306,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Space Shuttle Challenger disaster',
     country: 'US',
     kind: 'disaster',
+    fame: 'minor',
     year: 1986,
     description:
       'Challenger broke apart 73 seconds after liftoff, killing all seven aboard — including the teacher Christa McAuliffe, with schoolchildren across America watching live. A frozen rubber O-ring was to blame.',
@@ -2072,6 +2315,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'People Power Revolution',
     country: 'PH',
     kind: 'revolution',
+    fame: 'minor',
     year: 1986,
     description:
       "Millions of Filipinos filled Manila's EDSA highway, nuns kneeling in front of tanks, until Ferdinand Marcos fled after a stolen election. Corazon Aquino — a slain rival's widow — became president.",
@@ -2083,6 +2327,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The World Wide Web is invented',
     country: 'CH',
     kind: 'science',
+    fame: 'major',
     year: 1989,
     description:
       'At CERN, Tim Berners-Lee proposed a hypertext system for sharing physics papers; his manager pencilled "vague, but exciting". He gave the Web away patent-free.',
@@ -2094,6 +2339,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Two million join hands across the Baltics',
     country: 'LT',
     kind: 'revolution',
+    fame: 'minor',
     year: 1989,
     description:
       'Some two million Estonians, Latvians and Lithuanians joined hands in an unbroken 675-kilometre chain to demand independence, fifty years to the day after the pact that had handed them to Stalin.',
@@ -2103,6 +2349,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tiananmen Square',
     country: 'CN',
     kind: 'revolution',
+    fame: 'minor',
     year: 1989,
     description:
       'Weeks of student-led protests for reform filled Tiananmen Square until the army cleared Beijing with tanks and live fire, killing hundreds at least. The lone "Tank Man" photo endures where the count is censored.',
@@ -2111,6 +2358,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Fall of the Berlin Wall',
     country: 'DE',
     kind: 'revolution',
+    fame: 'major',
     year: 1989,
     description:
       'A fumbled press conference answer — travel is free, "immediately, without delay" — sent East Berliners to the checkpoints that night, and the guards stood aside. The Cold War\'s symbol fell to hands and hammers.',
@@ -2119,6 +2367,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Velvet Revolution',
     country: 'CZ',
     kind: 'revolution',
+    fame: 'minor',
     year: 1989,
     description:
       "Ten days of swelling, entirely peaceful protests ended communist rule in Czechoslovakia. By the year's end the dissident playwright Václav Havel — in prison that spring — was president.",
@@ -2127,6 +2376,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Romanian Revolution',
     country: 'RO',
     kind: 'revolution',
+    fame: 'minor',
     year: 1989,
     description:
       "The only violent fall in Eastern Europe's year of revolutions: a week of fighting ended with the Ceaușescus tried by a drumhead court and shot on Christmas Day.",
@@ -2136,6 +2386,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Rainbow Nation wins the Rugby World Cup',
     country: 'ZA',
     kind: 'culture',
+    fame: 'minor',
     year: 1995,
     description:
       "A year into democracy, South Africa hosted the tournament and won it — and Nelson Mandela handed François Pienaar the trophy wearing the Springboks' jersey, apartheid's old symbol turned unifier.",
@@ -2144,6 +2395,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'German reunification',
     country: 'DE',
     kind: 'nation',
+    fame: 'minor',
     year: 1990,
     description:
       "Less than a year after the Wall fell, East Germany's five states acceded to the Federal Republic and Germany was one country again — 3 October is now its national day.",
@@ -2153,6 +2405,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Namibia becomes independent',
     country: 'NA',
     kind: 'nation',
+    fame: 'minor',
     year: 1990,
     description:
       "Africa's last colony became independent from South African rule after a decades-long liberation war and a UN-supervised transition — one of the closing acts of both empire and Cold War.",
@@ -2162,6 +2415,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Hubble is launched',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1990,
     description:
       'The first great space telescope launched with a flawed mirror — corrected by spacewalking astronauts three years later. Its deep-field images showed thousands of galaxies in a patch of "empty" sky.',
@@ -2171,6 +2425,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Iraq invades Kuwait — the Gulf War',
     country: 'KW',
     kind: 'conflict',
+    fame: 'minor',
     year: 1990,
     description:
       'Saddam Hussein swallowed Kuwait in a day; a 35-nation coalition threw him out in a six-week air war and a hundred-hour ground campaign, watched live on satellite news.',
@@ -2180,6 +2435,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Yugoslavia begins to break apart',
     country: 'HR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1991,
     description:
       "Croatia's declaration of independence brought war with the Yugoslav army and Serb militias — the siege of Vukovar, the shelling of Dubrovnik — as the federation tore apart piece by piece.",
@@ -2188,6 +2444,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Dissolution of the Soviet Union',
     country: 'RU',
     kind: 'nation',
+    fame: 'major',
     year: 1991,
     description:
       'After a failed hardline coup, the republics walked away and Gorbachev resigned on Christmas Day as the red flag came down from the Kremlin. Fifteen states stood where the superpower had been.',
@@ -2197,6 +2454,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The European Union is created',
     country: 'NL',
     kind: 'politics',
+    fame: 'minor',
     year: 1992,
     description:
       'Signed in the Dutch city of Maastricht, the treaty turned the Community into the European Union, created EU citizenship and set the path to a single currency.',
@@ -2206,6 +2464,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Velvet Divorce',
     country: 'SK',
     kind: 'nation',
+    fame: 'minor',
     year: 1993,
     description:
       "Czechoslovakia split into the Czech Republic and Slovakia at midnight on New Year's Eve — negotiated by two prime ministers, without a referendum and without a shot.",
@@ -2215,6 +2474,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Oslo Accords',
     country: 'IL',
     kind: 'politics',
+    fame: 'minor',
     year: 1993,
     description:
       'Negotiated secretly in Norway and sealed with a Rabin–Arafat handshake on the White House lawn, the accords brought mutual recognition and Palestinian self-rule in parts of the territories — but no final peace.',
@@ -2224,6 +2484,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Eritrea becomes independent',
     country: 'ER',
     kind: 'nation',
+    fame: 'minor',
     year: 1993,
     description:
       "After a thirty-year war against Ethiopia — Africa's longest independence struggle — Eritreans voted almost unanimously for statehood in a UN-supervised referendum.",
@@ -2232,6 +2493,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Rwandan genocide',
     country: 'RW',
     kind: 'conflict',
+    fame: 'minor',
     year: 1994,
     description:
       'In roughly one hundred days, Hutu extremists murdered around 800,000 Tutsi and moderate Hutu — much of it by machete, neighbour against neighbour — while the world declined to intervene.',
@@ -2241,6 +2503,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Apartheid ends at the ballot box',
     country: 'ZA',
     kind: 'nation',
+    fame: 'major',
     year: 1994,
     description:
       'South Africans of all races voted together for the first time, queueing for hours in lines visible from the air. Nelson Mandela was inaugurated president two weeks later.',
@@ -2250,6 +2513,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Channel Tunnel opens',
     country: 'GB',
     kind: 'engineering',
+    fame: 'minor',
     year: 1994,
     description:
       'Two centuries after the idea was first floated, a 50-kilometre rail tunnel — 38 of them under the seabed — joined Britain to the European mainland for the first time since the Ice Age.',
@@ -2259,6 +2523,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Bosnian War ends at Dayton',
     country: 'BA',
     kind: 'politics',
+    fame: 'minor',
     year: 1995,
     description:
       'Three years of siege and ethnic cleansing — including genocide at Srebrenica that summer — ended with a peace hammered out at a US airbase in Ohio, freezing Bosnia into two entities under one roof.',
@@ -2268,6 +2533,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Dolly the sheep is cloned',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1996,
     qid: 'Q171433',
     description:
@@ -2277,6 +2543,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Handover of Hong Kong',
     country: 'CN',
     kind: 'politics',
+    fame: 'minor',
     year: 1997,
     description:
       'Britain returned Hong Kong to China at midnight in a rain-soaked ceremony, ending 156 years of colonial rule under a promise of "one country, two systems" for fifty years.',
@@ -2286,6 +2553,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Asian financial crisis breaks the tigers',
     country: 'TH',
     kind: 'disaster',
+    fame: 'minor',
     year: 1997,
     description:
       'Thailand\'s forced float of the baht set off a contagion that crashed currencies and economies from Jakarta to Seoul, humbling the "Asian tigers" and toppling Indonesia\'s Suharto.',
@@ -2296,6 +2564,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Good Friday Agreement',
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 1998,
     description:
       'Signed in Belfast on Good Friday, the agreement largely ended thirty years of the Troubles — power-sharing, paramilitary disarmament, and an open border on the island of Ireland.',
@@ -2305,6 +2574,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The International Space Station begins',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1998,
     description:
       'A Russian module launched from Baikonur and an American one joined it weeks later, beginning the largest structure ever assembled in space. It has been continuously inhabited for over two decades.',
@@ -2314,6 +2584,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The euro is born',
     country: 'DE',
     kind: 'politics',
+    fame: 'minor',
     year: 1999,
     description:
       'Eleven EU countries locked their currencies into the euro; notes and coins followed three years later, retiring the franc, mark, lira and peseta. It is now money for over 340 million people.',
@@ -2323,6 +2594,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'America promises the canal to Panama',
     country: 'PA',
     kind: 'politics',
+    fame: 'minor',
     year: 1977,
     qid: 'Q277343',
     description:
@@ -2334,6 +2606,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'September 11 attacks',
     country: 'US',
     kind: 'conflict',
+    fame: 'major',
     year: 2001,
     description:
       'Al-Qaeda hijackers flew airliners into the World Trade Center and the Pentagon, killing nearly 3,000 people. The wars that answered it ran for two decades.',
@@ -2343,6 +2616,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Wikipedia launches',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2001,
     description:
       'An encyclopedia anyone could edit sounded like a joke and became one of the most visited sites on Earth — millions of articles in hundreds of languages, written free by volunteers.',
@@ -2352,6 +2626,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'East Timor becomes independent',
     country: 'TL',
     kind: 'nation',
+    fame: 'minor',
     year: 2002,
     // The country item's inception is the 1975 proclamation; the UN
     // transitional administration's dissolution marks the 2002 restoration.
@@ -2363,6 +2638,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Iraq War',
     country: 'IQ',
     kind: 'conflict',
+    fame: 'minor',
     year: 2003,
     description:
       'A US-led coalition invaded to seize weapons of mass destruction that were never found. Saddam fell in three weeks; the insurgency and civil war that followed lasted years.',
@@ -2372,6 +2648,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The human genome is sequenced',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2003,
     description:
       'The thirteen-year international project to read all three billion letters of human DNA was declared complete — the book of the species, open source.',
@@ -2381,6 +2658,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A tsunami crosses the Indian Ocean',
     country: 'ID',
     kind: 'disaster',
+    fame: 'minor',
     year: 2004,
     description:
       'A magnitude-9 earthquake off Sumatra sent tsunamis across the whole ocean, killing some 230,000 people in fourteen countries on a single morning — many with no warning at all.',
@@ -2390,6 +2668,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The EU takes in ten new members',
     country: 'PL',
     kind: 'politics',
+    fame: 'minor',
     year: 2004,
     description:
       "Ten countries — eight of them from behind the old Iron Curtain — joined the EU in its largest single expansion, stitching the continent's Cold War halves together.",
@@ -2400,6 +2679,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Orange Revolution',
     country: 'UA',
     kind: 'revolution',
+    fame: 'minor',
     year: 2004,
     description:
       "A rigged presidential run-off brought hundreds of thousands into a frozen Kyiv's Independence Square for weeks, until the courts ordered a re-vote — which the opposition won.",
@@ -2408,6 +2688,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Hurricane Katrina',
     country: 'US',
     kind: 'disaster',
+    fame: 'minor',
     year: 2005,
     description:
       "Katrina's surge broke New Orleans' levees and drowned four-fifths of the city. Some 1,400 died, and the images of Americans stranded on rooftops indicted every level of government.",
@@ -2417,6 +2698,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Montenegro votes for independence',
     country: 'ME',
     kind: 'nation',
+    fame: 'minor',
     year: 2006,
     description:
       'Montenegro voted to leave its union with Serbia — clearing the 55% bar by half a point — and the last piece of the old Yugoslavia went its own way.',
@@ -2428,6 +2710,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The iPhone arrives',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2007,
     description:
       'Steve Jobs introduced "an iPod, a phone and an internet communicator" — one device. The smartphone it defined put the internet in most of humanity\'s pockets within a decade.',
@@ -2437,6 +2720,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Kosovo declares independence',
     country: 'XK',
     kind: 'nation',
+    fame: 'minor',
     year: 2008,
     description:
       "Nine years after the NATO intervention, Kosovo's assembly declared independence from Serbia. About half the world's states recognise it; Serbia and Russia do not.",
@@ -2446,6 +2730,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Lehman falls — the global financial crisis',
     country: 'US',
     kind: 'disaster',
+    fame: 'minor',
     year: 2008,
     description:
       'The 158-year-old investment bank filed the largest bankruptcy in US history and the global financial system seized. The Great Recession that followed cost millions their homes and jobs.',
@@ -2454,6 +2739,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Russo-Georgian War',
     country: 'GE',
     kind: 'conflict',
+    fame: 'minor',
     year: 2008,
     description:
       "A five-day August war over South Ossetia ended with Russian troops deep in Georgia and two breakaway regions under de facto Russian control — Europe's first invasion of the century.",
@@ -2463,6 +2749,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'America inaugurates its first Black president',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 2009,
     description:
       'Barack Obama took the oath before a record crowd on the National Mall, 45 years after the March on Washington filled the same ground.',
@@ -2472,6 +2759,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An earthquake devastates Port-au-Prince',
     country: 'HT',
     kind: 'disaster',
+    fame: 'minor',
     year: 2010,
     description:
       "A magnitude-7 earthquake struck just outside Port-au-Prince, killing well over 100,000 people and flattening much of the capital of the hemisphere's poorest country.",
@@ -2481,6 +2769,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Burj Khalifa opens',
     country: 'AE',
     kind: 'engineering',
+    fame: 'minor',
     year: 2010,
     description:
       'Dubai opened the tallest structure humans have ever built — 828 metres, nearly twice the old record holder Taipei 101 — renamed at the last minute for the Abu Dhabi ruler whose bailout saved it.',
@@ -2490,6 +2779,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Arab Spring begins in Tunisia',
     country: 'TN',
     kind: 'revolution',
+    fame: 'minor',
     year: 2010,
     description:
       "A street vendor's self-immolation in a provincial town lit protests that drove out Tunisia's president in 28 days — and spread revolt across the Arab world within weeks.",
@@ -2499,6 +2789,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The tsunami and Fukushima',
     country: 'JP',
     kind: 'disaster',
+    fame: 'minor',
     year: 2011,
     description:
       "Japan's strongest recorded earthquake sent a tsunami over the sea walls, killing nearly 20,000 people and triggering meltdowns at the Fukushima Daiichi nuclear plant — the worst since Chernobyl.",
@@ -2508,6 +2799,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "South Sudan — the world's newest country",
     country: 'SS',
     kind: 'nation',
+    fame: 'minor',
     year: 2011,
     description:
       "After decades of civil war and a near-unanimous referendum, South Sudan became the world's newest country. Civil war within it followed two years later.",
@@ -2516,6 +2808,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Syrian civil war',
     country: 'SY',
     kind: 'conflict',
+    fame: 'minor',
     year: 2011,
     description:
       "The Arab Spring's Syrian protests met bullets and spiralled into a war that has killed hundreds of thousands and displaced half the country — the largest refugee crisis of the era.",
@@ -2525,6 +2818,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Higgs boson is found',
     country: 'CH',
     kind: 'science',
+    fame: 'minor',
     year: 2012,
     description:
       "CERN's Large Hadron Collider found the particle predicted 48 years earlier to explain why matter has mass. Peter Higgs, in the audience, wiped away tears; the Nobel came the next year.",
@@ -2534,6 +2828,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first pope from the Americas',
     country: 'VA',
     kind: 'culture',
+    fame: 'minor',
     year: 2013,
     description:
       "After the first papal resignation in six centuries, the conclave chose Buenos Aires's Jorge Bergoglio — the first pope from the Americas, the southern hemisphere, or the Jesuits. He took the name Francis.",
@@ -2543,6 +2838,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Russia annexes Crimea',
     country: 'UA',
     kind: 'conflict',
+    fame: 'minor',
     year: 2014,
     description:
       'Unmarked Russian troops — the "little green men" — seized Crimea weeks after Ukraine\'s revolution, and Moscow annexed it after a referendum recognised almost nowhere. Europe\'s borders had been redrawn by force.',
@@ -2552,6 +2848,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The West African Ebola epidemic',
     country: 'GN',
     kind: 'disaster',
+    fame: 'minor',
     year: 2014,
     description:
       'From a single village in Guinea, Ebola spread through Liberia and Sierra Leone in the worst outbreak of the disease ever — over 11,000 dead before it was contained.',
@@ -2560,6 +2857,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Paris Agreement',
     country: 'FR',
     kind: 'politics',
+    fame: 'minor',
     year: 2015,
     description:
       "Nearly every nation on Earth agreed in Paris to keep global warming well below 2°C. Delegates wept and cheered when the gavel fell — the treaty's test has been every year since.",
@@ -2569,6 +2867,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Brexit — Britain votes to leave',
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 2016,
     description:
       'Britain voted 52–48 to leave the European Union, the first member ever to go. The prime minister resigned the next morning; the leaving took four and a half more years.',
@@ -2580,6 +2879,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Colombia signs peace with the FARC',
     country: 'CO',
     kind: 'politics',
+    fame: 'minor',
     year: 2016,
     description:
       "The government and the FARC guerrillas signed an end to the western hemisphere's longest war — half a century, 260,000 dead. Voters rejected the first draft; a revised deal passed weeks later.",
@@ -2589,6 +2889,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Notre-Dame burns',
     country: 'FR',
     kind: 'disaster',
+    fame: 'minor',
     year: 2019,
     description:
       'Fire took the roof and spire of the 850-year-old cathedral as Paris watched from the bridges, singing hymns. The towers and the rose windows survived; it reopened five years later.',
@@ -2597,6 +2898,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'COVID-19 pandemic',
     country: 'CN',
     kind: 'disaster',
+    fame: 'minor',
     year: 2020,
     description:
       'A novel coronavirus first reported in Wuhan closed borders, schools and cities across the planet within months — millions dead, and vaccines developed at record speed inside a year.',
@@ -2606,6 +2908,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Beirut port explosion',
     country: 'LB',
     kind: 'disaster',
+    fame: 'minor',
     year: 2020,
     description:
       'Some 2,750 tonnes of ammonium nitrate, stored for six years in a port warehouse, detonated in one of the largest non-nuclear blasts ever recorded — over 200 dead and 300,000 homeless in seconds.',
@@ -2615,6 +2918,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Taliban retake Kabul',
     country: 'AF',
     kind: 'conflict',
+    fame: 'minor',
     year: 2021,
     description:
       "As the twenty-year Western mission ended, the Afghan government collapsed in days and the Taliban entered Kabul without a fight. The desperate airlift from the airport closed America's longest war.",
@@ -2624,6 +2928,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The James Webb Space Telescope launches',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2021,
     description:
       'The long-delayed successor to Hubble launched on Christmas Day and unfolded itself perfectly a million miles out. Its infrared eyes see the first galaxies forming.',
@@ -2632,6 +2937,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Russian invasion of Ukraine',
     country: 'UA',
     kind: 'conflict',
+    fame: 'minor',
     year: 2022,
     description:
       "Russia launched a full-scale invasion of Ukraine from the north, east and south, expecting Kyiv to fall in days. It did not — and Europe's largest war since 1945 began.",
@@ -2641,6 +2947,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Elizabeth II dies',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 2022,
     description:
       "Britain's longest-reigning monarch died at Balmoral after seventy years on the throne. The queue to pass her coffin in Westminster Hall ran for kilometres along the Thames, day and night.",
@@ -2650,6 +2957,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Qatar World Cup final',
     country: 'QA',
     kind: 'culture',
+    fame: 'minor',
     year: 2022,
     description:
       "The first World Cup in the Arab world, played in winter, ended with what many call the greatest final ever — Messi's Argentina beating Mbappé's France on penalties after 3–3.",
@@ -2659,6 +2967,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Earthquakes flatten cities across Türkiye and Syria',
     country: 'TR',
     kind: 'disaster',
+    fame: 'minor',
     year: 2023,
     description:
       "Two huge earthquakes hours apart flattened cities across southern Türkiye and northern Syria in the winter cold, killing nearly 60,000 people — Türkiye's worst disaster of the modern era.",
@@ -2668,6 +2977,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mongolia turns democratic',
     country: 'MN',
     kind: 'revolution',
+    fame: 'minor',
     year: 1990,
     description:
       "Hunger strikes and mass protests in freezing Ulaanbaatar persuaded the communist politburo to resign en masse — a peaceful exit, and Asia's first post-Soviet democracy.",
@@ -2678,6 +2988,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Kyoto Protocol',
     country: 'JP',
     kind: 'politics',
+    fame: 'minor',
     year: 1997,
     description:
       'The first treaty binding industrialised countries to cut greenhouse-gas emissions was adopted in Kyoto — the ancestor, through years of argument, of the Paris Agreement.',
@@ -2689,6 +3000,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Rome breaks Carthage at Zama',
     country: 'TN',
     kind: 'conflict',
+    fame: 'minor',
     year: -202,
     description:
       "Scipio defeated Hannibal himself on Carthage's home ground, ending the Second Punic War. Rome never again faced a rival for the western Mediterranean.",
@@ -2697,6 +3009,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of the Teutoburg Forest',
     country: 'DE',
     kind: 'conflict',
+    fame: 'minor',
     year: 9,
     description:
       'Germanic tribes under Arminius annihilated three Roman legions in the forests east of the Rhine. Rome kept the river as its frontier for the next four centuries.',
@@ -2705,6 +3018,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Plague of Justinian',
     country: 'TR',
     kind: 'disaster',
+    fame: 'minor',
     year: 541,
     // The pandemic's own item is undated; the "first plague pandemic" carries it.
     qid: 'Q96377989',
@@ -2715,6 +3029,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Tours',
     country: 'FR',
     kind: 'conflict',
+    fame: 'minor',
     year: 732,
     description:
       "Charles Martel's Franks turned back an Umayyad raiding army between Tours and Poitiers — the high-water mark of the Arab advance into Western Europe.",
@@ -2724,6 +3039,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Baghdad is founded',
     country: 'IQ',
     kind: 'nation',
+    fame: 'minor',
     year: 762,
     description:
       'The Abbasid caliph al-Mansur laid out a brand-new round city on the Tigris. Within a century it was the largest city in the world and the heart of a golden age of learning.',
@@ -2733,6 +3049,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Charlemagne's empire is split in three",
     country: 'FR',
     kind: 'politics',
+    fame: 'minor',
     year: 843,
     description:
       "Charlemagne's three grandsons partitioned his empire at Verdun. The western and eastern kingdoms it drew would grow, roughly, into France and Germany.",
@@ -2741,6 +3058,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Manzikert',
     country: 'TR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1071,
     description:
       'The Seljuk Turks captured the Byzantine emperor and broke his army in eastern Anatolia. The empire never recovered its heartland — and its call for help seeded the Crusades.',
@@ -2749,6 +3067,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Domesday Book',
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 1086,
     description:
       'Twenty years after Hastings, William the Conqueror had every manor, mill and pig in England surveyed and written down — a census so final the English named it after Judgement Day.',
@@ -2758,6 +3077,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Saladin retakes Jerusalem',
     country: 'IL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1187,
     description:
       'After crushing the crusader army at Hattin, Saladin took Jerusalem back for Islam after 88 years — and, pointedly, without the massacre that had marked its capture.',
@@ -2767,6 +3087,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Crusaders sack Constantinople',
     country: 'TR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1204,
     description:
       'The Fourth Crusade never reached the Holy Land — diverted by debts and Venetian politics, it stormed and looted Christian Constantinople instead. Byzantium never truly recovered.',
@@ -2776,6 +3097,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Mongol advance is stopped at Ain Jalut',
     country: 'IL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1260,
     description:
       "Egypt's Mamluks met the Mongols in Galilee and beat them — the first major defeat the Mongol Empire could not avenge, and the end of its westward expansion.",
@@ -2784,6 +3106,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Bannockburn',
     country: 'GB',
     kind: 'conflict',
+    fame: 'minor',
     year: 1314,
     description:
       "Robert the Bruce's spearmen routed a far larger English army in the marshes below Stirling Castle, securing Scotland's independence for the next three centuries.",
@@ -2793,6 +3116,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Hundred Years' War begins",
     country: 'FR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1337,
     description:
       "The English king's claim to the French crown opened a war that ran, with pauses, for 116 years — long enough to see knights give way to longbows and then to cannon.",
@@ -2801,6 +3125,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Battle of Agincourt',
     country: 'FR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1415,
     description:
       "Henry V's exhausted, outnumbered army destroyed the flower of French chivalry in the mud of Agincourt — the longbow's most famous hour, remembered ever after via Shakespeare.",
@@ -2810,6 +3135,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Russia faces down the Horde on the Ugra',
     country: 'RU',
     kind: 'conflict',
+    fame: 'minor',
     year: 1480,
     description:
       "Ivan III's army faced the Great Horde across the Ugra river until the Horde simply turned for home — the bloodless moment counted as the end of two and a half centuries of Mongol overlordship.",
@@ -2819,6 +3145,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Safavids take Iran',
     country: 'IR',
     kind: 'nation',
+    fame: 'minor',
     year: 1501,
     description:
       'The young Shah Ismail took Tabriz and founded the Safavid dynasty, making Shia Islam the state religion — the decision that still shapes Iran five centuries on.',
@@ -2828,6 +3155,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Leonardo begins the Mona Lisa',
     country: 'IT',
     kind: 'culture',
+    fame: 'minor',
     year: 1503,
     description:
       "Leonardo da Vinci began a portrait of a Florentine merchant's wife and kept refining it for years, carrying it with him to France — where it never left.",
@@ -2837,6 +3165,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Michelangelo begins the Sistine ceiling',
     country: 'VA',
     kind: 'culture',
+    fame: 'minor',
     year: 1508,
     description:
       'Michelangelo — a sculptor, protesting he was no painter — spent four years on his back over the Sistine Chapel, and produced the most famous ceiling on Earth.',
@@ -2846,6 +3175,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Silver is struck at Potosí',
     country: 'BO',
     kind: 'culture',
+    fame: 'minor',
     year: 1545,
     description:
       "A mountain of silver discovered in the high Andes became the largest source of wealth in the Spanish Empire — mined at a terrible cost in forced labour, and minting the world's first global currency.",
@@ -2855,6 +3185,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Gregorian calendar is introduced',
     country: 'VA',
     kind: 'science',
+    fame: 'minor',
     year: 1582,
     description:
       'Pope Gregory XIII deleted ten days from October to fix the drifting Julian calendar. Catholic Europe switched at once; Britain held out until 1752, Russia until 1918.',
@@ -2863,6 +3194,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Tulip mania',
     country: 'NL',
     kind: 'culture',
+    fame: 'minor',
     year: 1637,
     description:
       'At the peak of the Dutch tulip craze single bulbs traded for the price of a canal house — then the market collapsed in weeks. It remains the byword for a speculative bubble.',
@@ -2872,6 +3204,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Qing take Beijing',
     country: 'CN',
     kind: 'conflict',
+    fame: 'minor',
     year: 1644,
     description:
       "A Ming general opened the Great Wall's eastern gate to the Manchus, who swept in to claim a collapsing empire. Their Qing dynasty ruled China until 1912.",
@@ -2880,6 +3213,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Salem witch trials',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1692,
     description:
       'A wave of accusations in a small Massachusetts town saw twenty people executed for witchcraft before the panic burned out — and became the permanent shorthand for one.',
@@ -2889,6 +3223,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Seven Years' War begins",
     country: 'DE',
     kind: 'conflict',
+    fame: 'minor',
     year: 1756,
     description:
       'Fought in Europe, the Americas, India and at sea, it has a claim to being the first world war. Britain emerged with Canada and India; France with the debts that fed its revolution.',
@@ -2898,6 +3233,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The US Constitution is signed',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1787,
     description:
       'A summer of closed-door argument in Philadelphia produced the oldest written national constitution still in force — beginning, boldly, "We the People".',
@@ -2906,6 +3242,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Louisiana Purchase',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1803,
     description:
       "Napoleon, needing war money, sold France's vast Louisiana territory for $15 million. The United States doubled in size overnight at about three cents an acre.",
@@ -2915,6 +3252,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Beagle sails, Darwin aboard',
     country: 'EC',
     kind: 'science',
+    fame: 'minor',
     year: 1831,
     description:
       'A five-year survey voyage carried the young Charles Darwin around South America and to the Galápagos Islands, whose finches and tortoises seeded the theory of evolution.',
@@ -2924,6 +3262,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Venezuela wins its freedom at Carabobo',
     country: 'VE',
     kind: 'revolution',
+    fame: 'minor',
     year: 1821,
     description:
       "Bolívar's decisive victory at Carabobo effectively ended Spanish rule in Venezuela — June 24 is still the army's day of days.",
@@ -2933,6 +3272,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first photograph is taken',
     country: 'FR',
     kind: 'science',
+    fame: 'minor',
     year: 1826,
     description:
       'Nicéphore Niépce pointed a pewter plate out of his workroom window in Burgundy and exposed it for hours — the oldest surviving photograph of the real world.',
@@ -2942,6 +3282,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Neptune is discovered by mathematics',
     country: 'DE',
     kind: 'science',
+    fame: 'minor',
     year: 1846,
     description:
       "Astronomers in Berlin found Neptune within a degree of where the Frenchman Le Verrier's calculations said an unseen planet must be — discovered by pen before telescope.",
@@ -2951,6 +3292,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Nobel invents dynamite',
     country: 'SE',
     kind: 'science',
+    fame: 'minor',
     year: 1867,
     description:
       'Alfred Nobel tamed nitroglycerine into a stable stick and made a fortune remaking mining, construction — and war. The prizes in his name were his answer to that legacy.',
@@ -2960,6 +3302,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Brooklyn Bridge opens',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1883,
     description:
       'The longest suspension bridge of its day crossed the East River on steel cables — finished by Emily Roebling, who ran the project after her engineer husband was paralysed.',
@@ -2969,6 +3312,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Karl Benz patents the automobile',
     country: 'DE',
     kind: 'engineering',
+    fame: 'minor',
     year: 1886,
     description:
       'Karl Benz patented a three-wheeled carriage driven by a petrol engine — the first true automobile. His wife Bertha made the first road trip in it, without telling him.',
@@ -2978,6 +3322,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Lumières screen the first films',
     country: 'FR',
     kind: 'culture',
+    fame: 'minor',
     year: 1895,
     description:
       "The Lumière brothers filmed their own workers streaming out of the factory gates in Lyon and projected it to paying audiences — cinema's founding minute of footage.",
@@ -2987,6 +3332,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Curies discover radium',
     country: 'FR',
     kind: 'science',
+    fame: 'minor',
     year: 1898,
     description:
       'Marie and Pierre Curie boiled down tonnes of pitchblende in a Paris shed to isolate a new, faintly glowing element. Marie became the first person to win two Nobel Prizes.',
@@ -2998,6 +3344,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Tour de France',
     country: 'FR',
     kind: 'culture',
+    fame: 'minor',
     year: 1903,
     description:
       'A newspaper circulation stunt sent sixty riders around France over 2,428 kilometres. The survivors made it the biggest annual sporting event on Earth.',
@@ -3007,6 +3354,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Einstein's miracle year",
     country: 'CH',
     kind: 'science',
+    fame: 'minor',
     year: 1905,
     description:
       'In one year, a 26-year-old patent clerk in Bern published four papers — on light quanta, Brownian motion, special relativity and E=mc² — and physics was never the same.',
@@ -3016,6 +3364,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Mosque of Djenné is raised',
     country: 'ML',
     kind: 'engineering',
+    fame: 'minor',
     year: 1907,
     description:
       'The largest mud-brick building in the world rose on the site of a 13th-century mosque in Mali. The whole town replasters it by hand at an annual festival.',
@@ -3025,6 +3374,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Model T rolls out',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1908,
     description:
       "Ford's simple, rugged Model T — soon built on a moving assembly line that cut its price year after year — put the world's middle class on wheels. Half the cars on Earth were once Model Ts.",
@@ -3034,6 +3384,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The ANC is founded',
     country: 'ZA',
     kind: 'politics',
+    fame: 'minor',
     year: 1912,
     description:
       "Chiefs, lawyers and churchmen met in Bloemfontein to resist the new Union of South Africa's colour bar — the movement that would, 82 years later, win the country's first free election.",
@@ -3044,6 +3395,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Balfour Declaration',
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 1917,
     description:
       'A 67-word letter from Britain\'s foreign secretary promised support for "a national home for the Jewish people" in Palestine — a sentence whose consequences are still being argued.',
@@ -3053,6 +3405,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'America goes dry',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1920,
     description:
       'The Eighteenth Amendment banned the making and selling of alcohol nationwide. Thirteen years of speakeasies and Al Capone later, it became the only amendment ever repealed.',
@@ -3062,6 +3415,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Winter Olympics',
     country: 'FR',
     kind: 'culture',
+    fame: 'minor',
     year: 1924,
     description:
       'Sixteen nations met at Chamonix under Mont Blanc for an "International Winter Sports Week" — retroactively crowned the first Winter Olympic Games.',
@@ -3071,6 +3425,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Lindbergh flies the Atlantic alone',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1927,
     description:
       'Charles Lindbergh flew 33½ hours from New York to Paris, alone and without radio, in a single-engine plane with a fuel tank where the windscreen should be. A crowd of 100,000 mobbed the field.',
@@ -3080,6 +3435,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Hoover Dam is completed',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1936,
     description:
       'A Depression mega-project higher than a 60-storey building corked the Colorado River, creating the largest reservoir in the United States and lighting the Southwest.',
@@ -3089,6 +3445,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Jesse Owens spoils Hitler's Olympics",
     country: 'DE',
     kind: 'culture',
+    fame: 'minor',
     year: 1936,
     description:
       'The Nazis staged the Berlin Games as a showcase of Aryan supremacy — and the Black American sprinter Jesse Owens won four gold medals in front of them.',
@@ -3098,6 +3455,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Finland stands alone in the Winter War',
     country: 'FI',
     kind: 'conflict',
+    fame: 'minor',
     year: 1939,
     description:
       'The Soviet Union invaded Finland expecting weeks; ski troops in white held the Red Army through a brutal winter for three and a half months. Finland lost territory but kept its independence.',
@@ -3106,6 +3464,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Warsaw Ghetto Uprising',
     country: 'PL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1943,
     description:
       'Facing final deportation to the death camps, the young Jews of the Warsaw Ghetto fought the SS with smuggled pistols and petrol bombs for nearly a month — the largest Jewish revolt of the Holocaust.',
@@ -3115,6 +3474,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Colossus — the first electronic computer',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1943,
     description:
       'Built in secret at Bletchley Park to break German cipher traffic, Colossus was the first programmable electronic digital computer. Churchill ordered it smashed after the war; the secret held for 30 years.',
@@ -3124,6 +3484,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'ENIAC is unveiled',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1946,
     description:
       'Thirty tonnes and 18,000 vacuum tubes, built for artillery tables — the first general-purpose electronic computer, programmed by six women history took decades to credit.',
@@ -3133,6 +3494,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Anne Frank's diary is published",
     country: 'NL',
     kind: 'culture',
+    fame: 'minor',
     year: 1947,
     description:
       'Two years after Anne Frank died in Bergen-Belsen at fifteen, her father published the diary she kept in the Amsterdam hiding place. It has been read in some seventy languages.',
@@ -3142,6 +3504,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ceylon becomes independent',
     country: 'LK',
     kind: 'nation',
+    fame: 'minor',
     year: 1948,
     description:
       'The island of Ceylon took independence from Britain in the same post-war wave as India and Burma, and in 1972 renamed itself Sri Lanka.',
@@ -3151,6 +3514,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Burma becomes independent',
     country: 'MM',
     kind: 'nation',
+    fame: 'minor',
     year: 1948,
     description:
       'Burma left the British Empire outright — declining even Commonwealth membership — months after independence hero Aung San was assassinated with most of his cabinet.',
@@ -3160,6 +3524,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cambodia becomes independent',
     country: 'KH',
     kind: 'nation',
+    fame: 'minor',
     year: 1953,
     description:
       "King Norodom Sihanouk talked France out of its protectorate without a war — his self-styled 'royal crusade for independence'.",
@@ -3169,6 +3534,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Mau Mau uprising begins',
     country: 'KE',
     kind: 'revolution',
+    fame: 'minor',
     year: 1952,
     description:
       'A land-and-freedom revolt among the Kikuyu drove Britain to declare an eight-year emergency in Kenya, detaining tens of thousands in camps. Independence followed within a decade.',
@@ -3178,6 +3544,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Eurovision Song Contest',
     country: 'CH',
     kind: 'culture',
+    fame: 'minor',
     year: 1956,
     description:
       'Seven countries sent songs to a Swiss casino theatre in a television experiment for the new European Broadcasting Union. The host nation won; the contest never stopped growing.',
@@ -3187,6 +3554,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first laser fires',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1960,
     description:
       "Theodore Maiman coaxed a synthetic ruby into emitting the first laser light — a solution famously 'looking for a problem' that ended up in everything from surgery to supermarkets.",
@@ -3196,6 +3564,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Beatles form in Liverpool',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1960,
     description:
       'Four Liverpool teenagers settled on a name and went to play the Hamburg clubs. Within four years they were the biggest band on Earth; popular music still lives in their wake.',
@@ -3205,6 +3574,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first woman in space',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1963,
     description:
       'Valentina Tereshkova, a 26-year-old former textile worker and amateur parachutist, orbited the Earth 48 times — more than every American astronaut to that date combined.',
@@ -3214,6 +3584,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The bullet train debuts',
     country: 'JP',
     kind: 'engineering',
+    fame: 'minor',
     year: 1964,
     description:
       'Nine days before the Tokyo Olympics opened, the first Shinkansen slid out for Osaka at 210 km/h — the fastest railway on Earth, in a country written off as war-broken twenty years before.',
@@ -3223,6 +3594,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The 747 takes flight',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1969,
     description:
       'The first jumbo jet — two and a half times bigger than anything before it — made flying cheap enough for ordinary families. It kept the "Queen of the Skies" title for half a century.',
@@ -3232,6 +3604,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first microprocessor',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1971,
     description:
       "Intel squeezed a computer's entire processor onto one fingernail-sized chip, built for a Japanese calculator. Everything with a brain today descends from that bargain.",
@@ -3241,6 +3614,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Watergate break-in',
     country: 'US',
     kind: 'politics',
+    fame: 'major',
     year: 1972,
     description:
       'A bungled burglary at the Democratic headquarters unravelled, over two years of reporting and tapes, into the only resignation of a US president.',
@@ -3250,6 +3624,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Rubik's Cube is invented",
     country: 'HU',
     kind: 'culture',
+    fame: 'minor',
     year: 1974,
     description:
       'A Budapest architecture lecturer built a twisting cube to teach spatial thinking — then spent a month working out how to solve his own puzzle. It became the best-selling toy in history.',
@@ -3259,6 +3634,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Apple is founded in a garage',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1976,
     description:
       "Two Steves — Jobs selling, Wozniak soldering — founded a computer company in a Silicon Valley garage on April Fools' Day. It became the most valuable company in the world.",
@@ -3268,6 +3644,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Star Wars opens',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1977,
     description:
       'A space fantasy the studio barely believed in opened in 32 cinemas and rewired popular culture — the blockbuster, the franchise and the summer movie all date from it.',
@@ -3277,6 +3654,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Britain's first woman prime minister",
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 1979,
     description:
       "Margaret Thatcher entered Downing Street as Britain's first female prime minister and held it for eleven years, remaking — and dividing — the country.",
@@ -3286,6 +3664,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Walkman starts the soundtrack age',
     country: 'JP',
     kind: 'culture',
+    fame: 'minor',
     year: 1979,
     description:
       "Sony's pocket cassette player, built because a founder wanted opera on long flights, put private soundtracks into public space — the ancestor of every earbud on the street.",
@@ -3295,6 +3674,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The IBM PC arrives',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1981,
     description:
       "IBM's rushed, open-parts personal computer became the standard everyone cloned — and made the fortune of the small company that supplied its operating system: Microsoft.",
@@ -3304,6 +3684,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Europe agrees to drop its borders',
     country: 'LU',
     kind: 'politics',
+    fame: 'minor',
     year: 1985,
     description:
       'Five countries signed on a river boat moored at Schengen, a Luxembourg village where France and Germany meet, to abolish their border checks — passport-free travel now spans most of Europe.',
@@ -3313,6 +3694,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Maradona's World Cup",
     country: 'MX',
     kind: 'culture',
+    fame: 'minor',
     year: 1986,
     description:
       'Mexico hosted at five weeks\' notice after Colombia withdrew, and Diego Maradona decided the tournament almost alone — scoring the infamous "Hand of God" and the Goal of the Century four minutes apart.',
@@ -3324,6 +3706,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Libya becomes independent',
     country: 'LY',
     kind: 'nation',
+    fame: 'minor',
     year: 1951,
     description:
       'The first country created by the United Nations: the former Italian colony became an independent kingdom under King Idris, years before oil turned up beneath it.',
@@ -3333,6 +3716,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "A CIA coup topples Guatemala's president",
     country: 'GT',
     kind: 'revolution',
+    fame: 'minor',
     year: 1954,
     description:
       'The elected president Árbenz, whose land reform threatened the United Fruit Company, was overthrown in a CIA-organised coup — a template, and a warning, for the whole Cold War hemisphere.',
@@ -3342,6 +3726,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Sudan becomes independent',
     country: 'SD',
     kind: 'nation',
+    fame: 'minor',
     year: 1956,
     description:
       "Africa's largest country left joint British-Egyptian rule on a New Year's Day — already carrying the north–south divide that would bring two long civil wars.",
@@ -3351,6 +3736,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Somalia becomes independent',
     country: 'SO',
     kind: 'nation',
+    fame: 'minor',
     year: 1960,
     description:
       'British Somaliland and Italian Somalia became independent within a week of each other and merged into a single Somali Republic.',
@@ -3360,6 +3746,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Madagascar becomes independent',
     country: 'MG',
     kind: 'nation',
+    fame: 'minor',
     year: 1960,
     description:
       "The world's fourth-largest island took its independence from France in the Year of Africa, thirteen years after a rising that French forces had crushed at terrible cost.",
@@ -3369,6 +3756,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tanganyika and Zanzibar become Tanzania',
     country: 'TZ',
     kind: 'nation',
+    fame: 'minor',
     year: 1964,
     description:
       'Mainland Tanganyika and the island of Zanzibar united into one republic under Julius Nyerere — the rare African union that held.',
@@ -3378,6 +3766,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Zambia becomes independent',
     country: 'ZM',
     kind: 'nation',
+    fame: 'minor',
     year: 1964,
     description:
       'Northern Rhodesia became Zambia under Kenneth Kaunda, taking its name from the Zambezi — and inheriting an economy built almost entirely on copper.',
@@ -3387,6 +3776,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Botswana becomes independent',
     country: 'BW',
     kind: 'nation',
+    fame: 'minor',
     year: 1966,
     description:
       "One of the poorest countries on Earth at independence, Botswana found diamonds within a year — and managed them into one of Africa's steadiest democracies and economies.",
@@ -3396,6 +3786,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Fiji becomes independent',
     country: 'FJ',
     kind: 'nation',
+    fame: 'minor',
     year: 1970,
     description:
       'Fiji ended 96 years as a British colony, taking independence with a population almost evenly split between indigenous Fijians and Indian-descended islanders.',
@@ -3405,6 +3796,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Papua New Guinea becomes independent',
     country: 'PG',
     kind: 'nation',
+    fame: 'minor',
     year: 1975,
     description:
       'The most linguistically diverse country on Earth — some 840 languages — took independence from Australia peacefully, without a war of liberation.',
@@ -3414,6 +3806,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Suriname becomes independent',
     country: 'SR',
     kind: 'nation',
+    fame: 'minor',
     year: 1975,
     description:
       "The Netherlands' South American colony became independent; within five years almost a third of its people had emigrated to the country it left.",
@@ -3422,6 +3815,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     name: 'Green March',
     country: 'MA',
     kind: 'politics',
+    fame: 'minor',
     year: 1975,
     description:
       'Morocco sent 350,000 unarmed civilians walking into Spanish Sahara behind flags and Qurans. Spain withdrew — and the status of Western Sahara has been disputed ever since.',
@@ -3431,6 +3825,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Sandinistas take Managua',
     country: 'NI',
     kind: 'revolution',
+    fame: 'minor',
     year: 1979,
     description:
       "The Sandinista guerrillas toppled the Somoza family after 43 years of dynastic rule. The US-backed Contra war against the new government defined the region's next decade.",
@@ -3440,6 +3835,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Paris–Dakar rally sets off',
     country: 'SN',
     kind: 'culture',
+    fame: 'minor',
     year: 1978,
     description:
       'A racer who had gotten lost in the Libyan desert decided everyone should: some 180 vehicles left Paris for Dakar across the Sahara. Fewer than half arrived.',
@@ -3449,6 +3845,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Stroessner falls after 35 years',
     country: 'PY',
     kind: 'revolution',
+    fame: 'minor',
     year: 1989,
     description:
       "General Stroessner — the hemisphere's longest-ruling dictator — was toppled by his own son-in-law's faction in a night of fighting in Asunción, opening Paraguay's slow turn to elections.",
@@ -3460,6 +3857,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Kazakhstan becomes independent',
     country: 'KZ',
     kind: 'nation',
+    fame: 'minor',
     year: 1991,
     description:
       "The last Soviet republic to declare independence — five days before the USSR itself dissolved — inherited the world's ninth-largest territory and its main spaceport, Baikonur.",
@@ -3469,6 +3867,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "El Salvador's war ends at Chapultepec",
     country: 'SV',
     kind: 'politics',
+    fame: 'minor',
     year: 1992,
     // The accords item is undated; the war's end time carries the year.
     qid: 'Q1783607',
@@ -3480,6 +3879,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Barbados becomes independent',
     country: 'BB',
     kind: 'nation',
+    fame: 'minor',
     year: 1966,
     description:
       'Barbados took independence from Britain after three centuries as a sugar colony — and in 2021 completed the journey, replacing the Queen with a Barbadian president.',
@@ -3489,6 +3889,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bhutan votes for the first time',
     country: 'BT',
     kind: 'politics',
+    fame: 'minor',
     year: 2008,
     qid: 'Q864684',
     description:
@@ -3504,6 +3905,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The PlayStation launches',
     country: 'JP',
     kind: 'culture',
+    fame: 'minor',
     year: 1994,
     // Bare name search finds the brand, not the 1994 console.
     qid: 'Q10677',
@@ -3515,6 +3917,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Deep Blue beats the world champion',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1997,
     // The match item is undated; the deciding sixth game carries the year.
     qid: 'Q2631085',
@@ -3526,6 +3929,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Google is founded',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1998,
     description:
       'Two Stanford students incorporated their search project in a rented garage. Its name became the verb for finding anything out.',
@@ -3535,6 +3939,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'China puts a person in space',
     country: 'CN',
     kind: 'science',
+    fame: 'minor',
     year: 2003,
     description:
       'Yang Liwei orbited the Earth fourteen times aboard Shenzhou 5, making China the third nation — forty-two years after the first two — to launch a human into space on its own.',
@@ -3544,6 +3949,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Facebook goes online',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2004,
     description:
       "A student directory coded in a Harvard dorm room grew into the network holding a third of humanity — and into the era's hardest arguments about privacy and truth.",
@@ -3553,6 +3959,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Pluto is demoted',
     country: 'CZ',
     kind: 'science',
+    fame: 'minor',
     year: 2006,
     description:
       'Astronomers meeting in Prague voted a formal definition of "planet" — and Pluto, beloved ninth planet for 76 years, became a dwarf planet by show of hands.',
@@ -3562,6 +3969,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An Icelandic volcano grounds Europe',
     country: 'IS',
     kind: 'disaster',
+    fame: 'minor',
     year: 2010,
     description:
       "Ash from an unpronounceable Icelandic volcano closed most of Europe's airspace for nearly a week — the largest air-traffic shutdown since the Second World War, without a single casualty.",
@@ -3571,6 +3979,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The 33 Chilean miners surface',
     country: 'CL',
     kind: 'disaster',
+    fame: 'minor',
     year: 2010,
     description:
       'Thirty-three miners survived 69 days seven hundred metres underground in the Atacama, and a billion people watched the capsule winch every one of them back to daylight.',
@@ -3580,6 +3989,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Gravitational waves are heard',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2015,
     description:
       'Twin LIGO detectors caught the spacetime ripple of two black holes colliding a billion light-years away — the confirmation Einstein predicted but thought undetectable.',
@@ -3589,6 +3999,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'AlphaGo beats Lee Sedol',
     country: 'KR',
     kind: 'science',
+    fame: 'minor',
     year: 2016,
     description:
       'DeepMind\'s AlphaGo beat the great Lee Sedol four games to one at Go, a game thought safe from machines for decades — its "move 37" was so alien commentators assumed a mistake.',
@@ -3598,6 +4009,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Thai cave rescue',
     country: 'TH',
     kind: 'culture',
+    fame: 'minor',
     year: 2018,
     description:
       'Twelve boys and their football coach, trapped ten days deep in a flooding cave, were sedated and dived out one by one by an improvised international team — all thirteen survived.',
@@ -3607,6 +4019,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A school strike goes global',
     country: 'SE',
     kind: 'culture',
+    fame: 'minor',
     year: 2018,
     description:
       "Fifteen-year-old Greta Thunberg sat down outside Sweden's parliament with a hand-painted sign instead of going to school. Within a year, millions were striking with her.",
@@ -3616,6 +4029,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'One ship blocks world trade',
     country: 'EG',
     kind: 'culture',
+    fame: 'minor',
     year: 2021,
     description:
       "The 400-metre container ship Ever Given wedged itself across the Suez Canal for six days, holding up billions in trade daily — and becoming the internet's favourite metaphor.",
@@ -3625,6 +4039,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'India lands at the lunar south pole',
     country: 'IN',
     kind: 'science',
+    fame: 'minor',
     year: 2023,
     description:
       'India became the fourth country to soft-land on the Moon and the first to reach its south polar region — days after a Russian attempt crashed, and on a famously lean budget.',
@@ -3636,6 +4051,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cook charts the Pacific',
     country: 'AU',
     kind: 'science',
+    fame: 'minor',
     year: 1770,
     description:
       "Sent to Tahiti to watch Venus cross the Sun, James Cook's Endeavour sailed on to circle New Zealand and chart Australia's east coast, claiming it for Britain at Botany Bay.",
@@ -3645,6 +4061,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Lewis and Clark head west',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1804,
     description:
       'Jefferson sent Meriwether Lewis and William Clark up the Missouri to find a route to the Pacific. With the Shoshone guide Sacagawea they crossed the continent and back in two and a half years.',
@@ -3654,6 +4071,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Challenger expedition sails',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1872,
     description:
       'HMS Challenger left Portsmouth to spend four years sounding the oceans — the voyage that founded oceanography, catalogued thousands of new species, and first plumbed the deep that now carries its name.',
@@ -3663,6 +4081,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Shackleton's Endurance is crushed",
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1915,
     description:
       "Shackleton's ship Endurance was squeezed to splinters by Antarctic pack ice. His crew drifted on ice floes, sailed an open boat 1,300 km to South Georgia — and every one of the 28 men survived.",
@@ -3672,6 +4091,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The deepest dive on Earth',
     country: 'CH',
     kind: 'science',
+    fame: 'minor',
     year: 1960,
     // Name search lands on the US Navy vessel item, which is undated in its own
     // right but carries the 1960 dive; pin it and supply the photo directly.
@@ -3687,6 +4107,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first craft reaches the Moon',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1959,
     description:
       'The Soviet probe Luna 2 crashed into the Moon by design — the first human-made object to touch another world, scattering Soviet pennants across the surface.',
@@ -3696,6 +4117,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first spacewalk',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1965,
     description:
       'Alexei Leonov floated out of Voskhod 2 on a five-metre tether for twelve minutes. His suit ballooned so badly in the vacuum that he barely squeezed back through the airlock — a detail kept secret for years.',
@@ -3705,6 +4127,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'First humans around the Moon',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1968,
     description:
       'Apollo 8 carried the first people beyond Earth orbit, looping the Moon on Christmas Eve. Its crew brought home Earthrise — the photograph of our planet rising over a grey horizon.',
@@ -3714,6 +4137,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Apollo 13's safe return",
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1970,
     description:
       'An oxygen tank exploded 320,000 km from Earth, and a Moon landing became a rescue: the crew rode their freezing lunar module around the Moon and home — the "successful failure".',
@@ -3723,6 +4147,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first space station',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1971,
     description:
       'The Soviet Union orbited Salyut 1, the first station humans lived aboard in space. Its first crew stayed 23 days — then died on re-entry when their capsule lost its air.',
@@ -3732,6 +4157,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A handshake in orbit',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1975,
     description:
       "An American Apollo and a Soviet Soyuz docked nose to nose, and their commanders shook hands through the hatch — the Cold War rivals' first joint flight, and the symbolic close of the space race.",
@@ -3741,6 +4167,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Viking 1 lands on Mars',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1976,
     description:
       "NASA's Viking 1 made the first fully successful landing on Mars and worked its patch of red desert for six years, sending home the first photographs taken on the planet's surface.",
@@ -3750,6 +4177,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mir goes up',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1986,
     description:
       'The Soviet Union launched the core of Mir, the first station assembled in orbit module by module. It hosted crews for fifteen years — one cosmonaut stayed aboard 437 days without a break.',
@@ -3759,6 +4187,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A rover rolls onto Mars',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1997,
     description:
       'Pathfinder bounced onto Mars wrapped in airbags and released Sojourner, a rover the size of a microwave oven — the first wheels ever to turn on another planet.',
@@ -3768,6 +4197,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Rosetta sets off to catch a comet',
     country: 'DE',
     kind: 'science',
+    fame: 'minor',
     year: 2004,
     description:
       "Europe's Rosetta probe left on a ten-year chase to orbit a comet, and in 2014 dropped its lander Philae onto the surface — the first controlled landing on a comet.",
@@ -3777,6 +4207,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Curiosity lands on Mars',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2012,
     description:
       'The car-sized rover Curiosity was lowered onto Mars by a hovering rocket crane — "seven minutes of terror" executed perfectly — and found the chemistry of an ancient habitable lake.',
@@ -3786,6 +4217,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A rocket lands itself',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 2015,
     description:
       "SpaceX's Falcon 9 delivered its satellites, then flew its first stage back to Cape Canaveral and set it down upright — the trick that made rockets reusable and launch costs collapse.",
@@ -3795,6 +4227,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'First flight on another planet',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2021,
     description:
       "The little helicopter Ingenuity spun its blades in air a hundredth as thick as Earth's and lifted off over Mars — the first powered flight on another planet, carrying a scrap of the Wright Flyer's wing.",
@@ -3806,6 +4239,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Jenner develops the smallpox vaccine',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1798,
     // Bare name search finds the modern vaccine concept (undated); pin Jenner's.
     qid: 'Q1037810',
@@ -3817,6 +4251,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mendel publishes his pea experiments',
     country: 'CZ',
     kind: 'science',
+    fame: 'minor',
     year: 1866,
     description:
       'The monk Gregor Mendel, counting traits across thousands of pea plants in his monastery garden in Brno, worked out the laws of inheritance — then was ignored for thirty-four years.',
@@ -3826,6 +4261,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mendeleev arranges the elements',
     country: 'RU',
     kind: 'science',
+    fame: 'minor',
     year: 1869,
     description:
       'Dmitri Mendeleev laid the elements out by weight and saw their properties repeat in periods — and left gaps for elements not yet discovered, predicting what would fill them. It did.',
@@ -3835,6 +4271,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Röntgen discovers X-rays',
     country: 'DE',
     kind: 'science',
+    fame: 'minor',
     year: 1895,
     // The concept item is undated; pin the dated "Hand with Rings" first X-ray.
     qid: 'Q123318211',
@@ -3846,6 +4283,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The electron is discovered',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1897,
     description:
       'J. J. Thomson showed cathode rays were streams of particles nearly two thousand times lighter than the lightest atom — the first piece of the atom found, and the carrier every electronic device runs on.',
@@ -3855,6 +4293,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Einstein presents general relativity',
     country: 'DE',
     kind: 'science',
+    fame: 'minor',
     year: 1915,
     description:
       'Einstein told the Prussian Academy that gravity is not a force but the curving of space and time. An eclipse four years later showed starlight bending around the Sun — and made him world-famous.',
@@ -3864,6 +4303,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Pluto is discovered',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1930,
     description:
       'Clyde Tombaugh, a 24-year-old farm boy hired to compare photographs of the night sky, spotted a moving speck from an Arizona observatory — the ninth planet, until its 2006 demotion.',
@@ -3873,6 +4313,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Lascaux cave paintings are found',
     country: 'FR',
     kind: 'science',
+    fame: 'minor',
     year: 1940,
     description:
       'Four teenagers following their dog into a hole in the Dordogne found galleries of bulls and horses painted some 17,000 years earlier — among the finest prehistoric art ever discovered.',
@@ -3882,6 +4323,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Big Bang's afterglow is found",
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 1964,
     description:
       'Two radio astronomers could not silence a faint hiss in their antenna — not even after evicting its pigeons. It was the cooled glow of the Big Bang itself, and it won them the Nobel Prize.',
@@ -3891,6 +4333,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Lucy is unearthed',
     country: 'ET',
     kind: 'science',
+    fame: 'minor',
     year: 1974,
     description:
       "In Ethiopia's Afar desert, palaeontologists dug up a 3.2-million-year-old skeleton that had walked upright — and named her Lucy, after the Beatles song playing in camp that night.",
@@ -3900,6 +4343,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Terracotta Army is found',
     country: 'CN',
     kind: 'science',
+    fame: 'major',
     year: 1974,
     description:
       "Farmers digging a well near Xi'an struck the buried bodyguard of China's First Emperor: thousands of life-sized clay soldiers, no two faces alike, standing in ranks for 2,200 years.",
@@ -3909,6 +4353,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A planet around another sun',
     country: 'CH',
     kind: 'science',
+    fame: 'minor',
     year: 1995,
     description:
       'Two Swiss astronomers caught a star fifty light-years away wobbling under the pull of an unseen companion — the first planet found orbiting a Sun-like star. Thousands more followed.',
@@ -3920,6 +4365,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first bicycle rolls out',
     country: 'DE',
     kind: 'engineering',
+    fame: 'minor',
     year: 1817,
     description:
       'Karl von Drais pushed his two-wheeled "running machine" along the Mannheim road — no pedals yet, but the bicycle was born, invented partly because a failed harvest had left horses scarce.',
@@ -3929,6 +4375,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A cable crosses the Atlantic',
     country: 'GB',
     kind: 'engineering',
+    fame: 'minor',
     year: 1858,
     description:
       'A telegraph cable laid across the ocean floor let Queen Victoria wire the US president in minutes instead of ten days by ship. The first cable died within weeks — but the world had shrunk for good.',
@@ -3938,6 +4385,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first underground railway opens',
     country: 'GB',
     kind: 'engineering',
+    fame: 'minor',
     year: 1863,
     description:
       "The Metropolitan Railway carried some 38,000 Londoners underground on its opening day, behind steam engines that filled the tunnels with smoke — the world's first metro, and the reason many still call it the Tube.",
@@ -3947,6 +4395,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bell patents the telephone',
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1876,
     description:
       'Alexander Graham Bell patented the telephone hours ahead of a rival inventor, and days later spoke the first words down a wire: "Mr. Watson, come here — I want to see you."',
@@ -3956,6 +4405,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Edison records sound',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1877,
     description:
       'Thomas Edison shouted "Mary had a little lamb" at a tinfoil cylinder and played his own voice back — the first machine that could both record and reproduce sound. He was as startled as anyone.',
@@ -3965,6 +4415,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Zeppelin flies',
     country: 'DE',
     kind: 'engineering',
+    fame: 'minor',
     year: 1900,
     description:
       "Count Zeppelin's 128-metre airship rose over Lake Constance for eighteen minutes — three years before the Wright brothers. For a generation, the future of flight looked like this.",
@@ -3974,6 +4425,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first jet aircraft flies',
     country: 'DE',
     kind: 'engineering',
+    fame: 'minor',
     year: 1939,
     description:
       'Days before the Second World War began, the Heinkel He 178 made the first flight powered by a turbojet — the engine, designed by Hans von Ohain, that every airliner descends from.',
@@ -3983,6 +4435,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The transistor is invented',
     country: 'US',
     kind: 'engineering',
+    fame: 'minor',
     year: 1947,
     description:
       'Three Bell Labs physicists made a sliver of germanium amplify a current — the transistor, replacement for the hot, fragile vacuum tube. Billions of them now sit in every phone.',
@@ -3992,6 +4445,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The internet sends its first message',
     country: 'US',
     kind: 'engineering',
+    fame: 'major',
     year: 1969,
     // Bare name search collides with a TV episode and a musician; pin the network.
     qid: 'Q177524',
@@ -4003,6 +4457,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The compact disc arrives',
     country: 'NL',
     kind: 'engineering',
+    fame: 'minor',
     year: 1982,
     description:
       "Philips and Sony launched the compact disc, music read by laser with no needle and no hiss. Legend has it the 74-minute length was chosen to hold Beethoven's Ninth uninterrupted.",
@@ -4014,6 +4469,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Don Quixote is published',
     country: 'ES',
     kind: 'culture',
+    fame: 'minor',
     year: 1605,
     description:
       'Cervantes published his tale of a country gentleman driven mad by chivalry books, tilting at windmills beside his squire Sancho Panza — often called the first modern novel, and still among the most printed.',
@@ -4023,6 +4479,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Opera is born with L'Orfeo",
     country: 'IT',
     kind: 'culture',
+    fame: 'minor',
     year: 1607,
     description:
       "Monteverdi's L'Orfeo, staged for the duke of Mantua, told the Orpheus myth entirely through music — the earliest opera still regularly performed, four centuries on.",
@@ -4034,6 +4491,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Shakespeare's First Folio is printed",
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1623,
     description:
       'Seven years after Shakespeare died, two fellow actors gathered 36 of his plays into one volume. Half of them — Macbeth among them — had never been printed and would otherwise be lost.',
@@ -4043,6 +4501,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'La Scala opens in Milan',
     country: 'IT',
     kind: 'culture',
+    fame: 'minor',
     year: 1778,
     description:
       "Milan's opera house rose in two years on the site of a burned theatre, paid for by its box-holders. Verdi, Puccini and Maria Callas made its stage the most famous in opera.",
@@ -4052,6 +4511,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Beethoven's Ninth premieres",
     country: 'AT',
     kind: 'culture',
+    fame: 'minor',
     year: 1824,
     description:
       "Beethoven, by then completely deaf, stood beside the conductor at the Vienna premiere of his Ninth — and had to be turned around to see the applause he could not hear. Its Ode to Joy is now Europe's anthem.",
@@ -4061,6 +4521,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Wimbledon',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1877,
     description:
       'The All England Croquet Club held a lawn-tennis tournament to raise money for a broken roller — 22 gentlemen, a 25-guinea trophy, and the oldest tennis championship in the world.',
@@ -4070,6 +4531,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Van Gogh paints The Starry Night',
     country: 'NL',
     kind: 'culture',
+    fame: 'minor',
     year: 1889,
     description:
       'From his asylum window in Saint-Rémy, Vincent van Gogh painted the night sky boiling with stars. He thought little of it; it became one of the most recognised paintings on Earth.',
@@ -4079,6 +4541,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Munch paints The Scream',
     country: 'NO',
     kind: 'culture',
+    fame: 'minor',
     year: 1893,
     description:
       'Walking at sunset above Oslo, Edvard Munch felt "an infinite scream passing through nature" — and painted the swirling, hollow-faced figure that became the modern face of anxiety.',
@@ -4088,6 +4551,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "India's first feature film",
     country: 'IN',
     kind: 'culture',
+    fame: 'minor',
     year: 1913,
     description:
       "Dadasaheb Phalke wrote, produced and directed Raja Harishchandra, India's first full-length feature — with men in the women's roles, since no actress would join. Indian cinema counts its history from it.",
@@ -4099,6 +4563,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mickey Mouse whistles into view',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1928,
     description:
       "Disney's Steamboat Willie was among the first cartoons with fully synchronised sound — a whistling mouse at a ship's wheel who became the most famous character ever drawn.",
@@ -4108,6 +4573,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Oscars',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1929,
     description:
       "Hollywood's first Academy Awards took fifteen minutes to hand out, at a private dinner where the winners had been announced three months in advance. The statuette's nickname — Oscar — came later.",
@@ -4117,6 +4583,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first feature-length cartoon',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1937,
     description:
       'The press called it "Disney\'s Folly" — surely no one would sit through 83 minutes of animation. Snow White became the highest-grossing film of its day and invented the animated feature.',
@@ -4126,6 +4593,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Picasso paints Guernica',
     country: 'ES',
     kind: 'culture',
+    fame: 'minor',
     year: 1937,
     description:
       "Weeks after German bombers flattened the Basque town of Gernika, Picasso answered with a canvas eight metres wide of screaming horses and grieving mothers — the century's defining image of war.",
@@ -4135,6 +4603,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Lord of the Rings is published',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1954,
     description:
       'Tolkien\'s "new Hobbit" had swollen into a three-volume epic, twelve years in the writing. The Fellowship of the Ring appeared first and founded modern fantasy almost single-handed.',
@@ -4144,6 +4613,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Disneyland opens its gates',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1955,
     description:
       'Walt Disney opened his park in a former Anaheim orange grove on a chaotic day of broken rides, gate-crashers and softening asphalt — and created the template every theme park since has copied.',
@@ -4153,6 +4623,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'García Márquez conjures Macondo',
     country: 'CO',
     kind: 'culture',
+    fame: 'minor',
     year: 1967,
     description:
       'Gabriel García Márquez pawned household goods to post the manuscript of One Hundred Years of Solitude to his publisher. The chronicle of the Buendía family made magical realism world literature.',
@@ -4164,6 +4635,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Thriller takes over the world',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1982,
     description:
       'Michael Jackson released Thriller, and its zombie-dance title video turned the music album into cinema. It remains the best-selling album ever recorded.',
@@ -4176,6 +4648,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tetris escapes Moscow',
     country: 'RU',
     kind: 'culture',
+    fame: 'minor',
     year: 1984,
     description:
       'Alexey Pajitnov, a researcher at the Soviet Academy of Sciences, wrote a falling-blocks puzzle on a machine with no graphics — its bricks drawn from text characters. It became the most ported game in history.',
@@ -4187,6 +4660,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Game Boy launches',
     country: 'JP',
     kind: 'culture',
+    fame: 'minor',
     year: 1989,
     description:
       "Nintendo's grey brick with a green screen was mocked beside its full-colour rivals — and outsold them all on battery life and Tetris, putting video games in every pocket.",
@@ -4196,6 +4670,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Harry Potter arrives',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1997,
     // Bare name search prefers the film and games; pin the 1997 novel.
     qid: 'Q43361',
@@ -4207,6 +4682,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'YouTube uploads its first video',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2005,
     description:
       'Three former PayPal employees launched a site for sharing home videos; the first upload was nineteen seconds at the zoo. Within two years the world watched more video there than on any TV network.',
@@ -4220,6 +4696,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Napoleon dies on Saint Helena',
     country: 'FR',
     kind: 'politics',
+    fame: 'minor',
     year: 1821,
     description:
       "Six years after Waterloo, the exiled emperor died in British custody on Saint Helena, one of the remotest islands on Earth. His body came home to Paris nineteen years later to a hero's tomb.",
@@ -4229,6 +4706,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Marx publishes Das Kapital',
     country: 'DE',
     kind: 'culture',
+    fame: 'minor',
     year: 1867,
     // The first-edition title page prints the year; Marx himself doesn't.
     commons: 'Karl Marx 001.jpg',
@@ -4240,6 +4718,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tolstoy finishes War and Peace',
     country: 'RU',
     kind: 'culture',
+    fame: 'minor',
     year: 1869,
     // The first-edition title page prints the year; Repin's Tolstoy doesn't.
     commons: 'Ilya Efimovich Repin (1844-1930) - Portrait of Leo Tolstoy (1887).jpg',
@@ -4251,6 +4730,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A urinal splits art history',
     country: 'FR',
     kind: 'culture',
+    fame: 'minor',
     year: 1917,
     qid: 'Q1206847',
     // Every photo of the piece shows its inked date; the Dada circle instead.
@@ -4264,6 +4744,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ulysses is published in Paris',
     country: 'IE',
     kind: 'culture',
+    fame: 'minor',
     year: 1922,
     // No free cover reproduction; the author's portrait, per the house pattern.
     commons: 'James Joyce by Alex Ehrenzweig, 1915 restored.jpg',
@@ -4275,6 +4756,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Columbia breaks up on re-entry',
     country: 'US',
     kind: 'disaster',
+    fame: 'minor',
     year: 2003,
     description:
       'Columbia broke apart over Texas minutes from landing, killing her crew of seven — a chunk of foam had holed a wing at launch a fortnight before. The shuttle fleet never fully recovered.',
@@ -4284,6 +4766,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Taipei 101 opens as the tallest building on Earth',
     country: 'TW',
     kind: 'engineering',
+    fame: 'minor',
     year: 2004,
     description:
       'The bamboo-shaped tower opened as the tallest building in the world, with a giant golden pendulum swinging inside to steady it against typhoons and earthquakes.',
@@ -4293,6 +4776,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Iran nuclear deal is signed',
     country: 'IR',
     kind: 'politics',
+    fame: 'minor',
     year: 2015,
     description:
       'After marathon talks in Vienna, Iran agreed with six world powers to shrink its nuclear programme in exchange for sanctions relief. Three years on, the United States walked out and the deal unravelled.',
@@ -4302,6 +4786,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Squid Game sweeps the world',
     country: 'KR',
     kind: 'culture',
+    fame: 'minor',
     year: 2021,
     // Item image is the bare logotype; the Shibuya promotional set instead.
     commons: 'Promotional event for イカゲーム (Squid Game) in Shibuya.jpg',
@@ -4313,6 +4798,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tambora erupts',
     country: 'ID',
     kind: 'disaster',
+    fame: 'minor',
     year: 1815,
     // The item's own image is an ashfall diagram; NASA's caldera photo instead.
     commons: 'Mount Tambora Volcano, Sumbawa Island, Indonesia.jpg',
@@ -4324,6 +4810,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Brazil is raised to a kingdom',
     country: 'BR',
     kind: 'nation',
+    fame: 'minor',
     year: 1815,
     qid: 'Q903779',
     // Item image is the bare royal arms; Debret's acclamation scene in Rio.
@@ -4336,6 +4823,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first traffic light is lit',
     country: 'GB',
     kind: 'engineering',
+    fame: 'minor',
     year: 1868,
     qid: 'Q8004',
     description:
@@ -4346,6 +4834,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Russian fleet is destroyed at Tsushima',
     country: 'JP',
     kind: 'conflict',
+    fame: 'minor',
     year: 1905,
     description:
       "Admiral Tōgō annihilated a Russian fleet that had sailed halfway around the world to meet him in the Tsushima Strait. The first great naval defeat of a European power by an Asian one stunned the world's chancelleries.",
@@ -4355,6 +4844,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mutiny on the battleship Potemkin',
     country: 'RU',
     kind: 'revolution',
+    fame: 'minor',
     year: 1905,
     // Bare name search lands on a 1972 namesake.
     qid: 'Q4126381',
@@ -4368,6 +4858,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The taxis of the Marne save Paris',
     country: 'FR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1914,
     // The item image is a dated situation map; the famous taxi instead.
     commons: "Taxi de la Marne, Musée de l'Armée-IMG 0987.jpg",
@@ -4379,6 +4870,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Carols between the trenches',
     country: 'BE',
     kind: 'conflict',
+    fame: 'minor',
     year: 1914,
     description:
       'Along stretches of the Western Front, German and British soldiers climbed out of their trenches on Christmas Eve to sing carols, swap tobacco and bury their dead — a spontaneous peace their generals made sure never happened again.',
@@ -4388,6 +4880,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Alcock and Brown fly the Atlantic',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1919,
     // Item image is an ocean map; the Vimy nose-down in the Clifden bog.
     commons: 'Alcock-Brown-Clifden.jpg',
@@ -4399,6 +4892,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Bauhaus opens in Weimar',
     country: 'DE',
     kind: 'culture',
+    fame: 'minor',
     year: 1919,
     description:
       'Walter Gropius opened a school in Weimar that fused art, craft and industry. Closed by the Nazis within fourteen years, its clean-lined ideas escaped into exile and built the look of the modern world.',
@@ -4408,6 +4902,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A thousand songs in your pocket',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2001,
     // The card should show the original scroll-wheel brick, not the later lineup.
     commons: 'Lightmatter ipod 1G.jpg',
@@ -4419,6 +4914,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Enron collapses',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 2001,
     commons: 'Enron Complex.jpg',
     description:
@@ -4429,6 +4925,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'ChatGPT is released',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2022,
     // House style is photos, not logos — OpenAI's Pioneer Building.
     commons: 'Pioneer Building, San Francisco (2019) -1.jpg',
@@ -4440,6 +4937,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Artemis flies back toward the Moon',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2022,
     description:
       "Half a century after the last Apollo crew left the Moon, NASA's giant new rocket finally flew, sending an empty capsule around the far side and home — the first step of the programme meant to take people back.",
@@ -4449,6 +4947,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Chicago burns',
     country: 'US',
     kind: 'disaster',
+    fame: 'minor',
     year: 1871,
     description:
       "Fire leapt through a city built of wood until a third of Chicago lay in ashes and a hundred thousand people were homeless. The rebuilding that followed raised some of the world's first skyscrapers.",
@@ -4458,6 +4957,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Royal Albert Hall opens',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1871,
     description:
       'Queen Victoria opened the great domed hall raised in memory of her husband Albert. Its echo was notorious — the joke ran that it was the only place a British composer could hear their work twice.',
@@ -4467,6 +4967,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Hundred Years' War ends at Castillon",
     country: 'FR',
     kind: 'conflict',
+    fame: 'minor',
     year: 1453,
     description:
       "French cannon shattered an English army at Castillon in Gascony — the last battle of the Hundred Years' War. England kept only Calais, and gunpowder had announced the end of the knight.",
@@ -4476,6 +4977,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Wars of the Roses begin',
     country: 'GB',
     kind: 'conflict',
+    fame: 'minor',
     year: 1455,
     description:
       "The houses of Lancaster and York first drew blood at St Albans, opening three decades of dynastic civil war for England's crown — the feud of the red rose and the white that the Tudors would end.",
@@ -4485,6 +4987,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Luther stands at Worms',
     country: 'DE',
     kind: 'politics',
+    fame: 'minor',
     year: 1521,
     description:
       '"Here I stand" — summoned before the young emperor Charles V, Luther refused to recant his writings and left Worms an outlaw. Smuggled into hiding at the Wartburg, he set about translating the Bible into German.',
@@ -4494,6 +4997,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Vesalius maps the human body',
     country: 'BE',
     kind: 'science',
+    fame: 'minor',
     year: 1543,
     description:
       'In the same year Copernicus moved the Earth, the anatomist Vesalius published his lavishly illustrated atlas of the human body, built on dissections he performed himself — and toppled thirteen centuries of received wisdom.',
@@ -4503,6 +5007,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Nobunaga betrayed at Honnō-ji',
     country: 'JP',
     kind: 'politics',
+    fame: 'minor',
     year: 1582,
     description:
       "Japan's great unifier Oda Nobunaga, betrayed by his own general, died in a burning Kyoto temple within reach of mastering the whole country. His avenger Hideyoshi finished the work within a decade.",
@@ -4512,6 +5017,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Manila is founded',
     country: 'PH',
     kind: 'nation',
+    fame: 'minor',
     year: 1571,
     // City item leads with the modern skyline; the Spanish walled city instead.
     commons: 'Manila, Fort Santiago, Walled city of Intramuros, Philippines.jpg',
@@ -4523,6 +5029,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bacon proposes the scientific method',
     country: 'GB',
     kind: 'science',
+    fame: 'minor',
     year: 1620,
     qid: 'Q585046',
     description:
@@ -4533,6 +5040,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: '"I think, therefore I am"',
     country: 'FR',
     kind: 'science',
+    fame: 'minor',
     year: 1637,
     commons: 'Descartes Discours de la Methode.jpg',
     description:
@@ -4543,6 +5051,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The East India Company is chartered',
     country: 'GB',
     kind: 'politics',
+    fame: 'minor',
     year: 1600,
     commons: 'East India House by Thomas Malton the Younger.jpg',
     description:
@@ -4553,6 +5062,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Bodleian opens its doors',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1602,
     description:
       "Thomas Bodley reopened Oxford's plundered university library, soon striking a deal that a copy of every book printed in England be deposited there. Readers still swear an oath not to kindle flame within.",
@@ -4562,6 +5072,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Adam Smith publishes The Wealth of Nations',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1776,
     commons: 'Wealth of Nations.jpg',
     description:
@@ -4572,6 +5083,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bonaparte seizes power',
     country: 'FR',
     kind: 'politics',
+    fame: 'minor',
     year: 1799,
     description:
       "General Bonaparte returned from Egypt and overthrew the Directory in a near-bloodless coup, ending the French Revolution's decade of turmoil. The republic's First Consul would soon crown himself emperor.",
@@ -4581,6 +5093,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Redcoats fire on a Boston crowd',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1770,
     // Revere's print engraves the date; Chappel's painting doesn't.
     commons: 'BostonMassacre byAlonzoChappel1878.png',
@@ -4592,6 +5105,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Magic Flute premieres',
     country: 'AT',
     kind: 'culture',
+    fame: 'minor',
     year: 1791,
     // The original playbill prints the premiere year; a staging photo instead.
     commons: 'The Magic Flute - 54363596966.jpg',
@@ -4603,6 +5117,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Spain expels its Jews',
     country: 'ES',
     kind: 'politics',
+    fame: 'minor',
     year: 1492,
     // Emilio Sala's painting of the expulsion order before the Catholic Monarchs.
     commons: 'Expulsión de los judíos.jpg',
@@ -4614,6 +5129,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The A380 takes flight',
     country: 'FR',
     kind: 'engineering',
+    fame: 'minor',
     year: 2005,
     description:
       'The double-decked giant — the largest passenger aircraft ever built — lifted off from Toulouse on its maiden flight, watched live by tens of thousands. Airports rebuilt gates and runways to receive it.',
@@ -4623,6 +5139,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Beijing Olympics open',
     country: 'CN',
     kind: 'culture',
+    fame: 'minor',
     year: 2008,
     // Item image is the bare Olympic rings; the Bird's Nest at night instead.
     commons:
@@ -4635,6 +5152,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Instagram launches',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 2010,
     commons: 'Instagram app on smartphone (grass background) (cropped).jpg',
     description:
@@ -4645,6 +5163,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bin Laden found in Abbottabad',
     country: 'PK',
     kind: 'conflict',
+    fame: 'minor',
     year: 2011,
     description:
       "US Navy SEALs flew by night into a compound in Abbottabad and killed the man behind the September 11 attacks, a decade after them. He had been living within a mile of Pakistan's military academy.",
@@ -4654,6 +5173,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Greek fleet turns the tide at Salamis',
     country: 'GR',
     kind: 'conflict',
+    fame: 'minor',
     year: -480,
     description:
       'Themistocles lured the vast Persian fleet into the narrow strait off Salamis, where numbers counted for nothing, and broke it while Xerxes watched from a throne ashore. The same year the pass fell at Thermopylae.',
@@ -4663,6 +5183,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'MH370 vanishes',
     country: 'MY',
     kind: 'disaster',
+    fame: 'minor',
     year: 2014,
     description:
       'A red-eye to Beijing with 239 people aboard turned off course and vanished; years of the largest search in aviation history found only fragments washed ashore. Where it rests remains unknown.',
@@ -4672,6 +5193,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Panama Papers leak',
     country: 'PA',
     kind: 'politics',
+    fame: 'minor',
     year: 2016,
     // Item image is a data map; the Reykjavik protests the leak set off.
     commons: 'Althingi protest iceland 04.04.2016.png',
@@ -4683,6 +5205,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A sports car flies past Mars orbit',
     country: 'US',
     kind: 'science',
+    fame: 'minor',
     year: 2018,
     // The double side-booster landing — the mission's signature frame.
     commons: 'Falcon Heavy Side Boosters landing on LZ1 and LZ2 - 2018 (25254688767).jpg',
@@ -4694,6 +5217,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The last Viking invasion breaks',
     country: 'GB',
     kind: 'conflict',
+    fame: 'minor',
     year: 1066,
     description:
       'King Harold destroyed a Viking invasion at Stamford Bridge, ending the age of Norse kings in England — then force-marched his exhausted army south to meet William at Hastings, nineteen days later.',
@@ -4703,6 +5227,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A new star blazes in daylight',
     country: 'CN',
     kind: 'science',
+    fame: 'minor',
     year: 1054,
     description:
       "Chinese astronomers recorded a 'guest star' in Taurus bright enough to see in daylight for weeks. Its shredded remains glow on as the Crab Nebula — the sky's most studied wreck of an exploded star.",
@@ -4712,6 +5237,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The great council of the Middle Ages',
     country: 'VA',
     kind: 'politics',
+    fame: 'minor',
     year: 1215,
     description:
       'Innocent III summoned the greatest church council of the Middle Ages: hundreds of bishops set doctrine — transubstantiation among it — and rules that governed Catholic life for centuries.',
@@ -4721,6 +5247,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "A slave-general takes Delhi's throne",
     country: 'IN',
     kind: 'nation',
+    fame: 'minor',
     year: 1206,
     // The item's image is a dynasty map whose legend prints the year.
     commons: 'Qutub Minar, New Delhi, India.jpg',
@@ -4732,6 +5259,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Reconquista turns at Las Navas',
     country: 'ES',
     kind: 'conflict',
+    fame: 'minor',
     year: 1212,
     description:
       'Three Christian kings together broke the Almohad army in the Sierra Morena — the turning point of the Reconquista. Within a generation, Muslim rule in Iberia had shrunk to Granada alone.',
@@ -4741,6 +5269,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "The Children's Crusade sets out",
     country: 'FR',
     kind: 'culture',
+    fame: 'minor',
     year: 1212,
     description:
       "Thousands of children and poor folk marched for the Holy Land behind boy preachers, believing the sea would part for them. It didn't; most turned back, and legend says some were sold into slavery.",
@@ -4750,6 +5279,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Crusades end at Acre',
     country: 'IL',
     kind: 'conflict',
+    fame: 'minor',
     year: 1291,
     description:
       'The Mamluks stormed the last Crusader capital on the Levantine coast, two centuries after the First Crusade took Jerusalem. The military orders sailed for Cyprus, and the Crusades in the Holy Land were over.',
@@ -4759,6 +5289,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Three cantons swear the oath',
     country: 'CH',
     kind: 'nation',
+    fame: 'minor',
     year: 1291,
     description:
       'Three forest cantons around Lake Lucerne swore mutual defence in a parchment pact — the founding legend of Switzerland, later wrapped in the tale of William Tell. The confederacy has never since been conquered.',
@@ -4768,6 +5299,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Washington takes the first oath',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1789,
     description:
       'On a Wall Street balcony, Washington swore the oath as first President of the United States, inventing the office as he went — including the two-term habit that held for a century and a half.',
@@ -4777,6 +5309,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Paris goes underground',
     country: 'FR',
     kind: 'engineering',
+    fame: 'minor',
     year: 1900,
     // The description's Guimard ironwork, not a modern trainset.
     commons: 'Paris.metro.abbesses.jpg',
@@ -4788,6 +5321,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Football writes its rulebook',
     country: 'GB',
     kind: 'culture',
+    fame: 'minor',
     year: 1863,
     qid: 'Q9500',
     description:
@@ -4798,6 +5332,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Coca-Cola is first served',
     country: 'US',
     kind: 'culture',
+    fame: 'minor',
     year: 1886,
     description:
       'An Atlanta pharmacist first sold his caramel-coloured nerve tonic at a drugstore soda fountain for five cents a glass. The recipe stayed secret; the drink went on to outsell every other on Earth.',
@@ -4807,6 +5342,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Something explodes over Siberia',
     country: 'RU',
     kind: 'disaster',
+    fame: 'minor',
     year: 1908,
     description:
       'Something detonated over the Siberian taiga with the force of a thousand Hiroshimas, flattening eighty million trees — yet leaving no crater. A comet or asteroid airburst remains the verdict.',
@@ -4818,6 +5354,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'San Martín proclaims Peru free',
     country: 'PE',
     kind: 'nation',
+    fame: 'minor',
     year: 1821,
     description:
       "San Martín proclaimed Peru's independence in Lima's main square after landing his army by sea from Chile. The last Spanish viceroyalty in the Americas was falling — Bolívar would finish the job at Ayacucho.",
@@ -4827,6 +5364,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Haiti declares the first Black republic',
     country: 'HT',
     kind: 'nation',
+    fame: 'minor',
     year: 1804,
     // The proclamation broadside is a wall of type (and dates itself); the
     // Citadelle, independence's mountain fortress, instead.
@@ -4839,6 +5377,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The cry that woke Mexico',
     country: 'MX',
     kind: 'revolution',
+    fame: 'minor',
     year: 1810,
     description:
       "Before dawn, the priest Miguel Hidalgo rang his church bell in the town of Dolores and called the crowd to rise against Spanish rule. Every year at midnight, Mexico's president re-enacts the cry from the National Palace balcony.",
@@ -4848,6 +5387,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Buenos Aires deposes the viceroy',
     country: 'AR',
     kind: 'revolution',
+    fame: 'minor',
     year: 1810,
     description:
       "With Napoleon holding Spain's king captive, Buenos Aires deposed the Spanish viceroy and installed its own junta — a week of rain-soaked crowds that began Argentina's road to independence.",
@@ -4857,6 +5397,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Mongols sack Baghdad',
     country: 'IQ',
     kind: 'conflict',
+    fame: 'minor',
     year: 1258,
     description:
       "Hulagu's Mongols razed the Abbasid capital, killed the last caliph and threw the House of Wisdom's books into the Tigris — the river was said to run black with ink. The golden age of the Islamic world's greatest city was over.",
@@ -4866,6 +5407,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'An eagle on a cactus — Tenochtitlan is founded',
     country: 'MX',
     kind: 'nation',
+    fame: 'minor',
     year: 1325,
     description:
       "On an island in Lake Texcoco — where, the legend says, an eagle perched on a cactus devouring a snake — the Mexica founded Tenochtitlan. The city grew into one of the largest on Earth; its symbol is on Mexico's flag.",
@@ -4875,6 +5417,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Sundiata founds the Mali Empire',
     country: 'ML',
     kind: 'nation',
+    fame: 'minor',
     year: 1235,
     qid: 'Q184536',
     description:
@@ -4885,6 +5428,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Taj Mahal is begun',
     country: 'IN',
     kind: 'engineering',
+    fame: 'major',
     year: 1632,
     description:
       "Shah Jahan began a white-marble tomb for his wife Mumtaz Mahal, who had died bearing their fourteenth child. Twenty thousand craftsmen worked two decades on what became the world's most famous monument to grief.",
@@ -4894,6 +5438,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Africa unites at Addis Ababa',
     country: 'ET',
     kind: 'politics',
+    fame: 'minor',
     year: 1963,
     qid: 'Q191703',
     description:
@@ -4904,6 +5449,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Zulu destroy a British army',
     country: 'ZA',
     kind: 'conflict',
+    fame: 'minor',
     year: 1879,
     description:
       "A Zulu army with spears and cowhide shields destroyed a modern British column at the foot of Isandlwana hill — the worst defeat Victorian Britain ever suffered against an African foe. The empire's shock was total.",
@@ -4913,6 +5459,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'King Sejong gives Korea an alphabet',
     country: 'KR',
     kind: 'culture',
+    fame: 'minor',
     year: 1446,
     // The museum-case shot's placard prints the year; the bare page instead.
     commons: 'Hunmin jeong-eum.jpg',
@@ -4924,6 +5471,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Arab and Chinese empires collide at Talas',
     country: 'KG',
     kind: 'conflict',
+    fame: 'minor',
     year: 751,
     // No period battle art exists and the item image is a dated map; the
     // classic papermaking woodcut carries the card's actual story.
@@ -4941,6 +5489,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first temple rises',
     country: 'TR',
     kind: 'engineering',
+    fame: 'minor',
     year: -9500,
     description:
       'Hunter-gatherers raised rings of carved stone pillars on an Anatolian hilltop millennia before farming, pottery or the wheel — the oldest known monumental sanctuary on Earth, deliberately buried by its own builders.',
@@ -4950,6 +5499,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The horse is tamed',
     country: 'KZ',
     kind: 'culture',
+    fame: 'minor',
     year: -3500,
     // No event item image; Przewalski's horses on the steppe stand in.
     commons: "Askania-Nova Steppe 24 Przewalski's Horses (YDS 1683).jpg",
@@ -4961,6 +5511,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Writing is invented',
     country: 'IQ',
     kind: 'culture',
+    fame: 'minor',
     year: -3200,
     description:
       'In the cities of Sumer, temple accountants pressing reed styluses into wet clay invented writing — first for tallies of grain and sheep, only later for kings, laws and stories.',
@@ -4970,6 +5521,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Pyramid is raised',
     country: 'EG',
     kind: 'engineering',
+    fame: 'major',
     year: -2560,
     description:
       "Khufu's tomb rose in millions of quarried blocks to become the tallest structure humans had ever built — and stayed so for nearly four thousand years. It is the last of the ancient wonders still standing.",
@@ -4979,6 +5531,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Hammurabi writes down the law',
     country: 'IQ',
     kind: 'politics',
+    fame: 'minor',
     year: -1755,
     description:
       "The Babylonian king had nearly three hundred laws carved on a black stone stele — 'an eye for an eye' among them — one of the oldest law codes ever found, now standing in the Louvre.",
@@ -4988,6 +5541,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first novel is written',
     country: 'JP',
     kind: 'culture',
+    fame: 'minor',
     year: 1010,
     qid: 'Q8269',
     description:
@@ -4998,6 +5552,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first Olympic Games',
     country: 'GR',
     kind: 'culture',
+    fame: 'minor',
     year: -776,
     description:
       'Runners raced a single sprint at Olympia in honour of Zeus — the traditional first Games. Held every four years for a millennium, they were sacred enough that warring city-states paused to compete.',
@@ -5007,6 +5562,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Romulus ploughs the first furrow',
     country: 'IT',
     kind: 'nation',
+    fame: 'minor',
     year: -753,
     description:
       'Legend set the day Romulus founded the city — and killed his twin Remus over its wall. From that hilltop village grew the empire whose languages, laws and calendars Europe still lives inside.',
@@ -5018,6 +5574,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Confucius teaches in a warring age',
     country: 'CN',
     kind: 'culture',
+    fame: 'minor',
     year: -551,
     qid: 'Q4604',
     commons: 'Statues of Confucius in the Beijing Temple of Confucius 2013.jpg',
@@ -5029,6 +5586,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cyrus writes his charter in clay',
     country: 'IR',
     kind: 'politics',
+    fame: 'minor',
     // Wikidata dates the cylinder itself to -530, not the fall of Babylon.
     year: -530,
     qid: 'Q405008',
@@ -5040,6 +5598,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Buddha begins to teach',
     country: 'IN',
     kind: 'culture',
+    fame: 'minor',
     // Verified against the traditional birth year Wikidata carries; the
     // card asserts the life, not a datable sermon.
     year: -563,
@@ -5052,6 +5611,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Alexandria gathers all the world's books",
     country: 'EG',
     kind: 'culture',
+    fame: 'minor',
     year: -300,
     qid: 'Q435',
     description:
@@ -5062,6 +5622,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ashoka carves his remorse into rock',
     country: 'IN',
     kind: 'politics',
+    fame: 'minor',
     // Wikidata carries only Ashoka's life dates; the reign's end anchors it.
     year: -232,
     qid: 'Q8589',
@@ -5073,6 +5634,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Wall goes up',
     country: 'CN',
     kind: 'engineering',
+    fame: 'minor',
     year: -700,
     qid: 'Q12501',
     description:
@@ -5083,6 +5645,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Caesar fixes the calendar',
     country: 'IT',
     kind: 'science',
+    fame: 'minor',
     year: -45,
     qid: 'Q11184',
     description:
@@ -5093,6 +5656,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Zhang Qian opens the Silk Road',
     country: 'CN',
     kind: 'culture',
+    fame: 'minor',
     // Wikidata carries only the envoy's life dates.
     year: -114,
     description:
@@ -5103,6 +5667,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A geared computer sails the Aegean',
     country: 'GR',
     kind: 'science',
+    fame: 'minor',
     year: -100,
     qid: 'Q182324',
     description:
@@ -5113,6 +5678,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Vast figures are drawn in the desert',
     country: 'PE',
     kind: 'culture',
+    fame: 'minor',
     year: -200,
     qid: 'Q2620036',
     description:
@@ -5123,6 +5689,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Aksum rises on the Red Sea',
     country: 'ET',
     kind: 'nation',
+    fame: 'minor',
     year: -400,
     qid: 'Q139377',
     description:
@@ -5133,6 +5700,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Brahmagupta gives zero its rules',
     country: 'IN',
     kind: 'science',
+    fame: 'minor',
     year: 628,
     qid: 'Q1290001',
     commons: 'Bas-relief of Brahmagupta.jpg',
@@ -5148,6 +5716,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The air turns to poison, then to breath',
     country: 'AU',
     kind: 'disaster',
+    fame: 'minor',
     year: -2450000000,
     qid: 'Q837561',
     // The item's image is a geological timescale chart; living stromatolites —
@@ -5161,6 +5730,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Life invents almost every animal',
     country: 'CA',
     kind: 'science',
+    fame: 'minor',
     year: -543000000,
     qid: 'Q32919',
     // Anomalocaris, the Burgess Shale's signature predator.
@@ -5173,6 +5743,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Great Dying',
     country: 'RU',
     kind: 'disaster',
+    fame: 'minor',
     year: -251900000,
     qid: 'Q141118',
     // The Siberian Traps basalt that did the killing.
@@ -5186,6 +5757,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The asteroid that ended the dinosaurs',
     country: 'MX',
     kind: 'disaster',
+    fame: 'minor',
     year: -66000000,
     qid: 'Q55811',
     // No photograph exists of an asteroid strike; the standard impact painting.
@@ -5198,6 +5770,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'People start to farm',
     country: 'IQ',
     kind: 'culture',
+    fame: 'minor',
     year: -9000,
     qid: 'Q180548',
     description:
@@ -5208,6 +5781,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The ice reaches its furthest',
     country: 'CA',
     kind: 'disaster',
+    fame: 'minor',
     year: -19000,
     qid: 'Q1979625',
     // The item's image is a CLIMAP temperature-anomaly map; real ice instead.
@@ -5222,6 +5796,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Tet shatters the war narrative',
     country: 'VN',
     kind: 'conflict',
+    fame: 'minor',
     year: 1968,
     qid: 'Q82542',
     // The item's image is a campaign map whose title block prints the year.
@@ -5234,6 +5809,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Paris rises — beneath the paving stones, the beach',
     country: 'FR',
     kind: 'revolution',
+    fame: 'minor',
     year: 1968,
     description:
       'Student barricades in the Latin Quarter set off the largest general strike in French history: ten million workers stopped, de Gaulle briefly fled the country, and the old social order never quite recovered.',
@@ -5243,6 +5819,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A second Kennedy is shot',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1968,
     // Campaign handouts print the year; the official portrait doesn't.
     commons: 'RFK Portrait 3x4 (rotated).jpg',
@@ -5254,6 +5831,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A president resigns',
     country: 'US',
     kind: 'politics',
+    fame: 'minor',
     year: 1974,
     qid: 'Q16932404',
     description:
@@ -5264,6 +5842,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ali beats Foreman in Kinshasa',
     country: 'CD',
     kind: 'culture',
+    fame: 'minor',
     year: 1974,
     qid: 'Q939560',
     commons: 'Ali right The Rumble in the Jungle UPI.jpg',
@@ -5275,6 +5854,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The last emperor is deposed',
     country: 'ET',
     kind: 'revolution',
+    fame: 'minor',
     year: 1974,
     qid: 'Q9068538',
     description:
@@ -5293,6 +5873,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "'Things Fall Apart' is published",
     country: 'NG',
     kind: 'culture',
+    fame: 'minor',
     year: 1958,
     description:
       "Chinua Achebe's novel of an Igbo village meeting colonialism became the most-read book in African literature, translated into some sixty languages — the story told from the inside at last.",
@@ -5302,6 +5883,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Lagos throws a festival for a continent',
     country: 'NG',
     kind: 'culture',
+    fame: 'minor',
     year: 1977,
     description:
       'Lagos hosted the Second World Black and African Festival of Arts and Culture — a month of music, art and ideas that drew tens of thousands of artists from across Africa and its diaspora, Stevie Wonder among them.',
@@ -5312,6 +5894,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Kenya wins independence',
     country: 'KE',
     kind: 'nation',
+    fame: 'minor',
     year: 1963,
     description:
       'At midnight in Nairobi the Union Jack came down and Jomo Kenyatta — imprisoned by the British only years earlier — led the new nation as its first prime minister.',
@@ -5321,6 +5904,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Wangari Maathai starts planting trees',
     country: 'KE',
     kind: 'science',
+    fame: 'minor',
     year: 1977,
     description:
       "Wangari Maathai's movement paid rural Kenyan women to plant trees against deforestation — tens of millions of them. It carried her to the Nobel Peace Prize, the first for an African woman.",
@@ -5330,6 +5914,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The two-hour marathon falls',
     country: 'KE',
     kind: 'culture',
+    fame: 'minor',
     year: 2019,
     description:
       'Pacers rotating in formation around him, Eliud Kipchoge ran 42.2 kilometres in Vienna in 1:59:40 — the first human under two hours, on a morning watched live across Kenya.',
@@ -5339,6 +5924,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Akosombo Dam is completed',
     country: 'GH',
     kind: 'engineering',
+    fame: 'minor',
     year: 1965,
     description:
       "Damming the Volta created Lake Volta, the largest reservoir on Earth by surface area — Nkrumah's bid to power an industrial Ghana within a decade of independence.",
@@ -5348,6 +5934,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Serengeti is set aside',
     country: 'TZ',
     kind: 'science',
+    fame: 'minor',
     year: 1940,
     description:
       "The plains of the great wildebeest migration were put under protection, growing into the country's oldest national park — over a million animals still cross it in a loop older than any border.",
@@ -5357,6 +5944,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Revolution on the spice island',
     country: 'TZ',
     kind: 'revolution',
+    fame: 'minor',
     year: 1964,
     // The article's own page image is a locator map; Karume — the revolution's
     // leader and the union's first vice-president — is the story in a face.
@@ -5370,6 +5958,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The oldest university opens in Fez',
     country: 'MA',
     kind: 'culture',
+    fame: 'minor',
     year: 859,
     description:
       'Founded by Fatima al-Fihri with her inheritance, al-Qarawiyyin in Fez has taught continuously for over a millennium — recognised as the oldest existing degree-granting university on Earth.',
@@ -5380,6 +5969,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Carthage is founded',
     country: 'TN',
     kind: 'nation',
+    fame: 'minor',
     year: -814,
     description:
       "Phoenician settlers — legend says Queen Dido, tracing an oxhide's worth of shoreline — founded the city that would rule the western Mediterranean and take on Rome itself.",
@@ -5390,6 +5980,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mozambique wins independence',
     country: 'MZ',
     kind: 'nation',
+    fame: 'minor',
     year: 1975,
     description:
       'After a decade of armed struggle led by FRELIMO, Portuguese rule ended and Samora Machel entered Maputo as the first president of a free Mozambique.',
@@ -5399,6 +5990,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cyclone Idai drowns a coastline',
     country: 'MZ',
     kind: 'disaster',
+    fame: 'minor',
     year: 2019,
     description:
       'Idai came ashore at Beira and put an area the size of Luxembourg underwater across Mozambique, Zimbabwe and Malawi — one of the worst storms ever recorded in the southern hemisphere.',
@@ -5411,6 +6003,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Saudi kingdom is proclaimed',
     country: 'SA',
     kind: 'nation',
+    fame: 'minor',
     year: 1932,
     qid: 'Q251600',
     description:
@@ -5421,6 +6014,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Jordan signs the desert peace',
     country: 'JO',
     kind: 'politics',
+    fame: 'minor',
     year: 1994,
     description:
       'In the Arava desert, King Hussein and Yitzhak Rabin signed only the second peace treaty between Israel and an Arab state, ending a forty-six-year state of war.',
@@ -5430,6 +6024,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The alphabet sets sail',
     country: 'LB',
     kind: 'culture',
+    fame: 'minor',
     year: -1050,
     description:
       'Traders of Tyre and Byblos pared writing down to a couple of dozen letters anyone could learn. Carried port to port, their alphabet became the ancestor of Greek, Latin, Arabic and this very text.',
@@ -5439,6 +6034,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Persepolis is founded',
     country: 'IR',
     kind: 'engineering',
+    fame: 'minor',
     year: -510,
     description:
       'Darius the Great began a ceremonial capital of grand stairways and hundred-column halls, where subject nations carved in stone still file past bearing tribute to the Persian king of kings.',
@@ -5449,6 +6045,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Timur builds an empire from Samarkand',
     country: 'UZ',
     kind: 'nation',
+    fame: 'minor',
     year: 1370,
     description:
       'From Samarkand, Timur conquered from Delhi to the Mediterranean — and marched captured artisans home to raise the turquoise-domed city that still stuns visitors on the old Silk Road.',
@@ -5458,6 +6055,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A sultan measures the stars',
     country: 'UZ',
     kind: 'science',
+    fame: 'minor',
     year: 1420,
     description:
       "Ulugh Beg — Timur's grandson, a ruler who preferred astronomy to conquest — built a forty-metre sextant into a Samarkand hillside and charted a thousand stars more precisely than anyone before the telescope.",
@@ -5467,6 +6065,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Baikonur opens for business',
     country: 'KZ',
     kind: 'engineering',
+    fame: 'minor',
     year: 1955,
     description:
       'A secret launch site rose on the Kazakh steppe. Sputnik, Laika and Gagarin all left Earth from Baikonur — and every crewed Soyuz still does.',
@@ -5476,6 +6075,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Armenia adopts Christianity first',
     country: 'AM',
     kind: 'culture',
+    fame: 'minor',
     year: 301,
     description:
       'King Tiridates III made Armenia the first state to adopt Christianity as its official religion — a dozen years before Rome even tolerated it — an identity the nation has kept through every empire since.',
@@ -5487,6 +6087,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Faisal Mosque opens',
     country: 'PK',
     kind: 'engineering',
+    fame: 'minor',
     year: 1986,
     description:
       "Shaped like a Bedouin tent in concrete against the Margalla Hills, Islamabad's Faisal Mosque was for years the largest mosque in the world, a gift bearing the Saudi king's name.",
@@ -5496,6 +6097,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Malala wins the Nobel Peace Prize',
     country: 'PK',
     kind: 'politics',
+    fame: 'minor',
     year: 2014,
     description:
       'Two years after being shot by the Taliban for going to school, seventeen-year-old Malala Yousafzai became the youngest Nobel laureate in history, sharing the peace prize with Kailash Satyarthi.',
@@ -5505,6 +6107,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The bank for the poor opens',
     country: 'BD',
     kind: 'politics',
+    fame: 'minor',
     year: 1983,
     description:
       "Muhammad Yunus's Grameen Bank lent tiny sums to landless villagers — overwhelmingly women — without collateral. Microcredit spread worldwide and won the bank and its founder the Nobel Peace Prize.",
@@ -5514,6 +6117,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Bhola cyclone strikes the delta',
     country: 'BD',
     kind: 'disaster',
+    fame: 'minor',
     year: 1970,
     description:
       "A storm surge swept the Ganges delta's low islands and killed hundreds of thousands — the deadliest tropical cyclone ever recorded, and a spark for the independence struggle that followed.",
@@ -5524,6 +6128,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Nepal is unified from Gorkha',
     country: 'NP',
     kind: 'nation',
+    fame: 'minor',
     year: 1768,
     description:
       'Prithvi Narayan Shah of tiny Gorkha took the Kathmandu valley and stitched dozens of hill states into one kingdom — a Nepal that was never colonised and kept its Shah kings into the twenty-first century.',
@@ -5534,6 +6139,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Gorkha earthquake',
     country: 'NP',
     kind: 'disaster',
+    fame: 'minor',
     year: 2015,
     description:
       'A magnitude-7.8 quake flattened villages, toppled Kathmandu monuments that had stood for centuries, and set off an avalanche on Everest itself — nearly nine thousand people died.',
@@ -5543,6 +6149,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bagan begins its temple age',
     country: 'MM',
     kind: 'nation',
+    fame: 'minor',
     year: 849,
     description:
       'The kingdom at Bagan united the Irrawaddy valley and set off a temple-building fever: thousands of brick pagodas rose on one river plain, and thousands still stand.',
@@ -5552,6 +6159,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The god-kings of Angkor',
     country: 'KH',
     kind: 'nation',
+    fame: 'major',
     year: 802,
     description:
       'Jayavarman II was crowned god-king on a mountain above Angkor, founding the Khmer Empire — whose capital would one day raise the largest religious monument on Earth, moat-ringed Angkor Wat.',
@@ -5561,6 +6169,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Sukhothai breaks free',
     country: 'TH',
     kind: 'nation',
+    fame: 'minor',
     year: 1238,
     description:
       'Tai chiefs threw off the Khmer empire and founded Sukhothai, remembered as the first Thai kingdom — the era credited with the Thai script and the classic image of a land of plenty.',
@@ -5570,6 +6179,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Bangkok becomes the capital',
     country: 'TH',
     kind: 'nation',
+    fame: 'minor',
     year: 1782,
     description:
       'Rama I moved his capital across the river to a defensible bend and founded both Bangkok and the Chakri dynasty — the same house that reigns in Thailand today.',
@@ -5580,6 +6190,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The rising dragon capital',
     country: 'VN',
     kind: 'nation',
+    fame: 'minor',
     year: 1010,
     description:
       'Emperor Lý Thái Tổ moved his court to a citadel he named Thăng Long — "rising dragon". A thousand years on, the same city governs Vietnam as Hanoi.',
@@ -5589,6 +6200,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Vietnam opens its economy',
     country: 'VN',
     kind: 'politics',
+    fame: 'minor',
     year: 1986,
     description:
       'A decade after the war, the party launched Đổi Mới — "renovation" — swapping collectivised planning for market reforms that turned one of the poorest countries in Asia into an export powerhouse.',
@@ -5598,6 +6210,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Borobudur is raised in stone',
     country: 'ID',
     kind: 'engineering',
+    fame: 'minor',
     year: 800,
     description:
       'On the Kedu plain, builders stacked two million volcanic stones into a mountain-shaped mandala wrapped in kilometres of carved reliefs — the largest Buddhist monument in the world.',
@@ -5607,6 +6220,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Petronas Towers top out',
     country: 'MY',
     kind: 'engineering',
+    fame: 'minor',
     year: 1998,
     description:
       'Twin steel-and-glass towers joined by a skybridge took the title of tallest buildings on Earth — the first time the record had left the West in over a century.',
@@ -5616,6 +6230,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Pinatubo blows its top',
     country: 'PH',
     kind: 'disaster',
+    fame: 'minor',
     year: 1991,
     description:
       'The second-largest eruption of the century blew six hundred years of slumber apart in an afternoon — its ash veil circled the globe and cooled the whole planet by half a degree.',
@@ -5625,6 +6240,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Philippines rises against Spain',
     country: 'PH',
     kind: 'revolution',
+    fame: 'minor',
     year: 1896,
     description:
       "The secret Katipunan society tore up their tax certificates and rose against three centuries of Spanish rule — the revolution that led to Asia's first declared republic.",
@@ -5634,6 +6250,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Seoul hosts the world',
     country: 'KR',
     kind: 'culture',
+    fame: 'minor',
     year: 1988,
     description:
       "A generation after war left it in ruins, Seoul staged the Olympics as a coming-out party — the games that showed the world the 'miracle on the Han River', broadcast from a brand-new democracy.",
@@ -5645,6 +6262,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A capital built from nothing',
     country: 'BR',
     kind: 'engineering',
+    fame: 'minor',
     year: 1960,
     description:
       "In under four years, Oscar Niemeyer's curves and Lúcio Costa's aeroplane-shaped plan turned empty savanna into Brazil's new capital — a whole modernist city, inaugurated at once.",
@@ -5654,6 +6272,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The 14-bis hops into the air',
     country: 'BR',
     kind: 'science',
+    fame: 'minor',
     year: 1906,
     description:
       'Before a Paris crowd and official judges, Alberto Santos-Dumont flew his boxkite-like 14-bis without catapults or rails — the first officially certified aeroplane flight in Europe, and a Brazilian national triumph.',
@@ -5663,6 +6282,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Maracanazo',
     country: 'BR',
     kind: 'culture',
+    fame: 'minor',
     year: 1950,
     description:
       'Brazil built the largest stadium on Earth and needed only a draw in the final match — then Uruguay silenced two hundred thousand people at the Maracanã, a defeat Brazilians still call a national tragedy.',
@@ -5672,6 +6292,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Argentina lifts the cup at home',
     country: 'AR',
     kind: 'culture',
+    fame: 'minor',
     year: 1978,
     description:
       "In a blizzard of ticker tape at the Monumental, Mario Kempes drove Argentina past the Netherlands for the country's first World Cup — joy and controversy tangled together under a military regime.",
@@ -5682,6 +6303,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Perón wins power',
     country: 'AR',
     kind: 'politics',
+    fame: 'minor',
     year: 1946,
     description:
       "Freed from prison by mass demonstrations months earlier, Juan Perón swept the election with the descamisados — the 'shirtless ones' — behind him, founding the movement that has defined Argentine politics since.",
@@ -5691,6 +6313,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Chile declares independence',
     country: 'CL',
     kind: 'nation',
+    fame: 'minor',
     year: 1818,
     description:
       "A year after San Martín's army crossed the Andes by mule track, Bernardo O'Higgins proclaimed Chile's independence — sealed within weeks at the battle of Maipú.",
@@ -5700,6 +6323,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The largest earthquake ever recorded',
     country: 'CL',
     kind: 'disaster',
+    fame: 'minor',
     year: 1960,
     description:
       'Magnitude 9.5 — the strongest earthquake ever instrumentally recorded — tore six hundred kilometres of Chilean coast and sent a Pacific-wide tsunami as far as Japan and Hawaii.',
@@ -5709,6 +6333,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Cartagena de Indias is founded',
     country: 'CO',
     kind: 'nation',
+    fame: 'minor',
     year: 1533,
     description:
       'Founded on a Caribbean bay, Cartagena became the treasure port of Spanish America — so rich in silver that pirates besieged it for centuries, and so fortified that its walls still stand whole.',
@@ -5718,6 +6343,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Machu Picchu is built',
     country: 'PE',
     kind: 'engineering',
+    fame: 'major',
     year: 1450,
     description:
       'Inca builders fitted stone to stone without mortar on a ridge above the Urubamba — a royal estate the Spanish never found, revealed to the world only four centuries later.',
@@ -5727,6 +6353,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Bolivia's revolution",
     country: 'BO',
     kind: 'revolution',
+    fame: 'minor',
     year: 1952,
     description:
       'Armed miners and peasants broke the army in three days of fighting. The revolution nationalised the tin mines, broke up the great estates and gave every Bolivian adult the vote.',
@@ -5737,6 +6364,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Bolívar's great republic",
     country: 'VE',
     kind: 'nation',
+    fame: 'minor',
     year: 1819,
     description:
       "At Angostura on the Orinoco, Bolívar proclaimed a single republic spanning today's Venezuela, Colombia, Ecuador and Panama — a decade-long experiment whose break-up drew the region's modern borders.",
@@ -5746,6 +6374,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Itaipu dams the Paraná',
     country: 'PY',
     kind: 'engineering',
+    fame: 'minor',
     year: 1982,
     description:
       'Paraguay and Brazil dammed the Paraná together and built what was then the most powerful hydroelectric plant on Earth — it still supplies the overwhelming share of Paraguay’s electricity.',
@@ -5755,6 +6384,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Havana is founded',
     country: 'CU',
     kind: 'nation',
+    fame: 'minor',
     year: 1515,
     description:
       'Founded by Spain and soon moved to its deep northern bay, Havana became the assembly point for every treasure fleet sailing home to Seville — one of the great port cities of the Americas.',
@@ -5764,6 +6394,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A fortress for a free nation',
     country: 'HT',
     kind: 'engineering',
+    fame: 'minor',
     year: 1813,
     description:
       'On a mountaintop after the revolution, Henri Christophe raised the largest fortress in the Americas — built by a nation of freed slaves daring France to return.',
@@ -5773,6 +6404,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Marley joins two rivals on stage',
     country: 'JM',
     kind: 'culture',
+    fame: 'minor',
     year: 1978,
     description:
       'With Kingston in the grip of political gang war, Bob Marley called the rival party leaders on stage and clasped their hands together over his head as the band played.',
@@ -5783,6 +6415,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Karachi is founded',
     country: 'PK',
     kind: 'nation',
+    fame: 'minor',
     year: 1729,
     description:
       'A fishing village called Kolachi fortified its harbour on the Arabian Sea — the seed of the megacity that would become the port, first capital and commercial engine of Pakistan.',
@@ -5792,6 +6425,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A capital built from scratch',
     country: 'PK',
     kind: 'engineering',
+    fame: 'minor',
     year: 1960,
     description:
       'Pakistan moved its capital from coastal Karachi to a master-planned grid at the foot of the Margalla Hills — a purpose-built seat of government, like Brasília rising the very same decade.',
@@ -5802,6 +6436,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'New Zealand women vote first',
     country: 'NZ',
     kind: 'politics',
+    fame: 'minor',
     year: 1893,
     description:
       "After Kate Sheppard's petitions gathered signatures from a quarter of the country's adult women, New Zealand became the first self-governing nation where women could vote.",
@@ -5812,6 +6447,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Middle-earth opens in cinemas',
     country: 'NZ',
     kind: 'culture',
+    fame: 'minor',
     year: 2001,
     description:
       "Peter Jackson shot all three Lord of the Rings films at once across New Zealand's mountains and plains — the trilogy rebuilt the country's film industry and its tourism posters alike.",
@@ -5821,6 +6457,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'A volcano heard around the world',
     country: 'TO',
     kind: 'disaster',
+    fame: 'minor',
     year: 2022,
     description:
       'An undersea volcano near Tonga erupted with a blast heard in Alaska, snapped the kingdom’s only internet cable, and sent a pressure wave that lapped the entire planet several times.',
@@ -5834,6 +6471,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Zheng He's treasure fleet sails",
     country: 'CN',
     kind: 'science',
+    fame: 'minor',
     year: 1405,
     qid: 'Q699127',
     description:
@@ -5844,6 +6482,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Xuanzang writes his journey west',
     country: 'CN',
     kind: 'culture',
+    fame: 'obscure',
     year: 646,
     qid: 'Q1146069',
     description:
@@ -5855,6 +6494,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The pirate republic falls',
     country: 'BS',
     kind: 'politics',
+    fame: 'obscure',
     year: 1718,
     description:
       "For a decade Nassau was run by the pirates themselves — Blackbeard among them — under a rough code of their own. It ended when Woodes Rogers sailed in carrying the King's pardon in one hand and the noose in the other.",
@@ -5865,6 +6505,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Port Royal sinks into the sea',
     country: 'JM',
     kind: 'disaster',
+    fame: 'obscure',
     year: 1692,
     qid: 'Q4191082',
     description:
@@ -5875,6 +6516,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Morant Bay rises',
     country: 'JM',
     kind: 'revolution',
+    fame: 'obscure',
     year: 1865,
     qid: 'Q226032',
     description:
@@ -5885,6 +6527,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Scotland bets itself on Darién',
     country: 'PA',
     kind: 'politics',
+    fame: 'obscure',
     year: 1698,
     qid: 'Q1166080',
     description:
@@ -5895,6 +6538,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Mutiny on the Bounty',
     country: 'TO',
     kind: 'revolution',
+    fame: 'minor',
     year: 1789,
     qid: 'Q749811',
     description:
@@ -5905,6 +6549,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Australia's only military coup",
     country: 'AU',
     kind: 'revolution',
+    fame: 'obscure',
     year: 1808,
     qid: 'Q2065299',
     description:
@@ -5915,6 +6560,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Túpac Amaru II rises against Spain',
     country: 'PE',
     kind: 'revolution',
+    fame: 'obscure',
     year: 1780,
     qid: 'Q1806552',
     description:
@@ -5925,6 +6571,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Kon-Tiki drifts across the Pacific',
     country: 'PE',
     kind: 'science',
+    fame: 'minor',
     year: 1947,
     qid: 'Q66666935',
     description:
@@ -5936,6 +6583,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Songhai takes the Niger bend',
     country: 'ML',
     kind: 'nation',
+    fame: 'obscure',
     year: 1464,
     qid: 'Q202687',
     description:
@@ -5947,6 +6595,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Golden Stool unites Asante',
     country: 'GH',
     kind: 'nation',
+    fame: 'obscure',
     year: 1670,
     description:
       'Around the sacred Golden Stool — said to hold the soul of the nation itself — the Asante clans fused into a single power that dominated the forests of West Africa for two centuries.',
@@ -5957,6 +6606,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Kongo kingdom rises',
     country: 'AO',
     kind: 'nation',
+    fame: 'obscure',
     year: 1395,
     description:
       'South of the great river, Kongo grew into a sophisticated state with provincial governors, tribute and a capital of tens of thousands — soon corresponding king-to-king with Portugal.',
@@ -5966,6 +6616,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Freed Americans land in Africa',
     country: 'LR',
     kind: 'nation',
+    fame: 'minor',
     year: 1822,
     qid: 'Q1014',
     description:
@@ -5976,6 +6627,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Black Pharaohs take Egypt',
     country: 'SD',
     kind: 'nation',
+    fame: 'obscure',
     year: -715,
     description:
       'Kings from Kush, in what is now Sudan, marched north and took the crown of Egypt itself — ruling as pharaohs, reviving pyramid burials, and leaving more pyramids in Sudan than Egypt has.',
@@ -5986,6 +6638,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The first world system collapses',
     country: 'SY',
     kind: 'disaster',
+    fame: 'obscure',
     year: -1200,
     description:
       'Within a generation, the linked palace world of the eastern Mediterranean went down — cities burned from Greece to the Levant. At Ugarit, a clay tablet begging for help was still in the kiln when the city fell.',
@@ -5995,6 +6648,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Baghdad builds a house for knowledge',
     country: 'IQ',
     kind: 'science',
+    fame: 'obscure',
     year: 800,
     description:
       'Abbasid Baghdad gathered translators, astronomers and mathematicians to render Greek, Persian and Indian learning into Arabic — the workshop of a golden age that gave us algebra and algorithms by name.',
@@ -6004,6 +6658,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ferdowsi finishes the Book of Kings',
     country: 'IR',
     kind: 'culture',
+    fame: 'minor',
     year: 1010,
     qid: 'Q8279',
     description:
@@ -6015,6 +6670,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: "Afghanistan's founding empire",
     country: 'AF',
     kind: 'nation',
+    fame: 'obscure',
     year: 1747,
     qid: 'Q467627',
     description:
@@ -6026,6 +6682,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Silla unites Korea',
     country: 'KR',
     kind: 'nation',
+    fame: 'obscure',
     year: 668,
     qid: 'Q715257',
     description:
@@ -6037,6 +6694,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Majapahit rules the archipelago',
     country: 'ID',
     kind: 'nation',
+    fame: 'obscure',
     year: 1293,
     qid: 'Q49326',
     description:
@@ -6048,6 +6706,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Malacca commands the strait',
     country: 'MY',
     kind: 'nation',
+    fame: 'obscure',
     year: 1400,
     qid: 'Q46652',
     description:
@@ -6059,6 +6718,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Ayutthaya is founded',
     country: 'TH',
     kind: 'nation',
+    fame: 'obscure',
     year: 1350,
     qid: 'Q841364',
     description:
@@ -6069,6 +6729,7 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'Shaka forges the Zulu kingdom',
     country: 'ZA',
     kind: 'nation',
+    fame: 'minor',
     year: 1816,
     qid: 'Q729768',
     description:
@@ -6080,9 +6741,924 @@ export const EVENT_SEEDS: EventSeed[] = [
     title: 'The Dragon King is crowned',
     country: 'BT',
     kind: 'nation',
+    fame: 'minor',
     year: 1907,
     qid: 'Q917',
     description:
       'The hill lords of Bhutan gathered to elect Ugyen Wangchuck the first Druk Gyalpo — the Dragon King — founding the dynasty that still reigns in the Himalayan kingdom today.',
+  },
+  // --- Making the favourites playable ---------------------------------------
+  // Chronicle needs four events at least a decade apart before a country can
+  // be dealt. These fill the gaps for countries that had the stories but not
+  // the spread — Sweden most of all.
+
+  // Sweden
+  {
+    name: 'Vasa Museum',
+    title: 'A sunken warship gets her own museum',
+    commons: 'Vasa 14 maj 1961.jpg',
+    country: 'SE',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1990,
+    qid: 'Q901371',
+    // The ship herself (Q219821) carries NO Wikidata time claims — neither
+    // the 1628 sinking nor the 1961 salvage is dated there, so the verifier
+    // rejects both. The museum built around her is dated, and tells the same
+    // story: this is the card, not a compromise.
+    description:
+      "Gustavus Adolphus's warship capsized barely a nautical mile into her 1628 maiden voyage, gilded and top-heavy, in full view of the crowd. Raised almost intact from Stockholm's harbour mud in 1961, she is now the most visited museum in Scandinavia.",
+  },
+  {
+    name: 'Swedish Empire',
+    title: 'Sweden becomes a great power',
+    commons: 'Emil Åberg - Karoliner.jpg',
+    country: 'SE',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1611,
+    qid: 'Q215443',
+    description:
+      'Gustavus Adolphus took the throne of a poor northern kingdom and turned it into the power that dominated the Baltic for a century — the era Swedes still call stormaktstiden, the age of greatness.',
+  },
+  {
+    name: 'Uppsala University',
+    title: 'Uppsala opens its doors',
+    country: 'SE',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1477,
+    qid: 'Q185246',
+    description:
+      'The oldest university in the Nordic countries was founded at Uppsala — where Linnaeus would later name the living world and Celsius would put his name on a temperature scale.',
+  },
+  {
+    name: 'Treaty of Kiel',
+    title: 'Sweden trades Finland for Norway',
+    country: 'SE',
+    kind: 'politics',
+    fame: 'obscure',
+    year: 1814,
+    qid: 'Q156556',
+    description:
+      'Denmark ceded Norway to the Swedish crown at Kiel, five years after Sweden had lost Finland to Russia. The short campaign that followed was the last war Sweden ever fought.',
+  },
+  {
+    name: 'Ericsson',
+    title: 'A telephone workshop opens in Stockholm',
+    country: 'SE',
+    kind: 'engineering',
+    fame: 'minor',
+    year: 1876,
+    qid: 'Q52618',
+    description:
+      'Lars Magnus Ericsson opened a small telegraph repair shop in Stockholm the same year the telephone was patented. It grew into one of the companies that wired — and later un-wired — the world.',
+  },
+  {
+    name: 'Dag Hammarskjold',
+    title: 'A Swede takes charge of the UN',
+    country: 'SE',
+    kind: 'politics',
+    fame: 'obscure',
+    year: 1954,
+    qid: 'Q108700860',
+    description:
+      'Dag Hammarskjöld turned the UN Secretary-General into a real diplomatic force, inventing peacekeeping as he went. He died in a plane crash over Africa on a ceasefire mission, and was given the Nobel Peace Prize posthumously.',
+  },
+  {
+    name: 'Spotify',
+    title: 'Spotify is founded in Stockholm',
+    country: 'SE',
+    kind: 'engineering',
+    fame: 'minor',
+    year: 2006,
+    qid: 'Q689141',
+    description:
+      'Two Swedes built a streaming service to answer music piracy with something more convenient than stealing — and changed how most of the planet listens to music inside a decade.',
+  },
+
+  // Botswana
+  {
+    name: 'Bechuanaland Protectorate',
+    title: 'Three kings sail to London',
+    commons: 'Dikgosis on the 3 dikgosi monument.jpg',
+    country: 'BW',
+    kind: 'politics',
+    fame: 'obscure',
+    year: 1885,
+    qid: 'Q747314',
+    description:
+      "Tswana rulers sought British protection to keep the Boers and Cecil Rhodes's company off their land. Decades later three of their kings sailed to London in person to keep the territory out of Rhodesia's hands.",
+  },
+  {
+    name: 'Orapa diamond mine',
+    title: 'Diamonds under the Kalahari',
+    country: 'BW',
+    kind: 'engineering',
+    fame: 'obscure',
+    year: 1971,
+    qid: 'Q859817',
+    description:
+      'Orapa opened as one of the largest diamond mines in the world. Botswana negotiated half the profits and poured them into schools and clinics — the rare case of a resource windfall that built a country instead of wrecking it.',
+  },
+
+  // Finland
+  {
+    name: 'Grand Duchy of Finland',
+    title: 'Finland leaves Sweden for Russia',
+    country: 'FI',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1809,
+    qid: 'Q62633',
+    description:
+      'After six centuries under the Swedish crown, Finland became an autonomous grand duchy of the Russian tsar — the arrangement that gave Finns their own institutions, and eventually the confidence to leave.',
+  },
+  {
+    name: 'Nokia',
+    title: 'A paper mill on the Nokianvirta',
+    country: 'FI',
+    kind: 'engineering',
+    fame: 'minor',
+    year: 1865,
+    qid: 'Q1418',
+    description:
+      'It began as a pulp mill by a Finnish river, then made rubber boots and cables for a century — before becoming the company that put a mobile phone in half the pockets on Earth.',
+  },
+  {
+    name: '1952 Summer Olympics',
+    title: 'Helsinki hosts the world',
+    country: 'FI',
+    kind: 'culture',
+    fame: 'minor',
+    year: 1952,
+    qid: 'Q8407',
+    description:
+      'Twelve years after the games it lost to war, Helsinki finally hosted — Paavo Nurmi carrying the torch into the stadium, and the Soviet Union competing for the very first time.',
+  },
+  {
+    name: 'Helsinki Accords',
+    title: 'The Cold War signs a truce in Helsinki',
+    country: 'FI',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1975,
+    qid: 'Q318161',
+    description:
+      'Thirty-five states met in Helsinki and signed a bargain: recognised borders in exchange for human-rights commitments. Dissidents behind the Iron Curtain seized those clauses and quoted them back for fifteen years.',
+  },
+
+  // Ireland
+  {
+    name: 'Book of Kells',
+    title: 'The Book of Kells is illuminated',
+    country: 'IE',
+    kind: 'culture',
+    fame: 'minor',
+    year: 800,
+    qid: 'Q204221',
+    description:
+      'Irish monks spent years inking a gospel book of impossible intricacy — spirals, beasts and knotwork so fine that a medieval chronicler called it the work of angels rather than men.',
+  },
+  {
+    name: 'Irish War of Independence',
+    title: 'Ireland fights for a republic',
+    country: 'IE',
+    kind: 'revolution',
+    fame: 'minor',
+    year: 1919,
+    qid: 'Q208297',
+    description:
+      'The elected republicans set up their own parliament and refused to recognise British rule; the guerrilla war that followed ended with a treaty, a partition, and a civil war among the victors.',
+  },
+
+  // Canada
+  {
+    name: 'Statute of Westminster 1931',
+    title: 'The dominions come of age',
+    country: 'CA',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1931,
+    qid: 'Q719883',
+    description:
+      'Westminster gave up the power to legislate for Canada and its fellow dominions — the quiet legal moment when they stopped being colonies and became sovereign countries in law.',
+  },
+
+  // Chile
+  {
+    name: 'Chuquicamata',
+    title: 'The great copper pit opens',
+    country: 'CL',
+    kind: 'engineering',
+    fame: 'minor',
+    year: 1915,
+    qid: 'Q746606',
+    description:
+      'Chuquicamata grew into the largest open-pit copper mine on Earth — a canyon dug by hand and machine in the Atacama, and the industry Chile would nationalise half a century later.',
+  },
+
+  // Vietnam
+  {
+    name: 'Battle of Bach Dang River',
+    title: 'Iron stakes end a thousand years of rule',
+    country: 'VN',
+    kind: 'nation',
+    fame: 'minor',
+    year: 938,
+    qid: 'Q2890760',
+    description:
+      'Ngô Quyền planted iron-tipped stakes in the tidal river, lured the Chinese fleet in at high water, and destroyed it as the tide fell — ending a millennium of northern rule and founding Vietnamese independence.',
+  },
+  {
+    name: 'Nguyen dynasty',
+    title: "Vietnam's last dynasty takes the throne",
+    country: 'VN',
+    kind: 'nation',
+    fame: 'minor',
+    year: 1802,
+    qid: 'Q6500483',
+    description:
+      'Gia Long united the country after decades of civil war and founded the Nguyễn dynasty at Huế, whose citadel and imperial tombs still stand — the last emperors of Vietnam.',
+  },
+
+  // Argentina
+  {
+    name: 'Buenos Aires',
+    title: 'Buenos Aires is founded (again)',
+    country: 'AR',
+    kind: 'nation',
+    fame: 'minor',
+    year: 1580,
+    qid: 'Q1486',
+    description:
+      'Juan de Garay refounded the settlement on the Río de la Plata that a first attempt had abandoned to hunger and attack — this time it stuck, and grew into one of the great cities of the Americas.',
+  },
+  {
+    name: 'Trial of the Juntas',
+    title: 'A country puts its generals on trial',
+    country: 'AR',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1985,
+    qid: 'Q3326225',
+    description:
+      'Two years after the dictatorship fell, Argentina tried its own former commanders in civilian court for the disappearances — the first time in Latin America that a democracy judged its junta.',
+  },
+
+  // Uruguay
+  {
+    name: 'Colonia del Sacramento',
+    title: 'Portugal plants a town across the river',
+    country: 'UY',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1680,
+    qid: 'Q56064',
+    description:
+      'Portugal founded a smuggling port directly opposite Spanish Buenos Aires. It changed hands repeatedly for a century, and its cobbled quarter is the oldest town in the country today.',
+  },
+  {
+    name: 'Montevideo',
+    title: 'Spain answers with Montevideo',
+    country: 'UY',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1726,
+    qid: 'Q1335',
+    description:
+      'Spain fortified a superb natural harbour on the north bank to check Portuguese expansion. The garrison town became the capital — and the country still calls the bay the reason it exists.',
+  },
+  {
+    name: 'Battle of Las Piedras',
+    title: 'Artigas wins at Las Piedras',
+    country: 'UY',
+    kind: 'revolution',
+    fame: 'obscure',
+    year: 1811,
+    qid: 'Q2889112',
+    description:
+      'José Artigas — the national hero, whose creed was that the cause of the people admits not the smallest delay — beat the royalists at Las Piedras and set Uruguay on the road out of empire.',
+  },
+  {
+    name: 'Uruguayan Declaration of Independence',
+    title: 'Uruguay declares independence',
+    country: 'UY',
+    kind: 'nation',
+    fame: 'minor',
+    year: 1825,
+    qid: 'Q5801144',
+    description:
+      'The Thirty-Three Orientals landed with a handful of men and declared the province free of Brazil; three years of war later, Britain brokered a settlement and Uruguay existed as a buffer state between two giants.',
+  },
+  {
+    name: 'Uruguayan Civil War',
+    title: 'The Guerra Grande begins',
+    commons: 'Defensa de Montevideo.jpg',
+    country: 'UY',
+    kind: 'conflict',
+    fame: 'obscure',
+    year: 1839,
+    qid: 'Q2672972',
+    description:
+      'Reds against Whites — the parties that still contest Uruguayan elections — fought a war that drew in Argentina, Brazil, France and Britain, and left Montevideo under a siege lasting nearly nine years.',
+  },
+  // Denmark
+  {
+    name: 'Carlsberg Group',
+    title: 'A brewery funds a science empire',
+    country: 'DK',
+    kind: 'science',
+    fame: 'minor',
+    year: 1847,
+    qid: 'Q113215',
+    description:
+      'J. C. Jacobsen founded Carlsberg on a hill outside Copenhagen and poured the profits into a laboratory that isolated pure brewing yeast and invented the pH scale — then gave the science away free.',
+  },
+  {
+    name: 'Lego',
+    title: 'A carpenter starts making toys',
+    country: 'DK',
+    kind: 'culture',
+    fame: 'minor',
+    year: 1932,
+    qid: 'Q1063455',
+    description:
+      'A Jutland carpenter turned to wooden toys in the Depression and named the firm from leg godt — play well. The interlocking plastic brick came two decades later and never stopped.',
+  },
+  {
+    name: 'Rescue of the Danish Jews',
+    title: 'A country ferries its Jews to safety',
+    country: 'DK',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1943,
+    qid: 'Q514188',
+    description:
+      'Warned of the coming round-up, Danes hid their Jewish neighbours and ran them across the sound to neutral Sweden in fishing boats — over seven thousand people, almost the whole community, saved in weeks.',
+  },
+  {
+    name: 'Øresund Bridge',
+    title: 'A bridge to another country',
+    country: 'DK',
+    kind: 'engineering',
+    fame: 'minor',
+    year: 1999,
+    qid: 'Q297871',
+    description:
+      'Copenhagen and Malmö were joined by a link that runs as a bridge, dives into a tunnel through an artificial island, and made two countries into one commuter region.',
+  },
+
+  // Czechia
+  {
+    name: 'Golden Bull of Sicily',
+    title: 'Bohemia is made a kingdom',
+    country: 'CZ',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1212,
+    qid: 'Q2363601',
+    description:
+      'The emperor granted the Přemyslid dukes a hereditary royal crown and near-autonomy inside the empire — the charter that made Bohemia a kingdom rather than a duchy.',
+  },
+  {
+    name: 'Charles University',
+    title: 'Prague founds a university',
+    country: 'CZ',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1348,
+    qid: 'Q31519',
+    description:
+      'Charles IV founded the first university north of the Alps and east of Paris, turning his capital into the intellectual centre of the empire he ruled from it.',
+  },
+  {
+    name: 'Charles Bridge',
+    title: 'The Charles Bridge is begun',
+    country: 'CZ',
+    kind: 'engineering',
+    fame: 'obscure',
+    year: 1357,
+    qid: 'Q204871',
+    description:
+      'Charles IV laid the first stone at an hour chosen by astrologers — a palindrome of odd numbers. The bridge carried every coronation procession for four centuries and still carries the crowds.',
+  },
+  {
+    name: 'Prague Astronomical Clock',
+    title: 'The Prague clock starts ticking',
+    country: 'CZ',
+    kind: 'engineering',
+    fame: 'obscure',
+    year: 1410,
+    qid: 'Q729370',
+    description:
+      'The oldest astronomical clock still running shows the sun and moon wheeling through the zodiac, and on the hour Death rings his bell while the apostles file past — six centuries and counting.',
+  },
+  {
+    name: 'Bata Limited',
+    title: 'The shoemaker who built a town',
+    country: 'CZ',
+    kind: 'engineering',
+    fame: 'obscure',
+    year: 1894,
+    qid: 'Q688082',
+    description:
+      "Tomáš Baťa's shoe firm grew into one of the world's largest, and he rebuilt Zlín around it — a company town of red-brick modernism, schools and cinemas that architects still study.",
+  },
+  {
+    name: 'R.U.R.',
+    title: 'A play invents the word robot',
+    country: 'CZ',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1920,
+    qid: 'Q1164094',
+    description:
+      "Karel Čapek's play about manufactured workers who rise against their makers gave every language on Earth the word robot — from robota, the old Czech term for forced labour.",
+  },
+  {
+    name: 'Mayerling incident',
+    title: 'The heir to Austria dies at Mayerling',
+    country: 'AT',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1889,
+    qid: 'Q1260137',
+    description:
+      'Crown Prince Rudolf and his teenage mistress were found dead in a hunting lodge in the Vienna Woods. The court fumbled the story so badly that the truth is still argued over — and the Habsburg succession passed to the nephew who would be shot at Sarajevo.',
+  },
+  {
+    name: 'Battle of Clontarf',
+    title: 'Brian Boru breaks the Norse at Clontarf',
+    country: 'IE',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1014,
+    qid: 'Q868027',
+    description:
+      "Ireland's high king beat a Norse-Leinster alliance outside Dublin on Good Friday and was cut down in his tent at the moment of victory — the battle that ended Viking power on the island and made Brian Boru a legend.",
+  },
+  {
+    name: 'Viceroyalty of the Río de la Plata',
+    title: 'Spain draws a viceroyalty round the Plata',
+    country: 'AR',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1776,
+    qid: 'Q210551',
+    description:
+      'Madrid carved a new viceroyalty out of Peru with Buenos Aires as its capital, to guard the silver route and hold off the Portuguese — the administrative shape that Argentina, Uruguay, Paraguay and Bolivia all emerged from.',
+  },
+  {
+    name: 'Vienna State Opera house',
+    title: 'Vienna opens its opera house',
+    country: 'AT',
+    kind: 'culture',
+    fame: 'minor',
+    year: 1869,
+    qid: 'Q209937',
+    description:
+      "The Ringstrasse's new opera house opened with Don Giovanni. Critics savaged the building so hard that one architect took his own life — and it went on to become the most famous opera house in the world.",
+  },
+  {
+    name: 'Austrian State Treaty',
+    title: 'Austria buys its freedom with neutrality',
+    country: 'AT',
+    kind: 'politics',
+    fame: 'minor',
+    year: 1955,
+    qid: 'Q306535',
+    description:
+      'Ten years under four-power occupation ended when Austria promised permanent neutrality. The foreign minister held the signed treaty up from the Belvedere balcony to a roaring crowd, and the last soldiers went home.',
+  },
+  {
+    name: 'Trinity College, Dublin',
+    title: 'Dublin gets its university',
+    country: 'IE',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1592,
+    qid: 'Q258464',
+    description:
+      'Elizabeth I chartered a college on the site of a dissolved priory. Its library later won the right to a copy of every book published in Britain and Ireland — and keeps the Book of Kells on display.',
+  },
+  {
+    name: 'Gaelic Athletic Association',
+    title: 'Ireland organises its own games',
+    country: 'IE',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1884,
+    qid: 'Q548520',
+    description:
+      'Founded in a Thurles billiard room to codify hurling and Gaelic football against the spread of English sports, the GAA became the largest amateur sporting body in Europe — and a nursery of Irish nationalism.',
+  },
+  {
+    name: 'Chobe National Park',
+    title: "Botswana fences off the elephants' river",
+    country: 'BW',
+    kind: 'science',
+    fame: 'obscure',
+    year: 1967,
+    qid: 'Q859389',
+    description:
+      'A year after independence the new country protected the Chobe riverfront, home to one of the densest elephant populations on Earth — tens of thousands come down to drink in the dry season.',
+  },
+  {
+    name: 'University of Botswana',
+    title: 'Botswana builds its own university',
+    country: 'BW',
+    kind: 'culture',
+    fame: 'obscure',
+    year: 1982,
+    qid: 'Q493141',
+    description:
+      'A country that had barely a handful of university graduates at independence opened its own campus in Gaborone, funded in part by citizens who donated cattle to pay for it.',
+  },
+  {
+    name: 'Tunisian independence',
+    title: 'Tunisia leaves the French empire',
+    country: 'TN',
+    kind: 'nation',
+    fame: 'minor',
+    year: 1956,
+    qid: 'Q7853205',
+    description:
+      "Habib Bourguiba negotiated the protectorate away without a war of the kind raging next door in Algeria, then set about writing the Arab world's most liberal family code within months of taking power.",
+  },
+  {
+    name: 'Regency of Algiers',
+    title: 'The corsair regency rises at Algiers',
+    country: 'DZ',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1516,
+    qid: 'Q3045696',
+    description:
+      'The Barbarossa brothers took Algiers and put it under Ottoman protection, founding a regency whose corsairs raided as far as Iceland and made European states pay tribute for three centuries.',
+  },
+  {
+    name: 'French conquest of Algeria',
+    title: 'France invades Algeria',
+    country: 'DZ',
+    kind: 'conflict',
+    fame: 'minor',
+    year: 1830,
+    qid: 'Q2629782',
+    description:
+      'A diplomatic slight involving a fly-whisk gave Charles X his pretext. The invasion began 132 years of French rule and a settler colony unlike any other in Africa.',
+  },
+  {
+    name: 'Algerian War',
+    title: 'Algeria takes up arms',
+    country: 'DZ',
+    kind: 'revolution',
+    fame: 'minor',
+    year: 1954,
+    qid: 'Q200790',
+    description:
+      "The FLN launched coordinated attacks on All Saints' Day and began a war so brutal it destroyed the French Fourth Republic before it won Algeria its independence eight years later.",
+  },
+  {
+    name: 'Almoravid dynasty',
+    title: 'The Almoravids sweep out of the Sahara',
+    country: 'MA',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1040,
+    qid: 'Q75613',
+    description:
+      'A Berber religious movement from the desert built an empire from Senegal to Spain, founded Marrakesh as its capital, and minted a gold dinar that became the trusted currency of the western Mediterranean.',
+  },
+  {
+    name: 'Almohad Caliphate',
+    title: 'The Almohads take Marrakesh',
+    country: 'MA',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1121,
+    qid: 'Q199688',
+    description:
+      'The Almohads replaced the Almoravids and ruled from Marrakesh to Tripoli. Their minaret in Marrakesh set the template copied by the Giralda in Seville and the Hassan Tower in Rabat.',
+  },
+  {
+    name: 'Treaty of Fes',
+    title: 'Morocco becomes a protectorate',
+    country: 'MA',
+    kind: 'politics',
+    fame: 'obscure',
+    year: 1912,
+    qid: 'Q931982',
+    description:
+      'The sultan signed away Moroccan sovereignty to France under duress, splitting the country into French and Spanish zones — an arrangement that lasted until independence in 1956.',
+  },
+  {
+    name: 'Congo Free State',
+    title: 'A king takes a country as private property',
+    country: 'CD',
+    kind: 'politics',
+    fame: 'obscure',
+    year: 1885,
+    qid: 'Q76048',
+    description:
+      'The Berlin Conference recognised the Congo as the personal possession of Leopold II of Belgium — not a colony but a private estate, run for rubber and ivory with a savagery that became an international scandal.',
+  },
+  {
+    name: 'Kinshasa',
+    title: 'A trading post on the Congo',
+    country: 'CD',
+    kind: 'nation',
+    fame: 'obscure',
+    year: 1881,
+    qid: 'Q3838',
+    description:
+      "Henry Morton Stanley founded a station at the river's navigable head and named it for his patron. Léopoldville grew into Kinshasa — today one of the largest cities on Earth and the biggest French-speaking one.",
+  },
+  {
+    name: 'Rwanda',
+    title: 'Rwanda becomes independent',
+    country: 'RW',
+    kind: 'nation',
+    fame: 'minor',
+    year: 1962,
+    qid: 'Q1037',
+    description:
+      'Belgian rule ended and Rwanda became a republic — the colonial identity cards that fixed Hutu and Tutsi as rigid categories outlived the colonisers by three decades.',
+  },
+  {
+    name: 'Rwandan Revolution',
+    title: "Rwanda's monarchy is overthrown",
+    country: 'RW',
+    kind: 'revolution',
+    fame: 'minor',
+    year: 1959,
+    qid: 'Q4162685',
+    description:
+      'Violence against the Tutsi monarchy ended centuries of kingship and drove hundreds of thousands into exile — refugees whose children would return as the RPF a generation later.',
+  },
+  {
+    name: 'Kairouan',
+    title: 'Kairouan is founded in the desert',
+    country: 'TN',
+    kind: 'nation',
+    year: 670,
+    qid: 'Q179570',
+    fame: 'obscure',
+    description:
+      'An Arab general founded a garrison city on the dry plain that became the fourth holiest city in Islam, and the base from which the Maghreb and Spain were taken.',
+  },
+  {
+    name: 'Hafsid dynasty',
+    title: 'The Hafsids rule from Tunis',
+    country: 'TN',
+    kind: 'nation',
+    year: 1229,
+    qid: 'Q752662',
+    fame: 'obscure',
+    description:
+      'Breaking from the Almohads, the Hafsids made Tunis a Mediterranean capital rich on trans-Saharan gold and the corsair trade — the state Ibn Khaldun served and wrote about.',
+  },
+  {
+    name: 'Emirate of Abdelkader',
+    title: 'Abdelkader raises the Algerian resistance',
+    country: 'DZ',
+    kind: 'revolution',
+    year: 1832,
+    qid: 'Q3591817',
+    fame: 'obscure',
+    description:
+      'Emir Abdelkader built a state from tribal alliances and fought the French for fifteen years — so respected an adversary that his later rescue of Damascus Christians won medals from three continents.',
+  },
+  {
+    name: 'Zaire',
+    title: 'Mobutu renames the country Zaire',
+    country: 'CD',
+    kind: 'politics',
+    year: 1971,
+    qid: 'Q6500954',
+    fame: 'minor',
+    description:
+      "Mobutu's authenticity campaign renamed the country, its river and its citizens, banned Western suits and took a name of his own meaning the all-powerful warrior who leaves fire in his wake.",
+  },
+  {
+    name: '1994 Genocide against Tutsi',
+    title: 'The genocide against the Tutsi',
+    country: 'RW',
+    kind: 'conflict',
+    year: 1994,
+    qid: 'Q131297',
+    fame: 'major',
+    description:
+      'In a hundred days around a million Tutsi and moderate Hutu were murdered, mostly by neighbours with machetes, while a UN force stood by under orders not to intervene.',
+  },
+  {
+    name: 'Nyungwe Forest',
+    title: 'Rwanda protects its cloud forest',
+    country: 'RW',
+    kind: 'science',
+    year: 2004,
+    qid: 'Q1356828',
+    fame: 'obscure',
+    description:
+      'One of the oldest rainforests in Africa, holding a source of the Nile and thirteen kinds of primate, became a national park a decade after the genocide — a bet on conservation as recovery.',
+  },
+  {
+    name: 'The Travels of Marco Polo',
+    title: 'Marco Polo brings back tales of the East',
+    country: 'IT',
+    kind: 'culture',
+    year: 1298,
+    fame: 'major',
+    qid: 'Q654562',
+    description:
+      "Dictated to a cellmate in a Genoese prison, the Venetian's account of Kublai Khan's court and the wealth of the East was read as half fable — and two centuries later Columbus sailed with a heavily annotated copy.",
+  },
+  {
+    name: 'Inca Empire',
+    title: 'The Inca build their empire',
+    country: 'PE',
+    kind: 'nation',
+    year: 1438,
+    fame: 'major',
+    qid: 'Q28573',
+    description:
+      'Pachacuti turned a valley kingdom into the largest empire the Americas ever saw — held together without the wheel, without money and without writing, by roads, knotted cords and rotating labour.',
+  },
+  {
+    name: 'English Civil War',
+    title: 'England turns on its king',
+    country: 'GB',
+    kind: 'revolution',
+    year: 1642,
+    fame: 'major',
+    qid: 'Q80330',
+    description:
+      'Parliament raised an army against Charles I. Seven years later it executed him in front of his own banqueting house — the moment a European monarchy was tried and killed by its own subjects.',
+  },
+  {
+    name: 'Watt steam engine',
+    title: 'Watt patents his steam engine',
+    country: 'GB',
+    kind: 'engineering',
+    year: 1776,
+    fame: 'major',
+    qid: 'Q3099902',
+    description:
+      "James Watt's separate condenser made steam power efficient enough to drive factories rather than just pump out mines — the engine that turned coal into the Industrial Revolution.",
+  },
+  {
+    name: 'Jikji',
+    title: 'Korea prints with movable metal type',
+    country: 'KR',
+    kind: 'engineering',
+    year: 1377,
+    fame: 'minor',
+    qid: 'Q494611',
+    description:
+      'Monks at a Korean temple printed a Buddhist anthology with movable metal type — the oldest such book that survives, made seventy-eight years before Gutenberg printed his Bible.',
+  },
+  {
+    name: 'Peace of Augsburg',
+    title: 'Whose realm, his religion',
+    country: 'DE',
+    kind: 'politics',
+    year: 1555,
+    fame: 'minor',
+    qid: 'Q154577',
+    description:
+      'The empire ended decades of religious war with a formula — cuius regio, eius religio — that let each prince choose Lutheran or Catholic for his own lands, and made faith a matter of borders.',
+  },
+  {
+    name: 'Council of Trent',
+    title: 'Rome answers the Reformation',
+    country: 'IT',
+    kind: 'culture',
+    year: 1545,
+    fame: 'minor',
+    qid: 'Q172991',
+    description:
+      'The Catholic Church met for eighteen years to define doctrine against Protestantism, reform its clergy and commission the art of the Counter-Reformation — the shape Catholicism kept for four centuries.',
+  },
+  {
+    name: 'Weimar Republic',
+    title: 'Germany becomes a republic',
+    commons: 'Scheidemann proclaiming the Republic in front of the Reichstag (4688558376).jpg',
+    country: 'DE',
+    kind: 'nation',
+    year: 1918,
+    fame: 'major',
+    qid: 'Q41304',
+    description:
+      "With the fleet in mutiny and the Kaiser gone, a socialist proclaimed a republic from a Reichstag window — hours before a communist proclaimed a rival one down the road. Germany's first democracy began as a race between two balconies.",
+  },
+  {
+    name: 'Hyperinflation in the Weimar Republic',
+    title: 'A wheelbarrow of money buys a loaf',
+    country: 'DE',
+    kind: 'disaster',
+    year: 1923,
+    fame: 'major',
+    qid: 'Q695052',
+    description:
+      'Prices doubled every few days until a single US dollar cost more than four trillion marks. Savings evaporated, workers were paid twice a day and paid it away at once — and the German middle class stopped believing in the republic.',
+  },
+  {
+    name: 'Reichstag fire',
+    title: 'The Reichstag burns',
+    country: 'DE',
+    kind: 'politics',
+    year: 1933,
+    fame: 'major',
+    qid: 'Q153992',
+    description:
+      'Parliament burned four weeks after Hitler took office. Emergency decrees signed the next morning suspended civil liberties and never lapsed — the hinge on which a chancellorship became a dictatorship.',
+  },
+  {
+    name: 'Night of the Long Knives',
+    title: 'The Night of the Long Knives',
+    country: 'DE',
+    kind: 'politics',
+    year: 1934,
+    fame: 'minor',
+    qid: 'Q130783',
+    description:
+      'Hitler had the leaders of his own paramilitary murdered over one weekend, along with old rivals. The army swore a personal oath to him weeks later, and the last check on his power was gone.',
+  },
+  {
+    name: 'Munich agreement',
+    title: 'Peace for our time',
+    country: 'DE',
+    kind: 'politics',
+    year: 1938,
+    fame: 'major',
+    qid: 'Q154255',
+    description:
+      'Britain and France handed Hitler the Czechoslovak borderlands without asking Czechoslovakia. Chamberlain came home waving the paper and promising peace; the country he had carved up was occupied within six months.',
+  },
+  {
+    name: 'Diet of Worms',
+    title: 'Here I stand',
+    country: 'DE',
+    kind: 'culture',
+    year: 1521,
+    fame: 'major',
+    qid: 'Q536822',
+    description:
+      'Ordered by the emperor to recant, Luther refused before the assembled empire. Declared an outlaw, he was spirited away to a castle where he translated the New Testament into German — and gave the language its modern shape.',
+  },
+  {
+    name: 'Genpei War',
+    title: 'The samurai take Japan',
+    country: 'JP',
+    kind: 'nation',
+    year: 1180,
+    fame: 'minor',
+    qid: 'Q737542',
+    description:
+      'The Minamoto broke the Taira and left the emperor a figurehead in Kyoto while a warrior government ruled from Kamakura — the start of nearly seven centuries of shogun rule.',
+  },
+  {
+    name: 'Uruk period',
+    title: 'The world builds its first city',
+    country: 'IQ',
+    kind: 'nation',
+    year: -4000,
+    fame: 'minor',
+    qid: 'Q731494',
+    description:
+      'On the Euphrates, Uruk grew into something no one had built before: tens of thousands of strangers living together behind a wall, inventing the bureaucracy, the seal and the written sign to keep track of it all.',
+  },
+  {
+    name: 'Liverpool and Manchester Railway',
+    title: 'The railway age begins',
+    country: 'GB',
+    kind: 'engineering',
+    year: 1830,
+    fame: 'minor',
+    qid: 'Q1398696',
+    description:
+      "The first railway to run only on steam, to timetable, between two great cities. Opening day was marred when an MP stepped onto the track and was run down by the Rocket — the world's first widely reported rail fatality.",
+  },
+  {
+    name: 'Battle of Chacabuco',
+    title: 'San Martín crosses the Andes',
+    country: 'CL',
+    kind: 'revolution',
+    year: 1817,
+    fame: 'minor',
+    qid: 'Q1425658',
+    description:
+      'San Martín took an army over 4,000-metre Andean passes — losing a third of his horses and mules — and fell on the royalists at Chacabuco, opening the road to Santiago and Chilean independence.',
+  },
+  {
+    name: 'Henry Morton Stanley',
+    title: 'Dr Livingstone, I presume',
+    country: 'TZ',
+    kind: 'culture',
+    year: 1872,
+    fame: 'minor',
+    qid: 'Q55014217',
+    description:
+      'Sent by a New York paper to find a missionary nobody had heard from in years, Stanley met him at Ujiji on Lake Tanganyika with a line so composed that people have doubted it ever since.',
   },
 ]
