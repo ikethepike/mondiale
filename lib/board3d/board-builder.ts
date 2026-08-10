@@ -869,11 +869,7 @@ export const markerGapFor = (index: number, chords: number[], tileRadius: number
  * whole neighbouring tile — and standing at the top face is what actually
  * fixed the intersection.
  */
-export const markerFitFactor = (
-  parts: MarkerPart[],
-  tileRadius: number,
-  gap: number
-): number => {
+export const markerFitFactor = (parts: MarkerPart[], tileRadius: number, gap: number): number => {
   let depth = 0
   for (const part of parts) {
     part.geometry.computeBoundingBox()

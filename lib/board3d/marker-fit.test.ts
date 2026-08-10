@@ -136,8 +136,14 @@ describe('a hurdle sits in the gap it was measured for', () => {
           // board length and seed, with at least half a unit to spare ahead.
           const toOwnEdge = anchor.distanceTo(position) - tileRadius
           const toNextEdge = anchor.distanceTo(transforms[index + 1].position) - tileRadius
-          expect(toOwnEdge, `${seed}/${count} at ${index} is inside its own disc`).toBeGreaterThanOrEqual(-1e-6)
-          expect(toNextEdge, `${seed}/${count} at ${index} is inside the next disc`).toBeGreaterThan(0)
+          expect(
+            toOwnEdge,
+            `${seed}/${count} at ${index} is inside its own disc`
+          ).toBeGreaterThanOrEqual(-1e-6)
+          expect(
+            toNextEdge,
+            `${seed}/${count} at ${index} is inside the next disc`
+          ).toBeGreaterThan(0)
         }
       }
     }
@@ -146,19 +152,28 @@ describe('a hurdle sits in the gap it was measured for', () => {
   it('never sprawls across a whole neighbouring tile', () => {
     // The cap is deliberately generous: a hurdle SHOULD overhang the discs it
     // bars. It only stops a marker reaching past the neighbour's far side.
+    //
+    // Marker geometry is rebuilt per (type, spacing) OUTSIDE the tile loop —
+    // building it per tile is thousands of lathes and extrusions and blew the
+    // 5s timeout on CI. Same coverage, one build per board.
     for (const seed of SEEDS) {
       for (const count of LENGTHS) {
         const { chords, spacing } = pathFor(seed, count)
         const tileRadius = spacing * TILE_RADIUS_RATIO
+        const measured = GATE_TYPES.map(type => {
+          const box = boxOf(type, spacing)
+          return {
+            type,
+            parts: markerPartsFor(type, spacing, undefined, 5),
+            depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
+          }
+        })
 
         for (let index = 1; index < count - 1; index++) {
           const gap = markerGapFor(index, chords, tileRadius)
-          for (const type of GATE_TYPES) {
-            const parts = markerPartsFor(type, spacing, undefined, 5)
+          for (const { type, parts, depth } of measured) {
             const fit = markerFitFactor(parts, tileRadius, gap)
-            const box = boxOf(type, spacing)
-            const depth = Math.max(Math.abs(box.min.z), Math.abs(box.max.z)) * fit
-            expect(depth, `${seed}/${count} ${type} at ${index}`).toBeLessThanOrEqual(
+            expect(depth * fit, `${seed}/${count} ${type} at ${index}`).toBeLessThanOrEqual(
               gap / 2 + tileRadius + 1e-6
             )
           }
@@ -174,10 +189,13 @@ describe('a hurdle sits in the gap it was measured for', () => {
       for (const count of LENGTHS) {
         const { chords, spacing } = pathFor(seed, count)
         const tileRadius = spacing * TILE_RADIUS_RATIO
+        const parts = GATE_TYPES.map(
+          type => [type, markerPartsFor(type, spacing, undefined, 5)] as const
+        )
         for (let index = 1; index < count - 1; index++) {
           const gap = markerGapFor(index, chords, tileRadius)
-          for (const type of GATE_TYPES) {
-            const fit = markerFitFactor(markerPartsFor(type, spacing, undefined, 5), tileRadius, gap)
+          for (const [type, geometry] of parts) {
+            const fit = markerFitFactor(geometry, tileRadius, gap)
             expect(fit, `${seed}/${count} ${type}`).toBeGreaterThan(0.5)
             expect(fit).toBeLessThanOrEqual(1)
           }

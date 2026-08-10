@@ -232,9 +232,9 @@ describe('round beats', () => {
     // ...and with room to spare. The lead used to sit EXACTLY on the total,
     // so the fit passed while any retune of the card pushed the first hop
     // behind it. Slack is the invariant, not mere non-overlap.
-    expect(WALK_LEAD_MS - (MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS)).toBeGreaterThanOrEqual(
-      WALK_LEAD_HEADROOM_MS
-    )
+    expect(
+      WALK_LEAD_MS - (MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS)
+    ).toBeGreaterThanOrEqual(WALK_LEAD_HEADROOM_MS)
     expect(MOVE_INTERSTITIAL_TOTAL_MS).toBe(
       MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
     )
