@@ -23,7 +23,7 @@
       <!-- Chips land one at a time as the clock crosses each threshold. `hint`
            rather than the generic `chain`: no -move rule, so an arriving chip
            cannot animate its neighbours sideways. -->
-      <TransitionGroup v-if="!settled" tag="ul" name="hint" class="hints">
+      <TransitionGroup v-if="!settled" tag="ul" name="hint" class="hints hint-ladder">
         <slot name="hints" />
       </TransitionGroup>
 
@@ -69,8 +69,6 @@ const dock = ref<InstanceType<typeof AudioDock>>()
 defineExpose({ stop: () => dock.value?.stop() })
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
-
 .audio-scene {
   flex: 1;
   display: flex;
@@ -108,41 +106,6 @@ defineExpose({ stop: () => dock.value?.stop() })
   z-index: 1;
 }
 
-// Reserves a chip's height from the start, so the first arrival lands in space
-// already held rather than pushing the stage around it.
-.hints {
-  gap: 0.8rem;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  min-height: 3rem;
-  list-style: none;
-  align-items: center;
-  flex-flow: row wrap;
-  pointer-events: auto;
-  justify-content: center;
-}
-
-// The chip recipe both modes share. Deliberately NOT `.hint-row`/`.hint-button`
-// from `_hint-chip.scss` — that is the paid-hint shop, a different thing that
-// happens to share a word.
-// `:deep` because the chips arrive through a slot, so they carry the parent's
-// scope id rather than this one's.
-.hints :deep(.hint-chip) {
-  gap: 0.6rem;
-  display: flex;
-  padding: 0.5rem 1.2rem;
-  font-size: 1.3rem;
-  font-weight: 600;
-  align-items: center;
-  // Chips arrive one at a time, so each centres its own contents — a lone
-  // swatch row would otherwise sit left of the dock it hangs under.
-  text-align: center;
-  justify-content: center;
-  border-radius: 2rem;
-  color: var(--soft-blue);
-  background: #{milk(0.72)};
-  // Entrance belongs to the TransitionGroup, not to the chip — a CSS animation
-  // here would replay on every re-render and fight the landing.
-}
+// Box and chip recipe both live in `templates/_hint-ladder.scss`, shared with
+// flashpoint's ladder — see the warning there about the paid-hint shop.
 </style>

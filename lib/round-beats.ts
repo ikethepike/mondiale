@@ -24,6 +24,14 @@ export const FIRST_TURN_GRACE_MS = 4000
 /** How long a briefing (the click-away rules cards manhunt and unique-or-bust
  *  open on) may hold before the round starts regardless. */
 export const BRIEFING_CAP_MS = 30000
+/** How long an audio round may sit on its play button before the settle
+ *  backstop stops waiting. The clip only starts when the player taps — iOS
+ *  refuses autoplay outright — so the window is `durationSeconds` measured
+ *  FROM that tap, and the server budget covers the wait as well as the play.
+ *  Bounded like a briefing cap: a seat that never taps is still swept. Kept
+ *  distinct from BRIEFING_CAP_MS on purpose — a briefing is a beat the SERVER
+ *  knows about (`state.briefing` rides the snapshot), a play gate is local. */
+export const PLAY_GATE_CAP_MS = 15000
 /** Border Chain's dead-end hold: long enough for the table to read the closed
  *  doors and see that the trapped player truly had no move. The client's
  *  overlay reads this too — one beat, one constant. */
@@ -225,6 +233,19 @@ export interface RoundBeatSpec {
   browseCapMs?: number
   /** Click-away rules card before play (manhunt/unique pattern); capped. */
   briefingCapMs?: number
+  /** The play window opens on a LOCAL gesture, not at the round reveal: the
+   *  audio rounds wait, silent and stopped, for the play tap iOS requires.
+   *  Two consequences, both owned here:
+   *   • the client's countdown is a pure local decrement from that tap —
+   *     `round.deadline` measures a window that had not opened yet, so
+   *     pinning the clock to it burns the player's wait;
+   *   • the server's settle budget widens by this allowance, so a seat still
+   *     legitimately mid-clip is never force-banked a zero.
+   *  Bounded on purpose: a seat that never taps settles at deadline + this.
+   *  A gated kind must stay OUT of `KIND_MOUNTABLE` (lib/spectate.ts) —
+   *  watch-mode ambience calls `begin()` off the round number, and no
+   *  spectator ever taps the play button a gated clock waits for. */
+  playGateMs?: number
   // Future beats (a twist, a bonus, a second guess window) are added HERE as
   // named optional fields — never as a view-local timer or a per-engine
   // constant. Every beat needs a server-owned exit and a rearm branch.
@@ -244,8 +265,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   traversal: { owner: 'classic', revealHoldMs: 1200 },
   'neighbour-blitz': { owner: 'classic', revealHoldMs: 0 },
   silhouette: { owner: 'classic', revealHoldMs: 4000 },
-  'anthem-buzz': { owner: 'classic', revealHoldMs: 7000 },
-  'tongue-buzz': { owner: 'classic', revealHoldMs: 7000 },
+  // The two audio kinds: no `playSeconds` (their play length genuinely IS
+  // `durationSeconds`), but a play gate — the clock starts on the tap.
+  'anthem-buzz': { owner: 'classic', revealHoldMs: 7000, playGateMs: PLAY_GATE_CAP_MS },
+  'tongue-buzz': { owner: 'classic', revealHoldMs: 7000, playGateMs: PLAY_GATE_CAP_MS },
   'hot-cold': { owner: 'classic', revealHoldMs: 1200 },
   sketch: { owner: 'classic', revealHoldMs: 0 },
   'stat-detective': {
@@ -327,10 +350,31 @@ export const revealBudgetMsFor = (challenge: RoundChallenge | undefined): number
   return spec.revealHoldMs + (spec.browseCapMs ?? 0)
 }
 
+/** The pre-play allowance a kind's window opens behind; 0 where the clock
+ *  starts at the reveal. Rides the PLAY budget (it is time before the
+ *  answer), never `revealBudgetMsFor` — counting it in both double-counts. */
+export const playGateMsFor = (challenge: RoundChallenge | undefined): number =>
+  roundBeats(challenge).playGateMs ?? 0
+
+/**
+ * Whether the client's countdown may read `round.deadline`. False where the
+ * stamp does not measure this very countdown, for either of two reasons: a
+ * derived multi-beat budget (empire, flashpoint, stat-detective) stamps the
+ * WHOLE round, and a play-gated kind's window had not opened when the stamp
+ * was made. Both cases run the local decrement; the server settle backstops
+ * them. One home for the question — call sites never re-test the parts.
+ */
+export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): boolean => {
+  const spec = roundBeats(challenge)
+  return spec.playSeconds === undefined && spec.playGateMs === undefined
+}
+
 /**
  * A classic round's play length in seconds, or undefined when the kind is
  * untimed (no challenge clock, no derived total) — the server then applies
- * `UNTIMED_CLASSIC_CAP_SECONDS` under the cap switch.
+ * `UNTIMED_CLASSIC_CAP_SECONDS` under the cap switch. The play GATE is not
+ * part of this: a gated kind still plays for exactly this long once the clip
+ * starts, and only the server's budget covers the wait before it.
  */
 export const classicPlaySeconds = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge) return undefined

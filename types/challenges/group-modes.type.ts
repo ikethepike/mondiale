@@ -181,6 +181,25 @@ export interface WaterBlitzChallenge {
 }
 
 /**
+ * The flashpoint hint ladder, vague → sharp. Every rung is built from UCDP
+ * fields that cannot name the answer: `type`, `incompatibility`, `episodes`
+ * and the country-level metrics. The fields that DO name it — `name` (the
+ * location string), `sideA` ("Government of <answer>") and `territory`
+ * (Kashmir, Chechnya, Basque…) — are never read, so the copy is owner-free by
+ * construction rather than by scrubbing.
+ */
+export type FlashpointHintKind = 'onset' | 'shape' | 'tempo' | 'scale' | 'bounds'
+
+export interface FlashpointHint {
+  kind: FlashpointHintKind
+  /** Rendered copy. Absent on `bounds` — the view draws that one. */
+  text?: string
+  /** `bounds` only: the neighbours whose outlines sketch in around the dots.
+   *  Never the answer's own shape — that would end the round. */
+  neighbours?: ISOCountryCode[]
+}
+
+/**
  * A country's recorded conflict history draws itself onto the blanked map as
  * dots, era by era (UCDP GED). Name the country — the earlier, the more it's
  * worth. Dot geometry stays client-side in data/conflict-events.gen; only the
@@ -197,10 +216,13 @@ export interface FlashpointChallenge {
   options?: ISOCountryCode[]
   /** Picks allowed before the round resolves. Set only with `options`. */
   maximumGuesses?: number
-  /** Non-hard mode helper, revealed once the last wave has landed: the
-   *  defining conflict's start year + type + incompatibility, name withheld.
-   *  Absent in hard mode. */
-  hint?: string
+  /** The ladder, in reveal order, unlocking one per `secondsPerHint` once the
+   *  last wave has landed. Hard mode — the only difficulty that deals this
+   *  kind in auto — gets the full set; the opt-in option variants get just the
+   *  vague rungs, since the flag table already narrows for them. Entries the
+   *  data can't support are dropped, so a short list is normal. */
+  hints?: FlashpointHint[]
+  secondsPerHint: number
   durationSeconds: number
   maximumPoints: number
 }

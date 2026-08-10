@@ -14,6 +14,16 @@
       :style="boxStyle"
       preserveAspectRatio="none"
     >
+      <!-- The neighbour sketch: the ring of countries AROUND the answer, never
+           the answer's own shape. Drawn under the dots so it reads as ground,
+           not as a subject. -->
+      <path
+        v-for="ring in sketchRings"
+        :key="ring.iso"
+        class="sketch"
+        :d="ring.d"
+        :stroke-width="sketchWidth"
+      />
       <circle
         v-for="dot in dots"
         :key="`${dot.x}:${dot.y}`"
@@ -44,6 +54,8 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { MAP_PATHS } from '~~/data/map.gen'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import { CONFLICT_ERAS, type ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
 import { bleedBox, useMapPanTrack, useMapViewBox, WORLD_MAP_WIDTH } from '~~/lib/use-map-viewbox'
 
@@ -62,6 +74,9 @@ const props = defineProps<{
   /** Reveal-only second layer: the country's engagements on foreign soil,
    *  in the companion amber. All of it lands at once. */
   abroad?: ConflictField
+  /** The hint ladder's spatial rung: neighbours to sketch around the cloud.
+   *  Never the subject's own outline — that would answer the round. */
+  sketch?: ISOCountryCode[]
 }>()
 
 const { viewBox } = useMapViewBox()
@@ -73,6 +88,19 @@ const fieldBox = computed(() => (viewBox.value?.w ? bleedBox(viewBox.value) : un
 
 /** ~0.16% of the visible width — reads as a pinpoint at any camera height. */
 const dotRadius = computed(() => (viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0016)
+
+/** Counter-scaled with the camera, like the dots, so zoom never fattens the
+ *  sketch into a border. */
+const sketchWidth = computed(() => (viewBox.value?.w ?? WORLD_MAP_WIDTH) * 0.0012)
+
+/** Neighbour outlines in world-map space — the same coordinates the dots use,
+ *  so they need no projection of their own. */
+const sketchRings = computed(() =>
+  (props.sketch ?? []).flatMap(iso => {
+    const d = MAP_PATHS[iso]
+    return d ? [{ iso, d }] : []
+  })
+)
 
 /** Older waves sit back; the newest carries the ink. */
 const waveOpacity = (wave: number) => {
@@ -130,6 +158,23 @@ const chips = computed(() => {
   }
 }
 
+// Ground, not subject: unfilled, hairline, and well under the dots' weight —
+// enough to say "this is the neighbourhood", never enough to be read as the
+// answer's own shape.
+.sketch {
+  fill: none;
+  opacity: 0;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  animation: sketch-in var(--motion-slow) var(--ease-smooth) forwards;
+}
+
+@keyframes sketch-in {
+  to {
+    opacity: 0.32;
+  }
+}
+
 .dot {
   opacity: 0;
   fill: var(--hior-ange);
@@ -164,7 +209,8 @@ const chips = computed(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .dot,
-  .chip {
+  .chip,
+  .sketch {
     animation: none;
   }
   .dot {
@@ -172,6 +218,9 @@ const chips = computed(() => {
   }
   .chip {
     opacity: 1;
+  }
+  .sketch {
+    opacity: 0.32;
   }
 }
 </style>

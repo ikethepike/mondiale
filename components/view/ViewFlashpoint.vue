@@ -15,6 +15,7 @@
         :shown-waves="shownWaves"
         :show-chip="!submitted"
         :abroad="submitted ? abroadField : undefined"
+        :sketch="sketchedNeighbours"
       />
 
       <ChallengePrompt :hint="hint" :attributions="dotSources">
@@ -40,12 +41,28 @@
         <span v-if="!submitted" class="map-caption sub"
           >One dot, one recorded clash since 1989 — where it happened, not how many died.</span
         >
-        <Transition name="caption">
-          <span v-if="lateHint" class="map-caption late-hint">{{ lateHint }}</span>
-        </Transition>
       </ChallengePrompt>
 
       <section class="stage">
+        <!-- The ladder. Every rung is rendered from the first frame and only
+             toggles `is-shown`, so the box never resizes: the dots are pinned
+             to the map's painted rect, and a stage that grows under them reads
+             as the cloud sliding off its country. `bounds` draws instead of
+             writing, so it carries a label rather than a fact. -->
+        <ul
+          v-if="textHints.length && !submitted"
+          class="hint-ladder"
+          :style="{ '--hint-rows': textHints.length }"
+        >
+          <li
+            v-for="(rung, index) in textHints"
+            :key="rung.kind"
+            class="hint-chip"
+            :class="{ 'is-shown': index < shownHints }"
+          >
+            {{ rung.text }}
+          </li>
+        </ul>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </section>
 
@@ -108,6 +125,8 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
+import { FLASHPOINT_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
+import type { FlashpointHint } from '~~/types/challenges/group-modes.type'
 import type { ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
 
 const {
@@ -161,13 +180,33 @@ const stakes = computed(() => {
     : `${base} The earlier you buzz, the more it's worth.`
 })
 
-/** The dealer's non-hard helper, held back until every wave has landed —
- *  the dots get their chance to be read before the words step in. */
-const lateHint = computed(() => {
+/** How many rungs have unlocked. The ladder starts only once every wave has
+ *  landed plus the lead — the dots get first refusal before the words step in
+ *  — and then releases one per `secondsPerHint`. */
+const shownHints = computed(() => {
   const active = challenge.value
-  if (!active?.hint || submitted.value || !started.value) return ''
+  if (!active?.hints?.length || !started.value) return 0
   const wavesDone = active.eras.length * active.secondsPerEra
-  return active.durationSeconds - secondsLeft.value >= wavesDone + 2 ? active.hint : ''
+  const elapsed = active.durationSeconds - secondsLeft.value
+  const sinceLadder = elapsed - wavesDone - FLASHPOINT_HINT_LEAD_SECONDS
+  if (sinceLadder < 0) return 0
+  return Math.min(active.hints.length, 1 + Math.floor(sinceLadder / active.secondsPerHint))
+})
+
+/** The rungs that carry copy — `bounds` is drawn on the map, not written. */
+const textHints = computed(() =>
+  (challenge.value?.hints ?? []).filter(
+    (rung): rung is FlashpointHint & { text: string } => !!rung.text
+  )
+)
+
+/** The neighbour sketch, once its rung unlocks (and through the reveal, where
+ *  it frames the answer rather than hinting at it). */
+const sketchedNeighbours = computed(() => {
+  const hints = challenge.value?.hints ?? []
+  const index = hints.findIndex(rung => rung.kind === 'bounds')
+  if (index < 0) return undefined
+  return submitted.value || index < shownHints.value ? hints[index].neighbours : undefined
 })
 
 const start = async () => {
@@ -239,13 +278,20 @@ const { spent, onGuess } = useAttemptOptions({
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-header .sub,
-header .late-hint {
+header .sub {
   max-width: min(80vw, 44rem);
 }
-header .late-hint {
-  padding: 0.4rem 1.4rem;
-  font-weight: 600;
+
+// Every rung holds its space from frame one and only fades in — see the
+// template comment on why the box must never resize.
+.hint-ladder .hint-chip {
+  opacity: 0;
+  max-width: min(80vw, 40rem);
+  transition: opacity var(--motion-slow) var(--ease-smooth);
+
+  &.is-shown {
+    opacity: 1;
+  }
 }
 
 .stage {

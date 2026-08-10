@@ -22,11 +22,19 @@ import {
   WALK_RESUME_LEAD_MS,
   classicPlaySeconds,
   EMPIRE_INTERBEAT_HOLD_MS,
+  FLASHPOINT_HINT_LEAD_SECONDS,
+  FLASHPOINT_SECONDS_PER_ERA,
+  FLASHPOINT_SECONDS_PER_HINT,
+  FLASHPOINT_TAIL_SECONDS,
+  flashpointSeconds,
   FINAL_QUESTION_CAP_MS,
   FINAL_REVEAL_HOLD_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
+  clockRidesRoundDeadline,
   isClassicGroupRound,
+  PLAY_GATE_CAP_MS,
+  playGateMsFor,
   revealHoldMsFor,
   ROUND_BEATS,
   TUTORIAL_CAP_MS,
@@ -34,7 +42,9 @@ import {
 } from '~~/lib/round-beats'
 import { ROUND_WEIGHTS } from '~~/lib/round-mix'
 import type {
+  AnthemBuzzChallenge,
   EmpireChallenge,
+  FlashpointChallenge,
   StatDetectiveChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
@@ -85,6 +95,10 @@ describe('round beats', () => {
     expect(ROUND_BEATS['anthem-buzz'].revealHoldMs).toBe(7000)
     expect(ROUND_BEATS['tongue-buzz'].revealHoldMs).toBe(7000)
     expect(ROUND_BEATS.empire.revealHoldMs).toBe(12000)
+    // Deliberately retuned, not migrated: flashpoint shipped at 0, which flipped
+    // the scorecard over the conflict profile card while it was still awaiting
+    // its dynamic import. The reveal IS this mode's teaching payload.
+    expect(ROUND_BEATS.flashpoint.revealHoldMs).toBe(6000)
     // Trend-race's reveal is PLAYER-paced: Continue flips inline (hold 0);
     // the browse cap only pads the settle budget.
     expect(ROUND_BEATS['trend-race'].revealHoldMs).toBe(0)
@@ -114,10 +128,88 @@ describe('round beats', () => {
     } as unknown as EmpireChallenge
     expect(classicPlaySeconds(empire)).toBe(12 + 30 + Math.ceil(EMPIRE_INTERBEAT_HOLD_MS / 1000))
 
+    // Flashpoint's clock is TWO schedules — the dot waves, then the hint
+    // ladder — so it can't fall through to durationSeconds the way a
+    // single-schedule kind does.
+    const flashpoint = {
+      _type: 'flashpoint-challenge',
+      country: 'CO',
+      eras: [0, 1, 2, 3],
+      secondsPerEra: FLASHPOINT_SECONDS_PER_ERA,
+      hints: [
+        { kind: 'onset', text: 'x' },
+        { kind: 'shape', text: 'x' },
+        { kind: 'tempo', text: 'x' },
+        { kind: 'scale', text: 'x' },
+        { kind: 'bounds', neighbours: ['PE'] },
+      ],
+      secondsPerHint: FLASHPOINT_SECONDS_PER_HINT,
+      durationSeconds: flashpointSeconds(4, 5),
+      maximumPoints: 10,
+    } as unknown as FlashpointChallenge
+    expect(classicPlaySeconds(flashpoint)).toBe(
+      4 * FLASHPOINT_SECONDS_PER_ERA +
+        FLASHPOINT_HINT_LEAD_SECONDS +
+        5 * FLASHPOINT_SECONDS_PER_HINT +
+        FLASHPOINT_TAIL_SECONDS
+    )
+    // The invariant that matters: the server's window and the payload the view
+    // clocks off are the SAME number. A dealer that stamped its own arithmetic
+    // could run the round a rung short of the ladder on screen.
+    expect(classicPlaySeconds(flashpoint)).toBe(flashpoint.durationSeconds)
+
     const twoTruths = { _type: 'two-truths-challenge', durationSeconds: 25 } as TwoTruthsChallenge
     expect(classicPlaySeconds(twoTruths)).toBe(25)
     expect(revealHoldMsFor(twoTruths)).toBe(4500)
     expect(isClassicGroupRound(twoTruths)).toBe(true)
+  })
+
+  /** The audio rounds wait for a play tap iOS requires before any sound can
+   *  happen, so their window opens on that gesture — not at the reveal. */
+  it('gates the audio rounds behind a bounded play tap', () => {
+    for (const kind of ['anthem-buzz', 'tongue-buzz'] as const) {
+      expect(ROUND_BEATS[kind].playGateMs, kind).toBe(PLAY_GATE_CAP_MS)
+      // The gate is a WAIT allowance, never the play length: once the clip
+      // starts the round is still exactly `durationSeconds` long.
+      expect(ROUND_BEATS[kind].playSeconds, kind).toBeUndefined()
+    }
+    // Bounded, so a seat that never taps can't hold the table open.
+    expect(PLAY_GATE_CAP_MS).toBeGreaterThan(0)
+    expect(Number.isFinite(PLAY_GATE_CAP_MS)).toBe(true)
+  })
+
+  /** `playSeconds === undefined` used to answer two unrelated questions at
+   *  once. These pin that they now answer independently. */
+  it('keeps the client clock off a stamp that does not measure it', () => {
+    const anthem = {
+      _type: 'anthem-buzz-challenge',
+      country: 'SE',
+      durationSeconds: 30,
+      maximumPoints: 10,
+    } as AnthemBuzzChallenge
+
+    // Play-gated: the stamp was made before the window opened, so the client
+    // counts down locally from the tap instead.
+    expect(clockRidesRoundDeadline(anthem)).toBe(false)
+    expect(playGateMsFor(anthem)).toBe(PLAY_GATE_CAP_MS)
+    // …but the play LENGTH is untouched, so the server budget and any view
+    // reading it still see 30 seconds of anthem.
+    expect(classicPlaySeconds(anthem)).toBe(30)
+
+    // A multi-beat kind stays off the stamp for its own, different reason.
+    const empire = {
+      _type: 'empire-challenge',
+      durationSeconds: 12,
+      tapSeconds: 30,
+    } as unknown as EmpireChallenge
+    expect(clockRidesRoundDeadline(empire)).toBe(false)
+    expect(playGateMsFor(empire)).toBe(0)
+
+    // The majority case: a plain single-schedule kind still rides the stamp,
+    // which is what stops a throttled tab outliving its window.
+    const twoTruths = { _type: 'two-truths-challenge', durationSeconds: 25 } as TwoTruthsChallenge
+    expect(clockRidesRoundDeadline(twoTruths)).toBe(true)
+    expect(playGateMsFor(twoTruths)).toBe(0)
   })
 
   it('leaves untimed kinds to the capped ceiling', () => {

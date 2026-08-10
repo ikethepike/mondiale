@@ -3,7 +3,7 @@ import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
-import { roundBeats } from '~~/lib/round-beats'
+import { clockRidesRoundDeadline } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
@@ -250,7 +250,10 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * backgrounded tab whose intervals were throttled snaps to the true time
    * the moment it wakes — the round can no longer silently outlive its
    * window in browser memory. Rounds without a stamp (older snapshots,
-   * booth ambience) keep the local decrement as a fallback.
+   * booth ambience) keep the local decrement as a fallback — as do the
+   * play-gated kinds BY DESIGN: an audio round's window opens on the
+   * player's own play tap, and a round-level stamp cannot measure that per
+   * seat, so counting from it would burn the wait before the clip started.
    */
   const begin = (
     hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
@@ -263,14 +266,13 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     if (countdown) clearInterval(countdown)
     const total = duration.value
     // The stamped deadline drives the clock ONLY when it measures this very
-    // countdown — a kind with a derived multi-beat budget (empire) stamps
-    // the WHOLE round's window, and pinning beat 1's clock to it would
-    // freeze the display at full for the later beats' share. Those kinds
-    // keep the local decrement; the server settle still backstops them.
-    const deadline =
-      roundBeats(challenge.value).playSeconds === undefined
-        ? currentRound.value?.round.deadline
-        : undefined
+    // countdown — `clockRidesRoundDeadline` owns that question (a derived
+    // multi-beat budget stamps the WHOLE round; a play-gated window had not
+    // opened when the stamp was made). Those kinds keep the local decrement;
+    // the server settle still backstops them.
+    const deadline = clockRidesRoundDeadline(challenge.value)
+      ? currentRound.value?.round.deadline
+      : undefined
     if (deadline) {
       secondsLeft.value = Math.min(total, secondsOnDeadline(deadline))
       // Already expired at begin() (a rejoin landing after the window): the

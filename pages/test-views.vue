@@ -1270,8 +1270,17 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['CO', 'PE', 'MX', 'SV'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 1964 — an internal conflict over who governs.',
-          durationSeconds: 28,
+          // Option variants get only the vague rungs — the flag table has
+          // already narrowed the world to four.
+          hints: [
+            {
+              kind: 'onset',
+              text: 'Its defining conflict broke out in the 1960s, and it has not finished.',
+            },
+            { kind: 'tempo', text: 'It flared and died down across 2 separate bouts.' },
+          ],
+          secondsPerHint: 5,
+          durationSeconds: 35,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1287,7 +1296,26 @@ const scenarios: Scenario[] = [
           country: 'UA',
           eras: [2, 3],
           secondsPerEra: 4,
-          durationSeconds: 20,
+          // Hard mode — the only difficulty that deals this kind in auto —
+          // gets the full ladder, `bounds` included.
+          hints: [
+            {
+              kind: 'onset',
+              text: 'Its defining conflict broke out in the 2010s, and it is over.',
+            },
+            {
+              kind: 'shape',
+              text: 'An internal conflict (internationalized), fought over territory.',
+            },
+            { kind: 'tempo', text: 'One unbroken stretch of fighting, about 9 years of it.' },
+            {
+              kind: 'scale',
+              text: '5 distinct disputes on the record since 1946 — 2 still live in the last five years.',
+            },
+            { kind: 'bounds', neighbours: ['PL', 'SK', 'HU', 'RO', 'MD', 'BY', 'RU'] },
+          ],
+          secondsPerHint: 5,
+          durationSeconds: 42,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1305,8 +1333,15 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['RU', 'UA', 'GE', 'TJ'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 1994 — an internal conflict over territory.',
-          durationSeconds: 28,
+          hints: [
+            {
+              kind: 'onset',
+              text: 'Its defining conflict broke out in the 1990s, and it is over.',
+            },
+            { kind: 'tempo', text: 'It flared and died down across 2 separate bouts.' },
+          ],
+          secondsPerHint: 5,
+          durationSeconds: 35,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1326,8 +1361,15 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['AF', 'PK', 'TJ', 'IR'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 1978 — an internal conflict over who governs.',
-          durationSeconds: 28,
+          hints: [
+            {
+              kind: 'onset',
+              text: 'Its defining conflict broke out in the 1970s, and it has not finished.',
+            },
+            { kind: 'tempo', text: 'One unbroken stretch of fighting, about 47 years of it.' },
+          ],
+          secondsPerHint: 5,
+          durationSeconds: 35,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1349,8 +1391,15 @@ const scenarios: Scenario[] = [
           secondsPerEra: 4,
           options: ['US', 'MX', 'CO', 'SV'],
           maximumGuesses: 2,
-          hint: 'Its defining conflict began in 2001 — an internal conflict (internationalized) over who governs.',
-          durationSeconds: 24,
+          hints: [
+            {
+              kind: 'onset',
+              text: 'Its defining conflict broke out in the 2000s, and it is over.',
+            },
+            { kind: 'tempo', text: 'It flared and died down across 2 separate bouts.' },
+          ],
+          secondsPerHint: 5,
+          durationSeconds: 35,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1369,7 +1418,8 @@ const scenarios: Scenario[] = [
             secondsPerEra: 4,
             options: ['CO', 'PE', 'MX', 'SV'],
             maximumGuesses: 2,
-            durationSeconds: 28,
+            secondsPerHint: 5,
+            durationSeconds: 35,
             maximumPoints: MAXIMUM_POINTS,
           },
           groupAnswers: {

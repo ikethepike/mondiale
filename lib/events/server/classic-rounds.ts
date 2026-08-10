@@ -3,6 +3,7 @@ import {
   classicPlaySeconds,
   FIRST_TURN_GRACE_MS,
   isClassicGroupRound,
+  playGateMsFor,
   revealBudgetMsFor,
   revealHoldMsFor,
   ROUND_SETTLE_PHASES,
@@ -37,11 +38,19 @@ const classicBudgetMs = (round: Round): number | undefined => {
   const seconds =
     classicPlaySeconds(round.groupChallenge) ??
     (SERVER_CONTROLLED_CAPS ? UNTIMED_CLASSIC_CAP_SECONDS : undefined)
-  return seconds ? seconds * 1000 + FIRST_TURN_GRACE_MS : undefined
+  if (!seconds) return undefined
+  // A play-gated kind's window opens on a LOCAL tap, so the stamp has to
+  // cover the wait as well as the play. Widening here rather than at the
+  // stamp site means every caller inherits it — the reveal, the round-1
+  // tutorial close, and the rejoin re-stamp alike.
+  return seconds * 1000 + playGateMsFor(round.groupChallenge) + FIRST_TURN_GRACE_MS
 }
 
 /** Stamp the play window onto the round being revealed — BEFORE the save, so
- *  the revealed snapshot carries a live clock every client repaints from. */
+ *  the revealed snapshot carries a live clock every client repaints from.
+ *  On a play-gated kind (the audio rounds) this is a BACKSTOP CEILING, not
+ *  the on-screen clock: the player's countdown starts at their play tap and
+ *  runs `durationSeconds`, while this covers that wait plus the play. */
 export const startClassicClock = (round: Round) => {
   if (!isClassicGroupRound(round.groupChallenge)) return
   const budget = classicBudgetMs(round)

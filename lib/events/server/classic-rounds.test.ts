@@ -3,10 +3,15 @@ import { rearmClassicRound, scheduleClassicSettle, startClassicClock } from './c
 import {
   CLASSIC_SETTLE_SLACK_MS,
   FIRST_TURN_GRACE_MS,
+  PLAY_GATE_CAP_MS,
+  playGateMsFor,
   revealBudgetMsFor,
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
-import type { TwoTruthsChallenge } from '~~/types/challenges/group-modes.type'
+import type {
+  AnthemBuzzChallenge,
+  TwoTruthsChallenge,
+} from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
@@ -25,6 +30,15 @@ const CHALLENGE: TwoTruthsChallenge = {
   maximumPoints: 10,
 } as TwoTruthsChallenge
 
+/** A play-gated kind: the clip only starts on the player's own tap, so the
+ *  server's window has to cover that wait as well as the 30s of anthem. */
+const ANTHEM: AnthemBuzzChallenge = {
+  _type: 'anthem-buzz-challenge',
+  country: 'SE',
+  durationSeconds: 30,
+  maximumPoints: 10,
+} as AnthemBuzzChallenge
+
 const seat = (id: string, phase: PlayerPhase): Player =>
   ({
     id,
@@ -34,7 +48,10 @@ const seat = (id: string, phase: PlayerPhase): Player =>
     currentPosition: 0,
   }) as unknown as Player
 
-const buildGame = (phases: { [playerId: string]: PlayerPhase }): Game =>
+const buildGame = (
+  phases: { [playerId: string]: PlayerPhase },
+  challenge: TwoTruthsChallenge | AnthemBuzzChallenge = CHALLENGE
+): Game =>
   ({
     id: 'test-game',
     host: 'a',
@@ -43,7 +60,7 @@ const buildGame = (phases: { [playerId: string]: PlayerPhase }): Game =>
     difficulty: 'normal',
     started: true,
     players: Object.fromEntries(Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])),
-    rounds: [{ groupChallenge: { ...CHALLENGE }, groupAnswers: {}, playerTurns: {} }],
+    rounds: [{ groupChallenge: { ...challenge }, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
 const store = new Map<string, Game>()
@@ -85,7 +102,11 @@ describe('startClassicClock', () => {
     const game = buildGame({ a: 'group-challenge' })
     const round = game.rounds[0]
     startClassicClock(round)
-    expect(round.deadline).toBe(Date.now() + 25_000 + FIRST_TURN_GRACE_MS)
+    expect(round.deadline).toBe(
+      Date.now() + 25_000 + playGateMsFor(round.groupChallenge) + FIRST_TURN_GRACE_MS
+    )
+    // An ungated kind opens its window at the reveal: no gate in the budget.
+    expect(playGateMsFor(round.groupChallenge)).toBe(0)
   })
 
   it('leaves engine rounds to their own state clocks', () => {
@@ -184,6 +205,54 @@ describe('scheduleClassicSettle', () => {
     await elapseSettle(round)
     expect(store.get(game.id)!.players.b.phase).toBe('group-challenge')
     expect(store.get(game.id)!.rounds[1].groupAnswers).toEqual({})
+  })
+})
+
+/**
+ * The audio rounds' clock starts on the player's own play tap (iOS refuses
+ * autoplay), so the server's window has to cover that wait as well as the
+ * play — otherwise the backstop force-banks a zero on a seat still mid-clip.
+ */
+describe('play-gated rounds', () => {
+  it('stamps the play window behind the play-tap allowance', () => {
+    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const round = game.rounds[0]
+    startClassicClock(round)
+    expect(round.deadline).toBe(Date.now() + 30_000 + PLAY_GATE_CAP_MS + FIRST_TURN_GRACE_MS)
+  })
+
+  it('does not bank a zero on a seat still inside the play allowance', async () => {
+    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const round = game.rounds[0]
+    startClassicClock(round)
+    const ctx = context(game)
+    scheduleClassicSettle(ctx, game)
+
+    // Past where an UNGATED budget would have settled — the regression this
+    // whole beat exists to prevent: a player who tapped play late is still
+    // legitimately listening here.
+    await vi.advanceTimersByTimeAsync(
+      30_000 + FIRST_TURN_GRACE_MS + revealBudgetMsFor(ANTHEM) + CLASSIC_SETTLE_SLACK_MS + 100
+    )
+    await vi.runAllTicks()
+
+    expect(store.get(game.id)!.players.a.phase).toBe('group-challenge')
+    expect(roundOf(game.id).groupAnswers.a).toBeUndefined()
+  })
+
+  it('still sweeps a seat that never taps play', async () => {
+    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const round = game.rounds[0]
+    startClassicClock(round)
+    const ctx = context(game)
+    scheduleClassicSettle(ctx, game)
+    await elapseSettle(round)
+
+    // Bounded on purpose: the gate buys time, it never lets a silent seat
+    // hold the table open.
+    expect(store.get(game.id)!.players.a.phase).toBe('group-scores')
+    expect(roundOf(game.id).playerTurns.a.points.scored).toBe(0)
+    expect(emitted).toContain('table-updated')
   })
 })
 

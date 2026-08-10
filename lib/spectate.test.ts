@@ -347,6 +347,7 @@ const ROUND_FIXTURES: RoundChallenge[] = [
     country: 'TD',
     eras: [0],
     secondsPerEra: 5,
+    secondsPerHint: 5,
     durationSeconds: 30,
     maximumPoints: 8,
   },

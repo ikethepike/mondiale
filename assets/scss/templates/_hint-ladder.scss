@@ -1,0 +1,44 @@
+@use '../rules/ink' as *;
+
+// The FREE staged-hint surface: a row of chips that unlock on the round clock,
+// one rung at a time, as a mode's evidence runs thin. The buzz rounds (anthem,
+// tongues) and flashpoint share it.
+//
+// Deliberately NOT `.hint-row`/`.hint-button` from `_hint-chip.scss` — that is
+// the PAID hint shop, where a player spends points or steps to buy a clue.
+// These cost nothing and arrive on their own. Two different economies that
+// happen to share a word; do not merge them.
+
+// Reserves the chips' height from the start, so an arrival lands in space
+// already held rather than pushing the stage around it. Hosts that stack more
+// than one row set `--hint-rows` to the final count.
+.hint-ladder {
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  min-height: calc(var(--hint-rows, 1) * 3rem);
+  list-style: none;
+  align-items: center;
+  flex-flow: row wrap;
+  pointer-events: auto;
+  justify-content: center;
+}
+
+.hint-chip {
+  gap: 0.6rem;
+  display: flex;
+  padding: 0.5rem 1.2rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  align-items: center;
+  // Chips arrive one at a time, so each centres its own contents — a lone
+  // swatch row would otherwise sit left of the dock it hangs under.
+  text-align: center;
+  justify-content: center;
+  border-radius: 2rem;
+  color: var(--soft-blue);
+  background: #{milk(0.72)};
+  // Entrance belongs to the host's TransitionGroup, not to the chip — a CSS
+  // animation here would replay on every re-render and fight the landing.
+}
