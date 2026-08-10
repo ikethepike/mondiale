@@ -13,8 +13,21 @@ export interface TilePathResult {
   transforms: TileTransform[]
   /** Dense, elevation-smoothed samples along the track for terrain shelving. */
   shelfPoints: Vector3[]
-  /** Arc-length distance between adjacent tile centers. */
+  /** Arc-length distance between adjacent tile centers — the board's SCALE
+   *  unit (tile radius, marker size, hop height all derive from it). It is an
+   *  average over the whole curve, so it is the wrong number for local
+   *  clearance: see `chords`. */
   spacing: number
+  /**
+   * Straight-line distance from tile i to tile i+1 (last entry repeats the
+   * previous, so it is index-aligned with `transforms`).
+   *
+   * On a curve the CHORD between neighbours is always shorter than the arc
+   * length `spacing` averages — measured at 0.84–0.92 × spacing, tightest
+   * through turns. Anything reasoning about the gap between two tiles (marker
+   * clearance, above all) must use this, not `spacing`.
+   */
+  chords: number[]
 }
 
 const DENSITY = 4 // shelf samples per tile segment
@@ -94,5 +107,12 @@ export const createTilePath = (
 
   const spacing = curve.getLength() / (count - 1)
 
-  return { transforms, shelfPoints, spacing }
+  // Measured from the tile centres themselves, so it already carries the
+  // elevation smoothing and the jitter — nothing to keep in sync.
+  const chords = transforms.map((transform, index) =>
+    index < count - 1 ? transform.position.distanceTo(transforms[index + 1].position) : 0
+  )
+  if (count > 1) chords[count - 1] = chords[count - 2]
+
+  return { transforms, shelfPoints, spacing, chords }
 }

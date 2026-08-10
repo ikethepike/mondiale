@@ -69,17 +69,27 @@ export const GROUP_SCORES_CAP_MS = 45000
  * view transition — the gate verdict the player just watched IS the
  * announcement.
  */
-export const WALK_LEAD_MS = 3200
+export const WALK_LEAD_MS = 2600
 export const WALK_RESUME_LEAD_MS = 900
 /** Snapshot delivery grace inside the lead, so a slow wire can't push the
  *  announcement beat past the first step. */
 export const WALK_ANNOUNCE_WIRE_GRACE_MS = 350
+/** Minimum slack between the announcement beat and the first step. The lead
+ *  used to sit EXACTLY on the interstitial total + wire grace, so any retune
+ *  of the card pushed the pawn's first hop behind it with nothing to catch it.
+ *  Enforced in round-beats.test.ts. */
+export const WALK_LEAD_HEADROOM_MS = 250
 
 /** The "On the move!" interstitial, sized to FIT INSIDE the walk lead by
  *  construction (enforced in round-beats.test.ts): the reading hold plus
- *  the intro/stagger/outro choreography budget. */
-export const MOVE_INTERSTITIAL_HOLD_MS = 1200
-export const MOVE_INTERSTITIAL_OVERHEAD_MS = 1650
+ *  the intro/stagger/outro choreography budget.
+ *
+ *  The overhead is a MEASUREMENT of useIntroBeat's timeline (shell fade →
+ *  pieces stagger → rule draw → fade-out), not a wish — it was 1650 against a
+ *  real 1350, so the lead carried 300ms of budget the card never used. Retune
+ *  the timeline and this number moves with it. */
+export const MOVE_INTERSTITIAL_HOLD_MS = 900
+export const MOVE_INTERSTITIAL_OVERHEAD_MS = 1040
 export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
 
 /**
@@ -94,14 +104,29 @@ export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTER
 export const WALK_FRAME_MS = 1200
 export const WALK_RESUME_FRAME_MS = 700
 
+/**
+ * The gate punch-in: the camera's hard push onto a pawn that just slammed into
+ * a challenge tile. Deliberately far shorter than a walk's framing sweep —
+ * this is a cut, not a glide, and at WALK_FRAME_MS on the standard cross ease
+ * it read as the camera drifting rather than reacting. It plays WITH the knock
+ * and the ripple inside the arrival hold, never after them.
+ */
+export const GATE_PUNCH_MS = 420
+
 /** One tile's hop tween; catch-up tiers derive from it (use-pawn-movement). */
 export const PAWN_HOP_MS = 380
 /** How long a pawn rests with an empty queue before it counts as LANDED
  *  (squash + ripple) — server steps arrive a cadence apart, so the queue is
  *  briefly empty between every step. */
 export const LANDING_SETTLE_MS = 650
-/** The challenge-tile alert ripple's sweep. */
-export const ARRIVAL_RIPPLE_MS = 1400
+/** The challenge-tile alert ripple's sweep.
+ *  Sized to the part of the sweep that is actually VISIBLE: the contour shader
+ *  fades the annulus itself (`1 - smoothstep(0.4, 1, uRippleProgress)`), so it
+ *  is transparent at progress 1 and already faint past 0.4. At 1400 with a
+ *  power1.out ease the last ~600ms drew an invisible ring expanding away from
+ *  the pawn — and since the arrival hold is DERIVED from this, the board sat
+ *  on a spent shader before every gate. */
+export const ARRIVAL_RIPPLE_MS = 800
 /** Slack on the arrival flourish before the view may take the stage away. */
 export const ARRIVAL_PAD_MS = 170
 /** How long the board holds after a gate arrival before the challenge view
@@ -154,6 +179,32 @@ export const CLASSIC_SETTLE_SLACK_MS = 8000
 
 /** Empire's beat-1 → beat-2 memorize hold (the sweep freezing at the peak). */
 export const EMPIRE_INTERBEAT_HOLD_MS = 1800
+
+/**
+ * Flashpoint's two schedules. The dot waves land first, then the hint ladder
+ * unlocks one rung at a time — so the round's length is a function of BOTH,
+ * and `playSeconds` below is what reconciles them with the dealer. They live
+ * here rather than in the dealer because the view paces its chips off the same
+ * numbers: a second copy in `challenges.ts` would drift the moment either is
+ * tuned.
+ */
+export const FLASHPOINT_SECONDS_PER_ERA = 4
+/** The breath between the last wave and the first hint — the dots get first
+ *  refusal before the words step in. */
+export const FLASHPOINT_HINT_LEAD_SECONDS = 3
+/** Five rungs is the ladder's real length for all but a handful of countries,
+ *  so the gap is sized against five, not four: at 6s a full round ran 55s. */
+export const FLASHPOINT_SECONDS_PER_HINT = 5
+/** Thinking time after the last rung lands. */
+export const FLASHPOINT_TAIL_SECONDS = 6
+
+/** The one length formula for a flashpoint round, shared by the dealer (which
+ *  stamps `durationSeconds`) and `playSeconds` (which the server clocks). */
+export const flashpointSeconds = (eras: number, hints: number): number =>
+  eras * FLASHPOINT_SECONDS_PER_ERA +
+  FLASHPOINT_HINT_LEAD_SECONDS +
+  hints * FLASHPOINT_SECONDS_PER_HINT +
+  FLASHPOINT_TAIL_SECONDS
 
 export interface RoundBeatSpec {
   /** Who runs this kind's server clock — the ONE home for the classic/engine
@@ -217,7 +268,20 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'flag-palette': { owner: 'classic', revealHoldMs: 0 },
   'capital-guess': { owner: 'classic', revealHoldMs: 0 },
   composition: { owner: 'classic', revealHoldMs: 0 },
-  flashpoint: { owner: 'classic', revealHoldMs: 0 },
+  // The reveal is the mode's whole teaching payload — the profile card's
+  // sides, years, decade strip and UCDP note, plus the amber abroad-dots
+  // layer. At 0 the scorecard covered all of it while the card was still
+  // awaiting its dynamic import, so nobody ever read it.
+  flashpoint: {
+    owner: 'classic',
+    revealHoldMs: 6000,
+    // Length is waves + ladder, so it can't fall through to durationSeconds
+    // the way a single-schedule kind does. Both sides compute it here.
+    playSeconds: challenge =>
+      isChallengeOfType(challenge, 'flashpoint-challenge')
+        ? flashpointSeconds(challenge.eras.length, challenge.hints?.length ?? 0)
+        : undefined,
+  },
   // The reveal draws the territory's outline, highlights the claimant and
   // frames the two together — at 0 the scorecard covered all of it before the
   // bloom finished. The hold is the time to actually find the place on Earth.

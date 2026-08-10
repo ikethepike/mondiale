@@ -141,10 +141,8 @@ import type { AtlasChallenge, ChainTurnOutcome } from '~~/types/challenges/group
 import {
   drawnCard,
   activeTimelinePlayerId,
-  perCardPoints,
   placedYears,
   resolveSlot,
-  slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
 import { flagSwatches } from '~~/lib/audio-palette'
@@ -205,21 +203,15 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
   window.setTimeout(() => {
     const chosen = typeof eventData.slot === 'number' ? eventData.slot : -1
     const { correct, slot } = resolveSlot(placedYears(state.placed), event.year, chosen)
-    const scored = correct
-      ? Math.round(
-          perCardPoints(challenge) * slotDensityFraction(state.placed.length + 1, state.deck.length)
-        )
-      : 0
     state.placements.push({
       playerId,
       slug,
       chosenSlot: chosen,
       correctSlot: slot,
       correct,
-      scored,
+      slotCount: state.placed.length + 1,
       kind: 'placed',
     })
-    if (scored) state.banked[playerId] = (state.banked[playerId] ?? 0) + scored
     state.placed.splice(slot, 0, slug)
     state.revealing = true
     state.deadline = Date.now() + challenge.revealSeconds * 1000
@@ -905,7 +897,6 @@ const scenarios: Scenario[] = [
             activeIndex: 1,
             turn: 4,
             deadline: Date.now() + 22000,
-            banked: { [RIVAL]: 9, [ME]: 5, [THIRD]: 0 },
             placements: [
               {
                 playerId: RIVAL,
@@ -913,7 +904,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 1,
                 correctSlot: 1,
                 correct: true,
-                scored: 3,
+                slotCount: 2,
                 kind: 'placed',
               },
               {
@@ -922,7 +913,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 2,
                 correctSlot: 2,
                 correct: true,
-                scored: 5,
+                slotCount: 3,
                 kind: 'placed',
               },
               {
@@ -931,7 +922,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 0,
                 correctSlot: 3,
                 correct: false,
-                scored: 0,
+                slotCount: 4,
                 kind: 'timeout',
               },
               {
@@ -940,7 +931,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 4,
                 correctSlot: 4,
                 correct: true,
-                scored: 6,
+                slotCount: 5,
                 kind: 'placed',
               },
             ],
@@ -973,7 +964,6 @@ const scenarios: Scenario[] = [
             activeIndex: 2,
             turn: 2,
             deadline: Date.now() + 7000,
-            banked: { [RIVAL]: 4, [ME]: 6, [THIRD]: 0 },
             revealing: true,
             placements: [
               {
@@ -982,7 +972,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 2,
                 correctSlot: 1,
                 correct: false,
-                scored: 0,
+                slotCount: 2,
                 kind: 'placed',
               },
             ],
@@ -1151,7 +1141,6 @@ const scenarios: Scenario[] = [
             activeIndex: 0,
             turn: 5,
             deadline: Date.now(),
-            banked: { [RIVAL]: 9, [ME]: 12, [THIRD]: 4 },
             finished: true,
             placements: [
               {
@@ -1160,7 +1149,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 1,
                 correctSlot: 1,
                 correct: true,
-                scored: 4,
+                slotCount: 2,
                 kind: 'placed',
               },
               {
@@ -1169,7 +1158,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 2,
                 correctSlot: 2,
                 correct: true,
-                scored: 5,
+                slotCount: 3,
                 kind: 'placed',
               },
               {
@@ -1178,7 +1167,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 3,
                 correctSlot: 3,
                 correct: true,
-                scored: 4,
+                slotCount: 4,
                 kind: 'placed',
               },
               {
@@ -1187,7 +1176,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 2,
                 correctSlot: 4,
                 correct: false,
-                scored: 0,
+                slotCount: 5,
                 kind: 'placed',
               },
               {
@@ -1196,7 +1185,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 5,
                 correctSlot: 5,
                 correct: true,
-                scored: 7,
+                slotCount: 6,
                 kind: 'placed',
               },
               {
@@ -1205,7 +1194,7 @@ const scenarios: Scenario[] = [
                 chosenSlot: 6,
                 correctSlot: 6,
                 correct: true,
-                scored: 4,
+                slotCount: 7,
                 kind: 'placed',
               },
             ],

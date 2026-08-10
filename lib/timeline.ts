@@ -3,7 +3,11 @@ import { clamp, formatNumber } from './number'
 import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventFame, EventKind } from '~~/generators/data/event-seeds'
 import { isValidISOCode } from '~~/types/geography.types'
-import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group-modes.type'
+import type {
+  TimelineChallenge,
+  TimelinePlacement,
+  TimelineState,
+} from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import { shuffleArray } from './arrays'
 import { isCountryPlayable } from './game-rules'
@@ -143,30 +147,67 @@ const FIRST_SLOT_FRACTION = 0.35
  * The issue's "points scaled by how crowded the neighborhood was", through the
  * shared attempt taper: a correct call between two lonely cards pays the
  * floor, one threaded into the full line pays the ceiling.
+ *
+ * This is a RELATIVE weight, never an absolute payout. Turn order is dealt once
+ * and never rotates, so a card's position on the line tracks whose turn it is
+ * as much as how hard the call was — paying it directly made an early seat a
+ * permanent handicap (a flawless hand banked as little as half the pot, and a
+ * 2-of-3 late seat could tie a 3-of-3 early one). `scoreTimeline` settles each
+ * seat against the weight of its OWN hand, which keeps the crowding reward
+ * without letting it leak between players.
  */
 export const slotDensityFraction = (slotCount: number, maximumSlots: number): number => {
   if (maximumSlots <= 2) return 1
   return attemptFraction(maximumSlots - slotCount + 1, maximumSlots - 1, FIRST_SLOT_FRACTION)
 }
 
-/** Ceiling an individual card pays, so a full round can reach maximumPoints. */
-export const perCardPoints = (challenge: TimelineChallenge): number => {
-  const players = Math.max(1, challenge.state.order.length)
-  const cardsEach = Math.max(1, (challenge.state.deck.length - 1) / players)
-  return challenge.maximumPoints / cardsEach
+/**
+ * The weight a placement carries, from the line it was threaded into. A round
+ * already in flight when this shipped has placements with no `slotCount`; they
+ * all weigh the same, which costs those rooms the crowding nuance but keeps
+ * every seat's share honest instead of scoring the whole table zero.
+ */
+const placementWeight = (challenge: TimelineChallenge, placement: TimelinePlacement): number =>
+  typeof placement.slotCount === 'number'
+    ? slotDensityFraction(placement.slotCount, challenge.state.deck.length)
+    : 1
+
+/** The weight of one seat's hand, and how much of it they actually earned. */
+const handWeight = (
+  challenge: TimelineChallenge,
+  playerId: string
+): { achievable: number; earned: number } => {
+  let achievable = 0
+  let earned = 0
+  for (const placement of challenge.state.placements) {
+    if (placement.playerId !== playerId) continue
+    const weight = placementWeight(challenge, placement)
+    achievable += weight
+    if (placement.correct) earned += weight
+  }
+  return { achievable, earned }
 }
 
-/** Round-end conversion: what each player banked, against the shared ceiling. */
+/**
+ * Round-end conversion: each seat against the hand it was actually dealt, so a
+ * flawless hand pays the full pot from any seat and the crowding weights only
+ * ever rank a player's own cards against each other. A seat that never got a
+ * card (short round, late join) has nothing to be right about and scores zero.
+ */
 export const scoreTimeline = (
   challenge: TimelineChallenge
 ): { [playerId: string]: { scored: number; maximum: number } } => {
+  const { maximumPoints } = challenge
   const scores: { [playerId: string]: { scored: number; maximum: number } } = {}
+
   for (const playerId of challenge.state.order) {
+    const { achievable, earned } = handWeight(challenge, playerId)
     scores[playerId] = {
-      scored: clampScore(challenge.state.banked[playerId] ?? 0, challenge.maximumPoints),
-      maximum: challenge.maximumPoints,
+      scored: achievable ? clampScore((maximumPoints * earned) / achievable, maximumPoints) : 0,
+      maximum: maximumPoints,
     }
   }
+
   return scores
 }
 

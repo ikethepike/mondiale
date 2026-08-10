@@ -11,6 +11,9 @@
           {{ option }}
         </button>
         <button :class="{ active: turntable }" @click="turntable = !turntable">turntable</button>
+        <button :class="{ active: production }" @click="production = !production">
+          production placement
+        </button>
         <label>
           outline {{ widthRatio.toFixed(3) }}
           <input v-model.number="widthRatio" type="range" min="0" max="0.05" step="0.001" />
@@ -45,6 +48,7 @@
       :turntable="turntable"
       :variants="variants"
       :final-stages="GAUNTLET_LENGTH[gauntletDifficulty]"
+      :production-placement="production"
     />
   </div>
 </template>
@@ -62,6 +66,9 @@ const cameraPresets = ['board', 'path', 'free'] as const
 
 const preset = ref<(typeof cameraPresets)[number]>('board')
 const turntable = ref(false)
+// Default ON: the showroom grid is what let the old tangent placement's disc
+// overlaps pass a review — a marker has to be judged where it actually stands.
+const production = ref(true)
 const widthRatio = ref(OUTLINE_WIDTH_RATIO)
 const gauntletDifficulty = ref<GameDifficulty>('normal')
 

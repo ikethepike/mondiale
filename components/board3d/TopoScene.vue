@@ -9,10 +9,17 @@
   <!-- Terrain and tiles are unlit; only the toon-shaded pawns respond to these -->
   <TresAmbientLight :intensity="1.9" />
   <TresDirectionalLight :position="LIGHT_POSITION" :intensity="1.6" />
+  <!-- Pan is OFF on purpose. OrbitControls pans by writing straight into
+       `controls.target`, which is the ONE thing `follow` owns: a pan slid the
+       orbit centre off the pawn, so a zoom (which dollies toward the target)
+       converged on empty terrain, and the next walk step snapped the target
+       back and undid the pan. Orbit + zoom only means the shot is always
+       centred on the followed pawn, and zoom always pushes toward it. -->
   <OrbitControls
     ref="controlsRef"
     make-default
     enable-damping
+    :enable-pan="false"
     :damping-factor="0.08"
     :min-distance="16"
     :max-distance="170"
@@ -48,9 +55,10 @@ import {
   USER_IDLE_RESUME_MS,
 } from '~~/lib/board3d/use-board-camera'
 import { createPawnMover, type PawnMover } from '~~/lib/board3d/use-pawn-movement'
-import { prefersReducedMotion } from '~~/lib/motion'
+import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import {
   ARRIVAL_RIPPLE_MS,
+  GATE_PUNCH_MS,
   MOVE_INTERSTITIAL_TOTAL_MS,
   WALK_FRAME_MS,
   WALK_RESUME_FRAME_MS,
@@ -178,6 +186,25 @@ const knockPawn = (playerId: string) => {
   )
 }
 
+/**
+ * The gate punch-in: a hard, short push onto the tile a pawn just slammed
+ * into. `commanding` is what makes it a beat rather than a suggestion — a
+ * routine frame is retired for good by the player's first drag, which quietly
+ * deleted this moment for anyone who had ever touched the board. The ease is
+ * an entrance curve, not a cross-fade: it attacks and settles.
+ *
+ * Both gate beats (the block on arrival, and a failed gate's verdict) push in
+ * identically, so the shot lives here once.
+ */
+const punchInOn = (tile: TileTransform) => {
+  boardCamera?.frameOn(tile.position, {
+    tiles: ALERT_TILES,
+    durationMs: GATE_PUNCH_MS,
+    ease: EASE.enter,
+    commanding: true,
+  })
+}
+
 /** One challenge-hit moment per blocked episode: coral ripple, knock, push-in. */
 const challengeAlerted = new Set<string>()
 const playChallengeHit = (playerId: string, tile: TileTransform) => {
@@ -187,11 +214,12 @@ const playChallengeHit = (playerId: string, tile: TileTransform) => {
   if (challengeAlerted.has(playerId)) return
   challengeAlerted.add(playerId)
 
+  // All three fire together — the punch is part of the impact, not a follow-up
+  // to it. The arrival hold (BOARD_TO_CHALLENGE_HOLD_MS) is sized to cover the
+  // whole flourish, so sequencing them would only push the ripple past it.
   triggerRipple(tile, 'alert')
   knockPawn(playerId)
-  if (playerId === cameraTargetId.value) {
-    boardCamera?.frameOn(tile.position, { tiles: ALERT_TILES })
-  }
+  if (playerId === cameraTargetId.value) punchInOn(tile)
 }
 
 // --- Path preview: rings over the tiles the local pawn is about to walk ----
@@ -648,7 +676,7 @@ watch(
   { immediate: true }
 )
 
-// Server-driven movement: one socket update per 500ms step. String signature
+// Server-driven movement: one socket update per STEP_INTERVAL_MS step. String signature
 // (like the sibling watchers) so the callback runs only when a position
 // actually changes — an object getter re-fires on every reactive touch of the
 // game and each fire rebuilt the camera-follow tween.
@@ -920,9 +948,7 @@ const syncBlockedBeats = () => {
       if (!gateTile) return
       triggerRipple(gateTile, 'alert')
       knockPawn(beatPlayerId)
-      if (beatPlayerId === cameraTargetId.value) {
-        boardCamera?.frameOn(gateTile.position, { tiles: ALERT_TILES })
-      }
+      if (beatPlayerId === cameraTargetId.value) punchInOn(gateTile)
     }, 700)
   }
 }

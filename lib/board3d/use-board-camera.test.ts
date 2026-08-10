@@ -521,4 +521,93 @@ describe('the auto-framing latch', () => {
     drainTweens()
     expect(distanceOf(camera, controls.target)).toBeCloseTo(FRAME_TILES * SPACING, 0)
   })
+
+  it('still plays a COMMANDING beat after the player has driven', () => {
+    // The gate punch-in is the case this exists for: the latch above silently
+    // degraded it to a follow, so every player who had ever dragged the board
+    // lost the one shot meant to be dramatic.
+    const { start, end, pointerDown, pointerMove, pointerUp, rig, camera, controls } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    pointerUp()
+    end()
+    camera.position.set(controls.target.x, 400, 300)
+    const taken = distanceOf(camera, controls.target)
+
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS + 10)
+    drainTweens()
+
+    // A ROUTINE frame is still only a translation — the latch stands.
+    rig.frameOn(new Vector3(20, 0, 0))
+    drainTweens()
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(taken, 3)
+
+    // The punch-in overrides it and re-frames to the alert distance.
+    rig.frameOn(new Vector3(30, 0, 0), { tiles: ALERT_TILES, commanding: true })
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(30, 1)
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(ALERT_TILES * SPACING, 0)
+  })
+
+  it('makes a commanding beat wait for a LIVE gesture rather than fight it', () => {
+    // Outranking the permanent latch must not mean outranking the finger
+    // currently on the board — that is the bug the hold machinery prevents.
+    const { start, pointerDown, pointerMove, rig, camera, controls } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+
+    // A drag is IN FLIGHT (pointer still down, never released).
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    const held = { x: camera.position.x, y: camera.position.y, z: camera.position.z }
+
+    rig.frameOn(new Vector3(40, 0, 0), { tiles: ALERT_TILES, commanding: true })
+    drainTweens()
+
+    // Banked, not applied: the camera has not moved out from under the drag.
+    expect(camera.position.x).toBeCloseTo(held.x, 3)
+    expect(camera.position.y).toBeCloseTo(held.y, 3)
+    expect(camera.position.z).toBeCloseTo(held.z, 3)
+
+    // It lands once the gesture's hold expires.
+    vi.advanceTimersByTime(USER_IDLE_RESUME_MS + 10)
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(40, 1)
+  })
+})
+
+describe('zoom during a follow', () => {
+  it('keeps a zoom made mid-step instead of snapping it back', () => {
+    // `follow` captures the camera→target delta ONCE and re-applies it every
+    // frame. A wheel-zoom landing mid-tween moves camera.position, and the
+    // next onUpdate frame overwrote it with the stale delta — the zoom sprang
+    // back and the pawn ended up framed at the old distance.
+    const { rig, camera, controls } = rigFor({ withPointerHost: true })
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+
+    // A walk step starts: the follow tween is in flight.
+    rig.follow(new Vector3(10, 0, 0))
+    clock += 0.05
+    gsap.globalTimeline.totalTime(clock)
+
+    // The player zooms IN mid-step, as OrbitControls' wheel dolly would:
+    // move the camera along its view axis toward the target.
+    const toTarget = new Vector3().subVectors(controls.target, camera.position).normalize()
+    camera.position.addScaledVector(toTarget, 30)
+    const zoomed = distanceOf(camera, controls.target)
+
+    drainTweens()
+
+    // The zoom survives the rest of the step.
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(zoomed, 0)
+  })
 })

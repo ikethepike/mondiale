@@ -13,8 +13,10 @@ import {
   MOVE_INTERSTITIAL_TOTAL_MS,
   PAWN_HOP_MS,
   STEP_INTERVAL_MS,
+  GATE_PUNCH_MS,
   WALK_ANNOUNCE_WIRE_GRACE_MS,
   WALK_FRAME_MS,
+  WALK_LEAD_HEADROOM_MS,
   WALK_LEAD_MS,
   WALK_RESUME_FRAME_MS,
   WALK_RESUME_LEAD_MS,
@@ -135,6 +137,12 @@ describe('round beats', () => {
     expect(MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS).toBeLessThanOrEqual(
       WALK_LEAD_MS
     )
+    // ...and with room to spare. The lead used to sit EXACTLY on the total,
+    // so the fit passed while any retune of the card pushed the first hop
+    // behind it. Slack is the invariant, not mere non-overlap.
+    expect(WALK_LEAD_MS - (MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS)).toBeGreaterThanOrEqual(
+      WALK_LEAD_HEADROOM_MS
+    )
     expect(MOVE_INTERSTITIAL_TOTAL_MS).toBe(
       MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
     )
@@ -159,6 +167,14 @@ describe('round beats', () => {
       PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
     )
     expect(GATE_RESULT_FALLBACK_MS).toBe(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+    // The gate punch-in plays INSIDE the arrival hold: the hold is what keeps
+    // the stage up, so a hold trimmed under the punch would cut the camera
+    // move off mid-flight and swap to the question over a moving shot. The
+    // punch starts after the landing debounce, so that is the real budget.
+    expect(GATE_PUNCH_MS).toBeLessThanOrEqual(BOARD_TO_CHALLENGE_HOLD_MS - LANDING_SETTLE_MS)
+    // A punch is a CUT, not a sweep — if it ever grows to a framing sweep's
+    // length it has stopped being the beat it exists to be.
+    expect(GATE_PUNCH_MS).toBeLessThan(WALK_RESUME_FRAME_MS)
     // The hop must undercut the step cadence, or live walks stall mid-hop.
     expect(PAWN_HOP_MS).toBeLessThan(STEP_INTERVAL_MS)
     // The gauntlet's reveal outlasts a gate verdict by design, and stays

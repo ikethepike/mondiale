@@ -30,6 +30,8 @@ import {
   Vector3,
 } from 'three'
 import {
+  markerBerthFor,
+  markerFitFactor,
   markerPartsFor,
   type MarkerType,
   TILE_RADIUS_RATIO,
@@ -66,10 +68,22 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  /** Reproduce the board's real placement: neighbouring discs a chord away,
+   *  the marker berthed beside its tile at its fitted scale. Off, this is the
+   *  old showroom grid — good for judging a shape, useless for judging where
+   *  it stands. */
+  productionPlacement: {
+    type: Boolean,
+    required: true,
+  },
 })
 
 const SPACING = 8
 const PITCH = SPACING * 2.2
+/** Tiles sit a CHORD apart, not `spacing` (the curve's average arc length).
+ *  Measured at 0.84–0.92 across every board length and seed — the tight end
+ *  is what a marker has to survive, so the lab previews it. */
+const LIVE_CHORD_RATIO = 0.87
 const MARKER_TYPES: MarkerType[] = [...individualChallengeAccessors, 'final']
 const LIGHT_POSITION = new Vector3(60, 120, 80)
 // Markers stand with local +z along the path; a quarter turn lays the path
@@ -139,15 +153,43 @@ const startSpin = () => {
   )
 }
 
+/** A plain neighbouring disc, so the berth can be judged against what it has
+ *  to clear. Only drawn in production-placement mode. */
+const neighbourDisc = (tileRadius: number) => {
+  const disc = new Group()
+  const rim = new Mesh(
+    new CylinderGeometry(tileRadius, tileRadius, TILE_RIM_HEIGHT, 28),
+    new MeshBasicMaterial({ color: BOARD_COLORS.ink })
+  )
+  rim.position.y = TILE_RIM_HEIGHT / 2
+  const top = new Mesh(
+    new CylinderGeometry(tileRadius * 0.9, tileRadius * 0.9, TILE_RIM_HEIGHT, 28),
+    new MeshBasicMaterial({ color: BOARD_COLORS.sourMilk })
+  )
+  top.position.y = TILE_RIM_HEIGHT / 2 + TILE_TOP_INSET
+  disc.add(rim, top)
+  return disc
+}
+
 const rebuild = () => {
   disposeStage()
 
+  // Production spaces tiles a CHORD apart, which runs ~0.88 of `spacing`. The
+  // lab used to sit every marker alone in a 2.2x-pitch grid, centred on its
+  // disc and standing on the top face — a preview the game never renders, and
+  // the reason the old tangent placement's disc overlaps were reviewed and
+  // passed. In production mode the neighbours, the berth and the pawn's own
+  // tile are all real.
+  const live = props.productionPlacement
   const tileRadius = SPACING * TILE_RADIUS_RATIO
   const outlineWidth = SPACING * props.outlineWidthRatio
+  const chord = SPACING * LIVE_CHORD_RATIO
+  const gap = Math.max(0, chord - tileRadius * 2)
+  const pitch = live ? Math.max(PITCH, chord * 2.4) : PITCH
 
   MARKER_TYPES.forEach((type, index) => {
     const slot = new Group()
-    slot.position.set(((index % 3) - 1) * PITCH, 0, (Math.floor(index / 3) - 1) * PITCH)
+    slot.position.set(((index % 3) - 1) * pitch, 0, (Math.floor(index / 3) - 1) * pitch)
 
     const rim = new Mesh(
       new CylinderGeometry(tileRadius, tileRadius, TILE_RIM_HEIGHT, 28),
@@ -163,10 +205,34 @@ const rebuild = () => {
     top.position.y = TILE_RIM_HEIGHT / 2 + TILE_TOP_INSET
     slot.add(rim, top)
 
+    // The tiles ahead and behind — what a too-deep marker actually fouls.
+    // BASE_YAW lays the path along world X (the side-on view the game is
+    // played from), so the neighbours sit either side on X.
+    if (live) {
+      for (const sign of [1, -1]) {
+        const neighbour = neighbourDisc(tileRadius)
+        neighbour.position.x = chord * sign
+        slot.add(neighbour)
+      }
+    }
+
+    const parts = markerPartsFor(type, SPACING, props.variants[type], props.finalStages)
+    const fit = type === 'final' ? 1 : markerFitFactor(parts, tileRadius, gap, outlineWidth)
+
     const marker = new Group()
     marker.position.y = TILE_RIM_HEIGHT + TILE_TOP_INSET
     marker.rotation.y = BASE_YAW
-    for (const part of markerPartsFor(type, SPACING, props.variants[type], props.finalStages)) {
+    if (live) {
+      // Berthed BESIDE the tile, exactly as the builder does it, so the pawn's
+      // own tile stays clear. BASE_YAW maps the marker's own side axis (local
+      // +x) onto world -z, so the berth is applied there — the same offset the
+      // builder makes along the path's normal.
+      marker.scale.setScalar(fit)
+      if (type !== 'final') {
+        marker.position.z = -markerBerthFor(parts, tileRadius, fit, outlineWidth)
+      }
+    }
+    for (const part of parts) {
       const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
       if (geometry !== part.geometry) part.geometry.dispose()
       if (part.outline !== false) {
@@ -196,9 +262,16 @@ const rebuild = () => {
   if (props.turntable) startSpin()
 }
 
-watch(() => [props.outlineWidthRatio, props.finalStages, JSON.stringify(props.variants)], rebuild, {
-  immediate: true,
-})
+watch(
+  () => [
+    props.outlineWidthRatio,
+    props.finalStages,
+    props.productionPlacement,
+    JSON.stringify(props.variants),
+  ],
+  rebuild,
+  { immediate: true }
+)
 
 watch(
   () => props.turntable,

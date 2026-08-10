@@ -58,6 +58,23 @@ export interface FrameOptions {
   /** Orbit distance in tiles. */
   tiles?: number
   durationMs?: number
+  /** Override the sweep's ease. Defaults to `EASE.cross` — the soft glide a
+   *  routine framing shot wants. A director beat (the gate punch-in) asks for
+   *  something harder so it reads as a cut, not a drift. */
+  ease?: string
+  /**
+   * This is a SCRIPTED BEAT, not routine tracking: play it even after the
+   * player has driven the camera by hand.
+   *
+   * `cameraTaken` retires automatic framing for the rest of the game on the
+   * player's first real gesture, which is right for the walk-follow shots that
+   * would otherwise fight their fingers — but it also silently swallowed the
+   * gate push-in, so any player who had ever dragged the board never saw the
+   * one beat that exists to be dramatic. A commanding frame outranks that
+   * latch. It does NOT outrank a LIVE gesture: `held()` still banks it, so a
+   * beat can never be wrenched out of a finger mid-drag.
+   */
+  commanding?: boolean
 }
 
 export interface BoardCamera {
@@ -282,8 +299,11 @@ export const createBoardCamera = (
       pendingFocus = { point: lastPoint, mode: 'frame', options: frameOptions }
       return
     }
-    // The shot belongs to the player now — track, never re-frame.
-    if (cameraTaken) return follow(point)
+    // The shot belongs to the player now — track, never re-frame. A commanding
+    // beat is the exception: it is a scripted moment, not a follow-cam, and
+    // silently degrading it to a translation is how the gate punch-in went
+    // missing for every player who had touched the board.
+    if (cameraTaken && !frameOptions.commanding) return follow(point)
 
     // This aim supersedes anything banked: a step held behind a sweep that
     // this call is about to kill (a gate's push-in over a walk's sweep) would
@@ -293,6 +313,7 @@ export const createBoardCamera = (
 
     const distance = (frameOptions.tiles ?? FRAME_TILES) * (options.spacing?.() ?? DEFAULT_SPACING)
     const seconds = (frameOptions.durationMs ?? WALK_FRAME_MS) / 1000
+    const ease = frameOptions.ease ?? EASE.cross
 
     const direction = new Vec3().subVectors(camera.position, controls.target).normalize()
     // Keep a pleasant oblique angle even if the current one is shallow
@@ -314,14 +335,14 @@ export const createBoardCamera = (
       y: point.y,
       z: point.z,
       duration: seconds,
-      ease: EASE.cross,
+      ease,
     })
     const positionTween = gsap.to(camera.position, {
       x: cameraDestination.x,
       y: cameraDestination.y,
       z: cameraDestination.z,
       duration: seconds,
-      ease: EASE.cross,
+      ease,
       onComplete() {
         frameTweens.clear()
         // A step banked behind the sweep applies the instant it lands.
@@ -354,14 +375,21 @@ export const createBoardCamera = (
     // Executing: this aim is the current one, so nothing banked survives it.
     pendingFocus = undefined
 
-    const delta = new Vec3().subVectors(camera.position, controls.target)
-
     if (prefersReducedMotion()) {
+      // No tween to carry the offset across: snap both ends at once.
+      const delta = new Vec3().subVectors(camera.position, controls.target)
       controls.target.copy(point)
       camera.position.copy(point).add(delta)
       controls.update()
       return
     }
+
+    // The rig's own last target, so a frame can tell ITS translation apart from
+    // the player's. Re-read every frame rather than captured once: a wheel-zoom
+    // landing mid-step moves camera.position, and a fixed delta overwrote that
+    // on the very next frame — the zoom sprang back and the pawn kept being
+    // framed at the old distance.
+    const carried = controls.target.clone()
 
     killTweens()
     tweens.add(
@@ -375,7 +403,12 @@ export const createBoardCamera = (
         duration: STEP_INTERVAL_MS / 1000,
         ease: 'power2.out',
         onUpdate() {
-          camera.position.copy(controls.target).add(delta)
+          // Translate the camera by however far the TARGET moved this frame,
+          // preserving whatever offset the player currently holds.
+          camera.position.x += controls.target.x - carried.x
+          camera.position.y += controls.target.y - carried.y
+          camera.position.z += controls.target.z - carried.z
+          carried.copy(controls.target)
         },
       })
     )

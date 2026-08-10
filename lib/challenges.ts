@@ -36,6 +36,8 @@ import type {
   EmpireChallenge,
   FlagPaletteChallenge,
   FlashpointChallenge,
+  FlashpointHint,
+  FlashpointHintKind,
   HeritageHuntChallenge,
   GhostStateChallenge,
   HotColdChallenge,
@@ -85,7 +87,13 @@ import {
 import { getChallengeDetails } from './challenge-details'
 import { normalizeAnswer, titleCase } from './strings'
 import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
-import { countryName, pickSizedCountry } from './country'
+import { countryName, mentionsCountry, pickSizedCountry } from './country'
+import { formatNumber } from './number'
+import {
+  FLASHPOINT_SECONDS_PER_ERA,
+  FLASHPOINT_SECONDS_PER_HINT,
+  flashpointSeconds,
+} from './round-beats'
 import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
@@ -411,7 +419,6 @@ const getTimelineChallenge = ({
       turn: 0,
       // Stamped when the round is revealed (timeline-turns) — staging pauses first.
       deadline: 0,
-      banked: {},
       placements: [],
     },
   }
@@ -1071,15 +1078,123 @@ export const capitalGuessScore = (
 const FLASHPOINT_MIN_POINTS = 40
 /** One wave isn't a timeline. */
 const FLASHPOINT_MIN_ERAS = 2
-const FLASHPOINT_SECONDS_PER_ERA = 4
-/** Thinking time after the last wave lands. */
-const FLASHPOINT_TAIL_SECONDS = 12
+/** The vague rungs — the only ones an option variant gets, since its flag
+ *  table has already narrowed the world to three or four. */
+const FLASHPOINT_OPTION_HINTS: FlashpointHintKind[] = ['onset', 'tempo']
+/** A neighbour sketch needs enough rings to read as a region rather than as a
+ *  pointer at one country. */
+const FLASHPOINT_MIN_NEIGHBOURS = 2
+/** The last episode must reach this year to still count as running — UCDP's
+ *  latest complete year, not "now". */
+const FLASHPOINT_RUNNING_SINCE = 2023
+
+/**
+ * The hint ladder, vague → sharp, built only from UCDP fields that cannot name
+ * the answer. `name` is the location string, `sideA` is always "Government of
+ * <answer>", `territory` is Kashmir/Chechnya/Basque — all four are the answer
+ * wearing a hat, so none of them is read here. `sideB` is skipped too: most
+ * entries are safe non-state actors, but a handful name a NEIGHBOUR state
+ * ("Republic of Croatia" for Serbia), which `mentionsCountry` cannot catch
+ * because the leaked name isn't the subject's own.
+ */
+const flashpointHints = async (
+  country: ISOCountryCode,
+  kinds?: FlashpointHintKind[]
+): Promise<FlashpointHint[]> => {
+  const { CONFLICTS, CONFLICTS_BY_COUNTRY } = await import('~~/data/conflict-profiles.gen')
+  const { conflictMapping } = await import('~~/data/conflicts.gen')
+  const defining = dominantConflict(
+    (CONFLICTS_BY_COUNTRY[country] ?? []).flatMap(id => CONFLICTS[id] ?? [])
+  )
+  if (!defining) return []
+
+  const episodes = defining.episodes
+  const began = episodes[0]?.[0]
+  const latest = episodes[episodes.length - 1]?.[1]
+  const metrics = conflictMapping[country]
+
+  const built: (FlashpointHint | undefined)[] = [
+    // Onset by DECADE, never the exact year: "the war that began in 1964" is a
+    // search key, "the 1960s" is a period.
+    began
+      ? {
+          kind: 'onset',
+          text: `Its defining conflict broke out in the ${Math.floor(began / 10) * 10}s, and it ${
+            (latest ?? 0) >= FLASHPOINT_RUNNING_SINCE ? 'has not finished' : 'is over'
+          }.`,
+        }
+      : undefined,
+    {
+      kind: 'shape',
+      text: (() => {
+        const type = CONFLICT_TYPE_LABELS[defining.type].toLowerCase()
+        const article = /^[aeiou]/.test(type) ? 'An' : 'A'
+        return `${article} ${type}, fought over ${INCOMPATIBILITY_LABELS[defining.incompatibility]}.`
+      })(),
+    },
+    // The rhythm of the thing: one long grind reads differently from a dozen
+    // flare-ups, and neither names anybody.
+    episodes.length
+      ? {
+          kind: 'tempo',
+          text: (() => {
+            if (episodes.length > 1) {
+              return `It flared and died down across ${episodes.length} separate bouts.`
+            }
+            // A single-year episode is a border war, not a grind — "about 1
+            // years of it" is both wrong and a tell that nobody proofread.
+            const span = (latest ?? 0) - (began ?? 0) + 1
+            return span <= 1
+              ? 'It began and ended inside a single year.'
+              : `One unbroken stretch of fighting, about ${formatNumber(span)} years of it.`
+          })(),
+        }
+      : undefined,
+    // The sharpest rung, and the only one drawn from the country-level metrics
+    // rather than the one defining conflict. "Separate conflicts" is ACD's
+    // count of distinct disputes, which is why it can read 1 under a cloud of
+    // dots spanning decades — say "disputes" so it can't be misread as a
+    // headcount of the events on screen, and never contradict `tempo`.
+    metrics?.total
+      ? {
+          kind: 'scale',
+          text: `${formatNumber(metrics.total)} distinct ${
+            metrics.total === 1 ? 'dispute' : 'disputes'
+          } on the record since 1946${
+            metrics.recent
+              ? ` — ${formatNumber(metrics.recent)} still live in the last five years.`
+              : ', none live in the last five years.'
+          }`,
+        }
+      : undefined,
+  ]
+
+  // The spatial rung: the NEIGHBOURS' outlines, never the answer's own shape —
+  // that would just be the silhouette round's answer. Islands get nothing here.
+  const neighbours = (BORDERS[country] ?? []).filter(isValidISOCode)
+  if (neighbours.length >= FLASHPOINT_MIN_NEIGHBOURS) {
+    built.push({ kind: 'bounds', neighbours })
+  }
+
+  const wanted = kinds ? new Set(kinds) : undefined
+  return built.filter((hint): hint is FlashpointHint => {
+    if (!hint || (wanted && !wanted.has(hint.kind))) return false
+    // Belt and braces: the templates above never read a name field, but a
+    // future one might, and a giveaway must not reach the screen.
+    return !hint.text || !mentionsCountry(hint.text, country)
+  })
+}
 
 /**
  * Flashpoint: a country's recorded conflict history (UCDP GED) draws itself
  * onto the blanked map as dots, era by era — name the country, the earlier the
  * more it's worth. Option variants get two picks like capital-guess; hard mode
  * free-types and scores on the clock.
+ *
+ * The hint ladder is NOT gated on difficulty the way the flag options are:
+ * `HARD_ONLY_ROUND_KINDS` means hard is the only difficulty that deals this
+ * kind in auto, so gating hints to non-hard left the mode players actually
+ * meet with a blank map and no help at all.
  *
  * Dynamic import for the same reason as the water dealer: only nitro runs the
  * dealers, and the dot geometry shouldn't ride into client bundles through
@@ -1089,12 +1204,16 @@ const getFlashpointChallenge = async (
   game: gameTypes.Game
 ): Promise<FlashpointChallenge | undefined> => {
   const { CONFLICT_FIELDS } = await import('~~/data/conflict-events.gen')
+  const { CONFLICTS_BY_COUNTRY } = await import('~~/data/conflict-profiles.gen')
   const playable = new Set(playableCountries(game))
   const pool = Object.entries(CONFLICT_FIELDS).filter(
     ([isoCode, field]) =>
       playable.has(isoCode as ISOCountryCode) &&
       field!.total >= FLASHPOINT_MIN_POINTS &&
-      field!.eras.length >= FLASHPOINT_MIN_ERAS
+      field!.eras.length >= FLASHPOINT_MIN_ERAS &&
+      // A country with dots but no ACD profile (Brazil) can't carry the ladder,
+      // and its metrics read "0 conflicts since 1946" under a cloud of them.
+      (CONFLICTS_BY_COUNTRY[isoCode as ISOCountryCode] ?? []).length > 0
   )
   const picked = shuffleArray(pool)[0]
   if (!picked) return undefined
@@ -1103,7 +1222,6 @@ const getFlashpointChallenge = async (
   // Outside hard mode, offer multiple-choice flag options; hard mode free-types.
   // Decoys must be plausible hosts (have a conflict field) or they self-eliminate.
   let options: ISOCountryCode[] | undefined
-  let hint: string | undefined
   if (game.difficulty !== 'hard') {
     const decoys = pickDecoys(country, [...playable], game.difficulty === 'easy' ? 2 : 3, {
       preferRegion: true,
@@ -1111,23 +1229,9 @@ const getFlashpointChallenge = async (
       widen: playableWorldCountries(game),
     })
     if (decoys) options = shuffleArray([country, ...decoys])
-
-    // Late hint: the defining conflict's shape, never its name — "began in
-    // 1964, a civil war over who governs" separates region-mates without
-    // handing the round over.
-    const { CONFLICTS, CONFLICTS_BY_COUNTRY } = await import('~~/data/conflict-profiles.gen')
-    const defining = dominantConflict(
-      (CONFLICTS_BY_COUNTRY[country] ?? []).flatMap(id => CONFLICTS[id] ?? [])
-    )
-    if (defining) {
-      const type = CONFLICT_TYPE_LABELS[defining.type].toLowerCase()
-      const article = /^[aeiou]/.test(type) ? 'an' : 'a'
-      const fought = INCOMPATIBILITY_LABELS[defining.incompatibility]
-      const began = defining.episodes[0]?.[0]
-      hint = `Its defining conflict began in ${began} — ${article} ${type} over ${fought}.`
-    }
   }
 
+  const hints = await flashpointHints(country, options ? FLASHPOINT_OPTION_HINTS : undefined)
   const eras = field.eras.map(({ era }) => era)
   return {
     _type: 'flashpoint-challenge',
@@ -1136,8 +1240,9 @@ const getFlashpointChallenge = async (
     secondsPerEra: FLASHPOINT_SECONDS_PER_ERA,
     options,
     ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
-    ...(hint ? { hint } : {}),
-    durationSeconds: eras.length * FLASHPOINT_SECONDS_PER_ERA + FLASHPOINT_TAIL_SECONDS,
+    ...(hints.length ? { hints } : {}),
+    secondsPerHint: FLASHPOINT_SECONDS_PER_HINT,
+    durationSeconds: flashpointSeconds(eras.length, hints.length),
     maximumPoints: maximumRoundPoints(game),
   }
 }

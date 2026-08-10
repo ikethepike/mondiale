@@ -423,7 +423,6 @@ const ROUND_FIXTURES: RoundChallenge[] = [
       activeIndex: 0,
       turn: 0,
       deadline: 0,
-      banked: {},
       placements: [],
     },
   },

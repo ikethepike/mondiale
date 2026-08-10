@@ -52,21 +52,25 @@ export const useIntroBeat = (
     timeline = gsap.timeline({ onComplete: finish })
     timeline.fromTo(root.value, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EASE.cross })
     options.decorate?.(timeline, root.value)
+    // Tightened 2026-08: the stagger tail was the longest pole in the beat and
+    // the walk lead is sized from this timeline (MOVE_INTERSTITIAL_OVERHEAD_MS
+    // in round-beats), so every frame here is a frame the pawn stands still.
+    // The pieces still land one after another — just closer together.
     timeline.fromTo(
       pieces,
       { opacity: 0, y: 22, scale: 0.96 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: EASE.enter, stagger: 0.1 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.38, ease: EASE.enter, stagger: 0.07 },
       options.piecesAt ?? '<0.1'
     )
     timeline.fromTo(
       root.value.querySelector('hr'),
       { scaleX: 0 },
-      { scaleX: 1, duration: 0.45, ease: EASE.cross },
-      '<0.25'
+      { scaleX: 1, duration: 0.34, ease: EASE.cross },
+      '<0.2'
     )
     timeline.to(root.value, {
       opacity: 0,
-      duration: 0.35,
+      duration: 0.28,
       ease: EASE.exit,
       delay: options.holdFor(),
     })

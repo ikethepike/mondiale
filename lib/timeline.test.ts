@@ -9,7 +9,11 @@ import {
   scoreTimeline,
   slotDensityFraction,
 } from '~~/lib/timeline'
-import type { TimelineChallenge, TimelineState } from '~~/types/challenges/group-modes.type'
+import type {
+  TimelineChallenge,
+  TimelinePlacement,
+  TimelineState,
+} from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, GameRules } from '~~/types/game.types'
 
 // Hard rules keep micro-nations in play — the full event library, as before.
@@ -23,7 +27,6 @@ const state = (overrides: Partial<TimelineState> = {}): TimelineState => ({
   activeIndex: 0,
   turn: 0,
   deadline: 0,
-  banked: {},
   placements: [],
   ...overrides,
 })
@@ -113,11 +116,139 @@ describe('slotDensityFraction', () => {
 })
 
 describe('scoreTimeline', () => {
-  it('reports what each player banked, capped at the ceiling', () => {
-    const scores = scoreTimeline(challenge({ banked: { a: 7.4, b: 99, c: 0 } }))
-    expect(scores.a).toEqual({ scored: 7, maximum: 15 })
-    expect(scores.b).toEqual({ scored: 15, maximum: 15 })
-    expect(scores.c).toEqual({ scored: 0, maximum: 15 })
+  /** A hand of placements for a table, dealt round-robin the way turns rotate. */
+  const placements = (
+    order: string[],
+    cardsEach: number,
+    correctFor: (playerId: string, cardIndex: number) => boolean,
+    kindFor: (playerId: string, cardIndex: number) => 'placed' | 'timeout' = () => 'placed'
+  ): TimelinePlacement[] =>
+    Array.from({ length: order.length * cardsEach }, (_, turn) => {
+      const playerId = order[turn % order.length]
+      const cardIndex = Math.floor(turn / order.length)
+      return {
+        playerId,
+        slug: `card-${turn}`,
+        chosenSlot: 0,
+        correctSlot: 0,
+        correct: correctFor(playerId, cardIndex),
+        // The line grows by one card per turn, so slot n+2 is turn n's crowd.
+        slotCount: turn + 2,
+        kind: kindFor(playerId, cardIndex),
+      }
+    })
+
+  const dealt = (order: string[], cardsEach: number) => ({
+    order,
+    deck: Array.from({ length: 1 + order.length * cardsEach }, (_, index) => `card-${index}`),
+  })
+
+  // The bug this mode shipped with: the payout was struck per turn from the
+  // card's position in the DECK, which in a turn-rotation round is a proxy for
+  // SEAT (order is shuffled once and never rotates). Four seats all placing
+  // perfectly banked [11, 11, 13, 14] of 18, and a 2-of-3 late seat tied a
+  // 3-of-3 early one. Weights now rank a seat's own cards, nothing more.
+  it('pays a flawless hand the full pot from every seat, at every table size', () => {
+    for (const maximumPoints of [12, 15, 18]) {
+      for (const players of [2, 3, 4, 5, 6]) {
+        for (const cardsEach of [2, 3]) {
+          const order = Array.from({ length: players }, (_, index) => `p${index}`)
+          const scores = scoreTimeline(
+            challenge(
+              { ...dealt(order, cardsEach), placements: placements(order, cardsEach, () => true) },
+              maximumPoints
+            )
+          )
+
+          for (const playerId of order) {
+            expect(scores[playerId]).toEqual({ scored: maximumPoints, maximum: maximumPoints })
+          }
+        }
+      }
+    }
+  })
+
+  it('ranks a better hand above a worse one regardless of seat', () => {
+    const order = ['first', 'second', 'third', 'last']
+    // The first seat is flawless; the last seat drops its opening card.
+    const scores = scoreTimeline(
+      challenge(
+        {
+          ...dealt(order, 3),
+          placements: placements(
+            order,
+            3,
+            (playerId, cardIndex) => !(playerId === 'last' && cardIndex === 0)
+          ),
+        },
+        18
+      )
+    )
+
+    expect(scores.first.scored).toBe(18)
+    expect(scores.last.scored).toBeLessThan(scores.first.scored)
+  })
+
+  it('pays about half the pot for half a hand', () => {
+    const order = ['a', 'b']
+    const scores = scoreTimeline(
+      challenge(
+        {
+          ...dealt(order, 4),
+          placements: placements(order, 4, (_playerId, cardIndex) => cardIndex % 2 === 0),
+        },
+        18
+      )
+    )
+
+    for (const playerId of order) {
+      expect(scores[playerId].scored).toBeGreaterThan(6)
+      expect(scores[playerId].scored).toBeLessThan(12)
+    }
+  })
+
+  it('costs the player who times out, not the table', () => {
+    const order = ['steady', 'idle']
+    const scores = scoreTimeline(
+      challenge(
+        {
+          ...dealt(order, 3),
+          placements: placements(
+            order,
+            3,
+            playerId => playerId === 'steady',
+            playerId => (playerId === 'idle' ? 'timeout' : 'placed')
+          ),
+        },
+        18
+      )
+    )
+
+    expect(scores.steady).toEqual({ scored: 18, maximum: 18 })
+    expect(scores.idle).toEqual({ scored: 0, maximum: 18 })
+  })
+
+  // A room mid-round when this shipped has placements with no `slotCount`.
+  // Weighing those as NaN scored the whole table zero — every seat robbed of a
+  // round they had already played.
+  it('still pays a round that was in flight before slotCount existed', () => {
+    const legacy = challenge({ order: ['p0', 'p1'], deck: ['a', 'b', 'c', 'd'] }, 18)
+    legacy.state.placements = [
+      { playerId: 'p0', slug: 'b', chosenSlot: 0, correctSlot: 0, correct: true, kind: 'placed' },
+      { playerId: 'p1', slug: 'c', chosenSlot: 0, correctSlot: 0, correct: false, kind: 'placed' },
+    ] as unknown as TimelinePlacement[]
+
+    const scores = scoreTimeline(legacy)
+    expect(scores.p0).toEqual({ scored: 18, maximum: 18 })
+    expect(scores.p1).toEqual({ scored: 0, maximum: 18 })
+  })
+
+  it('scores a seat that never placed a card as zero', () => {
+    const order = ['a', 'b']
+    const scores = scoreTimeline(challenge({ ...dealt(order, 2), placements: [] }, 15))
+
+    expect(scores.a).toEqual({ scored: 0, maximum: 15 })
+    expect(scores.b).toEqual({ scored: 0, maximum: 15 })
   })
 })
 

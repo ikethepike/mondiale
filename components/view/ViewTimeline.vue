@@ -171,8 +171,6 @@ import {
   drawnCard,
   EVENT_KIND_COPY,
   formatEventYear,
-  perCardPoints,
-  slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
 import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
@@ -235,18 +233,13 @@ const turnLabel = computed(() => {
   return `${playerDisplayName(activePlayer.value)} is on the clock`
 })
 
-/** What a correct call on the current line pays — the density economy, shown. */
-const stakePoints = computed(() => {
-  const active = challenge.value
-  if (!active) return 0
-  return Math.round(
-    perCardPoints(active) * slotDensityFraction(placed.value.length + 1, active.state.deck.length)
-  )
-})
-
+// No points figure here: a card's value depends on the rest of the hand this
+// seat is dealt, which isn't settled until the deck runs out. Promising a
+// number mid-turn would mean re-deriving server math in the view and getting
+// it wrong — the reveal scorecard is where points are told.
 const askLine = computed(() =>
   myTurn.value
-    ? `Drag it onto the line — a correct call banks ${stakePoints.value} pts`
+    ? 'Drag it onto the line'
     : `${playerDisplayName(activePlayer.value)} is weighing the line`
 )
 
@@ -269,8 +262,8 @@ const story = computed(() => {
   const who = seatLabel(gameStore.game?.players, placement.playerId, gameStore.seatId)
   const verdict = placement.correct
     ? who === 'You'
-      ? `Correct — placed exactly right, +${placement.scored} pts`
-      : `Correct — ${who} places it exactly right, +${placement.scored} pts`
+      ? 'Correct — placed exactly right'
+      : `Correct — ${who} places it exactly right`
     : placement.kind === 'timeout'
       ? `${who === 'You' ? 'Your' : `${who}'s`} clock ran out — the card files itself`
       : who === 'You'

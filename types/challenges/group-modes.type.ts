@@ -553,8 +553,12 @@ export interface TimelinePlacement {
   /** Where the card actually landed on the line they saw. */
   correctSlot: number
   correct: boolean
-  /** Points banked for the placement (0 when wrong or timed out). */
-  scored: number
+  /**
+   * Slots the line offered when this card was played — how crowded the call
+   * was. Stamped at placement because the line keeps growing after it; the
+   * round-end scorer weighs a seat's own cards by it.
+   */
+  slotCount: number
   /** 'timeout' placements were never chosen — the card filed itself. */
   kind: 'placed' | 'timeout'
 }
@@ -574,8 +578,6 @@ export interface TimelineState {
   turn: number
   /** Epoch ms the active turn (or the reveal hold) expires. */
   deadline: number
-  /** Points banked per player so far. */
-  banked: { [playerId: string]: number }
   /** Every resolved placement, oldest first — the round's teaching record. */
   placements: TimelinePlacement[]
   /** A placement just resolved — clients hold on its story card. */

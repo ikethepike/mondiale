@@ -1,11 +1,9 @@
 import {
   activeTimelinePlayerId,
   drawnCard,
-  perCardPoints,
   placedYears,
   resolveSlot,
   scoreTimeline,
-  slotDensityFraction,
   timelineEvent,
 } from '~~/lib/timeline'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
@@ -63,9 +61,13 @@ export const scheduleTimelineTimeout = (ctx: ChainContext, challenge: TimelineCh
 }
 
 /**
- * Settle the drawn card: verdict and banked points for a chosen slot, nothing
- * for a timeout — then file the card into its true position (the line must
- * stay sorted for every later placement) and hold on the story card.
+ * Settle the drawn card: the verdict and how crowded the call was for a chosen
+ * slot, nothing for a timeout — then file the card into its true position (the
+ * line must stay sorted for every later placement) and hold on the story card.
+ *
+ * Points are NOT struck here. A card's value depends on the rest of the hand
+ * the seat is dealt, which isn't known until the deck runs out, so the turn
+ * records the weight and `scoreTimeline` converts the whole round at settle.
  */
 export const resolveTimelinePlacement = async (
   ctx: ChainContext,
@@ -82,11 +84,6 @@ export const resolveTimelinePlacement = async (
   // A timeout files the card as if placed below the line's floor — resolveSlot
   // clamps it into the true position and the verdict stays a miss.
   const { correct, slot } = resolveSlot(placedYears(state.placed), event.year, chosenSlot ?? -1)
-  const scored = correct
-    ? Math.round(
-        perCardPoints(challenge) * slotDensityFraction(state.placed.length + 1, state.deck.length)
-      )
-    : 0
 
   state.placements.push({
     playerId,
@@ -94,10 +91,9 @@ export const resolveTimelinePlacement = async (
     chosenSlot: chosenSlot ?? slot,
     correctSlot: slot,
     correct,
-    scored,
+    slotCount: state.placed.length + 1,
     kind: chosenSlot === undefined ? 'timeout' : 'placed',
   })
-  if (scored) state.banked[playerId] = (state.banked[playerId] ?? 0) + scored
   state.placed.splice(slot, 0, slug)
 
   // Hold on the story card so the whole table reads the year it teaches.

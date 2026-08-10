@@ -57,7 +57,7 @@ const REPLAY_SNAP_STEPS = 12
 
 /**
  * Turns server-pushed `currentPosition` updates (one socket message per
- * 500ms step) into hop-arc tweens. Hops are queued per pawn so bursts
+ * STEP_INTERVAL_MS step) into hop-arc tweens. Hops are queued per pawn so bursts
  * (reconnects, +2 jumps) play back smoothly; long backlogs fast-forward.
  *
  * The mover also owns tile occupancy: a pawn alone on a tile sits centered
