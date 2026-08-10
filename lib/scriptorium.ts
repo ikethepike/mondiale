@@ -69,6 +69,14 @@ export const SCRIPTORIUM_POOL: ScriptoriumEntry[] = [
 export const scriptoriumEntry = (language: string): ScriptoriumEntry | undefined =>
   SCRIPTORIUM_POOL.find(entry => entry.language === language)
 
+/** Scripts that run right-to-left — the manuscript's `dir` and the direction
+ *  its write-on wipe sweeps. Keyed by the pool's BCP-47 codes. */
+const RTL_CODES = new Set(['ar', 'fa', 'ps', 'ur', 'he', 'dv'])
+export const scriptoriumRtl = (language: string): boolean => {
+  const entry = scriptoriumEntry(language)
+  return !!entry && RTL_CODES.has(entry.code)
+}
+
 /**
  * Every country where the language is official — the verdict's answer set.
  * Deliberately unfiltered by playability: like the shared-currency carve-out,

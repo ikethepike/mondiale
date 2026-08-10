@@ -3154,6 +3154,20 @@ const scenarios: Scenario[] = [
     },
   },
   {
+    // Arabic exercises the RTL path: dir flips and the write-on wipe sweeps
+    // right-to-left.
+    id: 'individual-scriptorium-rtl',
+    label: 'Individual: scriptorium (Arabic — RTL wipe)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'lexicon',
+        variant: 'scriptorium',
+        country: 'EG',
+        scriptorium: { language: 'Arabic' },
+      }),
+  },
+  {
     id: 'individual-chronicle',
     label: 'Individual: chronicle (drag Japan into order)',
     component: ViewIndividualChallenge,

@@ -1,5 +1,13 @@
 <template>
   <template v-if="challenge.scriptorium">
+    <!-- The vellum veil: the world fades back while the writing takes the
+         whole stage — the anthem round's scenic posture. It lives in the
+         question branch, so answering unmounts it and the map returns in
+         time for the result's reveal zoom. FIRST child on purpose: it pins
+         z-index 0 and every later sibling rides at 1, so the caption and
+         the clock stand ON the vellum, never under it (all inside the
+         header's own stacking context — the shell footer's z2 is untouched). -->
+    <div class="manuscript-veil" aria-hidden="true" />
     <h1 class="map-caption">Name a country that writes like this</h1>
     <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="SCRIPTORIUM_SECONDS" />
 
@@ -8,8 +16,15 @@
          attribute is what picks the right font (ViewTongueBuzz's mechanism);
          the script's NAME stays for the reveal, since for a single-country
          script it would answer the gate. -->
-    <div v-if="sample" class="manuscript" :lang="sample.code">
-      <span v-for="line in sample.lines" :key="line" class="manuscript-line">{{ line }}</span>
+    <div v-if="sample" class="manuscript" :lang="sample.code" :dir="rtl ? 'rtl' : 'ltr'">
+      <span
+        v-for="(line, index) in sample.lines"
+        :key="line"
+        class="manuscript-line"
+        :class="{ rtl }"
+        :style="{ '--line-index': index }"
+        >{{ line }}</span
+      >
     </div>
 
     <Transition name="caption">
@@ -45,7 +60,12 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
-import { scriptoriumAnswers, scriptoriumEntry, scriptoriumRegionHint } from '~~/lib/scriptorium'
+import {
+  scriptoriumAnswers,
+  scriptoriumEntry,
+  scriptoriumRegionHint,
+  scriptoriumRtl,
+} from '~~/lib/scriptorium'
 import {
   anthemTongueSample,
   seededTongueSample,
@@ -94,6 +114,7 @@ const sample = computed(() => {
 /** Easy mode gets the region for free (rosetta's freebie posture — the
  *  difficulty, not a purchase); everyone else can buy it once unlocked. */
 const regionHint = computed(() => (language.value ? scriptoriumRegionHint(language.value) : undefined))
+const rtl = computed(() => !!language.value && scriptoriumRtl(language.value))
 const shownRegion = computed(() =>
   isEasy.value || boughtRegion.value ? regionHint.value : undefined
 )
@@ -128,6 +149,32 @@ const onGuess = (country: Country) => {
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// The world recedes to a cream hush so the writing is the whole stage —
+// denser at the centre where the manuscript sits, thinner at the edges so
+// the room still reads as the map's. Non-interactive by construction.
+.manuscript-veil {
+  inset: 0;
+  z-index: 0;
+  position: fixed;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, milk(0.94) 30%, milk(0.72) 100%);
+  animation: veil-in 1.2s var(--ease-out-expressive) both;
+}
+
+// Everything that follows the veil stands ON the vellum: a fixed sibling
+// paints over statics regardless of DOM order, so the caption, clock, page
+// and hint chips each take an explicit rung above it.
+.manuscript-veil ~ * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+  }
+}
+
 // The page is the stage: unfamiliar glyphs rendered large on a cream leaf.
 // The block-not-line posture from the tongue round's sample applies — two
 // lines of script need room to breathe or the glyph shapes smear together.
@@ -151,6 +198,59 @@ const onGuess = (country: Country) => {
   text-align: center;
   color: var(--dark-blue);
   overflow-wrap: anywhere;
+
+  // The write-on: a soft mask edge sweeps each line in READING direction,
+  // like a pen's wake — the whole shaped line renders at once (no DOM
+  // splitting, so Arabic joining and Tamil clusters are untouchable) and the
+  // mask merely uncovers it. Line two follows a beat behind; the gate mounts
+  // only after the interstitial clears, so the wipe starts with the clock.
+  -webkit-mask-image: linear-gradient(to right, #000 45%, transparent 55%);
+  mask-image: linear-gradient(to right, #000 45%, transparent 55%);
+  -webkit-mask-size: 220% 100%;
+  mask-size: 220% 100%;
+  // Slow enough to savour — the expressive ease front-loads, so a short
+  // clip read as a snap rather than a pen.
+  animation: ink-wipe 2.4s var(--ease-out-expressive) both;
+  animation-delay: calc(0.5s + var(--line-index, 0) * 1.4s);
+
+  &.rtl {
+    -webkit-mask-image: linear-gradient(to left, #000 45%, transparent 55%);
+    mask-image: linear-gradient(to left, #000 45%, transparent 55%);
+    animation-name: ink-wipe-rtl;
+  }
+}
+
+// LTR: the mask's clear window slides left→right over the line; RTL mirrors.
+@keyframes ink-wipe {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+@keyframes ink-wipe-rtl {
+  from {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+  to {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manuscript-line {
+    animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .manuscript-veil {
+    animation: none;
+  }
 }
 
 .region-note {
