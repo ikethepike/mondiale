@@ -84,10 +84,14 @@ const blame = computed(() => {
   const head = countryName(getCountry(props.trap.head))
   const letter = sealedLetter.value
   if (!props.trap.byPlayerId) {
-    return letter ? `The chain dead-ends at ${head} — “${letter}” is spent.` : `The chain dead-ends at ${head}.`
+    return letter
+      ? `The chain dead-ends at ${head} — “${letter}” is spent.`
+      : `The chain dead-ends at ${head}.`
   }
   const closer = props.trap.byPlayerId === props.playerId ? 'You' : nameOf(props.trap.byPlayerId)
-  return letter ? `${closer} sealed “${letter}” at ${head}.` : `${closer} closed the chain at ${head}.`
+  return letter
+    ? `${closer} sealed “${letter}” at ${head}.`
+    : `${closer} closed the chain at ${head}.`
 })
 
 const verdict = computed(() => {

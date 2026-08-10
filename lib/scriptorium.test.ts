@@ -1,16 +1,8 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import {
-  SCRIPTORIUM_POOL,
-  scriptoriumAnswers,
-  scriptoriumRegionHint,
-} from '~~/lib/scriptorium'
-import {
-  anthemTongueSample,
-  seededTongueSample,
-  tongueSampleSource,
-} from '~~/lib/tongue-samples'
+import { SCRIPTORIUM_POOL, scriptoriumAnswers, scriptoriumRegionHint } from '~~/lib/scriptorium'
+import { anthemTongueSample, seededTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 
 describe('SCRIPTORIUM_POOL', () => {
   it('never deals the Latin alphabet — the script must narrow the world', () => {

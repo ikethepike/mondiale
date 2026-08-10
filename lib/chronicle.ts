@@ -107,7 +107,9 @@ export const chronicleSolution = (slugs: string[]): string[] =>
 
 /** Whole years between the hand's first and last event — the reveal's span line. */
 export const chronicleSpanYears = (slugs: string[]): number => {
-  const years = slugs.map(slug => EVENTS[slug]?.year).filter((year): year is number => year !== undefined)
+  const years = slugs
+    .map(slug => EVENTS[slug]?.year)
+    .filter((year): year is number => year !== undefined)
   if (years.length < 2) return 0
   return Math.max(...years) - Math.min(...years)
 }

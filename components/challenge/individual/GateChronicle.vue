@@ -17,12 +17,7 @@
       >
         <template #item="{ element }">
           <article :key="element.slug" class="event-card draggable" :data-slug="element.slug">
-            <img
-              v-if="element.event.image"
-              class="card-photo"
-              :src="element.event.image"
-              alt=""
-            />
+            <img v-if="element.event.image" class="card-photo" :src="element.event.image" alt="" />
             <span v-else class="card-initial" aria-hidden="true">{{
               element.event.name.charAt(0)
             }}</span>
@@ -79,9 +74,7 @@ const { status, submitAnswer, chronicleOrder } = useGateChallenge()
 const dealt = computed(() => props.challenge.chronicle?.events ?? [])
 const order = ref<string[]>([...dealt.value])
 const cards = computed(() =>
-  order.value
-    .map(slug => ({ slug, event: EVENTS[slug] }))
-    .filter(card => !!card.event)
+  order.value.map(slug => ({ slug, event: EVENTS[slug] })).filter(card => !!card.event)
 )
 
 const options = ref({ ...DRAG_LIST_OPTIONS })
@@ -103,10 +96,9 @@ const buyAnchor = () => {
   anchorSlug.value = chronicleSolution(dealt.value)[0]
 }
 
-const { secondsLeft, remainingFraction, stop, elapsedFraction } = useGateClock(
-  CHRONICLE_SECONDS,
-  { onExpire: () => resolve(true) }
-)
+const { secondsLeft, remainingFraction, stop, elapsedFraction } = useGateClock(CHRONICLE_SECONDS, {
+  onExpire: () => resolve(true),
+})
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
 /**

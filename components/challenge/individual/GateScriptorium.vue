@@ -71,11 +71,7 @@ import {
   scriptoriumRegionHint,
   scriptoriumRtl,
 } from '~~/lib/scriptorium'
-import {
-  anthemTongueSample,
-  seededTongueSample,
-  tongueSampleSource,
-} from '~~/lib/tongue-samples'
+import { anthemTongueSample, seededTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { SCRIPTORIUM_SECONDS } from './timing'
@@ -118,7 +114,9 @@ const sample = computed(() => {
 
 /** Easy mode gets the region for free (rosetta's freebie posture — the
  *  difficulty, not a purchase); everyone else can buy it once unlocked. */
-const regionHint = computed(() => (language.value ? scriptoriumRegionHint(language.value) : undefined))
+const regionHint = computed(() =>
+  language.value ? scriptoriumRegionHint(language.value) : undefined
+)
 const rtl = computed(() => !!language.value && scriptoriumRtl(language.value))
 const shownRegion = computed(() =>
   isEasy.value || boughtRegion.value ? regionHint.value : undefined

@@ -36,9 +36,7 @@ const entry = computed(() => {
   return language ? scriptoriumEntry(language) : undefined
 })
 // The same set the verdict used — the chip list and the score cannot disagree.
-const answers = computed(() =>
-  entry.value ? scriptoriumAnswers(entry.value.language) : []
-)
+const answers = computed(() => (entry.value ? scriptoriumAnswers(entry.value.language) : []))
 const speakers = computed(() =>
   entry.value ? TONGUE_FACTS[entry.value.language]?.speakers : undefined
 )

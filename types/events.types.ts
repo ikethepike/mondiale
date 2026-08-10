@@ -88,7 +88,7 @@ export type ClientEventData =
     }
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
-     *  the chain. `turn` echoes the
+       *  the chain. `turn` echoes the
        *  state's turn counter so a retried/duplicated send can never land as a
        *  second move. */
       event: 'submit-chain-move'

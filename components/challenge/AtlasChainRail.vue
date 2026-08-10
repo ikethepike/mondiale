@@ -81,7 +81,9 @@ const tieOverlap = (index: number): number => {
 }
 
 const tieFragment = (index: number): string =>
-  atlasKey(props.chain[index]).slice(0, Math.max(1, tieOverlap(index))).toUpperCase()
+  atlasKey(props.chain[index])
+    .slice(0, Math.max(1, tieOverlap(index)))
+    .toUpperCase()
 
 /** The two letters before the head's tail, faded into the ghost chip. */
 const ghostLead = computed(() => {

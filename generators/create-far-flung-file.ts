@@ -171,11 +171,15 @@ for (const seed of FAR_FLUNG_SEEDS) {
     ring ??= candidate
   }
   if (!ring) {
-    console.warn(`far-flung: DROPPED ${seed.slug} — no ring holds ${seed.anchor.lat},${seed.anchor.lng}`)
+    console.warn(
+      `far-flung: DROPPED ${seed.slug} — no ring holds ${seed.anchor.lat},${seed.anchor.lng}`
+    )
     continue
   }
   if (diagonal(ring) < VISIBILITY_FLOOR_UNITS) {
-    console.warn(`far-flung: DROPPED ${seed.slug} — ring diagonal ${diagonal(ring).toFixed(2)} under floor`)
+    console.warn(
+      `far-flung: DROPPED ${seed.slug} — ring diagonal ${diagonal(ring).toFixed(2)} under floor`
+    )
     continue
   }
 

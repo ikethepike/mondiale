@@ -103,12 +103,7 @@
       <div class="reveal-chains">
         <template v-for="(stanza, index) in revealStanzas" :key="index">
           <span v-if="index > 0" class="chain-start eyebrow">Fresh chain</span>
-          <AtlasChainRail
-            :chain="stanza.chain"
-            :overlaps="challenge.overlaps"
-            finished
-            compact
-          />
+          <AtlasChainRail :chain="stanza.chain" :overlaps="challenge.overlaps" finished compact />
           <p v-if="stanza.brokeAt" class="chain-break">
             Dead end — every “{{ stanza.brokeAt.letter }}” was spent:
             {{ seatName(stanza.brokeAt.playerId) }}
@@ -278,9 +273,7 @@ const stakes = computed(() => {
 
 const headline = computed(() => {
   if (finished.value) return 'The chain is broken'
-  return head.value
-    ? `The chain stands at ${countryName(getCountry(head.value))}`
-    : 'Atlas'
+  return head.value ? `The chain stands at ${countryName(getCountry(head.value))}` : 'Atlas'
 })
 
 const turnLabel = computed(() => {
@@ -366,9 +359,7 @@ const revealStanzas = computed<
     return {
       chain: walkedChain,
       brokeAt:
-        playerId && head
-          ? { playerId, letter: atlasTailLetter(head).toUpperCase() }
-          : undefined,
+        playerId && head ? { playerId, letter: atlasTailLetter(head).toUpperCase() } : undefined,
     }
   })
 })
@@ -466,8 +457,7 @@ watch(
     if (snapshot.eliminated > before.eliminated) {
       const outId = s.eliminated[s.eliminated.length - 1]
       if (outId === gameStore.seatId) return // the turn line already says so
-      const fate =
-        s.outcomes[outId] === 'timeout' ? 'the clock ran dry' : 'the chain broke'
+      const fate = s.outcomes[outId] === 'timeout' ? 'the clock ran dry' : 'the chain broke'
       return announce({ hint: `${seatName(outId)} is out — ${fate}` })
     }
     if (snapshot.strikes !== before.strikes) {
