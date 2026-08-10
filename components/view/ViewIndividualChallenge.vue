@@ -242,7 +242,7 @@ const interstitialTitle = computed(() => {
     case 'atlas':
       return 'Chain countries — each begins where the last one ended'
     case 'scriptorium':
-      return 'Name a country from its writing alone'
+      return 'One language wrote this — name a country that speaks it'
     case 'chronicle':
       return `Put ${countryName(active.country)}'s history in order`
     case 'far-flung':
@@ -313,9 +313,9 @@ const incorrectMessage = computed(() => {
       // The gate always phrases its own missNote; this is the safety line.
       return 'The chain broke.'
     case 'scriptorium':
-      return picked
-        ? `${countryName(picked)} doesn't write like that`
-        : 'Time ran out.'
+      // Language-framed, never script-framed: Eritrea writes Geʽez too, but
+      // an Amharic deal is asking for Amharic's countries.
+      return picked ? `It isn't an official language of ${countryName(picked)}` : 'Time ran out.'
     case 'chronicle':
       // The reveal below sets the record straight, year by year.
       return 'History disagrees.'

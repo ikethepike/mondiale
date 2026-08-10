@@ -8,7 +8,12 @@
          the clock stand ON the vellum, never under it (all inside the
          header's own stacking context — the shell footer's z2 is untouched). -->
     <div class="manuscript-veil" aria-hidden="true" />
-    <h1 class="map-caption">Name a country that writes like this</h1>
+    <!-- The LANGUAGE is the question, the script only the clue: the verdict
+         accepts speakers of this language, so the copy must never promise
+         script-matching (a Bulgarian sample is not "name any Cyrillic
+         country" — Russia is a miss). -->
+    <h1 class="map-caption">One language wrote this</h1>
+    <span class="map-caption sub">Name a country that speaks it — the script is your clue.</span>
     <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="SCRIPTORIUM_SECONDS" />
 
     <!-- The manuscript page: a couple of lines of the language in its own
