@@ -1,8 +1,8 @@
-events: 650 shipped of 650 seeds
+events: 712 shipped of 712 seeds
 
 dropped (0) — fix the year or pin a qid:
 
-no image (10) — add a commons/imageUrl override:
+no image (18) — add a commons/imageUrl override:
   green-belt-movement
   ineos-1-59-challenge
   phoenician-alphabet
@@ -13,3 +13,11 @@ no image (10) — add a commons/imageUrl override:
   chilean-declaration-of-independence
   one-love-peace-concert
   kingdom-of-kongo
+  dag-hammarskjold
+  grand-duchy-of-finland
+  gaelic-athletic-association
+  tunisian-independence
+  rwandan-revolution
+  hafsid-dynasty
+  emirate-of-abdelkader
+  zaire
