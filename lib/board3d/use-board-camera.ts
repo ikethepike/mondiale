@@ -76,8 +76,10 @@ export interface BoardCamera {
  * difference matters: `frameOn` overrides the shot (distance and pitch),
  * `follow` only translates the rig. A confirmed gesture suppresses both for a
  * while and retires framing for good — the shot is theirs from then on, while
- * tracking stays automatic. `onUserGrab` fires once per confirmed gesture;
- * callers use it to drop modes (like spectating) that a grab should cancel.
+ * tracking stays automatic. `onUserGrab` fires once per confirmed gesture —
+ * but a wheel is a gesture PER TICK as far as OrbitControls is concerned, so
+ * treat it as repeatable and keep the handler idempotent; callers use it to
+ * drop modes (like spectating) that a grab should cancel.
  */
 export const createBoardCamera = (
   camera: PerspectiveCamera,

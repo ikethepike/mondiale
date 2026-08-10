@@ -773,10 +773,13 @@ watch(
     // and lands as a re-aim when it lifts.
     if (targetId) boardCamera?.takeOver()
 
-    // The roster rail lives in the layout, so a spectate tap can land while a
-    // challenge view holds the screen: framing here would sweep off screen and
-    // consume the very shot this beat exists to hold. Retire the latch instead
-    // and let the show pass frame the new subject when the board returns.
+    // A cut can be set while the stage is hidden — the booth writes
+    // stageActive itself (ViewSpectate) and only raises it when the WATCHED
+    // seat is on the board, so a director cut to a seat mid-challenge lands
+    // here with nothing on screen. (The roster rail can't: it renders only on
+    // BOARD_PHASES.) Framing now would sweep off screen and consume the very
+    // shot this beat exists to hold; retire the latch and let the show pass
+    // frame the new subject when the board returns.
     if (!props.active) {
       framedAnnounce = undefined
       return
