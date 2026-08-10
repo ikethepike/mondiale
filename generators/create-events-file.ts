@@ -303,9 +303,13 @@ for (const seed of EVENT_SEEDS) {
 }
 
 // Prune verdicts whose seed is gone, so the file tracks the seed list.
+// Rebuilt rather than deleted from: a dynamic `delete` is banned (and would
+// deoptimise the object anyway), and this keeps the written order stable.
 const liveKeys = new Set(EVENT_SEEDS.map(verifyKey))
-for (const key of Object.keys(verifyCache)) if (!liveKeys.has(key)) delete verifyCache[key]
-writeFileSync(VERIFY_CACHE_PATH, `${JSON.stringify(verifyCache, null, 2)}\n`)
+const livingVerdicts = Object.fromEntries(
+  Object.entries(verifyCache).filter(([key]) => liveKeys.has(key))
+)
+writeFileSync(VERIFY_CACHE_PATH, `${JSON.stringify(livingVerdicts, null, 2)}\n`)
 console.log(`  (${EVENT_SEEDS.length - asked} verdicts from cache, ${asked} asked of Wikidata)`)
 
 console.log(`Verified ${verified.length}/${EVENT_SEEDS.length}; resolving photos…`)
