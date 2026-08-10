@@ -14,7 +14,9 @@ import {
   PAWN_HOP_MS,
   STEP_INTERVAL_MS,
   WALK_ANNOUNCE_WIRE_GRACE_MS,
+  WALK_FRAME_MS,
   WALK_LEAD_MS,
+  WALK_RESUME_FRAME_MS,
   WALK_RESUME_LEAD_MS,
   classicPlaySeconds,
   EMPIRE_INTERBEAT_HOLD_MS,
@@ -138,6 +140,18 @@ describe('round beats', () => {
     )
     // The resume lead carries no overlay — only the view transition.
     expect(WALK_RESUME_LEAD_MS).toBeLessThan(WALK_LEAD_MS)
+  })
+
+  it('fits the camera framing sweep inside the announce lead it plays under', () => {
+    // The opening sweep runs BEHIND the interstitial: it must be over before
+    // the beat that hides it lifts, or the camera is seen moving under the
+    // card. There is no room after the interstitial — the fit above pins it
+    // to the whole lead.
+    expect(WALK_FRAME_MS).toBeLessThan(MOVE_INTERSTITIAL_TOTAL_MS)
+    // A between-gates resume has no interstitial and a short lead: the
+    // re-frame must land before the first step, whose follow banks behind it.
+    expect(WALK_RESUME_FRAME_MS).toBeLessThanOrEqual(WALK_RESUME_LEAD_MS)
+    expect(WALK_RESUME_FRAME_MS).toBeLessThan(WALK_FRAME_MS)
   })
 
   it('composes the arrival hold and gate fallback from their parts', () => {
