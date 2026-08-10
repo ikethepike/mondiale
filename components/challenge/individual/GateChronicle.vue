@@ -179,12 +179,14 @@ const submitOrder = () => resolve()
   touch-action: none;
 
   // The rail the slots hang on. It sits behind the node coins and holds
-  // still while cards trade places through it.
+  // still while cards trade places through it. Its centre must land on the
+  // coins' centre: coins start 0.5rem in (4.4rem pad − 3.9rem offset) and
+  // span 2.6rem, so centre = 1.8rem; the 0.2rem line starts 0.1rem before.
   &::before {
     content: '';
     top: 1.4rem;
     bottom: 1.4rem;
-    left: 1.55rem;
+    left: 1.7rem;
     position: absolute;
     border-left: 0.2rem dashed ink(0.3);
   }
@@ -321,8 +323,9 @@ const submitOrder = () => resolve()
     gap: 0.8rem;
     padding-left: 3.6rem;
 
+    // Same centring sum at the narrow sizes: (3.6 − 3.3) + 2.3/2 − 0.1.
     &::before {
-      left: 1.15rem;
+      left: 1.35rem;
     }
   }
   .event-card {
