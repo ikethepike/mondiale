@@ -447,4 +447,14 @@ header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
 }
+
+// The provenance ⓘ hangs off the prompt's true corner (top:0 right:0), which
+// in this shell rides the verdict card's border radius — half on the card,
+// half off, and its opened panel with it. Tuck it inside the card's head
+// padding instead; during the question beat the centred captions leave the
+// corner clear, so one inset serves both beats.
+header :deep(.prompt .prompt-source) {
+  top: 1.1rem;
+  right: 1.2rem;
+}
 </style>

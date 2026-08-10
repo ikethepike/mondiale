@@ -18,6 +18,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { countryName, getCountry } from '~~/lib/country'
 import { formatApproxKm, formatKm } from '~~/lib/number'
+import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -31,9 +32,14 @@ const entry = computed(() => {
   const slug = props.challenge.farFlung?.slug
   return slug ? FAR_FLUNG[slug] : undefined
 })
-const missedCountry = computed(() =>
-  props.submitted && props.submitted !== entry.value?.iso ? props.submitted : undefined
-)
+// A clock expiry submits the can't-match token, not a guess — "Not
+// Switzerland" on a timeout reads as a bizarre accusation. Only a country
+// the player actually chose earns the strike-through.
+const missedCountry = computed(() => {
+  if (!props.submitted || props.submitted === entry.value?.iso) return undefined
+  if (props.submitted === wrongTokenFor(props.challenge)) return undefined
+  return props.submitted
+})
 // The approx grain is 100 km — honest for the Galápagos, but it rounds a
 // 40 km exclave hop to "0 km". Near separations keep their real figure.
 const separationLabel = computed(() => {
