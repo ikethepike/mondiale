@@ -131,21 +131,47 @@ const submitOrder = () => resolve()
 @use '~/assets/scss/rules/breakpoints' as *;
 
 .chronicle-board {
+  // The rail's gutter and the coins that hang in it — one set of numbers the
+  // rail, the cards and the poles all read from, so a narrower gutter can
+  // never leave the dashes off the coins' centre.
+  --rail-gutter: 4.4rem;
+  --coin-size: 3rem; // the coin's PAINTED width, border and all
+  --coin-reach: 3.9rem; // how far left of its card a coin sits
+  --card-edge: 0.1rem; // the card's hairline — the coin hangs off its INNER edge
+
   gap: 0.6rem;
   display: flex;
   align-items: stretch;
+  // Spans the prompt column so the box below centres against the real
+  // container — the header's scroller clips at its own padding, so a vw sum
+  // would lean the coins straight into that edge.
+  align-self: stretch;
   flex-flow: column nowrap;
   margin-top: 1rem;
 }
 
-// The direction poles, the ranking round's language turned vertical.
+// The rail's marginalia and the card column share one box: a gutter each
+// side, the rail living in the left one. Mirroring the gutter is what puts
+// the CARDS on the prompt's centre line — centring the board whole measured
+// the gutter in, and hung the stack half of it to the right.
+.pole,
+.chronicle-cards {
+  width: 100%;
+  max-width: calc(50rem + var(--rail-gutter));
+  margin-inline: auto;
+  padding-inline: var(--rail-gutter);
+}
+
+// The direction poles, the ranking round's language turned vertical. They
+// label the card column, so they start where the cards do — the padding only
+// lands there once the header's inherited centring is dropped.
 .pole {
+  text-align: left;
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--soft-blue);
-  padding-left: 4.4rem;
 
   &::after {
     content: ' ↓';
@@ -161,9 +187,7 @@ const submitOrder = () => resolve()
 .chronicle-cards {
   gap: 1rem;
   display: flex;
-  width: min(50rem, 92vw);
   position: relative;
-  padding-left: 4.4rem;
   flex-flow: column nowrap;
   counter-reset: slot;
   pointer-events: auto;
@@ -175,13 +199,16 @@ const submitOrder = () => resolve()
 
   // The rail the slots hang on. It sits behind the node coins and holds
   // still while cards trade places through it. Its centre must land on the
-  // coins' centre: coins start 0.5rem in (4.4rem pad − 3.9rem offset) and
-  // span 2.6rem, so centre = 1.8rem; the 0.2rem line starts 0.1rem before.
+  // coins': a coin hangs off the card's PADDING box, so it starts
+  // (gutter + card edge − reach) in and spans a painted coin — the 0.2rem
+  // line starts 0.1rem before that midpoint, at every coin size.
   &::before {
     content: '';
     top: 1.4rem;
     bottom: 1.4rem;
-    left: 1.7rem;
+    left: calc(
+      var(--rail-gutter) + var(--card-edge) - var(--coin-reach) + var(--coin-size) * 0.5 - 0.1rem
+    );
     position: absolute;
     border-left: 0.2rem dashed ink(0.3);
   }
@@ -198,19 +225,24 @@ const submitOrder = () => resolve()
   border-radius: 1rem;
   backdrop-filter: blur(0.5rem);
   background: milk(0.94);
-  border: 0.1rem solid ink(0.25);
+  border: var(--card-edge) solid ink(0.25);
   box-shadow: 0 0.2rem 0.6rem ink(0.08);
   transition: box-shadow 0.2s var(--ease-out-expressive);
 
   // The slot coin: numbered top-down by DOM order, so it re-counts itself the
   // moment a drop lands — the number belongs to the SLOT, not the card.
+  //
+  // border-box, because the reset's `*` doesn't reach pseudo-elements: with
+  // the border outside the width, the coin painted 0.4rem wider than
+  // --coin-size and the rail's dashes ran a line-width left of its centre.
   &::before {
     counter-increment: slot;
     content: counter(slot);
     top: 50%;
-    left: -3.9rem;
-    width: 2.6rem;
-    height: 2.6rem;
+    box-sizing: border-box;
+    left: calc(var(--coin-reach) * -1);
+    width: var(--coin-size);
+    height: var(--coin-size);
     display: grid;
     position: absolute;
     place-items: center;
@@ -258,11 +290,15 @@ const submitOrder = () => resolve()
   background: ink(0.07);
 }
 
+// A chapter reads ragged-right against its plate: the header's inherited
+// centring (ChallengePrompt) set a wrapped title drifting away from the photo
+// edge, and left every card's first word starting at its own indent.
 .card-body {
   gap: 0.3rem;
   display: flex;
   min-width: 0;
   padding: 1rem 0;
+  text-align: left;
   align-self: center;
   flex-flow: column nowrap;
 }
@@ -314,23 +350,20 @@ const submitOrder = () => resolve()
 }
 
 @media (max-width: $tablet) {
+  // A narrower gutter and smaller coins — the rail, the poles and the optical
+  // offset follow from the tokens, so this is the whole of it.
+  .chronicle-board {
+    --rail-gutter: 3.6rem;
+    // Even, like the 3rem above: the rail's left is a half-coin sum, and a
+    // fractional pixel there gets snapped — half a pixel off a 0.2rem line.
+    --coin-size: 2.8rem;
+    --coin-reach: 3.3rem;
+  }
   .chronicle-cards {
     gap: 0.8rem;
-    padding-left: 3.6rem;
-
-    // Same centring sum at the narrow sizes: (3.6 − 3.3) + 2.3/2 − 0.1.
-    &::before {
-      left: 1.35rem;
-    }
   }
   .event-card {
     min-height: 5.2rem;
-
-    &::before {
-      left: -3.3rem;
-      width: 2.3rem;
-      height: 2.3rem;
-    }
   }
   .card-photo,
   .card-initial {
@@ -338,9 +371,6 @@ const submitOrder = () => resolve()
   }
   .card-name {
     font-size: 1.5rem;
-  }
-  .pole {
-    padding-left: 3.6rem;
   }
 }
 </style>
