@@ -4,6 +4,7 @@ import { clampClientScore, getRoundChallenge } from '~~/lib/challenges'
 import {
   EMPIRE_TUNING,
   empireAnswerMatches,
+  empireFameWeight,
   empirePots,
   normalizeEmpireAnswer,
   scoreEmpireExtent,
@@ -11,7 +12,8 @@ import {
 } from '~~/lib/empires'
 import { variantCountries } from '~~/lib/variant'
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
-import type { Game, GameDifficulty } from '~~/types/game.types'
+import { FAME_BY_DIFFICULTY, FAME_TIERS, isFameDealable } from '~~/types/fame.types'
+import { gameDifficulties, type Game, type GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 describe('empirePots', () => {
@@ -154,6 +156,36 @@ describe('empireAnswerMatches', () => {
   })
 })
 
+describe('the fame gate', () => {
+  it('weighs a tier at zero exactly when the shared gate benches it', () => {
+    for (const difficulty of gameDifficulties) {
+      for (const fame of FAME_TIERS) {
+        expect(empireFameWeight(fame, difficulty) > 0, `${difficulty}/${fame}`).toBe(
+          FAME_BY_DIFFICULTY[difficulty].has(fame)
+        )
+      }
+    }
+  })
+
+  it('leans hard tables toward the deep cuts without benching the canon', () => {
+    const { fameWeights } = EMPIRE_TUNING.hard
+    expect(fameWeights.obscure).toBeGreaterThan(fameWeights.minor)
+    expect(fameWeights.minor).toBeGreaterThan(fameWeights.major)
+    expect(fameWeights.major).toBeGreaterThan(0)
+  })
+
+  it('keeps every region stocked for every difficulty', () => {
+    const regions = new Set(Object.values(EMPIRES).map(empire => empire.region))
+    for (const region of regions) {
+      const inRegion = Object.values(EMPIRES).filter(empire => empire.region === region)
+      for (const difficulty of gameDifficulties) {
+        const dealable = inRegion.filter(empire => isFameDealable(empire.fame, difficulty))
+        expect(dealable.length, `${region}/${difficulty}`).toBeGreaterThanOrEqual(2)
+      }
+    }
+  })
+})
+
 // --- The dealer, through the front door ----------------------------------------
 
 const game = (difficulty: GameDifficulty, overrides?: object): Game =>
@@ -200,12 +232,17 @@ describe('getEmpireChallenge (via getRoundChallenge)', () => {
     expect(hard.options).toBeUndefined()
   })
 
-  it('never deals a deep cut below hard', async () => {
+  it('deals every ghost inside the difficulty’s fame gate', async () => {
     process.env.FORCE_ROUND_TYPE = 'empire'
-    for (let attempt = 0; attempt < 25; attempt++) {
-      const dealt = (await getRoundChallenge({ game: game('easy') })) as EmpireChallenge
-      if (dealt._type !== 'empire-challenge') continue
-      expect(EMPIRES[dealt.empireId].tier).toBe('icon')
+    for (const difficulty of gameDifficulties) {
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const dealt = (await getRoundChallenge({ game: game(difficulty) })) as EmpireChallenge
+        if (dealt._type !== 'empire-challenge') continue
+        const { fame } = EMPIRES[dealt.empireId]
+        expect(isFameDealable(fame, difficulty), `${difficulty}/${dealt.empireId}`).toBe(true)
+        for (const id of dealt.options ?? [])
+          expect(isFameDealable(EMPIRES[id].fame, difficulty), `decoy ${id}`).toBe(true)
+      }
     }
   })
 

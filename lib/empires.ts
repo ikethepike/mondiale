@@ -1,4 +1,5 @@
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
+import { isFameDealable, type Fame } from '~~/types/fame.types'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { clampScore, jaccardFraction } from './scoring'
@@ -21,9 +22,15 @@ export const EMPIRE_TUNING: {
     keyframes: number
     /** Name options offered in beat 1; 0 = free pick from the full register. */
     optionCount: number
-    /** Deal weights by tier. Deep cuts never deal below hard; the icon floor
-     *  keeps Rome turning up even at a hard table. */
-    tierWeights: { icon: number; 'deep-cut': number }
+    /**
+     * Deal weight per recognisability tier — the mode's difficulty dial. A 0
+     * benches the tier entirely, and the zeroes MUST agree with the shared
+     * `FAME_BY_DIFFICULTY` gate (pinned in empires.test) so "dealable at
+     * normal" means the same thing here as it does for a Timeline card.
+     * Above zero the weights only LEAN: hard tips toward the deep cuts while
+     * keeping an icon floor, so Rome still turns up at a hard table.
+     */
+    fameWeights: { [fame in Fame]: number }
   }
 } = {
   easy: {
@@ -31,23 +38,28 @@ export const EMPIRE_TUNING: {
     tapSeconds: 40,
     keyframes: 7,
     optionCount: 3,
-    tierWeights: { icon: 1, 'deep-cut': 0 },
+    fameWeights: { major: 1, minor: 0, obscure: 0 },
   },
   normal: {
     nameSeconds: 28,
     tapSeconds: 35,
     keyframes: 6,
     optionCount: 3,
-    tierWeights: { icon: 1, 'deep-cut': 0 },
+    fameWeights: { major: 1, minor: 0.5, obscure: 0 },
   },
   hard: {
     nameSeconds: 24,
     tapSeconds: 30,
     keyframes: 5,
     optionCount: 0,
-    tierWeights: { icon: 0.35, 'deep-cut': 1 },
+    fameWeights: { major: 0.25, minor: 0.6, obscure: 1 },
   },
 }
+
+/** The one weight lookup — a tier the difficulty may not deal weighs nothing,
+ *  whatever the table says. Dealer and linter both rank through it. */
+export const empireFameWeight = (fame: Fame, difficulty: GameDifficulty): number =>
+  isFameDealable(fame, difficulty) ? EMPIRE_TUNING[difficulty].fameWeights[fame] : 0
 
 /**
  * The round's pot, split across the beats. Naming the ghost pays the smaller

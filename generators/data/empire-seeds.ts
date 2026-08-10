@@ -1,3 +1,4 @@
+import type { Fame } from '../../types/fame.types'
 import type { ISOCountryCode } from '../../types/geography.types'
 
 /**
@@ -25,15 +26,16 @@ import type { ISOCountryCode } from '../../types/geography.types'
  *   the same footing as ancient ones. Aim for the detail a player retells.
  * - Overlapping polities (Mongol ⊃ Golden Horde, Rome → Byzantium) are fine
  *   as separate entries; the dealer never repeats an empire within a game.
+ * - Every region carries at least two `major` ghosts (easy deals nothing else)
+ *   and at least one below it, or a whole continent drops out of a difficulty.
+ *   Rate the NAME's reach, not the polity's importance — Srivijaya ruled the
+ *   straits for six centuries and is still `obscure` at a table.
  * - eventSlugs cross-link data/events.gen.ts EVENTS; advisory only (events
  *   can drop on regen), checked by generators/check-empires.ts.
  */
 
 export type EmpireRegion =
   'south-america' | 'north-america' | 'africa' | 'middle-east' | 'asia' | 'europe'
-
-/** Icons deal on every difficulty; deep cuts are weighted toward hard mode. */
-export type EmpireTier = 'icon' | 'deep-cut'
 
 export type EmpireKeyframeSpec =
   | {
@@ -82,7 +84,16 @@ export interface EmpireSeed {
   /** Accepted alternate answers ("Tawantinsuyu", "Sassanid Empire"). */
   answerAliases?: string[]
   region: EmpireRegion
-  tier: EmpireTier
+  /**
+   * Recognisability tier — the SAME classification the event library uses
+   * (types/fame.types), so a difficulty means one thing across the game.
+   * `major` is the ghost a pub quiz would name (Rome, the USSR, the Aztecs);
+   * `minor` rewards a reader of history (the Umayyads, Ayutthaya's neighbours,
+   * the Commonwealth); `obscure` is fair but genuinely hard (Wari, Kanem–Bornu,
+   * Srivijaya). Required — an unrated ghost would silently pick a tier.
+   * Difficulty reads it through EMPIRE_TUNING.fameWeights in lib/empires.
+   */
+  fame: Fame
   /** 4–8 specs, strictly ascending by year. */
   keyframes: EmpireKeyframeSpec[]
   /** Beat 2 freezes here; must equal one keyframe's year. */
@@ -106,7 +117,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Abbasid Caliphate',
     answerAliases: ['Abbasids', 'Abbasid Empire'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // Snapshots name the Abbasids only at 800/900 (Buyids/Seljuks subsume
       // them after) — the rise and the Baghdad rump are hand-traced.
@@ -147,7 +158,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Akkadian Empire',
     answerAliases: ['Akkad', 'Akkadians', 'Empire of Akkad'],
     region: 'middle-east',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       // Predates every snapshot — the whole arc is hand-traced.
       { source: 'handmade', year: -2330, file: 'akkadian-empire-bc2330.geojson' },
@@ -171,7 +182,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Neo-Assyrian Empire',
     answerAliases: ['Assyria', 'Assyrian Empire', 'Assyrians'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: -1000, name: ['Assyria'] },
       { source: 'basemaps', year: -700, name: ['Assyria'] },
@@ -196,7 +207,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Neo-Babylonian Empire',
     answerAliases: ['Babylon', 'Babylonia', 'Babylonian Empire', 'Chaldean Empire'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // Lives entirely between the -700 and -500 snapshots — all hand-traced.
       { source: 'handmade', year: -620, file: 'neo-babylonian-empire-bc620.geojson' },
@@ -220,7 +231,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Achaemenid Empire',
     answerAliases: ['Persia', 'Persian Empire', 'Achaemenids', 'First Persian Empire'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // Not on the -700 map (Media holds Iran) — the rise frame is hand-traced.
       { source: 'handmade', year: -550, file: 'achaemenid-empire-bc550.geojson' },
@@ -265,7 +276,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Seleucid Empire',
     answerAliases: ['Seleucids', 'Seleucid Kingdom', 'Seleucia'],
     region: 'middle-east',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // Not yet distinct at -323 (Alexander's empire) — the rise is hand-traced.
       { source: 'handmade', year: -312, file: 'seleucid-empire-bc312.geojson' },
@@ -296,7 +307,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Parthian Empire',
     answerAliases: ['Parthia', 'Parthians', 'Arsacid Empire', 'Arsacids'],
     region: 'middle-east',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: -200, name: ['Parthia'] },
       { source: 'basemaps', year: -100, name: ['Parthia'] },
@@ -320,7 +331,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Sasanian Empire',
     answerAliases: ['Sassanid Empire', 'Sasanians', 'Sassanids', 'Persia', 'Eranshahr'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // The 300 snapshot still labels Iran 'Parthian Empire' — rise hand-traced.
       { source: 'handmade', year: 240, file: 'sasanian-empire-240.geojson' },
@@ -360,7 +371,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Umayyad Caliphate',
     answerAliases: ['Umayyads', 'Umayyad Empire', 'Omayyad Caliphate', 'Arab Caliphate'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // The rise outruns the century snapshots — 632/661/720 are hand-traced.
       { source: 'handmade', year: 632, file: 'umayyad-caliphate-632.geojson' },
@@ -429,7 +440,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ottoman Empire',
     answerAliases: ['Ottomans', 'Turkish Empire', 'Sublime Porte', 'Osman Empire'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1400, name: ['Ottoman Empire'] },
       { source: 'basemaps', year: 1500, name: ['Ottoman Empire'] },
@@ -497,7 +508,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Safavid Empire',
     answerAliases: ['Safavids', 'Safavid Persia', 'Safavid dynasty', 'Persia'],
     region: 'middle-east',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // Founded 1501 but not on the 1500 sheet — the run opens at 1530.
       { source: 'basemaps', year: 1530, name: ['Safavid Empire'] },
@@ -526,7 +537,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Hittite Empire',
     answerAliases: ['Hittites', 'Hatti', 'Hittite Kingdom'],
     region: 'middle-east',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: -2000, name: ['Hittites'] },
       { source: 'basemaps', year: -1500, name: ['Hittites'] },
@@ -549,7 +560,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Seljuk Empire',
     answerAliases: ['Seljuks', 'Seljuq Empire', 'Great Seljuk Empire', 'Seljuk Turks'],
     region: 'middle-east',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // Only the 1100 sheet names the empire — rise and remnants hand-traced.
       { source: 'handmade', year: 1040, file: 'seljuk-empire-1040.geojson' },
@@ -578,7 +589,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Mongol Empire',
     answerAliases: ['Mongols', 'Mongolian Empire', 'Great Mongol State'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1200, name: ['Mongol Empire'] },
       // From 1279 the sheets name the khanates; 'Mongol Empire' survives only
@@ -624,7 +635,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Han Dynasty',
     answerAliases: ['Han', 'Han Empire', 'Han China'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: -200, name: ['Han Empire'] },
       { source: 'basemaps', year: -100, name: ['Han Empire'] },
@@ -651,7 +662,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Tang Dynasty',
     answerAliases: ['Tang', 'Tang Empire', 'Tang China'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'handmade', year: 618, file: 'tang-dynasty-618.geojson' },
       // The 700 sheet still labels the empire 'Sui Empire' (gone since 618) —
@@ -676,7 +687,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Qing Dynasty',
     answerAliases: ['Qing', 'Qing Empire', 'Manchu Empire', 'Great Qing', 'Manchu Dynasty'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1650, name: ['Manchu Empire'] },
       { source: 'basemaps', year: 1700, name: ['Manchu Empire'] },
@@ -702,7 +713,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Maurya Empire',
     answerAliases: ['Mauryas', 'Mauryan Empire', 'Magadha'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: -300, name: ['Mauryan Empire'] },
       { source: 'handmade', year: -250, file: 'maurya-empire-bc250.geojson' },
@@ -725,7 +736,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Gupta Empire',
     answerAliases: ['Guptas', 'Gupta dynasty'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 300, name: ['Gupta Empire'] },
       { source: 'basemaps', year: 400, name: ['Gupta Empire'] },
@@ -748,7 +759,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Mughal Empire',
     answerAliases: ['Mughals', 'Mogul Empire', 'Moghul Empire', 'Timurid-Mughal Empire'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1530, name: ['Mughal Empire'] },
       { source: 'basemaps', year: 1600, name: ['Mughal Empire'] },
@@ -774,7 +785,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Khmer Empire',
     answerAliases: ['Khmer', 'Angkor', 'Angkorian Empire', 'Kambuja'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 900, name: ['Khmer Empire'] },
       { source: 'basemaps', year: 1000, name: ['Khmer Empire'] },
@@ -799,7 +810,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Srivijaya',
     answerAliases: ['Srivijaya Empire', 'Sriwijaya', 'Palembang Empire'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 800, name: ['Srivijaya Empire'] },
       { source: 'basemaps', year: 900, name: ['Srivijaya Empire'] },
@@ -824,7 +835,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Majapahit',
     answerAliases: ['Majapahit Empire', 'Mojopahit', 'Wilwatikta'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // Absent from every snapshot — the whole arc is hand-traced.
       { source: 'handmade', year: 1293, file: 'majapahit-1293.geojson' },
@@ -849,7 +860,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Timurid Empire',
     answerAliases: ['Timurids', 'Tamerlane’s Empire', 'Empire of Timur', 'Timur'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'handmade', year: 1370, file: 'timurid-empire-1370.geojson' },
       { source: 'basemaps', year: 1400, name: ['Timurid Empire'] },
@@ -876,7 +887,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Chola Empire',
     answerAliases: ['Cholas', 'Chola dynasty', 'Chola state', 'Imperial Cholas'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 900, name: ['Cholas'] },
       { source: 'basemaps', year: 1000, name: ['Chola state'] },
@@ -905,7 +916,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Empire of Japan',
     answerAliases: ['Japan', 'Japanese Empire', 'Imperial Japan', 'Dai Nippon'],
     region: 'asia',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // CShapes' Japan polygon never changes (home islands only), so the
       // colonial acquisitions and the 1942 high-water are hand-traced.
@@ -930,7 +941,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Vijayanagara Empire',
     answerAliases: ['Vijayanagar', 'Vijayanagara', 'Karnata Empire', 'Kingdom of Bisnaga'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // Founded 1336 but first on the 1492 sheet.
       { source: 'basemaps', year: 1492, name: ['Vijayanagara'] },
@@ -956,7 +967,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ayutthaya Kingdom',
     answerAliases: ['Ayutthaya', 'Ayuthaya', 'Siam', 'Ayutthaya Empire'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 1400, name: ['Ayutthaya'] },
       { source: 'basemaps', year: 1500, name: ['Ayutthaya'] },
@@ -980,7 +991,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Golden Horde',
     answerAliases: ['Kipchak Khanate', 'Ulus of Jochi', 'Horde'],
     region: 'asia',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1279, name: ['Khanate of the Golden Horde'] },
       { source: 'basemaps', year: 1300, name: ['Khanate of the Golden Horde'] },
@@ -1004,7 +1015,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Soviet Union',
     answerAliases: ['USSR', 'Union of Soviet Socialist Republics', 'CCCP'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'cshapes', year: 1923, date: '1923-01-01', gwcode: [365] },
       { source: 'cshapes', year: 1938, date: '1938-01-01', gwcode: [365] },
@@ -1045,7 +1056,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Roman Empire',
     answerAliases: ['Rome', 'Ancient Rome', 'Roman Republic', 'Romans', 'SPQR'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: -200, name: ['Rome'] },
       { source: 'basemaps', year: -100, name: ['Roman Republic'] },
@@ -1122,7 +1133,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       'Alexandrian Empire',
     ],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // Growth-only arc to Alexander's death, peak = final frame — the story
       // is the eleven-year sprint; Macedon is unnamed on the -400 sheet.
@@ -1150,7 +1161,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Byzantine Empire',
     answerAliases: ['Byzantium', 'Eastern Roman Empire', 'East Rome', 'Romania (Byzantine)'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 500, name: ['Eastern Roman Empire'] },
       { source: 'basemaps', year: 600, name: ['Eastern Roman Empire'] },
@@ -1198,7 +1209,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Kalmar Union',
     answerAliases: ['Union of Kalmar', 'Scandinavian Union', 'Denmark-Norway-Sweden'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 1400, name: ['Kalmar Union'] },
       // The 1492 sheet lists the crowns separately (Sweden under the Stures
@@ -1223,7 +1234,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Swedish Empire',
     answerAliases: ['Sweden', 'Great Power Sweden', 'Stormaktstiden'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1600, name: ['Sweden'] },
       { source: 'basemaps', year: 1650, name: ['Sweden'] },
@@ -1251,7 +1262,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       'Austro-Hungarian Empire',
     ],
     region: 'europe',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // Austria appears under HRE labels before 1650 — the run opens there.
       { source: 'basemaps', year: 1650, name: ['Austrian Empire'] },
@@ -1285,7 +1296,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       'Napoleonic Empire',
     ],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1800, name: ['France'] },
       { source: 'handmade', year: 1807, file: 'napoleonic-france-1807.geojson' },
@@ -1309,7 +1320,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'British Empire',
     answerAliases: ['Britain', 'Great Britain', 'United Kingdom', 'England', 'UK'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // The sheets are inconsistent about overlordship: some colonies carry a
       // UK SUBJECTO (its spelling drifts — 'UK', both long forms), most are
@@ -1552,7 +1563,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Russian Empire',
     answerAliases: ['Russia', 'Imperial Russia', 'Tsarist Russia', 'Muscovy'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // The 1700 sheet still styles it the Tsardom (empire proclaimed 1721).
       { source: 'basemaps', year: 1700, name: ['Tsardom of Muscovy'] },
@@ -1605,7 +1616,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Third Reich',
     answerAliases: ['Nazi Germany', 'German Reich', 'Germany', 'Greater German Reich'],
     region: 'europe',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // CShapes folds Anschluss and Munich into one 1938-09-30 step, and
       // Germany's polygon ends 1945-05-07 — the 1942 high-water and the
@@ -1668,7 +1679,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       'Commonwealth of the Two Nations',
     ],
     region: 'europe',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1530, name: ['Poland-Llituania'] },
       { source: 'basemaps', year: 1600, name: ['Poland-Llituania'] },
@@ -1694,7 +1705,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Republic of Venice',
     answerAliases: ['Venice', 'Venetian Republic', 'La Serenissima', 'Venetian Empire'],
     region: 'europe',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1300, name: ['Venice'] },
       { source: 'basemaps', year: 1400, name: ['Venice'] },
@@ -1721,7 +1732,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ancient Egypt',
     answerAliases: ['Egypt', 'Egyptian Empire', 'Kingdom of Egypt', 'Kemet'],
     region: 'africa',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: -3000, name: ['Egypt'] },
       { source: 'basemaps', year: -2000, name: ['Egypt'] },
@@ -1750,7 +1761,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Carthage',
     answerAliases: ['Carthaginian Empire', 'Punic Empire', 'Carthaginians'],
     region: 'africa',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // The -700 snapshot has no Carthage feature yet — the run opens at -500.
       { source: 'basemaps', year: -500, name: ['Carthaginian Empire'] },
@@ -1774,7 +1785,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Mali Empire',
     answerAliases: ['Mali', 'Malian Empire', 'Manden'],
     region: 'africa',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 1279, name: ['Mali'] },
       { source: 'basemaps', year: 1300, name: ['Mali'] },
@@ -1797,7 +1808,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Songhai Empire',
     answerAliases: ['Songhai', 'Songhay', 'Songhay Empire'],
     region: 'africa',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // Not named at 1400; the 1600 frame is the Dendi remnant after Tondibi.
       { source: 'basemaps', year: 1492, name: ['Songhai'] },
@@ -1823,7 +1834,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ghana Empire',
     answerAliases: ['Ghana', 'Wagadu', 'Awkar', 'Empire of Ghana'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 800, name: ['Ghana'] },
       { source: 'basemaps', year: 900, name: ['Ghana'] },
@@ -1849,7 +1860,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ethiopian Empire',
     answerAliases: ['Ethiopia', 'Abyssinia', 'Abyssinian Empire'],
     region: 'africa',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1400, name: ['Ethiopia'] },
       { source: 'basemaps', year: 1600, name: ['Ethiopia'] },
@@ -1875,7 +1886,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Zulu Kingdom',
     answerAliases: ['Zulu', 'Zulu Empire', 'Zululand', 'KwaZulu'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1815, name: ['Zulu'] },
       { source: 'handmade', year: 1830, file: 'zulu-kingdom-1830.geojson' },
@@ -1899,7 +1910,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Sokoto Caliphate',
     answerAliases: ['Sokoto', 'Fulani Empire', 'Fulani Caliphate', 'Sokoto Empire'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'handmade', year: 1804, file: 'sokoto-caliphate-1804.geojson' },
       { source: 'basemaps', year: 1815, name: ['Fulani Empire'] },
@@ -1921,7 +1932,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Kingdom of Kongo',
     answerAliases: ['Kongo', 'Congo Kingdom', 'Kongo Empire'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // Founded around 1390 but first named in the 1492 snapshot.
       { source: 'basemaps', year: 1492, name: ['Congo'] },
@@ -1954,7 +1965,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
       'Almoravid dynasty',
     ],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       // One arc for the two Berber reform empires that succeeded each other.
       { source: 'basemaps', year: 1100, name: ['Almoravid dynasty'] },
@@ -1978,7 +1989,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Kingdom of Aksum',
     answerAliases: ['Aksum', 'Axum', 'Aksumite Empire', 'Axumite Empire'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 100, name: ['Axum'] },
       { source: 'basemaps', year: 200, name: ['Axum'] },
@@ -2002,7 +2013,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Kanem–Bornu Empire',
     answerAliases: ['Kanem', 'Bornu', 'Kanem Empire', 'Bornu Empire', 'Kanem-Bornu'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 900, name: ['Kanem'] },
       { source: 'basemaps', year: 1100, name: ['Kanem'] },
@@ -2031,7 +2042,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Benin Empire',
     answerAliases: ['Benin', 'Kingdom of Benin', 'Edo Empire', 'Edo Kingdom'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 1400, name: ['Benin'] },
       { source: 'basemaps', year: 1500, name: ['Benin'] },
@@ -2056,7 +2067,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Ashanti Empire',
     answerAliases: ['Ashanti', 'Asante', 'Asante Empire', 'Ashanti Kingdom', 'Asanteman'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1715, name: ['Asante'] },
       { source: 'basemaps', year: 1783, name: ['Asante'] },
@@ -2079,7 +2090,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Mamluk Sultanate',
     answerAliases: ['Mamluks', 'Mameluke Sultanate', 'Mamelukes', 'Mamluk Egypt'],
     region: 'africa',
-    tier: 'deep-cut',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1279, name: ['Mamluke Sultanate'] },
       { source: 'basemaps', year: 1300, name: ['Mamluke Sultanate'] },
@@ -2107,7 +2118,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Gran Colombia',
     answerAliases: ['Great Colombia', 'Republic of Colombia (1819)'],
     region: 'south-america',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'handmade', year: 1819, file: 'gran-colombia-1819.geojson' },
       { source: 'handmade', year: 1822, file: 'gran-colombia-1822.geojson' },
@@ -2129,7 +2140,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Inca Empire',
     answerAliases: ['Tawantinsuyu', 'Incan Empire', 'Inka Empire'],
     region: 'south-america',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // Snapshots name the Inca only from 1500 — the Cusco rise and the
       // Vilcabamba rump are hand-traced.
@@ -2155,7 +2166,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Wari Empire',
     answerAliases: ['Huari Empire', 'Wari', 'Huari'],
     region: 'south-america',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 600, name: ['Huari Empire'] },
       { source: 'basemaps', year: 700, name: ['Huari Empire'] },
@@ -2179,7 +2190,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Tiwanaku',
     answerAliases: ['Tiahuanaco', 'Tiwanaku Empire', 'Tiahuanaco Empire'],
     region: 'south-america',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 600, name: ['Tiahuanaco Empire'] },
       { source: 'basemaps', year: 700, name: ['Tiahuanaco Empire'] },
@@ -2204,7 +2215,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Portuguese Brazil',
     answerAliases: ['Colonial Brazil', 'Brazil', 'Viceroyalty of Brazil'],
     region: 'south-america',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'handmade', year: 1560, file: 'portuguese-brazil-1560.geojson' },
       { source: 'basemaps', year: 1650, name: ['Portuguese Brazil'] },
@@ -2232,7 +2243,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Aztec Empire',
     answerAliases: ['Aztecs', 'Mexica Empire', 'Triple Alliance', 'Aztec Triple Alliance'],
     region: 'north-america',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'handmade', year: 1428, file: 'aztec-empire-1428.geojson' },
       { source: 'handmade', year: 1440, file: 'aztec-empire-1440.geojson' },
@@ -2255,7 +2266,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Maya City-States',
     answerAliases: ['Maya', 'Mayan Empire', 'Maya civilization', 'Mayans'],
     region: 'north-america',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       { source: 'basemaps', year: 300, name: ['Maya chiefdoms and states'] },
       { source: 'basemaps', year: 500, name: ['Maya states'] },
@@ -2282,7 +2293,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'Toltec Empire',
     answerAliases: ['Toltecs', 'Tollan'],
     region: 'north-america',
-    tier: 'deep-cut',
+    fame: 'obscure',
     keyframes: [
       { source: 'basemaps', year: 900, name: ['Toltec Empire'] },
       { source: 'basemaps', year: 1000, name: ['Toltec Empire'] },
@@ -2304,7 +2315,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'New Spain',
     answerAliases: ['Viceroyalty of New Spain', 'Spanish Mexico', 'Nueva España'],
     region: 'north-america',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       { source: 'basemaps', year: 1530, name: ['Vice Royalty of New Spain'] },
       { source: 'basemaps', year: 1600, name: ['Vice Royalty of New Spain'] },
@@ -2329,7 +2340,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'New France',
     answerAliases: ['French Canada', 'Nouvelle-France', 'French colonial empire in North America'],
     region: 'north-america',
-    tier: 'icon',
+    fame: 'minor',
     keyframes: [
       // Basemaps only name New France at 1650/1700 — the founding strip and
       // the pre-Utrecht maximum are hand-traced.
@@ -2355,7 +2366,7 @@ export const EMPIRE_SEEDS: EmpireSeed[] = [
     name: 'United States',
     answerAliases: ['USA', 'United States of America', 'America'],
     region: 'north-america',
-    tier: 'icon',
+    fame: 'major',
     keyframes: [
       // Growth-only arc, peak = final frame — deliberate exception: the story
       // is the expansion itself, not a dissolution.

@@ -19,7 +19,7 @@ describe('chronicleCountries', () => {
     // dealable spread should fail loudly here, not stall gates quietly.
     //
     // Easy sits far lower ON PURPOSE — it deals only `major` events (see
-    // EVENT_FAME_BY_DIFFICULTY), so its pool is the handful of countries
+    // FAME_BY_DIFFICULTY), so its pool is the handful of countries
     // whose famous history is spread across four decades-apart moments.
     // Raising this floor means promoting events to `major`, never widening
     // easy's fame gate.
