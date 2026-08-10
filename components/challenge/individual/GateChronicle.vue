@@ -135,8 +135,9 @@ const submitOrder = () => resolve()
   // rail, the cards and the poles all read from, so a narrower gutter can
   // never leave the dashes off the coins' centre.
   --rail-gutter: 4.4rem;
-  --coin-size: 2.6rem;
+  --coin-size: 3rem; // the coin's PAINTED width, border and all
   --coin-reach: 3.9rem; // how far left of its card a coin sits
+  --card-edge: 0.1rem; // the card's hairline — the coin hangs off its INNER edge
 
   gap: 0.6rem;
   display: flex;
@@ -198,13 +199,16 @@ const submitOrder = () => resolve()
 
   // The rail the slots hang on. It sits behind the node coins and holds
   // still while cards trade places through it. Its centre must land on the
-  // coins' centre: a coin starts (gutter − reach) in and spans a coin, so the
-  // 0.2rem line starts 0.1rem before that midpoint — at every gutter size.
+  // coins': a coin hangs off the card's PADDING box, so it starts
+  // (gutter + card edge − reach) in and spans a painted coin — the 0.2rem
+  // line starts 0.1rem before that midpoint, at every coin size.
   &::before {
     content: '';
     top: 1.4rem;
     bottom: 1.4rem;
-    left: calc(var(--rail-gutter) - var(--coin-reach) + var(--coin-size) * 0.5 - 0.1rem);
+    left: calc(
+      var(--rail-gutter) + var(--card-edge) - var(--coin-reach) + var(--coin-size) * 0.5 - 0.1rem
+    );
     position: absolute;
     border-left: 0.2rem dashed ink(0.3);
   }
@@ -221,16 +225,21 @@ const submitOrder = () => resolve()
   border-radius: 1rem;
   backdrop-filter: blur(0.5rem);
   background: milk(0.94);
-  border: 0.1rem solid ink(0.25);
+  border: var(--card-edge) solid ink(0.25);
   box-shadow: 0 0.2rem 0.6rem ink(0.08);
   transition: box-shadow 0.2s var(--ease-out-expressive);
 
   // The slot coin: numbered top-down by DOM order, so it re-counts itself the
   // moment a drop lands — the number belongs to the SLOT, not the card.
+  //
+  // border-box, because the reset's `*` doesn't reach pseudo-elements: with
+  // the border outside the width, the coin painted 0.4rem wider than
+  // --coin-size and the rail's dashes ran a line-width left of its centre.
   &::before {
     counter-increment: slot;
     content: counter(slot);
     top: 50%;
+    box-sizing: border-box;
     left: calc(var(--coin-reach) * -1);
     width: var(--coin-size);
     height: var(--coin-size);
@@ -345,7 +354,9 @@ const submitOrder = () => resolve()
   // offset follow from the tokens, so this is the whole of it.
   .chronicle-board {
     --rail-gutter: 3.6rem;
-    --coin-size: 2.3rem;
+    // Even, like the 3rem above: the rail's left is a half-coin sum, and a
+    // fractional pixel there gets snapped — half a pixel off a 0.2rem line.
+    --coin-size: 2.8rem;
     --coin-reach: 3.3rem;
   }
   .chronicle-cards {
