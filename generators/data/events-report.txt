@@ -1,8 +1,8 @@
-events: 627 shipped of 627 seeds
+events: 650 shipped of 650 seeds
 
 dropped (0) — fix the year or pin a qid:
 
-no image (9) — add a commons/imageUrl override:
+no image (10) — add a commons/imageUrl override:
   green-belt-movement
   ineos-1-59-challenge
   phoenician-alphabet
@@ -12,3 +12,4 @@ no image (9) — add a commons/imageUrl override:
   pagan-kingdom
   chilean-declaration-of-independence
   one-love-peace-concert
+  kingdom-of-kongo

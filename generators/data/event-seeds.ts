@@ -3138,15 +3138,6 @@ export const EVENT_SEEDS: EventSeed[] = [
       'Two years after Anne Frank died in Bergen-Belsen at fifteen, her father published the diary she kept in the Amsterdam hiding place. It has been read in some seventy languages.',
   },
   {
-    name: 'Kon-Tiki expedition',
-    title: 'Kon-Tiki crosses the Pacific',
-    country: 'NO',
-    kind: 'science',
-    year: 1947,
-    description:
-      'Thor Heyerdahl and five companions drifted 8,000 kilometres from Peru to Polynesia on a balsa-wood raft to prove such a voyage was possible. Science disagreed; the world was enchanted.',
-  },
-  {
     name: 'Dominion of Ceylon',
     title: 'Ceylon becomes independent',
     country: 'LK',
@@ -4577,15 +4568,6 @@ export const EVENT_SEEDS: EventSeed[] = [
       'In the same year America declared independence, the Scottish professor Adam Smith published his inquiry into why nations prosper — the invisible hand, the division of labour — and founded modern economics.',
   },
   {
-    name: 'Mutiny on the Bounty',
-    title: 'Mutiny on the Bounty',
-    country: 'GB',
-    kind: 'conflict',
-    year: 1789,
-    description:
-      'Fletcher Christian set Captain Bligh adrift in the South Pacific with eighteen loyalists; Bligh sailed the open boat four thousand miles to safety, while the mutineers vanished to Pitcairn Island, where their descendants live still.',
-  },
-  {
     name: 'Coup of 18 Brumaire',
     title: 'Bonaparte seizes power',
     country: 'FR',
@@ -5842,5 +5824,265 @@ export const EVENT_SEEDS: EventSeed[] = [
     year: 2022,
     description:
       'An undersea volcano near Tonga erupted with a blast heard in Alaska, snapped the kingdom’s only internet cable, and sent a pressure wave that lapped the entire planet several times.',
+  },
+  // --- The "exciting history" wave ------------------------------------------
+  // Episode-worthy stories, still zero battles: pirate republics, treasure
+  // fleets, drowned cities, failed colonies and god-kings. Every qid is
+  // pinned — search ordering varies run to run, verified claims do not.
+  {
+    name: 'Treasure Voyages',
+    title: "Zheng He's treasure fleet sails",
+    country: 'CN',
+    kind: 'science',
+    year: 1405,
+    qid: 'Q699127',
+    description:
+      'The Ming admiral Zheng He put to sea with hundreds of ships and tens of thousands of men — treasure junks that dwarfed anything Europe would float for a century, trading and projecting power as far as East Africa.',
+  },
+  {
+    name: 'Record of the Western Regions',
+    title: 'Xuanzang writes his journey west',
+    country: 'CN',
+    kind: 'culture',
+    year: 646,
+    qid: 'Q1146069',
+    description:
+      'The monk Xuanzang slipped out of China illegally, crossed deserts and mountains to study in India for years, and wrote up the road home — the account that later inspired the legend of the Monkey King.',
+  },
+  {
+    name: 'Republic of Pirates',
+    commons: 'Blackbeard the Pirate - A General History of the Pyrates (1725), 70 - BL.jpg',
+    title: 'The pirate republic falls',
+    country: 'BS',
+    kind: 'politics',
+    year: 1718,
+    description:
+      "For a decade Nassau was run by the pirates themselves — Blackbeard among them — under a rough code of their own. It ended when Woodes Rogers sailed in carrying the King's pardon in one hand and the noose in the other.",
+  },
+  {
+    name: '1692 Jamaica earthquake',
+    commons: 'Fort Port Royal Jamaica.JPG',
+    title: 'Port Royal sinks into the sea',
+    country: 'JM',
+    kind: 'disaster',
+    year: 1692,
+    qid: 'Q4191082',
+    description:
+      'The richest — and by reputation the wickedest — port in the Americas liquefied in minutes: two thirds of Port Royal slid under the harbour, and preachers across two continents called it judgment.',
+  },
+  {
+    name: 'Morant Bay rebellion',
+    title: 'Morant Bay rises',
+    country: 'JM',
+    kind: 'revolution',
+    year: 1865,
+    qid: 'Q226032',
+    description:
+      "Paul Bogle marched on the Morant Bay courthouse against crushing poverty and rigged justice; the governor's savage reprisals scandalised Britain and ended planter self-rule in Jamaica. Bogle is a national hero today.",
+  },
+  {
+    name: 'Darien scheme',
+    title: 'Scotland bets itself on Darién',
+    country: 'PA',
+    kind: 'politics',
+    year: 1698,
+    qid: 'Q1166080',
+    description:
+      'Scotland staked perhaps a quarter of its liquid wealth on a colony in the Panamanian jungle. Fever and failure swallowed it whole — and the ruin helped push Scotland into union with England within a decade.',
+  },
+  {
+    name: 'Mutiny on the Bounty',
+    title: 'Mutiny on the Bounty',
+    country: 'TO',
+    kind: 'revolution',
+    year: 1789,
+    qid: 'Q749811',
+    description:
+      'In Tongan waters, Fletcher Christian seized HMS Bounty and cast Captain Bligh adrift in an open boat. Bligh sailed it over 6,500 km to safety; the mutineers vanished to Pitcairn, where their descendants live still.',
+  },
+  {
+    name: 'Rum Rebellion',
+    title: "Australia's only military coup",
+    country: 'AU',
+    kind: 'revolution',
+    year: 1808,
+    qid: 'Q2065299',
+    description:
+      "The New South Wales Corps marched on Government House and arrested Governor William Bligh — yes, the same Bligh from the Bounty, deposed a second time. The colony's officers ran things for two years.",
+  },
+  {
+    name: 'Rebellion of Túpac Amaru II',
+    title: 'Túpac Amaru II rises against Spain',
+    country: 'PE',
+    kind: 'revolution',
+    year: 1780,
+    qid: 'Q1806552',
+    description:
+      'A cacique claiming descent from the last Inca emperor raised the Andes against colonial forced labour — the greatest rebellion in Spanish America before independence, remembered on flags and in names across the continent.',
+  },
+  {
+    name: 'Kon-Tiki expedition',
+    title: 'The Kon-Tiki drifts across the Pacific',
+    country: 'PE',
+    kind: 'science',
+    year: 1947,
+    qid: 'Q66666935',
+    description:
+      'Thor Heyerdahl and five companions left Callao on a balsa-log raft built the ancient way and rode the currents 101 days to Polynesia — proving the voyage was possible, and thrilling the whole world.',
+  },
+  {
+    name: 'Songhai Empire',
+    commons: 'Tombeau askia de loin.jpg',
+    title: 'Songhai takes the Niger bend',
+    country: 'ML',
+    kind: 'nation',
+    year: 1464,
+    qid: 'Q202687',
+    description:
+      'Under Sunni Ali, Songhai swallowed the Niger bend — Timbuktu and Djenné included — and grew into the largest empire in West African history, rich on salt, gold and the scholarship of its desert cities.',
+  },
+  {
+    name: 'Ashanti Empire',
+    commons: 'Golden stool 31 January 1935.jpg',
+    title: 'The Golden Stool unites Asante',
+    country: 'GH',
+    kind: 'nation',
+    year: 1670,
+    description:
+      'Around the sacred Golden Stool — said to hold the soul of the nation itself — the Asante clans fused into a single power that dominated the forests of West Africa for two centuries.',
+  },
+  {
+    name: 'Kingdom of Kongo',
+    commons: 'Dom Miguel de Castro, Emissary of Kongo.jpg',
+    title: 'The Kongo kingdom rises',
+    country: 'AO',
+    kind: 'nation',
+    year: 1395,
+    description:
+      'South of the great river, Kongo grew into a sophisticated state with provincial governors, tribute and a capital of tens of thousands — soon corresponding king-to-king with Portugal.',
+  },
+  {
+    name: 'Liberia',
+    title: 'Freed Americans land in Africa',
+    country: 'LR',
+    kind: 'nation',
+    year: 1822,
+    qid: 'Q1014',
+    description:
+      "Freed Black Americans landed at Cape Mesurado to build a settlement that grew into Liberia — within a generation it declared itself Africa's first republic.",
+  },
+  {
+    name: 'Twenty-fifth Dynasty of Egypt',
+    title: 'The Black Pharaohs take Egypt',
+    country: 'SD',
+    kind: 'nation',
+    year: -715,
+    description:
+      'Kings from Kush, in what is now Sudan, marched north and took the crown of Egypt itself — ruling as pharaohs, reviving pyramid burials, and leaving more pyramids in Sudan than Egypt has.',
+  },
+  {
+    name: 'Late Bronze Age collapse',
+    commons: 'Ugarit ruins - panoramio.jpg',
+    title: 'The first world system collapses',
+    country: 'SY',
+    kind: 'disaster',
+    year: -1200,
+    description:
+      'Within a generation, the linked palace world of the eastern Mediterranean went down — cities burned from Greece to the Levant. At Ugarit, a clay tablet begging for help was still in the kiln when the city fell.',
+  },
+  {
+    name: 'House of Wisdom',
+    title: 'Baghdad builds a house for knowledge',
+    country: 'IQ',
+    kind: 'science',
+    year: 800,
+    description:
+      'Abbasid Baghdad gathered translators, astronomers and mathematicians to render Greek, Persian and Indian learning into Arabic — the workshop of a golden age that gave us algebra and algorithms by name.',
+  },
+  {
+    name: 'Shahnameh',
+    title: 'Ferdowsi finishes the Book of Kings',
+    country: 'IR',
+    kind: 'culture',
+    year: 1010,
+    qid: 'Q8279',
+    description:
+      "After some three decades of labour, Ferdowsi completed his epic of Persia's kings and heroes — fifty thousand couplets that anchored the Persian language itself through every conquest that followed.",
+  },
+  {
+    name: 'Durrani Empire',
+    commons: 'Portrait of Ahmad Shah Durrani.jpg',
+    title: "Afghanistan's founding empire",
+    country: 'AF',
+    kind: 'nation',
+    year: 1747,
+    qid: 'Q467627',
+    description:
+      "Chosen king by a tribal council at Kandahar, Ahmad Shah Durrani forged an empire from Persia's edge to Delhi's gates — the state remembered as the founding of modern Afghanistan.",
+  },
+  {
+    name: 'Later Silla',
+    commons: 'Front view of Seokguram from front chamber.jpg',
+    title: 'Silla unites Korea',
+    country: 'KR',
+    kind: 'nation',
+    year: 668,
+    qid: 'Q715257',
+    description:
+      'Silla brought the Three Kingdoms of the peninsula under one crown — the first unification of Korea, whose golden capital at Gyeongju filled with temples and observatories.',
+  },
+  {
+    name: 'Majapahit',
+    commons: 'Bajang Ratu Gate Trowulan.jpg',
+    title: 'Majapahit rules the archipelago',
+    country: 'ID',
+    kind: 'nation',
+    year: 1293,
+    qid: 'Q49326',
+    description:
+      'Born from a princely double-cross of invading Mongol forces, Majapahit grew into the great thalassocracy of the Indonesian archipelago — the golden age modern Indonesia looks back to.',
+  },
+  {
+    name: 'Malacca Sultanate',
+    commons: 'Melaka Malaysia A-Famosa-01.jpg',
+    title: 'Malacca commands the strait',
+    country: 'MY',
+    kind: 'nation',
+    year: 1400,
+    qid: 'Q46652',
+    description:
+      'A fugitive prince founded a port on the narrowest stretch of the strait that still bears its name — within decades Malacca was the great emporium between India and China, and the cradle of Malay court culture.',
+  },
+  {
+    name: 'Ayutthaya Kingdom',
+    commons: 'Three Chedi(s) of Wat Phra Si Sanphet.jpg',
+    title: 'Ayutthaya is founded',
+    country: 'TH',
+    kind: 'nation',
+    year: 1350,
+    qid: 'Q841364',
+    description:
+      'On an island in the Chao Phraya, King Ramathibodi founded a capital that grew into one of the largest cities on Earth — European visitors compared its canals and golden spires to Venice.',
+  },
+  {
+    name: 'Zulu Kingdom',
+    title: 'Shaka forges the Zulu kingdom',
+    country: 'ZA',
+    kind: 'nation',
+    year: 1816,
+    qid: 'Q729768',
+    description:
+      'Shaka reorganised a minor chiefdom into the dominant power of southern Africa within a decade — new regiments, new tactics, and a name that would echo through the century.',
+  },
+  {
+    name: 'Bhutan',
+    commons: 'Ugyen Wangchuck, 1905.jpg',
+    title: 'The Dragon King is crowned',
+    country: 'BT',
+    kind: 'nation',
+    year: 1907,
+    qid: 'Q917',
+    description:
+      'The hill lords of Bhutan gathered to elect Ugyen Wangchuck the first Druk Gyalpo — the Dragon King — founding the dynasty that still reigns in the Himalayan kingdom today.',
   },
 ]
