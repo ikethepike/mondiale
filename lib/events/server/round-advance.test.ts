@@ -274,6 +274,7 @@ describe('phase escapability', () => {
       beats.INDIVIDUAL_GATE_CAP_MS,
       beats.FINAL_QUESTION_CAP_MS,
       beats.UNTIMED_CLASSIC_CAP_SECONDS,
+      beats.PLAY_GATE_CAP_MS,
     ]) {
       expect(cap).toBeGreaterThan(0)
       expect(Number.isFinite(cap)).toBe(true)

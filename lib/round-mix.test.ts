@@ -174,8 +174,8 @@ describe('mixWeights', () => {
       allOff
     )
     const entries = mixWeights({ game, contenders: 2 })
-    // Core survives every toggle: ranking, stat-detective, two-truths.
-    expect(entries.length).toBe(3)
+    // Core survives every toggle: ranking, two-truths.
+    expect(entries.length).toBe(2)
     for (const [, weight] of entries) expect(weight).toBeGreaterThan(0)
   })
 
@@ -348,7 +348,7 @@ describe('the mix at a small table', () => {
     }
   })
 
-  it('keeps dealing past the window when only the core three are on', () => {
+  it('keeps dealing past the window when only the core pair is on', () => {
     // The floor's reason to exist: with a near-total kindBite and a pool of
     // three, a game longer than the window must not stall or lock into a
     // rigid cycle. Every core kind keeps a real share.
@@ -371,7 +371,7 @@ describe('the mix at a small table', () => {
       random,
     })
     expect(dealt.length).toBe(400)
-    for (const kind of ['ranking', 'stat-detective', 'two-truths'] as RoundChallengeKind[]) {
+    for (const kind of ['ranking', 'two-truths'] as RoundChallengeKind[]) {
       const share = dealt.filter(seen => seen === kind).length / dealt.length
       expect(share, `${kind} starved at ${share}`).toBeGreaterThan(0.15)
     }

@@ -26,7 +26,18 @@
             compact
             :treaty="currentFinalChallenge.treaty"
           />
-          <h2 class="map-caption">{{ details?.question }}</h2>
+          <h2 class="map-caption">
+            {{ details?.question }}
+            <!-- The club/instrument the question names, in plain words. A
+                 prompt may be the first time a player has heard of it. -->
+            <SourceInfo
+              v-if="subjectDefinition"
+              icon="question"
+              class="subject-definition"
+              :label="subjectDefinition.label"
+              :definition="subjectDefinition.definition"
+            />
+          </h2>
           <!-- The live beat's endonym rides the top of a staggered card deck —
                the fanned cards behind it are the endonyms still to come -->
           <Transition name="caption" mode="out-in">
@@ -262,10 +273,11 @@ import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GauntletIntro from '~/components/feedback/GauntletIntro.vue'
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { OrganizationVector } from '~~/types/organization.type'
+import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
 import { treatyMeta } from '~~/types/treaty.type'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import {
@@ -646,6 +658,26 @@ const details = computed(() => {
     challenge: currentFinalChallenge.value,
     variant: game.value?.variant,
   })
+})
+
+/**
+ * What the club or instrument the question names actually IS, for the `?`
+ * beside the prompt. "Not bound by the Rome Statute" is unanswerable — and
+ * unteachable — if you have never heard of it, and the editorial line each
+ * one already carries is exactly that explainer. Same `purpose` the reveal
+ * quotes, so the question and its answer can never describe it differently.
+ */
+const subjectDefinition = computed<{ label: string; definition: string } | undefined>(() => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type === 'membership-challenge') {
+    const facts = ORGANIZATION_FACTS[challenge.organization]
+    return { label: OrganizationVector[challenge.organization], definition: facts.purpose }
+  }
+  if (challenge?._type === 'treaty-challenge') {
+    const meta = treatyMeta(challenge.treaty)
+    return { label: meta.name, definition: meta.purpose }
+  }
+  return undefined
 })
 
 /** The lit set for an odd-one-out question — the sheet lists exactly this. */
@@ -1152,6 +1184,17 @@ header .prompt {
 
   h2 {
     margin: 0;
+  }
+
+  // The explainer `?` rides the question's last line rather than joining the
+  // column. Its own 2.2rem tap target would inflate the caption pill's line
+  // box, so the box is collapsed here and the touch area given back by
+  // negative margin — the glyph sits on the text baseline, the pill keeps
+  // the height it has without one.
+  .subject-definition {
+    height: 1em;
+    margin: -0.55rem -0.4rem -0.55rem 0.2rem;
+    vertical-align: baseline;
   }
 
   .counter {

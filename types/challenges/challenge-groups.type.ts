@@ -8,7 +8,7 @@ import type { GameDifficulty } from '../game.types'
  * force-enables the group below its gate (highlands on an easy game), `false`
  * switches it off anywhere (no conflict content at this table).
  *
- * Ranking and the stat modes are 'core' and never toggleable: ranking is the
+ * Ranking and two truths are 'core' and never toggleable: ranking is the
  * tutorial opener and the universal dealer fallback, so the game stays
  * playable whatever the toggles say.
  *
@@ -64,7 +64,6 @@ export const isValidChallengeOverrides = (value: unknown): value is ChallengeOve
  *  it a group is a compile error. */
 export const CHALLENGE_GROUP_BY_KIND = {
   ranking: 'core',
-  'stat-detective': 'core',
   'two-truths': 'core',
   flashpoint: 'conflicts',
   traversal: 'navigation',
@@ -102,6 +101,10 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'no-mans-land': 'disputed',
   'trend-race': 'trends',
   timeline: 'trends',
+  // Draws clues from every stat topic, so no single accessor group owns it
+  // (and those groups are hidden — a kind filed there could never be toggled
+  // off). Trends is the visible home for the data-pool rounds.
+  'stat-detective': 'trends',
   // Its own toggle, not under conflicts: imperial content is its own consent
   // axis, and the mode deals on every difficulty (deep cuts gate in-dealer).
   empire: 'empires',

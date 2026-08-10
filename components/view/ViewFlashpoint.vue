@@ -277,17 +277,32 @@ const { spent, onGuess } = useAttemptOptions({
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/ink' as *;
 
 header .sub {
   max-width: min(80vw, 44rem);
+}
+
+// The ladder stacks rather than spreads: one rung per line, centred, so the
+// rungs read in the order they arrived. Left to wrap across the full width
+// they string out as loose text with no reading order at all.
+.hint-ladder {
+  width: min(90vw, 46rem);
+  margin: 0 auto;
+  flex-flow: column nowrap;
+  gap: 0.5rem;
 }
 
 // Every rung holds its space from frame one and only fades in — see the
 // template comment on why the box must never resize.
 .hint-ladder .hint-chip {
   opacity: 0;
-  max-width: min(80vw, 40rem);
   transition: opacity var(--motion-slow) var(--ease-smooth);
+  // The audio rounds' chip sits on a dark field; this one sits on the cream
+  // page, where milk-on-milk vanishes. Ink the surface instead.
+  color: var(--dark-blue);
+  background: #{ink(0.06)};
+  border: 0.1rem solid #{ink(0.12)};
 
   &.is-shown {
     opacity: 1;

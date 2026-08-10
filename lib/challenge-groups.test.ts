@@ -28,11 +28,14 @@ describe('isKindEnabled', () => {
       },
     } as const
     expect(isKindEnabled(game, 'ranking')).toBe(true)
-    expect(isKindEnabled(game, 'stat-detective')).toBe(true)
     expect(isKindEnabled(game, 'two-truths')).toBe(true)
     // …so an all-off table still has a playable game.
     expect(isKindEnabled(game, 'flashpoint')).toBe(false)
     expect(isKindEnabled(game, 'capital-guess')).toBe(false)
+    // Stat detective rides the trends toggle now, not the core floor.
+    expect(isKindEnabled({ ...game, challengeOverrides: { trends: false } }, 'stat-detective')).toBe(
+      false
+    )
   })
 
   it('deals empires on every difficulty in auto, off when the group is', () => {
@@ -109,8 +112,9 @@ describe('taxonomy shape', () => {
       .filter(([, group]) => group === 'core')
       .map(([kind]) => kind)
     expect(core).toContain('ranking')
-    expect(core).toContain('stat-detective')
     expect(core).toContain('two-truths')
+    // Stat detective is optional content, not part of the playable floor.
+    expect(core).not.toContain('stat-detective')
   })
 
   it('resolves auto captions per difficulty', () => {
