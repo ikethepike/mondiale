@@ -2846,5 +2846,77 @@
   "Q1356828|2004|Nyungwe Forest": {
     "qid": "Q1356828",
     "matchedYear": 2004
+  },
+  "Q654562|1298|The Travels of Marco Polo": {
+    "qid": "Q654562",
+    "matchedYear": 1298
+  },
+  "Q28573|1438|Inca Empire": {
+    "qid": "Q28573",
+    "matchedYear": 1438
+  },
+  "Q80330|1642|English Civil War": {
+    "qid": "Q80330",
+    "matchedYear": 1642
+  },
+  "Q3099902|1776|Watt steam engine": {
+    "qid": "Q3099902",
+    "matchedYear": 1776
+  },
+  "Q494611|1377|Jikji": {
+    "qid": "Q494611",
+    "matchedYear": 1377
+  },
+  "Q154577|1555|Peace of Augsburg": {
+    "qid": "Q154577",
+    "matchedYear": 1555
+  },
+  "Q172991|1545|Council of Trent": {
+    "qid": "Q172991",
+    "matchedYear": 1545
+  },
+  "Q41304|1918|Weimar Republic": {
+    "qid": "Q41304",
+    "matchedYear": 1918
+  },
+  "Q695052|1923|Hyperinflation in the Weimar Republic": {
+    "qid": "Q695052",
+    "matchedYear": 1923
+  },
+  "Q153992|1933|Reichstag fire": {
+    "qid": "Q153992",
+    "matchedYear": 1933
+  },
+  "Q130783|1934|Night of the Long Knives": {
+    "qid": "Q130783",
+    "matchedYear": 1934
+  },
+  "Q154255|1938|Munich agreement": {
+    "qid": "Q154255",
+    "matchedYear": 1938
+  },
+  "Q536822|1521|Diet of Worms": {
+    "qid": "Q536822",
+    "matchedYear": 1521
+  },
+  "Q737542|1180|Genpei War": {
+    "qid": "Q737542",
+    "matchedYear": 1180
+  },
+  "Q731494|-4000|Uruk period": {
+    "qid": "Q731494",
+    "matchedYear": -4000
+  },
+  "Q1398696|1830|Liverpool and Manchester Railway": {
+    "qid": "Q1398696",
+    "matchedYear": 1830
+  },
+  "Q1425658|1817|Battle of Chacabuco": {
+    "qid": "Q1425658",
+    "matchedYear": 1817
+  },
+  "Q55014217|1872|Henry Morton Stanley": {
+    "qid": "Q55014217",
+    "matchedYear": 1872
   }
 }
