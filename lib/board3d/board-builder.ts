@@ -855,20 +855,24 @@ export const markerGapFor = (index: number, chords: number[], tileRadius: number
  * uniform factor (uniform so the authored silhouette survives — a per-axis
  * squash would not).
  *
- * The constraint is the marker's reach ALONG the path (local z): that is the
- * axis pointing at the neighbouring tiles, and the berth is beside the tile,
- * so a marker deeper than the gap would clip the discs ahead and behind. Its
- * width across the path is unconstrained — that direction is open terrain.
- * The ink hull inflates every part, so it is charged too.
+ * A hurdle is DELIBERATELY allowed to overhang the discs it stands between:
+ * that overlap is what reads as barring the way, and the gap (0.4–2.2 world
+ * units against art authored at ~1.5x the tile radius) is far too narrow to
+ * contain a marker — fitting one strictly inside it shrinks the art to under
+ * 1% of its size, an invisible speck. What made the OLD placement a bug was
+ * not the overhang but the height: markers were planted at tile ground while
+ * their recipes are authored from their own foot, so every base part sat
+ * 0.55–0.64 BELOW the disc's top face, buried in the rim cylinder and
+ * surfacing through it as black outline gashes.
  *
- * Most markers already fit; the factor is a last resort for the deep ones
- * (the hourglass, the compass rose, the lexicon pot), not a routine tax.
+ * So the cap is generous — it exists only to stop a marker sprawling across a
+ * whole neighbouring tile — and standing at the top face is what actually
+ * fixed the intersection.
  */
 export const markerFitFactor = (
   parts: MarkerPart[],
   tileRadius: number,
-  gap: number,
-  outlineWidth: number
+  gap: number
 ): number => {
   let depth = 0
   for (const part of parts) {
@@ -878,69 +882,10 @@ export const markerFitFactor = (
     depth = Math.max(depth, Math.abs(box.min.z), Math.abs(box.max.z))
   }
 
-  // Standing beside the tile, the marker is level with its own disc centre, so
-  // it has the tile's own radius plus the gap to the next disc before it
-  // fouls a neighbour.
-  const budget = tileRadius + gap - outlineWidth
-  if (budget <= 0 || depth <= budget) return 1
+  // Reach across the gap and over the neighbour's near half, no further.
+  const budget = gap / 2 + tileRadius
+  if (budget <= 0 || depth <= 0 || depth <= budget) return 1
   return budget / depth
-}
-
-/**
- * How far sideways the marker's foot sits from the tile centre: clear of this
- * disc's edge, plus enough of the marker's own half-width that its body — not
- * just its origin — stands outside the tile the pawn occupies.
- */
-export const markerBerthFor = (
-  parts: MarkerPart[],
-  tileRadius: number,
-  fit: number,
-  outlineWidth: number
-): number => {
-  let inward = 0
-  for (const part of parts) {
-    part.geometry.computeBoundingBox()
-    const box = part.geometry.boundingBox
-    if (!box) continue
-    // Local -x is the side facing back toward the tile once berthed.
-    inward = Math.max(inward, Math.abs(box.min.x))
-  }
-  return tileRadius + outlineWidth + inward * fit
-}
-
-/**
- * Which way the gate stands off its tile: +1 or -1 along the path's left.
- *
- * On a curve the two sides are not equivalent. Berth to the INSIDE of a bend
- * and the marker leans into the crook of the path, ending up nearer a
- * neighbouring tile than its own; the outside of the bend opens away from
- * both. Chosen by measuring rather than by a curvature sign, since the pick is
- * only ever "whichever foot sits furthest from the neighbours".
- */
-export const markerSideSignFor = (
-  index: number,
-  transforms: TileTransform[],
-  side: Vector3,
-  berth: number
-): number => {
-  const previous = transforms[index - 1]?.position
-  const next = transforms[index + 1]?.position
-  if (!previous && !next) return 1
-
-  let bestSign = 1
-  let bestClearance = -Infinity
-  for (const sign of [1, -1]) {
-    const foot = transforms[index].position.clone().addScaledVector(side, berth * sign)
-    const clearance = Math.min(
-      previous ? foot.distanceTo(previous) : Infinity,
-      next ? foot.distanceTo(next) : Infinity
-    )
-    if (clearance > bestClearance) {
-      bestClearance = clearance
-      bestSign = sign
-    }
-  }
-  return bestSign
 }
 
 const buildChallengeMarkers = (
@@ -970,37 +915,31 @@ const buildChallengeMarkers = (
       GAUNTLET_LENGTH[difficulty]
     )
 
-    // A gate stands BESIDE its tile, so the pawn can pull up right next to it
-    // — the marker is the thing the pawn is stopped at, not something it
-    // stands on top of. The final arch spans its tile instead.
+    // A gate is a HURDLE: it stands in the path itself, at the tile's exit
+    // edge, so the pawn pulls up and is stopped by the thing barring its way.
+    // The final arch spans its own tile instead.
     //
-    // The offset is SIDEWAYS (across the path), not along it. It used to be
-    // pushed `tileRadius * 1.05` down the tangent, into the gap between
-    // consecutive discs — a budget reasoned from `spacing`, the curve's
-    // AVERAGE arc length. The real chord runs 0.84–0.92 of that, so the gap is
-    // only 0.4–2.2 world units while the markers are authored at ~1.5x the
-    // tile radius: the hourglass overhung the NEXT disc by ~3 units and
-    // reached back inside its own. Sideways there is open terrain — the marker
-    // clears both discs, and the pawn's tile stays free for the pawn.
+    // It sits in the gap between this disc and the next, and that gap is the
+    // whole budget. It used to be reasoned from `spacing` — the curve's
+    // AVERAGE arc length — but the real chord runs 0.84–0.92 of it, leaving
+    // 0.4–2.2 world units where the old `tileRadius * 1.05` assumed far more:
+    // the hourglass overhung the NEXT disc by ~3 units and reached back inside
+    // its own. Centring the marker in the measured gap and scaling it to fit
+    // is what keeps a hurdle a hurdle instead of a collision.
     const gap = markerGapFor(tile.position, chords, tileRadius)
-    // Last resort for the few markers broader than the berth: shrink whole, so
-    // the authored silhouette survives. Baked in here because the parts are
-    // merged by colour below and have no transform of their own afterwards.
-    const fit = isFinal ? 1 : markerFitFactor(parts, tileRadius, gap, outlineWidth)
-    const side = new Vector3().crossVectors(up, tangent).normalize()
-    const berth = markerBerthFor(parts, tileRadius, fit, outlineWidth)
+    // Markers are authored at ~1.5x the tile radius, so standing in a gap this
+    // narrow genuinely needs the shrink. Uniform, so the authored silhouette
+    // survives; baked in here because the parts are merged by colour below and
+    // have no transform of their own afterwards.
+    const fit = isFinal ? 1 : markerFitFactor(parts, tileRadius, gap)
+    // Dead centre of the gap: equal clearance to the disc behind and ahead.
     const anchor = isFinal
       ? position.clone()
-      : position
-          .clone()
-          .addScaledVector(
-            side,
-            berth * markerSideSignFor(tile.position, transforms, side, berth)
-          )
+      : position.clone().addScaledVector(tangent, tileRadius + gap / 2)
     // The recipes are authored from the marker's own foot, so a ground anchor
     // buried every base part 0.55–0.64 BELOW the disc's top face — inside the
-    // rim cylinder. Lift to the top face, the plane the rest of the overlay
-    // stack already respects.
+    // rim cylinder. The gap floor is terrain, not disc, so a hurdle stands at
+    // the same height as the tops it bars: level with the disc's top face.
     anchor.y += TILE_RIM_HEIGHT + TILE_TOP_INSET
     quaternion.setFromAxisAngle(up, Math.atan2(tangent.x, tangent.z))
     matrix.compose(anchor, quaternion, new Vector3(fit, fit, fit))

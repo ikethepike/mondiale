@@ -30,7 +30,6 @@ import {
   Vector3,
 } from 'three'
 import {
-  markerBerthFor,
   markerFitFactor,
   markerPartsFor,
   type MarkerType,
@@ -217,19 +216,18 @@ const rebuild = () => {
     }
 
     const parts = markerPartsFor(type, SPACING, props.variants[type], props.finalStages)
-    const fit = type === 'final' ? 1 : markerFitFactor(parts, tileRadius, gap, outlineWidth)
+    const fit = type === 'final' ? 1 : markerFitFactor(parts, tileRadius, gap)
 
     const marker = new Group()
     marker.position.y = TILE_RIM_HEIGHT + TILE_TOP_INSET
     marker.rotation.y = BASE_YAW
     if (live) {
-      // Berthed BESIDE the tile, exactly as the builder does it, so the pawn's
-      // own tile stays clear. BASE_YAW maps the marker's own side axis (local
-      // +x) onto world -z, so the berth is applied there — the same offset the
-      // builder makes along the path's normal.
+      // The hurdle in the path, exactly as the builder places it: centred in
+      // the gap at the tile's exit edge. BASE_YAW lays the path along world X,
+      // so the offset down the path is applied there.
       marker.scale.setScalar(fit)
       if (type !== 'final') {
-        marker.position.z = -markerBerthFor(parts, tileRadius, fit, outlineWidth)
+        marker.position.x = tileRadius + gap / 2
       }
     }
     for (const part of parts) {
