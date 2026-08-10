@@ -527,10 +527,10 @@ const getAnthemBuzzChallenge = ({
     clip: { webm: anthem.webm, m4a: anthem.m4a },
     durationSeconds: ANTHEM_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
-    // Every difficulty unlocks these as the clip runs. An anthem gives the ear
-    // nothing to reason from when it draws a blank, so hard mode keeps the
-    // same ladder as normal rather than sitting in silence — the clock still
-    // prices them (see HINT_UNLOCK_AT).
+    // Every difficulty unlocks these as the clip runs — an audio round gives
+    // the ear nothing to reason from when it draws a blank, so hard keeps the
+    // same ladder as normal rather than sitting in silence. The clock still
+    // prices them (see HINT_UNLOCK_AT). Tongues rides the same rule.
     region: REGION_LABELS[COUNTRIES[country].region],
     // The flag's OWN hues, not the snapped names: `simplifiedColors`
     // holds strings like "blue", which CSS renders as generic web blue
@@ -583,17 +583,17 @@ const getTongueBuzzChallenge = ({
     countries,
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
-    // Non-hard mode unlocks these as the clip runs; hard mode listens cold.
-    // Unlike the anthem round (which hints on every difficulty), a speech clip
-    // leaves the ear plenty to work with — the language itself is the clue.
-    ...(game.difficulty !== 'hard' && countries[0]
+    // Every difficulty unlocks these as the clip runs, matching the anthem
+    // round's ladder — the clock prices them (see HINT_UNLOCK_AT). Still
+    // conditional: region and initial read the first speaker country.
+    ...(countries[0]
       ? {
           region: REGION_LABELS[COUNTRIES[countries[0]].region],
           speakerCount: countries.length,
           // Seeded sample for languages no anthem is sung in. Languages that
           // DO have one ship no sample: the view borrows a couple of lyric
           // lines through `tongueSampleSource`/`anthemTongueSample`, keyed off
-          // `region` being present so hard mode stays hint-free.
+          // `region` being present.
           ...(() => {
             const seeded = seededTongueSample(language)
             return seeded ? { sample: seeded } : {}

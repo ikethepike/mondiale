@@ -36,9 +36,9 @@ export interface SilhouetteChallenge {
 }
 
 /** An anthem plays from the top — buzz early with the country for more points.
- *  Hints unlock as the clip runs, on every difficulty: a cold anthem gives the
- *  ear nothing to reason from, so hard mode keeps the same ladder. Optional
- *  because a country may ship no lyric wall. */
+ *  Hints unlock as the clip runs, on every difficulty: a cold clip gives the
+ *  ear nothing to reason from, so hard mode keeps the same ladder as the rest
+ *  (Tongues too). Optional because a country may ship no lyric wall. */
 export interface AnthemBuzzChallenge {
   _type: 'anthem-buzz-challenge'
   country: ISOCountryCode
@@ -90,7 +90,8 @@ export interface TongueBuzzChallenge {
   countries: ISOCountryCode[]
   durationSeconds: number
   maximumPoints: number
-  /** Non-hard mode helper: the region one speaker country sits in. */
+  /** The region one speaker country sits in. Unlocks on the clock at every
+   *  difficulty; absent only when the round has no speaker country. */
   region?: string
   /** How many playable countries have it official — "official in 8" narrows
    *  the field hard without naming any of them. */

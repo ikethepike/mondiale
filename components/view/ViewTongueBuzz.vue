@@ -142,9 +142,9 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 /** The written-sample hint. The dealer ships one for seeded languages; every
  *  other language borrows a couple of anthem lines through the same home
- *  (`lib/tongue-samples.ts`). Gated on `region`: hard mode omits the hint
- *  fields, and the view must not conjure hints the dealer withheld. A failed
- *  fetch is silent — the round just runs without this chip. */
+ *  (`lib/tongue-samples.ts`). Gated on `region`: a dealer with no speaker
+ *  country ships no hint fields, and the view must not conjure hints the
+ *  dealer withheld. A failed fetch is silent — the round runs without it. */
 const borrowedLyrics = useAnthemLyrics(() => {
   const active = challenge.value
   if (!active?.region || active.sample) return undefined
