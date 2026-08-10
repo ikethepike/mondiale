@@ -37,4 +37,10 @@ export const TILE_TOP_TINTS: Record<IndividualChallengeAccessorId, string> = {
   // errata (15.1) but capital.name, at 12.2 — clear of the floor, and the
   // closest any pair involving a new tint gets.
   lexicon: '#cfc6a8',
+  // Faded wisteria — old ink over vellum, the history gate. Violet is new to
+  // the board on purpose: its closest neighbour is the leader top at ΔE 15.5
+  // (above the 12.2 floor the lexicon pick established), and it sits far from
+  // the paper pair (errata 21.2, lexicon 24+), so the two page-like tops stay
+  // unmistakably themselves.
+  history: '#b9a8c9',
 }

@@ -17,6 +17,7 @@ const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
   landmarks: 1,
   errata: 1,
   lexicon: 1,
+  history: 1,
 }
 
 export const TILE_COUNTS: Record<GameLength, number> = {

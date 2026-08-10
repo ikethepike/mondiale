@@ -89,6 +89,7 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { attributionFor } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
+import { DRAG_LIST_OPTIONS } from '~~/lib/drag-list'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { rankingAccessorId } from '~~/lib/rounds'
 import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
@@ -140,17 +141,10 @@ const updateRanking = (event: Event) => {
 
 const submitRanking = () => submitOnce(ranking.value)
 
-// No touch delay: the tiles refuse the browser's pan gestures entirely (the
-// dense layout keeps even 7-tile hands on screen without scrolling), so a
-// drag can start the instant a finger lands.
-const options = ref({
-  draggable: '.draggable',
-  animation: 150,
-  ghostClass: 'ghost',
-  dragClass: 'drag',
-  forceFallback: true,
-  bubbleScroll: true,
-})
+// The dense layout keeps even 7-tile hands on screen without scrolling, so
+// the tiles refuse the browser's pan gestures entirely and the shared no-delay
+// drag config applies as-is.
+const options = ref({ ...DRAG_LIST_OPTIONS })
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;

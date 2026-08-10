@@ -15,6 +15,7 @@ export type ChallengeTopic =
   | 'environment'
   | 'energy'
   | 'human rights'
+  | 'history'
 
 export interface ChallengeConfiguration {
   topic: ChallengeTopic

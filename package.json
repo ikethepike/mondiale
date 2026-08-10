@@ -20,6 +20,7 @@
     "generate:countries": "bun run ./generators/create-countries-file.ts && bun run ./generators/create-flags-file.ts",
     "generate:flags": "bun run ./generators/create-flags-file.ts",
     "generate:marriage-rights": "bun run ./generators/create-marriage-rights-file.ts",
+    "generate:far-flung": "bun run ./generators/create-far-flung-file.ts",
     "generate:linking": "bun run ./generators/create-link-mapping.ts",
     "generate:conflicts": "bun run generators/vendors/ucdp/create-conflicts.ts",
     "generate:conflict-events": "bun run generators/vendors/ucdp/create-conflict-events.ts",

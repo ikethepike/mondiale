@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { ATLAS_TARGET_LINKS, hasAtlasChain } from '~~/lib/atlas-chain'
+import { EVENTS } from '~~/data/events.gen'
+import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/chronicle'
+import { mentionsCountry } from '~~/lib/country'
+import { scriptoriumAnswers } from '~~/lib/scriptorium'
+import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { countryLedBy } from '~~/lib/leaders'
 import { processReplacements } from '~~/lib/values'
 import {
@@ -156,6 +162,77 @@ describe('atlas gate dealing', () => {
         // The guard's promise: the target is reachable under the plain rule.
         expect(hasAtlasChain(dealt.country, target, [...ISOCountryCodes])).toBe(true)
       }
+    }
+  })
+})
+
+describe('scriptorium gate dealing', () => {
+  it('deals a typed set-answer gate whose verdict matches lib/scriptorium', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'scriptorium'
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'lexicon', difficulty: 'normal' })
+      expect(dealt.variant).toBe('scriptorium')
+      const language = dealt.scriptorium?.language
+      expect(language).toBeTruthy()
+      // Always typed — an option table of different-script countries would
+      // answer itself.
+      expect(dealt.options).toBeUndefined()
+      const answers = scriptoriumAnswers(language!)
+      expect(answers).toContain(dealt.country)
+      // Every official speaker wins; the give-up token never does.
+      for (const isoCode of answers) {
+        expect(isCorrectIndividualAnswer(dealt, isoCode)).toBe(true)
+      }
+      expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
+    }
+  })
+})
+
+describe('chronicle gate dealing', () => {
+  it('deals one country, spaced and gradeable through lib/chronicle', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'chronicle'
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'history', difficulty })
+        expect(dealt.variant).toBe('chronicle')
+        const hand = dealt.chronicle?.events ?? []
+        expect(hand.length).toBe(CHRONICLE_TUNING[difficulty].cards)
+        for (const slug of hand) expect(EVENTS[slug]?.country).toBe(dealt.country)
+        expect(isChronicleOrdered(chronicleSolution(hand))).toBe(true)
+      }
+    }
+  })
+})
+
+describe('far-flung gate dealing', () => {
+  it('stages a fragment whose owner is the answer', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'far-flung'
+    for (const difficulty of ['normal', 'hard'] as const) {
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'isoCode', difficulty })
+        expect(dealt.variant).toBe('far-flung')
+        const entry = FAR_FLUNG[dealt.farFlung?.slug ?? '']
+        expect(entry).toBeTruthy()
+        expect(dealt.country).toBe(entry.iso)
+        if (difficulty === 'hard') {
+          expect(dealt.options).toBeUndefined()
+        } else {
+          expect(dealt.options).toContain(dealt.country)
+          expect(new Set(dealt.options).size).toBe(dealt.options!.length)
+        }
+        // Strict ISO grading, no carve-out.
+        expect(isCorrectIndividualAnswer(dealt, dealt.country)).toBe(true)
+        expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
+      }
+    }
+  })
+
+  it('ships visible, blurb-safe fragments', () => {
+    for (const [slug, entry] of Object.entries(FAR_FLUNG)) {
+      const [, , width, height] = entry.bounds
+      expect(Math.hypot(width, height), slug).toBeGreaterThan(1)
+      expect(mentionsCountry(entry.blurb, entry.iso), `${slug} blurb names its owner`).toBe(false)
+      expect(entry.d.startsWith('M ')).toBe(true)
     }
   })
 })

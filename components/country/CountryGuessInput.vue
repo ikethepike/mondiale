@@ -167,8 +167,7 @@ const pick = (country: Country) => {
 const submitTyped = () => {
   if (!query.value.trim()) return
   const direct = findCountryByName(query.value)
-  const country =
-    direct ?? (props.suggest ? highlighted.value : resolveTypedCountry(query.value))
+  const country = direct ?? (props.suggest ? highlighted.value : resolveTypedCountry(query.value))
   // A typed-out benched country ("vatican") must not fall through to the
   // highlighted suggestion — that would silently commit a different country.
   if (!country || benched.value.has(country.isoCode)) {

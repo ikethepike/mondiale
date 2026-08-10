@@ -10,8 +10,11 @@ import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
+import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender } from '~~/lib/currency'
+import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
+import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
   HEAVY_ACCESSORS,
@@ -2120,12 +2123,19 @@ const dealMoneyMatch = (
  * mistake. `culprits` is the answer key; `country` is only its head.
  */
 export const isCorrectIndividualAnswer = (
-  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata'>,
+  challenge: Pick<IndividualChallenge, 'id' | 'country' | 'variant' | 'errata' | 'scriptorium'>,
   isoCode: ISOCountryCode
 ): boolean => {
   if (isoCode === challenge.country) return true
   const variant = challenge.variant ?? 'find'
   if (variant === 'errata') return !!challenge.errata?.culprits.includes(isoCode)
+  // Scriptorium's set answer, the currency posture: any country where the
+  // language is official wins. Recomputed here rather than read from the
+  // payload — both sides of the wire resolve the same lib/scriptorium set.
+  if (variant === 'scriptorium') {
+    const language = challenge.scriptorium?.language
+    return !!language && scriptoriumAnswers(language).includes(isoCode)
+  }
   const asksForCurrency =
     variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
   if (!asksForCurrency) return false
@@ -2733,6 +2743,75 @@ const dealAtlas = (
 }
 
 /**
+ * Scriptorium: a written sample in a mystery script — name any country where
+ * the language is official, typed on every difficulty (the suggestion
+ * dropdown and easy's free region hint are the relief; an option table of
+ * different-script countries answered itself). The pool and the answer set
+ * live in lib/scriptorium (shared with the verdict); the sample itself
+ * resolves at view time through lib/tongue-samples.
+ */
+const dealScriptorium = (
+  world: ISOCountryCode[]
+): Pick<IndividualChallenge, 'country' | 'scriptorium'> | undefined => {
+  const inPlay = new Set(world)
+  const playable = SCRIPTORIUM_POOL.filter(entry =>
+    scriptoriumAnswers(entry.language).some(isoCode => inPlay.has(isoCode))
+  )
+  const entry = sample(playable)
+  if (!entry) return undefined
+
+  const answers = scriptoriumAnswers(entry.language).filter(isoCode => inPlay.has(isoCode))
+  // The reveal zoom's canonical speaker: the most populous in-play answer.
+  const country = [...answers].sort(
+    (a, b) =>
+      (COUNTRIES[b].people.population?.amount ?? 0) - (COUNTRIES[a].people.population?.amount ?? 0)
+  )[0]
+  if (!country) return undefined
+  return { country, scriptorium: { language: entry.language } }
+}
+
+/**
+ * Chronicle: one country's events, dragged into order. The pool selector, the
+ * spaced-hand picker and the order check live in lib/chronicle — the view
+ * grades through the same module (higher-lower's client-trust posture).
+ */
+const dealChronicle = (
+  rules: gameTypes.GameRules
+): Pick<IndividualChallenge, 'country' | 'chronicle'> | undefined => {
+  const difficulty = rules.difficulty ?? 'normal'
+  const country = sample(chronicleCountries(rules, difficulty))
+  if (!country) return undefined
+  const events = dealChronicleEvents(country, difficulty)
+  if (!events) return undefined
+  return { country, chronicle: { events } }
+}
+
+/**
+ * Far Flung: a detached piece of a country, framed alone — name the owner.
+ * Subjects come from data/far-flung.gen (curated seeds resolved to map
+ * rings); grading is strict ISO equality, nothing bespoke. Below hard the
+ * console is a four-card option table; decoys prefer the fragment's region
+ * and never include another in-play answer's owner twice.
+ */
+const dealFarFlung = (
+  difficulty: gameTypes.GameDifficulty,
+  pool: ISOCountryCode[],
+  world: ISOCountryCode[]
+): Pick<IndividualChallenge, 'country' | 'farFlung' | 'options'> | undefined => {
+  const inPlay = new Set(world)
+  const slugs = Object.keys(FAR_FLUNG).filter(slug => inPlay.has(FAR_FLUNG[slug].iso))
+  const slug = sample(slugs)
+  if (!slug) return undefined
+  const country = FAR_FLUNG[slug].iso
+
+  if (difficulty === 'hard') return { country, farFlung: { slug } }
+
+  const decoys = pickDecoys(country, pool, 3, { preferRegion: true, widen: world })
+  if (!decoys) return undefined
+  return { country, farFlung: { slug }, options: shuffleArray([country, ...decoys]) }
+}
+
+/**
  * Deal an individual gate challenge. Each tile theme keeps the classic
  * find-on-the-map variant plus themed twists — the server validates every
  * variant through `isCorrectIndividualAnswer`.
@@ -2883,6 +2962,21 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'atlas', ...dealt }
         break
       }
+      case 'scriptorium': {
+        const dealt = dealScriptorium(world)
+        if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
+        break
+      }
+      case 'chronicle': {
+        const dealt = dealChronicle(rules)
+        if (dealt) return { ...base, variant: 'chronicle', ...dealt }
+        break
+      }
+      case 'far-flung': {
+        const dealt = dealFarFlung(difficulty, pool, world)
+        if (dealt) return { ...base, variant: 'far-flung', ...dealt }
+        break
+      }
     }
     return base
   }
@@ -2904,8 +2998,9 @@ export const getIndividualChallenge = async ({
       break
     }
     case 'isoCode': {
-      // Two kinetic "name the country" gates on this tile: outline-reveal (the
-      // border draws itself) and zoom-out (the map zooms out from a coastline).
+      // Three kinetic "name the country" gates on this tile: outline-reveal
+      // (the border draws itself), zoom-out (the map zooms out from a
+      // coastline) and far-flung (a lone fragment, camera easing out).
       if (difficulty === 'hard' && roll < 0.2) {
         return {
           ...base,
@@ -2913,22 +3008,26 @@ export const getIndividualChallenge = async ({
           country: pickShapeFriendlyCountry(pool, world),
         }
       }
-      if (roll < 0.3) {
+      if (roll < 0.26) {
         return { ...base, variant: 'zoom-out', country: pickShapeFriendlyCountry(pool, world) }
       }
-      if (roll < 0.42) {
+      if (roll < 0.36) {
         const dealt = await dealErrata(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'errata', ...dealt }
       }
-      if (roll < 0.48) {
+      if (roll < 0.42) {
         const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
         if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       }
-      if (roll < 0.54) {
+      if (roll < 0.48) {
         const dealt = dealAtlas(rules)
         if (dealt) return { ...base, variant: 'atlas', ...dealt }
       }
-      if (roll < 0.66) {
+      if (roll < 0.6) {
+        const dealt = dealFarFlung(difficulty, pool, world)
+        if (dealt) return { ...base, variant: 'far-flung', ...dealt }
+      }
+      if (roll < 0.68) {
         const dealt = dealLandmarkQuiz(pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
@@ -3033,16 +3132,29 @@ export const getIndividualChallenge = async ({
       break
     }
     case 'lexicon': {
-      // The naming tile, now two tenants: Atlas (the name chain) and Rosetta.
-      // No relation restriction on Rosetta here — unlike the themed tiles,
-      // which each deal their own register, this one draws from all of them.
+      // The naming tile, now three tenants: Atlas (the name chain),
+      // Scriptorium (a country from its writing alone) and Rosetta. No
+      // relation restriction on Rosetta here — unlike the themed tiles, which
+      // each deal their own register, this one draws from all of them.
       // Switchboard and The Naming belong here too when they land.
-      if (roll < 0.45) {
+      if (roll < 0.35) {
         const dealt = dealAtlas(rules)
         if (dealt) return { ...base, variant: 'atlas', ...dealt }
       }
+      if (roll < 0.6) {
+        const dealt = dealScriptorium(world)
+        if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
+      }
       const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
       if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      break
+    }
+    case 'history': {
+      // The history tile is mode-named like errata/lexicon: the hourglass on
+      // the board promises the timeline question, so Chronicle deals or the
+      // gate falls through to `find` — never a different mode's question.
+      const dealt = dealChronicle(rules)
+      if (dealt) return { ...base, variant: 'chronicle', ...dealt }
       break
     }
   }

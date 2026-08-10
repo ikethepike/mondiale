@@ -107,10 +107,9 @@ describe('pickAtlasSeed', () => {
     for (let attempt = 0; attempt < 25; attempt++) {
       const seed = pickAtlasSeed(RULES, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
       expect(seed).toBeTruthy()
-      expect(
-        atlasContinuations(seed!, [seed!], pool).length,
-        seed
-      ).toBeGreaterThanOrEqual(ATLAS_TABLE_SEED_OPTIONS)
+      expect(atlasContinuations(seed!, [seed!], pool).length, seed).toBeGreaterThanOrEqual(
+        ATLAS_TABLE_SEED_OPTIONS
+      )
     }
   })
 

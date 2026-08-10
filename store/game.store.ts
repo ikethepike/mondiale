@@ -93,8 +93,16 @@ interface GameStoreState {
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
     atlasMode: boolean
     /** Zoom-Out gate: start extreme-tight on a country, ease out over N seconds
-     *  so players name it before it's obvious. Cleared to stop the reveal. */
-    zoomOut?: { isoCode: ISOCountryCode; durationSeconds: number }
+     *  so players name it before it's obvious. Cleared to stop the reveal.
+     *  With `box` (map viewBox space) the camera opens ON that frame instead
+     *  of a tight sliver, and eases out to the box's neighbourhood — the Far
+     *  Flung gate, where the fragment IS the subject and the pull-out buys
+     *  context, not shape. */
+    zoomOut?: {
+      isoCode: ISOCountryCode
+      durationSeconds: number
+      box?: [number, number, number, number]
+    }
     /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
     feature?: MapFeatureOverlay
     /** Magnifying inset for a subject too small to see at world zoom. */

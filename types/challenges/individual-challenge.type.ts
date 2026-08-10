@@ -32,6 +32,14 @@ import type { ISOCountryCode } from '../geography.types'
  * - 'atlas': chain countries where each name starts where the last one ended
  *   (Nepal → Laos); the chain is client-validated through lib/atlas-chain and
  *   `country` holds the seed as the winning token (higher-lower's trust model)
+ * - 'scriptorium': a written sample in a mystery script — name any country
+ *   where the language is official (the answer set is recomputed both sides
+ *   via lib/scriptorium, the shared-currency posture)
+ * - 'chronicle': one country's events, dragged into order; graded client-side
+ *   through lib/chronicle and submitted as `country` on a clean order
+ *   (higher-lower's trust model)
+ * - 'far-flung': a detached piece of a country, framed alone — name the
+ *   country it belongs to (strict ISO equality)
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -126,6 +134,24 @@ export interface IndividualChallenge {
      *  rule by construction. */
     overlaps: boolean
   }
+  /** scriptorium: the mystery language. The written sample resolves at view
+   *  time through lib/tongue-samples; the answer SET is never shipped — both
+   *  sides recompute it via `scriptoriumAnswers` (lib/scriptorium). `country`
+   *  is a canonical speaker for the reveal zoom. */
+  scriptorium?: {
+    language: string
+  }
+  /** chronicle: EVENT slugs in display (shuffled) order. Years stay out of the
+   *  payload — data/events.gen is already client-bundled, and the view grades
+   *  the final order through lib/chronicle. */
+  chronicle?: {
+    events: string[]
+  }
+  /** far-flung: the FAR_FLUNG fragment on stage (data/far-flung.gen key).
+   *  The reveal reads the same entry the dealer picked. */
+  farFlung?: {
+    slug: string
+  }
   /** rosetta: A : B :: C : ? — the answer to the second pair is `country`. */
   rosetta?: {
     relation: RosettaRelationId
@@ -164,6 +190,9 @@ export const individualChallengeVariants = [
   'errata',
   'rosetta',
   'atlas',
+  'scriptorium',
+  'chronicle',
+  'far-flung',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
@@ -182,8 +211,12 @@ export type IndividualChallengeVariant = (typeof individualChallengeVariants)[nu
  * - `errata` — things that are wrong. Tenants: Errata. Counterfeit belongs
  *   here when it lands (its marker will have to widen past signposts to cover
  *   a forged flag).
- * - `lexicon` — a term and the country it belongs to. Tenants: Rosetta and
- *   Atlas (the name chain). The Naming and Switchboard belong here too.
+ * - `lexicon` — a term and the country it belongs to. Tenants: Rosetta, Atlas
+ *   (the name chain) and Scriptorium (name a country from its writing alone).
+ *   The Naming and Switchboard belong here too.
+ * - `history` — a country's story through time. Tenant: Chronicle (drag one
+ *   country's events into order). High-Water Mark and a rosetta history
+ *   register belong here when they land.
  *
  * Promotion costs the other themes nothing: the capital, currency, leader and
  * landmark tiles still deal Rosetta in each of their own registers
@@ -198,6 +231,7 @@ export const individualChallengeAccessors = [
   'landmarks',
   'errata',
   'lexicon',
+  'history',
 ] as const
 export type IndividualChallengeAccessorId = (typeof individualChallengeAccessors)[number]
 export const isValidIndividualChallengeAccessorId = (

@@ -601,6 +601,13 @@ export const INDIVIDUAL_STAT_ORIGINS: Record<IndividualChallengeAccessorId, Data
   },
   currency: { source: 'countries-list-package', dataset: 'ISO 4217 code per country' },
   landmarks: { source: 'wikidata-items', fallback: ['commons-media'] },
+  // Chronicle's cards are the curated timeline library; the tile itself only
+  // ever asks that library's questions (or the find fallback's map).
+  history: {
+    source: 'mondiale-editorial',
+    dataset: 'generators/data/event-seeds.ts',
+    fallback: ['wikidata-items'],
+  },
   // The misprint is drawn on the projected map and its lineup grown over the
   // border graph; the names themselves are the Factbook's.
   errata: {
@@ -661,6 +668,7 @@ export type DataSetId =
   | 'flag-meanings'
   | 'name-facts'
   | 'map'
+  | 'far-flung'
   | 'water'
   | 'recognition'
   | 'borders'
@@ -745,6 +753,14 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     label: 'World map',
     files: ['data/map.gen.ts', 'data/map-hd.gen.ts'],
     origins: [{ source: 'naturalearth-10m', dataset: 'admin_0_map_units' }],
+  },
+  'far-flung': {
+    label: 'Far-flung fragments',
+    files: ['data/far-flung.gen.ts'],
+    origins: [
+      { source: 'naturalearth-10m', dataset: 'admin_0_map_units rings' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/far-flung-seeds.ts' },
+    ],
   },
   water: {
     label: 'Seas, lakes, rivers and ranges',

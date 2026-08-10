@@ -3,9 +3,52 @@
     <nav class="controls">
       <div class="group grow">
         <span class="label">Scenario</span>
-        <select v-model="scenarioId" @change="deal()">
-          <option v-for="s in scenarios" :key="s.id" :value="s.id">{{ s.label }}</option>
-        </select>
+        <div class="picker" @focusout="onPickerFocusOut">
+          <button class="picker-toggle" @click="pickerOpen ? closePicker() : openPicker()">
+            <span class="picker-current">{{ activeScenario?.label ?? scenarioId }}</span>
+            <span class="picker-caret">▾</span>
+          </button>
+          <div v-if="pickerOpen" class="picker-panel">
+            <div class="picker-head">
+              <input
+                ref="pickerInput"
+                v-model="pickerQuery"
+                aria-label="Filter scenarios"
+                autocomplete="off"
+                spellcheck="false"
+                @keydown.down.prevent="movePickerHighlight(1)"
+                @keydown.up.prevent="movePickerHighlight(-1)"
+                @keydown.enter.prevent="pickHighlighted()"
+                @keydown.esc.prevent="closePicker()"
+              />
+              <span class="picker-count">{{ pickerItems.length }}/{{ scenarios.length }}</span>
+            </div>
+            <ul ref="pickerList" class="picker-rows">
+              <template v-for="row in pickerRows" :key="row.key">
+                <li v-if="row.kind === 'header'" class="picker-group">{{ row.group }}</li>
+                <li v-else>
+                  <button
+                    class="picker-row"
+                    :class="{
+                      highlighted: row.index === pickerHighlight,
+                      current: row.entry.scenario.id === scenarioId,
+                    }"
+                    :data-index="row.index"
+                    @pointerdown.prevent
+                    @pointerenter="pickerHighlight = row.index"
+                    @click="pick(row.entry.scenario.id)"
+                  >
+                    <span class="picker-row-label">{{ row.entry.scenario.label }}</span>
+                    <span v-if="pickerQuery.trim()" class="picker-row-group">
+                      {{ row.entry.group }}
+                    </span>
+                  </button>
+                </li>
+              </template>
+              <li v-if="!pickerItems.length" class="picker-empty">No scenario matches</li>
+            </ul>
+          </div>
+        </div>
         <button @click="deal()">Replay</button>
         <button @click="seedGuesses()">Ticker</button>
       </div>
@@ -28,7 +71,7 @@
  *
  *   /test-views
  */
-import { computed, defineComponent, h, ref } from 'vue'
+import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
@@ -90,6 +133,8 @@ import {
 } from '~~/lib/atlas-chain'
 import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
 import { sample } from '~~/lib/arrays'
+import { normalizeAnswer } from '~~/lib/strings'
+import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { AtlasChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
@@ -322,12 +367,15 @@ const atlasResolveMiss = (challenge: AtlasChallenge, kind: 'wrong' | 'timeout') 
 const atlasContinueTurn = (challenge: AtlasChallenge) => {
   if (challenge.state.finished) return
   const { turn } = challenge.state
-  window.setTimeout(() => {
-    const current = atlasOf()
-    if (current !== challenge || current.state.finished || current.state.trap) return
-    if (current.state.turn !== turn) return
-    atlasResolveMiss(current, 'timeout')
-  }, challenge.turnSeconds * 1000 + 400)
+  window.setTimeout(
+    () => {
+      const current = atlasOf()
+      if (current !== challenge || current.state.finished || current.state.trap) return
+      if (current.state.turn !== turn) return
+      atlasResolveMiss(current, 'timeout')
+    },
+    challenge.turnSeconds * 1000 + 400
+  )
 
   const activeId = activePlayerId(challenge.state)
   if (activeId === ME) return
@@ -3078,6 +3126,95 @@ const scenarios: Scenario[] = [
     },
   },
   {
+    // Amharic borrows Ethiopia's anthem wall — the fetch path, not a seed.
+    id: 'individual-scriptorium',
+    label: 'Individual: scriptorium (Geʽez sample, typed)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'lexicon',
+        variant: 'scriptorium',
+        country: 'ET',
+        scriptorium: { language: 'Amharic' },
+      }),
+  },
+  {
+    id: 'individual-scriptorium-seeded',
+    label: 'Individual: scriptorium (Tamil seed, easy free hint)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const game = individualGame({
+        id: 'lexicon',
+        variant: 'scriptorium',
+        country: 'LK',
+        scriptorium: { language: 'Tamil' },
+      })
+      game.difficulty = 'easy'
+      return game
+    },
+  },
+  {
+    // Arabic exercises the RTL path: dir flips and the write-on wipe sweeps
+    // right-to-left.
+    id: 'individual-scriptorium-rtl',
+    label: 'Individual: scriptorium (Arabic — RTL wipe)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'lexicon',
+        variant: 'scriptorium',
+        country: 'EG',
+        scriptorium: { language: 'Arabic' },
+      }),
+  },
+  {
+    id: 'individual-chronicle',
+    label: 'Individual: chronicle (drag Japan into order)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'history',
+        variant: 'chronicle',
+        country: 'JP',
+        chronicle: {
+          events: [
+            'meiji-restoration',
+            'battle-of-sekigahara',
+            'the-tale-of-genji',
+            'tokaido-shinkansen',
+          ],
+        },
+      }),
+  },
+  {
+    id: 'individual-far-flung',
+    label: 'Individual: far flung (Cabinda, options)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        id: 'isoCode',
+        variant: 'far-flung',
+        country: 'AO',
+        farFlung: { slug: 'cabinda' },
+        options: ['AO', 'CD', 'CG', 'GA'],
+      }),
+  },
+  {
+    id: 'individual-far-flung-hard',
+    label: 'Individual: far flung (hard — Nakhchivan, typed)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const game = individualGame({
+        id: 'isoCode',
+        variant: 'far-flung',
+        country: 'AZ',
+        farFlung: { slug: 'nakhchivan' },
+      })
+      game.difficulty = 'hard'
+      return game
+    },
+  },
+  {
     id: 'atlas-easy',
     label: 'Atlas (easy — 20s turns, ringed answers, suggestions)',
     component: ViewAtlas,
@@ -3708,12 +3845,182 @@ const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   return game
 }
 
-const activeComponent = computed(
-  () => scenarios.find(s => s.id === scenarioId.value)?.component ?? ViewGroupChallenge
+const activeScenario = computed(() => scenarios.find(s => s.id === scenarioId.value))
+const activeComponent = computed(() => activeScenario.value?.component ?? ViewGroupChallenge)
+
+/** Picker families, in catalog order: first id prefix that matches wins, so
+ *  the catch-all '' must stay last. */
+const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
+  ['Ranking & scorecards', ['ranking', 'group-scores']],
+  ['Border Run', ['traversal']],
+  ['Two Truths', ['two-truths']],
+  ['Trends', ['trend-']],
+  ['Timeline', ['timeline']],
+  ['Ghosts of Empires', ['empire']],
+  ['Flashpoint', ['flashpoint']],
+  ['Capital Guess', ['capital-guess']],
+  ['Stat Detective', ['stat-detective']],
+  ['Flag Palette', ['flag-palette']],
+  ['Composition', ['composition']],
+  ['Water', ['water-', 'name-that-water']],
+  ['Mother Tongue', ['mother-tongue']],
+  ['Neighbour Blitz', ['neighbour-']],
+  ['Map & Sketch', ['pin-landmark', 'no-mans-land', 'hot-cold', 'silhouette', 'sketch']],
+  ['Audio Buzz', ['anthem-', 'tongue-']],
+  ['Border Chain', ['border-chain']],
+  ['Atlas', ['atlas']],
+  ['The Despot', ['manhunt-']],
+  ['Unique or Bust', ['unique-']],
+  ['Heritage Hunt', ['heritage-hunt']],
+  ['Individual Gates', ['individual-']],
+  ['Final Gauntlet', ['final-']],
+  ['Lobby & Meta', ['lobby', 'tutorial', 'victory']],
+  ['Other', ['']],
+]
+
+const scenarioGroup = (id: string): string =>
+  SCENARIO_GROUPS.find(([, prefixes]) => prefixes.some(prefix => id.startsWith(prefix)))![0]
+
+interface PickerEntry {
+  scenario: Scenario
+  group: string
+  label: string
+  slug: string
+}
+
+const PICKER_INDEX: PickerEntry[] = scenarios.map(scenario => {
+  const group = scenarioGroup(scenario.id)
+  return {
+    scenario,
+    group,
+    label: normalizeAnswer(scenario.label, { articles: [] }),
+    slug: normalizeAnswer(`${scenario.id} ${group}`, { articles: [] }),
+  }
+})
+
+const isSubsequence = (needle: string, haystack: string): boolean => {
+  let matched = 0
+  for (const char of haystack) if (char === needle[matched]) matched++
+  return matched >= needle.length
+}
+
+/** Hybrid rank per query token: label prefix beats word start beats substring
+ *  beats id/group hit beats fuzzy subsequence; -1 rejects the row. */
+const tokenRank = (token: string, entry: PickerEntry): number => {
+  if (entry.label.startsWith(token)) return 0
+  if (entry.label.includes(` ${token}`)) return 1
+  if (entry.label.includes(token)) return 2
+  if (entry.slug.includes(token)) return 3
+  if (isSubsequence(token, entry.label)) return 5
+  return -1
+}
+
+const pickerRank = (entry: PickerEntry, tokens: string[]): number => {
+  let total = 0
+  for (const token of tokens) {
+    const rank = tokenRank(token, entry)
+    if (rank < 0) return -1
+    total += rank
+  }
+  return total
+}
+
+type PickerRow =
+  | { kind: 'header'; key: string; group: string }
+  | { kind: 'item'; key: string; index: number; entry: PickerEntry }
+
+const pickerOpen = ref(false)
+const pickerQuery = ref('')
+const pickerHighlight = ref(0)
+const pickerInput = ref<HTMLInputElement>()
+const pickerList = ref<HTMLElement>()
+
+/** Browse mode groups the catalog; a query flattens it to a ranked hit list. */
+const pickerRows = computed<PickerRow[]>(() => {
+  const tokens = normalizeAnswer(pickerQuery.value, { articles: [] }).split(' ').filter(Boolean)
+  let index = 0
+  if (!tokens.length) {
+    const rows: PickerRow[] = []
+    for (const [group] of SCENARIO_GROUPS) {
+      const members = PICKER_INDEX.filter(entry => entry.group === group)
+      if (!members.length) continue
+      rows.push({ kind: 'header', key: `header:${group}`, group })
+      for (const entry of members)
+        rows.push({ kind: 'item', key: entry.scenario.id, index: index++, entry })
+    }
+    return rows
+  }
+  return PICKER_INDEX.map(entry => ({ entry, rank: pickerRank(entry, tokens) }))
+    .filter(({ rank }) => rank >= 0)
+    .sort((a, b) => a.rank - b.rank)
+    .map(({ entry }) => ({ kind: 'item' as const, key: entry.scenario.id, index: index++, entry }))
+})
+
+const pickerItems = computed(() =>
+  pickerRows.value.filter((row): row is Extract<PickerRow, { kind: 'item' }> => row.kind === 'item')
 )
 
+const keepHighlightInView = () => {
+  nextTick(() => {
+    const list = pickerList.value
+    const item = list?.querySelector<HTMLElement>(`[data-index="${pickerHighlight.value}"]`)
+    if (!list || !item) return
+    list.scrollTop = listScrollTop(
+      list.scrollTop,
+      list.clientHeight,
+      item.offsetTop,
+      item.offsetHeight
+    )
+  })
+}
+
+const openPicker = () => {
+  pickerOpen.value = true
+  pickerQuery.value = ''
+  nextTick(() => {
+    pickerInput.value?.focus()
+    const current = pickerItems.value.findIndex(row => row.entry.scenario.id === scenarioId.value)
+    pickerHighlight.value = Math.max(0, current)
+    keepHighlightInView()
+  })
+}
+
+const closePicker = () => {
+  pickerOpen.value = false
+}
+
+/** Close only when focus truly leaves the picker; row taps preventDefault on
+ *  pointerdown so the filter input keeps focus until the click lands. */
+const onPickerFocusOut = (event: FocusEvent) => {
+  const next = event.relatedTarget as Node | null
+  if (!next || !(event.currentTarget as Node).contains(next)) closePicker()
+}
+
+const movePickerHighlight = (delta: number) => {
+  const count = pickerItems.value.length
+  if (!count) return
+  pickerHighlight.value = (pickerHighlight.value + delta + count) % count
+  keepHighlightInView()
+}
+
+const pick = (id: string) => {
+  scenarioId.value = id
+  closePicker()
+  deal()
+}
+
+const pickHighlighted = () => {
+  const row = pickerItems.value[pickerHighlight.value]
+  if (row) pick(row.entry.scenario.id)
+}
+
+watch(pickerQuery, () => {
+  pickerHighlight.value = 0
+  if (pickerList.value) pickerList.value.scrollTop = 0
+})
+
 const deal = () => {
-  const scenario = scenarios.find(s => s.id === scenarioId.value)
+  const scenario = activeScenario.value
   if (!scenario) return
   // Selection survives a refresh: /test-views?scenario=border-chain-easy
   router.replace({ query: { scenario: scenario.id } })
@@ -3817,8 +4124,7 @@ $harness-bar-height: 3.4rem;
   letter-spacing: 0.08em;
 }
 
-button,
-select {
+button {
   border: 0;
   color: inherit;
   cursor: pointer;
@@ -3829,8 +4135,128 @@ select {
   min-width: 0;
 }
 
-select {
+.picker {
+  display: flex;
+  min-width: 0;
+}
+
+.picker-toggle {
+  gap: 0.5rem;
+  display: flex;
   max-width: 46vw;
+  align-items: center;
+}
+
+.picker-current {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.picker-caret {
+  opacity: 0.6;
+  font-size: 0.7rem;
+}
+
+// Anchored to the bar itself (.controls is the positioned ancestor), so the
+// panel stays centred under it and never clips a screen edge on a phone.
+.picker-panel {
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: min(36rem, calc(100vw - 1rem));
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  border-radius: 10px;
+  background: rgb(20 20 24 / 96%);
+  backdrop-filter: blur(6px);
+}
+
+.picker-head {
+  gap: 0.6rem;
+  display: flex;
+  padding: 0.6rem;
+  align-items: center;
+
+  input {
+    flex: 1;
+    color: inherit;
+    border: 0;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+    background: rgb(255 255 255 / 10%);
+    border-radius: 6px;
+    min-width: 0;
+
+    &:focus {
+      outline: 1px solid rgb(255 255 255 / 35%);
+    }
+  }
+}
+
+.picker-count {
+  opacity: 0.5;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker-rows {
+  margin: 0;
+  padding: 0 0 0.4rem;
+  position: relative;
+  overflow: auto;
+  list-style: none;
+  max-height: min(30rem, 62vh);
+  overscroll-behavior: contain;
+}
+
+.picker-group {
+  top: 0;
+  z-index: 1;
+  opacity: 0.9;
+  padding: 0.55rem 0.9rem 0.3rem;
+  position: sticky;
+  font-size: 0.65rem;
+  background: rgb(20 20 24 / 96%);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  &::first-letter {
+    color: rgb(255 210 125);
+  }
+}
+
+.picker-row {
+  gap: 0.6rem;
+  width: 100%;
+  display: flex;
+  padding: 0.4rem 0.9rem;
+  background: none;
+  text-align: left;
+  align-items: baseline;
+  border-radius: 0;
+  justify-content: space-between;
+
+  &.highlighted {
+    background: rgb(255 255 255 / 14%);
+  }
+
+  &.current .picker-row-label {
+    color: rgb(255 210 125);
+  }
+}
+
+.picker-row-group {
+  opacity: 0.5;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.picker-empty {
+  opacity: 0.6;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.8rem;
 }
 
 .submission {

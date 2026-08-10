@@ -276,8 +276,13 @@ describe('treaty challenge', () => {
   // unbound countries, and the CRC has three, so it was never dealt at all and
   // this test passed by never entering its loop.
   it('deals the CRC, and names the United States when it does', () => {
+    // The CRC turns up in about 1% of hard gauntlets, so a fixed 200-round
+    // sweep failed on pure luck one run in seven (0.99^200). Hunt until it
+    // shows instead, capped high enough that a miss can only mean the dealer
+    // genuinely cannot deal it — the regression this test exists to catch.
+    const CRC_HUNT_ROUNDS = 4000
     let dealt = 0
-    for (let round = 0; round < DEAL_ROUNDS; round++) {
+    for (let round = 0; round < CRC_HUNT_ROUNDS && !dealt; round++) {
       const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
       for (const challenge of challenges) {
         if (challenge._type !== 'treaty-challenge' || challenge.treaty !== 'crc') continue

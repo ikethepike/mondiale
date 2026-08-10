@@ -58,9 +58,7 @@ const letter = computed(() => {
 const continuations = computed(() => {
   const head = props.chain.at(-1)
   if (!head || won.value) return []
-  const pool = playableWorldCountries(
-    gameStore.game ?? { variant: 'world', difficulty: 'normal' }
-  )
+  const pool = playableWorldCountries(gameStore.game ?? { variant: 'world', difficulty: 'normal' })
   return atlasContinuations(head, props.chain, pool, rule.value).slice(0, 3)
 })
 </script>

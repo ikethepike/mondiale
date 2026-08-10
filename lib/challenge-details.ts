@@ -330,6 +330,10 @@ const CHALLENGE_DETAILS: {
     topic: 'general knowledge',
     phrasing: 'Where on the map is {countryName}?',
   },
+  history: {
+    topic: 'history',
+    phrasing: 'Where on the map is {countryName}?',
+  },
   'infrastructure.internetAccess': {
     topic: 'infrastructure',
     phrasing: 'Rank these countries by the percentage of people with internet access',

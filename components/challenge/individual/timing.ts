@@ -14,3 +14,7 @@ export const ERRATA_SECONDS = 30
 export const ROSETTA_SECONDS = 30
 // Several full names typed with no autocomplete — long, but under the ceiling.
 export const ATLAS_SECONDS = 35
+export const SCRIPTORIUM_SECONDS = 25
+// Four cards dragged into place — reading time, not typing time.
+export const CHRONICLE_SECONDS = 35
+export const FAR_FLUNG_SECONDS = 25

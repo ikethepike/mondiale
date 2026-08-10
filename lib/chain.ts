@@ -79,7 +79,8 @@ export const closedDoors = (state: BorderChainState, rules: GameRules): ClosedDo
   return doors
 }
 
-export const activePlayerId = (state: ChainTurnState<unknown>): string => state.order[state.activeIndex]
+export const activePlayerId = (state: ChainTurnState<unknown>): string =>
+  state.order[state.activeIndex]
 
 export const standingPlayers = (state: ChainTurnState<unknown>): string[] => {
   const out = new Set(state.eliminated)

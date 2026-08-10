@@ -171,7 +171,7 @@ burn Qatar, then play Iraq.
 
 **Hard's overlap rule:** any shared ending chains — Ne**pal** → **Pal**estine
 (3) as well as Nepa**l** → **L**aos (1). A superset of the base rule, so it is
-*rewarded*, not just allowed: the gate pays each junction its overlap length
+_rewarded_, not just allowed: the gate pays each junction its overlap length
 (`atlasChainCredit`, always derived from the chain, never stored). The group
 round on hard is sheer elimination instead — placement is everything
 (`scoreChainRound` with the placement share at 1) — so overlaps there pay in

@@ -35,8 +35,14 @@
          caret on every keystroke. Which variants use them is declared in the
          dispatch table, so `.suggest-berth`'s downward reserve is only paid
          for by gates that actually type. The anchors render before the gate
-         mounts (the gate teleports from its own onMounted). -->
+         mounts (the gate teleports from its own onMounted). A dealt `options`
+         table means the variant answers on cards this difficulty, so the
+         typed footer (and its berth) isn't paid for (far-flung below hard). -->
     <div v-if="GATE_VIEWS[variant].sideStage" v-show="!status" id="gate-aside" />
+    <!-- A dealt `options` table means the variant answers on CARDS in this
+         footer instead of typing (far-flung below hard) — same berth, so the
+         camera still frames the subject in the band above, but no
+         suggest-berth: cards never open a downward list. -->
     <footer
       v-if="GATE_VIEWS[variant].typedConsole"
       v-show="!status"
@@ -44,8 +50,9 @@
       ref="gateFooter"
       :class="{
         'suggest-berth':
-          GATE_VIEWS[variant].suggestions !== false ||
-          (GATE_VIEWS[variant].easySuggestions && isEasy),
+          !challenge?.options &&
+          (GATE_VIEWS[variant].suggestions !== false ||
+            (GATE_VIEWS[variant].easySuggestions && isEasy)),
       }"
     />
   </div>
@@ -92,6 +99,7 @@ const {
   duelOutcomes,
   trendDuelOutcomes,
   atlasChain,
+  chronicleOrder,
   relatch,
 } = provideGateChallenge()
 
@@ -181,6 +189,13 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     }
     case 'trajectory-match':
       return active.trajectory ? [trendAttribution(active.trajectory.metric)] : undefined
+    case 'scriptorium':
+      // Seeded samples are editorial; every borrowed one is an anthem wall.
+      return datasetAttribution('anthem-lyrics')
+    case 'chronicle':
+      return datasetAttribution('events')
+    case 'far-flung':
+      return datasetAttribution('far-flung')
     default:
       return undefined
   }
@@ -226,6 +241,12 @@ const interstitialTitle = computed(() => {
       return 'Finish the pair — the first one shows you the link'
     case 'atlas':
       return 'Chain countries — each begins where the last one ended'
+    case 'scriptorium':
+      return 'One language wrote this — name a country that speaks it'
+    case 'chronicle':
+      return `Put ${countryName(active.country)}'s history in order`
+    case 'far-flung':
+      return 'A far-flung piece of a country — whose is it?'
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
@@ -241,6 +262,7 @@ const reveal = computed(() => {
     duelOutcomes: duelOutcomes.value,
     trendDuelOutcomes: trendDuelOutcomes.value,
     atlasChain: atlasChain.value,
+    chronicleOrder: chronicleOrder.value,
   })
 })
 
@@ -290,6 +312,15 @@ const incorrectMessage = computed(() => {
     case 'atlas':
       // The gate always phrases its own missNote; this is the safety line.
       return 'The chain broke.'
+    case 'scriptorium':
+      // Language-framed, never script-framed: Eritrea writes Geʽez too, but
+      // an Amharic deal is asking for Amharic's countries.
+      return picked ? `It isn't an official language of ${countryName(picked)}` : 'Time ran out.'
+    case 'chronicle':
+      // The reveal below sets the record straight, year by year.
+      return 'History disagrees.'
+    case 'far-flung':
+      return active ? `That piece belongs to ${countryName(active.country)}` : 'Time ran out.'
     default:
       // Currency find gate: name what the pressed country actually spends —
       // clearer than the reveal zoom alone, since shared currencies mean the
@@ -415,5 +446,15 @@ header .result {
 header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
+}
+
+// The provenance ⓘ hangs off the prompt's true corner (top:0 right:0), which
+// in this shell rides the verdict card's border radius — half on the card,
+// half off, and its opened panel with it. Tuck it inside the card's head
+// padding instead; during the question beat the centred captions leave the
+// corner clear, so one inset serves both beats.
+header :deep(.prompt .prompt-source) {
+  top: 1.1rem;
+  right: 1.2rem;
 }
 </style>
