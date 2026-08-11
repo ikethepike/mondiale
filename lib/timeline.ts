@@ -1,7 +1,8 @@
 import { EVENTS } from '~~/data/events.gen'
 import { clamp, formatNumber } from './number'
 import type { EventEntry } from '~~/generators/create-events-file'
-import type { EventFame, EventKind } from '~~/generators/data/event-seeds'
+import type { EventKind } from '~~/generators/data/event-seeds'
+import { isFameDealable, type Fame } from '~~/types/fame.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import type {
   TimelineChallenge,
@@ -50,31 +51,17 @@ export const TIMELINE_TUNING: {
 
 export const timelineEvent = (slug: string): EventEntry | undefined => EVENTS[slug]
 
+/** An event's tier, defaulting to `minor` for seeds nobody has rated yet — so
+ *  adding a seed without a fame rating can never leak onto an easy table. */
+export const eventFame = (slug: string): Fame => EVENTS[slug]?.fame ?? 'minor'
+
 /**
- * Which recognisability tiers a difficulty may deal. Fame is the lever a year
- * cannot provide: 1969 is 1969 whether the card is the Moon landing or the
- * Kunming–Hanoi railway, but only one of them is a fair ask of a beginner.
- *
- * Cumulative on purpose — hard still wants the Moon landing among its deep
- * cuts, or the deck stops feeling like history and starts feeling like a
- * specialist exam. An unrated seed counts as `minor` (see `eventFame`), so
- * adding a seed without a fame rating can never leak onto an easy table.
- *
- * One home, read by BOTH deck builders — Timeline's and Chronicle's — so a
- * difficulty means the same thing in every mode that deals a year.
+ * Is this event dealable at this difficulty? The gate itself is shared with
+ * every other fame-classified roster (`FAME_BY_DIFFICULTY`), so a difficulty
+ * means the same thing to Timeline, Chronicle and Ghosts of Empires alike.
  */
-export const EVENT_FAME_BY_DIFFICULTY: { [difficulty in GameDifficulty]: Set<EventFame> } = {
-  easy: new Set(['major']),
-  normal: new Set(['major', 'minor']),
-  hard: new Set(['major', 'minor', 'obscure']),
-}
-
-/** An event's tier, defaulting to `minor` for seeds nobody has rated yet. */
-export const eventFame = (slug: string): EventFame => EVENTS[slug]?.fame ?? 'minor'
-
-/** Is this event dealable at this difficulty? */
 export const isEventDealable = (slug: string, difficulty: GameDifficulty): boolean =>
-  EVENT_FAME_BY_DIFFICULTY[difficulty].has(eventFame(slug))
+  isFameDealable(eventFame(slug), difficulty)
 
 /** Below this, a year is geology and reads in years-ago, not in BCE. */
 export const DEEP_TIME_YEAR = -1000000

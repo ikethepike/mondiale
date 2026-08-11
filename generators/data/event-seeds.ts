@@ -1,3 +1,4 @@
+import type { Fame } from '../../types/fame.types'
 import type { ISOCountryCode } from '../../types/geography.types'
 
 /**
@@ -27,16 +28,6 @@ export type EventKind =
   | 'science'
   | 'culture'
 
-/**
- * How famous the event is — the difficulty lever the year alone can't give.
- * `major` is the shared canon a pub quiz would use; `minor` rewards a reader
- * of history; `obscure` is fair but genuinely hard, and should never crowd a
- * beginner's hand. Dealers weight by this (see EVENT_FAME_BY_DIFFICULTY in
- * lib/timeline.ts); unset means `minor`, so an unrated seed is never dealt to
- * an easy table by accident.
- */
-export type EventFame = 'major' | 'minor' | 'obscure'
-
 export interface EventSeed {
   /** Wikidata-searchable name, disambiguating words included. */
   name: string
@@ -49,8 +40,9 @@ export interface EventSeed {
   year: number
   /** One or two lines for the post-placement reveal. */
   description: string
-  /** Recognisability tier; defaults to `minor`. See EventFame. */
-  fame?: EventFame
+  /** Recognisability tier; defaults to `minor` (see `eventFame`), so an
+   *  unrated seed is never dealt to an easy table by accident. See Fame. */
+  fame?: Fame
   /** Pin the exact Wikidata item, e.g. `Q6939`, when name search misfires. */
   qid?: string
   /** Image overrides, tried before the Wikidata page image: a direct file

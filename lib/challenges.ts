@@ -87,7 +87,7 @@ import {
 } from './atlas-chain'
 import { getChallengeDetails } from './challenge-details'
 import { normalizeAnswer, titleCase } from './strings'
-import { EMPIRE_TUNING, subsampleKeyframes } from './empires'
+import { EMPIRE_TUNING, empireFameWeight, subsampleKeyframes } from './empires'
 import { countryName, mentionsCountry, pickSizedCountry } from './country'
 import { formatNumber } from './number'
 import {
@@ -1467,8 +1467,8 @@ const getNoMansLandChallenge = async (
  * are different: they drop OFF the scored roster instead of blocking the
  * deal, or the Roman Empire (core: AD/LI/MC/SM/VA) would vanish below hard.
  * Rotates regions so the roster's spread doesn't collapse into one
- * continent's voice, never repeats an empire within a game, and weights
- * tiers per difficulty (icons everywhere, deep cuts toward hard).
+ * continent's voice, never repeats an empire within a game, and weights the
+ * fame tiers per difficulty (canon everywhere, deep cuts toward hard).
  */
 const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge | undefined> => {
   // Dynamic, like the water dealer: metadata is small, but the dealer only
@@ -1494,7 +1494,7 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   const candidates = Object.values(EMPIRES).filter(
     empire =>
       !dealtIds.has(empire.id) &&
-      tuning.tierWeights[empire.tier] > 0 &&
+      empireFameWeight(empire.fame, game.difficulty) > 0 &&
       inPlayCore(empire.members.core).length >= 2 &&
       // Every core member must be valid and on this board — except a benched
       // micro-nation, which drops off the scored roster instead of blocking.
@@ -1507,7 +1507,7 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   if (!candidates.length) return undefined
 
   // Regional rotation, two-stage: a REGION first (uniform over regions not yet
-  // dealt this game), then a tier-weighted empire inside it. Uniform-over-
+  // dealt this game), then a fame-weighted empire inside it. Uniform-over-
   // regions is the rotation — it stops a skewed roster from making any one
   // continent the default deal.
   const byRegion = new Map<string, (typeof candidates)[number][]>()
@@ -1520,18 +1520,20 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   const pool = byRegion.get(region) ?? []
 
   const empire = weightedPick(
-    pool.map(candidate => [candidate, tuning.tierWeights[candidate.tier]] as const)
+    pool.map(candidate => [candidate, empireFameWeight(candidate.fame, game.difficulty)] as const)
   )
   if (!empire) return undefined
 
-  // Non-hard helper: 3 name options (same-region icons preferred, so the
-  // choice is a real one). The view shows flags only when EVERY option has an
-  // honest one, so a flagged answer prefers flagged decoys — flag rounds stay
-  // flag rounds instead of collapsing to text over one bare card.
+  // Non-hard helper: 3 name options, decoys drawn from the names this
+  // difficulty would itself deal (same region preferred), so the choice is a
+  // real one and an easy table never weighs two ghosts it has never heard of.
+  // The view shows flags only when EVERY option has an honest one, so a
+  // flagged answer prefers flagged decoys — flag rounds stay flag rounds
+  // instead of collapsing to text over one bare card.
   let options: string[] | undefined
   if (tuning.optionCount > 0) {
     const decoyPool = Object.values(EMPIRES).filter(
-      other => other.id !== empire.id && other.tier === 'icon'
+      other => other.id !== empire.id && empireFameWeight(other.fame, game.difficulty) > 0
     )
     const preferred = decoyPool.filter(other => other.region === empire.region)
     const source = preferred.length >= tuning.optionCount - 1 ? preferred : decoyPool

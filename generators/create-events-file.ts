@@ -1,6 +1,7 @@
 import { jsonParseLiteral } from './lib/emit'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { EVENT_SEEDS, type EventFame, type EventKind, type EventSeed } from './data/event-seeds'
+import { EVENT_SEEDS, type EventKind, type EventSeed } from './data/event-seeds'
+import type { Fame } from '../types/fame.types'
 import {
   captureImageCredit,
   fetchImageDimensions,
@@ -98,8 +99,8 @@ export interface EventEntry extends MediaCredit {
   /** Public path of the card photo, when one was captured. */
   image?: string
   /** Recognisability tier — the difficulty lever a year can't provide.
-   *  Absent means `minor` (see EventFame in data/event-seeds). */
-  fame?: EventFame
+   *  Absent means `minor` (see Fame in types/fame.types). */
+  fame?: Fame
 }
 
 /** Keyed by a slug of the event's seed name. */
