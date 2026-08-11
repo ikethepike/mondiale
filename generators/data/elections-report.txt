@@ -1,5 +1,11 @@
-chambers: 53 of 54 seeded
-with vote share: 47
+chambers: 71 of 78 seeded
+with vote share: 60
 
 skipped or suspect:
+AF: no readable election infobox in "2018 Afghan parliamentary election"
+CD: no readable election infobox in "2023 Democratic Republic of the Congo general election"
+NG: no readable election infobox in "2023 Nigerian House of Representatives election"
+SD: no readable election infobox in "2015 Sudanese general election"
+TN: no readable election infobox in "2022 Tunisian parliamentary election"
+TZ: no readable election infobox in "2020 Tanzanian general election"
 RO: no readable election infobox in "2024 Romanian parliamentary election"

@@ -155,7 +155,9 @@ const { challenge, submitted, submitOnce, elapsedFraction } =
   useGroupChallenge('parliament-challenge')
 
 /** Bench name → the bench dropped on it (one each). */
-const dropped = ref<Record<string, { name: string; logo?: string; color?: string }[]>>({})
+const dropped = ref<
+  Record<string, { name: string; logo?: string; color?: string; correct?: boolean }[]>
+>({})
 /** Bumped on every drop so Vue rebuilds the tray from our own list rather
  *  than reusing the nodes SortableJS moved. */
 const trayKey = ref(0)
@@ -181,7 +183,14 @@ const unplaced = computed(() =>
 const allPlaced = computed(
   () => submitted.value || (!!asked.value.length && !unplaced.value.length)
 )
-const correctCount = computed(() => placedNames.value.length)
+/** Only the RIGHT placements score — a filled zone is not a correct one. */
+const correctNames = computed(() =>
+  Object.values(dropped.value)
+    .flat()
+    .filter(entry => entry.correct)
+    .map(entry => entry.name)
+)
+const correctCount = computed(() => correctNames.value.length)
 
 /**
  * Isaac's ladder, on the round's own clock. Colour leads because it is the
@@ -310,21 +319,23 @@ const drop = (zone: string, event: SortableEvent) => {
   trayKey.value += 1
   if (!name) return
 
-  if (name === zone) {
-    const bench = asked.value.find(candidate => candidate.name === name)
-    dropped.value = {
-      ...dropped.value,
-      [zone]: [{ name, logo: bench?.logo, color: bench?.color }],
-    }
-    if (!unplaced.value.length) submit()
-    return
+  // A drop is FINAL, right or wrong. Bouncing a miss back to the tray made
+  // the round unloseable: every zone could be tried in turn until it stuck, so
+  // the score was always full marks and no placement was a decision.
+  const bench = asked.value.find(candidate => candidate.name === name)
+  dropped.value = {
+    ...dropped.value,
+    [zone]: [{ name, logo: bench?.logo, color: bench?.color, correct: name === zone }],
   }
 
-  // A miss flashes the zone; the bench is already back in the tray above.
-  missed.value = { ...missed.value, [zone]: true }
-  setTimeout(() => {
-    missed.value = { ...missed.value, [zone]: false }
-  }, 400)
+  if (name !== zone) {
+    missed.value = { ...missed.value, [zone]: true }
+    setTimeout(() => {
+      missed.value = { ...missed.value, [zone]: false }
+    }, 700)
+  }
+
+  if (!unplaced.value.length) submit()
 }
 
 const submit = () => {
@@ -333,7 +344,7 @@ const submit = () => {
   // chamber so the reveal knows what to paint, and `parliament` carries the
   // placements the server re-grades.
   submitOnce([challenge.value.country], undefined, undefined, {
-    parliament: { placed: placedNames.value },
+    parliament: { placed: correctNames.value },
   })
 }
 

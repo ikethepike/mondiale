@@ -81,6 +81,31 @@ export type ElectionMapping = { [isoCode in ISOCountryCode]?: Election }
  * a wrong guess at an article title is a silent miss rather than a crash.
  */
 const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
+  AF: '2018 Afghan parliamentary election',
+  BD: '2024 Bangladeshi general election',
+  CD: '2023 Democratic Republic of the Congo general election',
+  DZ: '2021 Algerian legislative election',
+  ET: '2021 Ethiopian general election',
+  GH: '2024 Ghanaian general election',
+  IQ: '2021 Iraqi parliamentary election',
+  KE: '2022 Kenyan general election',
+  MA: '2021 Moroccan general election',
+  MM: '2020 Myanmar general election',
+  MY: '2022 Malaysian general election',
+  NG: '2023 Nigerian House of Representatives election',
+  NP: '2022 Nepalese general election',
+  PK: '2024 Pakistani general election',
+  RU: '2021 Russian legislative election',
+  SD: '2015 Sudanese general election',
+  SN: '2022 Senegalese parliamentary election',
+  TH: '2023 Thai general election',
+  TN: '2022 Tunisian parliamentary election',
+  TZ: '2020 Tanzanian general election',
+  UG: '2021 Ugandan general election',
+  US: '2024 United States House of Representatives elections',
+  VN: '2021 Vietnamese legislative election',
+  ZM: '2021 Zambian general election',
+  ZW: '2023 Zimbabwean general election',
   AL: '2025 Albanian parliamentary election',
   AR: '2023 Argentine general election',
   AT: '2024 Austrian legislative election',
@@ -119,7 +144,6 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   LV: '2022 Latvian parliamentary election',
   MT: '2022 Maltese general election',
   MX: '2024 Mexican general election',
-  MY: '2022 Malaysian general election',
   NL: '2023 Dutch general election',
   NO: '2021 Norwegian parliamentary election',
   NZ: '2023 New Zealand general election',
@@ -237,7 +261,17 @@ const plainText = (value: string): string =>
         .filter(part => part && !/^(name|short|abbrev|colou?r)$/i.test(part) && part.length > 2)
       return parts.sort((a, b) => b.length - a.length)[0] ?? ''
     })
-    .replace(/\s*\([^)]*\)/g, '')
+    // A trailing parenthetical is usually a disambiguator — "(Sweden)",
+    // "(2020)" — and stripping it is right. But for some rosters it IS the
+    // party's identity: Nepal seats three "Communist Party of Nepal (…)"
+    // blocs, which collapse into one repeated name without it. So a
+    // parenthetical is kept only when it names a FACTION: more than one word,
+    // and not a country or a year.
+    .replace(/\s*\(([^)]*)\)/g, (_match, inner: string) => {
+      const words = inner.trim().split(/\s+/)
+      const isFaction = words.length > 1 && !/^\d{4}$/.test(inner.trim())
+      return isFaction ? ` (${inner.trim()})` : ''
+    })
     .replace(/\s+/g, ' ')
     .trim()
 
