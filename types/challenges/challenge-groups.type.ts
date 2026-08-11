@@ -132,8 +132,8 @@ export const ANSWER_SHAPE_BY_KIND = {
   highlands: 'set',
   'mother-tongue': 'set',
   'no-mans-land': 'set',
-  // Three stars in any order — the answers are cities, but each one scores as
-  // the country it belongs to, so the ledger shape is a plain set.
+  // The night's stars, in any order — the answers are cities, but each one
+  // scores as the country it belongs to, so the ledger shape is a plain set.
   'star-chart': 'set',
   empire: 'set',
   // One buzz against a set of acceptable answers.

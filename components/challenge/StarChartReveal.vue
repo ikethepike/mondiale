@@ -236,7 +236,7 @@ const yourTally = computed(() => rows.value.filter(row => row.verdict === 'found
 
   &.missed {
     color: hsla(216, 30%, 96%, 0.95);
-    background: hsla(216, 30%, 55%, 0.85);
+    background: var(--night-cold);
     box-shadow: none;
   }
 }

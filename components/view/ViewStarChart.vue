@@ -74,8 +74,9 @@ import { useNocturne } from '~~/lib/use-nocturne'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 /**
- * The Star Chart: the map goes nocturne-dark and three stars pulse at their
- * capitals' true coordinates — type which city each one is.
+ * The Star Chart: the map goes nocturne-dark and a handful of stars pulse at
+ * their capitals' true coordinates — type which city each one is.
+ * `STAR_CHART_STARS` owns how many.
  *
  * A capital-guess round asks which country owns a skyline; this asks what city
  * sits at a spot, so the answer is typed as a CITY and scored as the country
@@ -157,7 +158,7 @@ const {
 )
 
 // Found countries glow through the night while the round runs; at the reveal
-// every star's country lights, so the table sees where all three really sit.
+// every star's country lights, so the table sees where they all really sit.
 // Declared after the round engine — the spotlight getter reads `found`.
 const { nightfall } = useNocturne(() => (revealed.value ? answers.value : found.value))
 
@@ -167,11 +168,14 @@ const { nightfall } = useNocturne(() => (revealed.value ? answers.value : found.
 const commit = () => {
   const typed = entry.value.trim()
   if (!typed || !started.value || revealed.value) return
-  entry.value = ''
 
   const isoCode = capitalCountryByName(typed)
   const country = isoCode ? getCountry(isoCode) : undefined
+  // Left in the field on purpose: an unmatched name spends no guess, so it must
+  // not cost the typing either — a near-miss spelling is one edit from right.
   if (!country) return announce({ hint: `No capital called “${typed}”` })
+
+  entry.value = ''
   onGuess(country)
 }
 
@@ -240,9 +244,5 @@ footer {
   display: flex;
   align-items: center;
   flex-flow: column-reverse nowrap;
-}
-
-.night-ticker {
-  pointer-events: auto;
 }
 </style>

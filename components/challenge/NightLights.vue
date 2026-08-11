@@ -138,7 +138,7 @@ const placed = computed(() => {
 // A subject the reveal surfaces cold: dim, unmistakably not yours.
 .light.missed {
   .glow {
-    background: hsla(216, 30%, 55%, 0.8);
+    background: var(--night-cold);
     box-shadow: 0 0 0.8rem 0.2rem hsla(216, 40%, 45%, 0.5);
   }
 

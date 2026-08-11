@@ -1,4 +1,4 @@
-import { onBeforeUnmount, toValue, watchEffect, type MaybeRefOrGetter } from 'vue'
+import { onBeforeUnmount, ref, toValue, watchEffect, type MaybeRefOrGetter } from 'vue'
 import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -19,7 +19,10 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode[]>) => {
   const SPOTLIGHT_CLASS = 'nocturne-target'
-  let night = false
+  // A ref, not a plain flag: the spotlight effect READS it, and a non-reactive
+  // read would leave the stamps waiting on the next spotlight change instead of
+  // landing the moment night falls.
+  const night = ref(false)
   let stamped: Element[] = []
 
   const clearSpotlight = () => {
@@ -28,15 +31,15 @@ export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode
   }
 
   const nightfall = () => {
-    if (night) return
-    night = true
+    if (night.value) return
+    night.value = true
     document.body.classList.add('nocturne-night')
     setChromeTint(NIGHT_CHROME)
   }
 
   const daybreak = () => {
-    if (!night) return
-    night = false
+    if (!night.value) return
+    night.value = false
     document.body.classList.remove('nocturne-night')
     setChromeTint()
     clearSpotlight()
@@ -47,7 +50,7 @@ export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode
   // recede, a variant swap), so a cached NodeList would stop matching.
   watchEffect(() => {
     const wanted = toValue(spotlight) ?? []
-    if (!night || !wanted.length) return clearSpotlight()
+    if (!night.value || !wanted.length) return clearSpotlight()
     clearSpotlight()
     for (const isoCode of wanted) {
       const path = document.querySelector(`.game-map path[data-id][id="${isoCode}"]`)
