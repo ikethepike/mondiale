@@ -2843,16 +2843,18 @@ const scenarios: Scenario[] = [
           state: {
             ...sweepState(),
             deadline: Date.now() + 46000,
+            // Deliberately uneven: a rail that is always level never shows
+            // the thing it exists for. Rival is out front, you are chasing.
             claims: sweepClaims([
               ['FR', ME],
               ['DE', RIVAL],
               ['IT', THIRD],
-              ['ES', ME],
+              ['ES', RIVAL],
               ['NL', RIVAL],
               ['BE', RIVAL],
               ['PL', THIRD],
               ['SE', ME],
-              ['IE', THIRD],
+              ['IE', RIVAL],
             ]),
           },
         }),

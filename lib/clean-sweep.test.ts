@@ -8,6 +8,7 @@ import {
   sweepClaimedBy,
   sweepCloserId,
   sweepIsComplete,
+  sweepLeaders,
   sweepPots,
   sweepScoresFromClaims,
   sweepSlotBand,
@@ -174,9 +175,35 @@ describe('reading the board', () => {
     ])
   })
 
+  it('holds deal order on a tie, so joint leaders never jitter', () => {
+    const level = board(['FR', 'DE'], [claim('DE', 'ben'), claim('FR', 'ada')], ['ada', 'ben'])
+    // Ben claimed first, but the rail is not a recency list — a tie keeps the
+    // seating, or the two would swap places on every snapshot.
+    expect(sweepStandings(level).map(seat => seat.playerId)).toEqual(['ada', 'ben'])
+  })
+
   it('lists a seat that never claimed anything', () => {
     const quiet = board(['FR'], [claim('FR', 'ada')], ['ada', 'ben'])
     expect(sweepStandings(quiet)).toContainEqual({ playerId: 'ben', claimed: [] })
+  })
+
+  it('crowns whoever is ahead, joint leaders included', () => {
+    expect(sweepLeaders(challenge)).toEqual(['ada'])
+    const joint = board(
+      ['FR', 'DE', 'IT', 'ES'],
+      [claim('FR', 'ada'), claim('DE', 'ben'), claim('IT', 'cy'), claim('ES', 'ben')],
+      ['ada', 'ben', 'cy']
+    )
+    expect(sweepLeaders(joint)).toEqual(['ben'])
+  })
+
+  it('crowns nobody when the table is level — at nothing or at six', () => {
+    // Round start: three seats on zero. Marking all three says nothing and
+    // shouts while saying it.
+    expect(sweepLeaders(board(['FR', 'DE'], [], ['ada', 'ben', 'cy']))).toEqual([])
+    // And a dead heat is no more of a lead than an empty board.
+    const level = board(['FR', 'DE'], [claim('FR', 'ada'), claim('DE', 'ben')], ['ada', 'ben'])
+    expect(sweepLeaders(level)).toEqual([])
   })
 
   it('names a closer only when the board actually cleared', () => {

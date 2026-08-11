@@ -16,7 +16,8 @@
           <PlayerPawn class="take-pawn" :player="players[seat.playerId]" />
           <span class="take-name">{{ seatName(seat.playerId) }}</span>
           <span class="take-count">{{ seat.claimed.length }}</span>
-          <span v-if="seat.playerId === closerId" class="take-badge">Closed it</span>
+          <span v-if="leaders.has(seat.playerId)" class="take-badge">Most taken</span>
+          <span v-if="seat.playerId === closerId" class="take-badge closer">Closed it</span>
           <span class="take-points">+{{ scores[seat.playerId]?.scored ?? 0 }}</span>
         </li>
       </ul>
@@ -92,6 +93,7 @@ import {
   sweepClaimedBy,
   sweepCloserId,
   sweepIsComplete,
+  sweepLeaders,
   sweepScoresFromClaims,
   sweepStandings,
   sweepUnclaimed,
@@ -123,6 +125,8 @@ const standings = computed(() => sweepStandings(props.challenge))
 const scores = computed(() => sweepScoresFromClaims(props.challenge))
 const swept = computed(() => sweepIsComplete(props.challenge))
 const closerId = computed(() => sweepCloserId(props.challenge))
+/** Same question, same answer as the live rail — never a second opinion. */
+const leaders = computed(() => new Set(sweepLeaders(props.challenge)))
 const claimedCount = computed(() => Object.keys(claimedBy.value).length)
 
 /** The board in deal order — a grid that re-sorted at the reveal would break
@@ -256,6 +260,10 @@ const verdictLine = computed(() => {
     letter-spacing: 0.04em;
     color: var(--dark-blue);
     background: var(--soft-mint);
+
+    &.closer {
+      background: var(--warm-sand);
+    }
   }
 
   .take-points {

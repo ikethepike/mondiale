@@ -24,19 +24,22 @@
         <span class="map-caption sub">{{ verdictLine }}</span>
       </template>
 
-      <!-- The live scoreboard, during play: who is eating the pool. -->
-      <ul v-if="!briefing && !finished" class="rail">
+      <!-- The live scoreboard, during play: who is eating the pool, leader
+           first. A TransitionGroup so an overtake SLIDES — the standings
+           reorder on nearly every claim, and a rail that snaps turns the
+           round's best moment (being passed) into a flicker you miss. -->
+      <TransitionGroup v-if="!briefing && !finished" tag="ul" name="chain" class="rail">
         <li
           v-for="seat in standings"
           :key="seat.playerId"
           class="rail-seat chip player-accent"
-          :class="{ mine: seat.playerId === gameStore.seatId }"
+          :class="{ mine: seat.playerId === gameStore.seatId, leading: leaders.has(seat.playerId) }"
           :style="{ '--player-color': gameStore.game?.players[seat.playerId]?.color }"
         >
           <PlayerPawn class="rail-pawn" :player="gameStore.game?.players[seat.playerId]" />
           <span class="rail-count">{{ seat.claimed.length }}</span>
         </li>
-      </ul>
+      </TransitionGroup>
 
       <GuessTicker
         v-if="!briefing && !finished"
@@ -149,6 +152,7 @@ import {
   SWEEP_SETS,
   sweepClaimedBy,
   sweepIsComplete,
+  sweepLeaders,
   sweepStandings,
   sweepUnclaimed,
 } from '~~/lib/clean-sweep'
@@ -227,6 +231,15 @@ const sendReady = () => {
 const claimedBy = computed(() => (challenge.value ? sweepClaimedBy(challenge.value) : {}))
 const standings = computed(() => (challenge.value ? sweepStandings(challenge.value) : []))
 const unclaimed = computed(() => (challenge.value ? sweepUnclaimed(challenge.value) : []))
+
+/**
+ * Position already says who leads — the rail is sorted leader-first — but a
+ * slide is exactly when position is hardest to read, so the count carries it
+ * too. `sweepLeaders` owns the "is anyone actually ahead" question.
+ */
+const leaders = computed(() =>
+  challenge.value ? new Set(sweepLeaders(challenge.value)) : new Set()
+)
 const swept = computed(() => !!challenge.value && sweepIsComplete(challenge.value))
 
 /**
@@ -390,9 +403,17 @@ useFooterBerth(consoleFooter)
   }
 
   .rail-count {
+    opacity: 0.6;
     font-size: 1.4rem;
     font-weight: 700;
     color: var(--dark-blue);
+  }
+
+  // The count carries the lead, not a badge: full-strength ink out front,
+  // muted behind. One property, legible mid-slide, no new chrome.
+  &.leading .rail-count {
+    opacity: 1;
+    font-size: 1.6rem;
   }
 
   &.mine {

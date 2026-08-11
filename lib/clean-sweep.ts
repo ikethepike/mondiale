@@ -278,8 +278,15 @@ export const sweepUnclaimed = (
   return challenge.members.filter(isoCode => !held[isoCode])
 }
 
-/** Every seat's claims, this seat's first — the live standings rail and the
- *  reveal's take strip read the same order. */
+/**
+ * Every seat's claims, MOST FIRST. The descending order is a contract, not an
+ * implementation detail: the live rail and the reveal's take strip both render
+ * straight off this array, so "leader first" is decided once here rather than
+ * re-sorted (and eventually re-sorted differently) by each surface.
+ *
+ * Ties hold deal order — `sort` is stable and the map is seeded from
+ * `state.order` — so joint leaders never jitter between snapshots.
+ */
 export const sweepStandings = (
   challenge: Pick<CleanSweepChallenge, 'state'>
 ): { playerId: string; claimed: ISOCountryCode[] }[] => {
@@ -292,6 +299,23 @@ export const sweepStandings = (
   return [...byPlayer.entries()]
     .map(([playerId, claimed]) => ({ playerId, claimed }))
     .sort((a, b) => b.claimed.length - a.claimed.length)
+}
+
+/**
+ * Who is actually out in front — joint leaders included, and EMPTY when
+ * nobody is: a table level at nothing has no leader, and neither does one
+ * level at six. Marking every seat in a full tie is the same as marking none,
+ * except it also shouts.
+ *
+ * Lives here rather than in the rail because the reveal's take strip crowns
+ * the same seats, and "who won this round" must not be two opinions.
+ */
+export const sweepLeaders = (challenge: Pick<CleanSweepChallenge, 'state'>): string[] => {
+  const standings = sweepStandings(challenge)
+  const top = standings[0]?.claimed.length ?? 0
+  if (top === 0) return []
+  const leaders = standings.filter(seat => seat.claimed.length === top)
+  return leaders.length === standings.length ? [] : leaders.map(seat => seat.playerId)
 }
 
 /** The board is clear. */
