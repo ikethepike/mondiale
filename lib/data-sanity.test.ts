@@ -31,12 +31,17 @@ const CONFLICT_FIELD_FLOOR = 90
 // 38 countries have legalized same-sex marriage; mirrors the generator's own
 // floor, so a shrunken Equaldex fetch fails here too.
 const MARRIAGE_COUNTRY_FLOOR = 35
-// 192 countries / ~2,100 parties from the Factbook roster today. Wikidata
-// enriches ~56% of them; the floor sits low because match rate moves with
-// Wikidata's own coverage, and a dip is not a broken fetch.
+// 192 countries / ~2,040 parties from the Factbook roster today. Wikidata
+// enriches 80% of them once the en.wikipedia fallback runs; the floor sits
+// well under that because match rate moves with Wikidata's own coverage, but
+// a drop past here means the fallback broke rather than the world changing.
 const PARTY_COUNTRY_FLOOR = 180
 const PARTY_FLOOR = 1800
-const PARTY_MATCH_FLOOR = 0.4
+const PARTY_MATCH_FLOOR = 0.65
+// 738 logos and 492 grouping memberships today — both are what the party-facing
+// modes deal from, so a collapse should fail rather than quietly thin the pool.
+const PARTY_LOGO_FLOOR = 600
+const PARTY_GROUPING_FLOOR = 380
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
 const SEAT_JOIN_MISS_CEILING = 8
@@ -108,6 +113,19 @@ describe('parties.gen', () => {
   it('enriches a healthy share against Wikidata', () => {
     const matched = parties.filter(party => party.qid)
     expect(matched.length / parties.length).toBeGreaterThanOrEqual(PARTY_MATCH_FLOOR)
+  })
+
+  it('keeps the pools the party modes deal from stocked', () => {
+    expect(parties.filter(party => party.logo).length).toBeGreaterThanOrEqual(PARTY_LOGO_FLOOR)
+    expect(parties.filter(party => party.groupings?.length).length).toBeGreaterThanOrEqual(
+      PARTY_GROUPING_FLOOR
+    )
+  })
+
+  // Commons hosts free files only, so a logo carrying a non-free flag means the
+  // harvest reached past Commons and the licence question changes with it.
+  it('holds only freely licensed logos', () => {
+    expect(parties.filter(party => party.nonFree).length).toBe(0)
   })
 
   // Seat share is a fraction of the LISTED seats. It sums to at most 1, and

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PARTIES } from '~~/data/parties.gen'
 import {
+  benchesOf,
   countriesInGrouping,
   governingParty,
   oppositionParties,
@@ -8,8 +9,12 @@ import {
   partiesWithLogo,
   partySpectrum,
   partyTokens,
+  playableChambers,
   seatedParties,
+  seatingOrder,
+  spectrumRank,
   SPECTRUM_BANDS,
+  type Party,
 } from './parties'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -127,6 +132,51 @@ describe('seatedParties', () => {
       const held = seatedParties(isoCode).reduce((total, party) => total + (party.seats ?? 0), 0)
       const listed = PARTIES[isoCode]?.listedSeats
       if (listed) expect(held).toBeLessThanOrEqual(listed)
+    }
+  })
+})
+
+describe('seatingOrder', () => {
+  const rankOf = (bench: { party?: Party }) => spectrumRank(bench.party)
+
+  it('runs left to right', () => {
+    for (const isoCode of playableChambers()) {
+      const ranks = seatingOrder(isoCode)
+        .map(rankOf)
+        .filter((rank): rank is number => rank !== undefined)
+      expect([...ranks].sort((a, b) => a - b)).toEqual(ranks)
+    }
+  })
+
+  // The order Isaac reads a Swedish chamber in. V sits left of S; SD sits at
+  // the far right — and the Red-Greens (V, S, MP) stay adjacent because the
+  // alliance is the TIE-BREAKER within a position, not the primary sort.
+  it('seats Sweden the way the chamber reads', () => {
+    const names = seatingOrder('SE')
+      .filter(bench => rankOf(bench) !== undefined)
+      .map(bench => bench.name)
+    expect(names[0]).toBe('Left Party')
+    expect(names[names.length - 1]).toBe('Sweden Democrats')
+    expect(names.indexOf('Centre Party')).toBeGreaterThan(
+      names.indexOf('Swedish Social Democratic Party')
+    )
+    expect(names.indexOf('Centre Party')).toBeLessThan(names.indexOf('Moderate Party'))
+  })
+
+  // Guessing a position from a party's name would seat it somewhere it does
+  // not belong; parking the unplaced together is the honest alternative.
+  it('parks parties with no known position after those that have one', () => {
+    for (const isoCode of playableChambers()) {
+      const ranks = seatingOrder(isoCode).map(rankOf)
+      const firstUnplaced = ranks.indexOf(undefined)
+      if (firstUnplaced === -1) continue
+      expect(ranks.slice(firstUnplaced).every(rank => rank === undefined)).toBe(true)
+    }
+  })
+
+  it('seats every bench exactly once', () => {
+    for (const isoCode of playableChambers()) {
+      expect(seatingOrder(isoCode).length).toBe(benchesOf(isoCode).length)
     }
   })
 })

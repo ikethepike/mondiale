@@ -1,6 +1,6 @@
-parties: 2046 across 192 countries
-matched to Wikidata: 1218/2046 (60%)
-logos saved: 514
+parties: 2042 across 192 countries
+matched to Wikidata: 1624/2042 (80%)
+logos saved: 738
 
 seat-sum drift (share is of the LISTED total, not the declared one):
 BW: listed seats 61 vs declared 69 (12% apart) — shares are of the listed total

@@ -108,9 +108,23 @@ export const partyTokens = (name: string, isoCode?: ISOCountryCode): string[] =>
     // "Labor (Labour) Party" — the gloss repeats the name; keep one copy.
     .replace(/\(([^)]*)\)/g, ' $1 ')
 
-  for (const demonym of isoCode ? (COUNTRIES[isoCode]?.name.demonyms ?? []) : []) {
-    const cleaned = demonym.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const country = isoCode ? COUNTRIES[isoCode] : undefined
+  const fold = (term: string) => term.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+  // The demonym is always decoration — "Norwegian Labour Party" is the "Labor
+  // Party" at home.
+  for (const demonym of country?.name.demonyms ?? []) {
+    const cleaned = fold(demonym)
     if (cleaned.length >= 4) value = value.replace(new RegExp(`\\b${cleaned}\\b`, 'g'), ' ')
+  }
+
+  // The country's NAME is decoration only as a trailing qualifier: the "Social
+  // Democratic Party of Germany" is the roster's "Social Democratic Party",
+  // but the "Sweden Democrats" are not the "Democrats" — strip that and they
+  // collapse onto a family word and match whichever Democrats come first.
+  const english = fold(country?.name.english ?? '')
+  if (english.length >= 4) {
+    value = value.replace(new RegExp(`\\b(?:of|in)\\s+(?:the\\s+)?${english}\\b`, 'g'), ' ')
   }
 
   const tokens = value
@@ -227,6 +241,35 @@ const SPECTRUM_BY_POSITION: Record<string, Spectrum> = {
 export const partySpectrum = (party: Party): Spectrum | undefined =>
   party.position ? SPECTRUM_BY_POSITION[party.position] : undefined
 
+/**
+ * Where a party sits on the left–right axis, as a number to SORT by — finer
+ * than `Spectrum`, which exists to be quizzed and is deliberately coarse
+ * ("centrism" vs "big tent" is not a fair question, but it is a real seating
+ * difference).
+ *
+ * A hemicycle is read left to right, so this is what places a bench. The scale
+ * is ordinal, not metric: only the ordering is claimed, and the gaps between
+ * adjacent values mean nothing.
+ */
+const SPECTRUM_RANKS: Record<string, number> = {
+  'far-left politics': -4,
+  'radical left': -3,
+  'left-wing': -2,
+  'centre-left': -1,
+  centrism: 0,
+  'big tent': 0,
+  'syncretic politics': 0,
+  'centre-right': 1,
+  'right-wing': 2,
+  'right-wing extremism': 3,
+  'far-right': 4,
+}
+
+export const spectrumRank = (party: Party | undefined): number | undefined => {
+  const rank = party?.position ? SPECTRUM_RANKS[party.position] : undefined
+  return rank === undefined ? undefined : rank
+}
+
 /** Parties carrying a logo — the pool every logo-facing mode deals from. */
 export const partiesWithLogo = (isoCode: ISOCountryCode): Party[] =>
   partiesOf(isoCode).filter(party => !!party.logo)
@@ -314,25 +357,62 @@ export const benchesOf = (isoCode: ISOCountryCode): Bench[] => {
 }
 
 /**
- * The benches in SEATING order: allies adjacent, blocs ordered by combined
- * weight, and each bloc's own parties largest first. A real chamber seats an
- * alliance together, so ordering by raw seat count alone would scatter a
- * coalition across the arc and lose the shape the picture is meant to show.
+ * The benches in SEATING order — LEFT to RIGHT, the way a chamber is read and
+ * the way every hemicycle in the press is drawn.
+ *
+ * Two facts pull against each other and the order in which they are applied is
+ * the whole design. Sweden seats V, MP, S and C as one bloc, but C sits to the
+ * RIGHT of S on the spectrum — so "keep allies adjacent" and "run left to
+ * right" genuinely disagree, and one has to win.
+ *
+ * The spectrum wins, because it is what the picture is FOR: a player reading
+ * the arc should see the left and the right, not a coalition seating chart.
+ * Alliances still matter, but as the tie-breaker — parties at the same
+ * position sit beside their partners rather than in arbitrary order, which is
+ * what puts V and MP together at the left end.
+ *
+ * Only 36% of benches carry a position, so the unplaced are not scattered
+ * through the arc: they are seated as a block on the right of those that are
+ * placed, ordered by size. Guessing a position from a party's name would put a
+ * party somewhere it does not belong, which is worse than admitting we do not
+ * know — and `Bench.party?.position` says which is which.
  */
 export const seatingOrder = (isoCode: ISOCountryCode): Bench[] => {
   const benches = benchesOf(isoCode)
-  const blocWeight = new Map<string, number>()
+
+  // A bloc sits at the average position of the parties in it that have one, so
+  // an alliance lands where its centre of gravity is rather than at whichever
+  // member happens to be largest.
+  const blocRanks = new Map<string, number[]>()
   for (const bench of benches) {
-    const bloc = bench.alliance ?? bench.name
-    blocWeight.set(bloc, (blocWeight.get(bloc) ?? 0) + bench.seats)
+    const rank = spectrumRank(bench.party)
+    if (bench.alliance && rank !== undefined) {
+      blocRanks.set(bench.alliance, [...(blocRanks.get(bench.alliance) ?? []), rank])
+    }
   }
+  const blocRank = (alliance: string | undefined): number | undefined => {
+    const ranks = alliance ? blocRanks.get(alliance) : undefined
+    if (!ranks?.length) return undefined
+    return ranks.reduce((total, rank) => total + rank, 0) / ranks.length
+  }
+
   return [...benches].sort((a, b) => {
-    const blocA = a.alliance ?? a.name
-    const blocB = b.alliance ?? b.name
-    if (blocA !== blocB) {
-      const weight = (blocWeight.get(blocB) ?? 0) - (blocWeight.get(blocA) ?? 0)
-      if (weight) return weight
-      return blocA.localeCompare(blocB)
+    const rankA = spectrumRank(a.party)
+    const rankB = spectrumRank(b.party)
+
+    // Unplaced benches sit together to the right of everything placed.
+    if (rankA === undefined && rankB === undefined) return b.seats - a.seats
+    if (rankA === undefined) return 1
+    if (rankB === undefined) return -1
+
+    if (rankA !== rankB) return rankA - rankB
+
+    // Same position: partners together, then the larger party first.
+    const blocA = blocRank(a.alliance)
+    const blocB = blocRank(b.alliance)
+    if (blocA !== undefined && blocB !== undefined && blocA !== blocB) return blocA - blocB
+    if (a.alliance !== b.alliance) {
+      return (a.alliance ?? '').localeCompare(b.alliance ?? '')
     }
     return b.seats - a.seats
   })
