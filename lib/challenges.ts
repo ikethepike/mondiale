@@ -1088,6 +1088,7 @@ const getParliamentChallenge = (game: gameTypes.Game): ParliamentChallenge | und
     country: deal.country,
     benches: deal.benches,
     totalSeats: deal.totalSeats,
+    ...(deal.chamber ? { chamber: deal.chamber } : {}),
     durationSeconds: PARLIAMENT_SECONDS,
     maximumPoints: maximumRoundPoints(game),
   }

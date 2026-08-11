@@ -434,6 +434,20 @@ export const alliancesOf = (isoCode: ISOCountryCode): { alliance: string; benche
     )
 }
 
+/**
+ * The house the arc draws, when the data names one — "Sejm", "Chamber of
+ * Deputies", "National Council".
+ *
+ * Most articles carry no separate name and the field holds their title
+ * instead ("2023 Polish parliamentary election"), which is not a house, so
+ * anything reading like an election is rejected rather than shown.
+ */
+export const chamberName = (isoCode: ISOCountryCode): string | undefined => {
+  const named = ELECTIONS[isoCode]?.chamber?.trim()
+  if (!named || /\belections?\b/i.test(named) || /^\d{4}\b/.test(named)) return undefined
+  return named
+}
+
 /** The chamber's full size, which the benches are a fraction of. */
 export const chamberSeats = (isoCode: ISOCountryCode): number | undefined => {
   const election = ELECTIONS[isoCode]

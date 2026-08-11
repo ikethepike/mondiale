@@ -283,10 +283,14 @@ export interface ParliamentChallenge {
     logo?: string
     /** The party's colour, `#rrggbb` — the first hint rung. */
     color?: string
+    /** Its transnational family (EPP, Progressive Alliance) — a later rung. */
+    grouping?: string
     /** Placed by the player; the rest are drawn already seated. */
     asked: boolean
   }[]
   totalSeats: number
+  /** The house, where the data names one — "Sejm", "Chamber of Deputies". */
+  chamber?: string
   durationSeconds: number
   maximumPoints: number
 }
