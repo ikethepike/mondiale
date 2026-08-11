@@ -545,7 +545,6 @@ const rebuild = () => {
       }
 
       triggerRipple(tile, 'success')
-      if (playerId === cameraTargetId.value) boardCamera?.follow(tile.position)
     },
   })
 
@@ -618,11 +617,6 @@ const announceTokenFor = (subject: Player | undefined) =>
 const subjectTile = () => {
   const subject = props.game.players[cameraTargetId.value]
   return subject ? tileFor(displayPositionFor(subject)) : undefined
-}
-
-const followSubject = () => {
-  const tile = subjectTile()
-  if (tile) boardCamera?.follow(tile.position)
 }
 
 /**
@@ -703,10 +697,6 @@ watch(
       const before = previous.get(playerId)
       if (before === position) continue
       mover?.moveTo(playerId, position)
-      if (playerId === cameraTargetId.value) {
-        const tile = tileFor(position)
-        if (tile) boardCamera?.follow(tile.position)
-      }
       if (playerId === props.playerId) syncHighlight()
     }
   }
@@ -734,8 +724,8 @@ watch(
       highlightTween?.play()
       stuckTweens.forEach(tween => tween.play())
       // A framing shot owed to a walk announced behind a challenge view plays
-      // HERE, on screen; otherwise just re-aim on the subject.
-      if (!syncCameraFraming()) followSubject()
+      // HERE, on screen; the tracker re-converges on the subject either way.
+      syncCameraFraming()
     } else {
       highlightTween?.pause()
       stuckTweens.forEach(tween => tween.pause())
@@ -999,6 +989,13 @@ watch([cameraRef, controlsRef, board], () => {
       if (!boothMode.value) gameStore.board.spectateTargetId = undefined
     },
   })
+
+  // The walk-follow shot: glue the orbit centre to the followed pawn's LIVE
+  // object, not its tile. Re-read per frame, so subject switches and rebuilds
+  // need no re-wiring; a hidden stage yields undefined and the tick holds.
+  boardCamera.track(() =>
+    props.active ? pawns.get(cameraTargetId.value)?.position : undefined
+  )
 
   // The rig can be built while the stage is still hidden (it is, every game —
   // the persistent stage mounts on idle behind round 1), which is precisely

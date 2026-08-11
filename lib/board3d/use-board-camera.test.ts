@@ -102,13 +102,33 @@ const rigFor = (options: { withPointerHost?: boolean; resumeDelayMs?: number } =
   // A plain overview shot: 100 units out, well above FRAME_TILES * SPACING.
   camera.position.set(0, 80, 60)
 
+  // The tracking heartbeat, driven by hand — gsap's ticker needs rAF.
+  const tickCallbacks = new Set<(time: number, deltaMs: number) => void>()
+  let tickerNow = 0
+
   const rig = createBoardCamera(camera, stub.controls, {
     spacing: () => SPACING,
     resumeDelayMs: options.resumeDelayMs === undefined ? undefined : () => options.resumeDelayMs!,
     onUserGrab: () => grabs.push(1),
+    ticker: {
+      add: callback => tickCallbacks.add(callback),
+      remove: callback => tickCallbacks.delete(callback),
+    },
   })
 
-  return { ...stub, camera, rig, grabCount: () => grabs.length }
+  return {
+    ...stub,
+    camera,
+    rig,
+    grabCount: () => grabs.length,
+    pulse: (deltaMs: number, frames = 1) => {
+      for (let frame = 0; frame < frames; frame++) {
+        tickerNow += deltaMs
+        for (const callback of [...tickCallbacks]) callback(tickerNow, deltaMs)
+      }
+    },
+    tickerAttached: () => tickCallbacks.size,
+  }
 }
 
 /**
@@ -580,6 +600,162 @@ describe('the auto-framing latch', () => {
     vi.advanceTimersByTime(USER_IDLE_RESUME_MS + 10)
     drainTweens()
     expect(controls.target.x).toBeCloseTo(40, 1)
+  })
+})
+
+describe('tracking', () => {
+  it('converges onto a moving source without changing the shot', () => {
+    const { rig, camera, controls, pulse } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const offset = camera.position.clone().sub(controls.target)
+
+    const pawn = new Vector3(10, 0, 4)
+    rig.track(() => pawn)
+    pulse(16, 240)
+
+    expect(controls.target.x).toBeCloseTo(10, 1)
+    expect(controls.target.z).toBeCloseTo(4, 1)
+    // Translate-only: the player's angle and distance are untouched.
+    expect(camera.position.clone().sub(controls.target).distanceTo(offset)).toBeCloseTo(0, 4)
+  })
+
+  it('keeps tracking through a claimed drag — orbiting a walking pawn', () => {
+    const { start, pointerDown, pointerMove, rig, controls, pulse, grabCount } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const pawn = new Vector3(0, 0, 0)
+    rig.track(() => pawn)
+
+    // A live drag, never released: follow/frameOn stand down here, but the
+    // tracker must not — pan is off, so a translation cannot fight it.
+    pointerDown(0, 0)
+    start()
+    pointerMove(200, 200)
+    expect(grabCount()).toBe(1)
+
+    pawn.set(30, 0, 0)
+    pulse(16, 240)
+    expect(controls.target.x).toBeCloseTo(30, 1)
+  })
+
+  it('yields to a framing sweep, then glides on from where it left the rig', () => {
+    const { rig, camera, controls, pulse } = rigFor()
+
+    const pawn = new Vector3(24, 0, 2)
+    rig.track(() => pawn)
+
+    rig.frameOn(new Vector3(20, 0, 0))
+    // Ticks landing while the sweep is in flight must not drag the target off
+    // it — the tween has not advanced, and neither may the tracker.
+    pulse(16, 60)
+    expect(controls.target.x).toBeCloseTo(0, 3)
+
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(20, 1)
+
+    // Sweep done: the tracker re-primes from the live target and converges,
+    // absorbing the tile-centre → pawn offset at the sweep's distance.
+    pulse(16, 240)
+    expect(controls.target.x).toBeCloseTo(24, 1)
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(FRAME_TILES * SPACING, 0)
+  })
+
+  it('damps the vertical chase harder than the horizontal one', () => {
+    const { rig, controls, pulse } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const pawn = new Vector3(10, 10, 0)
+    rig.track(() => pawn)
+
+    // A fifth of a second in: X has crossed most of the gap, the hop-arc
+    // axis has barely begun.
+    pulse(16, 12)
+    expect(controls.target.x / 10).toBeGreaterThan((controls.target.y / 10) * 2)
+  })
+
+  it('keeps a zoom made mid-walk', () => {
+    const { rig, camera, controls, pulse } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const pawn = new Vector3(0, 0, 0)
+    rig.track(() => pawn)
+    pulse(16, 60)
+
+    const toTarget = new Vector3().subVectors(controls.target, camera.position).normalize()
+    camera.position.addScaledVector(toTarget, 20)
+    const zoomed = distanceOf(camera, controls.target)
+
+    pawn.set(15, 0, 5)
+    pulse(16, 240)
+    expect(controls.target.x).toBeCloseTo(15, 1)
+    expect(distanceOf(camera, controls.target)).toBeCloseTo(zoomed, 1)
+  })
+
+  it('mutes follow — and the release fallback riding it — while engaged', () => {
+    const { start, end, pointerDown, pointerUp, rig, controls, pulse } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const pawn = new Vector3(5, 0, 0)
+    rig.track(() => pawn)
+    pulse(16, 240)
+    expect(controls.target.x).toBeCloseTo(5, 1)
+
+    // A stale one-shot aim (a tile centre the pawn has left).
+    rig.follow(new Vector3(50, 0, 0))
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(5, 1)
+
+    // A tap's release replays follow(lastPoint) — it must not yank either.
+    pointerDown(0, 0)
+    start()
+    pointerUp()
+    end()
+    drainTweens()
+    expect(controls.target.x).toBeCloseTo(5, 1)
+
+    pulse(16, 60)
+    expect(controls.target.x).toBeCloseTo(5, 1)
+  })
+
+  it('copies the point outright under reduced motion', () => {
+    const { rig, camera, controls, pulse } = rigFor()
+
+    rig.frameOn(new Vector3(0, 0, 0))
+    drainTweens()
+    const offset = camera.position.clone().sub(controls.target)
+
+    vi.stubGlobal('window', {
+      matchMedia: () => ({ matches: true }),
+    })
+    const pawn = new Vector3(40, 0, 8)
+    rig.track(() => pawn)
+    pulse(16)
+    vi.unstubAllGlobals()
+
+    // One tick, no smoothing — and still translate-only.
+    expect(controls.target.x).toBeCloseTo(40, 5)
+    expect(controls.target.z).toBeCloseTo(8, 5)
+    expect(camera.position.clone().sub(controls.target).distanceTo(offset)).toBeCloseTo(0, 4)
+  })
+
+  it('detaches its tick when disengaged and on dispose', () => {
+    const { rig, tickerAttached } = rigFor()
+
+    expect(tickerAttached()).toBe(0)
+    rig.track(() => undefined)
+    expect(tickerAttached()).toBe(1)
+    rig.track(undefined)
+    expect(tickerAttached()).toBe(0)
+
+    rig.track(() => undefined)
+    rig.dispose()
+    expect(tickerAttached()).toBe(0)
   })
 })
 

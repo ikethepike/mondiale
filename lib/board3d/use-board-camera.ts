@@ -1,6 +1,6 @@
 import { gsap } from 'gsap'
 import type { PerspectiveCamera, Vector3 } from 'three'
-import { Vector3 as Vec3 } from 'three'
+import { MathUtils, Vector3 as Vec3 } from 'three'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { STEP_INTERVAL_MS, WALK_FRAME_MS } from '~~/lib/round-beats'
 
@@ -37,11 +37,17 @@ interface OrbitControlsLike {
 }
 
 /** Framing distance in TILES — the rig turns it into world units via `spacing`. */
-export const FRAME_TILES = 5.5
+export const FRAME_TILES = 6.5
 /** The tighter push-in a gate hit takes. */
 export const ALERT_TILES = 3.2
 /** Fallback when no spacing resolver is wired (the /test harness, unit rigs). */
 const DEFAULT_SPACING = 8
+
+/** Per-second lambdas for `MathUtils.damp` — how hard tracking chases its
+ *  source. Y is much softer on purpose: it filters the hop arc's bob down to a
+ *  gentle rise while still following real tile-height changes within ~1s. */
+export const TRACK_DAMP_XZ = 8
+export const TRACK_DAMP_Y = 2.2
 
 /** How long after a confirmed grab the auto-camera resumes. */
 export const USER_IDLE_RESUME_MS = 4000
@@ -80,8 +86,13 @@ export interface FrameOptions {
 export interface BoardCamera {
   /** Re-FRAME onto a point: resets the orbit distance, keeps the azimuth. */
   frameOn(point: Vector3, options?: FrameOptions): void
-  /** TRACK a moving point, preserving the player's chosen angle and zoom. */
+  /** Nudge toward a point once, preserving the player's chosen angle and zoom.
+   *  Stands down entirely while `track` has a source — the tracker IS the
+   *  translation then. */
   follow(point: Vector3): void
+  /** Continuous, per-frame tracking of a LIVE point (the followed pawn's
+   *  object), translate-only like `follow`. Call with no source to disengage. */
+  track(source?: () => Vector3 | undefined): void
   /** An explicit re-aim (a pin, a director cut) outranks a grab and reclaims
    *  automatic framing. */
   takeOver(): void
@@ -107,6 +118,11 @@ export const createBoardCamera = (
     spacing?: () => number
     /** The booth's look-around holds longer than a racer's grab. */
     resumeDelayMs?: () => number
+    /** The tracking heartbeat — defaults to gsap's ticker; tests inject one. */
+    ticker?: {
+      add(callback: (time: number, deltaMs: number) => void): void
+      remove(callback: (time: number, deltaMs: number) => void): void
+    }
   } = {}
 ): BoardCamera => {
   /** A confirmed gesture's hold: both moves stand down until it lifts. */
@@ -360,8 +376,66 @@ export const createBoardCamera = (
     frameTweens.add(positionTween)
   }
 
+  /** What the tracker is aiming at right now; `undefined` disengages. */
+  let trackSource: (() => Vector3 | undefined) | undefined
+  /** The smoothed aim point. Re-primed from the live target after every
+   *  framing sweep, so the tracker glides on from wherever the sweep left the
+   *  rig (and absorbs a sweep's tile-centre → pawn-slot offset). */
+  const trackAim = new Vec3()
+  let trackPrimed = false
+  const ticker = options.ticker ?? gsap.ticker
+  let tickAttached = false
+
+  // Deliberately does NOT stand down for held(): pan is off, so a rigid
+  // translation cannot fight any gesture the player can express — and tracking
+  // through a live drag is what makes orbiting a walking pawn possible.
+  const onTick = (_time: number, deltaMs: number) => {
+    const point = trackSource?.()
+    if (!point) return
+    if (framingInFlight()) {
+      trackPrimed = false
+      return
+    }
+    if (!trackPrimed) {
+      trackAim.copy(controls.target)
+      trackPrimed = true
+    }
+    if (prefersReducedMotion()) {
+      trackAim.copy(point)
+    } else {
+      const dt = deltaMs / 1000
+      trackAim.x = MathUtils.damp(trackAim.x, point.x, TRACK_DAMP_XZ, dt)
+      trackAim.z = MathUtils.damp(trackAim.z, point.z, TRACK_DAMP_XZ, dt)
+      trackAim.y = MathUtils.damp(trackAim.y, point.y, TRACK_DAMP_Y, dt)
+    }
+    // Translate camera and target together — the same offset-preserving
+    // invariant follow() keeps, so a mid-walk zoom or drag survives.
+    camera.position.x += trackAim.x - controls.target.x
+    camera.position.y += trackAim.y - controls.target.y
+    camera.position.z += trackAim.z - controls.target.z
+    controls.target.copy(trackAim)
+  }
+
+  const track = (source?: () => Vector3 | undefined) => {
+    trackSource = source
+    trackPrimed = false
+    if (source && !tickAttached) {
+      ticker.add(onTick)
+      tickAttached = true
+    } else if (!source && tickAttached) {
+      ticker.remove(onTick)
+      tickAttached = false
+    }
+  }
+
   const follow = (point: Vector3) => {
     lastPoint = new Vec3().copy(point)
+    // The tracker owns translation while engaged. Returning HERE (before the
+    // banking below) keeps a stale one-shot aim from ever being replayed over
+    // it — frameOn's cameraTaken degrade and resume()'s lastPoint fallback
+    // both route through this and would otherwise yank the target to a tile
+    // centre the pawn has left.
+    if (trackSource) return
     if (held()) {
       pendingFocus = { point: lastPoint, mode: 'follow' }
       return
@@ -417,6 +491,7 @@ export const createBoardCamera = (
   return {
     frameOn,
     follow,
+    track,
     takeOver() {
       if (idleTimer) clearTimeout(idleTimer)
       idleTimer = undefined
@@ -425,6 +500,7 @@ export const createBoardCamera = (
       pendingFocus = undefined
     },
     dispose() {
+      track(undefined)
       killTweens()
       if (idleTimer) clearTimeout(idleTimer)
       controls.removeEventListener('start', onControlsStart)
