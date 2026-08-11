@@ -18,6 +18,15 @@
  *   disconnect+reconnect churn. Samples server RSS to CSV and reports ack
  *   round-trip percentiles. Boot the server with FORCE_ROUND_TYPE=ranking so
  *   every round accepts the ranking answer shape.
+ *
+ *   Without that env the natural mix deals turn-based kinds (atlas,
+ *   border-chain, timeline, unique-or-bust) whose answers ride their OWN
+ *   events, and this client's blanket `submit-group-challenge-answers` is
+ *   correctly refused by `gradeGroupAnswer`'s named guard — expect a run of
+ *   "No scoring arm for round kind: …" throws answered with an `error` ack.
+ *   That is the harness being blunt, not the server misbehaving: it is still
+ *   a useful shape to run, because it exercises the handler-throw path under
+ *   load (the process must stay flat through it).
  * - http: light-concurrency latency on /health, / and a room page.
  *
  * Target discipline: never point this at port 3000 (the live dev server).
