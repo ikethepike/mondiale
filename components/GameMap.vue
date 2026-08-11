@@ -247,7 +247,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import { largestRing, longestSharedRun, parsePolygons, poleOfInaccessibility } from '~~/lib/outline'
+import { largestRing, parsePolygons, poleOfInaccessibility, sharedBorderPair } from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import {
@@ -496,7 +496,7 @@ const livePath = (code: string): string | undefined =>
  * that clip the over-paint to land.
  *
  * The country vanishes into the land around it rather than being blanked out —
- * see `longestSharedRun`. Only that shared border is painted out, so every other
+ * see `sharedBorderPair`. Only that shared border is painted out, so every other
  * line on the map still ends where it always did and nothing is left amputated.
  *
  * Keyed off `hdRevision` so a tier swap re-renders with the geometry the map is
@@ -527,8 +527,8 @@ const vanishPath = (code: ISOCountryCode): string => {
 
   const own = livePath(code)
   const ring = own ? largestRing(own) : undefined
-  const run = ring
-    ? longestSharedRun(
+  const pair = ring
+    ? sharedBorderPair(
         ring,
         (BORDERS[code] ?? []).flatMap(neighbour => {
           const path = livePath(neighbour)
@@ -537,13 +537,19 @@ const vanishPath = (code: ISOCountryCode): string => {
       )
     : undefined
 
-  const d = run?.length
-    ? `M${run[0]![0]} ${run[0]![1]}` +
-      run
-        .slice(1)
-        .map(([x, y]) => `L${x} ${y}`)
-        .join('')
-    : ''
+  // Both sides as one path: the border is drawn twice, once by each country,
+  // and the two copies diverge by a fraction of a unit. Each is covered along
+  // its OWN line, so a modest brush suffices — a single brush wide enough to
+  // span the divergence would eat a sliver neighbour alive.
+  const subpath = (run: [number, number][]) =>
+    run.length
+      ? `M${run[0]![0]} ${run[0]![1]}` +
+        run
+          .slice(1)
+          .map(([x, y]) => `L${x} ${y}`)
+          .join('')
+      : ''
+  const d = pair ? subpath(pair.own) + subpath(pair.theirs) : ''
   vanishCache.set(key, d)
   return d
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  longestSharedRun,
+  sharedBorderPair,
   boundaryDeviation,
   DRAW_COMPLETE_AT,
   drawnFraction,
@@ -379,7 +379,7 @@ describe('poleOfInaccessibility', () => {
   })
 })
 
-describe('longestSharedRun', () => {
+describe('sharedBorderPair', () => {
   // A densely-sampled square: real rings carry many vertices per border, and
   // sharedVertexMask deliberately bridges 1-2 vertex gaps, so a four-corner
   // toy would have its whole outline read as shared.
@@ -409,28 +409,45 @@ describe('longestSharedRun', () => {
     // A neighbour touching only the lower half of the left edge.
     const sliver = along([0, 4], [0, 0], [-5, 0])
 
-    const run = longestSharedRun(square, [bottom, sliver])
-    expect(run).toBeDefined()
+    const pair = sharedBorderPair(square, [bottom, sliver])
+    expect(pair).toBeDefined()
     // Every vertex of the chosen run lies on the bottom edge, not the sliver's.
-    for (const [, y] of run!) expect(y).toBe(0)
+    for (const [, y] of pair!.own) expect(y).toBe(0)
+  })
+
+  it('returns the border as BOTH countries draw it', () => {
+    // Each copy has to be covered along its own line; the two diverge under
+    // per-country simplification.
+    const bottom = along([0, 0], [10, 0], [0, -5])
+    const pair = sharedBorderPair(square, [bottom])!
+    expect(pair.own.length).toBeGreaterThan(1)
+    expect(pair.theirs.length).toBeGreaterThan(1)
+    // Both runs trace the same edge. `sharedVertexMask` deliberately bridges
+    // 1-2 vertex gaps, so a run may reach a vertex past the junction — most of
+    // it lying on the shared edge is the honest assertion.
+    for (const run of [pair.own, pair.theirs]) {
+      const onEdge = run.filter(([, y]) => y === 0).length
+      expect(onEdge / run.length).toBeGreaterThan(0.5)
+    }
+    expect(pair.theirs.length).toBeLessThan(bottom.length + 1)
   })
 
   it('leaves the rest of the outline alone, so no border is amputated', () => {
     const bottom = along([0, 0], [10, 0], [0, -5])
-    const run = longestSharedRun(square, [bottom])!
-    expect(run.length).toBeLessThan(square.length)
+    const pair = sharedBorderPair(square, [bottom])!
+    expect(pair.own.length).toBeLessThan(square.length)
   })
 
   it('yields nothing for a country with no land neighbours', () => {
     // An island shares no border with anything, so there is no partial run to
     // give up — which is exactly why the deck never takes one.
-    expect(longestSharedRun(square, [])).toBeUndefined()
+    expect(sharedBorderPair(square, [])).toBeUndefined()
   })
 
   it('yields nothing for an enclave host that wraps the whole ring', () => {
     // Lesotho inside South Africa: the shared run IS the whole outline, so
     // erasing it would take the country's entire border with it and put us
     // back on the amputation problem.
-    expect(longestSharedRun(square, [square])).toBeUndefined()
+    expect(sharedBorderPair(square, [square])).toBeUndefined()
   })
 })
