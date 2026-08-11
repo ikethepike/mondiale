@@ -218,7 +218,9 @@ const ladder = computed(() =>
 // TransitionGroup is a component, so its ref is the instance — the scrollport
 // the edges read is its rendered `$el`.
 const ladderList = ref<{ $el?: HTMLElement }>()
-const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => ladderList.value?.$el)
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(
+  () => ladderList.value?.$el
+)
 
 // The newest rung is the LAST child, against the console, so the stack has to
 // ride its own bottom edge — left alone the scrollport rests at the top and

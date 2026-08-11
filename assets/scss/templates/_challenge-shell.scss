@@ -36,9 +36,31 @@
     min-height: 0;
   }
 
+  // …except the header, which has no scroller of its own. `min-height: 0`
+  // above let the prompt shrink below its own content, and the overflow —
+  // a tall verdict dossier, a stacked sub-line — painted straight over the
+  // stage's first row. It keeps its natural height; the middle and the footer
+  // are the givers.
+  > header {
+    flex: none;
+  }
+
+  // The shell owns the column's flex contract: the middle takes the room
+  // that's left.
   > .stage,
   > section:not(.shell-footer) {
     flex: 1 1 auto;
+  }
+
+  // What a stage does with its own overflow is the VIEW's call. Clipping is
+  // the default — a stage must never grow the document — but it stands at one
+  // class of specificity so a stage that scrolls its own content (the trend
+  // race's card list, the detective's clue ladder) wins with the scoped
+  // `overflow-y: auto` it already declares. Written as `> section:not(…)` this
+  // outweighed `.race-stage[data-v-x]` and clipped every one of them: content
+  // below the fold was unreachable by drag or wheel, and only a programmatic
+  // scrollTop still moved (which is why the reveal's own scroll looked fine).
+  > :where(.stage, section:not(.shell-footer)) {
     overflow: hidden;
   }
 

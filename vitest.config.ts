@@ -9,6 +9,8 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['lib/**/*.test.ts'],
+    // assets/ carries the shared style templates' own invariants — a shell
+    // rule that outweighs the views standing in it has no on-screen tell.
+    include: ['lib/**/*.test.ts', 'assets/**/*.test.ts'],
   },
 })
