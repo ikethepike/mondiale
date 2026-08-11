@@ -33,9 +33,9 @@ describe('isKindEnabled', () => {
     expect(isKindEnabled(game, 'flashpoint')).toBe(false)
     expect(isKindEnabled(game, 'capital-guess')).toBe(false)
     // Stat detective rides the trends toggle now, not the core floor.
-    expect(isKindEnabled({ ...game, challengeOverrides: { trends: false } }, 'stat-detective')).toBe(
-      false
-    )
+    expect(
+      isKindEnabled({ ...game, challengeOverrides: { trends: false } }, 'stat-detective')
+    ).toBe(false)
   })
 
   it('deals empires on every difficulty in auto, off when the group is', () => {

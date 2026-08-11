@@ -35,6 +35,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   'flag-palette': 'label',
   'capital-guess': 'label',
   flashpoint: 'label',
+  // ~195 capitals, free-typed with no suggestion list: a wrong city is noise
+  // and worth seeing. The mode's HITS travel unlabelled anyway — the view
+  // sends presence for a correct name (useCollectSetRound's rule), so a
+  // player who lights a star hands the room tension, not the answer.
+  'star-chart': 'label',
 
   // Unlike the other option rounds, composition's table IS the bar's own
   // origins — a handful, shared by the room — so a named wrong guess strikes a

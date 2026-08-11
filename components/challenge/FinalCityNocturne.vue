@@ -3,21 +3,7 @@
     <!-- Lit cities: warm dots pinned in screen space from projected coords.
          At the reveal, the missed ones surface cold and dim — the map itself
          shows what stayed dark. -->
-    <div class="lights">
-      <div
-        v-for="city in shownCities"
-        :key="city.name"
-        class="light"
-        :class="{ missed: !city.lit }"
-        :style="{ left: `${city.left}%`, top: `${city.top}%` }"
-      >
-        <span class="glow" :style="{ width: `${city.size}rem`, height: `${city.size}rem` }" />
-        <span class="label">
-          {{ city.label }}
-          <span v-if="city.sublabel" class="sublabel">{{ city.sublabel }}</span>
-        </span>
-      </div>
-    </div>
+    <NightLights :lights="lights" />
     <footer ref="consoleFooter" class="shell-footer">
       <NightConsole
         v-show="!finished"
@@ -52,15 +38,13 @@
 </template>
 <script lang="ts" setup>
 import NightConsole from '~/components/challenge/NightConsole.vue'
+import NightLights, { type NightLight } from '~/components/challenge/NightLights.vue'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { MAP_PROJECTION } from '~~/data/map.gen'
-import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { projectRobinson } from '~~/lib/geo'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
-import { useMapViewBox } from '~~/lib/use-map-viewbox'
+import { useNocturne } from '~~/lib/use-nocturne'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
@@ -69,9 +53,9 @@ import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.
  * City Nocturne: the world goes dark, one country's own border glows, and
  * every correctly typed city ignites warm and yellow at its true spot.
  *
- * The night is real map styling — a body class restyles every country path's
- * fill and stroke (see the unscoped block below), so it pans and zooms with
- * zero lag. Only the city dots track the camera, and they fade out during
+ * The night is real map styling — `useNocturne`'s body class restyles every
+ * country path's fill and stroke, so it pans and zooms with zero lag. Only the
+ * city dots track the camera (NightLights), and they fade out during
  * gestures. No suggestions — the suggestion list would BE the answer sheet.
  * Client-trust graded like sunset; only the canonical lit names travel.
  */
@@ -88,12 +72,15 @@ const entry = ref('')
 const named = ref(new Set<string>())
 const elapsedMs = ref(0)
 const finished = ref(false)
-const { viewBox } = useMapViewBox()
 
 // The framed country stays visible above the console (and the keyboard)
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 const isCoarsePointer = useIsCoarsePointer()
+
+// The night — body skin, chrome tint and the framed country's glow — plus the
+// daybreak this component can no longer forget on unmount.
+const { nightfall } = useNocturne(() => [props.challenge.country])
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
@@ -101,26 +88,23 @@ const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.ci
 const durationMs = props.challenge.durationSeconds * 1000
 const secondsLeft = computed(() => Math.max(0, Math.ceil((durationMs - elapsedMs.value) / 1000)))
 
-const shownCities = computed(() => {
-  const vb = viewBox.value
-  if (!vb?.w) return []
+const lights = computed<NightLight[]>(() => {
   // Dot area tracks population (sqrt for area-proportionality), so the
   // capital reads bigger than the fifth city without swallowing the map
   const largest = Math.max(...cities.map(city => city.population))
   return cities
     .filter(city => named.value.has(city.name) || finished.value)
     .map(city => {
-      const point = projectRobinson({ lat: city.lat, lng: city.lng }, MAP_PROJECTION)
       // The map speaks the local tongue: type "Moscow", light "Москва" —
       // canonical beneath, and only when it's a different word
       const label = city.native ?? city.local ?? city.name
       return {
-        name: city.name,
+        key: city.name,
+        lat: city.lat,
+        lng: city.lng,
+        state: named.value.has(city.name) ? 'lit' : 'missed',
         label,
         sublabel: label.toLowerCase() === city.name.toLowerCase() ? undefined : city.name,
-        lit: named.value.has(city.name),
-        left: ((point.x - vb.x) / vb.w) * 100,
-        top: ((point.y - vb.y) / vb.h) * 100,
         size: 0.7 + Math.sqrt(city.population / largest) * 0.9,
       }
     })
@@ -128,20 +112,6 @@ const shownCities = computed(() => {
 
 let ticker: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
-let targetPath: Element | null = null
-
-const nightfall = () => {
-  document.body.classList.add('nocturne-night')
-  setChromeTint(NIGHT_CHROME)
-  targetPath = document.querySelector(`.game-map path[data-id][id="${props.challenge.country}"]`)
-  targetPath?.classList.add('nocturne-target')
-}
-
-const daybreak = () => {
-  document.body.classList.remove('nocturne-night')
-  setChromeTint()
-  targetPath?.classList.remove('nocturne-target')
-}
 
 const finish = () => {
   if (finished.value) return
@@ -186,53 +156,13 @@ watch(
   { immediate: true }
 )
 
+// Daybreak is `useNocturne`'s, bound to this component's own unmount.
 onBeforeUnmount(() => {
   if (ticker) clearInterval(ticker)
-  daybreak()
 })
 </script>
-<style lang="scss">
-// Unscoped on purpose: the night restyles the REAL map paths, so it moves
-// with the camera natively instead of chasing the viewBox from an overlay
-// The ocean darkens via body only — .main-board/.harness are SIBLINGS
-// painted ABOVE the map, so giving them a background blacks out the world
-body.nocturne-night {
-  background: var(--night-page);
-
-  // The night holds still: no panning or zooming mid-round — the dots and
-  // the framed country stay exactly where the camera settled them
-  .game-map {
-    pointer-events: none;
-  }
-
-  // !important on purpose: the map engine writes fill/stroke-width inline,
-  // and the night skin must win over it. Strokes go screen-space
-  // (non-scaling) because the engine's zoom-scaled widths render sub-pixel
-  // under the skin's static values.
-  .game-map path[data-id] {
-    fill: var(--night-land) !important;
-    stroke: var(--night-stroke) !important;
-    stroke-width: 1.1px !important;
-    vector-effect: non-scaling-stroke;
-    transition:
-      fill 0.8s var(--ease-smooth),
-      stroke 0.8s var(--ease-smooth);
-  }
-
-  .game-map path[data-id].nocturne-target {
-    fill: hsl(216, 36%, 20%) !important;
-    stroke: hsla(45, 90%, 72%, 0.8) !important;
-    stroke-width: 1.6px !important;
-    filter: drop-shadow(0 0 0.25rem hsla(45, 96%, 65%, 0.2));
-  }
-
-  // The dots chase the camera on a timer — hide them mid-gesture instead of
-  // letting them trail behind the pan
-  &:has(.is-interacting) .final-city-nocturne .lights {
-    opacity: 0;
-  }
-}
-</style>
+<!-- The night skin is templates/_nocturne-night.scss and the dots are
+     NightLights — both shared with the Star Chart. -->
 <style lang="scss" scoped>
 // Scenic overlay per the challenge-shell contract: the lights stay
 // pointer-inert behind everything; the console stands in a .shell-footer at
@@ -244,77 +174,5 @@ body.nocturne-night {
   pointer-events: none;
   flex-flow: column nowrap;
   justify-content: flex-end;
-}
-
-.lights {
-  inset: 0;
-  position: absolute;
-  transition: opacity 0.15s var(--ease-smooth);
-}
-
-.light {
-  position: absolute;
-  transform: translate(-50%, -50%);
-
-  .glow {
-    width: 1rem;
-    height: 1rem;
-    display: block;
-    border-radius: 50%;
-    background: var(--night-amber);
-    box-shadow:
-      0 0 0.6rem 0.2rem hsla(45, 96%, 65%, 0.9),
-      0 0 2.4rem 0.8rem hsla(38, 90%, 55%, 0.45);
-    animation: ignite 0.5s var(--ease-smooth);
-  }
-
-  .label {
-    left: 50%;
-    top: 100%;
-    position: absolute;
-    transform: translateX(-50%);
-    margin-top: 0.5rem;
-    font-size: 1.3rem;
-    text-align: center;
-    white-space: nowrap;
-    color: hsla(45, 96%, 85%, 0.95);
-    text-shadow: 0 0.1rem 0.8rem hsla(216, 58%, 5%, 0.9);
-
-    .sublabel {
-      display: block;
-      opacity: 0.7;
-      font-size: 1rem;
-      line-height: 1.2;
-    }
-  }
-}
-
-// A missed city at the reveal: cold, dim, unmistakably not yours
-.light.missed {
-  .glow {
-    background: hsla(216, 30%, 55%, 0.8);
-    box-shadow: 0 0 0.8rem 0.2rem hsla(216, 40%, 45%, 0.5);
-  }
-
-  .label {
-    color: hsla(216, 30%, 75%, 0.8);
-  }
-}
-
-@keyframes ignite {
-  from {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .light .glow {
-    animation: none;
-  }
 }
 </style>

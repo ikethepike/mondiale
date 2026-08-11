@@ -4,6 +4,8 @@ import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
+import { isChallengeOfType } from '~~/lib/rounds'
+import { starChartStars } from '~~/lib/star-chart'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { sentenceCase } from '~~/lib/strings'
 import {
@@ -79,6 +81,11 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'flag-palette-challenge'
         ? `Those colours fly for ${countryName(challenge.country)}`
         : ''
+    case 'star-chart': {
+      if (!isChallengeOfType(challenge, 'star-chart-challenge')) return ''
+      const names = starChartStars(challenge).map(star => star.name)
+      return names.length ? `The stars were ${names.join(', ')}` : 'The star chart round'
+    }
     case 'mother-tongue':
       return '_type' in challenge && challenge._type === 'mother-tongue-challenge'
         ? `${challenge.language} — official in ${challenge.countries.length} countries`

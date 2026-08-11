@@ -71,6 +71,7 @@ export type RoundChallengeKind =
   | 'mother-tongue'
   | 'flag-palette'
   | 'capital-guess'
+  | 'star-chart'
   | 'composition'
   | 'flashpoint'
   | 'ghost-state'
@@ -128,6 +129,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'flag-palette'
     case 'capital-guess-challenge':
       return 'capital-guess'
+    case 'star-chart-challenge':
+      return 'star-chart'
     case 'composition-challenge':
       return 'composition'
     case 'flashpoint-challenge':

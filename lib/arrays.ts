@@ -3,9 +3,13 @@
 export const sample = <T>(array: readonly T[], random: () => number = Math.random): T | undefined =>
   array[Math.floor(random() * array.length)]
 
-/** Up to `count` distinct elements, uniformly random, order shuffled. */
-export const sampleMany = <T>(array: readonly T[], count: number): T[] =>
-  shuffleArray([...array]).slice(0, count)
+/** Up to `count` distinct elements, uniformly random, order shuffled.
+ *  Pass a seeded `random` for reproducible picks, like the rest of this module. */
+export const sampleMany = <T>(
+  array: readonly T[],
+  count: number,
+  random: () => number = Math.random
+): T[] => shuffleArray([...array], random).slice(0, count)
 
 /**
  * A random entry where each candidate's chance is proportional to its weight.

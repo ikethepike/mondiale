@@ -157,6 +157,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'mother-tongue': true,
   'flag-palette': true,
   'capital-guess': true,
+  'star-chart': true,
   flashpoint: true,
   composition: true,
   'ghost-state': true,

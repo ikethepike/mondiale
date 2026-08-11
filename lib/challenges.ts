@@ -49,6 +49,7 @@ import type {
   PinLandmarkChallenge,
   SilhouetteChallenge,
   SketchChallenge,
+  StarChartChallenge,
   StatDetectiveChallenge,
   TimelineChallenge,
   TongueBuzzChallenge,
@@ -106,6 +107,7 @@ import { flagSwatches } from './audio-palette'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
+import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
 import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
@@ -1008,6 +1010,28 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   }
 }
 
+/**
+ * The Star Chart: the map goes dark and three capitals pulse at their true
+ * coordinates — type which city each one is. Every rule of the deal (the
+ * obscurity ladder, the near-pair guard, the field the variant scopes) lives
+ * in lib/star-chart.ts; this only dresses the pick as a round.
+ *
+ * Outside hard mode the stars carry their initials as an aid — derived from
+ * the same canonical names an answer matches on, so the two can't drift.
+ */
+const getStarChartChallenge = (game: gameTypes.Game): StarChartChallenge | undefined => {
+  const stars = pickStarChart(game)
+  if (!stars) return undefined
+
+  return {
+    _type: 'star-chart-challenge',
+    stars,
+    ...(game.difficulty === 'hard' ? {} : { initials: starChartInitials(stars) }),
+    durationSeconds: starChartSeconds(stars.length),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
 const COMPOSITION_SECONDS = 30
 
 const getCompositionChallenge = async (
@@ -1802,6 +1826,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'mother-tongue': game => getMotherTongueChallenge(game),
   'flag-palette': game => getFlagPaletteChallenge(game),
   'capital-guess': game => getCapitalGuessChallenge(game),
+  'star-chart': game => getStarChartChallenge(game),
   composition: game => getCompositionChallenge(game),
   flashpoint: game => getFlashpointChallenge(game),
   'ghost-state': game => getGhostStateChallenge(game),
