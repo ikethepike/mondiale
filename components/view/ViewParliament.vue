@@ -33,6 +33,7 @@
           top: `${seat.y}%`,
           '--seat-color': seat.color ?? '',
           '--seat-step': `${(seat.step ?? 0) * 12}ms`,
+          '--sweep-delay': `${(drawnSeats.length - 1 - index) * 5}ms`,
         }"
       />
 
@@ -507,6 +508,9 @@ const prompt = computed(() =>
   background: var(--seat-color, transparent);
   border: 1px solid #{ink(0.25)};
   transform: translate(-50%, -50%) scale(1);
+  // The chamber sweeps in from the right on arrival, one seat behind the next.
+  animation: seat-sweep var(--motion-base) var(--ease-out-expressive) backwards;
+  animation-delay: var(--sweep-delay, 0ms);
   // Colour arrives on the clock (the hint ladder) or on a correct drop, so it
   // eases in rather than switching; the scale is what makes a bloc read as
   // LANDING on its benches instead of the row simply changing colour.
@@ -525,6 +529,7 @@ const prompt = computed(() =>
 
 @media (prefers-reduced-motion: reduce) {
   .seat {
+    animation: fade-in var(--motion-base) linear backwards;
     transition: background var(--motion-base) linear;
 
     &.lit {
