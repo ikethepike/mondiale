@@ -227,8 +227,9 @@ export default defineEventHandler(({ node }) => {
 
     // Transport-level failures (aborted handshakes, malformed requests,
     // abrupt client resets) surface on the ENGINE — the Server itself never
-    // emits 'error', so without this seam an ECONNRESET walks up as an
-    // uncaught exception and takes the whole process (and every room on it).
+    // emits 'error'. The runtime's own trap keeps an unlistened emit from
+    // being fatal, but it lands as a bare `[uncaughtException]` mid-dispatch;
+    // this named seam turns it into a legible, greppable line instead.
     // The engine only exists once socket.io attached to a real http server;
     // prerender's mock requests carry none.
     if (io.engine) {
@@ -271,7 +272,11 @@ export default defineEventHandler(({ node }) => {
     // so an async body is an unhandled-rejection trap for anything a future
     // edit awaits outside a try.
     io.on('connection', socket => {
-      // Per-socket transport errors (reset mid-frame) end here, not the process.
+      // Per-socket transport errors (reset mid-frame) AND socket.io's own
+      // internal `_onerror` paths (invalid packet, middleware reject) land
+      // here as a named line rather than a bare runtime-trapped throw. Note
+      // 'error' is not a server-side reserved event, so a client can emit it
+      // with an arbitrary payload — this is log-only, never trusted.
       socket.on('error', error => {
         console.warn(`Socket ${socket.id} error`, error)
       })

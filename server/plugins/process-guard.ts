@@ -1,39 +1,45 @@
 /**
- * Log-and-continue backstop: one reset socket (or one bug in a fire-and-forget
- * chain) must never take down every room this process holds. In production
- * (no CLI wrapper) this plugin owns the whole error policy; in dev it guards
- * the Nitro worker thread, while the Nuxt CLI's own restart-on-error machinery
- * lives in the fork's main thread and stays as upstream recovery.
+ * A restart valve on top of the runtime's existing log-and-continue traps.
  *
- * A storm of uncaught exceptions means the process is wedged, not unlucky —
- * exit non-zero so Fly restarts it. The exit deliberately skips the drain
- * (a wedged process can't drain reliably); leases heal by OWNERSHIP_TTL, the
- * same recovery as a crash today. Signal handling is untouched:
- * graceful-shutdown.ts stays the only SIGINT/SIGTERM owner.
+ * Nitro's node-server preset already registers `unhandledRejection` /
+ * `uncaughtException` handlers that log and keep running (see
+ * `trapUnhandledNodeErrors`), and the Nuxt CLI's dev fork has its own
+ * restart machinery in the fork's main thread. So one stray reset no longer
+ * takes the process down on its own — what neither layer does is give up when
+ * the errors stop being one-offs.
  *
- * Grep hooks (Fly logs are the pager): `uncaughtException` / `unhandledRejection`.
- * A recurring line here is a bug to fix, not noise to tolerate.
+ * A storm of uncaught errors (either kind) means the process is wedged, not
+ * unlucky — the likeliest cause here is a hard dependency turning sour (Redis
+ * auth revoked → every fire-and-forget chain rejects forever), which logs
+ * endlessly while rooms stay frozen. Past a threshold, exit non-zero so Fly
+ * recycles the machine. The exit deliberately skips the drain (a wedged
+ * process can't drain reliably); leases heal by OWNERSHIP_TTL, the same
+ * recovery as a crash. Signal handling is untouched: graceful-shutdown.ts
+ * stays the only SIGINT/SIGTERM owner.
+ *
+ * We deliberately DON'T add our own continue-logging handler — that would
+ * double every line the runtime trap already prints. We only observe, and
+ * only act on the storm. Grep hook (Fly logs are the pager): `error storm`.
  */
-const UNCAUGHT_STORM_WINDOW_MS = 60_000
-const UNCAUGHT_STORM_LIMIT = 5
+const ERROR_STORM_WINDOW_MS = 60_000
+const ERROR_STORM_LIMIT = 8
 
 export default defineNitroPlugin(() => {
-  let recentUncaught: number[] = []
+  let recent: number[] = []
 
-  process.on('unhandledRejection', reason => {
-    console.error('unhandledRejection — continuing', reason)
-  })
-
-  process.on('uncaughtException', error => {
-    console.error('uncaughtException — continuing', error)
+  const note = () => {
     const now = Date.now()
-    recentUncaught = recentUncaught.filter(at => now - at < UNCAUGHT_STORM_WINDOW_MS)
-    recentUncaught.push(now)
-    if (recentUncaught.length >= UNCAUGHT_STORM_LIMIT) {
+    recent = recent.filter(at => now - at < ERROR_STORM_WINDOW_MS)
+    recent.push(now)
+    if (recent.length >= ERROR_STORM_LIMIT) {
       console.error(
-        `uncaughtException storm (${recentUncaught.length} in ${UNCAUGHT_STORM_WINDOW_MS}ms) — exiting for restart`
+        `error storm (${recent.length} uncaught in ${ERROR_STORM_WINDOW_MS}ms) — exiting for restart`
       )
       process.exit(1)
     }
-  })
+  }
+
+  // Additive to the runtime's own trap listeners — both fire; ours only counts.
+  process.on('unhandledRejection', note)
+  process.on('uncaughtException', note)
 })
