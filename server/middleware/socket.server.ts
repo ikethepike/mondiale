@@ -225,6 +225,14 @@ export default defineEventHandler(({ node }) => {
     const httpServer = (node.res.socket as { server?: import('node:http').Server })?.server
     const io: GameServer = new Server(httpServer)
 
+    // Transport-level failures (aborted handshakes, malformed requests,
+    // abrupt client resets) surface on the ENGINE — the Server itself never
+    // emits 'error', so without this seam an ECONNRESET walks up as an
+    // uncaught exception and takes the whole process (and every room on it).
+    io.engine.on('connection_error', (error: { code?: number; message: string }) => {
+      console.warn(`engine connection_error ${error.code ?? ''}: ${error.message}`)
+    })
+
     // The multi-machine layer: shard rooms to their owning machine at the
     // front door, keep the leases warm, and hand rooms over cleanly when a
     // deploy retires this process. Routing and the heartbeat no-op without a
@@ -234,7 +242,36 @@ export default defineEventHandler(({ node }) => {
     if (httpServer) registerGameRouting({ io, redis, httpServer })
     startOwnershipHeartbeat({ io, redis })
     registerGracefulShutdown({ io, redis })
-    io.on('connection', async socket => {
+    // Optimistic bind for RECONNECTS: once a client has joined a room its
+    // handshake carries { playerId, secret, gameId }, so verifying here
+    // rebinds the socket before its buffered events flush — closing the
+    // reconnect gap that used to drop them as unbound — WITHOUT trusting an
+    // unproven id claim. The first connection (home page, no gameId) skips
+    // this and lets the verified `join` handler do the binding.
+    const bindReconnectIdentity = async (socket: GameSocket) => {
+      const { playerId, secret, gameId } = socket.handshake.auth ?? {}
+      if (typeof playerId !== 'string' || !playerId) return
+      if (typeof gameId !== 'string' || !gameId) return
+      const secrets = await fetchSecrets(redis, gameId)
+      const verdict = verifyPlayerSecret(
+        secrets[playerId],
+        typeof secret === 'string' ? secret : undefined
+      )
+      if (verdict === 'ok' || verdict === 'open') {
+        socket.data.playerId = playerId
+        socket.data.gameId = gameId
+      }
+    }
+
+    // The listener stays SYNCHRONOUS: socket.io discards a returned promise,
+    // so an async body is an unhandled-rejection trap for anything a future
+    // edit awaits outside a try.
+    io.on('connection', socket => {
+      // Per-socket transport errors (reset mid-frame) end here, not the process.
+      socket.on('error', error => {
+        console.warn(`Socket ${socket.id} error`, error)
+      })
+
       // Register event handlers synchronously FIRST, so nothing is missed
       // while the async handshake verification below runs.
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
@@ -311,36 +348,9 @@ export default defineEventHandler(({ node }) => {
         pruneSpectatorOnDisconnect(io, redis, socket)
       })
 
-      // Optimistic bind for RECONNECTS: once a client has joined a room its
-      // handshake carries { playerId, secret, gameId }, so verifying here
-      // rebinds the socket before its buffered events flush — closing the
-      // reconnect gap that used to drop them as unbound — WITHOUT trusting an
-      // unproven id claim. The first connection (home page, no gameId) skips
-      // this and lets the verified `join` handler do the binding.
-      const { playerId, secret, gameId } = socket.handshake.auth ?? {}
-      if (typeof playerId === 'string' && playerId && typeof gameId === 'string' && gameId) {
-        try {
-          const secrets = await fetchSecrets(redis, gameId)
-          const verdict = verifyPlayerSecret(
-            secrets[playerId],
-            typeof secret === 'string' ? secret : undefined
-          )
-          if (verdict === 'ok' || verdict === 'open') {
-            socket.data.playerId = playerId
-            socket.data.gameId = gameId
-          }
-        } catch (error) {
-          console.error('Handshake secret check failed', error)
-        }
-      }
-    })
-
-    io.on('error', error => {
-      console.error('Error in socket server', error)
-    })
-
-    io.on('connect_error', err => {
-      console.error(`connect_error due to ${err.message}`)
+      bindReconnectIdentity(socket).catch(error => {
+        console.error('Handshake secret check failed', error)
+      })
     })
 
     globalThis.io = io // Persist the instance globally

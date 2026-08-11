@@ -6,6 +6,10 @@ import { claimGameOwnership, thisMachineId } from './game-ownership'
 
 const SOCKET_PATH = '/socket.io/'
 
+/** How long a non-socket.io upgrade may wait for another consumer before the
+ *  takeover ends it — engine.io's own destroyUpgradeTimeout beat. */
+const DESTROY_UPGRADE_DELAY_MS = 1000
+
 /** Claiming mints a Redis key from an unauthenticated query param, so the id
  *  must at least look like a room id — junk (or unbounded) values are treated
  *  as no gameId and never touch the lease space. */
@@ -98,16 +102,23 @@ export const registerGameRouting = ({
   // so a dev server's HMR websocket is never touched.
   httpServer.removeAllListeners('upgrade')
   httpServer.on('upgrade', (req, socket, head) => {
+    // FIRST, before any await gap: a raw Duplex with no 'error' listener
+    // turns an abrupt client reset (ECONNRESET during the ownership claim,
+    // or on the 409 write below) into a process-fatal 'error' emit.
+    socket.on('error', error => {
+      console.warn(`Upgrade socket error for ${req.url}: ${(error as Error).message}`)
+    })
+
     if (!req.url?.startsWith(SOCKET_PATH)) {
       // Mirror engine.io's own destroyUpgrade: give any other upgrade
-      // consumer a beat, then end the socket only if nothing answered it.
+      // consumer a beat, then end the socket only if nothing answered it —
+      // and drop the timer when the socket dies first, or every foreign
+      // upgrade retains req/head for the full beat.
       const raw = socket as Duplex & { bytesWritten?: number }
-      setTimeout(() => {
-        if (raw.writable && (raw.bytesWritten ?? 0) <= 0) {
-          raw.on('error', () => {})
-          raw.end()
-        }
-      }, 1000)
+      const timer = setTimeout(() => {
+        if (raw.writable && (raw.bytesWritten ?? 0) <= 0) raw.end()
+      }, DESTROY_UPGRADE_DELAY_MS)
+      raw.once('close', () => clearTimeout(timer))
       return
     }
 
@@ -122,6 +133,8 @@ export const registerGameRouting = ({
     claimGameOwnership(redis, gameId, self)
       .then(owner => {
         if (owner === self) return admit()
+        // The client vanished during the claim round-trip: nothing to answer.
+        if (!socket.writable) return
         // A non-101 response before the handshake: Fly's proxy sees the
         // header and replays the original upgrade request on the owner.
         socket.end(
