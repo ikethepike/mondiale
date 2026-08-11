@@ -229,9 +229,13 @@ export default defineEventHandler(({ node }) => {
     // abrupt client resets) surface on the ENGINE — the Server itself never
     // emits 'error', so without this seam an ECONNRESET walks up as an
     // uncaught exception and takes the whole process (and every room on it).
-    io.engine.on('connection_error', (error: { code?: number; message: string }) => {
-      console.warn(`engine connection_error ${error.code ?? ''}: ${error.message}`)
-    })
+    // The engine only exists once socket.io attached to a real http server;
+    // prerender's mock requests carry none.
+    if (io.engine) {
+      io.engine.on('connection_error', (error: { code?: number; message: string }) => {
+        console.warn(`engine connection_error ${error.code ?? ''}: ${error.message}`)
+      })
+    }
 
     // The multi-machine layer: shard rooms to their owning machine at the
     // front door, keep the leases warm, and hand rooms over cleanly when a

@@ -94,11 +94,31 @@ const readRss = (pid: number): Promise<number | undefined> =>
     })
   })
 
-/** Alive = the process exists and HTTP answers at all (any status — a dev
- *  server's odd replies still prove the process took the request). */
+/** A long-lived connection with real-client semantics (auto-reconnect): the
+ *  dev server can restart IN PLACE on an escaped rejection (same pid, HTTP
+ *  still answers), and a canary that cannot re-establish is what catches it.
+ *  A momentary drop that heals is a dev-proxy blip, not a dead server. */
+let canary: Socket | undefined
+
+const canaryHealthy = async (): Promise<boolean> => {
+  if (!canary) return true
+  for (let attempt = 0; attempt < 16; attempt++) {
+    if (canary.connected) return true
+    await sleep(500)
+  }
+  return false
+}
+
+/** Alive = the process exists, the canary is still connected, and HTTP
+ *  answers at all (any status — a dev server's odd replies still prove the
+ *  process took the request). */
 const probeServer = async (label: string): Promise<boolean> => {
   if (serverPid !== undefined && !pidAlive(serverPid)) {
     console.error(`✗ [${label}] server pid ${serverPid} is DEAD`)
+    return false
+  }
+  if (!(await canaryHealthy())) {
+    console.error(`✗ [${label}] canary cannot re-establish — the server restarted or died`)
     return false
   }
   try {
@@ -228,6 +248,18 @@ const rstMidGame = async (index: number): Promise<void> => {
 
 const crashMode = async (): Promise<number> => {
   console.log(`crash mode against ${baseUrl} (pid ${serverPid ?? 'unknown'})`)
+  canary = io(baseUrl, { transports: ['websocket'], reconnection: true, timeout: 10_000 })
+  const canaryUp = new Promise<boolean>(resolve => {
+    const timer = setTimeout(() => resolve(false), 10_000)
+    canary?.on('connect', () => {
+      clearTimeout(timer)
+      resolve(true)
+    })
+  })
+  if (!(await canaryUp)) {
+    console.error('✗ canary socket never connected')
+    return 1
+  }
   if (!(await probeServer('pre'))) return 1
 
   for (let round = 0; round < 5; round++) {
@@ -246,6 +278,7 @@ const crashMode = async (): Promise<number> => {
 
   await sleep(1500)
   if (!(await probeServer('final'))) return 1
+  canary?.disconnect()
   console.log('crash mode PASSED — server survived 50 handshake + 20 mid-game resets')
   return 0
 }

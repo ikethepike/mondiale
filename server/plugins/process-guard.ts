@@ -1,8 +1,9 @@
 /**
  * Log-and-continue backstop: one reset socket (or one bug in a fire-and-forget
- * chain) must never take down every room this process holds. In dev the same
- * escape restarts the whole Nuxt server mid-game ("Restarting Nuxt due to
- * error: read ECONNRESET"), wiping every in-memory timer.
+ * chain) must never take down every room this process holds. In production
+ * (no CLI wrapper) this plugin owns the whole error policy; in dev it guards
+ * the Nitro worker thread, while the Nuxt CLI's own restart-on-error machinery
+ * lives in the fork's main thread and stays as upstream recovery.
  *
  * A storm of uncaught exceptions means the process is wedged, not unlucky —
  * exit non-zero so Fly restarts it. The exit deliberately skips the drain
