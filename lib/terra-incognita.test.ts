@@ -5,12 +5,13 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
-import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import { countryLatLng, haversineKm, isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import {
   pickVanishDeck,
   terraAnswers,
   terraField,
   terraSeconds,
+  terraTheatre,
   terraVanishAt,
   terraVanishedBy,
   terraCollapseThreshold,
@@ -21,6 +22,7 @@ import {
   TERRA_OPENING_MS,
   TERRA_REACH,
   TERRA_TAIL_MS,
+  TERRA_THEATRE_KM,
   TERRA_VANISH_COUNT,
 } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
@@ -105,24 +107,63 @@ describe('TERRA_REACH', () => {
 })
 
 describe('pickVanishDeck', () => {
-  it('deals the difficulty`s full count wherever the board can seat it', () => {
-    // World plus the three continents wide enough to hold a full deck of
-    // mutually non-adjacent countries.
+  it('deals the full count on the boards wide enough to host the mode', () => {
+    // World and Europe seat a cropped deck at every difficulty. The crop is
+    // what limits the rest: inside one ~1800km circle nearly every candidate
+    // borders another, so a continental board with a thin or strung-out field
+    // deals short, or yields to another kind entirely.
     for (const difficulty of DIFFICULTIES) {
-      for (const variant of ['world', 'europe', 'africa', 'asia'] as GameVariant[]) {
+      for (const variant of ['world', 'europe'] as GameVariant[]) {
         const deck = pickVanishDeck(rules(difficulty, variant), seeded(`${difficulty}-${variant}`))
         expect(deck, `${difficulty}/${variant}`).toHaveLength(TERRA_VANISH_COUNT[difficulty])
       }
     }
   })
 
-  it('deals short rather than not at all where the board is a land chain', () => {
-    // North America's twelve labelable countries form one continuous chain, so
-    // the adjacency guard caps it near five however deep the reach goes.
+  it('keeps every loss inside one theatre — the round is played cropped', () => {
+    // The whole point of the crop: a deck spread across continents cannot be
+    // framed tightly, and at world zoom an absence is invisible however well
+    // the player knows the map.
+    for (let seed = 0; seed < 40; seed++) {
+      for (const difficulty of DIFFICULTIES) {
+        const deck = pickVanishDeck(rules(difficulty), seeded(`crop-${difficulty}-${seed}`))!
+        for (const a of deck) {
+          for (const b of deck) {
+            const from = countryLatLng(a)
+            const to = countryLatLng(b)
+            if (!from || !to) continue
+            // Both sit within the radius of one shared anchor, so no pair can
+            // be further apart than the theatre's own diameter.
+            expect(haversineKm(from, to), `${a}/${b}`).toBeLessThanOrEqual(2 * TERRA_THEATRE_KM)
+          }
+        }
+      }
+    }
+  })
+
+  it('always deals a full deck on the world board, whatever the seed', () => {
+    // A capacity-blind anchor would land in the empty half of the map and come
+    // up short; the deal filters anchors by what their region can actually seat.
+    for (let seed = 0; seed < 60; seed++) {
+      for (const difficulty of DIFFICULTIES) {
+        expect(
+          pickVanishDeck(rules(difficulty), seeded(`anchor-${difficulty}-${seed}`)),
+          `${difficulty}/${seed}`
+        ).toHaveLength(TERRA_VANISH_COUNT[difficulty])
+      }
+    }
+  })
+
+  it('never deals below the floor when it deals at all', () => {
     for (const difficulty of DIFFICULTIES) {
-      const deck = pickVanishDeck(rules(difficulty, 'north-america'), seeded(`na-${difficulty}`))!
-      expect(deck.length, difficulty).toBeGreaterThanOrEqual(TERRA_MINIMUM_DECK)
-      expect(deck.length, difficulty).toBeLessThanOrEqual(TERRA_VANISH_COUNT[difficulty])
+      for (const variant of VARIANTS) {
+        const deck = pickVanishDeck(
+          rules(difficulty, variant),
+          seeded(`floor-${difficulty}-${variant}`)
+        )
+        if (!deck) continue
+        expect(deck.length, `${difficulty}/${variant}`).toBeGreaterThanOrEqual(TERRA_MINIMUM_DECK)
+      }
     }
   })
 
@@ -179,16 +220,45 @@ describe('pickVanishDeck', () => {
     }
   })
 
-  it('gives up below the floor, so the mix buys another kind', () => {
-    // Oceania's board is islands almost to a country — there is no wash for
-    // anything to melt into, and a round with nothing to fall behind is worse
-    // than no round at all.
+  it('yields rather than dealing a deck the geography cannot hold', () => {
+    // Oceania is islands almost to a country — nothing for anything to melt
+    // into — and the Southern Cone holds Uruguay and little else that
+    // qualifies. Neither can host the mode at any difficulty, so the deal
+    // returns undefined and the mix buys another kind.
     for (const difficulty of DIFFICULTIES) {
-      expect(
-        pickVanishDeck(rules(difficulty, 'oceania' as GameVariant)),
-        difficulty
-      ).toBeUndefined()
+      for (const variant of ['south-america', 'oceania'] as GameVariant[]) {
+        expect(
+          pickVanishDeck(rules(difficulty, variant), seeded(`thin-${difficulty}-${variant}`)),
+          `${difficulty}/${variant}`
+        ).toBeUndefined()
+      }
     }
+  })
+})
+
+describe('terraTheatre', () => {
+  it('contains every loss, so nothing vanishes off-frame', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const deck = pickVanishDeck(rules(), seeded(`theatre-${seed}`))!
+      const theatre = new Set(terraTheatre({ vanishings: deck }, rules()))
+      for (const isoCode of deck) expect(theatre.has(isoCode), isoCode).toBe(true)
+    }
+  })
+
+  it('is wider than the deck, so the frame`s edges are not the answers', () => {
+    // Framing the losses alone would draw a box whose every edge is a country
+    // about to disappear — a free answer handed over by the camera.
+    for (let seed = 0; seed < 30; seed++) {
+      const deck = pickVanishDeck(rules(), seeded(`wide-${seed}`))!
+      const theatre = terraTheatre({ vanishings: deck }, rules())
+      expect(theatre.length, `seed ${seed}`).toBeGreaterThan(deck.length)
+    }
+  })
+
+  it('never frames past a continental board', () => {
+    const deck = pickVanishDeck(rules('normal', 'europe'), seeded('eu'))!
+    const theatre = terraTheatre({ vanishings: deck }, rules('normal', 'europe'))
+    expect(theatre).not.toContain('KE')
   })
 })
 

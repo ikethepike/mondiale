@@ -111,10 +111,26 @@
         the erasure: the sea is not a neighbour, so the shore keeps its edge
         and only the political lines go.
       -->
+          <defs>
+            <!-- The country and everything it borders. Clipping the erasure to
+                 this keeps it on LAND: a shared border's ink lies inside the
+                 union from both sides and goes completely, while a coastline is
+                 the union's own outer edge, so the paint stops at the water and
+                 the shore keeps its line. -->
+            <clipPath
+              v-for="shape in erasedShapes"
+              :id="`atlas-land-${shape.code}`"
+              :key="shape.code"
+            >
+              <path :d="shape.d" />
+              <path v-for="(land, index) in shape.neighbours" :key="index" :d="land" />
+            </clipPath>
+          </defs>
           <path
             v-for="shape in erasedShapes"
             :key="`erased-${shape.code}`"
             class="atlas-erased"
+            :clip-path="`url(#atlas-land-${shape.code})`"
             :d="shape.d"
           />
           <!-- The re-ink: the restored country draws its own outline back on. -->
@@ -231,6 +247,7 @@ import {
 } from '~~/data/map.gen'
 import { largestRing, poleOfInaccessibility } from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
+import { BORDERS } from '~~/data/borders.gen'
 import {
   WORLD_BOX,
   countryLatLng,
@@ -469,7 +486,23 @@ const atlasShapes = (codes: ISOCountryCode[]) =>
     return d ? [{ code, d }] : []
   })
 
-const erasedShapes = computed(() => atlasShapes(props.vanished))
+/**
+ * A vanished country plus the outlines of its land neighbours, which together
+ * clip its erasure. Only the LAND-facing lines are meant to dissolve: the
+ * clip's own outer edge is the country's coastline, so the over-paint stops
+ * dead at the water instead of bleeding a land-coloured fringe into it.
+ */
+const erasedShapes = computed(() =>
+  props.vanished.flatMap(code => {
+    const d = MAP_PATHS[code as MapCode]
+    if (!d) return []
+    const neighbours = (BORDERS[code] ?? [])
+      .map(neighbour => MAP_PATHS[neighbour as MapCode])
+      .filter((path): path is string => !!path)
+    return [{ code, d, neighbours }]
+  })
+)
+
 const restoringShapes = computed(() => atlasShapes(props.restoring))
 const unselectableSet = computed(() => new Set<string>(props.unselectable))
 
@@ -2411,20 +2444,62 @@ path[id] {
 // --- The failing atlas ---------------------------------------------------------
 //
 // A vanished country is over-painted in flat land: fill and stroke both the
-// opaque land colour, so its own outline AND the halves its neighbours drew
-// disappear under one shape. The stroke runs a shade wider than the 1px
-// country hairline it has to cover, or anti-aliasing leaves a ghost of the
-// border exactly where the player is being asked to notice nothing.
+// opaque land colour, so the border ink disappears from BOTH sides — a shared
+// line is drawn twice, once by each country, and erasing only one side leaves
+// the hole neatly outlined by its neighbours.
+//
+// The paint is clipped to the country plus its land neighbours (see the
+// clipPath above), which is what confines the dissolve to the INTERNAL lines.
+// A coastline is the clip's own outer edge, so the water side of the stroke is
+// never painted: the shore keeps its line and no land-coloured fringe creeps
+// into the sea. The land silhouette survives; only the country inside it goes.
+//
+// The stroke runs wider than the 1px hairline it covers because anti-aliasing
+// would otherwise leave a ghost of the border exactly where the player is being
+// asked to notice nothing. Widening is free on the water side now that the clip
+// stops it there.
 .atlas-erased {
   pointer-events: none;
   fill: var(--map-land-solid);
   stroke: var(--map-land-solid);
   stroke-linejoin: round;
-  stroke-width: calc(1.6px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
-  // The melt, not a blink: the erasure fades IN over the country, so the
-  // shape slips away while the player is looking somewhere else. That quiet
-  // is the entire mechanic — a country that pops out announces itself.
-  animation: fade-in var(--motion-slow) var(--ease-smooth);
+  stroke-width: calc(2.2px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+  // The melt, not a blink: the erasure fades IN over the country, so the shape
+  // slips away while the player is looking somewhere else. That quiet is the
+  // entire mechanic — a country that pops out announces itself, which turns
+  // "where was that?" into "did something just flash?".
+  //
+  // Its own duration rather than --motion-slow: every other token here paces a
+  // UI transition the eye is meant to follow, and this one is paced to be
+  // ALMOST missed. Roughly a third of the tightest cadence (5s on hard), so the
+  // dissolve is unhurried but always finished well before the next loss starts.
+  --atlas-melt: 1.8s;
+  animation: atlas-melt var(--atlas-melt) var(--ease-smooth) both;
+}
+
+// The blur is what makes it a melt rather than a cross-fade: mid-dissolve the
+// erasure's edges are soft, so the border does not sit there at half strength
+// looking like a rendering artifact — it goes out of focus and is gone. It
+// resolves to 0 so the settled state is pixel-exact land with no halo.
+@keyframes atlas-melt {
+  from {
+    opacity: 0;
+    filter: blur(calc(2px * var(--stroke-zoom, 1)));
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+// Reduced motion collapses --motion-slow globally, but this duration is local,
+// so it needs its own answer: no dissolve at all. The country is simply gone,
+// which is the honest degradation — the information is identical.
+@media (prefers-reduced-motion: reduce) {
+  .atlas-erased {
+    --atlas-melt: 0.01s;
+  }
 }
 
 // The re-ink. Drawn on top of the (still erased-looking) map for one beat, so

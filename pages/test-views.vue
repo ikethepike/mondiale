@@ -158,7 +158,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { blitzScore } from '~~/lib/scoring'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
-import { terraSeconds, TERRA_CADENCE_MS, TERRA_COLLAPSE_THRESHOLD } from '~~/lib/terra-incognita'
+import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -597,27 +597,29 @@ const settledStarChartRound = (): Round => {
 }
 
 /**
- * A settled Terra Incognita, for the reveal that has to teach placement: eight
- * countries erased, three of them still missing at the buzzer, and one name on
+ * A settled Terra Incognita, for the reveal that has to teach placement: one
+ * neighbourhood erased, two of it still missing at the buzzer, and one name on
  * your sheet that was never gone at all.
  */
 const settledTerraRound = (): Round => {
-  const vanishings: ISOCountryCode[] = ['UY', 'MW', 'AL', 'TM', 'LA', 'BJ', 'MD', 'BT']
+  // The Balkans into the Baltic — a real cropped theatre, all mutually
+  // non-adjacent.
+  const vanishings: ISOCountryCode[] = ['AL', 'MD', 'SK', 'LT', 'BA']
   const cadenceMs = TERRA_CADENCE_MS.normal
   const challenge = {
     _type: 'terra-incognita-challenge',
     vanishings,
     cadenceMs,
-    collapseThreshold: TERRA_COLLAPSE_THRESHOLD.normal,
+    collapseThreshold: terraCollapseThreshold(vanishings.length, 'normal'),
     durationSeconds: terraSeconds(vanishings.length, cadenceMs),
     maximumPoints: MAXIMUM_POINTS,
   }
   const submissions: { [playerId: string]: ISOCountryCode[] } = {
-    // Five of eight, Bhutan and Moldova missed by the whole table, and Peru
-    // named while it was still sitting there in plain sight.
-    [ME]: ['UY', 'AL', 'TM', 'LA', 'BJ', 'PE'],
-    [RIVAL]: ['UY', 'MW', 'AL'],
-    [THIRD]: ['LA'],
+    // Three of five; Moldova missed by the whole table, and Austria named
+    // while it was still sitting there in plain sight.
+    [ME]: ['AL', 'SK', 'BA', 'AT'],
+    [RIVAL]: ['AL', 'LT', 'BA'],
+    [THIRD]: ['AL'],
   }
 
   return {
@@ -1421,10 +1423,9 @@ const scenarios: Scenario[] = [
     build: () => mockGame('group-scores', [settledStarChartRound()]),
   },
   {
-    // The atlas failing across five continents, so the erasure reads at one
-    // world framing: Uruguay, Malawi, Albania, Turkmenistan, Laos, Benin,
-    // Moldova, Bhutan — none of them touching, all of them landlocked or
-    // neighbour-locked enough to melt cleanly into the wash.
+    // Central & eastern Europe failing, which is what the mode actually deals:
+    // one neighbourhood, cropped to (terraTheatre drives the camera), none of
+    // the five touching so no two blanks can merge into one.
     id: 'terra-incognita',
     label: 'Terra Incognita (the atlas fails)',
     component: ViewTerraIncognita,
@@ -1432,10 +1433,10 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'terra-incognita-challenge',
-          vanishings: ['UY', 'MW', 'AL', 'TM', 'LA', 'BJ', 'MD', 'BT'],
+          vanishings: ['AL', 'MD', 'SK', 'LT', 'BA'],
           cadenceMs: TERRA_CADENCE_MS.normal,
-          collapseThreshold: TERRA_COLLAPSE_THRESHOLD.normal,
-          durationSeconds: terraSeconds(8, TERRA_CADENCE_MS.normal),
+          collapseThreshold: terraCollapseThreshold(5, 'normal'),
+          durationSeconds: terraSeconds(5, TERRA_CADENCE_MS.normal),
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

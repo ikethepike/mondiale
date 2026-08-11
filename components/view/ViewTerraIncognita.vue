@@ -77,7 +77,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { MOTION } from '~~/lib/motion'
-import { terraVanishedBy } from '~~/lib/terra-incognita'
+import { terraTheatre, terraVanishedBy } from '~~/lib/terra-incognita'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -196,8 +196,47 @@ watchEffect(() => {
   gameStore.map.countryLabels = revealed.value
     ? Object.fromEntries(missed.value.map(isoCode => [isoCode, countryName(isoCode)]))
     : undefined
-  gameStore.map.focus = revealed.value ? missed.value : []
 })
+
+/**
+ * The camera crops to the round's region and STAYS there.
+ *
+ * Two reasons this is a watch on the theatre rather than part of the repaint
+ * above. A country vanishing must not move the camera — the pan would be a
+ * free answer, pointing at the very thing the player is meant to notice for
+ * themselves. And `map.focus` re-frames on identity, so assigning it every
+ * repaint (even the same countries, even an empty list) re-aimed the rig once
+ * a second all round.
+ *
+ * The reveal is the one deliberate move: it pulls in to the losses that were
+ * never named, which is the beat where pointing at them is the entire idea.
+ */
+const theatre = computed(() =>
+  challenge.value && gameStore.game ? terraTheatre(challenge.value, gameStore.game) : []
+)
+
+// Deliberately NOT watching `missed`: it changes on every restore, and each
+// change would hand `map.focus` a fresh array identity and re-aim the rig
+// mid-round. Read inside the callback instead, where it is settled anyway —
+// the reveal only runs once the seat's answer is banked.
+// A region is already a wide subject, so it takes the default 35% pad badly:
+// padded out and then berthed up by the console's band, the shot grew past the
+// world and clamped straight back to a whole-planet view — the one framing this
+// mode cannot be played at. The subject IS the frame here, the same reason the
+// water modes retune it.
+gameStore.map.framePad = { scale: 0.08, floor: 20 }
+
+watch(
+  [theatre, revealed],
+  ([region, isRevealed]) => {
+    if (isRevealed) {
+      gameStore.map.focus = missed.value.length ? [...missed.value] : [...region]
+      return
+    }
+    if (region.length) gameStore.map.focus = [...region]
+  },
+  { immediate: true }
+)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
