@@ -24,11 +24,16 @@
 
     <div class="arc">
       <span
-        v-for="(seat, index) in seats"
+        v-for="(seat, index) in drawnSeats"
         :key="index"
         class="seat"
         :class="{ lit: !!seat.color }"
-        :style="{ left: `${seat.x}%`, top: `${seat.y}%`, '--seat-color': seat.color ?? '' }"
+        :style="{
+          left: `${seat.x}%`,
+          top: `${seat.y}%`,
+          '--seat-color': seat.color ?? '',
+          '--seat-step': `${(seat.step ?? 0) * 12}ms`,
+        }"
       />
 
       <!-- One drop zone per asked bench, sitting over its own arc of seats. -->
@@ -49,7 +54,46 @@
           <span v-else class="zone-swatch" :style="{ background: element.color }" />
         </template>
       </Sortable>
+
+      <!-- The rest of the house, arriving once the player's own are placed:
+           the chamber finishes itself in front of them. -->
+      <TransitionGroup name="rest">
+        <span
+          v-for="(anchor, index) in restOfHouse"
+          :key="anchor.name"
+          class="rest-badge"
+          :style="{
+            left: `${anchor.x}%`,
+            top: `${anchor.y}%`,
+            '--rest-delay': `${400 + index * 140}ms`,
+            '--bloc-color': drawn[anchor.name],
+          }"
+        >
+          <img v-if="anchor.bench?.logo" class="rest-logo" :src="anchor.bench.logo" alt="" />
+          <span v-else class="rest-name">{{ anchor.name }}</span>
+        </span>
+      </TransitionGroup>
     </div>
+
+    <!-- The reveal IS the lesson: once the arc is answered, every bloc names
+         itself with its share, left to right, so a player reads the whole
+         chamber rather than only the four they were asked for. -->
+    <TransitionGroup v-if="allPlaced" tag="ol" name="bloc" class="roll">
+      <li
+        v-for="(bench, index) in revealed"
+        :key="bench.name"
+        class="bloc"
+        :style="{ '--bloc-delay': `${index * 70}ms`, '--bloc-color': bench.color }"
+      >
+        <img v-if="bench.logo" class="bloc-logo" :src="bench.logo" alt="" />
+        <span v-else class="bloc-swatch" />
+        <span class="bloc-name">{{ bench.name }}</span>
+        <span class="bloc-seats"
+          ><strong>{{ bench.seats }}</strong> · {{ Math.round(bench.share * 100) }}%</span
+        >
+        <span v-if="bench.grouping" class="bloc-family">{{ bench.grouping }}</span>
+      </li>
+    </TransitionGroup>
 
     <footer class="shell-footer">
       <p v-if="allPlaced" class="done">{{ correctCount }} of {{ asked.length }} placed</p>
@@ -158,13 +202,25 @@ const hintLevel = computed(() => {
  *  apart); this is the separated palette, so the arc shows the boundary. */
 const drawn = computed(() => benchColors(deal.value))
 
+/** An empty seat between blocs, so two adjacent parties never read as one
+ *  block — the same device a printed hemicycle uses. */
+const BLOC_GAP_SEATS = 1
+
 /** Seats in reading order, each carrying its bench's colour once earned. */
 const seats = computed(() => {
   const dots = seatDots(deal.value)
-  const positions = hemicycleSeats(dots.reduce((total, bench) => total + bench.dots, 0))
-  const painted: { x: number; y: number; color?: string }[] = []
+  const gaps = Math.max(0, dots.length - 1) * BLOC_GAP_SEATS
+  const positions = hemicycleSeats(dots.reduce((total, bench) => total + bench.dots, 0) + gaps)
+  const painted: {
+    x: number
+    y: number
+    color?: string
+    spacer?: boolean
+    /** Position within its own bloc — the stagger for the fill sweep. */
+    step?: number
+  }[] = []
   let cursor = 0
-  for (const bench of dots) {
+  for (const [index, bench] of dots.entries()) {
     const entry = deal.value.benches.find(candidate => candidate.name === bench.name)
     // Unasked benches are context and paint from the start; an asked one stays
     // blank until it is placed, or until the colour rung unlocks.
@@ -174,32 +230,73 @@ const seats = computed(() => {
       painted.push({
         x: positions[cursor]!.x,
         y: positions[cursor]!.y,
+        step: seat,
         ...(show && drawn.value[bench.name] ? { color: drawn.value[bench.name] } : {}),
       })
+    }
+    // The gap belongs BETWEEN blocs, never after the last one.
+    if (index < dots.length - 1) {
+      for (let gap = 0; gap < BLOC_GAP_SEATS && cursor < positions.length; gap += 1, cursor += 1) {
+        painted.push({ x: positions[cursor]!.x, y: positions[cursor]!.y, spacer: true })
+      }
     }
   }
   return painted
 })
 
-/** A drop zone centred over each asked bench's own run of seats. */
-const zones = computed(() => {
+/**
+ * The seats actually drawn — spacers hold a slot in the arc but are never
+ * rendered.
+ *
+ * Each dot carries its position WITHIN its own bloc, which is what lets a
+ * correct drop sweep across its benches one seat at a time rather than
+ * flooding them all at once: the colour arrives the way a result comes in.
+ */
+const drawnSeats = computed(() => seats.value.filter(seat => !seat.spacer))
+
+/**
+ * Where each bench sits on the arc — the centre of its own run of seats.
+ *
+ * Asked benches use it as a drop zone; the rest use it as the spot their badge
+ * fades into once the round is answered, so the chamber completes itself in
+ * front of the player rather than only in a list underneath.
+ */
+const anchors = computed(() => {
   const dots = seatDots(deal.value)
-  const positions = hemicycleSeats(dots.reduce((total, bench) => total + bench.dots, 0))
-  const out: { name: string; x: number; y: number }[] = []
+  const gaps = Math.max(0, dots.length - 1) * BLOC_GAP_SEATS
+  const positions = hemicycleSeats(dots.reduce((total, bench) => total + bench.dots, 0) + gaps)
+  const out: { name: string; x: number; y: number; asked: boolean }[] = []
   let cursor = 0
-  for (const bench of dots) {
+  for (const [index, bench] of dots.entries()) {
     const entry = deal.value.benches.find(candidate => candidate.name === bench.name)
     const run = positions.slice(cursor, cursor + bench.dots)
-    cursor += bench.dots
-    if (!entry?.asked || !run.length) continue
+    // Advance past this bloc AND the gap that follows it, so the next bloc's
+    // anchor lands on its own seats rather than drifting left.
+    cursor += bench.dots + (index < dots.length - 1 ? BLOC_GAP_SEATS : 0)
+    if (!entry || !run.length) continue
     out.push({
       name: bench.name,
+      asked: entry.asked,
       x: run.reduce((sum, seat) => sum + seat.x, 0) / run.length,
       y: run.reduce((sum, seat) => sum + seat.y, 0) / run.length,
     })
   }
   return out
 })
+
+const zones = computed(() => anchors.value.filter(anchor => anchor.asked))
+
+/** The benches nobody was asked for, revealed once the arc is answered. */
+const restOfHouse = computed(() =>
+  allPlaced.value
+    ? anchors.value
+        .filter(anchor => !anchor.asked)
+        .map(anchor => ({
+          ...anchor,
+          bench: deal.value.benches.find(bench => bench.name === anchor.name),
+        }))
+    : []
+)
 
 const drop = (zone: string, event: SortableEvent) => {
   const name = (event.item as HTMLElement).dataset.name
@@ -239,6 +336,17 @@ const submit = () => {
   })
 }
 
+/**
+ * Every bloc, in seating order, once the round is answered — the reveal shows
+ * the WHOLE chamber, not just the benches the player was asked to place, so
+ * the parties nobody had to name are still learned.
+ */
+const revealed = computed(() =>
+  allPlaced.value
+    ? deal.value.benches.map(bench => ({ ...bench, color: drawn.value[bench.name] }))
+    : []
+)
+
 /** The house by name where we have one, else the country's parliament. */
 const heading = computed(() => {
   if (!challenge.value) return ''
@@ -268,6 +376,99 @@ const prompt = computed(() =>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+
+/* The unasked blocs, fading onto their own seats after the player's four. */
+.rest-badge {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  padding: 0.3rem 0.5rem;
+  border-radius: $cardRadius;
+  background: #{milk(0.9)};
+  border-bottom: 3px solid var(--bloc-color, #{ink(0.2)});
+  pointer-events: none;
+}
+
+.rest-enter-active {
+  animation: chip-in var(--motion-slow) var(--ease-out-expressive) backwards;
+  animation-delay: var(--rest-delay, 0ms);
+}
+
+.rest-logo {
+  width: 3rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.rest-name {
+  max-width: 6rem;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* The reveal roll: every bloc, left to right, arriving in seating order. */
+.roll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  width: min(52rem, 94vw);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  pointer-events: auto;
+}
+
+.bloc {
+  @include caption-surface($cardRadius);
+
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'logo name' 'logo seats' 'logo family';
+  align-items: center;
+  gap: 0 0.6rem;
+  min-width: 11rem;
+  padding: 0.5rem 0.75rem;
+  // The bloc's own colour, as the edge that ties the row to its seats.
+  border-left: 4px solid var(--bloc-color, #{ink(0.2)});
+}
+
+.bloc-enter-active {
+  animation: chip-in var(--motion-slow) var(--ease-out-expressive) backwards;
+  animation-delay: var(--bloc-delay, 0ms);
+}
+
+.bloc-logo,
+.bloc-swatch {
+  grid-area: logo;
+  width: 3rem;
+  height: 2.25rem;
+  object-fit: contain;
+}
+
+.bloc-swatch {
+  border-radius: 0.25rem;
+  background: var(--bloc-color, #{ink(0.2)});
+}
+
+.bloc-name {
+  grid-area: name;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.bloc-seats {
+  grid-area: seats;
+  font-variant-numeric: tabular-nums;
+}
+
+.bloc-family {
+  grid-area: family;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
 
 .chamber-facts {
   @include caption-surface($cardRadius);
@@ -305,11 +506,34 @@ const prompt = computed(() =>
   border-radius: 50%;
   background: var(--seat-color, transparent);
   border: 1px solid #{ink(0.25)};
-  transform: translate(-50%, -50%);
-  transition: background var(--motion-slow) var(--ease-out);
+  transform: translate(-50%, -50%) scale(1);
+  // Colour arrives on the clock (the hint ladder) or on a correct drop, so it
+  // eases in rather than switching; the scale is what makes a bloc read as
+  // LANDING on its benches instead of the row simply changing colour.
+  // Staggered by the seat's place in its bloc, so a correct drop SWEEPS
+  // across its benches rather than flooding them at once.
+  transition:
+    background var(--motion-base) var(--ease-out) var(--seat-step, 0ms),
+    border-color var(--motion-base) var(--ease-out) var(--seat-step, 0ms),
+    transform var(--motion-base) var(--ease-out-expressive) var(--seat-step, 0ms);
 
   &.lit {
     border-color: transparent;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat {
+    transition: background var(--motion-base) linear;
+
+    &.lit {
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .bloc-enter-active {
+    animation: fade-in var(--motion-base) linear backwards;
   }
 }
 
