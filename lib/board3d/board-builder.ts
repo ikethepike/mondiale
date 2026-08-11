@@ -797,6 +797,12 @@ export const markerPartsFor = (
     case 'isoCode':
       return isoCompassRose(s)
     case 'government.leader':
+    case 'government.parties':
+      // One lectern for both political gates: a party is what someone stands
+      // at a lectern to speak for, and the set already pairs errata with the
+      // ISO signpost on the same reasoning. The clay tile top is what tells
+      // them apart — a second boxy plinth would read as a near-duplicate at
+      // board scale without adding meaning.
       return leaderLectern(s)
     case 'flag':
       return flagWaving(s)

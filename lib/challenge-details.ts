@@ -311,6 +311,12 @@ const CHALLENGE_DETAILS: {
     topic: 'general knowledge',
     phrasing: 'Which country is led by {leader}?',
   },
+  // Its tenants (Rulers, Logo Politics) each phrase their own question; this
+  // is the fallback the find gate uses when the tile deals a plain map hunt.
+  'government.parties': {
+    topic: 'general knowledge',
+    phrasing: 'Where on the map is {countryName}?',
+  },
   currency: {
     topic: 'economics',
     phrasing: 'Which country spends the {currency}?',

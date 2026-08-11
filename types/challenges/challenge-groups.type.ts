@@ -32,6 +32,11 @@ export const CHALLENGE_GROUPS = {
   flags: { label: 'Flags & shapes' },
   culture: { label: 'Culture & places' },
   disputed: { label: 'Disputed places' },
+  // Parties, parliaments and who governs. Visible on purpose: politics is the
+  // one topic a table may want switched off outright, which a hidden group
+  // could never offer. It owns no stat accessors — its rounds deal from the
+  // party roster and the chambers, not the ranking pool.
+  politics: { label: 'Politics & power' },
   trends: { label: 'Trends & history' },
   empires: { label: 'Empires & colonies' },
   economy: { label: 'Economy & work', hidden: true },

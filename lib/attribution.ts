@@ -613,6 +613,13 @@ export const INDIVIDUAL_STAT_ORIGINS: Record<IndividualChallengeAccessorId, Data
     dataset: 'Chiefs of State and Cabinet Members',
     fallback: ['wikidata-items'],
   },
+  // The Factbook names the roster; Wikidata supplies the ideology, colour and
+  // logo the gates actually show.
+  'government.parties': {
+    source: 'cia-factbook',
+    dataset: 'Government › Political parties',
+    fallback: ['wikidata-items', 'commons-media'],
+  },
   currency: { source: 'countries-list-package', dataset: 'ISO 4217 code per country' },
   landmarks: { source: 'wikidata-items', fallback: ['commons-media'] },
   // Chronicle's cards are the curated timeline library; the tile itself only

@@ -227,6 +227,12 @@ export const individualChallengeAccessors = [
   'isoCode',
   'capital.name',
   'government.leader',
+  // The parties themselves, as distinct from the person leading one. Tenants:
+  // Rulers (spot the party that is NOT in government) and Logo Politics (place
+  // a party by its logo). It shares the leader gate's lectern on purpose —
+  // both are the same political register, the way `errata` shares the ISO
+  // gate's signpost — and the clay top is what tells them apart.
+  'government.parties',
   'currency',
   'landmarks',
   'errata',

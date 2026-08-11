@@ -24,6 +24,14 @@ export const TILE_TOP_TINTS: Record<IndividualChallengeAccessorId, string> = {
   isoCode: '#a4c4cf', // softBlue wash
   'capital.name': '#f7d6b6', // warmSand wash
   'government.leader': '#b6bdc9', // darkBlue wash
+  // Clay. The parties gate SHARES the leader gate's lectern — one political
+  // register, the way errata shares the ISO signpost — so the top carries the
+  // whole distinction and had to be picked for distance rather than theme.
+  // Against the leader wash it measures ΔE 35.1, far wider than the pair doing
+  // the same job today (errata vs isoCode, 20.6); its tightest neighbour
+  // anywhere is flag at 15.4, and flag shares no silhouette with it. The
+  // obvious teal was measured first and rejected — 6.3 from landmarks.
+  'government.parties': '#c98f7a',
   currency: '#d9a675', // deeper sand — gold at board scale
   landmarks: '#90bcb5', // softMint
   // The only near-neutral top on the board — foxed paper, so the misprint gate
