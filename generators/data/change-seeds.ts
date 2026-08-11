@@ -97,15 +97,29 @@ const EARTHSHOTS = (path: string) => `https://eros.usgs.gov/sites/eros.usgs.gov/
 
 /**
  * Countries searched across both troves that yielded NOTHING usable, so the
- * ground is not re-covered: Sweden (EO holds two single-frame scenics — Kiruna
- * 2016, the Siljan Ring 2020 — and Earthshots has no Nordic story but
- * Svalbard), Poland, France, Thailand, and Japan (Isahaya Bay publishes only
- * `-label` frames). South Africa's Theewaterskloof pair is real and
- * co-registered but is a WIDE regional view in which the drought-hit reservoir
- * is a small shape and a seasonal green-to-brown shift dominates the frame —
- * the same flaw that rules out Batagaika's crater. Kiruna's relocating town is
- * the best unclaimed story going; nobody has published it as a pair, so it
- * would have to be built from raw Landsat scenes.
+ * ground is not re-covered: Sweden, Poland, France, Thailand, and Japan
+ * (Isahaya Bay publishes only `-label` frames). South Africa's
+ * Theewaterskloof pair is real and co-registered but is a WIDE regional view
+ * in which the drought-hit reservoir is a small shape and a seasonal
+ * green-to-brown shift dominates the frame — the same flaw that rules out
+ * Batagaika's crater.
+ *
+ * SWEDEN / KIRUNA, in detail, because it looks like the perfect story and is
+ * not. A town of 23,000 is being physically moved because the mine undermined
+ * it. No one has published it as a pair: EO holds one 2016 frame, Earthshots
+ * has no Nordic story but Svalbard. Building one was tried. NASA's GIBS
+ * snapshot API does serve Kiruna with no auth at ~30 m —
+ *   wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot
+ *     &LAYERS=HLS_S30_Nadir_BRDF_Adjusted_Reflectance&CRS=EPSG:4326
+ *     &TIME=<date>&BBOX=<south,west,north,east>&FORMAT=image/jpeg
+ * — but the HLS layers only reach back to 2013 (the WELD annual layer is
+ * blank this far north, and the Landsat STAC assets that would reach 1984 are
+ * all login-walled), so there is no decades baseline to be had. Worse, at
+ * 67.85°N nearly every date is cloud-locked: a ~45-date sweep produced no two
+ * frames that were both snow-free AND cloud-free AND covering the town. The
+ * seasons alone sink it — a spring frame against a summer one crossfades as
+ * winter-into-summer with the mine invisible underneath. Revisit only if a
+ * curated pair is published, or with a source reaching the 1980s.
  */
 const EARTHSHOTS_CREDIT = {
   credit: 'USGS EROS Center',
@@ -463,6 +477,26 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     credit: EARTHSHOTS_CREDIT,
   },
   // --- North America --------------------------------------------------------
+  // NOTE: Yellowstone's 1988 megafire is the most dramatic burn scar either
+  // trove holds, but its frames are 1987 and 1988 — thirteen months, a single
+  // fire season. This deck is decades-scale drift, and by 2023 the burn has
+  // largely grown back, so neither pairing works. Same ruling as the Bangkok
+  // flood: a disaster and its aftermath is a different round.
+  {
+    name: 'the suburbs that ate the high desert',
+    title: 'The Antelope Valley',
+    countries: ['US'],
+    kind: 'urban',
+    coordinates: { lat: 34.66, lng: -118.15 },
+    startYear: 1980,
+    beforeYear: 1988,
+    afterYear: 2023,
+    description:
+      'Cheap land an hour over the mountains from a coastal megacity, stamped with cul-de-sacs and driveways until the tract housing ran up against a dry lakebed — commuter suburbs poured across high desert that had nothing else on it.',
+    beforeUrl: EARTHSHOTS('2020-12/1_6-9-1988_Intro.png'),
+    afterUrl: EARTHSHOTS('2023-06/6-26-2023_Intro.png'),
+    credit: EARTHSHOTS_CREDIT,
+  },
   {
     name: 'the retreating tidewater glacier',
     title: 'Columbia Glacier',
