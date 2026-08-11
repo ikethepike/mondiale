@@ -31,6 +31,7 @@
     "generate:migration": "bun run generators/vendors/undesa/create-migration.ts",
     "generate:treaties": "bun run generators/vendors/untc/create-treaties.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
+    "generate:parties": "bun run generators/create-parties-file.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",
     "generate:anthems": "bun run generators/create-anthems-file.ts",
     "generate:anthem-lyrics": "bun run generators/create-anthem-lyrics-file.ts",

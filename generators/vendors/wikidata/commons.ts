@@ -16,10 +16,20 @@ export const WIKIDATA_USER_AGENT =
 
 export const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+/**
+ * How long a single request may hang before it counts as a failure and the
+ * backoff takes over. Without this a socket that opens and then goes quiet
+ * blocks forever: a long generator run was observed stalled at 0% CPU with 72
+ * ESTABLISHED connections and no bytes moving, which no amount of retry logic
+ * can rescue because the await never returns.
+ */
+const REQUEST_TIMEOUT_MS = 30_000
+
 /** JSON fetch with Retry-After-aware backoff; undefined after repeated failure. */
 export const fetchJson = async <T>(url: string, attempt = 1): Promise<T | undefined> => {
   const response = await fetch(url, {
     headers: { 'User-Agent': WIKIDATA_USER_AGENT, Accept: 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   }).catch(() => undefined)
 
   if (!response?.ok) {

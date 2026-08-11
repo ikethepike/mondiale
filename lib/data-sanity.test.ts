@@ -10,6 +10,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { PARTIES } from '~~/data/parties.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
@@ -29,6 +30,15 @@ const CONFLICT_FIELD_FLOOR = 90
 // 38 countries have legalized same-sex marriage; mirrors the generator's own
 // floor, so a shrunken Equaldex fetch fails here too.
 const MARRIAGE_COUNTRY_FLOOR = 35
+// 192 countries / ~2,100 parties from the Factbook roster today. Wikidata
+// enriches ~56% of them; the floor sits low because match rate moves with
+// Wikidata's own coverage, and a dip is not a broken fetch.
+const PARTY_COUNTRY_FLOOR = 180
+const PARTY_FLOOR = 1800
+const PARTY_MATCH_FLOOR = 0.4
+// Some chambers really are mostly independents (Kuwait bans parties outright),
+// so a few thin joins are honest; a jump means the name-matching broke.
+const SEAT_JOIN_MISS_CEILING = 8
 
 describe('countries.gen', () => {
   const countries = Object.values(COUNTRIES)
@@ -41,6 +51,63 @@ describe('countries.gen', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
       expect(FLAGS[country.isoCode]).toContain('<svg')
+    }
+  })
+})
+
+describe('parties.gen', () => {
+  const countries = Object.values(PARTIES)
+  const parties = countries.flatMap(country => country?.parties ?? [])
+
+  it('covers the Factbook roster', () => {
+    expect(countries.length).toBeGreaterThanOrEqual(PARTY_COUNTRY_FLOOR)
+    expect(parties.length).toBeGreaterThanOrEqual(PARTY_FLOOR)
+  })
+
+  it('enriches a healthy share against Wikidata', () => {
+    const matched = parties.filter(party => party.qid)
+    expect(matched.length / parties.length).toBeGreaterThanOrEqual(PARTY_MATCH_FLOOR)
+  })
+
+  // Seat share is a fraction of the LISTED seats. It sums to at most 1, and
+  // legitimately to LESS: the Factbook balances many chambers with "Other" and
+  // "Independents" rows, which count toward the chamber but are not parties.
+  // Overshooting 1 is the real failure — it means the join double-counted.
+  it('keeps every seat share a real fraction of its chamber', () => {
+    for (const country of countries) {
+      const shares = (country?.parties ?? [])
+        .map(party => party.seatShare)
+        .filter((share): share is number => share !== undefined)
+      if (!shares.length) continue
+      for (const share of shares) {
+        expect(share).toBeGreaterThan(0)
+        expect(share).toBeLessThanOrEqual(1)
+      }
+      expect(shares.reduce((total, share) => total + share, 0)).toBeLessThanOrEqual(1.001)
+    }
+  })
+
+  // The join between the roster and the seat table is spelling-sensitive
+  // ("Swedish Social Democratic Party" vs "Social Democratic Party"), and when
+  // it fails it fails silently — the country keeps its parties and quietly
+  // loses its biggest one. A chamber whose named parties hold under a third of
+  // the seats is the signature of that break.
+  it('joins the seat table onto the roster', () => {
+    const thin = countries.filter(country => {
+      const shares = (country?.parties ?? [])
+        .map(party => party.seatShare)
+        .filter((share): share is number => share !== undefined)
+      return shares.length >= 2 && shares.reduce((total, share) => total + share, 0) < 0.33
+    })
+    expect(thin.length).toBeLessThanOrEqual(SEAT_JOIN_MISS_CEILING)
+  })
+
+  // The roster is the Factbook's; commentary filed under "Political parties"
+  // ("the Taliban Government enforces…") is prose, not a dealable subject.
+  it('holds names, not prose', () => {
+    for (const party of parties) {
+      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(9)
+      expect(party.name).not.toMatch(/;\s*note/i)
     }
   })
 })

@@ -694,6 +694,7 @@ export type DataSetId =
   | 'tongues'
   | 'currencies'
   | 'leaders'
+  | 'parties'
   | 'landmarks'
   | 'heritage'
   | 'events'
@@ -862,6 +863,16 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'wikidata-items', dataset: 'P35 head of state, P6 head of government' },
       { source: 'commons-media', dataset: 'Portraits' },
       { source: 'cia-world-leaders' },
+    ],
+  },
+  parties: {
+    label: 'Political parties',
+    files: ['data/parties.gen.ts'],
+    origins: [
+      // The Factbook is the roster; Wikidata only decorates a name it matches.
+      { source: 'cia-factbook', dataset: 'Government: political parties, legislative branch' },
+      { source: 'wikidata-items', dataset: 'P1142 ideology, P1387 position, P465 colour' },
+      { source: 'commons-media', dataset: 'Party logos' },
     ],
   },
   landmarks: {

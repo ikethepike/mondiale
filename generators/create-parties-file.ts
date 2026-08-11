@@ -1,0 +1,711 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { successfulCombinations } from './link-mapping.gen'
+import { jsonParseLiteral } from './lib/emit'
+import { decodeHtmlEntitiesDeep } from '../lib/generators/factbook'
+import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
+import { COUNTRIES } from '../data/countries.gen'
+import type { MediaCredit } from '../lib/attribution'
+
+/**
+ * Every country's political parties, from the CIA Factbook's roster, enriched
+ * with Wikidata's ideology/colour/founding and Commons logos.
+ *
+ * The Factbook is the SPINE, not Wikidata: it names parties for 233 countries
+ * (~2,278 entries) on one editorial standard, where Wikidata's own party
+ * coverage is Europe-skewed and mixes live parties with dissolved ones. So the
+ * roster is whatever the Factbook lists, and Wikidata only ever DECORATES a
+ * name it can confidently match. An unmatched party keeps its name and loses
+ * its colour — it is never dropped, and never guessed at.
+ *
+ * Matching is the whole risk here. A bare name search returns a Serbian party
+ * for Somalia's "Justice and Reconciliation Party" and a Nigerian SUPREME
+ * COURT CASE for "Africa Democratic Congress". Three gates, all of which the
+ * repo already applies elsewhere:
+ *   1. P17 country must equal the country we are resolving for (the same
+ *      disambiguation `resolveQidBySearch` does for cities)
+ *   2. P31 must be a political party — that is what rejects the court case
+ *   3. P576 (dissolved) rejects the entry outright — a defunct party under a
+ *      live party's name is worse than no match at all
+ * Measured on a global sample: 78% resolve to the right country, 73% survive
+ * the defunct gate. The ~25% that fail resolve to a bare name, which is a
+ * usable roster entry — they simply never carry a colour or an ideology.
+ *
+ * Seat share is COMPUTED, never parsed: the Factbook publishes seats and no
+ * percentages at all. It is computed against the sum of listed seats rather
+ * than the chamber's declared size, because the two disagree often enough
+ * (Malta lists 79 against a declared 65, Sierra Leone 135 against 149 — bonus
+ * and appointed seats) that dividing by the declared total would print shares
+ * that do not add to 100. Both numbers are kept so a view can say which it
+ * means, and a country whose sums diverge past SEAT_SUM_TOLERANCE is reported
+ * for review rather than silently shipped.
+ *
+ * Logos are trademarked far more often than leader portraits are: Commons
+ * carries a machine-readable `Restrictions` field saying so, and it is stored
+ * per logo so a view can decline to show one rather than the generator having
+ * to guess a blanket policy.
+ *
+ *   bun run generate:parties [--force]
+ *
+ * Hand-run, like the other curated media pipelines — it is ~2,278 name
+ * searches plus an image pass, which is not a weekly-cron shape.
+ */
+
+const OUTPUT_FILE = 'data/parties.gen.ts'
+const OUTPUT_DIRECTORY = 'public/parties'
+/** The URL prefix `public/parties` is served from. */
+const PUBLIC_BASE = 'parties'
+const REPORT_FILE = 'generators/data/parties-report.txt'
+/** Logos are wordmarks — they read at a fraction of a portrait's width. */
+const LOGO_WIDTH = 512
+/** Q7278 = political party; the P31 gate that rejects court cases and coalitions. */
+const POLITICAL_PARTY = 'Q7278'
+/** Listed seats vs the declared chamber size may differ by this much before
+ *  the country is flagged. Bonus/appointed seats make small gaps normal. */
+const SEAT_SUM_TOLERANCE = 0.1
+/** A partial Factbook fetch parses fine; refuse to write one. */
+const COUNTRY_FLOOR = 180
+
+const force = process.argv.includes('--force')
+
+/**
+ * The resolution cache. The roster pass is ~2,278 parties x two round-trips,
+ * which is a ~45-minute run — far too slow to re-pay every time a downstream
+ * field or the logo pass changes. So every lookup's OUTCOME is cached, misses
+ * included: the 44% that resolve to nothing are the expensive ones (they cost
+ * a full search + entity fetch before failing), and not caching them would
+ * leave most of the runtime in place.
+ *
+ * Keyed on the search terms, the country AND the party's seat count. The seats
+ * are in the key deliberately: they are the one field that moves on an
+ * election, and a stale entry that kept a party's pre-election seats while the
+ * Factbook had moved on would be invisible — the run would look like a clean
+ * cache hit. Anything that changes a party's standing therefore re-resolves it,
+ * and a party renamed in the Factbook re-resolves for the same reason.
+ *
+ * Claims are stored alongside the Q-id so a re-run needs no network at all;
+ * `--refresh-matches` re-asks Wikidata without discarding the saved logos the
+ * way `--force` does.
+ */
+const MATCH_CACHE_PATH = 'generators/data/party-match-cache.json'
+/**
+ * Only the properties this generator reads are cached. A party's full claims
+ * run to 19MB across the roster — most of it sitelinks and identifiers we
+ * never touch — where the five we use are 3MB. The cache is committed so a
+ * teammate's first run is fast too, and a 19MB file in a repo whose history is
+ * already media-heavy is not worth the bytes.
+ */
+const CACHED_PROPERTIES = ['P1142', 'P1387', 'P465', 'P571', 'P154'] as const
+const slimClaims = (claims: { [property: string]: Snak[] }): { [property: string]: Snak[] } =>
+  Object.fromEntries(
+    CACHED_PROPERTIES.filter(property => claims[property]).map(property => [
+      property,
+      claims[property]!,
+    ])
+  )
+type CachedMatch = { qid: string; claims: { [property: string]: Snak[] } } | { miss: true }
+const matchKeyFor = (
+  name: string,
+  endonym: string | undefined,
+  countryQid: string,
+  seats: number | undefined
+) => `${countryQid}|${endonym ?? ''}|${name}|${seats ?? ''}`
+
+/** Q-id → English label. Stable enough to keep across runs; ideologies repeat
+ *  heavily (every social-democratic party points at the same Q-id). */
+const LABEL_CACHE_PATH = 'generators/data/party-label-cache.json'
+
+const refreshMatches = process.argv.includes('--refresh-matches')
+const labelCache: Record<string, string> =
+  force || refreshMatches || !existsSync(LABEL_CACHE_PATH)
+    ? {}
+    : JSON.parse(readFileSync(LABEL_CACHE_PATH, 'utf8'))
+const matchCache: Record<string, CachedMatch> =
+  force || refreshMatches || !existsSync(MATCH_CACHE_PATH)
+    ? {}
+    : JSON.parse(readFileSync(MATCH_CACHE_PATH, 'utf8'))
+const cacheHitsAtStart = Object.keys(matchCache).length
+
+export interface Party extends MediaCredit {
+  /** As the Factbook lists it, parentheticals and abbreviation stripped. */
+  name: string
+  /** The party's own name, when the Factbook glosses it ("Centerpartiet"). */
+  endonym?: string
+  /** The Factbook's own abbreviation ("or AfD"), when it prints one. */
+  abbreviation?: string
+  /** Wikidata Q-id, when the party resolved past all three gates. */
+  qid?: string
+  /** Seats held, when the Factbook publishes a breakdown for this chamber. */
+  seats?: number
+  /** Share of the LISTED seats, 0–1. Computed, never parsed. */
+  seatShare?: number
+  /** Political ideologies (P1142), English labels. */
+  ideologies?: string[]
+  /** Left–right position (P1387), English label. */
+  position?: string
+  /** Party colours (P465) as bare hex, no leading `#`. */
+  colors?: string[]
+  /** Year founded (P571). */
+  foundedYear?: number
+  /** Logo path under /public, when one was saved. */
+  logo?: string
+  /** Commons' own `Restrictions` note — "trademarked" for most party logos. */
+  logoRestrictions?: string
+  /** Commons says the file is non-free (fair-use). Travels with the logo so a
+   *  licensing policy is a filter rather than a re-run. */
+  nonFree?: boolean
+  /** Transnational groupings this party belongs to (P463, open statements
+   *  only): the EPP, the Progressive Alliance, Socialist International. */
+  groupings?: string[]
+}
+
+export interface CountryParties {
+  parties: Party[]
+  /** The chamber the seat counts describe, as the Factbook names it. */
+  legislature?: string
+  /** 'unicameral' | 'bicameral', as the Factbook states it. */
+  structure?: string
+  /** The chamber's declared size — may exceed the listed seats. */
+  declaredSeats?: number
+  /** Sum of the seats actually listed; the seatShare denominator. */
+  listedSeats?: number
+  /** The Factbook's most recent legislative election date, verbatim. */
+  lastElection?: string
+}
+
+export type PartyMapping = { [isoCode in ISOCountryCode]?: CountryParties }
+
+// --- Factbook helpers -------------------------------------------------------
+
+interface FactbookField {
+  text?: string
+}
+interface FactbookGovernment {
+  'Political parties'?: FactbookField
+  'Legislative branch'?: {
+    'legislature name'?: FactbookField
+    'legislative structure'?: FactbookField
+    'number of seats'?: FactbookField
+    'most recent election date'?: FactbookField
+    'parties elected and seats per party'?: FactbookField
+  }
+}
+
+/**
+ * The Factbook prints "Center Party (Centerpartiet) or C" — an English gloss,
+ * the party's own name, and an abbreviation. All three are worth keeping: the
+ * ENDONYM is the better Wikidata search key, because Wikidata files parties
+ * under their native name and the Factbook's anglicisation is often a spelling
+ * Wikidata never uses ("Center Party" surfaces nothing Swedish; "Centerpartiet"
+ * hits Q110832 first).
+ */
+const splitName = (raw: string): { name: string; endonym?: string; abbreviation?: string } => {
+  const cleaned = raw
+    .replace(/<[^>]+>/g, ' ')
+    // "…or MPLA; note - ruling party since 1975" — the tail is commentary.
+    .replace(/;\s*note\b.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const trailing = /\s+or\s+([A-Z0-9][A-Za-z0-9\-/.]*)$/.exec(cleaned)
+  const withoutTail = trailing ? cleaned.slice(0, trailing.index) : cleaned
+  const parenthetical = /\s*\(([^)]*)\)\s*$/.exec(withoutTail)
+  const name = (parenthetical ? withoutTail.slice(0, parenthetical.index) : withoutTail).trim()
+  // A parenthetical is only an endonym if it reads like a name, not a gloss
+  // ("an active political group", "formerly the Republican Party").
+  const inner = parenthetical?.[1]?.trim()
+  const endonym =
+    inner && inner.split(/\s+/).length <= 5 && !/^(an?|the|formerly|now|previously)\b/i.test(inner)
+      ? inner
+      : undefined
+  return { name, endonym, abbreviation: trailing?.[1] ?? undefined }
+}
+
+/** Prose the Factbook files under "Political parties" that is commentary, not
+ *  a party: Afghanistan's "the Taliban Government enforces an authoritarian
+ *  state and has banned other political parties". Real party names are short. */
+const isProse = (name: string) => name.split(/\s+/).length > 9 || /^the\s/i.test(name)
+
+/** Belgium and a few others group their roster under headings — "Flemish
+ *  parties:", "Francophone parties:". A heading is not a party, and left in it
+ *  outranks the real entry when a leader's party is joined by name. */
+const isHeading = (name: string) => /\bparties\s*:\s*$/i.test(name.trim())
+
+/** Party names come as one `<br>`-separated blob, sometimes with a trailing
+ *  "note:" line that is prose, not a party. */
+const partyNames = (text: string): { name: string; endonym?: string; abbreviation?: string }[] =>
+  text
+    .split(/<br\s*\/?>/i)
+    .map(splitName)
+    .filter(
+      entry =>
+        entry.name && !/^note\b/i.test(entry.name) && !isProse(entry.name) && !isHeading(entry.name)
+    )
+
+/** "Labour Party (LP) (44); Nationalist Party (PN) (35)" → seats by party.
+ *  The trailing `(44)` is the seat count; an inner `(LP)` is the abbreviation,
+ *  so only the LAST parenthesis may be read as a number. */
+const seatsByParty = (text: string): { name: string; seats: number }[] => {
+  const rows: { name: string; seats: number }[] = []
+  for (const segment of text.replace(/<[^>]+>/g, ' ').split(';')) {
+    const match = /^\s*(.+?)\s*\((\d+)\)\s*$/.exec(segment.trim())
+    if (!match) continue
+    const { name } = splitName(match[1] ?? '')
+    if (name) rows.push({ name, seats: Number(match[2]) })
+  }
+  return rows
+}
+
+const firstNumber = (text?: string): number | undefined => {
+  const match = /(\d[\d,]*)/.exec(text?.replace(/,/g, '') ?? '')
+  return match ? Number(match[1].replace(/,/g, '')) : undefined
+}
+
+/**
+ * Names are matched loosely between the two Factbook fields, which are written
+ * by different hands and disagree constantly: Sweden's roster says "Swedish
+ * Social Democratic Party" where its seat table says "Social Democratic Party",
+ * and "Center Party" where the table says "Centre Party". Exact equality drops
+ * the largest party in parliament, which is why every share summed short.
+ *
+ * So the key is aggressive: spelling variants folded, and the words that
+ * decorate a party name rather than identify it ("party", the demonym) removed
+ * altogether. The residue is what actually distinguishes one party from
+ * another in the same country.
+ */
+const NOISE = /\b(party|parties|the|of|for|and|alliance|coalition)\b/g
+/**
+ * `demonyms` strips the country's own adjective — Sweden's roster says
+ * "Swedish Social Democratic Party" where its seat table says "Social
+ * Democratic Party", and that prefix alone was losing the largest party in
+ * parliament. Demonyms come from `COUNTRIES[iso].name.demonyms`, the same
+ * Factbook nationality field `mentionsCountry` uses, rather than a second list
+ * kept in sync by hand.
+ */
+const matchKey = (name: string, demonyms: string[] = []) => {
+  let value = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\blabour\b/g, 'labor')
+    .replace(/\bcentre\b/g, 'center')
+    .replace(/\bdemocratic\b/g, 'democrat')
+  for (const demonym of demonyms) {
+    const cleaned = demonym.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    if (cleaned.length >= 4) value = value.replace(new RegExp(`\\b${cleaned}\\b`, 'g'), ' ')
+  }
+  return value.replace(NOISE, ' ').replace(/[^a-z0-9]+/g, '')
+}
+
+/** Rows the Factbook uses to balance a seat table that are not parties. */
+const NOT_A_PARTY = /^(other|others|independents?|vacant|appointed|nominated|unaffiliated)$/i
+
+// --- Wikidata ---------------------------------------------------------------
+
+interface SearchResponse {
+  query?: { search?: { title: string }[] }
+}
+interface Snak {
+  mainsnak?: { datavalue?: { value?: { id?: string; time?: string } | string } }
+}
+interface EntityResponse {
+  entities?: {
+    [id: string]: {
+      claims?: { [property: string]: Snak[] }
+      labels?: { en?: { value: string } }
+    }
+  }
+}
+
+const claimIds = (claims: { [property: string]: Snak[] } | undefined, property: string): string[] =>
+  (claims?.[property] ?? [])
+    .map(statement => {
+      const value = statement.mainsnak?.datavalue?.value
+      return typeof value === 'object' ? value?.id : undefined
+    })
+    .filter((id): id is string => !!id)
+
+const claimStrings = (
+  claims: { [property: string]: Snak[] } | undefined,
+  property: string
+): string[] =>
+  (claims?.[property] ?? [])
+    .map(statement => statement.mainsnak?.datavalue?.value)
+    .filter((value): value is string => typeof value === 'string')
+
+const yearOf = (claims: { [property: string]: Snak[] } | undefined): number | undefined => {
+  const value = claims?.P571?.[0]?.mainsnak?.datavalue?.value
+  const time = typeof value === 'object' ? value?.time : undefined
+  const year = /^[+-](\d{4})/.exec(time ?? '')?.[1]
+  return year ? Number(year) : undefined
+}
+
+/**
+ * The Q-id for a party name, or undefined when nothing passes all three gates.
+ * Returning undefined is a perfectly good outcome — the party keeps its name.
+ */
+const searchOnce = async (
+  term: string,
+  countryQid: string
+): Promise<{ qid: string; claims: { [property: string]: Snak[] } } | undefined> => {
+  const search = await fetchJson<SearchResponse>(
+    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      term
+    )}&srnamespace=0&srlimit=5&format=json`
+  )
+  const hits = (search?.query?.search ?? []).map(result => result.title)
+  if (!hits.length) return undefined
+  await wait(120)
+
+  const entities = await fetchJson<EntityResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${hits.join(
+      '|'
+    )}&props=claims&format=json`
+  )
+  await wait(120)
+
+  for (const qid of hits) {
+    const claims = entities?.entities?.[qid]?.claims
+    if (!claims) continue
+    if (claimIds(claims, 'P17')[0] !== countryQid) continue
+    if (!claimIds(claims, 'P31').includes(POLITICAL_PARTY)) continue
+    // A dissolved party wearing a live party's name is worse than no match.
+    if (claims.P576?.length) continue
+    return { qid, claims }
+  }
+  return undefined
+}
+
+const resolveParty = async (
+  name: string,
+  endonym: string | undefined,
+  countryQid: string
+): Promise<{ qid: string; claims: { [property: string]: Snak[] } } | undefined> => {
+  // The endonym goes FIRST: Wikidata files parties under their native name, so
+  // "Centerpartiet" resolves where the Factbook's "Center Party" finds nothing.
+  for (const term of [endonym, name].filter((value): value is string => !!value)) {
+    const match = await searchOnce(term, countryQid)
+    if (match) return match
+  }
+  return undefined
+}
+
+/** Resolve the Q-ids an enriched party points at (ideologies, position) to
+ *  English labels, in one batch per run rather than one call per party.
+ *  Q-id → label is stable, so previously seen ids are served from the cache. */
+const labelsFor = async (ids: string[]): Promise<Map<string, string>> => {
+  const labels = new Map<string, string>(Object.entries(labelCache))
+  const unique = [...new Set(ids)].filter(id => !labels.has(id))
+  for (let index = 0; index < unique.length; index += 50) {
+    const batch = unique.slice(index, index + 50)
+    const response = await fetchJson<EntityResponse>(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join(
+        '|'
+      )}&props=labels&languages=en&languagefallback=1&format=json`
+    )
+    for (const [qid, entity] of Object.entries(response?.entities ?? {})) {
+      const label = entity.labels?.en?.value
+      if (label) labels.set(qid, label)
+    }
+    await wait(200)
+  }
+  return labels
+}
+
+// --- 1. Country Q-ids, by ISO code ------------------------------------------
+// Same paginated haswbstatement:P297 walk the leaders generator uses — one
+// search for every ISO carrier beats 200 per-country searches against the
+// request budget.
+
+console.log('Listing every entity with an ISO 3166-1 alpha-2 code…')
+const isoToQid = new Map<string, string>()
+{
+  const carriers: string[] = []
+  let offset: number | undefined = 0
+  while (offset !== undefined) {
+    const page: (SearchResponse & { continue?: { sroffset: number } }) | undefined =
+      await fetchJson<SearchResponse & { continue?: { sroffset: number } }>(
+        `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+          'haswbstatement:P297'
+        )}&srnamespace=0&srlimit=50&sroffset=${offset}&format=json`
+      )
+    carriers.push(...(page?.query?.search ?? []).map(hit => hit.title))
+    offset = page?.continue?.sroffset
+    process.stdout.write(`\r  ${carriers.length} entities`)
+    await wait(200)
+  }
+  console.log()
+
+  for (let index = 0; index < carriers.length; index += 40) {
+    const batch = carriers.slice(index, index + 40)
+    const response = await fetchJson<EntityResponse>(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join(
+        '|'
+      )}&props=claims&format=json`
+    )
+    for (const [qid, entity] of Object.entries(response?.entities ?? {})) {
+      const iso = claimStrings(entity.claims, 'P297')[0]
+      if (iso && isValidISOCode(iso) && !isoToQid.has(iso)) isoToQid.set(iso, qid)
+    }
+    await wait(200)
+  }
+}
+console.log(`${isoToQid.size} countries mapped to Wikidata ids`)
+
+// --- 2. The Factbook roster --------------------------------------------------
+// Transient failures must never ERASE a country an earlier run resolved.
+let previous: PartyMapping = {}
+try {
+  previous = (await import('../data/parties.gen')).PARTIES ?? {}
+} catch {
+  // First run — nothing to merge.
+}
+
+const mapping: PartyMapping = { ...previous }
+const report: string[] = []
+let resolved = 0
+let attempted = 0
+let cacheHits = 0
+let liveLookups = 0
+/** `${iso}|${qid}` → Commons filename, collected during the roster pass. */
+const logoFiles = new Map<string, string>()
+
+for (const { isoCode, url } of successfulCombinations) {
+  if (!isValidISOCode(isoCode)) continue
+  const countryQid = isoToQid.get(isoCode)
+
+  const page = await fetchJson<{ Government?: FactbookGovernment }>(
+    url.replace('github.com', 'raw.githubusercontent.com').replace('/raw/', '/')
+  )
+  const government = page?.Government ? decodeHtmlEntitiesDeep(page.Government) : undefined
+  const roster = government?.['Political parties']?.text
+  if (!roster) continue
+
+  const legislative = government?.['Legislative branch']
+  const seatRows = legislative?.['parties elected and seats per party']?.text
+    ? seatsByParty(legislative['parties elected and seats per party']!.text!)
+    : []
+  const listedSeats = seatRows.reduce((total, row) => total + row.seats, 0) || undefined
+  const declaredSeats = firstNumber(legislative?.['number of seats']?.text)
+  // `Other (16)` and `Independents (44)` count toward the chamber — they stay
+  // in `listedSeats` so shares are a true fraction — but they are not parties
+  // and must never be joined onto one.
+  const demonyms = COUNTRIES[isoCode]?.name.demonyms ?? []
+  const seatsByKey = new Map(
+    seatRows
+      .filter(row => !NOT_A_PARTY.test(row.name))
+      .map(row => [matchKey(row.name, demonyms), row.seats])
+  )
+
+  if (listedSeats && declaredSeats) {
+    const drift = Math.abs(listedSeats - declaredSeats) / declaredSeats
+    if (drift > SEAT_SUM_TOLERANCE) {
+      report.push(
+        `${isoCode}: listed seats ${listedSeats} vs declared ${declaredSeats} ` +
+          `(${Math.round(drift * 100)}% apart) — shares are of the listed total`
+      )
+    }
+  }
+
+  const parties: Party[] = []
+  for (const { name, endonym, abbreviation } of partyNames(roster)) {
+    attempted += 1
+    const seats = seatsByKey.get(matchKey(name, demonyms))
+    const party: Party = {
+      name,
+      ...(endonym ? { endonym } : {}),
+      ...(abbreviation ? { abbreviation } : {}),
+      ...(seats !== undefined ? { seats } : {}),
+      ...(seats !== undefined && listedSeats
+        ? { seatShare: Number((seats / listedSeats).toFixed(4)) }
+        : {}),
+    }
+
+    const cacheKey = countryQid ? matchKeyFor(name, endonym, countryQid, seats) : undefined
+    const cached = cacheKey ? matchCache[cacheKey] : undefined
+    let match: { qid: string; claims: { [property: string]: Snak[] } } | undefined
+    if (cached) {
+      match = 'miss' in cached ? undefined : cached
+      cacheHits += 1
+    } else if (countryQid && cacheKey) {
+      match = await resolveParty(name, endonym, countryQid)
+      // Cache the MISS too — it cost a full search plus an entity fetch.
+      matchCache[cacheKey] = match
+        ? { qid: match.qid, claims: slimClaims(match.claims) }
+        : { miss: true }
+      liveLookups += 1
+    }
+    if (match) {
+      resolved += 1
+      party.qid = match.qid
+      // P154 is carried on the match so the logo pass needs no second claims
+      // fetch — it already has everything it asks Wikidata for.
+      const logoFile = claimStrings(match.claims, 'P154')[0]
+      if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
+      const ideologies = claimIds(match.claims, 'P1142')
+      const position = claimIds(match.claims, 'P1387')[0]
+      const colors = claimStrings(match.claims, 'P465')
+      const founded = yearOf(match.claims)
+      if (ideologies.length) party.ideologies = ideologies
+      if (position) party.position = position
+      if (colors.length) party.colors = colors
+      if (founded) party.foundedYear = founded
+    }
+
+    parties.push(party)
+  }
+
+  mapping[isoCode] = {
+    parties,
+    ...(legislative?.['legislature name']?.text
+      ? { legislature: legislative['legislature name']!.text }
+      : {}),
+    ...(legislative?.['legislative structure']?.text
+      ? { structure: legislative['legislative structure']!.text }
+      : {}),
+    ...(declaredSeats ? { declaredSeats } : {}),
+    ...(listedSeats ? { listedSeats } : {}),
+    ...(legislative?.['most recent election date']?.text
+      ? { lastElection: legislative['most recent election date']!.text }
+      : {}),
+  }
+
+  // Flush after every country, not just at the end of the pass. The run is
+  // long enough that it WILL sometimes be interrupted (a hung socket, a
+  // Ctrl-C), and a cache that only lands on clean completion would be empty
+  // in exactly the cases it exists for. Writing ~190 times costs nothing
+  // beside the network.
+  writeFileSync(MATCH_CACHE_PATH, `${JSON.stringify(matchCache, null, 2)}\n`)
+
+  process.stdout.write(`\r  ${Object.keys(mapping).length} countries, ${resolved} parties matched`)
+}
+console.log()
+
+// Persist the cache the MOMENT the expensive pass is done — before the label
+// and logo passes, either of which can fail on a Commons hiccup. Writing it at
+// the end instead would throw away ~45 minutes of lookups on any later crash.
+writeFileSync(MATCH_CACHE_PATH, `${JSON.stringify(matchCache, null, 2)}\n`)
+console.log(
+  `Roster pass: ${cacheHits} cached, ${liveLookups} looked up ` +
+    `(cache held ${cacheHitsAtStart} entries at start, ${Object.keys(matchCache).length} now)`
+)
+
+// --- 3. Ideology and position labels ----------------------------------------
+// Stored as Q-ids above so every label resolves in one batched pass.
+const labelIds = Object.values(mapping)
+  .flatMap(country => country?.parties ?? [])
+  .flatMap(party => [...(party.ideologies ?? []), ...(party.position ? [party.position] : [])])
+
+console.log(`Resolving ${new Set(labelIds).size} ideology/position labels…`)
+const labels = await labelsFor(labelIds)
+writeFileSync(LABEL_CACHE_PATH, `${JSON.stringify(Object.fromEntries(labels), null, 2)}\n`)
+for (const country of Object.values(mapping)) {
+  for (const party of country?.parties ?? []) {
+    if (party.ideologies) {
+      party.ideologies = party.ideologies.map(id => labels.get(id) ?? id).filter(Boolean)
+    }
+    if (party.position) party.position = labels.get(party.position) ?? party.position
+  }
+}
+
+// --- 4. Logos ----------------------------------------------------------------
+// Sequential: Commons 429s a parallel image pass. Existing files are kept
+// unless --force, and the credit is carried over from the previous run so a
+// re-run costs one metadata call per NEWLY saved logo (as leaders does).
+mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
+const logoQids = Object.entries(mapping).flatMap(([iso, country]) =>
+  (country?.parties ?? [])
+    .filter(party => party.qid)
+    .map(party => ({ iso, party, qid: party.qid! }))
+)
+
+// P154 came back with the match (cached or live), so there is no claims fetch
+// here at all — only the image downloads themselves.
+console.log(`Fetching logos for ${logoQids.length} matched parties…`)
+let saved = 0
+{
+  for (const entry of logoQids) {
+    const file = logoFiles.get(`${entry.iso}|${entry.qid}`)
+    if (!file) continue
+
+    const previousParty = previous[entry.iso as ISOCountryCode]?.parties.find(
+      party => party.qid === entry.qid
+    )
+    // baseName is the on-disk path, publicBase the URL — both WITHOUT the
+    // extension, which saveCommonsImage appends.
+    const slug = `${entry.iso}-${entry.qid}`
+    const path = await saveCommonsImage(
+      file,
+      `${OUTPUT_DIRECTORY}/${slug}`,
+      `/${PUBLIC_BASE}/${slug}`,
+      { width: LOGO_WIDTH, force }
+    )
+    if (!path) continue
+
+    entry.party.logo = path
+    saved += 1
+    const credit = await captureImageCredit(file, previousParty)
+    if (credit?.credit) entry.party.credit = credit.credit
+    if (credit?.license) entry.party.license = credit.license
+
+    // Party logos are trademarked far more often than portraits are; Commons
+    // says so in a machine-readable field, so carry it rather than guess.
+    const meta = await fetchJson<{
+      query?: {
+        pages?: {
+          [id: string]: { imageinfo?: { extmetadata?: { Restrictions?: { value?: string } } }[] }
+        }
+      }
+    }>(
+      `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
+        `File:${file}`
+      )}&prop=imageinfo&iiprop=extmetadata&format=json`
+    )
+    const restrictions = Object.values(meta?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
+      ?.Restrictions?.value
+    if (restrictions) entry.party.logoRestrictions = restrictions
+    await wait(150)
+
+    process.stdout.write(`\r  ${saved} logos`)
+  }
+}
+console.log()
+
+// --- 5. Write ----------------------------------------------------------------
+const countries = Object.keys(mapping).length
+if (countries < COUNTRY_FLOOR) {
+  throw new Error(
+    `Only ${countries} countries resolved (floor ${COUNTRY_FLOOR}) — refusing to write a partial roster.`
+  )
+}
+
+const totalParties = Object.values(mapping).reduce(
+  (total, country) => total + (country?.parties.length ?? 0),
+  0
+)
+
+writeFileSync(
+  OUTPUT_FILE,
+  `// Generated by generators/create-parties-file.ts — do not edit by hand.
+import type { PartyMapping } from '../generators/create-parties-file'
+
+export const PARTIES: PartyMapping = ${jsonParseLiteral(mapping)}
+`
+)
+
+writeFileSync(
+  REPORT_FILE,
+  [
+    `parties: ${totalParties} across ${countries} countries`,
+    `matched to Wikidata: ${resolved}/${attempted} (${Math.round((resolved / attempted) * 100)}%)`,
+    `logos saved: ${saved}`,
+    '',
+    'seat-sum drift (share is of the LISTED total, not the declared one):',
+    ...report,
+  ].join('\n')
+)
+
+console.log(
+  `\nWrote ${OUTPUT_FILE}: ${totalParties} parties, ${countries} countries, ` +
+    `${resolved} matched (${Math.round((resolved / attempted) * 100)}%), ${saved} logos.`
+)
+console.log(`Review ${REPORT_FILE} before committing.`)

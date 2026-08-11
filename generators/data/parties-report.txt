@@ -1,0 +1,12 @@
+parties: 2046 across 192 countries
+matched to Wikidata: 1218/2046 (60%)
+logos saved: 514
+
+seat-sum drift (share is of the LISTED total, not the declared one):
+BW: listed seats 61 vs declared 69 (12% apart) — shares are of the listed total
+CY: listed seats 56 vs declared 80 (30% apart) — shares are of the listed total
+DM: listed seats 21 vs declared 32 (34% apart) — shares are of the listed total
+MT: listed seats 79 vs declared 65 (22% apart) — shares are of the listed total
+KN: listed seats 11 vs declared 16 (31% apart) — shares are of the listed total
+TM: listed seats 125 vs declared 56 (123% apart) — shares are of the listed total
+XK: listed seats 10 vs declared 120 (92% apart) — shares are of the listed total
