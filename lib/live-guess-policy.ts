@@ -40,6 +40,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // sends presence for a correct name (useCollectSetRound's rule), so a
   // player who lights a star hands the room tension, not the answer.
   'star-chart': 'label',
+  // Benches are dragged, not named, so there is no guess to broadcast.
+  parliament: 'none',
 
   // Unlike the other option rounds, composition's table IS the bar's own
   // origins — a handful, shared by the room — so a named wrong guess strikes a

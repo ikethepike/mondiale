@@ -72,6 +72,11 @@ export type ClientEventData =
        *  never resolved correctly). The server re-checks it against the dealt
        *  feature and zeroes the claim on a miss — same posture as `empire`. */
       water?: { guessedId?: string; guessedName?: string }
+      /** Parliament rounds: the benches the player landed on the arc, by name.
+       *  The answer is not a country, so `ranking` carries only the chamber;
+       *  the server re-derives the score from these against the dealt benches
+       *  and never trusts a claimed one. */
+      parliament?: { placed: string[] }
     }
   | {
       event: 'submit-individual-challenge-answer'

@@ -98,6 +98,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
+import ViewParliament from '~/components/view/ViewParliament.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -113,6 +114,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
 import { partiesWithLogo } from '~~/lib/parties'
+import { dealParliament, PARLIAMENT_SECONDS } from '~~/lib/parliament'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -1352,6 +1354,28 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    id: 'parliament',
+    label: 'Parliament (Sweden — the arc, left to right)',
+    component: ViewParliament,
+    build: () => {
+      const deal = dealParliament(
+        { difficulty: 'normal', variant: 'world', includeMicroNations: false },
+        'normal',
+        'SE'
+      )!
+      return mockGame('group-challenge', [
+        groupRound({
+          _type: 'parliament-challenge',
+          country: deal.country,
+          benches: deal.benches,
+          totalSeats: deal.totalSeats,
+          durationSeconds: PARLIAMENT_SECONDS,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ])
+    },
   },
   {
     // Hard mode: no initials, and the stars reach for the deeper field —

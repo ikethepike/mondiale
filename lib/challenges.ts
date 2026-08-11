@@ -52,6 +52,7 @@ import type {
   SilhouetteChallenge,
   SketchChallenge,
   StarChartChallenge,
+  ParliamentChallenge,
   StatDetectiveChallenge,
   TimelineChallenge,
   TongueBuzzChallenge,
@@ -128,6 +129,7 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
+import { dealParliament, PARLIAMENT_SECONDS } from './parliament'
 import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
@@ -1076,6 +1078,21 @@ const getStarChartChallenge = (game: gameTypes.Game): StarChartChallenge | undef
   }
 }
 
+/** Parliament: a chamber's benches, to be dragged onto its arc. */
+const getParliamentChallenge = (game: gameTypes.Game): ParliamentChallenge | undefined => {
+  const deal = dealParliament(game, game.difficulty)
+  if (!deal) return undefined
+
+  return {
+    _type: 'parliament-challenge',
+    country: deal.country,
+    benches: deal.benches,
+    totalSeats: deal.totalSeats,
+    durationSeconds: PARLIAMENT_SECONDS,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
 const COMPOSITION_SECONDS = 30
 
 const getCompositionChallenge = async (
@@ -1872,6 +1889,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'flag-palette': game => getFlagPaletteChallenge(game),
   'capital-guess': game => getCapitalGuessChallenge(game),
   'star-chart': game => getStarChartChallenge(game),
+  parliament: game => getParliamentChallenge(game),
   composition: game => getCompositionChallenge(game),
   flashpoint: game => getFlashpointChallenge(game),
   'ghost-state': game => getGhostStateChallenge(game),

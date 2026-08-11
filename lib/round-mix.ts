@@ -47,6 +47,9 @@ export const ROUND_WEIGHTS = {
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
   'star-chart': 0.06,
+  // Deals from 39 chambers — a real pool, but the arc is a heavier read than
+  // a photo, so it sits with the other considered rounds rather than the staples.
+  parliament: 0.06,
   composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
@@ -88,7 +91,17 @@ export const ROUND_WEIGHTS = {
  * challenge-groups.type.
  */
 export type RoundMechanic =
-  'typed' | 'pin' | 'choice' | 'buzz' | 'collect' | 'turns' | 'draw' | 'order'
+  | 'typed'
+  | 'pin'
+  | 'choice'
+  | 'buzz'
+  | 'collect'
+  | 'turns'
+  | 'draw'
+  | 'order'
+  /** Drag a thing ONTO a target — distinct from `order`, which rearranges a
+   *  list in place. Parliament's benches drop onto the arc. */
+  | 'match'
 
 export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
@@ -132,6 +145,8 @@ export const MECHANIC_BY_KIND = {
   ranking: 'order',
   timeline: 'order',
   sketch: 'draw',
+  // Drag a party onto its block on the arc.
+  parliament: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**

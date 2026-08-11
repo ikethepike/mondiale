@@ -301,6 +301,9 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // itself on the dark map at its true spot, which is the one beat that
   // teaches position. At 0 the scorecard covered it before it landed.
   'star-chart': { owner: 'classic', revealHoldMs: 6000 },
+  // The reveal IS the lesson: the arc paints itself bloc by bloc, and a share
+  // a player misjudged is only legible once its neighbours are coloured in.
+  parliament: { owner: 'classic', revealHoldMs: 6000 },
   composition: { owner: 'classic', revealHoldMs: 0 },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots

@@ -40,6 +40,34 @@ export const hexToRgb = (hex: string): [number, number, number] => {
   ]
 }
 
+/**
+ * Perceptual distance between two hex colours (CIE76 ΔE, via L*a*b*).
+ *
+ * The ONE place colour difference is measured: the board's gate tops are
+ * spaced by it, and Parliament uses it to refuse two seat colours a player
+ * could not tell apart. Raw RGB distance would not do — #ED1C24 and #ED1B34
+ * are 16 apart in RGB and indistinguishable on screen.
+ */
+export const colorDistance = (a: string, b: string): number => {
+  const lab = (hex: string): [number, number, number] => {
+    const [red, green, blue] = hexToRgb(hex).map(channel => {
+      const value = channel / 255
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    }) as [number, number, number]
+
+    const x = (0.4124 * red + 0.3576 * green + 0.1805 * blue) / 0.95047
+    const y = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    const z = (0.0193 * red + 0.1192 * green + 0.9505 * blue) / 1.08883
+    const f = (value: number) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116)
+    const [fx, fy, fz] = [f(x), f(y), f(z)]
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
+  }
+
+  const [l1, a1, b1] = lab(a)
+  const [l2, a2, b2] = lab(b)
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2)
+}
+
 /** Snap one hex colour to its nearest named bucket. */
 const snapToNamedColor = (hex: string): NamedColor => {
   const [r, g, b] = hexToRgb(hex)

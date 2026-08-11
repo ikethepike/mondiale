@@ -265,6 +265,32 @@ export interface StarChartChallenge {
   maximumPoints: number
 }
 
+/**
+ * A chamber drawn as an arc of seats, its blocs unlabelled. Drag each party
+ * onto the block you think is theirs.
+ *
+ * The whole chamber travels, not just the asked benches: the arc is the
+ * picture, and a bloc left out of it would change the shape a player reads.
+ */
+export interface ParliamentChallenge {
+  _type: 'parliament-challenge'
+  country: ISOCountryCode
+  benches: {
+    name: string
+    seats: number
+    /** Of the chamber's total, 0–1. */
+    share: number
+    logo?: string
+    /** The party's colour, `#rrggbb` — the first hint rung. */
+    color?: string
+    /** Placed by the player; the rest are drawn already seated. */
+    asked: boolean
+  }[]
+  totalSeats: number
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /** Only a flag's colour swatches are shown — name the country (live guesses). */
 export interface FlagPaletteChallenge {
   _type: 'flag-palette-challenge'
@@ -917,6 +943,7 @@ export type GroupModeChallenge =
   | FlagPaletteChallenge
   | CapitalGuessChallenge
   | StarChartChallenge
+  | ParliamentChallenge
   | FlashpointChallenge
   | CompositionChallenge
   | GhostStateChallenge

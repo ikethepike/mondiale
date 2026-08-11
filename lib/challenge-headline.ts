@@ -82,6 +82,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'flag-palette-challenge'
         ? `Those colours fly for ${countryName(challenge.country)}`
         : ''
+    case 'parliament': {
+      if (!isChallengeOfType(challenge, 'parliament-challenge')) return ''
+      return `The ${countryName(challenge.country)} parliament`
+    }
     case 'star-chart': {
       if (!isChallengeOfType(challenge, 'star-chart-challenge')) return ''
       const names = starChartStars(challenge).map(star => star.name)

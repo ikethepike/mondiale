@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
+import { colorDistance } from '~~/lib/palette'
 import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
 
 /**
@@ -10,29 +11,8 @@ import { individualChallengeAccessors } from '~~/types/challenges/individual-cha
  * on the board, which is invisible in review and obvious in play.
  */
 
-const CHANNELS = [1, 3, 5] as const
-
-const linear = (hex: string) =>
-  CHANNELS.map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255).map(channel =>
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-  )
-
-/** CIE L*a*b*, via XYZ under D65 — the space ΔE is defined in. */
-const lab = (hex: string): [number, number, number] => {
-  const [red = 0, green = 0, blue = 0] = linear(hex)
-  const x = (0.4124 * red + 0.3576 * green + 0.1805 * blue) / 0.95047
-  const y = 0.2126 * red + 0.7152 * green + 0.0722 * blue
-  const z = (0.0193 * red + 0.1192 * green + 0.9505 * blue) / 1.08883
-  const f = (value: number) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116)
-  const [fx, fy, fz] = [f(x), f(y), f(z)]
-  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
-}
-
-const deltaE = (a: string, b: string): number => {
-  const [l1, a1, b1] = lab(a)
-  const [l2, a2, b2] = lab(b)
-  return Math.hypot(l1 - l2, a1 - a2, b1 - b2)
-}
+/** The one ΔE implementation — Parliament measures its seat colours with it too. */
+const deltaE = colorDistance
 
 /**
  * The floor the `lexicon` tint established when it was picked: its own

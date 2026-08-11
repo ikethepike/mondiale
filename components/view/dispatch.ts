@@ -25,6 +25,7 @@ import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
 import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
+import ViewParliament from '~/components/view/ViewParliament.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
@@ -77,6 +78,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   'flag-palette': ViewFlagPalette,
   'capital-guess': ViewCapitalGuess,
   'star-chart': ViewStarChart,
+  parliament: ViewParliament,
   composition: ViewComposition,
   flashpoint: ViewFlashpoint,
   'ghost-state': ViewGhostState,
