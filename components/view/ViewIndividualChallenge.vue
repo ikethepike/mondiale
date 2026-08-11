@@ -71,6 +71,7 @@ import {
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { governingParty } from '~~/lib/parties'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
@@ -379,6 +380,12 @@ const gateLesson = computed(() => {
         }
         case 'organization':
           return `${countryName(answer)} isn't a member of ${shared.value} — the other three are.`
+        case 'party-family': {
+          const governing = governingParty(answer.isoCode)
+          return governing
+            ? `${countryName(answer)} is governed by ${governing.name} — the other three are governed by a party of the ${shared.value} family.`
+            : `${countryName(answer)} isn't governed by a party of the ${shared.value} family — the other three are.`
+        }
       }
       return undefined
     }

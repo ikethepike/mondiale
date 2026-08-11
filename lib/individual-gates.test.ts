@@ -10,6 +10,7 @@ import { mentionsCountry } from '~~/lib/country'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { countryLedBy } from '~~/lib/leaders'
+import { governedOutsideFamily, governingParty } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
 import {
   individualChallengeAccessors,
@@ -145,6 +146,40 @@ describe('dealOddOneOut (via forced variant)', () => {
       }
     }
     expect(sawOrganization, 'no organization question was dealt — test is vacuous').toBe(true)
+  })
+
+  // Rulers: three countries governed by one political family, one that is not.
+  it('asks about governments the lineup can actually be judged on', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'odd-one-out'
+
+    let sawFamily = false
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'isoCode', difficulty: 'normal' })
+      const shared = dealt.oddOneOut
+      if (shared?.kind !== 'party-family') continue
+      sawFamily = true
+      const family = shared.value!
+
+      expect(shared.propertyLabel).toBe(
+        `Three of these are governed by a party of the ${family} family`
+      )
+
+      // The impostor must be a country whose government we can NAME. An
+      // unidentifiable government is not an odd one out, it is a missing
+      // answer, and a player could never defend picking it.
+      expect(governedOutsideFamily(dealt.country, family)).toBe(true)
+
+      // Every other country in the lineup really is of the family — otherwise
+      // the question has two right answers.
+      for (const isoCode of shared.countries) {
+        if (isoCode === dealt.country) continue
+        expect(governingParty(isoCode)?.ideologies ?? []).toContain(family)
+      }
+
+      expect(shared.countries).toContain(dealt.country)
+      expect(shared.countries.length).toBe(4)
+    }
+    expect(sawFamily, 'no party-family question was dealt — test is vacuous').toBe(true)
   })
 })
 

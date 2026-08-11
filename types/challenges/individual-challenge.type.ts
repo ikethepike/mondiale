@@ -54,8 +54,9 @@ export interface IndividualChallenge {
     propertyLabel: string
     /** The discriminator behind the label, kept so the reveal's lesson agrees
      *  with the dealer by construction (optional: pre-existing games lack it). */
-    kind?: 'region' | 'language' | 'organization'
-    /** The shared value — region label, language name or organization name. */
+    kind?: 'region' | 'language' | 'organization' | 'party-family'
+    /** The shared value — region label, language name, organization name, or
+     *  the political family the other three are governed by. */
     value?: string
   }
   /** higher-lower: stat duels, answered in order. */

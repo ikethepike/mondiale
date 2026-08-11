@@ -128,6 +128,7 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
+import { countriesGovernedByFamily, governedOutsideFamily } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
   dramaScore,
@@ -2389,10 +2390,14 @@ const dealOddOneOut = (
   // A single-continent board makes "three share a region" unanswerable —
   // everything shares the region. Those games ask about language (and, on
   // hard, alliances) instead.
-  const kinds: ('region' | 'language' | 'organization')[] = isWorld
+  const kinds: ('region' | 'language' | 'organization' | 'party-family')[] = isWorld
     ? ['region', 'language']
     : ['language']
   if (difficulty === 'hard') kinds.push('organization')
+  // Rulers. Unlike the other three this asks about GOVERNMENTS rather than
+  // geography, so it needs no world board — a continental game still has
+  // countries governed by social democrats and countries that are not.
+  kinds.push('party-family')
   const kind = sample(kinds)!
 
   const attempt = (): ReturnType<typeof dealOddOneOut> => {
@@ -2472,6 +2477,38 @@ const dealOddOneOut = (
             propertyLabel: `Three of these are members of ${name}`,
             kind,
             value: name,
+          },
+        }
+      }
+      case 'party-family': {
+        // Families and the impostor test both come from lib/parties, so the
+        // dealer and the reveal's lesson read the same join.
+        const families = shuffleArray(
+          [...countriesGovernedByFamily()].filter(([, governed]) => {
+            const inPool = governed.filter(isoCode => countryPool.includes(isoCode))
+            return inPool.length >= 3
+          })
+        )
+        const entry = families[0]
+        if (!entry) return undefined
+        const [family, governed] = entry
+        const same = sampleMany(
+          governed.filter(isoCode => countryPool.includes(isoCode)),
+          3
+        )
+        // The impostor must be a country we can name a government for — an
+        // unknown government is not an odd one out, it is a missing answer.
+        const odd = shuffleArray([...countryPool]).find(isoCode =>
+          governedOutsideFamily(isoCode, family)
+        )
+        if (!odd) return undefined
+        return {
+          country: odd,
+          oddOneOut: {
+            countries: shuffleArray([...same, odd]),
+            propertyLabel: `Three of these are governed by a party of the ${family} family`,
+            kind,
+            value: family,
           },
         }
       }

@@ -441,6 +441,39 @@ export const chamberSeats = (isoCode: ISOCountryCode): number | undefined => {
   return election.totalSeats ?? election.parties.reduce((sum, party) => sum + party.seats, 0)
 }
 
+/**
+ * Countries whose GOVERNING party belongs to a political family, keyed by that
+ * family — the pool Rulers deals its lineups from.
+ *
+ * The family is an ideology rather than a transnational grouping: groupings are
+ * institutions a party joins (the EPP has 33 countries), where an ideology is
+ * what it IS, and covers far more of the world. A country appears under every
+ * family its ruling party claims.
+ */
+export const countriesGovernedByFamily = (): Map<string, ISOCountryCode[]> => {
+  const families = new Map<string, ISOCountryCode[]>()
+  for (const isoCode of Object.keys(PARTIES) as ISOCountryCode[]) {
+    for (const family of governingParty(isoCode)?.ideologies ?? []) {
+      families.set(family, [...(families.get(family) ?? []), isoCode])
+    }
+  }
+  return families
+}
+
+/**
+ * Is this country's government demonstrably NOT of a family — the test an
+ * impostor has to pass.
+ *
+ * A country whose ruling party we cannot identify is not an impostor, it is an
+ * unknown, and putting one in a lineup would ask a question with no defensible
+ * answer. So the guard is positive: we must know who governs, and know that
+ * they do not belong.
+ */
+export const governedOutsideFamily = (isoCode: ISOCountryCode, family: string): boolean => {
+  const governing = governingParty(isoCode)
+  return !!governing?.ideologies?.length && !governing.ideologies.includes(family)
+}
+
 /** Countries whose chamber is complete enough to draw and play. */
 export const playableChambers = (minimumBenches = 3): ISOCountryCode[] =>
   (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
