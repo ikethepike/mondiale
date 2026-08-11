@@ -88,9 +88,9 @@ interface GameStoreState {
     dimmed: ISOCountryCode[]
     /** Countries whose fill breathes toward yellow — the Border Chain head. */
     pulsing: ISOCountryCode[]
-    /** Countries erased from the atlas: stroke lifted and fill melted into the
-     *  land around them, so the shape reads as a hole in the map rather than a
-     *  country in a state. Terra Incognita's whole question. */
+    /** Countries erased from the atlas: the border they share with one
+     *  neighbour is painted out, so the two read as one plain piece of land and
+     *  the country is simply not there. Terra Incognita's whole question. */
     vanished: ISOCountryCode[]
     /** Countries re-inking themselves — the restore beat, a stroke drawing
      *  itself back on. Cleared once the draw has played. */

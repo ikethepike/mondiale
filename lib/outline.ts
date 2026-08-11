@@ -705,28 +705,30 @@ export const scoreSketch = (
  * is correct: nothing outside it changes when the country goes.
  */
 /**
- * The border a country would LOSE if it ceased to exist and its land passed to
- * a neighbour: the longest run it shares with any one of them.
+ * The longest stretch of a ring shared with any one of its neighbours.
  *
- * Terra Incognita erases this run rather than the whole outline, and the
- * difference is the difference between a believable map and a broken one.
- * Erasing a country entirely amputates every border BETWEEN two of its
- * neighbours — those lines terminated on its outline, and without it they stop
- * bluntly in open land. Erasing one shared run instead leaves every remaining
- * line ending exactly where it always did: at the run's tripoints the two
- * borders that survive simply continue into each other, so the country reads as
- * absorbed by its neighbour rather than as a hole with lines pointing at it.
+ * Named for what it measures rather than what it is used for, because the
+ * caller's reason is a mode's fiction and this is plain ring geometry.
  *
- * The LONGEST shared run is the one to take, because it is the seam along which
- * the two shapes fuse most cleanly — absorbing across a country's widest
- * contact leaves a silhouette that looks like a country, not like two stuck
- * together at a corner.
+ * Terra Incognita erases exactly this run to make a country vanish, and the
+ * choice of ONE run is what keeps the map believable. Erasing a whole outline
+ * amputates every border BETWEEN two of the country's neighbours: those lines
+ * terminated on it, and without it they stop bluntly in open land. Erasing a
+ * single shared run leaves every remaining line ending where it always did —
+ * at the run's tripoints the two surviving borders simply continue into each
+ * other, so the land closes over the gap instead of being left ringed by
+ * pointers to it.
  *
- * Undefined when nothing can be absorbed: an island (no land neighbour) or an
- * enclave's host wrapping the whole ring, where erasing the run would erase the
- * country's entire outline and put us back at the amputation problem.
+ * The longest run is the one worth taking: it is the stretch along which the
+ * two shapes merge most completely, so what is left reads as one plain piece
+ * of land rather than as two shapes touching at a corner.
+ *
+ * Undefined when there is no partial run to give up — an island (no land
+ * neighbour at all) or an enclave's host wrapping the whole ring, where erasing
+ * the run would take the entire outline with it and land straight back on the
+ * amputation problem.
  */
-export const absorbedRun = (
+export const longestSharedRun = (
   ring: OutlinePoint[],
   neighbours: OutlinePoint[][]
 ): OutlinePoint[] | undefined => {

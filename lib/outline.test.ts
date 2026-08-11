@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  absorbedRun,
+  longestSharedRun,
   boundaryDeviation,
   DRAW_COMPLETE_AT,
   drawnFraction,
@@ -379,7 +379,7 @@ describe('poleOfInaccessibility', () => {
   })
 })
 
-describe('absorbedRun', () => {
+describe('longestSharedRun', () => {
   // A densely-sampled square: real rings carry many vertices per border, and
   // sharedVertexMask deliberately bridges 1-2 vertex gaps, so a four-corner
   // toy would have its whole outline read as shared.
@@ -404,12 +404,12 @@ describe('absorbedRun', () => {
     [from[0] + drop[0], from[1] + drop[1]] as [number, number],
   ]
 
-  it('takes the longest shared border — the seam the shapes fuse along', () => {
+  it('takes the longest shared border — the stretch the shapes merge along', () => {
     const bottom = along([0, 0], [10, 0], [0, -5])
     // A neighbour touching only the lower half of the left edge.
     const sliver = along([0, 4], [0, 0], [-5, 0])
 
-    const run = absorbedRun(square, [bottom, sliver])
+    const run = longestSharedRun(square, [bottom, sliver])
     expect(run).toBeDefined()
     // Every vertex of the chosen run lies on the bottom edge, not the sliver's.
     for (const [, y] of run!) expect(y).toBe(0)
@@ -417,20 +417,20 @@ describe('absorbedRun', () => {
 
   it('leaves the rest of the outline alone, so no border is amputated', () => {
     const bottom = along([0, 0], [10, 0], [0, -5])
-    const run = absorbedRun(square, [bottom])!
+    const run = longestSharedRun(square, [bottom])!
     expect(run.length).toBeLessThan(square.length)
   })
 
   it('yields nothing for a country with no land neighbours', () => {
-    // An island has nothing to be absorbed into — which is exactly why the
-    // deck never takes one.
-    expect(absorbedRun(square, [])).toBeUndefined()
+    // An island shares no border with anything, so there is no partial run to
+    // give up — which is exactly why the deck never takes one.
+    expect(longestSharedRun(square, [])).toBeUndefined()
   })
 
   it('yields nothing for an enclave host that wraps the whole ring', () => {
     // Lesotho inside South Africa: the shared run IS the whole outline, so
-    // erasing it would erase the country entirely and amputate nothing —
-    // there is no partial border to give up.
-    expect(absorbedRun(square, [square])).toBeUndefined()
+    // erasing it would take the country's entire border with it and put us
+    // back on the amputation problem.
+    expect(longestSharedRun(square, [square])).toBeUndefined()
   })
 })

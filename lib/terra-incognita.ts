@@ -207,11 +207,12 @@ const MINIMUM_WINDOW = 12
  * notice a few pixels of cream. The same gate the map's label builder and the
  * errata dealer draw from.
  *
- * A land neighbour — an erased country is painted out in the colour of the
- * land around it, which is how the borders its NEIGHBOURS drew disappear too.
- * An island has no neighbour to melt into: the sea keeps drawing its whole
- * outline, so Iceland or Sri Lanka would "vanish" while still sitting there in
- * plain sight. They are not hard questions, they are broken ones.
+ * A land neighbour — a country vanishes by giving up the border it shares with
+ * one, so the two pieces of land read as one (`longestSharedRun`). An island
+ * shares no border with anything: there is nothing to give up, the sea keeps
+ * drawing its whole outline, and Iceland or Sri Lanka would "vanish" while
+ * still sitting there in plain sight. They are not hard questions, they are
+ * broken ones.
  */
 export const terraField = (rules: GameRules): ISOCountryCode[] =>
   playableCountries(rules)
@@ -289,8 +290,8 @@ const seatDeck = (
  * one neighbourhood, because the round is played cropped to it.
  *
  * No two share a land border. Two adjacent blanks read as ONE larger blank —
- * the neighbour wash they melt into is each other's — so an adjacent pair asks
- * the table to perceive an absence the map does not actually show. Inside a
+ * the land each vanishes into is the other's — so an adjacent pair asks the
+ * table to perceive an absence the map does not actually distinguish. Inside a
  * single region that guard is the binding constraint, and how tightly it binds
  * depends entirely on WHERE: Europe seats a dozen non-adjacent candidates, the
  * Southern Cone barely seats one.

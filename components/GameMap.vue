@@ -102,17 +102,18 @@
             @click="handleClick(code, $event)"
           />
           <!--
-        The failing atlas (Terra Incognita). A country is absorbed by a
-        neighbour, not blanked: only the border between the two is painted out,
-        in the land's own opaque colour, wiping the line from BOTH sides (a
-        shared border is drawn twice, once by each country, so covering one side
-        leaves it neatly outlined by the other).
+        The failing atlas (Terra Incognita). A country vanishes into the land
+        around it: ONE of its borders is painted out in the land's own opaque
+        colour, wiping the line from BOTH sides (a shared border is drawn twice,
+        once by each country, so covering one side leaves it neatly outlined by
+        the other).
 
         Erasing only that one run is what keeps the map believable. Blanking the
         whole country amputates every border BETWEEN two of its neighbours —
         those lines terminated on its outline and would be left stopping bluntly
         in open land. Here the run's tripoints are untouched, so the two borders
-        that survive at each end simply continue into each other.
+        that survive at each end simply continue into each other and the land
+        closes over the gap.
       -->
           <defs>
             <!-- The country and everything it borders. Clipping the over-paint
@@ -246,7 +247,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import { absorbedRun, largestRing, parsePolygons, poleOfInaccessibility } from '~~/lib/outline'
+import { largestRing, longestSharedRun, parsePolygons, poleOfInaccessibility } from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import {
@@ -491,12 +492,12 @@ const livePath = (code: string): string | undefined =>
   hdApplied.has(code) && hdPaths ? hdPaths[code] : MAP_PATHS[code as MapCode]
 
 /**
- * A vanished country's erasure: the ONE border it loses, plus the outlines that
- * clip the over-paint to land.
+ * A vanished country's erasure: the ONE border it gives up, plus the outlines
+ * that clip the over-paint to land.
  *
- * The country is absorbed by a neighbour rather than blanked — see
- * `absorbedRun`. Only that shared border is painted out, so every other line on
- * the map still ends where it always did and nothing is left amputated.
+ * The country vanishes into the land around it rather than being blanked out —
+ * see `longestSharedRun`. Only that shared border is painted out, so every other
+ * line on the map still ends where it always did and nothing is left amputated.
  *
  * Keyed off `hdRevision` so a tier swap re-renders with the geometry the map is
  * now drawing: an over-paint tracing a standard outline over HD neighbours
@@ -505,7 +506,7 @@ const livePath = (code: string): string | undefined =>
 const erasedShapes = computed(() => {
   void hdRevision.value
   return props.vanished.flatMap(code => {
-    const d = absorbedPath(code)
+    const d = vanishPath(code)
     if (!d) return []
     const land = [livePath(code), ...(BORDERS[code] ?? []).map(neighbour => livePath(neighbour))]
     return [{ code, d, land: land.filter((path): path is string => !!path) }]
@@ -517,17 +518,17 @@ const erasedShapes = computed(() => {
  * and tier — the vanished set repaints on every clock tick, and the geometry
  * cannot change without the tier changing.
  */
-const absorbedCache = new Map<string, string>()
-const absorbedPath = (code: ISOCountryCode): string => {
+const vanishCache = new Map<string, string>()
+const vanishPath = (code: ISOCountryCode): string => {
   const tier = hdApplied.has(code) && hdPaths ? 'hd' : 'sd'
   const key = `${code}:${tier}`
-  const cached = absorbedCache.get(key)
+  const cached = vanishCache.get(key)
   if (cached !== undefined) return cached
 
   const own = livePath(code)
   const ring = own ? largestRing(own) : undefined
   const run = ring
-    ? absorbedRun(
+    ? longestSharedRun(
         ring,
         (BORDERS[code] ?? []).flatMap(neighbour => {
           const path = livePath(neighbour)
@@ -543,7 +544,7 @@ const absorbedPath = (code: ISOCountryCode): string => {
         .map(([x, y]) => `L${x} ${y}`)
         .join('')
     : ''
-  absorbedCache.set(key, d)
+  vanishCache.set(key, d)
   return d
 }
 

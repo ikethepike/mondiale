@@ -897,8 +897,8 @@ export interface CleanSweepState {
 
 /**
  * Terra Incognita: the atlas is failing. Every few seconds a country quietly
- * goes — its stroke lifts and its fill melts into the neighbour wash — and
- * naming one re-inks it. The only round in the game whose question is what
+ * goes — the border it shares with a neighbour is painted out, and the two read
+ * as one plain piece of land — and naming one re-inks it. The only round in the game whose question is what
  * ISN'T on the map, which is also the strongest proof a player knows where a
  * country is.
  *
