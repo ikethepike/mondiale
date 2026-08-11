@@ -130,6 +130,7 @@
             v-for="shape in erasedShapes"
             :key="`erased-${shape.code}`"
             class="atlas-erased"
+            pathLength="1"
             :clip-path="`url(#atlas-land-${shape.code})`"
             :d="shape.d"
           />
@@ -478,32 +479,45 @@ const pulsingSet = computed(() => new Set<string>(props.pulsing))
 const vanishedSet = computed(() => new Set<string>(props.vanished))
 const restoringSet = computed(() => new Set<string>(props.restoring))
 
-/** Country outlines for the atlas-failure overlays, skipping any code the map
- *  has no geometry for. */
-const atlasShapes = (codes: ISOCountryCode[]) =>
-  codes.flatMap(code => {
-    const d = MAP_PATHS[code as MapCode]
-    return d ? [{ code, d }] : []
-  })
+/**
+ * The geometry a country is CURRENTLY drawn with. An over-paint that traces a
+ * country has to trace the SAME tier its neighbours are drawn at — a standard
+ * outline laid over HD neighbours diverges by exactly the simplification error,
+ * and the leftover pokes through as a dashed ghost of the border. It is the
+ * double-border problem `applyLod` already guards against, arriving from the
+ * other direction.
+ */
+const livePath = (code: string): string | undefined =>
+  hdApplied.has(code) && hdPaths ? hdPaths[code] : MAP_PATHS[code as MapCode]
 
 /**
  * A vanished country plus the outlines of its land neighbours, which together
  * clip its erasure. Only the LAND-facing lines are meant to dissolve: the
  * clip's own outer edge is the country's coastline, so the over-paint stops
  * dead at the water instead of bleeding a land-coloured fringe into it.
+ *
+ * Keyed off `hdRevision` so a tier swap re-renders the overlays with the
+ * geometry the map is now drawing.
  */
-const erasedShapes = computed(() =>
-  props.vanished.flatMap(code => {
-    const d = MAP_PATHS[code as MapCode]
+const erasedShapes = computed(() => {
+  void hdRevision.value
+  return props.vanished.flatMap(code => {
+    const d = livePath(code)
     if (!d) return []
     const neighbours = (BORDERS[code] ?? [])
-      .map(neighbour => MAP_PATHS[neighbour as MapCode])
+      .map(neighbour => livePath(neighbour))
       .filter((path): path is string => !!path)
     return [{ code, d, neighbours }]
   })
-)
+})
 
-const restoringShapes = computed(() => atlasShapes(props.restoring))
+const restoringShapes = computed(() => {
+  void hdRevision.value
+  return props.restoring.flatMap(code => {
+    const d = livePath(code)
+    return d ? [{ code, d }] : []
+  })
+})
 const unselectableSet = computed(() => new Set<string>(props.unselectable))
 
 /** Micro-state dots and tap halos, minus any the game has benched. */
@@ -1528,6 +1542,10 @@ const MAP_CODES = Object.keys(MAP_BOUNDS) as MapCode[]
 let hdPaths: Record<string, string> | undefined
 let hdLoading = false
 const hdApplied = new Set<string>()
+/** Bumped whenever the LOD tier actually changes. `applyLod` swaps geometry
+ *  imperatively, so anything Vue renders that must trace the SAME outlines —
+ *  the atlas-failure overlays — needs a reactive signal to re-render with it. */
+const hdRevision = ref(0)
 const culled = new Set<string>()
 
 const loadHdTier = () => {
@@ -1616,12 +1634,16 @@ const applyLod = (effectiveZoom: number) => {
   if (effectiveZoom >= LOD_ZOOM_IN) loadHdTier()
 
   if (effectiveZoom < LOD_ZOOM_OUT) {
-    for (const code of hdApplied) pathEls.get(code)?.setAttribute('d', MAP_PATHS[code as MapCode])
-    hdApplied.clear()
+    if (hdApplied.size) {
+      for (const code of hdApplied) pathEls.get(code)?.setAttribute('d', MAP_PATHS[code as MapCode])
+      hdApplied.clear()
+      hdRevision.value++
+    }
     return
   }
   if (!hdPaths || effectiveZoom < LOD_ZOOM_IN) return // hysteresis band: keep as-is
 
+  let swapped = false
   for (const code of MAP_CODES) {
     const path = pathEls.get(code)
     if (!path) continue
@@ -1635,7 +1657,9 @@ const applyLod = (effectiveZoom: number) => {
     path.setAttribute('d', wantHd ? hdPaths[code as MapCode] : MAP_PATHS[code as MapCode])
     if (wantHd) hdApplied.add(code)
     else hdApplied.delete(code)
+    swapped = true
   }
+  if (swapped) hdRevision.value++
 }
 
 // --- Gestures: wheel zoom, drag pan, pinch — all viewBox-native --------------
@@ -2443,59 +2467,52 @@ path[id] {
 
 // --- The failing atlas ---------------------------------------------------------
 //
-// A vanished country is over-painted in flat land: fill and stroke both the
-// opaque land colour, so the border ink disappears from BOTH sides — a shared
-// line is drawn twice, once by each country, and erasing only one side leaves
-// the hole neatly outlined by its neighbours.
+// A country is UNWRITTEN rather than faded out: the land-coloured stroke draws
+// itself along the country's outline, over-painting the border ink as it goes.
 //
-// The paint is clipped to the country plus its land neighbours (see the
-// clipPath above), which is what confines the dissolve to the INTERNAL lines.
-// A coastline is the clip's own outer edge, so the water side of the stroke is
-// never painted: the shore keeps its line and no land-coloured fringe creeps
-// into the sea. The land silhouette survives; only the country inside it goes.
+// It has to be a wipe, not a cross-fade. Fading the erasure in uniformly left
+// every border at half strength for the middle second of the dissolve, and a
+// half-strength border does not read as a country going — it reads as a country
+// greyed out, still sitting there. A wipe has no half state: each point of the
+// outline is either erased or untouched, so the only thing the eye can report
+// is "that line is going".
 //
-// The stroke runs wider than the 1px hairline it covers because anti-aliasing
-// would otherwise leave a ghost of the border exactly where the player is being
-// asked to notice nothing. Widening is free on the water side now that the clip
-// stops it there.
+// It over-paints from BOTH sides. A shared border is drawn twice, once by each
+// country, so covering only one side leaves the hole neatly outlined by its
+// neighbours — which is why the stroke runs wider than the 1px hairline it
+// covers, and why the clip is the country UNION its land neighbours.
+//
+// That clip is also what confines the dissolve to the INTERNAL lines: a
+// coastline is the union's own outer edge, so the water side is never painted.
+// The shore keeps its line, nothing bleeds into the sea, and the land
+// silhouette survives — only the country inside it goes.
+//
+// `fill` is deliberately none. The interior is already the land colour (a
+// vanished country carries no tint), so a fill would change nothing visually
+// EXCEPT to cover the inner half of the country's own border the instant it
+// mounted — reintroducing the very half-strength frame the wipe exists to
+// avoid.
 .atlas-erased {
+  fill: none;
   pointer-events: none;
-  fill: var(--map-land-solid);
   stroke: var(--map-land-solid);
+  stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: calc(2.2px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
-  // The melt, not a blink: the erasure fades IN over the country, so the shape
-  // slips away while the player is looking somewhere else. That quiet is the
-  // entire mechanic — a country that pops out announces itself, which turns
-  // "where was that?" into "did something just flash?".
-  //
+  stroke-width: calc(3px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
   // Its own duration rather than --motion-slow: every other token here paces a
   // UI transition the eye is meant to follow, and this one is paced to be
   // ALMOST missed. Roughly a third of the tightest cadence (5s on hard), so the
-  // dissolve is unhurried but always finished well before the next loss starts.
+  // erasure is unhurried but always finished well before the next loss starts.
+  //
+  // Reduced motion collapses --motion-slow globally but not this, so it gets
+  // its own answer below: no wipe at all, the country simply gone. The
+  // information is identical either way.
   --atlas-melt: 1.8s;
-  animation: atlas-melt var(--atlas-melt) var(--ease-smooth) both;
+  animation: stroke-draw var(--atlas-melt) var(--ease-smooth) both;
 }
 
-// The blur is what makes it a melt rather than a cross-fade: mid-dissolve the
-// erasure's edges are soft, so the border does not sit there at half strength
-// looking like a rendering artifact — it goes out of focus and is gone. It
-// resolves to 0 so the settled state is pixel-exact land with no halo.
-@keyframes atlas-melt {
-  from {
-    opacity: 0;
-    filter: blur(calc(2px * var(--stroke-zoom, 1)));
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
-// Reduced motion collapses --motion-slow globally, but this duration is local,
-// so it needs its own answer: no dissolve at all. The country is simply gone,
-// which is the honest degradation — the information is identical.
 @media (prefers-reduced-motion: reduce) {
   .atlas-erased {
     --atlas-melt: 0.01s;
