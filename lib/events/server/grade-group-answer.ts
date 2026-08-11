@@ -16,6 +16,7 @@ import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
+import { terraAnswers } from '~~/lib/terra-incognita'
 import { clamp01 } from '~~/lib/number'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData } from '~~/types/events.types'
@@ -163,6 +164,19 @@ export const gradeGroupAnswer = async ({
       const challenge = expectChallengeType(roundChallenge, 'star-chart-challenge')
       blitzOn({
         countries: starChartAnswers(challenge),
+        maximumPoints: challenge.maximumPoints,
+      })
+      break
+    }
+    case 'terra-incognita': {
+      // A plain collect-a-set over the deck the atlas swallowed. The vanish
+      // schedule is deterministic (`cadenceMs` + the dealt order), so the
+      // server never has to be told which countries were gone — it grades the
+      // same answer set the player watched disappear, and a collapsed world
+      // scores exactly the restorations it banked before it fell.
+      const challenge = expectChallengeType(roundChallenge, 'terra-incognita-challenge')
+      blitzOn({
+        countries: terraAnswers(challenge),
         maximumPoints: challenge.maximumPoints,
       })
       break

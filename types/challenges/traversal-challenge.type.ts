@@ -83,6 +83,7 @@ export type RoundChallengeKind =
   | 'manhunt'
   | 'unique-or-bust'
   | 'clean-sweep'
+  | 'terra-incognita'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -154,6 +155,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'unique-or-bust'
     case 'clean-sweep-challenge':
       return 'clean-sweep'
+    case 'terra-incognita-challenge':
+      return 'terra-incognita'
     default:
       return 'ranking'
   }

@@ -157,6 +157,8 @@ export const useClientEvents = () => {
     gameStore.map.staggered = false
     gameStore.map.dimmed = []
     gameStore.map.pulsing = []
+    gameStore.map.vanished = []
+    gameStore.map.restoring = []
     gameStore.map.atlasMode = false
     gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined

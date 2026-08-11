@@ -78,6 +78,11 @@ export const ROUND_WEIGHTS = {
   // table races each other in the open. Held at a staple's rate rather than
   // above it because the set register is small enough to repeat inside a game.
   'clean-sweep': 0.07,
+  // The world ending is a set-piece: the longest clock among the typed rounds
+  // and the only one that rewrites the map itself. Held below the staples so
+  // it stays an event — a game usually sees one, and two never read as a
+  // rotation slot.
+  'terra-incognita': 0.05,
 } as const satisfies Record<RoundChallengeKind, number>
 
 /**
@@ -103,6 +108,7 @@ export const MECHANIC_BY_KIND = {
   composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',
+  'terra-incognita': 'typed',
   // Tap the map until the set is complete.
   'heritage-hunt': 'pin',
   'river-run': 'collect',

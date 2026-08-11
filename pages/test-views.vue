@@ -98,6 +98,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
+import ViewTerraIncognita from '~/components/view/ViewTerraIncognita.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -157,6 +158,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { blitzScore } from '~~/lib/scoring'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
+import { terraSeconds, TERRA_CADENCE_MS, TERRA_COLLAPSE_THRESHOLD } from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -589,6 +591,47 @@ const settledStarChartRound = (): Round => {
       Object.entries(submissions).map(([playerId, submitted]) => [
         playerId,
         { points: blitzScore(stars, submitted, MAXIMUM_POINTS) },
+      ])
+    ),
+  } as unknown as Round
+}
+
+/**
+ * A settled Terra Incognita, for the reveal that has to teach placement: eight
+ * countries erased, three of them still missing at the buzzer, and one name on
+ * your sheet that was never gone at all.
+ */
+const settledTerraRound = (): Round => {
+  const vanishings: ISOCountryCode[] = ['UY', 'MW', 'AL', 'TM', 'LA', 'BJ', 'MD', 'BT']
+  const cadenceMs = TERRA_CADENCE_MS.normal
+  const challenge = {
+    _type: 'terra-incognita-challenge',
+    vanishings,
+    cadenceMs,
+    collapseThreshold: TERRA_COLLAPSE_THRESHOLD.normal,
+    durationSeconds: terraSeconds(vanishings.length, cadenceMs),
+    maximumPoints: MAXIMUM_POINTS,
+  }
+  const submissions: { [playerId: string]: ISOCountryCode[] } = {
+    // Five of eight, Bhutan and Moldova missed by the whole table, and Peru
+    // named while it was still sitting there in plain sight.
+    [ME]: ['UY', 'AL', 'TM', 'LA', 'BJ', 'PE'],
+    [RIVAL]: ['UY', 'MW', 'AL'],
+    [THIRD]: ['LA'],
+  }
+
+  return {
+    groupChallenge: challenge,
+    groupAnswers: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { submitted, correct: vanishings },
+      ])
+    ),
+    playerTurns: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { points: blitzScore(vanishings, submitted, MAXIMUM_POINTS) },
       ])
     ),
   } as unknown as Round
@@ -1376,6 +1419,32 @@ const scenarios: Scenario[] = [
     label: 'Star chart reveal (who named which star)',
     component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledStarChartRound()]),
+  },
+  {
+    // The atlas failing across five continents, so the erasure reads at one
+    // world framing: Uruguay, Malawi, Albania, Turkmenistan, Laos, Benin,
+    // Moldova, Bhutan — none of them touching, all of them landlocked or
+    // neighbour-locked enough to melt cleanly into the wash.
+    id: 'terra-incognita',
+    label: 'Terra Incognita (the atlas fails)',
+    component: ViewTerraIncognita,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'terra-incognita-challenge',
+          vanishings: ['UY', 'MW', 'AL', 'TM', 'LA', 'BJ', 'MD', 'BT'],
+          cadenceMs: TERRA_CADENCE_MS.normal,
+          collapseThreshold: TERRA_COLLAPSE_THRESHOLD.normal,
+          durationSeconds: terraSeconds(8, TERRA_CADENCE_MS.normal),
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'terra-incognita-scores',
+    label: 'Terra Incognita reveal (what you never noticed)',
+    component: ViewGroupScores,
+    build: () => mockGame('group-scores', [settledTerraRound()]),
   },
   {
     id: 'flashpoint',
@@ -4132,6 +4201,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Flashpoint', ['flashpoint']],
   ['Capital Guess', ['capital-guess']],
   ['Star Chart', ['star-chart']],
+  ['Terra Incognita', ['terra-incognita']],
   ['Stat Detective', ['stat-detective']],
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],

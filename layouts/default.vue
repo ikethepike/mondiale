@@ -38,6 +38,8 @@
       :staggered="gameStore.map.staggered"
       :dimmed="gameStore.map.dimmed"
       :pulsing="gameStore.map.pulsing"
+      :vanished="gameStore.map.vanished"
+      :restoring="gameStore.map.restoring"
       :unselectable="unselectableCountries"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal

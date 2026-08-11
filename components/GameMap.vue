@@ -49,6 +49,8 @@
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
+              'vanished-country': vanishedSet.has(code),
+              'restoring-country': restoringSet.has(code),
               'unselectable-country': unselectableSet.has(code),
             }"
             :data-id="code"
@@ -89,6 +91,8 @@
               'highlighted-country': highlights.includes(code),
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
+              'vanished-country': vanishedSet.has(code),
+              'restoring-country': restoringSet.has(code),
             }"
             :data-id="code"
             :data-footprint="spot?.footprint"
@@ -96,6 +100,30 @@
             :cy="spot?.y"
             r="3.5"
             @click="handleClick(code, $event)"
+          />
+          <!--
+        The failing atlas (Terra Incognita). A country cannot be erased by
+        muting its OWN path: every border is drawn twice, once from each side,
+        so the neighbours would keep tracing the hole. These overlays paint
+        last, in the land's own opaque colour, wiping the shared lines their
+        neighbours drew — which is exactly why the deck never takes an island
+        (no land neighbour, nothing to melt into) and why a coastline survives
+        the erasure: the sea is not a neighbour, so the shore keeps its edge
+        and only the political lines go.
+      -->
+          <path
+            v-for="shape in erasedShapes"
+            :key="`erased-${shape.code}`"
+            class="atlas-erased"
+            :d="shape.d"
+          />
+          <!-- The re-ink: the restored country draws its own outline back on. -->
+          <path
+            v-for="shape in restoringShapes"
+            :key="`restored-${shape.code}`"
+            class="atlas-restored"
+            pathLength="1"
+            :d="shape.d"
           />
           <!-- Physical-geography overlay: rivers draw themselves in as lines,
            seas/lakes/ranges wash in as soft areas (water game modes) -->
@@ -363,6 +391,19 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Countries erased from the atlas — stroke lifted, fill surrendered to the
+   *  land around them. The absence IS the question (Terra Incognita), so this
+   *  is deliberately the one country state that removes information rather
+   *  than adding it. */
+  vanished: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Countries drawing themselves back onto the map — the restore beat. */
+  restoring: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   /** Countries this game never lets anyone select (benched micro-nations):
    *  clicks are swallowed and their dot markers/tap halos don't render, so
    *  the exclusion holds across every view in one place. */
@@ -417,6 +458,19 @@ const highlights = computed(() =>
 
 const dimmedSet = computed(() => new Set<string>(props.dimmed))
 const pulsingSet = computed(() => new Set<string>(props.pulsing))
+const vanishedSet = computed(() => new Set<string>(props.vanished))
+const restoringSet = computed(() => new Set<string>(props.restoring))
+
+/** Country outlines for the atlas-failure overlays, skipping any code the map
+ *  has no geometry for. */
+const atlasShapes = (codes: ISOCountryCode[]) =>
+  codes.flatMap(code => {
+    const d = MAP_PATHS[code as MapCode]
+    return d ? [{ code, d }] : []
+  })
+
+const erasedShapes = computed(() => atlasShapes(props.vanished))
+const restoringShapes = computed(() => atlasShapes(props.restoring))
 const unselectableSet = computed(() => new Set<string>(props.unselectable))
 
 /** Micro-state dots and tap halos, minus any the game has benched. */
@@ -2352,6 +2406,40 @@ path.sea-glow-country {
 // coastlines stay hairlines instead of ink rivers when zoomed in close.
 path[id] {
   stroke-width: calc(1px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+}
+
+// --- The failing atlas ---------------------------------------------------------
+//
+// A vanished country is over-painted in flat land: fill and stroke both the
+// opaque land colour, so its own outline AND the halves its neighbours drew
+// disappear under one shape. The stroke runs a shade wider than the 1px
+// country hairline it has to cover, or anti-aliasing leaves a ghost of the
+// border exactly where the player is being asked to notice nothing.
+.atlas-erased {
+  pointer-events: none;
+  fill: var(--map-land-solid);
+  stroke: var(--map-land-solid);
+  stroke-linejoin: round;
+  stroke-width: calc(1.6px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+  // The melt, not a blink: the erasure fades IN over the country, so the
+  // shape slips away while the player is looking somewhere else. That quiet
+  // is the entire mechanic — a country that pops out announces itself.
+  animation: fade-in var(--motion-slow) var(--ease-smooth);
+}
+
+// The re-ink. Drawn on top of the (still erased-looking) map for one beat, so
+// the outline visibly returns rather than popping back with the layer swap.
+.atlas-restored {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--dark-blue);
+  stroke-linejoin: round;
+  stroke-width: calc(1.6px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  // Reduced motion needs no branch here: _motion.scss collapses the tokens to
+  // 0.01s, and `forwards` still lands the outline at full ink.
+  animation: stroke-draw var(--motion-slow) var(--ease-out-expressive) forwards;
 }
 
 // Mid-gesture, hover hit-testing against dense coastline paths and the fill
