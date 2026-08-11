@@ -39,6 +39,7 @@ export type ProviderId =
   | 'mozilla'
   | 'mondiale'
   | 'nasa'
+  | 'usgs'
 
 export interface Provider {
   name: string
@@ -185,6 +186,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description:
       'Matched satellite pairs of one place decades apart, from the Landsat and Terra archives.',
   },
+  usgs: {
+    name: 'U.S. Geological Survey',
+    url: 'https://eros.usgs.gov',
+    description:
+      'Five decades of Landsat imagery, curated by the EROS Center into matched views of a changing planet.',
+  },
 }
 
 export type SourceId =
@@ -212,6 +219,7 @@ export type SourceId =
   | 'common-voice-clips'
   | 'mondiale-editorial'
   | 'nasa-earth-observatory'
+  | 'usgs-earthshots'
 
 export interface Source {
   provider: ProviderId
@@ -404,6 +412,12 @@ export const SOURCES: Record<SourceId, Source> = {
     provider: 'nasa',
     title: 'World of Change imagery',
     url: 'https://earthobservatory.nasa.gov/world-of-change',
+    license: 'Public domain',
+  },
+  'usgs-earthshots': {
+    provider: 'usgs',
+    title: 'Earthshots Landsat imagery',
+    url: 'https://eros.usgs.gov/earthshots',
     license: 'Public domain',
   },
 }
@@ -883,6 +897,7 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     files: ['data/changes.gen.ts'],
     origins: [
       { source: 'nasa-earth-observatory', dataset: 'Matched Landsat/Terra pairs' },
+      { source: 'usgs-earthshots', dataset: 'Matched Landsat pairs' },
       { source: 'naturalearth-10m', dataset: 'On-land validation of each subject' },
       { source: 'mondiale-editorial', dataset: 'generators/data/change-seeds.ts' },
     ],

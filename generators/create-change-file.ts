@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import sharp from 'sharp'
 import { CHANGE_SEEDS, type ChangeKind, type ChangeSeed } from './data/change-seeds'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
-import { saveImageUrl, wait } from './vendors/wikidata/commons'
+import { cacheOriginal, hasCachedOriginal, saveImageUrl, wait } from './vendors/wikidata/commons'
 import { COUNTRIES } from '../data/countries.gen'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { MediaCredit } from '../lib/attribution'
@@ -190,6 +190,11 @@ for (const seed of CHANGE_SEEDS) {
     [seed.beforeUrl, seed.beforeYear, 'before'],
     [seed.afterUrl, seed.afterYear, 'after'],
   ] as const) {
+    const held = hasCachedOriginal(url)
+    // Hold the source bytes locally whether or not the webp already exists:
+    // the ContentWOC tree is retired and the Wayback copy is the only original
+    // left, so a shipped webp alone is no insurance against losing it.
+    await cacheOriginal(url)
     // A dropped socket mid-run must cost one frame, not the whole deck: the
     // merge below keeps whatever a previous run already captured.
     const image = await saveImageUrl(
@@ -205,9 +210,9 @@ for (const seed of CHANGE_SEEDS) {
       return undefined
     })
     if (image) frames.push({ image, year })
-    // The archive throttles far harder than Commons does; a cached frame
-    // short-circuits above, so this only paces genuinely new downloads.
-    await wait(3000)
+    // The archive throttles far harder than Commons does — pace only the
+    // fetches that actually touched it; cached originals never leave the disk.
+    if (!held) await wait(3000)
   }
 
   // One frame is not a crossfade — a half-downloaded story never ships.
@@ -241,7 +246,7 @@ for (const seed of CHANGE_SEEDS) {
     description: seed.description,
     frames: [frames[0], frames[1]],
     ...NASA_EO_CREDIT,
-    ...(seed.credit ? { credit: seed.credit } : {}),
+    ...seed.credit,
   }
 }
 

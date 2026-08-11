@@ -1,4 +1,5 @@
-import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import sharp from 'sharp'
 import type { MediaCredit } from '../../../lib/attribution'
@@ -311,20 +312,34 @@ export const existingImagePath = (baseName: string, publicBase: string): string 
   existsSync(`${baseName}.webp`) ? `${publicBase}.webp` : undefined
 
 /**
- * Download a hand-picked image from an arbitrary URL. Used by a seed's
- * `imageUrl` override, so it skips the viability check entirely — whoever set
- * the URL already vouched for the photo.
+ * Raw downloaded bytes, keyed by source URL and kept beside the vendor
+ * datasets (gitignored, regenerable). A `--force` run or an encoding change
+ * re-encodes from these instead of re-hitting the source host — the Internet
+ * Archive especially throttles far harder than Commons, and its copies are the
+ * only surviving originals for the World of Change frames. Delete the
+ * directory to force a true re-download.
  */
-export const saveImageUrl = async (
-  url: string,
-  baseName: string,
-  publicBase: string,
-  { width, force }: { width: number; force: boolean }
-): Promise<string | undefined> => {
-  if (!force) {
-    const existing = existingImagePath(baseName, publicBase)
-    if (existing) return existing
-  }
+const ORIGINALS_DIRECTORY = 'generators/vendors/originals'
+
+const originalBase = (url: string) =>
+  `${ORIGINALS_DIRECTORY}/${createHash('sha1').update(url).digest('hex')}`
+
+const cachedOriginalPath = (url: string): string | undefined =>
+  Object.values(EXTENSION_BY_CONTENT_TYPE)
+    .map(extension => `${originalBase(url)}.${extension}`)
+    .find(existsSync)
+
+/** Whether `saveImageUrl(url, …)` can serve this URL without touching the network. */
+export const hasCachedOriginal = (url: string): boolean => Boolean(cachedOriginalPath(url))
+
+/**
+ * Fetch `url` into the originals cache (no-op when already held) and return
+ * the cached file's path. Best-effort: undefined after repeated failure or a
+ * non-image response, never a throw.
+ */
+export const cacheOriginal = async (url: string): Promise<string | undefined> => {
+  const cached = cachedOriginalPath(url)
+  if (cached) return cached
 
   // A plain browser UA: some hosts 403 an unknown agent, and unlike Commons
   // these are arbitrary sites we don't have an arrangement with.
@@ -355,7 +370,32 @@ export const saveImageUrl = async (
     return undefined
   }
 
-  return writeWebp(Buffer.from(await response.arrayBuffer()), baseName, publicBase, width)
+  const path = `${originalBase(url)}.${EXTENSION_BY_CONTENT_TYPE[contentType]}`
+  mkdirSync(ORIGINALS_DIRECTORY, { recursive: true })
+  writeFileSync(path, Buffer.from(await response.arrayBuffer()))
+  return path
+}
+
+/**
+ * Download a hand-picked image from an arbitrary URL. Used by a seed's
+ * `imageUrl` override, so it skips the viability check entirely — whoever set
+ * the URL already vouched for the photo.
+ */
+export const saveImageUrl = async (
+  url: string,
+  baseName: string,
+  publicBase: string,
+  { width, force }: { width: number; force: boolean }
+): Promise<string | undefined> => {
+  if (!force) {
+    const existing = existingImagePath(baseName, publicBase)
+    if (existing) return existing
+  }
+
+  const original = await cacheOriginal(url)
+  if (!original) return undefined
+
+  return writeWebp(readFileSync(original), baseName, publicBase, width)
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { MediaCredit } from '../../lib/attribution'
 import type { ISOCountryCode } from '../../types/geography.types'
 
 /**
@@ -70,8 +71,9 @@ export interface ChangeSeed {
   description: string
   beforeUrl: string
   afterUrl: string
-  /** Override when EO credits a named visualizer rather than the observatory. */
-  credit?: string
+  /** Override when the frames are not the observatory's own — another agency's
+   *  series (Earthshots), or EO crediting a named visualizer. */
+  credit?: Partial<MediaCredit>
 }
 
 const WOC = (path: string) =>
@@ -84,6 +86,32 @@ const WOC = (path: string) =>
  * has to be picked by hand from the record's own frame list.
  */
 const EO = (path: string) => `https://eoimages.gsfc.nasa.gov/images/imagerecords/${path}`
+
+/**
+ * USGS Earthshots — the EROS Center's own before/after Landsat series, a
+ * second curated trove alongside NASA's. Public domain like all USGS work.
+ * Use only the co-registered `*Intro` frames: the sibling `-labels` and
+ * per-suburb crop variants carry burned-in annotations or other footprints.
+ */
+const EARTHSHOTS = (path: string) => `https://eros.usgs.gov/sites/eros.usgs.gov/files/${path}`
+
+/**
+ * Countries searched across both troves that yielded NOTHING usable, so the
+ * ground is not re-covered: Sweden (EO holds two single-frame scenics — Kiruna
+ * 2016, the Siljan Ring 2020 — and Earthshots has no Nordic story but
+ * Svalbard), Poland, France, Thailand, and Japan (Isahaya Bay publishes only
+ * `-label` frames). South Africa's Theewaterskloof pair is real and
+ * co-registered but is a WIDE regional view in which the drought-hit reservoir
+ * is a small shape and a seasonal green-to-brown shift dominates the frame —
+ * the same flaw that rules out Batagaika's crater. Kiruna's relocating town is
+ * the best unclaimed story going; nobody has published it as a pair, so it
+ * would have to be built from raw Landsat scenes.
+ */
+const EARTHSHOTS_CREDIT = {
+  credit: 'USGS EROS Center',
+  license: 'Public domain',
+  imageSource: 'usgs-earthshots',
+} satisfies Partial<MediaCredit>
 
 export const CHANGE_SEEDS: ChangeSeed[] = [
   // --- Asia -----------------------------------------------------------------
@@ -134,6 +162,34 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     beforeUrl: WOC('padma/padma_tm5_1988002_lrg.jpg'),
     afterUrl: WOC('padma/padma_oli_2018020_lrg.jpg'),
   },
+  {
+    name: 'the factory delta',
+    title: 'The Pearl River Delta',
+    countries: ['CN'],
+    kind: 'urban',
+    coordinates: { lat: 22.55, lng: 114.05 },
+    startYear: 1980,
+    beforeYear: 1988,
+    afterYear: 2014,
+    description:
+      'Rice paddies and fish ponds became the largest continuous urban area on earth in a single generation, after a sleepy border town was declared a special economic zone and tens of millions moved in to work the factories.',
+    beforeUrl: EO('86000/86603/prd_tm_1988329_lrg.jpg'),
+    afterUrl: EO('86000/86603/prd_oli_2014320_lrg.jpg'),
+  },
+  {
+    name: 'the northern plains megacity',
+    title: 'Delhi',
+    countries: ['IN'],
+    kind: 'urban',
+    coordinates: { lat: 28.6, lng: 77.2 },
+    startYear: 1990,
+    beforeYear: 1989,
+    afterYear: 2018,
+    description:
+      'A capital whose population tripled past thirty million in three decades, sprawling outward along every highway at once and swallowing the farmland of two neighbouring states.',
+    beforeUrl: EO('92000/92813/dehliurban_tm5_1989339_lrg.jpg'),
+    afterUrl: EO('92000/92813/dehliurban_oli_2018156_lrg.jpg'),
+  },
   // --- Middle East ----------------------------------------------------------
   {
     name: 'the built coastline',
@@ -166,6 +222,20 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'Wetlands the size of a small country were deliberately drained to punish the people living in them, then partly reflooded when the dykes were broken open a decade later.',
     beforeUrl: WOC('iraq_marsh/iraq_tmo_2000059_143_lrg.jpg'),
     afterUrl: WOC('iraq_marsh/iraq_amo_2010039_143_lrg.jpg'),
+  },
+  {
+    name: 'the desert crop circles',
+    title: 'Wadi as-Sirhan',
+    countries: ['SA'],
+    kind: 'agriculture',
+    coordinates: { lat: 30.3, lng: 38.3 },
+    startYear: 1980,
+    beforeYear: 1987,
+    afterYear: 2012,
+    description:
+      'Fossil water pumped up from beneath the sand turned bare desert into thousands of green circles of wheat and fodder — centre-pivot irrigation drawing down an aquifer that last filled during the ice age.',
+    beforeUrl: EO('77000/77900/saudiarabia_tm5_1987036_lrg.jpg'),
+    afterUrl: EO('77000/77900/saudiarabia_etm_2012017_lrg.jpg'),
   },
   // --- South America --------------------------------------------------------
   {
@@ -204,7 +274,75 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
     afterUrl:
       'https://upload.wikimedia.org/wikipedia/commons/2/20/Science.nasa.gov_missions_landsat_deforestation-in-paraguays-gran-chaco_January_29%2C_1985_-_February_12%2C_2025_Before-and-after_Image-2-of-2-%282025%29.png',
   },
+  {
+    name: 'the vanished highland lake',
+    title: 'Lake Poopó',
+    countries: ['BO'],
+    kind: 'water',
+    coordinates: { lat: -18.8, lng: -67.1 },
+    startYear: 1990,
+    beforeYear: 2013,
+    afterYear: 2016,
+    description:
+      'The Altiplano’s second-largest lake — already shallow, already shrinking for decades — evaporated entirely in the space of three years, stranding fishing villages on a salt plain nearly four kilometres above the sea.',
+    beforeUrl: EO('87000/87363/lakepoopo_oli_2013102_lrg.jpg'),
+    afterUrl: EO('87000/87363/lakepoopo_oli_2016015_lrg.jpg'),
+  },
+  {
+    name: 'the tropical ice cap',
+    title: 'The Quelccaya Ice Cap',
+    countries: ['PE'],
+    kind: 'ice',
+    coordinates: { lat: -13.93, lng: -70.82 },
+    startYear: 1980,
+    beforeYear: 1988,
+    afterYear: 2023,
+    description:
+      'The largest ice cap in the tropics, high in the Andes, has lost half its area since satellites began watching — and with it the archive of eighteen centuries of climate held in its ice.',
+    beforeUrl: EO('152000/152124/quelccaya_tm_1988246_lrg.jpg'),
+    afterUrl: EO('152000/152124/quelccaya_oli_2023295_lrg.jpg'),
+  },
   // --- Europe ---------------------------------------------------------------
+  // NOTE: three Earthshots stories here were tried and rejected. Chernobyl's
+  // 2024 frame carries a white no-data wedge and sits offset from 1986;
+  // Svalbard's 1976 frame is half black wedge; and every Copenhagen frame
+  // after 2001 has city names burned into it. All three are restorable if
+  // cleaner renderings appear.
+  {
+    name: 'the sea turned into fields',
+    title: 'The IJsselmeer polders',
+    countries: ['NL'],
+    kind: 'agriculture',
+    // The pin sits on the reclaimed land itself, which the polygon has held
+    // since long before Natural Earth was drawn.
+    coordinates: { lat: 52.51, lng: 5.47 },
+    startYear: 1960,
+    beforeYear: 1973,
+    afterYear: 2021,
+    description:
+      'An inland sea walled off from the ocean and then pumped dry in stages, turning open water into a province of farms and new towns — land that simply did not exist when the people farming it were born.',
+    beforeUrl: EARTHSHOTS('2021-06/1973-Intro.png'),
+    afterUrl: EARTHSHOTS('2021-06/2021-Intro.png'),
+    credit: EARTHSHOTS_CREDIT,
+  },
+  {
+    name: 'the mine pits filled with water',
+    title: 'The Leipzig lake district',
+    countries: ['DE'],
+    kind: 'water',
+    coordinates: { lat: 51.34, lng: 12.38 },
+    startYear: 1990,
+    beforeYear: 1987,
+    afterYear: 2020,
+    // The 1987 frame exists ONLY as false-colour 432, so the after frame must
+    // be the 543 rendering: EO also publishes a natural-colour 2020 frame at
+    // the same footprint, and pairing that one turns the crossfade into a
+    // red-to-green palette flip instead of a landscape changing.
+    description:
+      'When the brown-coal industry collapsed, the open pits it left behind were flooded on purpose — a district of vast holes in the ground remade over thirty years into a chain of lakes with beaches and marinas.',
+    beforeUrl: EO('148000/148031/leipzig432_tm5_1987119_lrg.jpg'),
+    afterUrl: EO('148000/148031/leipzig543_oli_2020114_lrg.jpg'),
+  },
   {
     name: 'the glacier that was declared dead',
     title: 'Okjökull',
@@ -218,6 +356,35 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'The first glacier here to lose its status as a glacier — too thin to move under its own weight. Scientists held a funeral for it in 2019 and left a plaque addressed to the future.',
     beforeUrl: EO('145000/145439/okjokull_tm5_1986257_lrg.jpg'),
     afterUrl: EO('145000/145439/okjokull_oli_2019213_lrg.jpg'),
+  },
+  {
+    name: 'the glacier that opened a lagoon',
+    title: 'Breiðamerkurjökull',
+    countries: ['IS'],
+    kind: 'ice',
+    coordinates: { lat: 64.05, lng: -16.28 },
+    startYear: 1970,
+    beforeYear: 1973,
+    afterYear: 2021,
+    description:
+      'An outlet glacier that has pulled back so far from the sea that the meltwater lagoon left behind is now one of the deepest lakes in the country, calving icebergs that drift out onto a black sand beach.',
+    beforeUrl: EARTHSHOTS('2020-12/9-22-1973_main%28chs.%204%2C2%2C1%29.png'),
+    afterUrl: EARTHSHOTS('2021-09/8_9-9-2021_main.png'),
+    credit: EARTHSHOTS_CREDIT,
+  },
+  {
+    name: 'the great alpine tongue',
+    title: 'The Aletsch Glacier',
+    countries: ['CH'],
+    kind: 'ice',
+    coordinates: { lat: 46.43, lng: 8.08 },
+    startYear: 1980,
+    beforeYear: 1984,
+    afterYear: 2024,
+    description:
+      'The largest glacier in the Alps has pulled back more than a kilometre in forty years, thinning so fast that mountain huts built at the ice’s edge now overlook a canyon of bare rock.',
+    beforeUrl: EO('154000/154043/aletschglacier_tm5_19840902_lrg.jpg'),
+    afterUrl: EO('154000/154043/aletschglacier_oli_20240806_lrg.jpg'),
   },
   // --- Africa ---------------------------------------------------------------
   {
@@ -255,6 +422,45 @@ export const CHANGE_SEEDS: ChangeSeed[] = [
       'Floodwater pumped out of a reservoir into empty desert made a chain of brand-new lakes in the 1990s — then most of them evaporated away again within two decades.',
     beforeUrl: EO('149000/149334/ISS005-E-13562_lrg.jpg'),
     afterUrl: EO('149000/149334/iss066e091633_lrg.jpg'),
+  },
+  {
+    name: 'the green fan',
+    title: 'The Nile Delta',
+    countries: ['EG'],
+    kind: 'agriculture',
+    coordinates: { lat: 30.9, lng: 31.1 },
+    startYear: 1970,
+    // The series opens in 1972, but that MSS frame carries a black no-data
+    // wedge across its eastern third — a triangle that crossfades into real
+    // land reads as a glitch, not as change. 1984 is the first full frame.
+    beforeYear: 1984,
+    afterYear: 2024,
+    description:
+      'Forty years of a river’s fan remade: cities ballooning into some of the world’s oldest farmland while new fields push out into the desert at the edges, all of it fed by one dammed river.',
+    beforeUrl: EARTHSHOTS('2022-09/1984_Nile-Intro.png'),
+    afterUrl: EARTHSHOTS('2025-01/2024_Nile-Intro.png'),
+    credit: EARTHSHOTS_CREDIT,
+  },
+  // --- Oceania --------------------------------------------------------------
+  // NOTE: Sydney (Earthshots "sydney-australia") is out. Every frame after
+  // 1975 is a rotated swath with black corner wedges, and the band composite
+  // changes between frames — the crossfade reads as a palette shift with
+  // wandering black triangles, not as growth. Restore it if a north-up,
+  // consistently-rendered pair turns up.
+  {
+    name: 'the golden super pit',
+    title: 'The Super Pit at Kalgoorlie',
+    countries: ['AU'],
+    kind: 'urban',
+    coordinates: { lat: -30.75, lng: 121.47 },
+    startYear: 1990,
+    beforeYear: 1986,
+    afterYear: 2023,
+    description:
+      'Dozens of century-old underground gold mines merged into one open cut that grew to swallow them all — three and a half kilometres long, and deep enough to hide the world’s tallest towers.',
+    beforeUrl: EARTHSHOTS('2023-01/1986_Kalgoorlie-Intro.png'),
+    afterUrl: EARTHSHOTS('2023-01/2023_Kalgoorlie-Intro.png'),
+    credit: EARTHSHOTS_CREDIT,
   },
   // --- North America --------------------------------------------------------
   {
