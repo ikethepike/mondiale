@@ -48,6 +48,17 @@ export interface IndividualChallenge {
   variant?: IndividualChallengeVariant
   /** flag-pick: the flags on offer (includes `country`), display order. */
   options?: ISOCountryCode[]
+  /** logo-politics: the party whose logo is the question. `options` carries
+   *  the four countries it might belong to. */
+  partyLogo?: {
+    /** Path under /public. */
+    image: string
+    /** Shown only after the answer — the party the logo belongs to. */
+    name: string
+    /** The one-line credit the logo's licence requires. */
+    credit?: string
+    license?: string
+  }
   /** odd-one-out: the lineup (includes `country`) and what the others share. */
   oddOneOut?: {
     countries: ISOCountryCode[]
@@ -186,6 +197,7 @@ export const individualChallengeVariants = [
   'trend-duel',
   'trajectory-match',
   'leader-pick',
+  'logo-politics',
   'outline-reveal',
   'leader-portrait',
   'errata',

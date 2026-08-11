@@ -10,7 +10,7 @@ import { mentionsCountry } from '~~/lib/country'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { countryLedBy } from '~~/lib/leaders'
-import { governedOutsideFamily, governingParty } from '~~/lib/parties'
+import { governedOutsideFamily, governingParty, partiesOf } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
 import {
   individualChallengeAccessors,
@@ -114,6 +114,34 @@ describe('isCorrectIndividualAnswer', () => {
     expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'FI')).toBe(
       true
     )
+  })
+})
+
+describe('dealLogoPolitics (via forced variant)', () => {
+  it('always deals a logo whose country is on the table', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
+
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      expect(dealt.variant).toBe('logo-politics')
+      // The logo IS the question — a deal without one is unanswerable.
+      expect(dealt.partyLogo?.image).toBeTruthy()
+      expect(dealt.options).toContain(dealt.country)
+      expect(dealt.options?.length).toBe(4)
+      // The party must belong to the country it is the answer for.
+      expect(partiesOf(dealt.country).map(party => party.name)).toContain(dealt.partyLogo!.name)
+
+      // A logo naming its own country answers the question before it is
+      // asked — "BÜNDNIS 90/DIE GRÜNEN" is Germany on sight. A quarter of the
+      // roster fails this, so the dealer has to filter rather than hope.
+      expect(
+        mentionsCountry(dealt.partyLogo!.name, dealt.country),
+        `${dealt.partyLogo!.name} gives away ${dealt.country}`
+      ).toBe(false)
+    }
   })
 })
 

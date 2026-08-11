@@ -21,6 +21,7 @@ import GateFind from './GateFind.vue'
 import GateFlagPick from './GateFlagPick.vue'
 import GateHigherLower from './GateHigherLower.vue'
 import GateLeaderPick from './GateLeaderPick.vue'
+import GateLogoPolitics from './GateLogoPolitics.vue'
 import GateMoneyMatch from './GateMoneyMatch.vue'
 import GateOddOneOut from './GateOddOneOut.vue'
 import GateOutlineReveal from './GateOutlineReveal.vue'
@@ -158,6 +159,9 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     reveal: LeaderReveal,
     revealProps: ({ challenge }) => ({ country: challenge.country }),
   },
+  // No bespoke reveal: the answer is a country, which the shared flag verdict
+  // already names, and `gateLesson` supplies the party behind the logo.
+  'logo-politics': { component: GateLogoPolitics },
   'outline-reveal': { component: GateOutlineReveal, typedConsole: true },
   'leader-portrait': {
     component: GatePhotoPick,

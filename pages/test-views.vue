@@ -112,6 +112,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
+import { partiesWithLogo } from '~~/lib/parties'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -3201,6 +3202,21 @@ const scenarios: Scenario[] = [
     label: 'Individual: leader pick',
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
+  },
+  {
+    id: 'individual-logo-politics',
+    label: 'Individual: logo politics',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        options: ['DE', 'FR', 'IT', 'ES'],
+        partyLogo: {
+          image: partiesWithLogo('DE')[0]?.logo ?? '',
+          name: partiesWithLogo('DE')[0]?.name ?? '',
+        },
+      }),
   },
   {
     id: 'individual-leader-find-easy',

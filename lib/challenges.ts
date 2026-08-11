@@ -128,7 +128,7 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
-import { countriesGovernedByFamily, governedOutsideFamily } from './parties'
+import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
   dramaScore,
@@ -2695,6 +2695,60 @@ const dealTrajectoryMatch = async (
   return undefined
 }
 
+/**
+ * Logo Politics: a party's logo, and which country it belongs to.
+ *
+ * It asks about the COUNTRY rather than the party's ideology on purpose. A
+ * four-option ideology question has no defensible answer — most parties carry
+ * several ideologies at once, and the labels run to a long tail of one-offs, so
+ * "pick THE ideology" is ambiguous by construction. The country is single-valued
+ * and every logo has one.
+ *
+ * Decoys prefer the same region, which is what makes it a reading of the logo's
+ * iconography rather than a guess at the continent.
+ */
+const dealLogoPolitics = (
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
+): {
+  country: ISOCountryCode
+  options: ISOCountryCode[]
+  partyLogo: NonNullable<IndividualChallenge['partyLogo']>
+} | null => {
+  const askable = (isoCode: ISOCountryCode) =>
+    partiesWithLogo(isoCode).filter(
+      party =>
+        !mentionsCountry(party.name, isoCode) &&
+        !(party.endonym && mentionsCountry(party.endonym, isoCode))
+    )
+  const hasLogo = (isoCode: ISOCountryCode) => askable(isoCode).length > 0
+  const poolWithLogos = countryPool.filter(hasLogo)
+  const candidates = poolWithLogos.length >= 4 ? poolWithLogos : world.filter(hasLogo)
+  if (candidates.length < 4) return null
+
+  const country = sample(candidates)!
+  const party = sample(askable(country))
+  if (!party?.logo) return null
+
+  const decoys = pickDecoys(country, candidates, 3, {
+    preferRegion: true,
+    eligible: hasLogo,
+    widen: world,
+  })
+  if (!decoys) return null
+
+  return {
+    country,
+    options: shuffleArray([country, ...decoys]),
+    partyLogo: {
+      image: party.logo,
+      name: party.name,
+      ...(party.credit ? { credit: party.credit } : {}),
+      ...(party.license ? { license: party.license } : {}),
+    },
+  }
+}
+
 /** Leader-pick: who runs this country, millionaire-style (decoys same region). */
 const dealLeaderPick = (
   countryPool: ISOCountryCode[],
@@ -3135,6 +3189,11 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
         break
       }
+      case 'logo-politics': {
+        const dealt = dealLogoPolitics(pool, world)
+        if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
+        break
+      }
       case 'outline-reveal':
         return {
           ...base,
@@ -3298,6 +3357,20 @@ export const getIndividualChallenge = async ({
       if (roll < 0.95) {
         const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
         if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      }
+      break
+    }
+    case 'government.parties': {
+      // The party gate: a logo to place, then a government to spot. Both read
+      // the roster, so a country with no identifiable parties falls through to
+      // the find fallback rather than dealing a question with no answer.
+      if (roll < 0.6) {
+        const dealt = dealLogoPolitics(pool, world)
+        if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
+      }
+      if (roll < 0.95) {
+        const dealt = dealOddOneOut(settings.difficulty, pool, isWorld)
+        if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
       break
     }

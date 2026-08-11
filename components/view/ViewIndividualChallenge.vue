@@ -71,7 +71,7 @@ import {
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { governingParty } from '~~/lib/parties'
+import { governingParty, partiesOf, partySpectrum } from '~~/lib/parties'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
@@ -182,6 +182,8 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('countries')
     case 'leader-pick':
       return datasetAttribution('leaders')
+    case 'logo-politics':
+      return datasetAttribution('parties')
     case 'higher-lower':
       return active.higherLower ? [attributionFor(active.higherLower.accessorId)] : undefined
     case 'trend-duel': {
@@ -224,6 +226,8 @@ const interstitialTitle = computed(() => {
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
       return `Who leads ${countryName(active.country)}?`
+    case 'logo-politics':
+      return 'Whose party is this?'
     case 'higher-lower': {
       const duels = active.higherLower?.pairs.length ?? 0
       return `Win ${duels === 2 ? 'both duels' : `all ${duels} duels`}: which country ranks higher?`
@@ -297,6 +301,8 @@ const incorrectMessage = computed(() => {
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
       return picked ? `That's ${countryName(picked)}'s leader` : 'Not that one.'
+    case 'logo-politics':
+      return picked ? `That's a party of ${countryName(picked)}` : 'Not that one.'
     case 'trajectory-match':
       return active ? `That trajectory belongs to ${countryName(active.country)}` : 'Time ran out.'
     case 'outline-reveal':
@@ -365,6 +371,16 @@ const gateLesson = computed(() => {
       return spenders.length > 1
         ? `The ${currencyName(code)} is legal tender in ${spenders.length} countries — any of them counted.`
         : `The ${currencyName(code)} is ${countryName(answer)}'s own.`
+    }
+    // The logo stood alone as the question; naming it is the lesson.
+    case 'logo-politics': {
+      const party = active.partyLogo
+      if (!party) return undefined
+      const spectrum = partiesOf(active.country).find(entry => entry.name === party.name)
+      const band = spectrum ? partySpectrum(spectrum) : undefined
+      return band
+        ? `That's ${party.name} — a ${band} party in ${countryName(answer)}.`
+        : `That's ${party.name}, a party in ${countryName(answer)}.`
     }
     case 'odd-one-out': {
       const shared = active.oddOneOut
