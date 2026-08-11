@@ -1318,7 +1318,7 @@ const scenarios: Scenario[] = [
   },
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
-    // Asunción, Windhoek, Tashkent.
+    // Ulaanbaatar, Asunción, Windhoek.
     id: 'star-chart-hard',
     label: 'Star chart (hard, no aid)',
     component: ViewStarChart,
@@ -1326,7 +1326,7 @@ const scenarios: Scenario[] = [
       const game = mockGame('group-challenge', [
         groupRound({
           _type: 'star-chart-challenge',
-          stars: ['PY', 'NA', 'UZ'],
+          stars: ['MN', 'PY', 'NA'],
           durationSeconds: STAR_CHART_SECONDS,
           maximumPoints: MAXIMUM_POINTS,
         }),

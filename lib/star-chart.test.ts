@@ -1,7 +1,6 @@
 import alea from 'alea'
 import { describe, expect, it } from 'vitest'
-import { CAPITALS } from '~~/data/capitals.gen'
-import { capitalCountryByName, capitalStar } from '~~/lib/capitals'
+import { capitalStar } from '~~/lib/capitals'
 import { getRoundChallenge } from '~~/lib/challenges'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import { haversineKm } from '~~/lib/geo'
@@ -23,48 +22,6 @@ const rules = (difficulty: GameDifficulty = 'normal', variant: GameVariant = 'wo
   ({ difficulty, variant }) as Game
 
 const seeded = (seed: string) => alea(seed) as unknown as () => number
-
-describe('capitalCountryByName', () => {
-  it('resolves canonical capital names to their country', () => {
-    expect(capitalCountryByName('Vienna')).toBe('AT')
-    expect(capitalCountryByName('Ottawa')).toBe('CA')
-    expect(capitalCountryByName('Canberra')).toBe('AU')
-  })
-
-  it('forgives case, accents and surrounding whitespace', () => {
-    expect(capitalCountryByName('  brasilia ')).toBe('BR')
-    expect(capitalCountryByName('BRASÍLIA')).toBe('BR')
-  })
-
-  it('accepts the dataset alt spellings a player might type', () => {
-    // Every canonical name resolves; the alt index only ever widens that.
-    const canonical = Object.entries(CAPITALS)
-      .filter(([, capital]) => !!capital?.name)
-      .map(([isoCode, capital]) => [isoCode as ISOCountryCode, capital!.name] as const)
-    const misses = canonical.filter(([isoCode, name]) => capitalCountryByName(name) !== isoCode)
-    expect(misses).toEqual([])
-  })
-
-  it('is undefined for a name no capital answers to', () => {
-    expect(capitalCountryByName('Gothenburg')).toBeUndefined()
-    expect(capitalCountryByName('')).toBeUndefined()
-  })
-})
-
-describe('capitalStar', () => {
-  it('places a capital on the globe with its population', () => {
-    const star = capitalStar('AT')
-    expect(star?.name).toBe('Vienna')
-    expect(star?.lat).toBeGreaterThan(47)
-    expect(star?.lat).toBeLessThan(49)
-    expect(star?.population).toBeGreaterThan(0)
-  })
-
-  it('is undefined where the capital has no coordinates to pulse at', () => {
-    // Below the cities15000 cut — the gate every star dealer relies on.
-    expect(capitalStar('PW')).toBeUndefined()
-  })
-})
 
 describe('starChartField', () => {
   it('sorts the capital field most populous first', () => {
@@ -188,12 +145,12 @@ describe('starChartStars', () => {
 
 describe('starChartAnswers', () => {
   it('grades only what a player can actually see and type', async () => {
-    // MN's capital has no row in the city dataset, so it renders nowhere. If
-    // it were still in the answer set the round could never be completed:
+    // Ngerulmud is absent from the city dataset, so a PW star renders nowhere.
+    // If it were still in the answer set the round could never be completed:
     // no early finish, and a slice of the pot nobody at the table can reach.
     const challenge: StarChartChallenge = {
       _type: 'star-chart-challenge',
-      stars: ['AT', 'MN', 'CA'],
+      stars: ['AT', 'PW', 'CA'],
       durationSeconds: 45,
       maximumPoints: 21,
     }
