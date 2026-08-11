@@ -1,4 +1,5 @@
 import { COUNTRIES } from '~~/data/countries.gen'
+import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import type { Party, CountryParties } from '~~/generators/create-parties-file'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -131,13 +132,19 @@ export const partyTokens = (name: string, isoCode?: ISOCountryCode): string[] =>
  * alliance (Civic Coalition), and Hungary's governing party is missing from
  * the Factbook altogether. Guessing at those would be worse than a gap.
  */
-export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
-  const party = politicalLeader(isoCode)?.party
-  if (!party || party === INDEPENDENT) return undefined
-
-  const roster = partiesOf(isoCode)
-  const wanted = partyTokens(party, isoCode)
+/**
+ * Find a named party in a country's roster. THE matcher — the leader join and
+ * the election-bench join both run through it, so the two can never grow
+ * separate ideas of when two spellings are the same party.
+ */
+export const matchInRoster = (
+  name: string,
+  roster: Party[],
+  isoCode: ISOCountryCode
+): Party | undefined => {
+  const wanted = partyTokens(name, isoCode)
   if (!wanted.length) return undefined
+  const wantedKey = wanted.join('')
 
   const abbreviations = (entry: Party): string[] => {
     const listed = entry.abbreviation ? [entry.abbreviation] : []
@@ -147,11 +154,9 @@ export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
     return [...listed, ...(trailing ? [trailing] : [])].map(value => value.toLowerCase())
   }
 
-  const wantedKey = wanted.join('')
-
   return roster.find(entry => {
     // "ANO 2011" vs "…or ANO" — a year suffix is not a different party.
-    const bare = party.toLowerCase().replace(/\s+\d{4}$/, '')
+    const bare = name.toLowerCase().replace(/\s+\d{4}$/, '')
     if (abbreviations(entry).some(abbreviation => abbreviation === bare)) return true
 
     for (const candidate of [entry.name, ...(entry.endonym ? [entry.endonym] : [])]) {
@@ -176,6 +181,12 @@ export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
     }
     return false
   })
+}
+
+export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
+  const party = politicalLeader(isoCode)?.party
+  if (!party || party === INDEPENDENT) return undefined
+  return matchInRoster(party, partiesOf(isoCode), isoCode)
 }
 
 /** Everyone but the party in power — Rulers' impostor pool. */
@@ -248,3 +259,110 @@ export const seatedParties = (isoCode: ISOCountryCode): Party[] =>
   partiesOf(isoCode)
     .filter(party => party.seats !== undefined)
     .sort((a, b) => (b.seats ?? 0) - (a.seats ?? 0))
+
+/**
+ * A chamber's benches: every seated bloc, largest first, with the party from
+ * the roster attached where the two sources agree on a name.
+ *
+ * The election articles are the seat source rather than the Factbook, which
+ * publishes no seat table for ANY bicameral country (0 of 84) and no vote
+ * percentages anywhere. The roster still supplies what a bloc looks like — its
+ * logo and colour — so the two are joined here rather than in a view.
+ */
+export interface Bench {
+  /** The party, as the election named it. */
+  name: string
+  seats: number
+  /** Share of the chamber's total seats, 0–1. */
+  share: number
+  votePct?: number
+  /** The roster party behind the bench, when its name resolves to one. */
+  party?: Party
+  /**
+   * The NATIONAL bloc this party stood in — Sweden's Red-Greens, Poland's
+   * United Right. Real chambers seat allies together, so this is what orders a
+   * hemicycle rather than a bare seat ranking, and it explains a small party
+   * sitting where its size alone would not put it.
+   */
+  alliance?: string
+  /** The TRANSNATIONAL family — the EPP, the Progressive Alliance (P463). */
+  groupings?: string[]
+}
+
+export const benchesOf = (isoCode: ISOCountryCode): Bench[] => {
+  const election = ELECTIONS[isoCode]
+  if (!election) return []
+  const total =
+    election.totalSeats ?? election.parties.reduce((sum, party) => sum + party.seats, 0) ?? 0
+  if (!total) return []
+
+  const roster = partiesOf(isoCode)
+  return election.parties
+    .map(entry => {
+      const party = matchInRoster(entry.party, roster, isoCode)
+      return {
+        name: entry.party,
+        seats: entry.seats,
+        share: entry.seats / total,
+        ...(entry.votePct !== undefined ? { votePct: entry.votePct } : {}),
+        ...(party ? { party } : {}),
+        ...(entry.alliance ? { alliance: entry.alliance } : {}),
+        ...(party?.groupings?.length ? { groupings: party.groupings } : {}),
+      }
+    })
+    .sort((a, b) => b.seats - a.seats)
+}
+
+/**
+ * The benches in SEATING order: allies adjacent, blocs ordered by combined
+ * weight, and each bloc's own parties largest first. A real chamber seats an
+ * alliance together, so ordering by raw seat count alone would scatter a
+ * coalition across the arc and lose the shape the picture is meant to show.
+ */
+export const seatingOrder = (isoCode: ISOCountryCode): Bench[] => {
+  const benches = benchesOf(isoCode)
+  const blocWeight = new Map<string, number>()
+  for (const bench of benches) {
+    const bloc = bench.alliance ?? bench.name
+    blocWeight.set(bloc, (blocWeight.get(bloc) ?? 0) + bench.seats)
+  }
+  return [...benches].sort((a, b) => {
+    const blocA = a.alliance ?? a.name
+    const blocB = b.alliance ?? b.name
+    if (blocA !== blocB) {
+      const weight = (blocWeight.get(blocB) ?? 0) - (blocWeight.get(blocA) ?? 0)
+      if (weight) return weight
+      return blocA.localeCompare(blocB)
+    }
+    return b.seats - a.seats
+  })
+}
+
+/** Every national bloc in a chamber, with the parties that stood in it. */
+export const alliancesOf = (isoCode: ISOCountryCode): { alliance: string; benches: Bench[] }[] => {
+  const grouped = new Map<string, Bench[]>()
+  for (const bench of benchesOf(isoCode)) {
+    if (!bench.alliance) continue
+    grouped.set(bench.alliance, [...(grouped.get(bench.alliance) ?? []), bench])
+  }
+  return [...grouped.entries()]
+    .map(([alliance, benches]) => ({ alliance, benches }))
+    .sort(
+      (a, b) =>
+        b.benches.reduce((sum, bench) => sum + bench.seats, 0) -
+        a.benches.reduce((sum, bench) => sum + bench.seats, 0)
+    )
+}
+
+/** The chamber's full size, which the benches are a fraction of. */
+export const chamberSeats = (isoCode: ISOCountryCode): number | undefined => {
+  const election = ELECTIONS[isoCode]
+  if (!election) return undefined
+  return election.totalSeats ?? election.parties.reduce((sum, party) => sum + party.seats, 0)
+}
+
+/** Countries whose chamber is complete enough to draw and play. */
+export const playableChambers = (minimumBenches = 3): ISOCountryCode[] =>
+  (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
+    isoCode => benchesOf(isoCode).length >= minimumBenches
+  )

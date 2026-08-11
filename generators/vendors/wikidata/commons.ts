@@ -43,7 +43,17 @@ export const fetchJson = async <T>(url: string, attempt = 1): Promise<T | undefi
     await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
     return fetchJson(url, attempt + 1)
   }
-  return (await response.json()) as T
+
+  // Reading the BODY can fail too — a connection cut mid-response, or the
+  // timeout landing between headers and the last byte, throws here rather than
+  // at the fetch. Uncaught, that ends a 45-minute run with a bare DOMException,
+  // so it re-enters the same backoff as any other failure.
+  const parsed = await response.json().catch(() => undefined)
+  if (parsed === undefined && attempt < 6) {
+    await wait(2500 * attempt)
+    return fetchJson(url, attempt + 1)
+  }
+  return parsed as T | undefined
 }
 
 interface PagePropsResponse {

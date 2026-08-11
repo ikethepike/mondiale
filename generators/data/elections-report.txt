@@ -1,0 +1,5 @@
+chambers: 53 of 54 seeded
+with vote share: 47
+
+skipped or suspect:
+RO: no readable election infobox in "2024 Romanian parliamentary election"

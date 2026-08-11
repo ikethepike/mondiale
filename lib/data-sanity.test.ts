@@ -10,6 +10,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
@@ -39,6 +40,11 @@ const PARTY_MATCH_FLOOR = 0.4
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
 const SEAT_JOIN_MISS_CEILING = 8
+// 53 chambers parse from 54 seeded articles today. The floor is the seed list's
+// worth minus room for an article being renamed after an election.
+const CHAMBER_FLOOR = 45
+// 47 carry vote share; the rest print seats only.
+const CHAMBER_VOTE_FLOOR = 35
 
 describe('countries.gen', () => {
   const countries = Object.values(COUNTRIES)
@@ -51,6 +57,41 @@ describe('countries.gen', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
       expect(FLAGS[country.isoCode]).toContain('<svg')
+    }
+  })
+})
+
+describe('elections.gen', () => {
+  const chambers = Object.values(ELECTIONS)
+
+  it('covers the seeded chambers', () => {
+    expect(chambers.length).toBeGreaterThanOrEqual(CHAMBER_FLOOR)
+  })
+
+  it('keeps the vote share the Factbook never publishes', () => {
+    const withVotes = chambers.filter(chamber =>
+      chamber?.parties.some(party => party.votePct !== undefined)
+    )
+    expect(withVotes.length).toBeGreaterThanOrEqual(CHAMBER_VOTE_FLOOR)
+  })
+
+  // A parse that drifts reads seats off the wrong rows, and the giveaway is a
+  // chamber whose parties hold more seats than the chamber has.
+  it('never seats more members than the chamber holds', () => {
+    for (const chamber of chambers) {
+      if (!chamber?.totalSeats) continue
+      const held = chamber.parties.reduce((total, party) => total + party.seats, 0)
+      expect(held).toBeLessThanOrEqual(chamber.totalSeats)
+    }
+  })
+
+  // Sweden files its Social Democrats, Left Party and Greens under one
+  // "Red-Greens" alliance; reading the alliance as the party's name drew three
+  // different benches under one label.
+  it('names parties, not the alliances they stood in', () => {
+    for (const chamber of chambers) {
+      const names = (chamber?.parties ?? []).map(party => party.party)
+      expect(names.length).toBe(new Set(names).size)
     }
   })
 })

@@ -95,7 +95,7 @@ const MATCH_CACHE_PATH = 'generators/data/party-match-cache.json'
  * teammate's first run is fast too, and a 19MB file in a repo whose history is
  * already media-heavy is not worth the bytes.
  */
-const CACHED_PROPERTIES = ['P1142', 'P1387', 'P465', 'P571', 'P154'] as const
+const CACHED_PROPERTIES = ['P1142', 'P1387', 'P465', 'P571', 'P154', 'P463'] as const
 const slimClaims = (claims: { [property: string]: Snak[] }): { [property: string]: Snak[] } =>
   Object.fromEntries(
     CACHED_PROPERTIES.filter(property => claims[property]).map(property => [
@@ -306,6 +306,8 @@ interface SearchResponse {
 }
 interface Snak {
   mainsnak?: { datavalue?: { value?: { id?: string; time?: string } | string } }
+  /** `P582` is the end date — its presence means the statement is CLOSED. */
+  qualifiers?: { P582?: unknown[] }
 }
 interface EntityResponse {
   entities?: {
@@ -318,6 +320,24 @@ interface EntityResponse {
 
 const claimIds = (claims: { [property: string]: Snak[] } | undefined, property: string): string[] =>
   (claims?.[property] ?? [])
+    .map(statement => {
+      const value = statement.mainsnak?.datavalue?.value
+      return typeof value === 'object' ? value?.id : undefined
+    })
+    .filter((id): id is string => !!id)
+
+/**
+ * Ids from statements that have NOT ended. Membership of a transnational
+ * grouping is a relationship a party leaves — an ended statement records that
+ * it used to belong, which is not what "member of the EPP" means on screen.
+ * Same currency gate the leaders generator applies to office-holding.
+ */
+const openClaimIds = (
+  claims: { [property: string]: Snak[] } | undefined,
+  property: string
+): string[] =>
+  (claims?.[property] ?? [])
+    .filter(statement => !statement.qualifiers?.P582?.length)
     .map(statement => {
       const value = statement.mainsnak?.datavalue?.value
       return typeof value === 'object' ? value?.id : undefined
@@ -343,27 +363,19 @@ const yearOf = (claims: { [property: string]: Snak[] } | undefined): number | un
  * The Q-id for a party name, or undefined when nothing passes all three gates.
  * Returning undefined is a perfectly good outcome — the party keeps its name.
  */
-const searchOnce = async (
-  term: string,
+type PartyMatch = { qid: string; claims: { [property: string]: Snak[] } }
+
+/**
+ * THE acceptance test, wherever a candidate Q-id comes from. Both routes below
+ * run every hit through this — a second copy would be how a list article or a
+ * defunct party eventually reaches a player.
+ */
+const firstAcceptable = (
+  qids: string[],
+  entities: EntityResponse | undefined,
   countryQid: string
-): Promise<{ qid: string; claims: { [property: string]: Snak[] } } | undefined> => {
-  const search = await fetchJson<SearchResponse>(
-    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      term
-    )}&srnamespace=0&srlimit=5&format=json`
-  )
-  const hits = (search?.query?.search ?? []).map(result => result.title)
-  if (!hits.length) return undefined
-  await wait(120)
-
-  const entities = await fetchJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${hits.join(
-      '|'
-    )}&props=claims&format=json`
-  )
-  await wait(120)
-
-  for (const qid of hits) {
+): PartyMatch | undefined => {
+  for (const qid of qids) {
     const claims = entities?.entities?.[qid]?.claims
     if (!claims) continue
     if (claimIds(claims, 'P17')[0] !== countryQid) continue
@@ -375,18 +387,85 @@ const searchOnce = async (
   return undefined
 }
 
+const claimsFor = async (qids: string[]): Promise<EntityResponse | undefined> => {
+  if (!qids.length) return undefined
+  const entities = await fetchJson<EntityResponse>(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qids.join(
+      '|'
+    )}&props=claims&format=json`
+  )
+  await wait(120)
+  return entities
+}
+
+const searchOnce = async (term: string, countryQid: string): Promise<PartyMatch | undefined> => {
+  const search = await fetchJson<SearchResponse>(
+    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      term
+    )}&srnamespace=0&srlimit=5&format=json`
+  )
+  const hits = (search?.query?.search ?? []).map(result => result.title)
+  if (!hits.length) return undefined
+  await wait(120)
+
+  return firstAcceptable(hits, await claimsFor(hits), countryQid)
+}
+
+/**
+ * Wikidata's own search misses parties that en.wikipedia indexes perfectly
+ * well — its title match is unforgiving where the encyclopedia's is not. So
+ * ask the encyclopedia and follow its article back to the Q-id.
+ *
+ * Measured on 60 unmatched parties: every one resolved to SOME Q-id, and half
+ * survived the gates. The other half were list articles ("List of political
+ * parties in …") and wrong-country matches — which is exactly why the hits go
+ * through `firstAcceptable` rather than being trusted.
+ */
+const searchViaWikipedia = async (
+  name: string,
+  countryName: string,
+  countryQid: string
+): Promise<PartyMatch | undefined> => {
+  const search = await fetchJson<SearchResponse>(
+    `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      `${name} ${countryName} political party`
+    )}&srlimit=3&format=json`
+  )
+  const titles = (search?.query?.search ?? []).map(result => result.title)
+  if (!titles.length) return undefined
+  await wait(120)
+
+  const pages = await fetchJson<{
+    query?: { pages?: { [id: string]: { pageprops?: { wikibase_item?: string } } } }
+  }>(
+    `https://en.wikipedia.org/w/api.php?action=query&prop=pageprops&titles=${encodeURIComponent(
+      titles.join('|')
+    )}&format=json`
+  )
+  await wait(120)
+
+  const qids = Object.values(pages?.query?.pages ?? {})
+    .map(page => page.pageprops?.wikibase_item)
+    .filter((qid): qid is string => !!qid)
+  if (!qids.length) return undefined
+
+  return firstAcceptable(qids, await claimsFor(qids), countryQid)
+}
+
 const resolveParty = async (
   name: string,
   endonym: string | undefined,
-  countryQid: string
-): Promise<{ qid: string; claims: { [property: string]: Snak[] } } | undefined> => {
+  countryQid: string,
+  countryName: string
+): Promise<PartyMatch | undefined> => {
   // The endonym goes FIRST: Wikidata files parties under their native name, so
   // "Centerpartiet" resolves where the Factbook's "Center Party" finds nothing.
   for (const term of [endonym, name].filter((value): value is string => !!value)) {
     const match = await searchOnce(term, countryQid)
     if (match) return match
   }
-  return undefined
+  // Last resort, and only for names Wikidata's own search could not place.
+  return searchViaWikipedia(name, countryName, countryQid)
 }
 
 /** Resolve the Q-ids an enriched party points at (ideologies, position) to
@@ -527,7 +606,12 @@ for (const { isoCode, url } of successfulCombinations) {
       match = 'miss' in cached ? undefined : cached
       cacheHits += 1
     } else if (countryQid && cacheKey) {
-      match = await resolveParty(name, endonym, countryQid)
+      match = await resolveParty(
+        name,
+        endonym,
+        countryQid,
+        COUNTRIES[isoCode]?.name.english ?? isoCode
+      )
       // Cache the MISS too — it cost a full search plus an entity fetch.
       matchCache[cacheKey] = match
         ? { qid: match.qid, claims: slimClaims(match.claims) }
@@ -545,10 +629,12 @@ for (const { isoCode, url } of successfulCombinations) {
       const position = claimIds(match.claims, 'P1387')[0]
       const colors = claimStrings(match.claims, 'P465')
       const founded = yearOf(match.claims)
+      const groupings = openClaimIds(match.claims, 'P463')
       if (ideologies.length) party.ideologies = ideologies
       if (position) party.position = position
       if (colors.length) party.colors = colors
       if (founded) party.foundedYear = founded
+      if (groupings.length) party.groupings = groupings
     }
 
     parties.push(party)
@@ -593,9 +679,13 @@ console.log(
 // Stored as Q-ids above so every label resolves in one batched pass.
 const labelIds = Object.values(mapping)
   .flatMap(country => country?.parties ?? [])
-  .flatMap(party => [...(party.ideologies ?? []), ...(party.position ? [party.position] : [])])
+  .flatMap(party => [
+    ...(party.ideologies ?? []),
+    ...(party.position ? [party.position] : []),
+    ...(party.groupings ?? []),
+  ])
 
-console.log(`Resolving ${new Set(labelIds).size} ideology/position labels…`)
+console.log(`Resolving ${new Set(labelIds).size} ideology/position/grouping labels…`)
 const labels = await labelsFor(labelIds)
 writeFileSync(LABEL_CACHE_PATH, `${JSON.stringify(Object.fromEntries(labels), null, 2)}\n`)
 for (const country of Object.values(mapping)) {
@@ -604,6 +694,14 @@ for (const country of Object.values(mapping)) {
       party.ideologies = party.ideologies.map(id => labels.get(id) ?? id).filter(Boolean)
     }
     if (party.position) party.position = labels.get(party.position) ?? party.position
+    if (party.groupings) {
+      // Drop anything that never resolved: an unlabelled Q-id on screen is
+      // worse than a party that simply lists no groupings.
+      party.groupings = party.groupings
+        .map(id => labels.get(id))
+        .filter((label): label is string => !!label)
+      if (!party.groupings.length) delete party.groupings
+    }
   }
 }
 
@@ -647,12 +745,21 @@ let saved = 0
     if (credit?.credit) entry.party.credit = credit.credit
     if (credit?.license) entry.party.license = credit.license
 
-    // Party logos are trademarked far more often than portraits are; Commons
-    // says so in a machine-readable field, so carry it rather than guess.
+    // Party logos are trademarked far more often than portraits are, and a
+    // large minority are non-free outright. Commons says both in
+    // machine-readable fields, so carry them rather than guess a blanket
+    // policy — a licensing decision then becomes a filter, not a re-run.
     const meta = await fetchJson<{
       query?: {
         pages?: {
-          [id: string]: { imageinfo?: { extmetadata?: { Restrictions?: { value?: string } } }[] }
+          [id: string]: {
+            imageinfo?: {
+              extmetadata?: {
+                Restrictions?: { value?: string }
+                NonFree?: { value?: string }
+              }
+            }[]
+          }
         }
       }
     }>(
@@ -660,9 +767,13 @@ let saved = 0
         `File:${file}`
       )}&prop=imageinfo&iiprop=extmetadata&format=json`
     )
-    const restrictions = Object.values(meta?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
-      ?.Restrictions?.value
-    if (restrictions) entry.party.logoRestrictions = restrictions
+    const extmetadata = Object.values(meta?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
+    if (extmetadata?.Restrictions?.value) {
+      entry.party.logoRestrictions = extmetadata.Restrictions.value
+    }
+    if (String(extmetadata?.NonFree?.value ?? '').toLowerCase() === 'true') {
+      entry.party.nonFree = true
+    }
     await wait(150)
 
     process.stdout.write(`\r  ${saved} logos`)
