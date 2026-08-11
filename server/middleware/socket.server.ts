@@ -65,6 +65,10 @@ export type EventHandler = (configuration: {
   io: GameServer
 }) => void
 
+/** Per-socket cap on 'error' log lines: the event is client-emittable, so a
+ *  socket's share of the log has to be bounded. */
+const SOCKET_ERROR_LOG_CAP = 3
+
 const SERVER_SIDE_EVENT_HANDLERS: {
   [clientEvent in ClientEvent]: {
     handler: EventHandler
@@ -249,10 +253,14 @@ export default defineEventHandler(({ node }) => {
     registerGracefulShutdown({ io, redis })
     // Optimistic bind for RECONNECTS: once a client has joined a room its
     // handshake carries { playerId, secret, gameId }, so verifying here
-    // rebinds the socket before its buffered events flush — closing the
-    // reconnect gap that used to drop them as unbound — WITHOUT trusting an
-    // unproven id claim. The first connection (home page, no gameId) skips
-    // this and lets the verified `join` handler do the binding.
+    // rebinds the socket as early as the secret lookup allows — narrowing the
+    // reconnect gap that used to drop buffered events as unbound — WITHOUT
+    // trusting an unproven id claim. The first connection (home page, no
+    // gameId) skips this and lets the verified `join` handler do the binding.
+    // NOT a guarantee: socket.io calls this listener synchronously and never
+    // awaits it, so an event buffered behind the redis round-trip can still
+    // land pre-bind and take the `unbound` ack — the client's retry is what
+    // closes that window, and always was.
     const bindReconnectIdentity = async (socket: GameSocket) => {
       const { playerId, secret, gameId } = socket.handshake.auth ?? {}
       if (typeof playerId !== 'string' || !playerId) return
@@ -274,11 +282,16 @@ export default defineEventHandler(({ node }) => {
     io.on('connection', socket => {
       // Per-socket transport errors (reset mid-frame) AND socket.io's own
       // internal `_onerror` paths (invalid packet, middleware reject) land
-      // here as a named line rather than a bare runtime-trapped throw. Note
-      // 'error' is not a server-side reserved event, so a client can emit it
-      // with an arbitrary payload — this is log-only, never trusted.
+      // here as a named line rather than a bare runtime-trapped throw.
+      // 'error' is NOT a server-side reserved event, so a client can emit it
+      // at will with any payload: log the message only (never the object),
+      // and only the first few per socket, so neither a spoofing client nor
+      // a flapping mobile connection can flood the log Fly pages on.
+      let errorsLogged = 0
       socket.on('error', error => {
-        console.warn(`Socket ${socket.id} error`, error)
+        if (errorsLogged++ >= SOCKET_ERROR_LOG_CAP) return
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(`Socket ${socket.id} error: ${message.slice(0, 200)}`)
       })
 
       // Register event handlers synchronously FIRST, so nothing is missed

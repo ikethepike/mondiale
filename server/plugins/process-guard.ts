@@ -1,3 +1,5 @@
+import { isDraining } from '~~/lib/events/server-side'
+
 /**
  * A restart valve on top of the runtime's existing log-and-continue traps.
  *
@@ -20,6 +22,12 @@
  * We deliberately DON'T add our own continue-logging handler — that would
  * double every line the runtime trap already prints. We only observe, and
  * only act on the storm. Grep hook (Fly logs are the pager): `error storm`.
+ *
+ * The threshold is set against a measured floor, not a hunch: a 12-minute
+ * 10-room soak with deliberate mid-game socket resets produced ZERO uncaught
+ * errors, so any sustained rate is already anomalous. It sits well above the
+ * one-off blips this codebase does see, and the valve only ever converts a
+ * process that is ALREADY failing into a faster recovery.
  */
 const ERROR_STORM_WINDOW_MS = 60_000
 const ERROR_STORM_LIMIT = 8
@@ -28,6 +36,12 @@ export default defineNitroPlugin(() => {
   let recent: number[] = []
 
   const note = () => {
+    // A deploy drain force-disconnects every socket at once, so a burst of
+    // transport errors there is the expected shape of a CLEAN shutdown —
+    // exiting on it would abort graceful-shutdown's writes-before-release
+    // ordering and strand the very leases the drain exists to hand over.
+    if (isDraining()) return
+
     const now = Date.now()
     recent = recent.filter(at => now - at < ERROR_STORM_WINDOW_MS)
     recent.push(now)
