@@ -2,13 +2,16 @@
   <header class="challenge-prompt">
     <div class="prompt">
       <slot />
-      <SourceInfo
-        v-if="attributions?.length"
-        class="prompt-source"
-        :attributions="attributions"
-        :label="attributionLabel"
-        :item-credit="attributionCredit"
-      />
+      <span v-if="attributions?.length || $slots.corner" class="prompt-corner">
+        <slot name="corner" />
+        <SourceInfo
+          v-if="attributions?.length"
+          class="prompt-source"
+          :attributions="attributions"
+          :label="attributionLabel"
+          :item-credit="attributionCredit"
+        />
+      </span>
       <Transition name="caption">
         <span v-if="hint" class="map-caption hint">{{ hint }}</span>
       </Transition>
@@ -30,6 +33,10 @@ import type { Attribution } from '~~/lib/attribution'
  * `attributions` hangs the round's data provenance off the header as the
  * quiet corner ⓘ (SourceInfo). Views resolve through lib/attribution.ts and
  * pass the result — the prompt never names a source in copy.
+ *
+ * The `corner` slot joins that same top-right row, to the left of the ⓘ —
+ * glanceable mode chrome (the gauntlet's lives) shares the corner instead of
+ * absolutely positioning itself into a collision with it.
  */
 withDefaults(
   defineProps<{
@@ -76,13 +83,19 @@ header {
   padding: 0.4rem 1.4rem;
 }
 
-// The provenance ⓘ hangs off the prompt's top-right corner rather than
-// joining the flex column — appearing must never reflow the question.
+// The corner row (mode chrome + the provenance ⓘ) hangs off the prompt's
+// top-right rather than joining the flex column — appearing must never
+// reflow the question. Anchored at the column's top, so a corner pill built
+// like the prompt's own first-row pill lands on the same line as it; the
+// smaller ⓘ centers against whatever shares the row.
 // Doubled selector: SourceInfo's own `.source-info` rule must not win.
-.prompt .prompt-source {
+.prompt .prompt-corner {
   top: 0;
   right: 0;
+  gap: 0.2rem;
+  display: inline-flex;
   position: absolute;
+  align-items: center;
 }
 
 // The miss hint floats below the prompt instead of joining its flex flow —

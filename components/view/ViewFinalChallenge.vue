@@ -9,9 +9,28 @@
       :lives="livesRemaining"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt :class="{ dimmed: status }" :attributions="promptSources">
+    <ChallengePrompt :attributions="promptSources">
+      <!-- Lives share the corner row with the provenance ⓘ, on the counter's
+           line — and stay bright under the verdict: the breaking heart IS
+           part of the verdict's story. Spends are optimistic (the payload
+           holds pre-answer lives through the reveal), matching livesLine. -->
+      <template #corner>
+        <span
+          v-if="initialLives && !showInterstitial"
+          class="hearts map-caption"
+          :aria-label="`${displayedLives} of ${initialLives} lives left`"
+        >
+          <span
+            v-for="index in initialLives"
+            :key="index"
+            class="heart"
+            :class="{ spent: index > displayedLives, breaking: index === lostHeart }"
+            >♥</span
+          >
+        </span>
+      </template>
       <Transition name="caption" mode="out-in">
-        <div :key="currentChallengeCount" class="prompt">
+        <div :key="currentChallengeCount" class="prompt" :class="{ dimmed: status }">
           <span class="counter map-caption"
             >{{ currentChallengeCount }}/{{ totalChallengeCount }}</span
           >
@@ -76,20 +95,6 @@
         </div>
       </Transition>
     </ChallengePrompt>
-    <span
-      v-if="initialLives && !showInterstitial"
-      class="hearts map-caption"
-      aria-label="lives"
-      :class="{ dimmed: status }"
-    >
-      <span
-        v-for="index in initialLives"
-        :key="index"
-        class="heart"
-        :class="{ spent: index > livesRemaining }"
-        >♥</span
-      >
-    </span>
     <FinalScales
       v-if="currentFinalChallenge?._type === 'scales-challenge' && !showInterstitial"
       :challenge="currentFinalChallenge"
@@ -409,6 +414,18 @@ const currentChallengeCount = computed(() => {
     totalChallengeCount.value,
     totalChallengeCount.value - gauntlet.value.challenges.length + 1
   )
+})
+
+/**
+ * What the hearts show. The wire holds pre-answer lives through the whole
+ * reveal beat, so a miss spends its heart here, optimistically, at the same
+ * moment the verdict card narrates it — by the time the payload confirms
+ * (with the next question), the display already agrees and nothing moves.
+ */
+const displayedLives = computed(() => {
+  if (knockedOut.value) return 0
+  if (status.value === 'incorrect') return Math.max(0, livesRemaining.value - 1)
+  return livesRemaining.value
 })
 
 /**
@@ -760,6 +777,16 @@ watch(currentFinalChallenge, (challenge, previous) => {
   if (madeRevealTimeout) clearTimeout(madeRevealTimeout)
 
   triggerMembershipChallenge()
+})
+
+// The heart that just emptied — only a LIVE drop breaks one, so a remount
+// with lives already spent (rejoin, reload) never replays old heartbreak.
+// Registered after the challenge watcher above: its status reset flushes
+// first, so the confirming payload lands as a no-op here instead of a
+// phantom second drop.
+const lostHeart = ref(0)
+watch(displayedLives, (now, before) => {
+  if (now < before) lostHeart.value = before
 })
 
 const showInterstitial = ref(true)
@@ -1166,21 +1193,19 @@ onBeforeUnmount(() => {
   justify-content: flex-start;
 }
 
-header {
-  transition: opacity var(--motion-base) var(--ease-smooth);
-
-  &.dimmed {
-    opacity: 0.4;
-  }
-}
-
 // The keyed swap wrapper inside the shared prompt column keeps the recipe —
 // the whole beat (counter, logo, question) lifts away and settles as one.
+// The verdict dims the question column only, never the corner's lives.
 header .prompt {
   gap: 1rem;
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+  transition: opacity var(--motion-base) var(--ease-smooth);
+
+  &.dimmed {
+    opacity: 0.4;
+  }
 
   h2 {
     margin: 0;
@@ -1251,20 +1276,14 @@ header .prompt {
   }
 }
 
-// Lives live in the corner — glanceable, out of the question's way
+// Lives ride the prompt's corner row — the counter pill's own recipe (same
+// vertical padding, inherited size), so the row lands on the counter's line
 .hearts {
-  top: 1.2rem;
-  right: 1.2rem;
-  position: absolute;
-  padding: 0.4rem 1rem;
-  transition: opacity var(--motion-base) var(--ease-smooth);
-
-  &.dimmed {
-    opacity: 0.4;
-  }
+  padding: 0.4rem 1.2rem;
 
   .heart {
     color: flame();
+    display: inline-block;
     margin-right: 0.2rem;
 
     &:last-child {
@@ -1274,6 +1293,38 @@ header .prompt {
     &.spent {
       opacity: 0.25;
     }
+
+    // The spend, played: the heart swells full-strength, shudders, and only
+    // then settles into its spent fade. Durations compose from the motion
+    // tokens, so reduced motion collapses the whole beat to a blink.
+    &.breaking {
+      animation: heart-break calc(var(--motion-slow) * 1.5) var(--ease-out-expressive);
+    }
+  }
+}
+
+@keyframes heart-break {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.45);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1.3) rotate(-14deg);
+  }
+  46% {
+    transform: scale(1.3) rotate(12deg);
+  }
+  62% {
+    transform: scale(1.18) rotate(-8deg);
+  }
+  100% {
+    opacity: 0.25;
+    transform: scale(1) rotate(0deg);
   }
 }
 

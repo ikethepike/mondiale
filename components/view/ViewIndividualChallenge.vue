@@ -453,7 +453,7 @@ header .result {
 // half off, and its opened panel with it. Tuck it inside the card's head
 // padding instead; during the question beat the centred captions leave the
 // corner clear, so one inset serves both beats.
-header :deep(.prompt .prompt-source) {
+header :deep(.prompt .prompt-corner) {
   top: 1.1rem;
   right: 1.2rem;
 }
