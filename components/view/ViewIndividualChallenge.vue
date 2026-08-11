@@ -419,6 +419,20 @@ onBeforeUnmount(clearBoard)
 header {
   position: absolute;
   justify-content: center;
+  // The gate column has to resolve INSIDE the viewport. `max-height` on the
+  // question alone measured the prompt's own padding OUT of the cap, so a tall
+  // gate (chronicle's five cards) hung its tail past the fold, where
+  // .main-board's overflow: hidden clips it — the lock row, button and clock
+  // included, with no way to scroll to them. Capping the border box here and
+  // opening the shrink chain below lets the gate's own giver take the squeeze.
+  display: flex;
+  max-height: var(--viewport-height);
+  flex-flow: column nowrap;
+}
+
+header :deep(.prompt) {
+  min-height: 0;
+  max-height: 100%;
 }
 
 // With the prompt header absolute, the typed gates' footer is the shell's
@@ -434,8 +448,10 @@ header .result {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
-  // Fallback: scroll to the options if a tall hero + cards overflow.
-  max-height: var(--viewport-height);
+  // Fallback: scroll to the options if a tall hero + cards overflow. A gate
+  // with a giver of its own (chronicle's board) never reaches this — it
+  // absorbs the squeeze internally and keeps its footer rows on screen.
+  min-height: 0;
   overflow-y: auto;
 }
 
