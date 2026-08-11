@@ -171,6 +171,7 @@ import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { LOCKOUT_SECONDS, useLockoutBeat } from '~~/lib/use-lockout-beat'
 import { sentenceCase } from '~~/lib/strings'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { datasetAttribution } from '~~/lib/attribution'
@@ -215,7 +216,6 @@ const countryInput = ref<InstanceType<typeof CountryGuessInput>>()
 const paths = ref<string[]>([])
 const precisions = ref<number[]>()
 const flags = ref<Record<string, string>>({})
-const lockedOut = ref(false)
 const spent = ref<string[]>([])
 const picks = ref<ISOCountryCode[]>([])
 const tapSecondsLeft = ref(0)
@@ -239,11 +239,10 @@ const onProgress = (t: number) => timebar.value?.setT(t)
 let beat1Guess: string | undefined
 let beat1Score = 0
 
-let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 let beatTimer: ReturnType<typeof setTimeout> | undefined
 let tapClock: ReturnType<typeof setInterval> | undefined
 registerCleanup(() => {
-  for (const timer of [lockoutTimer, beatTimer]) if (timer) clearTimeout(timer)
+  if (beatTimer) clearTimeout(beatTimer)
   if (tapClock) clearInterval(tapClock)
 })
 
@@ -320,15 +319,13 @@ const start = async () => {
   nextTick(() => nameInput.value?.focus({ auto: true }))
 }
 
-/** A wrong buzz costs three seconds, not points — the silhouette contract. */
+/** A wrong buzz costs a lockout beat, not points — the silhouette contract. */
+const { lockedOut, lockOut: beginLockout } = useLockoutBeat({
+  onEnd: () => nameInput.value?.focus(),
+})
 const lockOut = (message: string) => {
   announce({ kind: 'locked', hint: message })
-  lockedOut.value = true
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  lockoutTimer = setTimeout(() => {
-    lockedOut.value = false
-    nextTick(() => nameInput.value?.focus())
-  }, 3000)
+  beginLockout()
 }
 
 const buzz = (guessedId: string) => {
@@ -342,7 +339,9 @@ const onOptionPick = (option: string) => {
   if (!active || lockedOut.value || !started.value || beat.value !== 'guess') return
   if (option === active.empireId) return buzz(option)
   spent.value = [...spent.value, option]
-  lockOut(`Not ${empireDisplayName(EMPIRES[option]?.name ?? option)} — locked out for 3 seconds`)
+  lockOut(
+    `Not ${empireDisplayName(EMPIRES[option]?.name ?? option)} — locked out for ${LOCKOUT_SECONDS} seconds`
+  )
 }
 
 /** Hard mode types against the whole register — every polity is suggestible. */
@@ -358,7 +357,7 @@ const onNamePick = (option: SuggestOption) => {
   const active = challenge.value
   if (!active || lockedOut.value || beat.value !== 'guess') return
   if (option.id === active.empireId) return buzz(option.id)
-  lockOut(`Not ${empireDisplayName(option.name)} — locked out for 3 seconds`)
+  lockOut(`Not ${empireDisplayName(option.name)} — locked out for ${LOCKOUT_SECONDS} seconds`)
 }
 
 /** Typos the suggestion filter can't place still get the forgiving match. */
@@ -375,7 +374,9 @@ const onNameMiss = (typed: string) => {
 
   const other = Object.keys(EMPIRES).find(matches)
   if (other) {
-    lockOut(`Not ${empireDisplayName(EMPIRES[other].name)} — locked out for 3 seconds`)
+    lockOut(
+      `Not ${empireDisplayName(EMPIRES[other].name)} — locked out for ${LOCKOUT_SECONDS} seconds`
+    )
   } else {
     announce({ hint: 'No power by that name in the register' })
   }

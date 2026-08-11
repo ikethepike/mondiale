@@ -1,0 +1,9 @@
+@use 'ink' as *;
+
+// The one keyboard focus ring. :where() keeps specificity at zero, so a
+// component's own :focus-visible treatment (or a deliberate outline: none)
+// always wins without fighting this rule.
+:where(:focus-visible) {
+  outline: 0.2rem solid ink();
+  outline-offset: 0.2rem;
+}

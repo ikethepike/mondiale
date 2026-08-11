@@ -3,7 +3,7 @@
     <Transition name="dock" mode="out-in">
       <div v-if="expanded" key="stage" class="dock-stage">
         <div class="dock-scrim" aria-hidden="true" @click="expanded = false" />
-        <div class="dock-frame">
+        <div class="dock-frame" role="dialog" aria-modal="true" :aria-label="alt">
           <!-- A single photo is the common case and its own default. A subject
                that is not one still image (World of Change's crossfading pair)
                supplies its own stage here and keeps the scrim, the frame, the
@@ -18,7 +18,13 @@
             :attributions="attributions"
             :item-credit="itemCredit"
           />
-          <button type="button" class="dock-close" title="Collapse photo" @click="expanded = false">
+          <button
+            ref="closeButton"
+            type="button"
+            class="dock-close"
+            title="Collapse photo"
+            @click="expanded = false"
+          >
             <svg class="dock-close-icon" viewBox="0 0 16 16" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
@@ -42,6 +48,7 @@
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import type { Attribution } from '~~/lib/attribution'
+import { useDialogKeys } from '~~/lib/use-dialog-keys'
 
 /**
  * Phone presentation for a media prompt whose ANSWER surface is the map:
@@ -69,6 +76,12 @@ withDefaults(
 )
 
 const expanded = defineModel<boolean>('expanded', { default: true })
+
+const closeButton = ref<HTMLButtonElement>()
+useDialogKeys(expanded, {
+  close: () => (expanded.value = false),
+  initialFocus: () => closeButton.value,
+})
 </script>
 <style lang="scss" scoped>
 // Stage, scrim, frame, close button and the dock transition come from

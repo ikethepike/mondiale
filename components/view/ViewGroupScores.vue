@@ -220,7 +220,12 @@
             'own-player': player.id === gameStore.seatId,
             selected: player.id === selectedPlayer,
           }"
+          role="button"
+          tabindex="0"
+          :aria-pressed="player.id === selectedPlayer"
           @click="selectedPlayer = player.id"
+          @keydown.enter.prevent="selectedPlayer = player.id"
+          @keydown.space.prevent="selectedPlayer = player.id"
         >
           <span class="rank">{{ index + 1 }}</span>
           <PlayerTile :player="player">

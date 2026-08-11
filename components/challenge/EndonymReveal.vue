@@ -2,7 +2,7 @@
   <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
        a <div> now, so blocks would be legal here — the spans stay because they
        work and churning them buys nothing. -->
-  <span class="ranked-bars endonym-reveal">
+  <section class="ranked-bars endonym-reveal" tabindex="0" aria-label="Endonym answers">
     <span class="header">
       <span class="headline">
         You knew {{ hitCount }} of {{ rows.length }} — {{ challenge.quota }} were needed
@@ -31,7 +31,7 @@
       <SourceInfo :attributions="sources" label="Sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

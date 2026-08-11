@@ -54,6 +54,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { BORDERS } from '~~/data/borders.gen'
 import { countryName } from '~~/lib/country'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
+import { LOCKOUT_SECONDS } from '~~/lib/use-lockout-beat'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
 import type { Country } from '~~/types/geography.types'
 import { datasetAttribution } from '~~/lib/attribution'
@@ -91,8 +92,8 @@ const {
   isCorrect: (active, isoCode) => active.country === isoCode,
   maximumPoints: active => active.maximumPoints,
   // No isoCode: a wrong buzz would name a candidate for the shared answer.
-  lockoutHint: name => `Not ${name} — locked out for 3 seconds`,
-  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
+  lockoutHint: name => `Not ${name} — locked out for ${LOCKOUT_SECONDS} seconds`,
+  onLockoutEnd: () => guessInput.value?.focus(),
   onTick: tickOutlineReveal,
   // Blank the world map — the silhouette IS the whole question.
   solo: true,

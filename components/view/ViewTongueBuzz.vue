@@ -125,7 +125,7 @@ const {
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `${name} doesn't have it as an official language`,
-  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
+  onLockoutEnd: () => guessInput.value?.focus(),
   onResolve: () => {
     const active = challenge.value
     if (!active) return

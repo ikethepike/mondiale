@@ -16,6 +16,7 @@
 </template>
 <script lang="ts" setup>
 import { useIntroBeat } from '~~/lib/use-intro-beat'
+import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
 import { useGameStore } from '~~/store/game.store'
 import ContourRipple from './ContourRipple.vue'
 
@@ -65,6 +66,8 @@ const { skip } = useIntroBeat(
   { pieceSelector: '[data-interstitial]', holdFor: () => props.holdFor },
   () => emit('done')
 )
+
+useKeyboardSkip(() => !watching.value, skip)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

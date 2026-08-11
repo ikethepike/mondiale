@@ -96,6 +96,7 @@ import { datasetAttribution, dedupeAttributions, mediaCreditLine } from '~~/lib/
 import { countryName } from '~~/lib/country'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
+import { LOCKOUT_SECONDS } from '~~/lib/use-lockout-beat'
 import type { Country } from '~~/types/geography.types'
 
 const {
@@ -120,8 +121,8 @@ const {
 } = useBuzzRound('anthem-buzz-challenge', {
   isCorrect: (active, isoCode) => active.country === isoCode,
   maximumPoints: active => active.maximumPoints,
-  lockoutHint: name => `Not ${name} — locked out for 3 seconds`,
-  onLockoutEnd: () => nextTick(() => guessInput.value?.focus()),
+  lockoutHint: name => `Not ${name} — locked out for ${LOCKOUT_SECONDS} seconds`,
+  onLockoutEnd: () => guessInput.value?.focus(),
   // No map reveal. "Whose anthem" is not a geography question, and flying a
   // camera to one country adds nothing the name and the settled field do not
   // already say. The payoff is realising the colours WERE the answer, forming

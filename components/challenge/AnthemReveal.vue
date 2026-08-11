@@ -1,5 +1,5 @@
 <template>
-  <span class="ranked-bars anthem-reveal">
+  <section class="ranked-bars anthem-reveal" tabindex="0" aria-label="Buzz results">
     <!-- One dossier: who it was, what the anthem is, its words, and the clip.
          These four were separate stacked blocks and read as a list of
          unrelated facts; together they are a single record of the answer. -->
@@ -121,7 +121,7 @@
         <span class="tail">{{ row.tail }}</span>
       </span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'

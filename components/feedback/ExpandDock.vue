@@ -37,6 +37,8 @@
  *
  * `tall` buys the taller frame a chart's axes need over a photo's.
  */
+import { useDialogKeys } from '~~/lib/use-dialog-keys'
+
 withDefaults(
   defineProps<{
     label?: string
@@ -53,20 +55,7 @@ const close = () => {
   open.value = false
 }
 
-// Escape closes, and focus lands on the close button so the dialog is
-// keyboard-reachable the moment it opens.
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && open.value) close()
-}
-
-watch(open, async isOpen => {
-  if (!isOpen) return
-  await nextTick()
-  closeButton.value?.focus()
-})
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+useDialogKeys(open, { close, initialFocus: () => closeButton.value })
 </script>
 <style lang="scss" scoped>
 // Stage, scrim, frame and close button are templates/_dock.scss. The frame

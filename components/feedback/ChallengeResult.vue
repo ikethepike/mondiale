@@ -11,6 +11,9 @@
         <div class="verdict">
           <h1 ref="verdictLine" class="verdict-line">{{ message }}</h1>
           <VerdictStamp :key="status" class="stamp" :status="status" />
+          <!-- The live region exists before its content lands, or screen
+               readers never announce the verdict. -->
+          <span class="visually-hidden" role="status">{{ announced }}</span>
         </div>
       </div>
       <!-- The teachable moment: the actual facts behind the verdict. Gate on
@@ -61,6 +64,10 @@ const props = defineProps({
 const message = computed(() =>
   props.status === 'correct' ? props.correctMessage : props.incorrectMessage
 )
+
+// Filled a tick after mount so the live region pre-exists its content.
+const announced = ref('')
+onMounted(() => nextTick(() => (announced.value = message.value)))
 
 // Whether the slot renders any real content. $slots.default is always truthy
 // when the parent supplies slot markup, but the slotted reveals are v-if'd —

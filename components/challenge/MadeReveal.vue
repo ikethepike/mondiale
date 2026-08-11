@@ -1,8 +1,7 @@
 <template>
-  <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
-       a <div> now, so blocks would be legal here — the spans stay because they
-       work and churning them buys nothing. -->
-  <span class="ranked-bars made-reveal">
+  <!-- Inner spans are historical (this once rendered in a span-only body); the
+       shell is a focusable section so keyboard users can scroll the tall run. -->
+  <section class="ranked-bars made-reveal" tabindex="0" aria-label="Top exporters">
     <span class="header">
       <strong class="commodity">{{ challenge.commodity }}</strong>
       <span class="subtitle">the world's top exporters · {{ year }}</span>
@@ -30,7 +29,7 @@
       <SourceInfo :attributions="sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

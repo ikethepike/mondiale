@@ -2,7 +2,7 @@
   <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
        a <div> now, so blocks would be legal here — the spans stay because they
        work and churning them buys nothing. -->
-  <span class="ranked-bars minmax-reveal">
+  <section class="ranked-bars minmax-reveal" tabindex="0" aria-label="Country rankings">
     <span class="header">
       <StatTopicIcon class="topic" :accessor="challenge.accessorId" />
       <strong class="stat">{{ label }}</strong>
@@ -35,7 +35,7 @@
       <SourceInfo :attributions="[source]" />
       <span class="credit">{{ source.credit }}</span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

@@ -2,7 +2,7 @@
   <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
        a <div> now, so blocks would be legal here — the spans stay because they
        work and churning them buys nothing. -->
-  <span class="ranked-bars nocturne-reveal">
+  <section class="ranked-bars nocturne-reveal" tabindex="0" aria-label="City answers">
     <span class="header">
       <CountryFlag class="flag" :country="country" mode="background" />
       <strong class="country">{{ countryName(country) }}</strong>
@@ -41,7 +41,7 @@
       <SourceInfo :attributions="sources" label="Sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

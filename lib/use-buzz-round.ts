@@ -1,5 +1,6 @@
 import { buzzScore } from './scoring'
 import { roundSettled } from './spectate'
+import { useLockoutBeat } from './use-lockout-beat'
 import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -30,10 +31,6 @@ export const HINT_UNLOCK_AT = {
   lyricsUnmask: 0.9,
 } as const
 
-/** A wrong buzz costs a beat — long enough to matter, short enough to re-enter
- *  the same round. Shared so the two views can't drift apart. */
-export const BUZZ_LOCKOUT_MS = 3000
-
 export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: {
@@ -49,10 +46,9 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     lockoutHint: (guessName: string) => string
     /** Runs once the round resolves, before the reveal hold. */
     onResolve?: (guess: ISOCountryCode | undefined) => void
-    /** Runs when a lockout expires — the moment to hand focus back to the
-     *  guess input. Owned here because the lockout timer is owned here: a
-     *  view-side refocus timer re-declares the lockout length and drifts the
-     *  moment it is tuned. */
+    /** Runs when a lockout expires, after the DOM patch that re-enables the
+     *  console — the moment to hand focus back to the guess input (bare
+     *  `focus()`, no nextTick needed). The timer itself is `useLockoutBeat`. */
     onLockoutEnd?: () => void
     /** Each second of the running clock (the silhouette's border draw). */
     onTick?: (secondsLeft: number) => void
@@ -74,11 +70,10 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     announce,
     submitOnce,
     stopCountdown,
-    registerCleanup,
   } = round
 
   const resolved = ref(false)
-  const lockedOut = ref(false)
+  const { lockedOut, lockOut } = useLockoutBeat({ onEnd: options.onLockoutEnd })
   /** Held for the reveal: what the player buzzed, and when. */
   const buzzedAt = ref<number | undefined>()
 
@@ -89,11 +84,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     initial: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.initial,
     lyricsUnmask: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.lyricsUnmask,
   }))
-
-  let lockoutTimer: ReturnType<typeof setTimeout> | undefined
-  registerCleanup(() => {
-    if (lockoutTimer) clearTimeout(lockoutTimer)
-  })
 
   const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
     if (resolved.value) return
@@ -175,12 +165,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     // announces nothing: naming it would hand the answer to everyone still
     // racing the clock.
     announce({ kind: 'locked', hint: options.lockoutHint(guessName), isoCode, label: guessName })
-    lockedOut.value = true
-    if (lockoutTimer) clearTimeout(lockoutTimer)
-    lockoutTimer = setTimeout(() => {
-      lockedOut.value = false
-      options.onLockoutEnd?.()
-    }, BUZZ_LOCKOUT_MS)
+    lockOut()
     return 'wrong'
   }
 

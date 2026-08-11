@@ -18,7 +18,15 @@
             <span class="eyebrow">The story so far</span>
             <h2 class="drawer-title">Journey log</h2>
           </div>
-          <button class="close" type="button" aria-label="Close history" @click="close">×</button>
+          <button
+            ref="closeButton"
+            class="close"
+            type="button"
+            aria-label="Close history"
+            @click="close"
+          >
+            ×
+          </button>
         </header>
 
         <section class="standings">
@@ -106,6 +114,7 @@ import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type
 import type { Game } from '~~/types/game.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import { boardProgress } from '~~/lib/player'
+import { useDialogKeys } from '~~/lib/use-dialog-keys'
 import { useDragSheet } from '~~/lib/use-drag-sheet'
 import { useIsPhone } from '~~/lib/use-viewport'
 
@@ -116,6 +125,9 @@ const open = computed(() => gameStore.board.historyOpen)
 const close = () => {
   gameStore.board.historyOpen = false
 }
+
+const closeButton = ref<HTMLButtonElement>()
+useDialogKeys(open, { close, initialFocus: () => closeButton.value })
 
 // --- Swipe-to-dismiss (mobile bottom sheet) --------------------------------
 // The drag math lives in lib/use-drag-sheet.ts; here the two stops are open

@@ -145,6 +145,7 @@ import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { useCountUp } from '~~/lib/use-count-up'
+import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
 import { gameStats, visitedCountries } from '~~/lib/victory-stats'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 
@@ -210,6 +211,8 @@ const endHero = () => {
   if (heroTimer) clearTimeout(heroTimer)
   showHero.value = false
 }
+
+useKeyboardSkip(() => showHero.value, endHero)
 
 onMounted(() => {
   // The game's atlas glows behind the report — every country the rounds touched

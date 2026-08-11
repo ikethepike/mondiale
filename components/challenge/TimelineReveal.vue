@@ -49,7 +49,7 @@
         <header class="listing-header">
           <span class="eyebrow">Round Standings</span>
         </header>
-        <ol class="ranked-bars score-board" aria-label="Final scores">
+        <ol class="ranked-bars score-board" tabindex="0" aria-label="Final scores">
           <li
             v-for="(row, index) in rows"
             :key="row.playerId"

@@ -2,7 +2,7 @@
   <!-- Spans throughout: renders inside ChallengeResult's lesson body. That body is
        a <div> now, so blocks would be legal here — the spans stay because they
        work and churning them buys nothing. -->
-  <span class="ranked-bars diaspora-reveal">
+  <section class="ranked-bars diaspora-reveal" tabindex="0" aria-label="Migration corridors">
     <span class="header">
       <!-- Beats past the verdict were never asked, so the denominator is what
            the player actually played, not the whole dealt deck -->
@@ -40,7 +40,7 @@
       <SourceInfo :attributions="sources" label="Sources" />
       <span class="credit">Foreign-born residents, {{ VINTAGE }}</span>
     </span>
-  </span>
+  </section>
 </template>
 <script lang="ts" setup>
 import CountryFlag from '~/components/country/CountryFlag.vue'

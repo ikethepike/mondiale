@@ -98,6 +98,7 @@ import { countryName } from '~~/lib/country'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { LOCKOUT_SECONDS, useLockoutBeat } from '~~/lib/use-lockout-beat'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -121,7 +122,6 @@ const {
 } = useGroupChallenge('stat-detective-challenge')
 
 const resolved = ref(false)
-const lockedOut = ref(false)
 const revealedCount = ref(0)
 const secondsLeft = ref(0)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -186,11 +186,11 @@ const displayClues = computed(() => {
 
 // Paced by `secondsPerClue`, not a round countdown — the clue interval is local
 let clueTimer: ReturnType<typeof setInterval> | undefined
-let lockoutTimer: ReturnType<typeof setTimeout> | undefined
 registerCleanup(() => {
   if (clueTimer) clearInterval(clueTimer)
-  if (lockoutTimer) clearTimeout(lockoutTimer)
 })
+
+const { lockedOut, lockOut } = useLockoutBeat({ onEnd: () => guessInput.value?.focus() })
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
   submitOnce(guess ? [guess] : [], clientScore)
@@ -261,13 +261,11 @@ const onGuess = (country: Country) => {
   }
 
   // No isoCode: a wrong buzz would name a candidate for the shared answer.
-  announce({ kind: 'locked', hint: `Not ${countryName(country)} — locked out for 3 seconds` })
-  lockedOut.value = true
-  if (lockoutTimer) clearTimeout(lockoutTimer)
-  lockoutTimer = setTimeout(() => {
-    lockedOut.value = false
-    nextTick(() => guessInput.value?.focus())
-  }, 3000)
+  announce({
+    kind: 'locked',
+    hint: `Not ${countryName(country)} — locked out for ${LOCKOUT_SECONDS} seconds`,
+  })
+  lockOut()
 }
 </script>
 <style lang="scss" scoped>
