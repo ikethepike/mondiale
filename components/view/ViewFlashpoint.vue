@@ -44,30 +44,41 @@
       </ChallengePrompt>
 
       <section class="stage">
-        <!-- The ladder. Every rung is rendered from the first frame and only
-             toggles `is-shown`, so the box never resizes: the dots are pinned
-             to the map's painted rect, and a stage that grows under them reads
-             as the cloud sliding off its country. `bounds` draws instead of
-             writing, so it carries a label rather than a fact. -->
-        <ul
-          v-if="textHints.length && !submitted"
-          class="hint-ladder"
-          :style="{ '--hint-rows': textHints.length }"
-        >
-          <li
-            v-for="(rung, index) in textHints"
-            :key="rung.kind"
-            class="hint-chip"
-            :class="{ 'is-shown': index < shownHints }"
-          >
-            {{ rung.text }}
-          </li>
-        </ul>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </section>
 
       <footer :class="{ 'suggest-berth': !challenge.options && !submitted }">
         <template v-if="!submitted">
+          <!-- The ladder stands directly above the console: the rungs are the
+               working material for the guess you're about to type, so the last
+               thing read is the freshest clue and the hands are already there.
+               It lives in the footer so useFooterBerth reserves ladder AND
+               console as one band and the camera frames the dots clear of both.
+
+               Newest at the BOTTOM, nearest the input — the same language the
+               dot waves speak, where the newest era carries the ink and older
+               ones recede. The scrollport is capped at two rungs so a five-rung
+               round can never eat the map; older rungs stay reachable by scroll
+               and dim as they climb, and the shared scroll-fade tells the
+               player there is more above. -->
+          <TransitionGroup
+            v-if="ladder.length"
+            ref="ladderList"
+            tag="ul"
+            name="hint"
+            class="hint-ladder"
+            :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+            @scroll.passive="syncScrollEdges"
+          >
+            <li
+              v-for="(rung, index) in ladder"
+              :key="rung.kind"
+              class="hint-chip"
+              :style="{ '--rung-age': ladder.length - 1 - index }"
+            >
+              {{ rung.text }}
+            </li>
+          </TransitionGroup>
           <!-- Non-hard mode: pick from flag options, the round clock above
                them. Hard mode: the clock lives inside the guess console. -->
           <template v-if="challenge.options">
@@ -124,6 +135,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import { FLASHPOINT_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import type { FlashpointHint } from '~~/types/challenges/group-modes.type'
@@ -193,11 +205,34 @@ const shownHints = computed(() => {
   return Math.min(active.hints.length, 1 + Math.floor(sinceLadder / active.secondsPerHint))
 })
 
-/** The rungs that carry copy — `bounds` is drawn on the map, not written. */
-const textHints = computed(() =>
-  (challenge.value?.hints ?? []).filter(
-    (rung): rung is FlashpointHint & { text: string } => !!rung.text
-  )
+/** Only the rungs that have actually unlocked, oldest first — the newest sits
+ *  last, at the bottom of the stack against the console. `shownHints` counts
+ *  rungs across the WHOLE ladder including `bounds`, which draws on the map
+ *  instead of writing, so it is sliced before the text filter, never after. */
+const ladder = computed(() =>
+  (challenge.value?.hints ?? [])
+    .slice(0, shownHints.value)
+    .filter((rung): rung is FlashpointHint & { text: string } => !!rung.text)
+)
+
+// TransitionGroup is a component, so its ref is the instance — the scrollport
+// the edges read is its rendered `$el`.
+const ladderList = ref<{ $el?: HTMLElement }>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => ladderList.value?.$el)
+
+// The newest rung is the LAST child, against the console, so the stack has to
+// ride its own bottom edge — left alone the scrollport rests at the top and
+// the freshest clue lands unseen below the fold. `scrollTop` rather than
+// scrollIntoView: near a typed console that would pan the whole shell.
+watch(
+  () => ladder.value.length,
+  async () => {
+    await nextTick()
+    const el = ladderList.value?.$el
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+    syncScrollEdges()
+  }
 )
 
 /** The neighbour sketch, once its rung unlocks (and through the reveal, where
@@ -278,6 +313,7 @@ const { spent, onGuess } = useAttemptOptions({
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 header .sub {
   max-width: min(80vw, 44rem);
@@ -286,27 +322,68 @@ header .sub {
 // The ladder stacks rather than spreads: one rung per line, centred, so the
 // rungs read in the order they arrived. Left to wrap across the full width
 // they string out as loose text with no reading order at all.
+//
+// Capped to --ladder-rows rungs of room and scrollable past that, so a long
+// ladder never grows the footer band into the dots. `column-reverse` does the
+// work: the list is in arrival order (oldest first) but paints bottom-anchored
+// against the console, so its resting scroll position is the newest rung with
+// no scripted scroll needed on first paint.
 .hint-ladder {
+  --ladder-rows: 2;
+  // Row box + gap. Measured from the chip's own metrics, so retuning the chip
+  // padding or the gap moves the cap with it.
+  --ladder-row: 3.4rem;
+  gap: 0.4rem;
   width: min(90vw, 46rem);
   margin: 0 auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
   flex-flow: column nowrap;
-  gap: 0.5rem;
+  max-height: calc(var(--ladder-rows) * var(--ladder-row));
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  // Edge fades from the shared recipe (rules/_scroll-fade.scss). Only the top
+  // one is wanted: it says "there are older rungs above". The bottom edge is
+  // where the newest rung sits against the console and must never be dimmed,
+  // so its fade is zeroed rather than left to cover the live clue.
+  //
+  // Deep enough to cover a whole wrapped line: the cap is a fixed height, so
+  // on a narrow screen it lands MID-ROW, and a shallow fade leaves the older
+  // rung sliced through its own text — which reads as broken rendering rather
+  // than as something receding out of the band.
+  @include scroll-fade($top: 3.2rem, $bottom: 0rem);
 }
 
-// Every rung holds its space from frame one and only fades in — see the
-// template comment on why the box must never resize.
+// The stack recedes as it climbs: the newest rung (age 0) carries full ink
+// against the console, older ones step back in opacity and scale — the same
+// language the dot waves speak, where only the newest era holds the weight.
+// Capped at age 2 so a deep scroll never fades a rung to nothing.
 .hint-ladder .hint-chip {
-  opacity: 0;
-  transition: opacity var(--motion-slow) var(--ease-smooth);
+  --age: min(var(--rung-age), 2);
+  flex: 0 0 auto;
+  transform-origin: bottom center;
+  opacity: calc(1 - var(--age) * 0.26);
+  transform: scale(calc(1 - var(--age) * 0.04));
+  transition:
+    opacity var(--motion-slow) var(--ease-smooth),
+    transform var(--motion-slow) var(--ease-smooth);
   // The audio rounds' chip sits on a dark field; this one sits on the cream
   // page, where milk-on-milk vanishes. Ink the surface instead.
   color: var(--dark-blue);
   background: #{ink(0.06)};
   border: 0.1rem solid #{ink(0.12)};
+}
 
-  &.is-shown {
-    opacity: 1;
-  }
+// `hint-pop` lands at scale(1)/opacity(1), which is exactly the newest rung's
+// resting state — so only the newest may wear it. Left on every rung, the
+// shared TransitionGroup class would animate an older one back to full ink and
+// then drop it to its age, reading as a flicker on a chip nobody touched.
+.hint-ladder .hint-chip:not(:last-child).hint-enter-active {
+  animation: none;
 }
 
 .stage {
@@ -336,6 +413,17 @@ footer {
   .card-options {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// Narrow screens wrap a rung to two lines, so a row is worth roughly double
+// and two full rungs would eat the dots. The band keeps ONE whole rung and
+// leaves a sliver of the one above — enough to say the stack continues, which
+// is the fade's job anyway.
+@media (max-width: $phone) {
+  .hint-ladder {
+    --ladder-row: 5.2rem;
+    --ladder-rows: 1.4;
   }
 }
 </style>
