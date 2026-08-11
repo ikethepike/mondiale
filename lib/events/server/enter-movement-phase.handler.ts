@@ -11,6 +11,7 @@ import {
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
+import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
 import { armFinalQuestionCap, armIndividualGateCap } from './seat-exits'
 
@@ -341,6 +342,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // the reading cap; the writing clock stamps when the table is briefed.
       if (isUniqueOrBustChallenge(revealed)) {
         scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, revealed)
+      }
+      // Clean Sweep opens on its briefing too (deadline stays 0) — same seam,
+      // same reading cap; the board's clock stamps when the table is briefed.
+      if (isCleanSweepChallenge(revealed)) {
+        scheduleSweepTimeout({ io, redis, socket, eventTarget }, game, revealed)
       }
       scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
     }

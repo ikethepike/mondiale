@@ -36,6 +36,13 @@ export const PLAY_GATE_CAP_MS = 15000
  *  doors and see that the trapped player truly had no move. The client's
  *  overlay reads this too — one beat, one constant. */
 export const TRAP_HOLD_MS = 5500
+/** Clean Sweep's bench: how long a wrong name locks a seat out of the board.
+ *  The mode's whole penalty — in a contested pool, seconds in front of a
+ *  draining board are the only scarce thing, so the cost is tempo rather than
+ *  a docked point. Isomorphic like its neighbours: the server STAMPS
+ *  `state.benched[playerId]` with it and the view counts the same number down,
+ *  so there is no timer to arm, lose or re-arm. */
+export const SWEEP_LOCKOUT_MS = 3500
 
 /** Phases that no longer take part in a round's movement. */
 export const SETTLED_PHASES: readonly PlayerPhase[] = ['movement-summary', 'victory', 'kicked']
@@ -334,6 +341,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   timeline: engine(),
   manhunt: engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'unique-or-bust': engine({ briefingCapMs: BRIEFING_CAP_MS }),
+  'clean-sweep': engine({ briefingCapMs: BRIEFING_CAP_MS }),
 }
 
 export const roundBeats = (challenge: RoundChallenge | undefined): RoundBeatSpec =>

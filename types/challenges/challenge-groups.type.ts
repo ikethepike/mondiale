@@ -89,6 +89,10 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'tongue-buzz': 'culture',
   // Countries, capitals, rivers and megacities in one board — places at large.
   'unique-or-bust': 'culture',
+  // Clubs, currency zones, treaty rosters and regions — who belongs to what.
+  // The accurate homes ('economy', 'society') are hidden groups, so a kind
+  // filed there could never be switched off; culture is the visible home.
+  'clean-sweep': 'culture',
   'capital-guess': 'culture',
   // Capital-guess's mirror: the same cities, read off the map instead of a
   // photo, so it shares the toggle a table that wants city content flips.
@@ -136,6 +140,10 @@ export const ANSWER_SHAPE_BY_KIND = {
   // scores as the country it belongs to, so the ledger shape is a plain set.
   'star-chart': 'set',
   empire: 'set',
+  // A contested set: the seat's claims against the whole board. The ledger
+  // marks a rival's claim as taken rather than missed (AnswerLedger's
+  // `claimedBy`), so the rows stay honest about what was never available.
+  'clean-sweep': 'set',
   // One buzz against a set of acceptable answers.
   'tongue-buzz': 'set',
   'name-that-water': 'set',
@@ -200,6 +208,9 @@ export const HARD_ONLY_ROUND_KINDS = new Set<RoundChallengeKind>([
 export const MINIMUM_TABLE_BY_KIND: Partial<Record<RoundChallengeKind, number>> = {
   manhunt: 4,
   'unique-or-bust': 3,
+  // Solo, an exclusive claim is exclusive against nobody and the round
+  // degenerates into a plain blitz — which the roster already has six of.
+  'clean-sweep': 2,
 }
 
 /** Accessors pulled from the stat pool (ranking, stat detective, two truths,

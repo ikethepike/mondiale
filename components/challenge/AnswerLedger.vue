@@ -19,7 +19,7 @@
         v-for="row in rows"
         :key="row.isoCode"
         class="row"
-        :class="row.verdict"
+        :class="[row.verdict, { taken: row.takenBy }]"
         :style="{ '--row-index': row.index }"
       >
         <div class="flag-stage">
@@ -38,7 +38,8 @@
               stroke-linejoin="round"
             />
           </svg>
-          <span>{{ row.verdict === 'found' ? 'Found' : 'Missed' }}</span>
+          <PlayerPawn v-else-if="row.takenBy" class="taken-pawn" :player="row.takenBy" />
+          <span>{{ row.label }}</span>
         </span>
       </li>
     </ol>
@@ -64,10 +65,13 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
+import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { AnswerBreakdown } from '~~/lib/challenges'
+import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Player } from '~~/types/player.type'
 
 const props = defineProps({
   breakdown: {
@@ -87,6 +91,25 @@ const props = defineProps({
     type: Number,
     default: undefined,
   },
+  /**
+   * Contested-pool rounds only (Clean Sweep): slot → the seat that claimed it.
+   * A row a RIVAL holds reads "Taken by ⟨pawn⟩" rather than "Missed", because
+   * the seat did not miss what it was never allowed to have. Every other mode
+   * passes nothing and the ledger behaves exactly as before.
+   */
+  claimedBy: {
+    type: Object as PropType<{ [isoCode in ISOCountryCode]?: string }>,
+    default: undefined,
+  },
+  players: {
+    type: Object as PropType<Record<string, Player>>,
+    default: undefined,
+  },
+  /** Whose scorecard this is — their own claims still read "Found". */
+  seatId: {
+    type: String,
+    default: undefined,
+  },
 })
 
 const isPhone = useIsPhone()
@@ -99,7 +122,25 @@ const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => l
 const rows = computed(() =>
   props.breakdown.truth.flatMap((row, index) => {
     const country = getCountry(row.isoCode)
-    return country ? [{ ...row, index, country, name: countryName(country) }] : []
+    if (!country) return []
+    // A rival's claim is not this seat's miss. Only rows the seat genuinely
+    // lost to somebody else are re-labelled — an unclaimed slot nobody reached
+    // is still a miss, and it is the one the reveal wants you to feel.
+    const holderId = props.claimedBy?.[row.isoCode]
+    const takenBy =
+      row.verdict !== 'found' && holderId && holderId !== props.seatId
+        ? props.players?.[holderId]
+        : undefined
+    return [
+      {
+        ...row,
+        index,
+        country,
+        name: countryName(country),
+        takenBy,
+        label: row.verdict === 'found' ? 'Found' : takenBy ? 'Taken' : 'Missed',
+      },
+    ]
   })
 )
 
@@ -201,6 +242,33 @@ const strays = computed(() =>
   color: #fff;
   border-color: transparent;
   background: var(--soft-blue);
+}
+
+// A slot a rival took is not a blank: somebody at this table knew it, and the
+// row says who. Solid where a real miss is dashed, and only half-faded — the
+// dashed, ghosted treatment belongs to the answers NOBODY reached.
+.row.taken {
+  .flag-stage,
+  .verdict {
+    border-style: solid;
+  }
+  .flag-stage {
+    opacity: 0.8;
+  }
+  .name {
+    opacity: 0.85;
+  }
+  .verdict {
+    gap: 0.4rem;
+    color: var(--dark-blue);
+    background: var(--warm-sand);
+    border-color: transparent;
+  }
+  .taken-pawn {
+    width: 1rem;
+    height: 1.3rem;
+    flex-shrink: 0;
+  }
 }
 
 .row.missed {

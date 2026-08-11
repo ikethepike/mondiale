@@ -36,6 +36,9 @@ const guessText = (entry: GuessTickerEntry) => {
   // A taunt is said, not judged — no verdict mark.
   if (entry.kind === 'taunt') return `\u201c${entry.label ?? '\u2026'}\u201d`
   const named = entry.label ?? (entry.isoCode ? countryName(entry.isoCode) : undefined)
+  // A collision is neither a hit nor a miss: the name was right and somebody
+  // else already had it, so it wears neither a tick nor a cross.
+  if (entry.kind === 'taken') return named ? `${named} — taken` : 'too late'
   if (named) return `${named} ${entry.kind === 'correct' ? '✓' : '✗'}`
   switch (entry.kind) {
     case 'probe':
@@ -89,6 +92,11 @@ const guessText = (entry: GuessTickerEntry) => {
     border-left-color: var(--soft-mint);
   }
   &.kind-probe {
+    border-left-color: var(--warm-sand);
+  }
+  // Right name, wrong second — sand rather than the miss red, because the
+  // player was not wrong, only late.
+  &.kind-taken {
     border-left-color: var(--warm-sand);
   }
 }

@@ -62,6 +62,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   empire: ['The Archivist', 'Reader of Ruins', 'Keeper of Old Maps', 'Dust of Empires'],
   manhunt: ['Dragnet Chief', 'The Bloodhound', 'Ghost of the Map', 'Interpol Ace'],
   'unique-or-bust': ['One of One', 'The Contrarian', 'Road Less Travelled', 'The Original'],
+  'clean-sweep': ['Land Grabber', 'Quickest Draw', 'The Closer', 'First to Say It'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -96,6 +97,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   empire: 'ghosts of empires',
   manhunt: 'the despot',
   'unique-or-bust': 'unique or bust',
+  'clean-sweep': 'clean sweep',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {
@@ -129,6 +131,12 @@ export const visitedCountries = (game: Game): ISOCountryCode[] => {
       for (const isoCode of challenge.neighbours) visited.add(isoCode)
     }
     if ('lieSource' in challenge) visited.add(challenge.lieSource)
+    // Clean Sweep's board — the whole set the table raced through, claimed or
+    // not. `members` is shared with the empire arm below, so this tests the
+    // discriminant rather than the field.
+    if ('_type' in challenge && challenge._type === 'clean-sweep-challenge') {
+      for (const isoCode of challenge.members) visited.add(isoCode)
+    }
     // Ghosts of empires: the core members feed the post-game atlas; partial
     // holdings stay confessed-only.
     if ('empireId' in challenge) {

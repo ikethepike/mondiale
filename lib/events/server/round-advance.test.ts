@@ -153,6 +153,7 @@ describe('group-challenge scoring coverage', () => {
     'timeline',
     'manhunt',
     'unique-or-bust',
+    'clean-sweep',
     'floor',
   ]
 

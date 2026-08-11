@@ -74,6 +74,10 @@ export const ROUND_WEIGHTS = {
   // Needs three players before duplicate-cancel scoring has teeth, so it
   // self-rarifies at duos the same way manhunt does.
   'unique-or-bust': 0.07,
+  // A staple in waiting: loud, quick to teach, and the only mode where the
+  // table races each other in the open. Held at a staple's rate rather than
+  // above it because the set register is small enough to repeat inside a game.
+  'clean-sweep': 0.07,
 } as const satisfies Record<RoundChallengeKind, number>
 
 /**
@@ -104,6 +108,9 @@ export const MECHANIC_BY_KIND = {
   'river-run': 'collect',
   'shared-shores': 'collect',
   highlands: 'collect',
+  // Collect-a-set, but against the table rather than the clock alone — same
+  // verb, so the mix decays it against its solitaire siblings.
+  'clean-sweep': 'collect',
   // Drop a pin and live with the distance.
   'pin-landmark': 'pin',
   flashpoint: 'pin',

@@ -105,6 +105,7 @@ import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
+import ViewCleanSweep from '~/components/view/ViewCleanSweep.vue'
 import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
@@ -124,6 +125,7 @@ import {
   scoreTraversalSubmission,
 } from '~~/lib/challenges'
 import { shortestRoute, traversalWithin } from '~~/lib/traversal'
+import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { latestChallengeOfType } from '~~/lib/rounds'
 import {
@@ -516,6 +518,39 @@ const settledRound = (
     ),
   } as unknown as Round
 }
+
+/**
+ * Clean Sweep fixtures. The board is the EU as the register resolves it, so
+ * the harness can never drift from the set the dealer would actually deal.
+ */
+const SWEEP_BOARD = SWEEP_SETS.eu.members({ variant: 'world', difficulty: 'normal' })
+
+const sweepChallenge = () => ({
+  _type: 'clean-sweep-challenge' as const,
+  setId: 'eu',
+  members: SWEEP_BOARD,
+  durationSeconds: 80,
+  maximumPoints: MAXIMUM_POINTS,
+})
+
+const sweepState = () => ({
+  ready: [ME, RIVAL, THIRD],
+  deadline: 0,
+  order: [ME, RIVAL, THIRD],
+  claims: [] as { isoCode: string; playerId: string; at: number; remaining: number }[],
+  strays: [] as { isoCode: string; playerId: string }[],
+  benched: {} as { [playerId: string]: number },
+})
+
+/** Claim rows with a plausible descending clock, so the reveal's "cleared with
+ *  Ns to spare" line has something real to read. */
+const sweepClaims = (rows: (readonly [string, string])[]) =>
+  rows.map(([isoCode, playerId], index) => ({
+    isoCode,
+    playerId,
+    at: index,
+    remaining: Math.max(0.05, 1 - (index + 1) / (rows.length + 2)),
+  }))
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
@@ -2781,6 +2816,117 @@ const scenarios: Scenario[] = [
               ],
             },
             finished: true,
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'sweep-briefing',
+    label: 'Clean Sweep (briefing — rules card)',
+    component: ViewCleanSweep,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          ...sweepChallenge(),
+          state: { ...sweepState(), briefing: true, ready: [THIRD], deadline: 0, claims: [] },
+        }),
+      ]),
+  },
+  {
+    id: 'sweep-board',
+    label: 'Clean Sweep (live board, the pool draining)',
+    component: ViewCleanSweep,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          ...sweepChallenge(),
+          state: {
+            ...sweepState(),
+            deadline: Date.now() + 46000,
+            claims: sweepClaims([
+              ['FR', ME],
+              ['DE', RIVAL],
+              ['IT', THIRD],
+              ['ES', ME],
+              ['NL', RIVAL],
+              ['BE', RIVAL],
+              ['PL', THIRD],
+              ['SE', ME],
+              ['IE', THIRD],
+            ]),
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'sweep-benched',
+    label: 'Clean Sweep (benched — a wrong name costs tempo)',
+    component: ViewCleanSweep,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          ...sweepChallenge(),
+          state: {
+            ...sweepState(),
+            deadline: Date.now() + 31000,
+            benched: { [ME]: Date.now() + 12000 },
+            strays: [{ isoCode: 'NO', playerId: ME }],
+            claims: sweepClaims([
+              ['FR', ME],
+              ['DE', RIVAL],
+              ['IT', THIRD],
+              ['ES', RIVAL],
+              ['NL', RIVAL],
+              ['BE', THIRD],
+            ]),
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'sweep-last-call',
+    label: 'Clean Sweep (last call — three slots standing)',
+    component: ViewCleanSweep,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          ...sweepChallenge(),
+          state: {
+            ...sweepState(),
+            deadline: Date.now() + 9000,
+            claims: sweepClaims(
+              SWEEP_BOARD.slice(0, SWEEP_BOARD.length - 3).map((isoCode, index) => [
+                isoCode,
+                [ME, RIVAL, THIRD][index % 3],
+              ])
+            ),
+          },
+        }),
+      ]),
+  },
+  {
+    id: 'sweep-reveal',
+    label: 'Clean Sweep (reveal — who took what, and what nobody found)',
+    component: ViewCleanSweep,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          ...sweepChallenge(),
+          state: {
+            ...sweepState(),
+            deadline: 0,
+            finished: true,
+            strays: [
+              { isoCode: 'NO', playerId: ME },
+              { isoCode: 'CH', playerId: RIVAL },
+              { isoCode: 'RS', playerId: THIRD },
+            ],
+            claims: sweepClaims(
+              SWEEP_BOARD.slice(0, SWEEP_BOARD.length - 4).map((isoCode, index) => [
+                isoCode,
+                [ME, RIVAL, THIRD, RIVAL][index % 4],
+              ])
+            ),
           },
         }),
       ]),

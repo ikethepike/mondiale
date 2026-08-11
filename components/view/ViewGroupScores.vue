@@ -109,6 +109,9 @@
               :truth-label="sectionLabels.correct"
               :stray-label="sectionLabels.stray"
               :cost="strayCost"
+              :claimed-by="sweepClaimedBy"
+              :players="gameStore.game?.players"
+              :seat-id="selectedScorecard.player.id"
             />
 
             <!-- Sequence-shaped rounds keep the rails: their order IS the
@@ -136,6 +139,17 @@
             <section v-if="flashpointChallenge" class="pane-content ranking">
               <span class="eyebrow">The Conflict Behind the Dots</span>
               <ConflictProfileCard :country="flashpointChallenge.country" />
+            </section>
+
+            <!-- Clean Sweep's table-level summary, reprised here: the ledger
+                 above is this seat's story, this is the room's. -->
+            <section v-if="cleanSweepChallenge" class="pane-content ranking">
+              <span class="eyebrow">How the Board Fell</span>
+              <SweepRevealCard
+                :challenge="cleanSweepChallenge"
+                :players="gameStore.game?.players ?? {}"
+                :player-id="selectedScorecard.player.id"
+              />
             </section>
 
             <section v-if="statDetectiveChallenge" class="pane-content ranking right">
@@ -251,6 +265,8 @@ import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import AnswerLedger from '~/components/challenge/AnswerLedger.vue'
+import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
+import { sweepClaimedBy as claimedByFor } from '~~/lib/clean-sweep'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
@@ -367,6 +383,19 @@ const flashpointChallenge = computed(() => {
     ? challenge
     : undefined
 })
+
+const cleanSweepChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'clean-sweep-challenge'
+    ? challenge
+    : undefined
+})
+
+/** Slot → claimant, so the ledger can tell a rival's claim from a real miss.
+ *  Undefined for every other mode, which leaves the ledger untouched. */
+const sweepClaimedBy = computed(() =>
+  cleanSweepChallenge.value ? claimedByFor(cleanSweepChallenge.value) : undefined
+)
 
 const statDetectiveChallenge = computed(() => {
   const challenge = roundChallenge.value
@@ -597,6 +626,8 @@ const explainer = computed(() => {
       return 'Points scale with countries found — wrong names each cost one.'
     case 'name-that-water':
       return 'Fewer guesses, bigger score.'
+    case 'clean-sweep':
+      return 'Every name goes to whoever said it first. Beating your share of the board pays more; clearing it pays the whole table, and the last name pays its closer.'
     case 'timeline':
       return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
     case 'empire':
@@ -658,6 +689,23 @@ const strayCost = computed(() =>
 /** The score's own arithmetic, in words. A one-country answer has nothing to
  *  tally — the marked tile already says it. */
 const tallyLine = computed(() => {
+  // A contested pool needs its own arithmetic: "missed" would fold a rival's
+  // claim in with a slot nobody reached, and those are different stories.
+  const sweep = cleanSweepChallenge.value
+  if (sweep) {
+    const held = sweepClaimedBy.value ?? {}
+    const mine = sweep.members.filter(
+      isoCode => held[isoCode] === selectedScorecard.value.player.id
+    ).length
+    const nobody = sweep.members.filter(isoCode => !held[isoCode]).length
+    const rivals = sweep.members.length - mine - nobody
+    return [
+      `${mine} of ${sweep.members.length} claimed`,
+      `${rivals} to rivals`,
+      `${nobody} nobody found`,
+    ].join(' · ')
+  }
+
   const tally = breakdown.value?.tally
   if (!tally || tally.total <= 1) return undefined
 
@@ -710,6 +758,8 @@ const answerLabels = computed(() => {
       return { submitted: 'Your Answer', correct: 'Its Shores' }
     case 'mother-tongue':
       return { submitted: 'Your Answers', correct: "Everywhere It's Official" }
+    case 'clean-sweep':
+      return { submitted: 'Your Claims', correct: 'The Whole Board' }
     case 'timeline':
       return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
     case 'empire':

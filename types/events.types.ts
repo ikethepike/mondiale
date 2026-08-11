@@ -5,8 +5,10 @@ import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
- *  verdict — only that the player answered. */
-export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 'taunt'
+ *  verdict — only that the player answered. `taken` is a contested-pool
+ *  collision: a right name that a rival already claimed, which is neither a
+ *  hit nor a miss and reads as neither. */
+export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 'taunt' | 'taken'
 
 /** The only cheers that exist — the server whitelists against this set, and
  *  clients render by indexing into it rather than echoing payload strings. */
@@ -171,6 +173,19 @@ export type ClientEventData =
       id: string
     }
   | {
+      /** Clean Sweep: a player dismissed their briefing card. The board's one
+       *  clock starts when everyone has (or the briefing cap forces it). */
+      event: 'sweep-ready'
+    }
+  | {
+      /** Clean Sweep: claim a slot off the shared board. Unlike its blind
+       *  siblings the pick is PUBLIC — it lands on the snapshot and paints the
+       *  board for the room. Serialized by the per-game queue, so two seats
+       *  racing the same name resolve as claim-then-collision, never both. */
+      event: 'submit-sweep-claim'
+      isoCode: ISOCountryCode
+    }
+  | {
       event: 'close-tutorial'
     }
   | {
@@ -333,6 +348,10 @@ export type ServerEventData =
   /** Unique or Bust: the briefing gate, a slot lock, or the collision reveal —
    *  whole-table state. */
   | { event: 'unique-updated'; game: Game }
+  /** Clean Sweep: the briefing gate, a claim landing, or the board resolving —
+   *  whole-table state. Also how a seat that LOST a race learns it: the
+   *  snapshot comes back with the slot held by someone else. */
+  | { event: 'sweep-updated'; game: Game }
   /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
    *  never broadcast. `turn` stamps which beat the trail was current at. */
   | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }

@@ -5,6 +5,7 @@ import { scheduleClassicSettle, startClassicClockOnLastClose } from './classic-r
 import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from './heritage-beats'
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentTimeline, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
+import { currentCleanSweep, scheduleSweepTimeout } from './sweep-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(
@@ -80,6 +81,11 @@ export const closeTutorialHandler = defineGameHandler(
     const unique = currentUniqueOrBust(game)
     if (unique && !unique.state.finished && unique.state.briefing) {
       scheduleUniqueTimeout({ io, redis, socket, eventTarget }, game, unique)
+    }
+
+    const sweep = currentCleanSweep(game)
+    if (sweep && !sweep.state.finished && sweep.state.briefing) {
+      scheduleSweepTimeout({ io, redis, socket, eventTarget }, game, sweep)
     }
 
     // And for the turn-chain briefings, which hold their first shot clock the

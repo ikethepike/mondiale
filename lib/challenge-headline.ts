@@ -3,6 +3,7 @@ import { empireDisplayName } from '~~/lib/empires'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
+import { SWEEP_SETS, sweepUnclaimed } from '~~/lib/clean-sweep'
 import { countryName } from '~~/lib/country'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
@@ -120,6 +121,12 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return first && last && placed.length > 1
         ? `The timeline ran from ${formatEventYear(first.year)} to ${formatEventYear(last.year)}`
         : 'The timeline round'
+    }
+    case 'clean-sweep': {
+      if (!('_type' in challenge) || challenge._type !== 'clean-sweep-challenge') return ''
+      const label = SWEEP_SETS[challenge.setId]?.label ?? 'the board'
+      const taken = challenge.members.length - sweepUnclaimed(challenge).length
+      return `${sentenceCase(label)} — the table took ${taken} of ${challenge.members.length}`
     }
     case 'unique-or-bust':
       return '_type' in challenge && challenge._type === 'unique-or-bust-challenge'

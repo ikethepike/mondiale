@@ -4,6 +4,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewCleanSweep from '~/components/view/ViewCleanSweep.vue'
 import ViewComposition from '~/components/view/ViewComposition.vue'
 import ViewEmpire from '~/components/view/ViewEmpire.vue'
 import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
@@ -86,6 +87,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   empire: ViewEmpire,
   manhunt: ViewManhunt,
   'unique-or-bust': ViewUniqueOrBust,
+  'clean-sweep': ViewCleanSweep,
 }
 
 /**

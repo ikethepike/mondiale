@@ -12,6 +12,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { WaterFeature } from '~~/data/water.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender } from '~~/lib/currency'
+import { SWEEP_TUNING, sweepBoardFor, sweepSlotBand, viableSweepSets } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
@@ -32,6 +33,7 @@ import type {
   AtlasChallenge,
   BorderChainChallenge,
   CapitalGuessChallenge,
+  CleanSweepChallenge,
   CompositionChallenge,
   EmpireChallenge,
   FlagPaletteChallenge,
@@ -342,6 +344,47 @@ const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallen
       candidates: [],
       dragnets: [],
       committed: [],
+    },
+  }
+}
+
+/**
+ * Clean Sweep dealer: one enumerable set, one board, everyone racing each
+ * other through it. Below two players the exclusive claim is exclusive against
+ * nobody, so smaller tables never see it. The set comes from the register's
+ * viable entries for this table — the band's floor rises with the seats, so a
+ * full table never clears a small board in seconds.
+ */
+const getCleanSweepChallenge = ({
+  game,
+}: {
+  game: gameTypes.Game
+}): CleanSweepChallenge | undefined => {
+  const contenders = chainContenders(game)
+  // Pre-filtered by the mix too — see the note in getManhuntChallenge.
+  if (contenders.length < (MINIMUM_TABLE_BY_KIND['clean-sweep'] ?? 0)) return undefined
+
+  const band = sweepSlotBand(game.difficulty, contenders.length)
+  const setId = sample(viableSweepSets(game, band))
+  if (!setId) return undefined
+  const members = sweepBoardFor(setId, game, band)
+  if (!members) return undefined
+
+  return {
+    _type: 'clean-sweep-challenge',
+    setId,
+    members,
+    durationSeconds: SWEEP_TUNING[game.difficulty].durationSeconds,
+    maximumPoints: maximumRoundPoints(game),
+    state: {
+      briefing: true,
+      ready: [],
+      // Stamped when the table is briefed (sweep-beats) — no clock until then.
+      deadline: 0,
+      order: contenders,
+      claims: [],
+      strays: [],
+      benched: {},
     },
   }
 }
@@ -1805,6 +1848,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   atlas: game => getAtlasChallenge({ game }),
   manhunt: game => getManhuntChallenge({ game }),
   'unique-or-bust': game => getUniqueOrBustChallenge({ game }),
+  'clean-sweep': game => getCleanSweepChallenge({ game }),
   timeline: game => getTimelineChallenge({ game }),
   empire: game => getEmpireChallenge(game),
   'heritage-hunt': game => getHeritageHuntChallenge({ game }),

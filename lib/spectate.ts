@@ -168,6 +168,9 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   empire: true,
   manhunt: true,
   'unique-or-bust': true,
+  // Nothing local gates the board: the claims ride the snapshot, so the booth
+  // watches the pool drain exactly as the racers do.
+  'clean-sweep': true,
 }
 
 export const MOUNTABLE_KINDS: RoundChallengeKind[] = (

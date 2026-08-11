@@ -832,7 +832,71 @@ export interface UniqueOrBustState {
   finished?: boolean
 }
 
+/** Where a Clean Sweep set's membership rule comes from. Each family reads an
+ *  existing single source — the mode adds no membership test of its own. */
+export type SweepSetFamily = 'club' | 'currency' | 'treaty' | 'region' | 'rights'
+
+/** One slot taken off the board, and by whom. */
+export interface SweepClaim {
+  isoCode: ISOCountryCode
+  playerId: string
+  /** Epoch ms — claim order, and the streak the standings rail reads. */
+  at: number
+  /** Clock still standing when it landed, 0..1, stamped server-side. The sweep
+   *  bonus reads the LAST claim's value; nothing re-derives it from a deadline
+   *  afterwards, so the pay can't shift with a re-stamped clock. */
+  remaining: number
+}
+
+/**
+ * Clean Sweep: one enumerable set, one clock, and a pool the whole table is
+ * racing each other through. A name any player types CLAIMS its slot — theirs
+ * alone for the rest of the round — so the board doubles as a live scoreboard
+ * and the pool visibly drains.
+ *
+ * Unlike Unique or Bust, the answers must NOT be secret: a claim carries
+ * exactly the information the mode wants broadcast, so `state` rides the game
+ * snapshot whole and there is no side key. The wrong-name penalty is TEMPO —
+ * a benched seat watches rivals eat the pool — which is why `benched` stamps a
+ * deadline rather than docking a point.
+ */
+export interface CleanSweepChallenge {
+  _type: 'clean-sweep-challenge'
+  /** Key into SWEEP_SETS (lib/clean-sweep). */
+  setId: string
+  /** The board, pinned at the deal so a data regeneration mid-game can't move
+   *  the answers under a live round. */
+  members: ISOCountryCode[]
+  durationSeconds: number
+  maximumPoints: number
+  state: CleanSweepState
+}
+
+export interface CleanSweepState {
+  /** The round opens on a rules card each player must explicitly dismiss. In a
+   *  mode where tempo is the currency a fair start is a correctness property:
+   *  no clock runs until the table is ready (or the cap forces it). */
+  briefing?: boolean
+  /** Players who dismissed their briefing card. */
+  ready: string[]
+  /** Epoch ms the board closes; 0 while the briefing holds. */
+  deadline: number
+  /** Participants at the deal. */
+  order: string[]
+  /** The board's resolution so far, oldest claim first. */
+  claims: SweepClaim[]
+  /** Wrong names the table tried, capped — the reveal's collective blush. */
+  strays: { isoCode: ISOCountryCode; playerId: string }[]
+  /** Epoch ms each benched seat's input reopens. A STAMP, not a timer: the
+   *  submit handler gates on it and the view counts it down through
+   *  `secondsOnDeadline`, so there is nothing to arm or re-arm. */
+  benched: { [playerId: string]: number }
+  /** Set when the board clears or the clock dies; starts the reveal. */
+  finished?: boolean
+}
+
 export type GroupModeChallenge =
+  | CleanSweepChallenge
   | EmpireChallenge
   | BorderChainChallenge
   | AtlasChallenge

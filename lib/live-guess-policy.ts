@@ -83,6 +83,13 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // has locked a slot, never the word.
   'unique-or-bust': 'presence',
 
+  // The opposite of its blind siblings, on purpose. Claims are already public
+  // (they ride the snapshot and paint the board), so the ticker carries only
+  // what the board cannot: a wrong name — anti-information in a ~195-country
+  // field, and the round's teaching beat — and a collision, which names a
+  // country the room can already see is taken.
+  'clean-sweep': 'label',
+
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
   atlas: 'none',

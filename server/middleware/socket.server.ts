@@ -29,6 +29,8 @@ import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
 import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
 import { chainReadyHandler } from '~~/lib/events/server/chain-ready.handler'
 import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
+import { sweepReadyHandler } from '~~/lib/events/server/sweep-ready.handler'
+import { submitSweepClaimHandler } from '~~/lib/events/server/submit-sweep-claim.handler'
 import { forgetTauntBucket, manhuntTauntHandler } from '~~/lib/events/server/manhunt-taunt.handler'
 import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
 import { submitTimelinePlacementHandler } from '~~/lib/events/server/submit-timeline-placement.handler'
@@ -112,6 +114,12 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-unique-answer': {
     handler: submitUniqueAnswerHandler,
+  },
+  'sweep-ready': {
+    handler: sweepReadyHandler,
+  },
+  'submit-sweep-claim': {
+    handler: submitSweepClaimHandler,
   },
   // Ephemeral taunt relay — no permanent state written
   'manhunt-taunt': {
