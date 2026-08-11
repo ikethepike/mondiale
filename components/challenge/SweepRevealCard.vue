@@ -39,7 +39,7 @@
           v-for="(slot, index) in slots"
           :key="slot.isoCode"
           class="slot"
-          :class="{ open: !slot.holder, mine: slot.holder?.id === playerId }"
+          :class="{ open: !slot.taken, mine: slot.holder?.id === playerId }"
           :style="{ '--land-delay': `${index * 0.03}s`, '--player-color': slot.holder?.color }"
         >
           <CountryChip class="slot-chip" compact tag="span" :country="slot.country" />
@@ -95,6 +95,7 @@ import {
   sweepIsComplete,
   sweepLeaders,
   sweepScoresFromClaims,
+  sweepSecondsToSpare,
   sweepStandings,
   sweepUnclaimed,
 } from '~~/lib/clean-sweep'
@@ -136,7 +137,16 @@ const slots = computed(() =>
     const country = getCountry(isoCode)
     if (!country) return []
     const holderId = claimedBy.value[isoCode]
-    return [{ isoCode, country, holder: holderId ? props.players[holderId] : undefined }]
+    // `open` keys off the CLAIM, never off the claimant resolving to a Player —
+    // an unresolvable holder would otherwise draw a taken slot as an open one.
+    return [
+      {
+        isoCode,
+        country,
+        taken: !!holderId,
+        holder: holderId ? props.players[holderId] : undefined,
+      },
+    ]
   })
 )
 
@@ -157,9 +167,7 @@ const strays = computed(() => {
 /** The table's result in one line: the co-op outcome and what it paid. */
 const verdictLine = computed(() => {
   if (swept.value) {
-    const remaining = props.challenge.state.claims.at(-1)?.remaining ?? 0
-    const seconds = Math.round(remaining * props.challenge.durationSeconds)
-    return `Cleared with ${formatNumber(seconds)}s to spare — the sweep bonus pays every seat`
+    return `Cleared with ${sweepSecondsToSpare(props.challenge)}s to spare — the sweep bonus pays every seat`
   }
   const left = unclaimed.value.length
   return `${formatNumber(left)} ${left === 1 ? 'slot' : 'slots'} left standing — no sweep bonus`

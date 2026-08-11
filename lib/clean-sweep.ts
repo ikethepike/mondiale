@@ -174,8 +174,6 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
   },
 }
 
-export type SweepSetId = keyof typeof SWEEP_SETS
-
 /**
  * The board's size band and clock. The floor rises with the table so six
  * players never clear a nine-slot board in fifteen seconds; the ceiling keeps
@@ -322,6 +320,20 @@ export const sweepLeaders = (challenge: Pick<CleanSweepChallenge, 'state'>): str
 export const sweepIsComplete = (
   challenge: Pick<CleanSweepChallenge, 'members' | 'state'>
 ): boolean => sweepUnclaimed(challenge).length === 0
+
+/**
+ * Seconds still on the clock when the board cleared — 0 when it never did.
+ * The reveal's "cleared with Ns to spare" and the sweep bonus itself both read
+ * the SAME stamped `remaining`, so the sentence can never quote a margin the
+ * payout disagrees with.
+ */
+export const sweepSecondsToSpare = (
+  challenge: Pick<CleanSweepChallenge, 'members' | 'state' | 'durationSeconds'>
+): number => {
+  if (!sweepIsComplete(challenge)) return 0
+  const remaining = challenge.state.claims[challenge.state.claims.length - 1]?.remaining ?? 0
+  return Math.round(remaining * challenge.durationSeconds)
+}
 
 /** The seat that took the last slot — the closer. Undefined unless the board
  *  actually cleared: nobody closes a board that was never closed. */

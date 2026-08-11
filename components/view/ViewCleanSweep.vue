@@ -28,16 +28,16 @@
            first. A TransitionGroup so an overtake SLIDES — the standings
            reorder on nearly every claim, and a rail that snaps turns the
            round's best moment (being passed) into a flicker you miss. -->
-      <TransitionGroup v-if="!briefing && !finished" tag="ul" name="chain" class="rail">
+      <TransitionGroup v-if="!briefing && !finished" tag="ul" name="chain" class="standings">
         <li
           v-for="seat in standings"
           :key="seat.playerId"
-          class="rail-seat chip player-accent"
+          class="standings-seat chip player-accent"
           :class="{ mine: seat.playerId === gameStore.seatId, leading: leaders.has(seat.playerId) }"
           :style="{ '--player-color': gameStore.game?.players[seat.playerId]?.color }"
         >
-          <PlayerPawn class="rail-pawn" :player="gameStore.game?.players[seat.playerId]" />
-          <span class="rail-count">{{ seat.claimed.length }}</span>
+          <PlayerPawn class="standings-pawn" :player="gameStore.game?.players[seat.playerId]" />
+          <span class="standings-count">{{ seat.claimed.length }}</span>
         </li>
       </TransitionGroup>
 
@@ -85,7 +85,7 @@
           v-for="slot in slots"
           :key="slot.key"
           class="slot"
-          :class="{ taken: slot.holder, mine: slot.holder?.id === gameStore.seatId }"
+          :class="{ taken: slot.taken, mine: slot.holder?.id === gameStore.seatId }"
           :style="{ '--player-color': slot.holder?.color }"
         >
           <template v-if="slot.country">
@@ -156,7 +156,7 @@ import {
   sweepStandings,
   sweepUnclaimed,
 } from '~~/lib/clean-sweep'
-import { secondsOnDeadline, useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { CleanSweepState } from '~~/types/challenges/group-modes.type'
@@ -237,8 +237,8 @@ const unclaimed = computed(() => (challenge.value ? sweepUnclaimed(challenge.val
  * slide is exactly when position is hardest to read, so the count carries it
  * too. `sweepLeaders` owns the "is anyone actually ahead" question.
  */
-const leaders = computed(() =>
-  challenge.value ? new Set(sweepLeaders(challenge.value)) : new Set()
+const leaders = computed(
+  () => new Set<string>(challenge.value ? sweepLeaders(challenge.value) : [])
 )
 const swept = computed(() => !!challenge.value && sweepIsComplete(challenge.value))
 
@@ -252,6 +252,7 @@ const slots = computed(() =>
     const holderId = claimedBy.value[isoCode]
     return {
       key: `${isoCode}:${index}`,
+      taken: !!holderId,
       country: holderId ? getCountry(isoCode) : undefined,
       holder: holderId ? gameStore.game?.players[holderId] : undefined,
     }
@@ -263,24 +264,18 @@ const lastCall = computed(
   () => !briefing.value && !finished.value && unclaimed.value.length <= SWEEP_LAST_CALL
 )
 
-/** The bench, counted down off the server's stamp through the one
- *  deadline→seconds function. A local timer would drift against the gate the
- *  server actually enforces. */
-const now = ref(Date.now())
-const ticker = setInterval(() => (now.value = Date.now()), 250)
-onBeforeUnmount(() => clearInterval(ticker))
-const benchedSeconds = computed(() => {
-  const until = state.value.benched[gameStore.seatId] ?? 0
-  // `now` is read so the countdown repaints; the maths stays in one place.
-  return until > now.value ? secondsOnDeadline(until) : 0
-})
+/** The bench is a server-stamped deadline like any other, so it repaints
+ *  through the shared clock — a second hand-rolled interval beside the round's
+ *  own would tick on its own cadence. An absent stamp reads 0: not benched. */
+const { secondsOnClock: benchedSeconds } = useDeadlineClock(
+  () => state.value.benched[gameStore.seatId]
+)
 
-/** Slots already gone plus our own in-flight pick — the suggestion list stops
- *  offering what the board can no longer give. */
-const excluded = computed<ISOCountryCode[]>(() => [
-  ...(Object.keys(claimedBy.value) as ISOCountryCode[]),
-  ...(inFlight.value ? [inFlight.value] : []),
-])
+/** Slots already gone — the suggestion list stops offering what the board can
+ *  no longer give. Deliberately NOT including our own in-flight pick: a claim
+ *  the server silently refuses would strike that country off our list for the
+ *  rest of the round, and `onGuess` already guards the double-submit. */
+const excluded = computed<ISOCountryCode[]>(() => Object.keys(claimedBy.value) as ISOCountryCode[])
 
 /**
  * Our own un-acked claim. The server is the authority on who got there first,
@@ -288,6 +283,14 @@ const excluded = computed<ISOCountryCode[]>(() => [
  * (the collision — the mode's signature beat), or gone with the round.
  */
 const inFlight = ref<ISOCountryCode>()
+
+// Being benched retires any claim still in flight: the server refuses a
+// benched seat silently, so nothing else would ever resolve it — and a latch
+// left standing would fire a false "they got there first" the moment a rival
+// took that country, for a claim that was never live.
+watch(benchedSeconds, seconds => {
+  if (seconds) inFlight.value = undefined
+})
 
 watch(claimedBy, held => {
   const pending = inFlight.value
@@ -381,7 +384,7 @@ useFooterBerth(consoleFooter)
 
 // The live scoreboard: pawns and counts, nothing else. Small on purpose — it
 // must be readable at a glance without competing with the board.
-.rail {
+.standings {
   gap: 0.6rem;
   margin: 0.6rem 0 0;
   padding: 0;
@@ -391,18 +394,18 @@ useFooterBerth(consoleFooter)
   justify-content: center;
 }
 
-.rail-seat {
+.standings-seat {
   gap: 0.4rem;
   display: flex;
   align-items: center;
   padding: 0.15rem 0.7rem;
 
-  .rail-pawn {
+  .standings-pawn {
     width: 1.3rem;
     height: 1.7rem;
   }
 
-  .rail-count {
+  .standings-count {
     opacity: 0.6;
     font-size: 1.4rem;
     font-weight: 700;
@@ -411,7 +414,7 @@ useFooterBerth(consoleFooter)
 
   // The count carries the lead, not a badge: full-strength ink out front,
   // muted behind. One property, legible mid-slide, no new chrome.
-  &.leading .rail-count {
+  &.leading .standings-count {
     opacity: 1;
     font-size: 1.6rem;
   }

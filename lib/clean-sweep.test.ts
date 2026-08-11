@@ -11,6 +11,7 @@ import {
   sweepLeaders,
   sweepPots,
   sweepScoresFromClaims,
+  sweepSecondsToSpare,
   sweepSlotBand,
   sweepStandings,
   sweepUnclaimed,
@@ -204,6 +205,19 @@ describe('reading the board', () => {
     // And a dead heat is no more of a lead than an empty board.
     const level = board(['FR', 'DE'], [claim('FR', 'ada'), claim('DE', 'ben')], ['ada', 'ben'])
     expect(sweepLeaders(level)).toEqual([])
+  })
+
+  it('quotes a margin only for a board that actually cleared', () => {
+    // The sentence and the sweep bonus read the same stamped `remaining`, so a
+    // board that stood has no margin to quote.
+    expect(sweepSecondsToSpare(challenge)).toBe(0)
+    const swept = board(
+      ['FR', 'DE'],
+      [claim('FR', 'ada', 0.9), claim('DE', 'ben', 0.25)],
+      ['ada', 'ben']
+    )
+    // 0.25 of an 80s clock, off the LAST claim — the one that cleared it.
+    expect(sweepSecondsToSpare(swept)).toBe(20)
   })
 
   it('names a closer only when the board actually cleared', () => {
