@@ -162,8 +162,11 @@ header .region-hint {
   font-weight: 600;
 }
 
+// Below the header's own z-index 2: the miss hint floats out of the header's
+// bottom edge and over the swatch frame. Still above the FlagSketch backdrop,
+// which is unstacked.
 .stage {
-  z-index: 2;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
