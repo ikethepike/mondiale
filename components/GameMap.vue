@@ -102,28 +102,28 @@
             @click="handleClick(code, $event)"
           />
           <!--
-        The failing atlas (Terra Incognita). A country cannot be erased by
-        muting its OWN path: every border is drawn twice, once from each side,
-        so the neighbours would keep tracing the hole. These overlays paint
-        last, in the land's own opaque colour, wiping the shared lines their
-        neighbours drew — which is exactly why the deck never takes an island
-        (no land neighbour, nothing to melt into) and why a coastline survives
-        the erasure: the sea is not a neighbour, so the shore keeps its edge
-        and only the political lines go.
+        The failing atlas (Terra Incognita). A country is absorbed by a
+        neighbour, not blanked: only the border between the two is painted out,
+        in the land's own opaque colour, wiping the line from BOTH sides (a
+        shared border is drawn twice, once by each country, so covering one side
+        leaves it neatly outlined by the other).
+
+        Erasing only that one run is what keeps the map believable. Blanking the
+        whole country amputates every border BETWEEN two of its neighbours —
+        those lines terminated on its outline and would be left stopping bluntly
+        in open land. Here the run's tripoints are untouched, so the two borders
+        that survive at each end simply continue into each other.
       -->
           <defs>
-            <!-- The country and everything it borders. Clipping the erasure to
-                 this keeps it on LAND: a shared border's ink lies inside the
-                 union from both sides and goes completely, while a coastline is
-                 the union's own outer edge, so the paint stops at the water and
-                 the shore keeps its line. -->
+            <!-- The country and everything it borders. Clipping the over-paint
+                 to this keeps it on LAND, so a stroke wide enough to cover the
+                 line from both sides can never bleed into the sea. -->
             <clipPath
               v-for="shape in erasedShapes"
               :id="`atlas-land-${shape.code}`"
               :key="shape.code"
             >
-              <path :d="shape.d" />
-              <path v-for="(land, index) in shape.neighbours" :key="index" :d="land" />
+              <path v-for="(land, index) in shape.land" :key="index" :d="land" />
             </clipPath>
           </defs>
           <path
@@ -246,7 +246,7 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import { largestRing, poleOfInaccessibility } from '~~/lib/outline'
+import { absorbedRun, largestRing, parsePolygons, poleOfInaccessibility } from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import {
@@ -491,25 +491,61 @@ const livePath = (code: string): string | undefined =>
   hdApplied.has(code) && hdPaths ? hdPaths[code] : MAP_PATHS[code as MapCode]
 
 /**
- * A vanished country plus the outlines of its land neighbours, which together
- * clip its erasure. Only the LAND-facing lines are meant to dissolve: the
- * clip's own outer edge is the country's coastline, so the over-paint stops
- * dead at the water instead of bleeding a land-coloured fringe into it.
+ * A vanished country's erasure: the ONE border it loses, plus the outlines that
+ * clip the over-paint to land.
  *
- * Keyed off `hdRevision` so a tier swap re-renders the overlays with the
- * geometry the map is now drawing.
+ * The country is absorbed by a neighbour rather than blanked — see
+ * `absorbedRun`. Only that shared border is painted out, so every other line on
+ * the map still ends where it always did and nothing is left amputated.
+ *
+ * Keyed off `hdRevision` so a tier swap re-renders with the geometry the map is
+ * now drawing: an over-paint tracing a standard outline over HD neighbours
+ * diverges by the simplification error and leaves a dashed ghost behind.
  */
 const erasedShapes = computed(() => {
   void hdRevision.value
   return props.vanished.flatMap(code => {
-    const d = livePath(code)
+    const d = absorbedPath(code)
     if (!d) return []
-    const neighbours = (BORDERS[code] ?? [])
-      .map(neighbour => livePath(neighbour))
-      .filter((path): path is string => !!path)
-    return [{ code, d, neighbours }]
+    const land = [livePath(code), ...(BORDERS[code] ?? []).map(neighbour => livePath(neighbour))]
+    return [{ code, d, land: land.filter((path): path is string => !!path) }]
   })
 })
+
+/**
+ * The path data of the border a vanished country gives up, memoised per country
+ * and tier — the vanished set repaints on every clock tick, and the geometry
+ * cannot change without the tier changing.
+ */
+const absorbedCache = new Map<string, string>()
+const absorbedPath = (code: ISOCountryCode): string => {
+  const tier = hdApplied.has(code) && hdPaths ? 'hd' : 'sd'
+  const key = `${code}:${tier}`
+  const cached = absorbedCache.get(key)
+  if (cached !== undefined) return cached
+
+  const own = livePath(code)
+  const ring = own ? largestRing(own) : undefined
+  const run = ring
+    ? absorbedRun(
+        ring,
+        (BORDERS[code] ?? []).flatMap(neighbour => {
+          const path = livePath(neighbour)
+          return path ? [parsePolygons(path).flat()] : []
+        })
+      )
+    : undefined
+
+  const d = run?.length
+    ? `M${run[0]![0]} ${run[0]![1]}` +
+      run
+        .slice(1)
+        .map(([x, y]) => `L${x} ${y}`)
+        .join('')
+    : ''
+  absorbedCache.set(key, d)
+  return d
+}
 
 const restoringShapes = computed(() => {
   void hdRevision.value
@@ -2145,6 +2181,14 @@ watch(() => props.highlightCountry, moveToCountry)
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 .game-map {
+  // The failing atlas's beat. It lives here because the erasure and the seams
+  // that close over it are SIBLINGS — neither can own a token the other reads.
+  //
+  // Its own duration rather than --motion-slow: every other token here paces a
+  // UI transition the eye is meant to follow, and this one is paced to be
+  // ALMOST missed. Roughly a third of the tightest cadence (5s on hard), so the
+  // erasure is unhurried and the seams still close well before the next loss.
+  --atlas-melt: 1.8s;
   height: var(--viewport-height);
   overflow: hidden;
   touch-action: none;
@@ -2496,25 +2540,21 @@ path[id] {
   fill: none;
   pointer-events: none;
   stroke: var(--map-land-solid);
-  stroke-linecap: round;
+  // Butt, never round: the run ENDS at a tripoint where two borders carry on,
+  // and a round cap would reach past it and nick the ink of both.
+  stroke-linecap: butt;
   stroke-linejoin: round;
   stroke-width: calc(3px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  // Its own duration rather than --motion-slow: every other token here paces a
-  // UI transition the eye is meant to follow, and this one is paced to be
-  // ALMOST missed. Roughly a third of the tightest cadence (5s on hard), so the
-  // erasure is unhurried but always finished well before the next loss starts.
-  //
-  // Reduced motion collapses --motion-slow globally but not this, so it gets
-  // its own answer below: no wipe at all, the country simply gone. The
-  // information is identical either way.
-  --atlas-melt: 1.8s;
   animation: stroke-draw var(--atlas-melt) var(--ease-smooth) both;
 }
 
+// Reduced motion collapses --motion-slow globally but not this token, so it
+// gets its own answer: no wipe and no draw, the country simply gone and the
+// seams simply there. The information is identical either way.
 @media (prefers-reduced-motion: reduce) {
-  .atlas-erased {
+  .game-map {
     --atlas-melt: 0.01s;
   }
 }

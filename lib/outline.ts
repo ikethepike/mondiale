@@ -679,3 +679,62 @@ export const scoreSketch = (
   const band = clamp01(1 - (distance - 0.07) / 0.18)
   return Math.round(maximumPoints * Math.pow(band, 1.3))
 }
+
+/**
+ * How a country's land would be divided between its neighbours if it ceased to
+ * exist: one line from each border junction to a point deep inside it.
+ *
+ * Terra Incognita needs this because erasing a country is not enough to make
+ * the map believable. A country's outline carries its neighbours' junctions,
+ * and every border BETWEEN two of those neighbours terminates on it. Erase the
+ * country and each of those borders is left amputated, ending bluntly in open
+ * land — which reads as a rendering fault rather than as geography.
+ *
+ * Drawing the spokes closes them: the amputated ends now continue inward and
+ * meet, so the territory reads as partitioned between the neighbours that
+ * surround it, which is what would actually happen to it. A star through one
+ * interior point is the honest general answer — with two neighbours it is
+ * simply their border continuing across, and with more it is the same shape a
+ * real three-way partition takes.
+ *
+ * The interior point is the pole of inaccessibility rather than the centroid,
+ * so the spokes stay inside a concave country instead of cutting the corner.
+ *
+ * `neighbours` are vertex lists (rings may be flattened — only membership is
+ * read). An enclave's host wraps the whole ring and yields no junction, which
+ * is correct: nothing outside it changes when the country goes.
+ */
+/**
+ * The border a country would LOSE if it ceased to exist and its land passed to
+ * a neighbour: the longest run it shares with any one of them.
+ *
+ * Terra Incognita erases this run rather than the whole outline, and the
+ * difference is the difference between a believable map and a broken one.
+ * Erasing a country entirely amputates every border BETWEEN two of its
+ * neighbours — those lines terminated on its outline, and without it they stop
+ * bluntly in open land. Erasing one shared run instead leaves every remaining
+ * line ending exactly where it always did: at the run's tripoints the two
+ * borders that survive simply continue into each other, so the country reads as
+ * absorbed by its neighbour rather than as a hole with lines pointing at it.
+ *
+ * The LONGEST shared run is the one to take, because it is the seam along which
+ * the two shapes fuse most cleanly — absorbing across a country's widest
+ * contact leaves a silhouette that looks like a country, not like two stuck
+ * together at a corner.
+ *
+ * Undefined when nothing can be absorbed: an island (no land neighbour) or an
+ * enclave's host wrapping the whole ring, where erasing the run would erase the
+ * country's entire outline and put us back at the amputation problem.
+ */
+export const absorbedRun = (
+  ring: OutlinePoint[],
+  neighbours: OutlinePoint[][]
+): OutlinePoint[] | undefined => {
+  let longest: OutlinePoint[] | undefined
+  for (const neighbour of neighbours) {
+    const run = sharedBoundary(ring, neighbour)
+    if (!run || run.length < 2 || run.length >= ring.length) continue
+    if (!longest || run.length > longest.length) longest = run
+  }
+  return longest
+}
