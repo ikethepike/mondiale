@@ -45,19 +45,26 @@ export default defineNuxtConfig({
       ],
     },
   },
-  // Neither tree needs HMR, and watching them exhausts macOS's default 256-fd
-  // limit (EMFILE): public/ is 563MB of static media nitro serves straight
-  // from disk, and .claude/worktrees/ can hold full repo copies. MUST stay
-  // dev-scoped: at build time `ignore` feeds nitro, which relativizes
-  // 'public/**' against the public dir into '!**' and ships an EMPTY
-  // .output/public (every static asset 404'd in prod, 2026-08-03).
+  // None of these trees need HMR, and watching them exhausts macOS's default
+  // 256-fd limit (EMFILE): public/ is 626MB of static media nitro serves
+  // straight from disk, .claude/worktrees/ can hold full repo copies, and
+  // .output/ is 700MB+ of build product (screenshot dirs are Playwright
+  // dumps). MUST stay dev-scoped: at build time `ignore` feeds nitro, which
+  // relativizes 'public/**' against the public dir into '!**' and ships an
+  // EMPTY .output/public (every static asset 404'd in prod, 2026-08-03).
   $development: {
-    ignore: ['public/**', '.claude/**'],
+    ignore: ['public/**', '.claude/**', '.output/**', 'screenshots/**', 'reveal-screenshots/**'],
   },
   vite: {
     server: {
       watch: {
-        ignored: ['**/public/**', '**/.claude/**'],
+        ignored: [
+          '**/public/**',
+          '**/.claude/**',
+          '**/.output/**',
+          '**/screenshots/**',
+          '**/reveal-screenshots/**',
+        ],
       },
     },
   },

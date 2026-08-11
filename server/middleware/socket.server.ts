@@ -65,6 +65,10 @@ export type EventHandler = (configuration: {
   io: GameServer
 }) => void
 
+/** Per-socket cap on 'error' log lines: the event is client-emittable, so a
+ *  socket's share of the log has to be bounded. */
+const SOCKET_ERROR_LOG_CAP = 3
+
 const SERVER_SIDE_EVENT_HANDLERS: {
   [clientEvent in ClientEvent]: {
     handler: EventHandler
@@ -225,6 +229,19 @@ export default defineEventHandler(({ node }) => {
     const httpServer = (node.res.socket as { server?: import('node:http').Server })?.server
     const io: GameServer = new Server(httpServer)
 
+    // Transport-level failures (aborted handshakes, malformed requests,
+    // abrupt client resets) surface on the ENGINE — the Server itself never
+    // emits 'error'. The runtime's own trap keeps an unlistened emit from
+    // being fatal, but it lands as a bare `[uncaughtException]` mid-dispatch;
+    // this named seam turns it into a legible, greppable line instead.
+    // The engine only exists once socket.io attached to a real http server;
+    // prerender's mock requests carry none.
+    if (io.engine) {
+      io.engine.on('connection_error', (error: { code?: number; message: string }) => {
+        console.warn(`engine connection_error ${error.code ?? ''}: ${error.message}`)
+      })
+    }
+
     // The multi-machine layer: shard rooms to their owning machine at the
     // front door, keep the leases warm, and hand rooms over cleanly when a
     // deploy retires this process. Routing and the heartbeat no-op without a
@@ -234,7 +251,49 @@ export default defineEventHandler(({ node }) => {
     if (httpServer) registerGameRouting({ io, redis, httpServer })
     startOwnershipHeartbeat({ io, redis })
     registerGracefulShutdown({ io, redis })
-    io.on('connection', async socket => {
+    // Optimistic bind for RECONNECTS: once a client has joined a room its
+    // handshake carries { playerId, secret, gameId }, so verifying here
+    // rebinds the socket as early as the secret lookup allows — narrowing the
+    // reconnect gap that used to drop buffered events as unbound — WITHOUT
+    // trusting an unproven id claim. The first connection (home page, no
+    // gameId) skips this and lets the verified `join` handler do the binding.
+    // NOT a guarantee: socket.io calls this listener synchronously and never
+    // awaits it, so an event buffered behind the redis round-trip can still
+    // land pre-bind and take the `unbound` ack — the client's retry is what
+    // closes that window, and always was.
+    const bindReconnectIdentity = async (socket: GameSocket) => {
+      const { playerId, secret, gameId } = socket.handshake.auth ?? {}
+      if (typeof playerId !== 'string' || !playerId) return
+      if (typeof gameId !== 'string' || !gameId) return
+      const secrets = await fetchSecrets(redis, gameId)
+      const verdict = verifyPlayerSecret(
+        secrets[playerId],
+        typeof secret === 'string' ? secret : undefined
+      )
+      if (verdict === 'ok' || verdict === 'open') {
+        socket.data.playerId = playerId
+        socket.data.gameId = gameId
+      }
+    }
+
+    // The listener stays SYNCHRONOUS: socket.io discards a returned promise,
+    // so an async body is an unhandled-rejection trap for anything a future
+    // edit awaits outside a try.
+    io.on('connection', socket => {
+      // Per-socket transport errors (reset mid-frame) AND socket.io's own
+      // internal `_onerror` paths (invalid packet, middleware reject) land
+      // here as a named line rather than a bare runtime-trapped throw.
+      // 'error' is NOT a server-side reserved event, so a client can emit it
+      // at will with any payload: log the message only (never the object),
+      // and only the first few per socket, so neither a spoofing client nor
+      // a flapping mobile connection can flood the log Fly pages on.
+      let errorsLogged = 0
+      socket.on('error', error => {
+        if (errorsLogged++ >= SOCKET_ERROR_LOG_CAP) return
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(`Socket ${socket.id} error: ${message.slice(0, 200)}`)
+      })
+
       // Register event handlers synchronously FIRST, so nothing is missed
       // while the async handshake verification below runs.
       for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
@@ -311,36 +370,9 @@ export default defineEventHandler(({ node }) => {
         pruneSpectatorOnDisconnect(io, redis, socket)
       })
 
-      // Optimistic bind for RECONNECTS: once a client has joined a room its
-      // handshake carries { playerId, secret, gameId }, so verifying here
-      // rebinds the socket before its buffered events flush — closing the
-      // reconnect gap that used to drop them as unbound — WITHOUT trusting an
-      // unproven id claim. The first connection (home page, no gameId) skips
-      // this and lets the verified `join` handler do the binding.
-      const { playerId, secret, gameId } = socket.handshake.auth ?? {}
-      if (typeof playerId === 'string' && playerId && typeof gameId === 'string' && gameId) {
-        try {
-          const secrets = await fetchSecrets(redis, gameId)
-          const verdict = verifyPlayerSecret(
-            secrets[playerId],
-            typeof secret === 'string' ? secret : undefined
-          )
-          if (verdict === 'ok' || verdict === 'open') {
-            socket.data.playerId = playerId
-            socket.data.gameId = gameId
-          }
-        } catch (error) {
-          console.error('Handshake secret check failed', error)
-        }
-      }
-    })
-
-    io.on('error', error => {
-      console.error('Error in socket server', error)
-    })
-
-    io.on('connect_error', err => {
-      console.error(`connect_error due to ${err.message}`)
+      bindReconnectIdentity(socket).catch(error => {
+        console.error('Handshake secret check failed', error)
+      })
     })
 
     globalThis.io = io // Persist the instance globally

@@ -993,9 +993,7 @@ watch([cameraRef, controlsRef, board], () => {
   // The walk-follow shot: glue the orbit centre to the followed pawn's LIVE
   // object, not its tile. Re-read per frame, so subject switches and rebuilds
   // need no re-wiring; a hidden stage yields undefined and the tick holds.
-  boardCamera.track(() =>
-    props.active ? pawns.get(cameraTargetId.value)?.position : undefined
-  )
+  boardCamera.track(() => (props.active ? pawns.get(cameraTargetId.value)?.position : undefined))
 
   // The rig can be built while the stage is still hidden (it is, every game —
   // the persistent stage mounts on idle behind round 1), which is precisely

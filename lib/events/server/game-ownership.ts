@@ -94,7 +94,7 @@ export const startOwnershipHeartbeat = ({ io, redis }: { io: GameServer; redis: 
   if (!self || heartbeatStarted) return
   heartbeatStarted = true
 
-  setInterval(() => {
+  const timer = setInterval(() => {
     if (isDraining()) return
     const gameIds = new Set<string>()
     for (const socket of io.of('/').sockets.values()) {
@@ -106,4 +106,7 @@ export const startOwnershipHeartbeat = ({ io, redis }: { io: GameServer; redis: 
       )
     }
   }, OWNERSHIP_HEARTBEAT_MS)
+  // Never hold an otherwise-exiting process open for the heartbeat (the
+  // fake-timer suites stub intervals without unref, hence the optional call).
+  timer.unref?.()
 }
