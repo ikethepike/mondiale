@@ -895,6 +895,48 @@ export interface CleanSweepState {
   finished?: boolean
 }
 
+/**
+ * Terra Incognita: the atlas is failing. Every few seconds a country quietly
+ * goes — the border it shares with a neighbour is painted out, and the two read
+ * as one plain piece of land — and naming one re-inks it. The only round in the game whose question is what
+ * ISN'T on the map, which is also the strongest proof a player knows where a
+ * country is.
+ *
+ * The world falls apart on a SCHEDULE, not on a wire: `vanishings` is ordered
+ * and `cadenceMs` fixes the beat, so every seat and every spectator derives
+ * the same failing atlas from the round's own deadline (`terraVanishedBy` in
+ * lib/terra-incognita.ts). Nothing about the collapse needs to be broadcast,
+ * and a seat that reloads mid-round rebuilds the exact world it left.
+ *
+ * Restoration is per-seat: the table watches one world die and each player
+ * saves their own, so the mode grades as a blitz over an independent answer
+ * set — no claims, no contention, no engine of its own.
+ */
+export interface TerraIncognitaChallenge {
+  _type: 'terra-incognita-challenge'
+  /** The countries the atlas loses, in the order it loses them. No two share
+   *  a land border — see `pickVanishDeck` for why adjacency is disqualifying. */
+  vanishings: ISOCountryCode[]
+  /** Milliseconds between losses. Rides the challenge rather than being
+   *  re-derived from the difficulty, so a game whose rules changed mid-round
+   *  cannot re-time a world that is already falling. */
+  cadenceMs: number
+  /**
+   * Unrestored losses at which the world reads as collapsing.
+   *
+   * An ALARM, not a guillotine. The pitch's gauntlet framing ended the run
+   * here, but a group round already answers "how did you do" with a score, and
+   * ejecting seats early would break the one thing this mode is built on: the
+   * whole table watching ONE world come apart for the same 60 seconds. So
+   * crossing the line destabilizes the map and says so, loudly, and falling
+   * back under it calms the world again — the dread is the stake, and the
+   * scoreboard stays the verdict.
+   */
+  collapseThreshold: number
+  durationSeconds: number
+  maximumPoints: number
+}
+
 export type GroupModeChallenge =
   | CleanSweepChallenge
   | EmpireChallenge
@@ -924,3 +966,4 @@ export type GroupModeChallenge =
   | PinLandmarkChallenge
   | TrendRaceChallenge
   | UniqueOrBustChallenge
+  | TerraIncognitaChallenge

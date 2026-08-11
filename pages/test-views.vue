@@ -98,6 +98,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
+import ViewTerraIncognita from '~/components/view/ViewTerraIncognita.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -157,6 +158,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { blitzScore } from '~~/lib/scoring'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
+import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -589,6 +591,49 @@ const settledStarChartRound = (): Round => {
       Object.entries(submissions).map(([playerId, submitted]) => [
         playerId,
         { points: blitzScore(stars, submitted, MAXIMUM_POINTS) },
+      ])
+    ),
+  } as unknown as Round
+}
+
+/**
+ * A settled Terra Incognita, for the reveal that has to teach placement: one
+ * neighbourhood erased, two of it still missing at the buzzer, and one name on
+ * your sheet that was never gone at all.
+ */
+const settledTerraRound = (): Round => {
+  // The Balkans into the Baltic — a real cropped theatre, all mutually
+  // non-adjacent.
+  const vanishings: ISOCountryCode[] = ['AL', 'MD', 'SK', 'LT', 'BA']
+  const cadenceMs = TERRA_CADENCE_MS.normal
+  const challenge = {
+    _type: 'terra-incognita-challenge',
+    vanishings,
+    cadenceMs,
+    collapseThreshold: terraCollapseThreshold(vanishings.length, 'normal'),
+    durationSeconds: terraSeconds(vanishings.length, cadenceMs),
+    maximumPoints: MAXIMUM_POINTS,
+  }
+  const submissions: { [playerId: string]: ISOCountryCode[] } = {
+    // Three of five; Moldova missed by the whole table, and Austria named
+    // while it was still sitting there in plain sight.
+    [ME]: ['AL', 'SK', 'BA', 'AT'],
+    [RIVAL]: ['AL', 'LT', 'BA'],
+    [THIRD]: ['AL'],
+  }
+
+  return {
+    groupChallenge: challenge,
+    groupAnswers: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { submitted, correct: vanishings },
+      ])
+    ),
+    playerTurns: Object.fromEntries(
+      Object.entries(submissions).map(([playerId, submitted]) => [
+        playerId,
+        { points: blitzScore(vanishings, submitted, MAXIMUM_POINTS) },
       ])
     ),
   } as unknown as Round
@@ -1376,6 +1421,31 @@ const scenarios: Scenario[] = [
     label: 'Star chart reveal (who named which star)',
     component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledStarChartRound()]),
+  },
+  {
+    // Central & eastern Europe failing, which is what the mode actually deals:
+    // one neighbourhood, cropped to (terraTheatre drives the camera), none of
+    // the five touching so no two blanks can merge into one.
+    id: 'terra-incognita',
+    label: 'Terra Incognita (the atlas fails)',
+    component: ViewTerraIncognita,
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'terra-incognita-challenge',
+          vanishings: ['AL', 'MD', 'SK', 'LT', 'BA'],
+          cadenceMs: TERRA_CADENCE_MS.normal,
+          collapseThreshold: terraCollapseThreshold(5, 'normal'),
+          durationSeconds: terraSeconds(5, TERRA_CADENCE_MS.normal),
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'terra-incognita-scores',
+    label: 'Terra Incognita reveal (what you never noticed)',
+    component: ViewGroupScores,
+    build: () => mockGame('group-scores', [settledTerraRound()]),
   },
   {
     id: 'flashpoint',
@@ -4132,6 +4202,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Flashpoint', ['flashpoint']],
   ['Capital Guess', ['capital-guess']],
   ['Star Chart', ['star-chart']],
+  ['Terra Incognita', ['terra-incognita']],
   ['Stat Detective', ['stat-detective']],
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],

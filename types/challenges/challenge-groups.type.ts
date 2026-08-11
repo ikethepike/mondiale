@@ -115,6 +115,11 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Its own toggle, not under conflicts: imperial content is its own consent
   // axis, and the mode deals on every difficulty (deep cuts gate in-dealer).
   empire: 'empires',
+  // Where a country sits, asked backwards. Its siblings under this toggle are
+  // the other pure map-position modes (traversal, the chains, hot & cold) —
+  // nothing about it is cultural, and its subject is the country itself
+  // rather than an outline held up out of context the way silhouette's is.
+  'terra-incognita': 'navigation',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
 /**
@@ -139,6 +144,10 @@ export const ANSWER_SHAPE_BY_KIND = {
   // The night's stars, in any order — the answers are cities, but each one
   // scores as the country it belongs to, so the ledger shape is a plain set.
   'star-chart': 'set',
+  // The countries the atlas swallowed, in any order. The DEAL order carries
+  // the lesson, so the scorecard replaces the generic ledger with its own
+  // chronological reveal — but the answer itself is a plain set.
+  'terra-incognita': 'set',
   empire: 'set',
   // A contested set: the seat's claims against the whole board. The ledger
   // marks a rival's claim as taken rather than missed (AnswerLedger's
