@@ -9,9 +9,12 @@ import {
   starChartAnswers,
   starChartField,
   starChartInitials,
+  starChartSeconds,
   starChartStars,
+  starWindows,
+  STAR_CHART_MAX_SECONDS,
+  STAR_CHART_REACH,
   STAR_CHART_STARS,
-  STAR_CHART_TIERS,
   STAR_MIN_SEPARATION_KM,
 } from '~~/lib/star-chart'
 import type { StarChartChallenge } from '~~/types/challenges/group-modes.type'
@@ -40,29 +43,77 @@ describe('starChartField', () => {
   })
 })
 
-describe('STAR_CHART_TIERS', () => {
-  it('climbs in obscurity within every difficulty', () => {
-    for (const [difficulty, tiers] of Object.entries(STAR_CHART_TIERS)) {
-      expect(tiers.length, difficulty).toBe(STAR_CHART_STARS)
-      for (let index = 1; index < tiers.length; index++) {
-        expect(tiers[index]![0], difficulty).toBeGreaterThanOrEqual(tiers[index - 1]![0])
-        expect(tiers[index]![1], difficulty).toBeGreaterThan(tiers[index - 1]![1])
+describe('starWindows', () => {
+  it('climbs in obscurity within every difficulty, at any star count', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
+      for (const count of [3, 5, 7]) {
+        const windows = starWindows(difficulty, count)
+        expect(windows.length, `${difficulty}/${count}`).toBe(count)
+        for (let index = 1; index < windows.length; index++) {
+          expect(windows[index]![0], `${difficulty}/${count}`).toBeGreaterThan(
+            windows[index - 1]![0]
+          )
+          expect(windows[index]![1], `${difficulty}/${count}`).toBeGreaterThan(
+            windows[index - 1]![1]
+          )
+        }
       }
     }
   })
 
+  it('stays inside its difficulty`s reach', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
+      const [from, to] = STAR_CHART_REACH[difficulty]
+      for (const [low, high] of starWindows(difficulty)) {
+        expect(low, difficulty).toBeGreaterThanOrEqual(from)
+        expect(high, difficulty).toBeLessThanOrEqual(to)
+        expect(high, difficulty).toBeGreaterThan(low)
+      }
+    }
+  })
+
+  it('overlaps, so a thin continental field can still fill every star', () => {
+    // Disjoint windows would strand a small variant: each star would be
+    // confined to a fifth of a field that only holds a dozen capitals.
+    const windows = starWindows('normal')
+    for (let index = 1; index < windows.length; index++) {
+      expect(windows[index]![0]).toBeLessThan(windows[index - 1]![1])
+    }
+  })
+})
+
+describe('STAR_CHART_REACH', () => {
   it('reaches deeper into the field as the game gets harder', () => {
-    const deepest = (difficulty: GameDifficulty) =>
-      STAR_CHART_TIERS[difficulty][STAR_CHART_STARS - 1]![1]
-    expect(deepest('easy')).toBeLessThan(deepest('normal'))
-    expect(deepest('normal')).toBeLessThan(deepest('hard'))
+    expect(STAR_CHART_REACH.easy[1]).toBeLessThan(STAR_CHART_REACH.normal[1])
+    expect(STAR_CHART_REACH.normal[1]).toBeLessThan(STAR_CHART_REACH.hard[1])
+  })
+
+  it('gives up the very top of the field on hard only', () => {
+    expect(STAR_CHART_REACH.easy[0]).toBe(0)
+    expect(STAR_CHART_REACH.normal[0]).toBe(0)
+    expect(STAR_CHART_REACH.hard[0]).toBeGreaterThan(0)
+  })
+})
+
+describe('starChartSeconds', () => {
+  it('grows with the star count and caps', () => {
+    expect(starChartSeconds(3)).toBeLessThan(starChartSeconds(5))
+    expect(starChartSeconds(STAR_CHART_STARS)).toBeLessThanOrEqual(STAR_CHART_MAX_SECONDS)
+    expect(starChartSeconds(50)).toBe(STAR_CHART_MAX_SECONDS)
   })
 })
 
 describe('pickStarChart', () => {
   it('deals exactly the round`s star count, on every difficulty and variant', () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
-      for (const variant of ['world', 'europe', 'africa', 'asia'] as GameVariant[]) {
+      for (const variant of [
+        'world',
+        'europe',
+        'africa',
+        'asia',
+        'north-america',
+        'south-america',
+      ] as GameVariant[]) {
         const stars = pickStarChart(rules(difficulty, variant), seeded(`${difficulty}-${variant}`))
         expect(stars, `${difficulty}/${variant}`).toHaveLength(STAR_CHART_STARS)
         expect(new Set(stars).size, `${difficulty}/${variant}`).toBe(STAR_CHART_STARS)
@@ -100,7 +151,7 @@ describe('pickStarChart', () => {
     // The opening star of an easy night is drawn from the very top of the
     // population-sorted field, so it is a name a first-time player has met.
     const field = starChartField(rules('easy'))
-    const window = Math.ceil(field.length * STAR_CHART_TIERS.easy[0]![1])
+    const window = Math.ceil(field.length * starWindows('easy')[0]![1])
     const top = new Set(field.slice(0, window).map(star => star.isoCode))
     for (let seed = 0; seed < 20; seed++) {
       const [first] = pickStarChart(rules('easy'), seeded(`easy-${seed}`))!
@@ -108,9 +159,35 @@ describe('pickStarChart', () => {
     }
   })
 
+  it('deals a night that really does climb in obscurity', () => {
+    // The windows climbing is one thing; the DEALT stars climbing is what the
+    // player feels. Measured on the world board, where the field is deep
+    // enough for the ladder to be real.
+    //
+    // Deliberately not asserted for easy on a continental variant: South
+    // America holds twelve capitals and easy reaches 45% of them, so five
+    // windows share ~6 candidates and the ladder flattens. That is a property
+    // of a twelve-capital board, not a tuning failure — and on easy every one
+    // of those capitals is meant to be gettable anyway.
+    for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
+      const field = starChartField(rules(difficulty))
+      const depthOf = new Map(field.map((star, index) => [star.isoCode, index / field.length]))
+      const totals = Array.from({ length: STAR_CHART_STARS }, () => 0)
+      const RUNS = 60
+      for (let seed = 0; seed < RUNS; seed++) {
+        pickStarChart(rules(difficulty), seeded(`ladder-${difficulty}-${seed}`))!.forEach(
+          (isoCode, index) => (totals[index]! += depthOf.get(isoCode) ?? 0)
+        )
+      }
+      for (let index = 1; index < totals.length; index++) {
+        expect(totals[index], `${difficulty} star ${index + 1}`).toBeGreaterThan(totals[index - 1]!)
+      }
+    }
+  })
+
   it('yields to another round kind when the board has no sky to fill', () => {
     // No shipped variant is this thin, so the guard is driven through an empty
-    // pool: a dealer that returned three of nothing would freeze the round.
+    // pool: a dealer that returned five of nothing would freeze the round.
     const empty = { difficulty: 'normal', variant: 'atlantis' } as unknown as Game
     expect(starChartField(empty)).toEqual([])
     expect(pickStarChart(empty)).toBeUndefined()

@@ -1,0 +1,56 @@
+// Scroll-edge fades: sticky net-zero layers riding a scrollport, painted over
+// the rows but under anything the host raises to z-index 2+ (sticky letter
+// headings float above the mist). `useScrollEdges` (lib/use-scroll-edges.ts)
+// drives the `.fade-top`/`.fade-bottom` classes — a fade shows only when
+// content actually continues past that edge, so a short list never wears a
+// dimmed last row.
+//
+// A PURE MODULE, like `caption-surface` in rules/_ink.scss: it emits nothing
+// until a block includes it, so a scoped component can take the recipe without
+// re-emitting `.sheet-body`. Three surfaces ride it — the parked sheets, the
+// scorecard's answer ledger and its star ledger — and they used to carry a
+// copy each.
+//
+// Geometry lands as custom properties so a host can retune per surface at
+// runtime (a sheet whose sticky headings float over the fade deepens the top
+// and gives it a solid lead-in for the heading's own line to sit on).
+@mixin scroll-fade($top: 2.4rem, $bottom: 2.4rem, $top-solid: 0rem) {
+  // Interpolated: Sass does not evaluate values inside custom properties.
+  --scroll-fade-top: #{$top};
+  --scroll-fade-top-solid: #{$top-solid};
+  --scroll-fade-bottom: #{$bottom};
+
+  &::before,
+  &::after {
+    content: '';
+    position: sticky;
+    z-index: 1;
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-quick) var(--ease-out-expressive);
+  }
+
+  &::before {
+    top: 0;
+    height: var(--scroll-fade-top);
+    margin-bottom: calc(-1 * var(--scroll-fade-top));
+    background: linear-gradient(
+      to bottom,
+      var(--background-color) var(--scroll-fade-top-solid),
+      transparent
+    );
+  }
+
+  &::after {
+    bottom: 0;
+    height: var(--scroll-fade-bottom);
+    margin-top: calc(-1 * var(--scroll-fade-bottom));
+    background: linear-gradient(to top, var(--background-color), transparent);
+  }
+
+  &.fade-top::before,
+  &.fade-bottom::after {
+    opacity: 1;
+  }
+}

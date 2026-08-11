@@ -381,8 +381,8 @@ onBeforeUnmount(() => claimMapBerth(gameStore, 'membership-sheet', undefined))
 // when headings are on — unconditionally it blanked the top of a row while
 // filtering (where headings are off), reading as a row that vanished.
 .sheet-body.has-letters {
-  --sheet-fade-top: 3.6rem;
-  --sheet-fade-top-solid: 2rem;
+  --scroll-fade-top: 3.6rem;
+  --scroll-fade-top-solid: 2rem;
 }
 
 .letter-group + .letter-group {

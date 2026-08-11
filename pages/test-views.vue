@@ -154,7 +154,7 @@ import {
   getFinalChallenges,
 } from '~~/lib/challenges/final-challenge'
 import { blitzScore } from '~~/lib/scoring'
-import { starChartInitials, STAR_CHART_SECONDS } from '~~/lib/star-chart'
+import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -527,19 +527,19 @@ const groupRound = (groupChallenge: unknown): Round =>
  * the real grader, so the ledger and the score always agree.
  */
 const settledStarChartRound = (): Round => {
-  const stars: ISOCountryCode[] = ['AT', 'PL', 'BA']
+  const stars: ISOCountryCode[] = ['ES', 'PL', 'AT', 'FI', 'BA']
   const challenge = {
     _type: 'star-chart-challenge',
     stars,
     initials: starChartInitials(stars),
-    durationSeconds: STAR_CHART_SECONDS,
+    durationSeconds: starChartSeconds(stars.length),
     maximumPoints: MAXIMUM_POINTS,
   }
   const submissions: { [playerId: string]: ISOCountryCode[] } = {
-    // Vienna and Warsaw named, Sarajevo missed, and Bratislava cost a point.
-    [ME]: ['AT', 'PL', 'SK'],
-    [RIVAL]: ['AT', 'BA'],
-    [THIRD]: ['AT'],
+    // Three of five, Sarajevo missed by everyone, and Bratislava cost a point.
+    [ME]: ['ES', 'PL', 'AT', 'SK'],
+    [RIVAL]: ['ES', 'AT', 'FI'],
+    [THIRD]: ['ES'],
   }
 
   return {
@@ -1300,8 +1300,9 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
-    // Three stars over Europe, mutually distant: Vienna, Warsaw, Sarajevo —
-    // the near-pair guard's own shape, wide enough to read at one framing.
+    // Five stars over Europe, all mutually distant: Madrid, Warsaw, Vienna,
+    // Helsinki, Sarajevo — the near-pair guard's own shape, and wide enough to
+    // read at one camera framing.
     id: 'star-chart',
     label: 'Star chart (nocturne, initials aid)',
     component: ViewStarChart,
@@ -1309,16 +1310,16 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'star-chart-challenge',
-          stars: ['AT', 'PL', 'BA'],
-          initials: starChartInitials(['AT', 'PL', 'BA']),
-          durationSeconds: STAR_CHART_SECONDS,
+          stars: ['ES', 'PL', 'AT', 'FI', 'BA'],
+          initials: starChartInitials(['ES', 'PL', 'AT', 'FI', 'BA']),
+          durationSeconds: starChartSeconds(5),
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
   },
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
-    // Ulaanbaatar, Asunción, Windhoek.
+    // Ulaanbaatar, Tashkent, Vientiane, Asunción, Windhoek.
     id: 'star-chart-hard',
     label: 'Star chart (hard, no aid)',
     component: ViewStarChart,
@@ -1326,8 +1327,8 @@ const scenarios: Scenario[] = [
       const game = mockGame('group-challenge', [
         groupRound({
           _type: 'star-chart-challenge',
-          stars: ['MN', 'PY', 'NA'],
-          durationSeconds: STAR_CHART_SECONDS,
+          stars: ['MN', 'UZ', 'LA', 'PY', 'NA'],
+          durationSeconds: starChartSeconds(5),
           maximumPoints: MAXIMUM_POINTS,
         }),
       ])

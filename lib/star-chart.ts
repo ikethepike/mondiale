@@ -13,11 +13,29 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * view and the reveal resolve their cities through `starChartStars`.
  */
 
-/** Stars per round. Three is the shape the mode was pitched at: a gimme, a
- *  thinker and a deep cut, all readable at one camera framing. */
-export const STAR_CHART_STARS = 3
+/**
+ * Stars per round. Five rather than the three the mode was pitched at, for two
+ * reasons that are really one: with three, `blitzScore`'s flat one-point charge
+ * per wrong name is only a sixth of a star on hard, so naming all three plus
+ * five wrong capitals (13) beat a clean two (12) — spraying paid. Five makes a
+ * wrong name cost ~28% of a star and inverts that (13 against a clean four's
+ * 14). It also takes the round from four possible scores to six, which matters
+ * because points ARE board steps: a round the whole table ties on moves nobody.
+ */
+export const STAR_CHART_STARS = 5
 
-export const STAR_CHART_SECONDS = 45
+/**
+ * The play window, derived from the star count rather than fixed — the Mother
+ * Tongue rule, so a retune of the count carries its own clock with it. Twelve
+ * seconds a star once the opening read is paid for, capped so a wide night
+ * never outstays the table's patience.
+ */
+export const STAR_CHART_BASE_SECONDS = 20
+export const STAR_CHART_SECONDS_PER_STAR = 8
+export const STAR_CHART_MAX_SECONDS = 75
+
+export const starChartSeconds = (count: number): number =>
+  Math.min(STAR_CHART_MAX_SECONDS, STAR_CHART_BASE_SECONDS + count * STAR_CHART_SECONDS_PER_STAR)
 
 /**
  * How far apart two stars must sit to be separate questions. Vienna and
@@ -28,34 +46,48 @@ export const STAR_CHART_SECONDS = 45
 export const STAR_MIN_SEPARATION_KM = 600
 
 /**
- * Obscurity windows into the capital field, which `starChartField` sorts by
- * city population — the best proxy the data carries for "would a player have
- * heard of it". Each entry is one star's `[from, to]` slice as a fraction of
- * the field, and the windows climb, so the night always opens on its most
- * famous star and ends on its least.
+ * How deep into the capital field a difficulty may reach, as `[from, to]`
+ * shares of it — `starChartField` sorts by city population, the best proxy the
+ * data carries for "would a player have heard of it".
  *
- * Difficulty moves the whole ladder rather than its shape: easy stays in the
- * household names, hard reaches into the tail. Windows overlap on purpose —
- * a thin continental variant must still fill three stars.
+ * ONE pair of numbers per difficulty, and the per-star ladder is derived from
+ * it (`starWindows`) rather than hand-written, so the star count can move
+ * without a matrix moving with it. Easy stays in the household names; hard
+ * reaches the tail and gives up the very top, because its opening star should
+ * still be a thinker.
  */
-export const STAR_CHART_TIERS: {
-  [difficulty in GameDifficulty]: readonly [number, number][]
+export const STAR_CHART_REACH: {
+  [difficulty in GameDifficulty]: readonly [number, number]
 } = {
-  easy: [
-    [0, 0.15],
-    [0, 0.3],
-    [0.1, 0.45],
-  ],
-  normal: [
-    [0, 0.2],
-    [0.15, 0.5],
-    [0.35, 0.8],
-  ],
-  hard: [
-    [0.1, 0.4],
-    [0.3, 0.7],
-    [0.55, 1],
-  ],
+  easy: [0, 0.45],
+  normal: [0, 0.8],
+  hard: [0.1, 1],
+}
+
+/**
+ * How far each star's window slides back toward the reach's start. At 0 the
+ * windows are disjoint and the ladder is rigid; at 1 every star draws from the
+ * whole reach and the ladder disappears. A half keeps the climb legible while
+ * leaving enough overlap that a thin continental field still fills.
+ */
+const WINDOW_OVERLAP = 0.5
+
+/**
+ * The per-star obscurity ladder: a difficulty's reach sliced into `count`
+ * ascending, overlapping windows, so the night opens on its most famous star
+ * and ends on its deepest cut. Derived, so five stars and three stars get the
+ * same shape from the same two numbers.
+ */
+export const starWindows = (
+  difficulty: GameDifficulty,
+  count: number = STAR_CHART_STARS
+): [number, number][] => {
+  const [from, to] = STAR_CHART_REACH[difficulty]
+  const span = to - from
+  return Array.from({ length: count }, (_, index) => [
+    from + span * (index / count) * (1 - WINDOW_OVERLAP),
+    from + span * ((index + 1) / count),
+  ])
 }
 
 /** Never slice a window thinner than this — a continental variant's field is
@@ -97,19 +129,27 @@ export const pickStarChart = (
   const field = starChartField(rules)
   if (field.length < STAR_CHART_STARS) return undefined
 
-  const tiers = STAR_CHART_TIERS[rules.difficulty].slice(0, STAR_CHART_STARS)
   const picked: CapitalStar[] = []
-
-  for (const tier of tiers) {
-    const candidates = windowCandidates(field, tier)
-    const star = sampleMany(candidates, candidates.length, random).find(
-      candidate =>
-        !picked.some(
-          taken =>
-            taken.isoCode === candidate.isoCode ||
-            haversineKm(taken, candidate) < STAR_MIN_SEPARATION_KM
-        )
+  const free = (candidate: CapitalStar) =>
+    !picked.some(
+      taken =>
+        taken.isoCode === candidate.isoCode ||
+        haversineKm(taken, candidate) < STAR_MIN_SEPARATION_KM
     )
+
+  for (const window of starWindows(rules.difficulty, STAR_CHART_STARS)) {
+    // The window first, so the ladder holds; then the difficulty's WHOLE reach,
+    // because a small board runs out of separated capitals inside a slice long
+    // before it runs out of them altogether. A five-star night on a continental
+    // variant leans on this every deal — the same "never starve the pool below
+    // a replayable spread" floor the water modes keep (WATER_MINIMUM_POOL).
+    const star =
+      sampleMany(windowCandidates(field, window), Infinity, random).find(free) ??
+      sampleMany(
+        windowCandidates(field, STAR_CHART_REACH[rules.difficulty]),
+        Infinity,
+        random
+      ).find(free)
     if (star) picked.push(star)
   }
 

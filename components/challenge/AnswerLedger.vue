@@ -113,6 +113,7 @@ const strays = computed(() =>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .eyebrow {
   gap: 0.8rem;
@@ -142,38 +143,11 @@ const strays = computed(() =>
   // The section gives its right padding up to `.ranking`, so the verdict chips
   // would otherwise sit against the pane edge and under the scrollbar.
   padding-right: 2rem;
-}
 
-// Scroll-edge fades, the same sticky net-zero layers the parked sheets use
-// (templates/_sheet.scss). Each shows only when content really continues past
-// that edge, so a short set never wears a dimmed first or last row.
-.rows::before,
-.rows::after {
-  content: '';
-  z-index: 1;
-  height: 2.4rem;
-  display: block;
-  opacity: 0;
-  position: sticky;
-  pointer-events: none;
-  transition: opacity var(--motion-quick) var(--ease-out-expressive);
-}
-
-.rows::before {
-  top: 0;
-  margin-bottom: -2.4rem;
-  background: linear-gradient(to bottom, var(--background-color), transparent);
-}
-
-.rows::after {
-  bottom: 0;
-  margin-top: -2.4rem;
-  background: linear-gradient(to top, var(--background-color), transparent);
-}
-
-.rows.fade-top::before,
-.rows.fade-bottom::after {
-  opacity: 1;
+  // Edge fades from the shared recipe (rules/_scroll-fade.scss) — each shows
+  // only when content really continues past that edge, so a short set never
+  // wears a dimmed first or last row.
+  @include scroll-fade;
 }
 
 .row {

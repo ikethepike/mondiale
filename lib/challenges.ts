@@ -107,7 +107,7 @@ import { flagSwatches } from './audio-palette'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
-import { pickStarChart, starChartInitials, STAR_CHART_SECONDS } from './star-chart'
+import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
 import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
@@ -1027,7 +1027,7 @@ const getStarChartChallenge = (game: gameTypes.Game): StarChartChallenge | undef
     _type: 'star-chart-challenge',
     stars,
     ...(game.difficulty === 'hard' ? {} : { initials: starChartInitials(stars) }),
-    durationSeconds: STAR_CHART_SECONDS,
+    durationSeconds: starChartSeconds(stars.length),
     maximumPoints: maximumRoundPoints(game),
   }
 }

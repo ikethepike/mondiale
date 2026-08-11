@@ -5,7 +5,12 @@
       <span class="count">{{ yourTally }} of {{ rows.length }} named</span>
     </span>
 
-    <ol class="stars">
+    <ol
+      ref="list"
+      class="stars"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <li
         v-for="row in rows"
         :key="row.isoCode"
@@ -56,6 +61,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { formatLatLng } from '~~/lib/geo'
 import { seatLabel } from '~~/lib/player'
 import { starChartAnswers, starChartStars } from '~~/lib/star-chart'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { StarChartChallenge } from '~~/types/challenges/group-modes.type'
 import type { GroupChallengeAnswer } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -83,6 +89,13 @@ const props = defineProps<{
    *  reader they named a star they missed. */
   viewerId: string
 }>()
+
+// Five star rows plus the summary push the card past a laptop viewport, and
+// the scorecard pane does not scroll — so the ledger scrolls inside the card
+// instead, exactly as the answer ledger does. Without this the Close Scores
+// button lands below the fold with no way to reach it.
+const list = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => list.value)
 
 /** Who named a given star, in seating order — the reader first when they did. */
 const namersOf = (isoCode: string) =>
@@ -160,6 +173,7 @@ const yourTally = computed(() => rows.value.filter(row => row.verdict === 'found
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .eyebrow {
   gap: 0.8rem;
@@ -178,6 +192,18 @@ const yourTally = computed(() => rows.value.filter(row => row.verdict === 'found
   margin: 0;
   padding: 0;
   list-style: none;
+  // Three full rows plus a peek of the fourth, so the fade covers a row's
+  // padding rather than cutting one through its flag — but yielding to the
+  // viewport on a short screen, because the scorecard pane itself does not
+  // scroll and the Close button below must stay reachable. Off
+  // `--viewport-height` (main.scss), never a raw vh, so it tracks mobile
+  // browser chrome like every other height in the shell.
+  max-height: min(32rem, calc(var(--viewport-height) * 0.36));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 1.6rem;
+
+  @include scroll-fade;
 }
 
 .star-row {
