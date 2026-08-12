@@ -113,7 +113,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
-import { partiesWithLogo } from '~~/lib/parties'
+import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from '~~/lib/parties'
 import {
   BEAT_POINTS,
   BEAT_SECONDS,
@@ -3418,6 +3418,34 @@ const scenarios: Scenario[] = [
           value: 'Spanish',
         },
       }),
+  },
+  {
+    // Rulers: the odd-one-out gate's party-family flavour. Built from the real
+    // join rather than a hand-typed lineup, so the impostor here is genuinely
+    // governed outside the family — the discriminator the mode turns on.
+    id: 'individual-rulers',
+    label: 'Individual: rulers (odd one out by party family)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const [family, governed] =
+        [...countriesGovernedByFamily()]
+          .filter(([, members]) => members.length >= 3)
+          .sort((a, b) => b[1].length - a[1].length)[0] ?? []
+      const same = (governed ?? []).slice(0, 3)
+      const odd = ISOCountryCodes.find(
+        isoCode => family && !same.includes(isoCode) && governedOutsideFamily(isoCode, family)
+      )
+      return individualGame({
+        variant: 'odd-one-out',
+        country: odd ?? 'BR',
+        oddOneOut: {
+          countries: [...same, odd ?? 'BR'],
+          propertyLabel: `Three of these are governed by a party of the ${family} family`,
+          kind: 'party-family',
+          value: family ?? '',
+        },
+      })
+    },
   },
   {
     id: 'individual-zoom-out',
