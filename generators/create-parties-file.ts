@@ -5,6 +5,9 @@ import { decodeHtmlEntitiesDeep } from '../lib/generators/factbook'
 import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
 import { COUNTRIES } from '../data/countries.gen'
+import { ELECTIONS } from '../data/elections.gen'
+import { partyTokens } from '../lib/parties'
+import type { Election } from './create-elections-file'
 import type { MediaCredit } from '../lib/attribution'
 
 /**
@@ -674,6 +677,83 @@ console.log(
   `Roster pass: ${cacheHits} cached, ${liveLookups} looked up ` +
     `(cache held ${cacheHitsAtStart} entries at start, ${Object.keys(matchCache).length} now)`
 )
+
+// --- 2b. Parties the Factbook roster never listed ---------------------------
+/**
+ * The election articles seat parties the Factbook does not carry: Iraq's
+ * Sadrist Movement holds 73 seats and has no roster entry at all. A third of
+ * all benches were landing with no party behind them — no logo, no colour, no
+ * ideology — and the largest bloc in 16 chambers was one of them.
+ *
+ * So any bench name the roster cannot account for is resolved on its own, past
+ * the SAME three gates as the roster itself (P17 country, P31 party, no P576).
+ * Measured on 40 orphans, 26 resolved and 14 were rejected — the rejects being
+ * coalitions, alliances and the "Independents" rows, which are not parties and
+ * should not become ones.
+ */
+const NOT_A_ROSTER_PARTY = /^(independents?|others?|vacant|non-attached|unaffiliated|blank)$/i
+
+const rosterHas = (isoCode: ISOCountryCode, name: string): boolean => {
+  const roster = mapping[isoCode]?.parties ?? []
+  const wanted = partyTokens(name, isoCode).join('')
+  if (!wanted) return true
+  return roster.some(party => {
+    for (const candidate of [party.name, ...(party.endonym ? [party.endonym] : [])]) {
+      if (partyTokens(candidate, isoCode).join('') === wanted) return true
+    }
+    return false
+  })
+}
+
+let adopted = 0
+for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, Election][]) {
+  const countryQid = isoToQid.get(isoCode)
+  if (!countryQid || !mapping[isoCode]) continue
+
+  for (const seated of election.parties) {
+    if (NOT_A_ROSTER_PARTY.test(seated.party) || rosterHas(isoCode, seated.party)) continue
+
+    const cacheKey = matchKeyFor(seated.party, undefined, countryQid, seated.seats)
+    const cached = matchCache[cacheKey]
+    let match: PartyMatch | undefined
+    if (cached) {
+      match = 'miss' in cached ? undefined : cached
+    } else {
+      match = await resolveParty(
+        seated.party,
+        undefined,
+        countryQid,
+        COUNTRIES[isoCode]?.name.english ?? isoCode
+      )
+      matchCache[cacheKey] = match
+        ? { qid: match.qid, claims: slimClaims(match.claims) }
+        : { miss: true }
+    }
+    if (!match) continue
+
+    const logoFile = claimStrings(match.claims, 'P154')[0]
+    if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
+    const ideologies = claimIds(match.claims, 'P1142')
+    const position = claimIds(match.claims, 'P1387')[0]
+    const colors = claimStrings(match.claims, 'P465')
+    const founded = yearOf(match.claims)
+    const groupings = openClaimIds(match.claims, 'P463')
+
+    mapping[isoCode]!.parties.push({
+      name: seated.party,
+      qid: match.qid,
+      ...(ideologies.length ? { ideologies } : {}),
+      ...(position ? { position } : {}),
+      ...(colors.length ? { colors } : {}),
+      ...(founded ? { foundedYear: founded } : {}),
+      ...(groupings.length ? { groupings } : {}),
+    })
+    adopted += 1
+    process.stdout.write(`\r  ${adopted} seated parties adopted into the roster`)
+  }
+  writeFileSync(MATCH_CACHE_PATH, `${JSON.stringify(matchCache, null, 2)}\n`)
+}
+if (adopted) console.log()
 
 // --- 3. Ideology and position labels ----------------------------------------
 // Stored as Q-ids above so every label resolves in one batched pass.

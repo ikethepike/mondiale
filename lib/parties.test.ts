@@ -62,9 +62,12 @@ describe('governingParty', () => {
 
   // The join must stay SILENT rather than guess when the two sources name
   // genuinely different things — a wrong party on screen is worse than a gap.
-  it('refuses a party whose name merely overlaps its alliance', () => {
-    // PL: the leader belongs to Civic Platform; the roster lists Civic Coalition.
-    expect(governingParty('PL')).toBeUndefined()
+  // Poland is the case: its leader belongs to Civic Platform while the Factbook
+  // roster lists only the Civic COALITION it stands in. Adopting the seated
+  // parties from the election data gave the roster the real party, so the join
+  // now lands on it — but never on the alliance.
+  it('joins the party, never the alliance it stands in', () => {
+    expect(governingParty('PL')?.name).toBe('Civic Platform')
   })
 
   it('refuses a match on a bare family word', () => {
@@ -99,7 +102,8 @@ describe('oppositionParties', () => {
   })
 
   it('returns the whole roster when nothing governs', () => {
-    expect(oppositionParties('PL').length).toBe(partiesOf('PL').length)
+    // Vatican City has no party politics at all.
+    expect(oppositionParties('VA').length).toBe(partiesOf('VA').length)
   })
 })
 
@@ -135,6 +139,23 @@ describe('seatedParties', () => {
     }
   })
 })
+
+describe('benchesOf', () => {
+  // A bench the roster never names is a bench Parliament cannot deal: no logo,
+  // no colour, no ideology. Before the election tables' own parties were adopted
+  // into the roster, 31% of benches were orphans — including the LARGEST bloc in
+  // 16 chambers. What is left is mostly honest: "Independents" is not a party.
+  it('joins nearly every bench to a roster party', () => {
+    const benches = playableChambers().flatMap(isoCode => benchesOf(isoCode))
+    const orphans = benches.filter(bench => !bench.party)
+    expect(orphans.length / benches.length).toBeLessThanOrEqual(BENCH_ORPHAN_CEILING)
+  })
+})
+
+// 9% of benches are orphans today, nearly all of them independents and unnamed
+// alliances. The ceiling leaves room for an election table naming a new party
+// before Wikidata carries it, but not for the join breaking.
+const BENCH_ORPHAN_CEILING = 0.15
 
 describe('seatingOrder', () => {
   const rankOf = (bench: { party?: Party }) => spectrumRank(bench.party)

@@ -31,17 +31,19 @@ const CONFLICT_FIELD_FLOOR = 90
 // 38 countries have legalized same-sex marriage; mirrors the generator's own
 // floor, so a shrunken Equaldex fetch fails here too.
 const MARRIAGE_COUNTRY_FLOOR = 35
-// 192 countries / ~2,040 parties from the Factbook roster today. Wikidata
-// enriches 80% of them once the en.wikipedia fallback runs; the floor sits
-// well under that because match rate moves with Wikidata's own coverage, but
-// a drop past here means the fallback broke rather than the world changing.
+// 192 countries / ~2,220 parties: the Factbook roster plus the seated benches
+// adopted from the election tables, which is where the chambers' biggest parties
+// often live. Wikidata enriches 80% once the en.wikipedia fallback runs; the
+// floor sits well under that because match rate moves with Wikidata's own
+// coverage, but a drop past here means the fallback broke rather than the
+// world changing.
 const PARTY_COUNTRY_FLOOR = 180
-const PARTY_FLOOR = 1800
-const PARTY_MATCH_FLOOR = 0.65
-// 738 logos and 492 grouping memberships today — both are what the party-facing
+const PARTY_FLOOR = 2000
+const PARTY_MATCH_FLOOR = 0.7
+// 957 logos and 576 grouping memberships today — both are what the party-facing
 // modes deal from, so a collapse should fail rather than quietly thin the pool.
-const PARTY_LOGO_FLOOR = 600
-const PARTY_GROUPING_FLOOR = 380
+const PARTY_LOGO_FLOOR = 820
+const PARTY_GROUPING_FLOOR = 480
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
 const SEAT_JOIN_MISS_CEILING = 8
@@ -165,7 +167,9 @@ describe('parties.gen', () => {
   // ("the Taliban Government enforces…") is prose, not a dealable subject.
   it('holds names, not prose', () => {
     for (const party of parties) {
-      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(9)
+      // Long but real: "Electoral Action of Poles in Lithuania – Christian
+      // Families Alliance" is ten words and a genuine party.
+      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(12)
       expect(party.name).not.toMatch(/;\s*note/i)
     }
   })
