@@ -716,6 +716,87 @@ const logoQids = Object.entries(mapping).flatMap(([iso, country]) =>
     .map(party => ({ iso, party, qid: party.qid! }))
 )
 
+/**
+ * Wikidata's P154 is not the whole story: plenty of parties have a perfectly
+ * good logo on Commons that nobody ever linked from the Q-item. Sweden's
+ * Liberals are one — the file is there, Public domain, and the party carries
+ * no P154 at all.
+ *
+ * So for the parties P154 left empty, read the en.wikipedia article's own
+ * `|logo=` field and keep the file ONLY when Commons hosts it. Most do not:
+ * measured on 57 gaps, 46 were fair-use uploads local to en.wikipedia and 2
+ * were on Commons. That ratio is why this is a small recovery rather than a
+ * second harvest — but a free logo we already had a right to use should not be
+ * missing because of a gap in someone else's metadata.
+ */
+const recoverFromWikipedia = async (qids: string[]): Promise<Map<string, string>> => {
+  const found = new Map<string, string>()
+  if (!qids.length) return found
+
+  // Q-id → article title, in batches.
+  const titles = new Map<string, string>()
+  for (let index = 0; index < qids.length; index += 50) {
+    const batch = qids.slice(index, index + 50)
+    const response = await fetchJson<{
+      entities?: { [id: string]: { sitelinks?: { enwiki?: { title?: string } } } }
+    }>(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join(
+        '|'
+      )}&props=sitelinks&sitefilter=enwiki&format=json`
+    )
+    for (const [qid, entity] of Object.entries(response?.entities ?? {})) {
+      const title = entity.sitelinks?.enwiki?.title
+      if (title) titles.set(qid, title)
+    }
+    await wait(200)
+  }
+
+  for (const [qid, title] of titles) {
+    const page = await fetchJson<{ parse?: { wikitext?: { '*'?: string } } }>(
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(
+        title
+      )}&prop=wikitext&format=json&redirects=1`
+    )
+    await wait(150)
+    const raw = /\n\s*\|\s*logo\s*=\s*([^\n|]+)/.exec(page?.parse?.wikitext?.['*'] ?? '')?.[1]
+    if (!raw) continue
+    const file = raw
+      .replace(/\[\[(?:File|Image):/i, '')
+      .replace(/[[\]]/g, '')
+      .trim()
+    if (!/\.(svg|png|jpe?g|gif)$/i.test(file)) continue
+
+    // Commons hosting IS the licence test: it only accepts freely licensed
+    // files, so a file it serves is one we may re-host. A fair-use upload
+    // lives on en.wikipedia alone and resolves to nothing here.
+    const onCommons = await fetchJson<{
+      query?: { pages?: { [id: string]: { imageinfo?: unknown[] } } }
+    }>(
+      `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=${encodeURIComponent(
+        `File:${file}`
+      )}`
+    )
+    await wait(150)
+    if (Object.values(onCommons?.query?.pages ?? {})[0]?.imageinfo?.length) found.set(qid, file)
+  }
+
+  return found
+}
+
+const missingLogos = logoQids
+  .filter(entry => !logoFiles.has(`${entry.iso}|${entry.qid}`))
+  .map(entry => entry.qid)
+
+if (missingLogos.length) {
+  console.log(`Recovering Commons logos for ${missingLogos.length} parties P154 missed…`)
+  const recovered = await recoverFromWikipedia(missingLogos)
+  for (const entry of logoQids) {
+    const file = recovered.get(entry.qid)
+    if (file) logoFiles.set(`${entry.iso}|${entry.qid}`, file)
+  }
+  console.log(`  recovered ${recovered.size}`)
+}
+
 // P154 came back with the match (cached or live), so there is no claims fetch
 // here at all — only the image downloads themselves.
 console.log(`Fetching logos for ${logoQids.length} matched parties…`)
