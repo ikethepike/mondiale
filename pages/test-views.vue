@@ -130,6 +130,7 @@ import {
   scoreBeat,
   scoreGovernment,
   type GovernmentAnswer,
+  type GovernmentBeat,
   type GovernmentDeal,
 } from '~~/lib/government'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
@@ -159,7 +160,7 @@ import { sample } from '~~/lib/arrays'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { TRAP_HOLD_MS } from '~~/lib/round-beats'
+import { TRAP_HOLD_MS, BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
 import type {
   AtlasChallenge,
   ChainTurnOutcome,
@@ -535,6 +536,16 @@ const answerGovernmentRivals = (challenge: GovernmentChallenge) => {
   }
 }
 
+/** What the beat's answer was — the engine's `truthOf`, same rules. */
+const governmentTruthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
+  if (beat === 'party') return deal.governingParty
+  if (beat === 'seats') return `${deal.governingSeats}`
+  const withGovernment = deal.sorted.filter(
+    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
+  )
+  return withGovernment.length ? withGovernment.join(', ') : 'nobody'
+}
+
 const settleGovernment = (challenge: GovernmentChallenge) => {
   const game = gameStore.game
   const round = game?.rounds[game.rounds.length - 1]
@@ -570,12 +581,31 @@ const resolveGovernmentBeat = (challenge: GovernmentChallenge) => {
     }
   }
   if (deal && state.beat === 'party') state.subject = deal.governingParty
-  const following = GOVERNMENT_BEATS[GOVERNMENT_BEATS.indexOf(state.beat) + 1]
+  // The verdict hold, exactly as the engine does it: the beat resolves onto
+  // its verdict, and the next question replaces it a beat later.
+  if (deal) {
+    const scored = Object.fromEntries(
+      Object.keys(gameStore.game?.players ?? {}).map(playerId => [
+        playerId,
+        scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId)),
+      ])
+    )
+    state.verdict = { beat: state.beat, truth: governmentTruthOf(state.beat, deal), scored }
+  }
   state.turn += 1
-  if (!following) return settleGovernment(challenge)
-  state.beat = following
-  state.deadline = Date.now() + BEAT_SECONDS[following] * 1000
-  armGovernmentScenario()
+  const held = state.turn
+  window.setTimeout(() => {
+    const current = governmentOf()
+    if (!current || current.state.finished || current.state.turn !== held) return
+    const resolved = current.state.verdict?.beat ?? current.state.beat
+    delete current.state.verdict
+    const following = GOVERNMENT_BEATS[GOVERNMENT_BEATS.indexOf(resolved) + 1]
+    if (!following) return settleGovernment(current)
+    current.state.beat = following
+    current.state.turn += 1
+    current.state.deadline = Date.now() + BEAT_SECONDS[following] * 1000
+    armGovernmentScenario()
+  }, BEAT_VERDICT_HOLD_MS)
 }
 
 const simulateGovernmentPick = (eventData: Record<string, unknown>) => {

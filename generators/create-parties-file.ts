@@ -957,10 +957,21 @@ const labels = await labelsFor(labelIds)
 writeFileSync(LABEL_CACHE_PATH, `${JSON.stringify(Object.fromEntries(labels), null, 2)}\n`)
 for (const country of Object.values(mapping)) {
   for (const party of country?.parties ?? []) {
+    // Same rule the groupings branch below already applies, and for the same
+    // reason: `?? id` kept the raw Q-id whenever the label lookup missed, so
+    // seven parties shipped an ideology of "Q30927542" and a reveal would have
+    // told a player the Christian Union is a "Q16481705" party.
     if (party.ideologies) {
-      party.ideologies = party.ideologies.map(id => labels.get(id) ?? id).filter(Boolean)
+      party.ideologies = party.ideologies
+        .map(id => labels.get(id))
+        .filter((label): label is string => !!label)
+      if (!party.ideologies.length) delete party.ideologies
     }
-    if (party.position) party.position = labels.get(party.position) ?? party.position
+    if (party.position) {
+      const label = labels.get(party.position)
+      if (label) party.position = label
+      else delete party.position
+    }
     if (party.groupings) {
       // Drop anything that never resolved: an unlabelled Q-id on screen is
       // worse than a party that simply lists no groupings.

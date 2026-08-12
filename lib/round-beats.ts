@@ -36,6 +36,16 @@ export const PLAY_GATE_CAP_MS = 15000
  *  doors and see that the trapped player truly had no move. The client's
  *  overlay reads this too — one beat, one constant. */
 export const TRAP_HOLD_MS = 5500
+/**
+ * Government's beat verdict: how long a resolved beat holds before the next
+ * question replaces it.
+ *
+ * Without it the score and the new beat land in ONE save, so a player sees
+ * "+3 and now beat 2" together and never learns whether they were right. Long
+ * enough to read a wash and a number, short enough that a three-beat round
+ * does not turn into three interstitials.
+ */
+export const BEAT_VERDICT_HOLD_MS = 2600
 /** Clean Sweep's bench: how long a wrong name locks a seat out of the board.
  *  The mode's whole penalty — in a contested pool, seconds in front of a
  *  draining board are the only scarce thing, so the cost is tempo rather than

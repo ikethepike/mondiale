@@ -10,12 +10,14 @@ import {
 } from '~~/lib/government'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { chainContenders } from '~~/lib/player'
+import { BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
 import type { GovernmentAnswers } from '~~/types/challenges/group-modes.type'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import {
   scheduleDeadlineTask,
+  scheduleEngineTask,
   settleRoundScores,
   type EngineContext,
   type RearmOptions,
@@ -151,32 +153,73 @@ const dealOf = (
   }
 }
 
-/** Bank one beat's points for everyone, then move to the next question. */
+/** What the beat's answer WAS, for the verdict a player reads before moving on. */
+const truthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
+  if (beat === 'party') return deal.governingParty
+  if (beat === 'seats') return `${deal.governingSeats}`
+  const withGovernment = deal.sorted.filter(
+    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
+  )
+  return withGovernment.length ? withGovernment.join(', ') : 'nobody'
+}
+
+/**
+ * Bank one beat's points, then HOLD on the verdict before the next question.
+ *
+ * The score and the following beat used to land in one save, so a player saw
+ * "+3 and now beat 2" together and never learned whether they were right. The
+ * hold is a beat of its own: `state.verdict` names what the answer was and what
+ * each seat scored, and `advanceBeat` clears it when the hold expires.
+ */
 const resolveBeat = async (ctx: EngineContext, game: Game, challenge: GovernmentChallenge) => {
   const { state } = challenge
   const answers = await fetchAnswers(ctx.redis, game.id, roundIndexOf(game))
   const deal = dealOf(challenge, answers)
   const beat = state.beat
 
+  const scored: Record<string, number> = {}
   if (deal) {
     for (const playerId of seatedPlayers(game)) {
-      state.scores[playerId] =
-        (state.scores[playerId] ?? 0) + scoreBeat(beat, deal, answerOf(challenge, playerId))
+      const points = scoreBeat(beat, deal, answerOf(challenge, playerId))
+      scored[playerId] = points
+      state.scores[playerId] = (state.scores[playerId] ?? 0) + points
     }
   }
 
   // Beat 1 is graded, so the party stops being a secret: the later beats ask
   // about it by name rather than about an unnamed "it".
   if (deal && beat === 'party') state.subject = deal.governingParty
+  if (deal) state.verdict = { beat, truth: truthOf(beat, deal), scored }
 
-  const following = nextBeat(beat)
-  // `turn` moves on EVERY transition, including the last one into the reveal —
-  // that is what stales a timer this resolve raced.
+  // `turn` moves on EVERY transition, including into the verdict hold — that
+  // is what stales a timer this resolve raced.
   state.turn += 1
+  const turn = state.turn
 
-  if (!following) return finishGovernment(ctx, game, challenge, answers)
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'government-updated', game }, ctx.eventTarget)
+
+  // The hold is server-owned and re-armable like every other beat: it re-reads
+  // fresh state and dies on a stale turn, so arming it twice is safe.
+  scheduleEngineTask(ctx, BEAT_VERDICT_HOLD_MS, async fresh => {
+    const current = currentGovernment(fresh)
+    if (!current || current.state.finished || current.state.turn !== turn) return
+    await advanceBeat(ctx, fresh, current)
+  })
+}
+
+/** The verdict has been read: clear it and open the next question, or settle. */
+const advanceBeat = async (ctx: EngineContext, game: Game, challenge: GovernmentChallenge) => {
+  const { state } = challenge
+  const resolved = state.verdict?.beat ?? state.beat
+  delete state.verdict
+
+  const following = nextBeat(resolved)
+  if (!following) return finishGovernment(ctx, game, challenge)
 
   state.beat = following
+  state.turn += 1
   stampDeadline(challenge, following)
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
@@ -282,6 +325,9 @@ export const applyGovernmentPick = async (
 ) => {
   const { state } = challenge
   if (state.finished || state.turn !== turn) return
+  // The beat is over and its verdict is on screen — a pick arriving now is a
+  // late tap on a question already graded.
+  if (state.verdict) return
 
   if (state.beat === 'party' && pick.party !== undefined) {
     // A beat is answered ONCE. Letting a player revise turns the round into a
@@ -317,6 +363,17 @@ export const applyGovernmentPick = async (
 export const rearmGovernment = (ctx: EngineContext, game: Game, _options: RearmOptions) => {
   const challenge = currentGovernment(game)
   if (!challenge || challenge.state.finished) return
+  // A verdict hold that was in flight when the machine went away: re-arm the
+  // advance rather than the beat clock, or the round freezes on the verdict.
+  if (challenge.state.verdict) {
+    const turn = challenge.state.turn
+    scheduleEngineTask(ctx, BEAT_VERDICT_HOLD_MS, async fresh => {
+      const current = currentGovernment(fresh)
+      if (!current || current.state.finished || current.state.turn !== turn) return
+      await advanceBeat(ctx, fresh, current)
+    })
+    return
+  }
   // A deadline that already passed while the machine was down still resolves —
   // scheduleDeadlineTask floors its delay at zero, so the ordinary arm covers
   // the overdue case too rather than needing a second path.

@@ -17,6 +17,16 @@
       >
     </p>
 
+    <!-- Said plainly, not only washed: beat 3 has no cards to tint, and a
+         wash alone never tells a player WHAT the answer was. -->
+    <Transition name="beat">
+      <p v-if="verdict" class="beat-verdict" :class="myScore > 0 ? 'right' : 'wrong'">
+        <span class="verdict-mark">{{ myScore > 0 ? '✓' : '✗' }}</span>
+        <span class="verdict-line">{{ verdictLine }}</span>
+        <span v-if="myScore > 0" class="verdict-points">+{{ myScore }}</span>
+      </p>
+    </Transition>
+
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
       <GovernmentReveal
@@ -36,8 +46,14 @@
           :key="option.name"
           type="button"
           class="card-option logo-option"
-          :class="{ chosen: myParty === option.name, dimmed: !!myParty && myParty !== option.name }"
-          :disabled="!!myParty"
+          :class="[
+            optionVerdict(option.name),
+            {
+              chosen: myParty === option.name,
+              dimmed: !verdict && !!myParty && myParty !== option.name,
+            },
+          ]"
+          :disabled="!!myParty || !!verdict"
           :style="{ '--rise-delay': `${index * 70}ms` }"
           @click="pickParty(option.name)"
         >
@@ -77,11 +93,14 @@
             :key="block"
             type="button"
             class="card-option block-option"
-            :class="{
-              chosen: mySeats === block,
-              dimmed: mySeats !== undefined && mySeats !== block,
-            }"
-            :disabled="mySeats !== undefined"
+            :class="[
+              blockVerdict(block),
+              {
+                chosen: mySeats === block,
+                dimmed: !verdict && mySeats !== undefined && mySeats !== block,
+              },
+            ]"
+            :disabled="mySeats !== undefined || !!verdict"
             @click="pickSeats(block)"
           >
             <strong>{{ block }}</strong>
@@ -254,6 +273,46 @@ const submitSides = () => {
  * answer to beat 1 as well: withholding it would leave the later beats asking
  * about a party the player may have guessed wrong and can no longer see.
  */
+/**
+ * The beat just graded, held on screen before the next question.
+ *
+ * Every wash below reads from it: the card the player chose wears its verdict,
+ * and the right answer lights up whether or not they found it. The server owns
+ * the hold — a view timer would eventually disagree with the grade.
+ */
+const verdict = computed(() => state.value.verdict)
+const myScore = computed(() => verdict.value?.scored[seatId.value] ?? 0)
+
+/** Beat 1's cards: what you picked, and what governed. */
+const optionVerdict = (name: string) => {
+  if (verdict.value?.beat !== 'party') return undefined
+  if (name === verdict.value.truth) return 'was-truth'
+  return name === myParty.value ? 'was-wrong' : undefined
+}
+
+/** Beat 2's blocks, the same. */
+const blockVerdict = (block: number) => {
+  if (verdict.value?.beat !== 'seats') return undefined
+  if (`${block}` === verdict.value.truth) return 'was-truth'
+  return block === mySeats.value ? 'was-wrong' : undefined
+}
+
+/** What the verdict says, in one line a player can read in the hold. */
+const verdictLine = computed(() => {
+  const current = verdict.value
+  if (!current) return ''
+  const right = myScore.value > 0
+  if (current.beat === 'party') {
+    return right ? `${current.truth} governs` : `It was ${current.truth}`
+  }
+  if (current.beat === 'seats') {
+    return right ? `${current.truth} seats` : `They hold ${current.truth} seats`
+  }
+  // Beat 3 is per-bench, so "right" is a partial score rather than a verdict.
+  const backers = current.truth === 'nobody' ? 'nobody else' : current.truth
+  return right ? `With the government: ${backers}` : `The government's own side: ${backers}`
+})
+
 const subject = computed(() => {
   const name = state.value.subject ?? answers.value?.governingParty
   if (!name) return undefined
@@ -377,6 +436,42 @@ const promptSources = computed(() => datasetAttribution('elections'))
 
 .subject-name {
   font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/**
+ * The beat's verdict, held between questions. Loud on purpose — this is the
+ * only moment a player learns whether they were right before the reveal.
+ */
+.beat-verdict {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: min(94vw, 34rem);
+  margin: 0.35rem auto 0;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  pointer-events: auto;
+
+  &.right {
+    border: 1px solid hsla(170.5, 34.7%, 45%, 0.7);
+    background: hsla(170.5, 34.7%, 55.1%, 0.16);
+  }
+
+  &.wrong {
+    border: 1px solid var(--hior-ange);
+    background: flame(0.16);
+  }
+}
+
+.verdict-mark {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.verdict-points {
   font-weight: 600;
 }
 

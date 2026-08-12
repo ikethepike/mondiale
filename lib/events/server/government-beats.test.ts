@@ -7,6 +7,7 @@ import {
   startGovernment,
 } from './government-beats'
 import { BEAT_POINTS, BEAT_SECONDS } from '~~/lib/government'
+import { BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
 import { TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
@@ -91,8 +92,7 @@ const context = (game: Game): EngineContext => {
   } as unknown as EngineContext
 }
 
-const live = (gameId: string): GovernmentChallenge =>
-  currentGovernment(store.get(gameId) as Game)!
+const live = (gameId: string): GovernmentChallenge => currentGovernment(store.get(gameId) as Game)!
 
 /** A round with beat 1 running, its answers already in the side key. */
 const openRound = async () => {
@@ -101,6 +101,11 @@ const openRound = async () => {
   const ctx = context(game)
   await startGovernment(ctx, game, challenge)
   return { challenge, game, ctx }
+}
+
+/** Every beat now ends on a verdict the table reads before the next question. */
+const rideVerdict = async () => {
+  await vi.advanceTimersByTimeAsync(BEAT_VERDICT_HOLD_MS + 20)
 }
 
 beforeEach(() => {
@@ -124,9 +129,15 @@ describe('the beat sequence', () => {
     expect(challenge.state.beat, 'one seat is not the table').toBe('party')
 
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Left Party' })
-    expect(challenge.state.beat).toBe('seats')
-    expect(challenge.state.turn).toBe(1)
-    expect(challenge.state.deadline).toBe(Date.now() + BEAT_SECONDS.seats * 1000)
+    // The beat resolves onto its VERDICT first — the score and the next
+    // question no longer land together.
+    expect(challenge.state.verdict?.beat).toBe('party')
+    expect(challenge.state.verdict?.truth).toBe('Moderate Party')
+    expect(challenge.state.beat).toBe('party')
+
+    await rideVerdict()
+    expect(live(game.id).state.beat).toBe('seats')
+    expect(live(game.id).state.verdict).toBeUndefined()
   })
 
   it('banks each beat as it resolves', async () => {
@@ -141,6 +152,7 @@ describe('the beat sequence', () => {
     const { challenge, game, ctx } = await openRound()
     scheduleGovernmentTimeout(ctx, challenge)
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)
+    await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
     expect(live(game.id).state.scores.ada).toBe(0)
   })
@@ -155,6 +167,8 @@ describe('the beat sequence', () => {
     await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
       sides: { 'Sweden Democrats': 'opposition', 'Left Party': 'opposition' },
     })
+    // The last beat holds on its verdict too, then settles.
+    await rideVerdict()
 
     const round = (store.get(game.id) as Game).rounds[0]!
     expect(live(game.id).state.finished).toBe(true)
@@ -186,6 +200,7 @@ describe('the answers', () => {
     await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
       sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
     })
+    await rideVerdict()
     expect(live(game.id).state.answers?.governingParty).toBe('Moderate Party')
     expect(live(game.id).state.answers?.standings['Sweden Democrats']).toBe('backing')
   })
@@ -197,6 +212,57 @@ describe('the answers', () => {
     store.delete(`${game.id}:government:0`)
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    await rideVerdict()
+    expect(live(game.id).state.beat).toBe('seats')
+  })
+})
+
+describe('the beat verdict', () => {
+  // The score and the next question used to land in ONE save, so a player saw
+  // "+3 and now beat 2" together and never learned whether they were right.
+  it('holds on what the answer was, per player', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Left Party' })
+
+    const verdict = live(game.id).state.verdict
+    expect(verdict?.beat).toBe('party')
+    expect(verdict?.truth).toBe('Moderate Party')
+    expect(verdict?.scored.ada).toBe(BEAT_POINTS.party)
+    expect(verdict?.scored.ben).toBe(0)
+    // The question it grades is still on screen behind it.
+    expect(live(game.id).state.beat).toBe('party')
+  })
+
+  it('clears the verdict when the hold expires', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    await rideVerdict()
+    expect(live(game.id).state.verdict).toBeUndefined()
+    expect(live(game.id).state.beat).toBe('seats')
+  })
+
+  // A tap landing while the verdict is up is a late answer to a graded beat.
+  it('ignores a pick sent during the hold', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Left Party' })
+    const turn = live(game.id).state.turn
+    await applyGovernmentPick(ctx, game, challenge, 'ben', turn, { seats: 68 })
+    expect(live(game.id).state.picks.seats.ben).toBeUndefined()
+  })
+
+  // A hold in flight when the machine went away must not freeze the round.
+  it('survives a restart mid-verdict', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    expect(live(game.id).state.verdict).toBeDefined()
+
+    // Nothing armed: the timer died with the machine.
+    rearmGovernment(ctx, game, { armBriefingCaps: true })
+    await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
   })
 })
@@ -211,18 +277,19 @@ describe('staleness', () => {
     // The table answers early — beat 1 resolves and `turn` moves.
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
 
     // The beat-1 timer now fires. It must die rather than resolve beat 2.
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)
     expect(live(game.id).state.beat).toBe('seats')
-    expect(live(game.id).state.turn).toBe(1)
   })
 
   it('drops a pick that answers a question the round has moved past', async () => {
     const { challenge, game, ctx } = await openRound()
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    await rideVerdict()
 
     // A retried beat-1 send, arriving during beat 2.
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Left Party' })
@@ -250,6 +317,7 @@ describe('staleness', () => {
     await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
       sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
     })
+    await rideVerdict()
     const banked = (store.get(game.id) as Game).rounds[0]!.playerTurns.ada!.points.scored
 
     // Anything that runs the finish again lands on the groupAnswers latch.
@@ -266,6 +334,7 @@ describe('rearm', () => {
     // No timer armed: the machine that held it went away.
     rearmGovernment(ctx, game, { armBriefingCaps: true })
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)
+    await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
   })
 
@@ -277,6 +346,7 @@ describe('rearm', () => {
     const ctx = context(game)
     rearmGovernment(ctx, game, { armBriefingCaps: true })
     await vi.advanceTimersByTimeAsync(TIMEOUT_SLACK_MS + 10)
+    await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
   })
 

@@ -354,6 +354,19 @@ export interface GovernmentState {
    * graded, so that is when it is named.
    */
   subject?: string
+  /**
+   * The beat just resolved, held for `BEAT_VERDICT_HOLD_MS` before the next
+   * question replaces it. Absent while a beat is live.
+   *
+   * `truth` is what the answer WAS, so a player who missed learns it here
+   * rather than waiting for the reveal. `scored` is per-player, because two
+   * seats can be right and wrong on the same beat.
+   */
+  verdict?: {
+    beat: 'party' | 'seats' | 'sides'
+    truth: string
+    scored: Record<string, number>
+  }
   /** The answers, revealed only once the last beat resolves. */
   answers?: GovernmentAnswers
   finished?: boolean

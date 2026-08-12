@@ -49,6 +49,9 @@ const PARTY_MATCH_FLOOR = 0.7
 // they had resolved to the same Wikidata entity. 737 rows on 737 distinct files
 // is the honest number, and it is UP on the 718 real files we had.
 const PARTY_LOGO_FLOOR = 640
+// A handful of rosters genuinely resolve to nothing (one-party states,
+// microstates). Fourteen was a bug; four is the honest tail.
+const BLANK_COUNTRY_CEILING = 6
 const PARTY_GROUPING_FLOOR = 420
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
@@ -233,6 +236,30 @@ describe('parties.gen', () => {
   // "none" was the Vatican's entire roster and shipped as a dealable subject;
   // Czechia and Ethiopia carried "Independents"/"Independent" rows the seat
   // table filter caught but the roster never did.
+  // A country whose entire roster failed to resolve is invisible to every
+  // party mode, and it fails SILENTLY — 14 countries (143 parties) were in
+  // that state because a 40-id Wikidata batch hit an undocumented 12MB
+  // response cap and dropped their country entity before any party was
+  // searched for. South Africa and South Korea had zero matches each.
+  it('resolves at least one party in almost every country', () => {
+    const withParties = Object.entries(PARTIES).filter(([, entry]) => entry?.parties.length)
+    const blank = withParties.filter(([, entry]) => !entry!.parties.some(party => party.qid))
+    // Some rosters really are unresolvable (one-party states, microstates).
+    expect(blank.length, blank.map(([iso]) => iso).join(' ')).toBeLessThanOrEqual(
+      BLANK_COUNTRY_CEILING
+    )
+  })
+
+  // `?? id` kept the raw Q-id whenever a label lookup missed, so a reveal would
+  // have told a player the Christian Union is a "Q16481705" party.
+  it('never leaks a raw Q-id into a displayable field', () => {
+    for (const party of parties) {
+      for (const ideology of party.ideologies ?? []) expect(ideology).not.toMatch(/^Q\d+$/)
+      if (party.position) expect(party.position).not.toMatch(/^Q\d+$/)
+      for (const grouping of party.groupings ?? []) expect(grouping).not.toMatch(/^Q\d+$/)
+    }
+  })
+
   it('holds parties, not placeholders', () => {
     for (const party of parties) {
       expect(party.name.trim()).not.toMatch(
