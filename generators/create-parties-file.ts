@@ -612,18 +612,40 @@ const isoToQid = new Map<string, string>()
   }
   console.log()
 
-  for (let index = 0; index < carriers.length; index += 40) {
-    const batch = carriers.slice(index, index + 40)
-    const response = await fetchJson<EntityResponse>(
-      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join(
-        '|'
-      )}&props=claims&format=json`
-    )
-    for (const [qid, entity] of Object.entries(response?.entities ?? {})) {
-      const iso = claimStrings(entity.claims, 'P297')[0]
-      if (iso && isValidISOCode(iso) && !isoToQid.has(iso)) isoToQid.set(iso, qid)
+  /**
+   * Batched SMALL, and re-asked one by one when the batch comes back short.
+   *
+   * `wbgetentities` truncates its response at 12MB and says so only in a
+   * `warnings` field — the entities simply are not there. A country entity
+   * carries thousands of claims, so a 40-id batch blew the limit and dropped
+   * nine countries silently. Argentina, South Africa, South Korea, Greece,
+   * Hungary, Morocco, Pakistan, Romania and Taiwan had NO party resolved at
+   * all as a result: 143 parties, invisible because a batch was too big.
+   */
+  const COUNTRY_BATCH = 12
+  for (let index = 0; index < carriers.length; index += COUNTRY_BATCH) {
+    const batch = carriers.slice(index, index + COUNTRY_BATCH)
+    const readInto = (response: EntityResponse | undefined) => {
+      for (const [qid, entity] of Object.entries(response?.entities ?? {})) {
+        const iso = claimStrings(entity.claims, 'P297')[0]
+        if (iso && isValidISOCode(iso) && !isoToQid.has(iso)) isoToQid.set(iso, qid)
+      }
+      return Object.keys(response?.entities ?? {})
     }
+    const entitiesFor = async (ids: string[]) =>
+      fetchJson<EntityResponse>(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${ids.join(
+          '|'
+        )}&props=claims&format=json`
+      )
+
+    const returned = new Set(readInto(await entitiesFor(batch)))
     await wait(200)
+    // Anything the batch swallowed is re-asked alone, where 12MB is ample.
+    for (const qid of batch.filter(id => !returned.has(id))) {
+      readInto(await entitiesFor([qid]))
+      await wait(200)
+    }
   }
 }
 console.log(`${isoToQid.size} countries mapped to Wikidata ids`)
