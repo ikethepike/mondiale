@@ -49,6 +49,15 @@
 
       <!-- Beat 2: the chamber sweeps in colourless; pick the block it holds. -->
       <div v-else-if="beat === 'seats'" key="seats" class="seats-beat">
+        <!-- WHOSE seats. Beat 2 grades against the real government, so a
+             player who picked wrong in beat 1 would otherwise be answering
+             about a party nobody named — the prompt's "it" had no antecedent
+             on screen at all. -->
+        <header v-if="subject" class="beat-subject">
+          <img v-if="subject.logo" class="subject-logo" :src="subject.logo" alt="" />
+          <span v-else class="subject-swatch" :style="{ background: subject.color }" />
+          <span class="subject-name">{{ subject.name }}</span>
+        </header>
         <div class="arc">
           <span
             v-for="(seat, index) in arcSeats"
@@ -83,6 +92,11 @@
 
       <!-- Beat 3: sort the rest — with the government, or against it. -->
       <div v-else key="sides" class="sides-beat">
+        <header v-if="subject" class="beat-subject">
+          <img v-if="subject.logo" class="subject-logo" :src="subject.logo" alt="" />
+          <span v-else class="subject-swatch" :style="{ background: subject.color }" />
+          <span class="subject-name">{{ subject.name }} governs</span>
+        </header>
         <p class="sides-lede">
           Sort the rest of the house: is each bench with the government, or against it?
         </p>
@@ -232,6 +246,20 @@ const submitSides = () => {
   void send({ sides: mySides.value })
 }
 
+/**
+ * The party beats 2 and 3 are about — named on screen from beat 2 on.
+ *
+ * It is the real government, which beat 1 was asking a player to identify. The
+ * round moves on whether they got it right or not, so naming it here is the
+ * answer to beat 1 as well: withholding it would leave the later beats asking
+ * about a party the player may have guessed wrong and can no longer see.
+ */
+const subject = computed(() => {
+  const name = state.value.subject ?? answers.value?.governingParty
+  if (!name) return undefined
+  return challenge.value?.options.find(option => option.name === name)
+})
+
 const majority = computed(() => Math.floor((challenge.value?.totalSeats ?? 0) / 2) + 1)
 
 /** The answers only exist once the server has spent them onto the state. */
@@ -300,8 +328,13 @@ const heading = computed(() => {
 
 const prompt = computed(() => {
   if (beat.value === 'party') return 'Which party governs?'
-  if (beat.value === 'seats') return 'How many seats does it hold?'
-  return 'Who else is with the government?'
+  if (beat.value === 'seats')
+    return subject.value
+      ? `How many seats does ${subject.value.name} hold?`
+      : 'How many seats does it hold?'
+  return subject.value
+    ? `Who else is with ${subject.value.name}?`
+    : 'Who else is with the government?'
 })
 
 const promptSources = computed(() => datasetAttribution('elections'))
@@ -310,6 +343,42 @@ const promptSources = computed(() => datasetAttribution('elections'))
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/_ink.scss' as *;
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
+
+/**
+ * Whose party the beat is about. Sized like a subject, not a caption — it is
+ * the thing the question refers to, and the prompt says "it".
+ */
+.beat-subject {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: fit-content;
+  min-width: min(70vw, 15rem);
+  margin: 0 auto 0.35rem;
+  padding: 0.45rem 1.1rem;
+  border: 1px solid ink(0.14);
+  border-radius: 999px;
+  background: milk(0.72);
+  pointer-events: auto;
+}
+
+.subject-logo {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: contain;
+}
+
+.subject-swatch {
+  width: 1.1rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.subject-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
 
 .chamber-facts {
   display: flex;

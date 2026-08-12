@@ -344,6 +344,16 @@ export interface GovernmentState {
   }
   /** Points banked per player, summed as the beats resolve. */
   scores: Record<string, number>
+  /**
+   * The governing party's name, published when beat 1 RESOLVES — not at the
+   * deal, and not held back to the reveal.
+   *
+   * Beats 2 and 3 are about that party, and they grade against it: a player who
+   * picked wrong in beat 1 was being asked "how many seats does it hold?" about
+   * a party nobody had named. It stops being a secret the moment beat 1 is
+   * graded, so that is when it is named.
+   */
+  subject?: string
   /** The answers, revealed only once the last beat resolves. */
   answers?: GovernmentAnswers
   finished?: boolean

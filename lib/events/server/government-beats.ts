@@ -165,6 +165,10 @@ const resolveBeat = async (ctx: EngineContext, game: Game, challenge: Government
     }
   }
 
+  // Beat 1 is graded, so the party stops being a secret: the later beats ask
+  // about it by name rather than about an unnamed "it".
+  if (deal && beat === 'party') state.subject = deal.governingParty
+
   const following = nextBeat(beat)
   // `turn` moves on EVERY transition, including the last one into the reveal —
   // that is what stales a timer this resolve raced.

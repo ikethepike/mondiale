@@ -569,6 +569,7 @@ const resolveGovernmentBeat = (challenge: GovernmentChallenge) => {
         scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId))
     }
   }
+  if (deal && state.beat === 'party') state.subject = deal.governingParty
   const following = GOVERNMENT_BEATS[GOVERNMENT_BEATS.indexOf(state.beat) + 1]
   state.turn += 1
   if (!following) return settleGovernment(challenge)
@@ -1689,6 +1690,9 @@ const scenarios: Scenario[] = [
             deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
             picks: { party: {}, seats: {}, sides: {} },
             scores: {},
+            // Published by the engine once beat 1 resolves, so beats 2 and 3
+            // can name the party they are about.
+            ...(beat === 'party' ? {} : { subject: deal.governingParty }),
             // The harness stands in for the engine, so it holds what the
             // engine holds in its side key — without these the beats play but
             // nothing can be graded, and the round never reaches its reveal.
