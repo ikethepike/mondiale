@@ -1120,6 +1120,7 @@ const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | und
         ),
         ...(deal.status ? { status: deal.status } : {}),
         minority: deal.minority,
+        ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
       },
     },
   }

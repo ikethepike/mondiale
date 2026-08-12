@@ -147,6 +147,7 @@ const dealOf = (
     sorted: challenge.sorted,
     ...(answers.status ? { status: answers.status } : {}),
     minority: answers.minority,
+    ...(answers.backedSeats !== undefined ? { backedSeats: answers.backedSeats } : {}),
   }
 }
 

@@ -323,6 +323,9 @@ export interface GovernmentAnswers {
   status?: string
   /** The government holds power without holding half the seats. */
   minority: boolean
+  /** Government plus backers, when a supply deal carries it past its own
+   *  seats — the number that explains how a minority governs at all. */
+  backedSeats?: number
 }
 
 export interface GovernmentState {
