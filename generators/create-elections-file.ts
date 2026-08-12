@@ -124,7 +124,7 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   AF: '2018 Afghan parliamentary election',
   BD: '2026 Bangladeshi general election',
   CD: '2023 Democratic Republic of the Congo general election',
-  DZ: '2021 Algerian legislative election',
+  DZ: '2026 Algerian parliamentary election',
   ET: '2026 Ethiopian general election',
   GH: '2024 Ghanaian general election',
   IQ: '2025 Iraqi parliamentary election',
@@ -133,21 +133,21 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   MM: '2020 Myanmar general election',
   MY: '2022 Malaysian general election',
   NG: '2023 Nigerian House of Representatives election',
-  NP: '2022 Nepalese general election',
+  NP: '2026 Nepalese general election',
   PK: '2024 Pakistani general election',
   RU: '2021 Russian legislative election',
   SD: '2015 Sudanese general election',
   SN: '2024 Senegalese parliamentary election',
   TH: '2026 Thai general election',
   TN: '2022 Tunisian parliamentary election',
-  TZ: '2020 Tanzanian general election',
+  TZ: '2025 Tanzanian general election',
   UG: '2026 Ugandan general election',
   US: '2024 United States House of Representatives elections',
   VN: '2026 Vietnamese legislative election',
   ZM: '2021 Zambian general election',
   ZW: '2023 Zimbabwean general election',
   AL: '2025 Albanian parliamentary election',
-  AR: '2023 Argentine general election',
+  AR: '2025 Argentine legislative election',
   AT: '2024 Austrian legislative election',
   AU: '2025 Australian federal election',
   BE: '2024 Belgian federal election',
@@ -160,7 +160,7 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   CL: '2025 Chilean general election',
   CO: '2026 Colombian parliamentary election',
   CY: '2026 Cypriot legislative election',
-  CZ: '2021 Czech legislative election',
+  CZ: '2025 Czech parliamentary election',
   DE: '2025 German federal election',
   DK: '2026 Danish general election',
   EE: '2023 Estonian parliamentary election',
@@ -177,7 +177,7 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   IN: '2024 Indian general election',
   IS: '2024 Icelandic parliamentary election',
   IT: '2022 Italian general election',
-  JP: '2021 Japanese general election',
+  JP: '2026 Japanese general election',
   KR: '2024 South Korean legislative election',
   LT: '2024 Lithuanian parliamentary election',
   LU: '2023 Luxembourg general election',
@@ -752,7 +752,7 @@ if (missing.length) {
 }
 
 /**
- * Which seeds an election has overtaken.
+ * Which seeds an election has overtaken, according to the IPU.
  *
  * The seed list is hand-maintained, and that is exactly how it rots: countries
  * keep voting whether or not anyone edits this file. An audit found 21 of 71
@@ -760,36 +760,64 @@ if (missing.length) {
  * France's 2022 against 2024 — and every one was a wrong answer presented to a
  * player as fact.
  *
- * The check is a title search for the same election one year later or more. It
- * only WARNS: a newer article may describe an election that has not happened
- * yet (Sweden's "2026 Swedish general election" was written months before the
- * September 2026 vote, and its seat fields are poll projections). Choosing to
- * move a seed stays a human's call — this only refuses to let it go unnoticed.
+ * The authority is the Inter-Parliamentary Union's Parline API: one request,
+ * 269 chambers, and a real `last_election` DATE. A Wikipedia title search found
+ * this first but missed six more (Japan, Argentina, Czechia, Nepal, Tanzania,
+ * Algeria) and could not tell a held election from a scheduled one — Sweden's
+ * "2026 Swedish general election" article was written months before the
+ * September vote, and its seat fields are poll projections. A date cannot make
+ * that mistake.
+ *
+ * It only WARNS. Choosing the replacement article stays a human's call; this
+ * refuses to let a stale seed go unnoticed.
  */
-type ElectionSearch = { query?: { search?: { title: string }[] } }
+type ParlineChamber = {
+  id: string
+  attributes?: { last_election?: unknown }
+}
+/** Parline nests values in dated validity windows, sometimes two deep. */
+const parlineCurrent = (value: unknown): string | undefined => {
+  if (Array.isArray(value)) {
+    const windows = value.filter((entry): entry is Record<string, unknown> => !!entry)
+    if (!windows.length) return undefined
+    const today = new Date().toISOString().slice(0, 10)
+    const live = windows.filter(entry => String(entry.date_to ?? '9999') >= today)
+    return parlineCurrent((live.length ? live : windows)[windows.length - 1]?.value)
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    if (typeof record.from === 'string') return record.from.slice(0, 10)
+    return parlineCurrent(record.value)
+  }
+  return typeof value === 'string' ? value : undefined
+}
+
 const staleSeeds: string[] = []
-for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
-  const dealt = Number(/^(\d{4})/.exec(article)?.[1] ?? 0)
-  if (!dealt || !mapping[isoCode as ISOCountryCode]) continue
-  const kind = article.replace(/^\d{4}\s+/, '')
-  const search = await fetchJson<ElectionSearch>(
-    `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      kind
-    )}&srlimit=8&format=json`
+{
+  const parline = await fetchJson<{ data?: ParlineChamber[] }>(
+    'https://api.data.ipu.org/v1/chambers?page%5Bsize%5D=300'
   )
-  await wait(200)
-  const newer = (search?.query?.search ?? [])
-    .map(result => result.title)
-    .filter(title => title.replace(/^\d{4}\s+/, '').toLowerCase() === kind.toLowerCase())
-    .map(title => ({ title, year: Number(/^(\d{4})/.exec(title)?.[1] ?? 0) }))
-    .filter(entry => entry.year > dealt)
-    .sort((a, b) => b.year - a.year)[0]
-  if (newer) staleSeeds.push(`${isoCode}: dealing ${dealt}, wikipedia has "${newer.title}"`)
+  const held = new Map<string, string>()
+  for (const chamber of parline?.data ?? []) {
+    // Lower chambers only — the house that forms governments, and the one
+    // ELECTION_ARTICLES seeds.
+    if (!chamber.id.includes('-LC')) continue
+    const date = parlineCurrent(chamber.attributes?.last_election)
+    if (date) held.set(chamber.id.slice(0, 2), date)
+  }
+  for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
+    const dealt = Number(/^(\d{4})/.exec(article)?.[1] ?? 0)
+    const theirs = held.get(isoCode)
+    if (!dealt || !theirs) continue
+    if (Number(theirs.slice(0, 4)) > dealt) {
+      staleSeeds.push(`${isoCode}: dealing ${dealt}, IPU says the last election was ${theirs}`)
+    }
+  }
 }
 if (staleSeeds.length) {
-  console.warn(`\nSEEDS AN ELECTION MAY HAVE OVERTAKEN (${staleSeeds.length}):`)
+  console.warn(`\nSEEDS AN ELECTION HAS OVERTAKEN (${staleSeeds.length}):`)
   for (const line of staleSeeds) console.warn(`  ${line}`)
-  console.warn('  Check whether the newer vote has HAPPENED before moving a seed.')
+  console.warn("  Find the newer article's title and move the seed.")
 }
 
 console.log(

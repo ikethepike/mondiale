@@ -26,10 +26,10 @@ SD: no readable election infobox in "2015 Sudanese general election"
 SN: no live cabinet article found
 TH: no live cabinet article found
 TN: no readable election infobox in "2022 Tunisian parliamentary election"
-TZ: no readable election infobox in "2020 Tanzanian general election"
+TZ: no readable election infobox in "2025 Tanzanian general election"
 UG: no live cabinet article found
 VN: no live cabinet article found
-AR: no live cabinet article found
+AR: only 127/257 seats accounted for — parse is suspect
 AT: no live cabinet article found
 BE: no live cabinet article found
 BR: no live cabinet article found
