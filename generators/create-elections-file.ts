@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { jsonParseLiteral } from './lib/emit'
 import { fetchJson, wait } from './vendors/wikidata/commons'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
+import { COUNTRIES } from '../data/countries.gen'
+import { LEADERS } from '../data/leaders.gen'
 
 /**
  * Seats and vote share per party, from en.wikipedia's election infoboxes.
@@ -35,6 +37,12 @@ import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
  * (Poland 460/460, Germany 630/630, Netherlands 150/150, Austria 183/183,
  * Switzerland 200/200, Belgium 150/150, Lithuania 141/141).
  *
+ * A second pass reads the CABINET, because seats say who won and the cabinet
+ * says who rules. It has its own two hazards, both learned the hard way:
+ * Wikipedia spells a government's title five different ways, and a cabinet
+ * article outlives its cabinet — "First Tusk cabinet" is a real page about a
+ * government that fell in 2011. See `findCabinet` and `cabinetIsLive`.
+ *
  *   bun run generate:elections [--force]
  *
  * Hand-run, like the other curated pipelines: it reads one article per country
@@ -51,6 +59,11 @@ const COUNTRY_FLOOR = 40
 /** Listed seats may fall short of the chamber (independents, small parties
  *  below the infobox's cut) — past this the parse is suspect, not the source. */
 const SEAT_COVERAGE_FLOOR = 0.5
+
+/** 32 of 71 chambers resolve to a live cabinet. The cabinet is the only source
+ *  for who GOVERNS as opposed to who won seats, so a collapse must fail the run
+ *  rather than quietly drop the mode that deals from it. */
+const CABINET_FLOOR = 24
 
 const force = process.argv.includes('--force')
 
@@ -72,6 +85,29 @@ export interface Election {
   /** The wikipedia article this was read from — the ⓘ's deep link. */
   article: string
   parties: ElectionParty[]
+  /** Who actually governs with those seats, when the cabinet article says. */
+  cabinet?: Cabinet
+}
+
+/**
+ * The government the chamber produced. Seats say who WON; this says who RULES,
+ * which is a different question and the one a citizen actually knows.
+ */
+export interface Cabinet {
+  /** The wikipedia article this was read from. */
+  article: string
+  /** The head of government, for the cross-check against our own leaders data. */
+  head?: string
+  /** Parties holding ministries — the government itself. */
+  governing: string[]
+  /**
+   * Parties propping the government up WITHOUT holding ministries. Sweden's
+   * Sweden Democrats are the case: they are not in `governing`, and calling
+   * them opposition is wrong. The distinction is the whole point of the field.
+   */
+  backing: string[]
+  /** `majority` | `minority` | `coalition` … as the infobox phrases it. */
+  status?: string
 }
 
 export type ElectionMapping = { [isoCode in ISOCountryCode]?: Election }
@@ -326,6 +362,158 @@ const readElection = (article: string, text: string): Election | undefined => {
   )
 }
 
+// --- The cabinet -------------------------------------------------------------
+
+/**
+ * Wikipedia has no single title convention for a government, so the article is
+ * found by trying the shapes it actually uses — the product of an ordinal and a
+ * noun around the leader's surname, because "Second Tusk cabinet",
+ * "Rama II Cabinet" and "Lecornu government" are all the same idea spelled
+ * three ways. Guessing one favourite spelling finds Italy and misses Poland.
+ */
+const CABINET_NOUNS = ['cabinet', 'Cabinet', 'government', 'Government', 'ministry']
+const CABINET_ORDINAL_WORDS = ['', 'First', 'Second', 'Third', 'Fourth']
+const CABINET_ORDINAL_ROMAN = ['', 'II', 'III', 'IV']
+
+/** How far a `successor` chain is followed before giving up. */
+const SUCCESSION_HOPS = 6
+
+const CABINET_BOX = /\{\{\s*Infobox government cabinet/i
+
+const surnameOf = (name: string | undefined): string =>
+  (name ?? '')
+    .replace(/\(.*?\)/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(-1)[0] ?? ''
+
+const cabinetTitles = (english: string, leaders: (string | undefined)[]): string[] => {
+  const titles: string[] = []
+  for (const leader of leaders) {
+    const surname = surnameOf(leader)
+    if (!surname) continue
+    for (const noun of CABINET_NOUNS) {
+      for (const ordinal of CABINET_ORDINAL_WORDS)
+        titles.push(`${ordinal} ${surname} ${noun}`.replace(/\s+/g, ' ').trim())
+      for (const roman of CABINET_ORDINAL_ROMAN)
+        titles.push(`${surname} ${roman} ${noun}`.replace(/\s+/g, ' ').trim())
+    }
+    if (leader) titles.push(`Cabinet of ${leader}`, `Government of ${leader}`)
+  }
+  titles.push(`Cabinet of ${english}`, `Government of ${english}`)
+  return [...new Set(titles)]
+}
+
+/**
+ * A cabinet article outlives its cabinet: "First Tusk cabinet" is a real page
+ * about a government that fell in 2011. Dealing it would name a party that left
+ * office nineteen years ago, so a dissolution date disqualifies the article and
+ * `successor` points at what replaced it.
+ *
+ * The exception is a recommissioned leader, where the field reads
+ * "First: <date> Second: Incumbent" — France's Lecornu. Still live.
+ */
+const cabinetIsLive = (fields: Record<string, string>): boolean => {
+  const dissolved = plainText(fields.date_dissolved ?? '')
+  if (/\b(incumbent|present)\b/i.test(dissolved)) return true
+  if (dissolved) return false
+  const successor = plainText(fields.successor ?? '').toLowerCase()
+  return !successor || /\b(incumbent|tbd|present)\b/.test(successor)
+}
+
+/**
+ * Confidence-and-supply backers, which the infobox writes into the status line
+ * rather than into `political_parties`: Sweden's reads "Minority government;
+ * confidence and supply from Sweden Democrats". They are neither government nor
+ * opposition, and flattening them into either is the mistake this field exists
+ * to prevent.
+ */
+const SUPPORT_PHRASE =
+  /(?:confidence[\s-]and[\s-]supply|support(?:ed)?)\]*\s+(?:from|by|of)\s+(.+)$/is
+
+/**
+ * `political_parties` is a LIST, not prose, and every cabinet writes it with a
+ * different pile of templates: `{{Color box|Renaissance}} RE`, `{{plainlist|
+ * * … }}`, `{{ubl|…}}`, and — Sweden's — templates NESTED two deep, as
+ * `{{Legend inline|{{party color|Moderate Party}}}}[[Moderate Party]]`.
+ *
+ * The wikilink is the name worth reading. It survives every one of those
+ * shapes, it is the party's own article title rather than an abbreviation, and
+ * it needs no template vocabulary to be kept up to date: reading templates
+ * instead got 4 of 25, because a nested one captures the inner template's name.
+ *
+ * What the links must be filtered for is the OTHER thing cabinets link — the
+ * kind of government ("Majority government", "Coalition government") and, in
+ * South Africa's case, the opposition leader by name.
+ */
+const NOT_A_PARTY =
+  /\b(majority|minority|coalition|caretaker|unity|technocratic|interim)\b|government$|^list of|^\d{4}\b/i
+
+/** The party inside `{{Legend inline|{{party color|Sweden Democrats}}}}` — the
+ *  status line names its backers this way and never links them. */
+const COLOUR_TEMPLATE =
+  /\{\{\s*(?:party[\s_]colou?r|colou?r[\s_]box|colou?r[\s_]test)\s*\|\s*([^|}]+)/gi
+
+const partyNames = (value: string): string[] => {
+  const names = [...value.matchAll(/\[\[([^\]|]+)/g)]
+    .map(match =>
+      // "Christian Democrats (Sweden)" — the disambiguator is not the name,
+      // but "Lega (political party)" needs it dropped too, so drop it always
+      // and let the roster matcher rejoin on what is left.
+      (match[1] ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+    )
+    .filter(name => name.length > 1 && !NOT_A_PARTY.test(name))
+  if (names.length) return [...new Set(names)]
+
+  // No links: the colour templates name the party too, and the status line's
+  // confidence-and-supply backers are written ONLY that way.
+  const tinted = [...value.matchAll(COLOUR_TEMPLATE)]
+    .map(match => (match[1] ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim())
+    .filter(name => name.length > 1 && !NOT_A_PARTY.test(name))
+  if (tinted.length) return [...new Set(tinted)]
+
+  // Neither: split the list markup and read what is left as prose.
+  return [
+    ...new Set(
+      value
+        .split(/\n|\*|<br\s*\/?>|\s*\/\s*|(?<![A-Z])\s*,\s*|\s+and\s+/i)
+        .map(part =>
+          plainText(part)
+            .replace(/\s*\([^)]*\)\s*$/, '')
+            .trim()
+        )
+        .filter(
+          part =>
+            part.length > 1 &&
+            !NOT_A_PARTY.test(part) &&
+            !/^(see|and|with|support(ed)?( by| from)?)\b/i.test(part)
+        )
+    ),
+  ]
+}
+
+const readCabinet = (article: string, text: string): Cabinet | undefined => {
+  const match = CABINET_BOX.exec(text)
+  if (!match) return undefined
+  const fields = templateFields(templateAt(text, match.index))
+  if (!cabinetIsLive(fields)) return undefined
+
+  // The status line carries the backers, and it carries them in the same
+  // templates — so cut the phrase out of the RAW field, before stripping.
+  const rawStatus = fields.legislature_status ?? ''
+  const status = plainText(rawStatus) || undefined
+  const backing = SUPPORT_PHRASE.exec(rawStatus)?.[1] ?? ''
+  const names = partyNames
+
+  return {
+    article,
+    head: plainText(fields.government_head ?? '') || undefined,
+    governing: names(fields.political_parties ?? ''),
+    backing: names(backing),
+    ...(status ? { status } : {}),
+  }
+}
+
 // --- Run ----------------------------------------------------------------------
 
 /** Article wikitext is stable between elections and the parse is the part that
@@ -334,16 +522,63 @@ const cache: Record<string, string> =
   force || !existsSync(CACHE_PATH) ? {} : JSON.parse(readFileSync(CACHE_PATH, 'utf8'))
 
 const wikitext = async (article: string): Promise<string> => {
-  if (cache[article]) return cache[article]
+  // A MISS is cached too, as an empty string. The cabinet search tries ~50
+  // candidate titles per country and most of them do not exist; recording only
+  // the hits meant every rerun refetched two thousand known-absent pages, which
+  // is the whole runtime. `in` rather than truthiness, so '' counts as known.
+  if (article in cache) return cache[article]
   const response = await fetchJson<{ parse?: { wikitext?: { '*'?: string } } }>(
     `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(
       article
     )}&prop=wikitext&format=json&redirects=1`
   )
   const text = response?.parse?.wikitext?.['*'] ?? ''
-  if (text) cache[article] = text
+  cache[article] = text
   await wait(200)
   return text
+}
+
+/**
+ * The live cabinet for a country, or nothing. Two passes, because a title guess
+ * lands on a real article far more often than it lands on the CURRENT one: try
+ * the naming shapes, then walk `successor` forward from whatever it found until
+ * a cabinet with no dissolution date turns up.
+ */
+const findCabinet = async (isoCode: ISOCountryCode): Promise<Cabinet | undefined> => {
+  const english = COUNTRIES[isoCode]?.name.english
+  if (!english) return undefined
+  const leaders = LEADERS[isoCode]
+  const titles = cabinetTitles(english, [
+    leaders?.headOfGovernment?.name,
+    leaders?.headOfState?.name,
+  ])
+
+  let entry: string | undefined
+  for (const title of titles) {
+    const text = await wikitext(title)
+    if (!CABINET_BOX.test(text)) continue
+    const cabinet = readCabinet(title, text)
+    if (cabinet) return cabinet
+    entry ??= title
+  }
+
+  // Everything found was historical — follow it forward to the incumbent.
+  let title = entry
+  const seen = new Set<string>()
+  for (let hop = 0; title && hop < SUCCESSION_HOPS; hop += 1) {
+    const text = await wikitext(title)
+    const match = CABINET_BOX.exec(text)
+    if (!match) return undefined
+    const cabinet = readCabinet(title, text)
+    if (cabinet) return cabinet
+    const next = plainText(templateFields(templateAt(text, match.index)).successor ?? '')
+      .replace(/\s*\(.*$/, '')
+      .trim()
+    if (!next || seen.has(next)) return undefined
+    seen.add(next)
+    title = next
+  }
+  return undefined
 }
 
 let previous: ElectionMapping = {}
@@ -356,11 +591,16 @@ try {
 const mapping: ElectionMapping = {}
 const report: string[] = []
 
+/** Flush after EVERY country, hit or miss — a search that found nothing still
+ *  learned which fifty titles do not exist, and that is what makes a rerun cheap. */
+const flushCache = () => writeFileSync(CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`)
+
 for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
   if (!isValidISOCode(isoCode)) continue
   const text = await wikitext(article)
   if (!text) {
     report.push(`${isoCode}: could not fetch "${article}"`)
+    flushCache()
     continue
   }
 
@@ -382,9 +622,17 @@ for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
     continue
   }
 
+  const cabinet = await findCabinet(isoCode)
+  if (cabinet) election.cabinet = cabinet
+  else report.push(`${isoCode}: no live cabinet article found`)
+
   mapping[isoCode] = election
-  process.stdout.write(`\r  ${Object.keys(mapping).length} chambers`)
-  writeFileSync(CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`)
+  process.stdout.write(
+    `\r  ${Object.keys(mapping).length} chambers, ${
+      Object.values(mapping).filter(entry => entry?.cabinet).length
+    } with a cabinet`
+  )
+  flushCache()
 }
 console.log()
 
@@ -413,11 +661,45 @@ const withVotes = Object.values(mapping).filter(election =>
   election?.parties.some(party => party.votePct !== undefined)
 ).length
 
+const cabinets = (Object.entries(mapping) as [ISOCountryCode, Election][]).filter(
+  ([, election]) => election.cabinet
+)
+const withGoverning = cabinets.filter(([, election]) => election.cabinet?.governing.length)
+if (cabinets.length < CABINET_FLOOR) {
+  throw new Error(
+    `Only ${cabinets.length} live cabinets found (floor ${CABINET_FLOOR}) — the title guesses or the succession chase broke.`
+  )
+}
+
+// The cabinet article names a head of government and so do we; when the two
+// disagree, one of them is stale. Ours comes from the Factbook and theirs from
+// an article an editor updates within the day, so a disagreement usually means
+// WE are behind — worth printing, never worth failing on.
+const disagrees = cabinets.filter(([isoCode, election]) => {
+  const head = surnameOf(election.cabinet?.head).toLowerCase()
+  if (!head) return false
+  const ours = [LEADERS[isoCode]?.headOfGovernment?.name, LEADERS[isoCode]?.headOfState?.name]
+  return !ours.some(name => surnameOf(name).toLowerCase() === head)
+})
+
 writeFileSync(
   REPORT_FILE,
   [
     `chambers: ${countries} of ${Object.keys(ELECTION_ARTICLES).length} seeded`,
     `with vote share: ${withVotes}`,
+    `with a live cabinet: ${cabinets.length}`,
+    `  naming its governing parties: ${withGoverning.length}`,
+    `  naming confidence-and-supply backers: ${
+      cabinets.filter(([, election]) => election.cabinet?.backing.length).length
+    }`,
+    '',
+    'cabinet head disagrees with leaders.gen (usually ours is older):',
+    ...disagrees.map(
+      ([isoCode, election]) =>
+        `  ${isoCode}: "${election.cabinet?.head}" in ${election.cabinet?.article}, ours says "${
+          LEADERS[isoCode]?.headOfGovernment?.name ?? '—'
+        }"`
+    ),
     '',
     'skipped or suspect:',
     ...report,
@@ -430,5 +712,7 @@ if (missing.length) {
   console.warn(`NO ELECTION DATA for ${missing.length}: ${missing.join(' ')}`)
 }
 
-console.log(`\nWrote ${OUTPUT_FILE}: ${countries} chambers, ${withVotes} with vote share.`)
+console.log(
+  `\nWrote ${OUTPUT_FILE}: ${countries} chambers, ${withVotes} with vote share, ${cabinets.length} with a live cabinet (${withGoverning.length} naming its governing parties).`
+)
 console.log(`Review ${REPORT_FILE} before committing.`)

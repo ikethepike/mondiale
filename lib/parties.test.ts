@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { PARTIES } from '~~/data/parties.gen'
 import {
   benchesOf,
+  benchStandings,
+  chambersWithCabinet,
   countriesInGrouping,
   governingParty,
   oppositionParties,
@@ -106,6 +108,56 @@ describe('oppositionParties', () => {
     expect(oppositionParties('VA').length).toBe(partiesOf('VA').length)
   })
 })
+
+describe('benchStandings', () => {
+  // Sweden is the case the three-way split exists for, and Isaac's own catch:
+  // the Sweden Democrats are the chamber's second-largest bench and hold NO
+  // ministries, so a government/opposition binary files them wrong either way.
+  // The cabinet is M+KD+L, SD supply the majority, everyone else opposes.
+  it('separates backers from both government and opposition', () => {
+    const standings = benchStandings('SE')
+    expect(standings).toBeDefined()
+    expect(standings?.government.map(bench => bench.name)).toEqual([
+      'Moderate Party',
+      'Christian Democrats',
+      'Liberals',
+    ])
+    expect(standings?.backing.map(bench => bench.name)).toEqual(['Sweden Democrats'])
+    expect(standings?.opposition.map(bench => bench.name)).toContain(
+      'Swedish Social Democratic Party'
+    )
+  })
+
+  it('accounts for every bench exactly once', () => {
+    for (const isoCode of chambersWithCabinet()) {
+      const standings = benchStandings(isoCode)!
+      const placed = [...standings.government, ...standings.backing, ...standings.opposition]
+      expect(placed.length).toBe(benchesOf(isoCode).length)
+      expect(new Set(placed).size).toBe(placed.length)
+    }
+  })
+
+  // A government holding no seats is the signature of a join that matched
+  // nothing — the round would open on a question with no answer on screen.
+  it('never seats a government of nobody', () => {
+    for (const isoCode of chambersWithCabinet()) {
+      const standings = benchStandings(isoCode)!
+      expect(standings.government.length).toBeGreaterThan(0)
+      expect(
+        standings.government.reduce((total, bench) => total + bench.seats, 0)
+      ).toBeGreaterThan(0)
+    }
+  })
+
+  it('deals from a healthy share of the chambers that name a cabinet', () => {
+    expect(chambersWithCabinet().length).toBeGreaterThanOrEqual(CABINET_JOIN_FLOOR)
+  })
+})
+
+// The cabinet pass resolves ~20 chambers to a government we can seat. The floor
+// sits under that because Wikipedia renames cabinet articles as governments
+// change, but a collapse means the party-name reader broke.
+const CABINET_JOIN_FLOOR = 15
 
 describe('partySpectrum', () => {
   it('collapses onto the five bands', () => {

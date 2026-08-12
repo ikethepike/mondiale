@@ -210,6 +210,95 @@ export const oppositionParties = (isoCode: ISOCountryCode): Party[] => {
 }
 
 /**
+ * A joined government holding less of the chamber than this is a failed join,
+ * not a surprising election. The real minority governments sit at 29% (Sweden)
+ * and up; the broken joins land at 2% (Croatia's three one-seat minority
+ * representatives) through 19% (Germany, where the chamber seats CDU and CSU as
+ * one bench the cabinet names separately).
+ */
+const GOVERNMENT_SHARE_FLOOR = 0.25
+
+/** Where a bench stands in relation to the government. */
+export type Standing = 'government' | 'backing' | 'opposition'
+
+export interface Benches {
+  government: Bench[]
+  /** Confidence and supply: props the government up, holds no ministries. */
+  backing: Bench[]
+  opposition: Bench[]
+  /** `minority government`, `majority government` … as the cabinet phrases it. */
+  status?: string
+}
+
+/**
+ * The chamber split three ways, from the cabinet the election produced.
+ *
+ * Only the GOVERNMENT is read from the source; opposition is everything left
+ * over, by construction. That inversion matters: Wikipedia's `opposition_party`
+ * field is populated for a fraction of cabinets, while the seated benches are
+ * something we already hold in full, so deriving is both better covered and
+ * impossible to leave inconsistent with the arc the player is looking at.
+ *
+ * Backers are the third case and the reason this is not a boolean. Sweden's
+ * government is M+KD+L; the Sweden Democrats hold no ministries but supply the
+ * majority, so calling them either government or opposition is wrong.
+ */
+export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => {
+  const cabinet = ELECTIONS[isoCode]?.cabinet
+  const benches = benchesOf(isoCode)
+  if (!cabinet?.governing.length || !benches.length) return undefined
+
+  const roster = partiesOf(isoCode)
+  // The cabinet names parties in its own spelling; resolve each through the
+  // SAME matcher the rest of the roster joins on, then compare benches by
+  // identity rather than by name.
+  const resolve = (names: string[]): Set<Bench> => {
+    const wanted = new Set<Party>()
+    for (const name of names) {
+      const party = matchInRoster(name, roster, isoCode)
+      if (party) wanted.add(party)
+    }
+    return new Set(
+      benches.filter(bench => {
+        if (bench.party && wanted.has(bench.party)) return true
+        // A bench the roster never named can still be matched by its own label.
+        return names.some(name => partyKey(name, isoCode) === partyKey(bench.name, isoCode))
+      })
+    )
+  }
+
+  const government = resolve(cabinet.governing)
+  if (!government.size) return undefined
+  const backing = resolve(cabinet.backing)
+
+  // A government that joined only crumbs did not really join. Croatia is the
+  // case: the chamber seats an "HDZ-led coalition" bench while the cabinet
+  // names HDZ's individual partners, so the only names that matched were three
+  // one-seat minority representatives — leaving the REAL government of 61 filed
+  // as opposition. A round built on that would teach the opposite of the truth.
+  //
+  // What separates it from an honest minority government is not the seat count
+  // — Sweden's government holds 68 to the opposition's 107 and that IS the
+  // lesson — but how much of the chamber the joined benches speak for. A real
+  // government reaches a fair share of the seats it takes to govern; a broken
+  // join lands on the tail.
+  const held = [...government].reduce((total, bench) => total + bench.seats, 0)
+  const seated = benches.reduce((total, bench) => total + bench.seats, 0)
+  if (!seated || held / seated < GOVERNMENT_SHARE_FLOOR) return undefined
+
+  return {
+    government: benches.filter(bench => government.has(bench)),
+    backing: benches.filter(bench => backing.has(bench) && !government.has(bench)),
+    opposition: benches.filter(bench => !government.has(bench) && !backing.has(bench)),
+    ...(cabinet.status ? { status: cabinet.status } : {}),
+  }
+}
+
+/** Chambers whose government we can name — what a government round deals from. */
+export const chambersWithCabinet = (): ISOCountryCode[] =>
+  playableChambers().filter(isoCode => benchStandings(isoCode))
+
+/**
  * Wikidata's `P1387` position vocabulary collapsed onto the five bands a
  * player can actually be asked about. The raw labels are too fine to quiz
  * ("centrism" vs "big tent" is not a question), and the tail is long.

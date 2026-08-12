@@ -17,6 +17,7 @@ import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { TREATY_META } from '~~/types/treaty.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -101,7 +102,50 @@ describe('elections.gen', () => {
       expect(names.length).toBe(new Set(names).size)
     }
   })
+
+  // The cabinet is the only source for who GOVERNS as opposed to who won seats.
+  it('reads a live cabinet for a healthy share of the chambers', () => {
+    const cabinets = chambers.filter(chamber => chamber?.cabinet)
+    expect(cabinets.length).toBeGreaterThanOrEqual(CABINET_FLOOR)
+    expect(
+      cabinets.filter(chamber => chamber?.cabinet?.governing.length).length
+    ).toBeGreaterThanOrEqual(CABINET_GOVERNING_FLOOR)
+  })
+
+  // A cabinet article outlives its cabinet — "First Tusk cabinet" is a real
+  // page about a government that fell in 2011 — so the generator follows
+  // `successor` forward to the incumbent. The check that it landed is the head
+  // of government: ours comes from the Factbook, theirs from an article edited
+  // within the day, and a chase that stopped early names someone who left
+  // office years ago. A handful legitimately disagree where OURS is the stale
+  // one (a government changed since the last Factbook pull), so this is a
+  // majority test rather than a per-country one.
+  it('lands on cabinets whose head of government is the one in office', () => {
+    const surname = (name: string) =>
+      name
+        .replace(/\(.*?\)/g, '')
+        .trim()
+        .split(/\s+/)
+        .slice(-1)[0]
+    const named = (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
+      isoCode => ELECTIONS[isoCode]?.cabinet?.head
+    )
+    const agreeing = named.filter(isoCode => {
+      const head = surname(ELECTIONS[isoCode]!.cabinet!.head!)
+      return [LEADERS[isoCode]?.headOfGovernment?.name, LEADERS[isoCode]?.headOfState?.name].some(
+        name => name && surname(name) === head
+      )
+    })
+    expect(agreeing.length / named.length).toBeGreaterThanOrEqual(CABINET_HEAD_AGREEMENT)
+  })
 })
+
+// 39 chambers resolve to a live cabinet, 25 of them naming governing parties.
+const CABINET_FLOOR = 30
+const CABINET_GOVERNING_FLOOR = 18
+// 34 of 39 cabinet heads match ours today; the rest are countries whose
+// government changed since the last Factbook pull, where THEIRS is the fresher.
+const CABINET_HEAD_AGREEMENT = 0.75
 
 describe('parties.gen', () => {
   const countries = Object.values(PARTIES)
