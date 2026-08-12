@@ -329,3 +329,30 @@ describe('the timeout verdict', () => {
     for (const at of rendered) expect(at).toBeGreaterThan(guard)
   })
 })
+
+/**
+ * The map's SVG root carries `fill: none` inline, for its coastlines. Anything
+ * this file paints INTO that root therefore has to set its own fill inline
+ * too — a scoped class rule loses to an inline style, and the glyphs render
+ * invisible while the chip behind them still draws. That failure looks like
+ * solid black pills on the stage, which is exactly what shipped once.
+ */
+describe("Rulers' captions", () => {
+  const map = readFileSync(new URL('../components/GameMap.vue', import.meta.url), 'utf8')
+
+  it('sets its fills inline, where the root cannot outrank them', () => {
+    expect(map).toContain("plate.style.fill = 'var(--dark-blue)'")
+    expect(map).toContain("label.style.fill = 'var(--sour-milk)'")
+  })
+
+  it('uses palette tokens that exist', () => {
+    const palette = readFileSync(
+      new URL('../assets/scss/rules/_palette.scss', import.meta.url),
+      'utf8'
+    )
+    // `--off-white` was invented, resolved to nothing, and the text vanished.
+    for (const token of ['--dark-blue', '--sour-milk']) {
+      expect(palette, `${token} is not a real token`).toContain(`${token}:`)
+    }
+  })
+})

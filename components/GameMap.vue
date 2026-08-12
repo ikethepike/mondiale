@@ -1198,15 +1198,35 @@ const ensureLogos = () => {
 
     const caption = names?.[code as ISOCountryCode]
     if (!caption) continue
+    // A CHIP, not floating text. Painting a stroke behind glyphs this small
+    // (1.6px halo on 3.4px type) fattened them into unreadable blobs, and any
+    // offset that clears the logo lands on a neighbouring country instead. A
+    // sized plate under the baseline is legible against artwork and coastline
+    // alike, and it belongs to its logo at every zoom.
+    const chipHeight = side * 0.2
+    const chipWidth = chipHeight * (0.62 * caption.length + 0.7)
+    const chipY = y + side / 2 - chipHeight * 0.5
+
+    const plate = document.createElementNS(SVG_NS, 'rect')
+    plate.setAttribute('x', String(x - chipWidth / 2))
+    plate.setAttribute('y', String(chipY))
+    plate.setAttribute('width', String(chipWidth))
+    plate.setAttribute('height', String(chipHeight))
+    plate.setAttribute('rx', String(chipHeight / 2))
+    plate.style.fill = 'var(--dark-blue)'
+    plate.style.stroke = 'none'
+    plate.classList.add('country-logo-plate')
+    layer.appendChild(plate)
+
     const label = document.createElementNS(SVG_NS, 'text')
     label.textContent = caption
     label.setAttribute('x', String(x))
-    // Tucked just INSIDE the artwork's lower edge, not floating beyond it.
-    // Hung below, a caption lands on the country to the south (Austria's sat on
-    // Slovenia); hung above, on the one to the north. Inside its own footprint
-    // it belongs to its logo at any zoom, and every logo is a square of known
-    // size — the one place a label can sit without a collision pass.
-    label.setAttribute('y', String(y + side / 2 - side * 0.04))
+    label.setAttribute('y', String(chipY + chipHeight * 0.72))
+    label.setAttribute('font-size', String(chipHeight * 0.68))
+    // Inline, because the map's SVG root carries `fill: none` inline for its
+    // coastlines — a scoped class rule loses to that and the glyphs vanish.
+    label.style.fill = 'var(--sour-milk)'
+    label.style.stroke = 'none'
     label.classList.add('country-logo-name')
     layer.appendChild(label)
   }
@@ -2630,19 +2650,16 @@ path[id]:hover,
 :deep(.country-logo) {
   pointer-events: none;
 }
+:deep(.country-logo-plate) {
+  pointer-events: none;
+}
 :deep(.country-logo-name) {
-  fill: var(--dark-blue);
-  // Quiet: the LOGO is the subject and the caption only names it. Heavier type
-  // fought the artwork and, in a tight cluster, its neighbours.
-  font-size: 3.4px;
+  // Size and fill are set inline (the SVG root's own `fill: none` outranks a
+  // class here). NO stroke: a halo behind glyphs this small is thicker than
+  // the strokes it separates, which is what turned these into blobs.
   font-weight: 600;
-  letter-spacing: 0.06px;
+  letter-spacing: 0.08px;
   text-anchor: middle;
-  opacity: 0.92;
-  paint-order: stroke;
-  stroke: var(--off-white);
-  stroke-width: 1.6px;
-  stroke-linejoin: round;
   pointer-events: none;
 }
 :deep(.country-logo-image) {
