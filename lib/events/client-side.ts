@@ -139,6 +139,7 @@ export const useClientEvents = () => {
     gameStore.map.landmass = false
     gameStore.map.labels = false
     gameStore.map.countryLabels = undefined
+    gameStore.map.countryLogos = undefined
     // Drop the claims too, or a released slot would be re-applied by the
     // next claimant's recompute from stale owners.
     releaseAllMapBerths()

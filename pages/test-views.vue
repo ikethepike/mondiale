@@ -113,7 +113,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
-import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from '~~/lib/parties'
+import { governingParty, partiesWithLogo } from '~~/lib/parties'
 import {
   BEAT_POINTS,
   BEAT_SECONDS,
@@ -3420,29 +3420,36 @@ const scenarios: Scenario[] = [
       }),
   },
   {
-    // Rulers: the odd-one-out gate's party-family flavour. Built from the real
-    // join rather than a hand-typed lineup, so the impostor here is genuinely
-    // governed outside the family — the discriminator the mode turns on.
-    id: 'individual-rulers',
-    label: 'Individual: rulers (odd one out by party family)',
+    // The logo stage, before any dealer exists: five neighbours wearing their
+    // real governing parties, framed tight. This is the legibility probe —
+    // median inscribed room is ~6 map units, and if a logo reads as mush here
+    // the whole visual premise needs rethinking.
+    id: 'rulers-stage',
+    label: 'Rulers: the logo stage (legibility probe)',
     component: ViewIndividualChallenge,
     build: () => {
-      const [family, governed] =
-        [...countriesGovernedByFamily()]
-          .filter(([, members]) => members.length >= 3)
-          .sort((a, b) => b[1].length - a[1].length)[0] ?? []
-      const same = (governed ?? []).slice(0, 3)
-      const odd = ISOCountryCodes.find(
-        isoCode => family && !same.includes(isoCode) && governedOutsideFamily(isoCode, family)
+      const lineup: ISOCountryCode[] = ['HR', 'BA', 'AT', 'SK', 'CZ']
+      const logos = Object.fromEntries(
+        lineup.flatMap(isoCode => {
+          const logo = governingParty(isoCode)?.logo
+          return logo ? [[isoCode, logo] as const] : []
+        })
       )
+      // AFTER the gate mounts: ViewIndividualChallenge calls clearBoard() on
+      // mount, which wipes the map registers. A real gate sets its stage in
+      // its own onMounted for the same reason.
+      window.setTimeout(() => {
+        gameStore.map.countryLogos = logos
+        gameStore.map.focus = [...lineup]
+      }, 400)
       return individualGame({
         variant: 'odd-one-out',
-        country: odd ?? 'BR',
+        country: lineup[0]!,
         oddOneOut: {
-          countries: [...same, odd ?? 'BR'],
-          propertyLabel: `Three of these are governed by a party of the ${family} family`,
+          countries: [...lineup],
+          propertyLabel: 'Which of these is NOT its ruling party?',
           kind: 'party-family',
-          value: family ?? '',
+          value: '',
         },
       })
     },

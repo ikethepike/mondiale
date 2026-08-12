@@ -204,10 +204,15 @@ describe('benchesOf', () => {
   })
 })
 
-// 9% of benches are orphans today, nearly all of them independents and unnamed
-// alliances. The ceiling leaves room for an election table naming a new party
-// before Wikidata carries it, but not for the join breaking.
-const BENCH_ORPHAN_CEILING = 0.15
+// 18.5% of benches are orphans today: independents, unnamed alliances, and the
+// parties Wikidata files under a name the Factbook roster never lists (Iraq's
+// Sadrist Movement and Progress Party are most of one chamber).
+//
+// This ROSE from 9% when one Wikidata entity was allowed only one party. That
+// is the fix working, not a regression: a bench that "joined" by sharing
+// another party's entity was wearing that party's logo and ideology. An honest
+// orphan is better than a bench dressed as someone else.
+const BENCH_ORPHAN_CEILING = 0.24
 
 describe('seatingOrder', () => {
   const rankOf = (bench: { party?: Party }) => spectrumRank(bench.party)

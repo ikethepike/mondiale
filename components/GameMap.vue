@@ -289,6 +289,13 @@ const props = defineProps({
     type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
     default: undefined,
   },
+  /** Party logos laid inside countries — Rulers' stage. Keyed by the country
+   *  the logo sits on, NOT the party that governs it: Rulers dresses one
+   *  country in an opposition logo on purpose. */
+  countryLogos: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
   /** Animate the viewBox to frame these countries together. */
   focusCountries: {
     type: Array as PropType<ISOCountryCode[]>,
@@ -1104,6 +1111,81 @@ const ensureLabels = () => {
   settleSoon()
 }
 
+/**
+ * How much of a country's inscribed circle a logo may fill. Under 1 so the
+ * artwork sits INSIDE the landmass rather than touching its border.
+ */
+const LOGO_ANCHOR_FILL = 1.7
+/** Drawn side in map units, clamped: the inscribed radius runs from 0.2
+ *  (San Marino) to 61 (Russia), so raw proportional sizing would be invisible
+ *  on half the roster and swamp the frame on the other half. */
+const LOGO_MIN_SIDE = 7
+const LOGO_MAX_SIDE = 26
+
+let builtLogoKey: string | undefined
+
+/**
+ * Party logos composited into their countries — the sibling of `ensureLabels`,
+ * and built the same way: imperatively into the live SVG, keyed on the set so a
+ * new gate replaces the previous round's rather than latching.
+ *
+ * The logo is CENTRED at the pole of inaccessibility and fitted with
+ * `xMidYMid meet`, never clipped to the landmass. A party logo is a wordmark
+ * drawn for a white page; shearing it to an irregular coastline would destroy
+ * the one thing a player is being asked to read. A soft scrim behind it does
+ * the work of sitting the artwork on the land.
+ */
+const ensureLogos = () => {
+  if (!svg.value) return
+  const logos = props.countryLogos
+  const key = logos ? JSON.stringify(logos) : ''
+  if (key === builtLogoKey) return
+
+  svg.value.querySelectorAll('.country-logo').forEach(node => node.remove())
+  builtLogoKey = key
+  if (!key || !logos) return
+
+  const layer = document.createElementNS(SVG_NS, 'g')
+  layer.classList.add('country-logo')
+  svg.value.appendChild(layer)
+
+  for (const [code, href] of Object.entries(logos)) {
+    if (!href) continue
+    // The same labelability predicate the label layer uses, so a dealer that
+    // clears one can never be silently skipped by the other.
+    if (!isLabelableBox(labelBoxFor(MAP_BOUNDS[code as MapCode], MAP_REGIONS[code as MapCode])))
+      continue
+    const anchor = labelAnchorFor(code as MapCode)
+    if (!anchor) continue
+
+    const side = Math.min(
+      LOGO_MAX_SIDE,
+      Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL)
+    )
+    const [x, y] = anchor.point
+
+    const scrim = document.createElementNS(SVG_NS, 'rect')
+    scrim.setAttribute('x', String(x - side / 2))
+    scrim.setAttribute('y', String(y - side / 2))
+    scrim.setAttribute('width', String(side))
+    scrim.setAttribute('height', String(side))
+    scrim.setAttribute('rx', String(side * 0.16))
+    scrim.classList.add('country-logo-scrim')
+    layer.appendChild(scrim)
+
+    const image = document.createElementNS(SVG_NS, 'image')
+    image.setAttribute('href', href)
+    image.setAttribute('x', String(x - side / 2))
+    image.setAttribute('y', String(y - side / 2))
+    image.setAttribute('width', String(side))
+    image.setAttribute('height', String(side))
+    image.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    image.dataset.id = code
+    image.classList.add('country-logo-image')
+    layer.appendChild(image)
+  }
+}
+
 /** Directions a crowded label tries, nearest first. Vertical before horizontal —
  *  the cartographic convention, and it keeps a name over its own latitude. */
 const LABEL_NUDGES: [number, number][] = [
@@ -1268,6 +1350,14 @@ watch(
   [() => props.labels, () => props.countryLabels],
   () => {
     nextTick(ensureLabels)
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.countryLogos,
+  () => {
+    nextTick(ensureLogos)
   },
   { deep: true }
 )
@@ -1820,6 +1910,7 @@ onMounted(async () => {
   moveToCountry()
 
   if (props.labels || props.countryLabels) ensureLabels()
+  if (props.countryLogos) ensureLogos()
   if (props.focusCountries.length) frameFocus()
 })
 
@@ -2506,6 +2597,26 @@ path[id]:hover,
 }
 .show-labels :deep(.labels-settled .country-label-name) {
   opacity: 1;
+}
+// Rulers' logo register. Unlike the labels these are sized in MAP units, so
+// they scale with the camera and need no settle gate — they are correct at
+// every zoom by construction, and simply fade in with the stage.
+:deep(.country-logo-scrim) {
+  fill: var(--off-white);
+  opacity: 0.82;
+  stroke: var(--dark-blue);
+  stroke-opacity: 0.18;
+  stroke-width: 0.35;
+}
+:deep(.country-logo-image) {
+  // The artwork is the answer; nothing should tint or dim it.
+  opacity: 1;
+  animation: logo-land 320ms var(--ease-out-expressive) both;
+}
+@keyframes logo-land {
+  from {
+    opacity: 0;
+  }
 }
 // The hairline back to the country a displaced name belongs to. Thin and quiet:
 // it only has to be followable, and it crosses countries the reader is judging.

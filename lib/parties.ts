@@ -298,6 +298,27 @@ export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => 
 export const chambersWithCabinet = (): ISOCountryCode[] =>
   playableChambers().filter(isoCode => benchStandings(isoCode))
 
+/** Countries whose governing party carries a logo — Rulers' stage pool. */
+export const countriesWithGoverningLogo = (): ISOCountryCode[] =>
+  (Object.keys(PARTIES) as ISOCountryCode[]).filter(isoCode => governingParty(isoCode)?.logo)
+
+/**
+ * Opposition parties that can stand in for a country's government without
+ * giving the game away — Rulers' impostor pool.
+ *
+ * The test is the logo FILE, not party identity. Two roster rows can resolve to
+ * one Wikidata entity and therefore wear one image (Albania's Social Democrats
+ * and Socialists both landed on Q642882), and an impostor wearing a file
+ * identical to the real government's is a question with no answer. The
+ * generator now refuses those collisions, but this holds the line here too:
+ * a stale `.gen` must never be able to deal an unanswerable round.
+ */
+export const impostorParties = (isoCode: ISOCountryCode): Party[] => {
+  const governing = governingParty(isoCode)
+  if (!governing?.logo) return []
+  return oppositionParties(isoCode).filter(party => party.logo && party.logo !== governing.logo)
+}
+
 /**
  * Wikidata's `P1387` position vocabulary collapsed onto the five bands a
  * player can actually be asked about. The raw labels are too fine to quiz

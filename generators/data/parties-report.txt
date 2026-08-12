@@ -1,12 +1,228 @@
-parties: 2224 across 192 countries
-matched to Wikidata: 1624/2042 (80%)
-logos saved: 957
+parties: 2131 across 192 countries
+matched to Wikidata: 1406/2042 (69%)
+logos saved: 737
+entity collisions refused: 215
 
-seat-sum drift (share is of the LISTED total, not the declared one):
+seat-sum drift, and rows whose match was already claimed:
+AL: "Social Democratic Party" also resolved to Q642882 — "Socialist Party" fits "Socialist Party of Albania" better, left bare
+AZ: "Great Order Party" also resolved to Q5599720 — "Great Order Party" fits "Great Order Party" better, left bare
+BD: "Jatiya Party or JP" also resolved to Q6164607 — "Jatiya Party or JP" fits "Jatiya Party (Manju)" better, left bare
+BB: "Democratic Labor Party" also resolved to Q740420 — "Barbados Labor Party" fits "Barbados Labour Party" better, left bare
+BO: "Front for Victory" also resolved to Q1142239 — "Movement Toward Socialism" fits "Movement Toward Socialism" better, left bare
+BA: "Democratic Union" also resolved to Q16792 — "Croatian Democratic Union of Bosnia and Herzegovina" fits "Croatian Democratic Union of Bosnia and Herzegovina" better, left bare
+BA: "Serb Democratic Party" also resolved to Q1164533 — "Democratic Front" fits "Serbian Democratic Party" better, left bare
+BA: "Social Democratic Party" also resolved to Q290118 — "People and Justice Party" fits "Party for Bosnia and Herzegovina" better, left bare
 BW: listed seats 61 vs declared 69 (12% apart) — shares are of the listed total
+BW: "Botswana Republic Party" also resolved to Q859825 — "Botswana Democratic Party" fits "Botswana Democratic Party" better, left bare
+BW: "Umbrella for Democratic Change or UDC" also resolved to Q859825 — "Botswana Democratic Party" fits "Botswana Democratic Party" better, left bare
+BR: "Communist Party of Brazil" also resolved to Q10345605 — "Brazilian Communist Party" fits "Partido Comunista - Seção Brasileira da Internacional Comunista" better, left bare
+BR: "Brazilian Labor Party" also resolved to Q657089 — "Workers' Party" fits "Workers' Party" better, left bare
+BR: "Brazilian Renewal Labor Party" also resolved to Q657089 — "Workers' Party" fits "Workers' Party" better, left bare
+BR: "Brazilian Labor Party" also resolved to Q657089 — "Workers' Party" fits "Workers' Party" better, left bare
+BR: "Social Christian Party" also resolved to Q1322897 — "Brazilian Social Democracy Party" fits "Brazilian Social Democracy Party" better, left bare
+BR: "Democratic Party" also resolved to Q1414708 — "Democratic Labor Party" fits "Democratic Labour Party" better, left bare
+BR: "Social Democratic Party" also resolved to Q1414708 — "Democratic Labor Party" fits "Democratic Labour Party" better, left bare
+BR: "Liberal Party or PL [Valdemar Costa Neto]" also resolved to Q2731720 — "Social Liberal Party" fits "Liberal Party" better, left bare
+BR: "Republican Social Order Party" also resolved to Q926973 — "Republicans (Republicanos)" fits "Republicans" better, left bare
+BG: "BSP for Bulgaria" also resolved to Q752259 — "Bulgarian Socialist Party" fits "Bulgarian Socialist Party" better, left bare
+BG: "Democratic Bulgaria or DB" also resolved to Q2984783 — "Bulgarian Rise" fits "list of political parties in Bulgaria" better, left bare
+BG: "Ecoglasnost" also resolved to Q2984783 — "Bulgarian Rise" fits "list of political parties in Bulgaria" better, left bare
+BG: "Revival" also resolved to Q2984783 — "Bulgarian Rise" fits "list of political parties in Bulgaria" better, left bare
+BG: "Yes! Bulgaria" also resolved to Q2984783 — "Bulgarian Rise" fits "list of political parties in Bulgaria" better, left bare
+BF: "National Convention for Progress" also resolved to Q592045 — "Congress for Democracy and Progress" fits "Congress for Democracy and Progress" better, left bare
+CM: "Cameroonian Democratic Union" also resolved to Q953447 — "Cameroon People's Democratic Movement" fits "Cameroon People's Democratic Movement" better, left bare
+CM: "Movement for the Liberation and Development of Cameroon" also resolved to Q953447 — "Cameroon People's Democratic Movement" fits "Cameroon People's Democratic Movement" better, left bare
+CV: "Democratic and Independent Cabo Verdean Union" also resolved to Q497464 — "African Party for Independence of Cabo Verde" fits "African Party for the Independence of Cape Verde" better, left bare
+CV: "Democratic Christian Party" also resolved to Q1951190 — "Movement for Democracy" fits "Movement for Democracy" better, left bare
+CV: "Social Democratic Party" also resolved to Q1951190 — "Movement for Democracy" fits "Movement for Democracy" better, left bare
+CL: "Democratic Revolution" also resolved to Q1395049 — "Christian Democratic Party" fits "Christian Democratic Party" better, left bare
+CL: "Social Christian Party" also resolved to Q1395049 — "Christian Democratic Party" fits "Christian Democratic Party" better, left bare
+CL: "Democrats" also resolved to Q1395049 — "Christian Democratic Party" fits "Christian Democratic Party" better, left bare
+CL: "Republican Party" also resolved to Q1395049 — "Christian Democratic Party" fits "Christian Democratic Party" better, left bare
+CL: "Commons" also resolved to Q1759292 — "Party for Democracy" fits "Party for Democracy" better, left bare
+CL: "Yellow Movement for Chile" also resolved to Q1759292 — "Party for Democracy" fits "Party for Democracy" better, left bare
+CL: "Humanist Party" also resolved to Q317952 — "Communist Party of Chile" fits "Communist Party of Chile" better, left bare
+CL: "Equality Party" also resolved to Q823648 — "Socialist Party" fits "Socialist Party of Chile" better, left bare
+CL: "Party of the People" also resolved to Q823648 — "Socialist Party" fits "Socialist Party of Chile" better, left bare
+CL: "Popular Party" also resolved to Q823648 — "Socialist Party" fits "Socialist Party of Chile" better, left bare
+CO: "Conservative Party" also resolved to Q939021 — "Liberal Party" fits "Colombian Liberal Party" better, left bare
+CO: "Democratic Center Party" also resolved to Q939021 — "Liberal Party" fits "Colombian Liberal Party" better, left bare
+CD: "Nouvel Elan" also resolved to Q144806 — "Movement for the Liberation of the Congo" fits "Movement for the Liberation of the Congo" better, left bare
+CD: "Together for Change" also resolved to Q144806 — "Movement for the Liberation of the Congo" fits "Movement for the Liberation of the Congo" better, left bare
+CD: "Union for the Congolese Nation" also resolved to Q144806 — "Movement for the Liberation of the Congo" fits "Movement for the Liberation of the Congo" better, left bare
+CR: "Liberal Progressive Party" also resolved to Q82591 — "National Liberation Party" fits "National Liberation Party" better, left bare
+CI: "Rally of Houphouetists for Democracy and Peace" also resolved to Q1455532 — "Democratic Party of Cote d'Ivoire" fits "Democratic Party of Côte d'Ivoire – African Democratic Rally" better, left bare
+CI: "Union for Cote d'Ivoire" also resolved to Q3550425 — "Union for Democracy and Peace in Cote d'Ivoire" fits "Union for Democracy and Peace in Côte d'Ivoire" better, left bare
 CY: listed seats 56 vs declared 80 (30% apart) — shares are of the listed total
+CY: "National Popular Front" also resolved to Q2748384 — "Democratic Front" fits "ELAM" better, left bare
+CY: "Democratic Party" also resolved to Q816863 — "Democratic Party" fits "Democratic Party (Cyprus)" better, left bare
+CY: "People's Party" also resolved to Q816863 — "Democratic Party" fits "Democratic Party (Cyprus)" better, left bare
+CY: "Cyprus Socialist Party" also resolved to Q259800 — "Movement of Social Democrats EDEK" fits "Movement for Social Democracy" better, left bare
+CZ: "Independents" also resolved to Q1586610 — "Mayors and Independents" fits "Mayors and Independents" better, left bare
 DM: listed seats 21 vs declared 32 (34% apart) — shares are of the listed total
+DO: "Alliance for Democracy" also resolved to Q2511535 — "Dominican Liberation Party" fits "Dominican Liberation Party" better, left bare
+DO: "People's First Party" also resolved to Q2511535 — "Dominican Liberation Party" fits "Dominican Liberation Party" better, left bare
+DO: "National Progressive Front" also resolved to Q17515858 — "Modern Revolutionary Party" fits "Modern Revolutionary Party" better, left bare
+DZ: "Party of Justice and Liberty" also resolved to Q97189639 — "Algeria's Hope Rally" fits "Rally for Hope for Algeria" better, left bare
+DZ: "Vanguard of Liberties" also resolved to Q204543 — "National Liberation Front" fits "National Liberation Front" better, left bare
+DZ: "Union of Democratic and Social Forces" also resolved to Q605960 — "Socialist Forces Front" fits "Socialist Forces Front" better, left bare
+DZ: "Youth Party" also resolved to Q627196 — "Workers Party" fits "Workers' Party" better, left bare
+EC: "Actuemos Ecuador" also resolved to Q11073969 — "Avanza Party" fits "Avanza" better, left bare
+EC: "Central Democratic Movement" also resolved to Q55407092 — "Citizen Revolution Movement or MRC" fits "Citizen Revolution Movement" better, left bare
+EC: "Creating Opportunities Movement" also resolved to Q499377 — "Social Christian Party" fits "Social Christian Party" better, left bare
+EC: "Revolutionary and Democratic Ethical Green Movement" also resolved to Q289078 — "Green Movement" fits "PAIS Alliance" better, left bare
+EC: "Socialist Party" also resolved to Q289078 — "Green Movement" fits "PAIS Alliance" better, left bare
+EG: "Congress Party" also resolved to Q767012 — "Wafd Party" fits "New Wafd Party" better, left bare
+EG: "Freedom Party" also resolved to Q767012 — "Wafd Party" fits "New Wafd Party" better, left bare
+EG: "Reform and Development Party" also resolved to Q767012 — "Wafd Party" fits "New Wafd Party" better, left bare
+EG: "Republican People’s Party" also resolved to Q767012 — "Wafd Party" fits "New Wafd Party" better, left bare
+GQ: "Democratic Party for Equatorial Guinea" also resolved to Q945167 — "National Democratic Party" fits "Democratic Party of Equatorial Guinea" better, left bare
+GQ: "National Democratic Union" also resolved to Q945167 — "National Democratic Party" fits "Democratic Party of Equatorial Guinea" better, left bare
+GQ: "Social Democratic Union" also resolved to Q945167 — "National Democratic Party" fits "Democratic Party of Equatorial Guinea" better, left bare
+GQ: "Social and Popular Convergence Party" also resolved to Q945167 — "National Democratic Party" fits "Democratic Party of Equatorial Guinea" better, left bare
+GQ: "Social Democratic Party of Equatorial Guinea" also resolved to Q56761755 — "Social Democratic Coalition Party" fits "Social Democratic Coalition Party" better, left bare
+EE: "Left Alliance" also resolved to Q928652 — "Estonia Centre Party of" fits "Estonian Centre Party" better, left bare
+FJ: "Peoples Democratic Party" also resolved to Q7550539 — "Social Democratic Liberal Party" fits "Social Democratic Liberal Party" better, left bare
+GH: "National Democratic Party" also resolved to Q200875 — "National Democratic Congress" fits "National Democratic Congress" better, left bare
+GT: "Humanist Party of Guatemala" also resolved to Q114602527 — "CABAL" fits "Cabal" better, left bare
+GT: "Cambio" also resolved to Q54263394 — "Vamos por una Guatemala Diferente" fits "Vamos" better, left bare
+GT: "National Convergence Front" also resolved to Q430960 — "Guatemalan National Revolutionary Unity or URNG-MAIZ" fits "Guatemalan National Revolutionary Unity" better, left bare
+GT: "Vision with Values" also resolved to Q6163926 — "Value" fits "VIVA" better, left bare
+GN: "Democratic Union of Guinea" also resolved to Q577455 — "Union of Democratic Forces of Guinea" fits "Union of Democratic Forces of Guinea" better, left bare
+GN: "Democratic Alliance for Renewal" also resolved to Q577455 — "Union of Democratic Forces of Guinea" fits "Union of Democratic Forces of Guinea" better, left bare
+GN: "Alliance for National Renewal" also resolved to Q577455 — "Union of Democratic Forces of Guinea" fits "Union of Democratic Forces of Guinea" better, left bare
+GN: "Alliance for National Renewal" also resolved to Q577455 — "Union of Democratic Forces of Guinea" fits "Union of Democratic Forces of Guinea" better, left bare
+GN: "Democratic Union for Renewal and Progress" also resolved to Q7886460 — "Union for Progress and Renewal" fits "Union for Progress and Renewal" better, left bare
+GY: "A Partnership for National Unity" also resolved to Q1972521 — "People's Progressive Party/Civic" fits "People's Progressive Party" better, left bare
+HT: "Democratic Unity Convention" also resolved to Q108120253 — "Convention for Democratic Unity" fits "Konvansyon Inite Demokratik" better, left bare
+HT: "Democratic and Popular Sector" also resolved to Q24204904 — "Platform Pitit Desalin" fits "Platfòm Pitit Desalin" better, left bare
+HT: "Dessalinian Patriotic and Popular Movement" also resolved to Q24204904 — "Platform Pitit Desalin" fits "Platfòm Pitit Desalin" better, left bare
+HN: "Christian Democratic Party" also resolved to Q1579466 — "National Party of Honduras" fits "National Party of Honduras" better, left bare
+HN: "Democratic Liberation of Honduras" also resolved to Q538272 — "Liberal Party" fits "Liberal Party of Honduras" better, left bare
+IS: "People's Party" also resolved to Q218303 — "Independence Party" fits "Independence Party" better, left bare
+IS: "Progressive Party" also resolved to Q218303 — "Independence Party" fits "Independence Party" better, left bare
+ID: "Democrat Party" also resolved to Q1186306 — "Indonesia Democratic Party-Struggle" fits "Indonesian Democratic Party – Struggle" better, left bare
+ID: "National Democratic Party" also resolved to Q1186306 — "Indonesia Democratic Party-Struggle" fits "Indonesian Democratic Party – Struggle" better, left bare
+IL: "National Unity" also resolved to Q60198488 — "Blue and White" fits "Blue and White Israel Resilience Party" better, left bare
+IL: "Religious Zionist Party" also resolved to Q46559 — "Otzma Yehudit" fits "Jewish Power" better, left bare
+IT: "League" also resolved to Q63926676 — "Action-Italia Viva" fits "Action" better, left bare
+IT: "other minor parties" also resolved to Q63926676 — "Action-Italia Viva" fits "Action" better, left bare
+JM: "Jamaica Labor Party" also resolved to Q1162691 — "People's National Party" fits "People's National Party" better, left bare
+JM: "United Independents' Congress" also resolved to Q1162691 — "People's National Party" fits "People's National Party" better, left bare
+JO: "Building and Labor Coalition" also resolved to Q1674114 — "Islamic Action Front" fits "Islamic Action Front" better, left bare
+JO: "National Coalition Party" also resolved to Q1674114 — "Islamic Action Front" fits "Islamic Action Front" better, left bare
+JO: "Progress Party" also resolved to Q1674114 — "Islamic Action Front" fits "Islamic Action Front" better, left bare
+JO: "Jordanian al-Ansar Party" also resolved to Q2664987 — "Jordanian Communist Party" fits "Jordanian Communist Party" better, left bare
+JO: "Labor Party" also resolved to Q2664987 — "Jordanian Communist Party" fits "Jordanian Communist Party" better, left bare
+KI: "Kiribati Moa Party" also resolved to Q96373866 — "Boutokaan Kiribati Moa Party" fits "Boutokaan Kiribati Moa Party" better, left bare
+KI: "Kamanoan Kiribati Party" also resolved to Q96373866 — "Boutokaan Kiribati Moa Party" fits "Boutokaan Kiribati Moa Party" better, left bare
+LV: "United List" also resolved to Q108096403 — "Latvia First" fits "Latvia First" better, left bare
+LR: "Coalition for Democratic Change" also resolved to Q1142176 — "National Patriotic Party" fits "National Patriotic Party" better, left bare
+LR: "Collaborating Political Parties or CPP" also resolved to Q550159 — "Unity Party" fits "Unity Party" better, left bare
+LR: "National Democratic Party of Liberia" also resolved to Q6972209 — "National Democratic Coalition" fits "National Democratic Coalition" better, left bare
+LU: "Democratic Party" also resolved to Q1070311 — "Luxembourg Socialist Workers' Party" fits "Luxembourg Socialist Workers' Party" better, left bare
+LU: "Green Party" also resolved to Q1070311 — "Luxembourg Socialist Workers' Party" fits "Luxembourg Socialist Workers' Party" better, left bare
+MW: "People's Party" also resolved to Q1037389 — "Malawi Congress Party" fits "Malawi Congress Party" better, left bare
+MY: "others:" also resolved to Q4919308 — "National Trust Party" fits "National Trust Party" better, left bare
+MY: "United Bumiputera Heritage Party" also resolved to Q1547025 — "Pan-Malaysian Islamic Party" fits "Malaysian Islamic Party" better, left bare
+MY: "Sarawak United People's Party" also resolved to Q1100205 — "United Sarawak Party" fits "Sarawak United Peoples' Party" better, left bare
+MY: "Sarawak Parties Alliance (Gabungan Parti Sarawak) or GPS:" also resolved to Q1100205 — "United Sarawak Party" fits "Sarawak United Peoples' Party" better, left bare
+ML: "Alliance for the Solidarity of Mali-Convergence of Patriotic Forces" also resolved to Q2838240 — "Alliance for Democracy and Progress" fits "Alliance for Democracy in Mali" better, left bare
+ML: "Party for National Renewal" also resolved to Q3419939 — "Rally for Mali" fits "Rally for Mali" better, left bare
 MT: listed seats 79 vs declared 65 (22% apart) — shares are of the listed total
+MU: "Alliance Morisien" also resolved to Q6793756 — "Mauritian Social Democratic Party" fits "Mauritian Social Democrat Party" better, left bare
+MU: "Jean-Claude Barbier Movement" also resolved to Q6793756 — "Mauritian Social Democratic Party" fits "Mauritian Social Democrat Party" better, left bare
+MU: "National Alliance" also resolved to Q3366796 — "Mauritius Labor Party (Parti Travailliste) or PTR" fits "Labour Party" better, left bare
+MX: "Mexican Green Ecological Party" also resolved to Q851087 — "National Action Party" fits "National Action Party" better, left bare
+MD: "Party of Communists of the Republic of Moldova" also resolved to Q7314695 — "Our Party" fits "Our Party" better, left bare
+MN: "Democratic Party" also resolved to Q1127178 — "Mongolian People's Party" fits "Mongolian People's Party" better, left bare
+MN: "National Labor Party" also resolved to Q1127178 — "Mongolian People's Party" fits "Mongolian People's Party" better, left bare
+MN: "Civil Will-Green Party" also resolved to Q1186234 — "National Coalition" fits "Democratic Party" better, left bare
+ME: "Albanian Democratic League" also resolved to Q5255636 — "Democratic League in Montenegro" fits "Democratic League in Montenegro" better, left bare
+ME: "Albanian Alliance" also resolved to Q5255636 — "Democratic League in Montenegro" fits "Democratic League in Montenegro" better, left bare
+ME: "Albanian Forum" also resolved to Q4709066 — "Albanian Alternative" fits "Albanian Alternative" better, left bare
+ME: "Democratic Alliance" also resolved to Q648211 — "Democratic Party of Socialists" fits "Democratic Party of Socialists of Montenegro" better, left bare
+ME: "Democratic People's Party" also resolved to Q648211 — "Democratic Party of Socialists" fits "Democratic Party of Socialists of Montenegro" better, left bare
+ME: "Liberal Party" also resolved to Q648211 — "Democratic Party of Socialists" fits "Democratic Party of Socialists of Montenegro" better, left bare
+ME: "Socialist People's Party" also resolved to Q648211 — "Democratic Party of Socialists" fits "Democratic Party of Socialists of Montenegro" better, left bare
+ME: "Together!" also resolved to Q648211 — "Democratic Party of Socialists" fits "Democratic Party of Socialists of Montenegro" better, left bare
+MM: "People’s Party" also resolved to Q777074 — "Democratic Party of National Politics" fits "Communist Party of Burma" better, left bare
+MM: "Shan and Ethnic Democratic Party" also resolved to Q777074 — "Democratic Party of National Politics" fits "Communist Party of Burma" better, left bare
+NP: "Communist Party of Nepal" also resolved to Q15980864 — "Communist Party of Nepal" fits "Communist Party of Nepal" better, left bare
+NL: "Labor Party" also resolved to Q849580 — "Socialist Party" fits "Socialist Party" better, left bare
+NI: "Autonomous Liberal Party" also resolved to Q4732427 — "Alliance for the Republic" fits "Alliance for the Republic (Nicaragua)" better, left bare
+NI: "Caribbean Unity Movement" also resolved to Q1422066 — "Liberal Constitutionalist Party" fits "Constitutionalist Liberal Party" better, left bare
+NI: "Nationalist Liberal Party or PLN" also resolved to Q2054647 — "Independent Liberal Party" fits "Independent Liberal Party" better, left bare
+NG: "All Progressives Grand Alliance" also resolved to Q4729266 — "All Progressives Congress" fits "All Progressives Congress" better, left bare
+NO: "Center Party" also resolved to Q485665 — "Progress Party" fits "Progress Party" better, left bare
+NO: "Liberal Party" also resolved to Q586364 — "Conservative Party" fits "Conservative Party of Norway" better, left bare
+NO: "Labor Party" also resolved to Q1512994 — "Red Party" fits "Red Party" better, left bare
+PA: "Popular Party or PP" also resolved to Q2732443 — "Alliance Party" fits "People's Party" better, left bare
+PG: "People's Party" also resolved to Q24708 — "People's National Congress Party" fits "People's National Congress Party" better, left bare
+PG: "Papua New Guinea Greens Party" also resolved to Q24708 — "People's National Congress Party" fits "People's National Congress Party" better, left bare
+PE: "Social Integration Party" also resolved to Q5575030 — "Advance the Nation" fits "Go on Country" better, left bare
+PT: "Democratic Alliance or AD" also resolved to Q847263 — "Socialist Party" fits "Socialist Party" better, left bare
+PT: "Portuguese Communist Party" also resolved to Q847263 — "Socialist Party" fits "Socialist Party" better, left bare
+PT: "Social Democratic Party (Partido Social Democrata) or PSD" also resolved to Q595575 — "Democratic and Social Center/People's Party" fits "Social Democratic Party" better, left bare
+MK: "Democratic Alliance" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
+MK: "European Democratic Party" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
+MK: "We Can!" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
+MK: "Turkish Movement Party" also resolved to Q3393359 — "Turkish Democratic Party" fits "Democratic Party of Turks" better, left bare
+RU: "Democratic Party of Russia" also resolved to Q212115 — "Liberal Democratic Party of Russia" fits "Liberal Democratic Party of Russia" better, left bare
+RU: "Party of Social Protection" also resolved to Q1435537 — "Party of Pensioners" fits "Russian Pensioners' Party" better, left bare
+RW: "Democratic Green Party of Rwanda" also resolved to Q3043218 — "Liberal Party" fits "Liberal Party" better, left bare
+RW: "Rwandan Patriotic Front Coalition" also resolved to Q690240 — "Rwandan Patriotic Front" fits "Rwandan Patriotic Front" better, left bare
 KN: listed seats 11 vs declared 16 (31% apart) — shares are of the listed total
+SM: "Socialist Party" also resolved to Q44102 — "Party of Socialists and Democrats" fits "Party of Socialists and Democrats" better, left bare
+SM: "Tomorrow in Movement coalition" also resolved to Q25399163 — "RETE Movement" fits "RETE Movement" better, left bare
+SN: "ARC" also resolved to Q2838226 — "Alliance for the Republic-Yakaar" fits "Alliance for the Republic" better, left bare
+SN: "AND" also resolved to Q2054438 — "Socialist Party" fits "Socialist Party of Senegal" better, left bare
+SN: "National Union for the People" also resolved to Q2054438 — "Socialist Party" fits "Socialist Party of Senegal" better, left bare
+SN: "Only Senegal Movement" also resolved to Q2054438 — "Socialist Party" fits "Socialist Party of Senegal" better, left bare
+SN: "PRP" also resolved to Q131319041 — "Gueum sa Bopp" fits "Sàmm Sa Kàddu" better, left bare
+RS: "National Democratic Alternative or NADA" also resolved to Q640380 — "Democratic Party" fits "New Democratic Party of Serbia" better, left bare
+RS: "Together" also resolved to Q2002853 — "Greens of Serbia" fits "New Serbia" better, left bare
+RS: "Russian Party" also resolved to Q253586 — "Serbian Progressive Party" fits "Serbian Progressive Party" better, left bare
+RS: "Serbia Against Violence or SPN" also resolved to Q752521 — "Socialist Party of Serbia" fits "Socialist Party of Serbia" better, left bare
+SC: "Seychelles Party for Social Justice and Democracy" also resolved to Q206395 — "United Seychelles" fits "United Seychelles Party" better, left bare
+SG: "Workers' Party" also resolved to Q371395 — "People's Action Party" fits "People's Action Party" better, left bare
+SI: "Slovenian Democratic Party or SDS" also resolved to Q526294 — "Democratic Party of Pensioners of Slovenia" fits "Slovenian Democratic Party" better, left bare
+SI: "List of Marjan Sarec" also resolved to Q106704283 — "Freedom Movement or GS" fits "Freedom Movement" better, left bare
+SI: "Party of Alenka Bratusek or SAB" also resolved to Q106704283 — "Freedom Movement or GS" fits "Freedom Movement" better, left bare
+SB: "United for Change Party" also resolved to Q5255692 — "Solomon Islands Democratic Party" fits "Democratic Party" better, left bare
+SO: "Peace and Unity Party" also resolved to Q65440671 — "Somali Social Unity Party" fits "Somali Social Unity Party" better, left bare
+SO: "Security and Justice Party" also resolved to Q104903329 — "Social Justice Party" fits "Social Justice Party" better, left bare
+ES: "Together for Catalonia" also resolved to Q1393123 — "Ciudadanos Party" fits "Ciudadanos" better, left bare
+LK: "Sri Lanka People's Freedom Alliance or SLPFA" also resolved to Q28456145 — "Sri Lanka Podujana Peramuna" fits "Sri Lanka Podujana Peramuna" better, left bare
+LK: "Tamil People's National Alliance" also resolved to Q7681385 — "Tamil National People's Front" fits "Tamil National People's Front" better, left bare
+SD: "Democratic Unionist Party" also resolved to Q5255850 — "Democratic Unionist Party" fits "Democratic Unionist Party" better, left bare
+SD: "Unionist Movement Party" also resolved to Q5255850 — "Democratic Unionist Party" fits "Democratic Unionist Party" better, left bare
+SD: "Federal Umma Party" also resolved to Q4116138 — "National Umma Party" fits "National Umma Party" better, left bare
+SD: "National Congress Party" also resolved to Q4116138 — "National Umma Party" fits "National Umma Party" better, left bare
+SD: "Umma Party for Reform and Development" also resolved to Q4116138 — "National Umma Party" fits "National Umma Party" better, left bare
+SS: "United Democratic Salvation Front" also resolved to Q459960 — "Sudan People's Liberation Movement" fits "Sudan People's Liberation Movement" better, left bare
+SY: "Syrian Democratic Council" also resolved to Q864766 — "Kurdish Democratic Union Party" fits "Democratic Union Party" better, left bare
+SY: "legal parties/alliances:" also resolved to Q864766 — "Kurdish Democratic Union Party" fits "Democratic Union Party" better, left bare
+SY: "major political organizations:" also resolved to Q864766 — "Kurdish Democratic Union Party" fits "Democratic Union Party" better, left bare
+SY: "Arab Socialist Union of Syria" also resolved to Q5255553 — "Democratic Arab Socialist Union" fits "Democratic Arab Socialist Union" better, left bare
+SY: "Syrian Opposition Coalition" also resolved to Q2585094 — "Syrian Communist Party" fits "Syrian Democratic People's Party" better, left bare
+SY: "Syrian Salvation Government" also resolved to Q767681 — "Syrian Social Nationalist Party" fits "Syrian Social Nationalist Party" better, left bare
+TJ: "Democratic Party" also resolved to Q1045162 — "People's Democratic Party of Tajikistan" fits "People's Democratic Party of Tajikistan" better, left bare
+TH: "Prachathipat Party" also resolved to Q1186248 — "Democrat Party" fits "Democrat Party" better, left bare
+TG: "Democratic Forces for the Republic" also resolved to Q2996304 — "Democratic Convention of African Peoples" fits "Democratic Convention of African Peoples" better, left bare
+TG: "Pan-African National Party" also resolved to Q2996378 — "Pan-African Patriotic Convergence" fits "Patriotic Pan-African Convergence" better, left bare
+TN: "Third Republic Party" also resolved to Q18205783 — "Free Destourian Party" fits "Free Destourian Party" better, left bare
+TN: "National Coalition Party" also resolved to Q611184 — "Workers' Party" fits "Workers' Party (Tunisia)" better, left bare
+TR: "Labor and Freedom Alliance" also resolved to Q251077 — "Nationalist Movement Party" fits "Nationalist Movement Party" better, left bare
 TM: listed seats 125 vs declared 56 (123% apart) — shares are of the listed total
+GB: "Democratic Unionist Party or DUP" also resolved to Q244927 — "Alliance Party or APNI" fits "Alliance Party of Northern Ireland" better, left bare
+GB: "Sinn Fein" also resolved to Q244927 — "Alliance Party or APNI" fits "Alliance Party of Northern Ireland" better, left bare
+GB: "Social Democratic and Labor Party or SDLP" also resolved to Q244927 — "Alliance Party or APNI" fits "Alliance Party of Northern Ireland" better, left bare
+GB: "Ulster Unionist Party or UUP" also resolved to Q244927 — "Alliance Party or APNI" fits "Alliance Party of Northern Ireland" better, left bare
+GB: "Workers Party of Great Britian" also resolved to Q9630 — "Labor (Labour) Party" fits "Labour Party" better, left bare
+VE: "Clear Accounts" also resolved to Q6025217 — "Venezuelan Progressive Movement" fits "Movement for Venezuela" better, left bare
+VE: "Convergencia" also resolved to Q847914 — "Communist Party of Venezuela" fits "Communist Party of Venezuela" better, left bare
 XK: listed seats 10 vs declared 120 (92% apart) — shares are of the listed total
+XK: "New Democratic Party" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
+XK: "New Democratic Initiative of Kosovo" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
+XK: "Vakat Coalition" also resolved to Q106570618 — "Social Democratic Union" fits "Social Democratic Union" better, left bare

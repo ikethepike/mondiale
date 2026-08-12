@@ -41,10 +41,15 @@ const MARRIAGE_COUNTRY_FLOOR = 35
 const PARTY_COUNTRY_FLOOR = 180
 const PARTY_FLOOR = 2000
 const PARTY_MATCH_FLOOR = 0.7
-// 957 logos and 576 grouping memberships today — both are what the party-facing
+// 737 logos and ~500 grouping memberships today — both are what the party-facing
 // modes deal from, so a collapse should fail rather than quietly thin the pool.
-const PARTY_LOGO_FLOOR = 820
-const PARTY_GROUPING_FLOOR = 480
+//
+// The count READ 957 before one entity was allowed only one party: 239 of those
+// were duplicate references, several roster rows pointing at one file because
+// they had resolved to the same Wikidata entity. 737 rows on 737 distinct files
+// is the honest number, and it is UP on the 718 real files we had.
+const PARTY_LOGO_FLOOR = 640
+const PARTY_GROUPING_FLOOR = 420
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
 const SEAT_JOIN_MISS_CEILING = 8

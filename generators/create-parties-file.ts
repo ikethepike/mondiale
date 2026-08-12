@@ -106,7 +106,9 @@ const slimClaims = (claims: { [property: string]: Snak[] }): { [property: string
       claims[property]!,
     ])
   )
-type CachedMatch = { qid: string; claims: { [property: string]: Snak[] } } | { miss: true }
+type CachedMatch =
+  | { qid: string; claims: { [property: string]: Snak[] }; label?: string }
+  | { miss: true }
 const matchKeyFor = (
   name: string,
   endonym: string | undefined,
@@ -366,7 +368,31 @@ const yearOf = (claims: { [property: string]: Snak[] } | undefined): number | un
  * The Q-id for a party name, or undefined when nothing passes all three gates.
  * Returning undefined is a perfectly good outcome — the party keeps its name.
  */
-type PartyMatch = { qid: string; claims: { [property: string]: Snak[] } }
+type PartyMatch = {
+  qid: string
+  claims: { [property: string]: Snak[] }
+  /** The entity's own English label — what a contested claim is judged on. */
+  label?: string
+}
+
+/**
+ * How well a roster name fits an entity's own label, 0–1 (token Jaccard).
+ *
+ * This is what settles a contested entity. Two roster rows can be handed names
+ * close enough that Wikidata's search returns ONE entity for both — Albania's
+ * "Social Democratic Party" and "Socialist Party" both resolved to Q642882
+ * ("Socialist Party of Albania"). First-come-first-served answered that by
+ * roster order, which handed the entity to the wrong party and left the
+ * country's actual GOVERNING party bare. The better name wins instead.
+ */
+const labelFit = (name: string, label: string | undefined, isoCode: ISOCountryCode): number => {
+  if (!label) return 0
+  const wanted = partyTokens(name, isoCode)
+  const theirs = partyTokens(label, isoCode)
+  if (!wanted.length || !theirs.length) return 0
+  const shared = wanted.filter(token => theirs.includes(token)).length
+  return shared / new Set([...wanted, ...theirs]).size
+}
 
 /**
  * THE acceptance test, wherever a candidate Q-id comes from. Both routes below
@@ -376,7 +402,8 @@ type PartyMatch = { qid: string; claims: { [property: string]: Snak[] } }
 const firstAcceptable = (
   qids: string[],
   entities: EntityResponse | undefined,
-  countryQid: string
+  countryQid: string,
+  taken?: ReadonlySet<string>
 ): PartyMatch | undefined => {
   for (const qid of qids) {
     const claims = entities?.entities?.[qid]?.claims
@@ -385,23 +412,38 @@ const firstAcceptable = (
     if (!claimIds(claims, 'P31').includes(POLITICAL_PARTY)) continue
     // A dissolved party wearing a live party's name is worse than no match.
     if (claims.P576?.length) continue
-    return { qid, claims }
+    // One entity, one party. Wikidata's search answers with its best guess for
+    // whatever it is handed, and two roster rows can be handed names close
+    // enough to land on the SAME entity — Barbados' Labor Party and Democratic
+    // Labor Party both resolved to Q740420, so two opposing parties ended up
+    // wearing one logo and one ideology. Skipping a claimed id lets the second
+    // row fall through to its next-best candidate, or miss honestly.
+    if (taken?.has(qid)) continue
+    return { qid, claims, ...(entities?.entities?.[qid]?.labels?.en?.value
+      ? { label: entities.entities[qid]!.labels!.en!.value }
+      : {}) }
   }
   return undefined
 }
 
 const claimsFor = async (qids: string[]): Promise<EntityResponse | undefined> => {
   if (!qids.length) return undefined
+  // Labels ride along: they cost nothing extra on a request already being made,
+  // and they are what settles which of two parties really owns an entity.
   const entities = await fetchJson<EntityResponse>(
     `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qids.join(
       '|'
-    )}&props=claims&format=json`
+    )}&props=claims|labels&languages=en&languagefallback=1&format=json`
   )
   await wait(120)
   return entities
 }
 
-const searchOnce = async (term: string, countryQid: string): Promise<PartyMatch | undefined> => {
+const searchOnce = async (
+  term: string,
+  countryQid: string,
+  taken?: ReadonlySet<string>
+): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
       term
@@ -411,7 +453,7 @@ const searchOnce = async (term: string, countryQid: string): Promise<PartyMatch 
   if (!hits.length) return undefined
   await wait(120)
 
-  return firstAcceptable(hits, await claimsFor(hits), countryQid)
+  return firstAcceptable(hits, await claimsFor(hits), countryQid, taken)
 }
 
 /**
@@ -427,7 +469,8 @@ const searchOnce = async (term: string, countryQid: string): Promise<PartyMatch 
 const searchViaWikipedia = async (
   name: string,
   countryName: string,
-  countryQid: string
+  countryQid: string,
+  taken?: ReadonlySet<string>
 ): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
@@ -452,23 +495,25 @@ const searchViaWikipedia = async (
     .filter((qid): qid is string => !!qid)
   if (!qids.length) return undefined
 
-  return firstAcceptable(qids, await claimsFor(qids), countryQid)
+  return firstAcceptable(qids, await claimsFor(qids), countryQid, taken)
 }
 
 const resolveParty = async (
   name: string,
   endonym: string | undefined,
   countryQid: string,
-  countryName: string
+  countryName: string,
+  /** Entities already claimed by an earlier party in THIS country. */
+  taken: ReadonlySet<string>
 ): Promise<PartyMatch | undefined> => {
   // The endonym goes FIRST: Wikidata files parties under their native name, so
   // "Centerpartiet" resolves where the Factbook's "Center Party" finds nothing.
   for (const term of [endonym, name].filter((value): value is string => !!value)) {
-    const match = await searchOnce(term, countryQid)
+    const match = await searchOnce(term, countryQid, taken)
     if (match) return match
   }
   // Last resort, and only for names Wikidata's own search could not place.
-  return searchViaWikipedia(name, countryName, countryQid)
+  return searchViaWikipedia(name, countryName, countryQid, taken)
 }
 
 /** Resolve the Q-ids an enriched party points at (ideologies, position) to
@@ -548,6 +593,8 @@ let resolved = 0
 let attempted = 0
 let cacheHits = 0
 let liveLookups = 0
+/** Rows whose best match was already claimed by an earlier party. */
+let collisions = 0
 /** `${iso}|${qid}` → Commons filename, collected during the roster pass. */
 const logoFiles = new Map<string, string>()
 
@@ -589,6 +636,22 @@ for (const { isoCode, url } of successfulCombinations) {
   }
 
   const parties: Party[] = []
+  /**
+   * Resolve every row FIRST, then award contested entities — because the right
+   * owner is not knowable until every claimant is in.
+   *
+   * Wikidata's search answers with its best guess for whatever name it is
+   * handed, so two roster rows can land on ONE entity: Albania's "Social
+   * Democratic Party" and "Socialist Party" both resolved to Q642882
+   * ("Socialist Party of Albania"), and Barbados' Labor Party and Democratic
+   * Labor Party both to Q740420. Left alone, two opposing parties wear the same
+   * logo, ideology and colour.
+   *
+   * Awarding by roster order was worse than the disease: it handed Q642882 to
+   * the Social Democrats and left Albania's actual GOVERNING party bare. The
+   * entity goes to whichever name fits its own label best.
+   */
+  const claims: { party: Party; match: PartyMatch }[] = []
   for (const { name, endonym, abbreviation } of partyNames(roster)) {
     attempted += 1
     const seats = seatsByKey.get(matchKey(name, demonyms))
@@ -604,7 +667,7 @@ for (const { isoCode, url } of successfulCombinations) {
 
     const cacheKey = countryQid ? matchKeyFor(name, endonym, countryQid, seats) : undefined
     const cached = cacheKey ? matchCache[cacheKey] : undefined
-    let match: { qid: string; claims: { [property: string]: Snak[] } } | undefined
+    let match: PartyMatch | undefined
     if (cached) {
       match = 'miss' in cached ? undefined : cached
       cacheHits += 1
@@ -613,34 +676,56 @@ for (const { isoCode, url } of successfulCombinations) {
         name,
         endonym,
         countryQid,
-        COUNTRIES[isoCode]?.name.english ?? isoCode
+        COUNTRIES[isoCode]?.name.english ?? isoCode,
+        new Set()
       )
       // Cache the MISS too — it cost a full search plus an entity fetch.
       matchCache[cacheKey] = match
-        ? { qid: match.qid, claims: slimClaims(match.claims) }
+        ? { qid: match.qid, claims: slimClaims(match.claims), ...(match.label ? { label: match.label } : {}) }
         : { miss: true }
       liveLookups += 1
     }
-    if (match) {
-      resolved += 1
-      party.qid = match.qid
-      // P154 is carried on the match so the logo pass needs no second claims
-      // fetch — it already has everything it asks Wikidata for.
-      const logoFile = claimStrings(match.claims, 'P154')[0]
-      if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
-      const ideologies = claimIds(match.claims, 'P1142')
-      const position = claimIds(match.claims, 'P1387')[0]
-      const colors = claimStrings(match.claims, 'P465')
-      const founded = yearOf(match.claims)
-      const groupings = openClaimIds(match.claims, 'P463')
-      if (ideologies.length) party.ideologies = ideologies
-      if (position) party.position = position
-      if (colors.length) party.colors = colors
-      if (founded) party.foundedYear = founded
-      if (groupings.length) party.groupings = groupings
+    if (match) claims.push({ party, match })
+    parties.push(party)
+  }
+
+  // Award each entity to its best-fitting claimant; everyone else stays bare.
+  const byQid = new Map<string, { party: Party; match: PartyMatch }[]>()
+  for (const claim of claims) {
+    byQid.set(claim.match.qid, [...(byQid.get(claim.match.qid) ?? []), claim])
+  }
+  for (const [qid, contenders] of byQid) {
+    const ranked = [...contenders].sort(
+      (a, b) =>
+        labelFit(b.party.name, b.match.label, isoCode) -
+        labelFit(a.party.name, a.match.label, isoCode)
+    )
+    const winner = ranked[0]!
+    for (const loser of ranked.slice(1)) {
+      report.push(
+        `${isoCode}: "${loser.party.name}" also resolved to ${qid} — ` +
+          `"${winner.party.name}" fits "${winner.match.label ?? qid}" better, left bare`
+      )
+      collisions += 1
     }
 
-    parties.push(party)
+    const { party, match } = winner
+    resolved += 1
+    party.qid = match.qid
+    // P154 is carried on the match so the logo pass needs no second claims
+    // fetch — it already has everything it asks Wikidata for.
+    const logoFile = claimStrings(match.claims, 'P154')[0]
+    if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
+    const ideologies = claimIds(match.claims, 'P1142')
+    const position = claimIds(match.claims, 'P1387')[0]
+    const colors = claimStrings(match.claims, 'P465')
+    const founded = yearOf(match.claims)
+    const groupings = openClaimIds(match.claims, 'P463')
+    if (ideologies.length) party.ideologies = ideologies
+    if (position) party.position = position
+    if (colors.length) party.colors = colors
+    if (founded) party.foundedYear = founded
+    if (groupings.length) party.groupings = groupings
   }
 
   mapping[isoCode] = {
@@ -710,6 +795,12 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
   const countryQid = isoToQid.get(isoCode)
   if (!countryQid || !mapping[isoCode]) continue
 
+  // Whatever the roster pass already resolved for this country is spoken for —
+  // an adopted bench must not take an entity a named party is wearing.
+  const claimedQids = new Set(
+    (mapping[isoCode]?.parties ?? []).flatMap(party => (party.qid ? [party.qid] : []))
+  )
+
   for (const seated of election.parties) {
     if (NOT_A_ROSTER_PARTY.test(seated.party) || rosterHas(isoCode, seated.party)) continue
 
@@ -723,13 +814,28 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
         seated.party,
         undefined,
         countryQid,
-        COUNTRIES[isoCode]?.name.english ?? isoCode
+        COUNTRIES[isoCode]?.name.english ?? isoCode,
+        claimedQids
       )
       matchCache[cacheKey] = match
-        ? { qid: match.qid, claims: slimClaims(match.claims) }
+        ? {
+            qid: match.qid,
+            claims: slimClaims(match.claims),
+            ...(match.label ? { label: match.label } : {}),
+          }
         : { miss: true }
     }
+    // Same reason as the roster pass: the cache is keyed per party, so it will
+    // replay a collision recorded before this rule existed.
+    if (match && claimedQids.has(match.qid)) {
+      report.push(
+        `${isoCode}: adopted "${seated.party}" resolved to ${match.qid}, already claimed — skipped`
+      )
+      collisions += 1
+      continue
+    }
     if (!match) continue
+    claimedQids.add(match.qid)
 
     const logoFile = claimStrings(match.claims, 'P154')[0]
     if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
@@ -970,8 +1076,9 @@ writeFileSync(
     `parties: ${totalParties} across ${countries} countries`,
     `matched to Wikidata: ${resolved}/${attempted} (${Math.round((resolved / attempted) * 100)}%)`,
     `logos saved: ${saved}`,
+    `entity collisions refused: ${collisions}`,
     '',
-    'seat-sum drift (share is of the LISTED total, not the declared one):',
+    'seat-sum drift, and rows whose match was already claimed:',
     ...report,
   ].join('\n')
 )
