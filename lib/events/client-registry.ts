@@ -82,6 +82,9 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   'manhunt-updated': {
     handler: genericUpdateEvent,
   },
+  'government-updated': {
+    handler: genericUpdateEvent,
+  },
   'unique-updated': {
     handler: genericUpdateEvent,
   },

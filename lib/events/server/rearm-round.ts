@@ -5,6 +5,7 @@ import { rearmBorderChain } from './chain-turns'
 import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
 import { rearmManhunt } from './manhunt-beats'
+import { rearmGovernment } from './government-beats'
 import { rearmSeatExits } from './seat-exits'
 import { rearmTimeline } from './timeline-turns'
 import { rearmCleanSweep } from './sweep-beats'
@@ -52,6 +53,7 @@ export const rearmLiveRound = (
   rearmHeritageHunt(ctx, game)
   rearmTimeline(ctx, game)
   rearmManhunt(ctx, game, options)
+  rearmGovernment(ctx, game, options)
   rearmUniqueOrBust(ctx, game, options)
   rearmCleanSweep(ctx, game, options)
   rearmClassicRound(ctx, game)

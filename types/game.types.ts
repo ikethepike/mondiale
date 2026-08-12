@@ -104,6 +104,10 @@ export interface GroupChallengeAnswer {
   /** Ghosts-of-empires rounds: the beat-1 name verdict, for the scorecard.
    *  `id` keys EMPIRES; absent when the player never buzzed. */
   empireGuess?: { id?: string; correct: boolean }
+  /** Government rounds: how each beat went, for the scorecard. The answers are
+   *  party names and seat counts rather than countries, so they cannot ride
+   *  `submitted`/`correct` — those are ISO codes by type. */
+  governmentBeats?: { beat: 'party' | 'seats' | 'sides'; scored: number; maximum: number }[]
   /** Buzz rounds: the clock fraction left when the player buzzed, for the
    *  reveal's buzz race. Absent when the player never buzzed. Reveal-only —
    *  the score is already settled by then, and inverting `buzzScore` would not

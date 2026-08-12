@@ -98,7 +98,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
-import ViewParliament from '~/components/view/ViewParliament.vue'
+import ViewGovernment from '~/components/view/ViewGovernment.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -114,7 +114,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
 import { partiesWithLogo } from '~~/lib/parties'
-import { dealParliament, PARLIAMENT_SECONDS } from '~~/lib/parliament'
+import { BEAT_SECONDS, dealGovernment } from '~~/lib/government'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -1355,28 +1355,46 @@ const scenarios: Scenario[] = [
         }),
       ]),
   },
-  {
-    id: 'parliament',
-    label: 'Parliament (Sweden — the arc, left to right)',
-    component: ViewParliament,
+  ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
+    id: `government-${beat}`,
+    label: `Government (Sweden — beat ${index + 1}: ${
+      { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
+    })`,
+    component: ViewGovernment,
     build: () => {
-      const deal = dealParliament(
+      const deal = dealGovernment(
         { difficulty: 'normal', variant: 'world', includeMicroNations: false },
         'normal',
         'SE'
       )!
       return mockGame('group-challenge', [
         groupRound({
-          _type: 'parliament-challenge',
+          _type: 'government-challenge',
           country: deal.country,
-          benches: deal.benches,
+          ...(deal.chamber ? { chamber: deal.chamber } : {}),
           totalSeats: deal.totalSeats,
-          durationSeconds: PARLIAMENT_SECONDS,
+          options: deal.options,
+          blocks: deal.blocks,
+          benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+            name,
+            seats,
+            share,
+            ...(color ? { color } : {}),
+            ...(logo ? { logo } : {}),
+          })),
+          sorted: deal.sorted,
           maximumPoints: MAXIMUM_POINTS,
+          state: {
+            beat,
+            turn: index,
+            deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
+            picks: { party: {}, seats: {}, sides: {} },
+            scores: {},
+          },
         }),
       ])
     },
-  },
+  })),
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
     // Ulaanbaatar, Tashkent, Vientiane, Asunción, Windhoek.

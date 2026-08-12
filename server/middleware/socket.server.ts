@@ -22,6 +22,7 @@ import { startGameHandler } from '~~/lib/events/server/start-game.handler'
 import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-final-challenge-answer.handler'
 import { submitChainMoveHandler } from '~~/lib/events/server/submit-chain-move.handler'
 import { submitManhuntMoveHandler } from '~~/lib/events/server/submit-manhunt-move.handler'
+import { submitGovernmentPickHandler } from '~~/lib/events/server/submit-government-pick.handler'
 import { submitManhuntMarkerHandler } from '~~/lib/events/server/submit-manhunt-marker.handler'
 import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
@@ -97,6 +98,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-heritage-pin': {
     handler: submitHeritagePinHandler,
+  },
+  'submit-government-pick': {
+    handler: submitGovernmentPickHandler,
   },
   'submit-manhunt-move': {
     handler: submitManhuntMoveHandler,

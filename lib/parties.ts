@@ -531,7 +531,41 @@ export const alliancesOf = (isoCode: ISOCountryCode): { alliance: string; benche
  * instead ("2023 Polish parliamentary election"), which is not a house, so
  * anything reading like an election is rejected rather than shown.
  */
+/**
+ * What a country calls its lower house.
+ *
+ * The election infobox names one for exactly ONE country (Poland's Sejm) —
+ * everywhere else the field holds the article's title, which `chamberName`
+ * rejects. So the names are curated here: a chamber is renamed roughly never,
+ * and "the Riksdag" is the half of this round worth teaching.
+ *
+ * Only distinctive names earn a row. A country whose house is called the
+ * "National Assembly" or the "House of Representatives" teaches nothing by
+ * being named, and reads worse than "the Swedish chamber".
+ */
+const CHAMBER_NAMES: { [isoCode in ISOCountryCode]?: string } = {
+  DE: 'Bundestag',
+  DK: 'Folketing',
+  ES: 'Congreso de los Diputados',
+  FI: 'Eduskunta',
+  IE: 'Dáil Éireann',
+  IL: 'Knesset',
+  IN: 'Lok Sabha',
+  IS: 'Althing',
+  IT: 'Camera dei Deputati',
+  JP: 'House of Representatives',
+  LT: 'Seimas',
+  LV: 'Saeima',
+  NL: 'Tweede Kamer',
+  NO: 'Storting',
+  PL: 'Sejm',
+  SE: 'Riksdag',
+  UA: 'Verkhovna Rada',
+}
+
 export const chamberName = (isoCode: ISOCountryCode): string | undefined => {
+  const curated = CHAMBER_NAMES[isoCode]
+  if (curated) return curated
   const named = ELECTIONS[isoCode]?.chamber?.trim()
   if (!named || /\belections?\b/i.test(named) || /^\d{4}\b/.test(named)) return undefined
   return named

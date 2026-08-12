@@ -102,8 +102,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Capital-guess's mirror: the same cities, read off the map instead of a
   // photo, so it shares the toggle a table that wants city content flips.
   'star-chart': 'culture',
-  // The chamber round: parties, seats and who sits where.
-  parliament: 'politics',
+  // The chamber round: who governs, how large they are, and who is with them.
+  government: 'politics',
   // 'society' would read closer, but its group is hidden — hidden groups
   // classify stat accessors and can't be toggled, so a round kind filed there
   // could never be switched off. Culture is the visible home for the people.
@@ -146,8 +146,8 @@ export const ANSWER_SHAPE_BY_KIND = {
   // The night's stars, in any order — the answers are cities, but each one
   // scores as the country it belongs to, so the ledger shape is a plain set.
   'star-chart': 'set',
-  // Benches placed onto the arc, in any order.
-  parliament: 'set',
+  // Three beats, each with its own answer; the ledger reads them as a set.
+  government: 'set',
   empire: 'set',
   // A contested set: the seat's claims against the whole board. The ledger
   // marks a rival's claim as taken rather than missed (AnswerLedger's
@@ -196,8 +196,6 @@ export const WRONG_COSTS_A_POINT = new Set<RoundChallengeKind>([
   'highlands',
   'mother-tongue',
   'star-chart',
-  // Grades through blitzScore, whose `- wrong` is literal.
-  'parliament',
 ])
 
 /** Kinds reserved for hard games unless their group is force-enabled. Lives

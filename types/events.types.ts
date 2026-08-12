@@ -118,6 +118,19 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Government: a player's answer to the live beat. One event for all
+       *  three questions — the server branches on the beat it is holding, and
+       *  `turn` echoes the state's beat counter so a pick that arrives late is
+       *  dropped rather than applied to the NEXT question. */
+      event: 'submit-government-pick'
+      turn: number
+      pick: {
+        party?: string
+        seats?: number
+        sides?: Record<string, 'government' | 'opposition'>
+      }
+    }
+  | {
       /** Manhunt: the despot's forced hop. Kind (ground vs sea passage) is
        *  inferred server-side, preferring ground so no charge is wasted.
        *  `turn` echoes the state's beat counter — a retried send can't land
@@ -277,6 +290,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-heritage-pin',
   'submit-timeline-placement',
   'submit-manhunt-move',
+  'submit-government-pick',
   'submit-manhunt-marker',
   'submit-manhunt-subpoena',
   'manhunt-ready',
@@ -350,6 +364,7 @@ export type ServerEventData =
   | { event: 'timeline-updated'; game: Game }
   /** Manhunt: a beat advanced or the round resolved — whole-table state. */
   | { event: 'manhunt-updated'; game: Game }
+  | { event: 'government-updated'; game: Game }
   /** Unique or Bust: the briefing gate, a slot lock, or the collision reveal —
    *  whole-table state. */
   | { event: 'unique-updated'; game: Game }

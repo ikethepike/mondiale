@@ -167,19 +167,6 @@ export const gradeGroupAnswer = async ({
       })
       break
     }
-    case 'parliament': {
-      // The answers are BENCH NAMES, not countries, so this cannot ride
-      // `blitzOn` — but it is the same curve: the placements scale the pot and
-      // a wrong one bites a point. The server re-derives the score from the
-      // dealt benches and never trusts a claimed one; `ranking` carries only
-      // the chamber, so the reveal knows which arc to paint.
-      const challenge = expectChallengeType(roundChallenge, 'parliament-challenge')
-      const askedNames = challenge.benches.filter(bench => bench.asked).map(bench => bench.name)
-      const claimed = submission.parliament?.placed ?? []
-      answer = { submitted: submission.ranking, correct: [challenge.country] }
-      scoring = blitzScore(askedNames, claimed, challenge.maximumPoints)
-      break
-    }
     case 'flashpoint': {
       buzzOn(expectChallengeType(roundChallenge, 'flashpoint-challenge'))
       break

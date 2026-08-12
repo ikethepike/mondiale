@@ -158,7 +158,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'flag-palette': true,
   'capital-guess': true,
   'star-chart': true,
-  parliament: true,
+  government: true,
   flashpoint: true,
   composition: true,
   'ghost-state': true,

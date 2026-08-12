@@ -52,7 +52,7 @@ import type {
   SilhouetteChallenge,
   SketchChallenge,
   StarChartChallenge,
-  ParliamentChallenge,
+  GovernmentChallenge,
   StatDetectiveChallenge,
   TimelineChallenge,
   TongueBuzzChallenge,
@@ -129,7 +129,7 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
-import { dealParliament, PARLIAMENT_SECONDS } from './parliament'
+import { dealGovernment } from './government'
 import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
@@ -1078,19 +1078,50 @@ const getStarChartChallenge = (game: gameTypes.Game): StarChartChallenge | undef
   }
 }
 
-/** Parliament: a chamber's benches, to be dragged onto its arc. */
-const getParliamentChallenge = (game: gameTypes.Game): ParliamentChallenge | undefined => {
-  const deal = dealParliament(game, game.difficulty)
+/**
+ * Government: one chamber, three questions — who governs, how large they are,
+ * and who is with them.
+ *
+ * The answers are stamped onto `state.answers` here and STRIPPED by the engine
+ * before the first beat rides the snapshot; `Game` reaches every socket in the
+ * room, so shipping them with beat 1 would put the answer in the devtools.
+ */
+const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | undefined => {
+  const deal = dealGovernment(game, game.difficulty)
   if (!deal) return undefined
 
   return {
-    _type: 'parliament-challenge',
+    _type: 'government-challenge',
     country: deal.country,
-    benches: deal.benches,
-    totalSeats: deal.totalSeats,
     ...(deal.chamber ? { chamber: deal.chamber } : {}),
-    durationSeconds: PARLIAMENT_SECONDS,
+    totalSeats: deal.totalSeats,
+    options: deal.options,
+    blocks: deal.blocks,
+    benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+      name,
+      seats,
+      share,
+      ...(color ? { color } : {}),
+      ...(logo ? { logo } : {}),
+    })),
+    sorted: deal.sorted,
     maximumPoints: maximumRoundPoints(game),
+    state: {
+      beat: 'party',
+      turn: 0,
+      deadline: 0,
+      picks: { party: {}, seats: {}, sides: {} },
+      scores: {},
+      answers: {
+        governingParty: deal.governingParty,
+        governingSeats: deal.governingSeats,
+        standings: Object.fromEntries(
+          deal.benches.map(bench => [bench.name, bench.standing] as const)
+        ),
+        ...(deal.status ? { status: deal.status } : {}),
+        minority: deal.minority,
+      },
+    },
   }
 }
 
@@ -1890,7 +1921,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'flag-palette': game => getFlagPaletteChallenge(game),
   'capital-guess': game => getCapitalGuessChallenge(game),
   'star-chart': game => getStarChartChallenge(game),
-  parliament: game => getParliamentChallenge(game),
+  government: game => getGovernmentChallenge(game),
   composition: game => getCompositionChallenge(game),
   flashpoint: game => getFlashpointChallenge(game),
   'ghost-state': game => getGhostStateChallenge(game),

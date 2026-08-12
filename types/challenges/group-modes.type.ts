@@ -272,27 +272,78 @@ export interface StarChartChallenge {
  * The whole chamber travels, not just the asked benches: the arc is the
  * picture, and a bloc left out of it would change the shape a player reads.
  */
-export interface ParliamentChallenge {
-  _type: 'parliament-challenge'
+/**
+ * One chamber, asked three questions that build on each other: which party
+ * governs, how many seats it holds, and who else is with it. The beats are a
+ * server-owned sequence — the view renders `state.beat` and never advances it.
+ */
+export interface GovernmentChallenge {
+  _type: 'government-challenge'
   country: ISOCountryCode
+  /** The house, where the data names one — "Sejm", "Chamber of Deputies". */
+  chamber?: string
+  totalSeats: number
+  /** Beat 1's logos, shuffled; exactly one governs. */
+  options: {
+    name: string
+    logo?: string
+    color?: string
+    /** Shown at the reveal, not before — the teaching half of the beat. */
+    ideology?: string
+    grouping?: string
+  }[]
+  /** Beat 2's seat blocks, ascending; exactly one is the true share. */
+  blocks: number[]
+  /** Every bench in seating order, left to right — the arc as drawn. */
   benches: {
     name: string
     seats: number
     /** Of the chamber's total, 0–1. */
     share: number
-    logo?: string
-    /** The party's colour, `#rrggbb` — the first hint rung. */
     color?: string
-    /** Its transnational family (EPP, Progressive Alliance) — a later rung. */
-    grouping?: string
-    /** Placed by the player; the rest are drawn already seated. */
-    asked: boolean
+    logo?: string
   }[]
-  totalSeats: number
-  /** The house, where the data names one — "Sejm", "Chamber of Deputies". */
-  chamber?: string
-  durationSeconds: number
+  /** Beat 3's benches, by name — the ones a player sorts. */
+  sorted: string[]
   maximumPoints: number
+  state: GovernmentState
+}
+
+/**
+ * The answers live on the SERVER's copy only — `dealGovernment` produces them
+ * and the engine strips them from what rides the snapshot, because everything
+ * on `Game` reaches every socket in the room. They come back at the reveal.
+ */
+export interface GovernmentAnswers {
+  governingParty: string
+  governingSeats: number
+  /** Bench name → where it truly stands. */
+  standings: Record<string, 'government' | 'backing' | 'opposition'>
+  /** `minority government` … as the cabinet phrases it. */
+  status?: string
+  /** The government holds power without holding half the seats. */
+  minority: boolean
+}
+
+export interface GovernmentState {
+  /** Which question is live — what the view renders. */
+  beat: 'party' | 'seats' | 'sides'
+  /** Monotonic beat counter — timeout token AND submit idempotency key.
+   *  Increments on EVERY beat transition, mirroring manhunt's `turn`. */
+  turn: number
+  /** Epoch ms the live beat expires; client shot clocks render from it. */
+  deadline: number
+  /** Per beat, per player: what they answered. Absent means they never did. */
+  picks: {
+    party: Record<string, string>
+    seats: Record<string, number>
+    sides: Record<string, Record<string, 'government' | 'opposition'>>
+  }
+  /** Points banked per player, summed as the beats resolve. */
+  scores: Record<string, number>
+  /** The answers, revealed only once the last beat resolves. */
+  answers?: GovernmentAnswers
+  finished?: boolean
 }
 
 /** Only a flag's colour swatches are shown — name the country (live guesses). */
@@ -947,7 +998,7 @@ export type GroupModeChallenge =
   | FlagPaletteChallenge
   | CapitalGuessChallenge
   | StarChartChallenge
-  | ParliamentChallenge
+  | GovernmentChallenge
   | FlashpointChallenge
   | CompositionChallenge
   | GhostStateChallenge

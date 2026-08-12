@@ -10,6 +10,11 @@ import {
 } from './heritage-beats'
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
+import {
+  isGovernmentChallenge,
+  scheduleGovernmentTimeout,
+  startGovernment,
+} from './government-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
@@ -312,6 +317,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       if (isAtlasChallenge(revealed)) startAtlasClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
+      if (isGovernmentChallenge(revealed)) startGovernment(revealed)
       // Everything else is a classic round: the SAME contract, one level up —
       // the play window stamps onto the round itself, and the settle backstop
       // banks whoever never answers.
@@ -337,6 +343,9 @@ export const enterMovementPhaseHandler = defineGameHandler(
       }
       if (isManhuntChallenge(revealed) && !revealed.state.finished) {
         scheduleManhuntTimeout({ io, redis, socket, eventTarget }, revealed)
+      }
+      if (isGovernmentChallenge(revealed) && !revealed.state.finished) {
+        scheduleGovernmentTimeout({ io, redis, socket, eventTarget }, revealed)
       }
       // Unique or Bust opens on its briefing (deadline stays 0) — this arms
       // the reading cap; the writing clock stamps when the table is briefed.

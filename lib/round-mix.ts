@@ -49,7 +49,7 @@ export const ROUND_WEIGHTS = {
   'star-chart': 0.06,
   // Deals from 39 chambers — a real pool, but the arc is a heavier read than
   // a photo, so it sits with the other considered rounds rather than the staples.
-  parliament: 0.06,
+  government: 0.06,
   composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
@@ -146,7 +146,7 @@ export const MECHANIC_BY_KIND = {
   timeline: 'order',
   sketch: 'draw',
   // Drag a party onto its block on the arc.
-  parliament: 'match',
+  government: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**
