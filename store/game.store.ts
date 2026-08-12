@@ -92,6 +92,9 @@ interface GameStoreState {
     seaLinks: string[]
     /** Countries faded to half strength — off the current board. */
     dimmed: ISOCountryCode[]
+    /** The inverse: keep THESE lit and fade everything else. Rulers' stage —
+     *  a handful of countries in play against a receded world. */
+    spotlight: ISOCountryCode[]
     /** Countries whose fill breathes toward yellow — the Border Chain head. */
     pulsing: ISOCountryCode[]
     /** Stagger grouped fills by position — Border Chain's replay gradient. */
@@ -225,6 +228,7 @@ export const useGameStore = defineStore('game', {
       seaLinks: [],
       staggered: false,
       dimmed: [],
+      spotlight: [],
       pulsing: [],
       atlasMode: false,
       zoomOut: undefined,

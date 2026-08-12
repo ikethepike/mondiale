@@ -240,7 +240,7 @@ const scoreboard = computed(() =>
   display: grid;
   align-content: start;
   gap: 0.75rem;
-  width: min(94vw, 40rem);
+  width: min(94vw, 46rem);
   max-height: 100%;
   margin-inline: auto;
   overflow-y: auto;
@@ -254,7 +254,7 @@ const scoreboard = computed(() =>
 .card {
   @include caption-surface($cardRadius);
 
-  padding: 0.85rem 1rem;
+  padding: 1.1rem 1.25rem;
 }
 
 .take {
@@ -269,8 +269,8 @@ const scoreboard = computed(() =>
 }
 
 .take-sub {
-  font-size: 0.9rem;
-  opacity: 0.75;
+  font-size: 1.05rem;
+  opacity: 0.8;
 }
 
 .panel-head {
@@ -290,7 +290,9 @@ const scoreboard = computed(() =>
 
   .seat {
     position: absolute;
-    width: 1.7%;
+    // The arc IS the reveal's subject — at 1.7% the chamber read as a faint
+    // dotted outline rather than a house you can count.
+    width: 2.3%;
     aspect-ratio: 1;
     border-radius: 50%;
     background: ink(0.22);
@@ -305,7 +307,7 @@ const scoreboard = computed(() =>
     &.backing {
       background: ink(0.85);
       // The backers are WITH the government but not of it — same hue, hollow.
-      box-shadow: inset 0 0 0 0.12rem #{ink(0.85)};
+      box-shadow: inset 0 0 0 0.16rem #{ink(0.85)};
       background: transparent;
     }
 
@@ -339,8 +341,8 @@ const scoreboard = computed(() =>
 .majority-label {
   position: absolute;
   bottom: -0.1rem;
-  left: 0.3rem;
-  font-size: 0.65rem;
+  left: 0.35rem;
+  font-size: 0.8rem;
   white-space: nowrap;
   opacity: 0.7;
 }
@@ -356,12 +358,12 @@ const scoreboard = computed(() =>
 .legend-head {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
+  gap: 0.5rem;
+  font-size: 1.05rem;
 }
 
 .legend-dot {
-  width: 0.7rem;
+  width: 0.85rem;
   aspect-ratio: 1;
   border-radius: 50%;
   background: ink(0.22);
@@ -398,10 +400,10 @@ const scoreboard = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.2rem 0.45rem;
-  border: 1px solid ink(0.12);
+  padding: 0.32rem 0.6rem;
+  border: 1px solid ink(0.14);
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   // NOT the shared `chip-in`: that one ends at translate(-50%, -50%) because
   // it animates absolutely-positioned map chips onto a point. On a chip laid
   // out in flow it leaves a permanent half-width shift, which walked these
@@ -417,13 +419,13 @@ const scoreboard = computed(() =>
 }
 
 .party-logo {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.5rem;
+  height: 1.5rem;
   object-fit: contain;
 }
 
 .party-swatch {
-  width: 0.6rem;
+  width: 0.8rem;
   aspect-ratio: 1;
   border-radius: 50%;
 }
@@ -436,8 +438,8 @@ const scoreboard = computed(() =>
   margin: 0.75rem 0 0;
   padding-top: 0.6rem;
   border-top: $hairline;
-  font-size: 0.85rem;
-  line-height: 1.45;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .score-rows {
@@ -451,8 +453,8 @@ const scoreboard = computed(() =>
 .score-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
   border-radius: 0.5rem;
 
   &.mine {
@@ -461,12 +463,12 @@ const scoreboard = computed(() =>
 }
 
 .score-pawn {
-  width: 1.3rem;
+  width: 1.7rem;
 }
 
 .score-name {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
 .score-beats {
@@ -475,10 +477,10 @@ const scoreboard = computed(() =>
 }
 
 .score-pip {
-  padding: 0.1rem 0.35rem;
+  padding: 0.22rem 0.5rem;
   border: 1px solid ink(0.15);
   border-radius: 999px;
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   opacity: 0.45;
 
   &.won {
@@ -493,6 +495,9 @@ const scoreboard = computed(() =>
 }
 
 .score-total {
+  min-width: 2.4rem;
+  font-size: 1.25rem;
   font-weight: 600;
+  text-align: right;
 }
 </style>

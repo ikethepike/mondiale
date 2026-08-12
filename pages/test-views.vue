@@ -111,9 +111,16 @@ import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
+import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
-import { governingParty, impostorParties, partiesWithLogo } from '~~/lib/parties'
+import {
+  countriesWithGoverningLogo,
+  governingParty,
+  impostorParties,
+  partiesWithLogo,
+} from '~~/lib/parties'
 import {
   BEAT_POINTS,
   BEAT_SECONDS,
@@ -3431,8 +3438,30 @@ const scenarios: Scenario[] = [
       // the harness assembles one deal from the same lib helpers the dealer
       // uses. The impostor test is the LOGO FILE, exactly as `impostorParties`
       // does it.
-      const lineup: ISOCountryCode[] = ['AT', 'CZ', 'SK', 'HU', 'SI']
-      const victim: ISOCountryCode = 'SK'
+      // Grown from the eligible pool by proximity, exactly as `dealRulers`
+      // does: a hardcoded neighbourhood lights countries nobody can answer
+      // (Hungary's government carries no logo, Slovenia's does not resolve).
+      const seed: ISOCountryCode = 'AT'
+      const near = (isoCode: ISOCountryCode) => {
+        const box = MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS]
+        const from = MAP_BOUNDS[seed as keyof typeof MAP_BOUNDS]
+        return box && from ? Math.hypot(box[0] - from[0], box[1] - from[1]) : Infinity
+      }
+      // The SAME labelability gate the logo layer applies — without it the
+      // nearest neighbours include Liechtenstein and Luxembourg, which are too
+      // small to carry a logo and render as lit-but-empty countries.
+      const lineup = countriesWithGoverningLogo()
+        .filter(isoCode =>
+          isLabelableBox(
+            labelBoxFor(
+              MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS],
+              MAP_REGIONS[isoCode as keyof typeof MAP_REGIONS]
+            )
+          )
+        )
+        .sort((a, b) => near(a) - near(b))
+        .slice(0, 5)
+      const victim = lineup[1]!
       const impostor = impostorParties(victim)[0]
       const logos = Object.fromEntries(
         lineup.flatMap(isoCode => {

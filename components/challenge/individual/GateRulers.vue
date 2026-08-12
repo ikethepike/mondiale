@@ -49,6 +49,10 @@ onMounted(() => {
   if (!rulers) return
   gameStore.map.focus = [...rulers.lineup]
   gameStore.map.countryLogos = { ...rulers.logos }
+  // Everything not in play fades back. That is what separates the stage from
+  // the map — a card behind each logo read as a box sitting ON the world
+  // rather than a party sitting IN a country.
+  gameStore.map.spotlight = [...rulers.lineup]
   document.addEventListener('mapClick', onMapClick)
 })
 onBeforeUnmount(() => {
@@ -66,6 +70,9 @@ const restoreStage = () => {
   if (rulers) {
     gameStore.map.countryLogos = { ...rulers.logos, ...(rulers.trueLogo ?? {}) }
   }
+  // The world comes back for the reveal — the answer reads against the whole
+  // map, not a spotlit corner of it.
+  gameStore.map.spotlight = []
   return undefined
 }
 
@@ -96,3 +103,20 @@ const onMapClick = (event: Event) => {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.hint {
+  display: inline-block;
+  padding: 0.4rem 1.4rem;
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+
+  &.visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+</style>

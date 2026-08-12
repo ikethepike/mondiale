@@ -339,6 +339,14 @@ const props = defineProps({
   },
   /** Countries faded to half strength — off the current board (Border Chain
    *  on a continental variant). */
+  /** Countries to keep at full strength while EVERYTHING else fades — the
+   *  inverse of `dimmed`, for a stage whose subject is a handful of countries
+   *  (Rulers). Computed here because the map already holds the country list;
+   *  a view inverting it would pull 400KB of geometry into its own bundle. */
+  spotlight: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   dimmed: {
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
@@ -422,7 +430,11 @@ const highlights = computed(() =>
   [...props.highlighted, props.highlightCountry, clicked.value].filter(Boolean)
 )
 
-const dimmedSet = computed(() => new Set<string>(props.dimmed))
+const dimmedSet = computed(() => {
+  if (!props.spotlight.length) return new Set<string>(props.dimmed)
+  const lit = new Set<string>(props.spotlight)
+  return new Set<string>(Object.keys(MAP_BOUNDS).filter(code => !lit.has(code)))
+})
 const pulsingSet = computed(() => new Set<string>(props.pulsing))
 const unselectableSet = computed(() => new Set<string>(props.unselectable))
 
@@ -1115,12 +1127,12 @@ const ensureLabels = () => {
  * How much of a country's inscribed circle a logo may fill. Under 1 so the
  * artwork sits INSIDE the landmass rather than touching its border.
  */
-const LOGO_ANCHOR_FILL = 1.7
+const LOGO_ANCHOR_FILL = 2.4
 /** Drawn side in map units, clamped: the inscribed radius runs from 0.2
  *  (San Marino) to 61 (Russia), so raw proportional sizing would be invisible
  *  on half the roster and swamp the frame on the other half. */
-const LOGO_MIN_SIDE = 7
-const LOGO_MAX_SIDE = 26
+const LOGO_MIN_SIDE = 13
+const LOGO_MAX_SIDE = 40
 
 let builtLogoKey: string | undefined
 
@@ -1132,8 +1144,12 @@ let builtLogoKey: string | undefined
  * The logo is CENTRED at the pole of inaccessibility and fitted with
  * `xMidYMid meet`, never clipped to the landmass. A party logo is a wordmark
  * drawn for a white page; shearing it to an irregular coastline would destroy
- * the one thing a player is being asked to read. A soft scrim behind it does
- * the work of sitting the artwork on the land.
+ * the one thing a player is being asked to read.
+ *
+ * Nothing is drawn behind it. A scrim card read as a box sitting ON the map
+ * rather than a logo sitting IN a country — the separation the stage wants
+ * comes from dimming everything that is not in play (`map.dimmed`), which is
+ * quieter and leaves the coastlines legible.
  */
 const ensureLogos = () => {
   if (!svg.value) return
@@ -1163,15 +1179,6 @@ const ensureLogos = () => {
       Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL)
     )
     const [x, y] = anchor.point
-
-    const scrim = document.createElementNS(SVG_NS, 'rect')
-    scrim.setAttribute('x', String(x - side / 2))
-    scrim.setAttribute('y', String(y - side / 2))
-    scrim.setAttribute('width', String(side))
-    scrim.setAttribute('height', String(side))
-    scrim.setAttribute('rx', String(side * 0.16))
-    scrim.classList.add('country-logo-scrim')
-    layer.appendChild(scrim)
 
     const image = document.createElementNS(SVG_NS, 'image')
     image.setAttribute('href', href)
@@ -2601,13 +2608,6 @@ path[id]:hover,
 // Rulers' logo register. Unlike the labels these are sized in MAP units, so
 // they scale with the camera and need no settle gate — they are correct at
 // every zoom by construction, and simply fade in with the stage.
-:deep(.country-logo-scrim) {
-  fill: var(--off-white);
-  opacity: 0.82;
-  stroke: var(--dark-blue);
-  stroke-opacity: 0.18;
-  stroke-width: 0.35;
-}
 :deep(.country-logo-image) {
   // The artwork is the answer; nothing should tint or dim it.
   opacity: 1;
