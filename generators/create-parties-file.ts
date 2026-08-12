@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { extname } from 'node:path'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
 import { decodeHtmlEntitiesDeep } from '../lib/generators/factbook'
@@ -61,6 +62,8 @@ const PUBLIC_BASE = 'parties'
 const REPORT_FILE = 'generators/data/parties-report.txt'
 /** Logos are wordmarks — they read at a fraction of a portrait's width. */
 const LOGO_WIDTH = 512
+/** Under this an image is flat colour — a flag, not a party mark. */
+const FLAT_IMAGE_BYTES = 1100
 /** Q7278 = political party; the P31 gate that rejects court cases and coalitions. */
 const POLITICAL_PARTY = 'Q7278'
 /** Listed seats vs the declared chamber size may differ by this much before
@@ -107,8 +110,7 @@ const slimClaims = (claims: { [property: string]: Snak[] }): { [property: string
     ])
   )
 type CachedMatch =
-  | { qid: string; claims: { [property: string]: Snak[] }; label?: string }
-  | { miss: true }
+  { qid: string; claims: { [property: string]: Snak[] }; label?: string } | { miss: true }
 const matchKeyFor = (
   name: string,
   endonym: string | undefined,
@@ -302,7 +304,17 @@ const matchKey = (name: string, demonyms: string[] = []) => {
 }
 
 /** Rows the Factbook uses to balance a seat table that are not parties. */
-const NOT_A_PARTY = /^(other|others|independents?|vacant|appointed|nominated|unaffiliated)$/i
+/**
+ * Rows the Factbook prints in a party list that are not parties: the balancing
+ * "Other"/"Independents" lines of a seat table, and the placeholders a country
+ * with no party politics gets ("none" is the Vatican's entire roster).
+ *
+ * Applied to the ROSTER as well as the seat table. It was only ever tested
+ * against seats, so "none", "Independents" and "Independent" shipped as
+ * dealable subjects — a mode could ask which country "none" governs.
+ */
+const NOT_A_PARTY =
+  /^(other|others|independents?|vacant|appointed|nominated|unaffiliated|none|n\/a|various)$/i
 
 // --- Wikidata ---------------------------------------------------------------
 
@@ -349,6 +361,19 @@ const openClaimIds = (
     })
     .filter((id): id is string => !!id)
 
+/**
+ * Party colours (P465), hex only.
+ *
+ * Wikidata's colour property is free text often enough to matter: Moldova's
+ * National Alternative Movement carries "dark green", which reaches a view as
+ * `background: #dark green` and silently paints nothing. A swatch that fails
+ * to render is worse than a party with no colour, because the view has already
+ * decided to show one.
+ */
+const HEX_COLOUR = /^[0-9A-Fa-f]{6}$/
+const claimColours = (claims: { [property: string]: Snak[] } | undefined): string[] =>
+  claimStrings(claims, 'P465').filter(value => HEX_COLOUR.test(value))
+
 const claimStrings = (
   claims: { [property: string]: Snak[] } | undefined,
   property: string
@@ -361,7 +386,11 @@ const yearOf = (claims: { [property: string]: Snak[] } | undefined): number | un
   const value = claims?.P571?.[0]?.mainsnak?.datavalue?.value
   const time = typeof value === 'object' ? value?.time : undefined
   const year = /^[+-](\d{4})/.exec(time ?? '')?.[1]
-  return year ? Number(year) : undefined
+  const founded = year ? Number(year) : undefined
+  // Yemen's Nasserist Unionist People's Organization carried "25". The oldest
+  // real party is Britain's Tories; anything before the 1700s is a bad claim
+  // or a bad parse, and a reveal reading "founded in 25" is nonsense on screen.
+  return founded && founded >= 1700 ? founded : undefined
 }
 
 /**
@@ -403,7 +432,10 @@ const firstAcceptable = (
   qids: string[],
   entities: EntityResponse | undefined,
   countryQid: string,
-  taken?: ReadonlySet<string>
+  taken?: ReadonlySet<string>,
+  /** The name being resolved, for the label check. Absent on callers that
+   *  cannot supply one — they keep the old behaviour. */
+  wanted?: { name: string; isoCode: ISOCountryCode }
 ): PartyMatch | undefined => {
   for (const qid of qids) {
     const claims = entities?.entities?.[qid]?.claims
@@ -419,9 +451,22 @@ const firstAcceptable = (
     // wearing one logo and one ideology. Skipping a claimed id lets the second
     // row fall through to its next-best candidate, or miss honestly.
     if (taken?.has(qid)) continue
-    return { qid, claims, ...(entities?.entities?.[qid]?.labels?.en?.value
-      ? { label: entities.entities[qid]!.labels!.en!.value }
-      : {}) }
+    // NO minimum-fit gate here, deliberately. It looks obvious — Wikidata's
+    // search answered Norway's "Labor Party" with the RED Party — but 275 of
+    // 1,703 matches score zero against their label and MOST of those are
+    // right: `Vlaams Belang` → "Flemish Interest", `Orinats Yerkir` → "Rule of
+    // Law", `Francophone Federalist Democrats` → "DéFI". The label is often a
+    // TRANSLATION, so a fit floor punishes exactly the endonym cases this
+    // matcher exists to handle. Tried at 0.2: it cost 68 logos to prevent 3
+    // bad matches. Fit still decides a CONTESTED entity (see `labelFit`),
+    // where both claimants are judged on the same scale.
+    return {
+      qid,
+      claims,
+      ...(entities?.entities?.[qid]?.labels?.en?.value
+        ? { label: entities.entities[qid]!.labels!.en!.value }
+        : {}),
+    }
   }
   return undefined
 }
@@ -442,7 +487,8 @@ const claimsFor = async (qids: string[]): Promise<EntityResponse | undefined> =>
 const searchOnce = async (
   term: string,
   countryQid: string,
-  taken?: ReadonlySet<string>
+  taken?: ReadonlySet<string>,
+  wanted?: { name: string; isoCode: ISOCountryCode }
 ): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
@@ -453,7 +499,7 @@ const searchOnce = async (
   if (!hits.length) return undefined
   await wait(120)
 
-  return firstAcceptable(hits, await claimsFor(hits), countryQid, taken)
+  return firstAcceptable(hits, await claimsFor(hits), countryQid, taken, wanted)
 }
 
 /**
@@ -470,7 +516,8 @@ const searchViaWikipedia = async (
   name: string,
   countryName: string,
   countryQid: string,
-  taken?: ReadonlySet<string>
+  taken?: ReadonlySet<string>,
+  wanted?: { name: string; isoCode: ISOCountryCode }
 ): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
@@ -495,7 +542,7 @@ const searchViaWikipedia = async (
     .filter((qid): qid is string => !!qid)
   if (!qids.length) return undefined
 
-  return firstAcceptable(qids, await claimsFor(qids), countryQid, taken)
+  return firstAcceptable(qids, await claimsFor(qids), countryQid, taken, wanted)
 }
 
 const resolveParty = async (
@@ -504,16 +551,19 @@ const resolveParty = async (
   countryQid: string,
   countryName: string,
   /** Entities already claimed by an earlier party in THIS country. */
-  taken: ReadonlySet<string>
+  taken: ReadonlySet<string>,
+  /** The country being resolved for, so a hit can be judged against its label. */
+  isoCode?: ISOCountryCode
 ): Promise<PartyMatch | undefined> => {
+  const wanted = isoCode ? { name, isoCode } : undefined
   // The endonym goes FIRST: Wikidata files parties under their native name, so
   // "Centerpartiet" resolves where the Factbook's "Center Party" finds nothing.
   for (const term of [endonym, name].filter((value): value is string => !!value)) {
-    const match = await searchOnce(term, countryQid, taken)
+    const match = await searchOnce(term, countryQid, taken, wanted)
     if (match) return match
   }
   // Last resort, and only for names Wikidata's own search could not place.
-  return searchViaWikipedia(name, countryName, countryQid, taken)
+  return searchViaWikipedia(name, countryName, countryQid, taken, wanted)
 }
 
 /** Resolve the Q-ids an enriched party points at (ideologies, position) to
@@ -595,6 +645,8 @@ let cacheHits = 0
 let liveLookups = 0
 /** Rows whose best match was already claimed by an earlier party. */
 let collisions = 0
+/** Logos rejected as flat flags rather than party marks. */
+let flatLogos = 0
 /** `${iso}|${qid}` → Commons filename, collected during the roster pass. */
 const logoFiles = new Map<string, string>()
 
@@ -653,6 +705,7 @@ for (const { isoCode, url } of successfulCombinations) {
    */
   const claims: { party: Party; match: PartyMatch }[] = []
   for (const { name, endonym, abbreviation } of partyNames(roster)) {
+    if (NOT_A_PARTY.test(name.trim())) continue
     attempted += 1
     const seats = seatsByKey.get(matchKey(name, demonyms))
     const party: Party = {
@@ -677,11 +730,16 @@ for (const { isoCode, url } of successfulCombinations) {
         endonym,
         countryQid,
         COUNTRIES[isoCode]?.name.english ?? isoCode,
-        new Set()
+        new Set(),
+        isoCode
       )
       // Cache the MISS too — it cost a full search plus an entity fetch.
       matchCache[cacheKey] = match
-        ? { qid: match.qid, claims: slimClaims(match.claims), ...(match.label ? { label: match.label } : {}) }
+        ? {
+            qid: match.qid,
+            claims: slimClaims(match.claims),
+            ...(match.label ? { label: match.label } : {}),
+          }
         : { miss: true }
       liveLookups += 1
     }
@@ -718,7 +776,7 @@ for (const { isoCode, url } of successfulCombinations) {
     if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
     const ideologies = claimIds(match.claims, 'P1142')
     const position = claimIds(match.claims, 'P1387')[0]
-    const colors = claimStrings(match.claims, 'P465')
+    const colors = claimColours(match.claims)
     const founded = yearOf(match.claims)
     const groupings = openClaimIds(match.claims, 'P463')
     if (ideologies.length) party.ideologies = ideologies
@@ -815,7 +873,8 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
         undefined,
         countryQid,
         COUNTRIES[isoCode]?.name.english ?? isoCode,
-        claimedQids
+        claimedQids,
+        isoCode
       )
       matchCache[cacheKey] = match
         ? {
@@ -841,7 +900,7 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
     if (logoFile) logoFiles.set(`${isoCode}|${match.qid}`, logoFile)
     const ideologies = claimIds(match.claims, 'P1142')
     const position = claimIds(match.claims, 'P1387')[0]
-    const colors = claimStrings(match.claims, 'P465')
+    const colors = claimColours(match.claims)
     const founded = yearOf(match.claims)
     const groupings = openClaimIds(match.claims, 'P463')
 
@@ -1006,6 +1065,19 @@ let saved = 0
     )
     if (!path) continue
 
+    // Wikidata's P154 sometimes points at a party's FLAG rather than its
+    // emblem, and a bare tricolour is not a mark anyone can read — Sudan's
+    // Democratic Unionist Party and Honduras' Liberal Party both saved as
+    // plain three-band flags. Flat colour compresses to almost nothing, so the
+    // encoded size is the tell: real wordmarks start around 1.2KB (Chile's
+    // "evópoli" is 1,262 bytes) where these land at 544 and 654.
+    const bytes = statSync(`${OUTPUT_DIRECTORY}/${slug}${extname(path)}`).size
+    if (bytes < FLAT_IMAGE_BYTES) {
+      report.push(`${entry.iso}: "${entry.party.name}" logo is ${bytes}B — a flag, not a mark`)
+      flatLogos += 1
+      continue
+    }
+
     entry.party.logo = path
     saved += 1
     const credit = await captureImageCredit(file, previousParty)
@@ -1077,6 +1149,7 @@ writeFileSync(
     `matched to Wikidata: ${resolved}/${attempted} (${Math.round((resolved / attempted) * 100)}%)`,
     `logos saved: ${saved}`,
     `entity collisions refused: ${collisions}`,
+    `flag-not-a-logo images refused: ${flatLogos}`,
     '',
     'seat-sum drift, and rows whose match was already claimed:',
     ...report,

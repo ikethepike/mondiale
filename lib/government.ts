@@ -3,6 +3,7 @@ import {
   chambersWithCabinet,
   chamberName,
   chamberSeats,
+  governingParty,
   type Bench,
 } from './parties'
 import { playableCountries } from './game-rules'
@@ -196,9 +197,22 @@ const buildDeal = (
   const everyBench = [...standings.government, ...standings.backing, ...standings.opposition]
   if (everyBench.length < MIN_BENCHES) return undefined
 
-  // The government's LARGEST bench is the party a citizen would name — the
-  // prime minister's own. A junior coalition partner is a different question.
-  const leader = [...standings.government].sort((a, b) => b.seats - a.seats)[0]
+  // The party a citizen would name is the PRIME MINISTER'S, and that is the
+  // leader join — not the largest government bench, which is only usually the
+  // same thing. Finland's cabinet list omits Orpo's National Coalition Party
+  // altogether, so "largest" answered the Finns Party; Indonesia's answered
+  // Golkar where the president leads Gerindra. Both were wrong on screen.
+  //
+  // Falling back to the largest bench keeps a chamber dealable when the leader
+  // join finds nothing, which is a gap rather than a contradiction.
+  const governing = governingParty(country)
+  const leader = standings.government.find(bench => governing && bench.party === governing)
+  // No fallback. Where the cabinet list does not contain the leader's own
+  // party, the two sources genuinely disagree about who governs — Finland's
+  // cabinet omits Orpo's National Coalition Party, so the largest bench is the
+  // Finns Party, and Indonesia's answered Golkar where the president leads
+  // Gerindra. Dealing the largest bench there teaches a falsehood, and a
+  // chamber we skip is only a smaller pool.
   if (!leader?.party?.logo) return undefined
 
   // Impostors come from the same chamber and must be tellable apart: a bench

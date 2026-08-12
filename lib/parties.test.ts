@@ -6,6 +6,7 @@ import {
   chambersWithCabinet,
   countriesInGrouping,
   governingParty,
+  impostorParties,
   oppositionParties,
   partiesOf,
   partiesWithLogo,
@@ -143,9 +144,9 @@ describe('benchStandings', () => {
     for (const isoCode of chambersWithCabinet()) {
       const standings = benchStandings(isoCode)!
       expect(standings.government.length).toBeGreaterThan(0)
-      expect(
-        standings.government.reduce((total, bench) => total + bench.seats, 0)
-      ).toBeGreaterThan(0)
+      expect(standings.government.reduce((total, bench) => total + bench.seats, 0)).toBeGreaterThan(
+        0
+      )
     }
   })
 
@@ -158,6 +159,37 @@ describe('benchStandings', () => {
 // sits under that because Wikipedia renames cabinet articles as governments
 // change, but a collapse means the party-name reader broke.
 const CABINET_JOIN_FLOOR = 15
+
+describe('impostorParties', () => {
+  // Rulers deals an impostor as "the party that does NOT govern here". A
+  // coalition partner dealt there makes the question's answer false, and
+  // `oppositionParties` excludes only the leader's own party — seventeen
+  // candidates were genuinely in government, Finland's Finns Party among them.
+  it('never offers a party that is in government or backing it', () => {
+    for (const isoCode of chambersWithCabinet()) {
+      const standings = benchStandings(isoCode)!
+      const inside = new Set(
+        [...standings.government, ...standings.backing].flatMap(bench =>
+          bench.party ? [bench.party] : []
+        )
+      )
+      for (const impostor of impostorParties(isoCode)) {
+        expect(inside.has(impostor), `${isoCode}: ${impostor.name} governs`).toBe(false)
+      }
+    }
+  })
+
+  // A logo identical to the government's own is a question with no answer.
+  it("never offers the governing party's own logo", () => {
+    for (const isoCode of chambersWithCabinet()) {
+      const governing = governingParty(isoCode)
+      for (const impostor of impostorParties(isoCode)) {
+        expect(impostor.logo).toBeTruthy()
+        expect(impostor.logo).not.toBe(governing?.logo)
+      }
+    }
+  })
+})
 
 describe('partySpectrum', () => {
   it('collapses onto the five bands', () => {
@@ -204,15 +236,17 @@ describe('benchesOf', () => {
   })
 })
 
-// 18.5% of benches are orphans today: independents, unnamed alliances, and the
+// ~26% of benches are orphans today: independents, unnamed alliances, and the
 // parties Wikidata files under a name the Factbook roster never lists (Iraq's
-// Sadrist Movement and Progress Party are most of one chamber).
+// Sadrist Movement and Progress Party are most of one chamber). It ROSE when
+// 21 stale elections were refreshed — a chamber that just voted seats parties
+// the Factbook's roster has not caught up with.
 //
 // This ROSE from 9% when one Wikidata entity was allowed only one party. That
 // is the fix working, not a regression: a bench that "joined" by sharing
 // another party's entity was wearing that party's logo and ideology. An honest
 // orphan is better than a bench dressed as someone else.
-const BENCH_ORPHAN_CEILING = 0.24
+const BENCH_ORPHAN_CEILING = 0.3
 
 describe('seatingOrder', () => {
   const rankOf = (bench: { party?: Party }) => spectrumRank(bench.party)

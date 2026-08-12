@@ -1,7 +1,8 @@
-parties: 2131 across 192 countries
-matched to Wikidata: 1406/2042 (69%)
-logos saved: 737
-entity collisions refused: 215
+parties: 2137 across 192 countries
+matched to Wikidata: 1406/2038 (69%)
+logos saved: 736
+entity collisions refused: 214
+flag-not-a-logo images refused: 2
 
 seat-sum drift, and rows whose match was already claimed:
 AL: "Social Democratic Party" also resolved to Q642882 — "Socialist Party" fits "Socialist Party of Albania" better, left bare
@@ -58,7 +59,6 @@ CY: "National Popular Front" also resolved to Q2748384 — "Democratic Front" fi
 CY: "Democratic Party" also resolved to Q816863 — "Democratic Party" fits "Democratic Party (Cyprus)" better, left bare
 CY: "People's Party" also resolved to Q816863 — "Democratic Party" fits "Democratic Party (Cyprus)" better, left bare
 CY: "Cyprus Socialist Party" also resolved to Q259800 — "Movement of Social Democrats EDEK" fits "Movement for Social Democracy" better, left bare
-CZ: "Independents" also resolved to Q1586610 — "Mayors and Independents" fits "Mayors and Independents" better, left bare
 DM: listed seats 21 vs declared 32 (34% apart) — shares are of the listed total
 DO: "Alliance for Democracy" also resolved to Q2511535 — "Dominican Liberation Party" fits "Dominican Liberation Party" better, left bare
 DO: "People's First Party" also resolved to Q2511535 — "Dominican Liberation Party" fits "Dominican Liberation Party" better, left bare
@@ -226,3 +226,5 @@ XK: listed seats 10 vs declared 120 (92% apart) — shares are of the listed tot
 XK: "New Democratic Party" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
 XK: "New Democratic Initiative of Kosovo" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
 XK: "Vakat Coalition" also resolved to Q106570618 — "Social Democratic Union" fits "Social Democratic Union" better, left bare
+HN: "Liberal Party" logo is 654B — a flag, not a mark
+SD: "Democratic Unionist Party" logo is 544B — a flag, not a mark

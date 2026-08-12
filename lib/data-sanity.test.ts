@@ -108,6 +108,22 @@ describe('elections.gen', () => {
     }
   })
 
+  // A "share of the vote" that is not a share of the NATIONAL vote is a lie a
+  // mode would plot: Croatia's reserved minority seats print their own
+  // constituency's share (89%, 100%) and Denmark's Faroese and Greenlandic
+  // parties their own territory's, which summed the field to 199% and 390%.
+  it('keeps vote shares national', () => {
+    for (const chamber of chambers) {
+      const shares = (chamber?.parties ?? []).flatMap(party =>
+        party.votePct !== undefined ? [party.votePct] : []
+      )
+      if (!shares.length) continue
+      const sum = shares.reduce((total, share) => total + share, 0)
+      expect(sum, chamber?.article).toBeLessThanOrEqual(101)
+      for (const share of shares) expect(share).toBeLessThanOrEqual(100)
+    }
+  })
+
   // The cabinet is the only source for who GOVERNS as opposed to who won seats.
   it('reads a live cabinet for a healthy share of the chambers', () => {
     const cabinets = chambers.filter(chamber => chamber?.cabinet)
@@ -214,6 +230,36 @@ describe('parties.gen', () => {
 
   // The roster is the Factbook's; commentary filed under "Political parties"
   // ("the Taliban Government enforces…") is prose, not a dealable subject.
+  // "none" was the Vatican's entire roster and shipped as a dealable subject;
+  // Czechia and Ethiopia carried "Independents"/"Independent" rows the seat
+  // table filter caught but the roster never did.
+  it('holds parties, not placeholders', () => {
+    for (const party of parties) {
+      expect(party.name.trim()).not.toMatch(
+        /^(none|other|others|independents?|vacant|unaffiliated|n\/a|various)$/i
+      )
+    }
+  })
+
+  // Wikidata's colour property is free text often enough to matter — Moldova's
+  // National Alternative Movement carried "dark green", which reaches a view as
+  // `background: #dark green` and silently paints nothing.
+  it('carries only hex colours', () => {
+    for (const party of parties) {
+      for (const colour of party.colors ?? []) expect(colour).toMatch(/^[0-9A-Fa-f]{6}$/)
+    }
+  })
+
+  // Yemen's Nasserist Unionist People's Organization carried a founding year
+  // of 25. The oldest real party is Britain's Tories.
+  it('carries plausible founding years', () => {
+    for (const party of parties) {
+      if (party.foundedYear === undefined) continue
+      expect(party.foundedYear, party.name).toBeGreaterThanOrEqual(1700)
+      expect(party.foundedYear, party.name).toBeLessThanOrEqual(new Date().getFullYear() + 1)
+    }
+  })
+
   it('holds names, not prose', () => {
     for (const party of parties) {
       // Long but real: "Electoral Action of Poles in Lithuania – Christian

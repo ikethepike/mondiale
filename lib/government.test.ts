@@ -121,9 +121,12 @@ describe('dealGovernment', () => {
   })
 })
 
-// ~15 chambers deal today. The floor sits under that so a cabinet article being
-// renamed never cries wolf, but a broken join fails here.
-const POOL_FLOOR = 8
+// 8 chambers deal today, down from 15 once beat 1's answer had to be the PRIME
+// MINISTER'S party rather than the largest government bench. Finland's cabinet
+// list omits Orpo's National Coalition Party and Indonesia's answered Golkar
+// where the president leads Gerindra — both wrong on screen, and a smaller
+// pool is the price of not teaching a falsehood.
+const POOL_FLOOR = 6
 
 describe('the reveal facts', () => {
   // The flag drives the reveal's teaching sentence, so it has to agree with

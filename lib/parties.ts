@@ -333,7 +333,20 @@ export const countriesWithGoverningLogo = (): ISOCountryCode[] =>
 export const impostorParties = (isoCode: ISOCountryCode): Party[] => {
   const governing = governingParty(isoCode)
   if (!governing?.logo) return []
-  return oppositionParties(isoCode).filter(party => party.logo && party.logo !== governing.logo)
+  // Everyone the CABINET puts in government, not just the leader's own party.
+  // `oppositionParties` excludes only the latter, so every coalition partner
+  // was eligible to be dealt as "the party that does not govern here" —
+  // Finland's Finns Party, Denmark's Moderates, seventeen candidates in all,
+  // each a question whose answer is false.
+  const standings = benchStandings(isoCode)
+  const inGovernment = new Set<Party>([
+    governing,
+    ...(standings?.government ?? []).flatMap(bench => (bench.party ? [bench.party] : [])),
+    ...(standings?.backing ?? []).flatMap(bench => (bench.party ? [bench.party] : [])),
+  ])
+  return partiesOf(isoCode).filter(
+    party => !inGovernment.has(party) && party.logo && party.logo !== governing.logo
+  )
 }
 
 /**
