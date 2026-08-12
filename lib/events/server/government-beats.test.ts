@@ -72,7 +72,9 @@ const buildGame = (challenge: GovernmentChallenge): Game =>
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
-const store = new Map<string, Game>()
+// One store for the game snapshot AND the answers side key — they are
+// different keys in the same redis, which is exactly the point of the fix.
+const store = new Map<string, unknown>()
 const emitted: string[] = []
 
 const context = (game: Game): EngineContext => {
@@ -81,7 +83,7 @@ const context = (game: Game): EngineContext => {
     io: { in: () => ({ emit: (event: string) => emitted.push(event) }) },
     redis: {
       get: async (key: string) => store.get(key),
-      set: async (key: string, value: Game) => void store.set(key, value),
+      set: async (key: string, value: unknown) => void store.set(key, value),
       expire: async () => 1,
     },
     socket: {},
@@ -89,14 +91,15 @@ const context = (game: Game): EngineContext => {
   } as unknown as EngineContext
 }
 
-const live = (gameId: string): GovernmentChallenge => currentGovernment(store.get(gameId)!)!
+const live = (gameId: string): GovernmentChallenge =>
+  currentGovernment(store.get(gameId) as Game)!
 
-/** A round with beat 1 running. */
-const openRound = () => {
+/** A round with beat 1 running, its answers already in the side key. */
+const openRound = async () => {
   const challenge = challengeFixture()
   const game = buildGame(challenge)
   const ctx = context(game)
-  startGovernment(challenge)
+  await startGovernment(ctx, game, challenge)
   return { challenge, game, ctx }
 }
 
@@ -109,14 +112,14 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('the beat sequence', () => {
-  it('opens on the first question with its own clock', () => {
-    const { challenge } = openRound()
+  it('opens on the first question with its own clock', async () => {
+    const { challenge } = await openRound()
     expect(challenge.state.beat).toBe('party')
     expect(challenge.state.deadline).toBe(Date.now() + BEAT_SECONDS.party * 1000)
   })
 
   it('moves to the next beat once the whole table has answered', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     expect(challenge.state.beat, 'one seat is not the table').toBe('party')
 
@@ -127,7 +130,7 @@ describe('the beat sequence', () => {
   })
 
   it('banks each beat as it resolves', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Left Party' })
     expect(challenge.state.scores.ada).toBe(BEAT_POINTS.party)
@@ -135,7 +138,7 @@ describe('the beat sequence', () => {
   })
 
   it('runs the clock out when nobody answers, and still advances', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     scheduleGovernmentTimeout(ctx, challenge)
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)
     expect(live(game.id).state.beat).toBe('seats')
@@ -143,7 +146,7 @@ describe('the beat sequence', () => {
   })
 
   it('settles the table after the last beat', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     challenge.state.beat = 'sides'
     challenge.state.turn = 2
     await applyGovernmentPick(ctx, game, challenge, 'ada', 2, {
@@ -153,7 +156,7 @@ describe('the beat sequence', () => {
       sides: { 'Sweden Democrats': 'opposition', 'Left Party': 'opposition' },
     })
 
-    const round = store.get(game.id)!.rounds[0]!
+    const round = (store.get(game.id) as Game).rounds[0]!
     expect(live(game.id).state.finished).toBe(true)
     expect(Object.keys(round.groupAnswers)).toEqual(['ada', 'ben'])
     // A backer filed WITH the government is right: the beat asks who keeps it
@@ -163,11 +166,46 @@ describe('the beat sequence', () => {
   })
 })
 
+describe('the answers', () => {
+  // Everything on Game reaches every socket in the room. An answer left on the
+  // challenge is readable in the devtools during beat 1, which wins the round
+  // three times over.
+  it('never rides the snapshot while the round is live', async () => {
+    const { challenge, game } = await openRound()
+    expect(challenge.state.answers).toBeUndefined()
+    expect(JSON.stringify(store.get(game.id))).not.toContain('governingParty')
+  })
+
+  it('comes back on the state once the round is over', async () => {
+    const { challenge, game, ctx } = await openRound()
+    challenge.state.beat = 'sides'
+    challenge.state.turn = 2
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 2, {
+      sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
+    })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
+      sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
+    })
+    expect(live(game.id).state.answers?.governingParty).toBe('Moderate Party')
+    expect(live(game.id).state.answers?.standings['Sweden Democrats']).toBe('backing')
+  })
+
+  // Scoring reads the side key, so a round whose answers expired must not
+  // silently pay everyone zero and call it a grade.
+  it('still advances the beats when the side key has gone', async () => {
+    const { challenge, game, ctx } = await openRound()
+    store.delete(`${game.id}:government:0`)
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    expect(live(game.id).state.beat).toBe('seats')
+  })
+})
+
 describe('staleness', () => {
   // The bug a single-beat round cannot have: beat 2's timer fires late and
   // resolves beat 3, skipping a question the table never saw.
   it('ignores a timer armed for a beat that already resolved', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     scheduleGovernmentTimeout(ctx, challenge)
 
     // The table answers early — beat 1 resolves and `turn` moves.
@@ -182,7 +220,7 @@ describe('staleness', () => {
   })
 
   it('drops a pick that answers a question the round has moved past', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
 
@@ -195,14 +233,14 @@ describe('staleness', () => {
   // A beat is answered ONCE — the failure the old Parliament round had was
   // that a wrong drop bounced back and cost nothing.
   it('refuses a second answer to the same beat', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Left Party' })
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
     expect(challenge.state.picks.party.ada).toBe('Left Party')
   })
 
   it('never pays a settled round twice', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     challenge.state.beat = 'sides'
     challenge.state.turn = 2
     challenge.state.scores = { ada: 6, ben: 0 }
@@ -212,19 +250,19 @@ describe('staleness', () => {
     await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
       sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
     })
-    const banked = store.get(game.id)!.rounds[0]!.playerTurns.ada!.points.scored
+    const banked = (store.get(game.id) as Game).rounds[0]!.playerTurns.ada!.points.scored
 
     // Anything that runs the finish again lands on the groupAnswers latch.
     await applyGovernmentPick(ctx, game, challenge, 'ada', 3, {
       sides: { 'Left Party': 'government' },
     })
-    expect(store.get(game.id)!.rounds[0]!.playerTurns.ada!.points.scored).toBe(banked)
+    expect((store.get(game.id) as Game).rounds[0]!.playerTurns.ada!.points.scored).toBe(banked)
   })
 })
 
 describe('rearm', () => {
   it('revives a live beat after a restart', async () => {
-    const { challenge, game, ctx } = openRound()
+    const { challenge, game, ctx } = await openRound()
     // No timer armed: the machine that held it went away.
     rearmGovernment(ctx, game, { armBriefingCaps: true })
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)

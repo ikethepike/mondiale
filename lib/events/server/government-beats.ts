@@ -2,6 +2,7 @@ import {
   BEAT_POINTS,
   BEAT_SECONDS,
   GOVERNMENT_BEATS,
+  governmentKey,
   scoreBeat,
   type GovernmentAnswer,
   type GovernmentBeat,
@@ -9,9 +10,10 @@ import {
 } from '~~/lib/government'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { chainContenders } from '~~/lib/player'
+import type { GovernmentAnswers } from '~~/types/challenges/group-modes.type'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import { useServerSideEvents } from '../server-side'
+import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import {
   scheduleDeadlineTask,
   settleRoundScores,
@@ -64,7 +66,20 @@ const stampDeadline = (challenge: GovernmentChallenge, beat: GovernmentBeat) => 
  * this only starts the clock, so the caller saves and emits around it exactly
  * as the other engines do.
  */
-export const startGovernment = (challenge: GovernmentChallenge) => {
+export const startGovernment = async (
+  ctx: EngineContext,
+  game: Game,
+  challenge: GovernmentChallenge
+) => {
+  // The dealer stamps the answers onto the state because it is synchronous;
+  // this is the first place that can move them somewhere a client cannot read.
+  // Idempotent: a second call must not wipe a key the round is already using.
+  const roundIndex = roundIndexOf(game)
+  const dealt = challenge.state.answers
+  if (dealt) {
+    await saveGovernmentAnswers(ctx.redis, game.id, roundIndex, dealt)
+    delete challenge.state.answers
+  }
   stampDeadline(challenge, challenge.state.beat)
 }
 
@@ -88,13 +103,34 @@ const answerOf = (challenge: GovernmentChallenge, playerId: string): GovernmentA
     : {}),
 })
 
+const roundIndexOf = (game: Game): number => game.rounds.length - 1
+
+/** The round's answers, from the side key they were dealt into. */
+const fetchAnswers = async (
+  redis: EngineContext['redis'],
+  gameId: string,
+  roundIndex: number
+): Promise<GovernmentAnswers | undefined> =>
+  (await redis.get<GovernmentAnswers>(governmentKey(gameId, roundIndex))) ?? undefined
+
+export const saveGovernmentAnswers = async (
+  redis: EngineContext['redis'],
+  gameId: string,
+  roundIndex: number,
+  answers: GovernmentAnswers
+): Promise<void> => {
+  await setWithGameTtl(redis, governmentKey(gameId, roundIndex), answers)
+}
+
 /**
  * The deal, rebuilt from the challenge and its hidden answers — the shape
  * `scoreBeat` grades. Both ends of the wire score through the same function;
  * this is only the adapter that hands it what it expects.
  */
-const dealOf = (challenge: GovernmentChallenge): GovernmentDeal | undefined => {
-  const answers = challenge.state.answers
+const dealOf = (
+  challenge: GovernmentChallenge,
+  answers: GovernmentAnswers | undefined
+): GovernmentDeal | undefined => {
   if (!answers) return undefined
   return {
     country: challenge.country,
@@ -117,7 +153,8 @@ const dealOf = (challenge: GovernmentChallenge): GovernmentDeal | undefined => {
 /** Bank one beat's points for everyone, then move to the next question. */
 const resolveBeat = async (ctx: EngineContext, game: Game, challenge: GovernmentChallenge) => {
   const { state } = challenge
-  const deal = dealOf(challenge)
+  const answers = await fetchAnswers(ctx.redis, game.id, roundIndexOf(game))
+  const deal = dealOf(challenge, answers)
   const beat = state.beat
 
   if (deal) {
@@ -132,7 +169,7 @@ const resolveBeat = async (ctx: EngineContext, game: Game, challenge: Government
   // that is what stales a timer this resolve raced.
   state.turn += 1
 
-  if (!following) return finishGovernment(ctx, game, challenge)
+  if (!following) return finishGovernment(ctx, game, challenge, answers)
 
   state.beat = following
   stampDeadline(challenge, following)
@@ -152,12 +189,17 @@ const resolveBeat = async (ctx: EngineContext, game: Game, challenge: Government
 export const finishGovernment = async (
   ctx: EngineContext,
   game: Game,
-  challenge: GovernmentChallenge
+  challenge: GovernmentChallenge,
+  known?: GovernmentAnswers
 ) => {
   const round = latestRound(game)
   if (!round || Object.keys(round.groupAnswers).length) return
   const { state } = challenge
+  const answers = known ?? (await fetchAnswers(ctx.redis, game.id, roundIndexOf(game)))
   state.finished = true
+  // The one moment the answers become public: the round is over, so the split
+  // the reveal teaches can ride the snapshot now.
+  if (answers) state.answers = answers
 
   const order = seatedPlayers(game)
   const scores = Object.fromEntries(
@@ -178,7 +220,7 @@ export const finishGovernment = async (
     // nothing about which question a player actually knew. Party names and
     // seat counts are not ISO codes, so they cannot ride submitted/correct.
     answerFor: playerId => {
-      const deal = dealOf(challenge)
+      const deal = dealOf(challenge, answers)
       const answer = answerOf(challenge, playerId)
       return {
         submitted: [],

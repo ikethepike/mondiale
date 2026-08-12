@@ -109,6 +109,59 @@ describe('dealGovernment', () => {
 // renamed never cries wolf, but a broken join fails here.
 const POOL_FLOOR = 8
 
+describe('the reveal facts', () => {
+  // The flag drives the reveal's teaching sentence, so it has to agree with
+  // the seats rather than with whether a supply deal happens to exist. An
+  // earlier version required backers, which called Denmark and Spain — both
+  // governing in a minority with no formal deal — majority governments.
+  it('calls a government a minority on its seats alone', () => {
+    for (const isoCode of governmentPool(RULES)) {
+      const dealt = deal(isoCode)
+      const held = dealt.benches
+        .filter(bench => bench.standing === 'government')
+        .reduce((total, bench) => total + bench.seats, 0)
+      expect(dealt.minority, isoCode).toBe(held * 2 <= dealt.totalSeats)
+    }
+  })
+
+  it('only counts backed seats where a supply deal carries the government', () => {
+    for (const isoCode of governmentPool(RULES)) {
+      const dealt = deal(isoCode)
+      const backers = dealt.benches.filter(bench => bench.standing === 'backing')
+      if (!backers.length) {
+        expect(dealt.backedSeats, isoCode).toBeUndefined()
+        continue
+      }
+      const held = dealt.benches
+        .filter(bench => bench.standing === 'government')
+        .reduce((total, bench) => total + bench.seats, 0)
+      expect(dealt.backedSeats, isoCode).toBe(
+        held + backers.reduce((total, bench) => total + bench.seats, 0)
+      )
+    }
+  })
+
+  // Sweden is the whole reason the round separates backers from opposition:
+  // the government's own 103 seats are short of the 175 a majority needs, and
+  // the supply deal is what closes the gap.
+  it('shows Sweden governing from a minority its backers carry', () => {
+    const dealt = deal('SE')
+    expect(dealt.minority).toBe(true)
+    expect(dealt.backedSeats).toBeGreaterThan(dealt.totalSeats / 2)
+  })
+
+  // The status line is printed verbatim under the verdict, so markup or a
+  // citation tail reaches the player as debris.
+  it('carries a status clean enough to print', () => {
+    for (const isoCode of governmentPool(RULES)) {
+      const { status } = deal(isoCode)
+      if (!status) continue
+      expect(status, isoCode).not.toMatch(/\{\{|\[\[|url=|https?:|<[a-z]/i)
+      expect(status.length, isoCode).toBeLessThanOrEqual(60)
+    }
+  })
+})
+
 describe('scoreBeat', () => {
   const sweden = () => deal('SE')
 

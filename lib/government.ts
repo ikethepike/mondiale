@@ -38,6 +38,17 @@ export const GOVERNMENT_BEATS = ['party', 'seats', 'sides'] as const
 export type GovernmentBeat = (typeof GOVERNMENT_BEATS)[number]
 
 /**
+ * Where the round's answers live between the deal and the reveal.
+ *
+ * They cannot ride the challenge: everything on `Game` reaches every socket in
+ * the room, so a client with the devtools open could read the governing party
+ * off beat 1 and win the round three times over. Same player-secret pattern as
+ * the manhunt trail — a side key the engine reads and only the reveal spends.
+ */
+export const governmentKey = (gameId: string, roundIndex: number) =>
+  `${gameId}:government:${roundIndex}`
+
+/**
  * Logos offered in beat 1. The impostors are real parties from the SAME
  * chamber, so the question is "who governs here", never "which of these is a
  * party" — a wrong option that belongs to another country is a giveaway.
@@ -120,8 +131,11 @@ export interface GovernmentDeal {
   sorted: string[]
   /** `minority government` … as the cabinet phrases it; shown at the reveal. */
   status?: string
-  /** True when the government needs its backers to hold a majority. */
+  /** The government holds less than half the house. */
   minority: boolean
+  /** Government plus backers, when a supply deal carries it past its own
+   *  seats — the number that explains how a minority governs at all. */
+  backedSeats?: number
 }
 
 const asOption = (bench: Bench): GovernmentOption => ({
@@ -231,8 +245,11 @@ const buildDeal = (
     sorted: sortable.map(bench => bench.name),
     ...(standings.status ? { status: standings.status } : {}),
     // The teaching point: a government can hold power without holding half the
-    // seats, which is exactly what the backers are for.
-    minority: governmentSeats * 2 <= total && withBackers > governmentSeats,
+    // seats. Requiring backers to exist got this wrong for Denmark and Spain,
+    // which govern in a minority with no formal supply deal at all — the seats
+    // are what decide it, and the backers are a separate fact beside it.
+    minority: governmentSeats * 2 <= total,
+    ...(withBackers > governmentSeats ? { backedSeats: withBackers } : {}),
   }
 }
 

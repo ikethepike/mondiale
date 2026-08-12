@@ -2,10 +2,10 @@
   <section class="challenge-shell government">
     <ChallengePrompt :attributions="promptSources">
       <h1 class="map-caption">{{ heading }}</h1>
-      <span class="map-caption sub">{{ prompt }}</span>
+      <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
     </ChallengePrompt>
 
-    <p v-if="challenge" class="chamber-facts">
+    <p v-if="challenge && !finished" class="chamber-facts">
       <span class="fact"
         ><strong>{{ challenge.totalSeats }}</strong> seats</span
       >
@@ -19,7 +19,18 @@
 
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
-      <div v-if="beat === 'party'" key="party" class="card-options logos">
+      <GovernmentReveal
+        v-if="finished && challenge && answers"
+        key="reveal"
+        :challenge="challenge"
+        :answers="answers"
+        :players="gameStore.game?.players ?? {}"
+        :player-id="gameStore.seatId"
+        :scores="revealScores"
+        :group-answers="revealAnswers"
+      />
+
+      <div v-else-if="beat === 'party'" key="party" class="card-options logos">
         <button
           v-for="(option, index) in challenge?.options ?? []"
           :key="option.name"
@@ -129,6 +140,7 @@
 
 <script setup lang="ts">
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
@@ -204,6 +216,24 @@ const submitSides = () => {
 }
 
 const majority = computed(() => Math.floor((challenge.value?.totalSeats ?? 0) / 2) + 1)
+
+/** The answers only exist once the server has spent them onto the state. */
+const answers = computed(() => state.value.answers)
+
+/** The settled round, which is where the per-beat breakdown lands. */
+const settledRound = computed(() => {
+  const rounds = gameStore.game?.rounds ?? []
+  return rounds[rounds.length - 1]
+})
+const revealScores = computed(() =>
+  Object.fromEntries(
+    Object.entries(settledRound.value?.playerTurns ?? {}).map(([playerId, turn]) => [
+      playerId,
+      turn.points,
+    ])
+  )
+)
+const revealAnswers = computed(() => settledRound.value?.groupAnswers ?? {})
 
 const benchOf = (name: string) => challenge.value?.benches.find(bench => bench.name === name)
 const logoFor = (name: string) => benchOf(name)?.logo

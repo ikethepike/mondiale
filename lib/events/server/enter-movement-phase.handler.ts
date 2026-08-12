@@ -317,7 +317,7 @@ export const enterMovementPhaseHandler = defineGameHandler(
       if (isAtlasChallenge(revealed)) startAtlasClock(revealed)
       if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
       if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
-      if (isGovernmentChallenge(revealed)) startGovernment(revealed)
+
       // Everything else is a classic round: the SAME contract, one level up —
       // the play window stamps onto the round itself, and the settle backstop
       // banks whoever never answers.
@@ -326,6 +326,12 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // redis blob (never the snapshot) before the reveal saves.
       if (isManhuntChallenge(revealed)) {
         await startManhunt({ io, redis, socket, eventTarget }, game, revealed)
+      }
+      // Government's start is async for the same reason: its answers move into
+      // a redis side key before the reveal saves, so they never ride a
+      // broadcast the whole room can read.
+      if (isGovernmentChallenge(revealed)) {
+        await startGovernment({ io, redis, socket, eventTarget }, game, revealed)
       }
       await server.updateGameState(game)
       server.emit({ event: 'new-round', game }, eventTarget)

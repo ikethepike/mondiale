@@ -501,8 +501,23 @@ const readCabinet = (article: string, text: string): Cabinet | undefined => {
   // The status line carries the backers, and it carries them in the same
   // templates — so cut the phrase out of the RAW field, before stripping.
   const rawStatus = fields.legislature_status ?? ''
-  const status = plainText(rawStatus) || undefined
   const backing = SUPPORT_PHRASE.exec(rawStatus)?.[1] ?? ''
+  // The status field is a phrase with a tail: a supply clause, a citation, a
+  // {{Composition bar}}. Only the leading clause names the government's shape
+  // ("Minority coalition government"), and the tail arrives as debris on
+  // screen — Indonesia's carried a template, the Netherlands' a bare URL.
+  const status =
+    plainText(rawStatus)
+      // A bulleted history ("* Minority (until …) * Majority (since …)") keeps
+      // its FIRST entry's shape, not the bullet.
+      .replace(/^\s*\*\s*/, '')
+      .split(/\s*(?:\/|·|;|\*|\(|\bwith\b|url=|\{\{|<)/i)[0]
+      ?.replace(/\s+/g, ' ')
+      // Cyprus writes "Coalition minority governmentMinority government" — the
+      // same phrase twice, run together by a stripped tag.
+      .replace(/\b(\w+ government)\1/i, '$1')
+      .trim()
+      .slice(0, 60) || undefined
   const names = partyNames
 
   return {

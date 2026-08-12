@@ -114,7 +114,14 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
 import { partiesWithLogo } from '~~/lib/parties'
-import { BEAT_SECONDS, dealGovernment } from '~~/lib/government'
+import {
+  BEAT_POINTS,
+  BEAT_SECONDS,
+  dealGovernment,
+  GOVERNMENT_BEATS,
+  scoreBeat,
+  scoreGovernment,
+} from '~~/lib/government'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -554,6 +561,88 @@ const sweepClaims = (rows: (readonly [string, string])[]) =>
     at: index,
     remaining: Math.max(0.05, 1 - (index + 1) / (rows.length + 2)),
   }))
+
+const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
+      const deal = dealGovernment(
+        { difficulty: 'normal', variant: 'world', includeMicroNations: false },
+        'normal',
+        isoCode
+      )!
+      const truth = Object.fromEntries(
+        deal.sorted.map(name => {
+          const standing = deal.benches.find(bench => bench.name === name)!.standing
+          return [name, standing === 'opposition' ? 'opposition' : 'government'] as const
+        })
+      )
+      // You knew the party and the sides but missed the seat count; your rival
+      // only got the seats.
+      const answers = {
+        you: { party: deal.governingParty, seats: deal.blocks.find(b => b !== deal.governingSeats), sides: truth },
+        rival: {
+          party: deal.options.find(o => o.name !== deal.governingParty)!.name,
+          seats: deal.governingSeats,
+          sides: Object.fromEntries(deal.sorted.map(name => [name, 'opposition'] as const)),
+        },
+      }
+      const beatsFor = (answer: (typeof answers)['you']) =>
+        GOVERNMENT_BEATS.map(beat => ({
+          beat,
+          scored: scoreBeat(beat, deal, answer),
+          maximum: BEAT_POINTS[beat],
+        }))
+
+      const game = mockGame('group-challenge', [
+        groupRound({
+          _type: 'government-challenge',
+          country: deal.country,
+          ...(deal.chamber ? { chamber: deal.chamber } : {}),
+          totalSeats: deal.totalSeats,
+          options: deal.options,
+          blocks: deal.blocks,
+          benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+            name,
+            seats,
+            share,
+            ...(color ? { color } : {}),
+            ...(logo ? { logo } : {}),
+          })),
+          sorted: deal.sorted,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            beat: 'sides',
+            turn: 3,
+            deadline: Date.now(),
+            picks: { party: {}, seats: {}, sides: {} },
+            scores: {},
+            finished: true,
+            // The reveal is the one moment these ride the snapshot.
+            answers: {
+              governingParty: deal.governingParty,
+              governingSeats: deal.governingSeats,
+              standings: Object.fromEntries(
+                deal.benches.map(bench => [bench.name, bench.standing] as const)
+              ),
+              ...(deal.status ? { status: deal.status } : {}),
+              minority: deal.minority,
+            },
+          },
+        }),
+      ])
+      const round = game.rounds[game.rounds.length - 1]!
+      const seats = Object.keys(game.players)
+      for (const [index, playerId] of seats.entries()) {
+        const answer = index === 0 ? answers.you : answers.rival
+        round.groupAnswers[playerId] = {
+          submitted: [],
+          correct: [],
+          governmentBeats: beatsFor(answer),
+        }
+        round.playerTurns[playerId] = {
+          points: { scored: scoreGovernment(deal, answer), maximum: MAXIMUM_POINTS },
+        }
+      }
+      return game
+    }
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
@@ -1354,6 +1443,21 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    // The payoff: a settled round with two seats who answered differently.
+    // Points come from the REAL scorer, so the per-beat pips and the totals
+    // can never drift from what the engine would have banked.
+    id: 'government-reveal-majority',
+    label: 'Government (New Zealand — a majority, no backers)',
+    component: ViewGovernment,
+    build: () => buildGovernmentReveal('NZ'),
+  },
+  {
+    id: 'government-reveal',
+    label: 'Government (Sweden — the reveal)',
+    component: ViewGovernment,
+    build: () => buildGovernmentReveal('SE'),
   },
   ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
     id: `government-${beat}`,
