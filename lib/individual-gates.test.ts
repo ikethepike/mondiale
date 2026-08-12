@@ -9,6 +9,7 @@ import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/
 import { mentionsCountry } from '~~/lib/country'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { readFileSync } from 'node:fs'
 import { countryLedBy } from '~~/lib/leaders'
 import { governedOutsideFamily, governingParty, partiesOf } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
@@ -297,5 +298,34 @@ describe('far-flung gate dealing', () => {
       expect(mentionsCountry(entry.blurb, entry.iso), `${slug} blurb names its owner`).toBe(false)
       expect(entry.d.startsWith('M ')).toBe(true)
     }
+  })
+})
+
+/**
+ * A gate that runs out of time still has to submit SOMETHING, and what it
+ * submits is a token the grader must reject (`wrongTokenFor`, usually CH).
+ * That token is filler, not a choice — a verdict that reads it back tells the
+ * player "Sorry, you pressed: Switzerland" about a country they never touched.
+ * Isaac hit this on Rulers and it spanned every gate, since the copy is shared.
+ */
+describe('the timeout verdict', () => {
+  const shell = readFileSync(
+    new URL('../components/view/ViewIndividualChallenge.vue', import.meta.url),
+    'utf8'
+  )
+
+  it('answers for every variant before any branch names the pick', () => {
+    const guard = shell.indexOf('if (timedOut.value)')
+    const firstPickBranch = shell.indexOf('const picked = submittedCountry.value')
+    expect(guard, 'the timeout guard is missing').toBeGreaterThan(-1)
+    expect(guard).toBeLessThan(firstPickBranch)
+  })
+
+  it('keeps every "you pressed" line behind the guard', () => {
+    // Rendered copy only — the comment above the guard says the words too.
+    const guard = shell.indexOf('if (timedOut.value)')
+    const rendered = [...shell.matchAll(/`Sorry, you pressed/g)].map(match => match.index ?? 0)
+    expect(rendered.length).toBeGreaterThan(0)
+    for (const at of rendered) expect(at).toBeGreaterThan(guard)
   })
 })

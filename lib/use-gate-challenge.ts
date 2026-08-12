@@ -70,6 +70,15 @@ export interface GateChallengeContext {
    * shell; the shell falls back to its own copy when it's unset.
    */
   missNote: Ref<string | undefined>
+  /**
+   * The answer was the clock's, not the player's.
+   *
+   * A gate must submit SOMETHING when time runs out, and what it submits is a
+   * token the grader is guaranteed to reject (`wrongTokenFor` — usually CH).
+   * The verdict then read that token back as "Sorry, you pressed: Switzerland",
+   * blaming the player for a country they never touched.
+   */
+  timedOut: Ref<boolean>
   /** Duel ledgers, kept because their reveals outlive the question. */
   duelOutcomes: Ref<DuelOutcome[]>
   trendDuelOutcomes: Ref<TrendDuelOutcome[]>
@@ -136,6 +145,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const gateSeq = ref(0)
   const showInterstitial = ref(true)
   const missNote = ref<string>()
+  const timedOut = ref(false)
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
   const atlasChain = ref<ISOCountryCode[]>([])
@@ -215,6 +225,9 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   const giveUp = (hintsUsed?: number) => {
     const active = currentMove.value?.challenge
     if (active?._type !== 'individual-challenge') return
+    // Flagged BEFORE the submit: the verdict renders off the same tick, and a
+    // filler token read back as a press is the bug this exists to stop.
+    timedOut.value = true
     submitAnswer(wrongTokenFor(active), { remainingFraction: 0, hintsUsed })
   }
 
@@ -262,6 +275,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     clearBoard()
     submittedISOCode.value = undefined
     missNote.value = undefined
+    timedOut.value = false
     duelOutcomes.value = []
     trendDuelOutcomes.value = []
     atlasChain.value = []
@@ -282,6 +296,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     gateSeq,
     showInterstitial,
     missNote,
+    timedOut,
     duelOutcomes,
     trendDuelOutcomes,
     atlasChain,

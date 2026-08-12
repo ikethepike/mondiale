@@ -97,6 +97,7 @@ const {
   gateSeq,
   showInterstitial,
   missNote,
+  timedOut,
   duelOutcomes,
   trendDuelOutcomes,
   atlasChain,
@@ -276,6 +277,12 @@ const incorrectMessage = computed(() => {
   // the gate before it submitted.
   if (missNote.value) return missNote.value
   const active = challenge.value
+  // A timeout submits a token the grader must reject (`wrongTokenFor`), so the
+  // submitted ISO is filler, not a choice. Reading it back named a country the
+  // player never touched — "Sorry, you pressed: Switzerland" on a gate they
+  // simply ran out of time on. Every branch below that names the pick is wrong
+  // in that case, so the timeout answers for all of them.
+  if (timedOut.value) return 'Time ran out.'
   const picked = submittedCountry.value
   switch (variant.value) {
     case 'flag-pick':

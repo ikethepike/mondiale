@@ -1174,10 +1174,7 @@ const ensureLogos = () => {
     const anchor = labelAnchorFor(code as MapCode)
     if (!anchor) continue
 
-    const side = Math.min(
-      LOGO_MAX_SIDE,
-      Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL)
-    )
+    const side = Math.min(LOGO_MAX_SIDE, Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL))
     const [x, y] = anchor.point
 
     const image = document.createElementNS(SVG_NS, 'image')
@@ -2608,9 +2605,17 @@ path[id]:hover,
 // Rulers' logo register. Unlike the labels these are sized in MAP units, so
 // they scale with the camera and need no settle gate — they are correct at
 // every zoom by construction, and simply fade in with the stage.
+:deep(.country-logo) {
+  pointer-events: none;
+}
 :deep(.country-logo-image) {
   // The artwork is the answer; nothing should tint or dim it.
   opacity: 1;
+  // ...and nothing should CATCH the tap meant for the country under it. Every
+  // overlay on this map is inert for the same reason: only the country paths
+  // are hit targets, so a logo drawn over its own country would swallow the
+  // one press the gate is waiting for.
+  pointer-events: none;
   animation: logo-land 320ms var(--ease-out-expressive) both;
 }
 @keyframes logo-land {
