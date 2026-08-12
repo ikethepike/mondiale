@@ -74,9 +74,16 @@ export interface IndividualChallenge {
     lineup: ISOCountryCode[]
     /** What each member is wearing, as shown. */
     logos: Partial<Record<ISOCountryCode, string>>
+    /** Each logo's party name, for the label under it. Shown outside hard mode
+     *  — naming the party is itself worth learning, and a player who cannot
+     *  read the mark still has to know whether THAT party governs THERE. Hard
+     *  mode gets the logos alone. */
+    names: Partial<Record<ISOCountryCode, string>>
     /** The impostor's country wearing its REAL government — swapped in at the
      *  reveal, so the stage takes back the lie it taught. */
     trueLogo?: Partial<Record<ISOCountryCode, string>>
+    /** …and its name, for the caption the reveal swaps in with it. */
+    trueName?: Partial<Record<ISOCountryCode, string>>
     /** Named only in the reveal: the impostor, and who really governs there. */
     impostor: { name: string; credit?: string; license?: string }
     governing: { name: string }

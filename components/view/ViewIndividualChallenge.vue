@@ -72,6 +72,7 @@ import {
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { governingParty, partiesOf, partySpectrum } from '~~/lib/parties'
+import { politicalLeader } from '~~/lib/leaders'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
@@ -184,6 +185,7 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     case 'leader-pick':
       return datasetAttribution('leaders')
     case 'logo-politics':
+    case 'rulers':
       return datasetAttribution('parties')
     case 'higher-lower':
       return active.higherLower ? [attributionFor(active.higherLower.accessorId)] : undefined
@@ -335,6 +337,13 @@ const incorrectMessage = computed(() => {
       return 'History disagrees.'
     case 'far-flung':
       return active ? `That piece belongs to ${countryName(active.country)}` : 'Time ran out.'
+    case 'rulers': {
+      const rulers = active?.rulers
+      if (!rulers || !active) return 'Not quite.'
+      return `${rulers.impostor.name} does not govern ${countryName(active.country)} — ${
+        rulers.governing.name
+      } does`
+    }
     default:
       // Currency find gate: name what the pressed country actually spends —
       // clearer than the reveal zoom alone, since shared currencies mean the
@@ -356,6 +365,22 @@ const gateLesson = computed(() => {
   const answer = country.value
   if (!active || !answer || !status.value) return undefined
   switch (variant.value) {
+    case 'rulers': {
+      const rulers = active.rulers
+      if (!rulers) return undefined
+      const governing = governingParty(active.country)
+      const leader = politicalLeader(active.country)?.name
+      // Everything worth knowing about the party that DOES govern there: who
+      // leads it, where it sits, and which European family it keeps.
+      const band = governing ? partySpectrum(governing) : undefined
+      const facts = [
+        leader ? `led by ${leader}` : undefined,
+        band ? `${band} on the spectrum` : undefined,
+        governing?.groupings?.[0],
+      ].filter((fact): fact is string => !!fact)
+      if (!facts.length) return `${rulers.governing.name} governs ${countryName(active.country)}.`
+      return `${rulers.governing.name} governs ${countryName(active.country)} — ${listJoin(facts)}.`
+    }
     case 'flag-twins': {
       const palette = answer.identity.simplifiedColors
       if (!palette.length) return undefined

@@ -298,6 +298,23 @@ export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => 
 export const chambersWithCabinet = (): ISOCountryCode[] =>
   playableChambers().filter(isoCode => benchStandings(isoCode))
 
+/**
+ * A party's name at map size — the caption under a logo on a framed stage.
+ *
+ * Full names do not fit: "Croatian Democratic Union" is wider than Croatia, and
+ * five of them overlap into an unreadable smear. The Factbook's own
+ * abbreviation is the right label where it has one (59 of 69 governing parties
+ * do); the rest fall back to the name's own trailing acronym ("…or ANO") or its
+ * first two words.
+ */
+export const shortPartyName = (party: Party): string => {
+  if (party.abbreviation) return party.abbreviation
+  const trailing = /\bor\s+([A-Za-zÀ-ÿ0-9-]{2,})\s*$/.exec(party.name)?.[1]
+  if (trailing) return trailing
+  const words = party.name.split(/\s+/)
+  return words.length <= 2 ? party.name : words.slice(0, 2).join(' ')
+}
+
 /** Countries whose governing party carries a logo — Rulers' stage pool. */
 export const countriesWithGoverningLogo = (): ISOCountryCode[] =>
   (Object.keys(PARTIES) as ISOCountryCode[]).filter(isoCode => governingParty(isoCode)?.logo)

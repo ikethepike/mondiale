@@ -137,6 +137,7 @@ import {
   governingParty,
   impostorParties,
   partiesWithLogo,
+  shortPartyName,
 } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
@@ -2962,9 +2963,14 @@ const dealRulers = async (
     if (!impostor?.logo || !governing?.logo) continue
 
     const logos: Partial<Record<ISOCountryCode, string>> = {}
+    const names: Partial<Record<ISOCountryCode, string>> = {}
     for (const isoCode of lineup) {
-      const logo = isoCode === victim ? impostor.logo : governingParty(isoCode)?.logo
-      if (logo) logos[isoCode] = logo
+      const party = isoCode === victim ? impostor : governingParty(isoCode)
+      if (party?.logo) {
+        logos[isoCode] = party.logo
+        // The SHORT label — a full name is wider than the country it sits on.
+        names[isoCode] = shortPartyName(party)
+      }
     }
     if (Object.keys(logos).length < size) continue
 
@@ -2973,7 +2979,9 @@ const dealRulers = async (
       rulers: {
         lineup: shuffleArray([...lineup]),
         logos,
+        names,
         trueLogo: { [victim]: governing.logo },
+        trueName: { [victim]: shortPartyName(governing) },
         impostor: {
           name: impostor.name,
           ...(impostor.credit ? { credit: impostor.credit } : {}),

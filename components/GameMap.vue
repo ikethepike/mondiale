@@ -296,6 +296,13 @@ const props = defineProps({
     type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
     default: undefined,
   },
+  /** A caption under each logo — the party's name. Rulers shows these outside
+   *  hard mode: naming the party is worth learning in itself, and knowing the
+   *  name still leaves the question (does THAT party govern THERE?) intact. */
+  countryLogoNames: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
   /** Animate the viewBox to frame these countries together. */
   focusCountries: {
     type: Array as PropType<ISOCountryCode[]>,
@@ -1154,7 +1161,8 @@ let builtLogoKey: string | undefined
 const ensureLogos = () => {
   if (!svg.value) return
   const logos = props.countryLogos
-  const key = logos ? JSON.stringify(logos) : ''
+  const names = props.countryLogoNames
+  const key = logos ? JSON.stringify([logos, names ?? null]) : ''
   if (key === builtLogoKey) return
 
   svg.value.querySelectorAll('.country-logo').forEach(node => node.remove())
@@ -1187,6 +1195,20 @@ const ensureLogos = () => {
     image.dataset.id = code
     image.classList.add('country-logo-image')
     layer.appendChild(image)
+
+    const caption = names?.[code as ISOCountryCode]
+    if (!caption) continue
+    const label = document.createElementNS(SVG_NS, 'text')
+    label.textContent = caption
+    label.setAttribute('x', String(x))
+    // Tucked just INSIDE the artwork's lower edge, not floating beyond it.
+    // Hung below, a caption lands on the country to the south (Austria's sat on
+    // Slovenia); hung above, on the one to the north. Inside its own footprint
+    // it belongs to its logo at any zoom, and every logo is a square of known
+    // size — the one place a label can sit without a collision pass.
+    label.setAttribute('y', String(y + side / 2 - side * 0.04))
+    label.classList.add('country-logo-name')
+    layer.appendChild(label)
   }
 }
 
@@ -2606,6 +2628,21 @@ path[id]:hover,
 // they scale with the camera and need no settle gate — they are correct at
 // every zoom by construction, and simply fade in with the stage.
 :deep(.country-logo) {
+  pointer-events: none;
+}
+:deep(.country-logo-name) {
+  fill: var(--dark-blue);
+  // Quiet: the LOGO is the subject and the caption only names it. Heavier type
+  // fought the artwork and, in a tight cluster, its neighbours.
+  font-size: 3.4px;
+  font-weight: 600;
+  letter-spacing: 0.06px;
+  text-anchor: middle;
+  opacity: 0.92;
+  paint-order: stroke;
+  stroke: var(--off-white);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
   pointer-events: none;
 }
 :deep(.country-logo-image) {

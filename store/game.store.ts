@@ -68,6 +68,8 @@ interface GameStoreState {
      *  which is the whole question. Same reason as `countryLabels` — the set
      *  rides the store rather than being derived from the country. */
     countryLogos?: Partial<Record<ISOCountryCode, string>>
+    /** Party names captioned under the logos — Rulers, outside hard mode. */
+    countryLogoNames?: Partial<Record<ISOCountryCode, string>>
     /** Chrome berth (CSS px): the camera frames its subject between these
      *  insets so a header card never covers it. */
     berth?: { top?: number; bottom?: number }
@@ -218,6 +220,7 @@ export const useGameStore = defineStore('game', {
       labels: false,
       countryLabels: undefined,
       countryLogos: undefined,
+      countryLogoNames: undefined,
       focus: [],
       focusContext: [],
       framePad: undefined,

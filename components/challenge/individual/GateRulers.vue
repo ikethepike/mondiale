@@ -31,7 +31,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
+const { status, showInterstitial, submitAnswer, giveUp, isHard } = useGateChallenge()
 
 const showDoubleTapHint = ref(false)
 
@@ -48,7 +48,15 @@ onMounted(() => {
   const rulers = props.challenge.rulers
   if (!rulers) return
   gameStore.map.focus = [...rulers.lineup]
+  // A tight frame is the whole mode: the logos have to be readable ON their
+  // countries. The default 60-unit pad floor doubles a cluster this small and
+  // leaves five countries filling a tenth of the screen.
+  gameStore.map.framePad = { scale: 0.2, floor: 22 }
   gameStore.map.countryLogos = { ...rulers.logos }
+  // Outside hard mode the party's NAME rides under its logo. Knowing the name
+  // is worth learning on its own, and it leaves the question standing: does
+  // this party govern THIS country? Hard mode reads the marks unaided.
+  if (!isHard.value) gameStore.map.countryLogoNames = { ...rulers.names }
   // Everything not in play fades back. That is what separates the stage from
   // the map — a card behind each logo read as a box sitting ON the world
   // rather than a party sitting IN a country.
@@ -69,10 +77,14 @@ const restoreStage = () => {
   const rulers = props.challenge.rulers
   if (rulers) {
     gameStore.map.countryLogos = { ...rulers.logos, ...(rulers.trueLogo ?? {}) }
+    // The reveal names every party, hard mode included — the lesson lands
+    // after the answer, where it can no longer be the answer.
+    gameStore.map.countryLogoNames = { ...rulers.names, ...(rulers.trueName ?? {}) }
   }
   // The world comes back for the reveal — the answer reads against the whole
   // map, not a spotlit corner of it.
   gameStore.map.spotlight = []
+  gameStore.map.framePad = undefined
   return undefined
 }
 

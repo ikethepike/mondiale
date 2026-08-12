@@ -120,6 +120,7 @@ import {
   governingParty,
   impostorParties,
   partiesWithLogo,
+  shortPartyName,
 } from '~~/lib/parties'
 import {
   BEAT_POINTS,
@@ -3463,11 +3464,13 @@ const scenarios: Scenario[] = [
         .slice(0, 5)
       const victim = lineup[1]!
       const impostor = impostorParties(victim)[0]
-      const logos = Object.fromEntries(
-        lineup.flatMap(isoCode => {
-          const logo = isoCode === victim ? impostor?.logo : governingParty(isoCode)?.logo
-          return logo ? [[isoCode, logo] as const] : []
-        })
+      const dressed = lineup.flatMap(isoCode => {
+        const party = isoCode === victim ? impostor : governingParty(isoCode)
+        return party?.logo ? [[isoCode, party] as const] : []
+      })
+      const logos = Object.fromEntries(dressed.map(([isoCode, party]) => [isoCode, party.logo!]))
+      const names = Object.fromEntries(
+        dressed.map(([isoCode, party]) => [isoCode, shortPartyName(party)])
       )
       return individualGame({
         variant: 'rulers',
@@ -3475,6 +3478,7 @@ const scenarios: Scenario[] = [
         rulers: {
           lineup,
           logos,
+          names,
           trueLogo: { [victim]: governingParty(victim)?.logo ?? '' },
           impostor: { name: impostor?.name ?? '' },
           governing: { name: governingParty(victim)?.name ?? '' },

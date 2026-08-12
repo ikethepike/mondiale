@@ -25,6 +25,7 @@
       :labels="gameStore.map.labels"
       :country-labels="gameStore.map.countryLabels"
       :country-logos="gameStore.map.countryLogos"
+      :country-logo-names="gameStore.map.countryLogoNames"
       :spotlight="gameStore.map.spotlight"
       :berth="gameStore.map.berth"
       :focus-countries="gameStore.map.focus"
