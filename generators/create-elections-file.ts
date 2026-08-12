@@ -43,6 +43,33 @@ import { LEADERS } from '../data/leaders.gen'
  * article outlives its cabinet — "First Tusk cabinet" is a real page about a
  * government that fell in 2011. See `findCabinet` and `cabinetIsLive`.
  *
+ * WHY WIKIPEDIA, when better-sounding sources exist. All three alternatives
+ * were fetched and measured before settling here:
+ *
+ *   IPU Parline (api.data.ipu.org) — a real REST/JSON API, 193 lower chambers,
+ *     every one with a `last_election` date and 187 with a seat count. It is
+ *     the AUTHORITY this file uses for freshness (see the stale-seed check
+ *     below), and it validated our chamber sizes exactly. But it carries
+ *     composition and summaries only — no per-party seat table — so it cannot
+ *     replace the parse.
+ *
+ *   ParlGov (parlgov.org) — 8,997 rows of party name, vote share, seats and an
+ *     expert-coded `left_right` score, free and no auth. Two limits killed it
+ *     as a results source: it stops at 2023 (Poland's latest is 2019, three
+ *     elections behind) and covers 37 countries, 36 of which we already seed.
+ *     Its left-right score would fill a position on only 50 of our 1,461
+ *     parties that lack one — worth revisiting if the spectrum modes grow, not
+ *     worth a pipeline now.
+ *
+ *   Wikidata SPARQL — genuinely holds per-party seats (`P991` with a `P1410`
+ *     qualifier) and is current to 2026, CC0. But only 37 countries carry it
+ *     since 2023, and all but four are ones we already seed, so it buys
+ *     coverage we have. Useful as a CROSS-CHECK on a chamber we suspect.
+ *
+ * CLEA, the deepest constituency-level archive, serves 403 to a scripted
+ * fetch — it is a registration-gated bulk download, not a source a generator
+ * can pull.
+ *
  *   bun run generate:elections [--force]
  *
  * Hand-run, like the other curated pipelines: it reads one article per country
