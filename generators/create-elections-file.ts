@@ -60,6 +60,10 @@ const COUNTRY_FLOOR = 40
  *  below the infobox's cut) — past this the parse is suspect, not the source. */
 const SEAT_COVERAGE_FLOOR = 0.5
 
+/** National vote shares sum to ~100. Rounding and unlisted parties move that a
+ *  little; a sum past this means the field is mixing scopes. */
+const VOTE_SUM_CEILING = 101
+
 /** 32 of 71 chambers resolve to a live cabinet. The cabinet is the only source
  *  for who GOVERNS as opposed to who won seats, so a collapse must fail the run
  *  rather than quietly drop the mode that deals from it. */
@@ -118,12 +122,12 @@ export type ElectionMapping = { [isoCode in ISOCountryCode]?: Election }
  */
 const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   AF: '2018 Afghan parliamentary election',
-  BD: '2024 Bangladeshi general election',
+  BD: '2026 Bangladeshi general election',
   CD: '2023 Democratic Republic of the Congo general election',
   DZ: '2021 Algerian legislative election',
-  ET: '2021 Ethiopian general election',
+  ET: '2026 Ethiopian general election',
   GH: '2024 Ghanaian general election',
-  IQ: '2021 Iraqi parliamentary election',
+  IQ: '2025 Iraqi parliamentary election',
   KE: '2022 Kenyan general election',
   MA: '2021 Moroccan general election',
   MM: '2020 Myanmar general election',
@@ -133,19 +137,19 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   PK: '2024 Pakistani general election',
   RU: '2021 Russian legislative election',
   SD: '2015 Sudanese general election',
-  SN: '2022 Senegalese parliamentary election',
-  TH: '2023 Thai general election',
+  SN: '2024 Senegalese parliamentary election',
+  TH: '2026 Thai general election',
   TN: '2022 Tunisian parliamentary election',
   TZ: '2020 Tanzanian general election',
-  UG: '2021 Ugandan general election',
+  UG: '2026 Ugandan general election',
   US: '2024 United States House of Representatives elections',
-  VN: '2021 Vietnamese legislative election',
+  VN: '2026 Vietnamese legislative election',
   ZM: '2021 Zambian general election',
   ZW: '2023 Zimbabwean general election',
   AL: '2025 Albanian parliamentary election',
   AR: '2023 Argentine general election',
   AT: '2024 Austrian legislative election',
-  AU: '2022 Australian federal election',
+  AU: '2025 Australian federal election',
   BE: '2024 Belgian federal election',
   // Countries that voted twice in a year have a disambiguation stub at the
   // bare "<year> … election" title; the month-qualified article is the real one.
@@ -153,20 +157,20 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   BR: '2022 Brazilian general election',
   CA: '2025 Canadian federal election',
   CH: '2023 Swiss federal election',
-  CL: '2021 Chilean general election',
-  CO: '2022 Colombian parliamentary election',
-  CY: '2021 Cypriot legislative election',
+  CL: '2025 Chilean general election',
+  CO: '2026 Colombian parliamentary election',
+  CY: '2026 Cypriot legislative election',
   CZ: '2021 Czech legislative election',
   DE: '2025 German federal election',
-  DK: '2022 Danish general election',
+  DK: '2026 Danish general election',
   EE: '2023 Estonian parliamentary election',
   ES: '2023 Spanish general election',
   FI: '2023 Finnish parliamentary election',
-  FR: '2022 French legislative election',
+  FR: '2024 French legislative election',
   GB: '2024 United Kingdom general election',
   GR: 'June 2023 Greek parliamentary election',
   HR: '2024 Croatian parliamentary election',
-  HU: '2022 Hungarian parliamentary election',
+  HU: '2026 Hungarian parliamentary election',
   ID: '2024 Indonesian legislative election',
   IE: '2024 Irish general election',
   IL: '2022 Israeli legislative election',
@@ -178,19 +182,19 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   LT: '2024 Lithuanian parliamentary election',
   LU: '2023 Luxembourg general election',
   LV: '2022 Latvian parliamentary election',
-  MT: '2022 Maltese general election',
+  MT: '2026 Maltese general election',
   MX: '2024 Mexican general election',
-  NL: '2023 Dutch general election',
-  NO: '2021 Norwegian parliamentary election',
+  NL: '2025 Dutch general election',
+  NO: '2025 Norwegian parliamentary election',
   NZ: '2023 New Zealand general election',
-  PE: '2021 Peruvian general election',
-  PH: '2022 Philippine House of Representatives elections',
+  PE: '2026 Peruvian general election',
+  PH: '2025 Philippine House of Representatives elections',
   PL: '2023 Polish parliamentary election',
-  PT: '2022 Portuguese legislative election',
+  PT: '2025 Portuguese legislative election',
   RO: '2024 Romanian parliamentary election',
   RS: '2023 Serbian parliamentary election',
   SE: '2022 Swedish general election',
-  SI: '2022 Slovenian parliamentary election',
+  SI: '2026 Slovenian parliamentary election',
   SK: '2023 Slovak parliamentary election',
   TR: '2023 Turkish parliamentary election',
   TW: '2024 Taiwanese legislative election',
@@ -342,6 +346,26 @@ const readElection = (article: string, text: string): Election | undefined => {
         ...(alliance && alliance !== party ? { alliance } : {}),
         ...(votePct ? { votePct: Number(votePct) } : {}),
       })
+    }
+
+    // Vote shares that cannot be NATIONAL are dropped rather than shipped.
+    // Two article conventions produce them: a minority seat reserved to one
+    // constituency prints that constituency's share (Croatia's Serb minority
+    // party reads 89%, its Hungarian one 100%), and an autonomous territory's
+    // parties print their own territory's (Denmark's Faroese and Greenlandic
+    // rows summed the national field to 199%). Either way a "share of the
+    // vote" a mode plots would be a lie, and a party with no share is honest.
+    const shares = parties.flatMap(party => (party.votePct !== undefined ? [party.votePct] : []))
+    const shareSum = shares.reduce((sum, share) => sum + share, 0)
+    if (shareSum > VOTE_SUM_CEILING) {
+      // Trust the descending head of the list — infoboxes are ordered by
+      // result — and drop from the point the running total passes 100.
+      let running = 0
+      for (const party of parties) {
+        if (party.votePct === undefined) continue
+        running += party.votePct
+        if (running > VOTE_SUM_CEILING) delete party.votePct
+      }
     }
 
     if (parties.length < 2) continue
@@ -725,6 +749,47 @@ writeFileSync(
 const missing = (Object.keys(ELECTION_ARTICLES) as ISOCountryCode[]).filter(iso => !mapping[iso])
 if (missing.length) {
   console.warn(`NO ELECTION DATA for ${missing.length}: ${missing.join(' ')}`)
+}
+
+/**
+ * Which seeds an election has overtaken.
+ *
+ * The seed list is hand-maintained, and that is exactly how it rots: countries
+ * keep voting whether or not anyone edits this file. An audit found 21 of 71
+ * chambers serving superseded results — Iraq's 2021 against a 2025 vote,
+ * France's 2022 against 2024 — and every one was a wrong answer presented to a
+ * player as fact.
+ *
+ * The check is a title search for the same election one year later or more. It
+ * only WARNS: a newer article may describe an election that has not happened
+ * yet (Sweden's "2026 Swedish general election" was written months before the
+ * September 2026 vote, and its seat fields are poll projections). Choosing to
+ * move a seed stays a human's call — this only refuses to let it go unnoticed.
+ */
+type ElectionSearch = { query?: { search?: { title: string }[] } }
+const staleSeeds: string[] = []
+for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
+  const dealt = Number(/^(\d{4})/.exec(article)?.[1] ?? 0)
+  if (!dealt || !mapping[isoCode as ISOCountryCode]) continue
+  const kind = article.replace(/^\d{4}\s+/, '')
+  const search = await fetchJson<ElectionSearch>(
+    `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      kind
+    )}&srlimit=8&format=json`
+  )
+  await wait(200)
+  const newer = (search?.query?.search ?? [])
+    .map(result => result.title)
+    .filter(title => title.replace(/^\d{4}\s+/, '').toLowerCase() === kind.toLowerCase())
+    .map(title => ({ title, year: Number(/^(\d{4})/.exec(title)?.[1] ?? 0) }))
+    .filter(entry => entry.year > dealt)
+    .sort((a, b) => b.year - a.year)[0]
+  if (newer) staleSeeds.push(`${isoCode}: dealing ${dealt}, wikipedia has "${newer.title}"`)
+}
+if (staleSeeds.length) {
+  console.warn(`\nSEEDS AN ELECTION MAY HAVE OVERTAKEN (${staleSeeds.length}):`)
+  for (const line of staleSeeds) console.warn(`  ${line}`)
+  console.warn('  Check whether the newer vote has HAPPENED before moving a seed.')
 }
 
 console.log(

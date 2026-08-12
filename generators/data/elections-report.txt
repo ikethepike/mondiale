@@ -1,5 +1,5 @@
 chambers: 71 of 78 seeded
-with vote share: 60
+with vote share: 58
 with a live cabinet: 39
   naming its governing parties: 25
   naming confidence-and-supply backers: 2
