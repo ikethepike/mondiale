@@ -5,7 +5,7 @@
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
     </ChallengePrompt>
 
-    <p v-if="challenge && !finished" class="chamber-facts">
+    <p v-if="challenge && !finished && beat !== 'party'" class="chamber-facts">
       <span class="fact"
         ><strong>{{ challenge.totalSeats }}</strong> seats</span
       >
@@ -94,11 +94,21 @@
               {{ name }}
               <em class="bench-seats">{{ seatsFor(name) }}</em>
             </span>
-            <span class="bench-choice">
+            <!-- A rocker, not two buttons: one control with two ends, so the
+                 choice reads as a position rather than a pair of taps. -->
+            <span
+              class="rocker"
+              :class="{ picked: !!mySides[name], locked: sidesLocked }"
+              role="radiogroup"
+              :aria-label="`${name}: with or against the government`"
+            >
+              <span class="rocker-thumb" :class="mySides[name] ?? 'unset'" aria-hidden="true" />
               <button
                 type="button"
-                class="side-button"
+                role="radio"
+                class="rocker-end"
                 :class="{ chosen: mySides[name] === 'government' }"
+                :aria-checked="mySides[name] === 'government'"
                 :disabled="sidesLocked"
                 @click="fileBench(name, 'government')"
               >
@@ -106,8 +116,10 @@
               </button>
               <button
                 type="button"
-                class="side-button"
+                role="radio"
+                class="rocker-end"
                 :class="{ chosen: mySides[name] === 'opposition' }"
+                :aria-checked="mySides[name] === 'opposition'"
                 :disabled="sidesLocked"
                 @click="fileBench(name, 'opposition')"
               >
@@ -117,14 +129,11 @@
           </div>
         </div>
         <footer class="shell-footer sides-footer">
-          <button
-            type="button"
-            class="lock-row"
-            :disabled="sidesLocked || !allFiled"
-            @click="submitSides"
-          >
-            {{ sidesLocked ? 'Locked in' : 'Lock it in' }}
-          </button>
+          <div class="lock-row">
+            <ButtonFilled :disabled="sidesLocked || !allFiled" @click="submitSides">
+              {{ sidesLocked ? 'Locked in' : `Lock it in${filedCount}` }}
+            </ButtonFilled>
+          </div>
         </footer>
       </div>
     </Transition>
@@ -139,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
@@ -194,6 +204,13 @@ watch(
 const allFiled = computed(() =>
   (challenge.value?.sorted ?? []).every(name => mySides.value[name] !== undefined)
 )
+
+/** " (2/4)" until the row is complete — what is left to do, not a scold. */
+const filedCount = computed(() => {
+  const total = challenge.value?.sorted.length ?? 0
+  const filed = Object.keys(mySides.value).length
+  return !total || filed >= total ? '' : ` (${filed}/${total})`
+})
 
 const send = (pick: { party?: string; seats?: number; sides?: typeof mySides.value }) =>
   update({ event: 'submit-government-pick', turn: state.value.turn, pick })
@@ -296,13 +313,37 @@ const promptSources = computed(() => datasetAttribution('elections'))
 
 .chamber-facts {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: center;
+  width: min(94vw, 34rem);
+  margin: 0.35rem auto 0.9rem;
+  padding: 0;
   pointer-events: auto;
 
+  // The seat maths IS the round's subject from beat 2 on, so it gets card
+  // weight rather than a caption's. It stays off beat 1, where a player has
+  // nothing to relate the numbers to yet.
   .fact {
-    font-size: 0.85rem;
-    opacity: 0.72;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.05rem;
+    flex: 1 1 6rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid ink(0.12);
+    border-radius: 0.6rem;
+    background: milk(0.55);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    opacity: 0.9;
+
+    strong {
+      font-size: 1.35rem;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+    }
   }
 }
 
@@ -465,27 +506,78 @@ const promptSources = computed(() => datasetAttribution('elections'))
   opacity: 0.6;
 }
 
-.bench-choice {
-  display: flex;
-  gap: 0.3rem;
+/**
+ * The for/against rocker: ONE control with two ends and a thumb that slides
+ * between them, so a bench's allegiance reads as a position rather than as two
+ * unrelated taps. Ends are full-height and generously padded — these were
+ * 0.3rem pills, which is under the comfortable touch target on a phone.
+ */
+.rocker {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: none;
+  padding: 0.15rem;
+  border: 1px solid ink(0.16);
+  border-radius: 999px;
+  background: milk(0.7);
+
+  &.locked {
+    opacity: 0.75;
+  }
+}
+
+.rocker-thumb {
+  position: absolute;
+  // The thumb sits UNDER the ends and takes no pointer events — an absolutely
+  // positioned sibling drawn after them would otherwise swallow every tap.
+  pointer-events: none;
+  inset: 0.15rem 50% 0.15rem 0.15rem;
+  border-radius: 999px;
+  background: ink(0.88);
+  opacity: 0;
+  transition:
+    transform var(--motion-base) var(--ease-out-expressive),
+    opacity var(--motion-fast) linear;
+
+  &.government {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  &.opposition {
+    opacity: 1;
+    // Its own width, so the travel is exact at any rocker size.
+    transform: translateX(100%);
+  }
+}
+
+.rocker-end {
+  position: relative;
+  z-index: 1;
+  min-width: 4.6rem;
+  padding: 0.5rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--motion-fast) linear;
+
+  &.chosen {
+    color: milk();
+  }
+
+  &:disabled {
+    cursor: default;
+  }
 }
 
 .sides-footer {
   display: flex;
   justify-content: center;
   pointer-events: auto;
-}
-
-.side-button {
-  padding: 0.3rem 0.7rem;
-  border: 1px solid ink(0.2);
-  border-radius: 999px;
-  background: transparent;
-  font-size: 0.78rem;
-
-  &.chosen {
-    background: ink(0.85);
-    color: milk();
-  }
 }
 </style>

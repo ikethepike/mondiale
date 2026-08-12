@@ -130,7 +130,14 @@ import {
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
 import { dealGovernment } from './government'
-import { countriesGovernedByFamily, governedOutsideFamily, partiesWithLogo } from './parties'
+import {
+  countriesGovernedByFamily,
+  countriesWithGoverningLogo,
+  governedOutsideFamily,
+  governingParty,
+  impostorParties,
+  partiesWithLogo,
+} from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
   dramaScore,
@@ -2880,6 +2887,105 @@ const ERRATA_KIND_BY_DIFFICULTY: Record<gameTypes.GameDifficulty, ErrataKind> = 
  * in it. Dealer and renderer read the same `isLabelableBox` threshold over the
  * same `labelBoxFor`.
  */
+/** Countries on a Rulers stage. More logos is more to read, and the frame has
+ *  to stay tight enough that every one of them is legible. */
+const RULERS_LINEUP_SIZE: Record<gameTypes.GameDifficulty, number> = {
+  easy: 4,
+  normal: 5,
+  hard: 6,
+}
+
+/** Map units. Past this the cluster straggles and the frame has to pull back
+ *  far enough that the logos stop reading. Measured p90 of real clusters ~320. */
+const RULERS_MAX_SPAN = 360
+
+/**
+ * Rulers: a framed neighbourhood wearing its governments' logos, one of which
+ * is an opposition party from its OWN country.
+ *
+ * Grown by PROXIMITY rather than by land border. Errata needs borders because a
+ * swap between neighbours is its question; Rulers' question is political, and
+ * the frame only has to look like a coherent region. Border-growing would also
+ * deal Western Europe almost every time — over the eligible pool only two
+ * border components can supply six countries.
+ */
+const dealRulers = async (
+  difficulty: gameTypes.GameDifficulty,
+  pool: ISOCountryCode[]
+): Promise<Pick<IndividualChallenge, 'country' | 'rulers'> | undefined> => {
+  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
+
+  const onBoard = new Set(pool)
+  // The SAME predicate the logo layer uses, so the dealer can never deal a
+  // country the stage then silently skips.
+  const canCarry = (isoCode: ISOCountryCode) => {
+    const code = isoCode as keyof typeof MAP_BOUNDS
+    return onBoard.has(isoCode) && isLabelableBox(labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code]))
+  }
+
+  const centre = (isoCode: ISOCountryCode): [number, number] | undefined => {
+    const box = labelBoxFor(
+      MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS],
+      MAP_REGIONS[isoCode as keyof typeof MAP_REGIONS]
+    )
+    return box ? [box[0] + box[2] / 2, box[1] + box[3] / 2] : undefined
+  }
+
+  const eligible = countriesWithGoverningLogo().filter(canCarry)
+  const size = RULERS_LINEUP_SIZE[difficulty]
+
+  for (const seed of shuffleArray(eligible)) {
+    const from = centre(seed)
+    if (!from) continue
+    const cluster = eligible
+      .flatMap(isoCode => {
+        const point = centre(isoCode)
+        if (!point) return []
+        return [{ isoCode, distance: Math.hypot(point[0] - from[0], point[1] - from[1]) }]
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, size)
+    if (cluster.length < size) continue
+    if (cluster[cluster.length - 1]!.distance * 2 > RULERS_MAX_SPAN) continue
+
+    const lineup = cluster.map(entry => entry.isoCode)
+    // Two parties whose logos read the same defeat the question — Croatia's HDZ
+    // and Bosnia's HDZ BiH are different parties wearing near-identical marks.
+    const marks = lineup.map(isoCode => governingParty(isoCode)?.abbreviation?.toLowerCase())
+    if (new Set(marks.filter(Boolean)).size !== marks.filter(Boolean).length) continue
+
+    const victims = shuffleArray(lineup.filter(isoCode => impostorParties(isoCode).length))
+    const victim = victims[0]
+    if (!victim) continue
+    const impostor = sample(impostorParties(victim))
+    const governing = governingParty(victim)
+    if (!impostor?.logo || !governing?.logo) continue
+
+    const logos: Partial<Record<ISOCountryCode, string>> = {}
+    for (const isoCode of lineup) {
+      const logo = isoCode === victim ? impostor.logo : governingParty(isoCode)?.logo
+      if (logo) logos[isoCode] = logo
+    }
+    if (Object.keys(logos).length < size) continue
+
+    return {
+      country: victim,
+      rulers: {
+        lineup: shuffleArray([...lineup]),
+        logos,
+        trueLogo: { [victim]: governing.logo },
+        impostor: {
+          name: impostor.name,
+          ...(impostor.credit ? { credit: impostor.credit } : {}),
+          ...(impostor.license ? { license: impostor.license } : {}),
+        },
+        governing: { name: governing.name },
+      },
+    }
+  }
+  return undefined
+}
+
 const dealErrata = async (
   difficulty: gameTypes.GameDifficulty,
   pool: ISOCountryCode[],
@@ -3420,8 +3526,11 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
       }
       if (roll < 0.95) {
-        const dealt = dealOddOneOut(settings.difficulty, pool, isWorld)
-        if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
+        // Rulers takes the slot the party-family odd-one-out used to hold: the
+        // same question, asked on the map with the logos themselves rather than
+        // as a list of country names.
+        const dealt = await dealRulers(settings.difficulty, pool)
+        if (dealt) return { ...base, variant: 'rulers', ...dealt }
       }
       break
     }

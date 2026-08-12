@@ -40,6 +40,9 @@ import type { ISOCountryCode } from '../geography.types'
  *   (higher-lower's trust model)
  * - 'far-flung': a detached piece of a country, framed alone — name the
  *   country it belongs to (strict ISO equality)
+ * - 'rulers': a framed neighbourhood, every country wearing its governing
+ *   party's logo — except one, wearing an opposition party from its OWN
+ *   country. `country` is that impostor's country (strict ISO equality)
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -58,6 +61,25 @@ export interface IndividualChallenge {
     /** The one-line credit the logo's licence requires. */
     credit?: string
     license?: string
+  }
+  /**
+   * rulers: the framed neighbourhood and what each country is wearing.
+   *
+   * `logos` carries the question — every member wears its real government
+   * except `country`, which wears one of its own opposition parties. The map
+   * is the interface: there is no option list, the logos ARE the options.
+   */
+  rulers?: {
+    /** The framed countries, all wearing a logo. Includes `country`. */
+    lineup: ISOCountryCode[]
+    /** What each member is wearing, as shown. */
+    logos: Partial<Record<ISOCountryCode, string>>
+    /** The impostor's country wearing its REAL government — swapped in at the
+     *  reveal, so the stage takes back the lie it taught. */
+    trueLogo?: Partial<Record<ISOCountryCode, string>>
+    /** Named only in the reveal: the impostor, and who really governs there. */
+    impostor: { name: string; credit?: string; license?: string }
+    governing: { name: string }
   }
   /** odd-one-out: the lineup (includes `country`) and what the others share. */
   oddOneOut?: {
@@ -206,6 +228,7 @@ export const individualChallengeVariants = [
   'scriptorium',
   'chronicle',
   'far-flung',
+  'rulers',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 

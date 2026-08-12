@@ -54,10 +54,13 @@ export const governmentKey = (gameId: string, roundIndex: number) =>
  * party" — a wrong option that belongs to another country is a giveaway.
  */
 export const PARTY_OPTIONS: { [difficulty in GameDifficulty]: number } = {
-  easy: 3,
-  normal: 4,
-  hard: 5,
+  easy: 4,
+  normal: 5,
+  hard: 7,
 }
+
+/** Under this the row is a coin flip rather than a question. */
+export const MIN_PARTY_OPTIONS = 3
 
 /**
  * Seat blocks offered in beat 2. The chamber is drawn colourless and split into
@@ -203,9 +206,14 @@ const buildDeal = (
   // away by looking different. A chamber that cannot fill the row is not dealt
   // at all — a short row is a different, easier question than the one the
   // difficulty asked for.
+  // Ask for the difficulty's count, take what the chamber can fill, floor at
+  // MIN_PARTY_OPTIONS. A hard cap would cost a third of the pool — chambers
+  // able to fill the row run 13/12/10/7 at 3/4/5/6 options — so the difficulty
+  // raises the CEILING and the chamber decides. The Netherlands and Denmark
+  // deal six; Italy deals four; nothing drops out of the pool for it.
   const rivals = everyBench.filter(bench => bench !== leader && bench.party?.logo)
-  const wanted = PARTY_OPTIONS[difficulty] - 1
-  if (rivals.length < wanted) return undefined
+  if (rivals.length < MIN_PARTY_OPTIONS - 1) return undefined
+  const wanted = Math.min(PARTY_OPTIONS[difficulty] - 1, rivals.length)
   const options = shuffleArray([leader, ...sampleMany(rivals, wanted)]).map(asOption)
 
   const governmentSeats = standings.government.reduce((sum, bench) => sum + bench.seats, 0)

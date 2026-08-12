@@ -4,6 +4,7 @@ import {
   dealGovernment,
   governmentPool,
   GOVERNMENT_BEATS,
+  MIN_PARTY_OPTIONS,
   PARTY_OPTIONS,
   SEAT_BLOCKS,
   scoreBeat,
@@ -95,13 +96,28 @@ describe('dealGovernment', () => {
     }
   })
 
-  it('offers as many options as the difficulty asks for', () => {
+  // The difficulty sets a CEILING, not a fixed count: a hard bump to six
+  // options would cost a third of the pool (chambers able to fill the row run
+  // 13/12/10/7 at 3/4/5/6), so the chamber fills what it can down to a floor.
+  it('offers as many options as the chamber can fill, up to the difficulty', () => {
     for (const difficulty of gameDifficulties) {
-      const isoCode = governmentPool(RULES, difficulty)[0]
-      if (!isoCode) continue
-      const dealt = dealGovernment(RULES, difficulty, isoCode)
-      expect(dealt?.options.length).toBe(PARTY_OPTIONS[difficulty])
+      for (const isoCode of governmentPool(RULES, difficulty)) {
+        const dealt = dealGovernment(RULES, difficulty, isoCode)!
+        expect(dealt.options.length, `${isoCode} ${difficulty}`).toBeLessThanOrEqual(
+          PARTY_OPTIONS[difficulty]
+        )
+        expect(dealt.options.length, `${isoCode} ${difficulty}`).toBeGreaterThanOrEqual(
+          MIN_PARTY_OPTIONS
+        )
+      }
     }
+  })
+
+  it('lets a rich chamber deal more options at hard than at easy', () => {
+    // The Netherlands seats fourteen logo-bearing benches; Italy four.
+    const easy = dealGovernment(RULES, 'easy', 'NL')!
+    const hard = dealGovernment(RULES, 'hard', 'NL')!
+    expect(hard.options.length).toBeGreaterThan(easy.options.length)
   })
 })
 

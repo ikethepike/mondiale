@@ -23,6 +23,7 @@ import GateHigherLower from './GateHigherLower.vue'
 import GateLeaderPick from './GateLeaderPick.vue'
 import GateLogoPolitics from './GateLogoPolitics.vue'
 import GateMoneyMatch from './GateMoneyMatch.vue'
+import GateRulers from '~/components/challenge/individual/GateRulers.vue'
 import GateOddOneOut from './GateOddOneOut.vue'
 import GateOutlineReveal from './GateOutlineReveal.vue'
 import GatePhotoPick from './GatePhotoPick.vue'
@@ -120,6 +121,7 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     },
   },
   'odd-one-out': { component: GateOddOneOut },
+  rulers: { component: GateRulers },
   'higher-lower': {
     component: GateHigherLower,
     reveal: DuelReveal,

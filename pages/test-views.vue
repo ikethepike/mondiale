@@ -113,7 +113,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
-import { governingParty, partiesWithLogo } from '~~/lib/parties'
+import { governingParty, impostorParties, partiesWithLogo } from '~~/lib/parties'
 import {
   BEAT_POINTS,
   BEAT_SECONDS,
@@ -3420,36 +3420,35 @@ const scenarios: Scenario[] = [
       }),
   },
   {
-    // The logo stage, before any dealer exists: five neighbours wearing their
-    // real governing parties, framed tight. This is the legibility probe —
-    // median inscribed room is ~6 map units, and if a logo reads as mush here
-    // the whole visual premise needs rethinking.
-    id: 'rulers-stage',
-    label: 'Rulers: the logo stage (legibility probe)',
+    // Rulers: the real gate, dealt by the real dealer. The map IS the
+    // interface — every framed country wears its government's logo except one,
+    // which wears an opposition party from its own country.
+    id: 'individual-rulers',
+    label: 'Individual: rulers (spot the party not in government)',
     component: ViewIndividualChallenge,
     build: () => {
-      const lineup: ISOCountryCode[] = ['HR', 'BA', 'AT', 'SK', 'CZ']
+      // The dealer is async (it imports map geometry), and `build` is not — so
+      // the harness assembles one deal from the same lib helpers the dealer
+      // uses. The impostor test is the LOGO FILE, exactly as `impostorParties`
+      // does it.
+      const lineup: ISOCountryCode[] = ['AT', 'CZ', 'SK', 'HU', 'SI']
+      const victim: ISOCountryCode = 'SK'
+      const impostor = impostorParties(victim)[0]
       const logos = Object.fromEntries(
         lineup.flatMap(isoCode => {
-          const logo = governingParty(isoCode)?.logo
+          const logo = isoCode === victim ? impostor?.logo : governingParty(isoCode)?.logo
           return logo ? [[isoCode, logo] as const] : []
         })
       )
-      // AFTER the gate mounts: ViewIndividualChallenge calls clearBoard() on
-      // mount, which wipes the map registers. A real gate sets its stage in
-      // its own onMounted for the same reason.
-      window.setTimeout(() => {
-        gameStore.map.countryLogos = logos
-        gameStore.map.focus = [...lineup]
-      }, 400)
       return individualGame({
-        variant: 'odd-one-out',
-        country: lineup[0]!,
-        oddOneOut: {
-          countries: [...lineup],
-          propertyLabel: 'Which of these is NOT its ruling party?',
-          kind: 'party-family',
-          value: '',
+        variant: 'rulers',
+        country: victim,
+        rulers: {
+          lineup,
+          logos,
+          trueLogo: { [victim]: governingParty(victim)?.logo ?? '' },
+          impostor: { name: impostor?.name ?? '' },
+          governing: { name: governingParty(victim)?.name ?? '' },
         },
       })
     },
