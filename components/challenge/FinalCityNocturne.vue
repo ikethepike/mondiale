@@ -80,7 +80,9 @@ const isCoarsePointer = useIsCoarsePointer()
 
 // The night — body skin, chrome tint and the framed country's glow — plus the
 // daybreak this component can no longer forget on unmount.
-const { nightfall } = useNocturne(() => [props.challenge.country])
+// Held: the round frames ONE country and every answer sits inside it, so the
+// camera the round settled on IS the question. Nothing to go looking for.
+const { nightfall } = useNocturne(() => [props.challenge.country], { held: true })
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="star-chart challenge-shell">
+  <div v-if="challenge" class="star-chart challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -146,10 +146,13 @@ const {
     wrongHint: country =>
       `${capitalStar(country.isoCode)?.name ?? countryName(country)} isn't one of tonight's stars`,
     wrongLabel: country => capitalStar(country.isoCode)?.name ?? countryName(country),
-    // The stars frame themselves — the camera holds the whole constellation.
-    decorate: () => {
-      gameStore.map.focus = answers.value
-    },
+    // Deliberately no camera work per repaint. `decorate` runs on EVERY guess,
+    // and `answers` rebuilds its array each time — assigning `map.focus` here
+    // handed the map a new subject identity per landed star, which resets the
+    // camera-taken latch and snatches the view back to the whole constellation.
+    // A player who had zoomed in to read a crowded corner lost it on their own
+    // correct answer. The constellation never changes mid-round, so it is
+    // framed once when the round starts instead.
     focusInput: () => {
       // Round-start autofocus is desktop-only, same policy as the input homes
       if (!isCoarsePointer.value) field.value?.focus()
@@ -160,6 +163,12 @@ const {
 // Found countries glow through the night while the round runs; at the reveal
 // every star's country lights, so the table sees where they all really sit.
 // Declared after the round engine — the spotlight getter reads `found`.
+//
+// NOT held (unlike City Nocturne): the stars are scattered across the whole
+// globe, so the constellation framing that fits them all leaves each one a few
+// pixels wide. Reading a star's position IS the question here, and at world
+// framing Europe's capitals sit on top of each other — the player has to be
+// able to zoom in. The shell is `passthrough` for the same reason.
 const { nightfall } = useNocturne(() => (revealed.value ? answers.value : found.value))
 
 /** A typed line: resolve the city to the country whose capital it is, then let
@@ -218,7 +227,19 @@ const lights = computed<NightLight[]>(() =>
 // Nightfall lands with the round, not with the mount: the interstitial is a
 // day-lit card, and darkening the world behind it wastes the beat.
 watch(started, live => {
-  if (live) nightfall()
+  if (!live) return
+  nightfall()
+  // The one framing of the play beat: the whole constellation, once. After
+  // this the camera is the player's — they can zoom into a crowded corner to
+  // read a star and it stays where they put it.
+  gameStore.map.focus = answers.value
+})
+
+// The reveal reclaims it: every star names itself now, and a player still
+// zoomed into the corner they were working would watch the answers land
+// off-screen. A fresh array is the point here — it re-frames by identity.
+watch(revealed, live => {
+  if (live) gameStore.map.focus = [...answers.value]
 })
 </script>
 <style lang="scss" scoped>

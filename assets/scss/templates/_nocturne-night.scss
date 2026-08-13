@@ -9,9 +9,13 @@
 body.nocturne-night {
   background: var(--night-page);
 
-  // The night holds still: no panning or zooming mid-round — the dots and the
-  // framed subject stay exactly where the camera settled them.
-  .game-map {
+  // A held night: no panning or zooming mid-round — the dots and the framed
+  // subject stay exactly where the camera settled them. Opt-in per mode
+  // (`useNocturne(spotlight, { held: true })`), because it only makes sense
+  // when the round frames ONE subject. A mode whose subjects are scattered
+  // across the globe needs the camera: at world framing a star is a few
+  // pixels wide, so refusing the zoom refuses the answer.
+  &.nocturne-held .game-map {
     pointer-events: none;
   }
 

@@ -16,8 +16,16 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * `spotlight` is reactive: hand it the found countries and each one lights as
  * it lands. Classes are tracked so the composable only ever removes what it
  * stamped — the map engine owns those paths the rest of the time.
+ *
+ * `held` freezes the camera for the round (no pan, no zoom). It suits a mode
+ * that frames ONE subject and wants it to stay put; a mode whose subjects are
+ * scattered worldwide must leave it off, or its own answers stay too small to
+ * read.
  */
-export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode[]>) => {
+export const useNocturne = (
+  spotlight?: MaybeRefOrGetter<readonly ISOCountryCode[]>,
+  options: { held?: boolean } = {}
+) => {
   const SPOTLIGHT_CLASS = 'nocturne-target'
   // A ref, not a plain flag: the spotlight effect READS it, and a non-reactive
   // read would leave the stamps waiting on the next spotlight change instead of
@@ -34,6 +42,7 @@ export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode
     if (night.value) return
     night.value = true
     document.body.classList.add('nocturne-night')
+    if (options.held) document.body.classList.add('nocturne-held')
     setChromeTint(NIGHT_CHROME)
   }
 
@@ -41,6 +50,9 @@ export const useNocturne = (spotlight?: MaybeRefOrGetter<readonly ISOCountryCode
     if (!night.value) return
     night.value = false
     document.body.classList.remove('nocturne-night')
+    // Removed unconditionally, like the night itself: a mode that stranded
+    // this class would leave the map inert for every round after it.
+    document.body.classList.remove('nocturne-held')
     setChromeTint()
     clearSpotlight()
   }
