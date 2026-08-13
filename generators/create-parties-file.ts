@@ -132,7 +132,12 @@ const MATCH_CACHE_PATH = 'generators/data/party-match-cache.json'
  * teammate's first run is fast too, and a 19MB file in a repo whose history is
  * already media-heavy is not worth the bytes.
  */
-const CACHED_PROPERTIES = ['P1142', 'P1387', 'P465', 'P571', 'P154', 'P463'] as const
+// P576 (dissolved) is stored even though nothing DISPLAYS it: it is the gate
+// `firstAcceptable` rejects a defunct party on, and a cached hit replays
+// without re-running the gates. Left out, a party that dissolves after being
+// cached keeps its accept forever — the cache key is
+// `country|endonym|name|seats`, so nothing about a dissolution invalidates it.
+const CACHED_PROPERTIES = ['P1142', 'P1387', 'P465', 'P571', 'P154', 'P463', 'P576'] as const
 const slimClaims = (claims: { [property: string]: Snak[] }): { [property: string]: Snak[] } =>
   Object.fromEntries(
     CACHED_PROPERTIES.filter(property => claims[property]).map(property => [
@@ -466,6 +471,16 @@ type PartyMatch = {
  * roster order, which handed the entity to the wrong party and left the
  * country's actual GOVERNING party bare. The better name wins instead.
  */
+/**
+ * A cached hit, re-gated. The cache replays a decision made on an earlier run
+ * WITHOUT re-running `firstAcceptable`, so any gate whose answer can change
+ * over time has to be re-applied on the way out. Dissolution is the one that
+ * can: a live party cached today is a defunct party tomorrow, and its key
+ * (`country|endonym|name|seats`) contains nothing that a dissolution moves.
+ */
+const stillAcceptable = (match: PartyMatch | undefined): PartyMatch | undefined =>
+  match?.claims?.P576?.length ? undefined : match
+
 const labelFit = (name: string, label: string | undefined, isoCode: ISOCountryCode): number => {
   if (!label) return 0
   const wanted = partyTokens(name, isoCode)
@@ -704,6 +719,17 @@ try {
 }
 
 const mapping: PartyMapping = { ...previous }
+/**
+ * Countries THIS run actually read from the Factbook.
+ *
+ * `mapping` is seeded from the previous run so a transient failure cannot
+ * ERASE a country — which also means its size says nothing about whether this
+ * run worked. Counting it for the floor made the guard unfireable: a total
+ * outage leaves every fetch returning undefined, every country hitting
+ * `continue`, and 192 carried-over entries sailing past a floor of 180. The
+ * file would be rewritten from stale data and reported as a clean run.
+ */
+const readThisRun = new Set<ISOCountryCode>()
 const report: string[] = []
 let resolved = 0
 let attempted = 0
@@ -793,7 +819,7 @@ for (const { isoCode, url } of successfulCombinations) {
     const cached = cacheKey ? matchCache[cacheKey] : undefined
     let match: PartyMatch | undefined
     if (cached) {
-      match = 'miss' in cached ? undefined : cached
+      match = 'miss' in cached ? undefined : stillAcceptable(cached)
       cacheHits += 1
     } else if (countryQid && cacheKey) {
       match = await resolveParty(
@@ -870,6 +896,7 @@ for (const { isoCode, url } of successfulCombinations) {
       ? { lastElection: legislative['most recent election date']!.text }
       : {}),
   }
+  readThisRun.add(isoCode)
 
   // Flush after every country, not just at the end of the pass. The run is
   // long enough that it WILL sometimes be interrupted (a hung socket, a
@@ -936,7 +963,7 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
     const cached = matchCache[cacheKey]
     let match: PartyMatch | undefined
     if (cached) {
-      match = 'miss' in cached ? undefined : cached
+      match = 'miss' in cached ? undefined : stillAcceptable(cached)
     } else {
       match = await resolveParty(
         seated.party,
@@ -1230,9 +1257,13 @@ console.log()
 
 // --- 5. Write ----------------------------------------------------------------
 const countries = Object.keys(mapping).length
-if (countries < COUNTRY_FLOOR) {
+// The floor judges THIS RUN, not the carried-over file. Counting `mapping`
+// meant a total outage still counted 192 previous entries and wrote them back
+// out as if freshly read — the guard could not fire at all.
+if (readThisRun.size < COUNTRY_FLOOR) {
   throw new Error(
-    `Only ${countries} countries resolved (floor ${COUNTRY_FLOOR}) — refusing to write a partial roster.`
+    `Only ${readThisRun.size} countries read this run (floor ${COUNTRY_FLOOR}) — ` +
+      `refusing to rewrite the roster from ${countries} carried-over entries.`
   )
 }
 

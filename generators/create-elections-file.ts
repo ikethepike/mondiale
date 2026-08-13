@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { jsonParseLiteral } from './lib/emit'
+import { electionBoxes, plainText, templateAt, templateFields } from './lib/wikitext'
 import { fetchJson, wait } from './vendors/wikidata/commons'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
 import { COUNTRIES } from '../data/countries.gen'
@@ -113,6 +114,15 @@ export interface Election {
   chamber?: string
   /** The chamber's full size, from "All 460 seats in the Sejm". */
   totalSeats?: number
+  /**
+   * Seats this election actually renewed, when it renewed only some — the
+   * "127" in "127 of the 257 seats". Its presence means `parties[].seats`
+   * describe THIS election, not the sitting chamber: the two are only the same
+   * number in a chamber that renews whole. Nine seeded chambers stagger
+   * (AR, BD, CO, CY, ET, KE, MM, UA, ZM), and a share taken against
+   * `totalSeats` there understates every bench.
+   */
+  contestedSeats?: number
   /** The wikipedia article this was read from — the ⓘ's deep link. */
   article: string
   parties: ElectionParty[]
@@ -230,118 +240,6 @@ const ELECTION_ARTICLES: { [isoCode in ISOCountryCode]?: string } = {
   ZA: '2024 South African general election',
 }
 
-// --- Wikitext -----------------------------------------------------------------
-
-/**
- * The template starting at `index`, brace-balanced. The cursor advances by two
- * over every `{{`/`}}` so an overlapping run like `}}}}` is counted once per
- * pair rather than once per position.
- */
-const templateAt = (text: string, index: number): string => {
-  let depth = 0
-  let cursor = index
-  while (cursor < text.length - 1) {
-    const pair = text.slice(cursor, cursor + 2)
-    if (pair === '{{') {
-      depth += 1
-      cursor += 2
-      continue
-    }
-    if (pair === '}}') {
-      depth -= 1
-      cursor += 2
-      if (depth === 0) return text.slice(index, cursor)
-      continue
-    }
-    cursor += 1
-  }
-  return text.slice(index)
-}
-
-/** `|key = value` pairs at depth 1 of ONE template — nested templates and
- *  wikilinks keep their own pipes. */
-const templateFields = (block: string): Record<string, string> => {
-  const body = block.slice(2, -2)
-  const fields: Record<string, string> = {}
-  let depth = 0
-  let link = 0
-  let buffer = ''
-  let cursor = 0
-
-  const flush = () => {
-    const split = buffer.indexOf('=')
-    if (split > 0)
-      fields[buffer.slice(0, split).trim().toLowerCase()] = buffer.slice(split + 1).trim()
-    buffer = ''
-  }
-
-  while (cursor < body.length) {
-    const pair = body.slice(cursor, cursor + 2)
-    if (pair === '{{' || pair === '}}' || pair === '[[' || pair === ']]') {
-      if (pair === '{{') depth += 1
-      else if (pair === '}}') depth -= 1
-      else if (pair === '[[') link += 1
-      else link -= 1
-      buffer += pair
-      cursor += 2
-      continue
-    }
-    if (body[cursor] === '|' && depth === 0 && link === 0) {
-      flush()
-      cursor += 1
-      continue
-    }
-    buffer += body[cursor]
-    cursor += 1
-  }
-  flush()
-  return fields
-}
-
-/** Every election infobox, preferring the EMBEDDED ones — a bicameral article
- *  puts each chamber in its own `| module = {{… embed = yes …}}`. */
-const electionBoxes = (text: string): string[] => {
-  const blocks: string[] = []
-  const pattern = /\{\{\s*Infobox\s+(?:legislative\s+)?election/gi
-  for (const match of text.matchAll(pattern)) blocks.push(templateAt(text, match.index))
-  const embedded = blocks.filter(block => /\|\s*embed\s*=\s*yes/i.test(block.slice(0, 400)))
-  return embedded.length ? embedded : blocks
-}
-
-const plainText = (value: string): string =>
-  value
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/'''/g, '')
-    .replace(/<br\s*\/?>/gi, ' / ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
-    // Some articles name the party through a colour template rather than in
-    // prose — Canada's is `{{Canadian party colour|CA|Liberal|name}}`, where
-    // the party is a positional argument. Stripping the template outright
-    // would drop the only name the infobox carries, so keep its longest word.
-    .replace(/\{\{[^{}]*\}\}/g, template => {
-      const parts = template
-        .slice(2, -2)
-        .split('|')
-        .slice(1)
-        .map(part => part.trim())
-        .filter(part => part && !/^(name|short|abbrev|colou?r)$/i.test(part) && part.length > 2)
-      return parts.sort((a, b) => b.length - a.length)[0] ?? ''
-    })
-    // A trailing parenthetical is usually a disambiguator — "(Sweden)",
-    // "(2020)" — and stripping it is right. But for some rosters it IS the
-    // party's identity: Nepal seats three "Communist Party of Nepal (…)"
-    // blocs, which collapse into one repeated name without it. So a
-    // parenthetical is kept only when it names a FACTION: more than one word,
-    // and not a country or a year.
-    .replace(/\s*\(([^)]*)\)/g, (_match, inner: string) => {
-      const words = inner.trim().split(/\s+/)
-      const isFaction = words.length > 1 && !/^\d{4}$/.test(inner.trim())
-      return isFaction ? ` (${inner.trim()})` : ''
-    })
-    .replace(/\s+/g, ' ')
-    .trim()
-
 /** Upper chambers name themselves; the lower house forms governments. */
 const UPPER_HOUSE =
   /\b(senate|senat|council of states|house of lords|upper|rajya|federation council)\b/i
@@ -396,10 +294,21 @@ const readElection = (article: string, text: string): Election | undefined => {
     }
 
     if (parties.length < 2) continue
-    const total = /(\d[\d,]*)\s+seats/.exec(plainText(fields.seats_for_election ?? ''))?.[1]
+    const forElection = plainText(fields.seats_for_election ?? '')
+    // "127 of the 257 seats in the Chamber of Deputies" — a STAGGERED chamber,
+    // where this election renewed only part of the house. Both numbers matter
+    // and they mean different things: the seats parsed above are the contested
+    // ones, and the chamber is the bigger figure. Reading only the trailing
+    // "N seats" took the chamber size and left the contested seats looking
+    // like a chamber-wide result — Argentina's 130 of 257 read as a party
+    // holding half the house it had actually only half-renewed.
+    const staggered = /(\d[\d,]*)\s+of\s+(?:the\s+)?(\d[\d,]*)\s+seats/.exec(forElection)
+    const digits = (value: string) => Number(value.replace(/,/g, ''))
+    const total = staggered?.[2] ?? /(\d[\d,]*)\s+seats/.exec(forElection)?.[1]
     chambers.push({
       chamber: plainText(fields.election_name ?? '') || undefined,
-      ...(total ? { totalSeats: Number(total.replace(/,/g, '')) } : {}),
+      ...(total ? { totalSeats: digits(total) } : {}),
+      ...(staggered?.[1] ? { contestedSeats: digits(staggered[1]) } : {}),
       article,
       parties,
     })
@@ -448,6 +357,12 @@ const cabinetTitles = (english: string, leaders: (string | undefined)[]): string
         titles.push(`${ordinal} ${surname} ${noun}`.replace(/\s+/g, ' ').trim())
       for (const roman of CABINET_ORDINAL_ROMAN)
         titles.push(`${surname} ${roman} ${noun}`.replace(/\s+/g, ' ').trim())
+      // The POSSESSIVE, with the leader's full name and with the surname
+      // alone. Czechia's cabinet lives at "Petr Fiala's Cabinet" — a real,
+      // current article the 47 other shapes never reach, so the country
+      // simply had no cabinet.
+      if (leader) titles.push(`${leader}'s ${noun}`)
+      titles.push(`${surname}'s ${noun}`)
     }
     if (leader) titles.push(`Cabinet of ${leader}`, `Government of ${leader}`)
   }
@@ -587,12 +502,40 @@ const readCabinet = (article: string, text: string): Cabinet | undefined => {
 const cache: Record<string, string> =
   force || !existsSync(CACHE_PATH) ? {} : JSON.parse(readFileSync(CACHE_PATH, 'utf8'))
 
+/**
+ * When each known-absent title was last checked.
+ *
+ * A cached MISS is the whole reason a rerun is cheap — the cabinet search tries
+ * ~50 titles per country and 3,360 of the 3,836 cached entries are empty. But
+ * an absent article is only absent TODAY: Wikipedia gains cabinet pages, and a
+ * permanent negative meant a country whose article appeared later stayed
+ * cabinet-less forever with no way to notice short of `--force`, which throws
+ * away 26MB of good pages to re-learn a handful of misses.
+ *
+ * So misses expire and hits do not. A hit is a real article whose wikitext
+ * barely moves between elections; a miss is a guess that may simply be early.
+ * Kept in a sidecar so the existing cache format is untouched — an entry with
+ * no stamp is treated as due, which is exactly right for the 3,360 already
+ * banked.
+ */
+const MISS_TTL_DAYS = 30
+const MISS_STAMP_PATH = 'generators/data/election-miss-stamps.json'
+const missStamps = new Map<string, number>(
+  Object.entries<number>(
+    force || !existsSync(MISS_STAMP_PATH) ? {} : JSON.parse(readFileSync(MISS_STAMP_PATH, 'utf8'))
+  )
+)
+const missIsFresh = (article: string): boolean => {
+  const stamped = missStamps.get(article)
+  if (!stamped) return false
+  return Date.now() - stamped < MISS_TTL_DAYS * 24 * 60 * 60 * 1000
+}
+
 const wikitext = async (article: string): Promise<string> => {
-  // A MISS is cached too, as an empty string. The cabinet search tries ~50
-  // candidate titles per country and most of them do not exist; recording only
-  // the hits meant every rerun refetched two thousand known-absent pages, which
-  // is the whole runtime. `in` rather than truthiness, so '' counts as known.
-  if (article in cache) return cache[article]
+  // `in` rather than truthiness, so a cached '' counts as known — but a miss is
+  // only trusted while its stamp is fresh, or an article that appeared since
+  // would never be found again.
+  if (article in cache && (cache[article] || missIsFresh(article))) return cache[article]
   const response = await fetchJson<{ parse?: { wikitext?: { '*'?: string } } }>(
     `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(
       article
@@ -600,6 +543,10 @@ const wikitext = async (article: string): Promise<string> => {
   )
   const text = response?.parse?.wikitext?.['*'] ?? ''
   cache[article] = text
+  // Stamp the miss so it expires; a hit needs no stamp, and clearing any old
+  // one keeps the sidecar from growing entries for pages that now exist.
+  if (text) missStamps.delete(article)
+  else missStamps.set(article, Date.now())
   await wait(200)
   return text
 }
@@ -655,11 +602,22 @@ try {
 }
 
 const mapping: ElectionMapping = {}
+/**
+ * Chambers THIS run actually parsed. The backfill below restores anything a
+ * transient failure dropped, which is right — but it also means `mapping`'s
+ * size says nothing about whether this run worked. Counting it for the floor
+ * made the guard unfireable: a total outage restored all 71 previous chambers
+ * and passed a floor of 40.
+ */
+const readThisRun = new Set<ISOCountryCode>()
 const report: string[] = []
 
 /** Flush after EVERY country, hit or miss — a search that found nothing still
  *  learned which fifty titles do not exist, and that is what makes a rerun cheap. */
-const flushCache = () => writeFileSync(CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`)
+const flushCache = () => {
+  writeFileSync(CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`)
+  writeFileSync(MISS_STAMP_PATH, `${JSON.stringify(Object.fromEntries(missStamps), null, 2)}\n`)
+}
 
 for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
   if (!isValidISOCode(isoCode)) continue
@@ -676,15 +634,18 @@ for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
     continue
   }
 
+  // Coverage is judged against what this election CONTESTED, not the whole
+  // chamber. Measuring a staggered election against the full house made every
+  // one of them look like a bad parse (Argentina 51%, Cyprus 70%) and let a
+  // genuinely truncated one hide in the same band.
   const held = election.parties.reduce((total, party) => total + party.seats, 0)
-  if (election.totalSeats && held / election.totalSeats < SEAT_COVERAGE_FLOOR) {
-    report.push(
-      `${isoCode}: only ${held}/${election.totalSeats} seats accounted for — parse is suspect`
-    )
+  const against = election.contestedSeats ?? election.totalSeats
+  if (against && held / against < SEAT_COVERAGE_FLOOR) {
+    report.push(`${isoCode}: only ${held}/${against} seats accounted for — parse is suspect`)
     continue
   }
-  if (election.totalSeats && held > election.totalSeats) {
-    report.push(`${isoCode}: ${held} seats exceed the chamber's ${election.totalSeats}`)
+  if (against && held > against) {
+    report.push(`${isoCode}: ${held} seats exceed the ${against} contested`)
     continue
   }
 
@@ -693,6 +654,7 @@ for (const [isoCode, article] of Object.entries(ELECTION_ARTICLES)) {
   else report.push(`${isoCode}: no live cabinet article found`)
 
   mapping[isoCode] = election
+  readThisRun.add(isoCode)
   process.stdout.write(
     `\r  ${Object.keys(mapping).length} chambers, ${
       Object.values(mapping).filter(entry => entry?.cabinet).length
@@ -708,9 +670,39 @@ for (const isoCode of Object.keys(previous) as ISOCountryCode[]) {
 }
 
 const countries = Object.keys(mapping).length
-if (countries < COUNTRY_FLOOR) {
+const withVotes = Object.values(mapping).filter(election =>
+  election?.parties.some(party => party.votePct !== undefined)
+).length
+const cabinets = (Object.entries(mapping) as [ISOCountryCode, Election][]).filter(
+  ([, election]) => election.cabinet
+)
+const withGoverning = cabinets.filter(([, election]) => election.cabinet?.governing.length)
+
+/**
+ * EVERY guard runs before the write, not around it.
+ *
+ * The cabinet floor used to sit AFTER `writeFileSync`, so a run where the
+ * cabinet search broke — a Wikipedia title convention changing, the succession
+ * chase failing — threw an error only once it had already overwritten
+ * elections.gen.ts with 71 cabinet-less chambers. The message said the run
+ * failed; the file on disk said otherwise, and the backfill could not help
+ * because `mapping[iso]` WAS set, just without its cabinet.
+ *
+ * The floors judge THIS run. `mapping` is backfilled from the previous file so
+ * a transient failure cannot erase a chamber, which means its size cannot tell
+ * a working run from a dead one.
+ */
+if (readThisRun.size < COUNTRY_FLOOR) {
   throw new Error(
-    `Only ${countries} chambers parsed (floor ${COUNTRY_FLOOR}) — refusing to write a partial file.`
+    `Only ${readThisRun.size} chambers parsed this run (floor ${COUNTRY_FLOOR}) — ` +
+      `refusing to rewrite from ${countries} carried-over entries.`
+  )
+}
+const freshCabinets = [...readThisRun].filter(isoCode => mapping[isoCode]?.cabinet).length
+if (freshCabinets < CABINET_FLOOR) {
+  throw new Error(
+    `Only ${freshCabinets} live cabinets found this run (floor ${CABINET_FLOOR}) — ` +
+      `the title guesses or the succession chase broke.`
   )
 }
 
@@ -722,20 +714,6 @@ import type { ElectionMapping } from '../generators/create-elections-file'
 export const ELECTIONS: ElectionMapping = ${jsonParseLiteral(mapping)}
 `
 )
-
-const withVotes = Object.values(mapping).filter(election =>
-  election?.parties.some(party => party.votePct !== undefined)
-).length
-
-const cabinets = (Object.entries(mapping) as [ISOCountryCode, Election][]).filter(
-  ([, election]) => election.cabinet
-)
-const withGoverning = cabinets.filter(([, election]) => election.cabinet?.governing.length)
-if (cabinets.length < CABINET_FLOOR) {
-  throw new Error(
-    `Only ${cabinets.length} live cabinets found (floor ${CABINET_FLOOR}) — the title guesses or the succession chase broke.`
-  )
-}
 
 // The cabinet article names a head of government and so do we; when the two
 // disagree, one of them is stale. Ours comes from the Factbook and theirs from
