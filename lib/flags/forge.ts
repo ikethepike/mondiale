@@ -476,6 +476,14 @@ const TRIDENT = {
    */
   minBow: 2.5,
   maxBow: 7,
+  /**
+   * How deep the yoke's belly hangs below where the prongs branch, in box
+   * units. A real trident has NO straight crossbar: the arms leave the shaft
+   * on a continuous U and the prongs rise off that curve, so a flat bar with
+   * curved tips grafted on reads as a pitchfork head.
+   */
+  minYoke: 9,
+  maxYoke: 17,
 } as const
 
 /**
@@ -496,6 +504,7 @@ const tridentPath = (rng: Rng): string => {
   const head = bar * (TRIDENT.minHead + rng() * (TRIDENT.maxHead - TRIDENT.minHead))
   const bladeShare = TRIDENT.minBlade + rng() * (TRIDENT.maxBlade - TRIDENT.minBlade)
   const bow = TRIDENT.minBow + rng() * (TRIDENT.maxBow - TRIDENT.minBow)
+  const yoke = TRIDENT.minYoke + rng() * (TRIDENT.maxYoke - TRIDENT.minYoke)
   const cx = 50
   const foot = 97
   // The centre spearhead must clear the top of the box, so lay the shape out
@@ -517,31 +526,30 @@ const tridentPath = (rng: Rng): string => {
   // edge comes first folded the right prong into a hook, then into a solid
   // wedge), build the LEFT half's vertices once and mirror them: symmetry then
   // holds by construction, whatever the parameters.
-  const ctrlY = (barY + pointY) / 2
   // Each entry is either a point or a quadratic with its control point, given
   // for the left half in the order the outline visits them.
   type Step = { x: number; y: number; cx?: number; cy?: number }
-  // The crossbar's underside sweeps up into the prong on a curve rather than
-  // turning a square corner: a trident's arms grow out of the bar, they are
-  // not a rectangle with spikes stood on top of it. `sweep` is how far that
-  // curve reaches back along the bar.
-  const sweep = bar + bow * 0.9
+  // There is no straight crossbar. The arm leaves the shaft on a U whose belly
+  // hangs `yoke` below the branch point, sweeps out to the prong's foot, and
+  // the prong rises off that curve — so the underside is one continuous line
+  // from shaft to prong tip, never a flat slab with spikes on top.
   const outerX = cx - spread - bar - bow
+  const innerX = cx - spread + bar - bow
+  // The underside leaves the shaft here and bellies out to the prong's outer
+  // edge; the topside returns on a shallower curve, leaving the arm thicker at
+  // the shaft than at the tip, as a cast trident is.
+  const yokeBellyY = barY + yoke
   const leftHalf: Step[] = [
     { x: cx - bar, y: foot },
-    { x: cx - bar, y: barY + bar },
-    // out along the bar's underside, stopping short of the prong
-    { x: cx - spread + bar - sweep, y: barY + bar },
-    // round the bar's outer end and up into the prong's outer edge, one
-    // continuous curve through the corner
-    { x: outerX, y: pointY, cx: outerX, cy: barY + bar },
+    { x: cx - bar, y: yokeBellyY - yoke * 0.5 },
+    // the yoke's underside: out and up to the prong's outer edge, one curve
+    { x: outerX, y: pointY, cx: cx - spread * 0.72, cy: yokeBellyY },
     // the tip rides the bow too, so the whole prong sweeps outward
     { x: cx - spread - bow, y: prongTipY },
-    { x: cx - spread + bar - bow, y: pointY },
-    // back down its inner edge with the same bow
-    { x: cx - spread + bar, y: barY - bar, cx: cx - spread + bar - bow, cy: ctrlY },
-    // across the bar's top to the shaft, then up to the blade
-    { x: cx - bar, y: barY - bar },
+    { x: innerX, y: pointY },
+    // back down the prong's inner edge into the yoke's throat
+    { x: cx - bar, y: barY - bar, cx: cx - spread * 0.5, cy: barY - bar * 0.4 },
+    // up the shaft to the blade
     { x: cx - bar, y: bladeY },
     { x: cx - head, y: bladeY },
   ]
