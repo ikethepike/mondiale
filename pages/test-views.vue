@@ -152,17 +152,17 @@ import {
   atlasTailLetter,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
-import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
-import { sample } from '~~/lib/arrays'
+import { chainHead, closedDoors, liveChain, openMoves, pickChainSeed } from '~~/lib/chain'
+import { createChainSimulator } from '~~/lib/harness/chain-simulator'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { TRAP_HOLD_MS, BEAT_VERDICT_HOLD_MS, isClassicGroupRound } from '~~/lib/round-beats'
+import { BEAT_VERDICT_HOLD_MS, isClassicGroupRound } from '~~/lib/round-beats'
 import { settleGroupRound } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
   AtlasChallenge,
-  ChainTurnOutcome,
+  BorderChainChallenge,
   GovernmentChallenge,
 } from '~~/types/challenges/group-modes.type'
 import {
@@ -261,23 +261,18 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
 }
 
 /**
- * Mirror of atlas-turns on the pinned game, through the same lib/atlas-chain
- * rule the server grades with — so the atlas scenarios play the full rhythm
- * (turn handoff, rival moves, strikes, the letter trap, reveal) without a
- * server. Rivals answer after a beat with a valid continuation; the local
- * shot clock burns a strike or eliminates exactly like the engine. Every
- * timer re-reads the pinned challenge and dies when the scenario was redealt
- * or the turn moved on — the engine's own staleness posture.
+ * Atlas and Border Chain both ride the shared chain simulator, exactly as they
+ * ride one engine on the server: only the link rule differs, and each spec
+ * hands back lib/'s own answer rather than reimplementing it.
  */
-const RIVAL_BEAT_MS = 1600
+const gameRules = () => gameStore.game ?? { variant: 'world', difficulty: 'normal' }
 
 const atlasOf = () => {
   const game = gameStore.game
   return game ? latestChallengeOfType(game, 'atlas-challenge') : undefined
 }
 
-const atlasPool = () =>
-  playableWorldCountries(gameStore.game ?? { variant: 'world', difficulty: 'normal' })
+const atlasPool = () => playableWorldCountries(gameRules())
 
 const atlasOpenMoves = (challenge: AtlasChallenge) => {
   const head = liveChain(challenge.state).at(-1)
@@ -287,171 +282,59 @@ const atlasOpenMoves = (challenge: AtlasChallenge) => {
   })
 }
 
-const atlasAdvanceTurn = (challenge: AtlasChallenge) => {
-  const { state } = challenge
-  const standing = new Set(standingPlayers(state))
-  for (let step = 1; step <= state.order.length; step++) {
-    const index = (state.activeIndex + step) % state.order.length
-    if (standing.has(state.order[index])) {
-      state.activeIndex = index
-      break
+const atlasSim = createChainSimulator<AtlasChallenge>({
+  meId: ME,
+  current: atlasOf,
+  turnSeconds: challenge => challenge.turnSeconds,
+  openMoves: atlasOpenMoves,
+  buildTrap: (challenge, trappedId, byPlayerId) => {
+    const head = liveChain(challenge.state).at(-1)!
+    const used = new Set(challenge.state.chains.flat())
+    return {
+      playerId: trappedId,
+      head,
+      byPlayerId,
+      letter: atlasTailLetter(head),
+      spent: atlasContinuations(head, [], atlasPool(), { overlaps: challenge.overlaps }).filter(
+        isoCode => used.has(isoCode)
+      ),
     }
-  }
-  state.turn++
-  state.deadline = Date.now() + challenge.turnSeconds * 1000
+  },
+  reseed: challenge =>
+    pickAtlasSeed(gameStore.game!, {
+      minOptions: ATLAS_TABLE_SEED_OPTIONS,
+      exclude: new Set(challenge.state.chains.flat()),
+    }) ?? pickAtlasSeed(gameStore.game!, { minOptions: ATLAS_TABLE_SEED_OPTIONS }),
+})
+
+const borderChainOf = () => {
+  const game = gameStore.game
+  return game ? latestChallengeOfType(game, 'border-chain-challenge') : undefined
 }
 
-const atlasFinish = (challenge: AtlasChallenge) => {
-  const winner = standingPlayers(challenge.state)[0]
-  if (winner) challenge.state.outcomes[winner] = 'won'
-  challenge.state.finished = true
-}
-
-const atlasEliminate = (
-  challenge: AtlasChallenge,
-  playerId: string,
-  outcome: ChainTurnOutcome,
-  outs: ISOCountryCode[]
-) => {
-  challenge.state.eliminated.push(playerId)
-  challenge.state.outcomes[playerId] = outcome
-  challenge.state.missedOuts[playerId] = outs
-}
-
-const atlasSpringTrap = (challenge: AtlasChallenge) => {
-  const { state } = challenge
-  const trappedId = activePlayerId(state)
-  atlasEliminate(challenge, trappedId, 'trapped', [])
-  const byPlayerId =
-    state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
-  if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
-  const head = liveChain(state).at(-1)!
-  const used = new Set(state.chains.flat())
-  state.trap = {
+const borderChainSim = createChainSimulator<BorderChainChallenge>({
+  meId: ME,
+  current: borderChainOf,
+  turnSeconds: challenge => challenge.turnSeconds,
+  openMoves: challenge => openMoves(challenge.state, gameRules()),
+  buildTrap: (challenge, trappedId, byPlayerId) => ({
     playerId: trappedId,
-    head,
+    head: chainHead(challenge.state)!,
     byPlayerId,
-    letter: atlasTailLetter(head),
-    spent: atlasContinuations(head, [], atlasPool(), { overlaps: challenge.overlaps }).filter(
-      isoCode => used.has(isoCode)
-    ),
-  }
-  state.deadline = 0
-  armAtlasTrapResume(challenge)
+    doors: closedDoors(challenge.state, gameRules()),
+  }),
+  reseed: challenge =>
+    pickChainSeed(gameRules(), new Set(challenge.state.chains.flat())) ?? pickChainSeed(gameRules()),
+})
+
+/** The two chain modes share one wire event, so the live kind picks the sim. */
+const chainSim = () => (borderChainOf() ? borderChainSim : atlasSim)
+
+const armChainScenario = () => {
+  atlasSim.arm()
+  borderChainSim.arm()
 }
 
-const armAtlasTrapResume = (challenge: AtlasChallenge) => {
-  const heldTurn = challenge.state.turn
-  window.setTimeout(() => {
-    const current = atlasOf()
-    if (current !== challenge || !current?.state.trap || current.state.finished) return
-    if (current.state.turn !== heldTurn) return
-    const { state } = current
-    state.trap = undefined
-    if (standingPlayers(state).length <= 1) return atlasFinish(current)
-    const seed =
-      pickAtlasSeed(gameStore.game!, {
-        minOptions: ATLAS_TABLE_SEED_OPTIONS,
-        exclude: new Set(state.chains.flat()),
-      }) ?? pickAtlasSeed(gameStore.game!, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
-    if (!seed) return atlasFinish(current)
-    state.chains.push([seed])
-    atlasAdvanceTurn(current)
-    atlasContinueTurn(current)
-  }, TRAP_HOLD_MS)
-}
-
-const atlasApplyMove = (challenge: AtlasChallenge, isoCode: ISOCountryCode) => {
-  const { state } = challenge
-  const moverId = activePlayerId(state)
-  liveChain(state).push(isoCode)
-  ;(state.named[moverId] ??= []).push(isoCode)
-  state.lastMoverId = moverId
-  atlasAdvanceTurn(challenge)
-  if (!atlasOpenMoves(challenge).length) return atlasSpringTrap(challenge)
-  atlasContinueTurn(challenge)
-}
-
-const atlasResolveMiss = (challenge: AtlasChallenge, kind: 'wrong' | 'timeout') => {
-  const { state } = challenge
-  const missedId = activePlayerId(state)
-  if ((state.strikesLeft[missedId] ?? 0) > 0) {
-    state.strikesLeft[missedId]--
-  } else {
-    atlasEliminate(challenge, missedId, kind, atlasOpenMoves(challenge))
-    if (standingPlayers(state).length <= 1) return atlasFinish(challenge)
-  }
-  atlasAdvanceTurn(challenge)
-  atlasContinueTurn(challenge)
-}
-
-/** After each committed turn: arm the local shot clock, and let a rival act. */
-const atlasContinueTurn = (challenge: AtlasChallenge) => {
-  if (challenge.state.finished) return
-  const { turn } = challenge.state
-  window.setTimeout(
-    () => {
-      const current = atlasOf()
-      if (current !== challenge || current.state.finished || current.state.trap) return
-      if (current.state.turn !== turn) return
-      atlasResolveMiss(current, 'timeout')
-    },
-    challenge.turnSeconds * 1000 + 400
-  )
-
-  const activeId = activePlayerId(challenge.state)
-  if (activeId === ME) return
-  window.setTimeout(() => {
-    const current = atlasOf()
-    if (current !== challenge || current.state.finished || current.state.trap) return
-    if (current.state.turn !== turn || activePlayerId(current.state) !== activeId) return
-    const move = sample(atlasOpenMoves(current))
-    if (move) atlasApplyMove(current, move)
-  }, RIVAL_BEAT_MS)
-}
-
-const simulateAtlasReady = () => {
-  const challenge = atlasOf()
-  if (!challenge?.state.briefing || challenge.state.finished) return
-  window.setTimeout(() => {
-    const current = atlasOf()
-    if (current !== challenge || !current.state.briefing) return
-    current.state.ready = [...current.state.order]
-    current.state.briefing = false
-    current.state.deadline = Date.now() + current.turnSeconds * 1000
-    atlasContinueTurn(current)
-  }, SIM_LATENCY_MS)
-}
-
-const simulateAtlasMove = (eventData: Record<string, unknown>) => {
-  const challenge = atlasOf()
-  if (!challenge || challenge.state.finished) return
-  const { state } = challenge
-  if (state.briefing || state.trap) return
-  if (eventData.turn !== state.turn) return
-  if (activePlayerId(state) !== ME) return
-  const isoCode = String(eventData.isoCode ?? '') as ISOCountryCode
-  window.setTimeout(() => {
-    const current = atlasOf()
-    if (current !== challenge || current.state.finished || current.state.trap) return
-    if (current.state.turn !== state.turn) return
-    if (atlasOpenMoves(current).includes(isoCode)) {
-      atlasApplyMove(current, isoCode)
-    } else {
-      atlasResolveMiss(current, 'wrong')
-    }
-  }, SIM_LATENCY_MS)
-}
-
-/** Redealt atlas scenarios come alive at once: a live turn arms its clock (and
- *  a rival's move), a parked trap arms its resume. */
-const armAtlasScenario = () => {
-  const challenge = atlasOf()
-  if (!challenge || challenge.state.finished || challenge.state.briefing) return
-  if (challenge.state.trap) return armAtlasTrapResume(challenge)
-  challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000
-  atlasContinueTurn(challenge)
-}
 
 const governmentOf = () => {
   const game = gameStore.game
@@ -695,8 +578,8 @@ const installStubSocket = () => {
   const record = (event: string, eventData: Record<string, unknown>) => {
     lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
     if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
-    if (event === 'submit-chain-move') simulateAtlasMove(eventData ?? {})
-    if (event === 'chain-ready') simulateAtlasReady()
+    if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
+    if (event === 'chain-ready') chainSim().ready()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
   }
@@ -4806,7 +4689,7 @@ const deal = () => {
   gameStore.game = scenario.build(variant)
   renderKey.value += 1
   ready.value = true
-  armAtlasScenario()
+  armChainScenario()
   armGovernmentScenario()
 }
 
