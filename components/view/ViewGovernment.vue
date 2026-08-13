@@ -18,14 +18,32 @@
     </p>
 
     <!-- Said plainly, not only washed: beat 3 has no cards to tint, and a
-         wash alone never tells a player WHAT the answer was. -->
-    <Transition name="beat">
-      <p v-if="verdict" class="beat-verdict" :class="myScore > 0 ? 'right' : 'wrong'">
-        <span class="verdict-mark">{{ myScore > 0 ? '✓' : '✗' }}</span>
-        <span class="verdict-line">{{ verdictLine }}</span>
-        <span v-if="myScore > 0" class="verdict-points">+{{ myScore }}</span>
+         wash alone never tells a player WHAT the answer was.
+         The band is always in the layout and only its contents fade, so the
+         question below never jumps when a verdict arrives or leaves. -->
+    <div v-if="!finished" class="verdict-band">
+      <!-- The banner is absolutely positioned over a ghost copy of itself, so
+           the band is exactly as tall as the verdict WILL be — including when
+           a long bench name wraps to three lines on a phone. A fixed height
+           cannot track wrapping text, and reserving one line's worth put the
+           shift straight back. -->
+      <p class="beat-verdict ghost" aria-hidden="true">
+        <span class="verdict-mark">✓</span>
+        <span class="verdict-line">{{ placeholderLine }}</span>
       </p>
-    </Transition>
+      <Transition name="verdict">
+        <p
+          v-if="verdict"
+          class="beat-verdict live"
+          :class="myScore > 0 ? 'right' : 'wrong'"
+          aria-live="polite"
+        >
+          <span class="verdict-mark">{{ myScore > 0 ? '✓' : '✗' }}</span>
+          <span class="verdict-line">{{ verdictLine }}</span>
+          <span v-if="myScore > 0" class="verdict-points">+{{ myScore }}</span>
+        </p>
+      </Transition>
+    </div>
 
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
@@ -120,7 +138,12 @@
           Sort the rest of the house: is each bench with the government, or against it?
         </p>
         <div class="bench-rows">
-          <div v-for="name in challenge?.sorted ?? []" :key="name" class="bench-row">
+          <div
+            v-for="(name, index) in challenge?.sorted ?? []"
+            :key="name"
+            class="bench-row"
+            :style="{ '--row-delay': `${index * 60}ms` }"
+          >
             <span class="bench-name">
               <img v-if="logoFor(name)" class="bench-logo" :src="logoFor(name)" alt="" />
               <span v-else class="bench-swatch" :style="{ background: colorFor(name) }" />
@@ -162,8 +185,12 @@
           </div>
         </div>
         <footer class="shell-footer sides-footer">
+          <!-- The label shrinks from "Lock it in (0/4)" to "Locked in", and on
+               a phone the shell re-centres its column — so a button free to
+               resize walked the whole round up the screen. It keeps the wider
+               label's width for both states. -->
           <div class="lock-row">
-            <ButtonFilled :disabled="sidesLocked || !allFiled" @click="submitSides">
+            <ButtonFilled class="lock-button" :disabled="sidesLocked || !allFiled" @click="submitSides">
               {{ sidesLocked ? 'Locked in' : `Lock it in${filedCount}` }}
             </ButtonFilled>
           </div>
@@ -313,6 +340,18 @@ const verdictLine = computed(() => {
   return right ? `With the government: ${backers}` : `The government's own side: ${backers}`
 })
 
+/**
+ * The widest verdict this round could print, for the band's invisible ghost.
+ * Built from the round's OWN parties rather than a lorem string: the phrasing
+ * that wraps is a long bench name ("Swedish Social Democratic Party"), so a
+ * generic placeholder would reserve the wrong number of lines on a phone.
+ */
+const placeholderLine = computed(() => {
+  const longest = [...(challenge.value?.sorted ?? []), ...(challenge.value?.options ?? []).map(o => o.name)]
+    .sort((a, b) => b.length - a.length)[0]
+  return `The government's own side: ${longest ?? 'the opposition benches'}`
+})
+
 const subject = computed(() => {
   const name = state.value.subject ?? answers.value?.governingParty
   if (!name) return undefined
@@ -404,6 +443,15 @@ const promptSources = computed(() => datasetAttribution('elections'))
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
 
 /**
+ * NOTE ON SCALE: `_reset.scss` puts the document on a 62.5% root, so 1rem is
+ * 10px and the house writes 1.6rem where it means 16px. The lengths in this
+ * file were authored against a 16px rem, which is why the round rendered small
+ * — 0.82rem rocker labels came out as 8px type, with the touch targets to
+ * match. The controls a player actually hits are restated in px below; the
+ * rest is left alone rather than rewritten wholesale.
+ */
+
+/**
  * Whose party the beat is about. Sized like a subject, not a caption — it is
  * the thing the question refers to, and the prompt says "it".
  */
@@ -423,8 +471,8 @@ const promptSources = computed(() => datasetAttribution('elections'))
 }
 
 .subject-logo {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
 }
 
@@ -435,7 +483,7 @@ const promptSources = computed(() => datasetAttribution('elections'))
 }
 
 .subject-name {
-  font-size: 1.05rem;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -443,16 +491,26 @@ const promptSources = computed(() => datasetAttribution('elections'))
  * The beat's verdict, held between questions. Loud on purpose — this is the
  * only moment a player learns whether they were right before the reveal.
  */
+// The band holds the verdict's room whether or not one is showing. Letting the
+// banner enter the flow shoved the whole question down mid-round, which reads
+// as the layout breaking rather than as an answer arriving.
+.verdict-band {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 6px 0 0;
+}
+
 .beat-verdict {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
   width: min(94vw, 34rem);
-  margin: 0.35rem auto 0;
-  padding: 0.6rem 1.1rem;
+  margin: 0;
+  padding: 11px 19px;
   border-radius: 999px;
-  font-size: 1.05rem;
+  font-size: 18px;
   pointer-events: auto;
 
   &.right {
@@ -464,15 +522,69 @@ const promptSources = computed(() => datasetAttribution('elections'))
     border: 1px solid var(--hior-ange);
     background: flame(0.16);
   }
+
+  // The ghost holds the room; the live banner floats over it.
+  &.ghost {
+    visibility: hidden;
+    border: 1px solid transparent;
+  }
+
+  &.live {
+    position: absolute;
+    inset: 0;
+  }
 }
 
 .verdict-mark {
-  font-size: 1.2rem;
+  font-size: 22px;
   line-height: 1;
 }
 
 .verdict-points {
   font-weight: 600;
+}
+
+// The verdict drops in and settles rather than cross-fading: it is the one
+// moment the round answers back, and it has to read as an arrival. The mark
+// and the points land a beat later than the banner, so the eye reaches the
+// sentence before the score.
+.verdict-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+
+  .verdict-mark,
+  .verdict-points {
+    animation: chip-in var(--motion-base) var(--ease-out-expressive) 120ms backwards;
+  }
+}
+
+.verdict-leave-active {
+  transition:
+    opacity var(--motion-quick) linear,
+    transform var(--motion-quick) var(--ease-smooth);
+}
+
+.verdict-enter-from {
+  opacity: 0;
+  transform: translateY(-0.7rem) scale(0.96);
+}
+
+.verdict-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verdict-enter-active,
+  .verdict-leave-active {
+    transition-duration: 1ms;
+
+    .verdict-mark,
+    .verdict-points {
+      animation: none;
+    }
+  }
 }
 
 .chamber-facts {
@@ -620,18 +732,18 @@ const promptSources = computed(() => datasetAttribution('elections'))
 }
 
 .sides-lede {
-  width: min(92vw, 34rem);
+  width: min(92vw, 36rem);
   margin-inline: auto;
-  margin-block: 0.25rem 0.9rem;
-  font-size: 0.9rem;
+  margin-block: 4px 16px;
+  font-size: 15px;
   text-align: center;
   opacity: 0.75;
 }
 
 .bench-rows {
   display: grid;
-  gap: 0.5rem;
-  width: min(92vw, 34rem);
+  gap: 0.55rem;
+  width: min(94vw, 38rem);
   margin-inline: auto;
   pointer-events: auto;
 }
@@ -641,22 +753,44 @@ const promptSources = computed(() => datasetAttribution('elections'))
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 0.6rem;
   background: milk(0.7);
+  // The house arrives bench by bench rather than all at once — the same
+  // staggered landing the reveal's rows use.
+  animation: row-land var(--motion-base) var(--ease-out-expressive) var(--row-delay, 0ms) backwards;
+
+  // On a phone the name and a full-size rocker cannot share a line without
+  // squeezing one of them. The rocker takes its own row and spans the width,
+  // which makes both ends bigger targets rather than smaller ones.
+  @media (max-width: $phone) {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+
+    .rocker {
+      width: 100%;
+    }
+
+    .rocker-end {
+      min-width: 0;
+    }
+  }
 }
 
 .bench-name {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  min-width: 0;
+  font-size: 15px;
 }
 
 .bench-logo {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
+  flex: none;
 }
 
 .bench-swatch {
@@ -681,7 +815,7 @@ const promptSources = computed(() => datasetAttribution('elections'))
   display: grid;
   grid-template-columns: 1fr 1fr;
   flex: none;
-  padding: 0.15rem;
+  padding: 0.2rem;
   border: 1px solid ink(0.16);
   border-radius: 999px;
   background: milk(0.7);
@@ -702,7 +836,7 @@ const promptSources = computed(() => datasetAttribution('elections'))
   opacity: 0;
   transition:
     transform var(--motion-base) var(--ease-out-expressive),
-    opacity var(--motion-fast) linear;
+    opacity var(--motion-quick) linear;
 
   &.government {
     opacity: 1;
@@ -716,22 +850,30 @@ const promptSources = computed(() => datasetAttribution('elections'))
   }
 }
 
+// 44px is the floor for a comfortable touch target, and these ends were well
+// under it — a phone tap kept landing between them.
 .rocker-end {
   position: relative;
   z-index: 1;
-  min-width: 4.6rem;
-  padding: 0.5rem 0.85rem;
+  min-width: 86px;
+  min-height: 44px;
+  padding: 10px 16px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: inherit;
-  font-size: 0.82rem;
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
-  transition: color var(--motion-fast) linear;
+  transition: color var(--motion-quick) linear;
 
   &.chosen {
     color: milk();
+  }
+
+  // The press itself answers, before the thumb finishes travelling.
+  &:not(:disabled):active {
+    transform: scale(0.95);
   }
 
   &:disabled {
@@ -743,5 +885,10 @@ const promptSources = computed(() => datasetAttribution('elections'))
   display: flex;
   justify-content: center;
   pointer-events: auto;
+}
+
+// Wide enough for "Lock it in (0/4)", so locking in never resizes it.
+.lock-button {
+  min-width: 152px;
 }
 </style>
