@@ -96,7 +96,7 @@ const formatLabel = (variant: GameVariant) => titleCase(variant)
   place-items: center;
   border-radius: 50%;
   background: milk(0.7);
-  border: 0.2rem solid ink(0.16);
+  border: 0.1rem solid ink(0.16);
   transition:
     transform var(--motion-base) var(--ease-out-expressive),
     border-color var(--motion-base) var(--ease-out-expressive),
