@@ -120,8 +120,14 @@ const contrasts = (a: FlagColor, b: FlagColor, min = 140) => dist(a, b) >= min
 
 /**
  * A weighted color distinct from `taken` and contrasting with every neighbor
- * in `against`. Falls back to the best available if the constraints are
- * unsatisfiable (never happens with <= 4 picks in practice).
+ * in `against`.
+ *
+ * When the constraints are unsatisfiable the fallback RELAXES the threshold
+ * rather than abandoning it: the old version picked at random from whatever
+ * was untaken, which could return the exact color of a neighbor — that is how
+ * a red star ended up invisible on a red half. Contrast is the one rule worth
+ * degrading gracefully instead of dropping, so it steps the minimum down and
+ * finally takes whichever color is furthest from its neighbors.
  */
 const pickColor = (
   rng: Rng,
@@ -129,10 +135,20 @@ const pickColor = (
   against: FlagColor[] = [],
   min = 140
 ): FlagColor => {
-  const ok = PALETTE.filter(c => !taken.includes(c) && against.every(a => contrasts(c, a, min)))
-  if (ok.length) return pickWeighted(rng, ok)
-  const rest = PALETTE.filter(c => !taken.includes(c))
-  return rest.length ? pickWeighted(rng, rest) : pickWeighted(rng, PALETTE)
+  const untaken = PALETTE.filter(c => !taken.includes(c))
+  const pool = untaken.length ? untaken : PALETTE
+  if (!against.length) return pickWeighted(rng, pool)
+  for (let threshold = min; threshold >= 60; threshold -= 20) {
+    const ok = pool.filter(c => against.every(a => contrasts(c, a, threshold)))
+    if (ok.length) return pickWeighted(rng, ok)
+  }
+  // Nothing clears even the floor: take the color that is furthest from the
+  // nearest neighbor, so the charge is still as legible as the palette allows.
+  return pool.reduce((best, c) =>
+    Math.min(...against.map(a => dist(c, a))) > Math.min(...against.map(a => dist(best, a)))
+      ? c
+      : best
+  )
 }
 
 /** White or gold, whichever contrasts better with the given neighbors. */
@@ -319,7 +335,6 @@ type ChargeKind =
   | 'wreath-star'
   | 'shield'
   | 'mountain'
-  | 'palm'
   | 'anchor'
 
 const CHARGE_KINDS: Array<{ kind: ChargeKind; w: number }> = [
@@ -337,7 +352,6 @@ const CHARGE_KINDS: Array<{ kind: ChargeKind; w: number }> = [
   { kind: 'wreath-star', w: 5 },
   { kind: 'shield', w: 6 },
   { kind: 'mountain', w: 4 },
-  { kind: 'palm', w: 3 },
   { kind: 'anchor', w: 3 },
 ]
 
@@ -427,11 +441,151 @@ const mountainPath = (rng: Rng): string => {
   return pts.join(' ')
 }
 
-/** Figurative silhouettes drawn in a local 0–100 box, scaled to radius r. */
-const SILHOUETTES: Record<
-  'trident' | 'crosslet' | 'mountain' | 'palm' | 'anchor',
-  string
-> = {
+/** Bounds for a generated trident, in the 0–100 box. */
+const TRIDENT = {
+  /** Half-width of the shaft and prongs. */
+  minBar: 2.6,
+  maxBar: 4.4,
+  /** Half-distance from the axis out to the side prongs. */
+  minSpread: 15,
+  maxSpread: 23,
+  /** How far the side prongs rise above the crossbar. */
+  minProng: 26,
+  maxProng: 38,
+  /** Length of each prong's tapered point, as a share of its rise. */
+  minPoint: 0.3,
+  maxPoint: 0.5,
+  /** Centre spearhead's half-width at its base. */
+  minHead: 6,
+  maxHead: 9.5,
+} as const
+
+/**
+ * A trident whose prong length, spread, point taper and bar thickness are all
+ * seeded and clamped. Every prong ends in a TAPERED POINT rather than a square
+ * post — a blunt-ended version reads as a pitchfork, and an earlier curved one
+ * bulged at the midpoint and read as a flexed arm.
+ *
+ * Traced as one outline: up the shaft, out along the crossbar, up the right
+ * prong to its point and back down, into the centre spearhead, then mirrored
+ * down the left side.
+ */
+const tridentPath = (rng: Rng): string => {
+  const bar = TRIDENT.minBar + rng() * (TRIDENT.maxBar - TRIDENT.minBar)
+  const spread = TRIDENT.minSpread + rng() * (TRIDENT.maxSpread - TRIDENT.minSpread)
+  const rise = TRIDENT.minProng + rng() * (TRIDENT.maxProng - TRIDENT.minProng)
+  const pointShare = TRIDENT.minPoint + rng() * (TRIDENT.maxPoint - TRIDENT.minPoint)
+  const head = TRIDENT.minHead + rng() * (TRIDENT.maxHead - TRIDENT.minHead)
+  const cx = 50
+  const foot = 97
+  // The centre spearhead must clear the top of the box, so lay the shape out
+  // from ITS tip downward rather than from the crossbar up — sizing from the
+  // bar let a long prong push the spearhead off the top edge.
+  const headTipY = 3
+  const headBaseY = headTipY + head * 1.9
+  const prongTipY = clamp(headTipY + 9, 6, 30)
+  const barY = clamp(prongTipY + rise, 42, 62)
+  const pointY = prongTipY + rise * pointShare
+  const p = (x: number, y: number) => `${n1(x)} ${n1(y)}`
+  return (
+    `M${p(cx - bar, foot)} ` +
+    `L${p(cx - bar, barY + bar)} ` +
+    // left crossbar arm out to the left prong
+    `L${p(cx - spread - bar, barY + bar)} ` +
+    // up the left prong's outer edge to its point
+    `L${p(cx - spread - bar, pointY)} L${p(cx - spread, prongTipY)} ` +
+    `L${p(cx - spread + bar, pointY)} L${p(cx - spread + bar, barY - bar)} ` +
+    // across to the spearhead's base
+    `L${p(cx - head, barY - bar)} L${p(cx - head, headBaseY)} ` +
+    `L${p(cx, headTipY)} ` +
+    `L${p(cx + head, headBaseY)} L${p(cx + head, barY - bar)} ` +
+    // right prong, mirrored
+    `L${p(cx + spread - bar, barY - bar)} L${p(cx + spread - bar, pointY)} ` +
+    `L${p(cx + spread, prongTipY)} L${p(cx + spread + bar, pointY)} ` +
+    `L${p(cx + spread + bar, barY + bar)} ` +
+    `L${p(cx + bar, barY + bar)} L${p(cx + bar, foot)} Z`
+  )
+}
+
+/** Bounds for a generated anchor, in the 0–100 box. */
+const ANCHOR = {
+  /** Half-width of the shank. */
+  minShank: 3.4,
+  maxShank: 5.2,
+  /** Outer radius of the ring at the top. */
+  minRing: 8,
+  maxRing: 12,
+  /** Ring wall thickness, as a share of its outer radius. */
+  minWall: 0.36,
+  maxWall: 0.52,
+  /** Half-length of the crossbar. */
+  minStock: 17,
+  maxStock: 26,
+  /** How wide the arms sweep out from the axis. */
+  minArm: 30,
+  maxArm: 40,
+  /** Fluke barb length. */
+  minBarb: 7,
+  maxBarb: 12,
+} as const
+
+/**
+ * An anchor with seeded, clamped ring size, shank thickness, stock length, arm
+ * sweep and barb length. One closed outline for the body (so no seam shows
+ * where the parts meet) plus the ring's counter-drawn hole, which is why the
+ * anchor is in HOLLOW_SILHOUETTES.
+ */
+const anchorPath = (rng: Rng): string => {
+  const shank = ANCHOR.minShank + rng() * (ANCHOR.maxShank - ANCHOR.minShank)
+  const ring = ANCHOR.minRing + rng() * (ANCHOR.maxRing - ANCHOR.minRing)
+  const wall = ring * (ANCHOR.minWall + rng() * (ANCHOR.maxWall - ANCHOR.minWall))
+  const stock = ANCHOR.minStock + rng() * (ANCHOR.maxStock - ANCHOR.minStock)
+  const arm = ANCHOR.minArm + rng() * (ANCHOR.maxArm - ANCHOR.minArm)
+  const barb = ANCHOR.minBarb + rng() * (ANCHOR.maxBarb - ANCHOR.minBarb)
+  const cx = 50
+  const ringTop = 4
+  const ringCy = ringTop + ring
+  const stockY = clamp(ringCy + ring + 4, 20, 40)
+  const stockH = shank * 1.9
+  const crownY = 92
+  const armY = clamp(crownY - 22, 50, 76)
+  const p = (x: number, y: number) => `${n1(x)} ${n1(y)}`
+  return (
+    // ring (outer), then down the right side of the shank
+    `M${p(cx, ringTop)} A${n1(ring)} ${n1(ring)} 0 0 1 ${p(cx + shank, ringCy + ring * 0.72)} ` +
+    `L${p(cx + shank, stockY)} ` +
+    `L${p(cx + stock, stockY)} L${p(cx + stock, stockY + stockH)} L${p(cx + shank, stockY + stockH)} ` +
+    // shank down to the crown, then out along the right arm. The arm's two
+    // edges bow by different amounts so the fluke has real thickness — a
+    // single-curvature sweep came out as a hairline.
+    `L${p(cx + shank, crownY - 12)} ` +
+    `Q${p(cx + arm * 0.58, armY + 20)} ${p(cx + arm, armY + 4)} ` +
+    // barb: outward point, then back in along the fluke's underside
+    `L${p(cx + arm + barb * 0.4, armY - barb * 0.8)} ` +
+    `L${p(cx + arm + barb * 1.0, armY + barb * 1.05)} ` +
+    `Q${p(cx + arm * 0.66, crownY + 2)} ${p(cx, crownY)} ` +
+    // mirrored left side
+    `Q${p(cx - arm * 0.66, crownY + 2)} ${p(cx - arm - barb * 1.0, armY + barb * 1.05)} ` +
+    `L${p(cx - arm - barb * 0.4, armY - barb * 0.8)} L${p(cx - arm, armY + 4)} ` +
+    `Q${p(cx - arm * 0.58, armY + 20)} ${p(cx - shank, crownY - 12)} ` +
+    `L${p(cx - shank, stockY + stockH)} ` +
+    `L${p(cx - stock, stockY + stockH)} L${p(cx - stock, stockY)} L${p(cx - shank, stockY)} ` +
+    `L${p(cx - shank, ringCy + ring * 0.72)} ` +
+    `A${n1(ring)} ${n1(ring)} 0 0 1 ${p(cx, ringTop)} Z ` +
+    // the ring's hole
+    `M${p(cx, ringCy - wall)} ` +
+    `A${n1(wall)} ${n1(wall)} 0 1 0 ${p(cx, ringCy + wall)} ` +
+    `A${n1(wall)} ${n1(wall)} 0 1 0 ${p(cx, ringCy - wall)} Z`
+  )
+}
+
+/**
+ * Fixed silhouettes drawn in a local 0–100 box, scaled to radius r. The
+ * trident, anchor and mountain are NOT here — they are generated per flag by
+ * `tridentPath`, `anchorPath` and `mountainPath`, whose proportions vary
+ * within clamped bounds.
+ */
+const SILHOUETTES: Record<'crosslet', string> = {
   // Bolnur-Katskhuri cross (Georgia): equal arms whose ends flare outward in a
   // shallow concave curve. Repeats cleanly at any size, so it stays legible
   // where the figurative silhouettes would close up.
@@ -440,35 +594,6 @@ const SILHOUETTES: Record<
     'C26 47 34 47 42 46 C43 54 43 62 42 72 C46 71 54 71 58 72 ' +
     'C57 62 57 54 58 46 C66 47 74 47 84 48 C83 42 83 34 84 28 ' +
     'C74 29 66 29 58 30 C57 22 57 14 58 4 C54 5 46 5 42 4 Z',
-  // Fallback ridge, used only where no rng is available. The live charge is
-  // built by `mountainPath`, which varies the peak count and their heights.
-  mountain: 'M4 90 L30 38 L46 66 L62 26 L78 60 L88 44 L96 90 Z',
-  // Palm: fronds fanning from a slim trunk (Haiti, Saudi register without script)
-  palm:
-    'M46 96 L46 52 L54 52 L54 96 Z M50 46 C40 34 24 30 10 34 ' +
-    'C22 26 40 28 50 40 C60 28 78 26 90 34 C76 30 60 34 50 46 Z ' +
-    'M50 44 C46 30 36 18 22 12 C40 14 52 26 56 42 Z ' +
-    'M50 44 C54 30 64 18 78 12 C60 14 48 26 44 42 Z',
-  // Anchor: ONE closed outline traced round the whole shape — ring, shank,
-  // crossbar, arms and barbed flukes. Drawn as a single loop (rather than
-  // stacked subpaths) so no seam or notch can show where the parts meet; the
-  // ring's hole is the only counter-drawn subpath.
-  anchor:
-    // outer boundary, clockwise from the top of the ring
-    'M50 4 A13 13 0 0 1 58 27 L58 32 L80 32 L80 41 L58 41 L58 74 ' +
-    'C66 71 73 63 75 53 L68 50 L92 40 L94 64 L86 58 ' +
-    'C82 76 68 90 50 94 C32 90 18 76 14 58 L6 64 L8 40 L32 50 L25 53 ' +
-    'C27 63 34 71 42 74 L42 41 L20 41 L20 32 L42 32 L42 27 ' +
-    'A13 13 0 0 1 50 4 Z ' +
-    // the ring's hole
-    'M50 12 A6 6 0 1 0 50 24 A6 6 0 1 0 50 12 Z',
-  // Barbados-style trident head: centre spearhead, two side prongs, broken
-  // shaft. The prongs rise as straight tapered spikes off a shallow crossbar —
-  // an earlier version curved them outward and back, which bulged at the
-  // midpoint and read as flexed arms rather than tines.
-  trident:
-    'M50 2 L58 22 L53 19 L53 40 L67 40 L67 14 L75 14 L75 48 L53 48 ' +
-    'L53 98 L47 98 L47 48 L25 48 L25 14 L33 14 L33 40 L47 40 L47 19 L42 22 Z',
 }
 
 /** Draw a charge centered at (cx, cy) with outer radius r on background `bg`. */
@@ -553,12 +678,18 @@ const drawCharge = (
     case 'trident':
     case 'crosslet':
     case 'mountain':
-    case 'palm':
     case 'anchor': {
       const s = +((2 * r) / 100).toFixed(3)
-      // The ridge is generated per flag (peak count and heights vary); every
-      // other silhouette is a fixed path.
-      const d = kind === 'mountain' ? mountainPath(rng) : SILHOUETTES[kind]
+      // Three of these vary their proportions per flag within clamped bounds;
+      // the crosslet is a fixed path.
+      const d =
+        kind === 'mountain'
+          ? mountainPath(rng)
+          : kind === 'trident'
+            ? tridentPath(rng)
+            : kind === 'anchor'
+              ? anchorPath(rng)
+              : SILHOUETTES[kind]
       // Silhouettes carrying a counter-drawn hole (the anchor's ring) need
       // even-odd; the rest default to nonzero so their overlapping subpaths
       // merge instead of cancelling.
@@ -1330,11 +1461,16 @@ const buildStarfield = (rng: Rng): Built => {
   ]).v
   const parts: string[] = []
   const used: FlagColor[] = []
+  // A star layout spans the WHOLE field, so the charge colour has to clear
+  // every ground it crosses — not just the first. Picking against one half of
+  // a bicolour left red stars invisible on the red half.
+  const grounds: FlagColor[] = []
   let bg: FlagColor
   if (split === 'plain') {
     bg = pickColor(rng, [])
     parts.push(rect(0, 0, W, H, bg))
     used.push(bg)
+    grounds.push(bg)
   } else if (split === 'bicolour') {
     const a = pickColor(rng, [])
     const b = pickColor(rng, [a], [a])
@@ -1343,9 +1479,9 @@ const buildStarfield = (rng: Rng): Built => {
       rect(0, 0, W, H, a),
       horizontal ? rect(0, H / 2, W, H / 2, b) : rect(W / 2, 0, W / 2, H, b)
     )
-    // Stars sit on the larger/darker half; pick the first for simplicity.
     bg = a
     used.push(a, b)
+    grounds.push(a, b)
   } else {
     const a = pickColor(rng, [])
     const b = pickColor(rng, [a], [a])
@@ -1353,8 +1489,9 @@ const buildStarfield = (rng: Rng): Built => {
     for (let i = 0; i < n; i++) parts.push(rect(0, (H * i) / n, W, H / n, i % 2 === 0 ? a : b))
     bg = a
     used.push(a, b)
+    grounds.push(a, b)
   }
-  const c = pickColor(rng, [], [bg], 180)
+  const c = pickColor(rng, [], grounds, 180)
   used.push(c)
   const cx = split === 'bicolour' ? W * 0.5 : W / 2
   const cy = H / 2
