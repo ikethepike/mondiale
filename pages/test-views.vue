@@ -134,14 +134,8 @@ import { TRENDS } from '~~/lib/trends-data'
 import { HERITAGE } from '~~/data/heritage.gen'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { PLAYER_COLORS } from '~~/data/palette'
-import {
-  getCorrectRanking,
-  scoreChallengeSubmission,
-  scoreTraversalSubmission,
-} from '~~/lib/challenges'
-import { shortestRoute, traversalWithin } from '~~/lib/traversal'
+import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
-import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -179,7 +173,6 @@ import {
   GAUNTLET_LIVES,
   getFinalChallenges,
 } from '~~/lib/challenges/final-challenge'
-import { blitzScore } from '~~/lib/scoring'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
 import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
@@ -790,127 +783,6 @@ const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
 
 /**
- * A settled Star Chart, for the reveal that has to make a GROUP round's
- * outcome legible: one star everybody found, one only a rival did, one nobody
- * reached — plus a wrong capital on your sheet. Answers and points come from
- * the real grader, so the ledger and the score always agree.
- */
-const settledStarChartRound = (): Round => {
-  const stars: ISOCountryCode[] = ['ES', 'PL', 'AT', 'FI', 'BA']
-  const challenge = {
-    _type: 'star-chart-challenge',
-    stars,
-    initials: starChartInitials(stars),
-    durationSeconds: starChartSeconds(stars.length),
-    maximumPoints: MAXIMUM_POINTS,
-  }
-  const submissions: { [playerId: string]: ISOCountryCode[] } = {
-    // Three of five, Sarajevo missed by everyone, and Bratislava cost a point.
-    [ME]: ['ES', 'PL', 'AT', 'SK'],
-    [RIVAL]: ['ES', 'AT', 'FI'],
-    [THIRD]: ['ES'],
-  }
-
-  return {
-    groupChallenge: challenge,
-    groupAnswers: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { submitted, correct: stars },
-      ])
-    ),
-    playerTurns: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { points: blitzScore(stars, submitted, MAXIMUM_POINTS) },
-      ])
-    ),
-  } as unknown as Round
-}
-
-/**
- * A settled Terra Incognita, for the reveal that has to teach placement: one
- * neighbourhood erased, two of it still missing at the buzzer, and one name on
- * your sheet that was never gone at all.
- */
-const settledTerraRound = (): Round => {
-  // The Balkans into the Baltic — a real cropped theatre, all mutually
-  // non-adjacent.
-  const vanishings: ISOCountryCode[] = ['AL', 'MD', 'SK', 'LT', 'BA']
-  const cadenceMs = TERRA_CADENCE_MS.normal
-  const challenge = {
-    _type: 'terra-incognita-challenge',
-    vanishings,
-    cadenceMs,
-    collapseThreshold: terraCollapseThreshold(vanishings.length, 'normal'),
-    durationSeconds: terraSeconds(vanishings.length, cadenceMs),
-    maximumPoints: MAXIMUM_POINTS,
-  }
-  const submissions: { [playerId: string]: ISOCountryCode[] } = {
-    // Three of five; Moldova missed by the whole table, and Austria named
-    // while it was still sitting there in plain sight.
-    [ME]: ['AL', 'SK', 'BA', 'AT'],
-    [RIVAL]: ['AL', 'LT', 'BA'],
-    [THIRD]: ['AL'],
-  }
-
-  return {
-    groupChallenge: challenge,
-    groupAnswers: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { submitted, correct: vanishings },
-      ])
-    ),
-    playerTurns: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { points: blitzScore(vanishings, submitted, MAXIMUM_POINTS) },
-      ])
-    ),
-  } as unknown as Round
-}
-
-/**
- * A settled Border Run, for the reveal that has to make a detour LOOK like a
- * detour: Russia → Albania in four crossings, answered with a five-crossing
- * Balkan route plus one guess that never joined it.
- */
-const settledTraversalRound = (): Round => {
-  const rules = { variant: 'world', difficulty: 'normal' } as const
-  const challenge: TraversalChallenge = {
-    _type: 'traversal-challenge',
-    start: 'RU',
-    target: 'AL',
-    optimalHops: 4,
-    optimalPath: shortestRoute('RU', 'AL', { within: traversalWithin(rules) })!,
-    maximumClicks: 8,
-    maximumPoints: MAXIMUM_POINTS,
-  }
-  const submissions: { [playerId: string]: ISOCountryCode[] } = {
-    [ME]: ['UA', 'RO', 'RS', 'XK'],
-    [RIVAL]: ['GE', 'TR', 'GR'],
-    [THIRD]: ['BY', 'PL', 'SK', 'HU'],
-  }
-
-  return {
-    groupChallenge: challenge,
-    groupAnswers: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { submitted, correct: challenge.optimalPath },
-      ])
-    ),
-    playerTurns: Object.fromEntries(
-      Object.entries(submissions).map(([playerId, submitted]) => [
-        playerId,
-        { points: scoreTraversalSubmission({ challenge, submittedGuesses: submitted, rules }) },
-      ])
-    ),
-  } as unknown as Round
-}
-
-/**
  * A deal of the SAME mode with different data — the anthem's country, a
  * zoom-out's geometry, a leader's party chip. These used to be top-level
  * scenarios, which buried the modes among their own edge cases; as variants
@@ -1112,18 +984,6 @@ const scenarios: Scenario[] = [
           countriesPerPlayer: { [ME]: ['FR', 'BR', 'JP', 'NG', 'SE', 'MX'] },
         }),
       ]),
-  },
-  {
-    id: 'group-scores',
-    label: 'Group scores (reveal)',
-    build: () => mockGame('group-scores', [settledRound()]),
-  },
-  {
-    // The row-vs-row comparison: four guessed flags used to sit above a
-    // five-flag optimum and read as the shorter journey.
-    id: 'traversal-scores',
-    label: 'Border Run reveal (route vs shortest)',
-    build: () => mockGame('group-scores', [settledTraversalRound()]),
   },
   {
     // GB and FI carry a note; the other three don't, so one scenario shows
@@ -1467,34 +1327,6 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
-    id: 'empire-scores',
-    label: 'Ghosts of Empires (scorecard)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          ...groupRound({
-            _type: 'empire-challenge',
-            empireId: 'gran-colombia',
-            keyframeYears: EMPIRES['gran-colombia'].keyframeYears,
-            peakYear: EMPIRES['gran-colombia'].peakYear,
-            durationSeconds: 28,
-            tapSeconds: 35,
-            members: EMPIRES['gran-colombia'].members.core,
-            partialMembers: EMPIRES['gran-colombia'].members.partial,
-            maximumPoints: MAXIMUM_POINTS,
-          }),
-          groupAnswers: {
-            [ME]: {
-              submitted: ['CO', 'VE', 'PE'],
-              correct: EMPIRES['gran-colombia'].members.core,
-              empireGuess: { id: 'inca-empire', correct: false },
-            },
-          },
-          playerTurns: { [ME]: { points: { scored: 6, maximum: MAXIMUM_POINTS } } },
-        } as unknown as Round,
-      ]),
-  },
-  {
     id: 'timeline-reveal',
     label: 'Timeline (finished, scorecard)',
     build: () =>
@@ -1745,11 +1577,6 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    id: 'star-chart-scores',
-    label: 'Star chart reveal (who named which star)',
-    build: () => mockGame('group-scores', [settledStarChartRound()]),
-  },
-  {
     // Central & eastern Europe failing, which is what the mode actually deals:
     // one neighbourhood, cropped to (terraTheatre drives the camera), none of
     // the five touching so no two blanks can merge into one.
@@ -1766,11 +1593,6 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
-  },
-  {
-    id: 'terra-incognita-scores',
-    label: 'Terra Incognita reveal (what you never noticed)',
-    build: () => mockGame('group-scores', [settledTerraRound()]),
   },
   {
     id: 'flashpoint',
@@ -1915,177 +1737,6 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
-    id: 'flashpoint-scores',
-    label: 'Flashpoint (scorecard + conflict card)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'flashpoint-challenge',
-            country: 'CO',
-            eras: [0, 1, 2, 3],
-            secondsPerEra: 4,
-            options: ['CO', 'PE', 'MX', 'SV'],
-            maximumGuesses: 2,
-            secondsPerHint: 5,
-            durationSeconds: 35,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            [ME]: { submitted: ['CO'], correct: ['CO'] },
-            [RIVAL]: { submitted: ['PE'], correct: ['CO'] },
-            [THIRD]: { submitted: [], correct: ['CO'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: MAXIMUM_POINTS, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
-    id: 'stat-detective-scores',
-    label: 'Stat detective (scorecard + clue recap)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'stat-detective-challenge',
-            country: 'BR',
-            clues: [
-              'people.population',
-              'geography.area.total',
-              'economics.gdpPerCapita',
-              'government.corruptionIndex',
-              'environment.CO2Emissions',
-            ],
-            secondsPerClue: 4,
-            region: 'South America',
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            [ME]: { submitted: ['BR'], correct: ['BR'] },
-            [RIVAL]: { submitted: [], correct: ['BR'] },
-            [THIRD]: { submitted: ['AR'], correct: ['BR'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: 14, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
-    id: 'flag-palette-scores',
-    label: 'Flag palette (scorecard + flag meaning)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'flag-palette-challenge',
-            country: 'KE',
-            swatches: ['#000000', '#bb0000', '#006600', '#ffffff'],
-            durationSeconds: 30,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            [ME]: { submitted: ['KE'], correct: ['KE'] },
-            [RIVAL]: { submitted: ['TZ'], correct: ['KE'] },
-            [THIRD]: { submitted: [], correct: ['KE'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: 12, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
-    id: 'capital-guess-scores',
-    label: 'Capital guess (scorecard + city dossier)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'capital-guess-challenge',
-            country: 'JP',
-            image: '/capitals/JP.webp',
-            durationSeconds: 30,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            [ME]: { submitted: ['JP'], correct: ['JP'] },
-            [RIVAL]: { submitted: ['KR'], correct: ['JP'] },
-            [THIRD]: { submitted: [], correct: ['JP'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: 16, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
-    id: 'water-scores',
-    label: 'River run (scorecard + water fact)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'water-blitz-challenge',
-            featureId: 'river-rhine',
-            featureName: 'Rhine',
-            kind: 'river',
-            countries: ['CH', 'DE', 'FR', 'NL'],
-            durationSeconds: 45,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            // BE and AT are on nobody's Rhine — the strays the reveal marks.
-            [ME]: { submitted: ['DE', 'NL', 'BE'], correct: ['CH', 'DE', 'FR', 'NL'] },
-            [RIVAL]: { submitted: ['CH', 'AT'], correct: ['CH', 'DE', 'FR', 'NL'] },
-            [THIRD]: { submitted: [], correct: ['CH', 'DE', 'FR', 'NL'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: 10, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 5, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
-    id: 'mother-tongue-scores',
-    label: 'Mother tongue (scorecard + language fact)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'mother-tongue-challenge',
-            language: 'Swahili',
-            countries: ['KE', 'TZ', 'UG'],
-            durationSeconds: 30,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            // Swahili is not official in Ethiopia — the stray to mark.
-            [ME]: { submitted: ['KE', 'TZ', 'ET'], correct: ['KE', 'TZ', 'UG'] },
-            [RIVAL]: { submitted: ['KE'], correct: ['KE', 'TZ', 'UG'] },
-            [THIRD]: { submitted: [], correct: ['KE', 'TZ', 'UG'] },
-          },
-          playerTurns: {
-            [ME]: { points: { scored: 9, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 4, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
-      ]),
-  },
-  {
     id: 'ranking-years-at-war',
     label: 'Ranking (years at war, scale bar)',
     build: () =>
@@ -2191,123 +1842,6 @@ const scenarios: Scenario[] = [
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
-      ]),
-  },
-  {
-    // The screenshot that started this: eleven of Russia's fourteen neighbours
-    // found, three names that don't border it at all (Armenia, Kyrgyzstan,
-    // Turkmenistan), and one repeat. The points are what blitzScore really
-    // pays on this pot — round(21 × 11/14) − 3 = 14 — so the tally beside the
-    // score can be read against the score itself.
-    id: 'neighbour-scores',
-    label: 'Neighbour blitz (scorecard — hits, misses, strays)',
-    build: () =>
-      mockGame('group-scores', [
-        {
-          groupChallenge: {
-            _type: 'neighbour-blitz-challenge',
-            country: 'RU',
-            neighbours: [
-              'AZ',
-              'BY',
-              'CN',
-              'EE',
-              'FI',
-              'GE',
-              'KP',
-              'KZ',
-              'LT',
-              'LV',
-              'MN',
-              'NO',
-              'PL',
-              'UA',
-            ],
-            durationSeconds: 60,
-            maximumPoints: MAXIMUM_POINTS,
-          },
-          groupAnswers: {
-            [ME]: {
-              submitted: [
-                'AM',
-                'KZ',
-                'KG',
-                'TM',
-                'PL',
-                'LT',
-                'FI',
-                'NO',
-                'EE',
-                'LV',
-                'BY',
-                'UA',
-                'CN',
-                'MN',
-                'KZ',
-              ],
-              correct: [
-                'AZ',
-                'BY',
-                'CN',
-                'EE',
-                'FI',
-                'GE',
-                'KP',
-                'KZ',
-                'LT',
-                'LV',
-                'MN',
-                'NO',
-                'PL',
-                'UA',
-              ],
-            },
-            [RIVAL]: {
-              submitted: ['CN', 'MN', 'IN'],
-              correct: [
-                'AZ',
-                'BY',
-                'CN',
-                'EE',
-                'FI',
-                'GE',
-                'KP',
-                'KZ',
-                'LT',
-                'LV',
-                'MN',
-                'NO',
-                'PL',
-                'UA',
-              ],
-            },
-            [THIRD]: {
-              submitted: [],
-              correct: [
-                'AZ',
-                'BY',
-                'CN',
-                'EE',
-                'FI',
-                'GE',
-                'KP',
-                'KZ',
-                'LT',
-                'LV',
-                'MN',
-                'NO',
-                'PL',
-                'UA',
-              ],
-            },
-          },
-          playerTurns: {
-            // round(21 × 11/14) − 3 = 14, and round(21 × 2/14) − 1 = 2.
-            [ME]: { points: { scored: 14, maximum: MAXIMUM_POINTS } },
-            [RIVAL]: { points: { scored: 2, maximum: MAXIMUM_POINTS } },
-            [THIRD]: { points: { scored: 0, maximum: MAXIMUM_POINTS } },
-          },
-        } as unknown as Round,
       ]),
   },
   {
