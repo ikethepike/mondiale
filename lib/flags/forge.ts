@@ -521,12 +521,20 @@ const tridentPath = (rng: Rng): string => {
   // Each entry is either a point or a quadratic with its control point, given
   // for the left half in the order the outline visits them.
   type Step = { x: number; y: number; cx?: number; cy?: number }
+  // The crossbar's underside sweeps up into the prong on a curve rather than
+  // turning a square corner: a trident's arms grow out of the bar, they are
+  // not a rectangle with spikes stood on top of it. `sweep` is how far that
+  // curve reaches back along the bar.
+  const sweep = bar + bow * 0.9
+  const outerX = cx - spread - bar - bow
   const leftHalf: Step[] = [
     { x: cx - bar, y: foot },
     { x: cx - bar, y: barY + bar },
-    { x: cx - spread - bar, y: barY + bar },
-    // up the prong's outer edge, bowing away from the shaft
-    { x: cx - spread - bar - bow, y: pointY, cx: cx - spread - bar - bow, cy: ctrlY },
+    // out along the bar's underside, stopping short of the prong
+    { x: cx - spread + bar - sweep, y: barY + bar },
+    // round the bar's outer end and up into the prong's outer edge, one
+    // continuous curve through the corner
+    { x: outerX, y: pointY, cx: outerX, cy: barY + bar },
     // the tip rides the bow too, so the whole prong sweeps outward
     { x: cx - spread - bow, y: prongTipY },
     { x: cx - spread + bar - bow, y: pointY },
