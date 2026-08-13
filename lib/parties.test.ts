@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PARTIES } from '~~/data/parties.gen'
 import {
@@ -10,6 +11,7 @@ import {
   oppositionParties,
   partiesOf,
   partiesWithLogo,
+  partyLeaning,
   partySpectrum,
   partyTokens,
   playableChambers,
@@ -22,6 +24,8 @@ import {
   type Party,
 } from './parties'
 import type { ISOCountryCode } from '~~/types/geography.types'
+
+const ROOT = new URL('..', import.meta.url).pathname
 
 const everyParty = () => Object.values(PARTIES).flatMap(country => country?.parties ?? [])
 
@@ -207,6 +211,60 @@ describe('partySpectrum', () => {
     expect(band('Left')).toBe('left')
     expect(band('Moderate')).toBe('centre-right')
     expect(band('Sweden Democrats')).toBe('right')
+  })
+})
+
+describe('partyLeaning', () => {
+  // Wikidata's own vocabulary is what a player must never see: "centrism",
+  // "far-left politics" and "right-wing extremism" are labels for a query, not
+  // copy for a reveal card. The bands are the phrasing already on screen.
+  it('reads as game copy, never as the database', () => {
+    for (const party of everyParty()) {
+      const line = partyLeaning(party)
+      if (!line) continue
+      expect(line, party.name).not.toMatch(
+        /centrism|far-left politics|right-wing extremism|big tent|syncretic|radical left/
+      )
+    }
+  })
+
+  it('leads with the band, then what the party calls itself', () => {
+    const labor = partiesOf('AU').find(party => party.abbreviation === 'ALP')!
+    expect(partyLeaning(labor)).toBe('Centre-left · social democracy')
+  })
+
+  it('stands on either half alone, and vanishes with neither', () => {
+    expect(partyLeaning({ name: 'X', ideologies: ['populism'] })).toBe('populism')
+    expect(partyLeaning({ name: 'X', position: 'centrism' })).toBe('Centre')
+    expect(partyLeaning({ name: 'X' })).toBeUndefined()
+  })
+
+  // A reveal card gives this ONE line. The ideology arrays run past twenty
+  // entries, so a regression that starts joining the whole list wraps.
+  it('fits one line for every governing party', () => {
+    for (const isoCode of Object.keys(PARTIES) as ISOCountryCode[]) {
+      const governing = governingParty(isoCode)
+      const line = governing ? partyLeaning(governing) : undefined
+      if (line) expect(line.length, `${isoCode}: ${line}`).toBeLessThanOrEqual(48)
+    }
+  })
+
+  // A collapse here means the generator lost P1387/P1142 upstream.
+  it('can place most governments on the spectrum', () => {
+    const resolved = (Object.keys(PARTIES) as ISOCountryCode[])
+      .map(isoCode => governingParty(isoCode))
+      .filter((party): party is Party => !!party)
+    const placed = resolved.filter(party => partyLeaning(party))
+    expect(placed.length / resolved.length).toBeGreaterThan(0.8)
+  })
+
+  // The leader reveal renders a governing party's logo as an <img>, so a path
+  // the roster claims but the repo never shipped is a broken image on screen.
+  it('ships the logo file every party claims', () => {
+    for (const party of everyParty()) {
+      if (!party.logo) continue
+      expect(existsSync(`${ROOT}public${party.logo}`), party.name).toBe(true)
+    }
   })
 })
 

@@ -61,10 +61,11 @@
             </span>
           </span>
 
-          <!-- Per-item credit, where a single photo or clip carries its own
-               author on top of the dataset's licence. -->
-          <span v-if="itemCredit" class="source-entry item">
-            <span class="source-name">{{ itemCredit }}</span>
+          <!-- Per-item credits, where a photo or clip carries its own author
+               on top of the dataset's licence. One entry per file: two images
+               on a card are two authors, not one run-on line. -->
+          <span v-for="credit in itemCredits" :key="credit" class="source-entry item">
+            <span class="source-name">{{ credit }}</span>
           </span>
         </span>
       </Transition>
@@ -101,8 +102,11 @@ const props = withDefaults(
     /** Panel heading — "Source", "Sources", "Photo" … */
     label?: string
     /** A single item's own credit line, e.g. a photographer, when the dataset
-     *  licence alone does not name them. */
-    itemCredit?: string
+     *  licence alone does not name them. An array where one card shows more
+     *  than one file — a leader's portrait AND their party's logo — because
+     *  those are separate authors under separate licences, and joining them
+     *  into one string reads as a single many-part credit. */
+    itemCredit?: string | string[]
     /** A plain-words definition of the stat, rendered above the credits. */
     definition?: string
     /** Trigger glyph: ⓘ for provenance, ? for a definition. */
@@ -115,6 +119,13 @@ const props = withDefaults(
     definition: undefined,
     icon: 'info',
   }
+)
+
+/** Normalised to a list so the template has one shape to render. */
+const itemCredits = computed(() =>
+  (Array.isArray(props.itemCredit) ? props.itemCredit : [props.itemCredit]).filter(
+    (credit): credit is string => !!credit
+  )
 )
 
 const open = ref(false)

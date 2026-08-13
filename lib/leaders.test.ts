@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { leaderHintFacts, titlecaseLeader } from './leaders'
+import { leaderHintFacts, partyLabel, titlecaseLeader } from './leaders'
 
 describe('titlecaseLeader', () => {
   it('softens the factbook surname caps', () => {
@@ -20,6 +20,16 @@ describe('titlecaseLeader', () => {
   it('leaves mixed-case words and particles alone', () => {
     expect(titlecaseLeader('Mohammed bin ZAYID Al Nuhayyan')).toBe('Mohammed bin Zayid Al Nuhayyan')
     expect(titlecaseLeader('Emmanuel Macron')).toBe('Emmanuel Macron')
+  })
+})
+
+describe('partyLabel', () => {
+  // Printing "independent" invites the reader to conclude a leader has no
+  // party behind them — false for Zelenskyy, whose Servant of the People
+  // holds 254 seats. Saying nothing is the honest answer.
+  it("drops Wikidata's partyless stand-in and leaves real parties alone", () => {
+    expect(partyLabel('independent politician')).toBeUndefined()
+    expect(partyLabel('Labour Party')).toBe('Labour Party')
   })
 })
 

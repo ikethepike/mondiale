@@ -3,7 +3,7 @@ import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import type { Party, CountryParties } from '~~/generators/create-parties-file'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { politicalLeader } from './leaders'
+import { INDEPENDENT, politicalLeader } from './leaders'
 
 /**
  * The one home for political-party data: the roster, the governing-party join,
@@ -16,9 +16,6 @@ import { politicalLeader } from './leaders'
  */
 
 export type { Party, CountryParties }
-
-/** Wikidata's stand-in for a partyless politician; never a real answer. */
-const INDEPENDENT = 'independent politician'
 
 /**
  * Words that name a political FAMILY rather than a party. Half the world's
@@ -393,6 +390,31 @@ export const SPECTRUM_LABELS: Record<Spectrum, string> = {
   centre: 'Centre',
   'centre-right': 'Centre-right',
   right: 'Right',
+}
+
+/**
+ * A party's politics in one line: where it sits, and what it calls itself.
+ *
+ * The band comes from `partySpectrum`/`SPECTRUM_LABELS` rather than the raw
+ * `position` — Wikidata's own vocabulary reads as a database ("centrism",
+ * "far-left politics", "right-wing extremism"), and the five bands are already
+ * the phrasing the spectrum gate puts on screen.
+ *
+ * ONE ideology, not the list: the arrays run past twenty entries in Wikidata's
+ * statement order rather than by salience, and a reveal card has one line.
+ * Taking the first is the same call `lib/government.ts` makes for a bench, so
+ * the two can never disagree about what a party's ideology IS.
+ *
+ * Either half stands alone — parties state an ideology with no position far
+ * more often than the reverse — and the whole thing is undefined when neither
+ * is known, so a caller drops the row rather than printing an empty one.
+ */
+export const partyLeaning = (party: Party): string | undefined => {
+  const band = partySpectrum(party)
+  const line = [band ? SPECTRUM_LABELS[band] : undefined, party.ideologies?.[0]]
+    .filter(Boolean)
+    .join(' · ')
+  return line || undefined
 }
 
 /**

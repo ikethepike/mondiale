@@ -3758,6 +3758,36 @@ const scenarios: Scenario[] = [
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
   },
+  // The reveal's party chip degrades across four rungs — one scenario each, so
+  // a logo-less or unresolved party is as easy to eyeball as the happy path.
+  {
+    id: 'individual-leader-pick-logo-wide',
+    label: 'Individual: leader pick (reveal — widest wordmark, SV)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({ variant: 'leader-pick', country: 'SV', options: ['SV', 'GT', 'HN', 'CR'] }),
+  },
+  {
+    id: 'individual-leader-pick-logo-tall',
+    label: 'Individual: leader pick (reveal — tallest roundel, AL)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({ variant: 'leader-pick', country: 'AL', options: ['AL', 'HR', 'RS', 'GR'] }),
+  },
+  {
+    id: 'individual-leader-pick-no-band',
+    label: 'Individual: leader pick (reveal — ideology, no band, BD)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({ variant: 'leader-pick', country: 'BD', options: ['BD', 'IN', 'PK', 'NP'] }),
+  },
+  {
+    id: 'individual-leader-pick-independent',
+    label: 'Individual: leader pick (reveal — independent, UA)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({ variant: 'leader-pick', country: 'UA', options: ['UA', 'PL', 'RO', 'HU'] }),
+  },
   {
     id: 'individual-logo-politics',
     label: 'Individual: logo politics (origin)',

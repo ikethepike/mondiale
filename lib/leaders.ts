@@ -148,6 +148,25 @@ export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefine
   return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
 }
 
+/** Wikidata's stand-in for a partyless politician; never a real answer. */
+export const INDEPENDENT = 'independent politician'
+
+/**
+ * A leader's party as a view prints it, or nothing at all.
+ *
+ * Wikidata files a partyless leader under a phrase that says less than silence
+ * does. "Independent" is technically true of Zelenskyy — Ukraine's presidents
+ * conventionally suspend party membership on taking office — but a card that
+ * prints it invites the reader to conclude he has no party behind him, when
+ * Servant of the People holds 254 of the chamber's seats. The honest move is
+ * to drop the row: a leader with no party to name simply gets no party line.
+ *
+ * The one place that call is made, so a hint chip and a reveal card can never
+ * disagree about whether a leader HAS a party.
+ */
+export const partyLabel = (party: string): string | undefined =>
+  party === INDEPENDENT ? undefined : party
+
 /**
  * Short on-screen facts for a leader quiz option (easy/normal modes): party
  * and tenure start. Never the office — "President of France" answers the
@@ -157,8 +176,7 @@ export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefine
  */
 export const leaderHintFacts = (leader: LeaderProfile, isoCode: ISOCountryCode): string[] => {
   const facts: string[] = []
-  // Wikidata's stand-in for partyless leaders reads clunky as a chip.
-  const party = leader.party === 'independent politician' ? 'independent' : leader.party
+  const party = leader.party ? partyLabel(leader.party) : undefined
   if (party && !mentionsCountry(party, isoCode)) facts.push(party)
   if (leader.sinceYear) facts.push(`in office since ${leader.sinceYear}`)
   return facts

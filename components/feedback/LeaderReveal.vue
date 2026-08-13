@@ -10,8 +10,17 @@
       <div class="ident">
         <strong class="name">{{ leader.name }}</strong>
         <span v-if="title" class="title">{{ title }}</span>
-        <span class="facts fact-row">
-          <span v-if="leader.party" class="fact">{{ leader.party }}</span>
+        <!-- The party, with its mark where Commons had one. Its own row rather
+             than a `.fact`: the fact row's opacity would wash a logo out, and
+             a two-line chip breaks its interpunct list. -->
+        <span v-if="partyName" class="party-chip">
+          <img v-if="party?.logo" class="party-logo" :src="party.logo" alt="" />
+          <span class="party-text">
+            <span class="party-name">{{ partyName }}</span>
+            <span v-if="leaning" class="party-leaning">{{ leaning }}</span>
+          </span>
+        </span>
+        <span v-if="tenure || age" class="facts fact-row">
           <span v-if="tenure" class="fact">{{ tenure }}</span>
           <span v-if="age" class="fact">{{ age }}</span>
         </span>
@@ -21,26 +30,53 @@
       {{ otherRole.role }}: <strong>{{ otherRole.leader.name }}</strong>
     </p>
     <span class="credit-row">
-      <SourceInfo
-        :attributions="sources"
-        label="Sources"
-        :item-credit="mediaCreditLine(leader, 'commons-media')"
-      />
+      <SourceInfo :attributions="sources" label="Sources" :item-credit="itemCredits" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
   </div>
 </template>
 <script lang="ts" setup>
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
-import { leaderRoles, leaderTitle, politicalLeader } from '~~/lib/leaders'
+import { datasetAttribution, dedupeAttributions, mediaCreditLine } from '~~/lib/attribution'
+import { leaderRoles, leaderTitle, partyLabel, politicalLeader } from '~~/lib/leaders'
+import { governingParty, partyLeaning } from '~~/lib/parties'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const props = defineProps<{ country: ISOCountryCode }>()
 
 const leader = computed(() => politicalLeader(props.country))
 
-const sources = datasetAttribution('leaders')
+/** The roster party behind the leader's party STRING — `governingParty` IS
+ *  that join, so this never re-matches a name of its own. */
+const party = computed(() => governingParty(props.country))
+
+/** The roster's own spelling where the two joined (it is the name the logo
+ *  belongs to), else the leader's raw string, so an unresolved party still
+ *  reads exactly as it does today. */
+const partyName = computed(
+  () => party.value?.name ?? (leader.value?.party ? partyLabel(leader.value.party) : undefined)
+)
+
+const leaning = computed(() => (party.value ? partyLeaning(party.value) : undefined))
+
+/** The leader and, once a party resolved, the roster behind its logo and
+ *  politics. Deduped: both datasets credit Wikidata and Commons. */
+const sources = computed(() =>
+  dedupeAttributions([
+    ...datasetAttribution('leaders'),
+    ...(party.value ? datasetAttribution('parties') : []),
+  ])
+)
+
+/** Two files on this card, two authors: the portrait and the party's mark.
+ *  The logo's credit belongs to the FILE, so it rides only when shown. */
+const itemCredits = computed(() =>
+  [
+    leader.value ? mediaCreditLine(leader.value, 'commons-media') : undefined,
+    party.value?.logo ? mediaCreditLine(party.value, 'commons-media') : undefined,
+  ].filter((credit): credit is string => !!credit)
+)
+
 const title = computed(() => (leader.value ? leaderTitle(leader.value) : undefined))
 
 // "in office since 2019 · 6 yrs" — tenure of the surfaced leader.
@@ -110,6 +146,47 @@ const otherRole = computed(() =>
 
 .facts {
   margin-top: 0.2rem;
+}
+
+.party-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+  min-width: 0;
+}
+
+// Party logos are wordmarks with no common shape: the governing set runs from
+// a taller-than-wide roundel to a 9:1 wordmark. A fixed box would render the
+// widest of them a few pixels tall, so BOTH axes are capped and `width: auto`
+// lets whichever one binds do the work — every mark keeps its proportions.
+.party-logo {
+  flex: none;
+  width: auto;
+  height: auto;
+  max-width: 72px;
+  max-height: 26px;
+  object-fit: contain;
+}
+
+.party-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.party-name {
+  font-size: 1.35rem;
+  color: var(--dark-blue);
+  opacity: 0.9;
+}
+
+// The leaning carries the fact row's weight — same class of information, just
+// on its own line under the party it describes.
+.party-leaning {
+  font-size: 1.2rem;
+  color: ink(0.55);
 }
 
 .other-role {
