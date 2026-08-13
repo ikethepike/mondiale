@@ -195,7 +195,11 @@
                resize walked the whole round up the screen. It keeps the wider
                label's width for both states. -->
           <div class="lock-row">
-            <ButtonFilled class="lock-button" :disabled="sidesLocked || !allFiled" @click="submitSides">
+            <ButtonFilled
+              class="lock-button"
+              :disabled="sidesLocked || !allFiled"
+              @click="submitSides"
+            >
               {{ sidesLocked ? 'Locked in' : `Lock it in${filedCount}` }}
             </ButtonFilled>
           </div>
@@ -352,8 +356,10 @@ const verdictLine = computed(() => {
  * generic placeholder would reserve the wrong number of lines on a phone.
  */
 const placeholderLine = computed(() => {
-  const longest = [...(challenge.value?.sorted ?? []), ...(challenge.value?.options ?? []).map(o => o.name)]
-    .sort((a, b) => b.length - a.length)[0]
+  const longest = [
+    ...(challenge.value?.sorted ?? []),
+    ...(challenge.value?.options ?? []).map(o => o.name),
+  ].sort((a, b) => b.length - a.length)[0]
   return `The government's own side: ${longest ?? 'the opposition benches'}`
 })
 

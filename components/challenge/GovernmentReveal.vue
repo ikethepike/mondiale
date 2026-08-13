@@ -46,7 +46,7 @@
               <img v-if="bench.logo" class="party-logo" :src="bench.logo" alt="" />
               <span v-else class="party-swatch" :style="{ background: bench.color }" />
               <span class="party-name">{{ bench.name }}</span>
-              <span class="party-seats">{{ bench.seats }}</span>
+              <span class="party-seats">{{ seatsOf(bench.name) }}</span>
             </li>
           </ul>
         </li>
@@ -144,6 +144,19 @@ const majority = computed(() => Math.floor(props.challenge.totalSeats / 2) + 1)
 
 const standingOf = (name: string) => props.answers.standings[name] ?? 'opposition'
 
+/**
+ * A bench's seats, resolved once here rather than at four call sites.
+ *
+ * `benches[].seats` is optional on the wire: it is stripped until beat 3 opens,
+ * because the governing bench's row IS beat 2's answer. The reveal only ever
+ * runs after `restoreBenchSeats` has put them back, so this reads the answers
+ * as the authority and falls back to the bench — never to a guess.
+ */
+const seatsOf = (name: string) =>
+  props.answers.benchSeats?.[name] ??
+  props.challenge.benches.find(bench => bench.name === name)?.seats ??
+  0
+
 /** Benches grouped by where they stand, government first — the reading order. */
 const sides = computed(() => {
   const groups = (['government', 'backing', 'opposition'] as const).map(key => {
@@ -151,8 +164,8 @@ const sides = computed(() => {
     return {
       key,
       label: { government: 'In government', backing: 'Backing', opposition: 'Opposition' }[key],
-      benches: [...benches].sort((a, b) => b.seats - a.seats),
-      seats: benches.reduce((total, bench) => total + bench.seats, 0),
+      benches: [...benches].sort((a, b) => seatsOf(b.name) - seatsOf(a.name)),
+      seats: benches.reduce((total, bench) => total + seatsOf(bench.name), 0),
     }
   })
   // A country with no confidence-and-supply deal has no Backing row to show.
@@ -170,7 +183,7 @@ const paintedSeats = computed(() => {
   const run: ('government' | 'backing' | 'opposition')[] = []
   for (const side of sides.value) {
     for (const bench of side.benches) {
-      const dots = Math.max(1, Math.round(bench.seats * scale))
+      const dots = Math.max(1, Math.round(seatsOf(bench.name) * scale))
       for (let index = 0; index < dots; index += 1) run.push(side.key)
     }
   }

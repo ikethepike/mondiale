@@ -92,6 +92,11 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       const names = starChartStars(challenge).map(star => star.name)
       return names.length ? `The stars were ${names.join(', ')}` : 'The star chart round'
     }
+    case 'terra-incognita': {
+      if (!isChallengeOfType(challenge, 'terra-incognita-challenge')) return ''
+      const count = challenge.vanishings.length
+      return `The atlas lost ${count} ${count === 1 ? 'country' : 'countries'}`
+    }
     case 'mother-tongue':
       return '_type' in challenge && challenge._type === 'mother-tongue-challenge'
         ? `${challenge.language} — official in ${challenge.countries.length} countries`

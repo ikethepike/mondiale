@@ -80,6 +80,20 @@
               :viewer-id="gameStore.seatId"
             />
           </template>
+          <!-- Terra Incognita's own ledger replaces the generic one for two
+               reasons the generic one cannot serve: its rows must stay in the
+               order the atlas lost them (an alphabetical sort throws away
+               which loss stood open longest), and each row owes the player the
+               placement they just proved they did not have. -->
+          <template v-else-if="terraChallenge && currentRound">
+            <TerraRevealCard
+              :challenge="terraChallenge"
+              :answers="currentRound.round.groupAnswers"
+              :players="gameStore.game?.players ?? {}"
+              :player-id="selectedPlayer"
+              :viewer-id="gameStore.seatId"
+            />
+          </template>
           <!-- `right` restores the pane padding the tile rows give up to scroll
                edge-to-edge — the reveal's ledger column must not kiss the rule -->
           <template v-else-if="kind === 'ranking'">
@@ -249,6 +263,7 @@ import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
 import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import StarChartReveal from '~/components/challenge/StarChartReveal.vue'
+import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
 import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
@@ -380,6 +395,12 @@ const capitalGuessChallenge = computed(() => {
 
 const starChartChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'star-chart-challenge') ? roundChallenge.value : undefined
+)
+
+const terraChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'terra-incognita-challenge')
+    ? roundChallenge.value
+    : undefined
 )
 
 const flashpointChallenge = computed(() => {
@@ -629,6 +650,8 @@ const explainer = computed(() => {
     case 'shared-shores':
     case 'highlands':
       return 'Points scale with countries found — wrong names each cost one.'
+    case 'terra-incognita':
+      return 'Points scale with countries put back — naming one that was never gone costs you. Noticing the gap is the whole question.'
     case 'name-that-water':
       return 'Fewer guesses, bigger score.'
     case 'clean-sweep':

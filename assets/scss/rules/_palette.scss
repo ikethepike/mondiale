@@ -10,6 +10,12 @@
   --map-filled-error: var(--hior-ange);
   --map-filled-normal: var(--soft-blue);
   --map-not-highlight: hsla(197.6, 51.2%, 41.8%, 0.1);
+  // The land as the eye actually sees it: --map-not-highlight's wash already
+  // composited over the page. Derived from the same hue rather than pinned to
+  // a second literal, so the two can never drift apart. Anything that must
+  // ERASE ink rather than tint it (a country vanishing from the atlas) needs
+  // the opaque result — a translucent wash paints over nothing.
+  --map-land-solid: color-mix(in srgb, var(--soft-blue) 10%, var(--background-color));
 
   --sour-milk: #{milk()};
 

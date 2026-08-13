@@ -226,7 +226,8 @@ describe('dealLogoPolitics (via forced variant)', () => {
         difficulty: 'normal',
       })
       if (dealt.partyLogo?.ask !== 'ruling') continue
-      dealt.partyLogo.rules ? yes++ : no++
+      if (dealt.partyLogo.rules) yes++
+      else no++
     }
 
     expect(yes + no, 'the ruling question has to deal at all').toBeGreaterThan(40)

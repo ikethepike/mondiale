@@ -149,9 +149,11 @@ const METRICS = {
     slug: 'international-tourist-arrivals',
     column: 'Arrivals of tourists from abroad',
   },
+  // kWh of total energy supply per person — the grapher relabelled the value
+  // column in 2026 while serving identical numbers; both names are accepted.
   energyUse: {
     slug: 'per-capita-energy-use',
-    column: 'Per capita energy consumption',
+    column: ['Total energy supply', 'Per capita energy consumption'],
   },
   workingHours: {
     slug: 'annual-working-hours-per-worker',
@@ -232,7 +234,7 @@ const iso3ToIso2 = (): Map<string, ISOCountryCode> => {
 
 const fetchMetric = async (
   slug: string,
-  column: string,
+  column: string | readonly string[],
   lookup: Map<string, ISOCountryCode>
 ): Promise<{
   latest: Map<ISOCountryCode, OwidMetric>
@@ -249,9 +251,22 @@ const fetchMetric = async (
 
   const codeIndex = header.indexOf('Code')
   const yearIndex = header.indexOf('Year')
-  const valueIndex = header.indexOf(column)
+  // OWID renames value columns without changing the metric (per-capita-energy-use
+  // went "Per capita energy consumption" -> "Total energy supply" for the same
+  // kWh-per-person series). Accept known aliases, newest first, so a cosmetic
+  // rename can't take the whole weekly refresh down; a column that vanishes
+  // entirely still fails loudly.
+  const candidates = typeof column === 'string' ? [column] : column
+  const valueIndex = candidates.reduce(
+    (found, name) => (found === -1 ? header.indexOf(name) : found),
+    -1
+  )
   if (codeIndex === -1 || yearIndex === -1 || valueIndex === -1) {
-    throw new Error(`OWID ${slug} missing expected columns (got: ${header.join(', ')})`)
+    throw new Error(
+      `OWID ${slug} missing expected columns (wanted one of: ${candidates.join(
+        ' | '
+      )}; got: ${header.join(', ')})`
+    )
   }
 
   // Keep the most recent year per country, and every row for the series.

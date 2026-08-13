@@ -1,10 +1,6 @@
 <template>
   <h1 class="map-caption">{{ prompt }}</h1>
-  <ChallengeTimerRadial
-    class="gate-clock"
-    :value="secondsLeft"
-    :total="LOGO_POLITICS_SECONDS"
-  />
+  <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="LOGO_POLITICS_SECONDS" />
   <div v-if="challenge.partyLogo" class="logo-frame">
     <img class="party-logo" :src="challenge.partyLogo.image" alt="" />
   </div>
@@ -128,9 +124,7 @@ const { secondsLeft, remainingFraction, stop } = useGateClock(LOGO_POLITICS_SECO
 const ask = computed(() => props.challenge.partyLogo?.ask ?? 'origin')
 const truthOfRuling = computed(() => !!props.challenge.partyLogo?.rules)
 
-const prompt = computed(() =>
-  logoPoliticsPrompt(ask.value, countryName(props.challenge.country))
-)
+const prompt = computed(() => logoPoliticsPrompt(ask.value, countryName(props.challenge.country)))
 
 // Which option the player took, so the hold can wash both the choice and the
 // truth without a second flag. `false` is a real answer, so every gate reads

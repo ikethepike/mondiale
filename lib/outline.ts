@@ -679,3 +679,79 @@ export const scoreSketch = (
   const band = clamp01(1 - (distance - 0.07) / 0.18)
   return Math.round(maximumPoints * Math.pow(band, 1.3))
 }
+
+/**
+ * How a country's land would be divided between its neighbours if it ceased to
+ * exist: one line from each border junction to a point deep inside it.
+ *
+ * Terra Incognita needs this because erasing a country is not enough to make
+ * the map believable. A country's outline carries its neighbours' junctions,
+ * and every border BETWEEN two of those neighbours terminates on it. Erase the
+ * country and each of those borders is left amputated, ending bluntly in open
+ * land — which reads as a rendering fault rather than as geography.
+ *
+ * Drawing the spokes closes them: the amputated ends now continue inward and
+ * meet, so the territory reads as partitioned between the neighbours that
+ * surround it, which is what would actually happen to it. A star through one
+ * interior point is the honest general answer — with two neighbours it is
+ * simply their border continuing across, and with more it is the same shape a
+ * real three-way partition takes.
+ *
+ * The interior point is the pole of inaccessibility rather than the centroid,
+ * so the spokes stay inside a concave country instead of cutting the corner.
+ *
+ * `neighbours` are vertex lists (rings may be flattened — only membership is
+ * read). An enclave's host wraps the whole ring and yields no junction, which
+ * is correct: nothing outside it changes when the country goes.
+ */
+/**
+ * The longest border a ring shares with any one of its neighbours — returned as
+ * BOTH sides of it: the run as the ring itself draws it, and the same border as
+ * that neighbour draws it.
+ *
+ * Named for what it measures rather than what it is used for, because the
+ * caller's reason is a mode's fiction and this is plain ring geometry.
+ *
+ * Both sides matter because a shared border is drawn twice, once by each
+ * country, and the two copies are NOT identical: per-country simplification
+ * moves them apart by a fraction of a map unit here and there. Anything
+ * covering that border has to cover each copy along its own path — a single
+ * brush centred on one country's version leaves the other's poking out as a
+ * faint ghost of the line, and widening the brush until it spans the divergence
+ * would swallow a sliver neighbour whole.
+ *
+ * Terra Incognita erases exactly this border to make a country vanish, and the
+ * choice of ONE border is what keeps the map believable. Erasing a whole outline
+ * amputates every border BETWEEN two of the country's neighbours: those lines
+ * terminated on it, and without it they stop bluntly in open land. Erasing a
+ * single shared border leaves every remaining line ending where it always did —
+ * at its tripoints the two surviving borders simply continue into each other,
+ * so the land closes over the gap instead of being left ringed by pointers to
+ * it.
+ *
+ * The longest border is the one worth taking: it is the stretch along which the
+ * two shapes merge most completely, so what is left reads as one plain piece of
+ * land rather than as two shapes touching at a corner.
+ *
+ * Undefined when there is no partial border to give up — an island (no land
+ * neighbour at all) or an enclave's host wrapping the whole ring, where erasing
+ * the border would take the entire outline with it and land straight back on
+ * the amputation problem.
+ */
+export const sharedBorderPair = (
+  ring: OutlinePoint[],
+  neighbours: OutlinePoint[][]
+): { own: OutlinePoint[]; theirs: OutlinePoint[] } | undefined => {
+  let best: { own: OutlinePoint[]; theirs: OutlinePoint[] } | undefined
+  for (const neighbour of neighbours) {
+    const own = sharedBoundary(ring, neighbour)
+    if (!own || own.length < 2 || own.length >= ring.length) continue
+    if (best && own.length <= best.own.length) continue
+    // The same border as the neighbour draws it. Absent when the neighbour's
+    // ring is entirely shared (it is enclosed by this country) — then its whole
+    // outline is this border and its own copy needs no separate cover.
+    const theirs = sharedBoundary(neighbour, ring)
+    best = { own, theirs: theirs ?? [] }
+  }
+  return best
+}

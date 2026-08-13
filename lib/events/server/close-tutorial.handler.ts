@@ -6,11 +6,7 @@ import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentTimeline, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { currentCleanSweep, scheduleSweepTimeout } from './sweep-beats'
-import {
-  currentGovernment,
-  scheduleGovernmentTimeout,
-  startGovernment,
-} from './government-beats'
+import { currentGovernment, scheduleGovernmentTimeout, startGovernment } from './government-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(

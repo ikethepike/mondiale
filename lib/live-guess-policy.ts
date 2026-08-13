@@ -42,6 +42,11 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   'star-chart': 'label',
   // Benches are dragged, not named, so there is no guess to broadcast.
   government: 'none',
+  // The room shares one failing atlas, but a NAMED guess here is always a
+  // wrong one — the composable sends hits as bare presence — and a wrong name
+  // says only "that country is still on the map", which is true of nearly two
+  // hundred of them. Nothing to leak, and the misses are the round's comedy.
+  'terra-incognita': 'label',
 
   // Unlike the other option rounds, composition's table IS the bar's own
   // origins — a handful, shared by the room — so a named wrong guess strikes a

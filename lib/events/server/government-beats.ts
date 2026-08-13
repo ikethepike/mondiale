@@ -11,8 +11,7 @@ import {
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { chainContenders } from '~~/lib/player'
 import { BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
-import type { GovernmentAnswers } from '~~/types/challenges/group-modes.type'
-import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
+import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
 import {
@@ -109,7 +108,10 @@ const hideBenchSeats = (challenge: GovernmentChallenge) => {
 }
 
 /** Beat 3 prints seat counts per bench, so they return with it. */
-const restoreBenchSeats = (challenge: GovernmentChallenge, answers: GovernmentAnswers | undefined) => {
+const restoreBenchSeats = (
+  challenge: GovernmentChallenge,
+  answers: GovernmentAnswers | undefined
+) => {
   if (!answers?.benchSeats) return
   for (const bench of challenge.benches) {
     const seats = answers.benchSeats[bench.name]

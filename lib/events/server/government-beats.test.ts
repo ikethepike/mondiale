@@ -7,8 +7,7 @@ import {
   startGovernment,
 } from './government-beats'
 import { BEAT_POINTS, BEAT_SECONDS } from '~~/lib/government'
-import { BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
-import { TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { BEAT_VERDICT_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
@@ -378,7 +377,9 @@ describe('staleness', () => {
 
 describe('rearm', () => {
   it('revives a live beat after a restart', async () => {
-    const { challenge, game, ctx } = await openRound()
+    // The challenge is deliberately not held here: rearm has to revive the
+    // round from PERSISTED state, so the test reads it back via `live()`.
+    const { game, ctx } = await openRound()
     // No timer armed: the machine that held it went away.
     rearmGovernment(ctx, game, { armBriefingCaps: true })
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)

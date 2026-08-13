@@ -314,6 +314,11 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // The reveal IS the lesson: the arc paints itself bloc by bloc, and a share
   // a player misjudged is only legible once its neighbours are coloured in.
   government: engine({}),
+  // The reveal is the mode's whole lesson and the only moment the table sees
+  // the world whole again: every loss re-inks itself, the saved ones in the
+  // player's own hand and the missed ones alongside. At 0 the scorecard
+  // covered a map that was still visibly broken.
+  'terra-incognita': { owner: 'classic', revealHoldMs: 6000 },
   composition: { owner: 'classic', revealHoldMs: 0 },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots

@@ -484,10 +484,7 @@ const firstAcceptable = (
   qids: string[],
   entities: EntityResponse | undefined,
   countryQid: string,
-  taken?: ReadonlySet<string>,
-  /** The name being resolved, for the label check. Absent on callers that
-   *  cannot supply one — they keep the old behaviour. */
-  wanted?: { name: string; isoCode: ISOCountryCode }
+  taken?: ReadonlySet<string>
 ): PartyMatch | undefined => {
   for (const qid of qids) {
     const claims = entities?.entities?.[qid]?.claims
@@ -539,8 +536,7 @@ const claimsFor = async (qids: string[]): Promise<EntityResponse | undefined> =>
 const searchOnce = async (
   term: string,
   countryQid: string,
-  taken?: ReadonlySet<string>,
-  wanted?: { name: string; isoCode: ISOCountryCode }
+  taken?: ReadonlySet<string>
 ): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
@@ -551,7 +547,7 @@ const searchOnce = async (
   if (!hits.length) return undefined
   await wait(120)
 
-  return firstAcceptable(hits, await claimsFor(hits), countryQid, taken, wanted)
+  return firstAcceptable(hits, await claimsFor(hits), countryQid, taken)
 }
 
 /**
@@ -568,8 +564,7 @@ const searchViaWikipedia = async (
   name: string,
   countryName: string,
   countryQid: string,
-  taken?: ReadonlySet<string>,
-  wanted?: { name: string; isoCode: ISOCountryCode }
+  taken?: ReadonlySet<string>
 ): Promise<PartyMatch | undefined> => {
   const search = await fetchJson<SearchResponse>(
     `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
@@ -594,7 +589,7 @@ const searchViaWikipedia = async (
     .filter((qid): qid is string => !!qid)
   if (!qids.length) return undefined
 
-  return firstAcceptable(qids, await claimsFor(qids), countryQid, taken, wanted)
+  return firstAcceptable(qids, await claimsFor(qids), countryQid, taken)
 }
 
 const resolveParty = async (
@@ -603,19 +598,16 @@ const resolveParty = async (
   countryQid: string,
   countryName: string,
   /** Entities already claimed by an earlier party in THIS country. */
-  taken: ReadonlySet<string>,
-  /** The country being resolved for, so a hit can be judged against its label. */
-  isoCode?: ISOCountryCode
+  taken: ReadonlySet<string>
 ): Promise<PartyMatch | undefined> => {
-  const wanted = isoCode ? { name, isoCode } : undefined
   // The endonym goes FIRST: Wikidata files parties under their native name, so
   // "Centerpartiet" resolves where the Factbook's "Center Party" finds nothing.
   for (const term of [endonym, name].filter((value): value is string => !!value)) {
-    const match = await searchOnce(term, countryQid, taken, wanted)
+    const match = await searchOnce(term, countryQid, taken)
     if (match) return match
   }
   // Last resort, and only for names Wikidata's own search could not place.
-  return searchViaWikipedia(name, countryName, countryQid, taken, wanted)
+  return searchViaWikipedia(name, countryName, countryQid, taken)
 }
 
 /** Resolve the Q-ids an enriched party points at (ideologies, position) to
@@ -809,8 +801,7 @@ for (const { isoCode, url } of successfulCombinations) {
         endonym,
         countryQid,
         COUNTRIES[isoCode]?.name.english ?? isoCode,
-        new Set(),
-        isoCode
+        new Set()
       )
       // Cache the MISS too — it cost a full search plus an entity fetch.
       matchCache[cacheKey] = match
@@ -952,8 +943,7 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
         undefined,
         countryQid,
         COUNTRIES[isoCode]?.name.english ?? isoCode,
-        claimedQids,
-        isoCode
+        claimedQids
       )
       matchCache[cacheKey] = match
         ? {

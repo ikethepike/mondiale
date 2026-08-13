@@ -159,6 +159,9 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'capital-guess': true,
   'star-chart': true,
   government: true,
+  // Nothing local gates it: the world falls apart on a schedule the booth
+  // derives exactly as the players do, so a spectator watches the same map.
+  'terra-incognita': true,
   flashpoint: true,
   composition: true,
   'ghost-state': true,

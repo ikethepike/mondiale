@@ -54,6 +54,7 @@ import type {
   StarChartChallenge,
   GovernmentChallenge,
   StatDetectiveChallenge,
+  TerraIncognitaChallenge,
   TimelineChallenge,
   TongueBuzzChallenge,
   TrendRaceChallenge,
@@ -111,6 +112,12 @@ import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
+import {
+  pickVanishDeck,
+  terraCollapseThreshold,
+  terraSeconds,
+  TERRA_CADENCE_MS,
+} from './terra-incognita'
 import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
@@ -1142,6 +1149,30 @@ const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | und
   }
 }
 
+/**
+ * Terra Incognita: the atlas starts losing countries, and the round is a race
+ * to notice which ones. Every rule of the deal — the legibility gate, the
+ * difficulty's reach, the lean toward the overlooked, the no-adjacent-blanks
+ * guard — lives in lib/terra-incognita.ts; this only dresses the deck as a
+ * round and stamps the schedule the two ends replay it from.
+ */
+const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallenge | undefined => {
+  const vanishings = pickVanishDeck(game)
+  if (!vanishings) return undefined
+
+  // Everything downstream sizes itself off the deck the board could actually
+  // seat, never the difficulty's nominal count — a thin variant deals short.
+  const cadenceMs = TERRA_CADENCE_MS[game.difficulty]
+  return {
+    _type: 'terra-incognita-challenge',
+    vanishings,
+    cadenceMs,
+    collapseThreshold: terraCollapseThreshold(vanishings.length, game.difficulty),
+    durationSeconds: terraSeconds(vanishings.length, cadenceMs),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
 const COMPOSITION_SECONDS = 30
 
 const getCompositionChallenge = async (
@@ -1939,6 +1970,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'capital-guess': game => getCapitalGuessChallenge(game),
   'star-chart': game => getStarChartChallenge(game),
   government: game => getGovernmentChallenge(game),
+  'terra-incognita': game => getTerraIncognitaChallenge(game),
   composition: game => getCompositionChallenge(game),
   flashpoint: game => getFlashpointChallenge(game),
   'ghost-state': game => getGhostStateChallenge(game),

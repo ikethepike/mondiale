@@ -84,6 +84,7 @@ export type RoundChallengeKind =
   | 'unique-or-bust'
   | 'clean-sweep'
   | 'government'
+  | 'terra-incognita'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -157,6 +158,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'clean-sweep'
     case 'government-challenge':
       return 'government'
+    case 'terra-incognita-challenge':
+      return 'terra-incognita'
     default:
       return 'ranking'
   }

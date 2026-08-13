@@ -61,7 +61,7 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import { EVENTS } from '~~/data/events.gen'
 import { chronicleSolution, isChronicleOrdered } from '~~/lib/chronicle'
 import { countryName } from '~~/lib/country'
-import { DRAG_LIST_OPTIONS } from '~~/lib/drag-list'
+import { HOLD_DRAG_LIST_OPTIONS } from '~~/lib/drag-list'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { CHRONICLE_SECONDS } from './timing'
@@ -77,7 +77,7 @@ const cards = computed(() =>
   order.value.map(slug => ({ slug, event: EVENTS[slug] })).filter(card => !!card.event)
 )
 
-const options = ref({ ...DRAG_LIST_OPTIONS })
+const options = ref({ ...HOLD_DRAG_LIST_OPTIONS })
 const updateOrder = (event: Event) => {
   const parent = event.target as HTMLElement
   const next: string[] = []
@@ -148,6 +148,26 @@ const submitOrder = () => resolve()
   align-self: stretch;
   flex-flow: column nowrap;
   margin-top: 1rem;
+
+  // A five-card hand outgrows a phone, and the tail is the lock row: the
+  // button and the clock. So the board is the column's GIVER — it takes the
+  // room that's left and scrolls its own overflow, which keeps the prompt on
+  // top and "Set the record" on screen at every viewport height.
+  //
+  // The scroller is the board, not the card list: the rail is an absolute
+  // pseudo on `.chronicle-cards`, and inside a scroll container it would size
+  // to the VISIBLE box and scroll away, leaving the lower coins railless.
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  // A drag that overshoots must not chain into a page bounce — the
+  // rubber-banding wrestles the card out of the player's finger.
+  overscroll-behavior-y: contain;
+  // Interactive by right: the passthrough shell is pointer-events: none, and
+  // a swipe has to land somewhere. Opting the BOARD in (not just the cards)
+  // means the rail gutter, the poles and the gaps all pan too — chronicle
+  // never answers on the map, so nothing behind this column needs the taps.
+  pointer-events: auto;
 }
 
 // The rail's marginalia and the card column share one box: a gutter each
@@ -166,6 +186,7 @@ const submitOrder = () => resolve()
 // label the card column, so they start where the cards do — the padding only
 // lands there once the header's inherited centring is dropped.
 .pole {
+  flex: none;
   text-align: left;
   font-size: 1.2rem;
   font-weight: 700;
@@ -190,12 +211,15 @@ const submitOrder = () => resolve()
   position: relative;
   flex-flow: column nowrap;
   counter-reset: slot;
-  pointer-events: auto;
   // A long-press must pick a card up, never start iOS text selection.
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  touch-action: none;
+  // `pan-y`, never `none`: refusing the browser's gestures over the cards left
+  // a phone with no scrollable surface at all — the cards cover the column, so
+  // the tail of the hand and the whole lock row were unreachable. The hold in
+  // HOLD_DRAG_LIST_OPTIONS is what separates a reorder from a scroll now.
+  touch-action: pan-y;
 
   // The rail the slots hang on. It sits behind the node coins and holds
   // still while cards trade places through it. Its centre must land on the
