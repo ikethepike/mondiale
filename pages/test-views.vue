@@ -73,43 +73,9 @@
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
-import ViewAtlas from '~/components/view/ViewAtlas.vue'
-import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
-import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
-import ViewComposition from '~/components/view/ViewComposition.vue'
-import ViewEmpire from '~/components/view/ViewEmpire.vue'
-import ViewFlashpoint from '~/components/view/ViewFlashpoint.vue'
-import ViewFinalChallenge from '~/components/view/ViewFinalChallenge.vue'
-import ViewHeritageHunt from '~/components/view/ViewHeritageHunt.vue'
-import ViewFlagPalette from '~/components/view/ViewFlagPalette.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
-import ViewGroupScores from '~/components/view/ViewGroupScores.vue'
-import ViewHotCold from '~/components/view/ViewHotCold.vue'
-import ViewManhunt from '~/components/view/ViewManhunt.vue'
-import ViewIndividualChallenge from '~/components/view/ViewIndividualChallenge.vue'
-import ViewMotherTongue from '~/components/view/ViewMotherTongue.vue'
-import ViewNameThatWater from '~/components/view/ViewNameThatWater.vue'
-import ViewNeighbourBlitz from '~/components/view/ViewNeighbourBlitz.vue'
-import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
-import ViewPinLandmark from '~/components/view/ViewPinLandmark.vue'
-import ViewSilhouette from '~/components/view/ViewSilhouette.vue'
-import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
-import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
-import ViewSketch from '~/components/view/ViewSketch.vue'
-import ViewStarChart from '~/components/view/ViewStarChart.vue'
-import ViewGovernment from '~/components/view/ViewGovernment.vue'
-import ViewTerraIncognita from '~/components/view/ViewTerraIncognita.vue'
-import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
-import ViewTimeline from '~/components/view/ViewTimeline.vue'
-import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
-import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
-import ViewWaterBlitz from '~/components/view/ViewWaterBlitz.vue'
 import ViewTutorial from '~/components/view/ViewTutorial.vue'
-import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
-import ViewCleanSweep from '~/components/view/ViewCleanSweep.vue'
-import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
-import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
@@ -151,7 +117,8 @@ import {
 import { shortestRoute, traversalWithin } from '~~/lib/traversal'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
-import { latestChallengeOfType } from '~~/lib/rounds'
+import { latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { resolveChallengeView } from '~/components/view/dispatch'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   atlasContinuations,
@@ -1009,7 +976,14 @@ const settledTraversalRound = (): Round => {
 interface Scenario {
   id: string
   label: string
-  component: Component
+  /**
+   * Override for the views that route OUTSIDE `resolveChallengeView` — the
+   * synthetic galleries, the lobby and the tutorial. Leave it off and the
+   * harness renders whatever the REAL dispatcher resolves for the pinned
+   * seat's phase, so a round that plays through to its settle lands on the
+   * scorecard by itself instead of needing a second scenario for the reveal.
+   */
+  component?: Component
   build: () => Game
 }
 
@@ -1135,7 +1109,6 @@ const scenarios: Scenario[] = [
   {
     id: 'ranking',
     label: 'Ranking (5 tiles)',
-    component: ViewGroupChallenge,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1148,7 +1121,6 @@ const scenarios: Scenario[] = [
   {
     id: 'ranking-long',
     label: 'Ranking (6 tiles, overflow)',
-    component: ViewGroupChallenge,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1161,7 +1133,6 @@ const scenarios: Scenario[] = [
   {
     id: 'group-scores',
     label: 'Group scores (reveal)',
-    component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledRound()]),
   },
   {
@@ -1169,7 +1140,6 @@ const scenarios: Scenario[] = [
     // five-flag optimum and read as the shorter journey.
     id: 'traversal-scores',
     label: 'Border Run reveal (route vs shortest)',
-    component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledTraversalRound()]),
   },
   {
@@ -1177,7 +1147,6 @@ const scenarios: Scenario[] = [
     // both the qualified and the bare row.
     id: 'ranking-marriage-notes',
     label: 'Ranking reveal (per-country notes)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         settledRound('humanRights.gayMarriageLegalized', ['GB', 'FI', 'NL', 'SE', 'MX']),
@@ -1188,7 +1157,6 @@ const scenarios: Scenario[] = [
     // vanish. Keeps the floored-shortest-bar behaviour under a live eye.
     id: 'ranking-negative-bars',
     label: 'Ranking reveal (negative values)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         settledRound('people.netMigration', ['SY', 'LB', 'AE', 'QA', 'US']),
@@ -1197,7 +1165,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-scores',
     label: 'Opening Ceremony scores (buzz race)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -1228,7 +1195,6 @@ const scenarios: Scenario[] = [
   {
     id: 'two-truths',
     label: 'Two truths and a lie',
-    component: ViewTwoTruths,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1248,7 +1214,6 @@ const scenarios: Scenario[] = [
   {
     id: 'two-truths-scaled',
     label: 'Two truths and a lie (bounded indices)',
-    component: ViewTwoTruths,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1280,7 +1245,6 @@ const scenarios: Scenario[] = [
   {
     id: 'trend-race',
     label: 'Trend race (pick → reveal on click)',
-    component: ViewTrendRace,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1298,7 +1262,6 @@ const scenarios: Scenario[] = [
   {
     id: 'trend-race-scaled',
     label: 'Trend race (bounded index, inverted)',
-    component: ViewTrendRace,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1316,7 +1279,6 @@ const scenarios: Scenario[] = [
   {
     id: 'timeline',
     label: 'Timeline (your turn, mid-line)',
-    component: ViewTimeline,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1392,7 +1354,6 @@ const scenarios: Scenario[] = [
   {
     id: 'timeline-story',
     label: 'Timeline (story beat after a miss)',
-    component: ViewTimeline,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1433,7 +1394,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire',
     label: 'Ghosts of Empires (options + flag)',
-    component: ViewEmpire,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1453,7 +1413,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire-plc',
     label: 'Ghosts of Empires (Polish–Lithuanian)',
-    component: ViewEmpire,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1472,7 +1431,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire-majapahit',
     label: 'Ghosts of Empires (island archipelago)',
-    component: ViewEmpire,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1491,7 +1449,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire-hard',
     label: 'Ghosts of Empires (free pick, no flag)',
-    component: ViewEmpire,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1510,7 +1467,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire-taps',
     label: 'Ghosts of Empires (beat 2 fast-forward)',
-    component: ViewEmpire,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1530,7 +1486,6 @@ const scenarios: Scenario[] = [
   {
     id: 'empire-scores',
     label: 'Ghosts of Empires (scorecard)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -1559,7 +1514,6 @@ const scenarios: Scenario[] = [
   {
     id: 'timeline-reveal',
     label: 'Timeline (finished, scorecard)',
-    component: ViewTimeline,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1655,7 +1609,6 @@ const scenarios: Scenario[] = [
   {
     id: 'composition',
     label: 'Composition (foreign-born origins)',
-    component: ViewComposition,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1678,7 +1631,6 @@ const scenarios: Scenario[] = [
   {
     id: 'capital-guess',
     label: 'Capital guess (options)',
-    component: ViewCapitalGuess,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1695,7 +1647,6 @@ const scenarios: Scenario[] = [
   {
     id: 'capital-guess-hard',
     label: 'Capital guess (typed, keyboard)',
-    component: ViewCapitalGuess,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1713,7 +1664,6 @@ const scenarios: Scenario[] = [
     // read at one camera framing.
     id: 'star-chart',
     label: 'Star chart (nocturne, initials aid)',
-    component: ViewStarChart,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1731,13 +1681,11 @@ const scenarios: Scenario[] = [
     // can never drift from what the engine would have banked.
     id: 'government-reveal-majority',
     label: 'Government (New Zealand — reveal, majority with no backers)',
-    component: ViewGovernment,
     build: () => buildGovernmentReveal('NZ'),
   },
   {
     id: 'government-reveal',
     label: 'Government (Sweden — the reveal only)',
-    component: ViewGovernment,
     build: () => buildGovernmentReveal('SE'),
   },
   ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
@@ -1745,7 +1693,6 @@ const scenarios: Scenario[] = [
     label: `Government (Sweden — play from beat ${index + 1}: ${
       { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
     })`,
-    component: ViewGovernment,
     build: () => {
       const deal = dealGovernment(
         { difficulty: 'normal', variant: 'world', includeMicroNations: false },
@@ -1801,7 +1748,6 @@ const scenarios: Scenario[] = [
     // Ulaanbaatar, Tashkent, Vientiane, Asunción, Windhoek.
     id: 'star-chart-hard',
     label: 'Star chart (hard, no aid)',
-    component: ViewStarChart,
     build: () => {
       const game = mockGame('group-challenge', [
         groupRound({
@@ -1818,7 +1764,6 @@ const scenarios: Scenario[] = [
   {
     id: 'star-chart-scores',
     label: 'Star chart reveal (who named which star)',
-    component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledStarChartRound()]),
   },
   {
@@ -1827,7 +1772,6 @@ const scenarios: Scenario[] = [
     // the five touching so no two blanks can merge into one.
     id: 'terra-incognita',
     label: 'Terra Incognita (the atlas fails)',
-    component: ViewTerraIncognita,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1843,13 +1787,11 @@ const scenarios: Scenario[] = [
   {
     id: 'terra-incognita-scores',
     label: 'Terra Incognita reveal (what you never noticed)',
-    component: ViewGroupScores,
     build: () => mockGame('group-scores', [settledTerraRound()]),
   },
   {
     id: 'flashpoint',
     label: 'Flashpoint (options)',
-    component: ViewFlashpoint,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1877,7 +1819,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flashpoint-hard',
     label: 'Flashpoint (typed, keyboard)',
-    component: ViewFlashpoint,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1912,7 +1853,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flashpoint-russia',
     label: 'Flashpoint (Russia, all four eras)',
-    component: ViewFlashpoint,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1940,7 +1880,6 @@ const scenarios: Scenario[] = [
     // dots that a "US at war" mental model expects to see.
     id: 'flashpoint-afghanistan',
     label: 'Flashpoint (Afghanistan — where US wars land)',
-    component: ViewFlashpoint,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1970,7 +1909,6 @@ const scenarios: Scenario[] = [
     // show why the dealer's 40-point floor excludes it in real games.
     id: 'flashpoint-us',
     label: 'Flashpoint (US, below dealer floor)',
-    component: ViewFlashpoint,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -1996,7 +1934,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flashpoint-scores',
     label: 'Flashpoint (scorecard + conflict card)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2027,7 +1964,6 @@ const scenarios: Scenario[] = [
   {
     id: 'stat-detective-scores',
     label: 'Stat detective (scorecard + clue recap)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2061,7 +1997,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flag-palette-scores',
     label: 'Flag palette (scorecard + flag meaning)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2088,7 +2023,6 @@ const scenarios: Scenario[] = [
   {
     id: 'capital-guess-scores',
     label: 'Capital guess (scorecard + city dossier)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2115,7 +2049,6 @@ const scenarios: Scenario[] = [
   {
     id: 'water-scores',
     label: 'River run (scorecard + water fact)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2145,7 +2078,6 @@ const scenarios: Scenario[] = [
   {
     id: 'mother-tongue-scores',
     label: 'Mother tongue (scorecard + language fact)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2173,7 +2105,6 @@ const scenarios: Scenario[] = [
   {
     id: 'ranking-years-at-war',
     label: 'Ranking (years at war, scale bar)',
-    component: ViewGroupChallenge,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2186,7 +2117,6 @@ const scenarios: Scenario[] = [
   {
     id: 'stat-detective',
     label: 'Stat detective (clue cards)',
-    component: ViewStatDetective,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2209,7 +2139,6 @@ const scenarios: Scenario[] = [
   {
     id: 'pin-landmark',
     label: 'Pin the landmark (photo dock)',
-    component: ViewPinLandmark,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2226,7 +2155,6 @@ const scenarios: Scenario[] = [
   {
     id: 'no-mans-land',
     label: "No man's land (magnifier)",
-    component: ViewNoMansLand,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2241,7 +2169,6 @@ const scenarios: Scenario[] = [
   {
     id: 'water-blitz',
     label: 'Water blitz (shared shores, typed)',
-    component: ViewWaterBlitz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2258,7 +2185,6 @@ const scenarios: Scenario[] = [
   {
     id: 'mother-tongue',
     label: 'Mother tongue (typed, collect set)',
-    component: ViewMotherTongue,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2273,7 +2199,6 @@ const scenarios: Scenario[] = [
   {
     id: 'neighbour-blitz',
     label: 'Neighbour blitz (typed)',
-    component: ViewNeighbourBlitz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2293,7 +2218,6 @@ const scenarios: Scenario[] = [
     // score can be read against the score itself.
     id: 'neighbour-scores',
     label: 'Neighbour blitz (scorecard — hits, misses, strays)',
-    component: ViewGroupScores,
     build: () =>
       mockGame('group-scores', [
         {
@@ -2406,7 +2330,6 @@ const scenarios: Scenario[] = [
   {
     id: 'name-that-water',
     label: 'Name that water (typed, hints)',
-    component: ViewNameThatWater,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2424,7 +2347,6 @@ const scenarios: Scenario[] = [
   {
     id: 'traversal',
     label: 'Traversal (typed route)',
-    component: ViewTraversalChallenge,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2441,7 +2363,6 @@ const scenarios: Scenario[] = [
   {
     id: 'hot-cold',
     label: 'Hot & cold (probe trail)',
-    component: ViewHotCold,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2455,7 +2376,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flag-palette',
     label: 'Flag palette (swatches)',
-    component: ViewFlagPalette,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2474,7 +2394,6 @@ const scenarios: Scenario[] = [
   {
     id: 'flag-palette-hard',
     label: 'Flag palette (hard: no region, sketch still draws)',
-    component: ViewFlagPalette,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2489,7 +2408,6 @@ const scenarios: Scenario[] = [
   {
     id: 'silhouette',
     label: 'Silhouette (typed)',
-    component: ViewSilhouette,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2504,7 +2422,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz',
     label: 'Opening Ceremony (anthem audio)',
-    component: ViewAnthemBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2525,7 +2442,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz-poland',
     label: 'Opening Ceremony (white & red palette)',
-    component: ViewAnthemBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2547,7 +2463,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz-japan',
     label: 'Opening Ceremony (shortest anthem, CJK wall)',
-    component: ViewAnthemBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2570,7 +2485,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz-uruguay',
     label: 'Opening Ceremony (longest anthem wall)',
-    component: ViewAnthemBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2592,7 +2506,6 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz-broken-clip',
     label: 'Opening Ceremony (unloadable clip)',
-    component: ViewAnthemBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2612,7 +2525,6 @@ const scenarios: Scenario[] = [
   {
     id: 'tongue-buzz',
     label: 'Tongues (speech audio)',
-    component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2638,7 +2550,6 @@ const scenarios: Scenario[] = [
   {
     id: 'tongue-buzz-ukrainian',
     label: 'Tongues (Ukrainian, borrowed anthem sample)',
-    component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2664,7 +2575,6 @@ const scenarios: Scenario[] = [
   {
     id: 'tongue-buzz-sample',
     label: 'Tongues (seeded writing sample)',
-    component: ViewTongueBuzz,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2687,7 +2597,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sketch',
     label: 'Sketch (canvas)',
-    component: ViewSketch,
     build: () =>
       mockGame('group-challenge', [
         groupRound({ _type: 'sketch-challenge', country: 'FR', maximumPoints: MAXIMUM_POINTS }),
@@ -2696,7 +2605,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain',
     label: 'Border chain (your turn, strait hops)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2724,7 +2632,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-briefing',
     label: 'Border chain (briefing — rules card, one rival ready)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2752,7 +2659,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-easy',
     label: 'Border chain (easy: 20s clock, ISO chips on open moves)',
-    component: ViewBorderChain,
     build: () => {
       const game = mockGame('group-challenge', [
         groupRound({
@@ -2782,7 +2688,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-europe',
     label: 'Border chain (Europe board, world dimmed)',
-    component: ViewBorderChain,
     build: () => {
       const game = mockGame('group-challenge', [
         groupRound({
@@ -2811,7 +2716,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-spectate',
     label: 'Border chain (eliminated, spectating)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2837,7 +2741,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-trap',
     label: 'Border chain (dead-end hold, someone else trapped)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2872,7 +2775,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-trapped-me',
     label: 'Border chain (dead-end hold, you are the one trapped)',
-    component: ViewBorderChain,
     build: () => {
       // Europe: Morocco borders Spain but is off this board — the mixed
       // walked/off-board proof, and the local player is the victim.
@@ -2916,7 +2818,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-trap-reveal',
     label: 'Border chain (reveal, trapped by a rival)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -2949,7 +2850,6 @@ const scenarios: Scenario[] = [
   {
     id: 'manhunt-detective',
     label: 'The Despot (detective, hunt beat, candidates painted)',
-    component: ViewManhunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3013,7 +2913,6 @@ const scenarios: Scenario[] = [
   {
     id: 'manhunt-briefing',
     label: 'The Despot (briefing — detective case file)',
-    component: ViewManhunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3048,7 +2947,6 @@ const scenarios: Scenario[] = [
   {
     id: 'manhunt-briefing-despot',
     label: 'The Despot (briefing — Glorious Leader card)',
-    component: ViewManhunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3083,7 +2981,6 @@ const scenarios: Scenario[] = [
   {
     id: 'manhunt-despot',
     label: 'The Despot (you flee, move beat, trail + dragnet)',
-    component: ViewManhunt,
     build: () => {
       // The trail arrives over the targeted position channel in real play —
       // the harness plants it directly.
@@ -3130,7 +3027,6 @@ const scenarios: Scenario[] = [
   {
     id: 'manhunt-reveal',
     label: 'The Despot (captured, trail replay + reveal)',
-    component: ViewManhunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3194,7 +3090,6 @@ const scenarios: Scenario[] = [
   {
     id: 'unique-briefing',
     label: 'Unique or Bust (briefing — tutorial card)',
-    component: ViewUniqueOrBust,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3216,7 +3111,6 @@ const scenarios: Scenario[] = [
   {
     id: 'unique-board',
     label: 'Unique or Bust (live board, rivals locking)',
-    component: ViewUniqueOrBust,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3237,7 +3131,6 @@ const scenarios: Scenario[] = [
   {
     id: 'unique-reveal',
     label: 'Unique or Bust (collision grid reveal)',
-    component: ViewUniqueOrBust,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3292,7 +3185,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sweep-briefing',
     label: 'Clean Sweep (briefing — rules card)',
-    component: ViewCleanSweep,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3304,7 +3196,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sweep-board',
     label: 'Clean Sweep (live board, the pool draining)',
-    component: ViewCleanSweep,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3332,7 +3223,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sweep-benched',
     label: 'Clean Sweep (benched — a wrong name costs tempo)',
-    component: ViewCleanSweep,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3357,7 +3247,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sweep-last-call',
     label: 'Clean Sweep (last call — three slots standing)',
-    component: ViewCleanSweep,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3378,7 +3267,6 @@ const scenarios: Scenario[] = [
   {
     id: 'sweep-reveal',
     label: 'Clean Sweep (reveal — who took what, and what nobody found)',
-    component: ViewCleanSweep,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3405,7 +3293,6 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain-reveal',
     label: 'Border chain (finished, replay + reveal)',
-    component: ViewBorderChain,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3436,7 +3323,6 @@ const scenarios: Scenario[] = [
   {
     id: 'heritage-hunt',
     label: 'Heritage hunt (live beat)',
-    component: ViewHeritageHunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3458,7 +3344,6 @@ const scenarios: Scenario[] = [
   {
     id: 'heritage-hunt-reveal',
     label: 'Heritage hunt (beat reveal)',
-    component: ViewHeritageHunt,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -3485,26 +3370,22 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-find-flag',
     label: 'Individual: find the flag country (map tap)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'find', id: 'flag', country: 'SY' }),
   },
   {
     id: 'individual-flag-pick',
     label: 'Individual: flag pick',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'flag-pick', options: ['NL', 'LU', 'FR', 'RU'] }),
   },
   {
     id: 'individual-flag-twins',
     label: 'Individual: flag twins (palette lookalikes)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({ variant: 'flag-twins', country: 'ID', options: ['ID', 'MC', 'PL', 'SG'] }),
   },
   {
     id: 'individual-money-match',
     label: 'Individual: money match (banknote)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'money-match',
@@ -3516,7 +3397,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-capital-match',
     label: 'Individual: capital match (skyline)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'capital-match',
@@ -3528,7 +3408,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-odd-one-out',
     label: 'Individual: odd one out (shared property)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'odd-one-out',
@@ -3547,7 +3426,6 @@ const scenarios: Scenario[] = [
     // which wears an opposition party from its own country.
     id: 'individual-rulers',
     label: 'Individual: rulers (spot the party not in government)',
-    component: ViewIndividualChallenge,
     build: () => {
       // The dealer is async (it imports map geometry), and `build` is not — so
       // the harness assembles one deal from the same lib helpers the dealer
@@ -3603,13 +3481,11 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-zoom-out',
     label: 'Individual: zoom-out (typed)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'MY' }),
   },
   {
     id: 'individual-zoom-out-small',
     label: 'Individual: zoom-out (small country)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'GM' }),
   },
   // The opening frame must hold target land. EE is the reported regression (its
@@ -3619,31 +3495,26 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-zoom-out-neighbour',
     label: 'Individual: zoom-out (EE — opened in Latvia)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'EE' }),
   },
   {
     id: 'individual-zoom-out-concave',
     label: 'Individual: zoom-out (NO — concave)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'NO' }),
   },
   {
     id: 'individual-zoom-out-long',
     label: 'Individual: zoom-out (CL — longest pan)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'CL' }),
   },
   {
     id: 'individual-zoom-out-interior',
     label: 'Individual: zoom-out (US — wide interior)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'US' }),
   },
   {
     id: 'individual-border-detective',
     label: 'Individual: border detective (timed, hint)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'border-detective',
@@ -3654,13 +3525,11 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-outline-reveal',
     label: 'Individual: outline reveal (timed)',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'outline-reveal', country: 'ZA' }),
   },
   {
     id: 'individual-higher-lower',
     label: 'Individual: higher/lower duel',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'higher-lower',
@@ -3677,7 +3546,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-higher-lower-scaled',
     label: 'Individual: higher/lower duel (bounded index)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'higher-lower',
@@ -3694,7 +3562,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-trend-duel',
     label: 'Individual: trend duel (pow reveal on pick)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'trend-duel',
@@ -3709,7 +3576,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-trend-duel-hard',
     label: 'Individual: trend duel (hard — five duels, the ledger at its widest)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'trend-duel',
@@ -3725,7 +3591,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-trajectory-match',
     label: 'Individual: trajectory match (timed, strike hint)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'trajectory-match',
@@ -3740,7 +3605,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-trajectory-match-values',
     label: 'Individual: trajectory match (free values reveal)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'trajectory-match',
@@ -3755,7 +3619,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-leader-pick',
     label: 'Individual: leader pick',
-    component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
   },
   // The reveal's party chip degrades across four rungs — one scenario each, so
@@ -3763,35 +3626,30 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-leader-pick-logo-wide',
     label: 'Individual: leader pick (reveal — widest wordmark, SV)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({ variant: 'leader-pick', country: 'SV', options: ['SV', 'GT', 'HN', 'CR'] }),
   },
   {
     id: 'individual-leader-pick-logo-tall',
     label: 'Individual: leader pick (reveal — tallest roundel, AL)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({ variant: 'leader-pick', country: 'AL', options: ['AL', 'HR', 'RS', 'GR'] }),
   },
   {
     id: 'individual-leader-pick-no-band',
     label: 'Individual: leader pick (reveal — ideology, no band, BD)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({ variant: 'leader-pick', country: 'BD', options: ['BD', 'IN', 'PK', 'NP'] }),
   },
   {
     id: 'individual-leader-pick-independent',
     label: 'Individual: leader pick (reveal — independent, UA)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({ variant: 'leader-pick', country: 'UA', options: ['UA', 'PL', 'RO', 'HU'] }),
   },
   {
     id: 'individual-logo-politics',
     label: 'Individual: logo politics (origin)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'logo-politics',
@@ -3807,7 +3665,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-logo-ruling',
     label: 'Individual: logo politics (does it govern?)',
-    component: ViewIndividualChallenge,
     build: () => {
       // Built from the real join so the scenario answers what the dealer would:
       // Germany's actual governing party, claimed truthfully.
@@ -3827,7 +3684,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-logo-spectrum',
     label: 'Individual: logo politics (spectrum)',
-    component: ViewIndividualChallenge,
     build: () => {
       const party = partiesWithLogo('DE').find(candidate => partySpectrum(candidate))
       return individualGame({
@@ -3846,25 +3702,21 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-leader-find-easy',
     label: 'Individual: leader find (easy — portrait + facts)',
-    component: ViewIndividualChallenge,
     build: () => leaderFindGame('easy'),
   },
   {
     id: 'individual-leader-find-normal',
     label: 'Individual: leader find (normal — facts only)',
-    component: ViewIndividualChallenge,
     build: () => leaderFindGame('normal'),
   },
   {
     id: 'individual-leader-find-hard',
     label: 'Individual: leader find (hard — bare question)',
-    component: ViewIndividualChallenge,
     build: () => leaderFindGame('hard'),
   },
   {
     id: 'individual-landmark-quiz',
     label: 'Individual: landmark quiz (photo)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         variant: 'landmark-quiz',
@@ -3876,7 +3728,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-errata-swap',
     label: 'Individual: errata (swapped neighbours)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'isoCode',
@@ -3902,7 +3753,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-errata-impostor',
     label: 'Individual: errata (one borrowed name)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'isoCode',
@@ -3930,7 +3780,6 @@ const scenarios: Scenario[] = [
     // own country; if one is adrift, `labelBoxFor` has come undone.
     id: 'individual-errata-stretched',
     label: 'Individual: errata (antimeridian neighbours)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'errata',
@@ -3955,7 +3804,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-rosetta-peak',
     label: 'Individual: rosetta (analogy, typed)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'isoCode',
@@ -3972,7 +3820,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-rosetta-capital',
     label: 'Individual: rosetta (capital register)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'capital.name',
@@ -3989,7 +3836,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-atlas',
     label: 'Individual: atlas (name chain, 4 links)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'lexicon',
@@ -4002,7 +3848,6 @@ const scenarios: Scenario[] = [
     // Mexico seeds the O trap: after Oman, every -o ending is a dead end.
     id: 'individual-atlas-hard',
     label: 'Individual: atlas (hard — overlaps pay, hazard seed)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'lexicon',
@@ -4014,19 +3859,16 @@ const scenarios: Scenario[] = [
   {
     id: 'atlas-long',
     label: 'Atlas (marathon chain — folded live rail)',
-    component: ViewAtlas,
     build: () => longAtlasGame(false),
   },
   {
     id: 'atlas-long-reveal',
     label: 'Atlas (marathon chain — reveal card scroll)',
-    component: ViewAtlas,
     build: () => longAtlasGame(true),
   },
   {
     id: 'individual-atlas-easy',
     label: 'Individual: atlas (easy — suggestions from 3 letters)',
-    component: ViewIndividualChallenge,
     build: () => {
       const game = individualGame({
         id: 'lexicon',
@@ -4042,7 +3884,6 @@ const scenarios: Scenario[] = [
     // Amharic borrows Ethiopia's anthem wall — the fetch path, not a seed.
     id: 'individual-scriptorium',
     label: 'Individual: scriptorium (Geʽez sample, typed)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'lexicon',
@@ -4054,7 +3895,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-scriptorium-seeded',
     label: 'Individual: scriptorium (Tamil seed, easy free hint)',
-    component: ViewIndividualChallenge,
     build: () => {
       const game = individualGame({
         id: 'lexicon',
@@ -4071,7 +3911,6 @@ const scenarios: Scenario[] = [
     // right-to-left.
     id: 'individual-scriptorium-rtl',
     label: 'Individual: scriptorium (Arabic — RTL wipe)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'lexicon',
@@ -4083,7 +3922,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-chronicle',
     label: 'Individual: chronicle (drag Japan into order)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'history',
@@ -4102,7 +3940,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-far-flung',
     label: 'Individual: far flung (Cabinda, options)',
-    component: ViewIndividualChallenge,
     build: () =>
       individualGame({
         id: 'isoCode',
@@ -4115,7 +3952,6 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-far-flung-hard',
     label: 'Individual: far flung (hard — Nakhchivan, typed)',
-    component: ViewIndividualChallenge,
     build: () => {
       const game = individualGame({
         id: 'isoCode',
@@ -4130,7 +3966,6 @@ const scenarios: Scenario[] = [
   {
     id: 'atlas-easy',
     label: 'Atlas (easy — 20s turns, ringed answers, suggestions)',
-    component: ViewAtlas,
     build: () => {
       const game = mockGame('group-challenge', [
         groupRound({
@@ -4161,7 +3996,6 @@ const scenarios: Scenario[] = [
   {
     id: 'atlas',
     label: 'Atlas (your turn, letter ties)',
-    component: ViewAtlas,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -4190,7 +4024,6 @@ const scenarios: Scenario[] = [
     // Nepal → Palestine: the 3-letter overlap badge, ember-tinted.
     id: 'atlas-hard',
     label: 'Atlas (hard — overlap rule, deep tie badge)',
-    component: ViewAtlas,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -4218,7 +4051,6 @@ const scenarios: Scenario[] = [
   {
     id: 'atlas-briefing',
     label: 'Atlas (briefing — rules card, one rival ready)',
-    component: ViewAtlas,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -4248,7 +4080,6 @@ const scenarios: Scenario[] = [
     // Iraq seals the letter chain: Qatar is the only Q and it opened the walk.
     id: 'atlas-trap',
     label: 'Atlas (trap — the letter Q is spent)',
-    component: ViewAtlas,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -4289,7 +4120,6 @@ const scenarios: Scenario[] = [
   {
     id: 'atlas-reveal',
     label: 'Atlas (reveal — placements and missed outs)',
-    component: ViewAtlas,
     build: () =>
       mockGame('group-challenge', [
         groupRound({
@@ -4318,25 +4148,21 @@ const scenarios: Scenario[] = [
   {
     id: 'final-gauntlet-easy',
     label: 'Final gauntlet (easy, dealt)',
-    component: ViewFinalChallenge,
     build: () => gauntletGame('easy'),
   },
   {
     id: 'final-gauntlet-normal',
     label: 'Final gauntlet (normal, dealt)',
-    component: ViewFinalChallenge,
     build: () => gauntletGame('normal'),
   },
   {
     id: 'final-gauntlet-hard',
     label: 'Final gauntlet (hard, dealt)',
-    component: ViewFinalChallenge,
     build: () => gauntletGame('hard'),
   },
   {
     id: 'final-membership',
     label: 'Final: membership (odd one out)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4352,7 +4178,6 @@ const scenarios: Scenario[] = [
     // headings leak (every AU member is African).
     id: 'final-membership-au',
     label: 'Final: membership (African Union, 54 rows)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4367,7 +4192,6 @@ const scenarios: Scenario[] = [
     // 6 members: below the letter-heading threshold, renders flat.
     id: 'final-membership-csto',
     label: 'Final: membership (CSTO, 6 rows)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4383,7 +4207,6 @@ const scenarios: Scenario[] = [
     // and never ratified it.
     id: 'final-treaty',
     label: 'Final: treaty (signed, never ratified)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4403,7 +4226,6 @@ const scenarios: Scenario[] = [
     // real exits in the data (five, all recent and all European).
     id: 'final-treaty-arms',
     label: 'Final: treaty (withdrew, arms control)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4423,7 +4245,6 @@ const scenarios: Scenario[] = [
     // the UNCLOS table at all.
     id: 'final-treaty-sea',
     label: 'Final: treaty (never joined, law of the sea)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4441,7 +4262,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-scales',
     label: 'Final: tip the scales',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4456,7 +4276,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-sunset',
     label: 'Final: sunset blitz (typed)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4470,7 +4289,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-city-nocturne',
     label: 'Final: city nocturne (typed)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4485,7 +4303,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-boundary',
     label: 'Final: boundary commission (draw, FR–ES)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4498,7 +4315,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-boundary-hard',
     label: 'Final: boundary commission (draw, KZ–UZ)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4511,7 +4327,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-change',
     label: 'Final: world of change (tap only)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4529,7 +4344,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-change-africa',
     label: 'Final: world of change (Lake Chad)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4548,7 +4362,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-change-decade',
     label: 'Final: world of change (tap + decade dial)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4566,7 +4379,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-yearbook',
     label: 'Final: yearbook (year dial)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4585,19 +4397,16 @@ const scenarios: Scenario[] = [
   {
     id: 'final-born',
     label: 'Final: born in (independence)',
-    component: ViewFinalChallenge,
     build: () => finalGame([{ _type: 'born-challenge', year: 1990, quota: 3 }]),
   },
   {
     id: 'final-made',
     label: 'Final: made in (exports)',
-    component: ViewFinalChallenge,
     build: () => finalGame([{ _type: 'made-challenge', commodity: 'cocoa beans' }]),
   },
   {
     id: 'final-endonym',
     label: 'Final: endonym (own names)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         { _type: 'endonym-challenge', countries: ['FI', 'DE', 'CN', 'EG', 'HR'], quota: 3 },
@@ -4606,7 +4415,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-diaspora',
     label: 'Final: diaspora (where the born-in live)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4620,7 +4428,6 @@ const scenarios: Scenario[] = [
   {
     id: 'final-min-max',
     label: 'Final: min/max (stat pick)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4636,7 +4443,6 @@ const scenarios: Scenario[] = [
     // counts its places up from the lowest.
     id: 'final-min',
     label: 'Final: min (stat pick)',
-    component: ViewFinalChallenge,
     build: () =>
       finalGame([
         {
@@ -4650,19 +4456,16 @@ const scenarios: Scenario[] = [
   {
     id: 'final-language',
     label: 'Final: language',
-    component: ViewFinalChallenge,
     build: () => finalGame([{ _type: 'language-challenge', language: 'Portuguese' }]),
   },
   {
     id: 'final-leadership',
     label: 'Final: leadership',
-    component: ViewFinalChallenge,
     build: () => finalGame([{ _type: 'leadership-challenge', country: 'FR' }]),
   },
   {
     id: 'final-region',
     label: 'Final: region',
-    component: ViewFinalChallenge,
     build: () => finalGame([{ _type: 'region-challenge', country: 'KZ' }]),
   },
   {
@@ -4686,7 +4489,6 @@ const scenarios: Scenario[] = [
   {
     id: 'victory',
     label: 'Victory (report)',
-    component: ViewVictory,
     build: () => {
       const game = mockGame('victory', [settledRound(), settledRound(), settledRound()])
       game.players[ME]!.completedAtRound = 3
@@ -4759,7 +4561,22 @@ const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
 }
 
 const activeScenario = computed(() => scenarios.find(s => s.id === scenarioId.value))
-const activeComponent = computed(() => activeScenario.value?.component ?? ViewGroupChallenge)
+
+/**
+ * The view the pinned seat is looking at — resolved through the SAME
+ * `resolveChallengeView` the room page renders, so the harness follows a phase
+ * change instead of being frozen on one component. That is what lets a round
+ * play through its own settle onto the scorecard; a scenario only pins
+ * `component` when it routes outside the resolver entirely.
+ */
+const activeComponent = computed(() => {
+  const scenario = activeScenario.value
+  if (scenario?.component) return scenario.component
+  const game = gameStore.game
+  const phase = game?.players[ME]?.phase
+  const resolved = phase && game ? resolveChallengeView(phase, latestRound(game)) : undefined
+  return resolved?.component ?? ViewGroupChallenge
+})
 
 /** Picker families, in catalog order: first id prefix that matches wins, so
  *  the catch-all '' must stay last. */
