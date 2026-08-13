@@ -98,6 +98,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewSketch from '~/components/view/ViewSketch.vue'
 import ViewStarChart from '~/components/view/ViewStarChart.vue'
+import ViewGovernment from '~/components/view/ViewGovernment.vue'
 import ViewTerraIncognita from '~/components/view/ViewTerraIncognita.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
@@ -111,8 +112,30 @@ import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
 import ViewVictory from '~/components/view/ViewVictory.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
+import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
+import {
+  countriesWithGoverningLogo,
+  governingParty,
+  impostorParties,
+  partiesWithLogo,
+  partySpectrum,
+  SPECTRUM_BANDS,
+  shortPartyName,
+} from '~~/lib/parties'
+import {
+  BEAT_POINTS,
+  BEAT_SECONDS,
+  dealGovernment,
+  GOVERNMENT_BEATS,
+  scoreBeat,
+  scoreGovernment,
+  type GovernmentAnswer,
+  type GovernmentBeat,
+  type GovernmentDeal,
+} from '~~/lib/government'
 import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
@@ -140,8 +163,12 @@ import { sample } from '~~/lib/arrays'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { TRAP_HOLD_MS } from '~~/lib/round-beats'
-import type { AtlasChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
+import { TRAP_HOLD_MS, BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
+import type {
+  AtlasChallenge,
+  ChainTurnOutcome,
+  GovernmentChallenge,
+} from '~~/types/challenges/group-modes.type'
 import {
   drawnCard,
   activeTimelinePlayerId,
@@ -430,6 +457,219 @@ const armAtlasScenario = () => {
   atlasContinueTurn(challenge)
 }
 
+const governmentOf = () => {
+  const game = gameStore.game
+  return game ? latestChallengeOfType(game, 'government-challenge') : undefined
+}
+
+/**
+ * The Government round's beats are server-owned, so the harness has to stand in
+ * for the engine to make them PLAYABLE rather than five separate entry points.
+ *
+ * This mirrors `government-beats.ts` deliberately and minimally: bank the beat
+ * through the real `scoreBeat`, bump `turn` (the staleness token), restamp the
+ * deadline, and settle onto the round when the questions run out. The rivals
+ * answer too — a beat only resolves once the whole table has, which is the rule
+ * the engine enforces and the reason a solo click used to look like a no-op.
+ *
+ * It is a stand-in, not a second engine: nothing here decides scoring or
+ * grading, which both come from lib/government.
+ */
+const governmentDealOf = (challenge: GovernmentChallenge): GovernmentDeal | undefined => {
+  const answers = challenge.state.answers
+  if (!answers) return undefined
+  return {
+    country: challenge.country,
+    ...(challenge.chamber ? { chamber: challenge.chamber } : {}),
+    totalSeats: challenge.totalSeats,
+    options: challenge.options,
+    governingParty: answers.governingParty,
+    blocks: challenge.blocks,
+    governingSeats: answers.governingSeats,
+    // Seats come from the ANSWERS: `benches[].seats` is stripped from the
+    // public payload until beat 3 opens (the governing bench's row is beat 2's
+    // answer), so rebuilding a deal has to read them from where they were held.
+    benches: challenge.benches.map(bench => {
+      const seats = answers.benchSeats?.[bench.name] ?? bench.seats ?? 0
+      return {
+        ...bench,
+        seats,
+        share: challenge.totalSeats ? seats / challenge.totalSeats : 0,
+        standing: answers.standings[bench.name] ?? 'opposition',
+      }
+    }),
+    sorted: challenge.sorted,
+    ...(answers.status ? { status: answers.status } : {}),
+    minority: answers.minority,
+    ...(answers.backedSeats !== undefined ? { backedSeats: answers.backedSeats } : {}),
+  }
+}
+
+const governmentAnswerOf = (
+  challenge: GovernmentChallenge,
+  playerId: string
+): GovernmentAnswer => ({
+  ...(challenge.state.picks.party[playerId] !== undefined
+    ? { party: challenge.state.picks.party[playerId] }
+    : {}),
+  ...(challenge.state.picks.seats[playerId] !== undefined
+    ? { seats: challenge.state.picks.seats[playerId] }
+    : {}),
+  ...(challenge.state.picks.sides[playerId] !== undefined
+    ? { sides: challenge.state.picks.sides[playerId] }
+    : {}),
+})
+
+/** The rivals answer the live beat — one of them well, one of them badly. */
+const answerGovernmentRivals = (challenge: GovernmentChallenge) => {
+  const deal = governmentDealOf(challenge)
+  if (!deal) return
+  const { state } = challenge
+  const wrongOption = deal.options.find(option => option.name !== deal.governingParty)
+  const wrongBlock = deal.blocks.find(block => block !== deal.governingSeats)
+  const truthSides = Object.fromEntries(
+    deal.sorted.map(name => {
+      const standing = deal.benches.find(bench => bench.name === name)?.standing
+      return [name, standing === 'opposition' ? 'opposition' : 'government'] as const
+    })
+  )
+
+  if (state.beat === 'party') {
+    state.picks.party[RIVAL] ??= deal.governingParty
+    state.picks.party[THIRD] ??= wrongOption?.name ?? deal.governingParty
+  } else if (state.beat === 'seats') {
+    state.picks.seats[RIVAL] ??= wrongBlock ?? deal.governingSeats
+    state.picks.seats[THIRD] ??= deal.governingSeats
+  } else {
+    state.picks.sides[RIVAL] ??= truthSides
+    state.picks.sides[THIRD] ??= Object.fromEntries(
+      deal.sorted.map(name => [name, 'opposition'] as const)
+    )
+  }
+}
+
+/** What the beat's answer was — the engine's `truthOf`, same rules. */
+const governmentTruthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
+  if (beat === 'party') return deal.governingParty
+  if (beat === 'seats') return `${deal.governingSeats}`
+  const withGovernment = deal.sorted.filter(
+    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
+  )
+  return withGovernment.length ? withGovernment.join(', ') : 'nobody'
+}
+
+const settleGovernment = (challenge: GovernmentChallenge) => {
+  const game = gameStore.game
+  const round = game?.rounds[game.rounds.length - 1]
+  const deal = governmentDealOf(challenge)
+  if (!round || !deal) return
+  challenge.state.finished = true
+  for (const playerId of Object.keys(game?.players ?? {})) {
+    const answer = governmentAnswerOf(challenge, playerId)
+    round.groupAnswers[playerId] = {
+      submitted: [],
+      correct: [],
+      governmentBeats: GOVERNMENT_BEATS.map(beat => ({
+        beat,
+        scored: scoreBeat(beat, deal, answer),
+        maximum: BEAT_POINTS[beat],
+      })),
+    }
+    round.playerTurns[playerId] = {
+      points: { scored: scoreGovernment(deal, answer), maximum: MAXIMUM_POINTS },
+    }
+  }
+}
+
+/** Bank the live beat and move to the next question, or settle. */
+const resolveGovernmentBeat = (challenge: GovernmentChallenge) => {
+  const { state } = challenge
+  const deal = governmentDealOf(challenge)
+  if (deal) {
+    for (const playerId of Object.keys(gameStore.game?.players ?? {})) {
+      state.scores[playerId] =
+        (state.scores[playerId] ?? 0) +
+        scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId))
+    }
+  }
+  if (deal && state.beat === 'party') state.subject = deal.governingParty
+  // The verdict hold, exactly as the engine does it: the beat resolves onto
+  // its verdict, and the next question replaces it a beat later.
+  if (deal) {
+    const scored = Object.fromEntries(
+      Object.keys(gameStore.game?.players ?? {}).map(playerId => [
+        playerId,
+        scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId)),
+      ])
+    )
+    state.verdict = { beat: state.beat, truth: governmentTruthOf(state.beat, deal), scored }
+  }
+  state.turn += 1
+  const held = state.turn
+  window.setTimeout(() => {
+    const current = governmentOf()
+    if (!current || current.state.finished || current.state.turn !== held) return
+    const resolved = current.state.verdict?.beat ?? current.state.beat
+    delete current.state.verdict
+    const following = GOVERNMENT_BEATS[GOVERNMENT_BEATS.indexOf(resolved) + 1]
+    if (!following) return settleGovernment(current)
+    current.state.beat = following
+    current.state.turn += 1
+    current.state.deadline = Date.now() + BEAT_SECONDS[following] * 1000
+    armGovernmentScenario()
+  }, BEAT_VERDICT_HOLD_MS)
+}
+
+const simulateGovernmentPick = (eventData: Record<string, unknown>) => {
+  const challenge = governmentOf()
+  if (!challenge || challenge.state.finished) return
+  const { state } = challenge
+  if (eventData.turn !== state.turn) return
+  const pick = (eventData.pick ?? {}) as GovernmentAnswer
+
+  if (state.beat === 'party' && typeof pick.party === 'string') {
+    if (state.picks.party[ME] !== undefined) return
+    state.picks.party[ME] = pick.party
+  } else if (state.beat === 'seats' && typeof pick.seats === 'number') {
+    if (state.picks.seats[ME] !== undefined) return
+    state.picks.seats[ME] = pick.seats
+  } else if (state.beat === 'sides' && pick.sides) {
+    if (state.picks.sides[ME] !== undefined) return
+    state.picks.sides[ME] = pick.sides
+  } else {
+    return
+  }
+
+  const turn = state.turn
+  window.setTimeout(() => {
+    const current = governmentOf()
+    if (!current || current.state.finished || current.state.turn !== turn) return
+    answerGovernmentRivals(current)
+    resolveGovernmentBeat(current)
+  }, SIM_LATENCY_MS)
+}
+
+/** A live beat runs its own clock; when it rings, the beat resolves regardless. */
+let governmentTimer: number | undefined
+const armGovernmentScenario = () => {
+  const challenge = governmentOf()
+  window.clearTimeout(governmentTimer)
+  if (!challenge || challenge.state.finished) return
+  if (!challenge.state.deadline) {
+    challenge.state.deadline = Date.now() + BEAT_SECONDS[challenge.state.beat] * 1000
+  }
+  const turn = challenge.state.turn
+  governmentTimer = window.setTimeout(
+    () => {
+      const current = governmentOf()
+      if (!current || current.state.finished || current.state.turn !== turn) return
+      answerGovernmentRivals(current)
+      resolveGovernmentBeat(current)
+    },
+    Math.max(0, challenge.state.deadline - Date.now())
+  )
+}
+
 const installStubSocket = () => {
   gameStore.playerId = ME
   const record = (event: string, eventData: Record<string, unknown>) => {
@@ -437,6 +677,7 @@ const installStubSocket = () => {
     if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
     if (event === 'submit-chain-move') simulateAtlasMove(eventData ?? {})
     if (event === 'chain-ready') simulateAtlasReady()
+    if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
@@ -553,6 +794,93 @@ const sweepClaims = (rows: (readonly [string, string])[]) =>
     at: index,
     remaining: Math.max(0.05, 1 - (index + 1) / (rows.length + 2)),
   }))
+
+const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
+  const deal = dealGovernment(
+    { difficulty: 'normal', variant: 'world', includeMicroNations: false },
+    'normal',
+    isoCode
+  )!
+  const truth = Object.fromEntries(
+    deal.sorted.map(name => {
+      const standing = deal.benches.find(bench => bench.name === name)!.standing
+      return [name, standing === 'opposition' ? 'opposition' : 'government'] as const
+    })
+  )
+  // You knew the party and the sides but missed the seat count; your rival
+  // only got the seats.
+  const answers = {
+    you: {
+      party: deal.governingParty,
+      seats: deal.blocks.find(b => b !== deal.governingSeats),
+      sides: truth,
+    },
+    rival: {
+      party: deal.options.find(o => o.name !== deal.governingParty)!.name,
+      seats: deal.governingSeats,
+      sides: Object.fromEntries(deal.sorted.map(name => [name, 'opposition'] as const)),
+    },
+  }
+  const beatsFor = (answer: (typeof answers)['you']) =>
+    GOVERNMENT_BEATS.map(beat => ({
+      beat,
+      scored: scoreBeat(beat, deal, answer),
+      maximum: BEAT_POINTS[beat],
+    }))
+
+  const game = mockGame('group-challenge', [
+    groupRound({
+      _type: 'government-challenge',
+      country: deal.country,
+      ...(deal.chamber ? { chamber: deal.chamber } : {}),
+      totalSeats: deal.totalSeats,
+      options: deal.options,
+      blocks: deal.blocks,
+      benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+        name,
+        seats,
+        share,
+        ...(color ? { color } : {}),
+        ...(logo ? { logo } : {}),
+      })),
+      sorted: deal.sorted,
+      maximumPoints: MAXIMUM_POINTS,
+      state: {
+        beat: 'sides',
+        turn: 3,
+        deadline: Date.now(),
+        picks: { party: {}, seats: {}, sides: {} },
+        scores: {},
+        finished: true,
+        // The reveal is the one moment these ride the snapshot.
+        answers: {
+          governingParty: deal.governingParty,
+          governingSeats: deal.governingSeats,
+          standings: Object.fromEntries(
+            deal.benches.map(bench => [bench.name, bench.standing] as const)
+          ),
+          ...(deal.status ? { status: deal.status } : {}),
+          minority: deal.minority,
+          ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
+        },
+      },
+    }),
+  ])
+  const round = game.rounds[game.rounds.length - 1]!
+  const seats = Object.keys(game.players)
+  for (const [index, playerId] of seats.entries()) {
+    const answer = index === 0 ? answers.you : answers.rival
+    round.groupAnswers[playerId] = {
+      submitted: [],
+      correct: [],
+      governmentBeats: beatsFor(answer),
+    }
+    round.playerTurns[playerId] = {
+      points: { scored: scoreGovernment(deal, answer), maximum: MAXIMUM_POINTS },
+    }
+  }
+  return game
+}
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
@@ -1397,6 +1725,77 @@ const scenarios: Scenario[] = [
         }),
       ]),
   },
+  {
+    // The payoff: a settled round with two seats who answered differently.
+    // Points come from the REAL scorer, so the per-beat pips and the totals
+    // can never drift from what the engine would have banked.
+    id: 'government-reveal-majority',
+    label: 'Government (New Zealand — reveal, majority with no backers)',
+    component: ViewGovernment,
+    build: () => buildGovernmentReveal('NZ'),
+  },
+  {
+    id: 'government-reveal',
+    label: 'Government (Sweden — the reveal only)',
+    component: ViewGovernment,
+    build: () => buildGovernmentReveal('SE'),
+  },
+  ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
+    id: `government-${beat}`,
+    label: `Government (Sweden — play from beat ${index + 1}: ${
+      { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
+    })`,
+    component: ViewGovernment,
+    build: () => {
+      const deal = dealGovernment(
+        { difficulty: 'normal', variant: 'world', includeMicroNations: false },
+        'normal',
+        'SE'
+      )!
+      return mockGame('group-challenge', [
+        groupRound({
+          _type: 'government-challenge',
+          country: deal.country,
+          ...(deal.chamber ? { chamber: deal.chamber } : {}),
+          totalSeats: deal.totalSeats,
+          options: deal.options,
+          blocks: deal.blocks,
+          benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+            name,
+            seats,
+            share,
+            ...(color ? { color } : {}),
+            ...(logo ? { logo } : {}),
+          })),
+          sorted: deal.sorted,
+          maximumPoints: MAXIMUM_POINTS,
+          state: {
+            beat,
+            turn: index,
+            deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
+            picks: { party: {}, seats: {}, sides: {} },
+            scores: {},
+            // Published by the engine once beat 1 resolves, so beats 2 and 3
+            // can name the party they are about.
+            ...(beat === 'party' ? {} : { subject: deal.governingParty }),
+            // The harness stands in for the engine, so it holds what the
+            // engine holds in its side key — without these the beats play but
+            // nothing can be graded, and the round never reaches its reveal.
+            answers: {
+              governingParty: deal.governingParty,
+              governingSeats: deal.governingSeats,
+              standings: Object.fromEntries(
+                deal.benches.map(bench => [bench.name, bench.standing] as const)
+              ),
+              ...(deal.status ? { status: deal.status } : {}),
+              minority: deal.minority,
+              ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
+            },
+          },
+        }),
+      ])
+    },
+  })),
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
     // Ulaanbaatar, Tashkent, Vientiane, Asunción, Windhoek.
@@ -3143,6 +3542,65 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    // Rulers: the real gate, dealt by the real dealer. The map IS the
+    // interface — every framed country wears its government's logo except one,
+    // which wears an opposition party from its own country.
+    id: 'individual-rulers',
+    label: 'Individual: rulers (spot the party not in government)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      // The dealer is async (it imports map geometry), and `build` is not — so
+      // the harness assembles one deal from the same lib helpers the dealer
+      // uses. The impostor test is the LOGO FILE, exactly as `impostorParties`
+      // does it.
+      // Grown from the eligible pool by proximity, exactly as `dealRulers`
+      // does: a hardcoded neighbourhood lights countries nobody can answer
+      // (Hungary's government carries no logo, Slovenia's does not resolve).
+      const seed: ISOCountryCode = 'AT'
+      const near = (isoCode: ISOCountryCode) => {
+        const box = MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS]
+        const from = MAP_BOUNDS[seed as keyof typeof MAP_BOUNDS]
+        return box && from ? Math.hypot(box[0] - from[0], box[1] - from[1]) : Infinity
+      }
+      // The SAME labelability gate the logo layer applies — without it the
+      // nearest neighbours include Liechtenstein and Luxembourg, which are too
+      // small to carry a logo and render as lit-but-empty countries.
+      const lineup = countriesWithGoverningLogo()
+        .filter(isoCode =>
+          isLabelableBox(
+            labelBoxFor(
+              MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS],
+              MAP_REGIONS[isoCode as keyof typeof MAP_REGIONS]
+            )
+          )
+        )
+        .sort((a, b) => near(a) - near(b))
+        .slice(0, 5)
+      const victim = lineup[1]!
+      const impostor = impostorParties(victim)[0]
+      const dressed = lineup.flatMap(isoCode => {
+        const party = isoCode === victim ? impostor : governingParty(isoCode)
+        return party?.logo ? [[isoCode, party] as const] : []
+      })
+      const logos = Object.fromEntries(dressed.map(([isoCode, party]) => [isoCode, party.logo!]))
+      const names = Object.fromEntries(
+        dressed.map(([isoCode, party]) => [isoCode, shortPartyName(party)])
+      )
+      return individualGame({
+        variant: 'rulers',
+        country: victim,
+        rulers: {
+          lineup,
+          logos,
+          names,
+          trueLogo: { [victim]: governingParty(victim)?.logo ?? '' },
+          impostor: { name: impostor?.name ?? '' },
+          governing: { name: governingParty(victim)?.name ?? '' },
+        },
+      })
+    },
+  },
+  {
     id: 'individual-zoom-out',
     label: 'Individual: zoom-out (typed)',
     component: ViewIndividualChallenge,
@@ -3271,6 +3729,61 @@ const scenarios: Scenario[] = [
     label: 'Individual: leader pick',
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
+  },
+  {
+    id: 'individual-logo-politics',
+    label: 'Individual: logo politics (origin)',
+    component: ViewIndividualChallenge,
+    build: () =>
+      individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        options: ['DE', 'FR', 'IT', 'ES'],
+        partyLogo: {
+          image: partiesWithLogo('DE')[0]?.logo ?? '',
+          name: partiesWithLogo('DE')[0]?.name ?? '',
+          ask: 'origin',
+        },
+      }),
+  },
+  {
+    id: 'individual-logo-ruling',
+    label: 'Individual: logo politics (does it govern?)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      // Built from the real join so the scenario answers what the dealer would:
+      // Germany's actual governing party, claimed truthfully.
+      const governing = governingParty('DE')
+      return individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        partyLogo: {
+          image: governing?.logo ?? partiesWithLogo('DE')[0]?.logo ?? '',
+          name: governing?.name ?? partiesWithLogo('DE')[0]?.name ?? '',
+          ask: 'ruling',
+          rules: true,
+        },
+      })
+    },
+  },
+  {
+    id: 'individual-logo-spectrum',
+    label: 'Individual: logo politics (spectrum)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const party = partiesWithLogo('DE').find(candidate => partySpectrum(candidate))
+      return individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        partyLogo: {
+          image: party?.logo ?? '',
+          name: party?.name ?? '',
+          ask: 'spectrum',
+          band: party ? partySpectrum(party) : undefined,
+          bands: [...SPECTRUM_BANDS],
+        },
+      })
+    },
   },
   {
     id: 'individual-leader-find-easy',
@@ -4373,6 +4886,7 @@ const deal = () => {
   renderKey.value += 1
   ready.value = true
   armAtlasScenario()
+  armGovernmentScenario()
 }
 
 /** Push a few opponent guesses so ticker chrome can be previewed. */

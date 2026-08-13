@@ -265,6 +265,127 @@ export interface StarChartChallenge {
   maximumPoints: number
 }
 
+/**
+ * A chamber drawn as an arc of seats, its blocs unlabelled. Drag each party
+ * onto the block you think is theirs.
+ *
+ * The whole chamber travels, not just the asked benches: the arc is the
+ * picture, and a bloc left out of it would change the shape a player reads.
+ */
+/**
+ * One chamber, asked three questions that build on each other: which party
+ * governs, how many seats it holds, and who else is with it. The beats are a
+ * server-owned sequence — the view renders `state.beat` and never advances it.
+ */
+export interface GovernmentChallenge {
+  _type: 'government-challenge'
+  country: ISOCountryCode
+  /** The house, where the data names one — "Sejm", "Chamber of Deputies". */
+  chamber?: string
+  totalSeats: number
+  /** Beat 1's logos, shuffled; exactly one governs. */
+  options: {
+    name: string
+    logo?: string
+    color?: string
+    /** Shown at the reveal, not before — the teaching half of the beat. */
+    ideology?: string
+    grouping?: string
+  }[]
+  /** Beat 2's seat blocks, ascending; exactly one is the true share. */
+  blocks: number[]
+  /**
+   * Every bench in seating order, left to right — the arc as drawn.
+   *
+   * `seats` and `share` are ABSENT until beat 3 opens. Beat 2 asks how many
+   * seats the governing party holds, and `state.subject` names that party as
+   * soon as beat 1 grades — so a bench carrying its own seat count hands the
+   * next question over on the snapshot. Beat 3 prints them, so they arrive
+   * with the beat that needs them (`restoreBenchSeats`).
+   */
+  benches: {
+    name: string
+    seats?: number
+    /** Of the chamber's total, 0–1. */
+    share?: number
+    color?: string
+    logo?: string
+  }[]
+  /** Beat 3's benches, by name — the ones a player sorts. */
+  sorted: string[]
+  maximumPoints: number
+  state: GovernmentState
+}
+
+/**
+ * The answers live on the SERVER's copy only — `dealGovernment` produces them
+ * and the engine strips them from what rides the snapshot, because everything
+ * on `Game` reaches every socket in the room. They come back at the reveal.
+ */
+export interface GovernmentAnswers {
+  governingParty: string
+  governingSeats: number
+  /** Bench name → where it truly stands. */
+  standings: Record<string, 'government' | 'backing' | 'opposition'>
+  /** `minority government` … as the cabinet phrases it. */
+  status?: string
+  /** The government holds power without holding half the seats. */
+  minority: boolean
+  /** Government plus backers, when a supply deal carries it past its own
+   *  seats — the number that explains how a minority governs at all. */
+  backedSeats?: number
+  /**
+   * Bench name → seats held. Held back with the rest of the answers because
+   * the governing party's row IS beat 2's answer; it comes back onto
+   * `challenge.benches` when beat 3 opens, which is where seat counts print.
+   */
+  benchSeats: Record<string, number>
+}
+
+export interface GovernmentState {
+  /** Which question is live — what the view renders. */
+  beat: 'party' | 'seats' | 'sides'
+  /** Monotonic beat counter — timeout token AND submit idempotency key.
+   *  Increments on EVERY beat transition, mirroring manhunt's `turn`. */
+  turn: number
+  /** Epoch ms the live beat expires; client shot clocks render from it. */
+  deadline: number
+  /** Per beat, per player: what they answered. Absent means they never did. */
+  picks: {
+    party: Record<string, string>
+    seats: Record<string, number>
+    sides: Record<string, Record<string, 'government' | 'opposition'>>
+  }
+  /** Points banked per player, summed as the beats resolve. */
+  scores: Record<string, number>
+  /**
+   * The governing party's name, published when beat 1 RESOLVES — not at the
+   * deal, and not held back to the reveal.
+   *
+   * Beats 2 and 3 are about that party, and they grade against it: a player who
+   * picked wrong in beat 1 was being asked "how many seats does it hold?" about
+   * a party nobody had named. It stops being a secret the moment beat 1 is
+   * graded, so that is when it is named.
+   */
+  subject?: string
+  /**
+   * The beat just resolved, held for `BEAT_VERDICT_HOLD_MS` before the next
+   * question replaces it. Absent while a beat is live.
+   *
+   * `truth` is what the answer WAS, so a player who missed learns it here
+   * rather than waiting for the reveal. `scored` is per-player, because two
+   * seats can be right and wrong on the same beat.
+   */
+  verdict?: {
+    beat: 'party' | 'seats' | 'sides'
+    truth: string
+    scored: Record<string, number>
+  }
+  /** The answers, revealed only once the last beat resolves. */
+  answers?: GovernmentAnswers
+  finished?: boolean
+}
+
 /** Only a flag's colour swatches are shown — name the country (live guesses). */
 export interface FlagPaletteChallenge {
   _type: 'flag-palette-challenge'
@@ -959,6 +1080,7 @@ export type GroupModeChallenge =
   | FlagPaletteChallenge
   | CapitalGuessChallenge
   | StarChartChallenge
+  | GovernmentChallenge
   | FlashpointChallenge
   | CompositionChallenge
   | GhostStateChallenge

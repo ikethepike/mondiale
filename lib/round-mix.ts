@@ -47,6 +47,17 @@ export const ROUND_WEIGHTS = {
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
   'star-chart': 0.06,
+  // A THIN pool, and weighted low for that as much as for the read. The claim
+  // here used to be "39 chambers"; measured, it is 11 (DZ MA AL DK ES IT LU NL
+  // NZ SE ZA) at every difficulty, because the round needs a chamber whose
+  // cabinet resolved AND whose leader's party is among its own government
+  // benches AND carries a logo. By variant: world 11, europe 7, africa 3,
+  // oceania 1, and asia / americas / middle-east / south-america /
+  // north-america deal NONE — outside Europe this round barely exists.
+  // Not a crash: `getGovernmentChallenge` returns undefined and the mix buys
+  // another kind. But a world game will see the same handful of chambers, so
+  // this stays rare until `chambersWithCabinet` grows.
+  government: 0.06,
   composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
@@ -93,7 +104,17 @@ export const ROUND_WEIGHTS = {
  * challenge-groups.type.
  */
 export type RoundMechanic =
-  'typed' | 'pin' | 'choice' | 'buzz' | 'collect' | 'turns' | 'draw' | 'order'
+  | 'typed'
+  | 'pin'
+  | 'choice'
+  | 'buzz'
+  | 'collect'
+  | 'turns'
+  | 'draw'
+  | 'order'
+  /** Drag a thing ONTO a target — distinct from `order`, which rearranges a
+   *  list in place. Parliament's benches drop onto the arc. */
+  | 'match'
 
 export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
@@ -138,6 +159,8 @@ export const MECHANIC_BY_KIND = {
   ranking: 'order',
   timeline: 'order',
   sketch: 'draw',
+  // Drag a party onto its block on the arc.
+  government: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**

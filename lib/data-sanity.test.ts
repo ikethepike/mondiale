@@ -10,11 +10,16 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
+import { ELECTIONS } from '~~/data/elections.gen'
+import { PARTIES } from '~~/data/parties.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { governingParty, partiesWithLogo } from '~~/lib/parties'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { TREATY_META } from '~~/types/treaty.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -29,6 +34,35 @@ const CONFLICT_FIELD_FLOOR = 90
 // 38 countries have legalized same-sex marriage; mirrors the generator's own
 // floor, so a shrunken Equaldex fetch fails here too.
 const MARRIAGE_COUNTRY_FLOOR = 35
+// 192 countries / ~2,220 parties: the Factbook roster plus the seated benches
+// adopted from the election tables, which is where the chambers' biggest parties
+// often live. Wikidata enriches 80% once the en.wikipedia fallback runs; the
+// floor sits well under that because match rate moves with Wikidata's own
+// coverage, but a drop past here means the fallback broke rather than the
+// world changing.
+const PARTY_COUNTRY_FLOOR = 180
+const PARTY_FLOOR = 2000
+const PARTY_MATCH_FLOOR = 0.7
+// 737 logos and ~500 grouping memberships today — both are what the party-facing
+// modes deal from, so a collapse should fail rather than quietly thin the pool.
+//
+// The count READ 957 before one entity was allowed only one party: 239 of those
+// were duplicate references, several roster rows pointing at one file because
+// they had resolved to the same Wikidata entity. 737 rows on 737 distinct files
+// is the honest number, and it is UP on the 718 real files we had.
+const PARTY_LOGO_FLOOR = 640
+// A handful of rosters genuinely resolve to nothing (one-party states,
+// microstates). Fourteen was a bug; four is the honest tail.
+const BLANK_COUNTRY_CEILING = 6
+const PARTY_GROUPING_FLOOR = 420
+// Some chambers really are mostly independents (Kuwait bans parties outright),
+// so a few thin joins are honest; a jump means the name-matching broke.
+const SEAT_JOIN_MISS_CEILING = 8
+// 53 chambers parse from 54 seeded articles today. The floor is the seed list's
+// worth minus room for an article being renamed after an election.
+const CHAMBER_FLOOR = 45
+// 47 carry vote share; the rest print seats only.
+const CHAMBER_VOTE_FLOOR = 35
 
 describe('countries.gen', () => {
   const countries = Object.values(COUNTRIES)
@@ -41,6 +75,270 @@ describe('countries.gen', () => {
     for (const country of countries) {
       expect(country.name.english).toBeTruthy()
       expect(FLAGS[country.isoCode]).toContain('<svg')
+    }
+  })
+})
+
+describe('elections.gen', () => {
+  const chambers = Object.values(ELECTIONS)
+
+  it('covers the seeded chambers', () => {
+    expect(chambers.length).toBeGreaterThanOrEqual(CHAMBER_FLOOR)
+  })
+
+  it('keeps the vote share the Factbook never publishes', () => {
+    const withVotes = chambers.filter(chamber =>
+      chamber?.parties.some(party => party.votePct !== undefined)
+    )
+    expect(withVotes.length).toBeGreaterThanOrEqual(CHAMBER_VOTE_FLOOR)
+  })
+
+  // A parse that drifts reads seats off the wrong rows, and the giveaway is a
+  // chamber whose parties hold more seats than the chamber has.
+  it('never seats more members than the chamber holds', () => {
+    for (const chamber of chambers) {
+      if (!chamber?.totalSeats) continue
+      const held = chamber.parties.reduce((total, party) => total + party.seats, 0)
+      expect(held).toBeLessThanOrEqual(chamber.totalSeats)
+    }
+  })
+
+  // Sweden files its Social Democrats, Left Party and Greens under one
+  // "Red-Greens" alliance; reading the alliance as the party's name drew three
+  // different benches under one label.
+  it('names parties, not the alliances they stood in', () => {
+    for (const chamber of chambers) {
+      const names = (chamber?.parties ?? []).map(party => party.party)
+      expect(names.length).toBe(new Set(names).size)
+    }
+  })
+
+  // A "share of the vote" that is not a share of the NATIONAL vote is a lie a
+  // mode would plot: Croatia's reserved minority seats print their own
+  // constituency's share (89%, 100%) and Denmark's Faroese and Greenlandic
+  // parties their own territory's, which summed the field to 199% and 390%.
+  it('keeps vote shares national', () => {
+    for (const chamber of chambers) {
+      const shares = (chamber?.parties ?? []).flatMap(party =>
+        party.votePct !== undefined ? [party.votePct] : []
+      )
+      if (!shares.length) continue
+      const sum = shares.reduce((total, share) => total + share, 0)
+      expect(sum, chamber?.article).toBeLessThanOrEqual(101)
+      for (const share of shares) expect(share).toBeLessThanOrEqual(100)
+    }
+  })
+
+  // The cabinet is the only source for who GOVERNS as opposed to who won seats.
+  it('reads a live cabinet for a healthy share of the chambers', () => {
+    const cabinets = chambers.filter(chamber => chamber?.cabinet)
+    expect(cabinets.length).toBeGreaterThanOrEqual(CABINET_FLOOR)
+    expect(
+      cabinets.filter(chamber => chamber?.cabinet?.governing.length).length
+    ).toBeGreaterThanOrEqual(CABINET_GOVERNING_FLOOR)
+  })
+
+  // A cabinet article outlives its cabinet — "First Tusk cabinet" is a real
+  // page about a government that fell in 2011 — so the generator follows
+  // `successor` forward to the incumbent. The check that it landed is the head
+  // of government: ours comes from the Factbook, theirs from an article edited
+  // within the day, and a chase that stopped early names someone who left
+  // office years ago. A handful legitimately disagree where OURS is the stale
+  // one (a government changed since the last Factbook pull), so this is a
+  // majority test rather than a per-country one.
+  it('lands on cabinets whose head of government is the one in office', () => {
+    const surname = (name: string) =>
+      name
+        .replace(/\(.*?\)/g, '')
+        .trim()
+        .split(/\s+/)
+        .slice(-1)[0]
+    const named = (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
+      isoCode => ELECTIONS[isoCode]?.cabinet?.head
+    )
+    const agreeing = named.filter(isoCode => {
+      const head = surname(ELECTIONS[isoCode]!.cabinet!.head!)
+      return [LEADERS[isoCode]?.headOfGovernment?.name, LEADERS[isoCode]?.headOfState?.name].some(
+        name => name && surname(name) === head
+      )
+    })
+    expect(agreeing.length / named.length).toBeGreaterThanOrEqual(CABINET_HEAD_AGREEMENT)
+  })
+})
+
+// 39 chambers resolve to a live cabinet, 25 of them naming governing parties.
+const CABINET_FLOOR = 30
+const CABINET_GOVERNING_FLOOR = 18
+// 34 of 39 cabinet heads match ours today; the rest are countries whose
+// government changed since the last Factbook pull, where THEIRS is the fresher.
+const CABINET_HEAD_AGREEMENT = 0.75
+
+describe('parties.gen', () => {
+  const countries = Object.values(PARTIES)
+  const parties = countries.flatMap(country => country?.parties ?? [])
+
+  it('covers the Factbook roster', () => {
+    expect(countries.length).toBeGreaterThanOrEqual(PARTY_COUNTRY_FLOOR)
+    expect(parties.length).toBeGreaterThanOrEqual(PARTY_FLOOR)
+  })
+
+  it('enriches a healthy share against Wikidata', () => {
+    const matched = parties.filter(party => party.qid)
+    expect(matched.length / parties.length).toBeGreaterThanOrEqual(PARTY_MATCH_FLOOR)
+  })
+
+  it('keeps the pools the party modes deal from stocked', () => {
+    expect(parties.filter(party => party.logo).length).toBeGreaterThanOrEqual(PARTY_LOGO_FLOOR)
+    expect(parties.filter(party => party.groupings?.length).length).toBeGreaterThanOrEqual(
+      PARTY_GROUPING_FLOOR
+    )
+  })
+
+  // Commons hosts free files only, so a logo carrying a non-free flag means the
+  // harvest reached past Commons and the licence question changes with it.
+  //
+  // A handful of marks are published nowhere but the party's own site, and
+  // `LOCAL_LOGOS` in the parties generator carries them deliberately. The rule
+  // is therefore not "no non-free logos" but "no non-free logo whose source we
+  // cannot name" — an unattributed one is a harvest that wandered off Commons
+  // by accident, which is the case worth failing on.
+  it('names the source of every non-free logo', () => {
+    for (const party of parties.filter(party => party.nonFree)) {
+      expect(party.logo, `${party.name} is flagged non-free without a logo`).toBeTruthy()
+      expect(party.credit, `${party.name} has a non-free logo with no credit`).toBeTruthy()
+      expect(party.license, `${party.name} has a non-free logo with no licence`).toBeTruthy()
+    }
+  })
+
+  // `nonFree` is not the only licence that obliges us. CC BY and CC BY-SA are
+  // free to re-host and REQUIRE attribution, and 144 logos carry one — so a
+  // credit-less row here is a licence breach hiding behind a free licence.
+  // Three shipped that way (Costa Rica's PASE, Ireland's Greens, Turkey's HDP)
+  // because the harvest dropped any credit over 80 characters while keeping
+  // the licence; `shortenCredit` now trims instead of discarding.
+  // The Factbook lists electoral coalitions beside parties and says so in its
+  // own endonym. They keep their seats (the chamber's arithmetic needs them)
+  // but must never be DEALT: Albania's governing "party" was a bloc, so Rulers
+  // asked which mark is not a ruling party with an alliance as its truth.
+  it('never deals an electoral coalition as a party', () => {
+    const blocs = parties.filter(party => party.coalition)
+    expect(blocs.length, 'the endonym screen should still be catching blocs').toBeGreaterThan(5)
+    // Named "Coalition"/"Alliance" is fine — 161 real parties are. Only the
+    // endonym's own declaration counts.
+    for (const bloc of blocs) {
+      expect(bloc.endonym, `${bloc.name} flagged with no endonym to justify it`).toBeTruthy()
+    }
+    for (const isoCode of ISOCountryCodes) {
+      for (const party of partiesWithLogo(isoCode)) {
+        expect(party.coalition, `${party.name} is dealable in ${isoCode}`).toBeFalsy()
+      }
+      expect(governingParty(isoCode)?.coalition).toBeFalsy()
+    }
+  })
+
+  it('credits every logo whose licence demands attribution', () => {
+    const owed = parties.filter(party => party.logo && /^CC BY/i.test(party.license ?? ''))
+    expect(owed.length, 'expected attribution-bearing logos in the roster').toBeGreaterThan(50)
+    for (const party of owed) {
+      expect(party.credit, `${party.name} ships under ${party.license} with no credit`).toBeTruthy()
+    }
+  })
+
+  // Seat share is a fraction of the LISTED seats. It sums to at most 1, and
+  // legitimately to LESS: the Factbook balances many chambers with "Other" and
+  // "Independents" rows, which count toward the chamber but are not parties.
+  // Overshooting 1 is the real failure — it means the join double-counted.
+  it('keeps every seat share a real fraction of its chamber', () => {
+    for (const country of countries) {
+      const shares = (country?.parties ?? [])
+        .map(party => party.seatShare)
+        .filter((share): share is number => share !== undefined)
+      if (!shares.length) continue
+      for (const share of shares) {
+        expect(share).toBeGreaterThan(0)
+        expect(share).toBeLessThanOrEqual(1)
+      }
+      expect(shares.reduce((total, share) => total + share, 0)).toBeLessThanOrEqual(1.001)
+    }
+  })
+
+  // The join between the roster and the seat table is spelling-sensitive
+  // ("Swedish Social Democratic Party" vs "Social Democratic Party"), and when
+  // it fails it fails silently — the country keeps its parties and quietly
+  // loses its biggest one. A chamber whose named parties hold under a third of
+  // the seats is the signature of that break.
+  it('joins the seat table onto the roster', () => {
+    const thin = countries.filter(country => {
+      const shares = (country?.parties ?? [])
+        .map(party => party.seatShare)
+        .filter((share): share is number => share !== undefined)
+      return shares.length >= 2 && shares.reduce((total, share) => total + share, 0) < 0.33
+    })
+    expect(thin.length).toBeLessThanOrEqual(SEAT_JOIN_MISS_CEILING)
+  })
+
+  // The roster is the Factbook's; commentary filed under "Political parties"
+  // ("the Taliban Government enforces…") is prose, not a dealable subject.
+  // "none" was the Vatican's entire roster and shipped as a dealable subject;
+  // Czechia and Ethiopia carried "Independents"/"Independent" rows the seat
+  // table filter caught but the roster never did.
+  // A country whose entire roster failed to resolve is invisible to every
+  // party mode, and it fails SILENTLY — 14 countries (143 parties) were in
+  // that state because a 40-id Wikidata batch hit an undocumented 12MB
+  // response cap and dropped their country entity before any party was
+  // searched for. South Africa and South Korea had zero matches each.
+  it('resolves at least one party in almost every country', () => {
+    const withParties = Object.entries(PARTIES).filter(([, entry]) => entry?.parties.length)
+    const blank = withParties.filter(([, entry]) => !entry!.parties.some(party => party.qid))
+    // Some rosters really are unresolvable (one-party states, microstates).
+    expect(blank.length, blank.map(([iso]) => iso).join(' ')).toBeLessThanOrEqual(
+      BLANK_COUNTRY_CEILING
+    )
+  })
+
+  // `?? id` kept the raw Q-id whenever a label lookup missed, so a reveal would
+  // have told a player the Christian Union is a "Q16481705" party.
+  it('never leaks a raw Q-id into a displayable field', () => {
+    for (const party of parties) {
+      for (const ideology of party.ideologies ?? []) expect(ideology).not.toMatch(/^Q\d+$/)
+      if (party.position) expect(party.position).not.toMatch(/^Q\d+$/)
+      for (const grouping of party.groupings ?? []) expect(grouping).not.toMatch(/^Q\d+$/)
+    }
+  })
+
+  it('holds parties, not placeholders', () => {
+    for (const party of parties) {
+      expect(party.name.trim()).not.toMatch(
+        /^(none|other|others|independents?|vacant|unaffiliated|n\/a|various)$/i
+      )
+    }
+  })
+
+  // Wikidata's colour property is free text often enough to matter — Moldova's
+  // National Alternative Movement carried "dark green", which reaches a view as
+  // `background: #dark green` and silently paints nothing.
+  it('carries only hex colours', () => {
+    for (const party of parties) {
+      for (const colour of party.colors ?? []) expect(colour).toMatch(/^[0-9A-Fa-f]{6}$/)
+    }
+  })
+
+  // Yemen's Nasserist Unionist People's Organization carried a founding year
+  // of 25. The oldest real party is Britain's Tories.
+  it('carries plausible founding years', () => {
+    for (const party of parties) {
+      if (party.foundedYear === undefined) continue
+      expect(party.foundedYear, party.name).toBeGreaterThanOrEqual(1700)
+      expect(party.foundedYear, party.name).toBeLessThanOrEqual(new Date().getFullYear() + 1)
+    }
+  })
+
+  it('holds names, not prose', () => {
+    for (const party of parties) {
+      // Long but real: "Electoral Action of Poles in Lithuania – Christian
+      // Families Alliance" is ten words and a genuine party.
+      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(12)
+      expect(party.name).not.toMatch(/;\s*note/i)
     }
   })
 })

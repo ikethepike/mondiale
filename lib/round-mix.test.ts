@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   CHALLENGE_GROUP_BY_KIND,
+  CHALLENGE_GROUPS,
   MINIMUM_TABLE_BY_KIND,
 } from '~~/types/challenges/challenge-groups.type'
-import type { ChallengeOverrides } from '~~/types/challenges/challenge-groups.type'
+import type {
+  ChallengeGroupId,
+  ChallengeOverrides,
+} from '~~/types/challenges/challenge-groups.type'
 import type {
   RoundChallenge,
   RoundChallengeKind,
@@ -158,16 +162,12 @@ describe('mixWeights', () => {
   })
 
   it('never empties, even repeating one kind at a table with almost nothing on', () => {
-    const allOff: ChallengeOverrides = {
-      conflicts: false,
-      navigation: false,
-      water: false,
-      flags: false,
-      culture: false,
-      disputed: false,
-      trends: false,
-      empires: false,
-    }
+    // Derived, not hand-listed: a new group added to CHALLENGE_GROUPS has to
+    // be switched off here too, and a literal list silently stopped covering
+    // the roster the moment `politics` landed.
+    const allOff: ChallengeOverrides = Object.fromEntries(
+      (Object.keys(CHALLENGE_GROUPS) as ChallengeGroupId[]).map(group => [group, false])
+    )
     const game = gameWith(
       ['ranking', 'ranking', 'ranking', 'ranking', 'ranking', 'ranking'],
       'hard',
@@ -353,16 +353,12 @@ describe('the mix at a small table', () => {
     // three, a game longer than the window must not stall or lock into a
     // rigid cycle. Every core kind keeps a real share.
     const random = mulberry32(31)
-    const allOff: ChallengeOverrides = {
-      conflicts: false,
-      navigation: false,
-      water: false,
-      flags: false,
-      culture: false,
-      disputed: false,
-      trends: false,
-      empires: false,
-    }
+    // Derived, not hand-listed: a new group added to CHALLENGE_GROUPS has to
+    // be switched off here too, and a literal list silently stopped covering
+    // the roster the moment `politics` landed.
+    const allOff: ChallengeOverrides = Object.fromEntries(
+      (Object.keys(CHALLENGE_GROUPS) as ChallengeGroupId[]).map(group => [group, false])
+    )
     const dealt = simulate({
       rounds: 400,
       contenders: 2,

@@ -48,6 +48,31 @@
     border-color: var(--hior-ange);
   }
 
+  // The mid-round verdict wash: what the player chose, and whether it held.
+  // Lifted here from GateTrendDuel, which grew it first and scoped it — the
+  // Government round's beat verdict wants the same language, and two copies
+  // would drift. A revealed card is never faded: the wash IS the message.
+  &.was-right {
+    border-color: hsla(170.5, 34.7%, 45%, 0.7);
+    background: hsla(170.5, 34.7%, 55.1%, 0.14);
+  }
+
+  &.was-wrong {
+    border-color: var(--hior-ange);
+    background: flame(0.18);
+  }
+
+  &.was-truth {
+    border-color: hsla(170.5, 34.7%, 45%, 0.7);
+    box-shadow: inset 0 0 0 0.12rem hsla(170.5, 34.7%, 45%, 0.5);
+  }
+
+  &.was-right:disabled,
+  &.was-wrong:disabled,
+  &.was-truth:disabled {
+    opacity: 1;
+  }
+
   .option-flag {
     width: 100%;
     height: auto;

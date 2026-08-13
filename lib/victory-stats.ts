@@ -49,6 +49,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'flag-palette': ['Colour Sommelier', 'Palette Pro', 'The Swatch Sleuth', 'Hue Hunter'],
   'capital-guess': ['Capital Idea', 'Skyline Seer', 'The City Slicker', 'Metropole Maven'],
   'star-chart': ['Star Reader', 'Celestial Navigator', 'The Night Pilot', 'Dead-Reckoning Ace'],
+  government: ['Whip', 'Speaker of the House', 'Coalition Builder', 'Teller of the Benches'],
   'terra-incognita': [
     'Keeper of the Atlas',
     'The Restorer',
@@ -90,6 +91,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   'flag-palette': 'flag palette',
   'capital-guess': 'capital guess',
   'star-chart': 'star chart',
+  government: 'parliament',
   'terra-incognita': 'terra incognita',
   flashpoint: 'flashpoint',
   composition: 'composition',

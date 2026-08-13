@@ -62,6 +62,14 @@ interface GameStoreState {
      *  necessarily that country's own name. Errata mislabels one on purpose,
      *  which is why the label set rides the store rather than being derived. */
     countryLabels?: Partial<Record<ISOCountryCode, string>>
+    /** Party logos composited into countries — Rulers' stage. Keyed by the
+     *  country the logo sits on, NOT necessarily the party that governs it:
+     *  Rulers dresses one country in an opposition party's logo on purpose,
+     *  which is the whole question. Same reason as `countryLabels` — the set
+     *  rides the store rather than being derived from the country. */
+    countryLogos?: Partial<Record<ISOCountryCode, string>>
+    /** Party names captioned under the logos — Rulers, outside hard mode. */
+    countryLogoNames?: Partial<Record<ISOCountryCode, string>>
     /** Chrome berth (CSS px): the camera frames its subject between these
      *  insets so a header card never covers it. */
     berth?: { top?: number; bottom?: number }
@@ -86,6 +94,9 @@ interface GameStoreState {
     seaLinks: string[]
     /** Countries faded to half strength — off the current board. */
     dimmed: ISOCountryCode[]
+    /** The inverse: keep THESE lit and fade everything else. Rulers' stage —
+     *  a handful of countries in play against a receded world. */
+    spotlight: ISOCountryCode[]
     /** Countries whose fill breathes toward yellow — the Border Chain head. */
     pulsing: ISOCountryCode[]
     /** Countries erased from the atlas: the border they share with one
@@ -215,6 +226,8 @@ export const useGameStore = defineStore('game', {
       landmass: false,
       labels: false,
       countryLabels: undefined,
+      countryLogos: undefined,
+      countryLogoNames: undefined,
       focus: [],
       focusContext: [],
       framePad: undefined,
@@ -225,6 +238,7 @@ export const useGameStore = defineStore('game', {
       seaLinks: [],
       staggered: false,
       dimmed: [],
+      spotlight: [],
       pulsing: [],
       vanished: [],
       restoring: [],

@@ -613,6 +613,13 @@ export const INDIVIDUAL_STAT_ORIGINS: Record<IndividualChallengeAccessorId, Data
     dataset: 'Chiefs of State and Cabinet Members',
     fallback: ['wikidata-items'],
   },
+  // The Factbook names the roster; Wikidata supplies the ideology, colour and
+  // logo the gates actually show.
+  'government.parties': {
+    source: 'cia-factbook',
+    dataset: 'Government › Political parties',
+    fallback: ['wikidata-items', 'commons-media'],
+  },
   currency: { source: 'countries-list-package', dataset: 'ISO 4217 code per country' },
   landmarks: { source: 'wikidata-items', fallback: ['commons-media'] },
   // Chronicle's cards are the curated timeline library; the tile itself only
@@ -694,6 +701,8 @@ export type DataSetId =
   | 'tongues'
   | 'currencies'
   | 'leaders'
+  | 'parties'
+  | 'elections'
   | 'landmarks'
   | 'heritage'
   | 'events'
@@ -862,6 +871,28 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'wikidata-items', dataset: 'P35 head of state, P6 head of government' },
       { source: 'commons-media', dataset: 'Portraits' },
       { source: 'cia-world-leaders' },
+    ],
+  },
+  parties: {
+    label: 'Political parties',
+    files: ['data/parties.gen.ts'],
+    origins: [
+      // The Factbook is the roster; Wikidata only decorates a name it matches.
+      { source: 'cia-factbook', dataset: 'Government: political parties, legislative branch' },
+      {
+        source: 'wikidata-items',
+        dataset: 'P1142 ideology, P1387 position, P465 colour, P463 membership',
+      },
+      { source: 'commons-media', dataset: 'Party logos' },
+    ],
+  },
+  elections: {
+    label: 'Parliamentary elections',
+    files: ['data/elections.gen.ts'],
+    origins: [
+      // The Factbook publishes a seat table for no bicameral country at all,
+      // and no vote percentages anywhere — both come from the election articles.
+      { source: 'wikipedia-articles', dataset: 'Election infoboxes: seats and vote share' },
     ],
   },
   landmarks: {

@@ -336,6 +336,20 @@ const props = defineProps({
     type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
     default: undefined,
   },
+  /** Party logos laid inside countries — Rulers' stage. Keyed by the country
+   *  the logo sits on, NOT the party that governs it: Rulers dresses one
+   *  country in an opposition logo on purpose. */
+  countryLogos: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
+  /** A caption under each logo — the party's name. Rulers shows these outside
+   *  hard mode: naming the party is worth learning in itself, and knowing the
+   *  name still leaves the question (does THAT party govern THERE?) intact. */
+  countryLogoNames: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
   /** Animate the viewBox to frame these countries together. */
   focusCountries: {
     type: Array as PropType<ISOCountryCode[]>,
@@ -379,6 +393,14 @@ const props = defineProps({
   },
   /** Countries faded to half strength — off the current board (Border Chain
    *  on a continental variant). */
+  /** Countries to keep at full strength while EVERYTHING else fades — the
+   *  inverse of `dimmed`, for a stage whose subject is a handful of countries
+   *  (Rulers). Computed here because the map already holds the country list;
+   *  a view inverting it would pull 400KB of geometry into its own bundle. */
+  spotlight: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
   dimmed: {
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
@@ -475,7 +497,11 @@ const highlights = computed(() =>
   [...props.highlighted, props.highlightCountry, clicked.value].filter(Boolean)
 )
 
-const dimmedSet = computed(() => new Set<string>(props.dimmed))
+const dimmedSet = computed(() => {
+  if (!props.spotlight.length) return new Set<string>(props.dimmed)
+  const lit = new Set<string>(props.spotlight)
+  return new Set<string>(Object.keys(MAP_BOUNDS).filter(code => !lit.has(code)))
+})
 const pulsingSet = computed(() => new Set<string>(props.pulsing))
 const vanishedSet = computed(() => new Set<string>(props.vanished))
 const restoringSet = computed(() => new Set<string>(props.restoring))
@@ -1248,6 +1274,140 @@ const ensureLabels = () => {
   settleSoon()
 }
 
+/**
+ * How much of a country's inscribed circle a logo may fill. Under 1 so the
+ * artwork sits INSIDE the landmass rather than touching its border.
+ */
+const LOGO_ANCHOR_FILL = 2.4
+/** Drawn side in map units, clamped: the inscribed radius runs from 0.2
+ *  (San Marino) to 61 (Russia), so raw proportional sizing would be invisible
+ *  on half the roster and swamp the frame on the other half. */
+const LOGO_MIN_SIDE = 13
+const LOGO_MAX_SIDE = 40
+
+let builtLogoKey: string | undefined
+
+/**
+ * Party logos composited into their countries — the sibling of `ensureLabels`,
+ * and built the same way: imperatively into the live SVG, keyed on the set so a
+ * new gate replaces the previous round's rather than latching.
+ *
+ * The logo is CENTRED at the pole of inaccessibility and fitted with
+ * `xMidYMid meet`, never clipped to the landmass. A party logo is a wordmark
+ * drawn for a white page; shearing it to an irregular coastline would destroy
+ * the one thing a player is being asked to read.
+ *
+ * Nothing is drawn behind it. A scrim card read as a box sitting ON the map
+ * rather than a logo sitting IN a country — the separation the stage wants
+ * comes from dimming everything that is not in play (`map.dimmed`), which is
+ * quieter and leaves the coastlines legible.
+ */
+const ensureLogos = () => {
+  if (!svg.value) return
+  const logos = props.countryLogos
+  const names = props.countryLogoNames
+  const key = logos ? JSON.stringify([logos, names ?? null]) : ''
+  if (key === builtLogoKey) return
+
+  svg.value.querySelectorAll('.country-logo').forEach(node => node.remove())
+  builtLogoKey = key
+  if (!key || !logos) return
+
+  const layer = document.createElementNS(SVG_NS, 'g')
+  layer.classList.add('country-logo')
+  svg.value.appendChild(layer)
+
+  // Resolve every logo's box BEFORE drawing any of it: a caption hangs below
+  // its own logo, which can put it on top of the country to the south (Austria
+  // captioned "OeVP" straight across Croatia's HDZ mark). Knowing all the
+  // boxes is what lets a chip step clear of its neighbours.
+  const placements: { code: string; href: string; x: number; y: number; side: number }[] = []
+  for (const [code, href] of Object.entries(logos)) {
+    if (!href) continue
+    // The same labelability predicate the label layer uses, so a dealer that
+    // clears one can never be silently skipped by the other.
+    if (!isLabelableBox(labelBoxFor(MAP_BOUNDS[code as MapCode], MAP_REGIONS[code as MapCode])))
+      continue
+    const anchor = labelAnchorFor(code as MapCode)
+    if (!anchor) continue
+    const side = Math.min(LOGO_MAX_SIDE, Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL))
+    placements.push({ code, href, x: anchor.point[0], y: anchor.point[1], side })
+  }
+
+  for (const { code, href, x, y, side } of placements) {
+    const image = document.createElementNS(SVG_NS, 'image')
+    image.setAttribute('href', href)
+    image.setAttribute('x', String(x - side / 2))
+    image.setAttribute('y', String(y - side / 2))
+    image.setAttribute('width', String(side))
+    image.setAttribute('height', String(side))
+    image.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    image.dataset.id = code
+    image.classList.add('country-logo-image')
+    layer.appendChild(image)
+
+    const caption = names?.[code as ISOCountryCode]
+    if (!caption) continue
+    // A CHIP, not floating text. Painting a stroke behind glyphs this small
+    // (1.6px halo on 3.4px type) fattened them into unreadable blobs, and any
+    // offset that clears the logo lands on a neighbouring country instead. A
+    // sized plate under the baseline is legible against artwork and coastline
+    // alike, and it belongs to its logo at every zoom.
+    const chipHeight = side * 0.2
+    const chipWidth = chipHeight * (0.62 * caption.length + 0.7)
+    // Clear of the logo box, not inside it. Sitting the chip half its own
+    // height ABOVE the bottom edge put it over the artwork for anything that
+    // fills its square — Austria's "Die Volkspartei" wordmark was struck
+    // through by its own name. `meet` leaves slack only on the short axis, so
+    // there is no safe overlap to borrow.
+    let chipY = y + side / 2 + chipHeight * 0.12
+
+    // …and clear of everyone ELSE'S logo. A chip hangs south of its anchor, so
+    // on a tight frame it lands on the next country down.
+    //
+    // It only ever steps DOWN, and only so far. Flipping a blocked chip above
+    // its logo was tried and is worse: the map cannot see the view's own
+    // caption chrome, so an escape upward hides the name behind the prompt.
+    // Past the cap the chip stays put and simply overlaps — a caption near the
+    // wrong country reads as that country's answer, which is a worse lie than
+    // a crowded one.
+    const chipCeiling = chipY + side * 0.9
+    for (const other of placements) {
+      if (other.code === code) continue
+      const overlapsX =
+        x + chipWidth / 2 > other.x - other.side / 2 && x - chipWidth / 2 < other.x + other.side / 2
+      const overlapsY =
+        chipY + chipHeight > other.y - other.side / 2 && chipY < other.y + other.side / 2
+      if (!overlapsX || !overlapsY) continue
+      const stepped = other.y + other.side / 2 + chipHeight * 0.12
+      if (stepped <= chipCeiling) chipY = stepped
+    }
+
+    const plate = document.createElementNS(SVG_NS, 'rect')
+    plate.setAttribute('x', String(x - chipWidth / 2))
+    plate.setAttribute('y', String(chipY))
+    plate.setAttribute('width', String(chipWidth))
+    plate.setAttribute('height', String(chipHeight))
+    plate.setAttribute('rx', String(chipHeight / 2))
+    plate.style.fill = 'var(--dark-blue)'
+    plate.style.stroke = 'none'
+    plate.classList.add('country-logo-plate')
+    layer.appendChild(plate)
+
+    const label = document.createElementNS(SVG_NS, 'text')
+    label.textContent = caption
+    label.setAttribute('x', String(x))
+    label.setAttribute('y', String(chipY + chipHeight * 0.72))
+    label.setAttribute('font-size', String(chipHeight * 0.68))
+    // Inline, because the map's SVG root carries `fill: none` inline for its
+    // coastlines — a scoped class rule loses to that and the glyphs vanish.
+    label.style.fill = 'var(--sour-milk)'
+    label.style.stroke = 'none'
+    label.classList.add('country-logo-name')
+    layer.appendChild(label)
+  }
+}
+
 /** Directions a crowded label tries, nearest first. Vertical before horizontal —
  *  the cartographic convention, and it keeps a name over its own latitude. */
 const LABEL_NUDGES: [number, number][] = [
@@ -1412,6 +1572,14 @@ watch(
   [() => props.labels, () => props.countryLabels],
   () => {
     nextTick(ensureLabels)
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.countryLogos,
+  () => {
+    nextTick(ensureLogos)
   },
   { deep: true }
 )
@@ -1974,6 +2142,7 @@ onMounted(async () => {
   moveToCountry()
 
   if (props.labels || props.countryLabels) ensureLabels()
+  if (props.countryLogos) ensureLogos()
   if (props.focusCountries.length) frameFocus()
 })
 
@@ -2733,6 +2902,39 @@ path[id]:hover,
 }
 .show-labels :deep(.labels-settled .country-label-name) {
   opacity: 1;
+}
+// Rulers' logo register. Unlike the labels these are sized in MAP units, so
+// they scale with the camera and need no settle gate — they are correct at
+// every zoom by construction, and simply fade in with the stage.
+:deep(.country-logo) {
+  pointer-events: none;
+}
+:deep(.country-logo-plate) {
+  pointer-events: none;
+}
+:deep(.country-logo-name) {
+  // Size and fill are set inline (the SVG root's own `fill: none` outranks a
+  // class here). NO stroke: a halo behind glyphs this small is thicker than
+  // the strokes it separates, which is what turned these into blobs.
+  font-weight: 600;
+  letter-spacing: 0.08px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+:deep(.country-logo-image) {
+  // The artwork is the answer; nothing should tint or dim it.
+  opacity: 1;
+  // ...and nothing should CATCH the tap meant for the country under it. Every
+  // overlay on this map is inert for the same reason: only the country paths
+  // are hit targets, so a logo drawn over its own country would swallow the
+  // one press the gate is waiting for.
+  pointer-events: none;
+  animation: logo-land 320ms var(--ease-out-expressive) both;
+}
+@keyframes logo-land {
+  from {
+    opacity: 0;
+  }
 }
 // The hairline back to the country a displaced name belongs to. Thin and quiet:
 // it only has to be followable, and it crosses countries the reader is judging.

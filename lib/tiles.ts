@@ -13,6 +13,7 @@ const GATE_TILE_WEIGHTS: { [id in IndividualChallengeAccessorId]: number } = {
   isoCode: 1,
   'capital.name': 1,
   'government.leader': 1,
+  'government.parties': 1,
   currency: 0.25,
   landmarks: 1,
   errata: 1,

@@ -65,6 +65,7 @@ describe('round beats', () => {
     'manhunt',
     'unique-or-bust',
     'clean-sweep',
+    'government',
   ]
 
   it('covers every dealable kind with a spec', () => {

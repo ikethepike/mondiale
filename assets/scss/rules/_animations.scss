@@ -100,6 +100,28 @@
   }
 }
 
+// A seat arriving on Parliament's arc: swings in from the right, overshoots a
+// touch, settles. Staggered along the arc by the caller's animation-delay, the
+// row reads as one sweep filling the chamber rather than a grid appearing.
+// Translate is in the element's own space, so it composes with the
+// `translate(-50%, -50%)` every seat already carries to sit on its point.
+@keyframes seat-sweep {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateX(2.5rem) scale(0.2);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateX(0) scale(1.25);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 // World of Change's two-frame loop: the later frame fades in over the earlier
 // one, holds, then fades back. Both frames are stacked and only the top one
 // animates, so the pair never blinks through the background mid-cross. The

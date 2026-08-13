@@ -40,6 +40,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // sends presence for a correct name (useCollectSetRound's rule), so a
   // player who lights a star hands the room tension, not the answer.
   'star-chart': 'label',
+  // Benches are dragged, not named, so there is no guess to broadcast.
+  government: 'none',
   // The room shares one failing atlas, but a NAMED guess here is always a
   // wrong one — the composable sends hits as bare presence — and a wrong name
   // says only "that country is still on the map", which is true of nearly two

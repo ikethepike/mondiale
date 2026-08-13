@@ -1,4 +1,5 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
+import type { Spectrum } from '../../lib/parties'
 import type { RosettaRelationId } from '../../lib/rosetta'
 import type { TrendMetricId } from '../../lib/trends'
 import type { ISOCountryCode } from '../geography.types'
@@ -40,6 +41,9 @@ import type { ISOCountryCode } from '../geography.types'
  *   (higher-lower's trust model)
  * - 'far-flung': a detached piece of a country, framed alone — name the
  *   country it belongs to (strict ISO equality)
+ * - 'rulers': a framed neighbourhood, every country wearing its governing
+ *   party's logo — except one, wearing an opposition party from its OWN
+ *   country. `country` is that impostor's country (strict ISO equality)
  */
 export interface IndividualChallenge {
   _type: 'individual-challenge'
@@ -48,14 +52,74 @@ export interface IndividualChallenge {
   variant?: IndividualChallengeVariant
   /** flag-pick: the flags on offer (includes `country`), display order. */
   options?: ISOCountryCode[]
+  /**
+   * logo-politics: the party whose logo is the question.
+   *
+   * One logo, three things it can be asked about — `ask` says which:
+   *
+   * - `origin` — which country is this party from? `options` carries the four
+   *   candidates and the answer is `country`, graded on the wire as usual.
+   * - `ruling` — does this party govern `country`? A yes/no, so the answer is
+   *   not a country at all; `rules` holds the truth.
+   * - `spectrum` — where does it sit left-to-right? `bands` are the choices
+   *   and `band` the truth.
+   *
+   * The last two grade client-side and submit `challenge.country` on a win or
+   * `wrongTokenFor` on a miss, the same client-trust route `higher-lower` and
+   * `chronicle` take — the wire carries only an ISO code, and neither of these
+   * questions answers with one.
+   */
+  partyLogo?: {
+    /** Path under /public. */
+    image: string
+    /** Shown only after the answer — the party the logo belongs to. */
+    name: string
+    /** Which question this logo is being asked. */
+    ask?: 'origin' | 'ruling' | 'spectrum'
+    /** `ruling`: whether the party governs `country`. */
+    rules?: boolean
+    /** `spectrum`: the bands on offer, and the one that is true. */
+    bands?: Spectrum[]
+    band?: Spectrum
+    /** The one-line credit the logo's licence requires. */
+    credit?: string
+    license?: string
+  }
+  /**
+   * rulers: the framed neighbourhood and what each country is wearing.
+   *
+   * `logos` carries the question — every member wears its real government
+   * except `country`, which wears one of its own opposition parties. The map
+   * is the interface: there is no option list, the logos ARE the options.
+   */
+  rulers?: {
+    /** The framed countries, all wearing a logo. Includes `country`. */
+    lineup: ISOCountryCode[]
+    /** What each member is wearing, as shown. */
+    logos: Partial<Record<ISOCountryCode, string>>
+    /** Each logo's party name, for the label under it. Shown outside hard mode
+     *  — naming the party is itself worth learning, and a player who cannot
+     *  read the mark still has to know whether THAT party governs THERE. Hard
+     *  mode gets the logos alone. */
+    names: Partial<Record<ISOCountryCode, string>>
+    /** The impostor's country wearing its REAL government — swapped in at the
+     *  reveal, so the stage takes back the lie it taught. */
+    trueLogo?: Partial<Record<ISOCountryCode, string>>
+    /** …and its name, for the caption the reveal swaps in with it. */
+    trueName?: Partial<Record<ISOCountryCode, string>>
+    /** Named only in the reveal: the impostor, and who really governs there. */
+    impostor: { name: string; credit?: string; license?: string }
+    governing: { name: string }
+  }
   /** odd-one-out: the lineup (includes `country`) and what the others share. */
   oddOneOut?: {
     countries: ISOCountryCode[]
     propertyLabel: string
     /** The discriminator behind the label, kept so the reveal's lesson agrees
      *  with the dealer by construction (optional: pre-existing games lack it). */
-    kind?: 'region' | 'language' | 'organization'
-    /** The shared value — region label, language name or organization name. */
+    kind?: 'region' | 'language' | 'organization' | 'party-family'
+    /** The shared value — region label, language name, organization name, or
+     *  the political family the other three are governed by. */
     value?: string
   }
   /** higher-lower: stat duels, answered in order. */
@@ -185,6 +249,7 @@ export const individualChallengeVariants = [
   'trend-duel',
   'trajectory-match',
   'leader-pick',
+  'logo-politics',
   'outline-reveal',
   'leader-portrait',
   'errata',
@@ -193,6 +258,7 @@ export const individualChallengeVariants = [
   'scriptorium',
   'chronicle',
   'far-flung',
+  'rulers',
 ] as const
 export type IndividualChallengeVariant = (typeof individualChallengeVariants)[number]
 
@@ -227,6 +293,12 @@ export const individualChallengeAccessors = [
   'isoCode',
   'capital.name',
   'government.leader',
+  // The parties themselves, as distinct from the person leading one. Tenants:
+  // Rulers (spot the party that is NOT in government) and Logo Politics (place
+  // a party by its logo). It shares the leader gate's lectern on purpose —
+  // both are the same political register, the way `errata` shares the ISO
+  // gate's signpost — and the clay top is what tells them apart.
+  'government.parties',
   'currency',
   'landmarks',
   'errata',

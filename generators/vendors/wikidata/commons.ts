@@ -16,10 +16,20 @@ export const WIKIDATA_USER_AGENT =
 
 export const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+/**
+ * How long a single request may hang before it counts as a failure and the
+ * backoff takes over. Without this a socket that opens and then goes quiet
+ * blocks forever: a long generator run was observed stalled at 0% CPU with 72
+ * ESTABLISHED connections and no bytes moving, which no amount of retry logic
+ * can rescue because the await never returns.
+ */
+const REQUEST_TIMEOUT_MS = 30_000
+
 /** JSON fetch with Retry-After-aware backoff; undefined after repeated failure. */
 export const fetchJson = async <T>(url: string, attempt = 1): Promise<T | undefined> => {
   const response = await fetch(url, {
     headers: { 'User-Agent': WIKIDATA_USER_AGENT, Accept: 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   }).catch(() => undefined)
 
   if (!response?.ok) {
@@ -33,7 +43,17 @@ export const fetchJson = async <T>(url: string, attempt = 1): Promise<T | undefi
     await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
     return fetchJson(url, attempt + 1)
   }
-  return (await response.json()) as T
+
+  // Reading the BODY can fail too — a connection cut mid-response, or the
+  // timeout landing between headers and the last byte, throws here rather than
+  // at the fetch. Uncaught, that ends a 45-minute run with a bare DOMException,
+  // so it re-enters the same backoff as any other failure.
+  const parsed = await response.json().catch(() => undefined)
+  if (parsed === undefined && attempt < 6) {
+    await wait(2500 * attempt)
+    return fetchJson(url, attempt + 1)
+  }
+  return parsed as T | undefined
 }
 
 interface PagePropsResponse {
@@ -150,6 +170,27 @@ const stripTags = (html: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
 
+/** Longest credit line worth printing under an image. */
+const CREDIT_MAX_CHARS = 80
+
+/**
+ * A too-long credit, cut to something printable without losing WHO made it.
+ *
+ * A bare source URL is unwrapped to its host, a multi-clause artist line keeps
+ * its first clause, and anything still over the cap is trimmed on a word.
+ */
+const shortenCredit = (credit: string): string => {
+  if (credit.length <= CREDIT_MAX_CHARS) return credit
+  if (/^https?:\/\//i.test(credit)) {
+    const host = credit.replace(/^https?:\/\//i, '').split('/')[0]
+    return host ?? credit.slice(0, CREDIT_MAX_CHARS)
+  }
+  const firstClause = credit.split(/[;,]/)[0]?.trim()
+  if (firstClause && firstClause.length <= CREDIT_MAX_CHARS) return firstClause
+  const trimmed = credit.slice(0, CREDIT_MAX_CHARS)
+  return `${trimmed.slice(0, trimmed.lastIndexOf(' ') > 0 ? trimmed.lastIndexOf(' ') : CREDIT_MAX_CHARS)}…`
+}
+
 /**
  * A Commons file's author and licence, from its extmetadata. Wikimedia photos
  * are free to use but most licences require attribution — anything shipped to
@@ -171,8 +212,12 @@ export const fetchImageAttribution = async (
     ? stripTags(metadata.LicenseShortName.value)
     : undefined
   if (!credit && !license) return undefined
-  // Some "artist" fields are whole camera-club paragraphs — too long to credit.
-  return { credit: credit && credit.length <= 80 ? credit : undefined, license }
+  // Some "artist" fields are whole camera-club paragraphs, or a bare URL to the
+  // source page. Those are too long to print — but DROPPING them left files
+  // under CC BY / CC BY-SA shipping with a licence that demands attribution and
+  // nobody to attribute (Ireland's Green Party, Turkey's HDP). Shorten instead:
+  // a trimmed credit still names the author, where none names nobody.
+  return { credit: credit ? shortenCredit(credit) : undefined, license }
 }
 
 /**

@@ -32,6 +32,11 @@ export const CHALLENGE_GROUPS = {
   flags: { label: 'Flags & shapes' },
   culture: { label: 'Culture & places' },
   disputed: { label: 'Disputed places' },
+  // Parties, parliaments and who governs. Visible on purpose: politics is the
+  // one topic a table may want switched off outright, which a hidden group
+  // could never offer. It owns no stat accessors — its rounds deal from the
+  // party roster and the chambers, not the ranking pool.
+  politics: { label: 'Politics & power' },
   trends: { label: 'Trends & history' },
   empires: { label: 'Empires & colonies' },
   economy: { label: 'Economy & work', hidden: true },
@@ -97,6 +102,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // Capital-guess's mirror: the same cities, read off the map instead of a
   // photo, so it shares the toggle a table that wants city content flips.
   'star-chart': 'culture',
+  // The chamber round: who governs, how large they are, and who is with them.
+  government: 'politics',
   // 'society' would read closer, but its group is hidden — hidden groups
   // classify stat accessors and can't be toggled, so a round kind filed there
   // could never be switched off. Culture is the visible home for the people.
@@ -144,6 +151,8 @@ export const ANSWER_SHAPE_BY_KIND = {
   // The night's stars, in any order — the answers are cities, but each one
   // scores as the country it belongs to, so the ledger shape is a plain set.
   'star-chart': 'set',
+  // Three beats, each with its own answer; the ledger reads them as a set.
+  government: 'set',
   // The countries the atlas swallowed, in any order. The DEAL order carries
   // the lesson, so the scorecard replaces the generic ledger with its own
   // chronological reveal — but the answer itself is a plain set.

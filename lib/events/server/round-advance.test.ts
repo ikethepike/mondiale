@@ -154,6 +154,7 @@ describe('group-challenge scoring coverage', () => {
     'manhunt',
     'unique-or-bust',
     'clean-sweep',
+    'government',
     'floor',
   ]
 

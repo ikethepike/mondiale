@@ -6,7 +6,12 @@
       :stakes="'Answer correctly to leap ahead — get it wrong and you\'re knocked back.'"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt v-else ref="promptHost" :attributions="promptSources">
+    <ChallengePrompt
+      v-else
+      ref="promptHost"
+      :attributions="promptSources"
+      :attribution-credit="promptCredit"
+    >
       <Transition name="caption" mode="out-in">
         <div v-if="!status" key="question" class="question">
           <!-- One component per variant (components/challenge/individual).
@@ -66,11 +71,14 @@ import { BORDERS } from '~~/data/borders.gen'
 import {
   attributionFor,
   datasetAttribution,
+  mediaCreditLine,
   trendAttribution,
   type Attribution,
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import { governingParty, logoPoliticsPrompt, partiesOf, partySpectrum } from '~~/lib/parties'
+import { politicalLeader } from '~~/lib/leaders'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
@@ -96,6 +104,7 @@ const {
   gateSeq,
   showInterstitial,
   missNote,
+  timedOut,
   duelOutcomes,
   trendDuelOutcomes,
   atlasChain,
@@ -152,6 +161,27 @@ watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapB
 
 watch(currentMove, relatch)
 
+/**
+ * The credit for the ONE image a gate puts on screen, beside the dataset line.
+ *
+ * 144 party logos ship under CC BY / CC BY-SA, which oblige us to name the
+ * author. The generator captures `credit`/`license` per logo and the payloads
+ * carry them, but both variants credited only the dataset — the attribution
+ * was collected and dropped on the floor.
+ *
+ * Rulers waits for the answer: the impostor's credit names the party wearing
+ * the wrong logo, which would give the round away.
+ */
+const promptCredit = computed<string | undefined>(() => {
+  const active = challenge.value
+  if (!active) return undefined
+  if (variant.value === 'logo-politics') return mediaCreditLine(active.partyLogo)
+  if (variant.value === 'rulers' && status.value) {
+    return mediaCreditLine(active.rulers?.impostor)
+  }
+  return undefined
+})
+
 /** The gate's provenance, per variant. Photo variants credit on the photo
  *  frame itself (PhotoOptionChallenge), so the prompt stays quiet there. */
 const promptSources = computed<Attribution[] | undefined>(() => {
@@ -181,6 +211,9 @@ const promptSources = computed<Attribution[] | undefined>(() => {
       return datasetAttribution('countries')
     case 'leader-pick':
       return datasetAttribution('leaders')
+    case 'logo-politics':
+    case 'rulers':
+      return datasetAttribution('parties')
     case 'higher-lower':
       return active.higherLower ? [attributionFor(active.higherLower.accessorId)] : undefined
     case 'trend-duel': {
@@ -223,6 +256,8 @@ const interstitialTitle = computed(() => {
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
     case 'leader-pick':
       return `Who leads ${countryName(active.country)}?`
+    case 'logo-politics':
+      return logoPoliticsPrompt(active.partyLogo?.ask, countryName(active.country))
     case 'higher-lower': {
       const duels = active.higherLower?.pairs.length ?? 0
       return `Win ${duels === 2 ? 'both duels' : `all ${duels} duels`}: which country ranks higher?`
@@ -271,6 +306,12 @@ const incorrectMessage = computed(() => {
   // the gate before it submitted.
   if (missNote.value) return missNote.value
   const active = challenge.value
+  // A timeout submits a token the grader must reject (`wrongTokenFor`), so the
+  // submitted ISO is filler, not a choice. Reading it back named a country the
+  // player never touched — "Sorry, you pressed: Switzerland" on a gate they
+  // simply ran out of time on. Every branch below that names the pick is wrong
+  // in that case, so the timeout answers for all of them.
+  if (timedOut.value) return 'Time ran out.'
   const picked = submittedCountry.value
   switch (variant.value) {
     case 'flag-pick':
@@ -296,6 +337,8 @@ const incorrectMessage = computed(() => {
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
     case 'leader-pick':
       return picked ? `That's ${countryName(picked)}'s leader` : 'Not that one.'
+    case 'logo-politics':
+      return picked ? `That's a party of ${countryName(picked)}` : 'Not that one.'
     case 'trajectory-match':
       return active ? `That trajectory belongs to ${countryName(active.country)}` : 'Time ran out.'
     case 'outline-reveal':
@@ -321,6 +364,13 @@ const incorrectMessage = computed(() => {
       return 'History disagrees.'
     case 'far-flung':
       return active ? `That piece belongs to ${countryName(active.country)}` : 'Time ran out.'
+    case 'rulers': {
+      const rulers = active?.rulers
+      if (!rulers || !active) return 'Not quite.'
+      return `${rulers.impostor.name} does not govern ${countryName(active.country)} — ${
+        rulers.governing.name
+      } does`
+    }
     default:
       // Currency find gate: name what the pressed country actually spends —
       // clearer than the reveal zoom alone, since shared currencies mean the
@@ -342,6 +392,22 @@ const gateLesson = computed(() => {
   const answer = country.value
   if (!active || !answer || !status.value) return undefined
   switch (variant.value) {
+    case 'rulers': {
+      const rulers = active.rulers
+      if (!rulers) return undefined
+      const governing = governingParty(active.country)
+      const leader = politicalLeader(active.country)?.name
+      // Everything worth knowing about the party that DOES govern there: who
+      // leads it, where it sits, and which European family it keeps.
+      const band = governing ? partySpectrum(governing) : undefined
+      const facts = [
+        leader ? `led by ${leader}` : undefined,
+        band ? `${band} on the spectrum` : undefined,
+        governing?.groupings?.[0],
+      ].filter((fact): fact is string => !!fact)
+      if (!facts.length) return `${rulers.governing.name} governs ${countryName(active.country)}.`
+      return `${rulers.governing.name} governs ${countryName(active.country)} — ${listJoin(facts)}.`
+    }
     case 'flag-twins': {
       const palette = answer.identity.simplifiedColors
       if (!palette.length) return undefined
@@ -365,6 +431,16 @@ const gateLesson = computed(() => {
         ? `The ${currencyName(code)} is legal tender in ${spenders.length} countries — any of them counted.`
         : `The ${currencyName(code)} is ${countryName(answer)}'s own.`
     }
+    // The logo stood alone as the question; naming it is the lesson.
+    case 'logo-politics': {
+      const party = active.partyLogo
+      if (!party) return undefined
+      const spectrum = partiesOf(active.country).find(entry => entry.name === party.name)
+      const band = spectrum ? partySpectrum(spectrum) : undefined
+      return band
+        ? `That's ${party.name} — a ${band} party in ${countryName(answer)}.`
+        : `That's ${party.name}, a party in ${countryName(answer)}.`
+    }
     case 'odd-one-out': {
       const shared = active.oddOneOut
       if (!shared?.kind || !shared.value) return undefined
@@ -379,6 +455,12 @@ const gateLesson = computed(() => {
         }
         case 'organization':
           return `${countryName(answer)} isn't a member of ${shared.value} — the other three are.`
+        case 'party-family': {
+          const governing = governingParty(answer.isoCode)
+          return governing
+            ? `${countryName(answer)} is governed by ${governing.name} — the other three are governed by a party of the ${shared.value} family.`
+            : `${countryName(answer)} isn't governed by a party of the ${shared.value} family — the other three are.`
+        }
       }
       return undefined
     }

@@ -52,6 +52,7 @@ import type {
   SilhouetteChallenge,
   SketchChallenge,
   StarChartChallenge,
+  GovernmentChallenge,
   StatDetectiveChallenge,
   TerraIncognitaChallenge,
   TimelineChallenge,
@@ -135,6 +136,19 @@ import {
   type RosettaRelationId,
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
+import { dealGovernment } from './government'
+import {
+  countriesGovernedByFamily,
+  countriesWithGoverningLogo,
+  governedOutsideFamily,
+  governingParty,
+  impostorParties,
+  type Party,
+  partiesWithLogo,
+  partySpectrum,
+  SPECTRUM_BANDS,
+  shortPartyName,
+} from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
 import {
   dramaScore,
@@ -1083,6 +1097,59 @@ const getStarChartChallenge = (game: gameTypes.Game): StarChartChallenge | undef
 }
 
 /**
+ * Government: one chamber, three questions — who governs, how large they are,
+ * and who is with them.
+ *
+ * The answers are stamped onto `state.answers` here and STRIPPED by the engine
+ * before the first beat rides the snapshot; `Game` reaches every socket in the
+ * room, so shipping them with beat 1 would put the answer in the devtools.
+ */
+const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | undefined => {
+  const deal = dealGovernment(game, game.difficulty)
+  if (!deal) return undefined
+
+  return {
+    _type: 'government-challenge',
+    country: deal.country,
+    ...(deal.chamber ? { chamber: deal.chamber } : {}),
+    totalSeats: deal.totalSeats,
+    options: deal.options,
+    blocks: deal.blocks,
+    benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+      name,
+      seats,
+      share,
+      ...(color ? { color } : {}),
+      ...(logo ? { logo } : {}),
+    })),
+    sorted: deal.sorted,
+    maximumPoints: maximumRoundPoints(game),
+    state: {
+      beat: 'party',
+      turn: 0,
+      deadline: 0,
+      picks: { party: {}, seats: {}, sides: {} },
+      scores: {},
+      answers: {
+        governingParty: deal.governingParty,
+        governingSeats: deal.governingSeats,
+        standings: Object.fromEntries(
+          deal.benches.map(bench => [bench.name, bench.standing] as const)
+        ),
+        // Held back with the answers: the governing bench's row IS beat 2's
+        // answer. Restored onto `challenge.benches` when beat 3 opens.
+        benchSeats: Object.fromEntries(
+          deal.benches.map(bench => [bench.name, bench.seats] as const)
+        ),
+        ...(deal.status ? { status: deal.status } : {}),
+        minority: deal.minority,
+        ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
+      },
+    },
+  }
+}
+
+/**
  * Terra Incognita: the atlas starts losing countries, and the round is a race
  * to notice which ones. Every rule of the deal — the legibility gate, the
  * difficulty's reach, the lean toward the overlooked, the no-adjacent-blanks
@@ -1902,6 +1969,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'flag-palette': game => getFlagPaletteChallenge(game),
   'capital-guess': game => getCapitalGuessChallenge(game),
   'star-chart': game => getStarChartChallenge(game),
+  government: game => getGovernmentChallenge(game),
   'terra-incognita': game => getTerraIncognitaChallenge(game),
   composition: game => getCompositionChallenge(game),
   flashpoint: game => getFlashpointChallenge(game),
@@ -2421,10 +2489,14 @@ const dealOddOneOut = (
   // A single-continent board makes "three share a region" unanswerable —
   // everything shares the region. Those games ask about language (and, on
   // hard, alliances) instead.
-  const kinds: ('region' | 'language' | 'organization')[] = isWorld
+  const kinds: ('region' | 'language' | 'organization' | 'party-family')[] = isWorld
     ? ['region', 'language']
     : ['language']
   if (difficulty === 'hard') kinds.push('organization')
+  // Rulers. Unlike the other three this asks about GOVERNMENTS rather than
+  // geography, so it needs no world board — a continental game still has
+  // countries governed by social democrats and countries that are not.
+  kinds.push('party-family')
   const kind = sample(kinds)!
 
   const attempt = (): ReturnType<typeof dealOddOneOut> => {
@@ -2504,6 +2576,38 @@ const dealOddOneOut = (
             propertyLabel: `Three of these are members of ${name}`,
             kind,
             value: name,
+          },
+        }
+      }
+      case 'party-family': {
+        // Families and the impostor test both come from lib/parties, so the
+        // dealer and the reveal's lesson read the same join.
+        const families = shuffleArray(
+          [...countriesGovernedByFamily()].filter(([, governed]) => {
+            const inPool = governed.filter(isoCode => countryPool.includes(isoCode))
+            return inPool.length >= 3
+          })
+        )
+        const entry = families[0]
+        if (!entry) return undefined
+        const [family, governed] = entry
+        const same = sampleMany(
+          governed.filter(isoCode => countryPool.includes(isoCode)),
+          3
+        )
+        // The impostor must be a country we can name a government for — an
+        // unknown government is not an odd one out, it is a missing answer.
+        const odd = shuffleArray([...countryPool]).find(isoCode =>
+          governedOutsideFamily(isoCode, family)
+        )
+        if (!odd) return undefined
+        return {
+          country: odd,
+          oddOneOut: {
+            countries: shuffleArray([...same, odd]),
+            propertyLabel: `Three of these are governed by a party of the ${family} family`,
+            kind,
+            value: family,
           },
         }
       }
@@ -2690,6 +2794,116 @@ const dealTrajectoryMatch = async (
   return undefined
 }
 
+/**
+ * Logo Politics: a party's logo, and one of three things to know about it.
+ *
+ * It never asks which IDEOLOGY a party holds. A four-option ideology question
+ * has no defensible answer — most parties carry several at once and the labels
+ * run to a long tail of one-offs, so "pick THE ideology" is ambiguous by
+ * construction. The three questions here are all single-valued:
+ *
+ * - `origin` — which country is this from? Decoys prefer the same region,
+ *   which makes it a reading of the logo's iconography rather than a guess at
+ *   the continent.
+ * - `ruling` — does this party govern the named country? Half the deals are
+ *   drawn from the government and half from the opposition, so the answer is
+ *   never guessable from the framing.
+ * - `spectrum` — where does it sit left-to-right? `partySpectrum` collapses
+ *   Wikidata's position vocabulary onto exactly one of five bands, which is
+ *   what makes this askable where the raw labels are not.
+ *
+ * A party whose NAME gives the country away is refused throughout — that scrub
+ * matters for `origin` most, but a logo reading "Sweden Democrats" also hands
+ * over a `ruling` question about Sweden.
+ */
+const dealLogoPolitics = (
+  countryPool: ISOCountryCode[],
+  world: ISOCountryCode[]
+): {
+  country: ISOCountryCode
+  options?: ISOCountryCode[]
+  partyLogo: NonNullable<IndividualChallenge['partyLogo']>
+} | null => {
+  const askable = (isoCode: ISOCountryCode) =>
+    partiesWithLogo(isoCode).filter(
+      party =>
+        !mentionsCountry(party.name, isoCode) &&
+        !(party.endonym && mentionsCountry(party.endonym, isoCode))
+    )
+  const hasLogo = (isoCode: ISOCountryCode) => askable(isoCode).length > 0
+  const poolWithLogos = countryPool.filter(hasLogo)
+  const candidates = poolWithLogos.length >= 4 ? poolWithLogos : world.filter(hasLogo)
+  if (candidates.length < 4) return null
+
+  const country = sample(candidates)!
+  const stamp = (party: Party) => ({
+    image: party.logo!,
+    name: party.name,
+    ...(party.credit ? { credit: party.credit } : {}),
+    ...(party.license ? { license: party.license } : {}),
+  })
+
+  // Deal the three questions evenly, but never let a thin subject dead-end the
+  // round: a kind that cannot be built here falls through to `origin`, which
+  // every logo can answer.
+  const ask = sample(['origin', 'ruling', 'spectrum'] as const)!
+
+  if (ask === 'ruling') {
+    // Flip the COIN first, then find a country that can honour it. Picking the
+    // country first and flipping second looks even but is not: only a third of
+    // countries have an askable governing party (the rest name themselves in
+    // it), so a "yes" was impossible in most of them and the realised split
+    // came out 15/85 — always answering "No" scored 85%.
+    const wantsYes = Math.random() < 0.5
+    const governs = (isoCode: ISOCountryCode) => {
+      const leader = governingParty(isoCode)
+      return leader ? askable(isoCode).find(party => party === leader) : undefined
+    }
+
+    const seat = wantsYes
+      ? shuffleArray(candidates).find(isoCode => governs(isoCode)?.logo)
+      : shuffleArray(candidates).find(isoCode =>
+          askable(isoCode).some(party => party.logo && party !== governingParty(isoCode))
+        )
+
+    if (seat) {
+      const party = wantsYes
+        ? governs(seat)
+        : sample(askable(seat).filter(candidate => candidate !== governingParty(seat)))
+      if (party?.logo) {
+        return { country: seat, partyLogo: { ...stamp(party), ask: 'ruling', rules: wantsYes } }
+      }
+    }
+  }
+
+  if (ask === 'spectrum') {
+    const party = sample(askable(country).filter(candidate => partySpectrum(candidate)))
+    const band = party ? partySpectrum(party) : undefined
+    if (party?.logo && band) {
+      return {
+        country,
+        partyLogo: { ...stamp(party), ask: 'spectrum', band, bands: [...SPECTRUM_BANDS] },
+      }
+    }
+  }
+
+  const party = sample(askable(country))
+  if (!party?.logo) return null
+
+  const decoys = pickDecoys(country, candidates, 3, {
+    preferRegion: true,
+    eligible: hasLogo,
+    widen: world,
+  })
+  if (!decoys) return null
+
+  return {
+    country,
+    options: shuffleArray([country, ...decoys]),
+    partyLogo: { ...stamp(party), ask: 'origin' },
+  }
+}
+
 /** Leader-pick: who runs this country, millionaire-style (decoys same region). */
 const dealLeaderPick = (
   countryPool: ISOCountryCode[],
@@ -2770,6 +2984,112 @@ const ERRATA_KIND_BY_DIFFICULTY: Record<gameTypes.GameDifficulty, ErrataKind> = 
  * in it. Dealer and renderer read the same `isLabelableBox` threshold over the
  * same `labelBoxFor`.
  */
+/** Countries on a Rulers stage. More logos is more to read, and the frame has
+ *  to stay tight enough that every one of them is legible. */
+const RULERS_LINEUP_SIZE: Record<gameTypes.GameDifficulty, number> = {
+  easy: 4,
+  normal: 5,
+  hard: 6,
+}
+
+/** Map units. Past this the cluster straggles and the frame has to pull back
+ *  far enough that the logos stop reading. Measured p90 of real clusters ~320. */
+const RULERS_MAX_SPAN = 360
+
+/**
+ * Rulers: a framed neighbourhood wearing its governments' logos, one of which
+ * is an opposition party from its OWN country.
+ *
+ * Grown by PROXIMITY rather than by land border. Errata needs borders because a
+ * swap between neighbours is its question; Rulers' question is political, and
+ * the frame only has to look like a coherent region. Border-growing would also
+ * deal Western Europe almost every time — over the eligible pool only two
+ * border components can supply six countries.
+ */
+const dealRulers = async (
+  difficulty: gameTypes.GameDifficulty,
+  pool: ISOCountryCode[]
+): Promise<Pick<IndividualChallenge, 'country' | 'rulers'> | undefined> => {
+  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
+
+  const onBoard = new Set(pool)
+  // The SAME predicate the logo layer uses, so the dealer can never deal a
+  // country the stage then silently skips.
+  const canCarry = (isoCode: ISOCountryCode) => {
+    const code = isoCode as keyof typeof MAP_BOUNDS
+    return onBoard.has(isoCode) && isLabelableBox(labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code]))
+  }
+
+  const centre = (isoCode: ISOCountryCode): [number, number] | undefined => {
+    const box = labelBoxFor(
+      MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS],
+      MAP_REGIONS[isoCode as keyof typeof MAP_REGIONS]
+    )
+    return box ? [box[0] + box[2] / 2, box[1] + box[3] / 2] : undefined
+  }
+
+  const eligible = countriesWithGoverningLogo().filter(canCarry)
+  const size = RULERS_LINEUP_SIZE[difficulty]
+
+  for (const seed of shuffleArray(eligible)) {
+    const from = centre(seed)
+    if (!from) continue
+    const cluster = eligible
+      .flatMap(isoCode => {
+        const point = centre(isoCode)
+        if (!point) return []
+        return [{ isoCode, distance: Math.hypot(point[0] - from[0], point[1] - from[1]) }]
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, size)
+    if (cluster.length < size) continue
+    if (cluster[cluster.length - 1]!.distance * 2 > RULERS_MAX_SPAN) continue
+
+    const lineup = cluster.map(entry => entry.isoCode)
+    // Two parties whose logos read the same defeat the question — Croatia's HDZ
+    // and Bosnia's HDZ BiH are different parties wearing near-identical marks.
+    const marks = lineup.map(isoCode => governingParty(isoCode)?.abbreviation?.toLowerCase())
+    if (new Set(marks.filter(Boolean)).size !== marks.filter(Boolean).length) continue
+
+    const victims = shuffleArray(lineup.filter(isoCode => impostorParties(isoCode).length))
+    const victim = victims[0]
+    if (!victim) continue
+    const impostor = sample(impostorParties(victim))
+    const governing = governingParty(victim)
+    if (!impostor?.logo || !governing?.logo) continue
+
+    const logos: Partial<Record<ISOCountryCode, string>> = {}
+    const names: Partial<Record<ISOCountryCode, string>> = {}
+    for (const isoCode of lineup) {
+      const party = isoCode === victim ? impostor : governingParty(isoCode)
+      if (party?.logo) {
+        logos[isoCode] = party.logo
+        // The SHORT label — a full name is wider than the country it sits on.
+        names[isoCode] = shortPartyName(party)
+      }
+    }
+    if (Object.keys(logos).length < size) continue
+
+    return {
+      country: victim,
+      rulers: {
+        lineup: shuffleArray([...lineup]),
+        logos,
+        names,
+        trueLogo: { [victim]: governing.logo },
+        trueName: { [victim]: shortPartyName(governing) },
+        impostor: {
+          name: impostor.name,
+          ...(impostor.credit ? { credit: impostor.credit } : {}),
+          ...(impostor.license ? { license: impostor.license } : {}),
+        },
+        governing: { name: governing.name },
+      },
+    }
+  }
+  return undefined
+}
+
 const dealErrata = async (
   difficulty: gameTypes.GameDifficulty,
   pool: ISOCountryCode[],
@@ -3130,6 +3450,16 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
         break
       }
+      case 'logo-politics': {
+        const dealt = dealLogoPolitics(pool, world)
+        if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
+        break
+      }
+      case 'rulers': {
+        const dealt = await dealRulers(settings.difficulty, pool)
+        if (dealt) return { ...base, variant: 'rulers', ...dealt }
+        break
+      }
       case 'outline-reveal':
         return {
           ...base,
@@ -3293,6 +3623,23 @@ export const getIndividualChallenge = async ({
       if (roll < 0.95) {
         const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
         if (dealt) return { ...base, variant: 'rosetta', ...dealt }
+      }
+      break
+    }
+    case 'government.parties': {
+      // The party gate: a logo to place, then a government to spot. Both read
+      // the roster, so a country with no identifiable parties falls through to
+      // the find fallback rather than dealing a question with no answer.
+      if (roll < 0.6) {
+        const dealt = dealLogoPolitics(pool, world)
+        if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
+      }
+      if (roll < 0.95) {
+        // Rulers takes the slot the party-family odd-one-out used to hold: the
+        // same question, asked on the map with the logos themselves rather than
+        // as a list of country names.
+        const dealt = await dealRulers(settings.difficulty, pool)
+        if (dealt) return { ...base, variant: 'rulers', ...dealt }
       }
       break
     }

@@ -17,6 +17,32 @@ export const DRAG_LIST_OPTIONS = {
   bubbleScroll: true,
 } as const
 
+/**
+ * Dragging a thing ONTO a target, rather than reordering a list in place —
+ * Parliament's benches dropping onto the arc.
+ *
+ * Both ends share ONE group name and both `pull` and `put`: the tray gives a
+ * bench away and takes it back on a miss, so a one-way `pull: 'clone'` /
+ * `put: false` pair silently refuses every drop. `sort: false` because neither
+ * side has an order worth rearranging — the arc's order is the chamber's.
+ *
+ * Shared here rather than inlined so a second drop-target mode inherits the
+ * same feel instead of inventing its own.
+ */
+const DROP_GROUP = 'bench-drop'
+
+export const DRAG_SOURCE_OPTIONS = {
+  ...DRAG_LIST_OPTIONS,
+  group: { name: DROP_GROUP, pull: true, put: true },
+  sort: false,
+} as const
+
+export const DROP_TARGET_OPTIONS = {
+  ...DRAG_LIST_OPTIONS,
+  group: { name: DROP_GROUP, pull: true, put: true },
+  sort: false,
+} as const
+
 /** How long a finger holds still before a card comes up. Under this the
  *  gesture belongs to the scroller the list stands in. */
 export const DRAG_HOLD_MS = 220

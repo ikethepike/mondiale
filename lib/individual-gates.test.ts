@@ -9,7 +9,9 @@ import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/
 import { mentionsCountry } from '~~/lib/country'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { readFileSync } from 'node:fs'
 import { countryLedBy } from '~~/lib/leaders'
+import { governedOutsideFamily, governingParty, partiesOf } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
 import {
   individualChallengeAccessors,
@@ -116,6 +118,125 @@ describe('isCorrectIndividualAnswer', () => {
   })
 })
 
+describe('dealRulers (via forced variant)', () => {
+  // The gate whose deal had no test at all: `FORCE_INDIVIDUAL_VARIANT=rulers`
+  // fell through the switch and quietly dealt `find`, so nothing exercised the
+  // proximity clustering, the abbreviation guard or the impostor pick.
+  it('frames a neighbourhood where exactly one logo is the wrong government', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'rulers'
+
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      expect(dealt.variant, 'the forced variant must actually deal').toBe('rulers')
+      const rulers = dealt.rulers
+      expect(rulers).toBeDefined()
+
+      // The victim is on the stage, and IS the answer.
+      expect(rulers!.lineup).toContain(dealt.country)
+      expect(isCorrectIndividualAnswer(dealt, dealt.country)).toBe(true)
+
+      // Every framed country wears a logo, or the stage has a silent hole.
+      for (const isoCode of rulers!.lineup) {
+        expect(rulers!.logos[isoCode], `${isoCode} has no logo`).toBeTruthy()
+      }
+
+      // Every OTHER country wears its real government; only the victim lies.
+      for (const isoCode of rulers!.lineup) {
+        if (isoCode === dealt.country) continue
+        expect(rulers!.logos[isoCode]).toBe(governingParty(isoCode)?.logo)
+      }
+
+      // The impostor is a real party of the victim's OWN country, and is not
+      // the government it is standing in for.
+      const victimLogo = rulers!.logos[dealt.country]
+      expect(victimLogo).not.toBe(governingParty(dealt.country)?.logo)
+      expect(partiesOf(dealt.country).map(party => party.logo)).toContain(victimLogo)
+
+      // Two logos reading the same defeats the question outright.
+      expect(new Set(Object.values(rulers!.logos)).size).toBe(rulers!.lineup.length)
+
+      // The reveal puts the map right, so it has to carry the true mark.
+      expect(rulers!.trueLogo?.[dealt.country]).toBe(governingParty(dealt.country)?.logo)
+    }
+  })
+})
+
+describe('dealLogoPolitics (via forced variant)', () => {
+  it('deals every question kind answerably', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
+    const asked = new Set<string>()
+
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      expect(dealt.variant).toBe('logo-politics')
+      // The logo IS the question — a deal without one is unanswerable.
+      expect(dealt.partyLogo?.image).toBeTruthy()
+      // The party must belong to the country it is asked about.
+      expect(partiesOf(dealt.country).map(party => party.name)).toContain(dealt.partyLogo!.name)
+
+      // A logo naming its own country answers the question before it is
+      // asked — "BÜNDNIS 90/DIE GRÜNEN" is Germany on sight. A quarter of the
+      // roster fails this, so the dealer has to filter rather than hope.
+      expect(
+        mentionsCountry(dealt.partyLogo!.name, dealt.country),
+        `${dealt.partyLogo!.name} gives away ${dealt.country}`
+      ).toBe(false)
+
+      const ask = dealt.partyLogo!.ask ?? 'origin'
+      asked.add(ask)
+
+      if (ask === 'origin') {
+        expect(dealt.options).toContain(dealt.country)
+        expect(dealt.options?.length).toBe(4)
+      }
+      if (ask === 'ruling') {
+        // The claim has to match the roster, or the yes/no grades a fiction.
+        const governing = governingParty(dealt.country)
+        expect(dealt.partyLogo!.rules).toBe(governing?.name === dealt.partyLogo!.name)
+      }
+      if (ask === 'spectrum') {
+        // The truth must be among the choices, or the question is unwinnable.
+        expect(dealt.partyLogo!.bands).toContain(dealt.partyLogo!.band)
+      }
+    }
+
+    // All three kinds have to be reachable — a kind that never deals is a
+    // dead branch, and one that deals ALWAYS means the others silently broke.
+    expect([...asked].sort()).toEqual(['origin', 'ruling', 'spectrum'])
+  })
+
+  // The coin has to be flipped BEFORE the country is chosen. Picking the
+  // country first and flipping second looks even but is not: only a third of
+  // countries have an askable governing party, so "yes" was impossible in most
+  // of them and the realised split was 15/85 — always answering "No" scored 85%.
+  it('asks "does it govern?" both ways about equally often', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
+    let yes = 0
+    let no = 0
+
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      if (dealt.partyLogo?.ask !== 'ruling') continue
+      if (dealt.partyLogo.rules) yes++
+      else no++
+    }
+
+    expect(yes + no, 'the ruling question has to deal at all').toBeGreaterThan(40)
+    const share = yes / (yes + no)
+    expect(share, `P(yes) was ${(share * 100).toFixed(0)}%`).toBeGreaterThan(0.35)
+    expect(share, `P(yes) was ${(share * 100).toFixed(0)}%`).toBeLessThan(0.65)
+  })
+})
+
 describe('dealOddOneOut (via forced variant)', () => {
   it('names a club the way a sentence would, not the way the enum does', async () => {
     // The gate used to read the club's formal name straight off the country's
@@ -145,6 +266,40 @@ describe('dealOddOneOut (via forced variant)', () => {
       }
     }
     expect(sawOrganization, 'no organization question was dealt — test is vacuous').toBe(true)
+  })
+
+  // Rulers: three countries governed by one political family, one that is not.
+  it('asks about governments the lineup can actually be judged on', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'odd-one-out'
+
+    let sawFamily = false
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'isoCode', difficulty: 'normal' })
+      const shared = dealt.oddOneOut
+      if (shared?.kind !== 'party-family') continue
+      sawFamily = true
+      const family = shared.value!
+
+      expect(shared.propertyLabel).toBe(
+        `Three of these are governed by a party of the ${family} family`
+      )
+
+      // The impostor must be a country whose government we can NAME. An
+      // unidentifiable government is not an odd one out, it is a missing
+      // answer, and a player could never defend picking it.
+      expect(governedOutsideFamily(dealt.country, family)).toBe(true)
+
+      // Every other country in the lineup really is of the family — otherwise
+      // the question has two right answers.
+      for (const isoCode of shared.countries) {
+        if (isoCode === dealt.country) continue
+        expect(governingParty(isoCode)?.ideologies ?? []).toContain(family)
+      }
+
+      expect(shared.countries).toContain(dealt.country)
+      expect(shared.countries.length).toBe(4)
+    }
+    expect(sawFamily, 'no party-family question was dealt — test is vacuous').toBe(true)
   })
 })
 
@@ -233,6 +388,62 @@ describe('far-flung gate dealing', () => {
       expect(Math.hypot(width, height), slug).toBeGreaterThan(1)
       expect(mentionsCountry(entry.blurb, entry.iso), `${slug} blurb names its owner`).toBe(false)
       expect(entry.d.startsWith('M ')).toBe(true)
+    }
+  })
+})
+
+/**
+ * A gate that runs out of time still has to submit SOMETHING, and what it
+ * submits is a token the grader must reject (`wrongTokenFor`, usually CH).
+ * That token is filler, not a choice — a verdict that reads it back tells the
+ * player "Sorry, you pressed: Switzerland" about a country they never touched.
+ * Isaac hit this on Rulers and it spanned every gate, since the copy is shared.
+ */
+describe('the timeout verdict', () => {
+  const shell = readFileSync(
+    new URL('../components/view/ViewIndividualChallenge.vue', import.meta.url),
+    'utf8'
+  )
+
+  it('answers for every variant before any branch names the pick', () => {
+    const guard = shell.indexOf('if (timedOut.value)')
+    const firstPickBranch = shell.indexOf('const picked = submittedCountry.value')
+    expect(guard, 'the timeout guard is missing').toBeGreaterThan(-1)
+    expect(guard).toBeLessThan(firstPickBranch)
+  })
+
+  it('keeps every "you pressed" line behind the guard', () => {
+    // Rendered copy only — the comment above the guard says the words too.
+    const guard = shell.indexOf('if (timedOut.value)')
+    const rendered = [...shell.matchAll(/`Sorry, you pressed/g)].map(match => match.index ?? 0)
+    expect(rendered.length).toBeGreaterThan(0)
+    for (const at of rendered) expect(at).toBeGreaterThan(guard)
+  })
+})
+
+/**
+ * The map's SVG root carries `fill: none` inline, for its coastlines. Anything
+ * this file paints INTO that root therefore has to set its own fill inline
+ * too — a scoped class rule loses to an inline style, and the glyphs render
+ * invisible while the chip behind them still draws. That failure looks like
+ * solid black pills on the stage, which is exactly what shipped once.
+ */
+describe("Rulers' captions", () => {
+  const map = readFileSync(new URL('../components/GameMap.vue', import.meta.url), 'utf8')
+
+  it('sets its fills inline, where the root cannot outrank them', () => {
+    expect(map).toContain("plate.style.fill = 'var(--dark-blue)'")
+    expect(map).toContain("label.style.fill = 'var(--sour-milk)'")
+  })
+
+  it('uses palette tokens that exist', () => {
+    const palette = readFileSync(
+      new URL('../assets/scss/rules/_palette.scss', import.meta.url),
+      'utf8'
+    )
+    // `--off-white` was invented, resolved to nothing, and the text vanished.
+    for (const token of ['--dark-blue', '--sour-milk']) {
+      expect(palette, `${token} is not a real token`).toContain(`${token}:`)
     }
   })
 })
