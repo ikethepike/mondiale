@@ -1540,12 +1540,11 @@ const buildStarfield = (rng: Rng): Built => {
   // every ground it crosses — not just the first. Picking against one half of
   // a bicolour left red stars invisible on the red half.
   const grounds: FlagColor[] = []
-  let bg: FlagColor
   if (split === 'plain') {
-    bg = pickColor(rng, [])
-    parts.push(rect(0, 0, W, H, bg))
-    used.push(bg)
-    grounds.push(bg)
+    const a = pickColor(rng, [])
+    parts.push(rect(0, 0, W, H, a))
+    used.push(a)
+    grounds.push(a)
   } else if (split === 'bicolour') {
     const a = pickColor(rng, [])
     const b = pickColor(rng, [a], [a])
@@ -1554,7 +1553,6 @@ const buildStarfield = (rng: Rng): Built => {
       rect(0, 0, W, H, a),
       horizontal ? rect(0, H / 2, W, H / 2, b) : rect(W / 2, 0, W / 2, H, b)
     )
-    bg = a
     used.push(a, b)
     grounds.push(a, b)
   } else {
@@ -1562,7 +1560,6 @@ const buildStarfield = (rng: Rng): Built => {
     const b = pickColor(rng, [a], [a])
     const n = pick(rng, [5, 7, 9] as const)
     for (let i = 0; i < n; i++) parts.push(rect(0, (H * i) / n, W, H / n, i % 2 === 0 ? a : b))
-    bg = a
     used.push(a, b)
     grounds.push(a, b)
   }
