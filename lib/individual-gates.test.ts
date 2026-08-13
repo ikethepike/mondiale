@@ -118,6 +118,52 @@ describe('isCorrectIndividualAnswer', () => {
   })
 })
 
+describe('dealRulers (via forced variant)', () => {
+  // The gate whose deal had no test at all: `FORCE_INDIVIDUAL_VARIANT=rulers`
+  // fell through the switch and quietly dealt `find`, so nothing exercised the
+  // proximity clustering, the abbreviation guard or the impostor pick.
+  it('frames a neighbourhood where exactly one logo is the wrong government', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'rulers'
+
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      expect(dealt.variant, 'the forced variant must actually deal').toBe('rulers')
+      const rulers = dealt.rulers
+      expect(rulers).toBeDefined()
+
+      // The victim is on the stage, and IS the answer.
+      expect(rulers!.lineup).toContain(dealt.country)
+      expect(isCorrectIndividualAnswer(dealt, dealt.country)).toBe(true)
+
+      // Every framed country wears a logo, or the stage has a silent hole.
+      for (const isoCode of rulers!.lineup) {
+        expect(rulers!.logos[isoCode], `${isoCode} has no logo`).toBeTruthy()
+      }
+
+      // Every OTHER country wears its real government; only the victim lies.
+      for (const isoCode of rulers!.lineup) {
+        if (isoCode === dealt.country) continue
+        expect(rulers!.logos[isoCode]).toBe(governingParty(isoCode)?.logo)
+      }
+
+      // The impostor is a real party of the victim's OWN country, and is not
+      // the government it is standing in for.
+      const victimLogo = rulers!.logos[dealt.country]
+      expect(victimLogo).not.toBe(governingParty(dealt.country)?.logo)
+      expect(partiesOf(dealt.country).map(party => party.logo)).toContain(victimLogo)
+
+      // Two logos reading the same defeats the question outright.
+      expect(new Set(Object.values(rulers!.logos)).size).toBe(rulers!.lineup.length)
+
+      // The reveal puts the map right, so it has to carry the true mark.
+      expect(rulers!.trueLogo?.[dealt.country]).toBe(governingParty(dealt.country)?.logo)
+    }
+  })
+})
+
 describe('dealLogoPolitics (via forced variant)', () => {
   it('deals every question kind answerably', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'

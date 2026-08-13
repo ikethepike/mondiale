@@ -1129,6 +1129,11 @@ const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | und
         standings: Object.fromEntries(
           deal.benches.map(bench => [bench.name, bench.standing] as const)
         ),
+        // Held back with the answers: the governing bench's row IS beat 2's
+        // answer. Restored onto `challenge.benches` when beat 3 opens.
+        benchSeats: Object.fromEntries(
+          deal.benches.map(bench => [bench.name, bench.seats] as const)
+        ),
         ...(deal.status ? { status: deal.status } : {}),
         minority: deal.minority,
         ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
@@ -3401,6 +3406,11 @@ export const getIndividualChallenge = async ({
       case 'logo-politics': {
         const dealt = dealLogoPolitics(pool, world)
         if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
+        break
+      }
+      case 'rulers': {
+        const dealt = await dealRulers(settings.difficulty, pool)
+        if (dealt) return { ...base, variant: 'rulers', ...dealt }
         break
       }
       case 'outline-reveal':

@@ -52,6 +52,8 @@ const challengeFixture = (
         'Sweden Democrats': 'backing',
         'Left Party': 'opposition',
       },
+      // Held with the answers, restored onto the benches when beat 3 opens.
+      benchSeats: { 'Moderate Party': 68, 'Sweden Democrats': 73, 'Left Party': 24 },
       minority: true,
     },
     ...overrides,
@@ -203,6 +205,52 @@ describe('the answers', () => {
     await rideVerdict()
     expect(live(game.id).state.answers?.governingParty).toBe('Moderate Party')
     expect(live(game.id).state.answers?.standings['Sweden Democrats']).toBe('backing')
+  })
+
+  // Moving the answers to a side key was NOT enough on its own. `state.subject`
+  // publishes the governing party's name the moment beat 1 grades, so a bench
+  // carrying its own seat count hands beat 2 over:
+  //   benches.find(b => b.name === subject).seats
+  // `share` gives it up the same way — round(share * total) picks out a unique
+  // block — so both stay off the wire until beat 3, which is where they print.
+  it('does not carry beat 2 answer on the benches once beat 1 has graded', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+    await rideVerdict()
+
+    const open = live(game.id)
+    expect(open.state.beat).toBe('seats')
+    // The subject IS public — that is deliberate, beat 2 has to name whose
+    // seats it is asking about.
+    expect(open.state.subject).toBe('Moderate Party')
+
+    const governing = open.benches.find(bench => bench.name === 'Moderate Party')
+    expect(governing).toBeDefined()
+    expect(governing?.seats).toBeUndefined()
+    expect(governing?.share).toBeUndefined()
+    // Not just the governing one: any bench keeping its count would let a
+    // player subtract their way to the answer.
+    expect(open.benches.every(bench => bench.seats === undefined)).toBe(true)
+    expect(open.benches.every(bench => bench.share === undefined)).toBe(true)
+    // And the answer is not sitting anywhere else on the wire either.
+    expect(JSON.stringify(store.get(game.id))).not.toContain('governingSeats')
+  })
+
+  it('gives the seat counts back when beat 3 opens', async () => {
+    const { challenge, game, ctx } = await openRound()
+    challenge.state.beat = 'seats'
+    challenge.state.turn = 1
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 1, { seats: 68 })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 1, { seats: 68 })
+    await rideVerdict()
+
+    const open = live(game.id)
+    expect(open.state.beat).toBe('sides')
+    // Beat 3 prints "Sweden Democrats 73", so the numbers have to be back —
+    // and by now they cannot give beat 2 away.
+    expect(open.benches.find(bench => bench.name === 'Moderate Party')?.seats).toBe(68)
+    expect(open.benches.every(bench => bench.seats !== undefined)).toBe(true)
   })
 
   // Scoring reads the side key, so a round whose answers expired must not

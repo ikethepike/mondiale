@@ -92,7 +92,7 @@
           <span v-else class="subject-swatch" :style="{ background: subject.color }" />
           <span class="subject-name">{{ subject.name }}</span>
         </header>
-        <div class="arc">
+        <div class="arc" :class="verdict ? (myScore > 0 ? 'right' : 'wrong') : undefined">
           <span
             v-for="(seat, index) in arcSeats"
             :key="index"
@@ -120,9 +120,14 @@
             ]"
             :disabled="mySeats !== undefined || !!verdict"
             @click="pickSeats(block)"
+            @mouseenter="hoveredBlock = block"
+            @mouseleave="hoveredBlock = undefined"
+            @focus="hoveredBlock = block"
+            @blur="hoveredBlock = undefined"
           >
             <strong>{{ block }}</strong>
             <span class="block-share">{{ shareLabels[block] }}</span>
+            <span v-if="clearsMajority(block)" class="block-majority">carries the house</span>
           </button>
         </div>
       </div>
@@ -412,8 +417,32 @@ const arcSeats = computed(() => {
   const total = challenge.value?.totalSeats ?? 0
   if (!total) return []
   const dots = Math.min(MAX_SEAT_DOTS, total)
-  return hemicycleSeats(dots).map(seat => ({ ...seat, lit: false }))
+  // Whichever block the player is considering lights that share of the house.
+  // The arc was drawn inert (`lit: false` for every seat), which made it a
+  // decorative rainbow — the whole point of a hemicycle is that a number like
+  // "92 of 349" is a SHAPE, and an unlit one teaches nothing.
+  const showing = previewBlock.value
+  const litDots = showing === undefined ? 0 : Math.round((showing / total) * dots)
+  return hemicycleSeats(dots).map((seat, index) => ({ ...seat, lit: index < litDots }))
 })
+
+/**
+ * The block the arc is previewing: what the player has picked, else what they
+ * are pointing at, else the truth once the verdict is in.
+ */
+const hoveredBlock = ref<number | undefined>()
+const previewBlock = computed(() => {
+  if (verdict.value) return answers.value?.governingSeats
+  return mySeats.value ?? hoveredBlock.value
+})
+
+/**
+ * Whether a block would carry the house. Said alongside the share rather than
+ * instead of it — `shareLabels` already disambiguates two blocks that round to
+ * the same percent, and dropping it for "a majority" would put that collision
+ * back.
+ */
+const clearsMajority = (block: number) => block >= majority.value
 
 const heading = computed(() => {
   const country = challenge.value?.country
@@ -494,10 +523,14 @@ const promptSources = computed(() => datasetAttribution('elections'))
 // The band holds the verdict's room whether or not one is showing. Letting the
 // banner enter the flow shoved the whole question down mid-round, which reads
 // as the layout breaking rather than as an answer arriving.
+// Full width so the banner centres in the COLUMN. Left to shrink-wrap, the
+// band took the ghost's box and `inset: 0` pinned the live copy to wherever
+// that landed — which is how the verdict ended up hard against the left edge.
 .verdict-band {
   position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
   margin: 6px 0 0;
 }
 
@@ -529,9 +562,14 @@ const promptSources = computed(() => datasetAttribution('elections'))
     border: 1px solid transparent;
   }
 
+  // Centred over the ghost rather than stretched across the band: the banner
+  // is a pill that hugs its text, so `inset: 0` would have made it as wide as
+  // the column.
   &.live {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -565,14 +603,17 @@ const promptSources = computed(() => datasetAttribution('elections'))
     transform var(--motion-quick) var(--ease-smooth);
 }
 
+// The centring translateX has to be repeated in every keyed transform, or the
+// enter/leave states drop it and the banner slides in from the left edge —
+// that lurch WAS the jank.
 .verdict-enter-from {
   opacity: 0;
-  transform: translateY(-0.7rem) scale(0.96);
+  transform: translateX(-50%) translateY(-8px) scale(0.96);
 }
 
 .verdict-leave-to {
   opacity: 0;
-  transform: scale(0.98);
+  transform: translateX(-50%) scale(0.98);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -683,21 +724,55 @@ const promptSources = computed(() => datasetAttribution('elections'))
   }
 }
 
+// The shell is `justify-content: space-between`, so its slack falls BETWEEN
+// children — which stranded ~180px of cream above the hemicycle. The beat
+// grows to absorb it and centres its own parts inside, so the chamber sits
+// under the facts rather than adrift below them.
+.seats-beat {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  align-content: center;
+  min-height: 0;
+}
+
 .arc {
   position: relative;
-  width: min(100%, 46rem);
+  // The hemicycle is beat 2's subject, so it gets the room (px, not rem — the
+  // 62.5% root makes 54rem read as 540px).
+  width: min(100%, 720px);
   margin-inline: auto;
   aspect-ratio: 2 / 1;
 
   .seat {
     position: absolute;
-    width: 1.6%;
+    width: 1.8%;
     aspect-ratio: 1;
     border-radius: 50%;
-    background: ink(0.28);
+    background: ink(0.22);
     transform: translate(-50%, -50%);
     animation: seat-in 260ms both;
     animation-delay: var(--sweep-delay);
+    // Seats light in place as the preview changes, so moving between blocks
+    // reads as the bench growing rather than the arc redrawing.
+    transition:
+      background var(--motion-quick) var(--ease-smooth),
+      box-shadow var(--motion-quick) var(--ease-smooth);
+  }
+
+  .seat.lit {
+    background: var(--seat-lit, #{ink(0.88)});
+    box-shadow: 0 0 6px var(--seat-glow, transparent);
+  }
+
+  // Once the answer is in, the lit block wears its verdict.
+  &.right .seat.lit {
+    --seat-lit: #{hsl(170.5, 34.7%, 38%)};
+    --seat-glow: #{hsla(170.5, 34.7%, 45%, 0.5)};
+  }
+
+  &.wrong .seat.lit {
+    --seat-lit: var(--hior-ange);
   }
 }
 
@@ -710,15 +785,24 @@ const promptSources = computed(() => datasetAttribution('elections'))
 
 .blocks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-  gap: 0.6rem;
-  width: min(100%, 40rem);
+  // Wide enough that "26% of the house" holds one line — it wrapped before,
+  // which made four options four different heights. In px because the document
+  // root is 62.5%: 9.5rem reads as 95px here, not the 152 it looks like.
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  width: min(100%, 640px);
   margin-inline: auto;
   pointer-events: auto;
 
   .block-option {
     display: grid;
-    gap: 0.15rem;
+    gap: 2px;
+    padding: 12px 10px;
+
+    strong {
+      font-size: 24px;
+      line-height: 1.1;
+    }
 
     &.dimmed {
       opacity: 0.4;
@@ -726,8 +810,19 @@ const promptSources = computed(() => datasetAttribution('elections'))
   }
 
   .block-share {
-    font-size: 0.75rem;
+    font-size: 13px;
     opacity: 0.65;
+  }
+
+  // Crossing 175 of 349 is the fact beat 2 is really teaching, so a block that
+  // would do it says so rather than leaving the player to compare two numbers
+  // printed in different places on screen.
+  .block-majority {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.75;
   }
 }
 

@@ -6,6 +6,11 @@ import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentTimeline, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { currentCleanSweep, scheduleSweepTimeout } from './sweep-beats'
+import {
+  currentGovernment,
+  scheduleGovernmentTimeout,
+  startGovernment,
+} from './government-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
 export const closeTutorialHandler = defineGameHandler(
@@ -43,6 +48,23 @@ export const closeTutorialHandler = defineGameHandler(
     // and rearm refuses it (a dead round). Stamp on the close that empties
     // the rules cards, arm after the save.
     const lastClose = !Object.values(game.players).some(seat => seat.phase === 'tutorial')
+
+    // Government dealt as round 1 (the same FORCE_ROUND_TYPE seam — and the
+    // harness anyone exercising this mode reaches for). `startGovernment` runs
+    // only from enter-movement-phase, which round 1 never passes, so without
+    // this the round both leaks and stalls: the answers are never moved to the
+    // side key (the full set broadcasts to every socket for the whole round)
+    // and `deadline` stays 0, so the beats resolve instantly.
+    // Idempotent on both counts — a second call finds no `state.answers` to
+    // move and simply re-stamps the beat's clock.
+    const government = currentGovernment(game)
+    const startsGovernment = Boolean(
+      lastClose && government && !government.state.finished && government.state.deadline === 0
+    )
+    if (startsGovernment && government) {
+      await startGovernment({ io, redis, socket, eventTarget }, game, government)
+    }
+
     const heritage = currentHeritageHunt(game)
     const startsHeritage = Boolean(
       lastClose && heritage && !heritage.state.finished && heritage.state.deadline === 0
@@ -58,7 +80,7 @@ export const closeTutorialHandler = defineGameHandler(
     // The last close stamps ROUND-level state (`round.deadline`, an engine's
     // `state.deadline`) — a seat slice would drop it and leave every
     // client's countdown unstamped while the server's backstop ticks.
-    if (startsClassicClock || startsHeritage || startsTimeline) {
+    if (startsClassicClock || startsHeritage || startsTimeline || startsGovernment) {
       server.emit({ event: 'table-updated', game }, eventTarget)
     } else {
       server.emit({ event: 'update', game }, eventTarget)
@@ -71,6 +93,9 @@ export const closeTutorialHandler = defineGameHandler(
     }
     if (startsManhunt && !manhunt.state.finished) {
       scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)
+    }
+    if (startsGovernment && government) {
+      scheduleGovernmentTimeout({ io, redis, socket, eventTarget }, government)
     }
     if (startsClassicClock) scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
 

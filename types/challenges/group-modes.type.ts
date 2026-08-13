@@ -294,12 +294,20 @@ export interface GovernmentChallenge {
   }[]
   /** Beat 2's seat blocks, ascending; exactly one is the true share. */
   blocks: number[]
-  /** Every bench in seating order, left to right — the arc as drawn. */
+  /**
+   * Every bench in seating order, left to right — the arc as drawn.
+   *
+   * `seats` and `share` are ABSENT until beat 3 opens. Beat 2 asks how many
+   * seats the governing party holds, and `state.subject` names that party as
+   * soon as beat 1 grades — so a bench carrying its own seat count hands the
+   * next question over on the snapshot. Beat 3 prints them, so they arrive
+   * with the beat that needs them (`restoreBenchSeats`).
+   */
   benches: {
     name: string
-    seats: number
+    seats?: number
     /** Of the chamber's total, 0–1. */
-    share: number
+    share?: number
     color?: string
     logo?: string
   }[]
@@ -326,6 +334,12 @@ export interface GovernmentAnswers {
   /** Government plus backers, when a supply deal carries it past its own
    *  seats — the number that explains how a minority governs at all. */
   backedSeats?: number
+  /**
+   * Bench name → seats held. Held back with the rest of the answers because
+   * the governing party's row IS beat 2's answer; it comes back onto
+   * `challenge.benches` when beat 3 opens, which is where seat counts print.
+   */
+  benchSeats: Record<string, number>
 }
 
 export interface GovernmentState {

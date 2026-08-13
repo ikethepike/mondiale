@@ -82,7 +82,41 @@ export const startGovernment = async (
     await saveGovernmentAnswers(ctx.redis, game.id, roundIndex, dealt)
     delete challenge.state.answers
   }
+  hideBenchSeats(challenge)
   stampDeadline(challenge, challenge.state.beat)
+}
+
+/**
+ * Beat 2's answer is "how many seats does the governing party hold" — and the
+ * benches carry exactly that, per party, on the public snapshot.
+ *
+ * Moving the answers to a redis side key was not enough: `state.subject`
+ * publishes the governing party's NAME the moment beat 1 grades, so
+ * `benches.find(b => b.name === subject).seats` reconstructs the answer in
+ * every dealable chamber. `share` gives it up too — `round(share * total)`
+ * pinpoints a unique block — so both have to go.
+ *
+ * The arc does not need either: it draws a fixed number of dots and lights a
+ * fraction of them, and until beat 2 is answered that fraction is the
+ * player's own guess. Beat 3 DOES print each bench's seats, so the numbers
+ * come back when beat 3 opens — after the beat they would have given away.
+ */
+const hideBenchSeats = (challenge: GovernmentChallenge) => {
+  for (const bench of challenge.benches) {
+    delete bench.seats
+    delete bench.share
+  }
+}
+
+/** Beat 3 prints seat counts per bench, so they return with it. */
+const restoreBenchSeats = (challenge: GovernmentChallenge, answers: GovernmentAnswers | undefined) => {
+  if (!answers?.benchSeats) return
+  for (const bench of challenge.benches) {
+    const seats = answers.benchSeats[bench.name]
+    if (seats === undefined) continue
+    bench.seats = seats
+    bench.share = challenge.totalSeats ? seats / challenge.totalSeats : 0
+  }
 }
 
 /** Everyone the round is asking — absent seats score zero rather than stall it. */
@@ -142,10 +176,18 @@ const dealOf = (
     governingParty: answers.governingParty,
     blocks: challenge.blocks,
     governingSeats: answers.governingSeats,
-    benches: challenge.benches.map(bench => ({
-      ...bench,
-      standing: answers.standings[bench.name] ?? 'opposition',
-    })),
+    // Seats come from the ANSWERS, not the public benches: those are stripped
+    // until beat 3 so they cannot give beat 2 away, and the scorer must never
+    // be handed a hollow bench.
+    benches: challenge.benches.map(bench => {
+      const seats = answers.benchSeats?.[bench.name] ?? bench.seats ?? 0
+      return {
+        ...bench,
+        seats,
+        share: challenge.totalSeats ? seats / challenge.totalSeats : 0,
+        standing: answers.standings[bench.name] ?? 'opposition',
+      }
+    }),
     sorted: challenge.sorted,
     ...(answers.status ? { status: answers.status } : {}),
     minority: answers.minority,
@@ -220,6 +262,11 @@ const advanceBeat = async (ctx: EngineContext, game: Game, challenge: Government
 
   state.beat = following
   state.turn += 1
+  // Beat 3 prints each bench's seats, and by now beat 2 has been graded — the
+  // numbers can no longer give its answer away.
+  if (following === 'sides') {
+    restoreBenchSeats(challenge, await fetchAnswers(ctx.redis, game.id, roundIndexOf(game)))
+  }
   stampDeadline(challenge, following)
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
@@ -248,6 +295,10 @@ export const finishGovernment = async (
   // The one moment the answers become public: the round is over, so the split
   // the reveal teaches can ride the snapshot now.
   if (answers) state.answers = answers
+  // Also here, not only on the beat-3 advance: a round that ends early — every
+  // seat forfeits, a cap fires — never opens beat 3, and the reveal draws its
+  // hemicycle straight off `bench.seats`.
+  restoreBenchSeats(challenge, answers)
 
   const order = seatedPlayers(game)
   const scores = Object.fromEntries(
