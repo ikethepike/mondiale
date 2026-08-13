@@ -155,7 +155,10 @@ export const recompose = (
     const stretch = fieldStretch(vb)
 
     // `stretch` override: fold the emblem into the field so it's non-uniformly
-    // widened with the field (for full-bleed sunbursts/waves like MK, KI).
+    // widened with it — for a device that IS the field (an edge-to-edge burst or
+    // wave band). No flag takes this path today: the full-bleed cases (MK, KI)
+    // are hand-authored in WIDE_SVGS, since a flag whose waves want stretching
+    // usually carries a disc or bird that must NOT stretch with them.
     const fieldNodes = override?.stretch ? [...field, ...emblem] : field
     const fieldGroup = groupWith(fieldNodes, stretch.matrix as unknown as Matrix)
 

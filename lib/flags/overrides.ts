@@ -32,9 +32,6 @@ export const FAMILY_DEFAULTS: Record<Family, Placement> = {
  * Populated during the harness review sweep.
  */
 export const OVERRIDES: OverrideTable = {
-  // KI's frigatebird + wave bands are designed to reach the edges — stretch it.
-  KI: { stretch: true },
-
   // Per-flag emblem tuning.
   CN: { k: 0.54, dx: -110 }, // China stars: cluster sized + nudged toward hoist
   DZ: { k: 0.3, dx: -25 }, // Algeria crescent+star: smaller, nudged toward hoist
