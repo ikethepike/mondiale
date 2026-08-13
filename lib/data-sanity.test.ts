@@ -194,8 +194,18 @@ describe('parties.gen', () => {
 
   // Commons hosts free files only, so a logo carrying a non-free flag means the
   // harvest reached past Commons and the licence question changes with it.
-  it('holds only freely licensed logos', () => {
-    expect(parties.filter(party => party.nonFree).length).toBe(0)
+  //
+  // A handful of marks are published nowhere but the party's own site, and
+  // `LOCAL_LOGOS` in the parties generator carries them deliberately. The rule
+  // is therefore not "no non-free logos" but "no non-free logo whose source we
+  // cannot name" — an unattributed one is a harvest that wandered off Commons
+  // by accident, which is the case worth failing on.
+  it('names the source of every non-free logo', () => {
+    for (const party of parties.filter(party => party.nonFree)) {
+      expect(party.logo, `${party.name} is flagged non-free without a logo`).toBeTruthy()
+      expect(party.credit, `${party.name} has a non-free logo with no credit`).toBeTruthy()
+      expect(party.license, `${party.name} has a non-free logo with no licence`).toBeTruthy()
+    }
   })
 
   // Seat share is a fraction of the LISTED seats. It sums to at most 1, and

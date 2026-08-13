@@ -3,7 +3,13 @@ import { extname } from 'node:path'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
 import { decodeHtmlEntitiesDeep } from '../lib/generators/factbook'
-import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import {
+  captureImageCredit,
+  fetchJson,
+  saveCommonsImage,
+  wait,
+  writeWebp,
+} from './vendors/wikidata/commons'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
 import { COUNTRIES } from '../data/countries.gen'
 import { ELECTIONS } from '../data/elections.gen'
@@ -64,6 +70,31 @@ const REPORT_FILE = 'generators/data/parties-report.txt'
 const LOGO_WIDTH = 512
 /** Under this an image is flat colour — a flag, not a party mark. */
 const FLAT_IMAGE_BYTES = 1100
+/** Where a hand-supplied source image lives, keyed `${iso}-${qid}`. */
+const LOCAL_LOGO_DIRECTORY = 'generators/data/party-logos'
+
+/**
+ * Logos supplied by the party itself, for marks Commons does not carry freely.
+ *
+ * Commons hosting is the harvest's licence test, so a party whose emblem is
+ * only ever published on its own site resolves to nothing however the search
+ * is widened — Sweden's Miljöpartiet is the case that forced this, where P154
+ * reached Norway's similarly-named Miljøpartiet instead.
+ *
+ * The source file is checked in beside this table so a regeneration rebuilds
+ * it rather than silently dropping back to the gap. These are NOT free files:
+ * each one is stamped `nonFree` with its provenance, which is what keeps the
+ * licence question visible to `data-sanity.test.ts` instead of passing quietly.
+ */
+const LOCAL_LOGOS: {
+  [key: string]: { file: string; credit: string; license: string }
+} = {
+  'SE-Q213451': {
+    file: 'SE-Q213451.jpg',
+    credit: 'Miljöpartiet de gröna',
+    license: 'Party trademark, used to identify the party',
+  },
+}
 /** Q7278 = political party; the P31 gate that rejects court cases and coalitions. */
 const POLITICAL_PARTY = 'Q7278'
 /** Listed seats vs the declared chamber size may differ by this much before
@@ -1081,6 +1112,34 @@ console.log(`Fetching logos for ${logoQids.length} matched parties…`)
 let saved = 0
 {
   for (const entry of logoQids) {
+    const slugKey = `${entry.iso}-${entry.qid}`
+    // A hand-supplied mark wins outright: it exists precisely because the
+    // Commons pass cannot reach this party, so letting the harvest try first
+    // would only re-run a search already known to miss (or, worse, land on a
+    // same-named party in another country).
+    const local = LOCAL_LOGOS[slugKey]
+    if (local) {
+      const source = `${LOCAL_LOGO_DIRECTORY}/${local.file}`
+      if (!existsSync(source)) {
+        report.push(`${entry.iso}: local logo "${local.file}" is missing — party left unmarked`)
+        continue
+      }
+      const written = await writeWebp(
+        readFileSync(source),
+        `${OUTPUT_DIRECTORY}/${slugKey}`,
+        `/${PUBLIC_BASE}/${slugKey}`,
+        LOGO_WIDTH
+      )
+      if (!written) continue
+      entry.party.logo = written
+      entry.party.credit = local.credit
+      entry.party.license = local.license
+      entry.party.nonFree = true
+      saved += 1
+      process.stdout.write(`\r  ${saved} logos`)
+      continue
+    }
+
     const file = logoFiles.get(`${entry.iso}|${entry.qid}`)
     if (!file) continue
 
