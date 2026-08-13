@@ -2,7 +2,11 @@
   <template v-if="challenge.rulers">
     <h1 class="map-caption">One of these is not its country's ruling party</h1>
     <span class="map-caption sub">Tap the party that isn't in government</span>
-    <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="RULERS_SECONDS" />
+    <ChallengeTimerRadial
+      class="gate-clock rulers-clock"
+      :value="secondsLeft"
+      :total="RULERS_SECONDS"
+    />
     <span class="hint map-caption" :class="{ visible: showDoubleTapHint }">
       Press again to confirm
     </span>
@@ -117,6 +121,21 @@ const onMapClick = (event: Event) => {
 </script>
 
 <style lang="scss" scoped>
+// Every other timed gate stands its clock in the centre column, above a stage
+// that begins below it. Here the stage IS the map, which runs edge to edge and
+// behind the caption — a centred clock lands on whichever logo happens to sit
+// under it (Czechia's, in the Central Europe frame). It parks in the corner
+// instead, off the logos entirely.
+.rulers-clock {
+  position: absolute;
+  top: 1rem;
+  right: 1.4rem;
+  z-index: 2;
+  margin: 0;
+  --clock-size: 4.4rem;
+  --clock-seconds-size: 1.5rem;
+}
+
 .hint {
   display: inline-block;
   padding: 0.4rem 1.4rem;

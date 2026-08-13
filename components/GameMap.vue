@@ -1173,6 +1173,11 @@ const ensureLogos = () => {
   layer.classList.add('country-logo')
   svg.value.appendChild(layer)
 
+  // Resolve every logo's box BEFORE drawing any of it: a caption hangs below
+  // its own logo, which can put it on top of the country to the south (Austria
+  // captioned "OeVP" straight across Croatia's HDZ mark). Knowing all the
+  // boxes is what lets a chip step clear of its neighbours.
+  const placements: { code: string; href: string; x: number; y: number; side: number }[] = []
   for (const [code, href] of Object.entries(logos)) {
     if (!href) continue
     // The same labelability predicate the label layer uses, so a dealer that
@@ -1181,9 +1186,11 @@ const ensureLogos = () => {
       continue
     const anchor = labelAnchorFor(code as MapCode)
     if (!anchor) continue
-
     const side = Math.min(LOGO_MAX_SIDE, Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL))
-    const [x, y] = anchor.point
+    placements.push({ code, href, x: anchor.point[0], y: anchor.point[1], side })
+  }
+
+  for (const { code, href, x, y, side } of placements) {
 
     const image = document.createElementNS(SVG_NS, 'image')
     image.setAttribute('href', href)
@@ -1205,7 +1212,33 @@ const ensureLogos = () => {
     // alike, and it belongs to its logo at every zoom.
     const chipHeight = side * 0.2
     const chipWidth = chipHeight * (0.62 * caption.length + 0.7)
-    const chipY = y + side / 2 - chipHeight * 0.5
+    // Clear of the logo box, not inside it. Sitting the chip half its own
+    // height ABOVE the bottom edge put it over the artwork for anything that
+    // fills its square — Austria's "Die Volkspartei" wordmark was struck
+    // through by its own name. `meet` leaves slack only on the short axis, so
+    // there is no safe overlap to borrow.
+    let chipY = y + side / 2 + chipHeight * 0.12
+
+    // …and clear of everyone ELSE'S logo. A chip hangs south of its anchor, so
+    // on a tight frame it lands on the next country down.
+    //
+    // It only ever steps DOWN, and only so far. Flipping a blocked chip above
+    // its logo was tried and is worse: the map cannot see the view's own
+    // caption chrome, so an escape upward hides the name behind the prompt.
+    // Past the cap the chip stays put and simply overlaps — a caption near the
+    // wrong country reads as that country's answer, which is a worse lie than
+    // a crowded one.
+    const chipCeiling = chipY + side * 0.9
+    for (const other of placements) {
+      if (other.code === code) continue
+      const overlapsX =
+        x + chipWidth / 2 > other.x - other.side / 2 && x - chipWidth / 2 < other.x + other.side / 2
+      const overlapsY =
+        chipY + chipHeight > other.y - other.side / 2 && chipY < other.y + other.side / 2
+      if (!overlapsX || !overlapsY) continue
+      const stepped = other.y + other.side / 2 + chipHeight * 0.12
+      if (stepped <= chipCeiling) chipY = stepped
+    }
 
     const plate = document.createElementNS(SVG_NS, 'rect')
     plate.setAttribute('x', String(x - chipWidth / 2))
