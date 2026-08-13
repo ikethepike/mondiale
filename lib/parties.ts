@@ -95,7 +95,39 @@ export const partyKey = (name: string, isoCode?: ISOCountryCode): string =>
  * the decoration `civic` and differ on the word that names them.
  */
 export const partyTokens = (name: string, isoCode?: ISOCountryCode): string[] => {
+  const country = isoCode ? COUNTRIES[isoCode] : undefined
+  const fold = (term: string) => term.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+  // Wikipedia disambiguates an article title by its country — "Republican Party
+  // (United States)", "Liberal Democratic Party (Japan)". That parenthetical is
+  // the encyclopedia talking, not part of the name, and the gloss unfold below
+  // would turn it into tokens the roster's plain "Republican Party" can never
+  // carry.
+  //
+  // Dropped only when the parenthetical is the country and NOTHING else. A year
+  // beside it is disambiguating one party from another of the same name rather
+  // than from another country's: South Korea's "Democratic Party (South Korea,
+  // 2015)" must keep it to reach "Democratic Party of Korea", and stripping to a
+  // bare "Democratic Party" loses the roster entirely.
   let value = name
+  const identifiers = [country?.name.english, ...(country?.name.demonyms ?? [])]
+    .filter((term): term is string => !!term && term.length >= 4)
+    .map(fold)
+  if (identifiers.length) {
+    value = value.replace(/\s*\(([^)]*)\)\s*$/, (whole, inner: string) =>
+      identifiers.includes(fold(inner).trim()) ? '' : whole
+    )
+  }
+
+  // The Factbook lists a party's aliases inline — "Conservative People's Party
+  // or DKF", "Green Left or SF or F", "Japan Innovation Party or Nippon Ishin
+  // no kai". Everything from the first " or " is a SECOND NAME for the same
+  // party, not part of the first one, and tokenising it whole left the roster
+  // carrying `or` and an abbreviation the chamber's own spelling never has —
+  // so Denmark's Conservatives and Japan's DPFP matched nothing at all.
+  value = value.replace(/\s+\bor\b\s+.*$/i, '')
+
+  value = value
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -104,9 +136,6 @@ export const partyTokens = (name: string, isoCode?: ISOCountryCode): string[] =>
     .replace(/\bdemocratic\b/g, 'democrat')
     // "Labor (Labour) Party" — the gloss repeats the name; keep one copy.
     .replace(/\(([^)]*)\)/g, ' $1 ')
-
-  const country = isoCode ? COUNTRIES[isoCode] : undefined
-  const fold = (term: string) => term.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
   // The demonym is always decoration — "Norwegian Labour Party" is the "Labor
   // Party" at home.
@@ -166,8 +195,16 @@ export const matchInRoster = (
   }
 
   return roster.find(entry => {
-    // "ANO 2011" vs "…or ANO" — a year suffix is not a different party.
-    const bare = name.toLowerCase().replace(/\s+\d{4}$/, '')
+    // "ANO 2011" vs "…or ANO" — a year suffix is not a different party. Nor is
+    // the family word: the chamber seats Indonesia's Gerindra as "Gerindra
+    // Party" where the Factbook files it as "…or GERINDRA", and without this
+    // the bench found no roster entry, so the largest party in the government
+    // reached the screen with no logo and no colour.
+    const bare = name
+      .toLowerCase()
+      .replace(/\s+\d{4}$/, '')
+      .replace(/\s+part(y|ies)$/, '')
+      .trim()
     if (abbreviations(entry).some(abbreviation => abbreviation === bare)) return true
 
     for (const candidate of [entry.name, ...(entry.endonym ? [entry.endonym] : [])]) {
@@ -207,13 +244,35 @@ export const oppositionParties = (isoCode: ISOCountryCode): Party[] => {
 }
 
 /**
- * A joined government holding less of the chamber than this is a failed join,
- * not a surprising election. The real minority governments sit at 29% (Sweden)
- * and up; the broken joins land at 2% (Croatia's three one-seat minority
- * representatives) through 19% (Germany, where the chamber seats CDU and CSU as
- * one bench the cabinet names separately).
+ * How much of the cabinet's OWN party list has to reach a bench. This is the
+ * direct question — did the join work? — where a seat share only ever answered
+ * it by proxy.
+ *
+ * The broken joins are unambiguous on this axis: Malaysia, Bulgaria, France,
+ * Poland, Serbia and Ukraine resolve NOTHING, and no threshold above zero keeps
+ * them. What the proxy got wrong was the other end. Sweden (29% of the chamber),
+ * Finland (30%) and Norway (37%) are honest minority governments that name every
+ * one of their parties, and they were surviving a 25% seat floor by a hair;
+ * Germany was failing it outright at 19%, because the chamber seats CDU and CSU
+ * as one bench the cabinet names separately.
+ *
+ * A quarter, not a half: Indonesia names thirteen parties for a coalition the
+ * chamber seats as eight, and South Africa ten for six. Both are real
+ * governments the round already deals, and both sit under 50%.
  */
-const GOVERNMENT_SHARE_FLOOR = 0.25
+const GOVERNMENT_COVERAGE_FLOOR = 0.25
+
+/**
+ * The seat share below which a government is too small to build a round on,
+ * whatever the join did. This is a fragmentation backstop, not a join test —
+ * coverage above does that work now, which is what lets this come down from the
+ * 0.25 it used to carry.
+ *
+ * It still refuses the Philippines: the governing party holds 27 of 254 seats
+ * across fourteen benches, so a round asking who governs would be asking about
+ * a bench the player cannot see.
+ */
+const GOVERNMENT_SHARE_FLOOR = 0.1
 
 /** Where a bench stands in relation to the government. */
 export type Standing = 'government' | 'backing' | 'opposition'
@@ -249,23 +308,29 @@ export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => 
   // The cabinet names parties in its own spelling; resolve each through the
   // SAME matcher the rest of the roster joins on, then compare benches by
   // identity rather than by name.
-  const resolve = (names: string[]): Set<Bench> => {
-    const wanted = new Set<Party>()
+  // Reported per NAME as well as per bench: the seated set answers "which
+  // benches govern", and `named` answers "how much of the cabinet's list did we
+  // actually find" — the coverage gate below. Both come out of ONE pass so the
+  // two can never grow separate ideas of what counts as a match.
+  const resolve = (names: string[]): { seated: Set<Bench>; named: number } => {
+    const wanted = new Map<string, Party>()
     for (const name of names) {
       const party = matchInRoster(name, roster, isoCode)
-      if (party) wanted.add(party)
+      if (party) wanted.set(name, party)
     }
-    return new Set(
-      benches.filter(bench => {
-        if (bench.party && wanted.has(bench.party)) return true
-        // A bench the roster never named can still be matched by its own label.
-        return names.some(name => partyKey(name, isoCode) === partyKey(bench.name, isoCode))
-      })
-    )
+    const matches = (bench: Bench, name: string): boolean =>
+      (bench.party && wanted.get(name) === bench.party) ||
+      // A bench the roster never named can still be matched by its own label.
+      partyKey(name, isoCode) === partyKey(bench.name, isoCode)
+
+    return {
+      seated: new Set(benches.filter(bench => names.some(name => matches(bench, name)))),
+      named: names.filter(name => benches.some(bench => matches(bench, name))).length,
+    }
   }
 
   const government = resolve(cabinet.governing)
-  if (!government.size) return undefined
+  if (!government.seated.size) return undefined
   const backing = resolve(cabinet.backing)
 
   // A government that joined only crumbs did not really join. Croatia is the
@@ -274,19 +339,23 @@ export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => 
   // one-seat minority representatives — leaving the REAL government of 61 filed
   // as opposition. A round built on that would teach the opposite of the truth.
   //
-  // What separates it from an honest minority government is not the seat count
-  // — Sweden's government holds 68 to the opposition's 107 and that IS the
-  // lesson — but how much of the chamber the joined benches speak for. A real
-  // government reaches a fair share of the seats it takes to govern; a broken
-  // join lands on the tail.
-  const held = [...government].reduce((total, bench) => total + bench.seats, 0)
+  // Ask it of the cabinet's own list, party by party. Croatia matched three
+  // names in ten; a government the chamber really seats matches most of what it
+  // names. Counted per NAME rather than per bench, because a coalition the
+  // chamber seats as one bench would otherwise read as a single hit.
+  if (government.named / cabinet.governing.length < GOVERNMENT_COVERAGE_FLOOR) return undefined
+
+  // And a government too small to see is no round, however clean the join.
+  const held = [...government.seated].reduce((total, bench) => total + bench.seats, 0)
   const seated = benches.reduce((total, bench) => total + bench.seats, 0)
   if (!seated || held / seated < GOVERNMENT_SHARE_FLOOR) return undefined
 
   return {
-    government: benches.filter(bench => government.has(bench)),
-    backing: benches.filter(bench => backing.has(bench) && !government.has(bench)),
-    opposition: benches.filter(bench => !government.has(bench) && !backing.has(bench)),
+    government: benches.filter(bench => government.seated.has(bench)),
+    backing: benches.filter(bench => backing.seated.has(bench) && !government.seated.has(bench)),
+    opposition: benches.filter(
+      bench => !government.seated.has(bench) && !backing.seated.has(bench)
+    ),
     ...(cabinet.status ? { status: cabinet.status } : {}),
   }
 }
@@ -675,10 +744,14 @@ export const alliancesOf = (isoCode: ISOCountryCode): { alliance: string; benche
  * being named, and reads worse than "the Swedish chamber".
  */
 const CHAMBER_NAMES: { [isoCode in ISOCountryCode]?: string } = {
+  CA: 'House of Commons',
   DE: 'Bundestag',
   DK: 'Folketing',
+  EE: 'Riigikogu',
   ES: 'Congreso de los Diputados',
   FI: 'Eduskunta',
+  GB: 'House of Commons',
+  ID: 'Dewan Perwakilan Rakyat',
   IE: 'Dáil Éireann',
   IL: 'Knesset',
   IN: 'Lok Sabha',

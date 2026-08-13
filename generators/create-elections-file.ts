@@ -92,10 +92,11 @@ const SEAT_COVERAGE_FLOOR = 0.5
  *  little; a sum past this means the field is mixing scopes. */
 const VOTE_SUM_CEILING = 101
 
-/** 32 of 71 chambers resolve to a live cabinet. The cabinet is the only source
- *  for who GOVERNS as opposed to who won seats, so a collapse must fail the run
- *  rather than quietly drop the mode that deals from it. */
-const CABINET_FLOOR = 24
+/** 41 of 71 chambers resolve to a live cabinet, 39 of them naming the parties
+ *  in it. The cabinet is the only source for who GOVERNS as opposed to who won
+ *  seats, so a collapse must fail the run rather than quietly drop the mode
+ *  that deals from it. */
+const CABINET_FLOOR = 34
 
 const force = process.argv.includes('--force')
 
@@ -486,10 +487,17 @@ const readCabinet = (article: string, text: string): Cabinet | undefined => {
       .slice(0, 60) || undefined
   const names = partyNames
 
+  // A one-party cabinet writes the SINGULAR field: every Westminster and
+  // presidential system reaches here with `political_party` and nothing in
+  // `political_parties`, so reading only the plural filed the United States,
+  // Japan, Canada, Australia and the United Kingdom as governments we could
+  // not name. The plural still wins where a coalition writes both.
+  const governing = names(fields.political_parties ?? '')
+
   return {
     article,
     head: plainText(fields.government_head ?? '') || undefined,
-    governing: names(fields.political_parties ?? ''),
+    governing: governing.length ? governing : names(fields.political_party ?? ''),
     backing: names(backing),
     ...(status ? { status } : {}),
   }

@@ -1,13 +1,12 @@
 chambers: 71 of 78 seeded
 with vote share: 58
-with a live cabinet: 39
-  naming its governing parties: 25
+with a live cabinet: 41
+  naming its governing parties: 39
   naming confidence-and-supply backers: 2
 
 cabinet head disagrees with leaders.gen (usually ours is older):
   ZW: "Constantino Chiwenga" in Cabinet of Emmerson Mnangagwa, ours says "Emmerson Mnangagwa"
   KR: "* Lee Ju-ho * Kim Min-seok * Han Seong-sook" in Cabinet of Lee Jae Myung, ours says "Lee Jae Myung"
-  LT: "Mindaugas Sinkevičius" in Sinkevičius Cabinet, ours says "Inga Ruginienė"
   LV: "Andris Kulbergs" in Kulbergs cabinet, ours says "Evika Siliņa"
   UA: "Serhii Koretskyi" in Koretskyi Government, ours says "Yulia Svyrydenko"
 
@@ -17,7 +16,6 @@ BD: no live cabinet article found
 CD: no readable election infobox in "2023 Democratic Republic of the Congo general election"
 IQ: no live cabinet article found
 KE: no live cabinet article found
-MM: no live cabinet article found
 NG: no readable election infobox in "2023 Nigerian House of Representatives election"
 NP: no live cabinet article found
 PK: no live cabinet article found
@@ -29,15 +27,15 @@ TN: no readable election infobox in "2022 Tunisian parliamentary election"
 TZ: no readable election infobox in "2025 Tanzanian general election"
 UG: no live cabinet article found
 VN: no live cabinet article found
-AR: only 127/257 seats accounted for — parse is suspect
+AR: no live cabinet article found
 AT: no live cabinet article found
+AU: 150 seats exceed the 40 contested
 BE: no live cabinet article found
 BR: no live cabinet article found
 CH: no live cabinet article found
 CL: no live cabinet article found
 CO: no live cabinet article found
 CZ: no live cabinet article found
-EE: no live cabinet article found
 GR: no live cabinet article found
 IE: no live cabinet article found
 IL: no live cabinet article found

@@ -398997,5 +398997,2722 @@
       ]
     },
     "label": "Tax Cuts Japan and Yukoku Alliance"
+  },
+  "Q414||Homeland Force|47": {
+    "qid": "Q2983913",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "b4c79a79252d3f18b24317c372531d072ceb3a63",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 155059,
+                "id": "Q155059"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q2983913$38BC05D9-0F9F-4836-9A60-4BD4CB396249",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "4e566815dbdbf44ea4f15b54d4423844eedbc05d",
+            "datavalue": {
+              "value": {
+                "time": "+1968-01-01T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 9,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q2983913$F8EE2D87-7723-4B67-9D37-DC6D8A315706",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "fc26459f076a80058da117697812227691e2ffc2",
+            "datavalue": {
+              "value": "Pcrcolor 0.svg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q2983913$E3DBE485-DADF-4AAF-8A15-48A822957243",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Revolutionary Communist Party of Argentina"
+  },
+  "Q414||United Provinces (political coalition)|8": {
+    "qid": "Q136756659",
+    "claims": {},
+    "label": "United Provinces"
+  },
+  "Q414||Workers' Left Front|3": {
+    "qid": "Q8034724",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "8dc4d43c1757a33b64b1f0c66be21f7f91f0c8a3",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 181133,
+                "id": "Q181133"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q8034724$19E412CC-903A-466C-B9E2-AC429940342A",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "d80ed1bdc24290f42fd5add505289619d355bbe0",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 164597,
+                "id": "Q164597"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q8034724$09dfdaa6-4df2-23b3-e496-8286d843fa81",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "6fc6501fa74bae05618aa8a75fd91ff55d65a4ac",
+            "datavalue": {
+              "value": {
+                "time": "+1964-03-00T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 10,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q8034724$0082E00A-3029-4F28-9BC1-58E81299BDB1",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "fea62736a3b514a701d6ecd3376dde7877ee2b8a",
+            "datavalue": {
+              "value": "Logo del Partido Obrero.png",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q8034724$f40c6fa1-433b-ba95-cfa2-6604f9daf24c",
+          "rank": "normal"
+        }
+      ],
+      "P463": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "bcd397f2aea399afe038f330ae5086618c5bf67a",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 598744,
+                "id": "Q598744"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P580": [
+              {
+                "snaktype": "value",
+                "property": "P580",
+                "hash": "868eb7d007c6fb5a0d47866b3f90fd517622ea4f",
+                "datavalue": {
+                  "value": {
+                    "time": "+2011-04-14T00:00:00Z",
+                    "timezone": 0,
+                    "before": 0,
+                    "after": 0,
+                    "precision": 11,
+                    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                  },
+                  "type": "time"
+                },
+                "datatype": "time"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P580"
+          ],
+          "id": "Q8034724$62b4cf49-4b65-b78e-65cc-dac78ac8b74e",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "cf90c5b8dd12f06c4439556798f7107bc9595495",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 2393813,
+                "id": "Q2393813"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P580": [
+              {
+                "snaktype": "value",
+                "property": "P580",
+                "hash": "e197143aff4ccedce9911e34aeeaac77a5311073",
+                "datavalue": {
+                  "value": {
+                    "time": "+2004-00-00T00:00:00Z",
+                    "timezone": 0,
+                    "before": 0,
+                    "after": 0,
+                    "precision": 9,
+                    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                  },
+                  "type": "time"
+                },
+                "datatype": "time"
+              }
+            ],
+            "P582": [
+              {
+                "snaktype": "value",
+                "property": "P582",
+                "hash": "1ab4607250ac7a0c1a2f1b93c25e4bff9e147330",
+                "datavalue": {
+                  "value": {
+                    "time": "+2021-00-00T00:00:00Z",
+                    "timezone": 0,
+                    "before": 0,
+                    "after": 0,
+                    "precision": 9,
+                    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                  },
+                  "type": "time"
+                },
+                "datatype": "time"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P580",
+            "P582"
+          ],
+          "id": "Q8034724$22ac9857-4926-83de-c603-ecb8ec3fd906",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Workers' Party"
+  },
+  "Q414||Innovación&nbsp;Federal|2": {
+    "miss": true
+  },
+  "Q414||Defendamos Córdoba|1": {
+    "miss": true
+  },
+  "Q414||For San Juan|1": {
+    "qid": "Q832976",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "e5fb278fea5ec9335f2412dfb6a6c2c91a2fe6f9",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 130096495,
+                "id": "Q130096495"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q832976$EDB28537-7E18-44B4-897C-4EC150331EFF",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "087db0c662f59a05baa27e8e5ed019e12930209b",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 7169,
+                "id": "Q7169"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q832976$41e18cc6-4031-7045-3032-ad7cd277a663",
+          "rank": "normal"
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "c51f0bd9d182025f0486dd687428bbadca771b24",
+            "datavalue": {
+              "value": "005C9E",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q832976$1DD19CAD-05C9-4269-B424-48905C269D89",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "483b0eea21b650a7c068d42d1dfa7274b4ddffb7",
+            "datavalue": {
+              "value": {
+                "time": "+1931-01-01T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 9,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q832976$2E8E6CC0-9849-4708-AFE2-F8A2DE147ED6",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "32b4b25bf9101db4d15c58f78e68f7a883099270",
+            "datavalue": {
+              "value": "Escudo del Partido Demócrata (Argentina).svg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q832976$29096667-2A90-485D-82C6-7BA4BDB3C224",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "f9e545cb26075c88684751c900fb2200ce90a5b6",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ],
+                "P4656": [
+                  {
+                    "snaktype": "value",
+                    "property": "P4656",
+                    "hash": "f72d6269f55b88c2fdd45e2670cbd7a521056087",
+                    "datavalue": {
+                      "value": "https://en.wikipedia.org/w/index.php?title=National_Democratic_Party_(Argentina)&oldid=823710865",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143",
+                "P4656"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "label": "Democratic Party (Argentina)"
+  },
+  "Q414||La Neuquinidad|1": {
+    "miss": true
+  },
+  "Q796||State of Law Coalition|29": {
+    "miss": true
+  },
+  "Q1028||Constitutional Union|18": {
+    "qid": "Q3550065",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "bc28c431529cb9f488a6e7065eeafbedfc1b7a96",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 943197,
+                "id": "Q943197"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q3550065$C635F489-5E5D-4574-805B-20F97AC9228E",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "a2bc03e81f766eabf4832d4e477ac4b41990f83a",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 1043096,
+                "id": "Q1043096"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q3550065$5d6a605e-4385-4e8f-1610-4506bc10de25",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "1e424cb5e7fa266dce4c1961f461e8bd1ed1b5d9",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 729119,
+                "id": "Q729119"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q3550065$d57e22c7-4f60-5c78-3c12-9696074a9311",
+          "rank": "normal"
+        }
+      ],
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "bd01a3fea0723996858217e382057d3c0255d7fe",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 844072,
+                "id": "Q844072"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q3550065$67186776-49f2-5235-2fd2-260265150ae1",
+          "rank": "normal"
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "f9aa9148418c02806807dbabb228321428c721c3",
+            "datavalue": {
+              "value": "F29400",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q3550065$9F6ED728-7B8D-4362-9E99-8C82F52FD9A7",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "787567da180a3a453ec501689ed8533ca1cf046c",
+            "datavalue": {
+              "value": {
+                "time": "+1983-04-10T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q3550065$9053020D-8E13-4FE8-8932-F5FFE0323523",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P463": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "2e2d70bcd24e48335fefe30b3b70ccafcf687f00",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 212712,
+                "id": "Q212712"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q3550065$DD18B697-E4E2-4A23-80EF-F306E1A3E0DC",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "d4bd87b862b12d99d26e86472d44f26858dee639",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "f30cbd35620c4ea6d0633aaf0210a8916130469b",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8447,
+                        "id": "Q8447"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "label": "Constitutional Union"
+  },
+  "Q881||Communist Party of Vietnam|482": {
+    "miss": true
+  },
+  "Q155||Democratic Labour Party|17": {
+    "miss": true
+  },
+  "Q155||Social Christian Party|6": {
+    "miss": true
+  },
+  "Q39||Green Party of Switzerland|23": {
+    "miss": true
+  },
+  "Q39||Green Liberal Party of Switzerland|10": {
+    "miss": true
+  },
+  "Q298||Party of the People|14": {
+    "qid": "Q107012458",
+    "claims": {
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "b2e5ebb81db596bca939805f8edcfa76fee9eeb5",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 1030814,
+                "id": "Q1030814"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q107012458$754d4795-4740-4ecf-c621-de2b1e35fcdc",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "5ed7074f4d628621f6500ac89b04ad3f9757ecca",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 108046818,
+                "id": "Q108046818"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q107012458$04c9ba8c-456c-4345-1159-163cc6253e50",
+          "rank": "normal"
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "b715d2db026d82048350dbf01a54f4c91dca3813",
+            "datavalue": {
+              "value": "00285E",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q107012458$2b1f112b-42ac-77ca-ac3f-8551425d6767",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "f2da24b4fdab1e8290d6b12221a0519e2fcc27d7",
+            "datavalue": {
+              "value": {
+                "time": "+2019-12-13T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q107012458$742fffa1-440c-31d4-4705-38d0ddf2252d",
+          "rank": "normal"
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "9381865da090a9ef5a7ac0f2f36392e98aa165c4",
+            "datavalue": {
+              "value": "Logo Partido de la Gente.jpg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q107012458$46500d16-46a6-10e9-aace-d61c58e9e5d8",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Party of the People (Chile)"
+  },
+  "Q739||Democratic Center|24": {
+    "qid": "Q15909095",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "b7d7f15d46c5fc1ad163df077cf43a97c0ae73d6",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 852739,
+                "id": "Q852739"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$c31b4400-4210-ddce-b9ab-c8790f457ede",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "288ab581e7d2d02995a26dfa8b091d96e78457fc",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "6a164248fc96bfa583bbb495cb63ae6401ec203c",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 206855,
+                        "id": "Q206855"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "c2ecbff7370f6185f2e41f1de97be659d1fdbc92",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 162719,
+                "id": "Q162719"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$feea988c-47d0-7a21-57ff-1c8b0070ac88",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "7f9381df404a0d564d03fea330689084a034dabd",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 209158,
+                "id": "Q209158"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$55089e56-44c4-b77d-2be4-2e4048345bac",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "288ab581e7d2d02995a26dfa8b091d96e78457fc",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "6a164248fc96bfa583bbb495cb63ae6401ec203c",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 206855,
+                        "id": "Q206855"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "c8eaa460d4569e1a2e511012b85ca847be87c4b0",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 436860,
+                "id": "Q436860"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$078d1301-4a01-be43-5a92-b0972baff088",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "964c74de56427a9695d344db93ccf4d8c9b90adb",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "231e769e8fb8f826363ba369b225ae74c6b30da9",
+                    "datavalue": {
+                      "value": "https://www.nytimes.com/es/2018/06/25/espanol/opinion/opinion-corrales-populismo-amlo-duque.html",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "6dc0a4cfa9fe87e4ce9ca7f154310ab3f6fd3035",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 7900570,
+                "id": "Q7900570"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$4cd30375-4015-cf52-1a28-c070b39fdfeb",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "b3e04d06b0d504ee7cbb252e388c348157589250",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "483c0633dd5073ba758deca92f4d38cff46f743b",
+                    "datavalue": {
+                      "value": "https://www.dnp.gov.co/Portals/0/archivos/documentos/GCRP/PND/PND.pdf",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P1065": [
+                  {
+                    "snaktype": "value",
+                    "property": "P1065",
+                    "hash": "475f9a22e07376adedb1b981c356fab8694166ea",
+                    "datavalue": {
+                      "value": "https://web.archive.org/web/20130312121748/https://www.dnp.gov.co/Portals/0/archivos/documentos/GCRP/PND/PND.pdf",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P1065"
+              ]
+            },
+            {
+              "hash": "5fdbde964b859cd1cfacb322eeda6cd58a99701e",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "a842b752dc2cf7d8f9f9f1a564783a52734fd47b",
+                    "datavalue": {
+                      "value": "https://www.npr.org/2018/06/18/620888643/colombia-elects-right-wing-populist-ivan-duque-as-president",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "aa04d0c3b16b6cedf0a241fa3243ceeb13dec893",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 1414298,
+                "id": "Q1414298"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$66277cc8-4c81-07be-552d-7f52078b3ef9",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "b3e04d06b0d504ee7cbb252e388c348157589250",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "483c0633dd5073ba758deca92f4d38cff46f743b",
+                    "datavalue": {
+                      "value": "https://www.dnp.gov.co/Portals/0/archivos/documentos/GCRP/PND/PND.pdf",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P1065": [
+                  {
+                    "snaktype": "value",
+                    "property": "P1065",
+                    "hash": "475f9a22e07376adedb1b981c356fab8694166ea",
+                    "datavalue": {
+                      "value": "https://web.archive.org/web/20130312121748/https://www.dnp.gov.co/Portals/0/archivos/documentos/GCRP/PND/PND.pdf",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P1065"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "c32d1c736b46186ef5ae47ff2e7dbb1dee768086",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 182121,
+                "id": "Q182121"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$051754d0-4531-227e-a3e6-c45363535eef",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c456dc5cd2117249948c288206ff3f8b1bf574f0",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 8449,
+                        "id": "Q8449"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "59146921e9f71b6cd44387d8c5d885382fd55ef8",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 76074,
+                "id": "Q76074"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$0C86927E-C077-4D8A-9D4C-00D9F338DC5E",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "22c69fcf7bc514ea28efe7943da81fc358b2dc71",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "65d53f1bfc6bbfd3d8784688c22cb8f730a20f3d",
+                    "datavalue": {
+                      "value": "http://www.elindependent.org/articulos/article.asp?id=1784",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P1065": [
+                  {
+                    "snaktype": "value",
+                    "property": "P1065",
+                    "hash": "000cefe539df8e438bf46315f2ba5bdd2be36b74",
+                    "datavalue": {
+                      "value": "https://web.archive.org/web/20080724195554/http://www.elindependent.org/articulos/article.asp?id=1784",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P2960": [
+                  {
+                    "snaktype": "value",
+                    "property": "P2960",
+                    "hash": "19c488219b5a381b3b06faba34ca0246bf83a13c",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2008-07-24T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P1065",
+                "P2960"
+              ]
+            },
+            {
+              "hash": "d107b4212a11b0df80036c33c891112319b93926",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "5a755d0f7b6b614e6db00d0c57d2145245901409",
+                    "datavalue": {
+                      "value": "https://elpais.com/internacional/2017/09/05/colombia/1504631686_701750.html",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "bd01a3fea0723996858217e382057d3c0255d7fe",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 844072,
+                "id": "Q844072"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$5d832f15-421c-28aa-da49-99df157fe9cc",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "f8031eafab2c90599514ca9221ae61f618450fe9",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "9eb3547fd1093fe77193406acb1b6e1259eb8cfb",
+                    "datavalue": {
+                      "value": "http://www.semana.com/nacion/articulo/la-derecha-es-la-nueva-fuerza-politica-del-pais/394412-3",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "0d4765e3242ab7ff9026cf4ce6f4ef871dde6ec2",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 204481,
+                "id": "Q204481"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$87587f9f-428c-c8f4-88e9-9540260575ab",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "d107b4212a11b0df80036c33c891112319b93926",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "5a755d0f7b6b614e6db00d0c57d2145245901409",
+                    "datavalue": {
+                      "value": "https://elpais.com/internacional/2017/09/05/colombia/1504631686_701750.html",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "d80ed1bdc24290f42fd5add505289619d355bbe0",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 164597,
+                "id": "Q164597"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q15909095$175d9873-43e5-759e-de31-4772cbf0e61f",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "c50d0b382f832642b7efd449aa62bd66a3bd6f78",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "04124b83ff9569c677d4e41de0b464953a4591d9",
+                    "datavalue": {
+                      "value": "https://www.semana.com/politica/articulo/paloma-valencia-dice-que-centro-democratico-no-es-de-derecha-pero-principales-figuras-de-su-partido-dicen-que-si/202627/",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "51c52109213af0df5e69b9588f4709efbec3bb78",
+            "datavalue": {
+              "value": "1E90FF",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q15909095$7A03FB63-6955-4773-9A43-5E890A004073",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "2679dc8e0d2a52eacdea1f567d728cb47ca67a40",
+            "datavalue": {
+              "value": {
+                "time": "+2014-07-15T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q15909095$353DA4C2-6B01-4A94-BD39-700D2741FBFB",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "7f877e147b1ff548c65c6f5dd72ed584923070cb",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "c3df7f0918505aec2ff3421f1e112bc05a61a9e9",
+                    "datavalue": {
+                      "value": "https://www.las2orillas.co/centro-democratico-oficalmente-un-partido/",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        }
+      ],
+      "P463": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "c6bae08d6c3c28e6726ea9d0bc7bc524ee5ba180",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 128064,
+                "id": "Q128064"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P3831": [
+              {
+                "snaktype": "value",
+                "property": "P3831",
+                "hash": "a409e688eabca43e09386349516e09680375e24f",
+                "datavalue": {
+                  "value": {
+                    "entity-type": "item",
+                    "numeric-id": 2716508,
+                    "id": "Q2716508"
+                  },
+                  "type": "wikibase-entityid"
+                },
+                "datatype": "wikibase-item"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P3831"
+          ],
+          "id": "Q15909095$77285ec8-4cb0-691d-64fb-5dbf34d2259b",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Centro Democrático"
+  },
+  "Q739||Colombian Conservative Party|18": {
+    "qid": "Q747333",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "087db0c662f59a05baa27e8e5ed019e12930209b",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 7169,
+                "id": "Q7169"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q747333$2FEC6678-75EC-4992-AFC8-AF8CC2073A9B",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "6f774caecaee9c042a0030ccae91ad2e1d785ded",
+            "datavalue": {
+              "value": "33A2FF",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q747333$4D87AA54-48C4-489B-89BF-B9A06AE464D4",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "15d3d81649e315127c35d733b9bc456994fadfad",
+            "datavalue": {
+              "value": {
+                "time": "+1849-10-04T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q747333$822494E3-90FD-403D-8EE3-5010E8E2A9B2",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "4a4b041f6d7e36aae5fa1dc0fc0c0c8e8c9f3b4d",
+            "datavalue": {
+              "value": "Bandera del Partido Conservador Colombiano.svg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q747333$077BCCCD-ED6C-4A7F-B3A7-6ADC193F357B",
+          "rank": "normal"
+        }
+      ],
+      "P463": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "45dbee6f354f90e62b26e884e3af15725b34e261",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 862603,
+                "id": "Q862603"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P3831": [
+              {
+                "snaktype": "value",
+                "property": "P3831",
+                "hash": "a409e688eabca43e09386349516e09680375e24f",
+                "datavalue": {
+                  "value": {
+                    "entity-type": "item",
+                    "numeric-id": 2716508,
+                    "id": "Q2716508"
+                  },
+                  "type": "wikibase-entityid"
+                },
+                "datatype": "wikibase-item"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P3831"
+          ],
+          "id": "Q747333$241A28A4-A773-49E4-B0A2-74C677C4158C",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "c6bae08d6c3c28e6726ea9d0bc7bc524ee5ba180",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 128064,
+                "id": "Q128064"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P3831": [
+              {
+                "snaktype": "value",
+                "property": "P3831",
+                "hash": "a409e688eabca43e09386349516e09680375e24f",
+                "datavalue": {
+                  "value": {
+                    "entity-type": "item",
+                    "numeric-id": 2716508,
+                    "id": "Q2716508"
+                  },
+                  "type": "wikibase-entityid"
+                },
+                "datatype": "wikibase-item"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P3831"
+          ],
+          "id": "Q747333$2487c928-4160-75f5-e122-1ef780655903",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Colombian Conservative Party"
+  },
+  "Q224||Independent Democratic Serb Party|3": {
+    "miss": true
+  },
+  "Q252||Democratic Party|44": {
+    "qid": "Q1186227",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "18769d739cee4a3446c715d4883d07d1353d79a4",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 2049221,
+                "id": "Q2049221"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q1186227$6BC86928-1B69-4EDA-BBA3-C4466F3D849B",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "288ab581e7d2d02995a26dfa8b091d96e78457fc",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "6a164248fc96bfa583bbb495cb63ae6401ec203c",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 206855,
+                        "id": "Q206855"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "1e424cb5e7fa266dce4c1961f461e8bd1ed1b5d9",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 729119,
+                "id": "Q729119"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q1186227$038b0a3a-4e6c-c341-48b6-5dbb862aac71",
+          "rank": "normal"
+        }
+      ],
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "60becbfe8951ec9093cc5f4053a697d157941b74",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 6587194,
+                "id": "Q6587194"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q1186227$e3718229-474c-2a59-d953-9a198098bf07",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "bd01a3fea0723996858217e382057d3c0255d7fe",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 844072,
+                "id": "Q844072"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q1186227$dbfc7a06-4971-c956-a719-96eab5ffc119",
+          "rank": "normal"
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "b8b56343c030fd977009a4bfdd668b26073b2d13",
+            "datavalue": {
+              "value": "2643A3",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q1186227$227F6C62-B5D6-4486-8EC8-36EB5B883AEE",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "fa7d3d306719e6d0c6471e7874532bc379155361",
+            "datavalue": {
+              "value": {
+                "time": "+2001-09-09T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q1186227$D31EFB8E-6A03-4E2E-BE66-B28C9D1854D8",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "288ab581e7d2d02995a26dfa8b091d96e78457fc",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "6a164248fc96bfa583bbb495cb63ae6401ec203c",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 206855,
+                        "id": "Q206855"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "e9bbb30185c608c5f1591f9c5c1cd554e9f961d7",
+            "datavalue": {
+              "value": "Logo of the Democratic Party (Indonesia).svg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q1186227$9FE8C68B-2A82-4C8C-98E4-951D0E7926D0",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Democratic Party"
+  },
+  "Q37||National Alliance|1": {
+    "qid": "Q97216079",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "b7d7f15d46c5fc1ad163df077cf43a97c0ae73d6",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 852739,
+                "id": "Q852739"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q97216079$fcc83778-47b7-6cef-9efc-d37d5aba2f68",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "4254915a79bec93e48fac6c2cd44ca722c6317db",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 6235,
+                "id": "Q6235"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q97216079$d083a3fa-4329-fed1-f22d-6ddcde975c08",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "302e1dfd7123a0d8a1c77451c3d379db11b2c629",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 2385364,
+                "id": "Q2385364"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q97216079$a09ef6d5-4d39-ea3a-3c87-7f219e5ce6ec",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "a65968de192764561a932058d5dad4ee85349907",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 171174,
+                "id": "Q171174"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q97216079$6aa30b99-428c-5ddc-8d3b-531e8f2da02f",
+          "rank": "normal"
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "f83c5f6419ae1ef56846d95fe32961fc94fdac26",
+            "datavalue": {
+              "value": "B81E23",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q97216079$06f1fd65-4ec1-fa5a-b65f-83f8a8f05275",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "0c2b6e0764cf45a8fd63b1159a20db51acb858e1",
+            "datavalue": {
+              "value": {
+                "time": "+2020-03-07T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q97216079$598ad5ab-4d09-6e21-64b0-5ed6eca4ca5c",
+          "rank": "normal"
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "135bff7dd7d1f90f6569014c19e76013904a5aa4",
+            "datavalue": {
+              "value": {
+                "time": "+2020-04-01T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q97216079$0EB0367A-5164-44A1-96A1-E297CC947A72",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "7f8ebf2f45e59b93ea521b4249d9b1681c6eda79",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "4b430e3d4fb84ac55b94bab836afb133f52283aa",
+                    "datavalue": {
+                      "value": "https://data.gov.lt/datasets/1735/",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "label": "National Alliance"
+  },
+  "Q211||United List|15": {
+    "miss": true
+  },
+  "Q20||Labour Party|53": {
+    "miss": true
+  },
+  "Q20||Centre Party|9": {
+    "miss": true
+  },
+  "Q20||Liberal Party|3": {
+    "qid": "Q500190",
+    "claims": {
+      "P1142": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "9c6b590b4020ace69f380209e4f100a09c62bbf1",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 201712,
+                "id": "Q201712"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q500190$CBFADDC1-8DA2-483B-988D-858FD664C710",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "97ec9b6dcb79976db22f304190f3767cf46072dd",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 1321721,
+                "id": "Q1321721"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q500190$7000c213-4bc7-cc07-1c4b-86f9a4d36e9e",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "1930ad3a6cbc5c970718d3e546ff3c05b093b060",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "b77dc8f45fceebd3ffddb1f3283c767ac21ee565",
+                    "datavalue": {
+                      "value": "https://www.norwegenservice.net/die-norwegische-parteienlandschaft",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P813": [
+                  {
+                    "snaktype": "value",
+                    "property": "P813",
+                    "hash": "3a9acf7d7583b37903418308d95f4c6a5d1f8329",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2021-05-17T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P813"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1142",
+            "hash": "92175fad94337f2e155c3432ae3e5b72d9caa1a7",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 3664326,
+                "id": "Q3664326"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P580": [
+              {
+                "snaktype": "value",
+                "property": "P580",
+                "hash": "2ff980d429ca62a9f912808fc44b6488fe02ca1c",
+                "datavalue": {
+                  "value": {
+                    "time": "+2007-00-00T00:00:00Z",
+                    "timezone": 0,
+                    "before": 0,
+                    "after": 0,
+                    "precision": 9,
+                    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                  },
+                  "type": "time"
+                },
+                "datatype": "time"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P580"
+          ],
+          "id": "Q500190$4ed89fc5-4259-6969-2f79-c7d6069ec26d",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "58c0afa920cf0bfa068dbd0483715c9520678b9e",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "efe75eec79f509c61e01431fae0e3aa672c27c2b",
+                    "datavalue": {
+                      "value": "https://www.venstre.no/artikkel/2009/06/02/fildeling",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P1476": [
+                  {
+                    "snaktype": "value",
+                    "property": "P1476",
+                    "hash": "e743532509c643e29310d5173c49a19d3f42baec",
+                    "datavalue": {
+                      "value": {
+                        "text": "Fildeling",
+                        "language": "nb"
+                      },
+                      "type": "monolingualtext"
+                    },
+                    "datatype": "monolingualtext"
+                  }
+                ],
+                "P577": [
+                  {
+                    "snaktype": "value",
+                    "property": "P577",
+                    "hash": "f0f61694841d0bc9d18e0800adb3284abc5705a4",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2009-06-01T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ],
+                "P407": [
+                  {
+                    "snaktype": "value",
+                    "property": "P407",
+                    "hash": "606825e6b0d89c91936ce3fde73e10b917553f13",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 25167,
+                        "id": "Q25167"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ],
+                "P813": [
+                  {
+                    "snaktype": "value",
+                    "property": "P813",
+                    "hash": "3d27a311019271befac7f5581cf46e6b21987f15",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2024-06-15T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ],
+                "P2093": [
+                  {
+                    "snaktype": "value",
+                    "property": "P2093",
+                    "hash": "dd3e5a35d72a3fde1a49a5d8e43b4acd03070621",
+                    "datavalue": {
+                      "value": "Venstre",
+                      "type": "string"
+                    },
+                    "datatype": "string"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P1476",
+                "P577",
+                "P407",
+                "P813",
+                "P2093"
+              ]
+            }
+          ]
+        }
+      ],
+      "P1387": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P1387",
+            "hash": "60becbfe8951ec9093cc5f4053a697d157941b74",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 6587194,
+                "id": "Q6587194"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q500190$62662138-42db-dcf7-0393-018c82b4916b",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "7b6300f035aef50e23e0d35c81ef0d20a88d1986",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "2355f173a582d3156939190a38fd3282c3915893",
+                    "datavalue": {
+                      "value": "https://o.nsd.no/european_election_database/country/norway/parties.html",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P813": [
+                  {
+                    "snaktype": "value",
+                    "property": "P813",
+                    "hash": "3a9acf7d7583b37903418308d95f4c6a5d1f8329",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2021-05-17T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P813"
+              ]
+            }
+          ]
+        }
+      ],
+      "P465": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P465",
+            "hash": "b5d6b6278d367e4fc14c7e0b339aaa2442808835",
+            "datavalue": {
+              "value": "006666",
+              "type": "string"
+            },
+            "datatype": "string"
+          },
+          "type": "statement",
+          "id": "Q500190$0186E260-4BC7-4AF2-8827-8B072F128778",
+          "rank": "normal"
+        }
+      ],
+      "P571": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P571",
+            "hash": "c9d5cdc244fcf2868c7b52afaa5b21e936dc3e44",
+            "datavalue": {
+              "value": {
+                "time": "+1884-01-28T00:00:00Z",
+                "timezone": 0,
+                "before": 0,
+                "after": 0,
+                "precision": 11,
+                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+              },
+              "type": "time"
+            },
+            "datatype": "time"
+          },
+          "type": "statement",
+          "id": "Q500190$3490BEB6-D172-4EFA-9658-DD17726B2563",
+          "rank": "normal",
+          "references": [
+            {
+              "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+              "snaks": {
+                "P143": [
+                  {
+                    "snaktype": "value",
+                    "property": "P143",
+                    "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+                    "datavalue": {
+                      "value": {
+                        "entity-type": "item",
+                        "numeric-id": 328,
+                        "id": "Q328"
+                      },
+                      "type": "wikibase-entityid"
+                    },
+                    "datatype": "wikibase-item"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P143"
+              ]
+            }
+          ]
+        }
+      ],
+      "P154": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "afe196fb8a1eabdc422e2bf91249e9f8971686e8",
+            "datavalue": {
+              "value": "Venstres logo.png",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "qualifiers": {
+            "P580": [
+              {
+                "snaktype": "value",
+                "property": "P580",
+                "hash": "840b27e110cd9150a53b61fe15d4834c2d7aa54a",
+                "datavalue": {
+                  "value": {
+                    "time": "+2022-10-00T00:00:00Z",
+                    "timezone": 0,
+                    "before": 0,
+                    "after": 0,
+                    "precision": 10,
+                    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                  },
+                  "type": "time"
+                },
+                "datatype": "time"
+              }
+            ]
+          },
+          "qualifiers-order": [
+            "P580"
+          ],
+          "id": "Q500190$8f25dcd0-45d2-af7a-852c-caad342e29b0",
+          "rank": "preferred",
+          "references": [
+            {
+              "hash": "6392f6438f101539e2ee28109d20bff5b1224776",
+              "snaks": {
+                "P854": [
+                  {
+                    "snaktype": "value",
+                    "property": "P854",
+                    "hash": "d6a64a63a1e96d01f71a585057170f5109497fe2",
+                    "datavalue": {
+                      "value": "https://www.venstre.no/artikkel/2022/10/11/venstre-med-oppdatert-logo-og-profil/",
+                      "type": "string"
+                    },
+                    "datatype": "url"
+                  }
+                ],
+                "P813": [
+                  {
+                    "snaktype": "value",
+                    "property": "P813",
+                    "hash": "80deb7e3a79c19d34e67d66cc6b80bbbb4f71db5",
+                    "datavalue": {
+                      "value": {
+                        "time": "+2022-10-12T00:00:00Z",
+                        "timezone": 0,
+                        "before": 0,
+                        "after": 0,
+                        "precision": 11,
+                        "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                      },
+                      "type": "time"
+                    },
+                    "datatype": "time"
+                  }
+                ]
+              },
+              "snaks-order": [
+                "P854",
+                "P813"
+              ]
+            }
+          ]
+        },
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P154",
+            "hash": "3f0e8672fd821601b939b6a824d74e4fe036fcbe",
+            "datavalue": {
+              "value": "Venstres logo (2014–2022).svg",
+              "type": "string"
+            },
+            "datatype": "commonsMedia"
+          },
+          "type": "statement",
+          "id": "Q500190$1DDFD7E9-5884-4DCD-8779-4E309A2287B8",
+          "rank": "normal"
+        }
+      ],
+      "P463": [
+        {
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P463",
+            "hash": "f7f4ebe57c0b29e550a8d7f7179fef05a18826cc",
+            "datavalue": {
+              "value": {
+                "entity-type": "item",
+                "numeric-id": 25079,
+                "id": "Q25079"
+              },
+              "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+          },
+          "type": "statement",
+          "id": "Q500190$3f1ed1fa-4887-6689-30be-307d25cded0c",
+          "rank": "normal"
+        }
+      ]
+    },
+    "label": "Liberal Party"
   }
 }

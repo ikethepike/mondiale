@@ -4,12 +4,13 @@ import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
 import { decodeHtmlEntitiesDeep } from '../lib/generators/factbook'
 import {
-  captureImageCredit,
+  fetchImageLicence,
   fetchJson,
   saveCommonsImage,
   wait,
   writeWebp,
 } from './vendors/wikidata/commons'
+import { infoboxLogo } from './lib/wikitext'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
 import { COUNTRIES } from '../data/countries.gen'
 import { ELECTIONS } from '../data/elections.gen'
@@ -739,6 +740,8 @@ let liveLookups = 0
 let collisions = 0
 /** Logos rejected as flat flags rather than party marks. */
 let flatLogos = 0
+/** Logos found on the article but refused on their licence, with the reason. */
+const licenceRefusals: string[] = []
 /** `${iso}|${qid}` → Commons filename, collected during the roster pass. */
 const logoFiles = new Map<string, string>()
 
@@ -933,19 +936,32 @@ console.log(
  */
 const NOT_A_ROSTER_PARTY = /^(independents?|others?|vacant|non-attached|unaffiliated|blank)$/i
 
-const rosterHas = (isoCode: ISOCountryCode, name: string): boolean => {
+/**
+ * The roster entry a seated bench already IS, if any — so the adoption pass can
+ * tell "we have no such party" from "we have it under another spelling".
+ *
+ * The chamber seats a party under the ABBREVIATION the Factbook files as a
+ * formal name: Indonesia's "Gerindra Party" is the roster's "Great Indonesia
+ * Movement Party or GERINDRA", and NasDem its "National Democratic Party".
+ * Matching on tokens alone missed those and adopted a SECOND entry for a party
+ * already on the roster — the leader join then resolved to one while the bench
+ * wore the other, so Indonesia's government could never be named on screen.
+ */
+const rosterEntry = (isoCode: ISOCountryCode, name: string): Party | undefined => {
   const roster = mapping[isoCode]?.parties ?? []
   const wanted = partyTokens(name, isoCode).join('')
-  if (!wanted) return true
-  return roster.some(party => {
+  if (!wanted) return roster[0]
+  const bare = name.toLowerCase().replace(/\s+part(y|ies)$/, '').trim()
+  return roster.find(party => {
     for (const candidate of [party.name, ...(party.endonym ? [party.endonym] : [])]) {
       if (partyTokens(candidate, isoCode).join('') === wanted) return true
     }
-    return false
+    return party.abbreviation ? party.abbreviation.toLowerCase() === bare : false
   })
 }
 
 let adopted = 0
+let enriched = 0
 for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, Election][]) {
   const countryQid = isoToQid.get(isoCode)
   if (!countryQid || !mapping[isoCode]) continue
@@ -957,7 +973,15 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
   )
 
   for (const seated of election.parties) {
-    if (NOT_A_ROSTER_PARTY.test(seated.party) || rosterHas(isoCode, seated.party)) continue
+    if (NOT_A_ROSTER_PARTY.test(seated.party)) continue
+    // Already on the roster under another spelling. Don't adopt a duplicate —
+    // but if the Factbook's own row never resolved to an entity, the bench's
+    // name is a second chance at one, and refusing outright would throw away
+    // the logo the duplicate used to carry (Indonesia's NasDem, Hungary's
+    // Fidesz). Enrich the row that is already there instead.
+    const existing = rosterEntry(isoCode, seated.party)
+    if (existing?.qid) continue
+    const enriching = existing
 
     const cacheKey = matchKeyFor(seated.party, undefined, countryQid, seated.seats)
     const cached = matchCache[cacheKey]
@@ -1000,21 +1024,32 @@ for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, 
     const founded = yearOf(match.claims)
     const groupings = openClaimIds(match.claims, 'P463')
 
-    mapping[isoCode]!.parties.push({
-      name: seated.party,
+    const resolved = {
       qid: match.qid,
       ...(ideologies.length ? { ideologies } : {}),
       ...(position ? { position } : {}),
       ...(colors.length ? { colors } : {}),
       ...(founded ? { foundedYear: founded } : {}),
       ...(groupings.length ? { groupings } : {}),
-    })
+    }
+
+    if (enriching) {
+      // The Factbook's own row keeps its NAME — that is the spelling the rest
+      // of the roster and every reveal already agree on — and gains the entity
+      // the bench's spelling found.
+      Object.assign(enriching, resolved)
+      enriched += 1
+      continue
+    }
+
+    mapping[isoCode]!.parties.push({ name: seated.party, ...resolved })
     adopted += 1
     process.stdout.write(`\r  ${adopted} seated parties adopted into the roster`)
   }
   writeFileSync(MATCH_CACHE_PATH, `${JSON.stringify(matchCache, null, 2)}\n`)
 }
 if (adopted) console.log()
+if (enriched) console.log(`  ${enriched} roster parties resolved via their seated spelling`)
 
 // --- 3. Ideology and position labels ----------------------------------------
 // Stored as Q-ids above so every label resolves in one batched pass.
@@ -1110,26 +1145,31 @@ const recoverFromWikipedia = async (qids: string[]): Promise<Map<string, string>
       )}&prop=wikitext&format=json&redirects=1`
     )
     await wait(150)
-    const raw = /\n\s*\|\s*logo\s*=\s*([^\n|]+)/.exec(page?.parse?.wikitext?.['*'] ?? '')?.[1]
-    if (!raw) continue
-    const file = raw
-      .replace(/\[\[(?:File|Image):/i, '')
-      .replace(/[[\]]/g, '')
-      .trim()
-    if (!/\.(svg|png|jpe?g|gif)$/i.test(file)) continue
+    const file = infoboxLogo(page?.parse?.wikitext?.['*'] ?? '')
+    if (!file) continue
 
-    // Commons hosting IS the licence test: it only accepts freely licensed
-    // files, so a file it serves is one we may re-host. A fair-use upload
-    // lives on en.wikipedia alone and resolves to nothing here.
-    const onCommons = await fetchJson<{
-      query?: { pages?: { [id: string]: { imageinfo?: unknown[] } } }
-    }>(
-      `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=${encodeURIComponent(
-        `File:${file}`
-      )}`
-    )
+    // Ask the LICENCE, not the host. Commons hosting was standing in for the
+    // question — it accepts free files only, so "Commons serves it" implied "we
+    // may re-host it" — but the implication does not run backwards: a freely
+    // licensed file uploaded to en.wikipedia instead fails a hosting probe
+    // while being perfectly free to use. South Africa's Democratic Alliance
+    // mark is public domain and was refused for exactly that.
+    //
+    // Most of what turns up is flagged non-free — Wikipedia's fair-use
+    // rationale for its own article. Whether we publish those is one policy
+    // switch, `PUBLISH_FAIR_USE`, and `publishable` is that policy applied.
+    // What is refused here is the licence that says no in its own terms
+    // (NonCommercial, NoDerivatives), which no fair-use argument answers.
+    const licence = await fetchImageLicence(file)
     await wait(150)
-    if (Object.values(onCommons?.query?.pages ?? {})[0]?.imageinfo?.length) found.set(qid, file)
+    if (!licence) continue
+    if (!licence.publishable) {
+      licenceRefusals.push(
+        `${qid} "${title}": ${file} is ${licence.license ?? 'unlicensed'}${licence.nonFree ? ' (non-free)' : ''}`
+      )
+      continue
+    }
+    found.set(qid, file)
   }
 
   return found
@@ -1147,6 +1187,10 @@ if (missingLogos.length) {
     if (file) logoFiles.set(`${entry.iso}|${entry.qid}`, file)
   }
   console.log(`  recovered ${recovered.size}`)
+  if (licenceRefusals.length) {
+    console.log(`  ${licenceRefusals.length} found but refused on licence`)
+    report.push('', `logos found on the article but refused on their licence:`, ...licenceRefusals)
+  }
 }
 
 // P154 came back with the match (cached or live), so there is no claims fetch
@@ -1215,40 +1259,32 @@ let saved = 0
 
     entry.party.logo = path
     saved += 1
-    const credit = await captureImageCredit(file, previousParty)
-    if (credit?.credit) entry.party.credit = credit.credit
-    if (credit?.license) entry.party.license = credit.license
 
-    // Party logos are trademarked far more often than portraits are, and a
-    // large minority are non-free outright. Commons says both in
-    // machine-readable fields, so carry them rather than guess a blanket
-    // policy — a licensing decision then becomes a filter, not a re-run.
-    const meta = await fetchJson<{
-      query?: {
-        pages?: {
-          [id: string]: {
-            imageinfo?: {
-              extmetadata?: {
-                Restrictions?: { value?: string }
-                NonFree?: { value?: string }
-              }
-            }[]
-          }
-        }
-      }
-    }>(
-      `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
-        `File:${file}`
-      )}&prop=imageinfo&iiprop=extmetadata&format=json`
-    )
-    const extmetadata = Object.values(meta?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
-    if (extmetadata?.Restrictions?.value) {
-      entry.party.logoRestrictions = extmetadata.Restrictions.value
-    }
-    if (String(extmetadata?.NonFree?.value ?? '').toLowerCase() === 'true') {
-      entry.party.nonFree = true
-    }
+    // ONE licence read, from whichever wiki hosts the file. Both the credit and
+    // the non-free flag used to be asked of Commons alone, which answers
+    // nothing for a mark uploaded to en.wikipedia — so a fair-use logo would
+    // ship with no `nonFree`, no licence and no credit, and
+    // `data-sanity.test.ts` fails the build on exactly that. Carrying the
+    // provenance is what makes publishing these defensible rather than quiet.
+    const licence = await fetchImageLicence(file)
     await wait(150)
+    if (licence?.credit) entry.party.credit = licence.credit
+    if (licence?.license) entry.party.license = licence.license
+    if (licence?.restrictions) entry.party.logoRestrictions = licence.restrictions
+    if (licence?.nonFree) entry.party.nonFree = true
+    // A previous run's credit stands in when the metadata read comes back bare,
+    // so a transient failure cannot strip a licence line we already had.
+    if (!entry.party.credit && previousParty?.credit) entry.party.credit = previousParty.credit
+    if (!entry.party.license && previousParty?.license) entry.party.license = previousParty.license
+    // A non-free mark must name a source — that is the rule `data-sanity` holds
+    // us to, and the thing that separates a deliberate fair-use claim from a
+    // harvest that wandered off Commons. Most such files carry no `Artist` at
+    // all (a party emblem's author is the party), so the party itself is the
+    // credit and the licence line says on what basis it is shown.
+    if (entry.party.nonFree) {
+      entry.party.credit ||= entry.party.name
+      entry.party.license ||= 'Party trademark, used to identify the party'
+    }
 
     process.stdout.write(`\r  ${saved} logos`)
   }

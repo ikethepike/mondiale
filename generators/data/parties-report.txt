@@ -1,7 +1,7 @@
-parties: 2148 across 192 countries
+parties: 2139 across 192 countries
 matched to Wikidata: 1521/2038 (75%)
-logos saved: 808
-entity collisions refused: 240
+logos saved: 1342
+entity collisions refused: 244
 flag-not-a-logo images refused: 3
 
 seat-sum drift, and rows whose match was already claimed:
@@ -28,7 +28,7 @@ BR: "Brazilian Labor Party" also resolved to Q657089 — "Workers' Party" fits "
 BR: "Democratic Labor Party" also resolved to Q657089 — "Workers' Party" fits "Workers' Party" better, left bare
 BR: "Social Christian Party" also resolved to Q1322897 — "Brazilian Social Democracy Party" fits "Brazilian Social Democracy Party" better, left bare
 BR: "Social Democratic Party" also resolved to Q1414708 — "Democratic Party" fits "Democratic Labour Party" better, left bare
-BR: "Liberal Party or PL [Valdemar Costa Neto]" also resolved to Q2731720 — "Social Liberal Party" fits "Liberal Party" better, left bare
+BR: "Social Liberal Party" also resolved to Q2731720 — "Liberal Party or PL [Valdemar Costa Neto]" fits "Liberal Party" better, left bare
 BR: "Republican Social Order Party" also resolved to Q926973 — "Republicans (Republicanos)" fits "Republicans" better, left bare
 BG: "BSP for Bulgaria" also resolved to Q752259 — "Bulgarian Socialist Party" fits "Bulgarian Socialist Party" better, left bare
 BG: "Democratic Bulgaria or DB" also resolved to Q2984783 — "Bulgarian Rise" fits "list of political parties in Bulgaria" better, left bare
@@ -186,7 +186,7 @@ PG: "Social Democratic Party" also resolved to Q7133171 — "Papua New Guinea Pa
 PE: "Social Integration Party" also resolved to Q5575030 — "Advance the Nation" fits "Go on Country" better, left bare
 PT: "Democratic Alliance or AD" also resolved to Q847263 — "Socialist Party" fits "Socialist Party" better, left bare
 PT: "Portuguese Communist Party" also resolved to Q847263 — "Socialist Party" fits "Socialist Party" better, left bare
-PT: "Social Democratic Party (Partido Social Democrata) or PSD" also resolved to Q595575 — "Democratic and Social Center/People's Party" fits "Social Democratic Party" better, left bare
+PT: "Democratic and Social Center/People's Party" also resolved to Q595575 — "Social Democratic Party (Partido Social Democrata) or PSD" fits "Social Democratic Party" better, left bare
 MK: "Democratic Alliance" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
 MK: "European Democratic Party" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
 MK: "We Can!" also resolved to Q160188 — "Social Democratic Union of Macedonia" fits "Social Democratic Union of Macedonia" better, left bare
@@ -212,7 +212,7 @@ RS: "Russian Party" also resolved to Q253586 — "Serbian Progressive Party" fit
 RS: "Serbia Against Violence or SPN" also resolved to Q752521 — "Socialist Party of Serbia" fits "Socialist Party of Serbia" better, left bare
 SC: "Seychelles Party for Social Justice and Democracy" also resolved to Q206395 — "United Seychelles" fits "United Seychelles Party" better, left bare
 SG: "Workers' Party" also resolved to Q371395 — "People's Action Party" fits "People's Action Party" better, left bare
-SI: "Slovenian Democratic Party or SDS" also resolved to Q526294 — "Democratic Party of Pensioners of Slovenia" fits "Slovenian Democratic Party" better, left bare
+SI: "Democratic Party of Pensioners of Slovenia" also resolved to Q526294 — "Slovenian Democratic Party or SDS" fits "Slovenian Democratic Party" better, left bare
 SI: "List of Marjan Sarec" also resolved to Q106704283 — "Freedom Movement or GS" fits "Freedom Movement" better, left bare
 SI: "Party of Alenka Bratusek or SAB" also resolved to Q106704283 — "Freedom Movement or GS" fits "Freedom Movement" better, left bare
 SB: "United for Change Party" also resolved to Q5255692 — "Solomon Islands Democratic Party" fits "Democratic Party" better, left bare
@@ -252,6 +252,14 @@ XK: listed seats 10 vs declared 120 (92% apart) — shares are of the listed tot
 XK: "New Democratic Party" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
 XK: "New Democratic Initiative of Kosovo" also resolved to Q1186316 — "Democratic Party of Kosovo" fits "Democratic Party of Kosovo" better, left bare
 XK: "Vakat Coalition" also resolved to Q106570618 — "Social Democratic Union" fits "Social Democratic Union" better, left bare
+IL: adopted "National Unity" resolved to Q60198488, already claimed — skipped
+IS: adopted "People's Party" resolved to Q218303, already claimed — skipped
+IS: adopted "Progressive Party" resolved to Q218303, already claimed — skipped
+LU: adopted "Democratic Party" resolved to Q1070311, already claimed — skipped
+
+logos found on the article but refused on their licence:
+Q1498659 "Rally for Congolese Democracy": Logo of the Rally for Congolese Democracy.gif is unlicensed
+Q2187095 "Uganda People's Congress": Logo_of_the_UPC.gif is unlicensed
 HN: "Liberal Party" logo is 654B — a flag, not a mark
 PK: "Balochistan National Party-Mengal" logo is 852B — a flag, not a mark
 SD: "Democratic Unionist Party" logo is 544B — a flag, not a mark

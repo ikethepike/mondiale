@@ -45,6 +45,41 @@ describe('partyTokens', () => {
     expect(partyTokens('Labor (Labour) Party', 'GB')).toEqual(['labor'])
   })
 
+  it("drops Wikipedia's country disambiguator, which is not part of the name", () => {
+    // A cabinet names its parties by article title. The roster says "Republican
+    // Party", so carrying "(United States)" into the tokens meant the United
+    // States and Japan could never name their own governments.
+    expect(partyTokens('Republican Party (United States)', 'US')).toEqual(
+      partyTokens('Republican Party', 'US')
+    )
+    expect(partyTokens('Liberal Democratic Party (Japan)', 'JP')).toEqual(
+      partyTokens('Liberal Democratic Party', 'JP')
+    )
+  })
+
+  it("cuts the Factbook's inline alias list, which is a second name not a longer one", () => {
+    // The roster writes aliases with "or": Denmark's Conservatives are listed
+    // as "Conservative People's Party or DKF" where the chamber seats plain
+    // "Conservative People's Party". Tokenising the whole string carried `or`
+    // and the abbreviation, so the two could never match.
+    expect(partyTokens("Conservative People's Party or DKF", 'DK')).toEqual(
+      partyTokens("Conservative People's Party", 'DK')
+    )
+    expect(partyTokens('Democratic Party for the People or DPFP', 'JP')).toEqual(
+      partyTokens('Democratic Party For the People', 'JP')
+    )
+    // A party whose own name contains "or" as a word is not an alias list.
+    expect(partyTokens('Order and Justice', 'LT')).toContain('order')
+  })
+
+  it('keeps a disambiguator that is doing more than naming the country', () => {
+    // South Korea's "(South Korea, 2015)" separates this Democratic Party from
+    // an earlier one of the same name — strip it and the roster is lost.
+    expect(partyTokens('Democratic Party (South Korea, 2015)', 'KR')).toContain('2015')
+    // And a gloss that names no country at all is still folded in, not dropped.
+    expect(partyTokens('Lega (political party)', 'IT')).toContain('political')
+  })
+
   it('treats alliance and coalition as identifying, not decoration', () => {
     // Poland's Civic Platform and Civic Coalition are different entities.
     expect(partyTokens('Civic Platform', 'PL')).not.toEqual(partyTokens('Civic Coalition', 'PL'))
@@ -159,12 +194,42 @@ describe('benchStandings', () => {
   it('deals from a healthy share of the chambers that name a cabinet', () => {
     expect(chambersWithCabinet().length).toBeGreaterThanOrEqual(CABINET_JOIN_FLOOR)
   })
+
+  // The gate is TWO questions, and each was measured against a case the other
+  // gets wrong. Coverage — how much of the cabinet's own party list reached a
+  // bench — is what catches a broken join; seat share is only a backstop
+  // against a government too small to build a round on.
+  //
+  // Before this split, one seat-share floor at 25% did both jobs and did the
+  // second one badly: Germany was refused at 19% for seating CDU and CSU as one
+  // bench, while Sweden, Finland and Norway — honest minority governments that
+  // name every one of their parties — survived by a hair.
+  it('refuses a chamber whose cabinet list did not really join', () => {
+    // Nothing in these cabinets' party lists reaches a bench.
+    for (const isoCode of ['MY', 'BG', 'FR', 'PL', 'RS', 'UA'] as const) {
+      expect(benchStandings(isoCode), `${isoCode} joined nothing`).toBeUndefined()
+    }
+    // Croatia matched three names in ten — the real government of 61 was filed
+    // as opposition, which teaches the opposite of the truth.
+    expect(benchStandings('HR')).toBeUndefined()
+  })
+
+  it('keeps a minority government that named every one of its parties', () => {
+    // Under 40% of the chamber each, and all three are the lesson rather than a
+    // failure: a government can hold power without holding half the seats.
+    for (const isoCode of ['SE', 'FI', 'NO'] as const) {
+      const standings = benchStandings(isoCode)
+      expect(standings, `${isoCode} should seat a government`).toBeDefined()
+      expect(standings!.government.length).toBeGreaterThan(0)
+    }
+  })
 })
 
-// The cabinet pass resolves ~20 chambers to a government we can seat. The floor
+// The cabinet pass resolves 28 chambers to a government we can seat. The floor
 // sits under that because Wikipedia renames cabinet articles as governments
-// change, but a collapse means the party-name reader broke.
-const CABINET_JOIN_FLOOR = 15
+// change, but a collapse means the party-name reader broke — and it used to sit
+// AT the measured number, where a single renamed article failed the suite.
+const CABINET_JOIN_FLOOR = 24
 
 describe('impostorParties', () => {
   // Rulers deals an impostor as "the party that does NOT govern here". A

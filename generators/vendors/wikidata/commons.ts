@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import sharp from 'sharp'
 import type { MediaCredit } from '../../../lib/attribution'
+import { classifyLicence, type ExtMetadata, type ImageLicence } from '../../lib/licence'
 
 /**
  * Shared Wikidata / Wikimedia Commons fetch helpers — one implementation of the
@@ -153,10 +154,7 @@ interface ExtMetadataResponse {
     pages?: {
       [pageId: string]: {
         imageinfo?: {
-          extmetadata?: {
-            Artist?: { value?: string }
-            LicenseShortName?: { value?: string }
-          }
+          extmetadata?: ExtMetadata
         }[]
       }
     }
@@ -189,6 +187,37 @@ const shortenCredit = (credit: string): string => {
   if (firstClause && firstClause.length <= CREDIT_MAX_CHARS) return firstClause
   const trimmed = credit.slice(0, CREDIT_MAX_CHARS)
   return `${trimmed.slice(0, trimmed.lastIndexOf(' ') > 0 ? trimmed.lastIndexOf(' ') : CREDIT_MAX_CHARS)}…`
+}
+
+/** The wikis a file may live on: Commons first, then the local en.wikipedia
+ *  upload that fair-use files never leave. */
+const FILE_HOSTS = [
+  'https://commons.wikimedia.org/w/api.php',
+  'https://en.wikipedia.org/w/api.php',
+] as const
+
+/**
+ * A file's licence from whichever wiki actually hosts it.
+ *
+ * Commons hosting was long used as the licence test itself — it accepts free
+ * files only, so "Commons serves it" implied "we may re-host it". That proxy is
+ * sound in one direction and wrong in the other: a freely licensed file
+ * uploaded to en.wikipedia instead (South Africa's Democratic Alliance mark is
+ * public domain) fails a hosting probe while being perfectly free to use. Ask
+ * the licence directly, and let the caller decide on the answer.
+ */
+export const fetchImageLicence = async (file: string): Promise<ImageLicence | undefined> => {
+  for (const host of FILE_HOSTS) {
+    const data = await fetchJson<ExtMetadataResponse>(
+      `${host}?action=query&titles=${encodeURIComponent(
+        `File:${file}`
+      )}&prop=imageinfo&iiprop=extmetadata&format=json`
+    )
+    const page = Object.values(data?.query?.pages ?? {})[0]
+    const metadata = page?.imageinfo?.[0]?.extmetadata
+    if (metadata) return classifyLicence(metadata, stripTags, shortenCredit)
+  }
+  return undefined
 }
 
 /**
@@ -291,22 +320,40 @@ export const writeWebp = async (
   return `${publicBase}.webp`
 }
 
-/** Fetch a Commons file at a fixed width, honouring 429 backoff. */
+/**
+ * Fetch a wiki-hosted file at a fixed width, honouring 429 backoff.
+ *
+ * Commons serves the overwhelming majority, but a freely licensed file can be
+ * uploaded to en.wikipedia instead and never mirrored — `Special:FilePath` on
+ * Commons 404s for those. Falling through to en.wikipedia means a file the
+ * licence gate cleared can always actually be fetched, rather than passing the
+ * check and then silently failing to download.
+ */
+const FILE_PATH_HOSTS = ['https://commons.wikimedia.org', 'https://en.wikipedia.org'] as const
+
 export const downloadCommonsImage = async (
   file: string,
   width: number,
-  attempt = 1
+  attempt = 1,
+  host = 0
 ): Promise<Response | undefined> => {
-  const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`
+  const base = FILE_PATH_HOSTS[host] ?? FILE_PATH_HOSTS[0]
+  const url = `${base}/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`
   const response = await fetch(url, { headers: { 'User-Agent': WIKIDATA_USER_AGENT } }).catch(
     () => undefined
   )
   if (response?.ok) return response
+
+  // A 404 means this host does not have the file — try the next one at once
+  // rather than spending six backoffs on an answer that will not change.
+  if (response?.status === 404 && host + 1 < FILE_PATH_HOSTS.length) {
+    return downloadCommonsImage(file, width, 1, host + 1)
+  }
   if (attempt >= 6) return undefined
 
   const retryAfter = Number(response?.headers.get('retry-after'))
   await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2500 * attempt)
-  return downloadCommonsImage(file, width, attempt + 1)
+  return downloadCommonsImage(file, width, attempt + 1, host)
 }
 
 /**

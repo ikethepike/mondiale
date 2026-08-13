@@ -47,16 +47,19 @@ export const ROUND_WEIGHTS = {
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
   'star-chart': 0.06,
-  // A THIN pool, and weighted low for that as much as for the read. The claim
-  // here used to be "39 chambers"; measured, it is 11 (DZ MA AL DK ES IT LU NL
-  // NZ SE ZA) at every difficulty, because the round needs a chamber whose
-  // cabinet resolved AND whose leader's party is among its own government
-  // benches AND carries a logo. By variant: world 11, europe 7, africa 3,
-  // oceania 1, and asia / americas / middle-east / south-america /
-  // north-america deal NONE — outside Europe this round barely exists.
-  // Not a crash: `getGovernmentChallenge` returns undefined and the mix buys
-  // another kind. But a world game will see the same handful of chambers, so
-  // this stays rare until `chambersWithCabinet` grows.
+  // A THIN pool, and weighted low for that as much as for the read. Measured,
+  // it is 15 (DZ MA AL CA DK EE ES ID IT JP LU NL NZ SE ZA) at every
+  // difficulty, because the round needs a chamber whose cabinet resolved AND
+  // whose leader's party is among its own government benches AND carries a
+  // logo, beside two rivals that carry one too. By variant: world 15, europe 8,
+  // africa 3, asia 2, north-america 1, oceania 1 — americas, south-america and
+  // middle-east still deal NONE.
+  //
+  // Twenty-eight chambers now name a government; the thirteen that clear that
+  // and still do not deal are mostly waiting on LOGOS (Britain and Ghana each
+  // seat one logo'd rival where the row needs two, Hungary none), not on the
+  // cabinet join. Not a crash: `getGovernmentChallenge` returns undefined and
+  // the mix buys another kind. Raise this as the logo coverage grows.
   government: 0.06,
   composition: 0.06,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
