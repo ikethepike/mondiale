@@ -793,6 +793,12 @@ interface Variant {
   label: string
   /** The country a free pick replaces, when the mode takes one. */
   country?: ISOCountryCode
+  /**
+   * A rung that deals its own game. Beat-states a round now REACHES by playing
+   * (a briefing card, a sprung trap, the reveal) stay one keystroke away here
+   * rather than standing as scenarios of their own.
+   */
+  build?: () => Game
 }
 
 interface Scenario {
@@ -2025,247 +2031,286 @@ const scenarios: Scenario[] = [
   {
     id: 'border-chain',
     label: 'Border chain (your turn, strait hops)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            // Øresund and Bering hops on one chain — the dashed-arc test.
-            chains: [['DK', 'SE', 'FI', 'RU', 'US']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 4,
-            deadline: Date.now() + 12000,
-            named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['US'] },
-            strikesLeft: {},
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'border-chain-briefing',
-    label: 'Border chain (briefing — rules card, one rival ready)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 1,
-          state: {
-            briefing: true,
-            ready: [RIVAL],
-            chains: [['DK']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 0,
-            turn: 0,
-            deadline: 0,
-            named: {},
-            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'border-chain-easy',
-    label: 'Border chain (easy: 20s clock, ISO chips on open moves)',
-    build: () => {
-      const game = mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 20,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 1,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['DK', 'SE', 'FI']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 2,
-            deadline: Date.now() + 20000,
-            named: { [RIVAL]: ['SE'], [ME]: ['FI'] },
-            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ])
-      game.difficulty = 'easy'
-      return game
-    },
-  },
-  {
-    id: 'border-chain-europe',
-    label: 'Border chain (Europe board, world dimmed)',
-    build: () => {
-      const game = mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            chains: [['ES', 'FR', 'DE']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 2,
-            deadline: Date.now() + 12000,
-            named: { [RIVAL]: ['FR'], [ME]: ['DE'] },
-            strikesLeft: {},
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ])
-      game.variant = 'europe'
-      return game
-    },
-  },
-  {
-    id: 'border-chain-spectate',
-    label: 'Border chain (eliminated, spectating)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            chains: [['NO', 'SE', 'FI', 'RU', 'CN', 'MN']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 2,
-            turn: 6,
-            deadline: Date.now() + 9000,
-            named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['CN', 'MN'] },
-            strikesLeft: {},
-            eliminated: [ME],
-            outcomes: { [ME]: 'wrong' },
-            missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'border-chain-trap',
-    label: 'Border chain (dead-end hold, someone else trapped)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            // Gibraltar's neighbours are Spain (walked) and the sea.
-            chains: [['FR', 'ES', 'PT']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 2,
-            turn: 3,
-            deadline: 0,
-            named: { [RIVAL]: ['ES'], [ME]: ['PT'] },
-            strikesLeft: {},
-            eliminated: [THIRD],
-            outcomes: { [THIRD]: 'trapped' },
-            missedOuts: { [THIRD]: [] },
-            lastMoverId: ME,
-            trappedBy: { [THIRD]: ME },
-            trap: {
-              playerId: THIRD,
-              head: 'PT',
-              byPlayerId: ME,
-              doors: [{ isoCode: 'ES', reason: 'walked', step: 2 }],
-            },
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'border-chain-trapped-me',
-    label: 'Border chain (dead-end hold, you are the one trapped)',
-    build: () => {
-      // Europe: Morocco borders Spain but is off this board — the mixed
-      // walked/off-board proof, and the local player is the victim.
-      const game = mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            chains: [['DE', 'FR', 'ES']],
-            order: [RIVAL, THIRD, ME],
-            activeIndex: 2,
-            turn: 3,
-            deadline: 0,
-            named: { [RIVAL]: ['FR'], [THIRD]: ['ES'] },
-            strikesLeft: {},
-            eliminated: [ME],
-            outcomes: { [ME]: 'trapped' },
-            missedOuts: { [ME]: [] },
-            lastMoverId: THIRD,
-            trappedBy: { [ME]: THIRD },
-            trap: {
-              playerId: ME,
-              head: 'ES',
-              byPlayerId: THIRD,
-              doors: [
-                { isoCode: 'FR', reason: 'walked', step: 2 },
-                { isoCode: 'PT', reason: 'off-board' },
-                { isoCode: 'AD', reason: 'off-board' },
-                { isoCode: 'MA', reason: 'off-board' },
-              ],
-            },
-          },
-        }),
-      ])
-      game.variant = 'europe'
-      return game
-    },
-  },
-  {
-    id: 'border-chain-trap-reveal',
-    label: 'Border chain (reveal, trapped by a rival)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            chains: [
-              ['FR', 'ES', 'PT'],
-              ['NO', 'SE', 'FI'],
-            ],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 0,
-            turn: 8,
-            deadline: 0,
-            named: { [RIVAL]: ['ES', 'SE'], [ME]: ['PT'], [THIRD]: ['FI'] },
-            strikesLeft: {},
-            eliminated: [ME, THIRD],
-            // The fate line "walked into RIVAL's dead end" — never rendered
-            // before, because every earlier fixture left trappedBy empty.
-            outcomes: { [ME]: 'trapped', [THIRD]: 'timeout', [RIVAL]: 'won' },
-            missedOuts: { [ME]: [], [THIRD]: ['RU', 'NO'] },
-            trappedBy: { [ME]: RIVAL },
-            finished: true,
-          },
-        }),
-      ]),
+    // The beats this round now REACHES by playing, kept a keystroke away.
+    variants: [
+      {
+        id: 'live',
+        label: 'Your turn — strait hops',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                // Øresund and Bering hops on one chain — the dashed-arc test.
+                chains: [['DK', 'SE', 'FI', 'RU', 'US']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 4,
+                deadline: Date.now() + 12000,
+                named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['US'] },
+                strikesLeft: {},
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'briefing',
+        label: 'Briefing — rules card, one rival ready',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 1,
+              state: {
+                briefing: true,
+                ready: [RIVAL],
+                chains: [['DK']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 0,
+                turn: 0,
+                deadline: 0,
+                named: {},
+                strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'easy',
+        label: 'Easy — 20s clock, ISO chips on open moves',
+        build: () => {
+          const game = mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 20,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 1,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['DK', 'SE', 'FI']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 2,
+                deadline: Date.now() + 20000,
+                named: { [RIVAL]: ['SE'], [ME]: ['FI'] },
+                strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ])
+          game.difficulty = 'easy'
+          return game
+        },
+      },
+      {
+        id: 'europe',
+        label: 'Europe board, world dimmed',
+        build: () => {
+          const game = mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                chains: [['ES', 'FR', 'DE']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 2,
+                deadline: Date.now() + 12000,
+                named: { [RIVAL]: ['FR'], [ME]: ['DE'] },
+                strikesLeft: {},
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ])
+          game.variant = 'europe'
+          return game
+        },
+      },
+      {
+        id: 'spectate',
+        label: 'Eliminated, spectating',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                chains: [['NO', 'SE', 'FI', 'RU', 'CN', 'MN']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 2,
+                turn: 6,
+                deadline: Date.now() + 9000,
+                named: { [RIVAL]: ['SE', 'RU'], [ME]: ['FI'], [THIRD]: ['CN', 'MN'] },
+                strikesLeft: {},
+                eliminated: [ME],
+                outcomes: { [ME]: 'wrong' },
+                missedOuts: { [ME]: ['KZ', 'KP', 'KG'] },
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'trap',
+        label: 'Dead-end hold — someone else trapped',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                // Gibraltar's neighbours are Spain (walked) and the sea.
+                chains: [['FR', 'ES', 'PT']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 2,
+                turn: 3,
+                deadline: 0,
+                named: { [RIVAL]: ['ES'], [ME]: ['PT'] },
+                strikesLeft: {},
+                eliminated: [THIRD],
+                outcomes: { [THIRD]: 'trapped' },
+                missedOuts: { [THIRD]: [] },
+                lastMoverId: ME,
+                trappedBy: { [THIRD]: ME },
+                trap: {
+                  playerId: THIRD,
+                  head: 'PT',
+                  byPlayerId: ME,
+                  doors: [{ isoCode: 'ES', reason: 'walked', step: 2 }],
+                },
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'trapped-me',
+        label: 'Dead-end hold — you are trapped',
+        build: () => {
+          // Europe: Morocco borders Spain but is off this board — the mixed
+          // walked/off-board proof, and the local player is the victim.
+          const game = mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                chains: [['DE', 'FR', 'ES']],
+                order: [RIVAL, THIRD, ME],
+                activeIndex: 2,
+                turn: 3,
+                deadline: 0,
+                named: { [RIVAL]: ['FR'], [THIRD]: ['ES'] },
+                strikesLeft: {},
+                eliminated: [ME],
+                outcomes: { [ME]: 'trapped' },
+                missedOuts: { [ME]: [] },
+                lastMoverId: THIRD,
+                trappedBy: { [ME]: THIRD },
+                trap: {
+                  playerId: ME,
+                  head: 'ES',
+                  byPlayerId: THIRD,
+                  doors: [
+                    { isoCode: 'FR', reason: 'walked', step: 2 },
+                    { isoCode: 'PT', reason: 'off-board' },
+                    { isoCode: 'AD', reason: 'off-board' },
+                    { isoCode: 'MA', reason: 'off-board' },
+                  ],
+                },
+              },
+            }),
+          ])
+          game.variant = 'europe'
+          return game
+        },
+      },
+      {
+        id: 'trap-reveal',
+        label: 'Reveal — trapped by a rival',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                chains: [
+                  ['FR', 'ES', 'PT'],
+                  ['NO', 'SE', 'FI'],
+                ],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 0,
+                turn: 8,
+                deadline: 0,
+                named: { [RIVAL]: ['ES', 'SE'], [ME]: ['PT'], [THIRD]: ['FI'] },
+                strikesLeft: {},
+                eliminated: [ME, THIRD],
+                // The fate line "walked into RIVAL's dead end" — never rendered
+                // before, because every earlier fixture left trappedBy empty.
+                outcomes: { [ME]: 'trapped', [THIRD]: 'timeout', [RIVAL]: 'won' },
+                missedOuts: { [ME]: [], [THIRD]: ['RU', 'NO'] },
+                trappedBy: { [ME]: RIVAL },
+                finished: true,
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'reveal',
+        label: 'Reveal — finished, replay',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'border-chain-challenge',
+              turnSeconds: 12,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                chains: [
+                  ['DK', 'SE', 'FI', 'RU', 'US'],
+                  ['TR', 'GR', 'BG'],
+                ],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 0,
+                turn: 9,
+                deadline: 0,
+                named: { [RIVAL]: ['SE', 'RU', 'GR'], [ME]: ['FI', 'BG'], [THIRD]: ['US'] },
+                strikesLeft: {},
+                eliminated: [THIRD, ME],
+                outcomes: { [THIRD]: 'timeout', [ME]: 'wrong', [RIVAL]: 'won' },
+                missedOuts: { [THIRD]: ['NO'], [ME]: ['MK', 'RO', 'RS'] },
+                trappedBy: {},
+                finished: true,
+              },
+            }),
+          ]),
+      },
+    ],
+    // Never dealt: a variant always wins, and 'live' is the default rung.
+    build: () => mockGame('group-challenge', []),
   },
   {
     id: 'manhunt-detective',
@@ -2706,36 +2751,6 @@ const scenarios: Scenario[] = [
                 [ME, RIVAL, THIRD, RIVAL][index % 4],
               ])
             ),
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'border-chain-reveal',
-    label: 'Border chain (finished, replay + reveal)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'border-chain-challenge',
-          turnSeconds: 12,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          state: {
-            chains: [
-              ['DK', 'SE', 'FI', 'RU', 'US'],
-              ['TR', 'GR', 'BG'],
-            ],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 0,
-            turn: 9,
-            deadline: 0,
-            named: { [RIVAL]: ['SE', 'RU', 'GR'], [ME]: ['FI', 'BG'], [THIRD]: ['US'] },
-            strikesLeft: {},
-            eliminated: [THIRD, ME],
-            outcomes: { [THIRD]: 'timeout', [ME]: 'wrong', [RIVAL]: 'won' },
-            missedOuts: { [THIRD]: ['NO'], [ME]: ['MK', 'RO', 'RS'] },
-            trappedBy: {},
-            finished: true,
           },
         }),
       ]),
@@ -3358,186 +3373,193 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    id: 'atlas-easy',
-    label: 'Atlas (easy — 20s turns, ringed answers, suggestions)',
-    build: () => {
-      const game = mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 20,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 1,
-          overlaps: false,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['NP', 'LA', 'SE']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 2,
-            deadline: Date.now() + 20000,
-            named: { [RIVAL]: ['LA'], [THIRD]: ['SE'] },
-            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ])
-      game.difficulty = 'easy'
-      return game
-    },
-  },
-  {
     id: 'atlas',
     label: 'Atlas (your turn, letter ties)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 14,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          overlaps: false,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['NP', 'LA', 'SE', 'NO']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 3,
-            deadline: Date.now() + 14000,
-            named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'] },
-            strikesLeft: {},
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ]),
-  },
-  {
-    // Nepal → Palestine: the 3-letter overlap badge, ember-tinted.
-    id: 'atlas-hard',
-    label: 'Atlas (hard — overlap rule, deep tie badge)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 10,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          overlaps: true,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['NP', 'PS', 'ET']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 1,
-            turn: 2,
-            deadline: Date.now() + 10000,
-            named: { [RIVAL]: ['PS'], [THIRD]: ['ET'] },
-            strikesLeft: {},
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'atlas-briefing',
-    label: 'Atlas (briefing — rules card, one rival ready)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 14,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 1,
-          overlaps: false,
-          state: {
-            briefing: true,
-            ready: [RIVAL],
-            chains: [['NP']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 0,
-            turn: 0,
-            deadline: 0,
-            named: {},
-            strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
-            eliminated: [],
-            outcomes: {},
-            missedOuts: {},
-          },
-        }),
-      ]),
-  },
-  {
-    // Iraq seals the letter chain: Qatar is the only Q and it opened the walk.
-    id: 'atlas-trap',
-    label: 'Atlas (trap — the letter Q is spent)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 14,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          overlaps: false,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['QA', 'RU', 'AZ', 'NP', 'LU', 'GW', 'GB', 'ML', 'IQ']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 2,
-            turn: 8,
-            deadline: 0,
-            named: {
-              [RIVAL]: ['RU', 'NP', 'GB', 'IQ'],
-              [ME]: ['AZ', 'GW'],
-              [THIRD]: ['LU', 'ML'],
-            },
-            strikesLeft: {},
-            eliminated: [THIRD],
-            outcomes: { [THIRD]: 'trapped' },
-            missedOuts: { [THIRD]: [] },
-            lastMoverId: RIVAL,
-            trappedBy: { [THIRD]: RIVAL },
-            trap: {
-              playerId: THIRD,
-              head: 'IQ',
-              byPlayerId: RIVAL,
-              letter: 'q',
-              spent: ['QA'],
-            },
-          },
-        }),
-      ]),
-  },
-  {
-    id: 'atlas-reveal',
-    label: 'Atlas (reveal — placements and missed outs)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'atlas-challenge',
-          turnSeconds: 14,
-          maximumPoints: MAXIMUM_POINTS,
-          strikes: 0,
-          overlaps: false,
-          state: {
-            ready: [RIVAL, ME, THIRD],
-            chains: [['NP', 'LA', 'SE', 'NO', 'YE']],
-            order: [RIVAL, ME, THIRD],
-            activeIndex: 0,
-            turn: 6,
-            deadline: 0,
-            named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'], [THIRD]: ['YE'] },
-            strikesLeft: {},
-            eliminated: [ME, THIRD],
-            outcomes: { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' },
-            missedOuts: { [ME]: ['NA', 'NG', 'NL'], [THIRD]: ['EE', 'EG', 'ES'] },
-            finished: true,
-          },
-        }),
-      ]),
+    // The beats this round now REACHES by playing, kept a keystroke away.
+    variants: [
+      {
+        id: 'live',
+        label: 'Your turn — letter ties',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 14,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              overlaps: false,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['NP', 'LA', 'SE', 'NO']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 3,
+                deadline: Date.now() + 14000,
+                named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'] },
+                strikesLeft: {},
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'easy',
+        label: 'Easy — 20s turns, ringed answers, suggestions',
+        build: () => {
+          const game = mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 20,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 1,
+              overlaps: false,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['NP', 'LA', 'SE']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 2,
+                deadline: Date.now() + 20000,
+                named: { [RIVAL]: ['LA'], [THIRD]: ['SE'] },
+                strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ])
+          game.difficulty = 'easy'
+          return game
+        },
+      },
+      {
+        id: 'hard',
+        label: 'Hard — overlap rule, deep tie badge',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 10,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              overlaps: true,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['NP', 'PS', 'ET']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 2,
+                deadline: Date.now() + 10000,
+                named: { [RIVAL]: ['PS'], [THIRD]: ['ET'] },
+                strikesLeft: {},
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'briefing',
+        label: 'Briefing — rules card, one rival ready',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 14,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 1,
+              overlaps: false,
+              state: {
+                briefing: true,
+                ready: [RIVAL],
+                chains: [['NP']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 0,
+                turn: 0,
+                deadline: 0,
+                named: {},
+                strikesLeft: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'trap',
+        label: 'Trap — the letter Q is spent',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 14,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              overlaps: false,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['QA', 'RU', 'AZ', 'NP', 'LU', 'GW', 'GB', 'ML', 'IQ']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 2,
+                turn: 8,
+                deadline: 0,
+                named: {
+                  [RIVAL]: ['RU', 'NP', 'GB', 'IQ'],
+                  [ME]: ['AZ', 'GW'],
+                  [THIRD]: ['LU', 'ML'],
+                },
+                strikesLeft: {},
+                eliminated: [THIRD],
+                outcomes: { [THIRD]: 'trapped' },
+                missedOuts: { [THIRD]: [] },
+                lastMoverId: RIVAL,
+                trappedBy: { [THIRD]: RIVAL },
+                trap: {
+                  playerId: THIRD,
+                  head: 'IQ',
+                  byPlayerId: RIVAL,
+                  letter: 'q',
+                  spent: ['QA'],
+                },
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'reveal',
+        label: 'Reveal — placements and missed outs',
+        build: () =>
+          mockGame('group-challenge', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 14,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              overlaps: false,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['NP', 'LA', 'SE', 'NO', 'YE']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 0,
+                turn: 6,
+                deadline: 0,
+                named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'], [THIRD]: ['YE'] },
+                strikesLeft: {},
+                eliminated: [ME, THIRD],
+                outcomes: { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' },
+                missedOuts: { [ME]: ['NA', 'NG', 'NL'], [THIRD]: ['EE', 'EG', 'ES'] },
+                finished: true,
+              },
+            }),
+          ]),
+      },
+    ],
+    // Never dealt: a variant always wins, and 'live' is the default rung.
+    build: () => mockGame('group-challenge', []),
   },
   {
     id: 'final-gauntlet-easy',
@@ -4220,7 +4242,7 @@ const deal = () => {
     query: { scenario: scenario.id, ...(variant ? { variant: variant.id } : {}) },
   })
   lastEvent.value = ''
-  gameStore.game = scenario.build(variant)
+  gameStore.game = variant?.build ? variant.build() : scenario.build(variant)
   renderKey.value += 1
   ready.value = true
   armChainScenario()
