@@ -1176,6 +1176,35 @@ const longAtlasGame = (finished: boolean): Game => {
   ])
 }
 
+/** The Tongues rungs: a language, its clip files, and who speaks it. Swahili is
+ *  official in four countries, so the any-speaker rule shows in its reveal. */
+const TONGUE_RUNGS: {
+  [id: string]: {
+    language: string
+    clipCodes: string[]
+    countries: ISOCountryCode[]
+    /** Hindi has no anthem sung in it (India's is Bengali), so it seeds. */
+    seeded?: boolean
+  }
+} = {
+  swahili: {
+    language: 'Swahili',
+    clipCodes: ['sw-0', 'sw-1', 'sw-2'],
+    countries: ['TZ', 'KE', 'UG', 'RW'],
+  },
+  ukrainian: {
+    language: 'Ukrainian',
+    clipCodes: ['uk-0', 'uk-1', 'uk-2'],
+    countries: ['UA'],
+  },
+  hindi: {
+    language: 'Hindi',
+    clipCodes: ['hi-0'],
+    countries: ['IN'],
+    seeded: true,
+  },
+}
+
 const scenarios: Scenario[] = [
   {
     id: 'ranking',
@@ -2537,74 +2566,36 @@ const scenarios: Scenario[] = [
   {
     id: 'tongue-buzz',
     label: 'Tongues (speech audio)',
-    build: () =>
-      mockGame('group-challenge', [
+    // Each rung is a different path through the writing wall: the common case
+    // (borrow the speaker country's anthem lines), a seeded sample, and the
+    // degenerate one-clip sequence.
+    variants: [
+      { id: 'swahili', label: 'Swahili — three voices, four speakers' },
+      { id: 'ukrainian', label: 'Ukrainian — borrowed anthem wall, Cyrillic' },
+      { id: 'hindi', label: 'Hindi — seeded sample, one clip' },
+    ],
+    build: variant => {
+      const rung = TONGUE_RUNGS[variant?.id ?? 'swahili'] ?? TONGUE_RUNGS.swahili!
+      return mockGame('group-challenge', [
         groupRound({
           _type: 'tongue-buzz-challenge',
-          // Swahili: distinctive enough to be a fair listen, and official in
-          // four countries, so the any-speaker rule is visible in the reveal.
-          language: 'Swahili',
-          // All three voices, to exercise the dock's sequence-and-cycle.
-          clips: [
-            { webm: '/tongues/sw-0.webm', m4a: '/tongues/sw-0.m4a' },
-            { webm: '/tongues/sw-1.webm', m4a: '/tongues/sw-1.m4a' },
-            { webm: '/tongues/sw-2.webm', m4a: '/tongues/sw-2.m4a' },
-          ],
-          countries: ['TZ', 'KE', 'UG', 'RW'],
+          language: rung.language,
+          clips: rung.clipCodes.map(code => ({
+            webm: `/tongues/${code}.webm`,
+            m4a: `/tongues/${code}.m4a`,
+          })),
+          countries: rung.countries,
           durationSeconds: 20,
-          region: 'Africa',
-          speakerCount: 4,
-          initial: 'T',
+          region: REGION_LABELS[getCountry(rung.countries[0]!).region],
+          speakerCount: rung.countries.length,
+          // Only the seeded rung carries a sample; the others must fall back
+          // to the speaker country's own anthem wall.
+          ...(rung.seeded ? { sample: seededTongueSample(rung.language) } : {}),
+          initial: countryName(rung.countries[0]!).slice(0, 1),
           maximumPoints: MAXIMUM_POINTS,
         }),
-      ]),
-  },
-  {
-    id: 'tongue-buzz-ukrainian',
-    label: 'Tongues (Ukrainian, borrowed anthem sample)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'tongue-buzz-challenge',
-          // No `sample` on purpose: Ukrainian has no seed, so the view must
-          // borrow lines from Ukraine's own anthem wall — the path Swahili and
-          // most languages take in a real deal — and render them in Cyrillic.
-          language: 'Ukrainian',
-          clips: [
-            { webm: '/tongues/uk-0.webm', m4a: '/tongues/uk-0.m4a' },
-            { webm: '/tongues/uk-1.webm', m4a: '/tongues/uk-1.m4a' },
-            { webm: '/tongues/uk-2.webm', m4a: '/tongues/uk-2.m4a' },
-          ],
-          countries: ['UA'],
-          durationSeconds: 20,
-          region: 'Europe',
-          speakerCount: 1,
-          initial: 'U',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'tongue-buzz-sample',
-    label: 'Tongues (seeded writing sample)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'tongue-buzz-challenge',
-          // Hindi has no anthem sung in it (India's is Bengali), so it falls
-          // back to a seeded sample — the path Swahili never exercises.
-          language: 'Hindi',
-          // Hindi has a single sample — the degenerate sequence of one.
-          clips: [{ webm: '/tongues/hi-0.webm', m4a: '/tongues/hi-0.m4a' }],
-          countries: ['IN'],
-          durationSeconds: 20,
-          region: 'Asia',
-          speakerCount: 1,
-          sample: seededTongueSample('Hindi'),
-          initial: 'I',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+      ])
+    },
   },
   {
     id: 'sketch',
