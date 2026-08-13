@@ -5,12 +5,17 @@
  * real flags in flag-icons: horizontal stripes dominate (~90 flags incl.
  * emblem/canton variants), then hoist triangles, crosses, vertical tribands,
  * cantons, solid-field emblems, diagonals — plus rarer archetypes (pall,
- * quartered, bordure, hoist bar, serrated hoist, sunburst rays). Red appears
+ * quartered, bordure, hoist bar, serrated hoist, sunburst rays). A second
+ * pass added the archetypes that study had missed: arms on a field (~20% of
+ * real flags carry a shield), the hoist chevron, the colonial ensign whose
+ * canton holds a whole flag, star-led designs, and the corner fan
+ * (Seychelles). Red appears
  * in ~75% of real flags, white in ~66%, gold ~42%; flags carry 2–4
  * significant colors, and low-contrast pairs are separated by white/gold
  * fimbriation. Compositions that quantize to an actual country's flag are
  * re-picked (REAL_* guards) so no deploy accidentally flies the Netherlands.
  */
+import { clamp } from '~~/lib/number'
 
 export type ForgeFamily =
   | 'h-stripes'
@@ -27,6 +32,11 @@ export type ForgeFamily =
   | 'hoist-bar'
   | 'serrated'
   | 'rays'
+  | 'arms'
+  | 'chevron'
+  | 'ensign'
+  | 'corner-fan'
+  | 'starfield'
 
 export interface ForgedFlag {
   seed: string
@@ -209,6 +219,20 @@ const REAL_EMBLEMS = new Set([
   'blue|gold|stars-ring',
 ])
 
+// field>canton-ground>canton-charge: the Commonwealth blue ensigns (AU NZ FJ
+// TV CK) and the red ensign. A navy/lightblue field under a red-or-white
+// canton cross is one of them wearing a different hat.
+const REAL_ENSIGNS = new Set([
+  'navy>navy>red',
+  'navy>navy>white',
+  'navy>white>red',
+  'navy>red>white',
+  'lightblue>navy>red',
+  'lightblue>navy>white',
+  'red>navy>white',
+  'white>navy>red',
+])
+
 // saltire>top/bottom>hoist/fly: JM, Scotland, AL(abama)
 const REAL_SALTIRES = new Set([
   'gold>green>black',
@@ -243,6 +267,43 @@ const starPath = (cx: number, cy: number, r: number, rot = -Math.PI / 2) => {
 const star = (cx: number, cy: number, r: number, c: FlagColor) =>
   `<path d="${starPath(cx, cy, r)}" fill="${c.hex}"/>`
 
+/**
+ * Place `n` stars inside a box without letting any two touch. Real
+ * constellations (the Southern Cross on AU/NZ/PG/BR) are deliberate
+ * arrangements — a pure random spray reads as a mistake the moment two stars
+ * collide. Rejection-samples each point against the ones already placed and
+ * shrinks the spacing if the box is too tight to satisfy, so it always returns
+ * `n` stars rather than silently dropping some.
+ */
+const scatterStars = (
+  rng: Rng,
+  n: number,
+  box: { x: number; y: number; w: number; h: number },
+  radii: number[],
+  c: FlagColor
+): string[] => {
+  const placed: Array<[number, number, number]> = []
+  for (let i = 0; i < n; i++) {
+    const r = radii[i % radii.length]
+    let best: [number, number] | null = null
+    // Relax the required gap as attempts run out, so a tight box still fills.
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const gap = 1.25 - Math.min(0.45, attempt / 100)
+      const x = box.x + r + rng() * Math.max(0, box.w - 2 * r)
+      const y = box.y + r + rng() * Math.max(0, box.h - 2 * r)
+      const clear = placed.every(([px, py, pr]) => Math.hypot(px - x, py - y) >= (r + pr) * gap)
+      if (clear) {
+        best = [x, y]
+        break
+      }
+      if (attempt === 59) best = [x, y]
+    }
+    const [x, y] = best!
+    placed.push([x, y, r])
+  }
+  return placed.map(([x, y, r]) => star(x, y, r, c))
+}
+
 type ChargeKind =
   | 'star'
   | 'stars-ring'
@@ -253,7 +314,13 @@ type ChargeKind =
   | 'disc-star'
   | 'sun'
   | 'trident'
-  | 'bird'
+  | 'cross-charge'
+  | 'crosslet'
+  | 'wreath-star'
+  | 'shield'
+  | 'mountain'
+  | 'palm'
+  | 'anchor'
 
 const CHARGE_KINDS: Array<{ kind: ChargeKind; w: number }> = [
   { kind: 'star', w: 28 },
@@ -265,22 +332,143 @@ const CHARGE_KINDS: Array<{ kind: ChargeKind; w: number }> = [
   { kind: 'disc-star', w: 10 },
   { kind: 'sun', w: 8 },
   { kind: 'trident', w: 4 },
-  { kind: 'bird', w: 5 },
+  { kind: 'cross-charge', w: 6 },
+  { kind: 'crosslet', w: 5 },
+  { kind: 'wreath-star', w: 5 },
+  { kind: 'shield', w: 6 },
+  { kind: 'mountain', w: 4 },
+  { kind: 'palm', w: 3 },
+  { kind: 'anchor', w: 3 },
 ]
 
+/**
+ * Silhouettes whose outline counter-draws a hole (the anchor's ring). These
+ * must fill with `evenodd`; everything else stays on the default `nonzero` so
+ * overlapping subpaths merge into one solid shape.
+ */
+const HOLLOW_SILHOUETTES = new Set<ChargeKind>(['anchor'])
+
+/** Peak-count and height bounds for a generated ridge, in the 0–100 box. */
+const RIDGE = {
+  minPeaks: 2,
+  maxPeaks: 5,
+  /**
+   * Summit height above the baseline. The tallest peak lands in this band, and
+   * the floor is high because a shallow ridge reads as a crown or a saw rather
+   * than mountains — the silhouette needs most of the box's height.
+   */
+  minHeight: 62,
+  maxHeight: 84,
+  /**
+   * Secondary summits, as a share of the tallest. Kept high so the range stays
+   * a range: below about half, the shorter peaks read as foothill noise.
+   */
+  minPeakShare: 0.62,
+  /**
+   * A saddle's height as a share of its lower neighbouring summit. The floor
+   * is high because a valley cut near the baseline severs the range into
+   * detached spikes — mountains share a massif, they do not stand apart.
+   */
+  minSaddle: 0.52,
+  maxSaddle: 0.78,
+  baseline: 92,
+} as const
+
+/**
+ * A mountain ridge with a seeded number of peaks at seeded relative heights —
+ * every parameter clamped to RIDGE so the silhouette always reads as
+ * mountains: at least two peaks, none taller than the box, and saddles that
+ * dip enough to separate summits without cutting to the baseline.
+ *
+ * One outline, left to right: up the first flank, over each summit via its
+ * saddle, then down the last flank and back along the baseline.
+ */
+const mountainPath = (rng: Rng): string => {
+  const n = int(rng, RIDGE.minPeaks, RIDGE.maxPeaks)
+  // Relative summit heights, normalised so the tallest hits the top band and
+  // every other peak keeps at least `minPeakShare` of it.
+  const rel = Array.from({ length: n }, () => RIDGE.minPeakShare + rng() * (1 - RIDGE.minPeakShare))
+  const tallest = Math.max(...rel)
+  const peakTop = RIDGE.minHeight + rng() * (RIDGE.maxHeight - RIDGE.minHeight)
+  const heights = rel.map(v =>
+    clamp((v / tallest) * peakTop, RIDGE.minHeight * RIDGE.minPeakShare, RIDGE.maxHeight)
+  )
+  // The range is centred and spans a width proportional to its height, so the
+  // flanks sit at a mountain's slope rather than a crown's spike. Wider ranges
+  // get more room, or five summits crowd into a picket fence.
+  const peakTopActual = Math.max(...heights)
+  const span = clamp(peakTopActual * (1.2 + 0.22 * (n - 1)), 44, 96)
+  const x0 = clamp(50 - span / 2, 2, 50)
+  const x1 = clamp(x0 + span, 50, 98)
+  // The outer summits are INSET from the range's feet, so the silhouette rises
+  // along a flank instead of jumping from the baseline straight to a peak (with
+  // two peaks, that jump reads as a V rather than mountains).
+  const flank = (x1 - x0) / (n + 1.6)
+  const first = x0 + flank
+  const last = x1 - flank
+  const xs = heights.map((_, i) => {
+    const t = n === 1 ? 0.5 : i / (n - 1)
+    const jitter = (rng() - 0.5) * ((last - first) / (n + 2)) * 0.35
+    return clamp(first + t * (last - first) + jitter, x0 + flank * 0.5, x1 - flank * 0.5)
+  })
+  const y = (h: number) => RIDGE.baseline - h
+  const pts: string[] = [`M${n1(x0)} ${RIDGE.baseline}`]
+  for (let i = 0; i < n; i++) {
+    pts.push(`L${n1(xs[i])} ${n1(y(heights[i]))}`)
+    if (i < n - 1) {
+      // Saddle between this summit and the next, as a share of the lower one.
+      const lower = Math.min(heights[i], heights[i + 1])
+      const k = RIDGE.minSaddle + rng() * (RIDGE.maxSaddle - RIDGE.minSaddle)
+      const sx = (xs[i] + xs[i + 1]) / 2
+      pts.push(`L${n1(sx)} ${n1(y(lower * k))}`)
+    }
+  }
+  pts.push(`L${n1(x1)} ${RIDGE.baseline}`, 'Z')
+  return pts.join(' ')
+}
+
 /** Figurative silhouettes drawn in a local 0–100 box, scaled to radius r. */
-const SILHOUETTES: Record<'trident' | 'bird', string> = {
-  // Barbados-style trident head: centre spearhead, two curved side prongs,
-  // broken shaft
+const SILHOUETTES: Record<
+  'trident' | 'crosslet' | 'mountain' | 'palm' | 'anchor',
+  string
+> = {
+  // Bolnur-Katskhuri cross (Georgia): equal arms whose ends flare outward in a
+  // shallow concave curve. Repeats cleanly at any size, so it stays legible
+  // where the figurative silhouettes would close up.
+  crosslet:
+    'M42 4 C43 14 43 22 42 30 C34 29 26 29 16 28 C17 34 17 42 16 48 ' +
+    'C26 47 34 47 42 46 C43 54 43 62 42 72 C46 71 54 71 58 72 ' +
+    'C57 62 57 54 58 46 C66 47 74 47 84 48 C83 42 83 34 84 28 ' +
+    'C74 29 66 29 58 30 C57 22 57 14 58 4 C54 5 46 5 42 4 Z',
+  // Fallback ridge, used only where no rng is available. The live charge is
+  // built by `mountainPath`, which varies the peak count and their heights.
+  mountain: 'M4 90 L30 38 L46 66 L62 26 L78 60 L88 44 L96 90 Z',
+  // Palm: fronds fanning from a slim trunk (Haiti, Saudi register without script)
+  palm:
+    'M46 96 L46 52 L54 52 L54 96 Z M50 46 C40 34 24 30 10 34 ' +
+    'C22 26 40 28 50 40 C60 28 78 26 90 34 C76 30 60 34 50 46 Z ' +
+    'M50 44 C46 30 36 18 22 12 C40 14 52 26 56 42 Z ' +
+    'M50 44 C54 30 64 18 78 12 C60 14 48 26 44 42 Z',
+  // Anchor: ONE closed outline traced round the whole shape — ring, shank,
+  // crossbar, arms and barbed flukes. Drawn as a single loop (rather than
+  // stacked subpaths) so no seam or notch can show where the parts meet; the
+  // ring's hole is the only counter-drawn subpath.
+  anchor:
+    // outer boundary, clockwise from the top of the ring
+    'M50 4 A13 13 0 0 1 58 27 L58 32 L80 32 L80 41 L58 41 L58 74 ' +
+    'C66 71 73 63 75 53 L68 50 L92 40 L94 64 L86 58 ' +
+    'C82 76 68 90 50 94 C32 90 18 76 14 58 L6 64 L8 40 L32 50 L25 53 ' +
+    'C27 63 34 71 42 74 L42 41 L20 41 L20 32 L42 32 L42 27 ' +
+    'A13 13 0 0 1 50 4 Z ' +
+    // the ring's hole
+    'M50 12 A6 6 0 1 0 50 24 A6 6 0 1 0 50 12 Z',
+  // Barbados-style trident head: centre spearhead, two side prongs, broken
+  // shaft. The prongs rise as straight tapered spikes off a shallow crossbar —
+  // an earlier version curved them outward and back, which bulged at the
+  // midpoint and read as flexed arms rather than tines.
   trident:
-    'M50 4 L60 24 L54 20 L54 42 L64 42 C68 34 68 26 64 20 L74 14 ' +
-    'C82 28 80 46 70 54 L54 54 L54 96 L46 96 L46 54 L30 54 ' +
-    'C20 46 18 28 26 14 L36 20 C32 26 32 34 36 42 L46 42 L46 20 L40 24 Z',
-  // frigatebird in flight: swept wings, forked tail
-  bird:
-    'M50 38 C55 28 64 23 74 24 C68 29 64 34 63 40 C74 37 87 40 94 48 ' +
-    'C84 47 75 49 68 54 C60 60 52 60 47 56 C42 64 34 71 24 74 ' +
-    'C30 67 33 60 34 53 C24 56 13 53 6 46 C14 43 24 42 32 44 C37 39 43 37 50 38 Z',
+    'M50 2 L58 22 L53 19 L53 40 L67 40 L67 14 L75 14 L75 48 L53 48 ' +
+    'L53 98 L47 98 L47 48 L25 48 L25 14 L33 14 L33 40 L47 40 L47 19 L42 22 Z',
 }
 
 /** Draw a charge centered at (cx, cy) with outer radius r on background `bg`. */
@@ -296,25 +484,36 @@ const drawCharge = (
   // multi-star charges turn into illegible dots at small radii, and the
   // figurative silhouettes turn to mud
   if (r < 95 && (kind === 'stars-ring' || kind === 'stars-arc')) kind = 'star'
-  if (r < 70 && (kind === 'trident' || kind === 'bird')) kind = 'star'
+  if (r < 70 && kind === 'trident') kind = 'star'
+  // The wreath's leaves and the shield's interior close up below this; the
+  // bare charge inside them still reads.
+  if (r < 80 && kind === 'wreath-star') kind = 'star'
+  if (r < 90 && kind === 'shield') kind = 'disc'
   switch (kind) {
     case 'star':
       return star(cx, cy, r, c)
+    // For both multi-star charges `r` is the charge's OUTER bound: the orbit
+    // plus each star's own radius must fit inside it, or the ring spills past
+    // the band it was sized to (stars landing on the neighbouring stripe).
     case 'stars-ring': {
       const n = int(rng, 5, 9)
+      const sr = r * 0.24
+      const orbit = r - sr
       const parts: string[] = []
       for (let i = 0; i < n; i++) {
         const a = (i / n) * 2 * Math.PI - Math.PI / 2
-        parts.push(star(cx + r * 0.72 * Math.cos(a), cy + r * 0.72 * Math.sin(a), r * 0.24, c))
+        parts.push(star(cx + orbit * Math.cos(a), cy + orbit * Math.sin(a), sr, c))
       }
       return parts.join('')
     }
     case 'stars-arc': {
       const n = int(rng, 3, 6)
+      const sr = r * 0.2
+      const orbit = r - sr
       const parts: string[] = []
       for (let i = 0; i < n; i++) {
         const a = Math.PI * (1.15 + (i / (n - 1)) * 0.7) // arc over the top
-        parts.push(star(cx + r * 0.85 * Math.cos(a), cy + r * 0.85 * Math.sin(a), r * 0.2, c))
+        parts.push(star(cx + orbit * Math.cos(a), cy + orbit * Math.sin(a), sr, c))
       }
       return parts.join('')
     }
@@ -352,9 +551,75 @@ const drawCharge = (
       return parts.join('')
     }
     case 'trident':
-    case 'bird': {
+    case 'crosslet':
+    case 'mountain':
+    case 'palm':
+    case 'anchor': {
       const s = +((2 * r) / 100).toFixed(3)
-      return `<path d="${SILHOUETTES[kind]}" fill="${c.hex}" transform="translate(${n1(cx - r)} ${n1(cy - r)}) scale(${s})"/>`
+      // The ridge is generated per flag (peak count and heights vary); every
+      // other silhouette is a fixed path.
+      const d = kind === 'mountain' ? mountainPath(rng) : SILHOUETTES[kind]
+      // Silhouettes carrying a counter-drawn hole (the anchor's ring) need
+      // even-odd; the rest default to nonzero so their overlapping subpaths
+      // merge instead of cancelling.
+      const fr = HOLLOW_SILHOUETTES.has(kind) ? ' fill-rule="evenodd"' : ''
+      return `<path d="${d}" fill="${c.hex}"${fr} transform="translate(${n1(cx - r)} ${n1(cy - r)}) scale(${s})"/>`
+    }
+    case 'cross-charge': {
+      // Equal-armed cross, sometimes flared to a Maltese-ish silhouette.
+      const t = r * (chance(rng, 0.35) ? 0.24 : 0.32)
+      return (
+        rect(cx - t, cy - r * 0.92, t * 2, r * 1.84, c) +
+        rect(cx - r * 0.92, cy - t, r * 1.84, t * 2, c)
+      )
+    }
+    case 'wreath-star': {
+      // A charge inside an open laurel: two arcs of leaves, gapped at the top.
+      const parts = [star(cx, cy, r * 0.46, c)]
+      const leaves = int(rng, 7, 10)
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < leaves; i++) {
+          const a = Math.PI * (0.62 + (i / (leaves - 1)) * 0.76) * side + Math.PI / 2
+          const lx = cx + r * 0.78 * Math.cos(a)
+          const ly = cy + r * 0.78 * Math.sin(a)
+          parts.push(
+            `<ellipse cx="${n1(lx)}" cy="${n1(ly)}" rx="${n1(r * 0.16)}" ry="${n1(r * 0.07)}" fill="${c.hex}" transform="rotate(${n1((a * 180) / Math.PI)} ${n1(lx)} ${n1(ly)})"/>`
+          )
+        }
+      }
+      return parts.join('')
+    }
+    case 'shield': {
+      // Heraldic escutcheon: flat chief, curved flanks, pointed base. Filled
+      // with a simple ordinary (per fess / per pale / plain) so it reads as
+      // arms rather than a blob, and outlined when it would vanish into `bg`.
+      const w = r * 0.82
+      const top = cy - r * 0.9
+      const bot = cy + r * 0.95
+      const path =
+        `M${n1(cx - w)} ${n1(top)} L${n1(cx + w)} ${n1(top)} L${n1(cx + w)} ${n1(cy + r * 0.1)} ` +
+        `Q${n1(cx + w)} ${n1(bot - r * 0.1)} ${n1(cx)} ${n1(bot)} ` +
+        `Q${n1(cx - w)} ${n1(bot - r * 0.1)} ${n1(cx - w)} ${n1(cy + r * 0.1)} Z`
+      // The shield's ground must read against BOTH the flag behind it and the
+      // charge inside it — `fimbriation` alone can hand back the same white as
+      // a white stripe, and the shield loses its edge.
+      const field =
+        PALETTE.filter(p => p !== c && contrasts(p, bg, 120) && contrasts(p, c, 140)).sort(
+          (a, z) => Math.min(dist(z, bg), dist(z, c)) - Math.min(dist(a, bg), dist(a, c))
+        )[0] ?? fimbriation([bg, c])
+      const parts = [`<path d="${path}" fill="${field.hex}"/>`]
+      // One ordinary inside, in the charge colour.
+      const ordinary = int(rng, 0, 2)
+      const clip = `sh${n1(cx)}${n1(cy)}`.replace(/[^a-z0-9]/gi, '')
+      parts.unshift(`<clipPath id="${clip}"><path d="${path}"/></clipPath>`)
+      const inner: string[] = []
+      if (ordinary === 0) inner.push(rect(cx - w, cy, w * 2, bot - cy, c))
+      else if (ordinary === 1) inner.push(rect(cx, top, w, bot - top, c))
+      else inner.push(star(cx, cy + r * 0.05, r * 0.42, c))
+      if (ordinary < 2) parts.push(`<g clip-path="url(#${clip})">${inner.join('')}</g>`)
+      else parts.push(...inner)
+      parts.push(`<path d="${path}" fill="none" stroke="${c.hex}" stroke-width="${n1(r * 0.07)}"/>`)
+      return parts.join('')
     }
   }
 }
@@ -884,6 +1149,275 @@ const buildRays = (rng: Rng): Built => {
   return { family: 'rays', parts, used: [field, ray] }
 }
 
+/**
+ * Arms on a field — the corpus's biggest archetype after stripes (~20% of real
+ * flags carry a shield or heraldic device). The field is a plain or striped
+ * ground so the shield stays the subject; `drawCharge` degrades it to a disc
+ * below the radius where its interior closes up.
+ */
+const buildArms = (rng: Rng): Built => {
+  const striped = chance(rng, 0.45)
+  const parts: string[] = []
+  const used: FlagColor[] = []
+  let bg: FlagColor
+  if (striped) {
+    const colors = [pickColor(rng, [])]
+    for (let i = 1; i < 3; i++) colors.push(pickColor(rng, colors, [colors[i - 1]]))
+    for (let guard = 0; isRealStripes(colors) && guard < 4; guard++) {
+      colors[1] = pickColor(rng, colors, [colors[0], colors[2]])
+    }
+    for (let i = 0; i < 3; i++) parts.push(rect(0, (H * i) / 3, W, H / 3, colors[i]))
+    bg = colors[1]
+    used.push(...colors)
+  } else {
+    bg = pickColor(rng, [])
+    parts.push(rect(0, 0, W, H, bg))
+    used.push(bg)
+  }
+  const c = pickColor(rng, [], [bg], 180)
+  parts.push(drawCharge(rng, 'shield', W / 2, H / 2, H * 0.3, c, bg))
+  used.push(c)
+  return { family: 'arms', parts, used: [...new Set(used)] }
+}
+
+/**
+ * Chevron — a band following the hoist wedge's angle rather than filling it.
+ * Single (Jordan/Sudan) or stacked (Djibouti/Mozambique register). Distinct
+ * from `hoist-triangle`, which fills the wedge solid.
+ */
+const buildChevron = (rng: Rng): Built => {
+  const base = buildHStripes(rng, false)
+  const edges = [base.used[0], base.used[base.used.length - 1]]
+  const parts = [...base.parts]
+  const used = [...base.used]
+  const depth = W * (0.3 + rng() * 0.12)
+  const wedge = (d: number, c: FlagColor) =>
+    poly(
+      [
+        [0, 0],
+        [d, H / 2],
+        [0, H],
+      ],
+      c
+    )
+  const layers = chance(rng, 0.4) ? 2 : 1
+  let d = depth
+  for (let i = 0; i < layers; i++) {
+    const c = pickColor(rng, used, edges)
+    if (!edges.every(e => contrasts(c, e, 140)) && i === 0) {
+      const f = fimbriation([c, ...edges])
+      parts.push(wedge(d + W * 0.03, f))
+      used.push(f)
+    }
+    parts.push(wedge(d, c))
+    used.push(c)
+    d *= 0.52
+  }
+  if (layers === 1 && chance(rng, 0.5)) {
+    const tip = used[used.length - 1]
+    const c = pickColor(rng, [], [tip], 180)
+    parts.push(drawCharge(rng, pick(rng, ['star', 'crosslet'] as const), depth * 0.34, H / 2, H * 0.12, c, tip))
+    used.push(c)
+  }
+  return { family: 'chevron', parts, used: [...new Set(used)] }
+}
+
+/**
+ * Colonial ensign — the canton carries a WHOLE flag rather than a charge
+ * (AU, NZ, FJ, TV, CK). The canton flag is forged recursively from a
+ * restricted set of simple families, so the inset never becomes a busy mess.
+ */
+const buildEnsign = (rng: Rng): Built => {
+  let field = pickColor(rng, [])
+  const cw = W * 0.42
+  const ch = H * 0.5
+  // The inset is its own little flag: a cross, saltire or triband.
+  const inner = pick(rng, ['cross', 'saltire', 'triband'] as const)
+  let a = pickColor(rng, [field], [field])
+  let b = pickColor(rng, [field, a], [a])
+  // A navy field under a red-on-white saltire canton IS the Australian/NZ
+  // ensign. Re-pick until the combination stops being a real one.
+  for (let guard = 0; REAL_ENSIGNS.has(seq([field, a, b])) && guard < 4; guard++) {
+    field = pickColor(rng, [field, a, b], [a])
+    a = pickColor(rng, [field], [field])
+    b = pickColor(rng, [field, a], [a])
+  }
+  const parts = [rect(0, 0, W, H, field)]
+  const used = [field]
+  const sub: string[] = [`<rect x="0" y="0" width="${n1(cw)}" height="${n1(ch)}" fill="${a.hex}"/>`]
+  if (inner === 'cross') {
+    const t = ch * 0.22
+    sub.push(
+      `<rect x="0" y="${n1((ch - t) / 2)}" width="${n1(cw)}" height="${n1(t)}" fill="${b.hex}"/>`,
+      `<rect x="${n1(cw * 0.38 - t / 2)}" y="0" width="${n1(t)}" height="${n1(ch)}" fill="${b.hex}"/>`
+    )
+  } else if (inner === 'saltire') {
+    const t = ch * 0.16
+    sub.push(
+      `<path d="M0 0L${n1(cw)} ${n1(ch)}" stroke="${b.hex}" stroke-width="${n1(t)}" fill="none"/>`,
+      `<path d="M${n1(cw)} 0L0 ${n1(ch)}" stroke="${b.hex}" stroke-width="${n1(t)}" fill="none"/>`
+    )
+  } else {
+    for (let i = 0; i < 3; i++)
+      sub.push(
+        `<rect x="0" y="${n1((ch * i) / 3)}" width="${n1(cw)}" height="${n1(ch / 3)}" fill="${(i % 2 ? b : a).hex}"/>`
+      )
+  }
+  // The saltire's strokes run corner to corner with a finite width, so they
+  // spill past the canton box unless it is clipped to itself.
+  const clip = 'cn' + n1(cw) + n1(ch)
+  parts.push(
+    `<clipPath id="${clip}"><rect x="0" y="0" width="${n1(cw)}" height="${n1(ch)}"/></clipPath>` +
+      `<g clip-path="url(#${clip})">${sub.join('')}</g>`
+  )
+  used.push(a, b)
+  // A constellation in the fly — deliberate placement, never a random spray:
+  // one larger lead star with smaller companions, none of them touching.
+  const c = pickColor(rng, [], [field], 180)
+  const n = int(rng, 4, 6)
+  const radii = [H * 0.085, H * 0.06, H * 0.055, H * 0.05, H * 0.045, H * 0.04]
+  parts.push(
+    ...scatterStars(rng, n, { x: W * 0.55, y: H * 0.1, w: W * 0.38, h: H * 0.78 }, radii, c)
+  )
+  used.push(c)
+  return { family: 'ensign', parts, used: [...new Set(used)] }
+}
+
+/**
+ * Corner fan — oblique bands radiating from the lower-hoist corner to the fly
+ * and top edges (Seychelles). Each band is a triangle sharing that vertex, so
+ * the rays stay clean at any aspect.
+ */
+const buildCornerFan = (rng: Rng): Built => {
+  const n = int(rng, 4, 5)
+  const colors = [pickColor(rng, [])]
+  for (let i = 1; i < n; i++) colors.push(pickColor(rng, colors, [colors[i - 1]]))
+  const parts: string[] = []
+  // Every ray is a wedge between two ADJACENT boundary points, all sharing the
+  // lower-hoist vertex — drawing them side by side rather than stacking, so
+  // each colour keeps its own slice.
+  //
+  // The boundaries walk the perimeter anticlockwise from the top-hoist corner,
+  // across the top edge, then down the fly: that is the sweep Seychelles makes.
+  const edge = (t: number): [number, number] => {
+    // t in [0,1] walks (0,0) -> (W,0) -> (W,H).
+    const along = t * (W + H)
+    return along <= W ? [along, 0] : [W, along - W]
+  }
+  for (let i = 0; i < n; i++) {
+    const a = edge(i / n)
+    const b = edge((i + 1) / n)
+    // A wedge can span the top-fly corner; include it so the ray stays convex.
+    const pts: Array<[number, number]> = [[0, H], a]
+    if (a[1] === 0 && b[0] === W && b[1] > 0) pts.push([W, 0])
+    pts.push(b)
+    parts.push(poly(pts, colors[i]))
+  }
+  return { family: 'corner-fan', parts, used: [...new Set(colors)] }
+}
+
+/**
+ * Star field — the flag IS its stars. Real flags arrange them in a ring (EU,
+ * CV), an arc (VE, HN), a constellation (BR, AU, PG), a grid (US) or a
+ * southern-cross scatter, on a plain or two-part ground. Distinct from a
+ * single centred charge: here the arrangement carries the whole design.
+ */
+const buildStarfield = (rng: Rng): Built => {
+  const split = pickWeighted(rng, [
+    { v: 'plain', w: 46 },
+    { v: 'bicolour', w: 28 },
+    { v: 'canton-less-stripes', w: 26 },
+  ]).v
+  const parts: string[] = []
+  const used: FlagColor[] = []
+  let bg: FlagColor
+  if (split === 'plain') {
+    bg = pickColor(rng, [])
+    parts.push(rect(0, 0, W, H, bg))
+    used.push(bg)
+  } else if (split === 'bicolour') {
+    const a = pickColor(rng, [])
+    const b = pickColor(rng, [a], [a])
+    const horizontal = chance(rng, 0.6)
+    parts.push(
+      rect(0, 0, W, H, a),
+      horizontal ? rect(0, H / 2, W, H / 2, b) : rect(W / 2, 0, W / 2, H, b)
+    )
+    // Stars sit on the larger/darker half; pick the first for simplicity.
+    bg = a
+    used.push(a, b)
+  } else {
+    const a = pickColor(rng, [])
+    const b = pickColor(rng, [a], [a])
+    const n = pick(rng, [5, 7, 9] as const)
+    for (let i = 0; i < n; i++) parts.push(rect(0, (H * i) / n, W, H / n, i % 2 === 0 ? a : b))
+    bg = a
+    used.push(a, b)
+  }
+  const c = pickColor(rng, [], [bg], 180)
+  used.push(c)
+  const cx = split === 'bicolour' ? W * 0.5 : W / 2
+  const cy = H / 2
+  const layout = pickWeighted(rng, [
+    { v: 'ring', w: 26 },
+    { v: 'arc', w: 20 },
+    { v: 'constellation', w: 22 },
+    { v: 'grid', w: 14 },
+    { v: 'one-big', w: 18 },
+  ]).v
+  if (layout === 'ring') {
+    const n = int(rng, 5, 12)
+    const R = H * 0.3
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI - Math.PI / 2
+      parts.push(star(cx + R * Math.cos(a), cy + R * Math.sin(a), H * 0.075, c))
+    }
+  } else if (layout === 'arc') {
+    // Size the stars to the arc's span so neighbours never collide: the chord
+    // between adjacent stars has to clear two radii with a little air.
+    const n = int(rng, 5, 9)
+    const R = H * 0.34
+    const sweep = 0.64 * Math.PI
+    const chord = 2 * R * Math.sin(sweep / (2 * (n - 1)))
+    const sr = Math.min(H * 0.07, chord * 0.42)
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * (1.18 + (i / (n - 1)) * 0.64)
+      parts.push(star(cx + R * Math.cos(a), cy + R * 0.9 * Math.sin(a) + H * 0.12, sr, c))
+    }
+  } else if (layout === 'constellation') {
+    // Southern-Cross style: four to six stars of mixed size, off-centre and
+    // never touching.
+    const n = int(rng, 4, 6)
+    const radii = [H * 0.09, H * 0.065, H * 0.06, H * 0.05, H * 0.045, H * 0.04]
+    parts.push(
+      ...scatterStars(rng, n, { x: cx - W * 0.25, y: cy - H * 0.33, w: W * 0.5, h: H * 0.66 }, radii, c)
+    )
+  } else if (layout === 'grid') {
+    const cols = int(rng, 4, 6)
+    const rows = int(rng, 3, 4)
+    const gw = W * 0.5
+    const gh = H * 0.5
+    for (let r = 0; r < rows; r++) {
+      for (let k = 0; k < cols; k++) {
+        const sx = cx - gw / 2 + (gw * (k + 0.5)) / cols
+        const sy = cy - gh / 2 + (gh * (r + 0.5)) / rows
+        parts.push(star(sx, sy, H * 0.045, c))
+      }
+    }
+  } else {
+    // One dominant star, sometimes ringed by small ones (Cape Verde/Somalia).
+    parts.push(star(cx, cy, H * 0.28, c))
+    if (chance(rng, 0.4)) {
+      const n = int(rng, 6, 10)
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * 2 * Math.PI - Math.PI / 2
+        parts.push(star(cx + H * 0.42 * Math.cos(a), cy + H * 0.42 * Math.sin(a), H * 0.045, c))
+      }
+    }
+  }
+  return { family: 'starfield', parts, used: [...new Set(used)] }
+}
+
 // --- entry point -------------------------------------------------------------
 
 const FAMILIES: Array<{ w: number; build: (rng: Rng) => Built }> = [
@@ -901,6 +1435,11 @@ const FAMILIES: Array<{ w: number; build: (rng: Rng) => Built }> = [
   { w: 5, build: buildHoistBar },
   { w: 4, build: buildSerrated },
   { w: 4, build: buildRays },
+  { w: 8, build: buildArms },
+  { w: 6, build: buildChevron },
+  { w: 5, build: buildEnsign },
+  { w: 3, build: buildCornerFan },
+  { w: 7, build: buildStarfield },
 ]
 
 export const forgeFlag = (seed: string): ForgedFlag => {
