@@ -94,6 +94,8 @@ export type MinMaxAccessorKeys = Extract<
   | 'health.alcoholConsumption'
   | 'humanRights.refugees'
   | 'health.obesity'
+  | 'government.happiness'
+  | 'government.democracyIndex'
 >
 
 export interface MaxChallenge {

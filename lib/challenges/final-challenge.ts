@@ -230,6 +230,8 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
   'health.alcoholConsumption',
   'humanRights.refugees',
   'health.obesity',
+  'government.happiness',
+  'government.democracyIndex',
 ]
 
 /** Rows the min/max scorecard shows from the extreme end of the board. */
@@ -1628,6 +1630,8 @@ export const FINAL_STAT_LABELS: { [accessor in MinMaxAccessorKeys]: string } = {
   'health.alcoholConsumption': 'Alcohol consumption',
   'humanRights.refugees': 'Refugees hosted',
   'health.obesity': 'Obesity rate',
+  'government.happiness': 'Happiness score',
+  'government.democracyIndex': 'Democracy index',
 }
 
 /**
@@ -1665,6 +1669,14 @@ const finalChallengeMinMaxQuestion: {
   'people.population': {
     max: 'Select the most populous country',
     min: 'Select the least populous country',
+  },
+  'government.happiness': {
+    max: 'Select the country with the highest World Happiness score',
+    min: 'Select the country with the lowest World Happiness score',
+  },
+  'government.democracyIndex': {
+    max: 'Select the country with the highest democracy index',
+    min: 'Select the country with the lowest democracy index',
   },
 }
 
