@@ -39,13 +39,12 @@ export const OVERRIDES: OverrideTable = {
   CN: { k: 0.54, dx: -110 }, // China stars: cluster sized + nudged toward hoist
   DZ: { k: 0.3, dx: -25 }, // Algeria crescent+star: smaller, nudged toward hoist
   RS: { anchor: { x: 0.5, y: 0.5 } }, // Serbia arms: centre them in the wide tile (preserve pulled them hoist-ward)
-  ZM: { k: 0.88, dx: 50, dy: 5 }, // Zambia eagle: larger, nudged toward the fly
   ZW: { k: 0.5, dx: -35 }, // Zimbabwe bird+star: smaller, nudged toward hoist
 
   // Genuinely-hard flags are handled by hand-authored WIDE_SVGS (wide-svgs.ts) —
   // the WIDE_SVGS lookup in recompose() takes precedence, so they never reach
   // the engine and need no entry here (CA IL GY MG OM NZ BJ HR TM ZA MK NA MY
-  // JM GM BR AU BT LA SS KN CL DO FJ TG LR PW PA SC …).
+  // JM GM BR AU BT LA SS KN CL DO FJ TG LR PW PA SC ZM …).
 
   // Still falling to the contain-fallback (awkward mixed-field layouts):
   GW: { exclude: true }, // hoist-bar + two blocks on negative viewBox
