@@ -130,7 +130,9 @@ import { sample } from '~~/lib/arrays'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { TRAP_HOLD_MS, BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
+import { TRAP_HOLD_MS, BEAT_VERDICT_HOLD_MS, isClassicGroupRound } from '~~/lib/round-beats'
+import { settleGroupRound } from '~~/lib/harness/settle-group-round'
+import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
   AtlasChallenge,
   ChainTurnOutcome,
@@ -637,6 +639,30 @@ const armGovernmentScenario = () => {
   )
 }
 
+/**
+ * Every classic group round settles through ONE wire event, so a single
+ * stand-in carries all of them from the answer to their own scorecard — the
+ * reveals that used to need a hand-built scenario each. The turn/beat engines
+ * own their own simulators above and are left alone.
+ */
+const simulateGroupSettle = (eventData: Record<string, unknown>) => {
+  const game = gameStore.game
+  const round = game ? latestRound(game) : undefined
+  if (!game || !round || !isClassicGroupRound(round.groupChallenge)) return
+  window.setTimeout(() => {
+    // Re-read: the scenario may have been redealt while the latency ran.
+    const fresh = gameStore.game
+    if (fresh !== game || latestRound(fresh) !== round) return
+    void settleGroupRound({
+      game,
+      round,
+      submission: eventData as unknown as GroupSubmission,
+      meId: ME,
+      onSettled: () => (renderKey.value += 1),
+    })
+  }, SIM_LATENCY_MS)
+}
+
 const installStubSocket = () => {
   gameStore.playerId = ME
   const record = (event: string, eventData: Record<string, unknown>) => {
@@ -645,6 +671,7 @@ const installStubSocket = () => {
     if (event === 'submit-chain-move') simulateAtlasMove(eventData ?? {})
     if (event === 'chain-ready') simulateAtlasReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
+    if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
