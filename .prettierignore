@@ -11,3 +11,9 @@ playwright-report
 # Curated content, not code: one lyric line per array entry is how these are
 # read and edited. Prettier would collapse the short ones onto single lines.
 public/anthems/lyrics
+
+# Machine-written Wikidata caches, rewritten by their generators via
+# JSON.stringify on every run. Reformatting them is a multi-MB diff the next
+# generate:parties silently reverts.
+generators/data/party-match-cache.json
+generators/data/party-label-cache.json
