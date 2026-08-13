@@ -52,6 +52,31 @@
         <button @click="deal()">Replay</button>
         <button @click="seedGuesses()">Ticker</button>
       </div>
+
+      <!-- The same mode, dealt with different data — the rungs that used to be
+           scenarios of their own. Only modes that HAVE variants show it. -->
+      <div v-if="variantOptions.length" class="group">
+        <span class="label">Variant</span>
+        <select
+          class="variant-select"
+          :value="activeVariant?.id"
+          @change="pickVariant(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="option in variantOptions" :key="option.id" :value="option.id">
+            {{ option.label }}
+          </option>
+        </select>
+        <input
+          v-if="activeScenario?.anyCountry"
+          v-model="variantQuery"
+          class="variant-any"
+          aria-label="Deal any country"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="any country…"
+          @keydown.enter.prevent="pickFreeCountry()"
+        />
+      </div>
       <p v-if="lastEvent" class="submission">{{ lastEvent }}</p>
     </nav>
 
@@ -118,6 +143,8 @@ import { shortestRoute, traversalWithin } from '~~/lib/traversal'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
+import { REGION_LABELS } from '~~/lib/variant'
 import { resolveChallengeView } from '~/components/view/dispatch'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
@@ -1000,6 +1027,19 @@ const settledTraversalRound = (): Round => {
   } as unknown as Round
 }
 
+/**
+ * A deal of the SAME mode with different data — the anthem's country, a
+ * zoom-out's geometry, a leader's party chip. These used to be top-level
+ * scenarios, which buried the modes among their own edge cases; as variants
+ * they stay one keystroke away without crowding the catalog.
+ */
+interface Variant {
+  id: string
+  label: string
+  /** The country a free pick replaces, when the mode takes one. */
+  country?: ISOCountryCode
+}
+
 interface Scenario {
   id: string
   label: string
@@ -1011,7 +1051,11 @@ interface Scenario {
    * scorecard by itself instead of needing a second scenario for the reveal.
    */
   component?: Component
-  build: () => Game
+  /** Curated rungs; the first is the default deal. */
+  variants?: Variant[]
+  /** True when a variant may name ANY country, not just a curated rung. */
+  anyCountry?: boolean
+  build: (variant?: Variant) => Game
 }
 
 const landmark = LANDMARKS['eiffel-tower']
@@ -2449,105 +2493,46 @@ const scenarios: Scenario[] = [
   {
     id: 'anthem-buzz',
     label: 'Opening Ceremony (anthem audio)',
-    build: () =>
-      mockGame('group-challenge', [
+    // Each rung is a deliberate stress case for the lyric wall; the free pick
+    // deals any country's anthem, which is how a missing clip or an uncurated
+    // wall gets seen. Sweden is the reference country (the only fully curated
+    // wall so far — see public/anthems/lyrics/readme-anthems.md).
+    variants: [
+      { id: 'sweden', label: 'Sweden — reference lyric wall', country: 'SE' },
+      // A two-colour flag where one colour is the milk tone, so the field has
+      // to carry the hint on crimson alone.
+      { id: 'poland', label: 'Poland — white-as-primary palette', country: 'PL' },
+      // Kimigayo, the shortest anthem in the world: a five-line CJK wall with a
+      // masked 君が代 span — glyph fallback and mask sizing in one deal.
+      { id: 'japan', label: 'Japan — shortest anthem, CJK wall', country: 'JP' },
+      // The longest anthem text in the world, 21 lines across 6 verses: the
+      // drift-scroll's stress test, where any reflow regression shows first.
+      { id: 'uruguay', label: 'Uruguay — longest anthem wall', country: 'UY' },
+      // Both sources 404 on purpose: the round must arm and run silent rather
+      // than strand the table behind a dead play button.
+      { id: 'broken-clip', label: 'Unloadable clip (404s on purpose)', country: 'SE' },
+    ],
+    anyCountry: true,
+    build: variant => {
+      const isoCode = variant?.country ?? 'SE'
+      const broken = variant?.id === 'broken-clip'
+      const clipCode = broken ? 'missing' : isoCode
+      return mockGame('group-challenge', [
         groupRound({
           _type: 'anthem-buzz-challenge',
-          // Sweden is the reference country for the lyric wall — the only one
-          // curated so far (see public/anthems/lyrics/readme-anthems.md).
-          country: 'SE',
-          clip: { webm: '/anthems/SE.webm', m4a: '/anthems/SE.m4a' },
-          lyricsUrl: '/anthems/lyrics/SE-anthem.json',
+          country: isoCode,
+          clip: { webm: `/anthems/${clipCode}.webm`, m4a: `/anthems/${clipCode}.m4a` },
+          // The broken rung carries no wall on purpose: a dead clip must not
+          // be rescued by lyrics that happen to exist.
+          ...(broken ? {} : { lyricsUrl: `/anthems/lyrics/${isoCode}-anthem.json` }),
           durationSeconds: 30,
-          region: 'Europe',
-          swatches: flagSwatches('SE'),
-          initial: 'S',
+          region: REGION_LABELS[getCountry(isoCode).region],
+          ...(broken ? {} : { swatches: flagSwatches(isoCode) }),
+          initial: countryName(isoCode).slice(0, 1),
           maximumPoints: MAXIMUM_POINTS,
         }),
-      ]),
-  },
-  {
-    id: 'anthem-buzz-poland',
-    label: 'Opening Ceremony (white & red palette)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'anthem-buzz-challenge',
-          // Poland exercises the white-as-primary path: a two-colour flag
-          // where one colour is the milk tone, so the field has to carry the
-          // hint on crimson alone.
-          country: 'PL',
-          clip: { webm: '/anthems/PL.webm', m4a: '/anthems/PL.m4a' },
-          lyricsUrl: '/anthems/lyrics/PL-anthem.json',
-          durationSeconds: 30,
-          region: 'Europe',
-          swatches: flagSwatches('PL'),
-          initial: 'P',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'anthem-buzz-japan',
-    label: 'Opening Ceremony (shortest anthem, CJK wall)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'anthem-buzz-challenge',
-          // Kimigayo is the shortest anthem in the world: a five-line wall in
-          // CJK script with a masked 君が代 span — the tiniest verse the wall
-          // renders, no drift, non-Latin glyph fallback and mask sizing all in
-          // one scenario.
-          country: 'JP',
-          clip: { webm: '/anthems/JP.webm', m4a: '/anthems/JP.m4a' },
-          lyricsUrl: '/anthems/lyrics/JP-anthem.json',
-          durationSeconds: 30,
-          region: 'Asia',
-          swatches: flagSwatches('JP'),
-          initial: 'J',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'anthem-buzz-uruguay',
-    label: 'Opening Ceremony (longest anthem wall)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'anthem-buzz-challenge',
-          // The longest anthem text in the world: 21 lines across 6 verses.
-          // The wall's tallest column — the drift-scroll's stress test, and
-          // the case that finds any bottom-fade or reflow regression first.
-          country: 'UY',
-          clip: { webm: '/anthems/UY.webm', m4a: '/anthems/UY.m4a' },
-          lyricsUrl: '/anthems/lyrics/UY-anthem.json',
-          durationSeconds: 30,
-          region: 'Americas',
-          swatches: flagSwatches('UY'),
-          initial: 'U',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'anthem-buzz-broken-clip',
-    label: 'Opening Ceremony (unloadable clip)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'anthem-buzz-challenge',
-          // Both sources 404 on purpose: the round must arm and run silent
-          // rather than strand the table behind a dead play button — group
-          // settlement waits on every seat.
-          country: 'SE',
-          clip: { webm: '/anthems/missing.webm', m4a: '/anthems/missing.m4a' },
-          durationSeconds: 30,
-          region: 'Europe',
-          initial: 'S',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+      ])
+    },
   },
   {
     id: 'tongue-buzz',
@@ -4764,6 +4749,9 @@ const movePickerHighlight = (delta: number) => {
 
 const pick = (id: string) => {
   scenarioId.value = id
+  // A new mode starts on its own first rung; a rung from the previous mode
+  // means nothing here.
+  variantId.value = ''
   closePicker()
   deal()
 }
@@ -4778,13 +4766,69 @@ watch(pickerQuery, () => {
   if (pickerList.value) pickerList.value.scrollTop = 0
 })
 
+/**
+ * The chosen rung, or a country the harness was asked for by ISO code. A free
+ * pick is just a Variant built on the fly, so `build()` never learns the
+ * difference between a curated case and a typed one.
+ */
+const variantId = ref('')
+
+const freeCountryVariant = (isoCode: string): Variant | undefined => {
+  const code = isoCode.toUpperCase() as ISOCountryCode
+  if (!ISOCountryCodes.includes(code)) return undefined
+  return { id: code, label: countryName(code), country: code }
+}
+
+const activeVariant = computed<Variant | undefined>(() => {
+  const scenario = activeScenario.value
+  if (!scenario?.variants?.length) return undefined
+  const curated = scenario.variants.find(entry => entry.id === variantId.value)
+  if (curated) return curated
+  if (scenario.anyCountry && variantId.value) {
+    const free = freeCountryVariant(variantId.value)
+    if (free) return free
+  }
+  return scenario.variants[0]
+})
+
+/** Rungs plus, when the mode takes any country, whatever was typed. */
+const variantOptions = computed<Variant[]>(() => {
+  const scenario = activeScenario.value
+  if (!scenario?.variants?.length) return []
+  const rungs = [...scenario.variants]
+  const chosen = activeVariant.value
+  if (chosen && !rungs.some(entry => entry.id === chosen.id)) rungs.push(chosen)
+  return rungs
+})
+
+const pickVariant = (id: string) => {
+  variantId.value = id
+  deal()
+}
+
+/** A typed country deals immediately when it resolves to a real ISO code. */
+const variantQuery = ref('')
+const pickFreeCountry = () => {
+  const typed = variantQuery.value.trim()
+  if (!typed) return
+  const isoCode = freeCountryVariant(typed)?.country ?? searchCountriesByName(typed)[0]?.isoCode
+  if (!isoCode) return
+  variantQuery.value = ''
+  pickVariant(isoCode)
+}
+
 const deal = () => {
   const scenario = activeScenario.value
   if (!scenario) return
-  // Selection survives a refresh: /test-views?scenario=border-chain-easy
-  router.replace({ query: { scenario: scenario.id } })
+  const variant = activeVariant.value
+  // Selection survives a refresh:
+  //   /test-views?scenario=anthem-buzz&variant=japan
+  //   /test-views?scenario=anthem-buzz&variant=BR   (a free country pick)
+  router.replace({
+    query: { scenario: scenario.id, ...(variant ? { variant: variant.id } : {}) },
+  })
   lastEvent.value = ''
-  gameStore.game = scenario.build()
+  gameStore.game = scenario.build(variant)
   renderKey.value += 1
   ready.value = true
   armAtlasScenario()
@@ -4805,6 +4849,9 @@ onMounted(() => {
   installStubSocket()
   const requested = String(route.query.scenario ?? '')
   if (scenarios.some(s => s.id === requested)) scenarioId.value = requested
+  // A bare ?scenario= still deals the first rung, so every existing link (and
+  // e2e/flashpoint-ladder.spec.ts) keeps working untouched.
+  variantId.value = String(route.query.variant ?? '')
   diagnostics.value = route.query.diagnostics !== undefined
   deal()
 
@@ -4893,6 +4940,31 @@ button {
   background: rgb(255 255 255 / 12%);
   border-radius: 6px;
   min-width: 0;
+}
+
+.variant-select,
+.variant-any {
+  border: 0;
+  color: inherit;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+  background: rgb(255 255 255 / 12%);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.variant-select {
+  cursor: pointer;
+  max-width: 22vw;
+}
+
+.variant-any {
+  width: 9rem;
+
+  &::placeholder {
+    color: inherit;
+    opacity: 0.45;
+  }
 }
 
 .picker {
