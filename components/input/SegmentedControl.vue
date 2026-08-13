@@ -7,6 +7,7 @@
            transform means no corner overflow at the ends. -->
       <div
         class="segmented-thumb"
+        :class="{ unset: !isSet }"
         aria-hidden="true"
         :style="{ transform: `translateX(${activeIndex * 100}%)` }"
       />
@@ -48,6 +49,13 @@ const props = defineProps({
     type: Array as PropType<string[]>,
     required: true,
   },
+  /**
+   * The chosen option, or `''` for a control nothing has been filed into yet.
+   * An unset control parks its thumb on the first segment and hides it, so
+   * "not answered" is visibly distinct from "answered with the first option" —
+   * the Government round counts unfiled benches, and a pre-selected segment
+   * would both lie about the count and rob the player of the choice.
+   */
   modelValue: {
     type: String,
     required: true,
@@ -55,6 +63,15 @@ const props = defineProps({
   label: {
     type: String,
     default: '',
+  },
+  /**
+   * Per-option display copy, when the value's own name is not what a player
+   * should read ("With"/"Against" for `government`/`opposition`). Options
+   * missing from the map fall back to their title-cased value.
+   */
+  optionLabels: {
+    type: Object as PropType<Record<string, string>>,
+    default: undefined,
   },
   disabled: {
     type: Boolean,
@@ -75,6 +92,9 @@ watch(
   value => (selected.value = value)
 )
 
+/** Whether a real option is filed — `''` (or an unknown value) is "not yet". */
+const isSet = computed(() => props.options.includes(selected.value))
+
 const activeIndex = computed(() => Math.max(0, props.options.indexOf(selected.value)))
 
 const select = (option: string) => {
@@ -84,7 +104,7 @@ const select = (option: string) => {
   emit('change', option)
 }
 
-const formatLabel = (option: string) => titleCase(option)
+const formatLabel = (option: string) => props.optionLabels?.[option] ?? titleCase(option)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -128,7 +148,15 @@ const formatLabel = (option: string) => titleCase(option)
   border-radius: 0.7rem;
   background: var(--dark-blue);
   box-shadow: 0 0.2rem 0.6rem ink(0.25);
-  transition: transform var(--motion-base) var(--ease-out-expressive);
+  transition:
+    transform var(--motion-base) var(--ease-out-expressive),
+    opacity var(--motion-quick) var(--ease-out-expressive);
+
+  // Nothing filed yet: the thumb waits on the first segment, unseen, so it
+  // slides out from there on the first pick rather than fading in place.
+  &.unset {
+    opacity: 0;
+  }
 }
 
 .segmented-divider {
