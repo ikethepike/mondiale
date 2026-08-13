@@ -225,17 +225,20 @@ const SHAPE_UNFRIENDLY: ISOCountryCode[] = [
   'LU',
 ]
 
+/** Can a shape-centric mode (zoom-out, outline draw) deal this country? The one
+ *  gate — the camera's opening-frame test sweeps exactly this set, so a country
+ *  that can be dealt is a country whose framing is covered. */
+export const isShapeFriendly = (isoCode: ISOCountryCode): boolean => {
+  if (SHAPE_UNFRIENDLY.includes(isoCode)) return false
+  const area = COUNTRIES[isoCode].geography.area.land
+  return !!area && area.amount > 20
+}
+
 const pickShapeFriendlyCountry = (
   candidates: ISOCountryCode[],
   world: ISOCountryCode[] = [...ISOCountryCodes]
 ): ISOCountryCode => {
-  const excluded = new Set(SHAPE_UNFRIENDLY)
-  const filter = (isoCodes: ISOCountryCode[]) =>
-    isoCodes.filter(isoCode => {
-      if (excluded.has(isoCode)) return false
-      const area = COUNTRIES[isoCode].geography.area.land
-      return !!area && area.amount > 20
-    })
+  const filter = (isoCodes: ISOCountryCode[]) => isoCodes.filter(isShapeFriendly)
 
   // A variant pool that filters down to nothing falls back to the world
   const pool = filter(candidates)

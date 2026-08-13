@@ -258,6 +258,7 @@ import {
   labelBoxFor,
   mainlandBox,
   projectRobinson,
+  zoomOutStartView,
   type LatLng,
 } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
@@ -2205,40 +2206,22 @@ const startZoomOut = (
     if (!mainland) return console.warn(`Zoom-out: country not on map: ${isoCode}`)
 
     // The country's full (recognisable) frame is the END; the START is a tight
-    // crop centred on it. A fixed fraction of the frame alone breaks for huge
-    // countries — 18% of Russia's bbox is still half the planet — so the start is
-    // also capped to an absolute deep zoom, giving every country a comparably
-    // tight sliver regardless of its size. Sized against the frame's LARGER
-    // dimension: on a portrait screen the frame is tall, and a width-based crop
-    // would span enough latitude to show the whole country plus its neighbours.
+    // crop on the country's own land.
+    //
+    // The anchor is the label's pole of inaccessibility, in COUNTRY space —
+    // never `wide`'s centre. `frameForBoxes` returns a BERTHED frame, pushed
+    // off-centre by design so the subject clears the typing console, and
+    // inheriting that offset opened the crop on the neighbour (Estonia's landed
+    // wholly inside Latvia; with the keyboard up, every country missed itself).
     wide = frameForBoxes([mainland], [])
-    const cx = wide.x + wide.width / 2
-    const cy = wide.y + wide.height / 2
-    const TIGHT_FRACTION = 0.13
-    const TIGHT_MAX_SPAN = WORLD_VIEW.width / 18 // absolute deep-zoom ceiling
-    const TIGHT_MIN_SPAN = WORLD_VIEW.width / 200 // geometry-legibility floor
-    /** At least one axis must show less than this much of the country. */
-    const COUNTRY_MAX_VISIBLE = 0.6
-    const wideSpan = Math.max(wide.width, wide.height)
-    let startSpan = Math.min(wideSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
-    // Small countries (The Gambia) are dwarfed by the frame's minimum padding, so
-    // a fraction of THAT frame still contains them whole and the shape gives the
-    // answer away at the first frame. Shrink until one axis crops the country —
-    // one is enough: a crop across the narrow axis hides the outline just as well.
-    const [, , mainlandWidth, mainlandHeight] = mainland
-    const shrink = Math.max(
-      (mainlandWidth * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, viewAspect)),
-      (mainlandHeight * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, 1 / viewAspect))
+    const anchor = labelAnchorFor(isoCode)
+    if (!anchor) return console.warn(`Zoom-out: no anchor: ${isoCode}`)
+    tightView = zoomOutStartView(
+      mainland,
+      anchor,
+      Math.max(wide.width, wide.height),
+      viewAspect
     )
-    startSpan = Math.max(startSpan * Math.min(1, shrink), TIGHT_MIN_SPAN)
-    const startWidth = startSpan * Math.min(1, viewAspect)
-    const startHeight = startWidth / viewAspect
-    tightView = {
-      x: cx - startWidth / 2,
-      y: cy - startHeight / 2,
-      width: startWidth,
-      height: startHeight,
-    }
 
     // A tight crop can hold several borders at once (The Gambia inside Senegal):
     // fade the neighbours' ink so the crop reads as ONE country being asked

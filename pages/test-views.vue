@@ -3612,6 +3612,34 @@ const scenarios: Scenario[] = [
     component: ViewIndividualChallenge,
     build: () => individualGame({ variant: 'zoom-out', country: 'GM' }),
   },
+  // The opening frame must hold target land. EE is the reported regression (its
+  // crop opened inside Latvia); NO/CL/HR/VN are the concave shapes whose box
+  // centre sits on a neighbour; US is the widest interior, which used to open on
+  // featureless fill. Check these with the keyboard UP — that is the worst case.
+  {
+    id: 'individual-zoom-out-neighbour',
+    label: 'Individual: zoom-out (EE — opened in Latvia)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'EE' }),
+  },
+  {
+    id: 'individual-zoom-out-concave',
+    label: 'Individual: zoom-out (NO — concave)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'NO' }),
+  },
+  {
+    id: 'individual-zoom-out-long',
+    label: 'Individual: zoom-out (CL — longest pan)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'CL' }),
+  },
+  {
+    id: 'individual-zoom-out-interior',
+    label: 'Individual: zoom-out (US — wide interior)',
+    component: ViewIndividualChallenge,
+    build: () => individualGame({ variant: 'zoom-out', country: 'US' }),
+  },
   {
     id: 'individual-border-detective',
     label: 'Individual: border detective (timed, hint)',

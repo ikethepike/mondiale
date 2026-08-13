@@ -124,6 +124,82 @@ export const labelBoxFor = (
   rings: MapBox[] | undefined
 ): MapBox | undefined => mainlandBox(rings, bounds)
 
+/** The opening crop as a fraction of the country's own end frame. */
+const TIGHT_FRACTION = 0.13
+/** Absolute deep-zoom ceiling. A fixed fraction of the frame alone breaks for
+ *  huge countries — 13% of Russia's frame is still half the planet — so every
+ *  country gets a comparably tight sliver regardless of its size. */
+const TIGHT_MAX_SPAN = WORLD_BOX.width / 18
+/** Geometry-legibility floor: below this the crop outruns the map's detail. */
+const TIGHT_MIN_SPAN = WORLD_BOX.width / 200
+/** At least one axis must show less than this much of the country. */
+const COUNTRY_MAX_VISIBLE = 0.6
+/** How far past the inscribed circle the crop must reach to catch an edge. */
+const COASTLINE_REACH = 1.15
+
+/**
+ * The zoom-out gate's opening crop: a tight box on the country's own land.
+ *
+ * Anchored on the caller's `anchor` — NOT on the end frame's centre. That frame
+ * is BERTHED (deliberately off-centre so the subject clears the typing console),
+ * and inheriting its offset opened the gate on the neighbour: Estonia's crop
+ * landed wholly inside Latvia, and with the software keyboard up EVERY country
+ * opened on a frame holding none of itself.
+ *
+ * `anchor` is the pole of inaccessibility — a point guaranteed to be on the
+ * country, with the inscribed circle's radius — so the crop always contains
+ * target land while still cropping the shape hard enough to keep the question.
+ *
+ * Sized against the frame's LARGER dimension: on a portrait screen the frame is
+ * tall, and a width-based crop would span enough latitude to show the whole
+ * country plus its neighbours.
+ */
+export const zoomOutStartView = (
+  mainland: MapBox,
+  anchor: { point: readonly [number, number]; radius: number },
+  endSpan: number,
+  viewAspect: number
+): { x: number; y: number; width: number; height: number } => {
+  let startSpan = Math.min(endSpan * TIGHT_FRACTION, TIGHT_MAX_SPAN)
+
+  // Small countries (The Gambia) are dwarfed by the frame's minimum padding, so
+  // a fraction of THAT frame still contains them whole and the shape gives the
+  // answer away at the first frame. Shrink until one axis crops the country —
+  // one is enough: a crop across the narrow axis hides the outline just as well.
+  const [, , mainlandWidth, mainlandHeight] = mainland
+  const shrink = Math.max(
+    (mainlandWidth * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, viewAspect)),
+    (mainlandHeight * COUNTRY_MAX_VISIBLE) / (startSpan * Math.min(1, 1 / viewAspect))
+  )
+  startSpan = Math.max(startSpan * Math.min(1, shrink), TIGHT_MIN_SPAN)
+
+  let width = startSpan * Math.min(1, viewAspect)
+  let height = width / viewAspect
+
+  // Reach past the inscribed circle, or a wide interior (the US, Australia,
+  // Sudan) opens on uniform fill with no coastline or border anywhere in it —
+  // nothing to read and nothing to guess. The pole is BY DEFINITION the point
+  // furthest from any edge, so the crop has to out-reach its own circle.
+  //
+  // This deliberately outranks the deep-zoom ceiling: a frame that shows a
+  // border is what makes the round playable, and a slightly wider crop on the
+  // handful of countries with a vast interior beats a blank one.
+  // Measured on the SHORTER half-axis, not the diagonal: a box whose corners
+  // just clear the circle still has all four of its sides inside it, and the
+  // frame stays solid fill.
+  const grow = (anchor.radius * COASTLINE_REACH) / Math.min(width / 2, height / 2)
+  if (grow > 1) {
+    width *= grow
+    height *= grow
+  }
+  return {
+    x: anchor.point[0] - width / 2,
+    y: anchor.point[1] - height / 2,
+    width,
+    height,
+  }
+}
+
 // --- Robinson projection ------------------------------------------------------
 //
 // data/map.gen.ts stores SVG paths already projected through d3's geoRobinson
