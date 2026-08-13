@@ -1,5 +1,10 @@
 <template>
   <h1 class="map-caption">{{ prompt }}</h1>
+  <ChallengeTimerRadial
+    class="gate-clock"
+    :value="secondsLeft"
+    :total="LOGO_POLITICS_SECONDS"
+  />
   <div v-if="challenge.partyLogo" class="logo-frame">
     <img class="party-logo" :src="challenge.partyLogo.image" alt="" />
   </div>
@@ -10,7 +15,7 @@
       :key="option"
       class="card-option"
       type="button"
-      @click="submitAnswer(option)"
+      @click="answerOrigin(option)"
     >
       <CountryChip tag="span" :country="getCountry(option)" />
     </button>
@@ -65,8 +70,15 @@
         </span>
       </div>
     </div>
-    <ButtonFilled v-if="!answered" @click="answer(spectrumAt(slid) === challenge.partyLogo?.band)">
-      Place them here
+    <!-- The slider rests dead centre, and `centre` is the true band for a
+         quarter of the roster — so a player who never touched the control was
+         scoring ~1 in 4 for free. The placement has to be a decision. -->
+    <ButtonFilled
+      v-if="!answered"
+      :disabled="!moved"
+      @click="answer(spectrumAt(slid) === challenge.partyLogo?.band)"
+    >
+      {{ moved ? 'Place them here' : 'Drag to place them' }}
     </ButtonFilled>
   </div>
 </template>
@@ -75,7 +87,9 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { REVEAL_BEAT_MS } from '~~/lib/motion'
-import { useGateChallenge, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { LOGO_POLITICS_SECONDS } from './timing'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import {
   logoPoliticsPrompt,
@@ -85,6 +99,7 @@ import {
   spectrumCentre,
 } from '~~/lib/parties'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * A party's logo, and one of three things to know about it — which country it
@@ -102,7 +117,13 @@ import type { IndividualChallenge } from '~~/types/challenges/individual-challen
  */
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { submitAnswer } = useGateChallenge()
+const { submitAnswer, giveUp } = useGateChallenge()
+
+// Every timed sibling forfeits on the buzzer; this gate had no clock at all,
+// which also meant it paid the pot whole where the others decay.
+const { secondsLeft, remainingFraction, stop } = useGateClock(LOGO_POLITICS_SECONDS, {
+  onExpire: () => giveUp(),
+})
 
 const ask = computed(() => props.challenge.partyLogo?.ask ?? 'origin')
 const truthOfRuling = computed(() => !!props.challenge.partyLogo?.rules)
@@ -136,9 +157,15 @@ const thumbColor = computed(() => {
   return `hsl(${hue}, ${Math.round(Math.abs(fromCentre) * 62)}%, ${Math.round(58 - Math.abs(fromCentre) * 12)}%)`
 })
 
+// Whether the player has actually placed the party, rather than left the thumb
+// where it started. `centre` is the truth for ~24% of the roster, so an untouched
+// slider was a free quarter of the pot.
+const moved = ref(false)
+
 const onSlide = (event: Event) => {
   if (answered.value) return
   slid.value = Number((event.target as HTMLInputElement).value) / 1000
+  moved.value = true
 }
 
 // The true option wears the verdict: green when the player found it, amber
@@ -152,11 +179,23 @@ const verdictOn = (isTruth: boolean) => {
 let verdictTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(verdictTimer))
 
+/** The origin question answers with a country, so it grades on the wire. */
+const answerOrigin = (isoCode: ISOCountryCode) => {
+  stop()
+  submitAnswer(isoCode, { remainingFraction: remainingFraction.value })
+}
+
 const answer = (correct: boolean) => {
   if (picked.value !== undefined) return
   picked.value = correct
+  // Banked at the moment of the answer, not after the hold — the verdict beat
+  // is display-only and must not cost the player the clock they earned.
+  const earned = remainingFraction.value
+  stop()
   verdictTimer = setTimeout(() => {
-    submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge))
+    submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
+      remainingFraction: earned,
+    })
   }, REVEAL_BEAT_MS)
 }
 </script>

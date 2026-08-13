@@ -2817,15 +2817,30 @@ const dealLogoPolitics = (
   const ask = sample(['origin', 'ruling', 'spectrum'] as const)!
 
   if (ask === 'ruling') {
-    const governing = askable(country).find(party => party === governingParty(country))
-    // Half the deals must be false ones, or "is this the government?" is
-    // answerable by noticing the question was asked at all.
-    const rules = governing ? Math.random() < 0.5 : false
-    const party = rules
-      ? governing
-      : sample(askable(country).filter(candidate => candidate !== governingParty(country)))
-    if (party?.logo) {
-      return { country, partyLogo: { ...stamp(party), ask: 'ruling', rules } }
+    // Flip the COIN first, then find a country that can honour it. Picking the
+    // country first and flipping second looks even but is not: only a third of
+    // countries have an askable governing party (the rest name themselves in
+    // it), so a "yes" was impossible in most of them and the realised split
+    // came out 15/85 — always answering "No" scored 85%.
+    const wantsYes = Math.random() < 0.5
+    const governs = (isoCode: ISOCountryCode) => {
+      const leader = governingParty(isoCode)
+      return leader ? askable(isoCode).find(party => party === leader) : undefined
+    }
+
+    const seat = wantsYes
+      ? shuffleArray(candidates).find(isoCode => governs(isoCode)?.logo)
+      : shuffleArray(candidates).find(isoCode =>
+          askable(isoCode).some(party => party.logo && party !== governingParty(isoCode))
+        )
+
+    if (seat) {
+      const party = wantsYes
+        ? governs(seat)
+        : sample(askable(seat).filter(candidate => candidate !== governingParty(seat)))
+      if (party?.logo) {
+        return { country: seat, partyLogo: { ...stamp(party), ask: 'ruling', rules: wantsYes } }
+      }
     }
   }
 

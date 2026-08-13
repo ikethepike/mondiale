@@ -185,6 +185,9 @@ export interface Party extends MediaCredit {
   colors?: string[]
   /** Year founded (P571). */
   foundedYear?: number
+  /** The Factbook's own endonym declares this an electoral coalition, not a
+   *  party. Kept for the chamber's arithmetic; never dealt as a subject. */
+  coalition?: boolean
   /** Logo path under /public, when one was saved. */
   logo?: string
   /** Commons' own `Restrictions` note — "trademarked" for most party logos. */
@@ -346,6 +349,24 @@ const matchKey = (name: string, demonyms: string[] = []) => {
  */
 const NOT_A_PARTY =
   /^(other|others|independents?|vacant|appointed|nominated|unaffiliated|none|n\/a|various)$/i
+
+/**
+ * The Factbook lists electoral coalitions alongside parties, and its ENDONYM
+ * field says so in plain words ("electoral coalition led by PD", "coalition of
+ * 5 parties"). A bloc dealt as a single party is a wrong answer everywhere it
+ * lands: Rulers asks which logo is not a ruling party, and Albania's answer was
+ * an alliance rather than a party at all.
+ *
+ * Matched on the endonym, NEVER the name. 161 legitimate parties are simply
+ * CALLED a coalition or alliance — Finland's National Coalition Party, Poland's
+ * Civic Coalition, Australia's Centre Alliance — and a name-based screen would
+ * take all of them.
+ */
+const DECLARED_COALITION =
+  /(electoral (coalition|alliance)|coalition (of|includes|led by)|alliance of (several|the)\b|\scoalition\s*$)/i
+
+const isDeclaredCoalition = (endonym: string | undefined): boolean =>
+  !!endonym && DECLARED_COALITION.test(endonym)
 
 // --- Wikidata ---------------------------------------------------------------
 
@@ -765,6 +786,11 @@ for (const { isoCode, url } of successfulCombinations) {
       name,
       ...(endonym ? { endonym } : {}),
       ...(abbreviation ? { abbreviation } : {}),
+      // Kept in the roster — a bloc really does hold those seats, and the
+      // chamber's arithmetic needs them — but marked so no mode can DEAL it
+      // as a party. "Which logo is not a ruling party" has no honest answer
+      // when the answer is an alliance.
+      ...(isDeclaredCoalition(endonym) ? { coalition: true } : {}),
       ...(seats !== undefined ? { seats } : {}),
       ...(seats !== undefined && listedSeats
         ? { seatShare: Number((seats / listedSeats).toFixed(4)) }

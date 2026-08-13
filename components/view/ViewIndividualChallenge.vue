@@ -6,7 +6,12 @@
       :stakes="'Answer correctly to leap ahead — get it wrong and you\'re knocked back.'"
       @done="showInterstitial = false"
     />
-    <ChallengePrompt v-else ref="promptHost" :attributions="promptSources">
+    <ChallengePrompt
+      v-else
+      ref="promptHost"
+      :attributions="promptSources"
+      :attribution-credit="promptCredit"
+    >
       <Transition name="caption" mode="out-in">
         <div v-if="!status" key="question" class="question">
           <!-- One component per variant (components/challenge/individual).
@@ -66,6 +71,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import {
   attributionFor,
   datasetAttribution,
+  mediaCreditLine,
   trendAttribution,
   type Attribution,
 } from '~~/lib/attribution'
@@ -154,6 +160,27 @@ watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapB
 })
 
 watch(currentMove, relatch)
+
+/**
+ * The credit for the ONE image a gate puts on screen, beside the dataset line.
+ *
+ * 144 party logos ship under CC BY / CC BY-SA, which oblige us to name the
+ * author. The generator captures `credit`/`license` per logo and the payloads
+ * carry them, but both variants credited only the dataset — the attribution
+ * was collected and dropped on the floor.
+ *
+ * Rulers waits for the answer: the impostor's credit names the party wearing
+ * the wrong logo, which would give the round away.
+ */
+const promptCredit = computed<string | undefined>(() => {
+  const active = challenge.value
+  if (!active) return undefined
+  if (variant.value === 'logo-politics') return mediaCreditLine(active.partyLogo)
+  if (variant.value === 'rulers' && status.value) {
+    return mediaCreditLine(active.rulers?.impostor)
+  }
+  return undefined
+})
 
 /** The gate's provenance, per variant. Photo variants credit on the photo
  *  frame itself (PhotoOptionChallenge), so the prompt stays quiet there. */

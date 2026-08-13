@@ -210,6 +210,30 @@ describe('dealLogoPolitics (via forced variant)', () => {
     // dead branch, and one that deals ALWAYS means the others silently broke.
     expect([...asked].sort()).toEqual(['origin', 'ruling', 'spectrum'])
   })
+
+  // The coin has to be flipped BEFORE the country is chosen. Picking the
+  // country first and flipping second looks even but is not: only a third of
+  // countries have an askable governing party, so "yes" was impossible in most
+  // of them and the realised split was 15/85 — always answering "No" scored 85%.
+  it('asks "does it govern?" both ways about equally often', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
+    let yes = 0
+    let no = 0
+
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'government.parties',
+        difficulty: 'normal',
+      })
+      if (dealt.partyLogo?.ask !== 'ruling') continue
+      dealt.partyLogo.rules ? yes++ : no++
+    }
+
+    expect(yes + no, 'the ruling question has to deal at all').toBeGreaterThan(40)
+    const share = yes / (yes + no)
+    expect(share, `P(yes) was ${(share * 100).toFixed(0)}%`).toBeGreaterThan(0.35)
+    expect(share, `P(yes) was ${(share * 100).toFixed(0)}%`).toBeLessThan(0.65)
+  })
 })
 
 describe('dealOddOneOut (via forced variant)', () => {

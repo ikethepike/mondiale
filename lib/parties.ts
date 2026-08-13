@@ -206,7 +206,7 @@ export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
 /** Everyone but the party in power — Rulers' impostor pool. */
 export const oppositionParties = (isoCode: ISOCountryCode): Party[] => {
   const governing = governingParty(isoCode)
-  return partiesOf(isoCode).filter(party => party !== governing)
+  return partiesOf(isoCode).filter(party => party !== governing && isDealableParty(party))
 }
 
 /**
@@ -317,7 +317,12 @@ export const shortPartyName = (party: Party): string => {
 
 /** Countries whose governing party carries a logo — Rulers' stage pool. */
 export const countriesWithGoverningLogo = (): ISOCountryCode[] =>
-  (Object.keys(PARTIES) as ISOCountryCode[]).filter(isoCode => governingParty(isoCode)?.logo)
+  (Object.keys(PARTIES) as ISOCountryCode[]).filter(isoCode => {
+    const governing = governingParty(isoCode)
+    // Albania's "governing party" is an electoral coalition — a stage asking
+    // which mark is not a ruling PARTY cannot use one as its truth.
+    return governing?.logo && isDealableParty(governing)
+  })
 
 /**
  * Opposition parties that can stand in for a country's government without
@@ -456,8 +461,16 @@ export const spectrumRank = (party: Party | undefined): number | undefined => {
 }
 
 /** Parties carrying a logo — the pool every logo-facing mode deals from. */
+/**
+ * An electoral coalition, as the Factbook's own endonym declares it ("electoral
+ * coalition led by PD"). It stays in `partiesOf` because the chamber's seats
+ * really are held by it, but no mode may DEAL one: "which logo is not a ruling
+ * party" has no honest answer when the answer is an alliance of five parties.
+ */
+export const isDealableParty = (party: Party): boolean => !party.coalition
+
 export const partiesWithLogo = (isoCode: ISOCountryCode): Party[] =>
-  partiesOf(isoCode).filter(party => !!party.logo)
+  partiesOf(isoCode).filter(party => !!party.logo && isDealableParty(party))
 
 /**
  * Every country with a party in this transnational grouping (EPP, ECR, the

@@ -12,6 +12,8 @@ import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { governingParty, partiesWithLogo } from '~~/lib/parties'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
@@ -205,6 +207,40 @@ describe('parties.gen', () => {
       expect(party.logo, `${party.name} is flagged non-free without a logo`).toBeTruthy()
       expect(party.credit, `${party.name} has a non-free logo with no credit`).toBeTruthy()
       expect(party.license, `${party.name} has a non-free logo with no licence`).toBeTruthy()
+    }
+  })
+
+  // `nonFree` is not the only licence that obliges us. CC BY and CC BY-SA are
+  // free to re-host and REQUIRE attribution, and 144 logos carry one — so a
+  // credit-less row here is a licence breach hiding behind a free licence.
+  // Three shipped that way (Costa Rica's PASE, Ireland's Greens, Turkey's HDP)
+  // because the harvest dropped any credit over 80 characters while keeping
+  // the licence; `shortenCredit` now trims instead of discarding.
+  // The Factbook lists electoral coalitions beside parties and says so in its
+  // own endonym. They keep their seats (the chamber's arithmetic needs them)
+  // but must never be DEALT: Albania's governing "party" was a bloc, so Rulers
+  // asked which mark is not a ruling party with an alliance as its truth.
+  it('never deals an electoral coalition as a party', () => {
+    const blocs = parties.filter(party => party.coalition)
+    expect(blocs.length, 'the endonym screen should still be catching blocs').toBeGreaterThan(5)
+    // Named "Coalition"/"Alliance" is fine — 161 real parties are. Only the
+    // endonym's own declaration counts.
+    for (const bloc of blocs) {
+      expect(bloc.endonym, `${bloc.name} flagged with no endonym to justify it`).toBeTruthy()
+    }
+    for (const isoCode of ISOCountryCodes) {
+      for (const party of partiesWithLogo(isoCode)) {
+        expect(party.coalition, `${party.name} is dealable in ${isoCode}`).toBeFalsy()
+      }
+      expect(governingParty(isoCode)?.coalition).toBeFalsy()
+    }
+  })
+
+  it('credits every logo whose licence demands attribution', () => {
+    const owed = parties.filter(party => party.logo && /^CC BY/i.test(party.license ?? ''))
+    expect(owed.length, 'expected attribution-bearing logos in the roster').toBeGreaterThan(50)
+    for (const party of owed) {
+      expect(party.credit, `${party.name} ships under ${party.license} with no credit`).toBeTruthy()
     }
   })
 

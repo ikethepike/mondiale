@@ -128,6 +128,26 @@ describe('dealGovernment', () => {
 // pool is the price of not teaching a falsehood.
 const POOL_FLOOR = 6
 
+describe('the dealable pool', () => {
+  // A floor on `world` alone said nothing about where the round can actually
+  // land: measured, five region variants deal ZERO chambers, so the round is
+  // effectively Europe-plus-a-few. Not a crash (an undefined deal buys another
+  // kind) but the mix comment claimed "39 chambers" while shipping 11.
+  // Pinned so a regression is visible as a NUMBER, not as a round that quietly
+  // stops appearing.
+  it('is thin, and honest about which variants have one at all', () => {
+    const poolOf = (variant: string) =>
+      governmentPool({ ...RULES, variant } as unknown as GameRules).length
+
+    expect(poolOf('world')).toBeGreaterThanOrEqual(POOL_FLOOR)
+    // Where the round genuinely cannot deal. If one of these grows a chamber
+    // that is good news — update the list rather than deleting the test.
+    for (const variant of ['asia', 'americas', 'middle-east'] as const) {
+      expect(poolOf(variant), `${variant} unexpectedly deals`).toBe(0)
+    }
+  })
+})
+
 describe('the reveal facts', () => {
   // The flag drives the reveal's teaching sentence, so it has to agree with
   // the seats rather than with whether a supply deal happens to exist. An
