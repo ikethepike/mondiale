@@ -3493,36 +3493,18 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-zoom-out',
     label: 'Individual: zoom-out (typed)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'MY' }),
-  },
-  {
-    id: 'individual-zoom-out-small',
-    label: 'Individual: zoom-out (small country)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'GM' }),
-  },
-  // The opening frame must hold target land. EE is the reported regression (its
-  // crop opened inside Latvia); NO/CL/HR/VN are the concave shapes whose box
-  // centre sits on a neighbour; US is the widest interior, which used to open on
-  // featureless fill. Check these with the keyboard UP — that is the worst case.
-  {
-    id: 'individual-zoom-out-neighbour',
-    label: 'Individual: zoom-out (EE — opened in Latvia)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'EE' }),
-  },
-  {
-    id: 'individual-zoom-out-concave',
-    label: 'Individual: zoom-out (NO — concave)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'NO' }),
-  },
-  {
-    id: 'individual-zoom-out-long',
-    label: 'Individual: zoom-out (CL — longest pan)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'CL' }),
-  },
-  {
-    id: 'individual-zoom-out-interior',
-    label: 'Individual: zoom-out (US — wide interior)',
-    build: () => individualGame({ variant: 'zoom-out', country: 'US' }),
+    // The opening frame must hold target land, so every rung here is a shape
+    // that once broke it. Check them with the keyboard UP — the worst case.
+    variants: [
+      { id: 'MY', label: 'Malaysia — the ordinary deal', country: 'MY' },
+      { id: 'GM', label: 'Gambia — small country', country: 'GM' },
+      { id: 'EE', label: 'Estonia — the crop that opened in Latvia', country: 'EE' },
+      { id: 'NO', label: 'Norway — concave, box centre on a neighbour', country: 'NO' },
+      { id: 'CL', label: 'Chile — longest pan', country: 'CL' },
+      { id: 'US', label: 'United States — widest interior', country: 'US' },
+    ],
+    anyCountry: true,
+    build: variant => individualGame({ variant: 'zoom-out', country: variant?.country ?? 'MY' }),
   },
   {
     id: 'individual-border-detective',
@@ -3631,33 +3613,25 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-leader-pick',
     label: 'Individual: leader pick',
-    build: () => individualGame({ variant: 'leader-pick', options: ['DE', 'FR', 'IT', 'ES'] }),
-  },
-  // The reveal's party chip degrades across four rungs — one scenario each, so
-  // a logo-less or unresolved party is as easy to eyeball as the happy path.
-  {
-    id: 'individual-leader-pick-logo-wide',
-    label: 'Individual: leader pick (reveal — widest wordmark, SV)',
-    build: () =>
-      individualGame({ variant: 'leader-pick', country: 'SV', options: ['SV', 'GT', 'HN', 'CR'] }),
-  },
-  {
-    id: 'individual-leader-pick-logo-tall',
-    label: 'Individual: leader pick (reveal — tallest roundel, AL)',
-    build: () =>
-      individualGame({ variant: 'leader-pick', country: 'AL', options: ['AL', 'HR', 'RS', 'GR'] }),
-  },
-  {
-    id: 'individual-leader-pick-no-band',
-    label: 'Individual: leader pick (reveal — ideology, no band, BD)',
-    build: () =>
-      individualGame({ variant: 'leader-pick', country: 'BD', options: ['BD', 'IN', 'PK', 'NP'] }),
-  },
-  {
-    id: 'individual-leader-pick-independent',
-    label: 'Individual: leader pick (reveal — independent, UA)',
-    build: () =>
-      individualGame({ variant: 'leader-pick', country: 'UA', options: ['UA', 'PL', 'RO', 'HU'] }),
+    // The reveal's party chip degrades across these rungs, so a logo-less or
+    // unresolved party is as easy to eyeball as the happy path. A free pick
+    // deals the country against its own regional neighbours.
+    variants: [
+      { id: 'DE', label: 'Germany — the ordinary deal', country: 'DE' },
+      { id: 'SV', label: 'El Salvador — widest wordmark', country: 'SV' },
+      { id: 'AL', label: 'Albania — tallest roundel', country: 'AL' },
+      { id: 'BD', label: 'Bangladesh — ideology, no band', country: 'BD' },
+      { id: 'UA', label: 'Ukraine — independent, no party', country: 'UA' },
+    ],
+    anyCountry: true,
+    build: variant => {
+      const isoCode = variant?.country ?? 'DE'
+      return individualGame({
+        variant: 'leader-pick',
+        country: isoCode,
+        options: leaderPickOptions(isoCode),
+      })
+    },
   },
   {
     id: 'individual-logo-politics',
@@ -4555,6 +4529,16 @@ const leaderFindGame = (difficulty: GameDifficulty): Game => {
 }
 
 /** Individual gates read the challenge off the player's pending move. */
+/** A leader-pick lineup: the country plus three from its own region, so a
+ *  freely picked country is asked among plausible neighbours. */
+const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
+  const { region } = getCountry(isoCode)
+  const neighbours = playableWorldCountries({ variant: 'world', difficulty: 'normal' })
+    .filter(code => code !== isoCode && getCountry(code).region === region)
+    .slice(0, 3)
+  return [isoCode, ...neighbours]
+}
+
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('individual-challenge', [settledRound()])
   const me = game.players[ME]!
