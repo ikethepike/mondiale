@@ -573,12 +573,19 @@ const promptSources = computed(() => datasetAttribution('elections'))
   }
 }
 
+// Both glyphs are spans, and `transform` does not apply to an inline box —
+// without this the pop either did nothing or snapped. `flex: none` keeps them
+// from nudging the sentence beside them as they scale.
 .verdict-mark {
+  display: inline-block;
+  flex: none;
   font-size: 22px;
   line-height: 1;
 }
 
 .verdict-points {
+  display: inline-block;
+  flex: none;
   font-weight: 600;
 }
 
@@ -591,9 +598,34 @@ const promptSources = computed(() => datasetAttribution('elections'))
     opacity var(--motion-base) var(--ease-out-expressive),
     transform var(--motion-base) var(--ease-out-expressive);
 
+  // `chip-in` was the wrong keyframe: it is written for absolutely-positioned
+  // MAP chips and animates translate(-50%, -20%) → translate(-50%, -50%). On
+  // an inline flex child that -50% drags the glyph half its own width sideways
+  // and drops it into place — the "janking into frame" this had.
+  // Shorter than the banner's own entrance and started at once, so the glyphs
+  // have SETTLED by the time the card stops moving. Running them for the full
+  // --motion-base behind a 100ms delay meant they were still growing after the
+  // banner had landed, which reads as a second, late animation rather than one
+  // arrival.
   .verdict-mark,
   .verdict-points {
-    animation: chip-in var(--motion-base) var(--ease-out-expressive) 120ms backwards;
+    animation: verdict-pop var(--motion-quick) var(--ease-out-expressive) backwards;
+  }
+}
+
+// Scale only, from the element's own centre — no translation to fight the
+// banner's transform or the flex line the glyph sits on.
+@keyframes verdict-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  65% {
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -606,14 +638,17 @@ const promptSources = computed(() => datasetAttribution('elections'))
 // The centring translateX has to be repeated in every keyed transform, or the
 // enter/leave states drop it and the banner slides in from the left edge —
 // that lurch WAS the jank.
+// The banner only SLIDES. It used to scale as well, which compounded with the
+// glyphs' own pop — a child scaling inside a scaling parent is what made the
+// tick and the score look like they were fighting their way into frame.
 .verdict-enter-from {
   opacity: 0;
-  transform: translateX(-50%) translateY(-8px) scale(0.96);
+  transform: translateX(-50%) translateY(-8px);
 }
 
 .verdict-leave-to {
   opacity: 0;
-  transform: translateX(-50%) scale(0.98);
+  transform: translateX(-50%) translateY(-4px);
 }
 
 @media (prefers-reduced-motion: reduce) {
