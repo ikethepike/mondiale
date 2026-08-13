@@ -71,7 +71,7 @@ import {
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { governingParty, partiesOf, partySpectrum } from '~~/lib/parties'
+import { governingParty, logoPoliticsPrompt, partiesOf, partySpectrum } from '~~/lib/parties'
 import { politicalLeader } from '~~/lib/leaders'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -230,7 +230,7 @@ const interstitialTitle = computed(() => {
     case 'leader-pick':
       return `Who leads ${countryName(active.country)}?`
     case 'logo-politics':
-      return 'Whose party is this?'
+      return logoPoliticsPrompt(active.partyLogo?.ask, countryName(active.country))
     case 'higher-lower': {
       const duels = active.higherLower?.pairs.length ?? 0
       return `Win ${duels === 2 ? 'both duels' : `all ${duels} duels`}: which country ranks higher?`

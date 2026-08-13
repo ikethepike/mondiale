@@ -120,6 +120,8 @@ import {
   governingParty,
   impostorParties,
   partiesWithLogo,
+  partySpectrum,
+  SPECTRUM_BANDS,
   shortPartyName,
 } from '~~/lib/parties'
 import {
@@ -3652,7 +3654,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'individual-logo-politics',
-    label: 'Individual: logo politics',
+    label: 'Individual: logo politics (origin)',
     component: ViewIndividualChallenge,
     build: () =>
       individualGame({
@@ -3662,8 +3664,48 @@ const scenarios: Scenario[] = [
         partyLogo: {
           image: partiesWithLogo('DE')[0]?.logo ?? '',
           name: partiesWithLogo('DE')[0]?.name ?? '',
+          ask: 'origin',
         },
       }),
+  },
+  {
+    id: 'individual-logo-ruling',
+    label: 'Individual: logo politics (does it govern?)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      // Built from the real join so the scenario answers what the dealer would:
+      // Germany's actual governing party, claimed truthfully.
+      const governing = governingParty('DE')
+      return individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        partyLogo: {
+          image: governing?.logo ?? partiesWithLogo('DE')[0]?.logo ?? '',
+          name: governing?.name ?? partiesWithLogo('DE')[0]?.name ?? '',
+          ask: 'ruling',
+          rules: true,
+        },
+      })
+    },
+  },
+  {
+    id: 'individual-logo-spectrum',
+    label: 'Individual: logo politics (spectrum)',
+    component: ViewIndividualChallenge,
+    build: () => {
+      const party = partiesWithLogo('DE').find(candidate => partySpectrum(candidate))
+      return individualGame({
+        variant: 'logo-politics',
+        country: 'DE',
+        partyLogo: {
+          image: party?.logo ?? '',
+          name: party?.name ?? '',
+          ask: 'spectrum',
+          band: party ? partySpectrum(party) : undefined,
+          bands: [...SPECTRUM_BANDS],
+        },
+      })
+    },
   },
   {
     id: 'individual-leader-find-easy',

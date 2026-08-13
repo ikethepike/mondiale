@@ -15,6 +15,8 @@ import {
   playableChambers,
   seatedParties,
   seatingOrder,
+  spectrumAt,
+  spectrumCentre,
   spectrumRank,
   SPECTRUM_BANDS,
   type Party,
@@ -205,6 +207,32 @@ describe('partySpectrum', () => {
     expect(band('Left')).toBe('left')
     expect(band('Moderate')).toBe('centre-right')
     expect(band('Sweden Democrats')).toBe('right')
+  })
+})
+
+describe('spectrumAt / spectrumCentre', () => {
+  // The slider answers with a position, the roster states a band: these two
+  // are what join them, so a drift here silently regrades the whole question.
+  it('lands every band on itself', () => {
+    for (const band of SPECTRUM_BANDS) {
+      expect(spectrumAt(spectrumCentre(band))).toBe(band)
+    }
+  })
+
+  it('reads the axis left to right, ends included', () => {
+    expect(spectrumAt(0)).toBe('left')
+    expect(spectrumAt(1)).toBe('right')
+    expect(spectrumAt(0.5)).toBe('centre')
+  })
+
+  it('gives every band an equal share of the axis', () => {
+    // The band's width IS the tolerance a dragged answer gets, so an uneven
+    // split would quietly make some parties harder to place than others.
+    const width = 1 / SPECTRUM_BANDS.length
+    for (const [index, band] of SPECTRUM_BANDS.entries()) {
+      expect(spectrumAt(index * width + 0.001)).toBe(band)
+      expect(spectrumAt((index + 1) * width - 0.001)).toBe(band)
+    }
   })
 })
 

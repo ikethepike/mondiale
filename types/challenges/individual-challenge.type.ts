@@ -1,4 +1,5 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
+import type { Spectrum } from '../../lib/parties'
 import type { RosettaRelationId } from '../../lib/rosetta'
 import type { TrendMetricId } from '../../lib/trends'
 import type { ISOCountryCode } from '../geography.types'
@@ -51,13 +52,35 @@ export interface IndividualChallenge {
   variant?: IndividualChallengeVariant
   /** flag-pick: the flags on offer (includes `country`), display order. */
   options?: ISOCountryCode[]
-  /** logo-politics: the party whose logo is the question. `options` carries
-   *  the four countries it might belong to. */
+  /**
+   * logo-politics: the party whose logo is the question.
+   *
+   * One logo, three things it can be asked about — `ask` says which:
+   *
+   * - `origin` — which country is this party from? `options` carries the four
+   *   candidates and the answer is `country`, graded on the wire as usual.
+   * - `ruling` — does this party govern `country`? A yes/no, so the answer is
+   *   not a country at all; `rules` holds the truth.
+   * - `spectrum` — where does it sit left-to-right? `bands` are the choices
+   *   and `band` the truth.
+   *
+   * The last two grade client-side and submit `challenge.country` on a win or
+   * `wrongTokenFor` on a miss, the same client-trust route `higher-lower` and
+   * `chronicle` take — the wire carries only an ISO code, and neither of these
+   * questions answers with one.
+   */
   partyLogo?: {
     /** Path under /public. */
     image: string
     /** Shown only after the answer — the party the logo belongs to. */
     name: string
+    /** Which question this logo is being asked. */
+    ask?: 'origin' | 'ruling' | 'spectrum'
+    /** `ruling`: whether the party governs `country`. */
+    rules?: boolean
+    /** `spectrum`: the bands on offer, and the one that is true. */
+    bands?: Spectrum[]
+    band?: Spectrum
     /** The one-line credit the logo's licence requires. */
     credit?: string
     license?: string

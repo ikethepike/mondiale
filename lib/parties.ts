@@ -381,6 +381,51 @@ const SPECTRUM_BY_POSITION: Record<string, Spectrum> = {
 export const partySpectrum = (party: Party): Spectrum | undefined =>
   party.position ? SPECTRUM_BY_POSITION[party.position] : undefined
 
+/** The five bands as a player reads them, not as the enum spells them. */
+export const SPECTRUM_LABELS: Record<Spectrum, string> = {
+  left: 'Left',
+  'centre-left': 'Centre-left',
+  centre: 'Centre',
+  'centre-right': 'Centre-right',
+  right: 'Right',
+}
+
+/**
+ * The spectrum question is answered by sliding along the axis rather than
+ * picking one of five buttons — the left–right dimension IS the answer, and a
+ * row of buttons throws that away.
+ *
+ * A continuous slider needs a continuous truth, so `0…1` maps onto the five
+ * bands as equal fifths and a drop lands in whichever band contains it. That
+ * makes the tolerance the band's own width: anywhere inside the right fifth
+ * counts, which is the slop a dragged answer needs. Nothing finer is graded —
+ * `Spectrum` is deliberately coarse (see `spectrumRank` for why the finer
+ * scale is real but unfair to quiz).
+ */
+export const spectrumAt = (position: number): Spectrum =>
+  SPECTRUM_BANDS[
+    Math.min(SPECTRUM_BANDS.length - 1, Math.max(0, Math.floor(position * SPECTRUM_BANDS.length)))
+  ]!
+
+/** The midpoint of a band, 0–1 — where the reveal parks the true marker. */
+export const spectrumCentre = (band: Spectrum): number =>
+  (SPECTRUM_BANDS.indexOf(band) + 0.5) / SPECTRUM_BANDS.length
+
+/**
+ * What Logo Politics is asking, in words. The round's interstitial and its
+ * gate both show this, so it lives here rather than in either of them — the
+ * two had already drifted apart once, with the interstitial promising "Whose
+ * party is this?" over a question about who governs.
+ */
+export const logoPoliticsPrompt = (
+  ask: 'origin' | 'ruling' | 'spectrum' | undefined,
+  country: string
+): string => {
+  if (ask === 'ruling') return `Does this party govern ${country}?`
+  if (ask === 'spectrum') return 'Where does this party sit?'
+  return 'Whose party is this?'
+}
+
 /**
  * Where a party sits on the left–right axis, as a number to SORT by — finer
  * than `Spectrum`, which exists to be quizzed and is deliberately coarse

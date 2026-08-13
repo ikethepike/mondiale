@@ -136,7 +136,10 @@ import {
   governedOutsideFamily,
   governingParty,
   impostorParties,
+  type Party,
   partiesWithLogo,
+  partySpectrum,
+  SPECTRUM_BANDS,
   shortPartyName,
 } from './parties'
 import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
@@ -2755,23 +2758,33 @@ const dealTrajectoryMatch = async (
 }
 
 /**
- * Logo Politics: a party's logo, and which country it belongs to.
+ * Logo Politics: a party's logo, and one of three things to know about it.
  *
- * It asks about the COUNTRY rather than the party's ideology on purpose. A
- * four-option ideology question has no defensible answer — most parties carry
- * several ideologies at once, and the labels run to a long tail of one-offs, so
- * "pick THE ideology" is ambiguous by construction. The country is single-valued
- * and every logo has one.
+ * It never asks which IDEOLOGY a party holds. A four-option ideology question
+ * has no defensible answer — most parties carry several at once and the labels
+ * run to a long tail of one-offs, so "pick THE ideology" is ambiguous by
+ * construction. The three questions here are all single-valued:
  *
- * Decoys prefer the same region, which is what makes it a reading of the logo's
- * iconography rather than a guess at the continent.
+ * - `origin` — which country is this from? Decoys prefer the same region,
+ *   which makes it a reading of the logo's iconography rather than a guess at
+ *   the continent.
+ * - `ruling` — does this party govern the named country? Half the deals are
+ *   drawn from the government and half from the opposition, so the answer is
+ *   never guessable from the framing.
+ * - `spectrum` — where does it sit left-to-right? `partySpectrum` collapses
+ *   Wikidata's position vocabulary onto exactly one of five bands, which is
+ *   what makes this askable where the raw labels are not.
+ *
+ * A party whose NAME gives the country away is refused throughout — that scrub
+ * matters for `origin` most, but a logo reading "Sweden Democrats" also hands
+ * over a `ruling` question about Sweden.
  */
 const dealLogoPolitics = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): {
   country: ISOCountryCode
-  options: ISOCountryCode[]
+  options?: ISOCountryCode[]
   partyLogo: NonNullable<IndividualChallenge['partyLogo']>
 } | null => {
   const askable = (isoCode: ISOCountryCode) =>
@@ -2786,6 +2799,42 @@ const dealLogoPolitics = (
   if (candidates.length < 4) return null
 
   const country = sample(candidates)!
+  const stamp = (party: Party) => ({
+    image: party.logo!,
+    name: party.name,
+    ...(party.credit ? { credit: party.credit } : {}),
+    ...(party.license ? { license: party.license } : {}),
+  })
+
+  // Deal the three questions evenly, but never let a thin subject dead-end the
+  // round: a kind that cannot be built here falls through to `origin`, which
+  // every logo can answer.
+  const ask = sample(['origin', 'ruling', 'spectrum'] as const)!
+
+  if (ask === 'ruling') {
+    const governing = askable(country).find(party => party === governingParty(country))
+    // Half the deals must be false ones, or "is this the government?" is
+    // answerable by noticing the question was asked at all.
+    const rules = governing ? Math.random() < 0.5 : false
+    const party = rules
+      ? governing
+      : sample(askable(country).filter(candidate => candidate !== governingParty(country)))
+    if (party?.logo) {
+      return { country, partyLogo: { ...stamp(party), ask: 'ruling', rules } }
+    }
+  }
+
+  if (ask === 'spectrum') {
+    const party = sample(askable(country).filter(candidate => partySpectrum(candidate)))
+    const band = party ? partySpectrum(party) : undefined
+    if (party?.logo && band) {
+      return {
+        country,
+        partyLogo: { ...stamp(party), ask: 'spectrum', band, bands: [...SPECTRUM_BANDS] },
+      }
+    }
+  }
+
   const party = sample(askable(country))
   if (!party?.logo) return null
 
@@ -2799,12 +2848,7 @@ const dealLogoPolitics = (
   return {
     country,
     options: shuffleArray([country, ...decoys]),
-    partyLogo: {
-      image: party.logo,
-      name: party.name,
-      ...(party.credit ? { credit: party.credit } : {}),
-      ...(party.license ? { license: party.license } : {}),
-    },
+    partyLogo: { ...stamp(party), ask: 'origin' },
   }
 }
 

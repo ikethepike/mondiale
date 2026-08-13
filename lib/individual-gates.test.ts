@@ -119,10 +119,11 @@ describe('isCorrectIndividualAnswer', () => {
 })
 
 describe('dealLogoPolitics (via forced variant)', () => {
-  it('always deals a logo whose country is on the table', async () => {
+  it('deals every question kind answerably', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
+    const asked = new Set<string>()
 
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 120; attempt++) {
       const dealt = await getIndividualChallenge({
         accessorId: 'government.parties',
         difficulty: 'normal',
@@ -130,9 +131,7 @@ describe('dealLogoPolitics (via forced variant)', () => {
       expect(dealt.variant).toBe('logo-politics')
       // The logo IS the question — a deal without one is unanswerable.
       expect(dealt.partyLogo?.image).toBeTruthy()
-      expect(dealt.options).toContain(dealt.country)
-      expect(dealt.options?.length).toBe(4)
-      // The party must belong to the country it is the answer for.
+      // The party must belong to the country it is asked about.
       expect(partiesOf(dealt.country).map(party => party.name)).toContain(dealt.partyLogo!.name)
 
       // A logo naming its own country answers the question before it is
@@ -142,7 +141,28 @@ describe('dealLogoPolitics (via forced variant)', () => {
         mentionsCountry(dealt.partyLogo!.name, dealt.country),
         `${dealt.partyLogo!.name} gives away ${dealt.country}`
       ).toBe(false)
+
+      const ask = dealt.partyLogo!.ask ?? 'origin'
+      asked.add(ask)
+
+      if (ask === 'origin') {
+        expect(dealt.options).toContain(dealt.country)
+        expect(dealt.options?.length).toBe(4)
+      }
+      if (ask === 'ruling') {
+        // The claim has to match the roster, or the yes/no grades a fiction.
+        const governing = governingParty(dealt.country)
+        expect(dealt.partyLogo!.rules).toBe(governing?.name === dealt.partyLogo!.name)
+      }
+      if (ask === 'spectrum') {
+        // The truth must be among the choices, or the question is unwinnable.
+        expect(dealt.partyLogo!.bands).toContain(dealt.partyLogo!.band)
+      }
     }
+
+    // All three kinds have to be reachable — a kind that never deals is a
+    // dead branch, and one that deals ALWAYS means the others silently broke.
+    expect([...asked].sort()).toEqual(['origin', 'ruling', 'spectrum'])
   })
 })
 
