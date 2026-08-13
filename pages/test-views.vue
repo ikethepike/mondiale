@@ -966,6 +966,57 @@ const TONGUE_RUNGS: {
   },
 }
 
+/** Sweden's chamber, parked at one beat so the round plays on from there. */
+const governmentBeatGame = (beat: GovernmentBeat, index: number): Game => {
+  const deal = dealGovernment(
+    { difficulty: 'normal', variant: 'world', includeMicroNations: false },
+    'normal',
+    'SE'
+  )!
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'government-challenge',
+      country: deal.country,
+      ...(deal.chamber ? { chamber: deal.chamber } : {}),
+      totalSeats: deal.totalSeats,
+      options: deal.options,
+      blocks: deal.blocks,
+      benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
+        name,
+        seats,
+        share,
+        ...(color ? { color } : {}),
+        ...(logo ? { logo } : {}),
+      })),
+      sorted: deal.sorted,
+      maximumPoints: MAXIMUM_POINTS,
+      state: {
+        beat,
+        turn: index,
+        deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
+        picks: { party: {}, seats: {}, sides: {} },
+        scores: {},
+        // Published by the engine once beat 1 resolves, so beats 2 and 3 can
+        // name the party they are about.
+        ...(beat === 'party' ? {} : { subject: deal.governingParty }),
+        // The harness stands in for the engine, so it holds what the engine
+        // holds in its side key — without these the beats play but nothing can
+        // be graded, and the round never reaches its reveal.
+        answers: {
+          governingParty: deal.governingParty,
+          governingSeats: deal.governingSeats,
+          standings: Object.fromEntries(
+            deal.benches.map(bench => [bench.name, bench.standing] as const)
+          ),
+          ...(deal.status ? { status: deal.status } : {}),
+          minority: deal.minority,
+          ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
+        },
+      },
+    }),
+  ])
+}
+
 const scenarios: Scenario[] = [
   {
     id: 'ranking',
@@ -1497,73 +1548,31 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
-    // The payoff: a settled round with two seats who answered differently.
-    // Points come from the REAL scorer, so the per-beat pips and the totals
-    // can never drift from what the engine would have banked.
-    id: 'government-reveal-majority',
-    label: 'Government (New Zealand — reveal, majority with no backers)',
-    build: () => buildGovernmentReveal('NZ'),
+    // One mode, its three beats and its reveal. The harness stands in for the
+    // beats engine, so picking a rung starts the round THERE and plays on.
+    id: 'government',
+    label: 'Government (who governs, and with whom)',
+    variants: [
+      ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
+        id: beat,
+        label: `Play from beat ${index + 1}: ${
+          { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
+        }`,
+        build: () => governmentBeatGame(beat, index),
+      })),
+      // The payoff: a settled round with two seats who answered differently.
+      // Points come from the REAL scorer, so the per-beat pips and the totals
+      // can never drift from what the engine would have banked.
+      { id: 'reveal', label: 'Reveal — Sweden', build: () => buildGovernmentReveal('SE') },
+      {
+        id: 'reveal-majority',
+        label: 'Reveal — New Zealand, majority with no backers',
+        build: () => buildGovernmentReveal('NZ'),
+      },
+    ],
+    // Never dealt: a variant always wins, and the first beat is the default.
+    build: () => governmentBeatGame('party', 0),
   },
-  {
-    id: 'government-reveal',
-    label: 'Government (Sweden — the reveal only)',
-    build: () => buildGovernmentReveal('SE'),
-  },
-  ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
-    id: `government-${beat}`,
-    label: `Government (Sweden — play from beat ${index + 1}: ${
-      { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
-    })`,
-    build: () => {
-      const deal = dealGovernment(
-        { difficulty: 'normal', variant: 'world', includeMicroNations: false },
-        'normal',
-        'SE'
-      )!
-      return mockGame('group-challenge', [
-        groupRound({
-          _type: 'government-challenge',
-          country: deal.country,
-          ...(deal.chamber ? { chamber: deal.chamber } : {}),
-          totalSeats: deal.totalSeats,
-          options: deal.options,
-          blocks: deal.blocks,
-          benches: deal.benches.map(({ name, seats, share, color, logo }) => ({
-            name,
-            seats,
-            share,
-            ...(color ? { color } : {}),
-            ...(logo ? { logo } : {}),
-          })),
-          sorted: deal.sorted,
-          maximumPoints: MAXIMUM_POINTS,
-          state: {
-            beat,
-            turn: index,
-            deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
-            picks: { party: {}, seats: {}, sides: {} },
-            scores: {},
-            // Published by the engine once beat 1 resolves, so beats 2 and 3
-            // can name the party they are about.
-            ...(beat === 'party' ? {} : { subject: deal.governingParty }),
-            // The harness stands in for the engine, so it holds what the
-            // engine holds in its side key — without these the beats play but
-            // nothing can be graded, and the round never reaches its reveal.
-            answers: {
-              governingParty: deal.governingParty,
-              governingSeats: deal.governingSeats,
-              standings: Object.fromEntries(
-                deal.benches.map(bench => [bench.name, bench.standing] as const)
-              ),
-              ...(deal.status ? { status: deal.status } : {}),
-              minority: deal.minority,
-              ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
-            },
-          },
-        }),
-      ])
-    },
-  })),
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
     // Ulaanbaatar, Tashkent, Vientiane, Asunción, Windhoek.
@@ -4027,6 +4036,8 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Audio Buzz', ['anthem-', 'tongue-']],
   ['Border Chain', ['border-chain']],
   ['Atlas', ['atlas']],
+  ['Government', ['government']],
+  ['Clean Sweep', ['sweep-']],
   ['The Despot', ['manhunt-']],
   ['Unique or Bust', ['unique-']],
   ['Heritage Hunt', ['heritage-hunt']],
