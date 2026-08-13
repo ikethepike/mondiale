@@ -443,7 +443,7 @@ const mountainPath = (rng: Rng): string => {
 
 /** Bounds for a generated trident, in the 0–100 box. */
 const TRIDENT = {
-  /** Half-width of the shaft and prongs. */
+  /** Half-width of the shaft and the side prongs. */
   minBar: 2.6,
   maxBar: 4.4,
   /** Half-distance from the axis out to the side prongs. */
@@ -455,9 +455,27 @@ const TRIDENT = {
   /** Length of each prong's tapered point, as a share of its rise. */
   minPoint: 0.3,
   maxPoint: 0.5,
-  /** Centre spearhead's half-width at its base. */
-  minHead: 6,
-  maxHead: 9.5,
+  /**
+   * The centre spearhead's half-width at its base, as a MULTIPLE of the bar.
+   * Held near 1 so the head is a blade on a shaft of the same weight as the
+   * prongs — an absolute half-width of 6–9.5 against a 2.6–4.4 bar made the
+   * centre roughly twice as wide as its neighbours down its whole length,
+   * which read as a solid wedge rather than a spearhead.
+   */
+  minHead: 1.15,
+  maxHead: 1.75,
+  /** Where the spearhead's blade starts, as a share of its total run. */
+  minBlade: 0.42,
+  maxBlade: 0.62,
+  /**
+   * How far BOTH edges of a side prong bow outward between the crossbar and
+   * the tip, in box units. Both edges take the same offset, so the prong keeps
+   * an even thickness along a curved axis — a real trident's outer tines sweep
+   * away from the shaft, and a floor above zero keeps that sweep visible
+   * rather than leaving the prong dead straight.
+   */
+  minBow: 2.5,
+  maxBow: 7,
 } as const
 
 /**
@@ -475,35 +493,76 @@ const tridentPath = (rng: Rng): string => {
   const spread = TRIDENT.minSpread + rng() * (TRIDENT.maxSpread - TRIDENT.minSpread)
   const rise = TRIDENT.minProng + rng() * (TRIDENT.maxProng - TRIDENT.minProng)
   const pointShare = TRIDENT.minPoint + rng() * (TRIDENT.maxPoint - TRIDENT.minPoint)
-  const head = TRIDENT.minHead + rng() * (TRIDENT.maxHead - TRIDENT.minHead)
+  const head = bar * (TRIDENT.minHead + rng() * (TRIDENT.maxHead - TRIDENT.minHead))
+  const bladeShare = TRIDENT.minBlade + rng() * (TRIDENT.maxBlade - TRIDENT.minBlade)
+  const bow = TRIDENT.minBow + rng() * (TRIDENT.maxBow - TRIDENT.minBow)
   const cx = 50
   const foot = 97
   // The centre spearhead must clear the top of the box, so lay the shape out
   // from ITS tip downward rather than from the crossbar up — sizing from the
   // bar let a long prong push the spearhead off the top edge.
   const headTipY = 3
-  const headBaseY = headTipY + head * 1.9
   const prongTipY = clamp(headTipY + 9, 6, 30)
   const barY = clamp(prongTipY + rise, 42, 62)
   const pointY = prongTipY + rise * pointShare
+  // The centre runs from the bar to the tip at the SAME width as the prongs,
+  // widening into a blade only over its top stretch.
+  const bladeY = barY - (barY - headTipY) * bladeShare
   const p = (x: number, y: number) => `${n1(x)} ${n1(y)}`
+  // A side prong's outer and inner edges each bow outward by `bow`, so the
+  // prong keeps a constant thickness along a curved axis instead of swelling.
+  //
+  // The outline is traced anticlockwise from the foot, so each half is walked
+  // in the opposite direction. Rather than hand-write both (a swap of which
+  // edge comes first folded the right prong into a hook, then into a solid
+  // wedge), build the LEFT half's vertices once and mirror them: symmetry then
+  // holds by construction, whatever the parameters.
+  const ctrlY = (barY + pointY) / 2
+  // Each entry is either a point or a quadratic with its control point, given
+  // for the left half in the order the outline visits them.
+  type Step = { x: number; y: number; cx?: number; cy?: number }
+  const leftHalf: Step[] = [
+    { x: cx - bar, y: foot },
+    { x: cx - bar, y: barY + bar },
+    { x: cx - spread - bar, y: barY + bar },
+    // up the prong's outer edge, bowing away from the shaft
+    { x: cx - spread - bar - bow, y: pointY, cx: cx - spread - bar - bow, cy: ctrlY },
+    // the tip rides the bow too, so the whole prong sweeps outward
+    { x: cx - spread - bow, y: prongTipY },
+    { x: cx - spread + bar - bow, y: pointY },
+    // back down its inner edge with the same bow
+    { x: cx - spread + bar, y: barY - bar, cx: cx - spread + bar - bow, cy: ctrlY },
+    // across the bar's top to the shaft, then up to the blade
+    { x: cx - bar, y: barY - bar },
+    { x: cx - bar, y: bladeY },
+    { x: cx - head, y: bladeY },
+  ]
+  const draw = (s: Step) =>
+    s.cx === undefined ? `L${p(s.x, s.y)} ` : `Q${p(s.cx, s.cy!)} ${p(s.x, s.y)} `
+  const mx = (x: number) => 2 * cx - x
   return (
-    `M${p(cx - bar, foot)} ` +
-    `L${p(cx - bar, barY + bar)} ` +
-    // left crossbar arm out to the left prong
-    `L${p(cx - spread - bar, barY + bar)} ` +
-    // up the left prong's outer edge to its point
-    `L${p(cx - spread - bar, pointY)} L${p(cx - spread, prongTipY)} ` +
-    `L${p(cx - spread + bar, pointY)} L${p(cx - spread + bar, barY - bar)} ` +
-    // across to the spearhead's base
-    `L${p(cx - head, barY - bar)} L${p(cx - head, headBaseY)} ` +
+    `M${p(leftHalf[0].x, leftHalf[0].y)} ` +
+    leftHalf.slice(1).map(draw).join('') +
+    // the spearhead's tip, on the axis
     `L${p(cx, headTipY)} ` +
-    `L${p(cx + head, headBaseY)} L${p(cx + head, barY - bar)} ` +
-    // right prong, mirrored
-    `L${p(cx + spread - bar, barY - bar)} L${p(cx + spread - bar, pointY)} ` +
-    `L${p(cx + spread, prongTipY)} L${p(cx + spread + bar, pointY)} ` +
-    `L${p(cx + spread + bar, barY + bar)} ` +
-    `L${p(cx + bar, barY + bar)} L${p(cx + bar, foot)} Z`
+    // The right half is the left half mirrored and walked in reverse. A
+    // quadratic's control point belongs to the segment ARRIVING at its vertex,
+    // so on the way back down each step must carry the control point of the
+    // vertex it is leaving — not the one it is heading to.
+    leftHalf
+      .map((s, i) => {
+        const leaving = leftHalf[i + 1]
+        return {
+          x: mx(s.x),
+          y: s.y,
+          cx: leaving?.cx === undefined ? undefined : mx(leaving.cx),
+          cy: leaving?.cy,
+        }
+      })
+      .reverse()
+      .map(draw)
+      .join('') +
+    'Z'
   )
 }
 
