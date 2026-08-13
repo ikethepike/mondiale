@@ -164,11 +164,42 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   // handler drops a submit whose `gateTile` is no longer the head gate.
   const redeliver = createRedeliver('gate answer')
   let disposed = false
-  /** The result beat's fallback end — armed by `relatch`, see its note. */
+  /** The result beat's fallback end — armed by the ANSWER, see `armBeatFallback`. */
   let beatTimer: ReturnType<typeof setTimeout> | undefined
   const stopBeatTimer = () => {
     if (beatTimer) clearTimeout(beatTimer)
     beatTimer = undefined
+  }
+
+  /**
+   * The beat's own end, armed the moment a verdict is painted.
+   *
+   * A beat normally ends by the view UNMOUNTING — the server holds it for
+   * `GATE_RESULT_HOLD_MS`, walks the seat on, and the phase flip tears the
+   * shell down. This is the fallback for every case where that never happens,
+   * and it is armed from `submitAnswer` because the alternatives all depend on
+   * a LATER snapshot arriving:
+   *
+   *   - The answered gate was the seat's last move, so `moves` empties and
+   *     `currentMove` goes undefined — `relatch` bails on `!next` and used to
+   *     arm nothing, leaving only the server's continuation.
+   *   - The `individual-challenge-checked`/`update` broadcast is dropped or
+   *     coalesced, so `watch(currentMove, relatch)` never fires at all.
+   *
+   * Either way the shell held its verdict for the rest of the game. Arming at
+   * the answer also means the hold is ONE beat rather than two: armed on the
+   * arrival instead, it started ~`GATE_RESULT_HOLD_MS` late and parked the
+   * verdict for the sum of both.
+   */
+  const armBeatFallback = () => {
+    if (beatTimer || disposed) return
+    beatTimer = setTimeout(() => {
+      beatTimer = undefined
+      // The server resumed the walk a wire-hop ago, so anything it was going
+      // to unmount is already gone: this shell is the no-walk case.
+      status.value = undefined
+      relatch()
+    }, GATE_RESULT_FALLBACK_MS)
   }
   const deliver = (payload: Parameters<typeof update>[0]) =>
     redeliver.deliver(() => update(payload))
@@ -208,6 +239,9 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
       gameStore.map.reveal = correct ? isoCode : active.country
     }
     gameStore.map.status = correct ? 'correct' : 'incorrect'
+    // The verdict is on screen: from here the shell owns its own exit, whether
+    // or not another snapshot ever reaches it.
+    armBeatFallback()
   }
 
   /**
@@ -236,18 +270,17 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * quick). Relatch and bump `gateSeq`; the variant component remounts and its
    * own state goes with it.
    *
-   * An arrival behind a live result beat is DEFERRED, never dropped. A beat
-   * normally ends by the view UNMOUNTING: the server holds it for
-   * `GATE_RESULT_HOLD_MS`, then walks the seat on, and the phase flip to
-   * 'moving' tears the shell down (clearing `status` with it). But a win's
+   * An arrival behind a live result beat is DEFERRED, never dropped: a win's
    * leap can land the pawn AT or PAST the next gate's stop tile, and then
    * there is nothing to walk — the server settles straight back into
-   * 'individual-challenge', the phase never changes and nothing unmounts. A
-   * dropped arrival there is a dead room: the shell holds the answered gate's
-   * verdict for the rest of the game while the server waits on the next gate.
+   * 'individual-challenge', so the phase never changes and nothing unmounts.
+   * `armBeatFallback` is what ends the beat in that case.
    */
   const relatch = () => {
     const next = latched()
+    // No next gate: the answered one was the seat's last move. The beat's
+    // fallback is already armed (the answer arms it) and must NOT be cleared
+    // here — it is the only thing left that can end this beat.
     if (!next) return
     // Same gate, fresh object identity: refresh the reference quietly (never
     // mid-beat — the beat's view holds the answered gate) and re-arm nothing.
@@ -256,16 +289,10 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
       return
     }
     // Never tear down a beat in progress — take the arrival when it is spent.
+    // The answer already armed the beat's end, so this is normally a no-op;
+    // it stays as the belt for a status set by any path but `submitAnswer`.
     if (status.value) {
-      if (!beatTimer && !disposed) {
-        beatTimer = setTimeout(() => {
-          beatTimer = undefined
-          // The server resumed the walk a wire-hop ago, so anything it was
-          // going to unmount is already gone: this shell is the no-walk case.
-          status.value = undefined
-          relatch()
-        }, GATE_RESULT_FALLBACK_MS)
-      }
+      armBeatFallback()
       return
     }
     stopBeatTimer()

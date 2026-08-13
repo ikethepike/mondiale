@@ -131,4 +131,58 @@ describe('the gate shell relatches its next gate', () => {
     await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS + 10)
     expect(vi.getTimerCount()).toBe(0)
   })
+
+  /**
+   * The beat's end must not depend on a LATER snapshot arriving. `relatch` is
+   * driven by `watch(currentMove, …)`, so every exit below is a shape where
+   * that watcher either never fires or returns early — and the shell sat on
+   * its verdict for the rest of the game.
+   */
+  it('ends the beat when the answered gate was the players last move', async () => {
+    const { status, submitAnswer, relatch, unmount } = mountShell()
+
+    // The gate was the only move: the server shifts it off and `moves` is
+    // empty, so `currentMove` goes UNDEFINED rather than to a next gate.
+    // `relatch` bails on `!next` and used to arm nothing at all.
+    submitAnswer('SE')
+    stub.currentMove.value = undefined
+    relatch()
+
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS + 10)
+
+    expect(status.value).toBeUndefined()
+    unmount()
+  })
+
+  it('ends the beat even when no snapshot ever arrives', async () => {
+    const { status, submitAnswer, unmount } = mountShell()
+
+    // Nothing touches `currentMove` — the checked/update broadcast was
+    // dropped or coalesced, so the watcher never fires and `relatch` never
+    // runs. The answer alone has to arm the beat's end.
+    submitAnswer('SE')
+    expect(status.value).toBe('incorrect')
+
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS + 10)
+
+    expect(status.value).toBeUndefined()
+    unmount()
+  })
+
+  it('holds the verdict for ONE beat, not two', async () => {
+    const { status, submitAnswer, relatch, unmount } = mountShell()
+
+    // The beat starts at the ANSWER. The arrival lands mid-beat (the server's
+    // own hold is GATE_RESULT_HOLD_MS) and must not restart the clock — that
+    // double-hold parked the verdict for ~10.75s.
+    submitAnswer('SE')
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS)
+    stub.currentMove.value = gate(8, 'PE')
+    relatch()
+
+    // One wire-grace past the single beat: already spent, not still holding.
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_WIRE_GRACE_MS + 10)
+    expect(status.value).toBeUndefined()
+    unmount()
+  })
 })
