@@ -120,6 +120,7 @@ import {
   BEAT_POINTS,
   BEAT_SECONDS,
   dealGovernment,
+  governmentPool,
   GOVERNMENT_BEATS,
   scoreBeat,
   scoreGovernment,
@@ -693,11 +694,7 @@ const sweepClaims = (rows: (readonly [string, string])[]) =>
   }))
 
 const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
-  const deal = dealGovernment(
-    { difficulty: 'normal', variant: 'world', includeMicroNations: false },
-    'normal',
-    isoCode
-  )!
+  const deal = dealGovernment(GOVERNMENT_RULES, 'normal', isoCode)!
   const truth = Object.fromEntries(
     deal.sorted.map(name => {
       const standing = deal.benches.find(bench => bench.name === name)!.standing
@@ -966,13 +963,25 @@ const TONGUE_RUNGS: {
   },
 }
 
-/** Sweden's chamber, parked at one beat so the round plays on from there. */
-const governmentBeatGame = (beat: GovernmentBeat, index: number): Game => {
-  const deal = dealGovernment(
-    { difficulty: 'normal', variant: 'world', includeMicroNations: false },
-    'normal',
-    'SE'
-  )!
+const GOVERNMENT_RULES = {
+  difficulty: 'normal',
+  variant: 'world',
+  includeMicroNations: false,
+} as const
+
+/** The chambers the mode can deal — the dealer's own pool, sorted by name so
+ *  the picker reads alphabetically rather than in data order. */
+const GOVERNMENT_COUNTRIES = [...governmentPool(GOVERNMENT_RULES, 'normal')].sort((a, b) =>
+  countryName(a).localeCompare(countryName(b))
+)
+
+/** One chamber, parked at a beat so the round plays on from there. */
+const governmentBeatGame = (
+  beat: GovernmentBeat,
+  index: number,
+  isoCode: ISOCountryCode = 'SE'
+): Game => {
+  const deal = dealGovernment(GOVERNMENT_RULES, 'normal', isoCode)!
   return mockGame('group-challenge', [
     groupRound({
       _type: 'government-challenge',
@@ -1552,26 +1561,29 @@ const scenarios: Scenario[] = [
     // beats engine, so picking a rung starts the round THERE and plays on.
     id: 'government',
     label: 'Government (who governs, and with whom)',
+    // Every chamber the mode can actually deal, straight from `governmentPool`
+    // — the dealer's own definition of playable, so this list can never offer
+    // a country the round would refuse. Each rung opens at beat 1 and the
+    // harness's beats stand-in plays it through to its own reveal.
     variants: [
-      ...(['party', 'seats', 'sides'] as const).map((beat, index) => ({
-        id: beat,
-        label: `Play from beat ${index + 1}: ${
-          { party: 'who governs', seats: 'how many seats', sides: 'who is with them' }[beat]
-        }`,
-        build: () => governmentBeatGame(beat, index),
+      ...GOVERNMENT_COUNTRIES.map(isoCode => ({
+        id: isoCode,
+        label: countryName(isoCode),
+        country: isoCode,
+        build: () => governmentBeatGame('party', 0, isoCode),
       })),
-      // The payoff: a settled round with two seats who answered differently.
-      // Points come from the REAL scorer, so the per-beat pips and the totals
-      // can never drift from what the engine would have banked.
-      { id: 'reveal', label: 'Reveal — Sweden', build: () => buildGovernmentReveal('SE') },
-      {
-        id: 'reveal-majority',
-        label: 'Reveal — New Zealand, majority with no backers',
-        build: () => buildGovernmentReveal('NZ'),
-      },
+      // The payoff, jumped to directly: a settled round with two seats who
+      // answered differently. Points come from the REAL scorer, so the per-beat
+      // pips and the totals can never drift from what the engine would bank.
+      ...GOVERNMENT_COUNTRIES.map(isoCode => ({
+        id: `reveal-${isoCode}`,
+        label: `Reveal — ${countryName(isoCode)}`,
+        country: isoCode,
+        build: () => buildGovernmentReveal(isoCode),
+      })),
     ],
-    // Never dealt: a variant always wins, and the first beat is the default.
-    build: () => governmentBeatGame('party', 0),
+    // Never dealt: a variant always wins, and the first chamber is the default.
+    build: () => governmentBeatGame('party', 0, GOVERNMENT_COUNTRIES[0]),
   },
   {
     // Hard mode: no initials, and the stars reach for the deeper field —
