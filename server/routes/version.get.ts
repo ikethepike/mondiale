@@ -1,4 +1,5 @@
 import { forgeFlag } from '~~/lib/flags/forge'
+import { wordmarkSvg } from '~~/lib/wordmark'
 
 const humanUptime = (s: number) => {
   const d = Math.floor(s / 86400)
@@ -14,8 +15,6 @@ export default defineEventHandler(event => {
     ['build', new Date(info.buildTime).toUTCString()],
     ['uptime', humanUptime(info.uptimeSeconds)],
     ['node', info.node],
-    ['env', info.env],
-    ...(info.region ? [['region', `${info.region} · ${info.machine}`]] : []),
     ['ensign', `${flag.family} · ${flag.colors.join(', ')}`],
   ]
 
@@ -55,6 +54,12 @@ export default defineEventHandler(event => {
     font-family: 'Lusitana', Georgia, serif; font-size: 1.6rem;
   }
   main { width: min(46rem, 100%); }
+  .wordmark {
+    display: block; width: min(21rem, 58%); margin: 0 auto 2.2rem;
+    opacity: 0.85; transition: opacity 150ms ease;
+  }
+  .wordmark svg { display: block; width: 100%; height: auto; }
+  .wordmark:hover, .wordmark:focus-visible { opacity: 1; }
   .plate { border: 0.1rem solid var(--black); }
   .plate svg { display: block; width: 100%; height: auto; }
   figcaption {
@@ -92,6 +97,7 @@ export default defineEventHandler(event => {
 </head>
 <body>
 <main>
+  <a class="wordmark" href="/" aria-label="Mondiale — back to the landing page">${wordmarkSvg('var(--black)')}</a>
   <figure>
     <div class="plate">${flag.svg}</div>
     <figcaption>Plate I — ensign of the current deployment</figcaption>
