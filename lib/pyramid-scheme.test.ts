@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { getRoundChallenge } from '~~/lib/challenges'
 import { PYRAMID_TUNING, pyramidDistance, pyramidsAreDistinct } from '~~/lib/pyramids'
 import type { PyramidSchemeChallenge } from '~~/types/challenges/group-modes.type'
-import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
+import { pairFraction } from '~~/lib/scoring'
+import type { Game, GameDifficulty, GameVariant, Round } from '~~/types/game.types'
 
 const game = (difficulty: GameDifficulty, variant: GameVariant = 'world') =>
   ({
@@ -82,5 +84,51 @@ describe('pyramid scheme dealer', () => {
     expect(pyramidDistance('GB', 'NO')).toBeLessThan(8)
     expect(pyramidDistance('NE', 'JP')).toBeGreaterThan(60)
     expect(pyramidDistance('QA', 'NE')).toBeGreaterThan(60)
+  })
+})
+
+const gradedRound = (countries: string[]) =>
+  ({
+    groupChallenge: {
+      _type: 'pyramid-scheme-challenge',
+      countries,
+      distinctnessFloor: 22,
+      durationSeconds: 55,
+      maximumPoints: 20,
+    },
+    groupAnswers: {},
+    playerTurns: {},
+  }) as unknown as Round
+
+describe('pyramid scheme grading', () => {
+  const truth = ['DE', 'NE', 'QA', 'JP']
+  const grade = (submitted: string[], absent = false) =>
+    gradeGroupAnswer({
+      game: {} as Game,
+      round: gradedRound(truth),
+      playerId: 'p',
+      submission: { ranking: submitted } as never,
+      absent,
+    })
+
+  it('pays per correct pairing, linearly', async () => {
+    expect((await grade(truth)).scoring.scored).toBe(20)
+    expect((await grade(['DE', 'NE', 'JP', 'QA'])).scoring.scored).toBe(10) // 2 of 4
+    expect((await grade(['NE', 'DE', 'JP', 'QA'])).scoring.scored).toBe(0)
+    expect((await grade(['DE', 'NE', 'QA', 'XX'])).scoring.scored).toBe(15) // 3 of 4
+  })
+  it('is linear where jaccard would not be', () => {
+    // 3 of 4 must pay 0.75, not jaccard's 0.6
+    expect(pairFraction(['DE', 'NE', 'QA', 'XX'], truth)).toBeCloseTo(0.75)
+  })
+  it('zeroes an absent seat but still reports the truth', async () => {
+    const { scoring, answer } = await grade([], true)
+    expect(scoring.scored).toBe(0)
+    expect(answer.correct).toEqual(truth)
+  })
+  it('survives a short or padded submission', async () => {
+    expect((await grade([])).scoring.scored).toBe(0)
+    expect((await grade(['DE'])).scoring.scored).toBe(5)
+    expect((await grade([...truth, 'US', 'FR'])).scoring.scored).toBe(20)
   })
 })
