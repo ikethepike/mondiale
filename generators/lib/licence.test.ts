@@ -26,9 +26,10 @@ describe('classifyLicence', () => {
       'CC BY-SA 4.0',
       'GFDL',
     ]) {
-      expect(classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free, value).toBe(
-        true
-      )
+      expect(
+        classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free,
+        value
+      ).toBe(true)
     }
   })
 
@@ -60,9 +61,10 @@ describe('classifyLicence', () => {
       'CC BY-ND 4.0',
       'Attribution-NonCommercial 3.0',
     ]) {
-      expect(classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free, value).toBe(
-        false
-      )
+      expect(
+        classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free,
+        value
+      ).toBe(false)
     }
   })
 
@@ -70,9 +72,10 @@ describe('classifyLicence', () => {
     // The safe direction: an unrecognised licence costs a logo, where guessing
     // it free would publish a mark we have no right to.
     for (const value of ['All rights reserved', 'Trademarked', 'Copyrighted free use?']) {
-      expect(classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free, value).toBe(
-        false
-      )
+      expect(
+        classifyLicence(meta({ LicenseShortName: { value } }), strip, shorten).free,
+        value
+      ).toBe(false)
     }
     expect(classifyLicence(meta({}), strip, shorten).free).toBe(false)
     expect(classifyLicence(undefined, strip, shorten).free).toBe(false)

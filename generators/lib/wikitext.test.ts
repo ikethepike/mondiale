@@ -132,9 +132,9 @@ describe('plainText', () => {
 describe('logoFileName', () => {
   it('unwraps the markup real party infoboxes put around a filename', () => {
     // Liberal Democrats (UK) — a noinclude wrapper AND an escaped-pipe argument.
-    expect(logoFileName('<noinclude>Liberal Democrats logo.svg{{!}}class=skin-invert</noinclude>')).toBe(
-      'Liberal Democrats logo.svg'
-    )
+    expect(
+      logoFileName('<noinclude>Liberal Democrats logo.svg{{!}}class=skin-invert</noinclude>')
+    ).toBe('Liberal Democrats logo.svg')
     // Democratic National Rally (Algeria) — File: prefix plus the same argument.
     expect(logoFileName('File:Democratic National Rally logo.png{{!}}class=skin-invert')).toBe(
       'Democratic National Rally logo.png'
@@ -170,7 +170,8 @@ describe('logoFileName', () => {
 
 describe('infoboxLogo', () => {
   it('reads the field from an infobox and ignores a size beside it', () => {
-    const text = '{{Infobox political party\n| name = X\n| logo = Fidesz 2015.svg\n| logo_size = 150px\n}}'
+    const text =
+      '{{Infobox political party\n| name = X\n| logo = Fidesz 2015.svg\n| logo_size = 150px\n}}'
     expect(infoboxLogo(text)).toBe('Fidesz 2015.svg')
   })
 

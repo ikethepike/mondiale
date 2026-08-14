@@ -318,7 +318,8 @@ const borderChainSim = createChainSimulator<BorderChainChallenge>({
     doors: closedDoors(challenge.state, gameRules()),
   }),
   reseed: challenge =>
-    pickChainSeed(gameRules(), new Set(challenge.state.chains.flat())) ?? pickChainSeed(gameRules()),
+    pickChainSeed(gameRules(), new Set(challenge.state.chains.flat())) ??
+    pickChainSeed(gameRules()),
 })
 
 /** The two chain modes share one wire event, so the live kind picks the sim. */
@@ -328,7 +329,6 @@ const armChainScenario = () => {
   atlasSim.arm()
   borderChainSim.arm()
 }
-
 
 const governmentOf = () => {
   const game = gameStore.game

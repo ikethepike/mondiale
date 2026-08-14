@@ -2216,12 +2216,7 @@ const startZoomOut = (
     wide = frameForBoxes([mainland], [])
     const anchor = labelAnchorFor(isoCode)
     if (!anchor) return console.warn(`Zoom-out: no anchor: ${isoCode}`)
-    tightView = zoomOutStartView(
-      mainland,
-      anchor,
-      Math.max(wide.width, wide.height),
-      viewAspect
-    )
+    tightView = zoomOutStartView(mainland, anchor, Math.max(wide.width, wide.height), viewAspect)
 
     // A tight crop can hold several borders at once (The Gambia inside Senegal):
     // fade the neighbours' ink so the crop reads as ONE country being asked

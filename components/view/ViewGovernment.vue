@@ -580,7 +580,6 @@ const promptSources = computed(() => datasetAttribution('elections'))
     border: 1px solid var(--hior-ange);
     background: flame(0.16);
   }
-
 }
 
 // Both glyphs are spans, and `transform` does not apply to an inline box —

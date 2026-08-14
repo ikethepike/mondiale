@@ -1422,7 +1422,17 @@ const buildChevron = (rng: Rng): Built => {
   if (layers === 1 && chance(rng, 0.5)) {
     const tip = used[used.length - 1]
     const c = pickColor(rng, [], [tip], 180)
-    parts.push(drawCharge(rng, pick(rng, ['star', 'crosslet'] as const), depth * 0.34, H / 2, H * 0.12, c, tip))
+    parts.push(
+      drawCharge(
+        rng,
+        pick(rng, ['star', 'crosslet'] as const),
+        depth * 0.34,
+        H / 2,
+        H * 0.12,
+        c,
+        tip
+      )
+    )
     used.push(c)
   }
   return { family: 'chevron', parts, used: [...new Set(used)] }
@@ -1599,7 +1609,13 @@ const buildStarfield = (rng: Rng): Built => {
     const n = int(rng, 4, 6)
     const radii = [H * 0.09, H * 0.065, H * 0.06, H * 0.05, H * 0.045, H * 0.04]
     parts.push(
-      ...scatterStars(rng, n, { x: cx - W * 0.25, y: cy - H * 0.33, w: W * 0.5, h: H * 0.66 }, radii, c)
+      ...scatterStars(
+        rng,
+        n,
+        { x: cx - W * 0.25, y: cy - H * 0.33, w: W * 0.5, h: H * 0.66 },
+        radii,
+        c
+      )
     )
   } else if (layout === 'grid') {
     const cols = int(rng, 4, 6)
