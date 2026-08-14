@@ -257,7 +257,6 @@ export const CHALLENGE_GROUP_ACCESSORS = {
     'unemployment.total',
     'infrastructure.rail',
     'infrastructure.internetAccess',
-    'infrastructure.mobileSubscriptions',
     'economics.touristArrivals',
     'economics.workingHours',
   ],

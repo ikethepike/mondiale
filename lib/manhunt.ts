@@ -187,7 +187,6 @@ export const MANHUNT_THRESHOLD_ACCESSORS: GroupChallengeAccessorId[] = [
   'people.urbanization',
   'people.netMigration',
   'infrastructure.internetAccess',
-  'infrastructure.mobileSubscriptions',
   'people.childrenPerWoman',
 ]
 
@@ -356,7 +355,6 @@ const ACCESSOR_TOPICS: Partial<Record<GroupChallengeAccessorId, string>> = {
   'people.urbanization': 'urbanization',
   'people.netMigration': 'net migration rate',
   'infrastructure.internetAccess': 'internet access',
-  'infrastructure.mobileSubscriptions': 'mobile subscriptions',
   'people.childrenPerWoman': 'children per woman',
 }
 
@@ -473,7 +471,6 @@ export const MANHUNT_SUBPOENA_TOPICS = [
       'economics.gdpPerCapita',
       'economics.gdpTotal',
       'infrastructure.internetAccess',
-      'infrastructure.mobileSubscriptions',
     ] as GroupChallengeAccessorId[],
     kinds: [] as ManhuntClue['kind'][],
   },

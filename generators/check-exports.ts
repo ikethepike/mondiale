@@ -36,27 +36,17 @@ const flag = (id: string, message: string) => findings.push(`${id}: ${message}`)
 // Factbook exports entry; a few states' totals are genuinely old). --strict
 // fails only on findings outside this baseline — a new finding is news, a
 // known one is not. When an entry stops matching (source updated), drop it.
-const ACCEPTED = new Set([
-  'VA: no exports commodity list',
-  'KP: exports list but no exportsTotal',
-  'MC: exports list but no exportsTotal',
-  'BB: exportsTotal vintage 2017 — source went stale',
-  'ER: exportsTotal vintage 2017 — source went stale',
-  'LI: exportsTotal vintage 2015 — source went stale',
-  'YE: exportsTotal vintage 2017 — source went stale',
-])
+const ACCEPTED = new Set(['VA: no exports commodity list'])
 
+const currentYear = new Date().getFullYear()
 const countries = Object.values(COUNTRIES)
 const withList = countries.filter(country => country.economics.exports)
-const withTotal = countries.filter(country => country.economics.exportsTotal)
 
 // --- Coverage ------------------------------------------------------------------
 // The Factbook genuinely lacks an Exports dollar entry for a few states (VA, KP,
 // MC as of 2026). New gaps mean the source moved or the parser broke.
 for (const country of countries) {
   if (!country.economics.exports) flag(country.isoCode, 'no exports commodity list')
-  else if (!country.economics.exportsTotal)
-    flag(country.isoCode, 'exports list but no exportsTotal')
 }
 
 // --- Item hygiene: parse residue from the Factbook free text -------------------
@@ -100,35 +90,6 @@ for (const [key, variants] of spellings) {
   if (!plural) continue
   const count = (byKey: Map<string, number>) => [...byKey.values()].reduce((a, b) => a + b, 0)
   flag(key, `singular/plural split: "${key}" (${count(variants)}) vs "${key}s" (${count(plural)})`)
-}
-
-// --- Totals: unit, magnitude, vintage ------------------------------------------
-// Magnitude bounds catch scale-word parse failures ("billion" missed → values
-// a thousandth of reality). Bounds: Tuvalu bottoms out near $2M, China tops
-// out near $4T.
-const currentYear = new Date().getFullYear()
-for (const country of withTotal) {
-  const total = country.economics.exportsTotal!
-  const id = country.isoCode
-  if (total.unit !== '$') flag(id, `exportsTotal unit is "${total.unit}", expected "$"`)
-  if (!Number.isFinite(total.amount) || total.amount <= 0)
-    flag(id, `exportsTotal amount is ${total.amount}`)
-  else if (total.amount < 1e6) flag(id, `exportsTotal $${total.amount} — dropped a scale word?`)
-  else if (total.amount > 4.5e12) flag(id, `exportsTotal $${total.amount} — gained a scale word?`)
-  if (total.year === undefined) flag(id, 'exportsTotal has no year')
-  else if (total.year > currentYear) flag(id, `exportsTotal year ${total.year} is in the future`)
-  else if (total.year < currentYear - 8)
-    flag(id, `exportsTotal vintage ${total.year} — source went stale`)
-}
-
-// --- Totals vs GDP: cross-field plausibility -----------------------------------
-// Entrepôt economies (Luxembourg, Singapore) genuinely export ~2x their PPP
-// GDP; past 2.5x it's almost certainly a units mismatch between the fields.
-for (const country of withTotal) {
-  const total = country.economics.exportsTotal!.amount
-  const gdp = country.economics.gdpTotal?.amount
-  if (gdp && total / gdp > 2.5)
-    flag(country.isoCode, `exportsTotal is ${(total / gdp).toFixed(1)}x GDP (PPP)`)
 }
 
 // --- Made In answer key: the pinned BACI dataset vs the weekly Factbook regen --
@@ -210,7 +171,7 @@ if (findings.length) {
   console.info('✓ all clear')
 }
 console.info(
-  `\n${countries.length} countries · ${withList.length} with commodity lists · ${withTotal.length} with totals · ${worldCounts.size} distinct commodities · ${MADE_COMMODITIES.size} curated (${dealable} dealable world-wide)`
+  `\n${countries.length} countries · ${withList.length} with commodity lists · ${worldCounts.size} distinct commodities · ${MADE_COMMODITIES.size} curated (${dealable} dealable world-wide)`
 )
 
 if (fresh.length && process.argv.includes('--strict')) {

@@ -755,12 +755,6 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
     circles: [[12, 17.2, 0.9]],
   },
   // Handset.
-  'infrastructure.mobileSubscriptions': {
-    paths: [
-      'M8 3.5h8c.8 0 1.5.7 1.5 1.5v14c0 .8-.7 1.5-1.5 1.5H8c-.8 0-1.5-.7-1.5-1.5V5c0-.8.7-1.5 1.5-1.5z',
-      'M10.5 17.5h3',
-    ],
-  },
   // Plane, top-down.
 
   // — gender —

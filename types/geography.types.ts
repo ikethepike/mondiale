@@ -93,7 +93,6 @@ export interface Country {
     /** Top export commodities, in the Factbook's order (rank = value). */
     exports?: string[]
     /** Total exports of goods and services, current dollars. */
-    exportsTotal?: Amount<'$'>
   }
   geography: {
     area: {
@@ -117,7 +116,6 @@ export interface Country {
   infrastructure: {
     rail?: Amount<'km'>
     internetAccess?: Amount<'%'>
-    mobileSubscriptions?: Amount<'per 100 people'>
   }
   energy: {
     /** Share of population with access to electricity. */

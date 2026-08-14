@@ -541,16 +541,6 @@ const CHALLENGE_DETAILS: {
       least: 'biggest deficit',
     },
   },
-  'infrastructure.mobileSubscriptions': {
-    topic: 'infrastructure',
-    phrasing: 'Rank these countries by mobile phone subscriptions per 100 people',
-    definition:
-      'Active mobile subscriptions per 100 people. SIM cards, not owners — dual-SIM phones and data-only plans push many countries past 100.',
-    markers: {
-      most: 'most subscriptions',
-      least: 'fewest subscriptions',
-    },
-  },
   'energy.electricityAccess': {
     topic: 'energy',
     phrasing: 'Rank these countries by the percentage of people with electricity access',

@@ -551,7 +551,6 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
 
   'infrastructure.rail': factbook('Transportation › Railways › total'),
   'infrastructure.internetAccess': factbook('Communications › Internet users'),
-  'infrastructure.mobileSubscriptions': factbook('Communications › Telephones - mobile cellular'),
 
   'energy.electricityAccess': factbook('Energy › Electricity access'),
   'energy.fossilFuels': factbook('Energy › Electricity generation sources › fossil fuels'),

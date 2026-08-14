@@ -60,7 +60,6 @@ export const GROUP_CHALLENGE_ACCESSOR_IDS = [
   'economics.gdpGrowth',
   'economics.publicDebt',
   'economics.budgetBalance',
-  'infrastructure.mobileSubscriptions',
   'energy.electricityAccess',
   'energy.fossilFuels',
   'people.netMigration',

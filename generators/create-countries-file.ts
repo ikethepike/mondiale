@@ -240,7 +240,6 @@ const normalizeCountry = ({
         'Gini Coefficient'
       ),
       exports: getExports(data),
-      exportsTotal: getExportsTotal(data),
     },
     geography: {
       area: {
@@ -281,12 +280,6 @@ const normalizeCountry = ({
       internetAccess: getTextNode<'%'>(
         data.Communications?.['Internet users']?.['percent of population'],
         '%'
-      ),
-      mobileSubscriptions: getTextNode<'per 100 people'>(
-        data.Communications?.['Telephones - mobile cellular']?.[
-          'subscriptions per 100 inhabitants'
-        ],
-        'per 100 people'
       ),
     },
     energy: {
@@ -716,10 +709,6 @@ const getScaledDollarIndex = (node: unknown): Amount<'$'> | undefined => {
 
 const getGdpTotal = (data: FactbookResponse): Amount<'$'> | undefined =>
   getScaledDollarIndex(data['Economy']['Real GDP (purchasing power parity)'])
-
-/** Balance-of-payments exports of goods and services, current dollars. */
-const getExportsTotal = (data: FactbookResponse): Amount<'$'> | undefined =>
-  getScaledDollarIndex(data['Economy']['Exports'])
 
 const getMethaneEmissions = (data: FactbookResponse): Amount<'megatons'> | undefined => {
   // Factbook moved methane out of 'Air pollutants' into its own section, broken
