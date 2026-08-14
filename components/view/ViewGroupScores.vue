@@ -39,74 +39,29 @@
             </div>
           </div>
 
-          <template v-if="kind === 'sketch' && sketchChallenge">
-            <section class="pane-content ranking">
-              <span class="eyebrow">The Reveal</span>
-              <SketchOverlay
-                :country="sketchChallenge.country"
-                :sketch="selectedScorecard.answers.sketch"
-              />
-            </section>
-          </template>
-          <template v-else-if="audioReveal && currentRound">
-            <section class="pane-content ranking">
-              <span class="eyebrow">The Reveal</span>
-              <AnthemReveal
-                :subject="audioReveal.subject"
-                :country-code="audioReveal.countryCode"
-                :subtitle="audioReveal.subtitle"
-                :credit="audioReveal.credit"
-                :replay-clip="audioReveal.clip"
-                :lyrics="audioReveal.lyrics"
-                :round="currentRound.round"
-                :players="gameStore.game?.players ?? {}"
-                :my-player-id="gameStore.seatId"
-              />
-            </section>
-          </template>
-          <!-- The star chart's own ledger replaces the generic one: its answers
-               are CITIES scored as countries, and a row of bare flags would
-               drop the very names the round was about. -->
-          <template v-else-if="starChartChallenge && currentRound">
-            <StarChartReveal
-              :challenge="starChartChallenge"
-              :answers="currentRound.round.groupAnswers"
-              :players="gameStore.game?.players ?? {}"
-              :player-id="selectedPlayer"
-              :viewer-id="gameStore.seatId"
-            />
-          </template>
-          <!-- Terra Incognita's own ledger replaces the generic one for two
-               reasons the generic one cannot serve: its rows must stay in the
-               order the atlas lost them (an alphabetical sort throws away
-               which loss stood open longest), and each row owes the player the
-               placement they just proved they did not have. -->
-          <template v-else-if="terraChallenge && currentRound">
-            <TerraRevealCard
-              :challenge="terraChallenge"
-              :answers="currentRound.round.groupAnswers"
-              :players="gameStore.game?.players ?? {}"
-              :player-id="selectedPlayer"
-              :viewer-id="gameStore.seatId"
-            />
-          </template>
-          <!-- `right` restores the pane padding the tile rows give up to scroll
-               edge-to-edge — the reveal's ledger column must not kiss the rule -->
-          <template v-else-if="kind === 'ranking'">
-            <section class="pane-content ranking right">
+          <!-- One card replaces the generic ledger (the star chart's cities,
+               terra's chronological rows, ranking's true order); the rest
+               stack beneath it. Which is which is declared in the registry,
+               not by the order of this block. -->
+          <template v-if="replaceReveal">
+            <!-- A card with no eyebrow brings its own framing (the star chart
+                 and terra render their whole section themselves). -->
+            <section
+              v-if="replaceReveal.eyebrow"
+              class="pane-content ranking"
+              :class="{ right: replaceReveal.padded }"
+            >
               <span class="eyebrow">
-                The True Order
+                {{ replaceReveal.eyebrow }}
                 <SourceInfo
-                  v-if="rankingSources.length"
+                  v-if="kind === 'ranking' && rankingSources.length"
                   class="eyebrow-source"
                   :attributions="rankingSources"
                 />
               </span>
-              <RankingReveal
-                :submitted="selectedScorecard.answers.submitted"
-                :correct="selectedScorecard.answers.correct"
-              />
+              <component :is="replaceReveal.component" v-bind="replaceReveal.props" />
             </section>
+            <component :is="replaceReveal.component" v-else v-bind="replaceReveal.props" />
           </template>
           <template v-else>
             <p v-if="empireVerdict" class="pane-content empire-verdict">{{ empireVerdict }}</p>
@@ -146,43 +101,16 @@
               </section>
             </template>
 
-            <section v-if="flashpointChallenge" class="pane-content ranking">
-              <span class="eyebrow">The Conflict Behind the Dots</span>
-              <ConflictProfileCard :country="flashpointChallenge.country" />
-            </section>
-
-            <!-- Clean Sweep's table-level summary, reprised here: the ledger
-                 above is this seat's story, this is the room's. -->
-            <section v-if="cleanSweepChallenge" class="pane-content ranking">
-              <span class="eyebrow">How the Board Fell</span>
-              <SweepRevealCard
-                :challenge="cleanSweepChallenge"
-                :players="gameStore.game?.players ?? {}"
-                :player-id="selectedScorecard.player.id"
-              />
-            </section>
-
-            <section v-if="statDetectiveChallenge" class="pane-content ranking right">
-              <span class="eyebrow">The Numbers Behind It</span>
-              <StatDetectiveReveal :challenge="statDetectiveChallenge" />
-            </section>
-
-            <section v-if="pyramidSchemeChallenge" class="pane-content ranking">
-              <span class="eyebrow">What the Shapes Were Telling You</span>
-              <PyramidReveal
-                :challenge="pyramidSchemeChallenge"
-                :submitted="selectedScorecard.answers.submitted ?? []"
-              />
-            </section>
-
-            <section v-if="flagMeaning" class="pane-content ranking">
-              <span class="eyebrow">What the Flag Means</span>
-              <FlagMeaningReveal :entry="flagMeaning" />
-            </section>
-
-            <section v-if="capitalGuessChallenge" class="pane-content ranking">
-              <span class="eyebrow">The City in the Picture</span>
-              <CapitalReveal :country="capitalGuessChallenge.country" />
+            <!-- The round's own cards, stacked below the ledger. Their
+                 order and their eyebrows are the registry's. -->
+            <section
+              v-for="(reveal, index) in appendReveals"
+              :key="index"
+              class="pane-content ranking"
+              :class="{ right: reveal.padded }"
+            >
+              <span class="eyebrow">{{ reveal.eyebrow }}</span>
+              <component :is="reveal.component" v-bind="reveal.props" />
             </section>
 
             <section v-if="waterFactLine" class="pane-content ranking">
@@ -226,51 +154,19 @@
         </nav>
       </section>
 
-      <section class="player-listing pane-content">
-        <header class="listing-header">
-          <span class="eyebrow">Round Standings</span>
-        </header>
-        <div
-          v-for="({ player, score }, index) in gameStore.rankedScores"
-          :key="player.id"
-          class="score-row"
-          :class="{
-            'own-player': player.id === gameStore.seatId,
-            selected: player.id === selectedPlayer,
-          }"
-          role="button"
-          tabindex="0"
-          :aria-pressed="player.id === selectedPlayer"
-          @click="selectedPlayer = player.id"
-          @keydown.enter.prevent="selectedPlayer = player.id"
-          @keydown.space.prevent="selectedPlayer = player.id"
-        >
-          <span class="rank">{{ index + 1 }}</span>
-          <PlayerTile :player="player">
-            <div class="score-status">
-              <strong v-if="score?.points">
-                {{ score.points.scored }}<span class="muted">/{{ score.points.maximum }}</span>
-              </strong>
-              <span v-else class="muted">…</span>
-            </div>
-          </PlayerTile>
-        </div>
-      </section>
+      <StandingsList
+        :scorecards="gameStore.rankedScores"
+        :seat-id="gameStore.seatId"
+        :selected-player="selectedPlayer"
+        @select="selectedPlayer = $event"
+      />
     </article>
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
-import AnthemReveal from '~/components/challenge/AnthemReveal.vue'
-import CapitalReveal from '~/components/challenge/CapitalReveal.vue'
-import ConflictProfileCard from '~/components/challenge/ConflictProfileCard.vue'
-import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
-import RankingReveal from '~/components/challenge/RankingReveal.vue'
-import StarChartReveal from '~/components/challenge/StarChartReveal.vue'
-import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
-import PyramidReveal from '~/components/challenge/PyramidReveal.vue'
-import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
+import StandingsList from '~/components/view/scores/StandingsList.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import {
   attributionFor,
@@ -290,13 +186,12 @@ import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
-import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
 import AnswerLedger from '~/components/challenge/AnswerLedger.vue'
-import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
 import { sweepClaimedBy as claimedByFor } from '~~/lib/clean-sweep'
+import { scorecardRevealsFor, type ScorecardRevealContext } from '~/components/view/scores/reveals'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { playerDisplayName } from '~~/lib/player'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
@@ -393,43 +288,21 @@ const correctIsoCodes = computed(
   () => traversalReveal.value?.shortest ?? selectedScorecard.value?.answers?.correct ?? []
 )
 
-const sketchChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'sketch-challenge'
-    ? challenge
-    : undefined
-})
-
-const capitalGuessChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'capital-guess-challenge'
-    ? challenge
-    : undefined
-})
-
-const starChartChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'star-chart-challenge') ? roundChallenge.value : undefined
-)
-
-const terraChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'terra-incognita-challenge')
+const capitalGuessChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'capital-guess-challenge')
     ? roundChallenge.value
     : undefined
 )
 
-const flashpointChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'flashpoint-challenge'
-    ? challenge
-    : undefined
-})
+const flashpointChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
+)
 
-const cleanSweepChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'clean-sweep-challenge'
-    ? challenge
+const cleanSweepChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'clean-sweep-challenge')
+    ? roundChallenge.value
     : undefined
-})
+)
 
 /** Slot → claimant, so the ledger can tell a rival's claim from a real miss.
  *  Undefined for every other mode, which leaves the ledger untouched. */
@@ -437,26 +310,11 @@ const sweepClaimedBy = computed(() =>
   cleanSweepChallenge.value ? claimedByFor(cleanSweepChallenge.value) : undefined
 )
 
-const statDetectiveChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'stat-detective-challenge'
-    ? challenge
+const flagPaletteChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'flag-palette-challenge')
+    ? roundChallenge.value
     : undefined
-})
-
-const pyramidSchemeChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'pyramid-scheme-challenge'
-    ? challenge
-    : undefined
-})
-
-const flagPaletteChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'flag-palette-challenge'
-    ? challenge
-    : undefined
-})
+)
 
 /** The flag's symbolism, from the lazy table — absent when the Factbook has
  *  only a visual description, and the section hides with it. */
@@ -472,14 +330,17 @@ watch(
   { immediate: true }
 )
 
-const waterChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge &&
-    '_type' in challenge &&
-    (challenge._type === 'water-blitz-challenge' || challenge._type === 'name-water-challenge')
-    ? challenge
-    : undefined
-})
+const waterChallenge = computed(
+  () =>
+    // Two kinds, one dossier: a blitz round and a name-the-water round both
+    // hang off a single feature.
+    (isChallengeOfType(roundChallenge.value, 'water-blitz-challenge')
+      ? roundChallenge.value
+      : undefined) ??
+    (isChallengeOfType(roundChallenge.value, 'name-water-challenge')
+      ? roundChallenge.value
+      : undefined)
+)
 
 /** The feature's official figure, joined by name/alias from the lazy facts
  *  table — undefined for bodies the Factbook doesn't list (most seas, ranges). */
@@ -508,12 +369,11 @@ const waterSourceLine = computed(() => {
   return attribution ? attributionLine(attribution) : undefined
 })
 
-const motherTongueChallenge = computed(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'mother-tongue-challenge'
-    ? challenge
+const motherTongueChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'mother-tongue-challenge')
+    ? roundChallenge.value
     : undefined
-})
+)
 
 /** The language's Wikidata facts, from the lazy table — absent for languages
  *  it couldn't resolve. */
@@ -552,9 +412,8 @@ const challengeHeading = computed(() => roundChallengeHeadline(roundChallenge.va
  *  re-fires every round, and a slow round-N response must not land over
  *  round N+1's. */
 const lyrics = useAnthemLyrics(() => {
-  const challenge = roundChallenge.value
-  return challenge && '_type' in challenge && challenge._type === 'anthem-buzz-challenge'
-    ? challenge.lyricsUrl
+  return isChallengeOfType(roundChallenge.value, 'anthem-buzz-challenge')
+    ? roundChallenge.value.lyricsUrl
     : undefined
 })
 
@@ -593,6 +452,38 @@ const audioReveal = computed(() => {
 
   return undefined
 })
+
+/**
+ * The round's reveal cards, resolved through the registry — which card, with
+ * which props, and whether it stands in for the generic ledger, all declared
+ * in components/view/scores/reveals.ts rather than by the order of a v-if
+ * chain. A card whose subject never resolved drops out here.
+ */
+const revealContext = computed<ScorecardRevealContext | undefined>(() => {
+  const challenge = roundChallenge.value
+  const answers = selectedScorecard.value?.answers
+  if (!challenge || !answers) return undefined
+  return {
+    challenge,
+    playerId: selectedPlayer.value,
+    viewerId: gameStore.seatId,
+    answers,
+    roundAnswers: currentRound.value?.round.groupAnswers ?? {},
+    players: gameStore.game?.players ?? {},
+    round: currentRound.value?.round,
+    flagMeaning: flagMeaning.value,
+    audio: audioReveal.value,
+  }
+})
+
+const resolvedReveals = computed(() =>
+  revealContext.value
+    ? scorecardRevealsFor(kind.value, revealContext.value)
+    : { replace: undefined, append: [] }
+)
+
+const replaceReveal = computed(() => resolvedReveals.value.replace)
+const appendReveals = computed(() => resolvedReveals.value.append)
 
 /** Ghosts of empires: the beat-1 name verdict, above the tap ledger. */
 const empireVerdict = computed(() => {
@@ -655,7 +546,7 @@ const showsAnswerRails = computed(
     // Pyramid Scheme states both sides per ROW in its own card (each country
     // beside the shape it belonged to). Two flag rails above that would say the
     // same thing worse — an order the round never asked for.
-    !pyramidSchemeChallenge.value &&
+    kind.value !== 'pyramid-scheme' &&
     (submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0)
 )
 
@@ -924,66 +815,6 @@ const closeScores = () => {
   margin-left: auto;
 }
 
-// Sidebar: ranked standings
-.player-listing {
-  border-left: 0.1rem solid var(--text-color);
-}
-
-.listing-header {
-  margin-bottom: 1.6rem;
-  padding-bottom: 1.2rem;
-  border-bottom: 0.1rem solid $hairline;
-
-  .eyebrow {
-    margin-bottom: 0;
-  }
-}
-
-.score-row {
-  gap: 1rem;
-  display: flex;
-  cursor: pointer;
-  align-items: center;
-
-  .rank {
-    width: 2rem;
-    opacity: 0.45;
-    flex-shrink: 0;
-    font-size: 1.4rem;
-    text-align: right;
-    font-weight: bold;
-  }
-
-  :deep(.player-tile) {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &.selected :deep(.player-tile) {
-    border-right-width: 0.6rem;
-  }
-
-  &.own-player .rank {
-    opacity: 1;
-    color: var(--dark-blue);
-  }
-  &.own-player :deep(.player-tile) {
-    outline: 0.2rem solid var(--warm-sand);
-    outline-offset: 0.2rem;
-  }
-}
-
-.score-status {
-  margin-left: auto;
-  font-size: 1.7rem;
-
-  .muted {
-    opacity: 0.55;
-    font-weight: normal;
-    font-size: 1.3rem;
-  }
-}
-
 // Phone portrait: the 73/27 split becomes a stack — scorecard first, the
 // round standings beneath it under a top rule instead of a left one.
 @media screen and (max-width: $tablet) {
@@ -992,11 +823,6 @@ const closeScores = () => {
     // Bottom breathing room inside the ModalWrapper scroller, past the
     // home indicator.
     margin-bottom: calc(var(--safe-bottom) + 2rem);
-  }
-
-  .player-listing {
-    border-left: none;
-    border-top: 0.1rem solid var(--text-color);
   }
 
   .score-summary {
