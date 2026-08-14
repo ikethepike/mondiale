@@ -247,6 +247,16 @@ export interface Source {
   license?: string
   /** Vintage of the release, for values that carry no year of their own. */
   year?: number
+  /**
+   * Keep this release off the public /sources page.
+   *
+   * The registry is still the truth — `attributionFor` resolves through it, the
+   * coverage test still requires every `.gen.ts` to be claimed, and per-figure
+   * credits in reveals are unaffected. This hides only the provider listing.
+   *
+   * Used for a source whose data we hold but no longer present as a live feed.
+   */
+  unlisted?: boolean
 }
 
 export const SOURCES: Record<SourceId, Source> = {
@@ -257,6 +267,13 @@ export const SOURCES: Record<SourceId, Source> = {
     // Frozen deliberately: the factbook.json mirror stopped updating its data
     // on 2026-01-22 and the snapshot lives in the repo as data/factbook.gen.ts.
     edition: 'factbook.json mirror, frozen 2026-01-22',
+    // Off the /sources listing by request. The figures it still backs — land
+    // area, highest peak, independence year, the rail network, the religion
+    // pair — are consensus facts available from many places; the Factbook is
+    // just where this project happened to read them, and it is public domain,
+    // so nothing is owed. Wikidata carries all four static ones at better
+    // coverage (area 257, inception 241, peaks 234) whenever they are moved.
+    unlisted: true,
     // The mirror's last data commit. Fields the Factbook publishes without a
     // year of their own — land area, highest peak, independence — rendered
     // undated before this; now they carry the vintage they actually have.

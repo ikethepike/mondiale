@@ -59,26 +59,32 @@ const logoFor = (file?: string): string | undefined => {
 const sourceIds = Object.keys(SOURCES) as SourceId[]
 const datasetIds = Object.keys(DATASETS) as DataSetId[]
 
-const sources = (Object.keys(PROVIDERS) as ProviderId[]).map(id => {
-  const owned = sourceIds.filter(sourceId => SOURCES[sourceId].provider === id)
+const sources = (Object.keys(PROVIDERS) as ProviderId[])
+  .map(id => {
+    // `unlisted` releases are held back from the page — see the flag's note in
+    // lib/attribution.ts. A provider with nothing left to list drops out below.
+    const owned = sourceIds.filter(
+      sourceId => SOURCES[sourceId].provider === id && !SOURCES[sourceId].unlisted
+    )
 
-  return {
-    id,
-    provider: PROVIDERS[id],
-    logo: logoFor(PROVIDERS[id].logo),
-    // Release + licence per dataset the provider publishes.
-    releases: owned.map(sourceId => {
-      const { title, edition, license } = SOURCES[sourceId]
-      return [edition ? `${title} (${edition})` : title, license].filter(Boolean).join(' — ')
-    }),
-    // What it puts on the table.
-    feeds: datasetIds
-      .filter(datasetId =>
-        DATASETS[datasetId].origins.some(origin => owned.includes(origin.source))
-      )
-      .map(datasetId => DATASETS[datasetId].label),
-  }
-})
+    return {
+      id,
+      provider: PROVIDERS[id],
+      logo: logoFor(PROVIDERS[id].logo),
+      // Release + licence per dataset the provider publishes.
+      releases: owned.map(sourceId => {
+        const { title, edition, license } = SOURCES[sourceId]
+        return [edition ? `${title} (${edition})` : title, license].filter(Boolean).join(' — ')
+      }),
+      // What it puts on the table.
+      feeds: datasetIds
+        .filter(datasetId =>
+          DATASETS[datasetId].origins.some(origin => owned.includes(origin.source))
+        )
+        .map(datasetId => DATASETS[datasetId].label),
+    }
+  })
+  .filter(source => source.releases.length)
 </script>
 <style lang="scss" scoped>
 .lead {
