@@ -25,6 +25,7 @@
  */
 import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { optimize } from 'svgo'
 import { geoRobinson } from 'd3-geo-projection'
 import { topology } from 'topojson-server'
 import { presimplify, quantile, simplify } from 'topojson-simplify'
@@ -528,15 +529,27 @@ const vendorFlag = async (seed: EmpireSeed): Promise<string | undefined> => {
   }
 
   const raw = readFileSync(target, 'utf-8')
-  if (/<script|\son\w+\s*=|javascript:/i.test(raw))
+
+  // These arrive straight from Commons carrying Inkscape/Sodipodi metadata and
+  // full indentation, and the whole set is inlined into one string blob — so
+  // every stray space ships. svgo strips that; the committed original keeps its
+  // provenance header. cleanupIds is OFF: several of these reference their own
+  // defs through <use xlink:href="#…">, and the blob concatenates 68 of them.
+  const svg = optimize(raw, {
+    multipass: true,
+    plugins: [{ name: 'preset-default', params: { overrides: { cleanupIds: false } } }],
+  }).data
+
+  // Run the active-content refusal on what we'd actually ship, not the input.
+  if (/<script|\son\w+\s*=|javascript:/i.test(svg))
     throw new Error(`${seed.id}: flag SVG contains active content — refuse to ship`)
-  if (raw.length > 60 * 1024)
+  if (svg.length > 60 * 1024)
     console.warn(
-      `  ${seed.id}: flag is ${(raw.length / 1024).toFixed(0)} KB — consider a simpler file`
+      `  ${seed.id}: flag is ${(svg.length / 1024).toFixed(0)} KB optimised — consider a simpler file`
     )
 
   // Strip prolog + comments so the client's DOMParser sees <svg> as the root.
-  return raw
+  return svg
     .replace(/<\?xml[^>]*\?>/g, '')
     .replace(/<!DOCTYPE[^>]*>/g, '')
     .replace(/<!--[\s\S]*?-->/g, '')

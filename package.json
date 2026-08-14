@@ -78,7 +78,6 @@
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "fflate": "^0.8.3",
-    "flag-icons": "7.5.0",
     "he": "^1.2.0",
     "nuxt": "4.4.8",
     "prettier": "^3.9.4",
