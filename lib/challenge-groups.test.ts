@@ -99,7 +99,7 @@ describe('isAccessorEnabled', () => {
       challengeOverrides: { economy: false, society: false },
     } as const
     expect(isAccessorEnabled(off, 'economics.gdpPerCapita')).toBe(false)
-    expect(isAccessorEnabled(off, 'infrastructure.airports')).toBe(false)
+    expect(isAccessorEnabled(off, 'infrastructure.rail')).toBe(false)
     expect(isAccessorEnabled(off, 'government.democracyIndex')).toBe(false)
     expect(isAccessorEnabled(off, 'health.obesity')).toBe(true)
     expect(isAccessorEnabled(off, 'environment.CO2Emissions')).toBe(true)

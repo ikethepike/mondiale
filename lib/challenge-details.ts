@@ -149,8 +149,9 @@ const CHALLENGE_DETAILS: {
   },
   'gender.motherMeanAgeAtBirth': {
     topic: 'gender',
-    phrasing: 'Rank these countries by the average age at which women have their first child',
-    definition: 'The average age at which women in each country have their first child.',
+    phrasing: 'Rank these countries by the average age of mothers at childbirth',
+    definition:
+      'The mean age of mothers at childbirth, across all births rather than first births — UN WPP’s measure, which covers 233 countries where the Factbook’s first-birth figure covered 130.',
     markers: {
       most: 'oldest',
       least: 'youngest',
@@ -538,16 +539,6 @@ const CHALLENGE_DETAILS: {
     markers: {
       most: 'most subscriptions',
       least: 'fewest subscriptions',
-    },
-  },
-  'infrastructure.airports': {
-    topic: 'infrastructure',
-    phrasing: 'Rank these countries by number of airports',
-    definition:
-      'The count of recognized airports and airfields — every paved and unpaved runway, from international hubs to bush strips.',
-    markers: {
-      most: 'most airports',
-      least: 'fewest airports',
     },
   },
   'energy.electricityAccess': {

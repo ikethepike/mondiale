@@ -257,7 +257,6 @@ export const CHALLENGE_GROUP_ACCESSORS = {
     'infrastructure.rail',
     'infrastructure.internetAccess',
     'infrastructure.mobileSubscriptions',
-    'infrastructure.airports',
     'economics.touristArrivals',
     'economics.workingHours',
   ],

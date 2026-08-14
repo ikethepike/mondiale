@@ -752,11 +752,6 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
     ],
   },
   // Plane, top-down.
-  'infrastructure.airports': {
-    paths: [
-      'M12 3.5c.9 0 1.4.9 1.4 2.3v3.6l7.1 4.1v2.1l-7.1-2.2v4.2l1.9 1.7v1.6L12 20l-3.3.9v-1.6l1.9-1.7v-4.2l-7.1 2.2v-2.1l7.1-4.1V5.8c0-1.4.5-2.3 1.4-2.3z',
-    ],
-  },
 
   // — gender —
   // Venus symbol.

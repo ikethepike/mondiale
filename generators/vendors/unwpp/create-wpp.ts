@@ -48,6 +48,12 @@ const INDICATOR_METRICS = {
   sexRatio: { column: 'PopSexRatio', decimals: 1, trend: false },
   lifeExpectancy: { column: 'LEx', decimals: 1, trend: false },
   childrenPerWoman: { column: 'TFR', decimals: 2, trend: false },
+  // Mean age at childbearing. Replaces the Factbook's "mother's mean age at
+  // FIRST birth" — a different measure (all births, so it runs a little
+  // higher) but far better covered: 233 countries against 130, dated 2024,
+  // and it carries a full series back to 1950 where the Factbook had one
+  // undated scalar.
+  motherMeanAgeAtBirth: { column: 'MAC', decimals: 1 },
 } as const
 
 type IndicatorMetricId = keyof typeof INDICATOR_METRICS

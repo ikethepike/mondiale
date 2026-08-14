@@ -82,7 +82,6 @@ export const ATLAS_SECTIONS: AtlasSection[] = [
     accessors: [
       'infrastructure.internetAccess',
       'infrastructure.mobileSubscriptions',
-      'infrastructure.airports',
       'energy.electricityAccess',
       'energy.fossilFuels',
       'environment.CO2Emissions',

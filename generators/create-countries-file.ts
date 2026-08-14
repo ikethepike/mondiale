@@ -294,10 +294,15 @@ const normalizeCountry = ({
       // Factbook dropped its women-in-parliament data; sourced from the World
       // Bank (SG.GEN.PARL.ZS) instead — fresher and broader coverage.
       womenInParliament: worldBankAmount(isoCode, 'womenInParliament', '%'),
-      motherMeanAgeAtBirth: getTextNode<'years'>(
-        data['People and Society']["Mother's mean age at first birth"],
-        'years'
-      ),
+      // WPP's mean age at CHILDBEARING, with the Factbook's age at FIRST birth
+      // as the backstop. The two are not the same measure, but the Factbook's
+      // is frozen and covers 130 countries where WPP covers 233.
+      motherMeanAgeAtBirth:
+        wppAmount(isoCode, 'motherMeanAgeAtBirth', 'years') ??
+        getTextNode<'years'>(
+          data['People and Society']["Mother's mean age at first birth"],
+          'years'
+        ),
     },
     people: {
       // Demography prefers UN WPP — dated, internally consistent values from

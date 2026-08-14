@@ -298,6 +298,17 @@ export const TREND_METRICS: Record<
     mixed: false,
     race: true,
   },
+  motherMeanAgeAtBirth: {
+    label: 'mean age of mothers',
+    unit: 'years',
+    topic: 'gender',
+    glyph: 'gender.motherMeanAgeAtBirth',
+    // Country means run ~26-33; a wider track would flatten a real shift.
+    // Sweden moved 27.5 to 31.3 between 1960 and 2020, which is the story.
+    scale: { min: 25, max: 35 },
+    mixed: false,
+    race: true,
+  },
   birthRate: {
     label: 'birth rate',
     unit: 'per 1000',

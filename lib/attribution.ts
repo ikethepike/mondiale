@@ -530,14 +530,13 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   'infrastructure.rail': factbook('Transportation › Railways › total'),
   'infrastructure.internetAccess': factbook('Communications › Internet users'),
   'infrastructure.mobileSubscriptions': factbook('Communications › Telephones - mobile cellular'),
-  'infrastructure.airports': factbook('Transportation › Airports'),
 
   'energy.electricityAccess': factbook('Energy › Electricity access'),
   'energy.fossilFuels': factbook('Energy › Electricity generation sources › fossil fuels'),
   'energy.consumptionPerCapita': owid('per-capita-energy-use', 'Energy Institute'),
 
   'gender.womenInParliament': worldBank('SG.GEN.PARL.ZS'),
-  'gender.motherMeanAgeAtBirth': factbook("People and Society › Mother's mean age at first birth"),
+  'gender.motherMeanAgeAtBirth': wpp('MAC'),
 
   'people.population': wpp('TPopulation1July', FACTBOOK_BACKSTOP),
   'people.medianAge': wpp('MedianAgePop', FACTBOOK_BACKSTOP),
@@ -691,6 +690,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   freshwaterPerCapita: owid('renewable-water-resources-per-capita', 'FAO AQUASTAT'),
   population: wpp('TPopulation1July'),
   medianAge: wpp('MedianAgePop'),
+  motherMeanAgeAtBirth: wpp('MAC'),
   birthRate: wpp('CBR'),
   netMigration: wpp('CNMR'),
   populationGrowthRate: wpp('PopGrowthRate'),
