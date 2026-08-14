@@ -58,7 +58,9 @@ import { countryName } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const WIDTH = 100
-const HEIGHT = 54
+/** Taller than it is wide: a pyramid is 21 stacked cohorts, and the shape only
+ *  reads when the rows have room. The host sizes the box; this is the ratio. */
+const HEIGHT = 88
 const MIDLINE = WIDTH / 2
 /** Gap between cohort bars, in viewBox units. */
 const BAR_GAP = 0.55
@@ -160,7 +162,8 @@ svg {
 
 .scar-label {
   fill: var(--hior-ange);
-  font-size: 2.4px;
+  // viewBox units, not CSS pixels — sized against the 100-wide box.
+  font-size: 3.4px;
   font-family: inherit;
 }
 

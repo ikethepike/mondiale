@@ -31,6 +31,7 @@ import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
+import ViewPyramidScheme from '~/components/view/ViewPyramidScheme.vue'
 import ViewTrendRace from '~/components/view/ViewTrendRace.vue'
 import ViewTwoTruths from '~/components/view/ViewTwoTruths.vue'
 import ViewUniqueOrBust from '~/components/view/ViewUniqueOrBust.vue'
@@ -87,6 +88,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   'no-mans-land': ViewNoMansLand,
   'pin-landmark': ViewPinLandmark,
   'trend-race': ViewTrendRace,
+  'pyramid-scheme': ViewPyramidScheme,
   timeline: ViewTimeline,
   empire: ViewEmpire,
   manhunt: ViewManhunt,

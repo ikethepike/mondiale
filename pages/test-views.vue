@@ -1150,6 +1150,52 @@ const scenarios: Scenario[] = [
     build: () => mockGame('group-scores', []),
   },
   {
+    id: 'pyramid-scheme',
+    label: 'Pyramid scheme (drag countries onto their shapes)',
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'pyramid-scheme-challenge',
+          // The four extremes, so every axis the round reads on is on screen:
+          // Niger's triangle, Japan's coffin, Qatar's migrant slab and the US
+          // barrel between them.
+          countries: ['NE', 'JP', 'QA', 'US'],
+          distinctnessFloor: 22,
+          durationSeconds: 55,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'pyramid-scheme-reveal',
+    label: 'Pyramid scheme — reveal (two right, two wrong)',
+    build: () => {
+      const countries: ISOCountryCode[] = ['DE', 'NE', 'QA', 'JP']
+      const game = mockGame('group-scores', [
+        groupRound({
+          _type: 'pyramid-scheme-challenge',
+          countries,
+          distinctnessFloor: 22,
+          durationSeconds: 55,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ])
+      const round = game.rounds[game.rounds.length - 1]!
+      // Germany and Niger matched; Qatar and Japan swapped — so the card has to
+      // render both verdicts, a hand-written scar and a derived lesson.
+      for (const playerId of Object.keys(game.players)) {
+        round.groupAnswers[playerId] = {
+          submitted: ['DE', 'NE', 'JP', 'QA'],
+          correct: countries,
+        }
+        round.playerTurns[playerId] = {
+          points: { scored: Math.round(MAXIMUM_POINTS / 2), maximum: MAXIMUM_POINTS },
+        }
+      }
+      return game
+    },
+  },
+  {
     id: 'trend-race',
     label: 'Trend race (pick → reveal on click)',
     build: () =>
