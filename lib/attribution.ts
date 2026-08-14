@@ -519,7 +519,10 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
     fallback: FACTBOOK_BACKSTOP,
   },
   'economics.equality': factbook('Economy › Gini Index coefficient'),
-  'economics.populationBelowPovertyLine': factbook('Economy › Population below poverty line'),
+  'economics.populationBelowPovertyLine': owid(
+    'share-of-population-in-extreme-poverty',
+    'World Bank PIP'
+  ),
   'economics.militarySpending': {
     ...owid('military-expenditure-share-gdp', 'SIPRI'),
     fallback: ['cia-factbook'],
@@ -573,7 +576,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
     fallback: ['cia-factbook'],
   },
 
-  'education.literacy': factbook('People and Society › Literacy › total population'),
+  'education.literacy': owid('literacy-rate-adults', 'UNESCO'),
   'education.averageYearsOfStudy': factbook('People and Society › School life expectancy'),
 
   'health.obesity': {
@@ -598,7 +601,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   'religion.atheism': factbook('People and Society › Religions'),
   'religion.believers': factbook('People and Society › Religions'),
 
-  'environment.CO2Emissions': factbook('Environment › Carbon dioxide emissions'),
+  'environment.CO2Emissions': owid('annual-co2-emissions-per-country', 'Global Carbon Budget'),
   'environment.methaneEmissions': owid('methane-emissions', 'Climate Watch / Jones et al.'),
   'environment.renewables': {
     ...owid('share-electricity-renewables', 'Ember & the Energy Institute'),
@@ -628,7 +631,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   // keep rendering (see GROUP_CHALLENGES).
   'government.amountOfMilitaryConflicts': { source: 'ucdp-acd' },
 
-  'humanRights.refugees': factbook('Transnational Issues › Refugees'),
+  'humanRights.refugees': owid('refugee-population-by-country-or-territory-of-asylum', 'UNHCR'),
   'humanRights.gayMarriageLegalized': {
     source: 'equaldex-marriage',
     originator: 'Equaldex',
@@ -689,6 +692,10 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   methaneEmissions: owid('methane-emissions', 'Climate Watch / Jones et al.'),
   budgetBalance: { source: 'imf-weo', dataset: 'General government net lending/borrowing' },
   publicDebt: { source: 'imf-weo', dataset: 'General government gross debt' },
+  co2Emissions: owid('annual-co2-emissions-per-country', 'Global Carbon Budget'),
+  refugees: owid('refugee-population-by-country-or-territory-of-asylum', 'UNHCR'),
+  literacy: owid('literacy-rate-adults', 'UNESCO'),
+  povertyLine: owid('share-of-population-in-extreme-poverty', 'World Bank PIP'),
   homicideRate: owid('homicide-rate-unodc', 'UNODC'),
   co2PerCapita: owid('co-emissions-per-capita', 'Global Carbon Budget'),
   lifeExpectancy: owid('life-expectancy', 'UN WPP & the Human Mortality Database'),

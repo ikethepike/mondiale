@@ -29,7 +29,7 @@ const CHALLENGE_DETAILS: {
     topic: 'economics',
     phrasing: 'Rank these countries by the percentage of people living below the poverty line',
     definition:
-      'The share of people living below each country’s own national poverty line. Lines differ hugely between rich and poor countries, so the figures don’t reflect one common standard of living.',
+      'The share of people living on less than $3 a day, the international extreme-poverty line. Not a national poverty line — a rich country can have real hardship and still read near zero here.',
     markers: {
       most: 'highest percent',
       least: 'lowest percent',

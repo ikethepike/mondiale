@@ -222,10 +222,13 @@ const normalizeCountry = ({
         getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
       // No Factbook equivalent — this is a new stat, IMF-only.
       budgetBalance: imfAmount(isoCode, 'budgetBalance', '%'),
-      populationBelowPovertyLine: getTextNode<'%'>(
-        data['Economy']['Population below poverty line'],
-        '%'
-      ),
+      // OWID's $3/day international line, with the Factbook's NATIONAL-line
+      // figure as backstop. Not the same measure — Sweden reads 16.1% on a
+      // national line and near zero on the international one — so the stat's
+      // definition says which is being ranked.
+      populationBelowPovertyLine:
+        owidAmount(isoCode, 'povertyLine', '%') ??
+        getTextNode<'%'>(data['Economy']['Population below poverty line'], '%'),
       // OWID (SIPRI) is dated and reaches 2025; the Factbook node backstops.
       militarySpending:
         owidAmount(isoCode, 'militarySpending', '%') ??
@@ -353,7 +356,10 @@ const normalizeCountry = ({
         getTextNode<'%'>(data['People and Society'].Urbanization?.['urban population'], '%'),
     },
     education: {
-      literacy: getTextNode(data['People and Society'].Literacy?.['total population'], '%'),
+      // 160 countries against the Factbook's 115.
+      literacy:
+        owidAmount(isoCode, 'literacy', '%') ??
+        getTextNode(data['People and Society'].Literacy?.['total population'], '%'),
       averageYearsOfStudy: getTextNode<'years'>(
         data['People and Society']['School life expectancy (primary to tertiary education)']?.total,
         'years'
@@ -400,7 +406,11 @@ const normalizeCountry = ({
     environment: {
       // Factbook moved CO2 from 'Air pollutants' to its own section and now
       // reports "<n> billion|million metric tonnes"; normalize to megatons.
+      // OWID (Global Carbon Budget) first: 190 countries at 2024 against the
+      // Factbook's 187, and the two agree closely — US 4904 Mt here against
+      // 4795, China 12289 against 12196.
       CO2Emissions:
+        owidAmount(isoCode, 'co2Emissions', 'megatons') ??
         getCarbonDioxideEmissions(data) ??
         getTextNode<'megatons'>(
           data.Environment['Air pollutants']?.['carbon dioxide emissions'],
@@ -428,7 +438,8 @@ const normalizeCountry = ({
       evSalesShare: owidAmount(isoCode, 'evSalesShare', '%'),
     },
     humanRights: {
-      refugees: getRefugees(data, isoCode),
+      // UNHCR via OWID: 181 countries against the Factbook's 167.
+      refugees: owidAmount(isoCode, 'refugees', 'people') ?? getRefugees(data, isoCode),
       gayMarriageLegalized: gayMarriageAmount(isoCode),
     },
   }

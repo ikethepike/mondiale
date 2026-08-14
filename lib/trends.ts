@@ -193,6 +193,46 @@ export const TREND_METRICS: Record<
     mixed: true,
     race: true,
   },
+  co2Emissions: {
+    label: 'CO2 emissions',
+    unit: 'megatons',
+    topic: 'environment',
+    glyph: 'environment.CO2Emissions',
+    // Unscaled: national totals run from under 1 Mt to China's ~12,000, and
+    // any shared track would flatten all but the largest emitters.
+    mixed: true,
+    race: true,
+  },
+  refugees: {
+    label: 'refugees hosted',
+    unit: 'people',
+    topic: 'general knowledge',
+    glyph: 'humanRights.refugees',
+    // Same reasoning: a few hundred to several million.
+    mixed: true,
+    race: true,
+  },
+  literacy: {
+    label: 'adult literacy',
+    unit: '%',
+    topic: 'education',
+    glyph: 'education.literacy',
+    // Most of the world sits above 80%, so a 0-100 track would bury the
+    // countries where this still moves.
+    scale: { min: 40, max: 100 },
+    mixed: false,
+    race: true,
+  },
+  povertyLine: {
+    label: 'living in poverty',
+    unit: '%',
+    topic: 'economics',
+    glyph: 'economics.populationBelowPovertyLine',
+    // Falling is good, so the track inverts — the same treatment gini gets.
+    scale: { min: 0, max: 80, invert: true },
+    mixed: false,
+    race: true,
+  },
   alcoholConsumption: {
     label: 'alcohol consumption per person',
     unit: 'L',

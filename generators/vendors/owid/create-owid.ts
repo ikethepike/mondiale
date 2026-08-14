@@ -118,6 +118,44 @@ const METRICS = {
     scale: 1 / (28 * 1e6),
     decimals: 2,
   },
+  /**
+   * Total CO2, as megatons — the unit the stat already used. OWID publishes
+   * tonnes, hence the scale. 190 countries at 2024 against the Factbook's 187,
+   * and the values agree closely: US 4904 here against 4795, China 12289
+   * against 12196.
+   */
+  co2Emissions: {
+    slug: 'annual-co2-emissions-per-country',
+    column: 'Annual CO₂ emissions',
+    scale: 1 / 1e6,
+    decimals: 1,
+  },
+  /** Refugees by country of asylum. 179 countries against the Factbook's 167. */
+  refugees: {
+    slug: 'refugee-population-by-country-or-territory-of-asylum',
+    column: 'Refugees by country of asylum',
+    decimals: 0,
+  },
+  /** Adult literacy. 131 countries against the Factbook's 115, median 2022. */
+  literacy: {
+    slug: 'literacy-rate-adults',
+    column: 'Literacy rate among adults',
+    decimals: 1,
+  },
+  /**
+   * Share in poverty at the $3/day international line.
+   *
+   * NOT the same measure as the Factbook's, which used each country's own
+   * NATIONAL poverty line — so Sweden reads 16.1% there and near zero here.
+   * The definition says which, because the two answer different questions:
+   * national lines measure relative poverty in a rich country, the
+   * international line measures destitution.
+   */
+  povertyLine: {
+    slug: 'share-of-population-in-extreme-poverty',
+    column: 'Share of population in poverty ($3 a day)',
+    decimals: 1,
+  },
   // Lifestyle/health — these feed EXISTING Country accessors (fresher, dated
   // values with history) rather than new stats; countries generator prefers
   // them over the undated Factbook nodes.
