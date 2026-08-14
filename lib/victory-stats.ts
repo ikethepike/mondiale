@@ -70,6 +70,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   manhunt: ['Dragnet Chief', 'The Bloodhound', 'Ghost of the Map', 'Interpol Ace'],
   'unique-or-bust': ['One of One', 'The Contrarian', 'Road Less Travelled', 'The Original'],
   'clean-sweep': ['Land Grabber', 'Quickest Draw', 'The Closer', 'First to Say It'],
+  'pyramid-scheme': ['Demographer', 'The Cohort Reader', 'Shape of Things', 'Census Whisperer'],
 }
 
 export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
@@ -107,6 +108,7 @@ export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
   manhunt: 'the despot',
   'unique-or-bust': 'unique or bust',
   'clean-sweep': 'clean sweep',
+  'pyramid-scheme': 'age pyramids',
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

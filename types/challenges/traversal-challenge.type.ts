@@ -85,6 +85,7 @@ export type RoundChallengeKind =
   | 'clean-sweep'
   | 'government'
   | 'terra-incognita'
+  | 'pyramid-scheme'
 
 /** Single place that maps a round's challenge onto its gameplay kind. */
 export const roundChallengeKind = (challenge: RoundChallenge | undefined): RoundChallengeKind => {
@@ -160,6 +161,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'government'
     case 'terra-incognita-challenge':
       return 'terra-incognita'
+    case 'pyramid-scheme-challenge':
+      return 'pyramid-scheme'
     default:
       return 'ranking'
   }

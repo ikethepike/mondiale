@@ -97,6 +97,10 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // country the room can already see is taken.
   'clean-sweep': 'label',
 
+  // Flags are dragged onto pyramids, not named, so there is no guess to
+  // broadcast — and the four countries are on every screen from the start.
+  'pyramid-scheme': 'none',
+
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
   atlas: 'none',

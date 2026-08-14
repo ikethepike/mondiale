@@ -142,6 +142,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'unique-or-bust-challenge'
         ? `Letter ${challenge.letter} — only unshared answers paid`
         : ''
+    case 'pyramid-scheme': {
+      if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge')) return ''
+      return `Four age pyramids: ${challenge.countries.map(countryName).join(', ')}`
+    }
     case 'manhunt': {
       if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') return ''
       const outcome = challenge.state.outcome

@@ -49,6 +49,7 @@ import type {
   NeighbourBlitzChallenge,
   NoMansLandChallenge,
   PinLandmarkChallenge,
+  PyramidSchemeChallenge,
   SilhouetteChallenge,
   SketchChallenge,
   StarChartChallenge,
@@ -1777,6 +1778,42 @@ export const scoreNoMansLand = ({
 }
 
 /**
+ * Pyramid Scheme: four age structures animate across sixty years, and the table
+ * drags each country onto its own shape.
+ *
+ * The gate is everything here. Age structures converge — a quarter of all
+ * country pairs sit under 20 apart across the 42 cohort bins, and the pairs that
+ * collapse hardest are the famous ones (Britain and Norway are 5.0 apart, the US
+ * and Australia 5.5). Dealt at random, four countries contain a visually
+ * identical pair 85% of the time. `drawDistinctPyramids` refuses those sets, and
+ * a board too thin to clear the floor returns undefined so the mix buys another
+ * kind rather than dealing an unreadable round.
+ */
+const getPyramidSchemeChallenge = async (
+  game: gameTypes.Game
+): Promise<PyramidSchemeChallenge | undefined> => {
+  // ~583KB of cohort frames — lazily loaded so it stays out of the eager bundle
+  // (issue #110), the same way trend-race defers its series table.
+  const { PYRAMID_TUNING, drawDistinctPyramids } = await import('./pyramids')
+  const tuning = PYRAMID_TUNING[game.difficulty]
+  const countries = drawDistinctPyramids(
+    playableCountries(game),
+    tuning.subjects,
+    tuning.floor,
+    sample
+  )
+  if (!countries) return undefined
+
+  return {
+    _type: 'pyramid-scheme-challenge',
+    countries: shuffleArray(countries),
+    distinctnessFloor: tuning.floor,
+    durationSeconds: tuning.durationSeconds,
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
+/**
  * Trend race: which of these countries' stat moved the most? Every dealt card
  * is a decisive mover in the same direction over a SHARED window (series
  * clipped to the latest common start year — comparing different windows would
@@ -1979,6 +2016,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'no-mans-land': game => getNoMansLandChallenge(game),
   'pin-landmark': game => getPinLandmarkChallenge(game),
   'trend-race': game => getTrendRaceChallenge({ game }),
+  'pyramid-scheme': game => getPyramidSchemeChallenge(game),
 }
 
 /**

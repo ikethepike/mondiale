@@ -137,6 +137,57 @@ export const pyramidsAreDistinct = (
   return true
 }
 
+/**
+ * How the round scales. The floor is the whole difficulty axis: a HIGHER floor
+ * means shapes further apart and an easier read, so hard mode lowers it toward
+ * the countries that genuinely resemble one another. Subject counts stay small
+ * — five pyramids is already a lot of chart to hold in the eye at once.
+ */
+export const PYRAMID_TUNING = {
+  easy: { subjects: 4, floor: 30, durationSeconds: 60 },
+  normal: { subjects: 4, floor: 22, durationSeconds: 55 },
+  hard: { subjects: 5, floor: 16, durationSeconds: 50 },
+} as const satisfies Record<string, { subjects: number; floor: number; durationSeconds: number }>
+
+/** How many random draws the dealer will make before giving the floor up as
+ *  unreachable for this board. Measured at ~7 tries for a world board at floor
+ *  20, so this is loose enough to never bite in practice. */
+export const PYRAMID_DEAL_ATTEMPTS = 400
+
+/**
+ * Draw a readable set from `pool`: every pair at least `floor` apart. Returns
+ * undefined when the board cannot fill one — a continental variant is a much
+ * thinner pool than the world, and the mix should buy another kind rather than
+ * deal four pyramids nobody can separate.
+ *
+ * Both ends read this: the dealer picks with it and the test sweeps it, so the
+ * gate the round promises is the gate it actually applies.
+ */
+export const drawDistinctPyramids = (
+  pool: readonly ISOCountryCode[],
+  subjects: number,
+  floor: number,
+  pick: <T>(items: T[]) => T | undefined
+): ISOCountryCode[] | undefined => {
+  const candidates = pool.filter(isoCode => PYRAMIDS[isoCode])
+  if (candidates.length < subjects) return undefined
+
+  for (let attempt = 0; attempt < PYRAMID_DEAL_ATTEMPTS; attempt++) {
+    const drawn: ISOCountryCode[] = []
+    // Grow one at a time, testing against what is already down: a set that can
+    // never be completed dies early instead of after four wasted draws.
+    const remaining = [...candidates]
+    while (drawn.length < subjects && remaining.length) {
+      const next = pick(remaining)
+      if (!next) break
+      remaining.splice(remaining.indexOf(next), 1)
+      if (drawn.every(chosen => pyramidDistance(chosen, next) >= floor)) drawn.push(next)
+    }
+    if (drawn.length === subjects) return drawn
+  }
+  return undefined
+}
+
 // --- Reading a shape --------------------------------------------------------
 
 const shareBetween = (frame: PopulationPyramid, from: number, to: number): number => {
