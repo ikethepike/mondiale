@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Tongues`"
       title="What language is this?"
-      :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country where that language is official — there is more than one right answer. Buzz early for more points.`"
+      :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country ${motherTongueScope(challenge)} where that language is official — there is more than one right answer. Buzz early for more points.`"
       @done="onInterstitialDone"
     />
 
@@ -17,14 +17,11 @@
     >
       <template v-if="!resolved">
         <h1 class="map-caption">Where is this spoken?</h1>
-        <span class="map-caption sub">Any country with it as an official language counts</span>
+        <span class="map-caption sub">{{ tongueBuzzRule(challenge) }}</span>
       </template>
       <template v-else>
         <h1 class="map-caption">That was {{ challenge.language }}</h1>
-        <span class="map-caption sub">
-          Official in {{ challenge.countries.length }}
-          {{ challenge.countries.length === 1 ? 'country' : 'countries' }}
-        </span>
+        <span class="map-caption sub">{{ tongueBuzzTally(challenge) }}</span>
       </template>
     </ChallengePrompt>
 
@@ -101,6 +98,12 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
+import {
+  motherTongueScope,
+  speaksButOffBoard,
+  tongueBuzzRule,
+  tongueBuzzTally,
+} from '~~/lib/language-rounds'
 import { anthemTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useBuzzRound } from '~~/lib/use-buzz-round'
@@ -131,6 +134,13 @@ const {
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `${name} doesn't have it as an official language`,
+  // A speaker standing off the board is right about the world and wrong only
+  // about this round: it must not spend a lockout, and must not be broadcast
+  // to the room as a miss.
+  reject: (active, isoCode) =>
+    speaksButOffBoard(active, isoCode)
+      ? `${countryName(getCountry(isoCode))} does have it — but this round is ${motherTongueScope(active)}`
+      : undefined,
   onLockoutEnd: () => guessInput.value?.focus(),
   onResolve: () => {
     const active = challenge.value

@@ -55,7 +55,7 @@ import {
   motherTongueScope,
   motherTongueStakes,
   speaksButOffBoard,
-} from '~~/lib/mother-tongue'
+} from '~~/lib/language-rounds'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'

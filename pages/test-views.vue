@@ -942,8 +942,18 @@ const TONGUE_RUNGS: {
     countries: ISOCountryCode[]
     /** Hindi has no anthem sung in it (India's is Bengali), so it seeds. */
     seeded?: boolean
+    /** Regional boards scope the answer set — and the copy that describes it. */
+    scope?: 'europe'
   }
 } = {
+  // A Europe board asking for French: buzzing Senegal is right about the world
+  // and off this board, so it must bounce free rather than lock the buzzer out.
+  'french-europe': {
+    language: 'French',
+    clipCodes: ['fr-0'],
+    countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
+    scope: 'europe',
+  },
   swahili: {
     language: 'Swahili',
     clipCodes: ['sw-0', 'sw-1', 'sw-2'],
@@ -1958,8 +1968,10 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'neighbour-blitz-challenge',
-          country: 'DE',
-          neighbours: ['DK', 'NL', 'BE', 'LU', 'FR', 'CH', 'AT', 'CZ', 'PL'],
+          // Italy on a normal board: San Marino and the Holy See really border
+          // it but are benched out of the key, so naming them must bounce free.
+          country: 'IT',
+          neighbours: ['FR', 'CH', 'AT', 'SI'],
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -2108,6 +2120,7 @@ const scenarios: Scenario[] = [
     // (borrow the speaker country's anthem lines), a seeded sample, and the
     // degenerate one-clip sequence.
     variants: [
+      { id: 'french-europe', label: 'French on a Europe board — off-board buzz bounces' },
       { id: 'swahili', label: 'Swahili — three voices, four speakers' },
       { id: 'ukrainian', label: 'Ukrainian — borrowed anthem wall, Cyrillic' },
       { id: 'hindi', label: 'Hindi — seeded sample, one clip' },
@@ -2123,6 +2136,7 @@ const scenarios: Scenario[] = [
             m4a: `/tongues/${code}.m4a`,
           })),
           countries: rung.countries,
+          ...(rung.scope ? { scope: rung.scope } : {}),
           durationSeconds: 20,
           region: REGION_LABELS[getCountry(rung.countries[0]!).region],
           speakerCount: rung.countries.length,

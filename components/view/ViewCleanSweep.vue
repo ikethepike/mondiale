@@ -324,6 +324,15 @@ const onGuess = (country: Country) => {
     return announce({ hint: `${countryName(country)} is already taken` })
   }
 
+  // A real member this board doesn't ask for. The server refuses it without a
+  // bench, so the claim is pointless — and calling it wrong would be a lie:
+  // the prompt asked for every member and this IS one.
+  if (challenge.value.offBoard?.includes(country.isoCode)) {
+    return announce({
+      hint: `${countryName(country)} is one — but it's not on this board`,
+    })
+  }
+
   const onBoard = challenge.value.members.includes(country.isoCode)
   if (onBoard) inFlight.value = country.isoCode
   else {

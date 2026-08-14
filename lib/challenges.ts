@@ -12,7 +12,13 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { WaterFeature } from '~~/data/water.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender } from '~~/lib/currency'
-import { SWEEP_TUNING, sweepBoardFor, sweepSlotBand, viableSweepSets } from '~~/lib/clean-sweep'
+import {
+  SWEEP_TUNING,
+  sweepBoardFor,
+  sweepOffBoardFor,
+  sweepSlotBand,
+  viableSweepSets,
+} from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
@@ -395,10 +401,15 @@ const getCleanSweepChallenge = ({
   const members = sweepBoardFor(setId, game, band)
   if (!members) return undefined
 
+  // Members this board doesn't ask for — a claim on one is refused, never
+  // benched: the prompt says "every member" and they really are members.
+  const offBoard = sweepOffBoardFor(setId, game, members)
+
   return {
     _type: 'clean-sweep-challenge',
     setId,
     members,
+    ...(offBoard.length ? { offBoard } : {}),
     durationSeconds: SWEEP_TUNING[game.difficulty].durationSeconds,
     maximumPoints: maximumRoundPoints(game),
     state: {
@@ -632,9 +643,13 @@ const getTongueBuzzChallenge = ({
   game: gameTypes.Game
 }): TongueBuzzChallenge | undefined => {
   const pool = playableCountries(game)
+  // OFFICIAL languages, like Mother Tongue: this round's own prompt says "where
+  // that language is official", so the set it grades has to mean it. Reading
+  // the spoken list both rejected countries where it IS official (Burundi for
+  // English, Rwanda for Swahili) and accepted ones where it isn't.
   const speakers = new Map<string, ISOCountryCode[]>()
   for (const isoCode of pool) {
-    for (const language of COUNTRIES[isoCode].languages ?? []) {
+    for (const language of COUNTRIES[isoCode].officialLanguages ?? []) {
       if (!TONGUES[language]) continue
       speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
     }
@@ -656,6 +671,7 @@ const getTongueBuzzChallenge = ({
     language,
     clips,
     countries,
+    ...(game.variant !== 'world' ? { scope: game.variant } : {}),
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
     // Every difficulty unlocks these as the clip runs, matching the anthem

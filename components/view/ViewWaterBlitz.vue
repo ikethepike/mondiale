@@ -51,6 +51,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { touchesButOffKey } from '~~/lib/off-board'
 import { countryName, getCountry } from '~~/lib/country'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -110,6 +111,9 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
+/** Every country the feature touches, benched ones included — the veto's truth. */
+const allShores = ref<ISOCountryCode[]>([])
+
 onMounted(async () => {
   const active = challenge.value
   if (!active) return
@@ -117,6 +121,9 @@ onMounted(async () => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const feature = WATER_FEATURES[active.featureId]
   if (!feature) return
+  // The dataset's OWN shore list, before the deal benched anyone. A guess that
+  // appears here but not in the answer key really does touch the feature.
+  allShores.value = feature.countries
   gameStore.map.feature = {
     d: feature.d,
     kind: feature.kind === 'river' ? 'line' : 'area',
@@ -139,6 +146,12 @@ const {
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country => `${countryName(country)} isn't one of them`,
+    // Monaco really is on the Mediterranean; below hard mode it's benched out
+    // of the answer key. That's not a wrong answer, so it costs nothing.
+    reject: country =>
+      touchesButOffKey(allShores.value, challenge.value?.countries ?? [], country.isoCode)
+        ? `${countryName(country)} does touch it — but it's not in play this game`
+        : undefined,
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )

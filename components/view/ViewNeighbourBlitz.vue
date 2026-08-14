@@ -49,6 +49,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { bordersButOffKey } from '~~/lib/off-board'
 import { countryName, getCountry } from '~~/lib/country'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -92,10 +93,18 @@ const {
     answers: () => challenge.value?.neighbours ?? [],
     wrongHint: country =>
       `${countryName(country)} doesn't border ${challenge.value ? countryName(challenge.value.country) : 'it'}`,
-    reject: country =>
-      country.isoCode === challenge.value?.country
-        ? `${countryName(country)} is the country itself`
-        : undefined,
+    reject: country => {
+      const active = challenge.value
+      if (!active) return undefined
+      if (country.isoCode === active.country) return `${countryName(country)} is the country itself`
+      // A real neighbour the deal benched (San Marino inside Italy, Monaco on
+      // France) is not a wrong answer — it is off the key. Saying it "doesn't
+      // border" would be false, and charging a point for it punishes knowing.
+      if (bordersButOffKey(active.country, active.neighbours, country.isoCode)) {
+        return `${countryName(country)} does border ${countryName(active.country)} — but it's not in play this game`
+      }
+      return undefined
+    },
     // The centre country anchors the frame; guesses materialize around it.
     decorate: (tints, guessed) => {
       const active = challenge.value

@@ -262,9 +262,11 @@ const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event) || submitted.value || showInterstitial.value) return
   const { isoCode } = event.detail
   if (!isValidISOCode(isoCode)) return
-  // `announce` honours the room's guess policy; this mode broadcasts presence
-  // only, since naming the claimant state would hand over the answer.
-  announce({ kind: isoCode === challenge.value?.parent ? 'correct' : 'wrong', isoCode })
+  // Presence only, like No Man's Land: the policy strips the isoCode, but a
+  // `correct`/`wrong` kind still renders as "got it ✓" in the room's ticker —
+  // and in a one-shot round, knowing a rival SOLVED it is most of the answer.
+  // `probe` says somebody tapped, which is all this mode may say.
+  announce({ kind: 'probe', isoCode })
   submitRound(isoCode)
 }
 

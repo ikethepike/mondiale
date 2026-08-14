@@ -89,6 +89,11 @@ export interface TongueBuzzChallenge {
   /** The answers: playable countries with this as an official language.
    *  English is official in 55 of them, so the answer is a set by design. */
   countries: ISOCountryCode[]
+  /** The board the answer set was scoped to — absent on world boards. A buzz
+   *  from off the board is right about the world and wrong only about this
+   *  round, so it must not draw a lockout. Same contract as
+   *  `MotherTongueChallenge.scope`. */
+  scope?: Exclude<GameVariant, 'world'>
   durationSeconds: number
   maximumPoints: number
   /** The region one speaker country sits in. Unlocks on the clock at every
@@ -994,6 +999,16 @@ export interface CleanSweepChallenge {
   /** The board, pinned at the deal so a data regeneration mid-game can't move
    *  the answers under a live round. */
   members: ISOCountryCode[]
+  /**
+   * Genuine members of the set that this board does NOT ask for: cut by the
+   * continental variant, benched as micro-nations, or trimmed by the band's
+   * ceiling. Pinned at the deal beside `members` for the same reason.
+   *
+   * The prompt says "name every member", so naming one of these is knowing the
+   * answer, not missing it — the server refuses the claim without benching and
+   * the view says why. Empty on a board that asks for the whole set.
+   */
+  offBoard?: ISOCountryCode[]
   durationSeconds: number
   maximumPoints: number
   state: CleanSweepState
