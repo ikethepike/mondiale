@@ -134,9 +134,7 @@ describe('off-board veto', () => {
       for (const [language, countries] of onBoard) {
         if (countries.length < 3 || countries.length > 12) continue
         const challenge = challengeOf(language, countries, variant)
-        vetoed += ISOCountryCodes.filter(isoCode =>
-          speaksButOffBoard(challenge, isoCode)
-        ).length
+        vetoed += ISOCountryCodes.filter(isoCode => speaksButOffBoard(challenge, isoCode)).length
       }
       expect(vetoed, variant).toBeGreaterThan(0)
     }
@@ -206,7 +204,11 @@ describe('tongue buzz', () => {
   })
 
   it('leaves a world board unscoped', () => {
-    const challenge = { language: 'German', countries: ['DE', 'AT', 'CH'] as ISOCountryCode[] }
+    const challenge = {
+      language: 'German',
+      scope: undefined,
+      countries: ['DE', 'AT', 'CH'] as ISOCountryCode[],
+    }
     expect(tongueBuzzRule(challenge)).toBe('Any country with it as an official language counts')
     expect(tongueBuzzTally(challenge)).toBe('Official in 3 countries')
   })

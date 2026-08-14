@@ -411,7 +411,9 @@ const settlesCleanly = (
  * Shrink first, then push: pushing a lineup that cannot fit only moves the
  * problem onto the neighbours' countries.
  */
-export const relaxLogoPlacements = <T extends { x: number; y: number; width: number; height: number }>(
+export const relaxLogoPlacements = <
+  T extends { x: number; y: number; width: number; height: number },
+>(
   placements: T[]
 ): T[] => settleAt(placements, fitLogoScale(placements))
 

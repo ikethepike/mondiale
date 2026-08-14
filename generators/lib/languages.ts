@@ -165,8 +165,7 @@ export const officialLanguages = (text: string | undefined): string[] => {
     // languages — Paraguay is co-official, and dropping Guarani would be the
     // same class of error this whole pass exists to fix.
     const marks = segment.match(OFFICIAL_MARK_ALL)
-    const parts =
-      marks && marks.length > 1 ? segment.split(/\s+and\s+/i) : [segment]
+    const parts = marks && marks.length > 1 ? segment.split(/\s+and\s+/i) : [segment]
 
     for (const part of parts) {
       if (!OFFICIAL_MARK.test(part)) continue

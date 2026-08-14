@@ -6,8 +6,7 @@ import { bordersButOffKey, touchesButOffKey } from '~~/lib/off-board'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-const rules = (difficulty: GameDifficulty) =>
-  ({ difficulty, variant: 'world' }) as unknown as Game
+const rules = (difficulty: GameDifficulty) => ({ difficulty, variant: 'world' }) as unknown as Game
 
 /** The dealer's own answer key, rebuilt exactly as `getNeighbourBlitzChallenge` does. */
 const neighbourKey = (game: Game, isoCode: ISOCountryCode) =>
