@@ -185,7 +185,7 @@ svg {
 
 .caption {
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 1.05rem;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
   color: #{ink(0.55)};

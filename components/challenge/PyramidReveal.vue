@@ -115,16 +115,16 @@ const rows = computed(() =>
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.7rem;
+  gap: 1.1rem;
 }
 
 .row {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 1rem;
+  gap: 1.6rem;
   align-items: center;
-  padding: 0.75rem 0.9rem;
-  border-radius: 1rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: 1.6rem;
   background: #{milk(0.9)};
   border: 0.1rem solid #{ink(0.12)};
 
@@ -135,17 +135,17 @@ const rows = computed(() =>
 
 .then-now {
   display: flex;
-  gap: 0.45rem;
+  gap: 0.7rem;
 
   :deep(.population-pyramid) {
-    width: 5.6rem;
+    width: 8.8rem;
   }
 }
 
 .who {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.9rem;
   margin: 0 0 0.2rem;
   font-weight: 700;
   flex-wrap: wrap;
@@ -153,7 +153,7 @@ const rows = computed(() =>
 
 .verdict {
   font-weight: 400;
-  font-size: 0.85rem;
+  font-size: 1.3rem;
   color: var(--hior-ange);
 
   &.hit {
@@ -169,19 +169,19 @@ const rows = computed(() =>
 
 .family {
   display: inline-block;
-  margin-top: 0.3rem;
-  font-size: 0.68rem;
+  margin-top: 0.5rem;
+  font-size: 1.05rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #{ink(0.55)};
   border: 0.1rem solid #{ink(0.12)};
   border-radius: 999px;
-  padding: 0.1rem 0.55rem;
+  padding: 0.2rem 0.9rem;
   background: #{ink(0.06)};
 }
 
 .coda {
-  margin: 1rem 0 0;
+  margin: 1.6rem 0 0;
   color: #{ink(0.55)};
   line-height: 1.5;
 }
