@@ -580,7 +580,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   'religion.believers': factbook('People and Society › Religions'),
 
   'environment.CO2Emissions': factbook('Environment › Carbon dioxide emissions'),
-  'environment.methaneEmissions': factbook('Environment › Methane emissions'),
+  'environment.methaneEmissions': owid('methane-emissions', 'Climate Watch / Jones et al.'),
   'environment.renewables': {
     ...owid('share-electricity-renewables', 'Ember & the Energy Institute'),
     fallback: ['cia-factbook'],
@@ -667,6 +667,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   gdp: owid('gdp-worldbank', 'World Bank'),
   gdpPerCapita: owid('gdp-per-capita-worldbank', 'World Bank'),
   gini: owid('economic-inequality-gini-index', 'World Bank'),
+  methaneEmissions: owid('methane-emissions', 'Climate Watch / Jones et al.'),
   homicideRate: owid('homicide-rate-unodc', 'UNODC'),
   co2PerCapita: owid('co-emissions-per-capita', 'Global Carbon Budget'),
   lifeExpectancy: owid('life-expectancy', 'UN WPP & the Human Mortality Database'),

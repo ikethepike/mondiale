@@ -100,6 +100,24 @@ const METRICS = {
     column: 'Gini coefficient',
     decimals: 3,
   },
+  /**
+   * Total methane, as megatons of CH4 — the unit the Factbook published and
+   * the stat's phrasing still uses.
+   *
+   * OWID ships tonnes of CO2-equivalent, so `scale` divides by the AR5
+   * 100-year GWP of 28 and then by a million. Checked against the values it
+   * replaces: Sweden 0.28 here against 0.29 from the Factbook, India 30.3
+   * against 31.6 — the same measure, one vintage apart.
+   *
+   * Worth the conversion because coverage more than doubles: 90 countries to
+   * 189, and dated 2024 rather than frozen.
+   */
+  methaneEmissions: {
+    slug: 'methane-emissions',
+    column: 'Annual methane emissions including land use',
+    scale: 1 / (28 * 1e6),
+    decimals: 2,
+  },
   // Lifestyle/health — these feed EXISTING Country accessors (fresher, dated
   // values with history) rather than new stats; countries generator prefers
   // them over the undated Factbook nodes.
@@ -235,7 +253,9 @@ const iso3ToIso2 = (): Map<string, ISOCountryCode> => {
 const fetchMetric = async (
   slug: string,
   column: string | readonly string[],
-  lookup: Map<string, ISOCountryCode>
+  lookup: Map<string, ISOCountryCode>,
+  /** Unit conversion, applied before rounding so the scalar and the series agree. */
+  scale = 1
 ): Promise<{
   latest: Map<ISOCountryCode, OwidMetric>
   series: Map<ISOCountryCode, TrendPoint[]>
@@ -275,7 +295,7 @@ const fetchMetric = async (
   for (const row of rows) {
     const iso2 = lookup.get(row[codeIndex])
     if (!iso2) continue
-    const value = Number(row[valueIndex])
+    const value = Number(row[valueIndex]) * scale
     const year = Number(row[yearIndex])
     if (!Number.isFinite(value) || !Number.isFinite(year)) continue
     const existing = latest.get(iso2)
@@ -292,7 +312,12 @@ export const createOwidMapping = async () => {
 
   for (const [metric, config] of Object.entries(METRICS)) {
     console.info(`Fetching OWID metric ${metric} (${config.slug})`)
-    const { latest, series } = await fetchMetric(config.slug, config.column, lookup)
+    const { latest, series } = await fetchMetric(
+      config.slug,
+      config.column,
+      lookup,
+      'scale' in config ? config.scale : 1
+    )
     for (const [iso2, value] of latest) {
       mapping[iso2] = { ...mapping[iso2], [metric]: value }
     }

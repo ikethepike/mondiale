@@ -116,7 +116,6 @@ export interface Country {
     rail?: Amount<'km'>
     internetAccess?: Amount<'%'>
     mobileSubscriptions?: Amount<'per 100 people'>
-    airports?: Amount<'airports'>
   }
   energy: {
     /** Share of population with access to electricity. */

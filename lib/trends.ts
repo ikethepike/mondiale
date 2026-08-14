@@ -160,6 +160,16 @@ export const TREND_METRICS: Record<
     mixed: true,
     race: true,
   },
+  methaneEmissions: {
+    label: 'methane emissions',
+    unit: 'megatons',
+    topic: 'environment',
+    glyph: 'environment.methaneEmissions',
+    // No fixed track: national totals run from Iceland's 0.02 Mt to China's
+    // ~60, so any shared scale would flatten all but the largest emitters.
+    mixed: true,
+    race: true,
+  },
   alcoholConsumption: {
     label: 'alcohol consumption per person',
     unit: 'L',

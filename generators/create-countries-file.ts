@@ -272,12 +272,6 @@ const normalizeCountry = ({
         ],
         'per 100 people'
       ),
-      // Factbook flattened Airports to a bare text node; fall back to the old
-      // '{ total }' shape for any country still on the previous schema.
-      airports: getTextNode<'airports'>(
-        data.Transportation.Airports?.total ?? data.Transportation.Airports,
-        'airports'
-      ),
     },
     energy: {
       electricityAccess: getTextNode<'%'>(
@@ -399,7 +393,12 @@ const normalizeCountry = ({
           data.Environment['Air pollutants']?.['carbon dioxide emissions'],
           'megatons'
         ),
+      // OWID (Climate Watch) first: 189 countries against the Factbook's 90,
+      // dated 2024, and it carries a series. Converted to megatons CH4 in the
+      // OWID generator so both agree on units — Sweden reads 0.28 here against
+      // the Factbook's 0.29. The Factbook backstops the countries OWID misses.
       methaneEmissions:
+        owidAmount(isoCode, 'methaneEmissions', 'megatons') ??
         getMethaneEmissions(data) ??
         getTextNode<'megatons'>(
           data.Environment['Air pollutants']?.['methane emissions'],
