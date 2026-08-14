@@ -220,6 +220,8 @@ const normalizeCountry = ({
       publicDebt:
         imfAmount(isoCode, 'publicDebt', '%') ??
         getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
+      // No Factbook equivalent — this is a new stat, IMF-only.
+      budgetBalance: imfAmount(isoCode, 'budgetBalance', '%'),
       populationBelowPovertyLine: getTextNode<'%'>(
         data['Economy']['Population below poverty line'],
         '%'

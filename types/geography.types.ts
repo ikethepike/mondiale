@@ -81,6 +81,8 @@ export interface Country {
     gdpGrowth?: Amount<'%'>
     /** Public debt as a share of GDP. */
     publicDebt?: Amount<'%'>
+    /** Government budget balance, % of GDP. Positive is a surplus. */
+    budgetBalance?: Amount<'%'>
     militarySpending?: Amount<'%'>
     populationBelowPovertyLine?: Amount<'%'>
     equality?: Amount<'Gini Coefficient'>

@@ -37,9 +37,22 @@ const API = 'https://www.imf.org/external/datamapper/api/v1'
 const INDICATORS = {
   /** General government gross debt, % of GDP. */
   publicDebt: 'GGXWDG_NGDP',
+  /**
+   * General government net lending/borrowing, % of GDP — the budget balance.
+   * Positive is a surplus, negative a deficit.
+   *
+   * Debt-to-GDP cannot show a country's finances turning: Russia reads 15.1% in
+   * 2014 and 17.2% in 2025, near-flat and among the world's lowest, because it
+   * funds from reserves and oil rather than borrowing. The balance shows it —
+   * +1.9% surplus in 2019 to -3.9% in 2025 — and it is the fastest-moving
+   * fiscal number a country has.
+   */
+  budgetBalance: 'GGXCNL_NGDP',
 } as const
 
-type ImfMetricId = keyof typeof INDICATORS
+export type ImfMetricId = keyof typeof INDICATORS
+/** Every IMF metric carries a series, so the two ids are the same set. */
+export type ImfTrendMetricId = ImfMetricId
 
 export interface ImfMetric {
   amount: number

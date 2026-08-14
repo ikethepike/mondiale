@@ -531,6 +531,16 @@ const CHALLENGE_DETAILS: {
       least: 'lowest debt',
     },
   },
+  'economics.budgetBalance': {
+    topic: 'economics',
+    phrasing: 'Rank these countries by government budget balance',
+    definition:
+      'What a government took in minus what it spent, as a share of GDP. Positive is a surplus, negative a deficit — the fastest-moving number in a country’s public finances, where debt only shows the accumulated total.',
+    markers: {
+      most: 'biggest surplus',
+      least: 'biggest deficit',
+    },
+  },
   'infrastructure.mobileSubscriptions': {
     topic: 'infrastructure',
     phrasing: 'Rank these countries by mobile phone subscriptions per 100 people',

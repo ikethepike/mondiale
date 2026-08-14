@@ -1,5 +1,6 @@
 import { TRENDS as OWID_TRENDS } from '~~/data/trends.gen'
 import { WPP_TRENDS } from '~~/data/wpp-trends.gen'
+import { IMF_TRENDS } from '~~/data/imf.gen'
 import type { TrendMapping } from './trends'
 
 /**
@@ -11,7 +12,7 @@ import type { TrendMapping } from './trends'
  */
 export const TRENDS: TrendMapping = (() => {
   const merged: TrendMapping = {}
-  const sources: TrendMapping[] = [OWID_TRENDS, WPP_TRENDS]
+  const sources: TrendMapping[] = [OWID_TRENDS, WPP_TRENDS, IMF_TRENDS]
   for (const source of sources) {
     for (const isoCode of Object.keys(source) as (keyof TrendMapping)[]) {
       merged[isoCode] = { ...merged[isoCode], ...source[isoCode] }

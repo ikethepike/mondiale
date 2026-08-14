@@ -249,6 +249,7 @@ export const CHALLENGE_GROUP_ACCESSORS = {
     'economics.gdpGrowth',
     'economics.inflation',
     'economics.publicDebt',
+    'economics.budgetBalance',
     'economics.militarySpending',
     'economics.populationBelowPovertyLine',
     'economics.equality',

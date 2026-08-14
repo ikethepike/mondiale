@@ -2,6 +2,7 @@
 // which self-invokes at module bottom.
 import type { TrendMetricId as OwidTrendMetricId } from '~~/generators/vendors/owid/create-owid'
 import type { WppTrendMetricId } from '~~/generators/vendors/unwpp/create-wpp'
+import type { ImfTrendMetricId } from '~~/generators/vendors/imf/create-imf'
 import type {
   TrendMapping as GenericTrendMapping,
   TrendSeries,
@@ -11,8 +12,8 @@ import { formatCompact, formatNumber } from '~~/lib/number'
 import type { ChallengeScale, ChallengeTopic } from '~~/types/challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 
-/** Every stored series id, across vendors (OWID + UN WPP). */
-export type TrendMetricId = OwidTrendMetricId | WppTrendMetricId
+/** Every stored series id, across vendors (OWID + UN WPP + IMF). */
+export type TrendMetricId = OwidTrendMetricId | WppTrendMetricId | ImfTrendMetricId
 export type TrendMapping = GenericTrendMapping<TrendMetricId>
 export type { TrendPoint, TrendSeries } from '~~/generators/lib/trend-series'
 export { MIN_TREND_POINTS, MIN_TREND_SPAN_YEARS }
@@ -167,6 +168,28 @@ export const TREND_METRICS: Record<
     glyph: 'environment.methaneEmissions',
     // No fixed track: national totals run from Iceland's 0.02 Mt to China's
     // ~60, so any shared scale would flatten all but the largest emitters.
+    mixed: true,
+    race: true,
+  },
+  budgetBalance: {
+    label: 'budget balance',
+    unit: '% of GDP',
+    topic: 'economics',
+    glyph: 'economics.budgetBalance',
+    // Crosses zero, which is the point: a track from deep deficit to healthy
+    // surplus. Outliers reach -48 and +31, but a -15..+15 window keeps the
+    // ordinary range readable rather than flattening it for two extremes.
+    scale: { min: -15, max: 15 },
+    mixed: true,
+    race: true,
+  },
+  publicDebt: {
+    label: 'public debt',
+    unit: '% of GDP',
+    topic: 'economics',
+    glyph: 'economics.publicDebt',
+    // Japan runs past 200% and several states sit near zero, so no shared
+    // track fits: an unscaled series keeps both readable.
     mixed: true,
     race: true,
   },

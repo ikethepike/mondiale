@@ -510,6 +510,10 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
     fallback: FACTBOOK_BACKSTOP,
   },
   'economics.publicDebt': { source: 'imf-weo', dataset: 'General government gross debt, % of GDP' },
+  'economics.budgetBalance': {
+    source: 'imf-weo',
+    dataset: 'General government net lending/borrowing, % of GDP',
+  },
   'economics.inflation': {
     ...worldBank('FP.CPI.TOTL.ZG'),
     fallback: FACTBOOK_BACKSTOP,
@@ -683,6 +687,8 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   gdpPerCapita: owid('gdp-per-capita-worldbank', 'World Bank'),
   gini: owid('economic-inequality-gini-index', 'World Bank'),
   methaneEmissions: owid('methane-emissions', 'Climate Watch / Jones et al.'),
+  budgetBalance: { source: 'imf-weo', dataset: 'General government net lending/borrowing' },
+  publicDebt: { source: 'imf-weo', dataset: 'General government gross debt' },
   homicideRate: owid('homicide-rate-unodc', 'UNODC'),
   co2PerCapita: owid('co-emissions-per-capita', 'Global Carbon Budget'),
   lifeExpectancy: owid('life-expectancy', 'UN WPP & the Human Mortality Database'),

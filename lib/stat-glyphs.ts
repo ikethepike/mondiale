@@ -668,6 +668,16 @@ export const STAT_GLYPHS: Record<GroupChallengeAccessorId, Glyph> = {
       'M7.5 9.5h9l1.8 8.2a1.5 1.5 0 0 1-1.5 1.8H7.2a1.5 1.5 0 0 1-1.5-1.8z',
     ],
   },
+  // A balance scale: the beam, its post, and two pans — surplus against deficit.
+  'economics.budgetBalance': {
+    paths: [
+      'M12 5v14',
+      'M5 8h14',
+      'M5 8l-2.5 5.5a3 3 0 0 0 5 0z',
+      'M19 8l-2.5 5.5a3 3 0 0 0 5 0z',
+      'M8.5 19h7',
+    ],
+  },
   // Suitcase with straps.
   'economics.touristArrivals': {
     paths: [
