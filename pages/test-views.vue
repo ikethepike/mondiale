@@ -1905,6 +1905,53 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'mother-tongue-regional',
+    label: 'Mother tongue (Europe board — off-board speakers bounce)',
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'mother-tongue-challenge',
+          language: 'French',
+          // The Europe board's answer set. Burundi and Senegal speak French
+          // but stand off it: they must bounce free, not score as misses.
+          countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
+          scope: 'europe',
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'mother-tongue-regional-reveal',
+    label: 'Mother tongue — Europe board scorecard (scoped "official" label)',
+    build: () => {
+      const countries: ISOCountryCode[] = ['FR', 'BE', 'LU', 'MC', 'CH']
+      const game = mockGame('group-scores', [
+        groupRound({
+          _type: 'mother-tongue-challenge',
+          language: 'French',
+          countries,
+          scope: 'europe',
+          durationSeconds: 45,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ])
+      const round = game.rounds[game.rounds.length - 1]!
+      for (const playerId of Object.keys(game.players)) {
+        round.groupAnswers[playerId] = {
+          // France and Belgium found; Grenada is a real miss. Burundi and
+          // Senegal never reach here at all — the round vetoes them.
+          submitted: ['FR', 'BE', 'GD'],
+          correct: countries,
+        }
+        round.playerTurns[playerId] = {
+          points: { scored: Math.round(MAXIMUM_POINTS / 2), maximum: MAXIMUM_POINTS },
+        }
+      }
+      return game
+    },
+  },
+  {
     id: 'neighbour-blitz',
     label: 'Neighbour blitz (typed)',
     build: () =>
@@ -2929,7 +2976,14 @@ const scenarios: Scenario[] = [
     // which wears an opposition party from its own country.
     id: 'individual-rulers',
     label: 'Individual: rulers (spot the party not in government)',
-    build: () => {
+    // Seeds that once broke the sizing: the frame is grown from the seed, so
+    // each of these assembles a different mix of country sizes and logo shapes.
+    variants: [
+      { id: 'AT', label: 'Austria — the ordinary deal', country: 'AT' },
+      { id: 'RO', label: 'Romania — big country, square crest', country: 'RO' },
+      { id: 'DE', label: 'Germany — widest neighbourhood', country: 'DE' },
+    ],
+    build: variant => {
       // The dealer is async (it imports map geometry), and `build` is not — so
       // the harness assembles one deal from the same lib helpers the dealer
       // uses. The impostor test is the LOGO FILE, exactly as `impostorParties`
@@ -2937,7 +2991,7 @@ const scenarios: Scenario[] = [
       // Grown from the eligible pool by proximity, exactly as `dealRulers`
       // does: a hardcoded neighbourhood lights countries nobody can answer
       // (Hungary's government carries no logo, Slovenia's does not resolve).
-      const seed: ISOCountryCode = 'AT'
+      const seed: ISOCountryCode = (variant?.country as ISOCountryCode) ?? 'AT'
       const near = (isoCode: ISOCountryCode) => {
         const box = MAP_BOUNDS[isoCode as keyof typeof MAP_BOUNDS]
         const from = MAP_BOUNDS[seed as keyof typeof MAP_BOUNDS]
@@ -2967,6 +3021,13 @@ const scenarios: Scenario[] = [
       const names = Object.fromEntries(
         dressed.map(([isoCode, party]) => [isoCode, shortPartyName(party)])
       )
+      // The shapes, exactly as `dealRulers` passes them — without these the
+      // stage falls back to square boxes and the harness would be previewing
+      // the bug rather than the fix.
+      const ratios = Object.fromEntries(
+        dressed.flatMap(([isoCode, party]) => (party.logoRatio ? [[isoCode, party.logoRatio]] : []))
+      )
+      const governing = governingParty(victim)
       return individualGame({
         variant: 'rulers',
         country: victim,
@@ -2974,9 +3035,11 @@ const scenarios: Scenario[] = [
           lineup,
           logos,
           names,
-          trueLogo: { [victim]: governingParty(victim)?.logo ?? '' },
+          ratios,
+          trueLogo: { [victim]: governing?.logo ?? '' },
+          ...(governing?.logoRatio ? { trueRatio: { [victim]: governing.logoRatio } } : {}),
           impostor: { name: impostor?.name ?? '' },
-          governing: { name: governingParty(victim)?.name ?? '' },
+          governing: { name: governing?.name ?? '' },
         },
       })
     },
@@ -4101,7 +4164,10 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],
   ['Water', ['water-', 'name-that-water']],
-  ['Mother Tongue', ['mother-tongue']],
+  [
+    'Mother Tongue',
+    ['mother-tongue', 'mother-tongue-regional', 'mother-tongue-regional-reveal'],
+  ],
   ['Neighbour Blitz', ['neighbour-']],
   ['Map & Sketch', ['pin-landmark', 'no-mans-land', 'hot-cold', 'silhouette', 'sketch']],
   ['Audio Buzz', ['anthem-', 'tongue-']],

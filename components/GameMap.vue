@@ -256,8 +256,11 @@ import {
   invertRobinson,
   isLabelableBox,
   labelBoxFor,
+  logoBox,
+  logoFit,
   mainlandBox,
   projectRobinson,
+  relaxLogoPlacements,
   zoomOutStartView,
   type LatLng,
 } from '~~/lib/geo'
@@ -349,6 +352,14 @@ const props = defineProps({
    *  name still leaves the question (does THAT party govern THERE?) intact. */
   countryLogoNames: {
     type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
+  /** Each logo's intrinsic width/height, so the stage can size every mark to
+   *  equal painted AREA. Without it a wide wordmark paints a third of what a
+   *  square crest does, and the difference reads as an answer. Optional: a
+   *  missing ratio falls back to a square box. */
+  countryLogoRatios: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, number>>>,
     default: undefined,
   },
   /** Animate the viewBox to frame these countries together. */
@@ -1275,17 +1286,6 @@ const ensureLabels = () => {
   settleSoon()
 }
 
-/**
- * How much of a country's inscribed circle a logo may fill. Under 1 so the
- * artwork sits INSIDE the landmass rather than touching its border.
- */
-const LOGO_ANCHOR_FILL = 2.4
-/** Drawn side in map units, clamped: the inscribed radius runs from 0.2
- *  (San Marino) to 61 (Russia), so raw proportional sizing would be invisible
- *  on half the roster and swamp the frame on the other half. */
-const LOGO_MIN_SIDE = 13
-const LOGO_MAX_SIDE = 40
-
 let builtLogoKey: string | undefined
 
 /**
@@ -1293,10 +1293,15 @@ let builtLogoKey: string | undefined
  * and built the same way: imperatively into the live SVG, keyed on the set so a
  * new gate replaces the previous round's rather than latching.
  *
- * The logo is CENTRED at the pole of inaccessibility and fitted with
- * `xMidYMid meet`, never clipped to the landmass. A party logo is a wordmark
- * drawn for a white page; shearing it to an irregular coastline would destroy
- * the one thing a player is being asked to read.
+ * The logo is CENTRED at the pole of inaccessibility and never clipped to the
+ * landmass. A party logo is a wordmark drawn for a white page; shearing it to
+ * an irregular coastline would destroy the one thing a player is being asked
+ * to read.
+ *
+ * Its BOX comes from `logoBox`, which equalises painted area across both the
+ * country's size and the artwork's shape — see the rule there. Overflow onto a
+ * neighbour is expected and fine; UNEQUAL overflow was the bug, because in a
+ * mode where the logos are the options, size reads as an answer.
  *
  * Nothing is drawn behind it. A scrim card read as a box sitting ON the map
  * rather than a logo sitting IN a country — the separation the stage wants
@@ -1307,7 +1312,8 @@ const ensureLogos = () => {
   if (!svg.value) return
   const logos = props.countryLogos
   const names = props.countryLogoNames
-  const key = logos ? JSON.stringify([logos, names ?? null]) : ''
+  const ratios = props.countryLogoRatios
+  const key = logos ? JSON.stringify([logos, names ?? null, ratios ?? null]) : ''
   if (key === builtLogoKey) return
 
   svg.value.querySelectorAll('.country-logo').forEach(node => node.remove())
@@ -1322,7 +1328,16 @@ const ensureLogos = () => {
   // its own logo, which can put it on top of the country to the south (Austria
   // captioned "OeVP" straight across Croatia's HDZ mark). Knowing all the
   // boxes is what lets a chip step clear of its neighbours.
-  const placements: { code: string; href: string; x: number; y: number; side: number }[] = []
+  const anchored: {
+    code: string
+    href: string
+    x: number
+    y: number
+    side: number
+    width: number
+    height: number
+    clipped: boolean
+  }[] = []
   for (const [code, href] of Object.entries(logos)) {
     if (!href) continue
     // The same labelability predicate the label layer uses, so a dealer that
@@ -1331,18 +1346,31 @@ const ensureLogos = () => {
       continue
     const anchor = labelAnchorFor(code as MapCode)
     if (!anchor) continue
-    const side = Math.min(LOGO_MAX_SIDE, Math.max(LOGO_MIN_SIDE, anchor.radius * LOGO_ANCHOR_FILL))
-    placements.push({ code, href, x: anchor.point[0], y: anchor.point[1], side })
+    // Resolved HERE, in the first pass, because the chip solve below reads
+    // every OTHER placement's box — a size computed in the draw loop would not
+    // exist yet for the neighbours being stepped around.
+    const box = logoBox(anchor.radius, ratios?.[code as ISOCountryCode])
+    anchored.push({ code, href, x: anchor.point[0], y: anchor.point[1], ...box })
   }
 
-  for (const { code, href, x, y, side } of placements) {
+  // Poles of inaccessibility sit closer together than the artwork is wide in a
+  // tight neighbourhood (the Alps, the Balkans), so equal-area marks land on
+  // top of one another. Push them apart before anything is drawn — the chip
+  // solve below reads these boxes, and a caption stepped around a box that then
+  // moved would be solving yesterday's layout.
+  const placements = relaxLogoPlacements(anchored)
+
+  /** Chips already laid, so the next one can step clear of them too. */
+  const chips: { x: number; y: number; width: number; height: number }[] = []
+
+  for (const { code, href, x, y, side, width, height, clipped } of placements) {
     const image = document.createElementNS(SVG_NS, 'image')
     image.setAttribute('href', href)
-    image.setAttribute('x', String(x - side / 2))
-    image.setAttribute('y', String(y - side / 2))
-    image.setAttribute('width', String(side))
-    image.setAttribute('height', String(side))
-    image.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    image.setAttribute('x', String(x - width / 2))
+    image.setAttribute('y', String(y - height / 2))
+    image.setAttribute('width', String(width))
+    image.setAttribute('height', String(height))
+    image.setAttribute('preserveAspectRatio', logoFit(clipped))
     image.dataset.id = code
     image.classList.add('country-logo-image')
     layer.appendChild(image)
@@ -1358,10 +1386,13 @@ const ensureLogos = () => {
     const chipWidth = chipHeight * (0.62 * caption.length + 0.7)
     // Clear of the logo box, not inside it. Sitting the chip half its own
     // height ABOVE the bottom edge put it over the artwork for anything that
-    // fills its square — Austria's "Die Volkspartei" wordmark was struck
-    // through by its own name. `meet` leaves slack only on the short axis, so
-    // there is no safe overlap to borrow.
-    let chipY = y + side / 2 + chipHeight * 0.12
+    // fills its box — Austria's "Die Volkspartei" wordmark was struck through
+    // by its own name.
+    //
+    // Measured off the box HEIGHT, never `side`: the box is no longer square,
+    // so on `side` alone a wide wordmark's chip would float in dead space
+    // below it and a tall crest's chip would land back on the artwork.
+    let chipY = y + height / 2 + chipHeight * 0.12
 
     // …and clear of everyone ELSE'S logo. A chip hangs south of its anchor, so
     // on a tight frame it lands on the next country down.
@@ -1376,13 +1407,48 @@ const ensureLogos = () => {
     for (const other of placements) {
       if (other.code === code) continue
       const overlapsX =
-        x + chipWidth / 2 > other.x - other.side / 2 && x - chipWidth / 2 < other.x + other.side / 2
+        x + chipWidth / 2 > other.x - other.width / 2 &&
+        x - chipWidth / 2 < other.x + other.width / 2
       const overlapsY =
-        chipY + chipHeight > other.y - other.side / 2 && chipY < other.y + other.side / 2
+        chipY + chipHeight > other.y - other.height / 2 && chipY < other.y + other.height / 2
       if (!overlapsX || !overlapsY) continue
-      const stepped = other.y + other.side / 2 + chipHeight * 0.12
+      const stepped = other.y + other.height / 2 + chipHeight * 0.12
       if (stepped <= chipCeiling) chipY = stepped
     }
+
+    // …and clear of the chips ALREADY placed. Dodging only the logos left two
+    // names sharing one strip of latitude ("Progressive Slovakia" overrun by
+    // "Respect and"), because a chip is far wider than the mark it labels and
+    // two marks a comfortable distance apart can still have colliding plates.
+    for (const chip of chips) {
+      const overlapsX =
+        x + chipWidth / 2 > chip.x - chip.width / 2 && x - chipWidth / 2 < chip.x + chip.width / 2
+      const overlapsY = chipY + chipHeight > chip.y && chipY < chip.y + chip.height
+      if (!overlapsX || !overlapsY) continue
+      const stepped = chip.y + chip.height + chipHeight * 0.25
+      if (stepped <= chipCeiling) chipY = stepped
+    }
+    // A caption belongs to ITS logo. Romania's "PNL" stepped so far south it
+    // came to rest under Bulgaria's mark, reading as Bulgaria's answer — the
+    // lie the ceiling exists to prevent, arrived at one step at a time.
+    //
+    // So the steps are bounded rather than undone: the chip may sit anywhere
+    // from its home down to just above the next mark south, whichever the
+    // stepping found. Snapping a trespassing chip all the way back home was
+    // tried and simply restores the collision it stepped away from.
+    const blocked = placements
+      .filter(
+        other =>
+          other.code !== code &&
+          x + chipWidth / 2 > other.x - other.width / 2 &&
+          x - chipWidth / 2 < other.x + other.width / 2 &&
+          other.y - other.height / 2 > y
+      )
+      .map(other => other.y - other.height / 2 - chipHeight)
+    const floor = Math.min(...blocked, chipCeiling)
+    const home = y + height / 2 + chipHeight * 0.12
+    chipY = clamp(chipY, home, Math.max(home, floor))
+    chips.push({ x, y: chipY, width: chipWidth, height: chipHeight })
 
     const plate = document.createElementNS(SVG_NS, 'rect')
     plate.setAttribute('x', String(x - chipWidth / 2))
@@ -1578,7 +1644,9 @@ watch(
 )
 
 watch(
-  () => props.countryLogos,
+  // Ratios too: the reveal swaps in the impostor's true logo, and a mark whose
+  // shape changed without its href changing would keep the old box.
+  () => [props.countryLogos, props.countryLogoRatios],
   () => {
     nextTick(ensureLogos)
   },

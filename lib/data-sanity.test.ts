@@ -75,6 +75,28 @@ describe('countries.gen', () => {
       expect(FLAGS[country.isoCode]).toContain('<svg')
     }
   })
+
+  it('every country speaks something, officially', () => {
+    // Both lists feed rounds that grade against them, and an empty one is a
+    // country that silently drops out of Mother Tongue and the manhunt's
+    // language subpoena rather than failing loudly.
+    for (const country of countries) {
+      expect(country.languages.length, country.isoCode).toBeGreaterThan(0)
+      expect(country.officialLanguages.length, country.isoCode).toBeGreaterThan(0)
+    }
+  })
+
+  it('parses officials from the Factbook for most of the roster', () => {
+    // 21 countries carry no "(official)" marker and fall back to the spoken
+    // list. If a parser regression pushed that fallback wide, the official
+    // field would quietly become a copy of `languages` — and the rounds that
+    // CLAIM officiality would be guessing again.
+    // 55 of 194 differ today (a different set, a different order, or both).
+    const differs = countries.filter(
+      country => country.officialLanguages.join('|') !== country.languages.join('|')
+    )
+    expect(differs.length).toBeGreaterThan(40)
+  })
 })
 
 describe('parties.gen', () => {
@@ -106,6 +128,27 @@ describe('parties.gen', () => {
   // is therefore not "no non-free logos" but "no non-free logo whose source we
   // cannot name" — an unattributed one is a harvest that wandered off Commons
   // by accident, which is the case worth failing on.
+  // Rulers sizes every mark to equal painted AREA, which it can only do from
+  // the artwork's shape — and the shape ships in the data (`generate:logo-dims`
+  // reads it off the saved files). A half-run backfill is the failure worth
+  // catching: the stage silently falls back to square boxes, and the mode goes
+  // back to pointing at whichever option happens to be a crest on a big country.
+  it('carries the shape of every logo it ships', () => {
+    const withLogo = parties.filter(party => party.logo)
+    const stamped = withLogo.filter(party => party.logoRatio !== undefined)
+    expect(stamped.length / withLogo.length).toBeGreaterThanOrEqual(0.99)
+    for (const party of stamped) {
+      expect(
+        Number.isFinite(party.logoRatio) && party.logoRatio! > 0,
+        `${party.name} has a junk logoRatio (${party.logoRatio})`
+      ).toBe(true)
+    }
+    // A ratio without a logo is a stamp that outlived its artwork.
+    for (const party of parties.filter(party => party.logoRatio !== undefined)) {
+      expect(party.logo, `${party.name} has a logoRatio but no logo`).toBeTruthy()
+    }
+  })
+
   it('names the source of every non-free logo', () => {
     for (const party of parties.filter(party => party.nonFree)) {
       expect(party.logo, `${party.name} is flagged non-free without a logo`).toBeTruthy()

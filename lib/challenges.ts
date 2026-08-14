@@ -1013,9 +1013,11 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
 
   // Count on-board speakers per language, keep the answerable band (a language
   // spoken by 3–12 board countries — fewer is guessable, more is a slog).
+  // OFFICIAL languages only: the round says "as an official language" on its
+  // own interstitial, so the set it grades has to mean it.
   const speakers = new Map<string, ISOCountryCode[]>()
   for (const isoCode of pool) {
-    for (const language of COUNTRIES[isoCode].languages ?? []) {
+    for (const language of COUNTRIES[isoCode].officialLanguages ?? []) {
       const list = speakers.get(language) ?? []
       list.push(isoCode)
       speakers.set(language, list)
@@ -1033,6 +1035,10 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
     _type: 'mother-tongue-challenge',
     language,
     countries,
+    // A regional board's answer set is only the speakers ON it, so the round
+    // has to say which board it means — and credit the off-board speakers a
+    // player names instead of calling them wrong.
+    ...(game.variant !== 'world' ? { scope: game.variant } : {}),
     durationSeconds: Math.min(60, 20 + countries.length * 5),
     maximumPoints: maximumRoundPoints(game),
   }
@@ -3100,12 +3106,16 @@ const dealRulers = async (
 
     const logos: Partial<Record<ISOCountryCode, string>> = {}
     const names: Partial<Record<ISOCountryCode, string>> = {}
+    const ratios: Partial<Record<ISOCountryCode, number>> = {}
     for (const isoCode of lineup) {
       const party = isoCode === victim ? impostor : governingParty(isoCode)
       if (party?.logo) {
         logos[isoCode] = party.logo
         // The SHORT label — a full name is wider than the country it sits on.
         names[isoCode] = shortPartyName(party)
+        // The mark's shape travels with it: the stage equalises painted AREA,
+        // which it cannot work out from the image path alone.
+        if (party.logoRatio) ratios[isoCode] = party.logoRatio
       }
     }
     if (Object.keys(logos).length < size) continue
@@ -3116,8 +3126,10 @@ const dealRulers = async (
         lineup: shuffleArray([...lineup]),
         logos,
         names,
+        ratios,
         trueLogo: { [victim]: governing.logo },
         trueName: { [victim]: shortPartyName(governing) },
+        ...(governing.logoRatio ? { trueRatio: { [victim]: governing.logoRatio } } : {}),
         impostor: {
           name: impostor.name,
           ...(impostor.credit ? { credit: impostor.credit } : {}),

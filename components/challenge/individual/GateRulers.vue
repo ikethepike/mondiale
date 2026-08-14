@@ -57,6 +57,10 @@ onMounted(() => {
   // leaves five countries filling a tenth of the screen.
   gameStore.map.framePad = { scale: 0.2, floor: 22 }
   gameStore.map.countryLogos = { ...rulers.logos }
+  // The shapes ride with the marks: without them every logo is fitted into a
+  // square and a wordmark paints a third of what a crest does, which in a mode
+  // whose logos ARE the options reads as a pointer at one answer.
+  gameStore.map.countryLogoRatios = { ...(rulers.ratios ?? {}) }
   // Outside hard mode the party's NAME rides under its logo. Knowing the name
   // is worth learning on its own, and it leaves the question standing: does
   // this party govern THIS country? Hard mode reads the marks unaided.
@@ -84,6 +88,10 @@ const restoreStage = () => {
     // The reveal names every party, hard mode included — the lesson lands
     // after the answer, where it can no longer be the answer.
     gameStore.map.countryLogoNames = { ...rulers.names, ...(rulers.trueName ?? {}) }
+    // The swapped-in mark is a different party, so it is a different shape —
+    // its ratio has to travel with it or the reveal draws it in the impostor's
+    // box.
+    gameStore.map.countryLogoRatios = { ...(rulers.ratios ?? {}), ...(rulers.trueRatio ?? {}) }
   }
   // The world comes back for the reveal — the answer reads against the whole
   // map, not a spotlit corner of it.

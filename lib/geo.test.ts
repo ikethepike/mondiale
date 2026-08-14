@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { WORLD_BOX, zoomOutStartView, type MapBox } from './geo'
+import {
+  LOGO_MAX_RATIO,
+  LOGO_MAX_SIDE,
+  LOGO_MIN_RATIO,
+  LOGO_MIN_SIDE,
+  WORLD_BOX,
+  logoBox,
+  logoPaintedArea,
+  relaxLogoPlacements,
+  zoomOutStartView,
+  type MapBox,
+} from './geo'
 import { largestRing, poleOfInaccessibility, ringContains } from './outline'
 import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
@@ -184,5 +195,179 @@ describe('zoomOutStartView', () => {
     }
     expect(showsLand(ring, oldStart)).toBe(false)
     expect(showsLand(ring, start)).toBe(true)
+  })
+})
+
+/**
+ * Rulers' logo sizing, swept over every mapped country.
+ *
+ * The bug this pins: a logo used to be a `side x side` SQUARE scaled straight
+ * off its country's inscribed radius. Both terms ran wild — Romania's box was
+ * 2.3x North Macedonia's LINEARLY, and a square box fitted with `meet` paints
+ * a wide wordmark at a third of the area it gives a crest. Compounded, one
+ * frame held an 18.5x painted-area spread, which in a mode whose logos ARE the
+ * options is a pointer at an answer.
+ */
+describe('logoBox', () => {
+  /** Anchor radii actually seen on the map, smallest to largest. */
+  const radiusFor = (isoCode: string) => {
+    const ring = largestRing(MAP_PATHS[isoCode as keyof typeof MAP_PATHS])
+    return ring ? poleOfInaccessibility(ring)?.radius : undefined
+  }
+  /** Ratios drawn from the real roster's distribution: p0, p25, p50, p75, p90,
+   *  p99 and the extreme tail. */
+  const RATIOS = [0.44, 1.0, 1.11, 2.1, 3.36, 6.36, 15.06]
+
+  it('paints equal area regardless of the artwork’s shape', () => {
+    // The property the whole fix rests on: at one radius, every shape gets the
+    // same painted area. This is what a later "small tweak" would break.
+    for (const radius of [0.2, 3.9, 8, 12.4, 65.1]) {
+      const areas = RATIOS.map(ratio => logoPaintedArea(radius, ratio))
+      const spread = Math.max(...areas) / Math.min(...areas)
+      expect(spread).toBeLessThan(1.01)
+    }
+  })
+
+  it('keeps a whole lineup inside one visual weight class', () => {
+    // The regression guard for the reported frame. Every mapped country, each
+    // paired with every plausible ratio — the worst pairing a dealer could
+    // ever produce must still read as one weight class.
+    const areas: number[] = []
+    for (const isoCode of Object.keys(MAP_PATHS)) {
+      const radius = radiusFor(isoCode)
+      if (radius === undefined) continue
+      for (const ratio of RATIOS) areas.push(logoPaintedArea(radius, ratio))
+    }
+    expect(areas.length).toBeGreaterThan(100)
+    expect(Math.max(...areas) / Math.min(...areas)).toBeLessThanOrEqual(2.5)
+  })
+
+  it('still lets a bigger country wear a bigger mark', () => {
+    // Compressed, not flattened: the country-size signal survives, it just
+    // stops shouting. Also catches a sign or exponent slip.
+    let previous = 0
+    for (const radius of [0.2, 1, 3.9, 6.4, 12.4, 18.4, 65.1]) {
+      const { side } = logoBox(radius, 1)
+      expect(side).toBeGreaterThanOrEqual(previous)
+      previous = side
+    }
+  })
+
+  it('saturates on the rails rather than running away', () => {
+    // San Marino (r=0.2) and Russia (r=65) are the roster's extremes.
+    expect(logoBox(radiusFor('SM')!, 1).side).toBe(LOGO_MIN_SIDE)
+    expect(logoBox(radiusFor('RU')!, 1).side).toBe(LOGO_MAX_SIDE)
+  })
+
+  it('fills, never fits, once the artwork outruns the ratio clamp', () => {
+    // Past the clamp `meet` is what BREAKS equal area — a 4:1 box holding 15:1
+    // art letterboxes to a quarter of itself (France measured 194 against a
+    // 324 floor). Those marks must be flagged for `slice`.
+    expect(logoBox(10, 15.06).clipped).toBe(true)
+    expect(logoBox(10, LOGO_MAX_RATIO * 1.01).clipped).toBe(true)
+    expect(logoBox(10, LOGO_MIN_RATIO * 0.99).clipped).toBe(true)
+    // ...and everything inside it is fitted whole, artwork intact.
+    for (const ratio of [LOGO_MIN_RATIO, 1, 2.1, 3.36, LOGO_MAX_RATIO]) {
+      expect(logoBox(10, ratio).clipped).toBe(false)
+    }
+  })
+
+  it('falls back to a square when the shape is unknown', () => {
+    // A stale `.gen`, a logo the backfill could not read, or a pre-existing
+    // game: degrade to the old geometry, never to NaN attributes that would
+    // blank every mark on the stage.
+    for (const ratio of [undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const { width, height, side } = logoBox(10, ratio)
+      expect(width).toBe(height)
+      expect(Number.isFinite(side)).toBe(true)
+      expect(side).toBeGreaterThan(0)
+    }
+  })
+
+  it('pushes a crowded lineup apart without disowning its countries', () => {
+    // The Alps frame: five anchors closer together than the equal-area marks
+    // are wide. Austria/Slovenia/Croatia/Italy/Czechia piled into one heap.
+    const frame = ['AT', 'CZ', 'IT', 'SI', 'HR']
+    const anchored = frame.map(isoCode => {
+      const anchor = poleOfInaccessibility(largestRing(MAP_PATHS[isoCode as never])!)!
+      const { width, height } = logoBox(anchor.radius, 2.1)
+      return { code: isoCode, x: anchor.point[0], y: anchor.point[1], width, height }
+    })
+    // Count the overlapping AREA, not the pair count: a hairline kiss between
+    // two boxes is invisible, while one mark lying across another is the bug.
+    // Measuring area is also what stops this passing on a technicality.
+    const collision = (list: typeof anchored) => {
+      let area = 0
+      for (let a = 0; a < list.length; a += 1)
+        for (let b = a + 1; b < list.length; b += 1) {
+          const one = list[a]!
+          const two = list[b]!
+          const overlapX = (one.width + two.width) / 2 - Math.abs(one.x - two.x)
+          const overlapY = (one.height + two.height) / 2 - Math.abs(one.y - two.y)
+          if (overlapX > 0 && overlapY > 0) area += overlapX * overlapY
+        }
+      return area
+    }
+
+    const settled = relaxLogoPlacements(anchored)
+    expect(collision(anchored)).toBeGreaterThan(0)
+    // The pile clears. A partial settle is what put Slovenia's SDS across
+    // Austria's Volkspartei, so "improved" is not the bar.
+    expect(collision(settled)).toBeLessThan(collision(anchored) * 0.001)
+
+    // ...and it clears with AIR, not to a hairline kiss. Boxes relaxed to
+    // 0.1-unit contact measured as "separated" while the wordmarks inside them
+    // still read as one shape on screen — that is the bug this guards.
+    for (let a = 0; a < settled.length; a += 1)
+      for (let b = a + 1; b < settled.length; b += 1) {
+        const one = settled[a]!
+        const two = settled[b]!
+        const gapX = Math.abs(one.x - two.x) - (one.width + two.width) / 2
+        const gapY = Math.abs(one.y - two.y) - (one.height + two.height) / 2
+        const air = Math.min((one.height + two.height) / 2, (one.width + two.width) / 2) * 0.1
+        expect(
+          Math.max(gapX, gapY),
+          `${one.code}/${two.code} settled without clear air`
+        ).toBeGreaterThan(air)
+      }
+
+    // ...and every mark still belongs to its own country: a logo that escaped
+    // the pile by sliding onto the neighbour turned a crowded question into a
+    // wrong one. Capped per axis against the box's own span.
+    for (const [index, placement] of settled.entries()) {
+      const origin = anchored[index]!
+      expect(Math.abs(placement.x - origin.x)).toBeLessThanOrEqual(origin.width * 0.9 + 0.001)
+      expect(Math.abs(placement.y - origin.y)).toBeLessThanOrEqual(origin.height * 0.9 + 0.001)
+    }
+  })
+
+  it('settles the same way every time', () => {
+    // Deterministic: pushes accumulate per pass and apply together, so the
+    // layout can never depend on iteration order or on a previous render.
+    const boxes = [
+      { x: 100, y: 100, width: 30, height: 20 },
+      { x: 105, y: 102, width: 30, height: 20 },
+      { x: 100, y: 100, width: 25, height: 25 },
+    ]
+    expect(relaxLogoPlacements(boxes)).toEqual(relaxLogoPlacements(boxes))
+    // ...and the input is never mutated — the caller's anchors stay authoritative.
+    expect(boxes[0]!.x).toBe(100)
+  })
+
+  it('holds the reported Central Europe frame together', () => {
+    // The actual bug report: Romania's PNL crest swamping a frame whose other
+    // members are small countries wearing wide wordmarks.
+    const frame: [string, number][] = [
+      ['RO', 1.0],
+      ['MK', 1.0],
+      ['SK', 3.36],
+      ['HU', 2.1],
+      ['RS', 3.36],
+      ['BG', 1.11],
+      ['HR', 1.0],
+      ['SI', 1.0],
+    ]
+    const areas = frame.map(([isoCode, ratio]) => logoPaintedArea(radiusFor(isoCode)!, ratio))
+    expect(Math.max(...areas) / Math.min(...areas)).toBeLessThan(2.1)
   })
 })

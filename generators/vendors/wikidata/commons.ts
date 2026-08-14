@@ -321,6 +321,42 @@ export const writeWebp = async (
 }
 
 /**
+ * A local `.webp`'s intrinsic size, read straight from the file header — no
+ * decode, no network, no `sharp` round-trip (the whole 1709-file party roster
+ * reads in ~190ms).
+ *
+ * WebP has three container shapes and the dimensions sit in a different place
+ * in each: VP8X stores two 24-bit LE values minus one, VP8L packs two 14-bit
+ * fields into a u32, and plain VP8 keeps 14-bit values in two u16s.
+ *
+ * Sibling of `fetchImageDimensions`, which asks Commons about a file we have
+ * not downloaded yet; this one answers for a file already on disk, which is
+ * what a backfill over saved assets needs.
+ */
+export const webpDimensions = (path: string): { width: number; height: number } | undefined => {
+  let buffer: Buffer
+  try {
+    buffer = readFileSync(path)
+  } catch {
+    return undefined
+  }
+  if (buffer.length < 30) return undefined
+  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP')
+    return undefined
+
+  const format = buffer.toString('ascii', 12, 16)
+  if (format === 'VP8X')
+    return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3) }
+  if (format === 'VP8L') {
+    const packed = buffer.readUInt32LE(21)
+    return { width: 1 + (packed & 0x3fff), height: 1 + ((packed >> 14) & 0x3fff) }
+  }
+  if (format === 'VP8 ')
+    return { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff }
+  return undefined
+}
+
+/**
  * Fetch a wiki-hosted file at a fixed width, honouring 429 backoff.
  *
  * Commons serves the overwhelming majority, but a freely licensed file can be

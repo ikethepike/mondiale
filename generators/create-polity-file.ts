@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs'
 import { PARTIES as PREVIOUS } from '../data/parties-factbook.gen'
 import { extname } from 'node:path'
 import { jsonParseLiteral } from './lib/emit'
-import { saveCommonsImage } from './vendors/wikidata/commons'
+import { saveCommonsImage, webpDimensions } from './vendors/wikidata/commons'
 import type { ISOCountryCode } from '../types/geography.types'
 import type { CountryParties, Party, PartyMapping } from '../types/party.types'
 
@@ -409,6 +409,11 @@ const main = async (): Promise<void> => {
       continue
     }
     entry.party.logo = path
+    // The shape rides with the mark: the Rulers stage equalises painted area,
+    // which it cannot work out from the href alone.
+    const size = webpDimensions(onDisk)
+    if (size?.width && size.height)
+      entry.party.logoRatio = Math.round((size.width / size.height) * 1000) / 1000
     saved += 1
     if (saved % 25 === 0) process.stdout.write(`\r  ${saved} logos`)
   }

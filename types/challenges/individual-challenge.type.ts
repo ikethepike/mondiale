@@ -102,11 +102,18 @@ export interface IndividualChallenge {
      *  read the mark still has to know whether THAT party governs THERE. Hard
      *  mode gets the logos alone. */
     names: Partial<Record<ISOCountryCode, string>>
+    /** Each logo's intrinsic width/height, so the stage can size every mark to
+     *  equal painted AREA. Without it the country's size and the artwork's
+     *  shape compound, and one option ends up visually shouting. Optional:
+     *  pre-existing games and unstamped logos fall back to a square box. */
+    ratios?: Partial<Record<ISOCountryCode, number>>
     /** The impostor's country wearing its REAL government — swapped in at the
      *  reveal, so the stage takes back the lie it taught. */
     trueLogo?: Partial<Record<ISOCountryCode, string>>
     /** …and its name, for the caption the reveal swaps in with it. */
     trueName?: Partial<Record<ISOCountryCode, string>>
+    /** …and its shape, so the swapped-in mark is sized by the same rule. */
+    trueRatio?: Partial<Record<ISOCountryCode, number>>
     /** Named only in the reveal: the impostor, and who really governs there. */
     impostor: { name: string; credit?: string; license?: string }
     governing: { name: string }

@@ -37,6 +37,11 @@ export interface Party extends MediaCredit {
   coalition?: boolean
   /** Logo path under /public, when one was saved. */
   logo?: string
+  /** The logo's intrinsic width/height. The Rulers stage sizes every mark to
+   *  equal painted AREA, which needs the shape at draw time: fitted into a
+   *  square box a wide wordmark paints a third of what a crest does, and in a
+   *  mode where the logos are the options that difference reads as an answer. */
+  logoRatio?: number
   /** Commons' own `Restrictions` note — "trademarked" for most party logos. */
   logoRestrictions?: string
   /** Commons says the file is non-free (fair-use). Travels with the logo so a

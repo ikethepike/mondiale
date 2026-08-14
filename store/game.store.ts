@@ -73,6 +73,9 @@ interface GameStoreState {
     countryLogos?: Partial<Record<ISOCountryCode, string>>
     /** Party names captioned under the logos — Rulers, outside hard mode. */
     countryLogoNames?: Partial<Record<ISOCountryCode, string>>
+    /** Each logo's intrinsic width/height, so every mark is drawn at equal
+     *  painted area regardless of its country's size or its own shape. */
+    countryLogoRatios?: Partial<Record<ISOCountryCode, number>>
     /** Chrome berth (CSS px): the camera frames its subject between these
      *  insets so a header card never covers it. */
     berth?: { top?: number; bottom?: number }
