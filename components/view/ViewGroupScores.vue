@@ -284,7 +284,12 @@ import {
 } from '~~/lib/attribution'
 import { loadFlagMeaning } from '~~/lib/flag-meanings'
 import { waterFactsFor } from '~~/lib/water-facts'
-import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
+import {
+  scorecardExplainer,
+  scorecardLabels,
+  tongueFactLine as tongueFactLineFor,
+  waterFactLine as waterFactLineFor,
+} from '~~/lib/scorecard-copy'
 import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
@@ -302,7 +307,6 @@ import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
 import {
   ANSWER_SHAPE_BY_KIND,
-  CHALLENGE_GROUP_ACCESSORS,
   WRONG_COSTS_A_POINT,
 } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -494,13 +498,7 @@ watch(
 
 const waterFactLine = computed(() => {
   const active = waterChallenge.value
-  const facts = waterFacts.value
-  if (!active || !facts) return undefined
-  if (active.kind === 'river' && facts.lengthKm)
-    return `${active.featureName} runs ${formatKm(facts.lengthKm)} from source to mouth.`
-  if (facts.areaSqKm)
-    return `${active.featureName} spans ${formatNumber(facts.areaSqKm)} km² of surface.`
-  return undefined
+  return active ? waterFactLineFor(active, waterFacts.value) : undefined
 })
 
 const waterSourceLine = computed(() => {
@@ -532,13 +530,7 @@ watch(
 
 const tongueFactLine = computed(() => {
   const active = motherTongueChallenge.value
-  const facts = tongueFacts.value
-  if (!active || !facts) return undefined
-  const parts = [
-    facts.speakers ? `spoken by ${formatCompact(facts.speakers)} people worldwide` : undefined,
-    facts.scripts?.length ? `written in ${facts.scripts.join(', ')}` : undefined,
-  ].filter(Boolean)
-  return parts.length ? `${active.language} — ${parts.join(' · ')}.` : undefined
+  return active ? tongueFactLineFor(active.language, tongueFacts.value) : undefined
 })
 
 const tongueSourceLine = computed(() => {
@@ -614,89 +606,25 @@ const empireVerdict = computed(() => {
     : `You named ${guessName ? empireDisplayName(guessName) : 'the wrong power'} — it was ${truth}.`
 })
 
-const explainer = computed(() => {
-  switch (kind.value) {
-    case 'traversal': {
-      // Border crossings, not flags — the count the score is actually charged
-      // on, and the one the two rows below can be compared by.
-      const shortest = routeHops(
-        traversalReveal.value?.shortest ?? traversalChallenge.value?.optimalPath ?? []
-      )
-      // Voiced about the round, not the reader — the card flips between seats.
-      const walked = traversalReveal.value?.route
-      const crossings = (hops: number) => `${hops} ${hops === 1 ? 'border' : 'borders'}`
-      if (!walked) {
-        return `The guesses never bridged the two — the shortest link crosses ${crossings(shortest)}.`
-      }
-      return routeHops(walked) === shortest
-        ? `That link crosses ${crossings(shortest)}, as short as it gets — only stray guesses cost points.`
-        : `That link crosses ${crossings(routeHops(walked))}; the shortest crosses ${shortest} — every extra crossing and stray guess costs points.`
-    }
-    case 'neighbour-blitz':
-      return 'Points scale with neighbours found — wrong names each cost one.'
-    case 'silhouette':
-      return 'The earlier the buzz, the bigger the score.'
-    case 'anthem-buzz':
-      return 'The earlier the buzz, the bigger the score.'
-    case 'tongue-buzz':
-      return 'Any country with that official language counted — the earlier the buzz, the bigger the score.'
-    case 'hot-cold':
-      return 'Finding it is everything — every extra probe costs points.'
-    case 'sketch':
-      return 'Scored by how closely the drawing matches the real outline.'
-    case 'stat-detective':
-      return 'The fewer clues you needed, the bigger the score.'
-    case 'two-truths':
-      return isHardMode(gameStore.game)
-        ? 'The sooner you call the lie, the more it pays.'
-        : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
-    case 'capital-guess':
-      return capitalGuessChallenge.value?.maximumGuesses
-        ? 'Name it first try for full marks — the second guess is worth less.'
-        : "The sooner you name it, the more it's worth."
-    case 'flashpoint':
-      return flashpointChallenge.value?.maximumGuesses
-        ? 'Name it first try for full marks — the second guess is worth less.'
-        : "The earlier you name it, the more it's worth."
-    case 'flag-palette':
-      return "The sooner you name it, the more it's worth."
-    case 'star-chart':
-      return 'Points scale with stars named — wrong capitals each cost one. Where a city sits is the whole question.'
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands':
-      return 'Points scale with countries found — wrong names each cost one.'
-    case 'terra-incognita':
-      return 'Points scale with countries put back — naming one that was never gone costs you. Noticing the gap is the whole question.'
-    case 'name-that-water':
-      return 'Fewer guesses, bigger score.'
-    case 'clean-sweep':
-      return 'Every name goes to whoever said it first. Beating your share of the board pays more; clearing it pays the whole table, and the last name pays its closer.'
-    case 'timeline':
-      return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
-    case 'pyramid-scheme':
-      return 'Every country you put on the right pyramid pays an equal share of the round.'
-    case 'empire':
-      return 'Naming the ghost pays the smaller share — the earlier the buzz, the more of it. The rest is for tracing its lands: points scale with how closely your taps match its core.'
-    default: {
-      const challenge = roundChallenge.value
-      let base = '3 points for a spot-on answer, 2 for one place off, 1 for two places off.'
-      // Countries sharing a value have no order between them, so the round can't
-      // charge for one — say so before the repeated rank numbers read as a bug.
-      if (rankingTies.value)
-        base += ' Countries on the same value share a place — any order among them is spot on.'
-
-      // Conflict rankings carry the one UCDP fact the numbers alone would hide.
-      const isConflictStat =
-        challenge &&
-        'id' in challenge &&
-        (CHALLENGE_GROUP_ACCESSORS.conflicts as readonly string[]).includes(challenge.id)
-      return isConflictStat
-        ? `${base} Most armed conflicts since 1946 are internal — a state against a group inside its own borders, not two states at war.`
-        : base
-    }
-  }
-})
+/** The round's scoring, in words — the copy itself lives in lib/scorecard-copy
+ *  so every kind stays covered by a test. */
+const explainer = computed(() =>
+  scorecardExplainer({
+    kind: kind.value,
+    challenge: roundChallenge.value,
+    // Border crossings, not flags — the count the score is actually charged
+    // on, and the one the two rows below can be compared by.
+    shortestHops: routeHops(
+      traversalReveal.value?.shortest ?? traversalChallenge.value?.optimalPath ?? []
+    ),
+    walkedHops: traversalReveal.value?.route ? routeHops(traversalReveal.value.route) : undefined,
+    bridged: !!traversalReveal.value?.route,
+    hasTies: rankingTies.value,
+    hardMode: isHardMode(gameStore.game),
+    maximumGuesses:
+      capitalGuessChallenge.value?.maximumGuesses ?? flashpointChallenge.value?.maximumGuesses,
+  })
+)
 
 /**
  * The ledger's rows, classified and ordered once — set-shaped rounds only.
@@ -770,55 +698,10 @@ const tallyLine = computed(() => {
 
 /** The stray tail reads the same everywhere: whatever the round asked for,
  *  these are names the player gave that weren't in the set. */
-const sectionLabels = computed(() => ({ stray: 'Wrong Names', ...answerLabels.value }))
-
-const answerLabels = computed(() => {
-  switch (kind.value) {
-    case 'traversal':
-      return {
-        submitted: traversalReveal.value?.route ? 'Your Route' : 'Your Guesses',
-        correct: 'A Shortest Route',
-      }
-    case 'neighbour-blitz':
-      return { submitted: 'Your Answers', correct: 'All the Neighbours' }
-    case 'silhouette':
-      return { submitted: 'Your Answer', correct: 'The Country' }
-    case 'hot-cold':
-      return { submitted: 'Your Probe Trail', correct: 'The Country' }
-    case 'stat-detective':
-      return { submitted: 'Your Answer', correct: 'The Country' }
-    case 'two-truths':
-      return { submitted: 'Your Verdict', correct: 'The Country' }
-    case 'capital-guess':
-      return { submitted: 'Your Answer', correct: 'The Country' }
-    // The star chart renders StarChartReveal instead of the shared ledger, so
-    // these only ever reach the tally line beneath the score.
-    case 'star-chart':
-      return { submitted: 'Capitals You Named', correct: 'The Stars' }
-    case 'flashpoint':
-      return { submitted: 'Your Answer', correct: 'The Country' }
-    case 'flag-palette':
-      return { submitted: 'Your Answer', correct: 'The Country' }
-    case 'river-run':
-      return { submitted: 'Your Answers', correct: 'Every Country It Crosses' }
-    case 'shared-shores':
-      return { submitted: 'Your Answers', correct: 'All the Shores' }
-    case 'highlands':
-      return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
-    case 'name-that-water':
-      return { submitted: 'Your Answer', correct: 'Its Shores' }
-    case 'mother-tongue':
-      return { submitted: 'Your Answers', correct: "Everywhere It's Official" }
-    case 'clean-sweep':
-      return { submitted: 'Your Claims', correct: 'The Whole Board' }
-    case 'timeline':
-      return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
-    case 'empire':
-      return { submitted: 'Lands You Traced', correct: 'Its Core Lands' }
-    default:
-      return { submitted: 'Submitted Ranking', correct: 'Correct Ranking' }
-  }
-})
+/** What the two answer rows are called, plus the shared stray tail. */
+const sectionLabels = computed(() =>
+  scorecardLabels({ kind: kind.value, bridged: !!traversalReveal.value?.route })
+)
 
 const card = ref<HTMLElement>()
 const scoreCard = ref<HTMLElement>()
