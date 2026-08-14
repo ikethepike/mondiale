@@ -1643,6 +1643,12 @@ const handleClick = (isoCode: string, event?: MouseEvent) => {
   // here gates every listener (views, atlas, document mapClick) at once.
   if (unselectableSet.value.has(isoCode)) return
 
+  // Belt and braces for the zoomed-out halo gate (see HALO_ZOOM_ON). Keyed on
+  // the ELEMENT pressed, not the country: a micro-state's real path and its
+  // dot marker stay clickable at any zoom when they're hit directly.
+  if (!haloLive && (event?.currentTarget as Element | null)?.classList?.contains('micro-hit'))
+    return
+
   // The booth's mounted views listen for mapClick like any view, but the map
   // sits OUTSIDE their inert wrapper — a watcher's tap must not drive the
   // followed racer's guess logic. Swallowed at the one dispatch source.
@@ -1678,6 +1684,15 @@ const HIT_SLOP_PX = 22
 const FINE_SLOP_PX = 8
 /** Past this zoom the halo renders as a visible ring marking the tap area. */
 const RING_ZOOM = 4
+/** Below this zoom a micro-state is not a tap target at all: a finger-sized
+ *  halo is a fifth of Europe wide out here, and the six European micros merge
+ *  into one blob that answers for France and Italy. Paired thresholds so a
+ *  camera resting on the line can't flicker live/inert, like LOD_ZOOM_IN/OUT. */
+const HALO_ZOOM_ON = 2
+const HALO_ZOOM_OFF = 1.6
+/** Latched by updateEffectiveZoom; read by handleClick as the belt-and-braces
+ *  twin of `.halo-live .micro-hit { pointer-events: all }`. */
+let haloLive = false
 /** How far a screen-sized marker may grow with the camera. Uncapped, a ring
  *  pinned to a nine-metre rock ends up larger than the island. */
 const MARKER_MAX_GROWTH = 2
@@ -1724,6 +1739,13 @@ const updateEffectiveZoom = () => {
   svg.value.querySelectorAll<SVGCircleElement>('.micro-hit').forEach(halo => {
     halo.setAttribute('r', String(dotRadius + slopPx / Math.max(1, pxPerUnit)))
   })
+  // Out at world view the halo is a region-sized disc sitting ON TOP of the
+  // country paths, so it answers for whatever the player was actually aiming
+  // at. It only becomes a target once the camera has committed to a region.
+  // The disc keeps its size either way — a lit micro's state fill is the one
+  // readable "is Monaco in play?" signal, and that must survive the gate.
+  haloLive = haloLive ? effectiveZoom >= HALO_ZOOM_OFF : effectiveZoom >= HALO_ZOOM_ON
+  svg.value.classList.toggle('halo-live', haloLive)
   applyLod(effectiveZoom)
   // Overlap is a property of the camera, not the label set: a label's size in
   // user units moves with the zoom, so the solve belongs at every settle.
@@ -2375,9 +2397,21 @@ svg {
 // Halos that give micro-state dots a finger-sized tap target. Invisible at
 // world zoom (twelve rings would clutter the map); once zoomed in they show
 // as a faint ring so the player can SEE where the tappable area is.
+//
+// Inert by default: at world zoom this disc spans a fifth of Europe and sits
+// over the country paths, so it would swallow taps meant for France or Italy.
+// The svg wears .halo-live past HALO_ZOOM_ON — and the default being the inert
+// one means the pre-mount frame is safe too.
 .micro-hit {
   fill: none;
   stroke: none;
+  pointer-events: none;
+  // Explicit, not merely absent: `cursor` inherits, and path[id] sets it to
+  // pointer — an inert halo would otherwise still advertise a hand on desktop.
+  cursor: default;
+}
+
+.halo-live .micro-hit {
   cursor: pointer;
   pointer-events: all;
 }
