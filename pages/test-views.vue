@@ -1582,6 +1582,9 @@ const scenarios: Scenario[] = [
         build: () => buildGovernmentReveal(isoCode),
       })),
     ],
+    // 92 chambers is 184 rungs with the reveals, which is more than a <select>
+    // can be read. Typing an ISO code or a country name jumps straight to one.
+    anyCountry: true,
     // Never dealt: a variant always wins, and the first chamber is the default.
     build: () => governmentBeatGame('party', 0, GOVERNMENT_COUNTRIES[0]),
   },
@@ -4216,13 +4219,33 @@ const freeCountryVariant = (isoCode: string): Variant | undefined => {
   return { id: code, label: countryName(code), country: code }
 }
 
+/**
+ * A typed country the ACTIVE scenario can really deal.
+ *
+ * `freeCountryVariant` only asks whether the code is a country, which is a far
+ * wider set than a mode's own pool. Government is the case: `dealGovernment`
+ * returns undefined for a chamber outside `governmentPool`, and both harness
+ * call sites assert non-null — so typing "AF" would throw on the first property
+ * access rather than politely refusing.
+ *
+ * Modes that deal any country at all (the zoom-out gate, the leader pick) have
+ * no pool to check, so they take every code as before.
+ */
+const dealableFreeCountry = (scenario: Scenario, isoCode: string): Variant | undefined => {
+  const free = freeCountryVariant(isoCode)
+  if (!free?.country) return undefined
+  if (scenario.id !== 'government') return free
+  return GOVERNMENT_COUNTRIES.includes(free.country) ? free : undefined
+}
+
 const activeVariant = computed<Variant | undefined>(() => {
   const scenario = activeScenario.value
   if (!scenario?.variants?.length) return undefined
   const curated = scenario.variants.find(entry => entry.id === variantId.value)
   if (curated) return curated
   if (scenario.anyCountry && variantId.value) {
-    const free = freeCountryVariant(variantId.value)
+    // `reveal-SE` is a curated rung, matched above; a bare code lands here.
+    const free = dealableFreeCountry(scenario, variantId.value)
     if (free) return free
   }
   return scenario.variants[0]
@@ -4246,12 +4269,27 @@ const pickVariant = (id: string) => {
 /** A typed country deals immediately when it resolves to a real ISO code. */
 const variantQuery = ref('')
 const pickFreeCountry = () => {
+  const scenario = activeScenario.value
   const typed = variantQuery.value.trim()
-  if (!typed) return
-  const isoCode = freeCountryVariant(typed)?.country ?? searchCountriesByName(typed)[0]?.isoCode
+  if (!scenario || !typed) return
+
+  // "reveal SE" / "reveal-SE" jumps to the reveal rung of a country rather than
+  // its opening beat. Without this the typed path could only ever reach one of
+  // the two rungs a mode generates per country.
+  const reveal = /^reveal[\s-]+/i.test(typed)
+  const name = typed.replace(/^reveal[\s-]+/i, '').trim()
+
+  const isoCode =
+    dealableFreeCountry(scenario, name)?.country ?? searchCountriesByName(name)[0]?.isoCode
   if (!isoCode) return
+  // A name search can land on a country the mode cannot deal — check the code
+  // it resolved to, not just the text that was typed.
+  if (!dealableFreeCountry(scenario, isoCode)) return
+
   variantQuery.value = ''
-  pickVariant(isoCode)
+  const wanted = reveal ? `reveal-${isoCode}` : isoCode
+  // Only take the reveal id when the scenario actually generates one.
+  pickVariant(scenario.variants?.some(entry => entry.id === wanted) ? wanted : isoCode)
 }
 
 const deal = () => {
