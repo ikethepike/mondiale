@@ -18,6 +18,7 @@ import type { TrendMetricId } from '~~/lib/trends'
 import type { Amount } from '~~/types/geography.types'
 
 export type ProviderId =
+  | 'imf'
   | 'polity'
   | 'cia'
   | 'cepii'
@@ -58,6 +59,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://www.cia.gov/the-world-factbook/',
     logo: 'cia.svg',
     description: 'Country profiles and world leaders: geography, people, government and economy.',
+  },
+  imf: {
+    name: 'International Monetary Fund',
+    url: 'https://www.imf.org/en/Publications/WEO',
+    description:
+      'World Economic Outlook: macro-fiscal aggregates for its member economies, published twice a year.',
   },
   polity: {
     name: 'polity',
@@ -209,6 +216,7 @@ export type SourceId =
   | 'owid-grapher'
   | 'equaldex-marriage'
   | 'worldbank-wdi'
+  | 'imf-weo'
   | 'un-wpp-2024'
   | 'un-migrant-stock-2024'
   | 'untc-mtdsg'
@@ -290,6 +298,13 @@ export const SOURCES: Record<SourceId, Source> = {
     url: 'https://data.worldbank.org',
     edition: 'API v2',
     license: 'CC BY 4.0',
+  },
+  'imf-weo': {
+    provider: 'imf',
+    title: 'World Economic Outlook',
+    url: 'https://www.imf.org/external/datamapper/GGXWDG_NGDP',
+    edition: 'DataMapper API',
+    license: 'IMF terms — free for non-commercial use with attribution',
   },
   'un-wpp-2024': {
     provider: 'un-wpp',
@@ -494,7 +509,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
     ...worldBank('NY.GDP.MKTP.KD.ZG'),
     fallback: FACTBOOK_BACKSTOP,
   },
-  'economics.publicDebt': factbook('Economy › Public debt'),
+  'economics.publicDebt': { source: 'imf-weo', dataset: 'General government gross debt, % of GDP' },
   'economics.inflation': {
     ...worldBank('FP.CPI.TOTL.ZG'),
     fallback: FACTBOOK_BACKSTOP,
@@ -717,6 +732,7 @@ export type DataSetId =
   | 'tongues'
   | 'currencies'
   | 'leaders'
+  | 'publicFinance'
   | 'parties'
   | 'landmarks'
   | 'heritage'
@@ -886,6 +902,13 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'wikidata-items', dataset: 'P35 head of state, P6 head of government' },
       { source: 'commons-media', dataset: 'Portraits' },
       { source: 'cia-world-leaders' },
+    ],
+  },
+  publicFinance: {
+    label: 'Public finance',
+    files: ['data/imf.gen.ts'],
+    origins: [
+      { source: 'imf-weo', dataset: 'World Economic Outlook: general government gross debt' },
     ],
   },
   parties: {

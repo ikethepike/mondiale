@@ -525,7 +525,7 @@ const CHALLENGE_DETAILS: {
     topic: 'economics',
     phrasing: 'Rank these countries by public debt as a percentage of GDP',
     definition:
-      'Government debt as a share of the country’s yearly economic output (GDP) — not the absolute amount owed.',
+      'General government gross debt as a share of the country’s yearly economic output (GDP) — not the absolute amount owed. "General government" folds in sub-national and social-security borrowing, so it runs a little above a central-government figure.',
     markers: {
       most: 'highest debt',
       least: 'lowest debt',

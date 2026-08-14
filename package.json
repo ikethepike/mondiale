@@ -26,6 +26,7 @@
     "generate:conflict-events": "bun run generators/vendors/ucdp/create-conflict-events.ts",
     "generate:worldbank": "bun run generators/vendors/worldbank/create-worldbank.ts",
     "generate:owid": "bun run generators/vendors/owid/create-owid.ts",
+    "generate:imf": "bun run generators/vendors/imf/create-imf.ts",
     "generate:commodity-exporters": "bun run generators/vendors/cepii/create-commodity-exporters.ts",
     "generate:wpp": "bun run generators/vendors/unwpp/create-wpp.ts",
     "generate:migration": "bun run generators/vendors/undesa/create-migration.ts",

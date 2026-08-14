@@ -5,6 +5,7 @@ import { conflictMapping } from '~~/data/conflicts.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { wppMapping } from '~~/data/wpp.gen'
+import { IMF } from '~~/data/imf.gen'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { MEMBERSHIP_CORRECTIONS } from '~~/data/static/membership-corrections'
 import { LEADERS } from '~~/data/leaders.gen'
@@ -208,7 +209,17 @@ const normalizeCountry = ({
       gdpGrowth:
         worldBankAmount(isoCode, 'gdpGrowth', '%') ??
         getYearlyIndex<'%'>(data['Economy']['Real GDP growth rate'], '%'),
-      publicDebt: getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
+      // IMF WEO first — 186 countries at 2025 against the Factbook's 190 at a
+      // median vintage of 2017, and it carries a series back to 1993. The
+      // Factbook backstops the nine the IMF does not report on (Cuba, North
+      // Korea, Libya, Monaco, Palestine, Somalia, Yemen, the Vatican).
+      //
+      // NOT the World Bank: GC.DOD.TOTL.GD.ZS reaches only 64 of our countries,
+      // so migrating there would have gutted the stat while looking like a
+      // refresh.
+      publicDebt:
+        imfAmount(isoCode, 'publicDebt', '%') ??
+        getYearlyIndex<'%'>(data['Economy']['Public debt'], '%'),
       populationBelowPovertyLine: getTextNode<'%'>(
         data['Economy']['Population below poverty line'],
         '%'
@@ -557,6 +568,17 @@ const wppAmount = <Unit>(
   const value = wppMapping[isoCode as ISOCountryCode]?.[metric]
   if (!value) return undefined
   return { unit, year: value.year, amount: value.amount, source: 'un-wpp-2024' }
+}
+
+/** Pull an IMF WEO metric for a country and wrap it as an Amount. */
+const imfAmount = <Unit>(
+  isoCode: string,
+  metric: keyof NonNullable<(typeof IMF)[ISOCountryCode]>,
+  unit: Unit
+): Amount<Unit> | undefined => {
+  const value = IMF[isoCode as ISOCountryCode]?.[metric]
+  if (!value) return undefined
+  return { unit, year: value.year, amount: value.amount, source: 'imf-weo' }
 }
 
 /** Pull an OWID metric for a country and wrap it as an Amount. */
