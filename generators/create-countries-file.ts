@@ -16,7 +16,7 @@ import {
   sharesSurname,
   wikidataRoleFor,
 } from '~~/lib/generators/leaders'
-import { decodeHtmlEntitiesDeep } from '~~/lib/generators/factbook'
+import { FACTBOOK } from '~~/data/factbook.gen'
 import { fetchCiaCountry, type CiaCountry } from '~~/lib/generators/vendors/cia'
 import { fetchBeltAndRoadIniativeParticipants } from '~~/lib/generators/vendors/wikipedia'
 import { simplifiedPalette } from '~~/lib/palette'
@@ -69,12 +69,15 @@ export const createCountriesFile = async (): Promise<{
   const countryVector: { [isoCode: string]: Country } = {}
   const factbookContinents = new Set<string>([])
   for (const { url, isoCode } of successfulCombinations) {
-    let data: FactbookResponse
-    try {
-      const response = await fetch(url)
-      data = decodeHtmlEntitiesDeep(await response.json())
-    } catch (e) {
-      console.warn(`Failed to fetch: ${isoCode} - ${url}`, e)
+    // Read from the frozen snapshot rather than fetching. The upstream mirror
+    // stopped updating its data on 2026-01-22, so these 194 requests were
+    // re-downloading identical bytes on every run — ~2.5 minutes of the
+    // generator's time, and a build that failed whenever a dead repository was
+    // unreachable. `bun run snapshot:factbook` re-takes it if that ever
+    // changes.
+    const data: FactbookResponse | undefined = FACTBOOK[isoCode]
+    if (!data) {
+      console.warn(`Not in the Factbook snapshot: ${isoCode}`)
       continue
     }
 

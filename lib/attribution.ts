@@ -784,7 +784,7 @@ export interface DataSet {
 export const DATASETS: Record<DataSetId, DataSet> = {
   countries: {
     label: 'Country profiles',
-    files: ['data/countries.gen.ts', 'data/iso-codes.gen.ts'],
+    files: ['data/countries.gen.ts', 'data/iso-codes.gen.ts', 'data/factbook.gen.ts'],
     origins: [
       { source: 'cia-factbook' },
       { source: 'owid-grapher' },

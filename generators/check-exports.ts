@@ -4,8 +4,13 @@
  * The Made In challenge matches commodity strings EXACTLY across countries
  * (the own-top-5 leg of its answer key) and against the release-pinned
  * commodity-exporters dataset, so stray variants ("packaged medicines" vs
- * "packaged medicine") and drift between the weekly Factbook regen and the
- * pinned BACI data are gameplay bugs, not cosmetics. Findings are printed;
+ * "packaged medicine") and drift between the Factbook's commodity lists and the
+ * pinned BACI data are gameplay bugs, not cosmetics.
+ *
+ * Note both sides are now FROZEN: the Factbook snapshot (data/factbook.gen.ts)
+ * and the release-pinned BACI extract. So this no longer catches weekly drift —
+ * it catches a mismatch introduced when either pin is deliberately bumped,
+ * which is when it matters most. Findings are printed;
  * with --strict they also fail the run, which is how the DataUpdate workflow
  * gates its auto-commit.
  *
@@ -92,7 +97,7 @@ for (const [key, variants] of spellings) {
   flag(key, `singular/plural split: "${key}" (${count(variants)}) vs "${key}s" (${count(plural)})`)
 }
 
-// --- Made In answer key: the pinned BACI dataset vs the weekly Factbook regen --
+// --- Made In answer key: the pinned BACI dataset vs the Factbook snapshot ----
 // The dealer requires a commodity-exporters entry and the validator accepts
 // the union (global top exporters ∪ own-top-5 lists) — both legs match commodity
 // strings EXACTLY, so a Factbook rename or a stale curation silently shrinks
