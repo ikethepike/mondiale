@@ -121,39 +121,42 @@ describe('dealGovernment', () => {
   })
 })
 
-// 15 chambers deal today. Twenty-eight clear the cabinet join; the thirteen
-// that then lose beat 1 divide in two. Most are waiting on LOGOS — the row
-// needs the governing party and two rivals to carry one, and Britain and Ghana
-// seat only one rival apiece. The rest are chambers whose cabinet list
-// genuinely does not contain the leader's own party (Germany seats CDU and CSU
-// as one bench the cabinet names separately; Finland's omits Orpo's National
-// Coalition Party), and beat 1's answer must be the PRIME MINISTER'S party
-// rather than the largest government bench. A smaller pool is the price of not
-// teaching a falsehood.
-const POOL_FLOOR = 12
+// 92 chambers deal today, up from 19. The round used to be a European one with
+// visitors — one country in the whole western hemisphere — because the pool was
+// built by matching a Wikipedia cabinet's party names against a CIA Factbook
+// roster, and the join failed far more often than the data was missing.
+//
+// Sourcing standings from polity, where every seat row states its own side,
+// replaced the matcher outright. What is left is the round's real gate: the
+// governing party and two rivals must each carry a logo.
+const POOL_FLOOR = 80
 
 describe('the dealable pool', () => {
-  // A floor on `world` alone said nothing about where the round can actually
-  // land: the round is still Europe-weighted, and a variant that deals nothing
-  // is not a crash (an undefined deal buys another kind) but it IS a round that
-  // quietly never appears there. Pinned so the shape is visible as NUMBERS.
-  it('is thin, and honest about which variants have one at all', () => {
+  // Pinned as NUMBERS so the round's reach stays visible. A variant that deals
+  // nothing is not a crash — an undefined deal buys another kind — but it IS a
+  // round that quietly never appears there, which is what these guard against.
+  it('reaches every variant', () => {
     const poolOf = (variant: string) =>
       governmentPool({ ...RULES, variant } as unknown as GameRules).length
 
     expect(poolOf('world')).toBeGreaterThanOrEqual(POOL_FLOOR)
-    // Asia deals since the cabinet reader learned the SINGULAR `political_party`
-    // field that every one-party cabinet writes: Japan and Indonesia both land
-    // here now. If another variant grows a chamber that is good news — move it
-    // up rather than deleting the test.
-    expect(poolOf('asia')).toBeGreaterThanOrEqual(2)
-    // And North America deals Canada, the round's first chamber in the western
-    // hemisphere.
-    expect(poolOf('north-america')).toBeGreaterThanOrEqual(1)
-    // Where the round still genuinely cannot deal.
-    for (const variant of ['americas', 'south-america', 'middle-east'] as const) {
-      expect(poolOf(variant), `${variant} unexpectedly deals`).toBe(0)
+    // Every region now deals. South America and the Middle East were both
+    // pinned at exactly zero before the swap; the Americas had Canada alone.
+    for (const variant of [
+      'europe',
+      'asia',
+      'africa',
+      'north-america',
+      'south-america',
+      'oceania',
+      'middle-east',
+    ] as const) {
+      expect(poolOf(variant), `${variant} deals nothing`).toBeGreaterThan(0)
     }
+    // The round is no longer Europe-weighted by an order of magnitude: Asia and
+    // Africa each deal within striking distance of Europe.
+    expect(poolOf('asia')).toBeGreaterThanOrEqual(15)
+    expect(poolOf('africa')).toBeGreaterThanOrEqual(15)
   })
 })
 

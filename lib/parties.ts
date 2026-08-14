@@ -1,5 +1,4 @@
 import { COUNTRIES } from '~~/data/countries.gen'
-import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import type { Party, CountryParties } from '~~/generators/create-parties-file'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -232,6 +231,13 @@ export const matchInRoster = (
 }
 
 export const governingParty = (isoCode: ISOCountryCode): Party | undefined => {
+  // Stamped on the roster by Q-id, not matched by name. The leader frequently
+  // does not sit under their own party's name — France's chamber seats
+  // "Together for the Republic group" while Macron leads Renaissance — and
+  // comparing the leader's party name against bench names found none of those.
+  const marked = partiesOf(isoCode).find(party => party.leads)
+  if (marked) return marked
+  // Fall back to the leader join for a country the roster has not marked.
   const party = politicalLeader(isoCode)?.party
   if (!party || party === INDEPENDENT) return undefined
   return matchInRoster(party, partiesOf(isoCode), isoCode)
@@ -300,63 +306,30 @@ export interface Benches {
  * majority, so calling them either government or opposition is wrong.
  */
 export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => {
-  const cabinet = ELECTIONS[isoCode]?.cabinet
   const benches = benchesOf(isoCode)
-  if (!cabinet?.governing.length || !benches.length) return undefined
+  if (!benches.length) return undefined
 
-  const roster = partiesOf(isoCode)
-  // The cabinet names parties in its own spelling; resolve each through the
-  // SAME matcher the rest of the roster joins on, then compare benches by
-  // identity rather than by name.
-  // Reported per NAME as well as per bench: the seated set answers "which
-  // benches govern", and `named` answers "how much of the cabinet's list did we
-  // actually find" — the coverage gate below. Both come out of ONE pass so the
-  // two can never grow separate ideas of what counts as a match.
-  const resolve = (names: string[]): { seated: Set<Bench>; named: number } => {
-    const wanted = new Map<string, Party>()
-    for (const name of names) {
-      const party = matchInRoster(name, roster, isoCode)
-      if (party) wanted.set(name, party)
-    }
-    const matches = (bench: Bench, name: string): boolean =>
-      (bench.party && wanted.get(name) === bench.party) ||
-      // A bench the roster never named can still be matched by its own label.
-      partyKey(name, isoCode) === partyKey(bench.name, isoCode)
-
-    return {
-      seated: new Set(benches.filter(bench => names.some(name => matches(bench, name)))),
-      named: names.filter(name => benches.some(bench => matches(bench, name))).length,
-    }
-  }
-
-  const government = resolve(cabinet.governing)
-  if (!government.seated.size) return undefined
-  const backing = resolve(cabinet.backing)
-
-  // A government that joined only crumbs did not really join. Croatia is the
-  // case: the chamber seats an "HDZ-led coalition" bench while the cabinet
-  // names HDZ's individual partners, so the only names that matched were three
-  // one-seat minority representatives — leaving the REAL government of 61 filed
-  // as opposition. A round built on that would teach the opposite of the truth.
+  // `standing` travels on the party, decided by polity against the chamber's
+  // own seat total. What used to stand here matched cabinet party names against
+  // roster party names through a normaliser that stripped articles, diacritics,
+  // trailing country disambiguators and " or " aliases, then guarded the result
+  // with a coverage floor and a share floor because the matching still went
+  // wrong — Croatia filed its real 61-seat government as opposition, because
+  // the chamber seats an "HDZ-led coalition" bench while the cabinet named
+  // HDZ's individual partners.
   //
-  // Ask it of the cabinet's own list, party by party. Croatia matched three
-  // names in ten; a government the chamber really seats matches most of what it
-  // names. Counted per NAME rather than per bench, because a coalition the
-  // chamber seats as one bench would otherwise read as a single hit.
-  if (government.named / cabinet.governing.length < GOVERNMENT_COVERAGE_FLOOR) return undefined
-
-  // And a government too small to see is no round, however clean the join.
-  const held = [...government.seated].reduce((total, bench) => total + bench.seats, 0)
-  const seated = benches.reduce((total, bench) => total + bench.seats, 0)
-  if (!seated || held / seated < GOVERNMENT_SHARE_FLOOR) return undefined
+  // Neither floor survives the swap. They were catching a broken join, and
+  // there is no join left to break.
+  const sideOf = (bench: Bench): string => bench.party?.standing ?? 'opposition'
+  const government = benches.filter(bench => sideOf(bench) === 'government')
+  if (!government.length) return undefined
 
   return {
-    government: benches.filter(bench => government.seated.has(bench)),
-    backing: benches.filter(bench => backing.seated.has(bench) && !government.seated.has(bench)),
-    opposition: benches.filter(
-      bench => !government.seated.has(bench) && !backing.seated.has(bench)
-    ),
-    ...(cabinet.status ? { status: cabinet.status } : {}),
+    government,
+    backing: benches.filter(bench => sideOf(bench) === 'backing'),
+    // Everything left over, by construction — including the speaker's chair,
+    // the non-attached and the vacant seats, which sit with nobody.
+    opposition: benches.filter(bench => !['government', 'backing'].includes(sideOf(bench))),
   }
 }
 
@@ -622,28 +595,29 @@ export interface Bench {
 }
 
 export const benchesOf = (isoCode: ISOCountryCode): Bench[] => {
-  const election = ELECTIONS[isoCode]
-  if (!election) return []
-  const total =
-    election.totalSeats ?? election.parties.reduce((sum, party) => sum + party.seats, 0) ?? 0
+  const roster = partiesOf(isoCode)
+  const seated = roster.filter(party => party.seats)
+  if (!seated.length) return []
+  const total = PARTIES[isoCode]?.declaredSeats ?? seated.reduce((sum, p) => sum + p.seats!, 0)
   if (!total) return []
 
-  const roster = partiesOf(isoCode)
-  return election.parties
-    .map(entry => {
-      const party = matchInRoster(entry.party, roster, isoCode)
-      return {
-        name: entry.party,
-        seats: entry.seats,
-        share: entry.seats / total,
-        ...(entry.votePct !== undefined ? { votePct: entry.votePct } : {}),
-        ...(party ? { party } : {}),
-        ...(entry.alliance ? { alliance: entry.alliance } : {}),
-        ...(party?.groupings?.length ? { groupings: party.groupings } : {}),
-      }
-    })
+  // One record per bench. What used to stand here read a separate ELECTIONS
+  // file and matched each of its party names back against this roster — two
+  // sources that could disagree about the same chamber, joined by a name
+  // comparison. The roster now carries the seats itself, so there is nothing
+  // to match.
+  return seated
+    .map(party => ({
+      name: party.name,
+      seats: party.seats!,
+      share: party.seatShare ?? party.seats! / total,
+      party,
+      ...(party.alliance ? { alliance: party.alliance } : {}),
+      ...(party.groupings?.length ? { groupings: party.groupings } : {}),
+    }))
     .sort((a, b) => b.seats - a.seats)
 }
+
 
 /**
  * The benches in SEATING order — LEFT to RIGHT, the way a chamber is read and
@@ -768,18 +742,22 @@ const CHAMBER_NAMES: { [isoCode in ISOCountryCode]?: string } = {
 }
 
 export const chamberName = (isoCode: ISOCountryCode): string | undefined => {
+  // The curated table stays as an override — a handful of chambers a player
+  // knows by a name the source does not print.
   const curated = CHAMBER_NAMES[isoCode]
   if (curated) return curated
-  const named = ELECTIONS[isoCode]?.chamber?.trim()
-  if (!named || /\belections?\b/i.test(named) || /^\d{4}\b/.test(named)) return undefined
-  return named
+  // Otherwise the chamber's own name, which polity resolves for every country.
+  // What stood here read an election ARTICLE title and then had to guard
+  // against getting one — stripping anything containing "election" or opening
+  // with a year, because "2022 Swedish general election" is not a chamber.
+  return PARTIES[isoCode]?.legislature?.trim() || undefined
 }
 
 /** The chamber's full size, which the benches are a fraction of. */
 export const chamberSeats = (isoCode: ISOCountryCode): number | undefined => {
-  const election = ELECTIONS[isoCode]
-  if (!election) return undefined
-  return election.totalSeats ?? election.parties.reduce((sum, party) => sum + party.seats, 0)
+  const entry = PARTIES[isoCode]
+  if (!entry) return undefined
+  return entry.declaredSeats ?? entry.listedSeats
 }
 
 /**
@@ -817,6 +795,11 @@ export const governedOutsideFamily = (isoCode: ISOCountryCode, family: string): 
 
 /** Countries whose chamber is complete enough to draw and play. */
 export const playableChambers = (minimumBenches = 3): ISOCountryCode[] =>
-  (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
+  // Keyed on the ROSTER, which is every country polity resolved a chamber for.
+  // This used to walk ELECTIONS, a file of 71 hand-seeded election articles,
+  // so a country could hold a full, correct chamber and still be unreachable
+  // because nobody had listed its election. That capped the pool at 66 while
+  // 123 countries held a nameable government.
+  (Object.keys(PARTIES) as ISOCountryCode[]).filter(
     isoCode => benchesOf(isoCode).length >= minimumBenches
   )

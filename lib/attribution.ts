@@ -58,6 +58,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     logo: 'cia.svg',
     description: 'Country profiles and world leaders: geography, people, government and economy.',
   },
+  polity: {
+    name: 'polity',
+    url: 'https://github.com/Kodwerk-AB/polity',
+    description:
+      "Every country's government, parliament and parties as structured data: chambers, seat counts, and which side of the house each party sits on.",
+  },
   cepii: {
     name: 'CEPII',
     url: 'https://www.cepii.fr',
@@ -240,6 +246,13 @@ export const SOURCES: Record<SourceId, Source> = {
     url: 'https://www.cia.gov/the-world-factbook/',
     edition: 'factbook.json mirror',
     license: 'Public domain',
+  },
+  polity: {
+    provider: 'polity',
+    title: 'polity',
+    url: 'https://kodwerk-ab.github.io/polity/v1/polity.json',
+    edition: 'v1',
+    license: 'ODbL-1.0',
   },
   'cia-world-leaders': {
     provider: 'cia',
@@ -875,9 +888,14 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   parties: {
     label: 'Political parties',
-    files: ['data/parties.gen.ts'],
+    files: ['data/parties.gen.ts', 'data/parties-factbook.gen.ts'],
     origins: [
-      // The Factbook is the roster; Wikidata only decorates a name it matches.
+      // polity is the roster and, crucially, the STANDINGS — which side of the
+      // chamber each party sits on. That used to be inferred by matching a
+      // cabinet's party names against the Factbook's spelling of them.
+      { source: 'polity', dataset: 'Chambers, seat counts, government/backing/opposition' },
+      // The Factbook snapshot supplies BREADTH: parties that hold no seats,
+      // which polity does not record and the impostor pools draw from.
       { source: 'cia-factbook', dataset: 'Government: political parties, legislative branch' },
       {
         source: 'wikidata-items',

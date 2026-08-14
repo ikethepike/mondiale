@@ -87,13 +87,16 @@ describe('partyTokens', () => {
 })
 
 describe('governingParty', () => {
-  // Each of these was a distinct, systematic join failure before the token
-  // matcher landed; they are pinned so a future tweak cannot quietly undo one.
+  // The party in power, by name. These used to pin a NAME MATCHER — each was a
+  // distinct way the Factbook's spelling differed from the leader's ("Labor
+  // (Labour) Party", "Action of Dissatisfied Citizens or ANO") — and the
+  // roster now carries the answer stamped by Q-id, so what is pinned here is
+  // the ANSWER rather than the route to it.
   const joins: [ISOCountryCode, string][] = [
-    ['GB', 'Labor (Labour) Party'], // parenthetical gloss
-    ['NO', 'Labor Party'], // demonym prefix
-    ['CZ', 'Action of Dissatisfied Citizens or ANO'], // abbreviation, mid-name
-    ['HU', 'TISZA – Respect and Freedom Party'], // roster carries an extra prefix
+    ['GB', 'Labour Party'],
+    ['NO', 'Norwegian Labour Party'],
+    ['CZ', 'ANO 2011'],
+    ['HU', 'Respect and Freedom Party'],
     ['DE', 'Christian Democratic Union'],
     ['SE', 'Moderate Party'],
   ]
@@ -104,14 +107,15 @@ describe('governingParty', () => {
     })
   }
 
-  // The join must stay SILENT rather than guess when the two sources name
-  // genuinely different things — a wrong party on screen is worse than a gap.
-  // Poland is the case: its leader belongs to Civic Platform while the Factbook
-  // roster lists only the Civic COALITION it stands in. Adopting the seated
-  // parties from the election data gave the roster the real party, so the join
-  // now lands on it — but never on the alliance.
-  it('joins the party, never the alliance it stands in', () => {
-    expect(governingParty('PL')?.name).toBe('Civic Platform')
+  // Where the chamber seats a COALITION and not its member parties, the
+  // coalition is the honest answer: it is the bench the arc draws and the only
+  // thing on screen to point at. Poland is the case — Tusk leads Civic
+  // Platform, but the Sejm seats "Civic Coalition" at 156 and no Civic
+  // Platform bench exists to name. Q-id resolution reaches it through the
+  // coalition's own membership list (P527), which is what a name comparison
+  // could never do.
+  it('names the bench the chamber actually seats', () => {
+    expect(governingParty('PL')?.name).toBe('Civic Coalition')
   })
 
   it('refuses a match on a bare family word', () => {
@@ -142,7 +146,11 @@ describe('oppositionParties', () => {
     const governing = governingParty('SE')
     expect(governing).toBeDefined()
     expect(oppositionParties('SE')).not.toContain(governing)
-    expect(oppositionParties('SE').length).toBe(partiesOf('SE').length - 1)
+    // Everything else in the roster EXCEPT the blocs no mode may deal —
+    // Sweden's "Ambition Sweden" is a two-seat bench with no party behind it,
+    // carried for the arithmetic and never offered as an impostor.
+    const dealable = partiesOf('SE').filter(party => !party.coalition)
+    expect(oppositionParties('SE').length).toBe(dealable.length - 1)
   })
 
   it('returns the whole roster when nothing governs', () => {
@@ -164,7 +172,13 @@ describe('benchStandings', () => {
       'Christian Democrats',
       'Liberals',
     ])
-    expect(standings?.backing.map(bench => bench.name)).toEqual(['Sweden Democrats'])
+    // "Ambition Sweden" is a two-seat bench with no Wikidata entity behind it.
+    // It is carried by name because the seats are real: without it the
+    // governing bloc reads 174 of 349, one short of the majority it holds.
+    expect(standings?.backing.map(bench => bench.name)).toEqual([
+      'Sweden Democrats',
+      'Ambition Sweden',
+    ])
     expect(standings?.opposition.map(bench => bench.name)).toContain(
       'Swedish Social Democratic Party'
     )
@@ -195,23 +209,26 @@ describe('benchStandings', () => {
     expect(chambersWithCabinet().length).toBeGreaterThanOrEqual(CABINET_JOIN_FLOOR)
   })
 
-  // The gate is TWO questions, and each was measured against a case the other
-  // gets wrong. Coverage — how much of the cabinet's own party list reached a
-  // bench — is what catches a broken join; seat share is only a backstop
-  // against a government too small to build a round on.
+  // These seven were the join's systematic failures, and they are pinned as
+  // SUCCESSES now — the whole point of sourcing standings from polity, where
+  // each seat row states its own side, rather than matching a cabinet's party
+  // names against a roster's.
   //
-  // Before this split, one seat-share floor at 25% did both jobs and did the
-  // second one badly: Germany was refused at 19% for seating CDU and CSU as one
-  // bench, while Sweden, Finland and Norway — honest minority governments that
-  // name every one of their parties — survived by a hair.
-  it('refuses a chamber whose cabinet list did not really join', () => {
-    // Nothing in these cabinets' party lists reaches a bench.
-    for (const isoCode of ['MY', 'BG', 'FR', 'PL', 'RS', 'UA'] as const) {
-      expect(benchStandings(isoCode), `${isoCode} joined nothing`).toBeUndefined()
+  // Croatia is the one that mattered most: its chamber seats an "HDZ-led
+  // coalition" bench while the cabinet named HDZ's individual partners, so the
+  // only names that matched were three one-seat minority representatives — and
+  // the real government of 61 was filed as OPPOSITION, teaching the exact
+  // opposite of the truth. It now reads 66 seats of Croatian Democratic Union
+  // and Homeland Movement.
+  it('joins the chambers a name matcher could not', () => {
+    for (const isoCode of ['MY', 'BG', 'FR', 'PL', 'RS', 'UA', 'HR'] as const) {
+      const standings = benchStandings(isoCode)
+      expect(standings, `${isoCode} should join`).toBeDefined()
+      expect(standings!.government.length, `${isoCode} government`).toBeGreaterThan(0)
     }
-    // Croatia matched three names in ten — the real government of 61 was filed
-    // as opposition, which teaches the opposite of the truth.
-    expect(benchStandings('HR')).toBeUndefined()
+    // Croatia's government is the HDZ bench, not the three minority seats.
+    const croatia = benchStandings('HR')!
+    expect(croatia.government.map(bench => bench.name)).toContain('Croatian Democratic Union')
   })
 
   it('keeps a minority government that named every one of its parties', () => {

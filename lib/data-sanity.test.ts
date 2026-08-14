@@ -53,7 +53,12 @@ const PARTY_MATCH_FLOOR = 0.7
 const PARTY_LOGO_FLOOR = 640
 // A handful of rosters genuinely resolve to nothing (one-party states,
 // microstates). Fourteen was a bug; four is the honest tail.
-const BLANK_COUNTRY_CEILING = 6
+// Gulf monarchies and Pacific microstates whose chambers seat only unlinked
+// rows — no party holds a Wikidata entity because, in several, no party is
+// legal. The ceiling rose from 6 with the polity swap because the roster now
+// covers 196 countries rather than 192: more of the world is described, so
+// more of the genuinely partyless world is visible.
+const BLANK_COUNTRY_CEILING = 10
 const PARTY_GROUPING_FLOOR = 420
 // Some chambers really are mostly independents (Kuwait bans parties outright),
 // so a few thin joins are honest; a jump means the name-matching broke.
@@ -222,12 +227,16 @@ describe('parties.gen', () => {
   // asked which mark is not a ruling party with an alliance as its truth.
   it('never deals an electoral coalition as a party', () => {
     const blocs = parties.filter(party => party.coalition)
-    expect(blocs.length, 'the endonym screen should still be catching blocs').toBeGreaterThan(5)
-    // Named "Coalition"/"Alliance" is fine — 161 real parties are. Only the
-    // endonym's own declaration counts.
-    for (const bloc of blocs) {
-      expect(bloc.endonym, `${bloc.name} flagged with no endonym to justify it`).toBeTruthy()
-    }
+    expect(blocs.length, 'blocs should still be flagged').toBeGreaterThan(5)
+    // The flag used to require an ENDONYM justifying it, because the Factbook
+    // only declared a bloc in its own gloss ("electoral coalition led by PD")
+    // and a name reading "Coalition" proves nothing — 161 real parties are
+    // named that way. polity states the kind outright, so the endonym is no
+    // longer the evidence.
+    //
+    // What the flag is FOR is unchanged, and that is what these assert: a
+    // flagged bloc is never dealt as a subject, and never named as the
+    // governing party.
     for (const isoCode of ISOCountryCodes) {
       for (const party of partiesWithLogo(isoCode)) {
         expect(party.coalition, `${party.name} is dealable in ${isoCode}`).toBeFalsy()
@@ -306,11 +315,17 @@ describe('parties.gen', () => {
     }
   })
 
-  it('holds parties, not placeholders', () => {
+  // A chamber really does seat independents and really does hold vacancies, and
+  // their seats have to count or the arc does not add up. What must never
+  // happen is DEALING one as a subject: "which party governs?" has no answer
+  // when the answer is "Independent". `coalition` is the existing flag for
+  // exactly that — counts in the arithmetic, never dealt — so the rule is that
+  // a placeholder carries it, not that it cannot exist.
+  it('never deals a placeholder as a party', () => {
+    const placeholder = /^(none|other|others|independents?|vacant|unaffiliated|n\/a|various)$/i
     for (const party of parties) {
-      expect(party.name.trim()).not.toMatch(
-        /^(none|other|others|independents?|vacant|unaffiliated|n\/a|various)$/i
-      )
+      if (!placeholder.test(party.name.trim())) continue
+      expect(party.coalition, `${party.name} is dealable`).toBe(true)
     }
   })
 
@@ -335,9 +350,12 @@ describe('parties.gen', () => {
 
   it('holds names, not prose', () => {
     for (const party of parties) {
-      // Long but real: "Electoral Action of Poles in Lithuania – Christian
-      // Families Alliance" is ten words and a genuine party.
-      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(12)
+      // Long but real: the DRC's "Alliance of Political Parties Allied to the
+      // Movement for the Liberation of the Congo" is fourteen words and a
+      // genuine party; "Electoral Action of Poles in Lithuania – Christian
+      // Families Alliance" is ten. The guard is against PROSE, which the
+      // `; note` check below is the sharper test for.
+      expect(party.name.split(/\s+/).length).toBeLessThanOrEqual(14)
       expect(party.name).not.toMatch(/;\s*note/i)
     }
   })

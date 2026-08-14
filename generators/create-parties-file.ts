@@ -204,6 +204,37 @@ export interface Party extends MediaCredit {
   /** Transnational groupings this party belongs to (P463, open statements
    *  only): the EPP, the Progressive Alliance, Socialist International. */
   groupings?: string[]
+  /**
+   * Which side of the chamber this party sits on.
+   *
+   * From polity, where it is decided at the source and checked against the
+   * chamber's own seat total. This replaces the whole cabinet-name-matching
+   * route: the previous generator read a cabinet list from Wikipedia and tried
+   * to match its party names against this roster's, through a normaliser that
+   * stripped articles, diacritics, trailing country disambiguators and " or "
+   * aliases — with a coverage floor to catch the joins that still went wrong.
+   * Croatia used to file its real 61-seat government as opposition because of
+   * it.
+   *
+   * Absent for a party that holds no seats in the chamber.
+   */
+  standing?: 'government' | 'backing' | 'opposition' | 'speaker' | 'non_attached' | 'vacant'
+  /**
+   * The NATIONAL bloc this party stood in — Sweden's Red-Greens, Poland's
+   * United Right. What orders a hemicycle rather than a bare seat ranking.
+   */
+  alliance?: string
+  /**
+   * This is the party the head of government belongs to.
+   *
+   * Resolved by Q-id at the source, which is the only way it works: the leader
+   * frequently does not sit under their own party's name. France's chamber
+   * seats "Together for the Republic group" while Macron leads Renaissance,
+   * Poland's seats "Civic Coalition" while Tusk leads Civic Platform, Brazil's
+   * seats "Brazil of Hope" while Lula leads the Workers' Party. Matching the
+   * leader's party NAME against bench names found none of those.
+   */
+  leads?: boolean
 }
 
 export interface CountryParties {
