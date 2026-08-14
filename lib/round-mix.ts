@@ -97,6 +97,12 @@ export const ROUND_WEIGHTS = {
   // it stays an event — a game usually sees one, and two never read as a
   // rotation slot.
   'terra-incognita': 0.05,
+  // A one-insight round: a triangular pyramid is a young country, a lopsided
+  // slab is Gulf migrant labour, and once a player has that they have it for
+  // every deal after. At a staple's rate the insight would wear out inside a
+  // session; at 0.05 — empire's rate, for the same reason — a game usually
+  // sees one and the read still lands.
+  'pyramid-scheme': 0.05,
 } as const satisfies Record<RoundChallengeKind, number>
 
 /**
@@ -164,6 +170,9 @@ export const MECHANIC_BY_KIND = {
   sketch: 'draw',
   // Drag a party onto its block on the arc.
   government: 'match',
+  // The same verb on a different target — a flag onto the pyramid it belongs
+  // to — so it decays against government rather than reading as a new one.
+  'pyramid-scheme': 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**

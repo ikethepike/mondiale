@@ -97,6 +97,14 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // country the room can already see is taken.
   'clean-sweep': 'label',
 
+  // Presence, NOT label. Every country is on every screen from the start, so a
+  // name leaks no identity — but with only four subjects there are just 24
+  // possible arrangements, and watching a confident player seat one would hand
+  // the room most of the puzzle. What travels is the RACE: someone has placed
+  // their third, someone has taken one back. The round is otherwise a silent
+  // minute, and it is the one mode with real intermediate state to broadcast.
+  'pyramid-scheme': 'presence',
+
   // No guess stream to speak of: turn-based, every move is already public.
   'border-chain': 'none',
   atlas: 'none',

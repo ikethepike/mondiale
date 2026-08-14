@@ -58,11 +58,33 @@ export const playerGuessingHandler: EventHandler = async ({
       // probed isoCode is trusted (it's the player's own click) but never
       // echoed, so the number is a radius with no centre.
       ...probeDistance(challenge, eventData),
+      ...placedCount(challenge, eventData),
       entryId: crypto.randomUUID(),
       at: Date.now(),
     },
     eventTarget
   )
+}
+
+/**
+ * Pyramid Scheme's progress count: how many of the round's subjects a player
+ * has seated. The TOTAL comes from the challenge, never the payload, and the
+ * seated figure is clamped into it — a client claiming "9 of 4" only ever
+ * reaches the room as a number the round could actually produce.
+ *
+ * Survives under `presence` for the same reason a probe radius does: it says
+ * how far along someone is without saying what they decided.
+ */
+export const placedCount = (
+  challenge: Parameters<typeof guessPolicyFor>[1],
+  eventData: { placed?: { seated: number; total: number } }
+): { placed?: { seated: number; total: number } } => {
+  if (challenge?._type !== 'pyramid-scheme-challenge') return {}
+  const seated = eventData.placed?.seated
+  if (typeof seated !== 'number' || !Number.isFinite(seated)) return {}
+
+  const total = challenge.countries.length
+  return { placed: { seated: Math.max(0, Math.min(Math.floor(seated), total)), total } }
 }
 
 /**

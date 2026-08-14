@@ -115,6 +115,11 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'no-mans-land': 'disputed',
   'trend-race': 'trends',
   timeline: 'trends',
+  // 'society' would read more accurately — it is an age structure, nothing
+  // else — but that group is hidden, and a kind filed under a hidden group
+  // could never be toggled off. Trends is the visible home for the data
+  // shapes, and a pyramid IS a demographic trend held still.
+  'pyramid-scheme': 'trends',
   // Draws clues from every stat topic, so no single accessor group owns it
   // (and those groups are hidden — a kind filed there could never be toggled
   // off). Trends is the visible home for the data-pool rounds.
@@ -176,6 +181,10 @@ export const ANSWER_SHAPE_BY_KIND = {
   'ghost-state': 'set',
   composition: 'set',
   'trend-race': 'set',
+  // Never reaches the answer rows either: the answer is an array of countries
+  // whose POSITION is the claim (index = which pyramid it was dropped on), so
+  // reordering it would destroy the match it encodes.
+  'pyramid-scheme': 'sequence',
   // The order is the answer.
   traversal: 'sequence',
   'hot-cold': 'sequence',

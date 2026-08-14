@@ -171,6 +171,14 @@
               <StatDetectiveReveal :challenge="statDetectiveChallenge" />
             </section>
 
+            <section v-if="pyramidSchemeChallenge" class="pane-content ranking">
+              <span class="eyebrow">What the Shapes Were Telling You</span>
+              <PyramidReveal
+                :challenge="pyramidSchemeChallenge"
+                :submitted="selectedScorecard.answers.submitted ?? []"
+              />
+            </section>
+
             <section v-if="flagMeaning" class="pane-content ranking">
               <span class="eyebrow">What the Flag Means</span>
               <FlagMeaningReveal :entry="flagMeaning" />
@@ -264,6 +272,7 @@ import FlagMeaningReveal from '~/components/challenge/FlagMeaningReveal.vue'
 import RankingReveal from '~/components/challenge/RankingReveal.vue'
 import StarChartReveal from '~/components/challenge/StarChartReveal.vue'
 import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
+import PyramidReveal from '~/components/challenge/PyramidReveal.vue'
 import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
@@ -426,6 +435,13 @@ const sweepClaimedBy = computed(() =>
 const statDetectiveChallenge = computed(() => {
   const challenge = roundChallenge.value
   return challenge && '_type' in challenge && challenge._type === 'stat-detective-challenge'
+    ? challenge
+    : undefined
+})
+
+const pyramidSchemeChallenge = computed(() => {
+  const challenge = roundChallenge.value
+  return challenge && '_type' in challenge && challenge._type === 'pyramid-scheme-challenge'
     ? challenge
     : undefined
 })
@@ -658,6 +674,8 @@ const explainer = computed(() => {
       return 'Every name goes to whoever said it first. Beating your share of the board pays more; clearing it pays the whole table, and the last name pays its closer.'
     case 'timeline':
       return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
+    case 'pyramid-scheme':
+      return 'Every country you put on the right pyramid pays an equal share of the round.'
     case 'empire':
       return 'Naming the ghost pays the smaller share — the earlier the buzz, the more of it. The rest is for tracing its lands: points scale with how closely your taps match its core.'
     default: {
@@ -704,7 +722,12 @@ const breakdown = computed(() => {
 /** The sequence rounds' fallback: rails, but only with something to put in
  *  them — the empty-payload kinds stay silent here as they do in the ledger. */
 const showsAnswerRails = computed(
-  () => submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0
+  () =>
+    // Pyramid Scheme states both sides per ROW in its own card (each country
+    // beside the shape it belonged to). Two flag rails above that would say the
+    // same thing worse — an order the round never asked for.
+    !pyramidSchemeChallenge.value &&
+    (submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0)
 )
 
 /** Only the blitz family really pays a point per wrong name (`blitzScore`'s

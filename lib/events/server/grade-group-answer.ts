@@ -14,7 +14,7 @@ import {
 } from '~~/lib/challenges'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType } from '~~/lib/rounds'
-import { blitzScore } from '~~/lib/scoring'
+import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers } from '~~/lib/terra-incognita'
 import { clamp01 } from '~~/lib/number'
@@ -103,6 +103,24 @@ export const gradeGroupAnswer = async ({
       const challenge = expectChallengeType(roundChallenge, 'hot-cold-challenge')
       answer = { submitted: submission.ranking, correct: [challenge.country] }
       scoring = scoreHotCold({ challenge, submittedGuesses: submission.ranking })
+      break
+    }
+    case 'pyramid-scheme': {
+      // Position IS the claim: submitted[i] is whoever the player dropped on
+      // pyramid i, and challenge.countries[i] is whose pyramid that was. Paid
+      // linearly per correct pairing — see pairFraction on why set overlap
+      // would quietly underpay a near-miss.
+      const challenge = expectChallengeType(roundChallenge, 'pyramid-scheme-challenge')
+      answer = { submitted: submission.ranking, correct: challenge.countries }
+      scoring = {
+        scored: clampScore(
+          Math.round(
+            pairFraction(submission.ranking, challenge.countries) * challenge.maximumPoints
+          ),
+          challenge.maximumPoints
+        ),
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     case 'silhouette': {

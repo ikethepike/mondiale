@@ -174,3 +174,22 @@ export const attemptFraction = (
   const spent = Math.min(attempt, attempts) - 1
   return 1 - (spent / (attempts - 1)) * (1 - lastAttemptFraction)
 }
+
+/**
+ * Share of a one-to-one matching the player got right: `guess[i]` is what they
+ * put in slot i, `truth[i]` is what belongs there.
+ *
+ * Deliberately NOT `jaccardFraction`. In a bijective match the player submits
+ * exactly as many pairs as there are truths, so the union is `2n − k` and
+ * Jaccard collapses to `k / (2n − k)` — three of four right would pay 0.6
+ * instead of 0.75. Set overlap is the wrong measure when the two sets always
+ * hold the same members and only the ORDER carries the claim.
+ */
+export const pairFraction = (guess: readonly string[], truth: readonly string[]): number => {
+  if (!truth.length) return 1
+  let correct = 0
+  for (let index = 0; index < truth.length; index++) {
+    if (guess[index] && guess[index] === truth[index]) correct++
+  }
+  return correct / truth.length
+}
