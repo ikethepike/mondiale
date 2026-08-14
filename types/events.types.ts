@@ -260,6 +260,11 @@ export type ClientEventData =
       kind: GuessKind
       isoCode?: ISOCountryCode
       label?: string
+      /** Pyramid Scheme: how many subjects this player has now seated, and out
+       *  of how many. A count carries the race without naming a placement —
+       *  with four subjects there are only 24 arrangements, so a named one
+       *  would hand the room the puzzle. */
+      placed?: { seated: number; total: number }
     }
   | {
       /** Ephemeral emoji cheer aimed at another player's pawn. Pure relay —
@@ -398,6 +403,10 @@ export type ServerEventData =
        *  rounded server-side. Broadcast under 'presence' where isoCode is not —
        *  a radius carries no bearing on its own. */
       distanceKm?: number
+      /** Pyramid Scheme: seated-of-total, clamped server-side. Survives under
+       *  'presence' for the same reason a radius does — a count says how far
+       *  along a player is without saying what they decided. */
+      placed?: { seated: number; total: number }
       /** Stamped server-side; keys the ticker so each guess is its own entry. */
       entryId: string
       at: number

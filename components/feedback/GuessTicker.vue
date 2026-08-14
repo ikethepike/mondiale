@@ -36,10 +36,18 @@ const guessText = (entry: GuessTickerEntry) => {
   // A taunt is said, not judged — no verdict mark.
   if (entry.kind === 'taunt') return `\u201c${entry.label ?? '\u2026'}\u201d`
   const named = entry.label ?? (entry.isoCode ? countryName(entry.isoCode) : undefined)
+  // Pyramid Scheme reuses `taken` for a tile pulled back OFF a pyramid — a
+  // second-thoughts tell. It carries a count, which a collision never does.
+  if (entry.kind === 'taken' && entry.placed) return 'took one back'
   // A collision is neither a hit nor a miss: the name was right and somebody
   // else already had it, so it wears neither a tick nor a cross.
   if (entry.kind === 'taken') return named ? `${named} — taken` : 'too late'
   if (named) return `${named} ${entry.kind === 'correct' ? '✓' : '✗'}`
+  // Pyramid Scheme's race: how far along, never what was decided.
+  if (entry.placed) {
+    const { seated, total } = entry.placed
+    return seated >= total ? `all ${total} placed` : `${seated} of ${total} placed`
+  }
   switch (entry.kind) {
     case 'probe':
       // The server sends a distance but never the country — a radius that

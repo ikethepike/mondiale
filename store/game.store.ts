@@ -22,6 +22,9 @@ export interface GuessTickerEntry {
    *  server-side. A radius with no centre — the probed country stays redacted,
    *  so this raises tension without locating the answer. */
   distanceKm?: number
+  /** Pyramid Scheme only: seated-of-total, so the chip can carry the race
+   *  without naming a placement. */
+  placed?: { seated: number; total: number }
   at: number
 }
 

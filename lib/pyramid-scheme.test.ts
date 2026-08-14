@@ -3,6 +3,8 @@ import { getRoundChallenge } from '~~/lib/challenges'
 import { PYRAMID_TUNING, pyramidDistance, pyramidsAreDistinct } from '~~/lib/pyramids'
 import type { PyramidSchemeChallenge } from '~~/types/challenges/group-modes.type'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
+import { placedCount } from '~~/lib/events/server/player-guessing.handler'
+import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { pairFraction } from '~~/lib/scoring'
 import type { Game, GameDifficulty, GameVariant, Round } from '~~/types/game.types'
 
@@ -130,5 +132,45 @@ describe('pyramid scheme grading', () => {
     expect((await grade([])).scoring.scored).toBe(0)
     expect((await grade(['DE'])).scoring.scored).toBe(5)
     expect((await grade([...truth, 'US', 'FR'])).scoring.scored).toBe(20)
+  })
+})
+
+const liveGame = { liveGuesses: true } as unknown as Game
+const tickerChallenge = {
+  _type: 'pyramid-scheme-challenge',
+  countries: ['DE', 'NE', 'QA', 'JP'],
+  distinctnessFloor: 22,
+  durationSeconds: 55,
+  maximumPoints: 20,
+} as never
+
+describe('pyramid scheme live messaging', () => {
+  it('shares presence, never the placement', () => {
+    // A named placement would hand over most of a 24-outcome puzzle.
+    expect(guessPolicyFor(liveGame, tickerChallenge)).toBe('presence')
+  })
+  it('honours the table switching live guesses off', () => {
+    expect(guessPolicyFor({ liveGuesses: false } as unknown as Game, tickerChallenge)).toBe('none')
+  })
+})
+
+describe('placedCount clamp (the server never trusts the payload)', () => {
+  it('takes the total from the challenge, not the client', () => {
+    // A client claiming 9 of 99 only ever reaches the room as a real figure.
+    expect(placedCount(tickerChallenge, { placed: { seated: 9, total: 99 } })).toEqual({
+      placed: { seated: 4, total: 4 },
+    })
+    expect(placedCount(tickerChallenge, { placed: { seated: -3, total: 4 } })).toEqual({
+      placed: { seated: 0, total: 4 },
+    })
+    expect(placedCount(tickerChallenge, { placed: { seated: 2.7, total: 4 } })).toEqual({
+      placed: { seated: 2, total: 4 },
+    })
+  })
+  it('drops junk and other modes cleanly', () => {
+    expect(placedCount(tickerChallenge, {})).toEqual({})
+    expect(placedCount(tickerChallenge, { placed: { seated: NaN, total: 4 } })).toEqual({})
+    const other = { _type: 'hot-cold-challenge', country: 'FR' } as never
+    expect(placedCount(other, { placed: { seated: 2, total: 4 } })).toEqual({})
   })
 })

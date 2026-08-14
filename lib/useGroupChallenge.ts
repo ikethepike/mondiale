@@ -181,11 +181,15 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     kind,
     isoCode,
     label,
+    placed,
   }: {
     hint?: string
     kind?: GuessKind
     isoCode?: ISOCountryCode
     label?: string
+    /** A progress count that survives `presence` — see the field on the wire
+     *  event. Modes that name nothing can still show the room a race. */
+    placed?: { seated: number; total: number }
   }) => {
     // A watcher fabricates no guess chips and sends nothing to the room
     if (gameStore.watching) return
@@ -207,6 +211,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
         playerId: gameStore.playerId,
         kind,
         ...named,
+        ...(placed ? { placed } : {}),
         at: Date.now(),
       },
     ]
@@ -214,7 +219,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     // measures the distance to the hidden target and broadcasts that alone,
     // never echoing the isoCode. The room sees a radius, not a bearing.
     const wire = policy !== 'label' && kind === 'probe' ? { isoCode } : named
-    update({ event: 'player-guessing', kind, ...wire })
+    update({ event: 'player-guessing', kind, ...wire, ...(placed ? { placed } : {}) })
   }
 
   /** Opponents' chips plus our own, oldest first, each expiring on its own. */

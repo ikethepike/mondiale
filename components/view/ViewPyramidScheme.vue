@@ -159,6 +159,7 @@ const {
   showInterstitial,
   secondsLeft,
   begin,
+  announce,
   entries,
   submitOnce,
   registerCleanup,
@@ -260,6 +261,18 @@ const place = (event: DragMoveEvent, slot: number | undefined) => {
   if (slot !== undefined) next[slot] = iso
   assignment.value = next
   revision.value++
+
+  // The race, not the answer: the room learns how far along someone is, never
+  // which country they seated — with four subjects there are only 24
+  // arrangements, so one named placement would hand over most of the puzzle.
+  // A tile coming back OFF a pyramid rides as `taken`, a second-thoughts tell.
+  // Never `correct`/`wrong`: a placement is a decision, not a verdict, and
+  // nobody knows yet whether it was right — it must not wear a tick or a cross.
+  const seated = next.filter(Boolean).length
+  announce({
+    kind: slot === undefined ? 'taken' : 'presence',
+    placed: { seated, total: subjects.value.length },
+  })
 }
 
 const onDrop = (event: DragMoveEvent, slot: number) => place(event, slot)
