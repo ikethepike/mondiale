@@ -115,12 +115,7 @@ describe('zoomOutStartView', () => {
       const blind: string[] = []
       for (const { code, ring, anchor, mainland } of dealable()) {
         const wide = endFrame(mainland, aspect, berth, viewport)
-        const start = zoomOutStartView(
-          mainland,
-          anchor,
-          Math.max(wide.width, wide.height),
-          aspect
-        )
+        const start = zoomOutStartView(mainland, anchor, Math.max(wide.width, wide.height), aspect)
         if (!showsLand(ring, start)) blind.push(code)
       }
       expect(blind).toEqual([])
@@ -135,7 +130,12 @@ describe('zoomOutStartView', () => {
     const givenAway: string[] = []
     for (const { code, mainland, anchor } of dealable()) {
       const wide = endFrame(mainland, 1280 / 800, 176, 800)
-      const start = zoomOutStartView(mainland, anchor, Math.max(wide.width, wide.height), 1280 / 800)
+      const start = zoomOutStartView(
+        mainland,
+        anchor,
+        Math.max(wide.width, wide.height),
+        1280 / 800
+      )
       const [, , mainlandWidth, mainlandHeight] = mainland
       const cropped = start.width < mainlandWidth * 0.95 || start.height < mainlandHeight * 0.95
       const atFloor = start.width <= WORLD_BOX.width / 200
@@ -151,7 +151,12 @@ describe('zoomOutStartView', () => {
     const featureless: string[] = []
     for (const { code, mainland, anchor } of dealable()) {
       const wide = endFrame(mainland, 1280 / 800, 176, 800)
-      const start = zoomOutStartView(mainland, anchor, Math.max(wide.width, wide.height), 1280 / 800)
+      const start = zoomOutStartView(
+        mainland,
+        anchor,
+        Math.max(wide.width, wide.height),
+        1280 / 800
+      )
       // The SHORTER half-axis must clear the circle: a box whose corners just
       // reach past it still has every side inside, and shows nothing but fill.
       if (Math.min(start.width / 2, start.height / 2) < anchor.radius) featureless.push(code)
@@ -172,7 +177,11 @@ describe('zoomOutStartView', () => {
     const ring = largestRing(MAP_PATHS.EE)!
     const anchor = poleOfInaccessibility(ring)!
     const start = zoomOutStartView(mainland, anchor, Math.max(wide.width, wide.height), 1280 / 800)
-    const oldStart = { ...start, x: wide.x + wide.width / 2 - start.width / 2, y: frameCentreY - start.height / 2 }
+    const oldStart = {
+      ...start,
+      x: wide.x + wide.width / 2 - start.width / 2,
+      y: frameCentreY - start.height / 2,
+    }
     expect(showsLand(ring, oldStart)).toBe(false)
     expect(showsLand(ring, start)).toBe(true)
   })

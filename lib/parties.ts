@@ -249,37 +249,6 @@ export const oppositionParties = (isoCode: ISOCountryCode): Party[] => {
   return partiesOf(isoCode).filter(party => party !== governing && isDealableParty(party))
 }
 
-/**
- * How much of the cabinet's OWN party list has to reach a bench. This is the
- * direct question — did the join work? — where a seat share only ever answered
- * it by proxy.
- *
- * The broken joins are unambiguous on this axis: Malaysia, Bulgaria, France,
- * Poland, Serbia and Ukraine resolve NOTHING, and no threshold above zero keeps
- * them. What the proxy got wrong was the other end. Sweden (29% of the chamber),
- * Finland (30%) and Norway (37%) are honest minority governments that name every
- * one of their parties, and they were surviving a 25% seat floor by a hair;
- * Germany was failing it outright at 19%, because the chamber seats CDU and CSU
- * as one bench the cabinet names separately.
- *
- * A quarter, not a half: Indonesia names thirteen parties for a coalition the
- * chamber seats as eight, and South Africa ten for six. Both are real
- * governments the round already deals, and both sit under 50%.
- */
-const GOVERNMENT_COVERAGE_FLOOR = 0.25
-
-/**
- * The seat share below which a government is too small to build a round on,
- * whatever the join did. This is a fragmentation backstop, not a join test —
- * coverage above does that work now, which is what lets this come down from the
- * 0.25 it used to carry.
- *
- * It still refuses the Philippines: the governing party holds 27 of 254 seats
- * across fourteen benches, so a round asking who governs would be asking about
- * a bench the player cannot see.
- */
-const GOVERNMENT_SHARE_FLOOR = 0.1
-
 /** Where a bench stands in relation to the government. */
 export type Standing = 'government' | 'backing' | 'opposition'
 
@@ -617,7 +586,6 @@ export const benchesOf = (isoCode: ISOCountryCode): Bench[] => {
     }))
     .sort((a, b) => b.seats - a.seats)
 }
-
 
 /**
  * The benches in SEATING order — LEFT to RIGHT, the way a chamber is read and

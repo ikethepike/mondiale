@@ -1,9 +1,9 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { PARTIES as PREVIOUS } from '../data/parties-factbook.gen'
 import { extname } from 'node:path'
 import { jsonParseLiteral } from './lib/emit'
 import { saveCommonsImage } from './vendors/wikidata/commons'
-import type { ISOCountryCode } from '../types/country.types'
+import type { ISOCountryCode } from '../types/geography.types'
 import type { CountryParties, Party, PartyMapping } from './create-parties-file'
 
 /**
@@ -158,10 +158,7 @@ const leadPartyQid = (country: PolityCountry): string | undefined =>
  * exactly — without it, 19 countries including all three of those were
  * unjoinable.
  */
-const leadBench = (
-  country: PolityCountry,
-  chamber: PolityChamber
-): PolitySeating | undefined => {
+const leadBench = (country: PolityCountry, chamber: PolityChamber): PolitySeating | undefined => {
   const lead = leadPartyQid(country)
   if (!lead) return undefined
   return chamber.composition.find(
@@ -204,9 +201,7 @@ const partyFrom = (party: PolityParty, seating?: PolitySeating): Party => ({
   // ("which logo is not a ruling party" has no honest answer when the answer is
   // an alliance of five), a parliamentary group, and the chamber's own
   // bookkeeping — the independents and vacancies that really do hold seats.
-  ...(['electoral_alliance', 'parliamentary_group', 'independents', 'residual'].includes(
-    party.kind
-  )
+  ...(['electoral_alliance', 'parliamentary_group', 'independents', 'residual'].includes(party.kind)
     ? { coalition: true }
     : {}),
   ...(party.groupings.length

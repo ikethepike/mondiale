@@ -215,7 +215,12 @@ describe('dealLogoPolitics (via forced variant)', () => {
   // country first and flipping second looks even but is not: only a third of
   // countries have an askable governing party, so "yes" was impossible in most
   // of them and the realised split was 15/85 — always answering "No" scored 85%.
-  it('asks "does it govern?" both ways about equally often', async () => {
+  // 400 deals, deliberately: the claim is statistical, and a smaller sample
+  // cannot separate an even coin from the 15/85 split this test exists to
+  // catch. Each deal costs ~9 ms locally and CI runs ~4x slower, so the whole
+  // test lands near 13 s there — past vitest's 5 s default. The timeout is
+  // raised rather than the sample cut, because the sample IS the assertion.
+  it('asks "does it govern?" both ways about equally often', { timeout: 60_000 }, async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
     let yes = 0
     let no = 0

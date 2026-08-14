@@ -18,6 +18,7 @@ import type { TrendMetricId } from '~~/lib/trends'
 import type { Amount } from '~~/types/geography.types'
 
 export type ProviderId =
+  | 'polity'
   | 'cia'
   | 'cepii'
   | 'owid'
@@ -201,6 +202,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
 }
 
 export type SourceId =
+  | 'polity'
   | 'cia-factbook'
   | 'cia-world-leaders'
   | 'cepii-baci'

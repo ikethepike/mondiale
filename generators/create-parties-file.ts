@@ -982,7 +982,10 @@ const rosterEntry = (isoCode: ISOCountryCode, name: string): Party | undefined =
   const roster = mapping[isoCode]?.parties ?? []
   const wanted = partyTokens(name, isoCode).join('')
   if (!wanted) return roster[0]
-  const bare = name.toLowerCase().replace(/\s+part(y|ies)$/, '').trim()
+  const bare = name
+    .toLowerCase()
+    .replace(/\s+part(y|ies)$/, '')
+    .trim()
   return roster.find(party => {
     for (const candidate of [party.name, ...(party.endonym ? [party.endonym] : [])]) {
       if (partyTokens(candidate, isoCode).join('') === wanted) return true
