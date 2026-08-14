@@ -3427,6 +3427,18 @@ const scenarios: Scenario[] = [
       }),
   },
   {
+    id: 'individual-far-flung-small',
+    label: 'Individual: far flung (Príncipe — smallest fragment)',
+    build: () =>
+      individualGame({
+        id: 'isoCode',
+        variant: 'far-flung',
+        country: 'ST',
+        farFlung: { slug: 'principe' },
+        options: ['ST', 'GQ', 'GA', 'CM'],
+      }),
+  },
+  {
     id: 'individual-far-flung-hard',
     label: 'Individual: far flung (hard — Nakhchivan, typed)',
     build: () => {

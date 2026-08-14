@@ -224,8 +224,110 @@ export const FAR_FLUNG_SEEDS: FarFlungSeed[] = [
       'The largest of the Balearics — a Mediterranean island province a night ferry away from the mainland.',
     anchor: { lat: 39.6, lng: 2.9 },
   },
+  {
+    slug: 'newfoundland',
+    iso: 'CA',
+    name: 'Newfoundland',
+    blurb:
+      'A rocky Atlantic island that governed itself as a separate dominion until 1949, when it narrowly voted to join the mainland.',
+    anchor: { lat: 48.6, lng: -56.0 },
+  },
+  {
+    slug: 'vancouver-island',
+    iso: 'CA',
+    name: 'Vancouver Island',
+    blurb:
+      'A temperate rainforest island that holds its province capital, cut off from the mainland by the Strait of Georgia.',
+    anchor: { lat: 49.65, lng: -125.4 },
+  },
+  {
+    slug: 'isla-de-la-juventud',
+    iso: 'CU',
+    name: 'Isla de la Juventud',
+    blurb:
+      'The pine-covered island of buccaneers said to have furnished Treasure Island — a ferry ride south of the main island.',
+    anchor: { lat: 21.7, lng: -82.8 },
+  },
+  {
+    slug: 'cozumel',
+    iso: 'MX',
+    name: 'Cozumel',
+    blurb:
+      'A coral-reef diving island off the Yucatán, once a Maya pilgrimage site for the goddess of fertility.',
+    anchor: { lat: 20.45, lng: -86.9 },
+  },
+  {
+    slug: 'bay-islands',
+    iso: 'HN',
+    name: 'The Bay Islands',
+    blurb:
+      'Reef islands settled by British buccaneers, where the first language is still English 60 km off the Caribbean coast.',
+    anchor: { lat: 16.32, lng: -86.5 },
+  },
+  {
+    slug: 'pearl-islands',
+    iso: 'PA',
+    name: 'The Pearl Islands',
+    blurb:
+      'A Gulf archipelago stripped of the pearls that named it — an hour by boat from the capital it belongs to.',
+    anchor: { lat: 8.4, lng: -79.0 },
+  },
+  {
+    slug: 'margarita',
+    iso: 'VE',
+    name: 'Isla de Margarita',
+    blurb:
+      'The pearl island Columbus reached on his third voyage, now a duty-free resort 40 km off the mainland coast.',
+    anchor: { lat: 10.99, lng: -64.0 },
+  },
+  {
+    slug: 'juan-fernandez',
+    iso: 'CL',
+    name: 'The Juan Fernández Islands',
+    blurb:
+      'The Pacific archipelago where a marooned Scottish sailor spent four years alone and inspired Robinson Crusoe.',
+    anchor: { lat: -33.63, lng: -78.83 },
+  },
+  {
+    slug: 'marajo',
+    iso: 'BR',
+    name: 'Marajó',
+    blurb:
+      'A river island larger than Switzerland, sitting in the mouth of the Amazon where the delta meets the Atlantic.',
+    anchor: { lat: -0.9, lng: -49.6 },
+  },
+  {
+    slug: 'pemba',
+    iso: 'TZ',
+    name: 'Pemba',
+    blurb:
+      'The clove island north of its better-known sister — a world of spice plantations and traditional healers.',
+    anchor: { lat: -5.25, lng: 39.75 },
+  },
+  {
+    slug: 'sao-vicente',
+    iso: 'CV',
+    name: 'São Vicente',
+    blurb:
+      'The harbour island of Mindelo, a coaling station for Atlantic steamers that became the home of morna music.',
+    anchor: { lat: 16.85, lng: -25.0 },
+  },
+  {
+    slug: 'principe',
+    iso: 'ST',
+    name: 'Príncipe',
+    blurb:
+      'The smaller, older volcanic island of a two-island equatorial state, ringed by jungle-clad basalt towers.',
+    anchor: { lat: 1.62, lng: 7.4 },
+  },
 ]
 // Seeded and dropped, for the record: Svalbard (not in Norway's map unit),
 // Ceuta (too small for Natural Earth 10m — the near-ring fallback grabbed
 // Iberia instead). France's overseas departments and the Canaries are
 // separate map units and can never be seeded.
+//
+// Probed and rejected the same way, so nobody re-seeds them: the Falklands,
+// San Andrés, Fernando de Noronha and Puerto Rico are all separate map units
+// (no ring holds the anchor); Key West and Rodrigues fall under the
+// visibility floor. The Bijagós resolve fine but sit 4 km off the coast —
+// nearer home than Temburong, so not far-flung by this mode's standard.
