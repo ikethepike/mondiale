@@ -3364,8 +3364,10 @@ const dealFarFlung = (
   pool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'farFlung' | 'options'> | undefined => {
-  const inPlay = new Set(world)
-  const slugs = Object.keys(FAR_FLUNG).filter(slug => inPlay.has(FAR_FLUNG[slug].iso))
+  // Subjects come off the BOARD, like every sibling dealer — a Europe game
+  // must not stage Temburong. `world` stays the decoy widen set only.
+  const onBoard = new Set(pool)
+  const slugs = Object.keys(FAR_FLUNG).filter(slug => onBoard.has(FAR_FLUNG[slug].iso))
   const slug = sample(slugs)
   if (!slug) return undefined
   const country = FAR_FLUNG[slug].iso

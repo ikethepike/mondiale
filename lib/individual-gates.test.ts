@@ -8,6 +8,8 @@ import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/chronicle'
 import { mentionsCountry } from '~~/lib/country'
+import { playableCountries } from '~~/lib/game-rules'
+import { gameVariants } from '~~/types/game.types'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { readFileSync } from 'node:fs'
@@ -399,6 +401,37 @@ describe('far-flung gate dealing', { timeout: TIMEOUT }, () => {
         // Strict ISO grading, no carve-out.
         expect(isCorrectIndividualAnswer(dealt, dealt.country)).toBe(true)
         expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
+      }
+    }
+  })
+
+  // The gate gated subjects on the world pool, so a Europe board staged
+  // Temburong (Brunei). Subjects come off the board; only decoys widen.
+  it('stages a fragment whose owner is on the board, in every variant', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'far-flung'
+    for (const variant of gameVariants) {
+      for (const difficulty of ['normal', 'hard'] as const) {
+        const board = new Set(playableCountries({ variant, difficulty }))
+        let staged = 0
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const dealt = await getIndividualChallenge({
+            accessorId: 'isoCode',
+            difficulty,
+            variant,
+          })
+          // A board too thin for the mode deals the `find` fallback instead —
+          // that's the designed fallthrough, not a failure.
+          if (dealt.variant !== 'far-flung') continue
+          staged++
+          expect(
+            board.has(dealt.country),
+            `${variant}/${difficulty} staged an off-board owner`
+          ).toBe(true)
+          expect(FAR_FLUNG[dealt.farFlung?.slug ?? ''].iso).toBe(dealt.country)
+          if (difficulty !== 'hard') expect(dealt.options).toContain(dealt.country)
+        }
+        // A dealer that never deals is the other way to "pass" this test.
+        expect(staged, `far-flung never dealt on ${variant}/${difficulty}`).toBeGreaterThan(0)
       }
     }
   })
