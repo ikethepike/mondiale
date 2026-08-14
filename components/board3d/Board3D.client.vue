@@ -14,6 +14,7 @@
 </template>
 <script lang="ts" setup>
 import { TresCanvas } from '@tresjs/core'
+import { installTimerVisibilityGuard } from '~~/lib/board3d/timer-guard'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useIsPhone } from '~~/lib/use-viewport'
 import type { Game } from '~~/types/game.types'
@@ -40,6 +41,11 @@ const props = defineProps({
     default: true,
   },
 })
+
+// Installed before TresCanvas mounts, because the leak happens the moment its
+// renderer connects three's Timer. Idempotent and torn down with the board.
+const uninstallTimerGuard = installTimerVisibilityGuard()
+onUnmounted(uninstallTimerGuard)
 
 const { game: storeGame, gameStore } = useClientEvents()
 
