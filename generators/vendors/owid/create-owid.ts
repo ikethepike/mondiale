@@ -95,6 +95,25 @@ const METRICS = {
     slug: 'gdp-per-capita-worldbank',
     column: 'GDP per capita',
   },
+  /**
+   * Gini, rescaled 0-1 -> 0-100.
+   *
+   * OWID publishes the coefficient; `economics.equality` has always carried
+   * the INDEX (Sweden 29.4, not 0.294), so shipping the raw value would
+   * silently rebase every country by a factor of 100 while looking like a
+   * refresh. The trend series keeps its own 0-1 scale — `giniIndex` is a
+   * second entry rather than a change to `gini`, so nothing already reading
+   * the series moves.
+   */
+  giniIndex: {
+    slug: 'economic-inequality-gini-index',
+    column: 'Gini coefficient',
+    scale: 100,
+    decimals: 1,
+    // `gini` below already carries this series on its own 0-1 scale; a second
+    // copy at 0-100 would be the same history twice.
+    trend: false,
+  },
   gini: {
     slug: 'economic-inequality-gini-index',
     column: 'Gini coefficient',
@@ -169,6 +188,36 @@ const METRICS = {
   fossilElectricity: {
     slug: 'share-electricity-fossil-fuels',
     column: 'Fossil fuels',
+    decimals: 1,
+  },
+  /** Internet users, % of population. 190 countries; the Factbook has 193. */
+  internetAccess: {
+    slug: 'share-of-individuals-using-the-internet',
+    column: 'Share of the population using the Internet',
+    decimals: 1,
+  },
+  /** Electricity access, % of population. */
+  electricityAccess: {
+    slug: 'share-of-the-population-with-access-to-electricity',
+    column: 'Share of the population with access to electricity',
+    decimals: 1,
+  },
+  /** Physicians per 1,000 people. */
+  physicians: {
+    slug: 'physicians-per-1000-people',
+    column: 'Physicians (per 1,000 people)',
+    decimals: 2,
+  },
+  /** Hospital beds per 1,000 people. */
+  hospitalBeds: {
+    slug: 'hospital-beds-per-1000-people',
+    column: 'Hospital beds (per 1,000 people)',
+    decimals: 1,
+  },
+  /** Mean years of schooling among adults. */
+  yearsOfSchooling: {
+    slug: 'mean-years-of-schooling',
+    column: 'Average years of schooling',
     decimals: 1,
   },
   // Lifestyle/health — these feed EXISTING Country accessors (fresher, dated

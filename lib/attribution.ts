@@ -518,7 +518,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
     ...worldBank('FP.CPI.TOTL.ZG'),
     fallback: FACTBOOK_BACKSTOP,
   },
-  'economics.equality': factbook('Economy › Gini Index coefficient'),
+  'economics.equality': owid('economic-inequality-gini-index', 'World Bank'),
   'economics.populationBelowPovertyLine': owid(
     'share-of-population-in-extreme-poverty',
     'World Bank PIP'
@@ -550,9 +550,15 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   },
 
   'infrastructure.rail': factbook('Transportation › Railways › total'),
-  'infrastructure.internetAccess': factbook('Communications › Internet users'),
+  'infrastructure.internetAccess': owid(
+    'share-of-individuals-using-the-internet',
+    'ITU via World Bank'
+  ),
 
-  'energy.electricityAccess': factbook('Energy › Electricity access'),
+  'energy.electricityAccess': owid(
+    'share-of-the-population-with-access-to-electricity',
+    'World Bank'
+  ),
   'energy.fossilFuels': owid('share-electricity-fossil-fuels', 'Ember / Energy Institute'),
   'energy.consumptionPerCapita': owid('per-capita-energy-use', 'Energy Institute'),
 
@@ -576,7 +582,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   },
 
   'education.literacy': owid('literacy-rate-adults', 'UNESCO'),
-  'education.averageYearsOfStudy': factbook('People and Society › School life expectancy'),
+  'education.averageYearsOfStudy': owid('mean-years-of-schooling', 'UNDP'),
 
   'health.obesity': {
     ...owid('share-of-adults-defined-as-obese', 'WHO'),
@@ -590,8 +596,8 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   'health.meatConsumption': owid('meat-supply-per-person', 'FAO'),
   'health.maleHeight': owid('average-height-of-men', 'NCD-RisC'),
   'health.roadDeaths': owid('death-rate-road-traffic-injuries', 'WHO'),
-  'health.doctors': factbook('People and Society › Physician density'),
-  'health.hospitalBeds': factbook('People and Society › Hospital bed density'),
+  'health.doctors': owid('physicians-per-1000-people', 'WHO'),
+  'health.hospitalBeds': owid('hospital-beds-per-1000-people', 'WHO / OECD'),
   'health.accessToContraceptives': {
     ...worldBank('SP.DYN.CONU.ZS'),
     fallback: ['cia-factbook'],
@@ -696,6 +702,11 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   literacy: owid('literacy-rate-adults', 'UNESCO'),
   povertyLine: owid('share-of-population-in-extreme-poverty', 'World Bank PIP'),
   fossilElectricity: owid('share-electricity-fossil-fuels', 'Ember / Energy Institute'),
+  internetAccess: owid('share-of-individuals-using-the-internet', 'ITU via World Bank'),
+  electricityAccess: owid('share-of-the-population-with-access-to-electricity', 'World Bank'),
+  physicians: owid('physicians-per-1000-people', 'WHO'),
+  hospitalBeds: owid('hospital-beds-per-1000-people', 'WHO / OECD'),
+  yearsOfSchooling: owid('mean-years-of-schooling', 'UNDP'),
   homicideRate: owid('homicide-rate-unodc', 'UNODC'),
   co2PerCapita: owid('co-emissions-per-capita', 'Global Carbon Budget'),
   lifeExpectancy: owid('life-expectancy', 'UN WPP & the Human Mortality Database'),

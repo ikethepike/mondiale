@@ -189,8 +189,13 @@ describe('datasetAttribution', () => {
 describe('dedupeAttributions', () => {
   it('collapses figures that share a source, first entry standing for the group', () => {
     // Three Factbook stats and one OWID stat on one panel: two entries survive.
+    //
+    // Deliberately the STATIC Factbook fields — land area and highest peak do
+    // not change, so nothing will migrate them off the Factbook and quietly
+    // turn this into a three-source fixture. Two earlier picks (publicDebt,
+    // then equality) both moved to live sources mid-session.
     const deduped = dedupeAttributions([
-      attributionFor('economics.equality'),
+      attributionFor('geography.area.total'),
       attributionFor('geography.highestPeak'),
       attributionFor('people.population', { source: 'cia-factbook' }),
       attributionFor('government.democracyIndex'),
@@ -200,7 +205,7 @@ describe('dedupeAttributions', () => {
       'V-Dem via Our World in Data',
     ])
     // First wins: the surviving entry keeps its own deep link and dataset.
-    expect(deduped[0].dataset).toBe('Economy › Gini Index coefficient')
+    expect(deduped[0].dataset).toBe('Geography › Area › total')
   })
 
   it('keeps same-source entries whose named originators differ', () => {

@@ -235,10 +235,14 @@ const normalizeCountry = ({
         getYearlyIndex<'%'>(data['Military and Security']?.['Military expenditures'], '%'),
       touristArrivals: owidAmount(isoCode, 'touristArrivals', 'tourists'),
       workingHours: owidAmount(isoCode, 'workingHours', 'hours'),
-      equality: getYearlyIndex<'Gini Coefficient'>(
-        data['Economy']['Gini Index coefficient - distribution of family income'],
-        'Gini Coefficient'
-      ),
+      // OWID rescales 0-1 -> 0-100 in the vendor, matching the index this
+      // field has always carried. 168 countries against the Factbook's 147.
+      equality:
+        owidAmount(isoCode, 'giniIndex', 'Gini Coefficient') ??
+        getYearlyIndex<'Gini Coefficient'>(
+          data['Economy']['Gini Index coefficient - distribution of family income'],
+          'Gini Coefficient'
+        ),
       exports: getExports(data),
     },
     geography: {
@@ -277,16 +281,17 @@ const normalizeCountry = ({
     infrastructure: {
       // Factbook dropped Roadways entirely; only Railways survives.
       rail: getTextNode<'km'>(data.Transportation.Railways?.total, 'km'),
-      internetAccess: getTextNode<'%'>(
-        data.Communications?.['Internet users']?.['percent of population'],
-        '%'
-      ),
+      internetAccess:
+        owidAmount(isoCode, 'internetAccess', '%') ??
+        getTextNode<'%'>(data.Communications?.['Internet users']?.['percent of population'], '%'),
     },
     energy: {
-      electricityAccess: getTextNode<'%'>(
-        data.Energy?.['Electricity access']?.['electrification - total population'],
-        '%'
-      ),
+      electricityAccess:
+        owidAmount(isoCode, 'electricityAccess', '%') ??
+        getTextNode<'%'>(
+          data.Energy?.['Electricity access']?.['electrification - total population'],
+          '%'
+        ),
       // Ember/Energy Institute via OWID: 185 countries at 2025 against the
       // Factbook's 179 at 2023, and the two track closely — Sweden 1.2% here
       // against 0.5%, Saudi Arabia 97.8% against 99.3%.
@@ -355,10 +360,13 @@ const normalizeCountry = ({
       literacy:
         owidAmount(isoCode, 'literacy', '%') ??
         getTextNode(data['People and Society'].Literacy?.['total population'], '%'),
-      averageYearsOfStudy: getTextNode<'years'>(
-        data['People and Society']['School life expectancy (primary to tertiary education)']?.total,
-        'years'
-      ),
+      averageYearsOfStudy:
+        owidAmount(isoCode, 'yearsOfSchooling', 'years') ??
+        getTextNode<'years'>(
+          data['People and Society']['School life expectancy (primary to tertiary education)']
+            ?.total,
+          'years'
+        ),
     },
     health: {
       // WHO via OWID first for the lifestyle stats — dated, with history for
@@ -367,15 +375,19 @@ const normalizeCountry = ({
         owidAmount(isoCode, 'obesity', '%') ??
         getTextNode<'%'>(data['People and Society']['Obesity - adult prevalence rate'], '%'),
       // Factbook renamed 'Physicians density' to 'Physician density'.
-      doctors: getTextNode<'per 1000 people'>(
-        data['People and Society']['Physician density'] ??
-          data['People and Society']['Physicians density'],
-        'per 1000 people'
-      ),
-      hospitalBeds: getTextNode<'per 1000 people'>(
-        data['People and Society']['Hospital bed density'],
-        'per 1000 people'
-      ),
+      doctors:
+        owidAmount(isoCode, 'physicians', 'per 1000 people') ??
+        getTextNode<'per 1000 people'>(
+          data['People and Society']['Physician density'] ??
+            data['People and Society']['Physicians density'],
+          'per 1000 people'
+        ),
+      hospitalBeds:
+        owidAmount(isoCode, 'hospitalBeds', 'per 1000 people') ??
+        getTextNode<'per 1000 people'>(
+          data['People and Society']['Hospital bed density'],
+          'per 1000 people'
+        ),
       // Factbook dropped contraceptive prevalence; sourced from the World Bank
       // (SP.DYN.CONU.ZS). Recency varies by country but coverage is broad.
       accessToContraceptives:

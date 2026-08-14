@@ -370,8 +370,13 @@ describe('scoreChallengeSubmission', () => {
   // the band has to pay full marks.
   describe('countries sharing a value', () => {
     const accessorId = 'energy.electricityAccess'
-    const tied: ISOCountryCode[] = ['TT', 'IQ', 'AR', 'SV', 'NR']
-    const dealt: ISOCountryCode[] = [...tied, 'KH']
+    // Five countries at exactly 100% electricity access, and one below the
+    // band. A hundred countries reach 100%, so the tie is structural rather
+    // than a coincidence of one vintage — but the MEMBERS are not: the
+    // previous fixture used TT/IQ/AR/SV/NR, which stopped tying when the stat
+    // moved from the Factbook to OWID's finer precision (99.2, 98.7, 98.4).
+    const tied: ISOCountryCode[] = ['AL', 'AD', 'AG', 'AM', 'AU']
+    const dealt: ISOCountryCode[] = [...tied, 'BW']
     const order = getCorrectRanking({ groupChallengeAccessorId: accessorId, isoCodes: dealt })
 
     const scoreTied = (submittedRanking: ISOCountryCode[]) =>
@@ -383,27 +388,27 @@ describe('scoreChallengeSubmission', () => {
 
     it('confirms the fixture really is a five-way tie above a lone value', () => {
       const amounts = order.map(isoCode => getValueByAccessorID(isoCode, accessorId)?.amount)
-      expect(amounts).toEqual([100, 100, 100, 100, 100, 92.3])
+      expect(amounts).toEqual([100, 100, 100, 100, 100, 80.2])
     })
 
     it('pays full marks for any order within the tie band', () => {
       // Every rotation of the tied five keeps them inside slots 1–5.
       for (let rotation = 0; rotation < tied.length; rotation++) {
         const rotated = [...tied.slice(rotation), ...tied.slice(0, rotation)]
-        expect(scoreTied([...rotated, 'KH'])).toEqual({ scored: 18, maximum: 18 })
+        expect(scoreTied([...rotated, 'BW'])).toEqual({ scored: 18, maximum: 18 })
       }
     })
 
     it('still charges for leaving the band', () => {
-      // KH (92.3 %, slot 6) hoisted to the top pushes one tied country out to
+      // BW (80.2 %, slot 6) hoisted to the top pushes one tied country out to
       // slot 6 — one slot past the band's edge — and lands KH five slots high.
       const rows = rankingBreakdown({
-        submitted: ['KH', ...tied],
+        submitted: ['BW', ...tied],
         correct: order,
         groupChallengeAccessorId: accessorId,
       })
       expect(rows.map(row => row.points)).toEqual([3, 3, 3, 3, 2, 0])
-      expect(scoreTied(['KH', ...tied])).toEqual({ scored: 14, maximum: 18 })
+      expect(scoreTied(['BW', ...tied])).toEqual({ scored: 14, maximum: 18 })
     })
 
     it('gives every tied country the same competition rank', () => {
@@ -417,7 +422,7 @@ describe('scoreChallengeSubmission', () => {
     })
 
     it('lists a tie band in the order the player chose', () => {
-      const shuffled: ISOCountryCode[] = ['NR', 'SV', 'AR', 'IQ', 'TT', 'KH']
+      const shuffled: ISOCountryCode[] = ['AU', 'AM', 'AG', 'AD', 'AL', 'BW']
       const rows = rankingBreakdown({
         submitted: shuffled,
         correct: order,
@@ -429,12 +434,12 @@ describe('scoreChallengeSubmission', () => {
 
     it('sinks an unplaced tied country to the tail of its band', () => {
       const rows = rankingBreakdown({
-        submitted: ['TT', 'IQ', 'AR', 'SV', 'KH'],
+        submitted: ['AL', 'AD', 'AG', 'AM', 'BW'],
         correct: order,
         groupChallengeAccessorId: accessorId,
       })
       expect(rows[4]).toEqual({
-        isoCode: 'NR',
+        isoCode: 'AU',
         correctPosition: 5,
         tieStart: 1,
         tiedCount: 5,
