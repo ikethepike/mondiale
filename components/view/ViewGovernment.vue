@@ -462,7 +462,7 @@ const prompt = computed(() => {
     : 'Who else is with the government?'
 })
 
-const promptSources = computed(() => datasetAttribution('elections'))
+const promptSources = computed(() => datasetAttribution('parties'))
 </script>
 
 <style lang="scss" scoped>

@@ -1,6 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { PARTIES } from '~~/data/parties.gen'
-import type { Party, CountryParties } from '~~/generators/create-parties-file'
+import type { Party, CountryParties } from '~~/types/party.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { INDEPENDENT, politicalLeader } from './leaders'
 
@@ -257,12 +257,12 @@ export interface Benches {
   /** Confidence and supply: props the government up, holds no ministries. */
   backing: Bench[]
   opposition: Bench[]
-  /** `minority government`, `majority government` … as the cabinet phrases it. */
+  /** `minority government`, `majority government` … when a source phrases it. */
   status?: string
 }
 
 /**
- * The chamber split three ways, from the cabinet the election produced.
+ * The chamber split three ways, from the standing polity gives each bench.
  *
  * Only the GOVERNMENT is read from the source; opposition is everything left
  * over, by construction. That inversion matters: Wikipedia's `opposition_party`
@@ -538,13 +538,13 @@ export const seatedParties = (isoCode: ISOCountryCode): Party[] =>
  * A chamber's benches: every seated bloc, largest first, with the party from
  * the roster attached where the two sources agree on a name.
  *
- * The election articles are the seat source rather than the Factbook, which
- * publishes no seat table for ANY bicameral country (0 of 84) and no vote
- * percentages anywhere. The roster still supplies what a bloc looks like — its
- * logo and colour — so the two are joined here rather than in a view.
+ * Seats, standing and alliance all ride the roster now, which polity fills:
+ * one record per bench, rather than an election article joined to a separate
+ * party list by name. The roster also supplies what a bloc looks like — its
+ * logo and colour — so nothing has to be joined here at all.
  */
 export interface Bench {
-  /** The party, as the election named it. */
+  /** The party, as the roster names it. */
   name: string
   seats: number
   /** Share of the chamber's total seats, 0–1. */

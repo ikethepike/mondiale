@@ -12,6 +12,10 @@
 # - linking: stamps new Date() into its header — every run would produce a diff
 # - capitals/anthems/tongues/currencies/landmarks/events/heritage/cities/flags-wide/
 #   anthem-lyrics/upscale: curated media pipelines, a human reviews those runs
+# - parties: the roster comes from polity (generators/create-polity-file.ts),
+#   which downloads ~1200 logos per run — hand-run, and NEVER add it here while
+#   file_pattern matches data/*.gen.ts
+# - elections: superseded by polity; data/elections.gen.ts is read by nothing
 name: DataUpdate
 on:
   schedule:

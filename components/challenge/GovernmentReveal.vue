@@ -132,7 +132,7 @@ const BEAT_SHORT: { [beat in GovernmentBeat]: string } = {
   sides: 'Sides',
 }
 
-const sources = computed(() => datasetAttribution('elections'))
+const sources = computed(() => datasetAttribution('parties'))
 
 const chamberLabel = computed(() =>
   props.challenge.chamber
