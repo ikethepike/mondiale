@@ -68,6 +68,20 @@ export const createCountriesFile = async (): Promise<{
 
   const countryVector: { [isoCode: string]: Country } = {}
   const factbookContinents = new Set<string>([])
+
+  // A country missing from the snapshot must fail the run, not skip. Skipping
+  // drops it from countries.gen.ts entirely — every mode's pool shrinks, and
+  // the only signal is a warn in a log nobody reads. The snapshot script has a
+  // matching guard on the WRITE side; this is the read side.
+  const absent = successfulCombinations
+    .filter(({ isoCode }) => !FACTBOOK[isoCode])
+    .map(({ isoCode }) => isoCode)
+  if (absent.length) {
+    throw new Error(
+      `Factbook snapshot is missing ${absent.length} countries (${absent.slice(0, 8).join(', ')}` +
+        `${absent.length > 8 ? ', …' : ''}). Re-run \`bun run snapshot:factbook\`.`
+    )
+  }
   for (const { url, isoCode } of successfulCombinations) {
     // Read from the frozen snapshot rather than fetching. The upstream mirror
     // stopped updating its data on 2026-01-22, so these 194 requests were
@@ -75,11 +89,7 @@ export const createCountriesFile = async (): Promise<{
     // generator's time, and a build that failed whenever a dead repository was
     // unreachable. `bun run snapshot:factbook` re-takes it if that ever
     // changes.
-    const data: FactbookResponse | undefined = FACTBOOK[isoCode]
-    if (!data) {
-      console.warn(`Not in the Factbook snapshot: ${isoCode}`)
-      continue
-    }
+    const data: FactbookResponse = FACTBOOK[isoCode]!
 
     // Leaders come from the CIA's own site, not the Factbook mirror, which
     // stopped updating its data on 2026-01-22. A moved endpoint must not

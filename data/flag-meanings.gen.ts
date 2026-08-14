@@ -1,5 +1,5 @@
 // This is a generated file, don't touch it.
-// Generated at: 2026-08-02T18:06:49.633Z
+// Generated at: 2026-08-14T16:56:48.107Z
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** What a flag's design stands for, from the CIA World Factbook's Flag node

@@ -254,7 +254,13 @@ export const SOURCES: Record<SourceId, Source> = {
     provider: 'cia',
     title: 'The World Factbook',
     url: 'https://www.cia.gov/the-world-factbook/',
-    edition: 'factbook.json mirror',
+    // Frozen deliberately: the factbook.json mirror stopped updating its data
+    // on 2026-01-22 and the snapshot lives in the repo as data/factbook.gen.ts.
+    edition: 'factbook.json mirror, frozen 2026-01-22',
+    // The mirror's last data commit. Fields the Factbook publishes without a
+    // year of their own — land area, highest peak, independence — rendered
+    // undated before this; now they carry the vintage they actually have.
+    year: 2026,
     license: 'Public domain',
   },
   polity: {

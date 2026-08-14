@@ -1,5 +1,6 @@
 import { decode } from 'he'
 import type { FactbookResponse } from '~~/types/response.type'
+import { FACTBOOK } from '~~/data/factbook.gen'
 
 /**
  * Factbook text contains HTML entities (e.g. C&ocirc;te d'Ivoire) which break
@@ -18,20 +19,33 @@ export const decodeHtmlEntitiesDeep = <T>(value: T): T => {
 }
 
 /**
- * Every country's Factbook payload, fetched in link-mapping order with the
- * entities pre-decoded. Failed fetches warn and skip — a generator run must
- * not die on one flaky country.
+ * Every country's Factbook payload, read from the frozen snapshot in
+ * link-mapping order.
+ *
+ * This used to fetch each country live, and swallowed failures with a warn so
+ * a run would not die on one flaky request. That was the wrong trade once the
+ * upstream mirror died: a generator run on a bad day produced SHORT output
+ * silently — regenerate flag-meanings while the repo is unreachable and you
+ * lose flag descriptions for whatever did not answer, with nothing failing.
+ * The `response.ok` check was missing too, so a 404 page reached
+ * `response.json()` rather than being caught as an error.
+ *
+ * Reading data/factbook.gen.ts removes both problems: there is no network, and
+ * a country missing from the snapshot is a hard error rather than a gap,
+ * because a truncated snapshot must never quietly shrink a generated file.
  */
-export async function* factbookResponses(
-  combinations: readonly { url: string; isoCode: string }[]
-): AsyncGenerator<{ isoCode: string; data: FactbookResponse }> {
-  for (const { url, isoCode } of combinations) {
-    try {
-      const response = await fetch(url)
-      yield { isoCode, data: decodeHtmlEntitiesDeep(await response.json()) }
-    } catch (error) {
-      console.warn(`Failed to fetch: ${isoCode} - ${url}`, error)
-    }
+export function* factbookResponses(
+  combinations: readonly { isoCode: string }[]
+): Generator<{ isoCode: string; data: FactbookResponse }> {
+  const missing = combinations.filter(({ isoCode }) => !FACTBOOK[isoCode]).map(x => x.isoCode)
+  if (missing.length) {
+    throw new Error(
+      `Factbook snapshot is missing ${missing.length} countries (${missing.slice(0, 8).join(', ')}` +
+        `${missing.length > 8 ? ', …' : ''}). Re-run \`bun run snapshot:factbook\`.`
+    )
+  }
+  for (const { isoCode } of combinations) {
+    yield { isoCode, data: FACTBOOK[isoCode]! }
   }
 }
 

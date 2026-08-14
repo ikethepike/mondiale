@@ -1,5 +1,5 @@
 // This is a generated file, don't touch it.
-// Generated at: 2026-08-02T20:19:29.861Z
+// Generated at: 2026-08-14T16:56:40.115Z
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Where a country's name comes from, from the CIA World Factbook's

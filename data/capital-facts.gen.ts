@@ -1,5 +1,5 @@
 // This is a generated file, don't touch it.
-// Generated at: 2026-08-02T17:26:16.490Z
+// Generated at: 2026-08-14T16:56:40.167Z
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Narrative capital facts from the CIA World Factbook's Capital node (public

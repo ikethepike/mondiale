@@ -1,5 +1,5 @@
 // This is a generated file, don't touch it.
-// Generated at: 2026-08-02T17:32:41.550Z
+// Generated at: 2026-08-14T16:56:40.217Z
 
 /** Official water-body figures from the CIA World Factbook (public domain),
  *  keyed by normalized name — join through waterFactsFor (lib/water-facts.ts),
