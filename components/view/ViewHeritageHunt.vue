@@ -9,7 +9,12 @@
       @done="begin()"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="photoSources" attribution-label="Photo">
+    <ChallengePrompt
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="photoSources"
+      attribution-label="Photo"
+    >
       <h1 class="map-caption">
         {{ headline }}
       </h1>
@@ -81,6 +86,7 @@ const {
   started,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   registerCleanup,

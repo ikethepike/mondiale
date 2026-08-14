@@ -164,7 +164,13 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     // hidden answer, so the name is stripped before the wire. A CORRECT buzz
     // announces nothing: naming it would hand the answer to everyone still
     // racing the clock.
-    announce({ kind: 'locked', hint: options.lockoutHint(guessName), isoCode, label: guessName })
+    announce({
+      kind: 'locked',
+      hint: options.lockoutHint(guessName),
+      isoCode,
+      label: guessName,
+      tone: 'alert',
+    })
     lockOut()
     return 'wrong'
   }

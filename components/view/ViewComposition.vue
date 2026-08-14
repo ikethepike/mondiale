@@ -9,7 +9,7 @@
       @done="start"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">
         {{ countryName(challenge.country) }}'s residents born abroad — where are most from?
       </h1>
@@ -122,6 +122,7 @@ const {
   remainingFraction,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

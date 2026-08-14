@@ -11,6 +11,7 @@
 
     <ChallengePrompt
       :hint="hint"
+      :hint-tone="hintTone"
       :attributions="result ? undefined : photoSources"
       attribution-label="Photo"
     >
@@ -93,6 +94,7 @@ const {
   secondsLeft,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   registerCleanup,

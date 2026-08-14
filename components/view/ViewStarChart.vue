@@ -12,7 +12,7 @@
     <!-- The stars ride the live camera; the night skin fades them mid-gesture -->
     <NightLights :lights="lights" />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <h1 class="map-caption night">
         {{ revealed ? 'The sky, named' : 'Which capitals are these?' }}
       </h1>
@@ -102,6 +102,7 @@ const {
   elapsedFraction,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

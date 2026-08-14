@@ -87,6 +87,7 @@ export const useCollectSetRound = (
             isoCode: country.isoCode,
             ...(options.wrongLabel ? { label: options.wrongLabel(country) } : {}),
             hint: options.wrongHint(country),
+            tone: 'alert' as const,
           }),
     })
 

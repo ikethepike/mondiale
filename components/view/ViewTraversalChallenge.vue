@@ -17,7 +17,12 @@
       @done="onInterstitialDone"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
+    <ChallengePrompt
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="promptSources"
+      attribution-label="Sources"
+    >
       <h1 class="map-caption">
         Link {{ countryName(challenge.start) }} to {{ countryName(challenge.target) }}
       </h1>
@@ -85,6 +90,7 @@ const {
   submitted,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,
@@ -234,7 +240,7 @@ const submitGuess = (country: Country) => {
 
   if (guesses.value.length >= active.maximumClicks) {
     gameStore.map.status = 'incorrect'
-    announce({ hint: 'Out of guesses!' })
+    announce({ hint: 'Out of guesses!', tone: 'alert' })
     // Submit at once — the server's flip (the kind's reveal hold in
     // ROUND_BEATS) gives the verdict its beat before the scorecard.
     submitRound()

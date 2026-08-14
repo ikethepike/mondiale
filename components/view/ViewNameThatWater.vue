@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <template v-if="!resolved">
         <h1 class="map-caption">{{ promptTitle }}</h1>
         <span class="map-caption sub">
@@ -109,6 +109,7 @@ const {
   started,
   elapsedFraction,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,
@@ -265,7 +266,11 @@ const pick = (option: SuggestOption) => {
 
   if (attempts.value >= active.maximumGuesses) return resolve(false)
   // No label: the guessed feature narrows the single shared target.
-  announce({ kind: 'wrong', hint: `Not the ${option.name} — ${attemptsLeft.value} left` })
+  announce({
+    kind: 'wrong',
+    hint: `Not the ${option.name} — ${attemptsLeft.value} left`,
+    tone: 'alert',
+  })
 }
 </script>
 <style lang="scss" scoped>

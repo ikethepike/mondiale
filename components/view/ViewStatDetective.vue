@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <template v-if="!resolved">
         <h1 class="map-caption">Which country is this?</h1>
         <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
@@ -114,6 +114,7 @@ const {
   submitted,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,
@@ -264,6 +265,7 @@ const onGuess = (country: Country) => {
   announce({
     kind: 'locked',
     hint: `Not ${countryName(country)} — locked out for ${LOCKOUT_SECONDS} seconds`,
+    tone: 'alert',
   })
   lockOut()
 }

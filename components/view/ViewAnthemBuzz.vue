@@ -11,6 +11,7 @@
 
     <ChallengePrompt
       :hint="hint"
+      :hint-tone="hintTone"
       :attributions="promptSources"
       attribution-label="Sources"
       :attribution-credit="resolved ? anthemCredit : undefined"
@@ -108,6 +109,7 @@ const {
   secondsLeft,
   elapsedFraction,
   hint,
+  hintTone,
   announce,
   entries,
   gameStore,

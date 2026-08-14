@@ -25,7 +25,12 @@
          journey's age, the numbers make the sequence unambiguous. -->
     <MapYearLabels v-if="!showInterstitial" :entries="sequenceEntries" :min-gap-px="26" />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
+    <ChallengePrompt
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="promptSources"
+      attribution-label="Sources"
+    >
       <h1 class="map-caption">
         {{ headline }}
       </h1>
@@ -154,6 +159,7 @@ const {
   showInterstitial,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   gameStore,
   update,

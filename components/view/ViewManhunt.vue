@@ -87,7 +87,7 @@
         </span>
       </Transition>
       <Transition name="caption">
-        <span v-if="hint" class="map-caption hint">{{ hint }}</span>
+        <span v-if="hint" class="map-caption hint" :class="hintTone">{{ hint }}</span>
       </Transition>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
@@ -257,6 +257,7 @@ const {
   showInterstitial,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   registerCleanup,
@@ -762,9 +763,15 @@ watch(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+// The dispatch styling stays; the colour is the tone's business. Manhunt's one
+// hint is an illegal move REFUSED before it spends anything, so it reads
+// neutral — the coral it used to wear said the player had erred.
 header .hint {
   padding: 0.5rem 1.6rem;
   font-weight: bold;
+}
+
+header .hint.alert {
   color: var(--hior-ange);
   border-color: var(--hior-ange);
 }

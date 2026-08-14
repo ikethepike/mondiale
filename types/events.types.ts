@@ -10,6 +10,20 @@ import type { ISOCountryCode } from './geography.types'
  *  hit nor a miss and reads as neither. */
 export type GuessKind = 'wrong' | 'correct' | 'probe' | 'locked' | 'presence' | 'taunt' | 'taken'
 
+/**
+ * How a floating hint READS, which is a different question from what it says.
+ *
+ * `alert` is the coral of a genuine miss: a guess that was wrong and cost
+ * something. `neutral` is everything else, and it is most of them — a name the
+ * typeahead resolved to nothing, a duplicate, a country outside the round's
+ * scope, a line narrating another seat. Those are not failures, and colouring
+ * them like one tells the player they erred when they did not.
+ *
+ * Deliberately NOT derived from `GuessKind`: a neutral bounce is announced with
+ * no kind at all, so the two can never be folded together.
+ */
+export type HintTone = 'alert' | 'neutral'
+
 /** The only cheers that exist — the server whitelists against this set, and
  *  clients render by indexing into it rather than echoing payload strings. */
 export const CHEER_EMOJIS = ['👏', '🔥', '😅', '⏳', '🫶'] as const

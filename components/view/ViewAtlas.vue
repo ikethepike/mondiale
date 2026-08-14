@@ -25,7 +25,12 @@
          journey's age, the numbers make the sequence unambiguous. -->
     <MapYearLabels v-if="!showInterstitial" :entries="sequenceEntries" :min-gap-px="26" />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
+    <ChallengePrompt
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="promptSources"
+      attribution-label="Sources"
+    >
       <h1 class="map-caption">
         {{ headline }}
       </h1>
@@ -196,6 +201,7 @@ const {
   showInterstitial,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   gameStore,
   update,
@@ -416,6 +422,8 @@ const submitGuess = (country: Country) => {
   // The courtesy check — the server re-validates through the same function.
   if (!isAtlasLink(head.value, country.isoCode, rule.value)) {
     return announce({
+      // A broken link is a real miss — it spends the turn and can draw a strike.
+      tone: 'alert',
       hint: rule.value.overlaps
         ? `${countryName(country)} doesn't chain from ${countryName(getCountry(head.value))}`
         : `${countryName(country)} doesn't start with ${nextLetter.value.toUpperCase()}`,

@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <h1 class="map-caption">Name {{ countryName(challenge.country) }}'s neighbours</h1>
       <span class="map-caption sub">
         {{ found.length }} of {{ challenge.neighbours.length }} found
@@ -67,6 +67,7 @@ const {
   secondsLeft,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

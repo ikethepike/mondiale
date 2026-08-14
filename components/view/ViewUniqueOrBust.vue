@@ -9,7 +9,7 @@
       @done="beginRound"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <template v-if="!finished">
         <!-- The letter stays sealed through the briefing: it drops for the
              whole table at once, when the clock starts. -->
@@ -173,6 +173,7 @@ const {
   showInterstitial,
   started,
   hint,
+  hintTone,
   announce,
   entries,
   gameStore,
@@ -319,7 +320,7 @@ const pick = (option: SuggestOption) => {
   // vanish with no feedback at all.
   const pool = optionsByCategory.value[category] ?? []
   if (!pool.some(entry => entry.id === option.id)) {
-    announce({ hint: `That answer isn't on the ${categoryLabel.value} list` })
+    announce({ hint: `That answer isn't on the ${categoryLabel.value} list`, tone: 'alert' })
     return
   }
 

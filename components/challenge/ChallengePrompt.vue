@@ -13,7 +13,7 @@
         />
       </span>
       <Transition name="caption">
-        <span v-if="hint" class="map-caption hint">{{ hint }}</span>
+        <span v-if="hint" class="map-caption hint" :class="hintTone">{{ hint }}</span>
       </Transition>
     </div>
   </header>
@@ -21,14 +21,20 @@
 <script lang="ts" setup>
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import type { Attribution } from '~~/lib/attribution'
+import type { HintTone } from '~~/types/events.types'
 
 /**
  * The round's header: a centred prompt column (title, subs, whatever the mode
  * stacks) with the shared miss-hint channel floating beneath it. Every
  * challenge view renders its header through this — 23 views used to carry the
  * same 30 lines of header CSS each. Pass `hint` for the standard floating
- * miss hint; modes with a bespoke hint treatment (Manhunt's dispatch card)
+ * hint; modes with a bespoke hint treatment (Manhunt's dispatch card)
  * leave it unset and put their own in the slot.
+ *
+ * `hintTone` colours it. Neutral by default because most hints are not
+ * failures — an unresolved name, a duplicate, a country outside the round's
+ * scope — and only a genuine miss earns the alert coral. Views hand over the
+ * `hintTone` ref from `useGroupChallenge` beside the `hint` it belongs to.
  *
  * `attributions` hangs the round's data provenance off the header as the
  * quiet corner ⓘ (SourceInfo). Views resolve through lib/attribution.ts and
@@ -41,6 +47,8 @@ import type { Attribution } from '~~/lib/attribution'
 withDefaults(
   defineProps<{
     hint?: string
+    /** How the hint reads — see the note above. */
+    hintTone?: HintTone
     /** Resolved credits for whatever data the round quotes, primary first. */
     attributions?: Attribution[]
     /** Panel heading — defaults to SourceInfo's own "Source". */
@@ -50,6 +58,7 @@ withDefaults(
   }>(),
   {
     hint: undefined,
+    hintTone: 'neutral',
     attributions: undefined,
     attributionLabel: undefined,
     attributionCredit: undefined,
@@ -110,6 +119,10 @@ header {
   position: absolute;
   margin: 0.4rem auto 0;
   padding: 0.4rem 1.4rem;
+  // Neutral inherits .map-caption's ink; only a real miss burns.
+}
+
+.hint.alert {
   color: var(--hior-ange);
 }
 

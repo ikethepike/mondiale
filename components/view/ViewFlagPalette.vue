@@ -17,7 +17,7 @@
       :flag="sketchMarkup"
       :draw-seconds="sketchSeconds"
     />
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <h1 class="map-caption">Whose flag has these colours?</h1>
       <span v-if="regionRevealed && challenge.region" class="map-caption region-hint">
         Region: {{ challenge.region }}
@@ -78,6 +78,7 @@ const {
   remainingFraction,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,
@@ -145,6 +146,7 @@ const onGuess = (country: Country) => {
       kind: 'wrong',
       isoCode: country.isoCode,
       hint: `${countryName(country)} — not it`,
+      tone: 'alert',
     })
   }
 }

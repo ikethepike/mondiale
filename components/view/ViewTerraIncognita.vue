@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">{{ revealed ? 'What you never noticed' : "What's missing?" }}</h1>
       <span class="map-caption sub">
         <template v-if="revealed">
@@ -108,6 +108,7 @@ const {
   elapsedFraction,
   begin: beginRound,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

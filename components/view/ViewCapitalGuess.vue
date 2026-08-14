@@ -9,7 +9,7 @@
       @done="start"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">Which country's capital is this?</h1>
     </ChallengePrompt>
 
@@ -97,6 +97,7 @@ const {
   remainingFraction,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

@@ -2,6 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { capitalGuessScore } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
+import type { HintTone } from '~~/types/events.types'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 /** The challenge shape the attempt machine needs — capital-guess, flashpoint. */
@@ -42,7 +43,12 @@ export const useAttemptOptions = ({
   submitted: Ref<boolean>
   started: Ref<boolean>
   remainingFraction: ComputedRef<number>
-  announce: (entry: { kind: 'wrong'; isoCode: ISOCountryCode; hint: string }) => void
+  announce: (entry: {
+    kind: 'wrong'
+    isoCode: ISOCountryCode
+    hint: string
+    tone?: HintTone
+  }) => void
   /** Bank the round; 0 means failed out. */
   submitRound: (score: number) => void
 }) => {
@@ -72,7 +78,7 @@ export const useAttemptOptions = ({
       if (spent.value.includes(country.isoCode)) return
       spent.value = [...spent.value, country.isoCode]
       if (attemptsLeft.value <= 0) {
-        announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses' })
+        announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
         return submitRound(0)
       }
     }
@@ -84,6 +90,7 @@ export const useAttemptOptions = ({
       hint: Number.isFinite(left)
         ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
         : `${countryName(country)} — not it`,
+      tone: 'alert',
     })
   }
 

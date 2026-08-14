@@ -9,7 +9,7 @@
       @done="start"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <h1 class="map-caption">{{ motherTongueQuestion(challenge) }}</h1>
       <span class="map-caption sub">
         {{ found.length }} of {{ challenge.countries.length }} found
@@ -72,6 +72,7 @@ const {
   secondsLeft,
   begin,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

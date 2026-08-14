@@ -9,7 +9,12 @@
       @done="onInterstitialDone"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
+    <ChallengePrompt
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="promptSources"
+      attribution-label="Sources"
+    >
       <template v-if="!resolved">
         <h1 class="map-caption">Where is this spoken?</h1>
         <span class="map-caption sub">Any country with it as an official language counts</span>
@@ -110,6 +115,7 @@ const {
   secondsLeft,
   elapsedFraction,
   hint,
+  hintTone,
   announce,
   entries,
   gameStore,

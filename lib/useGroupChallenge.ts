@@ -7,7 +7,7 @@ import { clockRidesRoundDeadline } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { ClientEventData, GuessKind } from '~~/types/events.types'
+import type { ClientEventData, GuessKind, HintTone } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
@@ -171,6 +171,16 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * it, so this is a courtesy rather than the guard.
    */
   const hint = ref('')
+  /**
+   * How the hint READS, which is not what it says.
+   *
+   * Most hints are not failures: a name the typeahead couldn't resolve, a
+   * duplicate, a country outside the round's scope. Alert red is for a genuine
+   * miss — a guess that was wrong and cost something. It cannot be derived from
+   * `kind`, because every neutral bounce passes no kind at all, so callers that
+   * mean "you got this wrong" say so.
+   */
+  const hintTone = ref<HintTone>('neutral')
   let hintTimer: ReturnType<typeof setTimeout> | undefined
   /** The player's own chips. The room broadcast echoes back but is filtered as
    *  a self-echo, so they never arrive through the store. */
@@ -178,12 +188,16 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
 
   const announce = ({
     hint: text,
+    tone,
     kind,
     isoCode,
     label,
     placed,
   }: {
     hint?: string
+    /** How the hint reads. Defaults to `neutral`: a hint is only a miss when
+     *  its caller says so, because most of them aren't. */
+    tone?: HintTone
     kind?: GuessKind
     isoCode?: ISOCountryCode
     label?: string
@@ -195,6 +209,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     if (gameStore.watching) return
     if (text !== undefined) {
       hint.value = text
+      hintTone.value = tone ?? 'neutral'
       if (hintTimer) clearTimeout(hintTimer)
       hintTimer = setTimeout(() => (hint.value = ''), DWELL.hint)
     }
@@ -349,6 +364,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     elapsedFraction,
     begin,
     hint,
+    hintTone,
     announce,
     entries,
     submitOnce,

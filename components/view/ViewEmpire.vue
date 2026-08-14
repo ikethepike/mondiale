@@ -22,7 +22,12 @@
         @progress="onProgress"
       />
 
-      <ChallengePrompt :hint="hint" :attributions="promptSources" attribution-label="Sources">
+      <ChallengePrompt
+        :hint="hint"
+        :hint-tone="hintTone"
+        :attributions="promptSources"
+        attribution-label="Sources"
+      >
         <span ref="yearEl" class="map-caption year">&nbsp;</span>
         <h1 class="map-caption">{{ headline }}</h1>
         <Transition name="verdict">
@@ -189,6 +194,7 @@ const {
   begin,
   stopCountdown,
   hint,
+  hintTone,
   announce,
   entries,
   gameStore,
@@ -324,7 +330,7 @@ const { lockedOut, lockOut: beginLockout } = useLockoutBeat({
   onEnd: () => nameInput.value?.focus(),
 })
 const lockOut = (message: string) => {
-  announce({ kind: 'locked', hint: message })
+  announce({ kind: 'locked', hint: message, tone: 'alert' })
   beginLockout()
 }
 

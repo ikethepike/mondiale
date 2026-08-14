@@ -18,7 +18,7 @@
         :sketch="sketchedNeighbours"
       />
 
-      <ChallengePrompt :hint="hint" :attributions="dotSources">
+      <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="dotSources">
         <h1 v-if="!submitted" class="map-caption">Where did this happen?</h1>
         <!-- `status` is this card's own prop, so the verdict still stamps a miss
              even though gameStore.map.status stays undefined on one: washing the
@@ -152,6 +152,7 @@ const {
   begin,
   stopCountdown,
   hint,
+  hintTone,
   announce,
   entries,
   submitOnce,

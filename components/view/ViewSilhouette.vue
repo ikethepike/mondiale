@@ -9,7 +9,7 @@
       @done="begin"
     />
 
-    <ChallengePrompt :hint="hint" :attributions="promptSources">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :attributions="promptSources">
       <template v-if="!resolved">
         <h1 class="map-caption">Whose outline is this?</h1>
         <span class="map-caption sub">Earlier answers score higher</span>
@@ -80,6 +80,7 @@ const {
   secondsLeft,
   remainingFraction,
   hint,
+  hintTone,
   announce,
   entries,
   registerCleanup,

@@ -9,7 +9,7 @@
       @done="beginRound"
     />
 
-    <ChallengePrompt :hint="hint">
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <template v-if="!finished">
         <!-- The set stays sealed through the briefing: it drops for the whole
              table at once, when the clock starts. -->
@@ -180,6 +180,7 @@ const {
   showInterstitial,
   started,
   hint,
+  hintTone,
   announce,
   entries,
   gameStore,
@@ -332,6 +333,7 @@ const onGuess = (country: Country) => {
       kind: 'wrong',
       isoCode: country.isoCode,
       hint: `${countryName(country)} isn't on this list`,
+      tone: 'alert',
     })
   }
 
