@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { ATLAS_TARGET_LINKS, hasAtlasChain } from '~~/lib/atlas-chain'
@@ -19,11 +20,29 @@ import {
 } from '~~/types/challenges/individual-challenge.type'
 import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
 
+/**
+ * These gates assert STATISTICAL claims — that every question kind is
+ * reachable, that a coin is fair, that no lineup is unanswerable — and the only
+ * way to make such a claim is to deal many subjects and count. Seven tests here
+ * loop between 10 and 400 deals.
+ *
+ * Each deal costs ~9 ms locally and CI runs several times slower, so the larger
+ * loops land well past vitest's 5 s default. Raising the file's budget is the
+ * honest fix: the sample size IS the assertion, and cutting it to fit a timeout
+ * would weaken exactly what the test exists to prove. The Government pool grew
+ * from 19 countries to 92 with the polity swap, which is what pushed these over
+ * the line.
+ *
+ * Scoped to this file rather than set globally: a genuinely hung test anywhere
+ * else should still fail in five seconds, not sixty.
+ */
+const TIMEOUT = 120_000
+
 afterEach(() => {
   delete process.env.FORCE_INDIVIDUAL_VARIANT
 })
 
-describe('getIndividualChallenge (gate accessors)', () => {
+describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => {
   it('deals a valid challenge for every gate accessor', async () => {
     for (const accessorId of individualChallengeAccessors) {
       for (let attempt = 0; attempt < 15; attempt++) {
@@ -73,7 +92,7 @@ describe('getIndividualChallenge (gate accessors)', () => {
   })
 })
 
-describe('dealLeaderPortrait (via forced variant)', () => {
+describe('dealLeaderPortrait (via forced variant)', { timeout: TIMEOUT }, () => {
   it('never offers two countries the pictured leader leads', async () => {
     // Shared leaders are real: Charles III reigns over 14 realms and Macron
     // co-rules Andorra — a portrait's decoys must all be led by someone else.
@@ -87,7 +106,7 @@ describe('dealLeaderPortrait (via forced variant)', () => {
   })
 })
 
-describe('isCorrectIndividualAnswer', () => {
+describe('isCorrectIndividualAnswer', { timeout: TIMEOUT }, () => {
   it('accepts any country spending the shared currency on the find gate', async () => {
     const gate = { id: 'currency', country: 'FI', variant: 'find' } as const
     expect(COUNTRIES.FI.currency).toBe('EUR')
@@ -118,7 +137,7 @@ describe('isCorrectIndividualAnswer', () => {
   })
 })
 
-describe('dealRulers (via forced variant)', () => {
+describe('dealRulers (via forced variant)', { timeout: TIMEOUT }, () => {
   // The gate whose deal had no test at all: `FORCE_INDIVIDUAL_VARIANT=rulers`
   // fell through the switch and quietly dealt `find`, so nothing exercised the
   // proximity clustering, the abbreviation guard or the impostor pick.
@@ -164,7 +183,7 @@ describe('dealRulers (via forced variant)', () => {
   })
 })
 
-describe('dealLogoPolitics (via forced variant)', () => {
+describe('dealLogoPolitics (via forced variant)', { timeout: TIMEOUT }, () => {
   it('deals every question kind answerably', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
     const asked = new Set<string>()
@@ -216,11 +235,8 @@ describe('dealLogoPolitics (via forced variant)', () => {
   // countries have an askable governing party, so "yes" was impossible in most
   // of them and the realised split was 15/85 — always answering "No" scored 85%.
   // 400 deals, deliberately: the claim is statistical, and a smaller sample
-  // cannot separate an even coin from the 15/85 split this test exists to
-  // catch. Each deal costs ~9 ms locally and CI runs ~4x slower, so the whole
-  // test lands near 13 s there — past vitest's 5 s default. The timeout is
-  // raised rather than the sample cut, because the sample IS the assertion.
-  it('asks "does it govern?" both ways about equally often', { timeout: 60_000 }, async () => {
+  // cannot separate an even coin from the 15/85 split this test exists to catch.
+  it('asks "does it govern?" both ways about equally often', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'logo-politics'
     let yes = 0
     let no = 0
@@ -242,7 +258,7 @@ describe('dealLogoPolitics (via forced variant)', () => {
   })
 })
 
-describe('dealOddOneOut (via forced variant)', () => {
+describe('dealOddOneOut (via forced variant)', { timeout: TIMEOUT }, () => {
   it('names a club the way a sentence would, not the way the enum does', async () => {
     // The gate used to read the club's formal name straight off the country's
     // membership entry, with one hardcoded exception for NATO — so it asked
@@ -308,7 +324,7 @@ describe('dealOddOneOut (via forced variant)', () => {
   })
 })
 
-describe('atlas gate dealing', () => {
+describe('atlas gate dealing', { timeout: TIMEOUT }, () => {
   it('deals a solvable chain for every difficulty', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'atlas'
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
@@ -326,7 +342,7 @@ describe('atlas gate dealing', () => {
   })
 })
 
-describe('scriptorium gate dealing', () => {
+describe('scriptorium gate dealing', { timeout: TIMEOUT }, () => {
   it('deals a typed set-answer gate whose verdict matches lib/scriptorium', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'scriptorium'
     for (let attempt = 0; attempt < 15; attempt++) {
@@ -348,7 +364,7 @@ describe('scriptorium gate dealing', () => {
   })
 })
 
-describe('chronicle gate dealing', () => {
+describe('chronicle gate dealing', { timeout: TIMEOUT }, () => {
   it('deals one country, spaced and gradeable through lib/chronicle', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'chronicle'
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
@@ -364,7 +380,7 @@ describe('chronicle gate dealing', () => {
   })
 })
 
-describe('far-flung gate dealing', () => {
+describe('far-flung gate dealing', { timeout: TIMEOUT }, () => {
   it('stages a fragment whose owner is the answer', async () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'far-flung'
     for (const difficulty of ['normal', 'hard'] as const) {
@@ -404,7 +420,7 @@ describe('far-flung gate dealing', () => {
  * player "Sorry, you pressed: Switzerland" about a country they never touched.
  * Isaac hit this on Rulers and it spanned every gate, since the copy is shared.
  */
-describe('the timeout verdict', () => {
+describe('the timeout verdict', { timeout: TIMEOUT }, () => {
   const shell = readFileSync(
     new URL('../components/view/ViewIndividualChallenge.vue', import.meta.url),
     'utf8'
