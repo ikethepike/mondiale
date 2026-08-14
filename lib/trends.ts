@@ -233,6 +233,17 @@ export const TREND_METRICS: Record<
     mixed: false,
     race: true,
   },
+  fossilElectricity: {
+    label: 'electricity from fossil fuels',
+    unit: '%',
+    topic: 'environment',
+    glyph: 'energy.fossilFuels',
+    // The whole 0-100 range is in play here — Norway near zero, Gulf states
+    // near 100 — and falling is the good direction.
+    scale: { min: 0, max: 100, invert: true },
+    mixed: false,
+    race: true,
+  },
   alcoholConsumption: {
     label: 'alcohol consumption per person',
     unit: 'L',

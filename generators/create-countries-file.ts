@@ -287,10 +287,12 @@ const normalizeCountry = ({
         data.Energy?.['Electricity access']?.['electrification - total population'],
         '%'
       ),
-      fossilFuels: getTextNode<'%'>(
-        data.Energy?.['Electricity generation sources']?.['fossil fuels'],
-        '%'
-      ),
+      // Ember/Energy Institute via OWID: 185 countries at 2025 against the
+      // Factbook's 179 at 2023, and the two track closely — Sweden 1.2% here
+      // against 0.5%, Saudi Arabia 97.8% against 99.3%.
+      fossilFuels:
+        owidAmount(isoCode, 'fossilElectricity', '%') ??
+        getTextNode<'%'>(data.Energy?.['Electricity generation sources']?.['fossil fuels'], '%'),
       consumptionPerCapita: owidAmount(isoCode, 'energyUse', 'kWh'),
     },
     gender: {

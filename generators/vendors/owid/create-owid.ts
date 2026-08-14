@@ -156,6 +156,21 @@ const METRICS = {
     column: 'Share of population in poverty ($3 a day)',
     decimals: 1,
   },
+  /**
+   * Share of electricity generated from fossil fuels — what the stat already
+   * measured. 185 countries at 2025 against the Factbook's 179 at 2023, and
+   * the values track closely: Sweden 1.2% here against 0.5%, Saudi Arabia
+   * 97.8% against 99.3%, France 5.1% against 7.9%.
+   *
+   * Note the slug: `fossil-fuel-primary-energy` and `electricity-fossil-fuels`
+   * are different measures (all energy, and absolute TWh) that would silently
+   * rebase the stat.
+   */
+  fossilElectricity: {
+    slug: 'share-electricity-fossil-fuels',
+    column: 'Fossil fuels',
+    decimals: 1,
+  },
   // Lifestyle/health — these feed EXISTING Country accessors (fresher, dated
   // values with history) rather than new stats; countries generator prefers
   // them over the undated Factbook nodes.

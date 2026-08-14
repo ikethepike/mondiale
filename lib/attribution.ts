@@ -553,7 +553,7 @@ export const STAT_ORIGINS: Record<GroupChallengeAccessorId, DataOrigin> = {
   'infrastructure.internetAccess': factbook('Communications › Internet users'),
 
   'energy.electricityAccess': factbook('Energy › Electricity access'),
-  'energy.fossilFuels': factbook('Energy › Electricity generation sources › fossil fuels'),
+  'energy.fossilFuels': owid('share-electricity-fossil-fuels', 'Ember / Energy Institute'),
   'energy.consumptionPerCapita': owid('per-capita-energy-use', 'Energy Institute'),
 
   'gender.womenInParliament': worldBank('SG.GEN.PARL.ZS'),
@@ -695,6 +695,7 @@ export const TREND_ORIGINS: Record<TrendMetricId, DataOrigin> = {
   refugees: owid('refugee-population-by-country-or-territory-of-asylum', 'UNHCR'),
   literacy: owid('literacy-rate-adults', 'UNESCO'),
   povertyLine: owid('share-of-population-in-extreme-poverty', 'World Bank PIP'),
+  fossilElectricity: owid('share-electricity-fossil-fuels', 'Ember / Energy Institute'),
   homicideRate: owid('homicide-rate-unodc', 'UNODC'),
   co2PerCapita: owid('co-emissions-per-capita', 'Global Carbon Budget'),
   lifeExpectancy: owid('life-expectancy', 'UN WPP & the Human Mortality Database'),
