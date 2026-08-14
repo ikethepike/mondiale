@@ -187,17 +187,25 @@ const knockPawn = (playerId: string) => {
 }
 
 /**
- * The gate punch-in: a hard, short push onto the tile a pawn just slammed
- * into. `commanding` is what makes it a beat rather than a suggestion — a
- * routine frame is retired for good by the player's first drag, which quietly
- * deleted this moment for anyone who had ever touched the board. The ease is
- * an entrance curve, not a cross-fade: it attacks and settles.
+ * The gate punch-in: a hard, short push onto the pawn that just slammed into a
+ * challenge tile. `commanding` is what makes it a beat rather than a
+ * suggestion — a routine frame is retired for good by the player's first drag,
+ * which quietly deleted this moment for anyone who had ever touched the board.
+ * The ease is an entrance curve, not a cross-fade: it attacks and settles.
+ *
+ * Aims at the PAWN, not the tile centre it stands on: a pawn sits a slot radius
+ * off centre, and at this distance that offset both reads as bad framing and
+ * drifts — the walk tracker is aimed at the same live object and stands down
+ * only while a frame is in flight, so a tile-centre punch got dragged onto the
+ * pawn the moment its sweep completed. Sharing `pawns` with the tracker is what
+ * keeps the two agreeing by construction. The tile is the fallback for a pawn
+ * that has not been built.
  *
  * Both gate beats (the block on arrival, and a failed gate's verdict) push in
  * identically, so the shot lives here once.
  */
-const punchInOn = (tile: TileTransform) => {
-  boardCamera?.frameOn(tile.position, {
+const punchInOn = (playerId: string, tile: TileTransform) => {
+  boardCamera?.frameOn(pawns.get(playerId)?.position ?? tile.position, {
     tiles: ALERT_TILES,
     durationMs: GATE_PUNCH_MS,
     ease: EASE.enter,
@@ -219,7 +227,7 @@ const playChallengeHit = (playerId: string, tile: TileTransform) => {
   // whole flourish, so sequencing them would only push the ripple past it.
   triggerRipple(tile, 'alert')
   knockPawn(playerId)
-  if (playerId === cameraTargetId.value) punchInOn(tile)
+  if (playerId === cameraTargetId.value) punchInOn(playerId, tile)
 }
 
 // --- Path preview: rings over the tiles the local pawn is about to walk ----
@@ -938,7 +946,7 @@ const syncBlockedBeats = () => {
       if (!gateTile) return
       triggerRipple(gateTile, 'alert')
       knockPawn(beatPlayerId)
-      if (beatPlayerId === cameraTargetId.value) punchInOn(gateTile)
+      if (beatPlayerId === cameraTargetId.value) punchInOn(beatPlayerId, gateTile)
     }, 700)
   }
 }

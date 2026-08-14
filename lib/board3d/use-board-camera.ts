@@ -38,8 +38,14 @@ interface OrbitControlsLike {
 
 /** Framing distance in TILES — the rig turns it into world units via `spacing`. */
 export const FRAME_TILES = 6.5
-/** The tighter push-in a gate hit takes. */
-export const ALERT_TILES = 3.2
+/**
+ * The tighter push-in a gate hit takes. Tighter than a walk's shot, but not by
+ * as much as it looks: `frameOn`'s pitch floor spends over half the budget on
+ * height, and the scene's 42° FOV is narrower than three's default — so at 3.2
+ * this sat ~4 pawn-heights out and, because the punch HOLDS through the whole
+ * gate verdict, that crowding was the shot the player lived in, not a flourish.
+ */
+export const ALERT_TILES = 4.5
 /** Fallback when no spacing resolver is wired (the /test harness, unit rigs). */
 const DEFAULT_SPACING = 8
 
