@@ -69,9 +69,14 @@ export type FactbookResponse = {
     'Ethnic groups'?: TextNode & {
       note?: string
     }
+    /** Two shapes in the wild: 126 countries nest the prose under `Languages`,
+     *  68 put it straight on `text`. `note` carries the source's caveats
+     *  (which shares double-count, what a figure actually measured). */
     Languages?: {
+      text?: string
       Languages?: TextNode
       'major-language sample(s)'?: TextNode
+      note?: string
     }
     Religions?: TextNode // interesting
     'Age structure'?: {

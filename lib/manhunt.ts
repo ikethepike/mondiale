@@ -254,7 +254,10 @@ const clueCandidates = (
 
   // An eponymous language (Hungarian in Hungary) is a name leak, not a clue;
   // the same language stays dealable away from its eponym (Portuguese in Brazil).
-  for (const language of country.languages ?? []) {
+  // The clue SAYS official, so it reads the official list — and the candidates
+  // it narrows to must be filtered by the same field, or the subpoena would
+  // name a language the elimination can't reason about.
+  for (const language of country.officialLanguages ?? []) {
     if (mentionsCountry(language, despotAt)) continue
     push(
       {
@@ -263,7 +266,7 @@ const clueCandidates = (
         topic: 'department.communications',
         text: `Official languages there include ${language}`,
       },
-      candidates.filter(isoCode => getCountry(isoCode)?.languages?.includes(language))
+      candidates.filter(isoCode => getCountry(isoCode)?.officialLanguages?.includes(language))
     )
   }
 

@@ -5,6 +5,7 @@ import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { SWEEP_SETS, sweepUnclaimed } from '~~/lib/clean-sweep'
 import { countryName } from '~~/lib/country'
+import { motherTongueScope } from '~~/lib/mother-tongue'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
@@ -98,8 +99,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return `The atlas lost ${count} ${count === 1 ? 'country' : 'countries'}`
     }
     case 'mother-tongue':
+      // The scope only earns its words on a regional board; on a world board
+      // "in the world" is what the line already meant.
       return '_type' in challenge && challenge._type === 'mother-tongue-challenge'
-        ? `${challenge.language} — official in ${challenge.countries.length} countries`
+        ? `${challenge.language} — official in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
         : ''
     case 'ghost-state':
       return '_type' in challenge && challenge._type === 'ghost-state-challenge'

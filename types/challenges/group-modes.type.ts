@@ -1,6 +1,7 @@
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
 import type { TrendMetricId } from '~~/lib/trends'
+import type { GameVariant } from '../game.types'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -405,6 +406,11 @@ export interface MotherTongueChallenge {
   language: string
   /** The answers: playable countries with this as an official language. */
   countries: ISOCountryCode[]
+  /** The board the answer set was scoped to — absent on world boards, where
+   *  the set IS every speaker. A regional board asks a regional question, so
+   *  this drives both the scoped copy and the off-board veto. Never `'world'`:
+   *  that variant is the absence of a scope, and it carries no region label. */
+  scope?: Exclude<GameVariant, 'world'>
   durationSeconds: number
   maximumPoints: number
 }

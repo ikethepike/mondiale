@@ -37,6 +37,10 @@ export interface Country {
   region: Region
   currency?: CurrencyCode
   languages: string[]
+  /** The subset the country makes OFFICIAL, from the Factbook's own markers —
+   *  what a round may claim officiality about. Falls back to `languages` where
+   *  the source marks none, so it is never empty and never a guess. */
+  officialLanguages: string[]
   coordinates: string
   name: {
     local: string

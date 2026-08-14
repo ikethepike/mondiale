@@ -4,13 +4,13 @@
       v-if="showInterstitial"
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Mother Tongue`"
-      :title="`Who speaks ${challenge.language}?`"
-      :stakes="`${challenge.countries.length} countries have ${challenge.language} as an official language — name as many as you can in ${challenge.durationSeconds} seconds. Wrong guesses cost points.`"
+      :title="motherTongueQuestion(challenge)"
+      :stakes="motherTongueStakes(challenge)"
       @done="start"
     />
 
     <ChallengePrompt :hint="hint" :attributions="promptSources">
-      <h1 class="map-caption">Who speaks {{ challenge.language }}?</h1>
+      <h1 class="map-caption">{{ motherTongueQuestion(challenge) }}</h1>
       <span class="map-caption sub">
         {{ found.length }} of {{ challenge.countries.length }} found
       </span>
@@ -50,6 +50,12 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import {
+  motherTongueQuestion,
+  motherTongueScope,
+  motherTongueStakes,
+  speaksButOffBoard,
+} from '~~/lib/mother-tongue'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -84,6 +90,16 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country =>
       `${countryName(country)} doesn't speak ${challenge.value?.language ?? 'it'}`,
+    // A speaker standing off the board is RIGHT about the world and wrong only
+    // about this round, so it bounces free instead of costing a point — and it
+    // says so, because being told "Burundi doesn't speak French" is a lie.
+    // Terra Incognita refuses this hook for the opposite reason: a free bounce
+    // there would leak a country that hasn't vanished yet.
+    reject: country => {
+      const round = challenge.value
+      if (!round || !speaksButOffBoard(round, country.isoCode)) return undefined
+      return `${countryName(country)} does speak ${round.language} — but this round is ${motherTongueScope(round)}`
+    },
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )

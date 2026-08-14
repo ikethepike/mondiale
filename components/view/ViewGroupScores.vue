@@ -592,7 +592,13 @@ const tallyLine = computed(() => {
  *  these are names the player gave that weren't in the set. */
 /** What the two answer rows are called, plus the shared stray tail. */
 const sectionLabels = computed(() =>
-  scorecardLabels({ kind: kind.value, bridged: !!traversalReveal.value?.route })
+  scorecardLabels({
+    kind: kind.value,
+    // The round itself decides what "everywhere" meant — a Europe board's
+    // answer set was only ever that board.
+    challenge: roundChallenge.value,
+    bridged: !!traversalReveal.value?.route,
+  })
 )
 
 const card = ref<HTMLElement>()

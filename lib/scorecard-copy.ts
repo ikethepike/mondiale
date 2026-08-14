@@ -6,6 +6,8 @@ import type {
 import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
+import { isChallengeOfType } from '~~/lib/rounds'
+import { REGION_LABELS } from '~~/lib/variant'
 
 /**
  * The scorecard's per-kind prose, beside `roundChallengeHeadline` — the other
@@ -166,8 +168,19 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
       case 'name-that-water':
         return { submitted: 'Your Answer', correct: 'Its Shores' }
-      case 'mother-tongue':
-        return { submitted: 'Your Answers', correct: "Everywhere It's Official" }
+      case 'mother-tongue': {
+        // On a regional board "everywhere" was only ever that board.
+        const scope =
+          context.challenge && isChallengeOfType(context.challenge, 'mother-tongue-challenge')
+            ? context.challenge.scope
+            : undefined
+        return {
+          submitted: 'Your Answers',
+          correct: scope
+            ? `Where It's Official in ${REGION_LABELS[scope]}`
+            : "Everywhere It's Official",
+        }
+      }
       case 'clean-sweep':
         return { submitted: 'Your Claims', correct: 'The Whole Board' }
       case 'timeline':

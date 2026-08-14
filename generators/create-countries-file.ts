@@ -50,6 +50,7 @@ import {
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
+import { officialLanguages } from './lib/languages'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -171,6 +172,7 @@ const normalizeCountry = ({
     region: getRegion({ data, isoCode }),
     membership: getMembership({ briMembership, data, names, isoCode }),
     languages: getLanguages({ data, isoCode }),
+    officialLanguages: getOfficialLanguages({ data, isoCode }),
     currency: getCurrency({ isoCode }),
     identity: (() => {
       const colors = getNationalColors(flag.toString())
@@ -1066,6 +1068,33 @@ const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }):
   }
 
   return []
+}
+
+/**
+ * The languages a country makes OFFICIAL, from the Factbook's own markers.
+ *
+ * `getLanguages` above reads `countries-list`, which is ISO 639-1 codes with
+ * no officiality and no room for a language without a two-letter code —
+ * Romansh, Tok Pisin and Bambara simply cannot be spelled there. The Factbook
+ * text we already hold says which are official, so rounds that CLAIM
+ * officiality ("Who speaks French?", the manhunt's subpoena) can stop guessing.
+ *
+ * Falls back to the spoken list for the 21 countries whose entry carries no
+ * marker at all (Japan, the UK, India…): the source not saying is not the same
+ * as a country having none, and an empty list would quietly drop them from
+ * every round that reads this.
+ */
+const getOfficialLanguages = ({
+  data,
+  isoCode,
+}: {
+  data: FactbookResponse
+  isoCode: string
+}): string[] => {
+  const languagesNode = data['People and Society']?.Languages
+  const text = languagesNode?.Languages?.text ?? languagesNode?.text
+  const official = officialLanguages(text)
+  return official.length ? official : getLanguages({ data, isoCode })
 }
 
 /**

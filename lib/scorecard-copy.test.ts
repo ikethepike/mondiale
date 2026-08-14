@@ -6,7 +6,10 @@ import {
   waterFactLine,
 } from './scorecard-copy'
 import { CHALLENGE_GROUP_BY_KIND } from '~~/types/challenges/challenge-groups.type'
-import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+import type {
+  RoundChallenge,
+  RoundChallengeKind,
+} from '~~/types/challenges/traversal-challenge.type'
 
 // The keys are compile-guarded as exhaustive over RoundChallengeKind
 // (`satisfies Record<RoundChallengeKind, …>`), so a new kind lands here for
@@ -104,6 +107,28 @@ describe('scorecardLabels', () => {
   it('calls a traversal row a route only once it actually bridged', () => {
     expect(scorecardLabels({ kind: 'traversal', bridged: true }).submitted).toBe('Your Route')
     expect(scorecardLabels({ kind: 'traversal', bridged: false }).submitted).toBe('Your Guesses')
+  })
+
+  it('names the board a mother-tongue round was scoped to', () => {
+    const challenge = {
+      _type: 'mother-tongue-challenge',
+      language: 'French',
+      countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
+      scope: 'europe',
+      durationSeconds: 45,
+      maximumPoints: 3,
+    } as unknown as RoundChallenge
+    expect(scorecardLabels({ kind: 'mother-tongue', challenge }).correct).toBe(
+      "Where It's Official in Europe"
+    )
+    // A world board keeps the unscoped wording…
+    const { scope: _scope, ...world } = challenge as unknown as Record<string, unknown>
+    expect(
+      scorecardLabels({ kind: 'mother-tongue', challenge: world as unknown as RoundChallenge })
+        .correct
+    ).toBe("Everywhere It's Official")
+    // …and so does a caller that hands over no challenge at all.
+    expect(scorecardLabels({ kind: 'mother-tongue' }).correct).toBe("Everywhere It's Official")
   })
 })
 
