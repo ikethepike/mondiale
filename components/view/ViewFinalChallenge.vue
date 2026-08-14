@@ -171,62 +171,10 @@
       "
       class="result"
     >
-      <SunsetReveal
-        v-if="currentFinalChallenge?._type === 'sunset-blitz-challenge' && sunsetResult"
-        :challenge="currentFinalChallenge"
-        :named="sunsetResult.named"
-        :in-play="sunsetResult.inPlay"
-        :quota="sunsetResult.quota"
-      />
-      <NocturneReveal
-        v-if="currentFinalChallenge?._type === 'city-nocturne-challenge' && nocturneResult"
-        :challenge="currentFinalChallenge"
-        :named-cities="nocturneResult"
-      />
-      <MadeReveal
-        v-if="currentFinalChallenge?._type === 'made-challenge' && madeRevealReady"
-        :challenge="currentFinalChallenge"
-        :picked="lastGuess"
-      />
-      <!-- The stat questions' scorecard: where the answer sits among the rest
-           of the board, and where the player's pick landed -->
-      <MinMaxReveal
-        v-if="
-          currentFinalChallenge?._type === 'min-challenge' ||
-          currentFinalChallenge?._type === 'max-challenge'
-        "
-        :challenge="currentFinalChallenge"
-        :pool="challengePool"
-        :variant="game?.variant"
-        :picked="lastGuess"
-      />
-      <LanguageReveal
-        v-if="currentFinalChallenge?._type === 'language-challenge'"
-        :challenge="currentFinalChallenge"
-        :picked="lastGuess"
-      />
-      <OddOneOutReveal
-        v-if="
-          currentFinalChallenge?._type === 'membership-challenge' ||
-          currentFinalChallenge?._type === 'treaty-challenge'
-        "
-        :challenge="currentFinalChallenge"
-        :picked="lastGuess"
-      />
-      <LeaderReveal
-        v-if="currentFinalChallenge?._type === 'leadership-challenge'"
-        :country="currentFinalChallenge.country"
-      />
-      <EndonymReveal
-        v-if="currentFinalChallenge?._type === 'endonym-challenge'"
-        :challenge="currentFinalChallenge"
-        :picks="endonymPicks"
-      />
-      <DiasporaReveal
-        v-if="currentFinalChallenge?._type === 'diaspora-challenge'"
-        :challenge="currentFinalChallenge"
-        :picks="diasporaPicks"
-      />
+      <!-- Which card this item gets, and with which props, is declared in
+           components/view/final/reveals.ts — a card whose subject has not
+           resolved falls through to the lesson line below. -->
+      <component :is="finalReveal.component" v-if="finalReveal" v-bind="finalReveal.props" />
       <template v-if="lesson">{{ lesson }}</template>
       <!-- Stakes, not a fact: it rides the card's body so it keeps the cream
            scrim's contrast. -->
@@ -261,19 +209,11 @@ import FinalBoundary from '~/components/challenge/FinalBoundary.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
-import DiasporaReveal from '~/components/challenge/DiasporaReveal.vue'
-import EndonymReveal from '~/components/challenge/EndonymReveal.vue'
+import { finalPromptSources, finalRevealFor } from '~/components/view/final/reveals'
 import FinalChangeStage from '~/components/challenge/FinalChangeStage.vue'
 import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
-import LanguageReveal from '~/components/challenge/LanguageReveal.vue'
-import MadeReveal from '~/components/challenge/MadeReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
-import MinMaxReveal from '~/components/challenge/MinMaxReveal.vue'
-import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
-import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
-import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
 import TreatySeal from '~/components/challenge/TreatySeal.vue'
-import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import OrganizationLogo from '~/components/challenge/OrganizationLogo.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
@@ -284,7 +224,7 @@ import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
 import { treatyMeta } from '~~/types/treaty.type'
-import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
+import type { Attribution } from '~~/lib/attribution'
 import {
   bornAfter,
   boundaryStory,
@@ -632,41 +572,30 @@ const livesLine = computed(() => {
 
 /** Where the current gate's question comes from, by challenge kind. The
  *  reveal cards (sunset, nocturne, made) carry their own credit rows. */
-const promptSources = computed<Attribution[] | undefined>(() => {
-  const active = currentFinalChallenge.value
-  if (!active) return undefined
-  switch (active._type) {
-    case 'scales-challenge':
-    case 'max-challenge':
-    case 'min-challenge':
-      return [attributionFor(active.accessorId)]
-    case 'membership-challenge':
-    case 'language-challenge':
-    case 'region-challenge':
-      return datasetAttribution('countries')
-    case 'made-challenge':
-      return datasetAttribution('commodity-exporters')
-    case 'treaty-challenge':
-      return datasetAttribution('treaties')
-    case 'leadership-challenge':
-      return datasetAttribution('leaders')
-    case 'born-challenge':
-    case 'endonym-challenge':
-      return datasetAttribution('countries')
-    case 'diaspora-challenge':
-      return datasetAttribution('migration')
-    case 'sunset-blitz-challenge':
-    case 'city-nocturne-challenge':
-      return datasetAttribution('cities')
-    case 'boundary-challenge':
-      return datasetAttribution('map')
-    case 'yearbook-challenge':
-      return datasetAttribution('events')
-    case 'change-challenge':
-      return datasetAttribution('changes')
-    default:
-      return undefined
-  }
+const promptSources = computed<Attribution[] | undefined>(() =>
+  finalPromptSources(currentFinalChallenge.value)
+)
+
+/**
+ * The item's reveal card, resolved through the registry. Undefined when the
+ * item has no bespoke card, or when its subject (a lazily-loaded exporter
+ * table, a per-round tally) has not landed yet — either way the shell falls
+ * through to its lesson line.
+ */
+const finalReveal = computed(() => {
+  const challenge = currentFinalChallenge.value
+  if (!challenge) return undefined
+  return finalRevealFor({
+    challenge,
+    picked: lastGuess.value,
+    variant: game.value?.variant,
+    pool: challengePool.value,
+    sunset: sunsetResult.value,
+    nocturneCities: nocturneResult.value,
+    endonymPicks: endonymPicks.value,
+    diasporaPicks: diasporaPicks.value,
+    madeReady: madeRevealReady.value,
+  })
 })
 
 const details = computed(() => {
