@@ -10,7 +10,6 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { FLAGS } from '~~/data/flags.gen'
 import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
-import { ELECTIONS } from '~~/data/elections.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { governingParty, partiesWithLogo } from '~~/lib/parties'
@@ -19,7 +18,6 @@ import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { TREATY_META } from '~~/types/treaty.type'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -64,11 +62,6 @@ const PARTY_GROUPING_FLOOR = 420
 // so a few thin joins are honest; a jump means the name-matching broke.
 const SEAT_JOIN_MISS_CEILING = 8
 // 53 chambers parse from 54 seeded articles today. The floor is the seed list's
-// worth minus room for an article being renamed after an election.
-const CHAMBER_FLOOR = 45
-// 47 carry vote share; the rest print seats only.
-const CHAMBER_VOTE_FLOOR = 35
-
 describe('countries.gen', () => {
   const countries = Object.values(COUNTRIES)
 
@@ -83,100 +76,6 @@ describe('countries.gen', () => {
     }
   })
 })
-
-describe('elections.gen', () => {
-  const chambers = Object.values(ELECTIONS)
-
-  it('covers the seeded chambers', () => {
-    expect(chambers.length).toBeGreaterThanOrEqual(CHAMBER_FLOOR)
-  })
-
-  it('keeps the vote share the Factbook never publishes', () => {
-    const withVotes = chambers.filter(chamber =>
-      chamber?.parties.some(party => party.votePct !== undefined)
-    )
-    expect(withVotes.length).toBeGreaterThanOrEqual(CHAMBER_VOTE_FLOOR)
-  })
-
-  // A parse that drifts reads seats off the wrong rows, and the giveaway is a
-  // chamber whose parties hold more seats than the chamber has.
-  it('never seats more members than the chamber holds', () => {
-    for (const chamber of chambers) {
-      if (!chamber?.totalSeats) continue
-      const held = chamber.parties.reduce((total, party) => total + party.seats, 0)
-      expect(held).toBeLessThanOrEqual(chamber.totalSeats)
-    }
-  })
-
-  // Sweden files its Social Democrats, Left Party and Greens under one
-  // "Red-Greens" alliance; reading the alliance as the party's name drew three
-  // different benches under one label.
-  it('names parties, not the alliances they stood in', () => {
-    for (const chamber of chambers) {
-      const names = (chamber?.parties ?? []).map(party => party.party)
-      expect(names.length).toBe(new Set(names).size)
-    }
-  })
-
-  // A "share of the vote" that is not a share of the NATIONAL vote is a lie a
-  // mode would plot: Croatia's reserved minority seats print their own
-  // constituency's share (89%, 100%) and Denmark's Faroese and Greenlandic
-  // parties their own territory's, which summed the field to 199% and 390%.
-  it('keeps vote shares national', () => {
-    for (const chamber of chambers) {
-      const shares = (chamber?.parties ?? []).flatMap(party =>
-        party.votePct !== undefined ? [party.votePct] : []
-      )
-      if (!shares.length) continue
-      const sum = shares.reduce((total, share) => total + share, 0)
-      expect(sum, chamber?.article).toBeLessThanOrEqual(101)
-      for (const share of shares) expect(share).toBeLessThanOrEqual(100)
-    }
-  })
-
-  // The cabinet is the only source for who GOVERNS as opposed to who won seats.
-  it('reads a live cabinet for a healthy share of the chambers', () => {
-    const cabinets = chambers.filter(chamber => chamber?.cabinet)
-    expect(cabinets.length).toBeGreaterThanOrEqual(CABINET_FLOOR)
-    expect(
-      cabinets.filter(chamber => chamber?.cabinet?.governing.length).length
-    ).toBeGreaterThanOrEqual(CABINET_GOVERNING_FLOOR)
-  })
-
-  // A cabinet article outlives its cabinet — "First Tusk cabinet" is a real
-  // page about a government that fell in 2011 — so the generator follows
-  // `successor` forward to the incumbent. The check that it landed is the head
-  // of government: ours comes from the Factbook, theirs from an article edited
-  // within the day, and a chase that stopped early names someone who left
-  // office years ago. A handful legitimately disagree where OURS is the stale
-  // one (a government changed since the last Factbook pull), so this is a
-  // majority test rather than a per-country one.
-  it('lands on cabinets whose head of government is the one in office', () => {
-    const surname = (name: string) =>
-      name
-        .replace(/\(.*?\)/g, '')
-        .trim()
-        .split(/\s+/)
-        .slice(-1)[0]
-    const named = (Object.keys(ELECTIONS) as ISOCountryCode[]).filter(
-      isoCode => ELECTIONS[isoCode]?.cabinet?.head
-    )
-    const agreeing = named.filter(isoCode => {
-      const head = surname(ELECTIONS[isoCode]!.cabinet!.head!)
-      return [LEADERS[isoCode]?.headOfGovernment?.name, LEADERS[isoCode]?.headOfState?.name].some(
-        name => name && surname(name) === head
-      )
-    })
-    expect(agreeing.length / named.length).toBeGreaterThanOrEqual(CABINET_HEAD_AGREEMENT)
-  })
-})
-
-// 39 chambers resolve to a live cabinet, 25 of them naming governing parties.
-const CABINET_FLOOR = 30
-const CABINET_GOVERNING_FLOOR = 18
-// 34 of 39 cabinet heads match ours today; the rest are countries whose
-// government changed since the last Factbook pull, where THEIRS is the fresher.
-const CABINET_HEAD_AGREEMENT = 0.75
 
 describe('parties.gen', () => {
   const countries = Object.values(PARTIES)

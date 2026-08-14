@@ -1,6 +1,6 @@
 import {
   benchStandings,
-  chambersWithCabinet,
+  chambersWithGovernment,
   chamberName,
   chamberSeats,
   governingParty,
@@ -133,8 +133,6 @@ export interface GovernmentDeal {
   benches: GovernmentBench[]
   /** Beat 3's benches, by name — the ones the player sorts. */
   sorted: string[]
-  /** `minority government` … as the cabinet phrases it; shown at the reveal. */
-  status?: string
   /** The government holds less than half the house. */
   minority: boolean
   /** Government plus backers, when a supply deal carries it past its own
@@ -265,7 +263,6 @@ const buildDeal = (
       standing: standingOf(bench),
     })),
     sorted: sortable.map(bench => bench.name),
-    ...(standings.status ? { status: standings.status } : {}),
     // The teaching point: a government can hold power without holding half the
     // seats. Requiring backers to exist got this wrong for Denmark and Spain,
     // which govern in a minority with no formal supply deal at all — the seats
@@ -278,7 +275,7 @@ const buildDeal = (
 /**
  * Chambers this round can deal, at the hardest difficulty they might be asked
  * for. The pool asks the dealer rather than re-deriving its rules, so a country
- * that clears `chambersWithCabinet` but loses beat 1 to a missing logo is
+ * that clears `chambersWithGovernment` but loses beat 1 to a missing logo is
  * absent from both.
  */
 export const governmentPool = (
@@ -286,7 +283,7 @@ export const governmentPool = (
   difficulty: GameDifficulty = 'hard'
 ): ISOCountryCode[] => {
   const playable = new Set(playableCountries(rules))
-  return chambersWithCabinet().filter(
+  return chambersWithGovernment().filter(
     isoCode => playable.has(isoCode) && !!buildDeal(isoCode, difficulty)
   )
 }

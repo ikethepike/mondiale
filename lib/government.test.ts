@@ -200,17 +200,6 @@ describe('the reveal facts', () => {
     expect(dealt.minority).toBe(true)
     expect(dealt.backedSeats).toBeGreaterThan(dealt.totalSeats / 2)
   })
-
-  // The status line is printed verbatim under the verdict, so markup or a
-  // citation tail reaches the player as debris.
-  it('carries a status clean enough to print', () => {
-    for (const isoCode of governmentPool(RULES)) {
-      const { status } = deal(isoCode)
-      if (!status) continue
-      expect(status, isoCode).not.toMatch(/\{\{|\[\[|url=|https?:|<[a-z]/i)
-      expect(status.length, isoCode).toBeLessThanOrEqual(60)
-    }
-  })
 })
 
 describe('scoreBeat', () => {

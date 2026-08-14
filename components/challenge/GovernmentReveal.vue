@@ -205,8 +205,11 @@ const governmentSeats = computed(
 
 const verdictLine = computed(() => {
   const held = formatNumber(governmentSeats.value)
-  const shape = props.answers.status ? `${props.answers.status} — ` : ''
-  return `${shape}${held} of ${formatNumber(props.challenge.totalSeats)} seats`
+  // The shape used to come from a prose `status` the Factbook cabinet phrased
+  // ("minority government"). polity states the fact as a boolean instead, and
+  // the teaching sentence below already spells out what it means — so the head
+  // is just the count.
+  return `${held} of ${formatNumber(props.challenge.totalSeats)} seats`
 })
 
 /**

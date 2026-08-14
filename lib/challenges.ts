@@ -1144,7 +1144,6 @@ const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | und
         benchSeats: Object.fromEntries(
           deal.benches.map(bench => [bench.name, bench.seats] as const)
         ),
-        ...(deal.status ? { status: deal.status } : {}),
         minority: deal.minority,
         ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
       },

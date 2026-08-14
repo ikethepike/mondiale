@@ -753,7 +753,6 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
           standings: Object.fromEntries(
             deal.benches.map(bench => [bench.name, bench.standing] as const)
           ),
-          ...(deal.status ? { status: deal.status } : {}),
           minority: deal.minority,
           ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
         },
@@ -1017,7 +1016,6 @@ const governmentBeatGame = (
           standings: Object.fromEntries(
             deal.benches.map(bench => [bench.name, bench.standing] as const)
           ),
-          ...(deal.status ? { status: deal.status } : {}),
           minority: deal.minority,
           ...(deal.backedSeats !== undefined ? { backedSeats: deal.backedSeats } : {}),
         },

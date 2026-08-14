@@ -257,8 +257,6 @@ export interface Benches {
   /** Confidence and supply: props the government up, holds no ministries. */
   backing: Bench[]
   opposition: Bench[]
-  /** `minority government`, `majority government` … when a source phrases it. */
-  status?: string
 }
 
 /**
@@ -302,8 +300,14 @@ export const benchStandings = (isoCode: ISOCountryCode): Benches | undefined => 
   }
 }
 
-/** Chambers whose government we can name — what a government round deals from. */
-export const chambersWithCabinet = (): ISOCountryCode[] =>
+/**
+ * Chambers whose government we can name — what a government round deals from.
+ *
+ * Called `chambersWithCabinet` until the polity swap, when the cabinet stopped
+ * being involved: there is no cabinet list to join against any more, only each
+ * bench's own stated standing.
+ */
+export const chambersWithGovernment = (): ISOCountryCode[] =>
   playableChambers().filter(isoCode => benchStandings(isoCode))
 
 /**

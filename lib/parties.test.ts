@@ -4,7 +4,7 @@ import { PARTIES } from '~~/data/parties.gen'
 import {
   benchesOf,
   benchStandings,
-  chambersWithCabinet,
+  chambersWithGovernment,
   countriesInGrouping,
   governingParty,
   impostorParties,
@@ -185,7 +185,7 @@ describe('benchStandings', () => {
   })
 
   it('accounts for every bench exactly once', () => {
-    for (const isoCode of chambersWithCabinet()) {
+    for (const isoCode of chambersWithGovernment()) {
       const standings = benchStandings(isoCode)!
       const placed = [...standings.government, ...standings.backing, ...standings.opposition]
       expect(placed.length).toBe(benchesOf(isoCode).length)
@@ -196,7 +196,7 @@ describe('benchStandings', () => {
   // A government holding no seats is the signature of a join that matched
   // nothing — the round would open on a question with no answer on screen.
   it('never seats a government of nobody', () => {
-    for (const isoCode of chambersWithCabinet()) {
+    for (const isoCode of chambersWithGovernment()) {
       const standings = benchStandings(isoCode)!
       expect(standings.government.length).toBeGreaterThan(0)
       expect(standings.government.reduce((total, bench) => total + bench.seats, 0)).toBeGreaterThan(
@@ -206,7 +206,7 @@ describe('benchStandings', () => {
   })
 
   it('deals from a healthy share of the chambers that name a cabinet', () => {
-    expect(chambersWithCabinet().length).toBeGreaterThanOrEqual(CABINET_JOIN_FLOOR)
+    expect(chambersWithGovernment().length).toBeGreaterThanOrEqual(GOVERNMENT_JOIN_FLOOR)
   })
 
   // These seven were the join's systematic failures, and they are pinned as
@@ -246,7 +246,7 @@ describe('benchStandings', () => {
 // sits under that because Wikipedia renames cabinet articles as governments
 // change, but a collapse means the party-name reader broke — and it used to sit
 // AT the measured number, where a single renamed article failed the suite.
-const CABINET_JOIN_FLOOR = 24
+const GOVERNMENT_JOIN_FLOOR = 24
 
 describe('impostorParties', () => {
   // Rulers deals an impostor as "the party that does NOT govern here". A
@@ -254,7 +254,7 @@ describe('impostorParties', () => {
   // `oppositionParties` excludes only the leader's own party — seventeen
   // candidates were genuinely in government, Finland's Finns Party among them.
   it('never offers a party that is in government or backing it', () => {
-    for (const isoCode of chambersWithCabinet()) {
+    for (const isoCode of chambersWithGovernment()) {
       const standings = benchStandings(isoCode)!
       const inside = new Set(
         [...standings.government, ...standings.backing].flatMap(bench =>
@@ -269,7 +269,7 @@ describe('impostorParties', () => {
 
   // A logo identical to the government's own is a question with no answer.
   it("never offers the governing party's own logo", () => {
-    for (const isoCode of chambersWithCabinet()) {
+    for (const isoCode of chambersWithGovernment()) {
       const governing = governingParty(isoCode)
       for (const impostor of impostorParties(isoCode)) {
         expect(impostor.logo).toBeTruthy()

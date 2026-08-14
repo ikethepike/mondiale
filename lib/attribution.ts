@@ -717,7 +717,6 @@ export type DataSetId =
   | 'currencies'
   | 'leaders'
   | 'parties'
-  | 'elections'
   | 'landmarks'
   | 'heritage'
   | 'events'
@@ -904,15 +903,6 @@ export const DATASETS: Record<DataSetId, DataSet> = {
         dataset: 'P1142 ideology, P1387 position, P465 colour, P463 membership',
       },
       { source: 'commons-media', dataset: 'Party logos' },
-    ],
-  },
-  elections: {
-    label: 'Parliamentary elections',
-    files: ['data/elections.gen.ts'],
-    origins: [
-      // The Factbook publishes a seat table for no bicameral country at all,
-      // and no vote percentages anywhere — both come from the election articles.
-      { source: 'wikipedia-articles', dataset: 'Election infoboxes: seats and vote share' },
     ],
   },
   landmarks: {

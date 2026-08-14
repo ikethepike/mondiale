@@ -14,9 +14,7 @@ import { infoboxLogo } from './lib/wikitext'
 import { type ISOCountryCode, isValidISOCode } from '../types/geography.types'
 import type { CountryParties, Party, PartyMapping } from '../types/party.types'
 import { COUNTRIES } from '../data/countries.gen'
-import { ELECTIONS } from '../data/elections.gen'
 import { partyTokens } from '../lib/parties'
-import type { Election } from './create-elections-file'
 
 /**
  * SUPERSEDED. The live roster is built by `create-polity-file.ts`.
@@ -931,7 +929,16 @@ const rosterEntry = (isoCode: ISOCountryCode, name: string): Party | undefined =
 
 let adopted = 0
 let enriched = 0
-for (const [isoCode, election] of Object.entries(ELECTIONS) as [ISOCountryCode, Election][]) {
+// The seat-adoption pass read `data/elections.gen.ts`, which the polity swap
+// retired along with its generator — polity supplies seats and standings
+// directly now. The loop is kept, fed an empty set, so this generator still
+// produces the breadth snapshot it is here for without carrying a dependency
+// on a file that no longer exists. Everything downstream of it is a no-op.
+const RETIRED_ELECTIONS: Record<string, { parties: { party: string; seats: number }[] }> = {}
+for (const [isoCode, election] of Object.entries(RETIRED_ELECTIONS) as [
+  ISOCountryCode,
+  { parties: { party: string; seats: number }[] },
+][]) {
   const countryQid = isoToQid.get(isoCode)
   if (!countryQid || !mapping[isoCode]) continue
 
