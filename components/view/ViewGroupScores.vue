@@ -4,11 +4,7 @@
       <section ref="scoreCard" class="score-card">
         <header class="pane-content card-header">
           <span class="eyebrow">
-            {{
-              isPersonalScorecard
-                ? 'Your Scorecard'
-                : `${selectedScorecard.player.name}'s Scorecard`
-            }}
+            {{ isPersonalScorecard ? 'Your Scorecard' : `${selectedName}'s Scorecard` }}
           </span>
           <h2>
             {{ challengeHeading }}
@@ -33,9 +29,9 @@
                 {{
                   isPersonalScorecard
                     ? (selectedScorecard.score?.points.scored ?? 0) > 0
-                      ? `Well done, ${selectedScorecard.player.name}.`
-                      : `Rough round, ${selectedScorecard.player.name}.`
-                    : `${selectedScorecard.player.name}'s round.`
+                      ? `Well done, ${selectedName}.`
+                      : `Rough round, ${selectedName}.`
+                    : `${selectedName}'s round.`
                 }}
               </p>
               <p class="explainer">{{ explainer }}</p>
@@ -205,7 +201,7 @@
         <!-- A bare <template> is a native, non-rendering element — this
              fallback never showed until it became a real v-else -->
         <template v-else>
-          <p class="pane-content">{{ selectedScorecard.player.name }} hasn't answered yet.</p>
+          <p class="pane-content">{{ selectedName }} hasn't answered yet.</p>
         </template>
         <nav class="pane-content card-nav">
           <!-- Points become movement: one pip per tile the pawn will walk,
@@ -302,6 +298,7 @@ import AnswerLedger from '~/components/challenge/AnswerLedger.vue'
 import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
 import { sweepClaimedBy as claimedByFor } from '~~/lib/clean-sweep'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
+import { playerDisplayName } from '~~/lib/player'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
@@ -343,6 +340,10 @@ const selectedScorecard = computed(
     gameStore.rankedScores.find(({ player }) => player.id === selectedPlayer.value) ??
     gameStore.rankedScores[0]
 )
+
+/** `rankedScores` hands back the raw player, and `name` is optional — without
+ *  the shared fallback an unnamed seat reads "'s Scorecard". */
+const selectedName = computed(() => playerDisplayName(selectedScorecard.value?.player))
 
 // The explainer only teaches the tie rule on rounds that leaned on it.
 const rankingTies = computed(() => {
