@@ -40,9 +40,11 @@ import Alea from 'alea'
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
 import {
+  BoxGeometry,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -60,6 +62,8 @@ import {
   Quaternion,
   RedFormat,
   ShaderMaterial,
+  SphereGeometry,
+  TubeGeometry,
   Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
@@ -735,6 +739,17 @@ const foliageMaterial = (color: string, sway: number) =>
 const world = shallowRef<Group>()
 const timeUniforms: { value: number }[] = []
 let ticker: (() => void) | undefined
+/** The railway run: a closed contour loop + rolling stock, animated by the
+ *  page ticker — the train rounds the loop forever at an easy chug. */
+let railwayRun:
+  | {
+      curve: CatmullRomCurve3
+      vehicles: Group[]
+      puffs: Mesh[]
+      gapParam: number
+      loopSeconds: number
+    }
+  | undefined
 
 const buildWorld = (name: string) => {
   const preset = BIOMES[name]
@@ -1131,6 +1146,241 @@ const buildWorld = (name: string) => {
     group.add(birdMesh)
   }
 
+  // --- The railway: a contour line made literal ------------------------------
+  // A real railway follows the terrain's grade, so the track marches along an
+  // ISO-LINE — the same lines the map already draws — rendered in the classic
+  // cartographic idiom: twin ink rails with sleeper ticks. A little train
+  // chugs the whole line once a cycle (see the page ticker).
+  railwayRun = undefined
+  const railPrng = Alea('terrain-lab:rail')
+  const clearForRail = (x: number, z: number) =>
+    Math.hypot(x, z) < 76 &&
+    massifAt(x, z) < 0.15 &&
+    Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.radius * 1.5 + 3 &&
+    river.every(point => Math.hypot(point.x - x, point.z - z) > 4)
+
+  // A contour is a LEVEL SET — closed by nature. March one way around it and,
+  // if it comes home inside the step budget, the railway is a genuine loop the
+  // train can round forever. A probe whose contour runs off the page or into
+  // water just yields to the next.
+  let railLoop: Vector3[] | undefined
+  for (let probe = 0; probe < 200 && !railLoop; probe++) {
+    const startX = (railPrng() - 0.5) * 130
+    const startZ = (railPrng() - 0.5) * 130
+    const gradeY = height(startX, startZ)
+    if (gradeY < 2.2 || gradeY > 4.6) continue
+    if (!clearForRail(startX, startZ)) continue
+    const points: Vector3[] = [new Vector3(startX, 0, startZ)]
+    let px = startX
+    let pz = startZ
+    let headingX = 0
+    let headingZ = 0
+    let closed = false
+    for (let step = 0; step < 280; step++) {
+      const gradientX = (height(px + 1, pz) - height(px - 1, pz)) / 2
+      const gradientZ = (height(px, pz + 1) - height(px, pz - 1)) / 2
+      let dx = -gradientZ
+      let dz = gradientX
+      const magnitude = Math.hypot(dx, dz) || 1
+      dx /= magnitude
+      dz /= magnitude
+      if (step > 0 && dx * headingX + dz * headingZ < 0) {
+        dx = -dx
+        dz = -dz
+      }
+      headingX = dx
+      headingZ = dz
+      // Walk the contour, nudging back onto the grade line.
+      const drift = height(px, pz) - gradeY
+      px += dx * 2.5 - gradientX * drift * 1.5
+      pz += dz * 2.5 - gradientZ * drift * 1.5
+      if (!clearForRail(px, pz)) break
+      points.push(new Vector3(px, 0, pz))
+      if (step > 20 && Math.hypot(px - startX, pz - startZ) < 3.2) {
+        closed = true
+        break
+      }
+    }
+    if (!closed || points.length <= 22) continue
+    // Cut-and-fill: Laplacian rounds iron the contour's wiggles into a graded
+    // line, the way a real railway earthworks its way along a hillside.
+    for (let round = 0; round < 4; round++) {
+      const smoothed = points.map((point, index) => {
+        const previous = points[(index - 1 + points.length) % points.length]
+        const next = points[(index + 1) % points.length]
+        return new Vector3(
+          point.x * 0.5 + (previous.x + next.x) * 0.25,
+          0,
+          point.z * 0.5 + (previous.z + next.z) * 0.25
+        )
+      })
+      points.splice(0, points.length, ...smoothed)
+    }
+    // A pinched ribbon of a contour closes too — demand a FAT loop: real
+    // enclosed area, and opposite sides that never crowd each other.
+    let area = 0
+    for (let index = 0; index < points.length; index++) {
+      const here = points[index]
+      const next = points[(index + 1) % points.length]
+      area += here.x * next.z - next.x * here.z
+    }
+    if (Math.abs(area) / 2 < 350) continue
+    const crowded = points.some((here, index) =>
+      points.some((there, otherIndex) => {
+        const gap = Math.min(
+          Math.abs(index - otherIndex),
+          points.length - Math.abs(index - otherIndex)
+        )
+        return gap > 6 && Math.hypot(here.x - there.x, here.z - there.z) < 3.2
+      })
+    )
+    if (crowded) continue
+    // And NEVER over itself: a figure-eight needs junction points we don't
+    // build — reject any pair of non-adjacent segments that intersect.
+    const side = (ax: number, az: number, bx: number, bz: number, cx: number, cz: number) =>
+      Math.sign((bx - ax) * (cz - az) - (bz - az) * (cx - ax))
+    const crossesItself = points.some((a, index) => {
+      const b = points[(index + 1) % points.length]
+      return points.some((c, otherIndex) => {
+        const gap = Math.min(
+          Math.abs(index - otherIndex),
+          points.length - Math.abs(index - otherIndex)
+        )
+        if (gap < 2) return false
+        const d = points[(otherIndex + 1) % points.length]
+        return (
+          side(a.x, a.z, b.x, b.z, c.x, c.z) !== side(a.x, a.z, b.x, b.z, d.x, d.z) &&
+          side(c.x, c.z, d.x, d.z, a.x, a.z) !== side(c.x, c.z, d.x, d.z, b.x, b.z)
+        )
+      })
+    })
+    if (!crossesItself) railLoop = points
+  }
+  if (railLoop) {
+    const line = railLoop
+    line.forEach(point => {
+      point.y = height(point.x, point.z) + 0.1
+    })
+    const curve = new CatmullRomCurve3(line, true, 'centripetal')
+    const railLength = curve.getLength()
+    // Closed-curve spaced points repeat the seam — drop the duplicate.
+    const railSamples = curve.getSpacedPoints(Math.ceil(railLength / 1.15))
+    railSamples.pop()
+
+    // Twin rails: closed offset curves either side of the centerline.
+    const wrap = (index: number) => (index + railSamples.length) % railSamples.length
+    for (const side of [-0.32, 0.32]) {
+      const offset = railSamples.map((point, index) => {
+        const next = railSamples[wrap(index + 1)]
+        const previous = railSamples[wrap(index - 1)]
+        const tangent = new Vector3().subVectors(next, previous).setY(0).normalize()
+        return new Vector3(point.x - tangent.z * side, point.y + 0.06, point.z + tangent.x * side)
+      })
+      const rail = new TubeGeometry(
+        new CatmullRomCurve3(offset, true, 'centripetal'),
+        offset.length,
+        0.055,
+        5,
+        true
+      )
+      group.add(new Mesh(rail, new MeshBasicMaterial({ color: preset.major })))
+    }
+
+    // Sleepers: the map symbol's cross-ticks, instanced along the line.
+    const sleeper = new BoxGeometry(1.0, 0.05, 0.22)
+    const sleeperMesh = new InstancedMesh(
+      sleeper,
+      new MeshBasicMaterial({ color: preset.trunkColor }),
+      railSamples.length
+    )
+    const sleeperQuaternion = new Quaternion()
+    const upAxis = new Vector3(0, 1, 0)
+    railSamples.forEach((point, index) => {
+      const next = railSamples[wrap(index + 1)]
+      const previous = railSamples[wrap(index - 1)]
+      const yaw = Math.atan2(next.x - previous.x, next.z - previous.z)
+      sleeperQuaternion.setFromAxisAngle(upAxis, yaw + Math.PI / 2)
+      matrix.compose(
+        new Vector3(point.x, point.y + 0.02, point.z),
+        sleeperQuaternion,
+        new Vector3(1, 1, 1)
+      )
+      sleeperMesh.setMatrixAt(index, matrix)
+    })
+    group.add(sleeperMesh)
+
+    // The train: an OLD STEAM engine — round boiler, tall funnel, rear
+    // cab, puffing smoke — hauling two wagons. Moved by the page ticker.
+    const ink = new MeshBasicMaterial({ color: preset.major })
+    const makeLoco = () => {
+      const loco = new Group()
+      const boiler = new Mesh(new CylinderGeometry(0.3, 0.3, 1.25, 12), ink)
+      boiler.rotation.z = Math.PI / 2
+      boiler.position.set(0.18, 0.62, 0)
+      loco.add(boiler)
+      const smokebox = new Mesh(new CylinderGeometry(0.32, 0.32, 0.18, 12), ink)
+      smokebox.rotation.z = Math.PI / 2
+      smokebox.position.set(0.88, 0.62, 0)
+      loco.add(smokebox)
+      const funnel = new Mesh(new CylinderGeometry(0.14, 0.08, 0.5, 10), ink)
+      funnel.position.set(0.74, 1.1, 0)
+      loco.add(funnel)
+      const dome = new Mesh(new SphereGeometry(0.13, 10, 8), ink)
+      dome.position.set(0.2, 0.94, 0)
+      loco.add(dome)
+      const chassis = new Mesh(new BoxGeometry(1.9, 0.22, 0.86), ink)
+      chassis.position.y = 0.24
+      loco.add(chassis)
+      const cab = new Mesh(
+        new BoxGeometry(0.62, 0.7, 0.88),
+        new MeshBasicMaterial({ color: '#ec6247' })
+      )
+      cab.position.set(-0.62, 0.72, 0)
+      loco.add(cab)
+      const cabRoof = new Mesh(new BoxGeometry(0.74, 0.09, 0.98), ink)
+      cabRoof.position.set(-0.62, 1.12, 0)
+      loco.add(cabRoof)
+      // The smoke: puffs cycling up out of the funnel (see driveTrain).
+      // A neutral gray so they read against every biome's page tint.
+      const puffs: Mesh[] = []
+      for (let index = 0; index < 4; index++) {
+        const puff = new Mesh(
+          new SphereGeometry(0.2, 8, 6),
+          new MeshBasicMaterial({ color: '#9aa4ae', transparent: true, opacity: 0.8 })
+        )
+        puff.position.set(0.74, 1.4, 0)
+        loco.add(puff)
+        puffs.push(puff)
+      }
+      group.add(loco)
+      return { loco, puffs }
+    }
+    const makeWagon = (body: string) => {
+      const wagon = new Group()
+      const hull = new Mesh(
+        new BoxGeometry(1.4, 0.55, 0.82),
+        new MeshBasicMaterial({ color: body })
+      )
+      hull.position.y = 0.52
+      wagon.add(hull)
+      const chassis = new Mesh(new BoxGeometry(1.5, 0.18, 0.86), ink)
+      chassis.position.y = 0.2
+      wagon.add(chassis)
+      group.add(wagon)
+      return wagon
+    }
+    const { loco, puffs } = makeLoco()
+    const vehicles = [loco, makeWagon('#ec6247'), makeWagon(preset.foliageColor)]
+    vehicles.forEach(vehicle => (vehicle.visible = false))
+    railwayRun = {
+      curve,
+      vehicles,
+      puffs,
+      gapParam: 2.4 / railLength,
+      loopSeconds: railLength / TRAIN_SPEED,
+    }
+  }
+
   // --- Contour elevation labels: numbers riding the major lines --------------
   const majorStep = (MAX_H / 8) * 5
   const labelLevels: number[] = []
@@ -1200,6 +1450,7 @@ const buildWorld = (name: string) => {
 }
 
 const disposeWorld = () => {
+  railwayRun = undefined
   world.value?.traverse(child => {
     if (child instanceof Mesh || child instanceof InstancedMesh) {
       child.geometry.dispose()
@@ -1222,10 +1473,52 @@ const setBiome = (name: string) => {
   world.value = buildWorld(name)
 }
 
+/** The train's pace, world units per second — an easy chug. */
+const TRAIN_SPEED = 2.1
+
+const driveTrain = (time: number) => {
+  if (!railwayRun) return
+  const { curve, vehicles, puffs, gapParam, loopSeconds } = railwayRun
+  // Steam: each puff cycles up out of the funnel, swelling and thinning,
+  // trailing back as the engine pulls away beneath it.
+  puffs.forEach((puff, index) => {
+    const cycle = (time * 0.5 + index / puffs.length) % 1
+    puff.position.set(0.74 - cycle * 1.2, 1.35 + cycle * 1.6, 0)
+    const swell = 0.6 + cycle * 1.6
+    puff.scale.set(swell, swell, swell)
+    ;(puff.material as MeshBasicMaterial).opacity = 0.8 * (1 - cycle * cycle)
+  })
+  if (prefersReducedMotion()) {
+    // Parked mid-line, a scene prop rather than an animation.
+    vehicles.forEach((vehicle, index) => {
+      vehicle.visible = true
+      placeVehicle(vehicle, curve, 0.45 - index * gapParam)
+    })
+    return
+  }
+  const phase = (time / loopSeconds) % 1
+  vehicles.forEach((vehicle, index) => {
+    vehicle.visible = true
+    placeVehicle(vehicle, curve, phase - index * gapParam)
+    // The chug: a tiny bob, out of phase per vehicle.
+    vehicle.position.y += Math.sin(time * 9 + index * 1.7) * 0.025
+  })
+}
+
+const placeVehicle = (vehicle: Group, curve: CatmullRomCurve3, t: number) => {
+  // The loop is closed — t wraps instead of clamping.
+  const wrapped = ((t % 1) + 1) % 1
+  const point = curve.getPointAt(wrapped)
+  const tangent = curve.getTangentAt(wrapped)
+  vehicle.position.copy(point)
+  vehicle.rotation.y = Math.atan2(tangent.x, tangent.z) - Math.PI / 2
+}
+
 onMounted(() => {
   world.value = buildWorld(biome.value)
   ticker = () => {
     for (const uniform of timeUniforms) uniform.value = gsap.ticker.time
+    driveTrain(gsap.ticker.time)
   }
   gsap.ticker.add(ticker)
 })
