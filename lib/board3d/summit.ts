@@ -49,8 +49,13 @@ const PLATEAU_RADIUS = 5
  *  (the fBm hills top out at MAX_ELEVATION). */
 const SNOWLINE_FRACTION = 0.62
 
-/** Flat ground carved under each climb anchor (×spacing — pawn-scaled). */
-const LEDGE_RADIUS_RATIO = 0.3
+/** Flat ground carved under each climb anchor (×spacing — pawn-scaled, wide
+ *  enough that the terrace notches the contour rings visibly). */
+const LEDGE_RADIUS_RATIO = 0.42
+/** The carved shelf sits this far BELOW the anchor: the slab platform
+ *  board-builder stands on each ledge rises exactly this proud of the ground,
+ *  and the pawn stands on the slab's top face (the anchor itself). */
+export const LEDGE_SLAB_INSET = 0.14
 
 /** The peak may reach into the contour fade band (its far flank dissolving
  *  into the page is the aesthetic), but its center stays inside it. */
@@ -175,12 +180,16 @@ export const withSummitMassif = (sampler: HeightSampler, site: SummitSite, spaci
   const ledgeRadius = LEDGE_RADIUS_RATIO * spacing
   return (x, z) => {
     let y = sampler(x, z) + site.height * summitMask(site, x, z)
-    for (const anchor of site.climbAnchors) {
+    site.climbAnchors.forEach((anchor, index) => {
       const distance = Math.hypot(x - anchor.x, z - anchor.z)
-      if (distance >= ledgeRadius) continue
+      if (distance >= ledgeRadius) return
+      // Flank shelves sit a slab-inset below their anchor (the slab platform
+      // tops out AT the anchor); the summit plateau pins exactly — a pawn
+      // stands on the mountain itself there.
+      const inset = index === site.climbAnchors.length - 1 ? 0 : LEDGE_SLAB_INSET
       const t = smoothstep(distance / ledgeRadius)
-      y = anchor.y * (1 - t) + y * t
-    }
+      y = (anchor.y - inset) * (1 - t) + y * t
+    })
     return y
   }
 }

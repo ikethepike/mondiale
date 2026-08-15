@@ -19,7 +19,9 @@ import {
   ExtrudeGeometry,
   PlaneGeometry,
   Quaternion,
+  RingGeometry,
   Shape,
+  ShapeGeometry,
   SphereGeometry,
   TorusGeometry,
   TubeGeometry,
@@ -37,7 +39,8 @@ import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
-import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
+import { pickScenerySites } from './scenery'
+import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
 import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
 
@@ -344,7 +347,17 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   }
 
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
-  if (summitSite) buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
+  if (summitSite) {
+    buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
+    buildClimbSlabs(summitSite, spacing).forEach(mesh => group.add(mesh))
+  }
+
+  // Survey furniture on the open terrain: cairned hilltops and a compass-rose
+  // ink decal. Heights come from the final composed sampler, so everything
+  // sits exactly on the rendered ground.
+  const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler)
+  scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
+  if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing))
 
   buildChallengeMarkers(tiles, transforms, spacing, tileRadius, chords).forEach(mesh =>
     group.add(mesh)
@@ -996,6 +1009,102 @@ const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
   const matrix = new Matrix4().setPosition(site.center.x, site.center.y, site.center.z)
   bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
   return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/**
+ * One carved step per gauntlet stage up the massif's climb face: a squat
+ * faceted slab standing `LEDGE_SLAB_INSET` proud of its terraced shelf, its
+ * top face AT the climb anchor a challenger's pawn lands on. The stage count
+ * is readable from across the board — a hard gauntlet wears five steps.
+ */
+const buildClimbSlabs = (site: SummitSite, spacing: number): Mesh[] => {
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const radius = spacing * 0.34
+  const matrix = new Matrix4()
+
+  for (const anchor of site.climbAnchors.slice(0, -1)) {
+    const sink = 0.6 // buried base — the slab meets the flank, never floats
+    const slab = new CylinderGeometry(radius * 0.94, radius, LEDGE_SLAB_INSET + sink, 7)
+    slab.translate(0, (LEDGE_SLAB_INSET + sink) / 2 - sink, 0)
+    matrix.setPosition(anchor.x, anchor.y - LEDGE_SLAB_INSET, anchor.z)
+    bakeParts(
+      [{ geometry: faceted(slab), color: BOARD_COLORS.darkBlue }],
+      matrix,
+      spacing * OUTLINE_WIDTH_RATIO,
+      colorBuckets,
+      outlines
+    )
+  }
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** A survey cairn on an off-track hilltop: two stacked stones and a slim
+ *  trig-point pole — the land reads as charted. */
+const buildHillCairn = (site: Vector3, spacing: number): Mesh[] => {
+  const s = spacing * 0.34
+  const parts: MarkerPart[] = []
+
+  let stackY = 0
+  for (const [radius, height] of [
+    [0.44, 0.3],
+    [0.28, 0.24],
+  ]) {
+    const drum = new CylinderGeometry(radius * 0.72 * s, radius * s, height * s, 7)
+    drum.translate(0, (stackY + height / 2) * s, 0)
+    parts.push({ geometry: faceted(drum), color: BOARD_COLORS.warmSand })
+    stackY += height
+  }
+  const pole = new CylinderGeometry(0.03 * s, 0.03 * s, 0.9 * s, 8)
+  pole.translate(0, (stackY + 0.45) * s, 0)
+  parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
+  const arm = new BoxGeometry(0.3 * s, 0.05 * s, 0.05 * s)
+  arm.translate(0, (stackY + 0.72) * s, 0)
+  parts.push({ geometry: arm, color: BOARD_COLORS.darkBlue })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4().setPosition(site.x, site.y, site.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** A flat compass-rose ink decal on quiet ground — pure cartography. North
+ *  points at the top of the default seat (−z). Lifted a hair over the ground
+ *  undulation; placed only on near-flat terrain so the lift stays invisible. */
+const buildCompassRose = (site: Vector3, spacing: number): Mesh => {
+  const s = spacing * 0.62
+  const geometries: BufferGeometry[] = []
+
+  geometries.push(new RingGeometry(0.82 * s, 0.9 * s, 40))
+  geometries.push(new RingGeometry(0.36 * s, 0.4 * s, 32))
+
+  for (let index = 0; index < 8; index++) {
+    const cardinal = index % 2 === 0
+    const length = (cardinal ? 0.8 : 0.52) * s
+    const width = (cardinal ? 0.11 : 0.07) * s
+    const point = new Shape()
+    point.moveTo(0, length)
+    point.lineTo(width, 0.12 * s)
+    point.lineTo(-width, 0.12 * s)
+    const blade = new ShapeGeometry(point)
+    blade.rotateZ((index * Math.PI) / 4)
+    geometries.push(blade)
+  }
+
+  const merged = mergeGeometries(geometries)
+  geometries.forEach(geometry => geometry.dispose())
+  merged.rotateX(-Math.PI / 2)
+  merged.translate(site.x, site.y + 0.32, site.z)
+  return new Mesh(
+    merged,
+    new MeshBasicMaterial({
+      color: BOARD_COLORS.darkBlue,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+    })
+  )
 }
 
 /**

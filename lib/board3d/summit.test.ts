@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createTilePath, type TrackArchetype } from './path'
-import { pickSummitSite, summitClimbAnchor, withSummitMassif } from './summit'
+import { LEDGE_SLAB_INSET, pickSummitSite, summitClimbAnchor, withSummitMassif } from './summit'
 import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff } from './terrain'
 import type { Tile } from '~~/types/game.types'
 
@@ -90,8 +90,10 @@ describe('withSummitMassif', () => {
 
     expect(massif(site.center.x, site.center.z)).toBeCloseTo(site.center.y, 6)
 
-    for (const anchor of site.climbAnchors) {
-      expect(massif(anchor.x, anchor.z)).toBeCloseTo(anchor.y, 6)
+    // Each ledge's shelf carves a slab-inset below its anchor — the slab
+    // platform makes up the difference, its top face at the anchor itself.
+    for (const anchor of site.climbAnchors.slice(0, -1)) {
+      expect(massif(anchor.x, anchor.z)).toBeCloseTo(anchor.y - LEDGE_SLAB_INSET, 6)
     }
 
     // Beyond the flank the field is untouched.
