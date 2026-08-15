@@ -1,0 +1,633 @@
+<template>
+  <div class="terrain-lab">
+    <div class="controls">
+      <button
+        v-for="name in biomeNames"
+        :key="name"
+        :class="{ active: name === biome }"
+        @click="setBiome(name)"
+      >
+        {{ name }}
+      </button>
+    </div>
+    <ClientOnly>
+      <TresCanvas clear-color="#fffaf5" antialias power-preference="high-performance">
+        <TresPerspectiveCamera :position="cameraStart" :fov="42" :near="0.5" :far="600" />
+        <OrbitControls
+          make-default
+          enable-damping
+          :damping-factor="0.08"
+          :min-distance="14"
+          :max-distance="180"
+          :max-polar-angle="1.4"
+        />
+        <primitive v-if="world" :object="world" />
+      </TresCanvas>
+    </ClientOnly>
+  </div>
+</template>
+
+<script lang="ts" setup>
+// Terrain-technique prototype (an isolated lab, not wired into the game):
+// - elevation + slope color ramps (the painterly modelling Elysium leans on)
+// - aerial perspective toward the horizon, then the page fade
+// - a massif whose ascent gorge is TERRACED TERRAIN — steps carved, not placed
+// - river + lake with analytic depth: foam shores and depth-scaled alpha,
+//   no depth textures involved (we carved the bed, so we KNOW the depth)
+// - instanced foliage with a faint vertex sway (reduced-motion gated)
+// - the contour-ink language kept on top of all of it, per-biome palettes
+definePageMeta({ layout: false })
+
+import Alea from 'alea'
+import { OrbitControls } from '@tresjs/cientos'
+import { gsap } from 'gsap'
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  ConeGeometry,
+  CylinderGeometry,
+  DoubleSide,
+  Group,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  PlaneGeometry,
+  ShaderMaterial,
+  Vector3,
+} from 'three'
+import { createNoise2D } from 'simplex-noise'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { smoothstep } from '~~/lib/board3d/terrain'
+
+// ---------------------------------------------------------------------------
+// Biome presets: a biome is a ramp + ink palette + noise character + foliage.
+// ---------------------------------------------------------------------------
+interface Biome {
+  valley: string
+  mid: string
+  crest: string
+  rock: string
+  minor: string
+  major: string
+  snow: string
+  atmosphere: string
+  water: string
+  foam: string
+  /** fBm frequency multiplier and anisotropic stretch (dune grain). */
+  frequency: number
+  stretch: number
+  hilliness: number
+  foliage: 'trees' | 'spires' | 'shards'
+  foliageColor: string
+  trunkColor: string
+}
+
+const BIOMES: Record<string, Biome> = {
+  parchment: {
+    valley: '#fffaf5',
+    mid: '#fdf3e7',
+    crest: '#f7e7d2',
+    rock: '#e8d3b8',
+    minor: '#3481a1',
+    major: '#0d2f61',
+    snow: '#eef4f7',
+    atmosphere: '#f3ede9',
+    water: '#4d92b3',
+    foam: '#fffaf5',
+    frequency: 1,
+    stretch: 1,
+    hilliness: 1,
+    foliage: 'trees',
+    foliageColor: '#90bcb5',
+    trunkColor: '#0d2f61',
+  },
+  grassland: {
+    valley: '#eef3e2',
+    mid: '#dce8c8',
+    crest: '#c2d3a8',
+    rock: '#b5b39a',
+    minor: '#7d9b6a',
+    major: '#3f5d3a',
+    snow: '#f2f6ee',
+    atmosphere: '#e9efe4',
+    water: '#4d92b3',
+    foam: '#f4f8ef',
+    frequency: 0.9,
+    stretch: 1,
+    hilliness: 1.05,
+    foliage: 'trees',
+    foliageColor: '#5c8a52',
+    trunkColor: '#6b4f35',
+  },
+  desert: {
+    valley: '#f7e9cf',
+    mid: '#f0d9ae',
+    crest: '#e3bd82',
+    rock: '#c98f5f',
+    minor: '#c2955c',
+    major: '#8a5a33',
+    snow: '#f7efdd',
+    atmosphere: '#f4e9d8',
+    water: '#3f9296',
+    foam: '#f8f1de',
+    frequency: 1.35,
+    stretch: 2.6,
+    hilliness: 0.8,
+    foliage: 'spires',
+    foliageColor: '#c98f5f',
+    trunkColor: '#8a5a33',
+  },
+  ice: {
+    valley: '#f2f6f9',
+    mid: '#e2ecf2',
+    crest: '#cfdfe9',
+    rock: '#b9cdd9',
+    minor: '#7fa8bd',
+    major: '#3d6b85',
+    snow: '#fbfdfe',
+    atmosphere: '#eef4f7',
+    water: '#5d9fc4',
+    foam: '#ffffff',
+    frequency: 0.7,
+    stretch: 1,
+    hilliness: 0.7,
+    foliage: 'shards',
+    foliageColor: '#cfe2ec',
+    trunkColor: '#8fb4c6',
+  },
+}
+
+const biomeNames = Object.keys(BIOMES)
+const biome = ref('grassland')
+const cameraStart = new Vector3(0, 70, 95)
+
+// ---------------------------------------------------------------------------
+// The landscape: fBm + a cragged massif whose gorge floor is TERRACED, a
+// river marching from the gorge mouth down to a carved lake.
+// ---------------------------------------------------------------------------
+const SIZE = 170
+const SEGMENTS = 300
+const MAX_H = 7
+
+const MASSIF = { x: -20, z: -24, radius: 27, height: 15, plateau: 5 }
+const LAKE = { x: 26, z: 30, radius: 14, level: 1.6 }
+const GORGE_HALF = 0.5
+const TERRACES = 5
+
+const buildSampler = (preset: Biome) => {
+  const noise = createNoise2D(Alea('terrain-lab'))
+  const base = (x: number, z: number) => {
+    let amplitude = 1
+    let frequency = (2.0 / 100) * preset.frequency
+    let sum = 0
+    let normalization = 0
+    for (let octave = 0; octave < 4; octave++) {
+      sum += amplitude * noise((x * frequency) / preset.stretch, z * frequency)
+      normalization += amplitude
+      amplitude *= 0.45
+      frequency *= 2
+    }
+    return (sum / normalization) * 0.5 * MAX_H * preset.hilliness + MAX_H * 0.5
+  }
+
+  const massifAt = (x: number, z: number) => {
+    const dx = x - MASSIF.x
+    const dz = z - MASSIF.z
+    const distance = Math.hypot(dx, dz)
+    if (distance >= MASSIF.radius) return 0
+    const theta = Math.atan2(dx, dz)
+    const crag =
+      0.13 * (0.5 + 0.5 * Math.sin(3 * theta + 1.1)) +
+      0.06 * (0.5 + 0.5 * Math.sin(5 * theta + 2.7))
+    const cragged = MASSIF.radius * (1 - crag)
+    if (distance >= cragged) return 0
+    if (distance <= MASSIF.plateau) return MASSIF.height
+    const t = Math.pow(smoothstep((cragged - distance) / (cragged - MASSIF.plateau)), 1.6)
+
+    // The ascent gorge faces +z; its floor is QUANTIZED into terraces — the
+    // steps are the mountain itself, so nothing can ever cut into it.
+    const swing = Math.atan2(Math.sin(theta - Math.PI), Math.cos(theta - Math.PI))
+    const gorge = Math.exp(-((swing / GORGE_HALF) * (swing / GORGE_HALF)))
+    const outer = smoothstep(Math.min(1, (distance - MASSIF.plateau) / (cragged - MASSIF.plateau)))
+    let h = MASSIF.height * t * (1 - 0.55 * gorge * outer)
+    if (gorge > 0.45) {
+      const stepSize = MASSIF.height / TERRACES
+      const stepped = Math.floor(h / stepSize) * stepSize + stepSize * 0.4
+      h = h * (1 - gorge * 0.85) + stepped * (gorge * 0.85)
+    }
+    return h
+  }
+
+  return { base, massifAt }
+}
+
+// River: deterministic downhill march from the gorge mouth toward the lake.
+const buildRiver = (height: (x: number, z: number) => number) => {
+  const prng = Alea('terrain-lab:river')
+  const points: Vector3[] = []
+  const position = new Vector3(MASSIF.x, 0, MASSIF.z + MASSIF.radius * 1.05)
+  const momentum = new Vector3(0, 0, 1)
+  let level = Infinity
+  for (let step = 0; step < 70; step++) {
+    const y = height(position.x, position.z)
+    level = Math.min(level, y - 0.35)
+    points.push(new Vector3(position.x, level, position.z))
+    if (Math.hypot(position.x - LAKE.x, position.z - LAKE.z) < LAKE.radius * 0.7) break
+    const gx = (height(position.x + 1, position.z) - height(position.x - 1, position.z)) / 2
+    const gz = (height(position.x, position.z + 1) - height(position.x, position.z - 1)) / 2
+    const toLake = new Vector3(LAKE.x - position.x, 0, LAKE.z - position.z).normalize()
+    const downhill = new Vector3(-gx, 0, -gz)
+    if (downhill.lengthSq() > 1e-6) downhill.normalize()
+    momentum
+      .multiplyScalar(0.5)
+      .addScaledVector(downhill, 0.3)
+      .addScaledVector(toLake, 0.35)
+      .normalize()
+    const wobble = (prng() - 0.5) * 0.45
+    const heading = Math.atan2(momentum.x, momentum.z) + wobble
+    position.x += Math.sin(heading) * 2.6
+    position.z += Math.cos(heading) * 2.6
+  }
+  return points
+}
+
+// ---------------------------------------------------------------------------
+// Shaders
+// ---------------------------------------------------------------------------
+const terrainMaterial = (preset: Biome) =>
+  new ShaderMaterial({
+    uniforms: {
+      uValley: { value: new Color(preset.valley) },
+      uMid: { value: new Color(preset.mid) },
+      uCrest: { value: new Color(preset.crest) },
+      uRock: { value: new Color(preset.rock) },
+      uMinor: { value: new Color(preset.minor) },
+      uMajor: { value: new Color(preset.major) },
+      uSnow: { value: new Color(preset.snow) },
+      uAtmosphere: { value: new Color(preset.atmosphere) },
+      uPage: { value: new Color('#fffaf5') },
+      uStep: { value: MAX_H / 8 },
+      uMajorEvery: { value: 5 },
+      uLineWidth: { value: 0.9 },
+      uMaxH: { value: MAX_H },
+      uSnowline: { value: MASSIF.height * 0.72 },
+      uAtmoStart: { value: 46 },
+      uFadeStart: { value: 74 },
+      uFadeEnd: { value: 110 },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aSlope;
+      varying float vElevation;
+      varying float vSlope;
+      varying vec2 vXZ;
+      void main() {
+        vElevation = position.y;
+        vSlope = aSlope;
+        vXZ = position.xz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uValley; uniform vec3 uMid; uniform vec3 uCrest; uniform vec3 uRock;
+      uniform vec3 uMinor; uniform vec3 uMajor; uniform vec3 uSnow; uniform vec3 uAtmosphere;
+      uniform vec3 uPage;
+      uniform float uStep; uniform float uMajorEvery; uniform float uLineWidth;
+      uniform float uMaxH; uniform float uSnowline;
+      uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
+      varying float vElevation; varying float vSlope; varying vec2 vXZ;
+
+      float lineMask(float value, float stepSize, float width) {
+        float derivative = max(fwidth(value), 1e-5);
+        float dist = abs(fract(value / stepSize - 0.5) - 0.5) * stepSize / derivative;
+        float mask = 1.0 - smoothstep(width, width + 1.8, dist);
+        float density = derivative / stepSize;
+        return mask * (1.0 - smoothstep(0.18, 0.5, density));
+      }
+
+      void main() {
+        // Painterly modelling with zero lights: an elevation ramp plus a
+        // slope tint. The gorge terraces and crag spurs pop out of these two
+        // mixes alone.
+        float h = clamp(vElevation / uMaxH, 0.0, 2.4);
+        vec3 color = mix(uValley, uMid, smoothstep(0.25, 0.85, h));
+        color = mix(color, uCrest, smoothstep(0.85, 1.7, h));
+        color = mix(color, uRock, smoothstep(0.55, 1.35, vSlope) * 0.65);
+
+        float flatness = smoothstep(0.02, 0.06, vSlope);
+        float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
+        float snow = smoothstep(uSnowline, uSnowline + 1.4, vElevation);
+        float strength = flatness * edgeFade * (1.0 - snow);
+        float minor = lineMask(vElevation, uStep, uLineWidth) * strength;
+        float major = lineMask(vElevation, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
+        color = mix(color, uMinor, minor * 0.9);
+        color = mix(color, uMajor, major);
+        color = mix(color, uSnow, snow * 0.9);
+
+        // Aerial perspective: the far field cools and lightens BEFORE the
+        // page fade — depth without lights, fog without fog.
+        float aerial = smoothstep(uAtmoStart, uFadeStart, length(vXZ));
+        color = mix(color, uAtmosphere, aerial * 0.55);
+        color = mix(color, uPage, smoothstep(uFadeStart, uFadeEnd, length(vXZ)));
+
+        gl_FragColor = vec4(color, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+// Water: per-vertex ANALYTIC depth (we carved the bed, we know it) drives a
+// foam shore and depth-scaled transparency — no depth textures, no banding.
+const waterMaterial = (preset: Biome) =>
+  new ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+    uniforms: {
+      uWater: { value: new Color(preset.water) },
+      uFoam: { value: new Color(preset.foam) },
+      uTime: { value: 0 },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aDepth;
+      varying float vDepth;
+      varying vec2 vXZ;
+      void main() {
+        vDepth = aDepth;
+        vXZ = position.xz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uWater; uniform vec3 uFoam; uniform float uTime;
+      varying float vDepth; varying vec2 vXZ;
+      void main() {
+        if (vDepth <= 0.0) discard;
+        float shimmer = sin(uTime * 1.1 + vXZ.x * 1.7 + vXZ.y * 1.3) * 0.045;
+        float foam = 1.0 - smoothstep(0.05, 0.3 + shimmer, vDepth);
+        float alpha = mix(0.3, 0.72, smoothstep(0.0, 1.1, vDepth));
+        vec3 color = mix(uWater, uFoam, foam);
+        gl_FragColor = vec4(color, max(alpha, foam * 0.9));
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+// Foliage: instanced, with a faint per-instance vertex sway.
+const foliageMaterial = (color: string, sway: number) =>
+  new ShaderMaterial({
+    uniforms: { uColor: { value: new Color(color) }, uTime: { value: 0 }, uSway: { value: sway } },
+    vertexShader: /* glsl */ `
+      attribute float aPhase;
+      uniform float uTime; uniform float uSway;
+      varying float vShade;
+      void main() {
+        vec3 p = position;
+        float reach = max(p.y, 0.0);
+        p.x += sin(uTime * 0.8 + aPhase) * reach * reach * uSway;
+        p.z += cos(uTime * 0.66 + aPhase * 1.3) * reach * reach * uSway * 0.6;
+        vShade = 0.88 + 0.12 * sin(aPhase * 3.7);
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      varying float vShade;
+      void main() {
+        gl_FragColor = vec4(uColor * vShade, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+// ---------------------------------------------------------------------------
+// Build
+// ---------------------------------------------------------------------------
+const world = shallowRef<Group>()
+const timeUniforms: { value: number }[] = []
+let ticker: (() => void) | undefined
+
+const buildWorld = (name: string) => {
+  const preset = BIOMES[name]
+  const group = new Group()
+  const { base, massifAt } = buildSampler(preset)
+
+  const lakeFloor = LAKE.level - 1.5
+  const height = (x: number, z: number) => {
+    let h = base(x, z) + massifAt(x, z)
+    const lakeDistance = Math.hypot(x - LAKE.x, z - LAKE.z)
+    if (lakeDistance < LAKE.radius * 1.4) {
+      const t = smoothstep(Math.min(1, lakeDistance / (LAKE.radius * 1.4)))
+      h = Math.min(h, lakeFloor * (1 - t) + h * t)
+    }
+    return h
+  }
+
+  const river = buildRiver(height)
+  const bedAt = (x: number, z: number, h: number) => {
+    let carved = h
+    for (const point of river) {
+      const d = Math.hypot(point.x - x, point.z - z)
+      if (d >= 2.4) continue
+      const t = smoothstep(d / 2.4)
+      carved = Math.min(carved, (point.y - 0.35) * (1 - t) + carved * t)
+    }
+    return carved
+  }
+
+  // --- Terrain mesh ---------------------------------------------------------
+  const geometry = new PlaneGeometry(SIZE * 1.6, SIZE * 1.6, SEGMENTS, SEGMENTS)
+  geometry.rotateX(-Math.PI / 2)
+  const positions = geometry.attributes.position
+  const lattice = SEGMENTS + 1
+  const heights = new Float32Array(positions.count)
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index)
+    const z = positions.getZ(index)
+    heights[index] = bedAt(x, z, height(x, z))
+  }
+  const slopes = new Float32Array(positions.count)
+  const epsilon = (SIZE * 1.6) / SEGMENTS
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, heights[index])
+    const row = Math.floor(index / lattice)
+    const column = index % lattice
+    const left = Math.max(column - 1, 0)
+    const right = Math.min(column + 1, SEGMENTS)
+    const near = Math.max(row - 1, 0)
+    const far = Math.min(row + 1, SEGMENTS)
+    const gradientX =
+      (heights[row * lattice + right] - heights[row * lattice + left]) / ((right - left) * epsilon)
+    const gradientZ =
+      (heights[far * lattice + column] - heights[near * lattice + column]) /
+      ((far - near) * epsilon)
+    slopes[index] = Math.hypot(gradientX, gradientZ)
+  }
+  positions.needsUpdate = true
+  geometry.setAttribute('aSlope', new BufferAttribute(slopes, 1))
+  group.add(new Mesh(geometry, terrainMaterial(preset)))
+
+  // --- Lake water (grid with analytic depth) --------------------------------
+  const lakeGeometry = new PlaneGeometry(LAKE.radius * 3, LAKE.radius * 3, 72, 72)
+  lakeGeometry.rotateX(-Math.PI / 2)
+  lakeGeometry.translate(LAKE.x, LAKE.level, LAKE.z)
+  const lakePositions = lakeGeometry.attributes.position
+  const lakeDepth = new Float32Array(lakePositions.count)
+  for (let index = 0; index < lakePositions.count; index++) {
+    const x = lakePositions.getX(index)
+    const z = lakePositions.getZ(index)
+    lakeDepth[index] = LAKE.level - bedAt(x, z, height(x, z))
+  }
+  lakeGeometry.setAttribute('aDepth', new BufferAttribute(lakeDepth, 1))
+  const lakeWater = waterMaterial(preset)
+  timeUniforms.push(lakeWater.uniforms.uTime)
+  group.add(new Mesh(lakeGeometry, lakeWater))
+
+  // --- River water (ribbon with analytic depth) -----------------------------
+  if (river.length > 2) {
+    const ribbon = new BufferGeometry()
+    const vertices: number[] = []
+    const depths: number[] = []
+    const indices: number[] = []
+    for (let index = 0; index < river.length; index++) {
+      const point = river[index]
+      const next = river[Math.min(index + 1, river.length - 1)]
+      const previous = river[Math.max(index - 1, 0)]
+      const tangent = new Vector3().subVectors(next, previous).setY(0).normalize()
+      const side = new Vector3(-tangent.z, 0, tangent.x)
+      for (const offset of [-1, -0.33, 0.33, 1]) {
+        const x = point.x + side.x * offset * 1.9
+        const z = point.z + side.z * offset * 1.9
+        vertices.push(x, point.y, z)
+        depths.push(point.y - bedAt(x, z, height(x, z)))
+      }
+    }
+    for (let segment = 0; segment < river.length - 1; segment++) {
+      const row = segment * 4
+      for (let quad = 0; quad < 3; quad++) {
+        const a = row + quad
+        indices.push(a, a + 4, a + 1, a + 1, a + 4, a + 5)
+      }
+    }
+    ribbon.setIndex(indices)
+    ribbon.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+    ribbon.setAttribute('aDepth', new BufferAttribute(new Float32Array(depths), 1))
+    const riverWater = waterMaterial(preset)
+    timeUniforms.push(riverWater.uniforms.uTime)
+    group.add(new Mesh(ribbon, riverWater))
+  }
+
+  // --- Foliage (instanced, swaying) -----------------------------------------
+  const prng = Alea('terrain-lab:foliage')
+  const spots: { x: number; z: number; y: number }[] = []
+  for (let attempt = 0; attempt < 900 && spots.length < 130; attempt++) {
+    const x = (prng() - 0.5) * SIZE * 0.95
+    const z = (prng() - 0.5) * SIZE * 0.95
+    if (massifAt(x, z) > 0.4) continue
+    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.radius * 1.5) continue
+    if (river.some(point => Math.hypot(point.x - x, point.z - z) < 3.4)) continue
+    const y = height(x, z)
+    const gradient = Math.hypot(
+      (height(x + 1, z) - height(x - 1, z)) / 2,
+      (height(x, z + 1) - height(x, z - 1)) / 2
+    )
+    if (gradient > 0.35) continue
+    spots.push({ x, z, y })
+  }
+
+  const canopy =
+    preset.foliage === 'trees'
+      ? new ConeGeometry(1.1, 2.6, 7)
+      : preset.foliage === 'spires'
+        ? new CylinderGeometry(0.28, 0.5, 2.6, 6)
+        : new ConeGeometry(0.55, 2.8, 4)
+  canopy.translate(0, preset.foliage === 'trees' ? 2.1 : 1.3, 0)
+  const canopyMaterial = foliageMaterial(preset.foliageColor, prefersReducedMotion() ? 0 : 0.012)
+  timeUniforms.push(canopyMaterial.uniforms.uTime)
+  const canopyMesh = new InstancedMesh(canopy, canopyMaterial, spots.length)
+
+  const trunk = new CylinderGeometry(0.14, 0.18, 1.1, 6)
+  trunk.translate(0, 0.55, 0)
+  const trunkMaterial = foliageMaterial(preset.trunkColor, 0)
+  const trunkMesh = new InstancedMesh(trunk, trunkMaterial, spots.length)
+
+  const matrix = new Matrix4()
+  const phases = new Float32Array(spots.length)
+  spots.forEach((spot, index) => {
+    const scale = 0.75 + prng() * 0.7
+    matrix.makeScale(scale, scale, scale)
+    matrix.setPosition(spot.x, spot.y, spot.z)
+    canopyMesh.setMatrixAt(index, matrix)
+    trunkMesh.setMatrixAt(index, matrix)
+    phases[index] = prng() * Math.PI * 2
+  })
+  canopy.setAttribute('aPhase', new InstancedBufferAttribute(phases, 1))
+  trunk.setAttribute('aPhase', new InstancedBufferAttribute(phases, 1))
+  if (preset.foliage !== 'trees') trunkMesh.count = 0
+  group.add(canopyMesh, trunkMesh)
+
+  return group
+}
+
+const disposeWorld = () => {
+  world.value?.traverse(child => {
+    if (child instanceof Mesh || child instanceof InstancedMesh) {
+      child.geometry.dispose()
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      materials.forEach(material => material.dispose())
+    }
+  })
+  timeUniforms.length = 0
+}
+
+const setBiome = (name: string) => {
+  biome.value = name
+  disposeWorld()
+  world.value = buildWorld(name)
+}
+
+onMounted(() => {
+  world.value = buildWorld(biome.value)
+  ticker = () => {
+    for (const uniform of timeUniforms) uniform.value = gsap.ticker.time
+  }
+  gsap.ticker.add(ticker)
+})
+
+onUnmounted(() => {
+  if (ticker) gsap.ticker.remove(ticker)
+  disposeWorld()
+})
+</script>
+
+<style lang="scss" scoped>
+.terrain-lab {
+  position: fixed;
+  inset: 0;
+
+  .controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 5;
+    display: flex;
+    gap: 6px;
+
+    button {
+      padding: 4px 12px;
+      border: 1px solid #0d2f61;
+      border-radius: 999px;
+      background: #fffaf5;
+      color: #0d2f61;
+      text-transform: capitalize;
+      cursor: pointer;
+
+      &.active {
+        background: #0d2f61;
+        color: #fffaf5;
+      }
+    }
+  }
+}
+</style>
