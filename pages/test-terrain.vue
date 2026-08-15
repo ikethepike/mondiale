@@ -246,17 +246,40 @@ const buildSampler = (preset: Biome) => {
     return (sum / normalization) * 0.5 * MAX_H * preset.hilliness + MAX_H * 0.5
   }
 
+  // Shoulder peaks: the massif is a FAMILY — a snowy main summit with two
+  // lower rocky companions merged into its flanks, the way real massifs
+  // shoulder. Placed away from the gorge face so the ascent stays clean.
+  const shoulderAt = (
+    x: number,
+    z: number,
+    cx: number,
+    cz: number,
+    radius: number,
+    peak: number
+  ) => {
+    const d = Math.hypot(x - cx, z - cz)
+    if (d >= radius) return 0
+    return Math.pow(smoothstep((radius - d) / radius), 1.5) * peak
+  }
+
   const massifAt = (x: number, z: number) => {
     const dx = x - MASSIF.x
     const dz = z - MASSIF.z
     const distance = Math.hypot(dx, dz)
-    if (distance >= MASSIF.radius) return 0
+
+    const shoulders = Math.max(
+      shoulderAt(x, z, MASSIF.x + 15, MASSIF.z - 8, 14, MASSIF.height * 0.52),
+      shoulderAt(x, z, MASSIF.x - 12, MASSIF.z - 13, 12, MASSIF.height * 0.38)
+    )
+
+    if (distance >= MASSIF.radius) return shoulders
     const theta = Math.atan2(dx, dz)
     const crag =
-      0.13 * (0.5 + 0.5 * Math.sin(3 * theta + 1.1)) +
-      0.06 * (0.5 + 0.5 * Math.sin(5 * theta + 2.7))
+      0.17 * (0.5 + 0.5 * Math.sin(3 * theta + 1.1)) +
+      0.07 * (0.5 + 0.5 * Math.sin(5 * theta + 2.7)) +
+      0.035 * (0.5 + 0.5 * Math.sin(8 * theta + 0.6))
     const cragged = MASSIF.radius * (1 - crag)
-    if (distance >= cragged) return 0
+    if (distance >= cragged) return shoulders
     if (distance <= MASSIF.plateau) return MASSIF.height
     const t = Math.pow(smoothstep((cragged - distance) / (cragged - MASSIF.plateau)), 1.6)
 
@@ -273,7 +296,12 @@ const buildSampler = (preset: Biome) => {
       const stepped = Math.floor(h / stepSize) * stepSize + stepSize * 0.4
       h = h * (1 - gorge * 0.85) + stepped * (gorge * 0.85)
     }
-    return h
+    // Flank character: fBm crenellates the rings mid-flank — shoulders,
+    // spurs, hollows — while the plateau, the base seam and the terraced
+    // gorge stay clean (the mask peaks between them and the gorge damps it).
+    const flankMask = t * (1 - t) * 4 * (1 - gorge)
+    h += noise(x * 0.09, z * 0.09) * 1.7 * flankMask
+    return Math.max(h, shoulders)
   }
 
   return { base, massifAt }
