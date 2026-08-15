@@ -1059,6 +1059,19 @@ export interface TerraIncognitaChallenge {
   /** The countries the atlas loses, in the order it loses them. No two share
    *  a land border — see `pickVanishDeck` for why adjacency is disqualifying. */
   vanishings: ISOCountryCode[]
+  /**
+   * Each vanishing's absorber: the neighbour whose land it dissolves into,
+   * which is the border the map paints out. The round reads as one country
+   * expanding over another, so naming EITHER restores the hole.
+   *
+   * Stamped at the deal from `terraAbsorber` rather than re-derived, so the
+   * client, the server and the reveal can never disagree about who swallowed
+   * what — and so the answer cannot shift with the map's zoom tier.
+   *
+   * Optional only for rounds already in flight when this shipped: those grade
+   * on the vanished country's own name, exactly as they were dealt to.
+   */
+  absorbedBy?: Partial<Record<ISOCountryCode, ISOCountryCode>>
   /** Milliseconds between losses. Rides the challenge rather than being
    *  re-derived from the difficulty, so a game whose rules changed mid-round
    *  cannot re-time a world that is already falling. */

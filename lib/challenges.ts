@@ -121,6 +121,7 @@ import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } fro
 import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
 import {
   pickVanishDeck,
+  terraAbsorber,
   terraCollapseThreshold,
   terraSeconds,
   TERRA_CADENCE_MS,
@@ -1191,6 +1192,14 @@ const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallen
   return {
     _type: 'terra-incognita-challenge',
     vanishings,
+    // Who swallows each loss, resolved once here: naming the expander restores
+    // the hole just as naming the country that went does.
+    absorbedBy: Object.fromEntries(
+      vanishings.flatMap(isoCode => {
+        const absorber = terraAbsorber(isoCode)
+        return absorber ? [[isoCode, absorber] as const] : []
+      })
+    ),
     cadenceMs,
     collapseThreshold: terraCollapseThreshold(vanishings.length, game.difficulty),
     durationSeconds: terraSeconds(vanishings.length, cadenceMs),

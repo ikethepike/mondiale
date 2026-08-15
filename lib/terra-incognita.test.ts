@@ -5,10 +5,14 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
+import { blitzScore } from '~~/lib/scoring'
 import { countryLatLng, haversineKm, isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import {
   pickVanishDeck,
+  terraAbsorber,
   terraAnswers,
+  terraRestoredBy,
+  terraRestoredHoles,
   terraField,
   terraSeconds,
   terraTheatre,
@@ -50,6 +54,14 @@ const challengeOf = (
 ): TerraIncognitaChallenge => ({
   _type: 'terra-incognita-challenge',
   vanishings,
+  // The deal stamps these, so a test challenge without them would grade by
+  // rules no real round plays under.
+  absorbedBy: Object.fromEntries(
+    vanishings.flatMap(isoCode => {
+      const absorber = terraAbsorber(isoCode)
+      return absorber ? [[isoCode, absorber] as const] : []
+    })
+  ),
   cadenceMs: TERRA_CADENCE_MS[difficulty],
   collapseThreshold: terraCollapseThreshold(vanishings.length, difficulty),
   durationSeconds: terraSeconds(vanishings.length, TERRA_CADENCE_MS[difficulty]),
@@ -386,12 +398,136 @@ describe('grading', () => {
     const half = await gradeWith(['UY', 'MW'])
     expect(half.scoring.scored).toBeLessThan(clean.scoring.scored)
 
-    const sprayed = await gradeWith(['UY', 'MW', 'PE', 'BR', 'CL'])
+    // Not BR/PE: Brazil absorbed Uruguay, so naming it now RESTORES rather
+    // than strays. These three touch nothing in this deck.
+    const sprayed = await gradeWith(['UY', 'MW', 'FR', 'JP', 'NZ'])
     expect(sprayed.scoring.scored).toBeLessThan(half.scoring.scored)
+
+    // And the other half of that rule: the absorber pays exactly as the
+    // country's own name does.
+    const byAbsorber = await gradeWith(['BR', 'MZ', 'GR', 'UZ'])
+    expect(byAbsorber.scoring.scored).toBe(clean.scoring.scored)
   })
 
   it('banks a zero for a seat that never noticed anything', async () => {
     const nothing = await gradeWith([])
     expect(nothing.scoring.scored).toBe(0)
+  })
+})
+
+describe('terraAbsorber', () => {
+  it('names the neighbour a country dissolves into', () => {
+    // The longest shared border — the one the map paints out.
+    expect(terraAbsorber('PT')).toBe('ES')
+    expect(terraAbsorber('MX')).toBe('US')
+    expect(terraAbsorber('BD')).toBe('IN')
+  })
+
+  it('resolves for every country the mode can deal', () => {
+    // `terraField` gates on this, so the two are the same statement from
+    // opposite directions — but a regression in either would be silent.
+    for (const variant of VARIANTS) {
+      for (const difficulty of DIFFICULTIES) {
+        for (const isoCode of terraField(rules(difficulty, variant))) {
+          expect(terraAbsorber(isoCode), `${variant}/${difficulty}/${isoCode}`).toBeTruthy()
+        }
+      }
+    }
+  })
+
+  it('is always a real land neighbour', () => {
+    for (const isoCode of terraField(rules('normal'))) {
+      const absorber = terraAbsorber(isoCode)!
+      expect(BORDERS[isoCode] ?? [], isoCode).toContain(absorber)
+    }
+  })
+
+  it('drops the countries that cannot visibly vanish', () => {
+    // Lesotho is wrapped by South Africa and the UK's only neighbour never
+    // meets its mainland ring: nothing is painted out, so they used to be
+    // dealt and then not vanish.
+    expect(terraAbsorber('LS')).toBeUndefined()
+    expect(terraAbsorber('GB')).toBeUndefined()
+    const field = terraField(rules('normal'))
+    expect(field).not.toContain('LS')
+    expect(field).not.toContain('GB')
+  })
+
+  it('never names a country that is itself in the deck', () => {
+    // Free from the no-adjacent-blanks guard: an absorber is by definition a
+    // land neighbour, and no two dealt countries share a border. If that guard
+    // ever loosened, one hole's answer would be another hole.
+    for (let seed = 0; seed < 40; seed++) {
+      for (const difficulty of DIFFICULTIES) {
+        const deck = pickVanishDeck(rules(difficulty), seeded(`absorb-${difficulty}-${seed}`))
+        if (!deck) continue
+        for (const isoCode of deck) {
+          expect(deck, `${difficulty}/${seed}/${isoCode}`).not.toContain(terraAbsorber(isoCode))
+        }
+      }
+    }
+  })
+})
+
+describe('restoring by either name', () => {
+  /** Austria and Denmark both dissolve into Germany; Albania into Greece. */
+  const shared = {
+    vanishings: ['AT', 'DK', 'AL'] as ISOCountryCode[],
+    absorbedBy: { AT: 'DE', DK: 'DE', AL: 'GR' } as Partial<Record<ISOCountryCode, ISOCountryCode>>,
+  }
+
+  it('takes the country that went or the land that took it', () => {
+    const open = new Set(shared.vanishings)
+    expect(terraRestoredBy(shared, 'AT', open)).toBe('AT')
+    expect(terraRestoredBy(shared, 'GR', open)).toBe('AL')
+    expect(terraRestoredBy(shared, 'FR', open)).toBeUndefined()
+  })
+
+  it('lets one absorber answer for each hole it swallowed, in turn', () => {
+    // Germany took two. Naming it twice must reach BOTH, not re-claim the
+    // first — this is ~20% of real decks.
+    expect(terraRestoredHoles(shared, ['DE', 'DE', 'GR'])).toEqual(['AT', 'DK', 'AL'])
+  })
+
+  it('pays a perfect round the same by either name', () => {
+    // The whole reason absorbers alias onto holes instead of joining the
+    // answer set: widening the set would divide the pot by twice as many.
+    const pot = 9
+    const byCountry = blitzScore(
+      shared.vanishings,
+      terraRestoredHoles(shared, shared.vanishings),
+      pot
+    )
+    const byAbsorber = blitzScore(
+      shared.vanishings,
+      terraRestoredHoles(shared, ['DE', 'DE', 'GR']),
+      pot
+    )
+    expect(byCountry).toEqual({ scored: pot, maximum: pot })
+    expect(byAbsorber).toEqual({ scored: pot, maximum: pot })
+  })
+
+  it('still charges for a country that was never gone', () => {
+    const scored = blitzScore(shared.vanishings, terraRestoredHoles(shared, ['AT', 'FR']), 9)
+    expect(scored.scored).toBeLessThan(blitzScore(shared.vanishings, ['AT'], 9).scored)
+  })
+
+  it('only accepts the absorber of a hole that has actually opened', () => {
+    // `within` is the leak guard: before Denmark goes, naming Germany may
+    // restore Austria but must never reach Denmark — that would tell the
+    // player Denmark is in the deck.
+    const opened: ISOCountryCode[] = ['AT']
+    expect(terraRestoredHoles(shared, ['DE'], opened)).toEqual(['AT'])
+    expect(terraRestoredHoles(shared, ['DE', 'DE'], opened)).toEqual(['AT', 'DE'])
+  })
+
+  it('gives every dealt round an absorber for every loss', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      for (const difficulty of DIFFICULTIES) {
+        const deck = pickVanishDeck(rules(difficulty), seeded(`restore-${difficulty}-${seed}`))
+        if (!deck) continue
+        for (const isoCode of deck) expect(terraAbsorber(isoCode), isoCode).toBeTruthy()
+      }
+    }
   })
 })
