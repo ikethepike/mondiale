@@ -29,35 +29,35 @@ type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language
 }
 
 /**
- * Does this country speak the language at all — officially or not?
+ * Every language a country speaks — the UNION of the two language fields, and
+ * the one derivation everything else here is built from.
  *
- * The rounds ask "Who speaks Russian?", so this is the whole question, and it
- * is deliberately the UNION of the two language fields. Neither one alone is
- * the answer: officiality misses Kazakhstan, Uzbekistan and every other place
- * where the Factbook files a language as spoken rather than official (naming
- * one used to cost a point for knowing the world), and the spoken list misses
- * Burundi's English and Slovenia's coastal Italian, which never reach it.
+ * Neither field alone is the answer: officiality misses Kazakhstan's and
+ * Uzbekistan's Russian and every other language the Factbook files as spoken
+ * rather than official (naming one used to cost a point for knowing the
+ * world), and the spoken list misses Burundi's English and Slovenia's coastal
+ * Italian, which never reach it.
  */
-export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean => {
+export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
   const country = COUNTRIES[isoCode]
-  return (
-    (country?.officialLanguages ?? []).includes(language) ||
-    (country?.languages ?? []).includes(language)
-  )
+  return new Set([...(country?.officialLanguages ?? []), ...(country?.languages ?? [])])
 }
+
+/** Does this country speak the language at all? The rounds ask "Who speaks
+ *  Russian?", so this is the whole question they grade. */
+export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
+  spokenLanguages(isoCode).has(language)
 
 /**
  * The board's languages, each with the countries standing on it that speak
  * them — the ONE index both dealers deal from. A round's answer set, the copy
- * that counts it and the off-board veto all resolve through `speaksLanguage`,
+ * that counts it and the off-board veto all resolve through `spokenLanguages`,
  * so a country can never be dealt by one rule and graded by another.
  */
 export const boardSpeakers = (pool: readonly ISOCountryCode[]): Map<string, ISOCountryCode[]> => {
   const speakers = new Map<string, ISOCountryCode[]>()
   for (const isoCode of pool) {
-    const country = COUNTRIES[isoCode]
-    const spoken = new Set([...(country?.officialLanguages ?? []), ...(country?.languages ?? [])])
-    for (const language of spoken) {
+    for (const language of spokenLanguages(isoCode)) {
       speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
     }
   }

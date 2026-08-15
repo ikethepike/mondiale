@@ -62,6 +62,30 @@
   pointer-events: auto;
 }
 
+// The `rail` cut: one row that scrolls sideways, newest chip last (the trail's
+// head is what a player is looking for — lib/use-chip-trail keeps it in view).
+// `flex: none` is the load-bearing line: a scroller is a shrinkable flex item,
+// so in a footer the software keyboard had squeezed, the trail gave up its
+// height and served the top half of the chip that had just landed. A rail has
+// no second row to lose, and now it can't lose the first.
+@mixin chip-rail {
+  flex: none;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  justify-content: flex-start;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+
+  .country-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+    scroll-snap-align: end;
+  }
+}
+
 @media screen and (max-width: $tablet) {
   .country-chip-list {
     max-height: 22dvh;
@@ -69,25 +93,14 @@
     overscroll-behavior: contain;
 
     &.rail {
-      flex-wrap: nowrap;
-      max-width: 100%;
-      max-height: none;
-      overflow-x: auto;
-      overflow-y: hidden;
-      // One row, and it keeps all of it. A scroller is shrinkable, so in a
-      // footer the keyboard had squeezed the trail gave up its height and
-      // served the top half of a chip — a rail has nothing to scroll to
-      // vertically, so it must never be the one that gives way.
-      flex: none;
-      justify-content: flex-start;
-      scroll-snap-type: x proximity;
-      scrollbar-width: none;
-
-      .country-chip {
-        flex-shrink: 0;
-        white-space: nowrap;
-        scroll-snap-align: end;
-      }
+      @include chip-rail;
     }
   }
+}
+
+// The squeeze isn't a width — it's the keyboard. A tablet in landscape gives a
+// typed console as little room as a phone does, so a trail rails whenever the
+// keyboard is the floor, at any viewport (lib/use-viewport owns the class).
+:root.keyboard-up .country-chip-list.rail {
+  @include chip-rail;
 }

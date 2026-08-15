@@ -139,7 +139,7 @@ const {
   // to the room as a miss.
   reject: (active, isoCode) =>
     speaksButOffBoard(active, isoCode)
-      ? `${countryName(getCountry(isoCode))} does have it — but this round is ${motherTongueScope(active)}`
+      ? `${countryName(getCountry(isoCode))} does speak it — but this round is ${motherTongueScope(active)}`
       : undefined,
   onLockoutEnd: () => guessInput.value?.focus(),
   onResolve: () => {

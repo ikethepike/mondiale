@@ -358,7 +358,7 @@ const incorrectMessage = computed(() => {
     case 'scriptorium':
       // Language-framed, never script-framed: Eritrea writes Geʽez too, but
       // an Amharic deal is asking for Amharic's countries.
-      return picked ? `It isn't an official language of ${countryName(picked)}` : 'Time ran out.'
+      return picked ? `It isn't spoken in ${countryName(picked)}` : 'Time ran out.'
     case 'chronicle':
       // The reveal below sets the record straight, year by year.
       return 'History disagrees.'

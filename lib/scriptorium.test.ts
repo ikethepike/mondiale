@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
+import { COUNTRIES } from '~~/data/countries.gen'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers, scriptoriumRegionHint } from '~~/lib/scriptorium'
 import { anthemTongueSample, seededTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 
@@ -11,10 +12,25 @@ describe('SCRIPTORIUM_POOL', () => {
     }
   })
 
-  it('has an official speaker for every entry', () => {
+  it('has a speaker for every entry', () => {
     for (const entry of SCRIPTORIUM_POOL) {
       expect(scriptoriumAnswers(entry.language).length, entry.language).toBeGreaterThan(0)
     }
+  })
+
+  it('never stages a page whose language no country writes officially — except where the Factbook does not say so', () => {
+    // The pool's admission rule is "somebody makes it official", and the data
+    // backs it everywhere but Kyrgyz: the Factbook parse leaves Kyrgyzstan's
+    // officials as Russian alone, with Kyrgyz on the spoken list. Pinned as a
+    // known exception rather than asserted away — a SECOND entry drifting into
+    // minority-status-only is a pool bug worth failing on.
+    const withoutOfficial = SCRIPTORIUM_POOL.filter(
+      entry =>
+        !scriptoriumAnswers(entry.language).some(isoCode =>
+          (COUNTRIES[isoCode]?.officialLanguages ?? []).includes(entry.language)
+        )
+    ).map(entry => entry.language)
+    expect(withoutOfficial).toEqual(['Kyrgyz'])
   })
 
   it('resolves a written sample with real lines for every entry', () => {
