@@ -193,6 +193,16 @@ const onGuess = (country: Country) => {
   backdrop-filter: blur(0.5rem);
   background: milk(0.92);
   border: 0.1rem solid ink(0.25);
+
+  // The page is this column's giver: the header is capped at the console's
+  // top edge, so on a short band the leaf shrinks and scrolls its own glyphs
+  // rather than pushing the hint chip out of the band. It takes touches
+  // itself — the question column stays pass-through so map-tap gates keep
+  // working, which would leave an inherited scroller dead to a finger.
+  min-height: 0;
+  overflow-y: auto;
+  pointer-events: auto;
+  overscroll-behavior: contain;
 }
 
 .manuscript-line {
@@ -267,6 +277,42 @@ const onGuess = (country: Country) => {
   }
   .manuscript-line {
     font-size: 2.3rem;
+  }
+}
+
+// The keyboard is up: the band above the console is a couple of hundred
+// pixels, and the page is the only thing in it worth the room. The
+// instruction line goes (the player is already typing, and the h1 carries the
+// question — Silhouette's posture), the clock steps down, and the glyphs
+// take the size the band can hold instead of scrolling out of sight. Wins on
+// specificity over the phone block above, so source order is not load-bearing.
+:root.keyboard-up {
+  .sub {
+    display: none;
+  }
+
+  // The title pill keeps its words and gives up its cushion — every row it
+  // spares is a row of glyphs.
+  h1.map-caption {
+    padding: 0.5rem 1.4rem;
+  }
+
+  .gate-clock {
+    --clock-size: 4rem;
+    --clock-seconds-size: 1.4rem;
+  }
+
+  // The column's own gap is separation enough here — the leaf's extra
+  // top margin is another line of glyphs.
+  .manuscript {
+    gap: 0.6rem;
+    margin-top: 0;
+    padding: 1rem 1.4rem;
+  }
+
+  .manuscript-line {
+    font-size: 2rem;
+    line-height: 1.35;
   }
 }
 </style>
