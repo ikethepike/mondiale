@@ -1011,6 +1011,7 @@ const getNameWaterChallenge = async (
     _type: 'name-water-challenge',
     featureId: feature.id,
     featureName: feature.name,
+    ...(feature.aliases?.length ? { aliases: feature.aliases } : {}),
     kind: feature.kind,
     countries: feature.countries,
     maximumGuesses: NAME_WATER_ATTEMPTS,
@@ -2126,14 +2127,19 @@ const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
  * client claims and the correctness the server enforces can never drift.
  */
 export const isCorrectWaterGuess = (
-  challenge: Pick<NameWaterChallenge, 'featureId' | 'featureName'>,
+  challenge: Pick<NameWaterChallenge, 'featureId' | 'featureName' | 'aliases'>,
   guess: { guessedId?: string; guessedName?: string } | undefined
 ): boolean => {
   if (!guess) return false
   if (guess.guessedId !== undefined && guess.guessedId === challenge.featureId) return true
   if (guess.guessedName === undefined) return false
   const normalize = (name: string) => normalizeAnswer(name, { articles: WATER_NAME_ARTICLES })
-  return normalize(guess.guessedName) === normalize(challenge.featureName)
+  const guessed = normalize(guess.guessedName)
+  // NE's own name is often not the one players know (Lake Victoria files as
+  // "Nyanza"), so the alternates grade alongside the headline.
+  return [challenge.featureName, ...(challenge.aliases ?? [])].some(
+    name => normalize(name) === guessed
+  )
 }
 
 /** Shuffles a flat hand gets before the dealer tries another stat. */

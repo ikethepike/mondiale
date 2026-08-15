@@ -425,6 +425,8 @@ export interface NameWaterChallenge {
   _type: 'name-water-challenge'
   featureId: string
   featureName: string
+  /** Accepted alternate spellings/names — graded, never displayed. */
+  aliases?: string[]
   kind: WaterFeatureKind
   /** Shore countries, shown in the reveal/scorecard. */
   countries: ISOCountryCode[]

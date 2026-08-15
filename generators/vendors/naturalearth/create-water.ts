@@ -29,7 +29,7 @@ import type {
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
 import { WATER_NAME_FIXES } from '../../../data/static/water-name-fixes'
-import { RIVER_ALIASES } from '../../../data/static/water-aliases'
+import { WATER_ALIASES, LAKE_DISPLAY_NAMES } from '../../../data/static/water-aliases'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
@@ -67,6 +67,14 @@ const REGION_KINDS: Record<string, 'range' | 'desert' | 'plateau'> = {
   Desert: 'desert',
   Plateau: 'plateau',
 }
+
+/**
+ * NE files these under `lakes`, but they're stretches of the Great Lakes system —
+ * a channel, a bay and a river — not lakes anyone can name. They pass the shore
+ * test with two countries each, so they'd otherwise be dealt as lakes.
+ * Matched on the resolved name.
+ */
+const NOT_LAKES = new Set(['North Channel', 'Whitefish Bay', 'St. Marys River'])
 
 /** Keep projected points at least this far apart (viewBox units). */
 const DECIMATE_UNITS = 0.7
@@ -380,6 +388,52 @@ const cleanName = (raw: string): string => {
 const featureName = (properties: Record<string, unknown>): string =>
   cleanName(property(properties, 'name_en') || property(properties, 'name'))
 
+/** The English generics a lake's full name may be built from. `name` may pair
+ *  the specific with a LOCAL generic instead (Lago de Nicaragua, Qinghai Hu),
+ *  which makes a worse answer key than the bare specific — so only these
+ *  promote. */
+const LAKE_GENERICS = /^(lake|lakes|great|salt|reservoir|of|the|北)$/i
+
+/**
+ * Lakes only. NE's `name_en` is the specific shorn of its generic — Lake
+ * Victoria ships as "Nyanza", Lake of the Woods as "Woods" — and that name is
+ * the answer key players type, so the generic has to come back. Take `name`
+ * only when it is `name_en` wrapped in ENGLISH generic words; a local-language
+ * `name` keeps `name_en` and earns its alternates in water-aliases.ts.
+ */
+const lakeName = (properties: Record<string, unknown>): string => {
+  const english = cleanName(property(properties, 'name_en'))
+  const local = cleanName(property(properties, 'name'))
+  if (!english) return local
+  if (!local || local === english) return english
+
+  const escaped = english.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (!new RegExp(`\\b${escaped}\\b`, 'i').test(local)) return english
+  // Everything `name` adds around the specific must be an English generic
+  const added = local.replace(new RegExp(`\\b${escaped}\\b`, 'i'), ' ').split(/\s+/).filter(Boolean)
+  return added.every(word => LAKE_GENERICS.test(word)) ? local : english
+}
+
+const usedLakeDisplayNames = new Set<string>()
+/** Apply the hand-ruled headline for lakes the word-boundary rule can't reach. */
+const displayLakeName = (resolved: string): string => {
+  const display = LAKE_DISPLAY_NAMES[resolved]
+  if (display === undefined) return resolved
+  usedLakeDisplayNames.add(resolved)
+  return display
+}
+
+/**
+ * THE id rule for a named feature. The kind prefix disambiguates, so a name
+ * already carrying its generic doesn't repeat it — "Lake Victoria" is
+ * `lake-victoria`, not `lake-lake-victoria`. Emit and the alias lookup both
+ * build ids here so they can never disagree.
+ */
+const featureId = (kind: WaterKind, name: string): string => {
+  const slug = slugify(name)
+  return new RegExp(`^${kind}s?-|-${kind}s?$`, 'i').test(slug) ? slug : `${kind}-${slug}`
+}
+
 const slugify = (name: string) =>
   name
     .toLowerCase()
@@ -450,9 +504,10 @@ const main = async () => {
   const lakes = await fetchLayer(LAYERS.lakes)
   for (const feature of lakes.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = featureName(properties)
+    const resolved = lakeName(properties)
     const scalerank = Number(property(properties, 'scalerank') || 99)
-    if (!name || scalerank > 3) continue
+    if (!resolved || scalerank > 3 || NOT_LAKES.has(resolved)) continue
+    const name = displayLakeName(resolved)
 
     const rings = asPolygonGroups(feature.geometry)
       .flat()
@@ -464,7 +519,7 @@ const main = async () => {
     if (!shoreCountries.size) continue
 
     add({
-      id: `lake-${slugify(name)}`,
+      id: featureId('lake', name),
       name,
       kind: 'lake',
       d: pathFromRings(rings),
@@ -549,17 +604,19 @@ const main = async () => {
     })
   }
 
-  // --- Same-river reconciliation: fold NE's per-stretch names into one -------
+  // --- Same-feature reconciliation: fold NE's per-stretch names into one -----
   const mergedIds = new Set<string>()
-  for (const group of RIVER_ALIASES) {
-    const canonical = features[`river-${slugify(group.canonical)}`]
+  for (const group of WATER_ALIASES) {
+    const canonical = features[featureId(group.kind, group.canonical)]
     if (!canonical) {
-      console.warn(`water-aliases: canonical river missing from NE data: ${group.canonical}`)
+      console.warn(
+        `water-aliases: canonical ${group.kind} missing from NE data: ${group.canonical}`
+      )
       continue
     }
     const aliases: string[] = []
     for (const name of group.merge) {
-      const id = `river-${slugify(name)}`
+      const id = featureId(group.kind, name)
       const stretch = features[id]
       if (!stretch) {
         console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
@@ -612,6 +669,11 @@ const main = async () => {
   }
   for (const raw of Object.keys(WATER_NAME_FIXES)) {
     if (!usedNameFixes.has(raw)) console.warn(`water-name-fixes: entry matched nothing: ${raw}`)
+  }
+  for (const resolved of Object.keys(LAKE_DISPLAY_NAMES)) {
+    if (!usedLakeDisplayNames.has(resolved)) {
+      console.warn(`water-aliases: lake display name matched nothing: ${resolved}`)
+    }
   }
   // A landform's roster fails in two silent directions, and both shipped once:
   // a proximity term reaches across water (Morocco on the Iberian Peninsula),
@@ -675,11 +737,11 @@ export const WATER_FEATURES: Record<string, WaterFeature> = ${jsonParseLiteral(s
     `Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(Bun.gzipSync(Buffer.from(output)).byteLength / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`
   )
 
-  // Sanity spot-checks against well-known geography
-  for (const id of ['river-danube', 'black-sea', 'lake-lake-victoria', 'range-alps']) {
-    const feature = Object.values(features).find(
-      f => f.id === id || f.id.includes(id.replace(/^(river|lake|range)-/, ''))
-    )
+  // Sanity spot-checks against well-known geography. Probe the EMITTED map by
+  // exact id: a substring fallback let an earlier-inserted feature shadow the
+  // exact match, and printed the Australian Alps for `range-alps`.
+  for (const id of ['river-danube', 'black-sea', 'lake-victoria', 'range-alps']) {
+    const feature = sorted[id]
     console.info(
       `${id}: ${feature ? `${feature.name} → ${feature.countries.join(' ')}` : 'NOT FOUND'}`
     )
