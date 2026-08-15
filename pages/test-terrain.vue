@@ -394,6 +394,8 @@ const terrainMaterial = (preset: Biome, heightMap: DataTexture, heightHalf: numb
         // rich banks in grass, an oasis ring in sand. Flat ground only;
         // slopes stay in the rock family.
         color = mix(color, uLush, vMoisture * (1.0 - smoothstep(0.25, 0.8, vSlope)) * 0.55);
+        // The wet band: a damp darker rim right at the shore.
+        color = mix(color, uShade, smoothstep(0.86, 0.98, vMoisture) * 0.22);
         color = mix(color, uRock, smoothstep(0.55, 1.35, vSlope) * 0.65);
 
         // Quantized hillshade from the analytic normal — cartographic relief
@@ -503,7 +505,10 @@ const waterMaterial = (preset: Biome) =>
         float shimmer = sin(uTime * 1.1 + vXZ.x * 1.7 + vXZ.y * 1.3) * 0.045;
         float foam = 1.0 - smoothstep(0.05, 0.3 + shimmer, vDepth);
         float alpha = mix(0.3, 0.72, smoothstep(0.0, 1.1, vDepth));
-        vec3 color = mix(uWater, uFoam, foam);
+        // Two-tone depth: shallows keep the bright water hue, the middle
+        // falls toward a deep tone — the Elysium lake read, analytically.
+        vec3 color = mix(uWater, uWater * 0.55, smoothstep(0.3, 1.3, vDepth));
+        color = mix(color, uFoam, foam);
         gl_FragColor = vec4(color, max(alpha, foam * 0.9));
         #include <colorspace_fragment>
       }
@@ -535,6 +540,49 @@ const trailMaterial = (preset: Biome) =>
       }
     `,
   })
+
+// Birds: instanced ink chevrons circling on slow orbits, wings flapping,
+// each instance steered in the vertex shader — no per-frame JS at all.
+const birdMaterial = (color: string) =>
+  new ShaderMaterial({
+    side: DoubleSide,
+    uniforms: { uColor: { value: new Color(color) }, uTime: { value: 0 } },
+    vertexShader: /* glsl */ `
+      attribute float aWing;
+      attribute vec3 aFlight; // phase, orbit radius, angular speed
+      uniform float uTime;
+      void main() {
+        vec3 p = position;
+        p.y += sin(uTime * 7.0 + aFlight.x * 5.0) * aWing * 0.4;
+        float a = uTime * aFlight.z + aFlight.x;
+        // Face along the orbit's tangent.
+        float yaw = atan(cos(a), -sin(a));
+        p = vec3(p.x * cos(yaw) + p.z * sin(yaw), p.y, -p.x * sin(yaw) + p.z * cos(yaw));
+        p.x += sin(a) * aFlight.y;
+        p.z += cos(a) * aFlight.y;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      void main() {
+        gl_FragColor = vec4(uColor, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+const birdGeometry = () => {
+  const geometry = new BufferGeometry()
+  // A chevron: two wing triangles meeting at the body, tips flagged for flap.
+  const vertices = new Float32Array([
+    0, 0, 0.3, -0.5, 0, -0.05, -1.25, 0.22, -0.4, 0, 0, 0.3, 1.25, 0.22, -0.4, 0.5, 0, -0.05,
+  ])
+  const wings = new Float32Array([0, 0.3, 1, 0, 1, 0.3])
+  geometry.setAttribute('position', new BufferAttribute(vertices, 3))
+  geometry.setAttribute('aWing', new BufferAttribute(wings, 1))
+  return geometry
+}
 
 // Foliage: instanced, with a faint per-instance vertex sway.
 const foliageMaterial = (color: string, sway: number) =>
@@ -903,6 +951,36 @@ const buildWorld = (name: string) => {
     })
     tuft.setAttribute('aPhase', new InstancedBufferAttribute(tuftPhases, 1))
     group.add(tuftMesh)
+  }
+
+  // --- Birds: small flocks on slow orbits over the open country --------------
+  if (!prefersReducedMotion()) {
+    const flockSizes: Record<string, number> = {
+      parchment: 12,
+      grassland: 14,
+      desert: 7,
+      ice: 6,
+    }
+    const flock = flockSizes[name] ?? 10
+    const birds = birdGeometry()
+    const birdShader = birdMaterial(preset.major)
+    timeUniforms.push(birdShader.uniforms.uTime as { value: number })
+    const birdMesh = new InstancedMesh(birds, birdShader, flock)
+    const flights = new Float32Array(flock * 3)
+    for (let index = 0; index < flock; index++) {
+      const x = (prng() - 0.5) * SIZE * 0.7
+      const z = (prng() - 0.5) * SIZE * 0.7
+      const altitude = 20 + prng() * 8
+      const scale = 0.7 + prng() * 0.5
+      matrix.makeScale(scale, scale, scale)
+      matrix.setPosition(x, altitude, z)
+      birdMesh.setMatrixAt(index, matrix)
+      flights[index * 3] = prng() * Math.PI * 2
+      flights[index * 3 + 1] = 6 + prng() * 9
+      flights[index * 3 + 2] = 0.06 + prng() * 0.07
+    }
+    birds.setAttribute('aFlight', new InstancedBufferAttribute(flights, 3))
+    group.add(birdMesh)
   }
 
   // --- Contour elevation labels: numbers riding the major lines --------------
