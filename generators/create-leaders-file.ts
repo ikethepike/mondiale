@@ -98,7 +98,9 @@ const countryCount = Object.keys(dataset.countries ?? {}).length
 if (countryCount < 150) {
   throw new Error(`polity returned only ${countryCount} countries — refusing to overwrite`)
 }
-console.info(`  polity ${dataset.schema_version ?? '?'}, built ${dataset.generated_at?.slice(0, 10) ?? '?'}, ${countryCount} countries`)
+console.info(
+  `  polity ${dataset.schema_version ?? '?'}, built ${dataset.generated_at?.slice(0, 10) ?? '?'}, ${countryCount} countries`
+)
 
 const mapping: LeaderMapping = {}
 const portraitQueue: { isoCode: ISOCountryCode; role: LeaderRole; file: string }[] = []
@@ -156,7 +158,10 @@ for (const { isoCode, role, file } of portraitQueue) {
     const entry = mapping[isoCode]?.[role]
     if (entry) {
       entry.image = path
-      Object.assign(entry, await captureImageCredit(file, previousMapping[isoCode]?.[role], refresh))
+      Object.assign(
+        entry,
+        await captureImageCredit(file, previousMapping[isoCode]?.[role], refresh)
+      )
     }
     saved++
   } else {
