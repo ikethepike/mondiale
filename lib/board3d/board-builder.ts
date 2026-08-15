@@ -1337,7 +1337,16 @@ const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler
     geometries.push(blade)
   }
 
-  const merged = mergeGeometries(geometries.map(geometry => geometry.toNonIndexed()))
+  // Position-only across the board: the rings carry uv/normal attributes the
+  // hand-built blades don't, and mergeGeometries refuses mixed layouts.
+  const merged = mergeGeometries(
+    geometries.map(geometry => {
+      const uniform = geometry.toNonIndexed()
+      uniform.deleteAttribute('uv')
+      uniform.deleteAttribute('normal')
+      return uniform
+    })
+  )
   geometries.forEach(geometry => geometry.dispose())
   merged.rotateX(-Math.PI / 2)
   merged.translate(site.x, 0, site.z)
