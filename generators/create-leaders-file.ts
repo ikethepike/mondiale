@@ -56,7 +56,18 @@ interface LeaderEntry extends LeaderProfile {
 }
 
 export type LeaderMapping = {
-  [isoCode in ISOCountryCode]?: { [role in LeaderRole]?: LeaderEntry }
+  [isoCode in ISOCountryCode]?: { [role in LeaderRole]?: LeaderEntry } & {
+    /**
+     * Which office actually runs the country, decided by polity.
+     *
+     * The alternative is guessing from the leader's TITLE, and the title does
+     * not say: Egypt, Malaysia, Eswatini and Togo all have a president or
+     * monarch alongside a prime minister, and the one who governs differs in
+     * every case. `collective` is Switzerland, whose Federal Council governs as
+     * a body and has no single leader to name.
+     */
+    executivePower?: 'head_of_state' | 'head_of_government' | 'collective'
+  }
 }
 
 /** Only the parts of polity this generator reads. */
@@ -73,6 +84,7 @@ interface PolityOfficeHolder {
 interface PolityCountry {
   head_of_state?: PolityOfficeHolder | null
   head_of_government?: PolityOfficeHolder | null
+  executive_power?: 'head_of_state' | 'head_of_government' | 'collective'
 }
 interface PolityDataset {
   generated_at?: string
@@ -132,6 +144,10 @@ for (const [iso, country] of Object.entries(dataset.countries)) {
     if (holder.portrait?.file) {
       portraitQueue.push({ isoCode, role, file: holder.portrait.file })
     }
+  }
+
+  if (mapping[isoCode] && country.executive_power) {
+    mapping[isoCode].executivePower = country.executive_power
   }
 }
 
