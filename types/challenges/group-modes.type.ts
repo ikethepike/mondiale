@@ -489,14 +489,14 @@ export interface NoMansLandChallenge {
  * scored on how close you land, not on naming the country.
  *
  * The challenge carries the slug, not the coordinates, and scoring happens
- * server-side from the slug. That isn't a secret (LANDMARKS is bundled into the
+ * server-side from the slug. That isn't a secret (PLACES is bundled into the
  * client anyway, so a determined player can always read the answer out of it —
  * as they could for every other mode's country). It's so the *score* is the
  * server's to decide, like hot-cold's, rather than a number the client reports.
  */
 export interface PinLandmarkChallenge {
   _type: 'pin-landmark-challenge'
-  /** Key into LANDMARKS — the *photo* is the prompt, so no name is sent. */
+  /** Key into PLACES — the *photo* is the prompt, so no name is sent. */
   slug: string
   /** Public path of the landmark photo. */
   image: string
@@ -643,7 +643,7 @@ export interface BorderChainTrap {
  */
 export interface HeritageHuntChallenge {
   _type: 'heritage-hunt-challenge'
-  /** Keys into HERITAGE, one per beat, in play order. */
+  /** Keys into PLACES (all with a `unesco` facet), one per beat, in play order. */
   slugs: string[]
   beatSeconds: number
   perfectDistanceKm: number

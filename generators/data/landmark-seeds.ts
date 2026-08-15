@@ -475,8 +475,9 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // Supplied URL is the same 800px file Wikidata already rejected; this one is 1600px.
   { name: 'Jeita Grotto', country: 'LB', kind: 'natural', commons: 'Jeita Grotto ITH041.jpg' },
   { name: 'Umayyad Mosque', country: 'SY', kind: 'religious' },
-  // Third-listed for Iran, but Persepolis above it has no point of its own
-  // (its Wikidata item is the football club), so this is the dealable second.
+  // Third-listed for Iran, kept at the dealable second: Persepolis above it
+  // resolves to the football club by name, and only carries a point at all
+  // because the same subject is on the World Heritage register.
   { name: 'Sheikh Lotfollah Mosque', country: 'IR', kind: 'religious', fame: 'minor' },
   { name: 'Gates of Hell Darvaza', country: 'TM', kind: 'natural' },
   { name: 'Gergeti Trinity Church', country: 'GE', kind: 'religious' },

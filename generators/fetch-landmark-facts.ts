@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs'
-import { LANDMARKS } from '../data/landmarks.gen'
+import { PLACES } from '../data/places.gen'
 import { LANDMARK_SEEDS } from './data/landmark-seeds'
 import { fetchJson, wait } from './vendors/wikidata/commons'
 
@@ -119,8 +119,10 @@ for (const seed of LANDMARK_SEEDS) {
   if (seed.qid) qidBySlug.set(slugify(seed.name), seed.qid)
 }
 
-const entries = Object.entries(LANDMARKS)
-console.log(`Fetching Wikipedia leads for ${entries.length} landmarks…`)
+// The facts file backs the curated roster's prose; the swept sites carry
+// Wikidata's own one-liner and are not fetched here.
+const entries = Object.entries(PLACES).filter(([, place]) => place.curated)
+console.log(`Fetching Wikipedia leads for ${entries.length} curated landmarks…`)
 
 const titleOf = new Map<string, string>()
 for (const [slug, landmark] of entries) {

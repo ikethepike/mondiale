@@ -4,8 +4,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
-import { HERITAGE } from '~~/data/heritage.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
 import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
@@ -15,6 +14,7 @@ import { currencyNamesASpender } from '~~/lib/currency'
 import { SWEEP_TUNING, sweepBoardFor, sweepSlotBand, viableSweepSets } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
+import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
@@ -77,7 +77,6 @@ import type {
 } from '~~/types/challenges/traversal-challenge.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
-import { isFameDealable, type Fame } from '~~/types/fame.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import {
   CONFLICT_TYPE_LABELS,
@@ -510,10 +509,7 @@ const getHeritageHuntChallenge = ({
   // Gated on the site's own recognisability tier, the same way pin-landmark
   // gates: easy deals a country's best-known site, not its fourth.
   const pool = shuffleArray(
-    famousPlaces(
-      Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country)),
-      game.difficulty
-    )
+    dealableHeritage(game.difficulty).filter(([, site]) => playable.has(site.country))
   )
   // One site per country per round, for variety.
   const slugs: string[] = []
@@ -734,7 +730,7 @@ const TWO_TRUTHS_SECONDS = 40
  *  then any curated landmark. Used as Stat Detective's final visual clue. */
 const photoClueFor = (country: ISOCountryCode): string | undefined => {
   if (CAPITALS[country]?.image) return CAPITALS[country]!.image
-  const landmark = Object.values(LANDMARKS).find(entry => entry.country === country)
+  const landmark = Object.values(PLACES).find(entry => entry.country === country)
   return landmark?.image
 }
 
@@ -1452,35 +1448,16 @@ export const PIN_LANDMARK_TIERS: {
   hard: { perfectDistanceKm: PIN_PERFECT_KM, zeroDistanceKm: PIN_ZERO_KM },
 }
 
-/** Pools under this many candidates widen back to the whole pool. */
-const PIN_LANDMARK_MINIMUM_POOL = 8
-
-/**
- * The difficulty's slice of a place roster, by the recognisability tier the
- * generator stamped on each entry (`major` icon → `minor` second → the rest).
- *
- * This used to count position within the country at deal time, which made the
- * gate an implicit property of array order that the generator's resurrection
- * merge could scramble. The tiers are the same ones every curated roster uses
- * (`FAME_BY_DIFFICULTY`), so a difficulty means one thing across the game.
- */
-export const famousPlaces = <T extends { fame: Fame }>(
-  pool: [string, T][],
-  difficulty: gameTypes.GameDifficulty
-): [string, T][] => {
-  const famous = pool.filter(([, place]) => isFameDealable(place.fame, difficulty))
-  return famous.length >= PIN_LANDMARK_MINIMUM_POOL ? famous : pool
-}
-
 const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
-  // Only landmarks whose coordinates survived the generator's country check;
-  // and only countries this variant actually deals. The recognisability gate is
-  // each entry's own `fame` tier, not its position in the map.
+  // Only curated landmarks whose coordinates survived the generator's country
+  // check, and only countries this variant actually deals. The recognisability
+  // gate is the entry's own `fame` tier, not its position in the map.
   const playable = new Set(playableCountries(game))
-  const pool = Object.entries(LANDMARKS).filter(
-    ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
+  const picked = sample(
+    dealableLandmarks(game.difficulty).filter(
+      ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
+    )
   )
-  const picked = sample(famousPlaces(pool, game.difficulty))
   if (!picked) return undefined
 
   const tier = PIN_LANDMARK_TIERS[game.difficulty]
@@ -2084,7 +2061,7 @@ export const scorePinLandmark = ({
   pin: LatLng | undefined
 }): { scored: number; maximum: number; distanceKm?: number } => {
   const maximum = challenge.maximumPoints
-  const landmark = LANDMARKS[challenge.slug]
+  const landmark = PLACES[challenge.slug]
   if (!pin || !landmark?.coordinates) return { scored: 0, maximum }
 
   const distanceKm = haversineKm(pin, landmark.coordinates)
@@ -2504,7 +2481,7 @@ const dealLandmarkQuiz = (
   // Only landmarks whose country is in play — a benched micro-nation
   // (St Peter's → the Vatican) can't be the answer to anything.
   const inPlay = new Set(world)
-  const entries = Object.entries(LANDMARKS).filter(([, entry]) => inPlay.has(entry.country))
+  const entries = curatedPlaces().filter(([, entry]) => inPlay.has(entry.country))
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).

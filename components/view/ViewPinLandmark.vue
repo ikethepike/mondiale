@@ -36,7 +36,7 @@
     <Transition name="dossier">
       <article v-if="landmark && result" class="pane dossier tr">
         <div class="pane-content">
-          <LandmarkReveal :landmark="landmark" />
+          <PlaceReveal :place="landmark" />
         </div>
       </article>
     </Transition>
@@ -76,9 +76,9 @@ import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
+import PlaceReveal from '~/components/feedback/PlaceReveal.vue'
 import { datasetAttribution } from '~~/lib/attribution'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
 import { formatLatLng, haversineKm } from '~~/lib/geo'
 import { formatKm } from '~~/lib/number'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -116,9 +116,9 @@ const { pin, photoExpanded } = usePinDrop({
   registerCleanup,
 })
 
-const landmark = computed(() => (challenge.value ? LANDMARKS[challenge.value.slug] : undefined))
+const landmark = computed(() => (challenge.value ? PLACES[challenge.value.slug] : undefined))
 
-const photoSources = datasetAttribution('landmarks')
+const photoSources = datasetAttribution('places')
 
 const verdict = computed(() => {
   const active = challenge.value
@@ -153,7 +153,7 @@ const lockIn = () => {
   if (!active || !pin.value || submitted.value) return
   stopCountdown()
 
-  const answer = LANDMARKS[active.slug]?.coordinates
+  const answer = PLACES[active.slug]?.coordinates
   if (answer) {
     gameStore.map.pinAnswer = answer
     result.value = { distanceKm: haversineKm(pin.value, answer) }

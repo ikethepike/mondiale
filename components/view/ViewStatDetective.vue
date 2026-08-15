@@ -155,7 +155,7 @@ const revealedClues = computed(() => {
  *  so the ⓘ names both registries honestly. */
 const photoSources = dedupeAttributions([
   ...datasetAttribution('capitals'),
-  ...datasetAttribution('landmarks'),
+  ...datasetAttribution('places'),
 ])
 
 // The photo lands as one extra clue after every stat has shown.

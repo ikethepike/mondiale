@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { pickMediaCredit, type MediaCredit } from '../../../lib/attribution'
 import type { Fame } from '../../../types/fame.types'
 import { isValidISOCode, type ISOCountryCode } from '../../../types/geography.types'
-import type { PlaceEntry, PlaceMapping } from '../../../types/places.types'
+import type { PlaceMapping } from '../../../types/places.types'
 import type { CountryShapes } from '../naturalearth/country-shapes'
 import {
   captureImageCredit,
@@ -320,9 +320,9 @@ export const assignFameByCountry = <T extends { country: ISOCountryCode; fame?: 
  * coordinate check deletes the photo of a wrong-item match, and resurrecting
  * that entry would point the game at a file we just removed.
  */
-export const carryPreviousPlaces = <Entry extends PlaceEntry>(
-  mapping: PlaceMapping<Entry>,
-  previous: PlaceMapping<Entry>,
+export const carryPreviousPlaces = (
+  mapping: PlaceMapping,
+  previous: PlaceMapping,
   { stillInRoster }: { stillInRoster?: (slug: string) => boolean } = {}
 ): number => {
   let carried = 0

@@ -15,7 +15,7 @@
  * construction rather than by a comment.
  */
 import { COUNTRIES } from '~~/data/countries.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { curatedPlaces } from '~~/lib/places'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { mentionsCountry } from './country'
 import { currencyName } from './currency'
@@ -30,12 +30,12 @@ export interface RosettaRelation {
   terms: (isoCode: ISOCountryCode) => string[]
 }
 
-/** Landmarks grouped by country, built once — LANDMARKS is a flat slug map. */
+/** Curated landmarks grouped by country, built once — PLACES is a flat slug map. */
 let landmarksByCountry: Partial<Record<ISOCountryCode, string[]>> | undefined
 const landmarkNames = (isoCode: ISOCountryCode): string[] => {
   if (!landmarksByCountry) {
     landmarksByCountry = {}
-    for (const entry of Object.values(LANDMARKS)) {
+    for (const [, entry] of curatedPlaces()) {
       ;(landmarksByCountry[entry.country] ??= []).push(entry.name)
     }
   }

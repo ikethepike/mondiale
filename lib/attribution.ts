@@ -781,8 +781,7 @@ export type DataSetId =
   | 'leaders'
   | 'publicFinance'
   | 'parties'
-  | 'landmarks'
-  | 'heritage'
+  | 'places'
   | 'events'
   | 'changes'
   | 'empires'
@@ -976,22 +975,17 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'commons-media', dataset: 'Party logos' },
     ],
   },
-  landmarks: {
-    label: 'Landmarks',
-    files: ['data/landmarks.gen.ts'],
+  places: {
+    label: 'Landmarks & World Heritage Sites',
+    files: ['data/places.gen.ts'],
+    // One roster from two selections, so both are claimed here: a place may be
+    // a curated seed, an entry off the UNESCO register, or (sixty of them) both.
     origins: [
       { source: 'wikidata-items', dataset: 'Curated seeds resolved by Q-id' },
+      { source: 'wikidata-items', dataset: 'P1435 = UNESCO World Heritage Site' },
       { source: 'commons-media' },
       { source: 'unsplash-photos' },
       { source: 'mondiale-editorial', dataset: 'generators/data/landmark-seeds.ts' },
-    ],
-  },
-  heritage: {
-    label: 'World Heritage Sites',
-    files: ['data/heritage.gen.ts'],
-    origins: [
-      { source: 'wikidata-items', dataset: 'P1435 = UNESCO World Heritage Site' },
-      { source: 'commons-media' },
     ],
   },
   events: {
