@@ -45,13 +45,17 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
+  DataTexture,
   DoubleSide,
+  FloatType,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
+  LinearFilter,
   Matrix4,
   Mesh,
   PlaneGeometry,
+  RedFormat,
   ShaderMaterial,
   Vector3,
 } from 'three'
@@ -87,6 +91,8 @@ interface Biome {
   foliage: 'trees' | 'spires' | 'shards'
   foliageColor: string
   trunkColor: string
+  /** How many props the landscape carries — a desert is sparse BY nature. */
+  foliageCount: number
 }
 
 const BIOMES: Record<string, Biome> = {
@@ -110,6 +116,7 @@ const BIOMES: Record<string, Biome> = {
     foliage: 'trees',
     foliageColor: '#90bcb5',
     trunkColor: '#0d2f61',
+    foliageCount: 115,
   },
   grassland: {
     valley: '#eef3e2',
@@ -131,6 +138,7 @@ const BIOMES: Record<string, Biome> = {
     foliage: 'trees',
     foliageColor: '#5c8a52',
     trunkColor: '#6b4f35',
+    foliageCount: 130,
   },
   desert: {
     valley: '#f7e9cf',
@@ -152,6 +160,7 @@ const BIOMES: Record<string, Biome> = {
     foliage: 'spires',
     foliageColor: '#c98f5f',
     trunkColor: '#8a5a33',
+    foliageCount: 38,
   },
   ice: {
     valley: '#f2f6f9',
@@ -173,6 +182,7 @@ const BIOMES: Record<string, Biome> = {
     foliage: 'shards',
     foliageColor: '#cfe2ec',
     trunkColor: '#8fb4c6',
+    foliageCount: 55,
   },
 }
 
@@ -223,9 +233,11 @@ const buildSampler = (preset: Biome) => {
     if (distance <= MASSIF.plateau) return MASSIF.height
     const t = Math.pow(smoothstep((cragged - distance) / (cragged - MASSIF.plateau)), 1.6)
 
-    // The ascent gorge faces +z; its floor is QUANTIZED into terraces — the
-    // steps are the mountain itself, so nothing can ever cut into it.
-    const swing = Math.atan2(Math.sin(theta - Math.PI), Math.cos(theta - Math.PI))
+    // The ascent gorge faces +z — toward the default camera AND the river's
+    // spring, so the water visibly pours out of the mountain's mouth. Its
+    // floor is QUANTIZED into terraces — the steps are the mountain itself,
+    // so nothing can ever cut into it.
+    const swing = Math.atan2(Math.sin(theta), Math.cos(theta))
     const gorge = Math.exp(-((swing / GORGE_HALF) * (swing / GORGE_HALF)))
     const outer = smoothstep(Math.min(1, (distance - MASSIF.plateau) / (cragged - MASSIF.plateau)))
     let h = MASSIF.height * t * (1 - 0.55 * gorge * outer)
@@ -273,9 +285,12 @@ const buildRiver = (height: (x: number, z: number) => number) => {
 // ---------------------------------------------------------------------------
 // Shaders
 // ---------------------------------------------------------------------------
-const terrainMaterial = (preset: Biome) =>
+const terrainMaterial = (preset: Biome, heightMap: DataTexture, heightHalf: number) =>
   new ShaderMaterial({
     uniforms: {
+      uHeightMap: { value: heightMap },
+      uHeightHalf: { value: heightHalf },
+      uTime: { value: 0 },
       uValley: { value: new Color(preset.valley) },
       uMid: { value: new Color(preset.mid) },
       uCrest: { value: new Color(preset.crest) },
@@ -326,6 +341,7 @@ const terrainMaterial = (preset: Biome) =>
       uniform float uStep; uniform float uMajorEvery; uniform float uLineWidth;
       uniform float uMaxH; uniform float uSnowline;
       uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
+      uniform sampler2D uHeightMap; uniform float uHeightHalf; uniform float uTime;
       varying float vElevation; varying float vSlope; varying vec2 vXZ;
       varying vec2 vGradient; varying float vCurve; varying float vMoisture;
 
@@ -367,15 +383,29 @@ const terrainMaterial = (preset: Biome) =>
         color = mix(color, uMajor, ridge * 0.12);
         color = mix(color, uShade, hollow * 0.25);
 
+        // Contours from a HIGH-RES height texture sampled per fragment, not
+        // the coarse vertex lattice — the aliasing fix: the field the lines
+        // trace is finer than the mesh, so the ink stops crumbling along
+        // triangle edges.
+        float hField = texture2D(uHeightMap, (vXZ + uHeightHalf) / (2.0 * uHeightHalf)).r;
         float flatness = smoothstep(0.02, 0.06, vSlope);
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
         float snow = smoothstep(uSnowline, uSnowline + 1.4, vElevation);
         float strength = flatness * edgeFade * (1.0 - snow);
-        float minor = lineMask(vElevation, uStep, uLineWidth) * strength;
-        float major = lineMask(vElevation, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
+        float minor = lineMask(hField, uStep, uLineWidth) * strength;
+        float major = lineMask(hField, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
         color = mix(color, uMinor, minor * 0.9);
         color = mix(color, uMajor, major);
         color = mix(color, uSnow, snow * 0.9);
+
+        // Drifting cloud shadows: three slow sine fields sum into soft blobs
+        // that darken the ground faintly as they pass. Frozen under reduced
+        // motion (uTime holds at zero).
+        float cloud =
+          sin(vXZ.x * 0.045 + uTime * 0.05) +
+          sin(vXZ.y * 0.038 - uTime * 0.04) +
+          sin((vXZ.x + vXZ.y) * 0.027 + uTime * 0.03);
+        color = mix(color, uShade, smoothstep(1.4, 2.6, cloud) * 0.1);
 
         // Aerial perspective: the far field cools and lightens BEFORE the
         // page fade — depth without lights, fog without fog.
@@ -428,6 +458,32 @@ const waterMaterial = (preset: Biome) =>
         float alpha = mix(0.3, 0.72, smoothstep(0.0, 1.1, vDepth));
         vec3 color = mix(uWater, uFoam, foam);
         gl_FragColor = vec4(color, max(alpha, foam * 0.9));
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+// The switchback trail: dashed ink, alpha from the along-length coordinate.
+const trailMaterial = (preset: Biome) =>
+  new ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: { uInk: { value: new Color(preset.major) } },
+    vertexShader: /* glsl */ `
+      attribute float aAlong;
+      varying float vAlong;
+      void main() {
+        vAlong = aAlong;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uInk;
+      varying float vAlong;
+      void main() {
+        float dash = step(fract(vAlong * 0.9), 0.55);
+        if (dash < 0.5) discard;
+        gl_FragColor = vec4(uInk, 0.55);
         #include <colorspace_fragment>
       }
     `,
@@ -551,7 +607,55 @@ const buildWorld = (name: string) => {
   geometry.setAttribute('aGradient', new BufferAttribute(gradients, 2))
   geometry.setAttribute('aCurve', new BufferAttribute(curvatures, 1))
   geometry.setAttribute('aMoisture', new BufferAttribute(moistures, 1))
-  group.add(new Mesh(geometry, terrainMaterial(preset)))
+
+  // The height field again at texture resolution — finer than the mesh, so
+  // fragment-sampled contours stop aliasing along triangle edges.
+  const FIELD = 512
+  const fieldHalf = (SIZE * 1.6) / 2
+  const field = new Float32Array(FIELD * FIELD)
+  for (let row = 0; row < FIELD; row++) {
+    for (let column = 0; column < FIELD; column++) {
+      const x = (column / (FIELD - 1)) * fieldHalf * 2 - fieldHalf
+      const z = (row / (FIELD - 1)) * fieldHalf * 2 - fieldHalf
+      field[row * FIELD + column] = bedAt(x, z, height(x, z))
+    }
+  }
+  const heightMap = new DataTexture(field, FIELD, FIELD, RedFormat, FloatType)
+  heightMap.minFilter = LinearFilter
+  heightMap.magFilter = LinearFilter
+  heightMap.needsUpdate = true
+
+  const terrain = terrainMaterial(preset, heightMap, fieldHalf)
+  timeUniforms.push(terrain.uniforms.uTime as { value: number })
+  group.add(new Mesh(geometry, terrain))
+
+  // A dashed switchback trail up the gorge terraces — cartographic ascent
+  // marks, drawn as a ribbon hugging the carved ground.
+  const trail = new BufferGeometry()
+  const trailVertices: number[] = []
+  const trailAlong: number[] = []
+  const trailIndices: number[] = []
+  const TRAIL_STEPS = 60
+  for (let step = 0; step <= TRAIL_STEPS; step++) {
+    const t = step / TRAIL_STEPS
+    const reach = MASSIF.radius * 1.02 - t * (MASSIF.radius * 1.02 - MASSIF.plateau * 0.7)
+    const wobble = Math.sin(t * Math.PI * 5) * 2.4 * (1 - t * 0.6)
+    const x = MASSIF.x + wobble
+    const z = MASSIF.z + reach
+    const y = bedAt(x, z, height(x, z)) + 0.1
+    for (const offset of [-0.28, 0.28]) {
+      trailVertices.push(x + offset, y, z)
+      trailAlong.push(t * TRAIL_STEPS)
+    }
+    if (step > 0) {
+      const row = (step - 1) * 2
+      trailIndices.push(row, row + 2, row + 1, row + 1, row + 2, row + 3)
+    }
+  }
+  trail.setIndex(trailIndices)
+  trail.setAttribute('position', new BufferAttribute(new Float32Array(trailVertices), 3))
+  trail.setAttribute('aAlong', new BufferAttribute(new Float32Array(trailAlong), 1))
+  group.add(new Mesh(trail, trailMaterial(preset)))
 
   // --- Lake water (grid with analytic depth) --------------------------------
   const lakeGeometry = new PlaneGeometry(LAKE.radius * 3, LAKE.radius * 3, 72, 72)
@@ -659,7 +763,7 @@ const buildWorld = (name: string) => {
   // --- Foliage (instanced, swaying) -----------------------------------------
   const prng = Alea('terrain-lab:foliage')
   const spots: { x: number; z: number; y: number }[] = []
-  for (let attempt = 0; attempt < 900 && spots.length < 130; attempt++) {
+  for (let attempt = 0; attempt < 900 && spots.length < preset.foliageCount; attempt++) {
     const x = (prng() - 0.5) * SIZE * 0.95
     const z = (prng() - 0.5) * SIZE * 0.95
     if (massifAt(x, z) > 0.4) continue
@@ -713,7 +817,12 @@ const disposeWorld = () => {
     if (child instanceof Mesh || child instanceof InstancedMesh) {
       child.geometry.dispose()
       const materials = Array.isArray(child.material) ? child.material : [child.material]
-      materials.forEach(material => material.dispose())
+      materials.forEach(material => {
+        const heightMap = (material as ShaderMaterial).uniforms?.uHeightMap?.value as
+          DataTexture | undefined
+        heightMap?.dispose()
+        material.dispose()
+      })
     }
   })
   timeUniforms.length = 0
